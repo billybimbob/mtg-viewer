@@ -13,76 +13,110 @@
     <div class="col-md-4">
         <form method="post">
 
-            @if(Model.Matches != null && Model.Matches.Any())
-            {
-                <p>
-                    @Html.DropDownListFor(
-                        m => m.Picked, 
-                        Model.Matches.Select(m => new SelectListItem {
-                            Text = $"{m.Name} ({m.SetName})",
-                            Value = m.Id }))
-                </p>
-            }
-            else
-            {
-                <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-                <div class="form-group">
-                    <label asp-for="Card.Name" class="control-label"></label>
-                    <input asp-for="Card.Name" class="form-control" />
-                    <span asp-validation-for="Card.Name" class="text-danger"></span>
-                </div>
-                <div class="form-group">
-                    <label asp-for="Card.ManaCost" class="control-label"></label>
-                    <input asp-for="Card.ManaCost" class="form-control" />
-                    <span asp-validation-for="Card.ManaCost" class="text-danger"></span>
-                </div>
-                <div class="form-group">
-                    <label asp-for="Card.Cmc" class="control-label"></label>
-                    <input asp-for="Card.Cmc" class="form-control" />
-                    <span asp-validation-for="Card.Cmc" class="text-danger"></span>
-                </div>
-                <div class="form-group">
-                    <label asp-for="Card.Rarity" class="control-label"></label>
-                    <input asp-for="Card.Rarity" class="form-control" />
-                    <span asp-validation-for="Card.Rarity" class="text-danger"></span>
-                </div>
-                <div class="form-group">
-                    <label asp-for="Card.SetName" class="control-label"></label>
-                    <input asp-for="Card.SetName" class="form-control" />
-                    <span asp-validation-for="Card.SetName" class="text-danger"></span>
-                </div>
-                <div class="form-group">
-                    <label asp-for="Card.Artist" class="control-label"></label>
-                    <input asp-for="Card.Artist" class="form-control" />
-                    <span asp-validation-for="Card.Artist" class="text-danger"></span>
-                </div>
-                <div class="form-group">
-                    <label asp-for="Card.Power" class="control-label"></label>
-                    <input asp-for="Card.Power" class="form-control" />
-                    <span asp-validation-for="Card.Power" class="text-danger"></span>
-                </div>
-                <div class="form-group">
-                    <label asp-for="Card.Toughness" class="control-label"></label>
-                    <input asp-for="Card.Toughness" class="form-control" />
-                    <span asp-validation-for="Card.Toughness" class="text-danger"></span>
-                </div>
-                <div class="form-group">
-                    <label asp-for="Card.Loyalty" class="control-label"></label>
-                    <input asp-for="Card.Loyalty" class="form-control" />
-                    <span asp-validation-for="Card.Loyalty" class="text-danger"></span>
-                </div>
-                <div class="form-group">
-                    <label asp-for="Card.Location" class="control-label"></label>
-                    <input asp-for="Card.Location" class="form-control" />
-                    <span asp-validation-for="Card.Location" class="text-danger"></span>
-                </div>
-            }
-
+        @if(Model.Matches != null && Model.Matches.Any())
+        {
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th></th>
+                        <th>
+                            @Html.DisplayNameFor(m => m.Matches[0].Name)
+                        </th>
+                        <th>
+                            @Html.DisplayNameFor(m => m.Matches[0].ManaCost)
+                        </th>
+                        <th>
+                            @Html.DisplayNameFor(m => m.Matches[0].Rarity)
+                        </th>
+                        <th>
+                            @Html.DisplayNameFor(m => m.Matches[0].SetName)
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var card in Model.Matches)
+                {
+                    <tr>
+                        <td>
+                            <input type="radio" asp-for="Picked" value="@card.Id"/>
+                        </td>
+                        <td>
+                            @Html.DisplayFor(m => card.Name)
+                        </td>
+                        <td>
+                            @Html.DisplayFor(m => card.ManaCost)
+                        </td>
+                        <td>
+                            @Html.DisplayFor(m => card.Rarity)
+                        </td>
+                        <td>
+                            @Html.DisplayFor(m => card.SetName)
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        }
+        else
+        {
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            <div class="form-group">
+                <label asp-for="Card.Name" class="control-label"></label>
+                <input asp-for="Card.Name" class="form-control" />
+                <span asp-validation-for="Card.Name" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="Card.ManaCost" class="control-label"></label>
+                <input asp-for="Card.ManaCost" class="form-control" />
+                <span asp-validation-for="Card.ManaCost" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="Card.Cmc" class="control-label"></label>
+                <input asp-for="Card.Cmc" class="form-control" />
+                <span asp-validation-for="Card.Cmc" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="Card.Rarity" class="control-label"></label>
+                <input asp-for="Card.Rarity" class="form-control" />
+                <span asp-validation-for="Card.Rarity" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="Card.SetName" class="control-label"></label>
+                <input asp-for="Card.SetName" class="form-control" />
+                <span asp-validation-for="Card.SetName" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="Card.Artist" class="control-label"></label>
+                <input asp-for="Card.Artist" class="form-control" />
+                <span asp-validation-for="Card.Artist" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="Card.Power" class="control-label"></label>
+                <input asp-for="Card.Power" class="form-control" />
+                <span asp-validation-for="Card.Power" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="Card.Toughness" class="control-label"></label>
+                <input asp-for="Card.Toughness" class="form-control" />
+                <span asp-validation-for="Card.Toughness" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="Card.Loyalty" class="control-label"></label>
+                <input asp-for="Card.Loyalty" class="form-control" />
+                <span asp-validation-for="Card.Loyalty" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="Card.Location" class="control-label"></label>
+                <input asp-for="Card.Location" class="form-control" />
+                <span asp-validation-for="Card.Location" class="text-danger"></span>
+            </div>
+        }
 
             <div class="form-group">
                 <input type="submit" value="Create" class="btn btn-primary" />
             </div>
         </form>
+
     </div>
 </div>
 

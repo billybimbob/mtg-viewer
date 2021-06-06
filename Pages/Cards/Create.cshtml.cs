@@ -6,7 +6,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
-using Newtonsoft.Json;
 
 using MTGViewer.Models;
 using MTGViewer.Services;
@@ -15,7 +14,6 @@ namespace MTGViewer.Pages.Cards
 {
     public class CreateModel : PageModel
     {
-        private const string QUERY = "match";
         private readonly MTGCardContext _context;
         private readonly MTGFetchService _fetch;
 
@@ -31,12 +29,11 @@ namespace MTGViewer.Pages.Cards
             return Page();
         }
 
-        [BindProperty]
-        public Card Card { get; set; }
+        public Card Card { get; private set; }
+        public IReadOnlyList<Card> Matches { get; private set; }
 
         [BindProperty]
         public string Picked { get; set; }
-        public IEnumerable<Card> Matches { get; private set; }
 
 
         // To protect from overposting attacks, see https://aka.ms/RazorPagesCRUD
@@ -46,20 +43,44 @@ namespace MTGViewer.Pages.Cards
 
             if (string.IsNullOrEmpty(Picked))
             {
-                if (ModelState.IsValid)
-                {
-                    Matches = await _fetch.MatchAsync(Card);
-                }
+                return await FromPost();
+            }
+            else
+            {
+                return await FromPicked();
+            }
+        }
 
-                return Page();
+
+        private async Task<IActionResult> FromPost()
+        {
+            Card = new Card();
+
+            if (await TryUpdateModelAsync(Card, "card"))
+            {
+                Matches = await _fetch.MatchAsync(Card);
             }
 
-            // TempData[QUERY] = JsonConvert.SerializeObject(Card);
-
-            Console.WriteLine($"picked {Picked}");
-            bool any = await _context.Cards.Where(c => c.Id == Picked).AnyAsync();
-            if (!any)
+            if (Matches?.Count == 1)
             {
+                Picked = Matches.First().Id;
+                return await FromPicked();
+            }
+
+            return Page();
+        }
+
+        private async Task<IActionResult> FromPicked()
+        {
+            Console.WriteLine($"picked {Picked}");
+
+            bool inContext = await _context.Cards
+                .Where(c => c.Id == Picked)
+                .AnyAsync();
+
+            if (!inContext)
+            {
+                // not great since 2 gets from fetch service for a single create task
                 Card = await _fetch.GetIdAsync(Picked);
 
                 _context.Cards.Add(Card);

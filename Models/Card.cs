@@ -8,20 +8,15 @@ namespace MTGViewer.Models
     public class Card
     {
         public string Id { get; set; }
+
+        [Required]
         public string Name { get; set; }
         public virtual IList<Name> Names { get; set; }
+
         public string Layout { get; set; }
 
         [Display(Name = "Mana")]
         public string ManaCost { get; set; }
-
-        // public virtual IList<string> Mana {
-        //     get => ManaCost
-        //         .Split("}")
-        //         .Select(c => c.Replace("{", ""))
-        //         .ToList();
-        // }
-        // public int Cmc { get => Mana.Count; }
 
         [Display(Name = "Converted Mana")]
         public int? Cmc { get; set; }
@@ -47,8 +42,9 @@ namespace MTGViewer.Models
         [UrlAttribute]
         public string ImageUrl { get; set; }
 
-        // can replace strings with out model types
         public virtual IList<User> Users { get; set; }
+
+        // can replace with model types
         public string Location { get; set; }
     }
 }
