@@ -41,13 +41,13 @@ namespace MTGViewer.Pages.Cards
         {
             Console.WriteLine("on post");
 
-            if (string.IsNullOrEmpty(Picked))
+            if (!string.IsNullOrEmpty(Picked))
             {
-                return await FromPost();
+                return await FromPicked();
             }
             else
             {
-                return await FromPicked();
+                return await FromPost();
             }
         }
 

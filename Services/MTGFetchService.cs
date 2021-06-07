@@ -1,6 +1,5 @@
 using System;
 using System.Reflection;
-using System.Collections;
 using System.Collections.Generic;
 
 using System.Linq;
@@ -18,12 +17,13 @@ namespace MTGViewer.Services
 {
     public class MTGFetchService : IMtgQueryable<MTGFetchService, CardQueryParameter>
     {
-        private ICardService _service;
+        private readonly ICardService _service;
+        private readonly DataCacheService _cache;
 
-        public MTGFetchService()
+        public MTGFetchService(MtgServiceProvider provider, DataCacheService cache)
         {
-            var provider = new MtgServiceProvider();
             _service = provider.GetCardService();
+            _cache = cache;
         }
 
         public void Reset()
@@ -39,9 +39,18 @@ namespace MTGViewer.Services
 
         public async Task<Card> GetIdAsync(string id)
         {
-            return (await _service.FindAsync(id))
-                .Unwrap()
-                .ToCard();
+            if (_cache.TryGetValue(id, out Card card))
+            {
+                Console.WriteLine($"using cached card for {id}");
+                return card;
+            }
+            else
+            {
+                Console.WriteLine($"refetching {id}");
+                return (await _service.FindAsync(id))
+                    .Unwrap()
+                    .ToCard();
+            }
         }
 
         public async Task<IReadOnlyList<Card>> FindAsync()
@@ -54,7 +63,9 @@ namespace MTGViewer.Services
 
         public async Task<IReadOnlyList<Card>> MatchAsync(Card card)
         {
-            if (card.Id != null){
+            if (card.Id != null)
+            {
+                _cache.TryGetValue(card.Id, out card);
                 return new List<Card>{ card };
             }
 
@@ -63,7 +74,14 @@ namespace MTGViewer.Services
                 QueryProperty(info, info.GetValue(card));
             }
 
-            return await FindAsync();
+            var matches = await FindAsync();
+
+            foreach (var match in matches)
+            {
+                _cache[match.Id] = match;
+            }
+
+            return matches;
         }
 
         private void QueryProperty(PropertyInfo info, object value)

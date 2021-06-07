@@ -10,6 +10,10 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.EntityFrameworkCore;
 
+using MtgApiManager.Lib.Service;
+using MTGViewer.Services;
+
+
 namespace MTGViewer
 {
     public class Startup
@@ -29,7 +33,9 @@ namespace MTGViewer
             services.AddDbContext<MTGCardContext>(options =>
                     options.UseSqlite(Configuration.GetConnectionString("MTGCardContext")));
 
-            services.AddScoped<MTGViewer.Services.MTGFetchService>();
+            services.AddSingleton<DataCacheService>();
+            services.AddSingleton<MtgServiceProvider>();
+            services.AddScoped<MTGFetchService>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
