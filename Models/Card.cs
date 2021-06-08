@@ -52,8 +52,12 @@ namespace MTGViewer.Models
 
         public IReadOnlyList<string> GetColorSymbols()
         {
+            if (string.IsNullOrEmpty(ManaCost))
+            {
+                return Enumerable.Empty<string>().ToList();
+            }
+
             var matches = Regex.Matches(ManaCost, @"{([^}]+)}");
-            Console.WriteLine(matches);
             return matches.Select(m => m.Groups[1].Value).ToList();
         }
     }

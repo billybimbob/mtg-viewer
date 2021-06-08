@@ -52,9 +52,13 @@
             <td>
                 @Html.DisplayFor(modelItem => item.Name)
             </td>
+
             <td>
-                @Html.DisplayFor(modelItem => item.ManaCost)
+            @foreach (var cost in item.GetColorSymbols()) {
+                <i class="ms ms-@cost.ToLower() ms-cost"></i>
+            }
             </td>
+            
             <td>
                 @Html.DisplayFor(modelItem => item.Cmc)
             </td>

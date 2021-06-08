@@ -35,8 +35,6 @@ namespace MTGViewer.Pages.Cards
             }
             else
             {
-                var colors = string.Join(',', Card.GetColorSymbols());
-                Console.WriteLine($"colors for {Card.Name} are {colors}");
                 return Page();
             }
         }

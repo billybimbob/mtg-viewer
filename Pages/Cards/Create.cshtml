@@ -44,7 +44,9 @@
                             @Html.DisplayFor(_ => card.Name)
                         </td>
                         <td>
-                            @Html.DisplayFor(_ => card.ManaCost)
+                        @foreach (var cost in card.GetColorSymbols()) {
+                            <i class="ms ms-@cost.ToLower() ms-cost"></i>
+                        }
                         </td>
                         <td>
                             @Html.DisplayFor(_ => card.Rarity)
