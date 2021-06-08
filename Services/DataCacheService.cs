@@ -1,4 +1,5 @@
 using System;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Caching.Memory;
 
 namespace MTGViewer.Services
@@ -6,11 +7,13 @@ namespace MTGViewer.Services
     public class DataCacheService
     {
 
+        private readonly ILogger<DataCacheService> _logger;
         private readonly IMemoryCache _cache;
         private readonly MemoryCacheEntryOptions _options;
 
-        public DataCacheService()
+        public DataCacheService(ILogger<DataCacheService> logger)
         {
+            _logger = logger;
             _cache = new MemoryCache( new MemoryCacheOptions 
             {
                 SizeLimit = 100
@@ -33,7 +36,7 @@ namespace MTGViewer.Services
                 }
 
                 _cache.Set(key, value, _options);
-                // Console.WriteLine($"there are {(_cache as MemoryCache)?.Count} entries in the cache");
+                // _logger.LogInformation($"there are {(_cache as MemoryCache)?.Count} entries in the cache");
             }
         }
 

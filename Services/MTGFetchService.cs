@@ -6,6 +6,8 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Threading.Tasks;
 
+using Microsoft.Extensions.Logging;
+
 using MtgApiManager.Lib.Core;
 using MtgApiManager.Lib.Model;
 using MtgApiManager.Lib.Service;
@@ -17,11 +19,14 @@ namespace MTGViewer.Services
 {
     public class MTGFetchService : IMtgQueryable<MTGFetchService, CardQueryParameter>
     {
+        private readonly ILogger<MTGFetchService> _logger;
         private readonly ICardService _service;
         private readonly DataCacheService _cache;
 
-        public MTGFetchService(MtgServiceProvider provider, DataCacheService cache)
+        public MTGFetchService(
+            MtgServiceProvider provider, DataCacheService cache, ILogger<MTGFetchService> logger)
         {
+            _logger = logger;
             _service = provider.GetCardService();
             _cache = cache;
         }
@@ -31,26 +36,11 @@ namespace MTGViewer.Services
             _service.Reset();
         }
 
-        public MTGFetchService Where<U>(Expression<Func<CardQueryParameter, U>> property, U value)
+        public MTGFetchService Where<U>(
+            Expression<Func<CardQueryParameter, U>> property, U value)
         {
             _service.Where(property, value);
             return this;
-        }
-
-        public async Task<Card> GetIdAsync(string id)
-        {
-            if (_cache.TryGetValue(id, out Card card))
-            {
-                Console.WriteLine($"using cached card for {id}");
-                return card;
-            }
-            else
-            {
-                Console.WriteLine($"refetching {id}");
-                return (await _service.FindAsync(id))
-                    .Unwrap()
-                    .ToCard();
-            }
         }
 
         public async Task<IReadOnlyList<Card>> FindAsync()
@@ -59,6 +49,22 @@ namespace MTGViewer.Services
                 .Unwrap()
                 .Select(c => c.ToCard())
                 .ToList();
+        }
+        
+        public async Task<Card> GetIdAsync(string id)
+        {
+            if (_cache.TryGetValue(id, out Card card))
+            {
+                _logger.LogInformation($"using cached card for {id}");
+                return card;
+            }
+            else
+            {
+                _logger.LogInformation($"refetching {id}");
+                return (await _service.FindAsync(id))
+                    .Unwrap() // might want to just log
+                    .ToCard();
+            }
         }
 
         public async Task<IReadOnlyList<Card>> MatchAsync(Card card)
@@ -86,7 +92,7 @@ namespace MTGViewer.Services
 
         private void QueryProperty(PropertyInfo info, object value)
         {
-            if (info.GetSetMethod() == null)
+            if (info.GetSetMethod() == null || info.GetGetMethod() == null)
             {
                 return;
             }
@@ -97,13 +103,13 @@ namespace MTGViewer.Services
             }
 
             var strVal = StringParam(value);
-            if (!string.IsNullOrEmpty(strVal))
+            if (string.IsNullOrEmpty(strVal))
             {
-                Where(
-                    PropertyExpression<CardQueryParameter, string>(info.Name), 
-                    strVal
-                );
+                return;
             }
+
+            Where(
+                PropertyExpression<CardQueryParameter, string>(info.Name), strVal);
         }
 
         private string StringParam(object paramValue) => paramValue switch

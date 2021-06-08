@@ -42,6 +42,7 @@ namespace MTGViewer.Models
         public string Toughness { get; set; }
         public string Loyalty { get; set; }
 
+        [Display(Name = "Image")]
         [UrlAttribute]
         public string ImageUrl { get; set; }
 

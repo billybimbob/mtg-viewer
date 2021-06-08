@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 using MTGViewer.Models;
 using MTGViewer.Services;
@@ -14,18 +15,20 @@ namespace MTGViewer.Pages.Cards
 {
     public class CreateModel : PageModel
     {
+        private readonly ILogger<CreateModel> _logger;
         private readonly MTGCardContext _context;
         private readonly MTGFetchService _fetch;
 
-        public CreateModel(MTGCardContext context, MTGFetchService fetch)
+        public CreateModel(MTGCardContext context, MTGFetchService fetch, ILogger<CreateModel> logger)
         {
+            _logger = logger;
             _context = context;
             _fetch = fetch;
         }
 
         public IActionResult OnGet()
         {
-            Console.WriteLine("on get");
+            _logger.LogInformation("on get");
             return Page();
         }
 
@@ -39,7 +42,7 @@ namespace MTGViewer.Pages.Cards
         // To protect from overposting attacks, see https://aka.ms/RazorPagesCRUD
         public async Task<IActionResult> OnPostAsync()
         {
-            Console.WriteLine("on post");
+            _logger.LogInformation("on post");
 
             if (!string.IsNullOrEmpty(Picked))
             {
@@ -72,7 +75,7 @@ namespace MTGViewer.Pages.Cards
 
         private async Task<IActionResult> FromPicked()
         {
-            Console.WriteLine($"picked {Picked}");
+            _logger.LogInformation($"picked {Picked}");
 
             bool inContext = await _context.Cards
                 .Where(c => c.Id == Picked)

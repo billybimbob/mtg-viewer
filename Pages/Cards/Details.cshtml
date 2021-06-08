@@ -94,7 +94,8 @@
             @Html.DisplayNameFor(m => m.Card.ImageUrl)
         </dt>
         <dd class="col-sm-10">
-            @Html.DisplayFor(m => m.Card.ImageUrl)
+            @* @Html.DisplayFor(m => m.Card.ImageUrl) *@
+            <img alt="@Model.Card.Name" src="@Model.Card.ImageUrl"/>
         </dd>
 
         <dt class="col-sm-2">
