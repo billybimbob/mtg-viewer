@@ -18,7 +18,7 @@ namespace MTGViewer.Pages.Cards
             _context = context;
         }
 
-        public Card Card { get; set; }
+        public Card Card { get; private set; }
 
         public async Task<IActionResult> OnGetAsync(string id)
         {
@@ -33,7 +33,12 @@ namespace MTGViewer.Pages.Cards
             {
                 return NotFound();
             }
-            return Page();
+            else
+            {
+                var colors = string.Join(',', Card.GetColorSymbols());
+                Console.WriteLine($"colors for {Card.Name} are {colors}");
+                return Page();
+            }
         }
     }
 }

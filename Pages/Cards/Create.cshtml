@@ -41,16 +41,16 @@
                             <input type="radio" asp-for="Picked" value="@card.Id"/>
                         </td>
                         <td>
-                            @Html.DisplayFor(m => card.Name)
+                            @Html.DisplayFor(_ => card.Name)
                         </td>
                         <td>
-                            @Html.DisplayFor(m => card.ManaCost)
+                            @Html.DisplayFor(_ => card.ManaCost)
                         </td>
                         <td>
-                            @Html.DisplayFor(m => card.Rarity)
+                            @Html.DisplayFor(_ => card.Rarity)
                         </td>
                         <td>
-                            @Html.DisplayFor(m => card.SetName)
+                            @Html.DisplayFor(_ => card.SetName)
                         </td>
                     </tr>
                 }

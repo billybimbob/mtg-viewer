@@ -18,7 +18,7 @@ namespace MTGViewer.Pages.Cards
             _context = context;
         }
 
-        public IList<Card> Cards { get; set; }
+        public IList<Card> Cards { get; private set; }
 
         public async Task OnGetAsync()
         {

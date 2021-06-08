@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.ComponentModel.DataAnnotations;
 
 namespace MTGViewer.Models
@@ -13,7 +14,7 @@ namespace MTGViewer.Models
 
         [Required]
         public string Name { get; set; }
-        public virtual IList<Name> Names { get; set; }
+        public IList<Name> Names { get; set; }
 
         public string Layout { get; set; }
 
@@ -22,11 +23,11 @@ namespace MTGViewer.Models
 
         [Display(Name = "Converted Mana")]
         public int? Cmc { get; set; }
-        public virtual IList<Color> Colors { get; set; }
+        public IList<Color> Colors { get; set; }
 
-        public virtual IList<SuperType> SuperTypes { get; set; }
-        public virtual IList<Type> Types { get; set; }
-        public virtual IList<SubType> SubTypes { get; set; }
+        public IList<SuperType> SuperTypes { get; set; }
+        public IList<Type> Types { get; set; }
+        public IList<SubType> SubTypes { get; set; }
 
         public string Rarity { get; set; }
 
@@ -44,9 +45,16 @@ namespace MTGViewer.Models
         [UrlAttribute]
         public string ImageUrl { get; set; }
 
-        public virtual IList<User> Users { get; set; }
+        public IList<User> Users { get; set; }
 
         // can replace with model types
         public string Location { get; set; }
+
+        public IReadOnlyList<string> GetColorSymbols()
+        {
+            var matches = Regex.Matches(ManaCost, @"{([^}]+)}");
+            Console.WriteLine(matches);
+            return matches.Select(m => m.Groups[1].Value).ToList();
+        }
     }
 }
