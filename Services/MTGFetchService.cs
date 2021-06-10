@@ -15,6 +15,8 @@ using MtgApiManager.Lib.Service;
 using MTGViewer.Models;
 
 
+# nullable enable
+
 namespace MTGViewer.Services
 {
     public class MTGFetchService : IMtgQueryable<MTGFetchService, CardQueryParameter>
@@ -43,15 +45,26 @@ namespace MTGViewer.Services
             return this;
         }
 
-        public async Task<IReadOnlyList<Card>> FindAsync()
+        public async Task<IReadOnlyList<Card>> SearchAsync()
         {
-            return (await _service.AllAsync())
-                .Unwrap()
-                .Select(c => c.ToCard())
-                .ToList();
+            var result = await _service.AllAsync();
+
+            var matches = result
+                .Unwrap(_logger)
+                ?.Select(c => c.ToCard())
+                .Where(c => c.IsValid())
+                ??
+                Enumerable.Empty<Card>();
+
+            foreach (var match in matches)
+            {
+                _cache[match.Id] = match;
+            }
+
+            return matches.ToList();
         }
         
-        public async Task<Card> GetIdAsync(string id)
+        public async Task<Card?> GetIdAsync(string id)
         {
             if (_cache.TryGetValue(id, out Card card))
             {
@@ -61,9 +74,20 @@ namespace MTGViewer.Services
             else
             {
                 _logger.LogInformation($"refetching {id}");
-                return (await _service.FindAsync(id))
-                    .Unwrap() // might want to just log
-                    .ToCard();
+
+               var result = await _service.FindAsync(id);
+               var match = result
+                    .Unwrap(_logger) // might want to just log
+                    ?.ToCard();
+
+                if (match == null || !match.IsValid())
+                {
+                    _logger.LogError($"{id} was found, but failed validation");
+                    return null;
+                }
+                
+                _cache[match.Id] = match;
+                return match;
             }
         }
 
@@ -80,17 +104,10 @@ namespace MTGViewer.Services
                 QueryProperty(info, info.GetValue(card));
             }
 
-            var matches = await FindAsync();
-
-            foreach (var match in matches)
-            {
-                _cache[match.Id] = match;
-            }
-
-            return matches;
+            return await SearchAsync();
         }
 
-        private void QueryProperty(PropertyInfo info, object value)
+        private void QueryProperty(PropertyInfo info, object? value)
         {
             if (info.GetSetMethod() == null || info.GetGetMethod() == null)
             {
@@ -112,7 +129,7 @@ namespace MTGViewer.Services
                 PropertyExpression<CardQueryParameter, string>(info.Name), strVal);
         }
 
-        private string StringParam(object paramValue) => paramValue switch
+        private string? StringParam(object? paramValue) => paramValue switch
         {
             IEnumerable<string> iter => string.Join(',', iter),
             null => null,
@@ -132,7 +149,10 @@ namespace MTGViewer.Services
 
     public static class MtgApiExtension
     {
-        public static T Unwrap<T>(this IOperationResult<T> result) where T : class
+        public static T? Unwrap<T>(
+            this IOperationResult<T> result,
+            ILogger? logger = null) // not sure how else to get logger
+            where T : class
         {
             if (result.IsSuccess)
             {
@@ -140,7 +160,12 @@ namespace MTGViewer.Services
             }
             else
             {
-                throw result.Exception;
+                if (logger != null)
+                {
+                    logger.LogError(result.Exception.ToString());
+                }
+
+                return null;
             }
         }
 
@@ -148,7 +173,7 @@ namespace MTGViewer.Services
         {
             return new Card
             {
-                Id = card.Id,
+                Id = card.Id, // id should be valid
                 Name = card.Name,
                 Names = card.Names?
                     .Select(s => new Name{ Value = s })
@@ -157,7 +182,7 @@ namespace MTGViewer.Services
                 Layout = card.Layout,
 
                 ManaCost = card.ManaCost,
-                Cmc = (int)card.Cmc,
+                Cmc = (int?)card.Cmc ?? default,
                 Colors = card.Colors?
                     .Select(s => new Color{ Value = s })
                     .ToList(),

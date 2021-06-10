@@ -51,6 +51,7 @@ namespace MTGViewer.Models
         // can replace with model types
         public string Location { get; set; }
 
+
         public IReadOnlyList<string> GetColorSymbols()
         {
             if (string.IsNullOrEmpty(ManaCost))
@@ -60,6 +61,13 @@ namespace MTGViewer.Models
 
             var matches = Regex.Matches(ManaCost, @"{([^}]+)}");
             return matches.Select(m => m.Groups[1].Value).ToList();
+        }
+
+
+        public bool IsValid()
+        {
+            var context = new ValidationContext(this);
+            return Validator.TryValidateObject(this, context, null);
         }
     }
 }

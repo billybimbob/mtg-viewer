@@ -91,7 +91,7 @@
                 @Html.DisplayFor(_ => card.Location)
             </td>
             <td>
-                <a asp-page="./Edit" asp-route-id="@card.Id">Edit</a> |
+                @* <a asp-page="./Edit" asp-route-id="@card.Id">Edit</a> | *@
                 <a asp-page="./Details" asp-route-id="@card.Id">Details</a> |
                 <a asp-page="./Delete" asp-route-id="@card.Id">Delete</a>
             </td>

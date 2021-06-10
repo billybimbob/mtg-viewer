@@ -4,7 +4,7 @@ Magic: The Gathering Card Manager and Deck Builder, using [ASP.net](https://dotn
 
 ## Requirements
 
-* [.NET Core SDK](https://dotnet.microsoft.com/download)
+* [.NET 5.0 SDK](https://dotnet.microsoft.com/download)
 * Entity Framework Core
 
 ### Instal EF Core
@@ -14,6 +14,10 @@ dotnet tool install --global dotnet-ef
 ```
 
 ## Database
+
+The development database is sqlite, where the database is hosted on the local machine, and is not synchronized with the repo.
+
+Run all commands below in the project directory:
 
 ### Add Database Migrations and Schema
 
@@ -36,6 +40,8 @@ dotnet ef database update
 ```
 
 ## Run the Application
+
+In the project directory:
 
 ```powershell
 dotnet watch run

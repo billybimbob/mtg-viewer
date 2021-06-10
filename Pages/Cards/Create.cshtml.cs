@@ -26,17 +26,18 @@ namespace MTGViewer.Pages.Cards
             _fetch = fetch;
         }
 
+        public Card Card { get; private set; }
+        public IEnumerable<Card> Matches { get; private set; }
+
+        [BindProperty]
+        public string Picked { get; set; }
+
+
         public IActionResult OnGet()
         {
             _logger.LogInformation("on get");
             return Page();
         }
-
-        public Card Card { get; private set; }
-        public IReadOnlyList<Card> Matches { get; private set; }
-
-        [BindProperty]
-        public string Picked { get; set; }
 
 
         // To protect from overposting attacks, see https://aka.ms/RazorPagesCRUD
@@ -64,7 +65,7 @@ namespace MTGViewer.Pages.Cards
                 Matches = await _fetch.MatchAsync(Card);
             }
 
-            if (Matches?.Count == 1)
+            if (Matches?.Count() == 1)
             {
                 Picked = Matches.First().Id;
                 return await FromPicked();

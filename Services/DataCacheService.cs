@@ -1,4 +1,5 @@
 using System;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Caching.Memory;
 
@@ -6,17 +7,16 @@ namespace MTGViewer.Services
 {
     public class DataCacheService
     {
-
         private readonly ILogger<DataCacheService> _logger;
         private readonly IMemoryCache _cache;
         private readonly MemoryCacheEntryOptions _options;
 
-        public DataCacheService(ILogger<DataCacheService> logger)
+        public DataCacheService(IConfiguration config, ILogger<DataCacheService> logger)
         {
             _logger = logger;
             _cache = new MemoryCache( new MemoryCacheOptions 
             {
-                SizeLimit = 100
+                SizeLimit = long.Parse(config["CacheLimit"])
                 // should auto evict from limit
             });
 
