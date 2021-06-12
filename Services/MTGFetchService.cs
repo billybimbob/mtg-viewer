@@ -49,12 +49,11 @@ namespace MTGViewer.Services
         {
             var result = await _service.AllAsync();
 
-            var matches = result
-                .Unwrap(_logger)
-                ?.Select(c => c.ToCard())
-                .Where(c => c.IsValid())
+            var matches = Unwrap(result)
+                    ?.Select(c => c.ToCard())
+                    .Where(c => c.IsValid())
                 ??
-                Enumerable.Empty<Card>();
+                    Enumerable.Empty<Card>();
 
             foreach (var match in matches)
             {
@@ -76,9 +75,7 @@ namespace MTGViewer.Services
                 _logger.LogInformation($"refetching {id}");
 
                var result = await _service.FindAsync(id);
-               var match = result
-                    .Unwrap(_logger) // might want to just log
-                    ?.ToCard();
+               var match = Unwrap(result)?.ToCard();
 
                 if (match == null || !match.IsValid())
                 {
@@ -107,6 +104,21 @@ namespace MTGViewer.Services
             return await SearchAsync();
         }
 
+
+        private T? Unwrap<T>(IOperationResult<T> result) where T : class
+        {
+            if (result.IsSuccess)
+            {
+                return result.Value;
+            }
+            else
+            {
+                _logger.LogError(result.Exception.ToString());
+                return null;
+            }
+        }
+
+
         private void QueryProperty(PropertyInfo info, object? value)
         {
             if (info.GetSetMethod() == null || info.GetGetMethod() == null)
@@ -126,17 +138,19 @@ namespace MTGViewer.Services
             }
 
             Where(
-                PropertyExpression<CardQueryParameter, string>(info.Name), strVal);
+                PropertyExpression<CardQueryParameter, string>(info.Name),
+                strVal);
         }
 
-        private string? StringParam(object? paramValue) => paramValue switch
+
+        private static string? StringParam(object? paramValue) => paramValue switch
         {
             IEnumerable<string> iter => string.Join(',', iter),
             null => null,
             _ => paramValue.ToString()
         };
 
-        private Expression<Func<Q, R>> PropertyExpression<Q, R>(string propName)
+        private static Expression<Func<Q, R>> PropertyExpression<Q, R>(string propName)
         {
             var xParam = Expression.Parameter(typeof(Q), "x");
             var propExpr = Expression.Property(xParam, propName);
@@ -147,28 +161,8 @@ namespace MTGViewer.Services
     }
 
 
-    public static class MtgApiExtension
+    internal static class MtgApiExtension
     {
-        public static T? Unwrap<T>(
-            this IOperationResult<T> result,
-            ILogger? logger = null) // not sure how else to get logger
-            where T : class
-        {
-            if (result.IsSuccess)
-            {
-                return result.Value;
-            }
-            else
-            {
-                if (logger != null)
-                {
-                    logger.LogError(result.Exception.ToString());
-                }
-
-                return null;
-            }
-        }
-
         public static Card ToCard(this ICard card)
         {
             return new Card

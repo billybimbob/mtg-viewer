@@ -29,9 +29,17 @@ namespace MTGViewer
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddRazorPages();
+            services.AddServerSideBlazor();
 
-            services.AddDbContext<MTGCardContext>(options =>
-                    options.UseSqlite(Configuration.GetConnectionString("MTGCardContext")));
+            // services.AddDbContext<MTGCardContext>(options => options
+            //     .UseSqlite(Configuration.GetConnectionString("MTGCardContext")));
+
+            services.AddDbContextFactory<MTGCardContext>(options => options
+                .UseSqlite(Configuration.GetConnectionString("MTGCardContext")));
+
+            services.AddScoped<MTGCardContext>(provider => provider
+                .GetRequiredService<IDbContextFactory<MTGCardContext>>()
+                .CreateDbContext());
 
             services.AddSingleton<DataCacheService>();
             services.AddSingleton<MtgServiceProvider>();
@@ -62,6 +70,7 @@ namespace MTGViewer
             app.UseEndpoints(endpoints =>
             {
                 endpoints.MapRazorPages();
+                endpoints.MapBlazorHub();
             });
         }
     }
