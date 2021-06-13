@@ -1,15 +1,12 @@
-using System;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using MTGViewer.Models;
+using MTGViewer.Services;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.RazorPages;
-using Microsoft.AspNetCore.Mvc.Rendering;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
-
-using MTGViewer.Models;
-using MTGViewer.Services;
 
 namespace MTGViewer.Pages.Cards
 {

@@ -1,18 +1,14 @@
-using System;
-using System.Reflection;
-using System.Collections.Generic;
-
-using System.Linq;
-using System.Linq.Expressions;
-using System.Threading.Tasks;
-
 using Microsoft.Extensions.Logging;
-
 using MtgApiManager.Lib.Core;
 using MtgApiManager.Lib.Model;
 using MtgApiManager.Lib.Service;
-
 using MTGViewer.Models;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Linq.Expressions;
+using System.Reflection;
+using System.Threading.Tasks;
 
 
 # nullable enable
@@ -62,7 +58,7 @@ namespace MTGViewer.Services
 
             return matches.ToList();
         }
-        
+
         public async Task<Card?> GetIdAsync(string id)
         {
             if (_cache.TryGetValue(id, out Card card))
@@ -74,15 +70,15 @@ namespace MTGViewer.Services
             {
                 _logger.LogInformation($"refetching {id}");
 
-               var result = await _service.FindAsync(id);
-               var match = Unwrap(result)?.ToCard();
+                var result = await _service.FindAsync(id);
+                var match = Unwrap(result)?.ToCard();
 
                 if (match == null || !match.IsValid())
                 {
                     _logger.LogError($"{id} was found, but failed validation");
                     return null;
                 }
-                
+
                 _cache[match.Id] = match;
                 return match;
             }
@@ -93,7 +89,7 @@ namespace MTGViewer.Services
             if (card.Id != null)
             {
                 _cache.TryGetValue(card.Id, out card);
-                return new List<Card>{ card };
+                return new List<Card> { card };
             }
 
             foreach (var info in card.GetType().GetProperties())
@@ -170,7 +166,7 @@ namespace MTGViewer.Services
                 Id = card.Id, // id should be valid
                 Name = card.Name,
                 Names = card.Names?
-                    .Select(s => new Name{ Value = s })
+                    .Select(s => new Name { Value = s })
                     .ToList(),
 
                 Layout = card.Layout,
@@ -178,17 +174,17 @@ namespace MTGViewer.Services
                 ManaCost = card.ManaCost,
                 Cmc = (int?)card.Cmc ?? default,
                 Colors = card.Colors?
-                    .Select(s => new Color{ Value = s })
+                    .Select(s => new Color { Value = s })
                     .ToList(),
 
                 SuperTypes = card.SuperTypes?
-                    .Select(s => new SuperType{ Value = s })
+                    .Select(s => new SuperType { Value = s })
                     .ToList(),
                 Types = card.Types?
-                    .Select(s => new Models.Type{ Value = s })
+                    .Select(s => new Models.Type { Value = s })
                     .ToList(),
                 SubTypes = card.SubTypes?
-                    .Select(s => new SubType{ Value = s })
+                    .Select(s => new SubType { Value = s })
                     .ToList(),
 
                 Rarity = card.Rarity,
