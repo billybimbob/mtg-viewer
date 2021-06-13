@@ -18,27 +18,27 @@ namespace MTGViewer.Pages.Cards
             _context = context;
         }
 
-        public IList<Card> Cards { get; private set; }
+        // public IList<Card> Cards { get; private set; }
 
-        [BindProperty]
-        public Card Search { get; set; }
+        // [BindProperty]
+        // public Card Search { get; set; }
 
 
-        public async Task OnGetAsync()
-        {
-            Cards = await _context.Cards.ToListAsync();
-        }
+        // public async Task OnGetAsync()
+        // {
+        //     Cards = await _context.Cards.ToListAsync();
+        // }
 
-        public async Task OnPostAsync()
-        {
-            var query = _context.Cards.Select(c => c);
-            if (ModelState.IsValid)
-            {
-                query = query.Where(c => c.Name.Contains(Search.Name));
-            }
+        // public async Task OnPostAsync()
+        // {
+        //     var query = _context.Cards.Select(c => c);
+        //     if (ModelState.IsValid)
+        //     {
+        //         query = query.Where(c => c.Name.Contains(Search.Name));
+        //     }
 
-            Cards = await query.ToListAsync();
-        }
+        //     Cards = await query.ToListAsync();
+        // }
 
     }
 }

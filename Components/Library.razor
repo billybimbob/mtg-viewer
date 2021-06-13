@@ -1,0 +1,163 @@
+@namespace MTGViewer.Components
+@using System.Linq
+@using Microsoft.AspNetCore.Http.Extensions
+
+@inject IDbContextFactory<MTGCardContext> DbFactory
+
+
+<a class="btn btn-primary" href="Cards/Create">Add Card</a>
+
+<label class="control-label">
+	Name:
+	<input @onchange="SearchName"/>
+</label>
+
+<label class="control-label">
+	Colors:
+	<div class="btn-group rounded border" role="group" aria-label="Color Buttons">
+	@foreach(var color in COLORS)
+	{
+		var active = colorFilter.Contains(color.Key) ? "active" : "";
+
+		<button
+			title="@color.Key button"
+			type="button" 
+			class="btn btn-outline-secondary @active"
+			@onclick="e => FilterColor(color.Key)" >
+
+			<span class="ms ms-@color.Value ms-cost"> </span>
+
+		</button>
+	}
+	</div>
+</label>
+
+<button class="btn btn-primary" @onclick="FetchCardsAsync">Refresh</button>
+
+<table class="table">
+    <thead>
+        <tr>
+			<th>Card Name</th>
+			<th>Mana Cost</th>
+			<th>Set</th>
+			<th>Rarity</th>
+			<th></th>
+		</tr>
+	</thead>
+
+	<tbody>
+	@foreach(var card in viewCards)
+	{
+		<tr>
+			<td class="fw-bold">@card.Name</td>
+
+            <td>
+				@foreach (var cost in card.GetColorSymbols()) {
+					<span class="m-1 ms ms-@cost.ToLower() ms-cost"></span>
+				}
+            </td>
+
+			<td>@card.SetName</td>
+			<td>@card.Rarity</td>
+
+            <td>
+                @* <a href="@Edit(card.Id)">Edit</a> | *@
+                <a href="@Details(card.Id)">Details</a> |
+                <a href="@Delete(card.Id)">Delete</a>
+            </td>
+		</tr>
+	}
+	</tbody>
+</table>
+
+
+@code {
+	// might want to move to a constant file
+	private readonly IReadOnlyDictionary<string, string> COLORS = new Dictionary<string, string>{
+		["black"] = "b",
+		["blue"] = "u",
+		["green"] = "g",
+		["red"] = "r",
+		["white"] = "w"
+	};
+
+	private IEnumerable<Models.Card> dbCards;
+	private IEnumerable<Models.Card> viewCards;
+
+	private string searchName;
+	private readonly ISet<string> colorFilter = new HashSet<string>();
+
+	protected override async Task OnInitializedAsync()
+	{
+		await FetchCardsAsync();
+	}
+
+
+	private async Task FetchCardsAsync()
+	{
+		using var context = DbFactory.CreateDbContext();
+
+		dbCards = await context.Cards
+			.Include(c => c.Colors)
+			.ToListAsync();
+
+		viewCards = dbCards;
+	}
+
+
+	private void ApplyFilters()
+	{
+		var query = dbCards;
+
+		if (!string.IsNullOrWhiteSpace(searchName))
+		{
+			query = query
+				.Where(c => c.Name.ToLower().Contains(searchName));
+		}
+
+		if (colorFilter.Any())
+		{
+			query = query	
+				.Where(card => 
+					colorFilter.Overlaps(
+						card.Colors.Select(color => color.Value.ToLower()) ));
+		}
+
+		viewCards = query.ToList();
+	}
+
+	private void FilterColor(string color)
+	{
+		if (colorFilter.Contains(color))
+		{
+			colorFilter.Remove(color);
+		}
+		else
+		{
+			colorFilter.Add(color);
+		}
+
+		ApplyFilters();
+	}
+
+	private void SearchName(ChangeEventArgs eventArgs)
+	{
+		searchName = eventArgs.Value?.ToString();
+		ApplyFilters();
+	}
+
+
+	private string Edit(string id) => CardRoute("Edit", id);
+	private string Details(string id) => CardRoute("Details", id);
+	private string Delete(string id) => CardRoute("Delete", id);
+
+
+	private string CardRoute(string operation, string id)
+	{
+		var query = new QueryBuilder();
+		query.Add("id", id);
+
+		return $"Cards/{operation}{query.ToQueryString()}";
+	}
+
+}

@@ -1,4 +1,5 @@
 @page
+@using MTGViewer.Models
 @model MTGViewer.Pages.Cards.IndexModel
 
 @{
@@ -7,48 +8,47 @@
 
 <h1>Index</h1>
 
-<p>
-    <a asp-page="Create" class="btn btn-dark"> Create New </a>
-</p>
-
-<form method="post">
+@* <form method="post">
     <label asp-for="Search.Name" class="control-label"></label>
     <input asp-for="Search.Name"/>
     <input type="submit" value="Filter" />
-</form>
+</form> *@
 
-<table class="table">
+<component type="typeof(Components.Library)" render-mode="ServerPrerendered" />
+@* @(await Html.RenderComponentAsync<Components.Library>(RenderMode.ServerPrerendered)) *@
+
+@* <table class="table">
     <thead>
         <tr>
             <th>
-                @Html.DisplayNameFor(m => m.Cards[0].Name)
+                @Html.DisplayNameForInnerType((Card c) => c.Name)
             </th>
             <th>
-                @Html.DisplayNameFor(m => m.Cards[0].ManaCost)
+                @Html.DisplayNameForInnerType((Card c) => c.ManaCost)
             </th>
             <th>
-                @Html.DisplayNameFor(m => m.Cards[0].Cmc)
+                @Html.DisplayNameForInnerType((Card c) => c.Cmc)
             </th>
             <th>
-                @Html.DisplayNameFor(m => m.Cards[0].Rarity)
+                @Html.DisplayNameForInnerType((Card c) => c.Rarity)
             </th>
             <th>
-                @Html.DisplayNameFor(m => m.Cards[0].SetName)
+                @Html.DisplayNameForInnerType((Card c) => c.SetName)
             </th>
             <th>
-                @Html.DisplayNameFor(m => m.Cards[0].Artist)
+                @Html.DisplayNameForInnerType((Card c) => c.Artist)
             </th>
             <th>
-                @Html.DisplayNameFor(m => m.Cards[0].Power)
+                @Html.DisplayNameForInnerType((Card c) => c.Power)
             </th>
             <th>
-                @Html.DisplayNameFor(m => m.Cards[0].Toughness)
+                @Html.DisplayNameForInnerType((Card c) => c.Toughness)
             </th>
             <th>
-                @Html.DisplayNameFor(m => m.Cards[0].Loyalty)
+                @Html.DisplayNameForInnerType((Card c) => c.Loyalty)
             </th>
             <th>
-                @Html.DisplayNameFor(m => m.Cards[0].Location)
+                @Html.DisplayNameForInnerType((Card c) => c.Location)
             </th>
             <th></th>
         </tr>
@@ -91,11 +91,11 @@
                 @Html.DisplayFor(_ => card.Location)
             </td>
             <td>
-                @* <a asp-page="./Edit" asp-route-id="@card.Id">Edit</a> | *@
+                <a asp-page="./Edit" asp-route-id="@card.Id">Edit</a> |
                 <a asp-page="./Details" asp-route-id="@card.Id">Details</a> |
                 <a asp-page="./Delete" asp-route-id="@card.Id">Delete</a>
             </td>
         </tr>
     }
     </tbody>
-</table>
+</table> *@

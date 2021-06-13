@@ -1,5 +1,4 @@
 ﻿@page
-@using MTGViewer.Components
 @model IndexModel
 @{
     ViewData["Title"] = "Home page";
@@ -10,4 +9,6 @@
     <p>Learn about <a href="https://docs.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
 </div>
 
-<component type="typeof(Counter)" render-mode="ServerPrerendered" />
+<component type="typeof(Components.Counter)" render-mode="ServerPrerendered" />
+
+@* @(await Html.RenderComponentAsync<Components.Counter>(RenderMode.ServerPrerendered)) *@
