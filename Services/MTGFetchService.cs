@@ -60,58 +60,66 @@ namespace MTGViewer.Services
                 return Enumerable.Empty<Card>().ToList();
             }
 
-            await _context.Update(matches);
-
-            var cards = matches
-                .Select(c => DbCard(c))
-                .Where(c => c.IsValid())
-                .ToList();
-
             foreach (var match in matches)
             {
                 _cache[match.Id] = match;
             }
+
+            var cards = matches
+                .Select(c => c.ToCard())
+                .Where(c => c.IsValid())
+                .ToList();
 
             return cards;
         }
 
         public async Task<Card?> GetIdAsync(string id)
         {
-            Card? card;
+            Card card;
 
-            if (_cache.TryGetValue(id, out card))
+            if (_cache.TryGetValue(id, out ICard icard))
             {
                 _logger.LogInformation($"using cached card for {id}");
-                return card;
+                card = await _context.DbCard(icard);
+
+                return ValidCard(card);
             }
 
             _logger.LogInformation($"refetching {id}");
 
             var match = LoggedUnwrap(await _service.FindAsync(id));
+
             if (match == null)
             {
                 _logger.LogError("match returned null");
                 return null;
             }
 
-            await _context.Update(new List<ICard> { match });
-            card = DbCard(match);
-
-            if (card == null || !card.IsValid())
-            {
-                _logger.LogError($"{id} was found, but failed validation");
-                return null;
-            }
-
             _cache[match.Id] = match;
 
-            return card;
+            card = await _context.DbCard(match);
+
+            return ValidCard(card);
+        }
+
+
+        private Card? ValidCard(Card card)
+        {
+            if (card == null || !card.IsValid())
+            {
+                _logger.LogError($"{card?.Id} was found, but failed validation");
+                return null;
+            }
+            else
+            {
+                return card;
+            }
         }
 
 
         public async Task<IReadOnlyList<Card>> MatchAsync(Card card)
         {
-            if (card.Id != null && _cache.TryGetValue(card.Id, out card))
+            if (card.Id != null && _cache.TryGetValue(card.Id, out ICard icard))
             {
                 return new List<Card> { card };
             }
@@ -128,15 +136,13 @@ namespace MTGViewer.Services
 
         private T? LoggedUnwrap<T>(IOperationResult<T> result) where T : class
         {
-            if (result.IsSuccess)
-            {
-                return result.Value;
-            }
-            else
+            var unwrap = result.Unwrap();
+            if (unwrap == null)
             {
                 _logger.LogError(result.Exception.ToString());
-                return null;
             }
+
+            return unwrap;
         }
 
 
@@ -180,7 +186,15 @@ namespace MTGViewer.Services
             return Expression.Lambda<Func<Q, R>>(propExpr, xParam);
         }
 
-        public Card DbCard(ICard card)
+    }
+
+
+    internal static class MtgApiExtension
+    {
+        internal static R? Unwrap<R>(this IOperationResult<R> result) where R : class =>
+            result.IsSuccess ? result.Value : null;
+    
+        internal static Card ToCard(this ICard card)
         {
             return new Card
             {
@@ -194,19 +208,6 @@ namespace MTGViewer.Services
 
                 ManaCost = card.ManaCost,
                 Cmc = (int?)card.Cmc ?? default,
-                Colors = card.Colors?
-                    .Select(s => _context.Colors[s])
-                    .ToList(),
-
-                SuperTypes = card.SuperTypes?
-                    .Select(s => _context.Supertypes[s])
-                    .ToList(),
-                Types = card.Types?
-                    .Select(s => _context.Types[s])
-                    .ToList(),
-                SubTypes = card.SubTypes? 
-                    .Select(s => _context.SubTypes[s])
-                    .ToList(),
 
                 Rarity = card.Rarity,
                 SetName = card.SetName,
@@ -221,6 +222,6 @@ namespace MTGViewer.Services
                 ImageUrl = card.ImageUrl?.ToString()
             };
         }
-
     }
+
 }

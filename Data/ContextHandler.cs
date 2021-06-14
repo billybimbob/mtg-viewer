@@ -6,8 +6,12 @@ using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 
 using MTGViewer.Models;
+using MTGViewer.Services;
+
 using MtgApiManager.Lib.Model;
 
+
+#nullable enable
 
 namespace MTGViewer.Data
 {
@@ -16,157 +20,158 @@ namespace MTGViewer.Data
     {
         private readonly MTGCardContext _dbContext;
 
-        private readonly Dictionary<string, Color> _colorMap;
-        private readonly Dictionary<string, Type> _typeMap;
-        private readonly Dictionary<string, SubType> _subMap;
-        private readonly Dictionary<string, SuperType> _superMap;
-
-
         internal ContextHandler(MTGCardContext dbContext)
         {
             _dbContext = dbContext;
-
-            _colorMap = new Dictionary<string, Color>();
-            _typeMap = new Dictionary<string, Type>();
-
-            _subMap = new Dictionary<string, SubType>();
-            _superMap = new Dictionary<string, SuperType>();
         }
 
-        internal IReadOnlyDictionary<string, Color> Colors => _colorMap;
-        internal IReadOnlyDictionary<string, Type> Types => _typeMap;
-        internal IReadOnlyDictionary<string, SubType> SubTypes => _subMap;
-        internal IReadOnlyDictionary<string, SuperType> Supertypes => _superMap;
 
-
-        internal async Task Update(IEnumerable<ICard> cards)
+        internal async Task<Card> DbCard(ICard icard)
         {
-            var newColors = cards.SelectMany(c => c.Colors);
-            var newTypes = cards.SelectMany(c => c.Types);
-            var newSubs = cards.SelectMany(c => c.SubTypes);
-            var newSupers = cards.SelectMany(c => c.SuperTypes);
+            var colors = icard.Colors?.Distinct().ToArray()
+                ?? Enumerable.Empty<string>();
 
-            await AddNewColorsAsync(newColors);
-            await AddNewTypesAsync(newTypes);
-            await AddNewSubTypesAsync(newSubs);
-            await AddNewSuperTypesAsync(newSupers);
+            var types = icard.Types?.Distinct().ToArray()
+                ?? Enumerable.Empty<string>();
 
-            await _dbContext.SaveChangesAsync();
+            var subs = icard.SubTypes?.Distinct()
+                ?? Enumerable.Empty<string>();
 
-            foreach(var entry in await ColorMapAsync(newColors))
+            var sups = icard.SuperTypes?.Distinct()
+                ?? Enumerable.Empty<string>();
+
+            bool colorChange = await AddNewColorsAsync(colors);
+            bool typeChange = await AddNewTypesAsync(types);
+            bool subChange = await AddNewSubTypesAsync(subs);
+            bool superChange = await AddNewSuperTypesAsync(sups);
+
+            if (colorChange || typeChange || subChange || superChange)
             {
-                _colorMap[entry.Key] = entry.Value;
+                await _dbContext.SaveChangesAsync();
             }
 
-            foreach(var entry in await TypeMapAsync(newTypes))
-            {
-                _typeMap[entry.Key] = entry.Value;
-            }
+            var card = icard.ToCard();
+            card.Colors = await GetColorsAsync(colors);
+            card.Types = await GetTypesAsync(types);
+            card.SubTypes = await GetSubTypesAsync(subs);
+            card.SuperTypes = await GetSuperTypesAsync(sups);
 
-            foreach(var entry in await SubTypeMapAsync(newSubs))
-            {
-                _subMap[entry.Key] = entry.Value;
-            }
-
-            foreach(var entry in await SuperTypeMapAsync(newSupers))
-            {
-                _superMap[entry.Key] = entry.Value;
-            }
+            return card;
         }
 
 
-        private async Task<IReadOnlyDictionary<string, Color>> ColorMapAsync(
-            IEnumerable<string> colors)
+        private async Task<bool> AddNewColorsAsync(IEnumerable<string> name)
         {
-            return await TableMapAsync(_dbContext.Colors, c => c.Name, colors);
-        }
-
-        private async Task<IReadOnlyDictionary<string, Type>> TypeMapAsync(
-            IEnumerable<string> types)
-        {
-            return await TableMapAsync(_dbContext.Types, t => t.Name, types);
-        }
-
-        private async Task<IReadOnlyDictionary<string, SubType>> SubTypeMapAsync(
-            IEnumerable<string> subtypes)
-        {
-            return await TableMapAsync(_dbContext.SubTypes, s => s.Name, subtypes);
-        }
-
-        private async Task<IReadOnlyDictionary<string, SuperType>> SuperTypeMapAsync(
-            IEnumerable<string> supertypes)
-        {
-            return await TableMapAsync(_dbContext.SuperTypes, s => s.Name, supertypes);
-        }
-
-
-        private async Task<IReadOnlyDictionary<P, E>> TableMapAsync<E, P>(
-            DbSet<E> table,
-            System.Func<E, P> property,
-            IEnumerable<P> values) where E : class
-        {
-            var uniques = values.Distinct().ToHashSet();
-            return await table
-                .Where(e => uniques.Contains(property(e)))
-                .ToDictionaryAsync(property);
-        }
-
-
-        private async Task AddNewColorsAsync(IEnumerable<string> colors)
-        {
-            await AddNewAsync(
+            return await AddNewAsync(
                 _dbContext.Colors,
                 c => c.Name,
-                colors,
+                name,
                 c => new Color { Name = c });
         }
 
-
-        private async Task AddNewTypesAsync(IEnumerable<string> types)
+        private async Task<bool> AddNewTypesAsync(IEnumerable<string> names)
         {
-            await AddNewAsync(
+            return await AddNewAsync(
                 _dbContext.Types,
                 t => t.Name,
-                types,
+                names,
                 t => new Type { Name = t });
         }
 
-
-        private async Task AddNewSubTypesAsync(IEnumerable<string> subs)
+        private async Task<bool> AddNewSubTypesAsync(IEnumerable<string> names)
         {
-            await AddNewAsync(
+            return await AddNewAsync(
                 _dbContext.SubTypes,
                 t => t.Name,
-                subs,
+                names,
                 t => new SubType { Name = t });
         }
 
-        private async Task AddNewSuperTypesAsync(IEnumerable<string> supers)
+        private async Task<bool> AddNewSuperTypesAsync(IEnumerable<string> names)
         {
-            await AddNewAsync(
+            return await AddNewAsync(
                 _dbContext.SuperTypes,
                 t => t.Name,
-                supers,
+                names,
                 t => new SuperType { Name = t });
         }
 
-
-        private async Task AddNewAsync<E, P>(
+        private async Task<bool> AddNewAsync<E, V>(
             DbSet<E> table,
-            Expression<System.Func<E, P>> property,
-            IEnumerable<P> values,
-            System.Func<P, E> factory) where E : class
+            Expression<System.Func<E, V>> property,
+            IEnumerable<V> values,
+            System.Func<V, E> factory) where E : class
         {
+            if (values == null || !values.Any())
+            {
+                return false;
+            }
+
             var dbValues = await table
                 .Select(property)
+                .Where(p => values.Contains(p))
                 .Distinct()
                 .ToListAsync();
 
-            table.AddRange(
-                values.Distinct().Except(dbValues)
-                    .Select(v => factory(v)));
+            var newEntities = values
+                .Except(dbValues)
+                .Select(v => factory(v));
+
+            if (!newEntities.Any())
+            {
+                return false;
+            }
+
+            table.AddRange(newEntities);
+            return true;
         }
 
+
+        private async Task<IList<Color>> GetColorsAsync(IEnumerable<string> names)
+        {
+            return await GetEntitiesAsync(
+                _dbContext.Colors,
+                names,
+                c => names.Contains(c.Name));
+        }
+
+        private async Task<IList<Type>> GetTypesAsync(IEnumerable<string> names)
+        {
+            return await GetEntitiesAsync(
+                _dbContext.Types,
+                names,
+                t => names.Contains(t.Name));
+        }
+
+        private async Task<IList<SubType>> GetSubTypesAsync(IEnumerable<string> names)
+        {
+            return await GetEntitiesAsync(
+                _dbContext.SubTypes,
+                names,
+                t => names.Contains(t.Name));
+        }
+
+        private async Task<IList<SuperType>> GetSuperTypesAsync(IEnumerable<string> names)
+        {
+            return await GetEntitiesAsync(
+                _dbContext.SuperTypes,
+                names,
+                t => names.Contains(t.Name));
+        }
+
+
+        private async Task<IList<E>> GetEntitiesAsync<V, E>(
+            DbSet<E> table,
+            IEnumerable<V> values,
+            Expression<System.Func<E, bool>> predicate) where E : class
+        {
+            if (!values.Any())
+            {
+                return Enumerable.Empty<E>().ToList();
+            }
+
+            return await table.Where(predicate).ToListAsync();
+        }
     }
 
 }
