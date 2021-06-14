@@ -23,7 +23,6 @@ namespace MTGViewer.Models
         [Required]
         public Card Card { get; set; }
 
-        [Required]
         public Deck Deck { get; set; }
 
         public int Amount { get; set; }

@@ -15,30 +15,45 @@ namespace MTGViewer.Models
 
     public class Color
     {
-        [Key]
+        public int Id { get; set; }
+
+        [Required]
         public string Name { get; set; }
 
-        public IList<Card> Cards { get; set; }
+        [Required]
+        public Card Card { get; set; }
     }
 
     public class SuperType
     {
-        [Key]
+        public int Id { get; set; }
+
+        [Required]
         public string Name { get; set; }
-        public IList<Card> Cards { get; set; }
+
+        [Required]
+        public Card Card { get; set; }
     }
 
     public class Type
     {
-        [Key]
+        public int Id { get; set; }
+
+        [Required]
         public string Name { get; set; }
-        public IList<Card> Cards { get; set; }
+
+        [Required]
+        public Card Card { get; set; }
     }
 
     public class SubType
     {
-        [Key]
+        public int Id { get; set; }
+
+        [Required]
         public string Name { get; set; }
-        public IList<Card> Cards { get; set; }
+
+        [Required]
+        public Card Card { get; set; }
     }
 }

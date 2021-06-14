@@ -16,11 +16,11 @@ using MtgApiManager.Lib.Model;
 namespace MTGViewer.Data
 {
     // look at how to refactor
-    internal class ContextHandler
+    internal class CardConverter
     {
         private readonly MTGCardContext _dbContext;
 
-        internal ContextHandler(MTGCardContext dbContext)
+        internal CardConverter(MTGCardContext dbContext)
         {
             _dbContext = dbContext;
         }
@@ -28,10 +28,10 @@ namespace MTGViewer.Data
 
         internal async Task<Card> DbCard(ICard icard)
         {
-            var colors = icard.Colors?.Distinct().ToArray()
+            var colors = icard.Colors?.Distinct()
                 ?? Enumerable.Empty<string>();
 
-            var types = icard.Types?.Distinct().ToArray()
+            var types = icard.Types?.Distinct()
                 ?? Enumerable.Empty<string>();
 
             var subs = icard.SubTypes?.Distinct()

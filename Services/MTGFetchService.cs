@@ -4,7 +4,7 @@ using MtgApiManager.Lib.Core;
 using MtgApiManager.Lib.Model;
 using MtgApiManager.Lib.Service;
 
-using MTGViewer.Data;
+// using MTGViewer.Data;
 using MTGViewer.Models;
 
 using System;
@@ -25,7 +25,7 @@ namespace MTGViewer.Services
         private readonly ILogger<MTGFetchService> _logger;
         private readonly ICardService _service;
         private readonly DataCacheService _cache;
-        private readonly ContextHandler _context;
+        // private readonly CardConverter _convert;
 
 
         public MTGFetchService(
@@ -37,7 +37,7 @@ namespace MTGViewer.Services
             _logger = logger;
             _service = provider.GetCardService();
             _cache = cache;
-            _context = new ContextHandler(dbContext);
+            // _convert = new CardConverter(dbContext);
         }
 
         public void Reset()
@@ -75,14 +75,14 @@ namespace MTGViewer.Services
 
         public async Task<Card?> GetIdAsync(string id)
         {
-            Card card;
+            // Card card;
 
             if (_cache.TryGetValue(id, out ICard icard))
             {
                 _logger.LogInformation($"using cached card for {id}");
-                card = await _context.DbCard(icard);
+                // card = await _convert.DbCard(icard);
 
-                return ValidCard(card);
+                return ValidCard(icard.ToCard());
             }
 
             _logger.LogInformation($"refetching {id}");
@@ -97,9 +97,9 @@ namespace MTGViewer.Services
 
             _cache[match.Id] = match;
 
-            card = await _context.DbCard(match);
+            // card = await _convert.DbCard(match);
 
-            return ValidCard(card);
+            return ValidCard(match.ToCard());
         }
 
 
@@ -200,11 +200,25 @@ namespace MTGViewer.Services
             {
                 Id = card.Id, // id should be valid
                 Name = card.Name,
-                Names = card.Names?
-                    .Select(s => new Name { Value = s })
+                Names = card.Names
+                    ?.Select(s => new Name { Value = s })
                     .ToList(),
 
                 Layout = card.Layout,
+
+                Colors = card.Colors
+                    ?.Select(s => new Color { Name = s })
+                    .ToList(),
+
+                Types = card.Types
+                    ?.Select(s => new Models.Type { Name = s })
+                    .ToList(),
+                SubTypes = card.SubTypes
+                    ?.Select(s => new SubType { Name = s })
+                    .ToList(),
+                SuperTypes = card.SuperTypes
+                    ?.Select(s => new SuperType { Name = s })
+                    .ToList(),
 
                 ManaCost = card.ManaCost,
                 Cmc = (int?)card.Cmc ?? default,
