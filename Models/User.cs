@@ -7,7 +7,7 @@ namespace MTGViewer.Models
         public int Id { get; set; }
         public string FirstName { get; set; }
         public string LastName { get; set; }
-        public IList<Deck> Decks { get; set; }
+        public IList<Location> Decks { get; set; }
 
         public string Name
         {

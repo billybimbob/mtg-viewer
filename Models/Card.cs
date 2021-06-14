@@ -45,10 +45,9 @@ namespace MTGViewer.Models
         [UrlAttribute]
         public string ImageUrl { get; set; }
 
-        public IList<User> Users { get; set; }
-
-        // can replace with model types
-        public string Location { get; set; }
+        // locations can be derived from amounts
+        // could possibly derive amounts from locations
+        public IList<CardAmount> Amounts { get; set; }
 
 
         public IReadOnlyList<string> GetColorSymbols()

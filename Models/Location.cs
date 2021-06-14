@@ -4,14 +4,15 @@ using System.ComponentModel.DataAnnotations;
 
 namespace MTGViewer.Models
 {
-    public class Deck
+    public class Location
     {
         public int Id { get; set; }
 
         [Required]
-        public User User { get; set; }
-
         public string Name { get; set; }
+
+        [Key]
+        public User Owner { get; set; }
 
         public IList<CardAmount> Cards { get; set; }
     }
@@ -20,10 +21,11 @@ namespace MTGViewer.Models
     {
         public int Id { get; set; }
 
-        [Required]
+        [Key]
         public Card Card { get; set; }
 
-        public Deck Deck { get; set; }
+        [Key]
+        public Location Location { get; set; }
 
         public int Amount { get; set; }
     }
