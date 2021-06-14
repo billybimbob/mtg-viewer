@@ -116,7 +116,7 @@
             query = query
                 .Where(card =>
                     colorFilter.Overlaps(
-                        card.Colors.Select(color => color.Value.ToLower())));
+                        card.Colors.Select(color => color.Name.ToLower())));
         }
 
         viewCards = query.ToList();

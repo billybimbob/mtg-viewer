@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 
 namespace MTGViewer.Models
@@ -10,66 +11,34 @@ namespace MTGViewer.Models
 
         [Required]
         public Card Card { get; set; }
-
-        public override string ToString()
-        {
-            return Value;
-        }
     }
 
     public class Color
     {
         public int Id { get; set; }
-        public string Value { get; set; }
+        public string Name { get; set; }
 
-        [Required]
-        public Card Card { get; set; }
-
-        public override string ToString()
-        {
-            return Value;
-        }
+        public IList<Card> Cards { get; set; }
     }
 
     public class SuperType
     {
         public int Id { get; set; }
-        public string Value { get; set; }
-
-        [Required]
-        public Card Card { get; set; }
-
-        public override string ToString()
-        {
-            return Value;
-        }
+        public string Name { get; set; }
+        public IList<Card> Cards { get; set; }
     }
 
     public class Type
     {
         public int Id { get; set; }
-        public string Value { get; set; }
-
-        [Required]
-        public Card Card { get; set; }
-
-        public override string ToString()
-        {
-            return Value;
-        }
+        public string Name { get; set; }
+        public IList<Card> Cards { get; set; }
     }
 
     public class SubType
     {
         public int Id { get; set; }
-        public string Value { get; set; }
-
-        [Required]
-        public Card Card { get; set; }
-
-        public override string ToString()
-        {
-            return Value;
-        }
+        public string Name { get; set; }
+        public IList<Card> Cards { get; set; }
     }
 }
