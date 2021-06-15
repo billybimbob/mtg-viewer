@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Text.RegularExpressions;
 
-namespace MTGViewer.Models
+namespace MTGViewer.Data
 {
     public class Card
     {

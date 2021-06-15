@@ -1,8 +1,11 @@
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
-using MTGViewer.Models;
+
+using MTGViewer.Data;
+using MTGViewer.Areas.Identity.Data;
 
 
-public class MTGCardContext : DbContext
+public class MTGCardContext : IdentityDbContext<CardUser>
 {
     public MTGCardContext(DbContextOptions<MTGCardContext> options)
         : base(options)
@@ -10,7 +13,6 @@ public class MTGCardContext : DbContext
     }
 
     public DbSet<Card> Cards { get; set; }
-    public DbSet<User> Users { get; set; }
     public DbSet<Location> Locations { get; set; }
 
     public DbSet<Color> Colors { get; set; }

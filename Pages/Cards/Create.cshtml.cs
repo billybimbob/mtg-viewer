@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using MTGViewer.Models;
+using MTGViewer.Data;
 using MTGViewer.Services;
 using System.Collections.Generic;
 using System.Linq;

@@ -4,11 +4,8 @@ namespace MTGViewer.Pages.Cards
 {
     public class IndexModel : PageModel
     {
-        private readonly MTGCardContext _context;
-
-        public IndexModel(MTGCardContext context)
+        public IndexModel()
         {
-            _context = context;
         }
 
         // public IList<Card> Cards { get; private set; }

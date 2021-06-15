@@ -1,8 +1,9 @@
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 
+using MTGViewer.Areas.Identity.Data;
 
-namespace MTGViewer.Models
+namespace MTGViewer.Data
 {
     public class Location
     {
@@ -12,7 +13,7 @@ namespace MTGViewer.Models
         public string Name { get; set; }
 
         [Key]
-        public User Owner { get; set; }
+        public CardUser Owner { get; set; }
 
         public IList<CardAmount> Cards { get; set; }
     }
@@ -27,6 +28,7 @@ namespace MTGViewer.Models
         [Key]
         public Location Location { get; set; }
 
+        [Range(1, int.MaxValue)]
         public int Amount { get; set; }
     }
 

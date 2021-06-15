@@ -1,8 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace MTGViewer.Models
+namespace MTGViewer.Data
 {
-
     public class Name
     {
         public int Id { get; set; }

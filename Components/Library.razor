@@ -1,7 +1,7 @@
 @namespace MTGViewer.Components
-@using System.Linq
-@using Microsoft.AspNetCore.Http.Extensions
 
+@using System.Linq
+@using Microsoft.AspNetCore.WebUtilities
 @inject IDbContextFactory<MTGCardContext> DbFactory
 
 
@@ -78,8 +78,8 @@
         ["white"] = "w"
     };
 
-    private IEnumerable<Models.Card> dbCards;
-    private IEnumerable<Models.Card> viewCards;
+    private IEnumerable<Data.Card> dbCards;
+    private IEnumerable<Data.Card> viewCards;
 
     private string searchName;
     private readonly ISet<string> colorFilter = new HashSet<string>();
@@ -148,12 +148,7 @@
     private string Delete(string id) => CardRoute("Delete", id);
 
 
-    private string CardRoute(string operation, string id)
-    {
-        var query = new QueryBuilder();
-        query.Add("id", id);
-
-        return $"Cards/{operation}{query.ToQueryString()}";
-    }
+    private string CardRoute(string operation, string id) =>
+        QueryHelpers.AddQueryString($"Cards/{operation}", "id", id);
 
 }

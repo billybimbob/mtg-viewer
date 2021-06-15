@@ -1,8 +1,11 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
-using MTGViewer.Models;
+
 using System.Threading.Tasks;
+
+using MTGViewer.Data;
+
 
 namespace MTGViewer.Pages.Cards
 {

@@ -4,8 +4,7 @@ using MtgApiManager.Lib.Core;
 using MtgApiManager.Lib.Model;
 using MtgApiManager.Lib.Service;
 
-// using MTGViewer.Data;
-using MTGViewer.Models;
+using MTGViewer.Data;
 
 using System;
 using System.Collections.Generic;
@@ -73,6 +72,19 @@ namespace MTGViewer.Services
             return cards;
         }
 
+
+        private T? LoggedUnwrap<T>(IOperationResult<T> result) where T : class
+        {
+            var unwrap = result.Unwrap();
+            if (unwrap == null)
+            {
+                _logger.LogError(result.Exception.ToString());
+            }
+
+            return unwrap;
+        }
+
+
         public async Task<Card?> GetIdAsync(string id)
         {
             // Card card;
@@ -103,6 +115,7 @@ namespace MTGViewer.Services
         }
 
 
+
         private Card? ValidCard(Card card)
         {
             if (card == null || !card.IsValid())
@@ -115,6 +128,7 @@ namespace MTGViewer.Services
                 return card;
             }
         }
+
 
 
         public async Task<IReadOnlyList<Card>> MatchAsync(Card card)
@@ -130,19 +144,6 @@ namespace MTGViewer.Services
             }
 
             return await SearchAsync();
-        }
-
-
-
-        private T? LoggedUnwrap<T>(IOperationResult<T> result) where T : class
-        {
-            var unwrap = result.Unwrap();
-            if (unwrap == null)
-            {
-                _logger.LogError(result.Exception.ToString());
-            }
-
-            return unwrap;
         }
 
 
@@ -193,6 +194,7 @@ namespace MTGViewer.Services
     {
         internal static R? Unwrap<R>(this IOperationResult<R> result) where R : class =>
             result.IsSuccess ? result.Value : null;
+
     
         internal static Card ToCard(this ICard card)
         {
@@ -211,7 +213,7 @@ namespace MTGViewer.Services
                     .ToList(),
 
                 Types = card.Types
-                    ?.Select(s => new Models.Type { Name = s })
+                    ?.Select(s => new Data.Type { Name = s })
                     .ToList(),
                 SubTypes = card.SubTypes
                     ?.Select(s => new SubType { Name = s })

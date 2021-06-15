@@ -5,9 +5,7 @@ using System.Threading.Tasks;
 
 using Microsoft.EntityFrameworkCore;
 
-using MTGViewer.Models;
 using MTGViewer.Services;
-
 using MtgApiManager.Lib.Model;
 
 
