@@ -23,7 +23,7 @@ public class MTGCardContext : IdentityDbContext<CardUser>
 
     // protected override void OnModelCreating(ModelBuilder builder)
     // {
-
+    //     base.OnModelCreating(builder);
     // }
 
 }

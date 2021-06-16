@@ -1,3 +1,10 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Linq.Expressions;
+using System.Reflection;
+using System.Threading.Tasks;
+
 using Microsoft.Extensions.Logging;
 
 using MtgApiManager.Lib.Core;
@@ -5,13 +12,6 @@ using MtgApiManager.Lib.Model;
 using MtgApiManager.Lib.Service;
 
 using MTGViewer.Data;
-
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Linq.Expressions;
-using System.Reflection;
-using System.Threading.Tasks;
 
 
 # nullable enable
@@ -24,7 +24,6 @@ namespace MTGViewer.Services
         private readonly ILogger<MTGFetchService> _logger;
         private readonly ICardService _service;
         private readonly DataCacheService _cache;
-        // private readonly CardConverter _convert;
 
 
         public MTGFetchService(
@@ -36,7 +35,6 @@ namespace MTGViewer.Services
             _logger = logger;
             _service = provider.GetCardService();
             _cache = cache;
-            // _convert = new CardConverter(dbContext);
         }
 
         public void Reset()
@@ -66,22 +64,10 @@ namespace MTGViewer.Services
 
             var cards = matches
                 .Select(c => c.ToCard())
-                .Where(c => c.IsValid())
+                .Where(c => TestValid(c) != null)
                 .ToList();
 
             return cards;
-        }
-
-
-        private T? LoggedUnwrap<T>(IOperationResult<T> result) where T : class
-        {
-            var unwrap = result.Unwrap();
-            if (unwrap == null)
-            {
-                _logger.LogError(result.Exception.ToString());
-            }
-
-            return unwrap;
         }
 
 
@@ -94,7 +80,7 @@ namespace MTGViewer.Services
                 _logger.LogInformation($"using cached card for {id}");
                 // card = await _convert.DbCard(icard);
 
-                return ValidCard(icard.ToCard());
+                return TestValid(icard.ToCard());
             }
 
             _logger.LogInformation($"refetching {id}");
@@ -111,14 +97,25 @@ namespace MTGViewer.Services
 
             // card = await _convert.DbCard(match);
 
-            return ValidCard(match.ToCard());
+            return TestValid(match.ToCard());
         }
 
 
-
-        private Card? ValidCard(Card card)
+        private T? LoggedUnwrap<T>(IOperationResult<T> result) where T : class
         {
-            if (card == null || !card.IsValid())
+            var unwrap = result.Unwrap();
+            if (unwrap == null)
+            {
+                _logger.LogError(result.Exception.ToString());
+            }
+
+            return unwrap;
+        }
+
+
+        private Card? TestValid(Card card)
+        {
+            if (!card.IsValid())
             {
                 _logger.LogError($"{card?.Id} was found, but failed validation");
                 return null;
@@ -147,7 +144,7 @@ namespace MTGViewer.Services
         }
 
 
-        private void QueryProperty(PropertyInfo info, object? value)
+        private void QueryProperty(PropertyInfo info, object? objValue)
         {
             if (info.GetSetMethod() == null || info.GetGetMethod() == null)
             {
@@ -159,19 +156,19 @@ namespace MTGViewer.Services
                 return;
             }
 
-            var strVal = StringParam(value);
-            if (string.IsNullOrEmpty(strVal))
+            var propertyValue = ToString(objValue);
+            if (string.IsNullOrEmpty(propertyValue))
             {
                 return;
             }
 
             Where(
                 PropertyExpression<CardQueryParameter, string>(info.Name),
-                strVal);
+                propertyValue);
         }
 
 
-        private static string? StringParam(object? paramValue) => paramValue switch
+        private static string? ToString(object? paramValue) => paramValue switch
         {
             IEnumerable<string> iter => string.Join(',', iter),
             null => null,

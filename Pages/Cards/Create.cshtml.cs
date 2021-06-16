@@ -1,12 +1,15 @@
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+
 using MTGViewer.Data;
 using MTGViewer.Services;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+
 
 namespace MTGViewer.Pages.Cards
 {
@@ -24,10 +27,15 @@ namespace MTGViewer.Pages.Cards
         }
 
         public Card Card { get; private set; }
+        public CardAmount CardAmount { get; set; }
+
         public IEnumerable<Card> Matches { get; private set; }
 
         [BindProperty]
         public string Picked { get; set; }
+
+        [TempData]
+        public int Amount { get; set; }
 
 
         public IActionResult OnGet()
@@ -62,6 +70,13 @@ namespace MTGViewer.Pages.Cards
                 Matches = await _fetch.MatchAsync(Card);
             }
 
+            var cAmount = new CardAmount();
+            if (await TryUpdateModelAsync(cAmount, "cardamount", a => a.Amount))
+            {
+                _logger.LogInformation($"received card amount {cAmount.Amount}");
+                Amount = cAmount.Amount;
+            }
+
             if (Matches?.Count() == 1)
             {
                 Picked = Matches.First().Id;
@@ -73,6 +88,12 @@ namespace MTGViewer.Pages.Cards
 
         private async Task<IActionResult> FromPicked()
         {
+            if (Amount == 0)
+            {
+                _logger.LogError("amount temp data is not set");
+                return Page();
+            }
+
             _logger.LogInformation($"picked {Picked}");
 
             bool inContext = await _context.Cards
@@ -84,7 +105,14 @@ namespace MTGViewer.Pages.Cards
                 // not great since 2 gets from fetch service for a single create task
                 Card = await _fetch.GetIdAsync(Picked);
 
+                CardAmount = new CardAmount { 
+                    Card = Card, 
+                    Amount = Amount };
+
+                Card.Amounts = new List<CardAmount>{ CardAmount };
+
                 _context.Cards.Add(Card);
+
                 await _context.SaveChangesAsync();
             }
 

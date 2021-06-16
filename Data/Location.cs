@@ -28,6 +28,8 @@ namespace MTGViewer.Data
         [Key]
         public Location Location { get; set; }
 
+        public bool IsRequest { get; set; }
+
         [Range(1, int.MaxValue)]
         public int Amount { get; set; }
     }
