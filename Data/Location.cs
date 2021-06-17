@@ -15,13 +15,14 @@ namespace MTGViewer.Data
         [Key]
         public CardUser Owner { get; set; }
 
-        public IList<CardAmount> Cards { get; set; }
+        public IList<CardAmount> Cards { get; } = new List<CardAmount>();
     }
 
     public class CardAmount
     {
         public int Id { get; set; }
 
+        [Required]
         [Key]
         public Card Card { get; set; }
 

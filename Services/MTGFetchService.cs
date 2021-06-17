@@ -51,21 +51,19 @@ namespace MTGViewer.Services
 
         public async Task<IReadOnlyList<Card>> SearchAsync()
         {
-            var matches = LoggedUnwrap(await _service.AllAsync());
-            if (matches == null)
-            {
-                return Enumerable.Empty<Card>().ToList();
-            }
+            IEnumerable<ICard>? matches = LoggedUnwrap(await _service.AllAsync());
 
-            foreach (var match in matches)
-            {
-                _cache[match.Id] = match;
-            }
+            matches ??= Enumerable.Empty<ICard>();
 
             var cards = matches
                 .Select(c => c.ToCard())
                 .Where(c => TestValid(c) != null)
                 .ToList();
+
+            foreach (var card in cards)
+            {
+                _cache[card.Id] = card;
+            }
 
             return cards;
         }
@@ -73,31 +71,29 @@ namespace MTGViewer.Services
 
         public async Task<Card?> GetIdAsync(string id)
         {
-            // Card card;
-
-            if (_cache.TryGetValue(id, out ICard icard))
+            Card? card;
+            if (_cache.TryGetValue(id, out card))
             {
                 _logger.LogInformation($"using cached card for {id}");
-                // card = await _convert.DbCard(icard);
-
-                return TestValid(icard.ToCard());
+                return card;
             }
 
             _logger.LogInformation($"refetching {id}");
 
             var match = LoggedUnwrap(await _service.FindAsync(id));
-
             if (match == null)
             {
                 _logger.LogError("match returned null");
                 return null;
             }
 
-            _cache[match.Id] = match;
+            card = TestValid(match.ToCard());
+            if (card != null)
+            {
+                _cache[card.Id] = card;
+            }
 
-            // card = await _convert.DbCard(match);
-
-            return TestValid(match.ToCard());
+            return card;
         }
 
 

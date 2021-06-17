@@ -1,5 +1,6 @@
 @page
 @model MTGViewer.Pages.Cards.CreateModel
+@using MTGViewer.Data
 
 @{
     ViewData["Title"] = "Create";
@@ -18,44 +19,49 @@
             <table class="table">
                 <thead>
                     <tr>
-                        <th></th>
                         <th>
-                            @Html.DisplayNameFor(m => m.Matches.First().Name)
+                            @Html.DisplayNameForInnerType((Card c) => c.Name)
                         </th>
                         <th>
-                            @Html.DisplayNameFor(m => m.Matches.First().ManaCost)
+                            @Html.DisplayNameForInnerType((Card c) => c.ManaCost)
                         </th>
                         <th>
-                            @Html.DisplayNameFor(m => m.Matches.First().Rarity)
+                            @Html.DisplayNameForInnerType((Card c) => c.Rarity)
                         </th>
                         <th>
-                            @Html.DisplayNameFor(m => m.Matches.First().SetName)
+                            @Html.DisplayNameForInnerType((Card c) => c.SetName)
+                        </th>
+                        <th>
+                            @Html.DisplayNameForInnerType(
+                                (CreateModel.AmountModel a) => a.Amount)
                         </th>
                     </tr>
                 </thead>
                 <tbody>
-                @foreach (var card in Model.Matches)
-                {
-                    <tr>
-                        <td>
-                            <input type="radio" asp-for="Picked" value="@card.Id"/>
-                        </td>
-                        <td>
-                            @Html.DisplayFor(_ => card.Name)
-                        </td>
-                        <td>
-                        @foreach (var cost in card.GetColorSymbols()) {
-                            <i class="ms ms-@cost.ToLower() ms-cost"></i>
-                        }
-                        </td>
-                        <td>
-                            @Html.DisplayFor(_ => card.Rarity)
-                        </td>
-                        <td>
-                            @Html.DisplayFor(_ => card.SetName)
-                        </td>
-                    </tr>
-                }
+                    @for(int i = 0; i < Model.Matches.Count; ++i)
+                    {
+                        var card = Model.Matches[i];
+                        <tr>
+                            <td>
+                                @Html.DisplayFor(_ => card.Name)
+                            </td>
+                            <td>
+                                @foreach (var cost in card.GetColorSymbols()) {
+                                    <i class="ms ms-@cost.ToLower() ms-cost"></i>
+                                }
+                            </td>
+                            <td>
+                                @Html.DisplayFor(_ => card.Rarity)
+                            </td>
+                            <td>
+                                @Html.DisplayFor(_ => card.SetName)
+                            </td>
+                            <td>
+                                <input asp-for="Amounts[i].Id"/>
+                                <input asp-for="Amounts[i].Amount"/>
+                            </td>
+                        </tr>
+                    }
                 </tbody>
             </table>
         }
@@ -108,11 +114,11 @@
                 <span asp-validation-for="Card.Loyalty" class="text-danger"></span>
             </div>
 
-            <div class="form-group">
+            @* <div class="form-group">
                 <label asp-for="CardAmount.Amount" class="control-label"></label>
                 <input asp-for="CardAmount.Amount" class="form-control" />
                 <span asp-validation-for="CardAmount.Amount" class="text-danger"></span>
-            </div>
+            </div> *@
         }
 
             <div class="form-group">

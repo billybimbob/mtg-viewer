@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -27,15 +28,21 @@ namespace MTGViewer.Pages.Cards
         }
 
         public Card Card { get; private set; }
-        public CardAmount CardAmount { get; set; }
 
-        public IEnumerable<Card> Matches { get; private set; }
+        public IReadOnlyList<Card> Matches { get; private set; }
 
         [BindProperty]
-        public string Picked { get; set; }
+        public IList<AmountModel> Amounts { get; set; }
 
-        [TempData]
-        public int Amount { get; set; }
+
+        public class AmountModel
+        {
+            [HiddenInput]
+            public string Id { get; set; }
+
+            [Range(0, int.MaxValue)]
+            public int Amount { get; set; }
+        }
 
 
         public IActionResult OnGet()
@@ -50,73 +57,98 @@ namespace MTGViewer.Pages.Cards
         {
             _logger.LogInformation("on post");
 
-            if (!string.IsNullOrEmpty(Picked))
+            if (Amounts != null && Amounts.Any())
             {
-                return await FromPicked();
+                return await FromPickedAsync();
             }
             else
             {
-                return await FromPost();
+                return await FromPostAsync();
             }
         }
 
 
-        private async Task<IActionResult> FromPost()
+        private async Task<IActionResult> FromPostAsync()
         {
             Card = new Card();
 
             if (await TryUpdateModelAsync(Card, "card"))
             {
                 Matches = await _fetch.MatchAsync(Card);
+                Amounts = Matches.Select(m => new AmountModel{ Id = m.Id }).ToList();
             }
 
-            var cAmount = new CardAmount();
-            if (await TryUpdateModelAsync(cAmount, "cardamount", a => a.Amount))
-            {
-                _logger.LogInformation($"received card amount {cAmount.Amount}");
-                Amount = cAmount.Amount;
-            }
-
-            if (Matches?.Count() == 1)
-            {
-                Picked = Matches.First().Id;
-                return await FromPicked();
-            }
+            // if (Matches?.Count() == 1)
+            // {
+            //     Picked = Matches.First().Id;
+            //     return await FromPicked();
+            // }
 
             return Page();
         }
 
-        private async Task<IActionResult> FromPicked()
+        private async Task<IActionResult> FromPickedAsync()
         {
-            if (Amount == 0)
+            var newAmounts = await GetNewAmountsAsync();
+
+            if (!newAmounts.Any())
             {
-                _logger.LogError("amount temp data is not set");
+                _logger.LogError("no amounts were set");
                 return Page();
             }
 
-            _logger.LogInformation($"picked {Picked}");
-
-            bool inContext = await _context.Cards
-                .Where(c => c.Id == Picked)
-                .AnyAsync();
-
-            if (!inContext)
-            {
-                // not great since 2 gets from fetch service for a single create task
-                Card = await _fetch.GetIdAsync(Picked);
-
-                CardAmount = new CardAmount { 
-                    Card = Card, 
-                    Amount = Amount };
-
-                Card.Amounts = new List<CardAmount>{ CardAmount };
-
-                _context.Cards.Add(Card);
-
-                await _context.SaveChangesAsync();
-            }
+            await AddNewCardsAsync(newAmounts);
 
             return RedirectToPage("./Index");
+        }
+
+
+        private async Task<IEnumerable<AmountModel>> GetNewAmountsAsync()
+        {
+            var picked = Amounts.Where(a => a.Amount > 0);
+
+            if (!picked.Any())
+            {
+                return Enumerable.Empty<AmountModel>();
+            }
+
+            var pickedIds = picked.Select(a => a.Id).ToArray();
+
+            var inContext = (await _context.Cards
+                .Select(c => c.Id)
+                .Where(id => pickedIds.Contains(id))
+                .ToListAsync())
+                .ToHashSet();
+
+            return picked.Where(a => !inContext.Contains(a.Id));
+        }
+
+        
+        private async Task AddNewCardsAsync(IEnumerable<AmountModel> newAmounts)
+        {
+            bool haveChanges = false;
+
+            foreach(var info in newAmounts)
+            {
+                var card = await _fetch.GetIdAsync(info.Id);
+
+                if (card == null)
+                {
+                    _logger.LogError($"{info.Id} failed to fail correct card");
+                    continue;
+                }
+
+                var amountEntry = new CardAmount { Card = card, Amount = info.Amount };
+                card.Amounts.Add(amountEntry);
+
+                _context.Cards.Add(card);
+                haveChanges = true;
+            }
+
+            if (haveChanges)
+            {
+                await _context.SaveChangesAsync();
+            }
         }
 
     }

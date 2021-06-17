@@ -36,12 +36,13 @@
             <th>Mana Cost</th>
             <th>Set</th>
             <th>Rarity</th>
+            <th>Amount Available</th>
             <th></th>
         </tr>
     </thead>
 
     <tbody>
-        @foreach (var card in viewCards)
+        @foreach (var (card, amnt) in Enumerable.Zip(viewCards, availAmnt))
         {
             <tr>
                 <td class="fw-bold">@card.Name</td>
@@ -55,6 +56,7 @@
 
                 <td>@card.SetName</td>
                 <td>@card.Rarity</td>
+                <td>@amnt</td>
 
                 <td>
                     @* <a href="@Edit(card.Id)">Edit</a> | *@
@@ -80,6 +82,7 @@
 
     private IEnumerable<Data.Card> dbCards;
     private IEnumerable<Data.Card> viewCards;
+    private IEnumerable<int> availAmnt;
 
     private string searchName;
     private readonly ISet<string> colorFilter = new HashSet<string>();
@@ -95,9 +98,12 @@
 
         dbCards = await context.Cards
             .Include(c => c.Colors)
+            .Include(c => c.Amounts)
+            .ThenInclude(a => a.Location)
+            .AsNoTracking()
             .ToListAsync();
 
-        viewCards = dbCards;
+        ApplyFilters();
     }
 
 
@@ -120,6 +126,12 @@
         }
 
         viewCards = query.ToList();
+
+        availAmnt = viewCards
+            .Select(c => c.Amounts
+                .Where(ca => ca.Location == null)
+                .Select(a => a.Amount)
+                .Sum());
     }
 
     private void FilterColor(string color)

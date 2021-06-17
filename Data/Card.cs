@@ -47,7 +47,7 @@ namespace MTGViewer.Data
 
         // locations can be derived from amounts
         // could possibly derive amounts from locations
-        public IList<CardAmount> Amounts { get; set; }
+        public IList<CardAmount> Amounts { get; } = new List<CardAmount>();
 
 
         public IReadOnlyList<string> GetColorSymbols()
