@@ -1,7 +1,8 @@
-@namespace MTGViewer.Components
-
 @using System.Linq
 @using Microsoft.AspNetCore.WebUtilities
+
+@namespace MTGViewer.Components
+
 @inject IDbContextFactory<MTGCardContext> DbFactory
 
 
@@ -127,11 +128,10 @@
 
         viewCards = query.ToList();
 
-        availAmnt = viewCards
-            .Select(c => c.Amounts
-                .Where(ca => ca.Location == null)
-                .Select(a => a.Amount)
-                .Sum());
+        availAmnt = viewCards.Select(c => 
+            c.Amounts
+            .Single(ca => ca.Location == null)
+            .Amount);
     }
 
     private void FilterColor(string color)
