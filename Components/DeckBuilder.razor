@@ -7,6 +7,101 @@
 @inject ILogger<DeckBuilder> Logger
 
 
+<h1>Deck Builder</h1>
+
+<h2>Available Cards</h2>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>Card Name</th>
+            <th>Mana Cost</th>
+            <th>Set</th>
+            <th>Rarity</th>
+            <th>Amount Available</th>
+            <th></th>
+        </tr>
+    </thead>
+
+    <tbody>
+        @foreach (var card in dbCards)
+        {
+            var amount = available[card.Id].Amount;
+            <tr>
+                <td class="fw-bold">@card.Name</td>
+
+                <td>
+                    @foreach (var cost in card.GetColorSymbols())
+                    {
+                        <span class="m-1 ms ms-@cost.ToLower() ms-cost"></span>
+                    }
+                </td>
+
+                <td>@card.SetName</td>
+                <td>@card.Rarity</td>
+                <td>@amount</td>
+
+                <td>
+                    <button title="@card.Name Add"
+                            type="button"
+                            class="btn btn-outline-secondary border-0 rounded"
+                            disabled="@(amount==0)"
+                            @onclick="() => AddCardToDeck(card)">
+                        Add Card
+                    </button>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+
+<h2>@Deck.Name</h2>
+
+<table class="table mt-2">
+    <thead>
+        <tr>
+            <th>Card Name</th>
+            <th>Mana Cost</th>
+            <th>Set</th>
+            <th>Deck Amount</th>
+            <th></th>
+        </tr>
+    </thead>
+
+    <tbody>
+        @foreach (var amount in deckCards.Values)
+        {
+            @if (amount.Amount > 0)
+            {
+                var card = amount.Card;
+                <tr>
+                    <td class="fw-bold">@card.Name</td>
+
+                    <td>
+                        @foreach (var cost in card.GetColorSymbols())
+                        {
+                            <span class="m-1 ms ms-@cost.ToLower() ms-cost"></span>
+                        }
+                    </td>
+
+                    <td>@card.SetName</td>
+                    <td>@amount.Amount</td>
+
+                    <td>
+                        <button title="@card.Name Remove"
+                                type="button"
+                                class="btn btn-outline-secondary border-0 rounded"
+                                @onclick="() => RemoveCardFromDeck(card)">
+                            Remove Card
+                        </button>
+                    </td>
+                </tr>
+            }
+        }
+    </tbody>
+</table>
+
 
 @code {
 
@@ -14,24 +109,13 @@
     public Location Deck { get; set; }
 
     private IReadOnlyList<Data.Card> dbCards;
+
     private IDictionary<string, CardAmount> deckCards;
     private IDictionary<string, CardAmount> available;
-    private IDictionary<string, int> updateCounts = new Dictionary<string, int>();
+    private IDictionary<string, int> updateCounts;
 
 
     protected override async Task OnInitializedAsync()
-    {
-        if (Deck.Owner == null)
-        {
-            Logger.LogError("the given deck has no owner");
-        }
-
-        deckCards = Deck.Cards.ToDictionary(c => c.Card.Id, c => c);
-
-        await FetchCardsAsync();
-    }
-
-    private async Task FetchCardsAsync()
     {
         using var context = DbFactory.CreateDbContext();
 
@@ -41,10 +125,23 @@
             .ThenInclude(a => a.Location)
             .AsNoTracking()
             .ToListAsync();
+    }
+
+
+    protected override void OnParametersSet()
+    {
+        if (Deck.Owner == null)
+        {
+            Logger.LogError("the given deck has no owner");
+        }
+
+        deckCards = Deck.Cards.ToDictionary(c => c.Card.Id);
 
         available = dbCards.ToDictionary(
             c => c.Id,
             c => c.Amounts.Single(ca => ca.Location == null));
+
+        updateCounts = new Dictionary<string, int>();
     }
 
 
@@ -65,16 +162,18 @@
 
         availAmnt.Amount -= 1;
 
-        if (!deckCards.TryGetValue(card.Id, out var deckAmnt))
+        if (deckCards.TryGetValue(card.Id, out var deckAmnt))
         {
-            deckCards.Add(card.Id, DeckAmount(card));
-        }
-        else {
             deckAmnt.Amount += 1;
+        }
+        else
+        {
+            deckCards.Add(card.Id, NewDeckAmount(card));
         }
 
         UpdateCardCount(card, 1);
     }
+
 
     private void RemoveCardFromDeck(Card card)
     {
@@ -103,7 +202,8 @@
         UpdateCardCount(card, -1);
     }
 
-    private CardAmount DeckAmount(Card card) =>
+
+    private CardAmount NewDeckAmount(Card card) =>
         new CardAmount {
             Card = card,
             Amount = 1,
@@ -112,14 +212,17 @@
             // not sure when to set request
         };
 
+
     private void UpdateCardCount(Card card, int mod)
     {
         if (!updateCounts.TryGetValue(card.Id, out var count))
         {
             count = 0;
         }
+
         updateCounts[card.Id] = count + mod;
     }
+
 
     private async Task CommitChanges()
     {
@@ -128,7 +231,7 @@
         context.Attach(Deck).State = EntityState.Modified;
 
         var validUpdates = updateCounts
-            .Where(p => p.Value > 0)
+            .Where(p => p.Value != 0)
             .Select(p => p.Key);
 
         foreach(var id in validUpdates)
