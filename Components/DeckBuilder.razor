@@ -1,4 +1,5 @@
 @using MTGViewer.Data
+@using MTGViewer.Areas.Identity.Data
 
 @namespace MTGViewer.Components
 
@@ -8,6 +9,13 @@
 
 
 <h1>Deck Builder</h1>
+
+<button title="Save Deck"
+        type="button"
+        class="btn btn-secondary"
+        @onclick="CommitChanges">
+    Save Changes
+</button>
 
 <h2>Available Cards</h2>
 
@@ -26,7 +34,7 @@
     <tbody>
         @foreach (var card in dbCards)
         {
-            var amount = available[card.Id].Amount;
+            var available = availables[card.Id].Amount;
             <tr>
                 <td class="fw-bold">@card.Name</td>
 
@@ -39,13 +47,13 @@
 
                 <td>@card.SetName</td>
                 <td>@card.Rarity</td>
-                <td>@amount</td>
+                <td>@available</td>
 
                 <td>
                     <button title="@card.Name Add"
                             type="button"
                             class="btn btn-outline-secondary border-0 rounded"
-                            disabled="@(amount==0)"
+                            disabled="@(available==0)"
                             @onclick="() => AddCardToDeck(card)">
                         Add Card
                     </button>
@@ -56,7 +64,7 @@
 </table>
 
 
-<h2>@Deck.Name</h2>
+<h2>@deck.Name</h2>
 
 <table class="table mt-2">
     <thead>
@@ -70,11 +78,11 @@
     </thead>
 
     <tbody>
-        @foreach (var amount in deckCards.Values)
+        @foreach (var card in dbCards)
         {
-            @if (amount.Amount > 0)
+            @if (deckCards.TryGetValue(card.Id, out var inDeck)
+                && inDeck.Amount > 0)
             {
-                var card = amount.Card;
                 <tr>
                     <td class="fw-bold">@card.Name</td>
 
@@ -86,7 +94,7 @@
                     </td>
 
                     <td>@card.SetName</td>
-                    <td>@amount.Amount</td>
+                    <td>@inDeck.Amount</td>
 
                     <td>
                         <button title="@card.Name Remove"
@@ -106,12 +114,16 @@
 @code {
 
     [Parameter]
-    public Location Deck { get; set; }
+    public CardUser User { get; set; }
 
+    [Parameter]
+    public int DeckId { get; set; } = default;
+
+    private Location deck;
     private IReadOnlyList<Data.Card> dbCards;
 
     private IDictionary<string, CardAmount> deckCards;
-    private IDictionary<string, CardAmount> available;
+    private IDictionary<string, CardAmount> availables;
     private IDictionary<string, int> updateCounts;
 
 
@@ -123,21 +135,21 @@
             .Include(c => c.Colors)
             .Include(c => c.Amounts)
             .ThenInclude(a => a.Location)
+            .OrderBy(c => c.Name)
             .AsNoTracking()
             .ToListAsync();
     }
 
 
-    protected override void OnParametersSet()
+    protected override async Task OnParametersSetAsync()
     {
-        if (Deck.Owner == null)
-        {
-            Logger.LogError("the given deck has no owner");
-        }
+        deck = await GetDeck();
 
-        deckCards = Deck.Cards.ToDictionary(c => c.Card.Id);
+        Logger.LogInformation($"got loc {deck.Name}");
 
-        available = dbCards.ToDictionary(
+        deckCards = deck.Cards.ToDictionary(c => c.Card.Id);
+
+        availables = dbCards.ToDictionary(
             c => c.Id,
             c => c.Amounts.Single(ca => ca.Location == null));
 
@@ -145,9 +157,35 @@
     }
 
 
+    private async Task<Location> GetDeck()
+    {
+        Logger.LogInformation($"id is {DeckId}, user is {User.Name}");
+        using var context = DbFactory.CreateDbContext();
+
+        if (DeckId == default)
+        {
+            var userDeckCount = await context.Locations
+                .Where(l => l.Owner == User)
+                .CountAsync();
+
+            return new Location
+            {
+                Name = $"Deck #{userDeckCount + 1}",
+                Owner = User
+            };
+        }
+        else
+        {
+            return await context.Locations
+                .Include(l => l.Cards)
+                .ThenInclude(a => a.Card)
+                .SingleAsync(l => l.Id == DeckId);
+        }
+    }
+
     private void AddCardToDeck(Card card)
     {
-        if (!available.TryGetValue(card.Id, out var availAmnt))
+        if (!availables.TryGetValue(card.Id, out var availAmnt))
         {
             Logger.LogError($"card {card.Id} is not a listed avaliable card");
             return;
@@ -177,7 +215,7 @@
 
     private void RemoveCardFromDeck(Card card)
     {
-        if (!available.TryGetValue(card.Id, out var availAmnt))
+        if (!availables.TryGetValue(card.Id, out var availAmnt))
         {
             Logger.LogError($"card {card.Id} does exist in available set");
             return;
@@ -207,8 +245,8 @@
         new CardAmount {
             Card = card,
             Amount = 1,
-            Location = Deck,
-            @* IsRequest = true *@
+            Location = deck,
+            // IsRequest = true
             // not sure when to set request
         };
 
@@ -228,7 +266,11 @@
     {
         using var context = DbFactory.CreateDbContext();
 
-        context.Attach(Deck).State = EntityState.Modified;
+        var deckTrack = context.Attach(deck);
+        if (deckTrack.State == EntityState.Unchanged)
+        {
+            deckTrack.State = EntityState.Modified;
+        }
 
         var validUpdates = updateCounts
             .Where(p => p.Value != 0)
@@ -236,12 +278,12 @@
 
         foreach(var id in validUpdates)
         {
-            context.Attach(available[id]);
-            var deckTrack = context.Attach(deckCards[id]);
+            context.Attach(availables[id]);
+            var deckCardTrack = context.Attach(deckCards[id]);
 
-            if (deckTrack.State == EntityState.Unchanged)
+            if (deckCardTrack.State == EntityState.Unchanged)
             {
-                deckTrack.State = EntityState.Modified;
+                deckCardTrack.State = EntityState.Modified;
             }
         }
 

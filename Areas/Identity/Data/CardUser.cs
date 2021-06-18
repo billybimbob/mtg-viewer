@@ -14,8 +14,5 @@ namespace MTGViewer.Areas.Identity.Data
     {
         [PersonalData]
         public string Name { get; set; }
-
-        [PersonalData]
-        public IList<Location> Decks { get; } = new List<Location>();
     }
 }

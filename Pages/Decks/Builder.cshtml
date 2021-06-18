@@ -1,5 +1,5 @@
 @page
-@model MTGViewer.Pages.Cards.BuilderModel
+@model MTGViewer.Pages.Decks.BuilderModel
 
 @{
     ViewData["Title"] = "Deck Builder";
@@ -7,4 +7,5 @@
 
 <component type="typeof(Components.DeckBuilder)" 
     render-mode="ServerPrerendered" 
-    param-Deck="@Model.Deck" />
+    param-User="@Model.CardUser"
+    param-DeckId="@Model.DeckId" />

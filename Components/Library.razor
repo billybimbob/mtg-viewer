@@ -22,7 +22,6 @@
                 type="button"
                 class="btn btn-outline-secondary border-0 rounded @active"
                 @onclick="() => FilterColor(color.Key)">
-
             <span class="ms ms-@color.Value ms-cost"> </span>
         </button>
     }
@@ -101,6 +100,7 @@
             .Include(c => c.Colors)
             .Include(c => c.Amounts)
             .ThenInclude(a => a.Location)
+            .OrderBy(c => c.Name)
             .AsNoTracking()
             .ToListAsync();
 
@@ -130,8 +130,8 @@
 
         availAmnt = viewCards.Select(c => 
             c.Amounts
-            .Single(ca => ca.Location == null)
-            .Amount);
+            .Select(ca => ca.Amount)
+            .Sum());
     }
 
     private void FilterColor(string color)
