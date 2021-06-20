@@ -2,6 +2,7 @@
 @using MTGViewer.Areas.Identity.Data
 
 @namespace MTGViewer.Components
+@implements IDisposable
 
 @inject NavigationManager NavigationManager
 @inject IDbContextFactory<MTGCardContext> DbFactory
@@ -119,6 +120,8 @@
     [Parameter]
     public int DeckId { get; set; } = default;
 
+
+    private MTGCardContext context;
     private Location deck;
     private IReadOnlyList<Data.Card> dbCards;
 
@@ -129,14 +132,13 @@
 
     protected override async Task OnInitializedAsync()
     {
-        using var context = DbFactory.CreateDbContext();
+        context = DbFactory.CreateDbContext();
 
         dbCards = await context.Cards
             .Include(c => c.Colors)
             .Include(c => c.Amounts)
             .ThenInclude(a => a.Location)
             .OrderBy(c => c.Name)
-            .AsNoTracking()
             .ToListAsync();
     }
 
@@ -157,8 +159,6 @@
 
     private async Task<Location> GetDeck()
     {
-        using var context = DbFactory.CreateDbContext();
-
         if (DeckId == default)
         {
             var userDeckCount = await context.Locations
@@ -176,7 +176,6 @@
             return await context.Locations
                 .Include(l => l.Cards)
                 .ThenInclude(a => a.Card)
-                .AsNoTracking()
                 .SingleAsync(l => l.Id == DeckId);
         }
     }
@@ -204,7 +203,9 @@
         }
         else
         {
-            deckCards.Add(card.Id, NewDeckAmount(card));
+            var newAmnt = NewDeckAmount(card);
+            card.Amounts.Add(newAmnt);
+            deckCards.Add(card.Id, newAmnt);
         }
 
         UpdateCardCount(card, 1);
@@ -262,33 +263,21 @@
 
     private async Task CommitChanges()
     {
-        using var context = DbFactory.CreateDbContext();
-
-        var deckTrack = context.Attach(deck);
-        if (deckTrack.State == EntityState.Unchanged)
+        foreach(var cardAmnt in deck.Cards)
         {
-            deckTrack.State = EntityState.Modified;
-        }
-
-        var validUpdates = updateCounts
-            .Where(p => p.Value != 0)
-            .Select(p => p.Key);
-
-        foreach(var id in validUpdates)
-        {
-            context.Attach(availables[id]);
-            var deckCardTrack = context.Attach(deckCards[id]);
-
-            if (deckCardTrack.State == EntityState.Unchanged)
+            if (cardAmnt.Amount == 0)
             {
-                deckCardTrack.State = EntityState.Modified;
+                cardAmnt.Card.Amounts.Remove(cardAmnt);
             }
         }
 
         try {
             await context.SaveChangesAsync();
 
-            NavigationManager.NavigateTo("Cards");
+            Logger.LogInformation($"trying to nav to index, at {NavigationManager.BaseUri}");
+            NavigationManager.NavigateTo("Cards/Index");
+
+            updateCounts.Clear();
         }
         catch(DbUpdateConcurrencyException)
         {
@@ -297,6 +286,11 @@
             // TODO: provide suggestions on how to resolve errors
         }
 
+    }
+
+    public void Dispose()
+    {
+        context.Dispose();
     }
 
 }
