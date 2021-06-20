@@ -1,4 +1,3 @@
-using System.Linq;
 using System.Threading.Tasks;
 
 using Microsoft.AspNetCore.Mvc;
@@ -9,7 +8,6 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
 using MTGViewer.Areas.Identity.Data;
-using MTGViewer.Data;
 
 
 namespace MTGViewer.Pages.Decks
@@ -17,8 +15,8 @@ namespace MTGViewer.Pages.Decks
     [Authorize]
     public class BuilderModel : PageModel
     {
-        private UserManager<CardUser> _userManager;
-        private MTGCardContext _context;
+        private readonly UserManager<CardUser> _userManager;
+        private readonly MTGCardContext _context;
 
         public BuilderModel(UserManager<CardUser> userManager, MTGCardContext context)
         {
@@ -30,11 +28,29 @@ namespace MTGViewer.Pages.Decks
         public CardUser CardUser { get; private set; }
         public int DeckId { get; private set; }
 
-        public async Task OnGetAsync(int? id)
+
+        public async Task<IActionResult> OnGetAsync(int? id)
         {
             CardUser = await _userManager.GetUserAsync(User);
-            DeckId = id ?? default;
+            if (id is int validId)
+            {
+                var isOwner = await _context.Locations
+                    .AnyAsync(l => l.Id == validId && l.Owner == CardUser);
+
+                if (!isOwner)
+                {
+                    return NotFound();
+                }
+
+                DeckId = validId;
+            }
+            else
+            {
+                DeckId = default;
+            }
+
             // the deck cannot be used as a param because of cyclic refs
+            return Page();
         }
 
     }

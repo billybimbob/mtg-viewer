@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 
 using System.Threading.Tasks;
@@ -9,6 +11,7 @@ using MTGViewer.Data;
 
 namespace MTGViewer.Pages.Cards
 {
+    [Authorize]
     public class DeleteModel : PageModel
     {
         private readonly MTGCardContext _context;

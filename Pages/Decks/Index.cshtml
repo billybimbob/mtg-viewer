@@ -1,0 +1,49 @@
+@page
+@using MTGViewer.Data
+@model MTGViewer.Pages.Decks.IndexModel
+
+@{
+    ViewData["Title"] = $"Decks - {Model.CardUser.Name}";
+}
+
+
+<h1>@Model.CardUser.Name's Decks</h1>
+
+<a class="btn btn-secondary" asp-page="./Builder">New Deck</a>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>
+                Deck @Html.DisplayNameForInnerType((Location c) => c.Name)
+            </th>
+            <th>Number of Cards</th>
+            <th>Colors</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+    @foreach (var (deck, colors) in Enumerable.Zip(
+        Model.Decks, Model.DeckColors))
+    {
+        <tr>
+            <td>
+                @deck.Name
+            </td>
+            <td>
+                @deck.Cards.Select(ca => ca.Amount).Sum()
+            </td>
+            <td>
+                @foreach (var color in colors)
+                {
+                    <span class="m-1 ms ms-@color ms-cost"></span>
+                }
+            </td>
+            <td>
+                <a asp-page="./Builder" asp-route-id="@deck.Id">Edit</a> |
+                <a asp-page="./Delete" asp-route-id="@deck.Id">Delete</a>
+            </td>
+        </tr>
+    }
+    </tbody>
+</table>

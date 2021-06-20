@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 
 using MTGViewer.Data;
@@ -10,6 +11,7 @@ using MTGViewer.Data;
 
 namespace MTGViewer.Pages.Cards
 {
+    [Authorize]
     public class EditModel : PageModel
     {
         private readonly MTGCardContext _context;

@@ -6,6 +6,8 @@
 @inject IDbContextFactory<MTGCardContext> DbFactory
 
 
+<h1>Card Collection</h1>
+
 <a class="btn btn-secondary" href="Cards/Create">Add Card</a>
 
 @* <div class="input-group my-3">
@@ -14,7 +16,7 @@
 @* </div> *@
 
 <div class="btn-group" role="group" aria-label="Color Buttons">
-    @foreach (var color in COLORS)
+    @foreach (var color in Data.Color.COLORS)
     {
         var active = colorFilter.Contains(color.Key) ? "active" : "";
 
@@ -36,13 +38,13 @@
             <th>Mana Cost</th>
             <th>Set</th>
             <th>Rarity</th>
-            <th>Amount Available</th>
+            <th>Total Amount</th>
             <th></th>
         </tr>
     </thead>
 
     <tbody>
-        @foreach (var (card, amnt) in Enumerable.Zip(viewCards, availAmnt))
+        @foreach (var card in viewCards)
         {
             <tr>
                 <td class="fw-bold">@card.Name</td>
@@ -56,12 +58,15 @@
 
                 <td>@card.SetName</td>
                 <td>@card.Rarity</td>
-                <td>@amnt</td>
+                <td>@card.Amounts.Select(ca => ca.Amount).Sum()</td>
 
                 <td>
-                    @* <a href="@Edit(card.Id)">Edit</a> | *@
                     <a href="@Details(card.Id)">Details</a> |
-                    <a href="@Delete(card.Id)">Delete</a>
+                    @if (IsSignedIn)
+                    {
+                        @*<a href="@Edit(card.Id)">Edit</a> |*@
+                        <a href="@Delete(card.Id)">Delete</a>
+                    }
                 </td>
             </tr>
         }
@@ -70,22 +75,16 @@
 
 
 @code {
-    // might want to move to a constant file
-    private readonly IReadOnlyDictionary<string, string> COLORS = new Dictionary<string, string>
-    {
-        ["black"] = "b",
-        ["blue"] = "u",
-        ["green"] = "g",
-        ["red"] = "r",
-        ["white"] = "w"
-    };
+
+    [Parameter]
+    public bool IsSignedIn { get; set; } = false;
 
     private IEnumerable<Data.Card> dbCards;
     private IEnumerable<Data.Card> viewCards;
-    private IEnumerable<int> availAmnt;
 
     private string searchName;
     private readonly ISet<string> colorFilter = new HashSet<string>();
+
 
     protected override async Task OnInitializedAsync()
     {
@@ -104,7 +103,7 @@
             .AsNoTracking()
             .ToListAsync();
 
-        ApplyFilters();
+        viewCards = dbCards;
     }
 
 
@@ -127,11 +126,6 @@
         }
 
         viewCards = query.ToList();
-
-        availAmnt = viewCards.Select(c => 
-            c.Amounts
-            .Select(ca => ca.Amount)
-            .Sum());
     }
 
     private void FilterColor(string color)

@@ -1,4 +1,7 @@
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
+
 
 namespace MTGViewer.Data
 {
@@ -13,6 +16,17 @@ namespace MTGViewer.Data
 
     public class Color
     {
+        [JsonIgnore]
+        public static readonly IReadOnlyDictionary<string, string> COLORS = 
+            new Dictionary<string, string>
+        {
+            ["black"] = "b",
+            ["blue"] = "u",
+            ["green"] = "g",
+            ["red"] = "r",
+            ["white"] = "w"
+        };
+
         public int Id { get; set; }
 
         [Required]

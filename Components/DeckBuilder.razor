@@ -64,7 +64,7 @@
 </table>
 
 
-<h2>@deck.Name</h2>
+<input @bind="deck.Name" class="form-control form-control-lg border-0"/>
 
 <table class="table mt-2">
     <thead>
@@ -145,8 +145,6 @@
     {
         deck = await GetDeck();
 
-        Logger.LogInformation($"got loc {deck.Name}");
-
         deckCards = deck.Cards.ToDictionary(c => c.Card.Id);
 
         availables = dbCards.ToDictionary(
@@ -159,7 +157,6 @@
 
     private async Task<Location> GetDeck()
     {
-        Logger.LogInformation($"id is {DeckId}, user is {User.Name}");
         using var context = DbFactory.CreateDbContext();
 
         if (DeckId == default)
@@ -179,6 +176,7 @@
             return await context.Locations
                 .Include(l => l.Cards)
                 .ThenInclude(a => a.Card)
+                .AsNoTracking()
                 .SingleAsync(l => l.Id == DeckId);
         }
     }
