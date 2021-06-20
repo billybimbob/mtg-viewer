@@ -14,7 +14,7 @@
 <button title="Save Deck"
         type="button"
         class="btn btn-secondary"
-        @onclick="CommitChanges">
+        @onclick="CommitChangesAsync">
     Save Changes
 </button>
 
@@ -121,17 +121,24 @@
     public int DeckId { get; set; } = default;
 
 
+    private bool busy;
     private MTGCardContext context;
+
     private Location deck;
     private IReadOnlyList<Data.Card> dbCards;
 
     private IDictionary<string, CardAmount> deckCards;
     private IDictionary<string, CardAmount> availables;
-    private IDictionary<string, int> updateCounts;
 
 
     protected override async Task OnInitializedAsync()
     {
+        if (busy)
+        {
+            return;
+        }
+        
+        busy = true;
         context = DbFactory.CreateDbContext();
 
         dbCards = await context.Cards
@@ -140,45 +147,48 @@
             .ThenInclude(a => a.Location)
             .OrderBy(c => c.Name)
             .ToListAsync();
+
+        busy = false;
     }
 
 
     protected override async Task OnParametersSetAsync()
     {
-        deck = await GetDeck();
+        deck = await GetOrCreateDeckAsync();
 
         deckCards = deck.Cards.ToDictionary(c => c.Card.Id);
 
         availables = dbCards.ToDictionary(
             c => c.Id,
             c => c.Amounts.Single(ca => ca.Location == null));
-
-        updateCounts = new Dictionary<string, int>();
     }
 
 
-    private async Task<Location> GetDeck()
+    private async Task<Location> GetOrCreateDeckAsync()
     {
-        if (DeckId == default)
-        {
-            var userDeckCount = await context.Locations
-                .Where(l => l.Owner == User)
-                .CountAsync();
-
-            return new Location
-            {
-                Name = $"Deck #{userDeckCount + 1}",
-                Owner = User
-            };
-        }
-        else
+        if (DeckId != default)
         {
             return await context.Locations
                 .Include(l => l.Cards)
                 .ThenInclude(a => a.Card)
                 .SingleAsync(l => l.Id == DeckId);
         }
+
+        var userDeckCount = await context.Locations
+            .Where(l => l.Owner == User)
+            .CountAsync();
+
+        var newLoc = new Location
+        {
+            Name = $"Deck #{userDeckCount + 1}",
+            Owner = User
+        };
+
+        context.Attach(newLoc);
+
+        return newLoc;
     }
+
 
     private void AddCardToDeck(Card card)
     {
@@ -203,12 +213,18 @@
         }
         else
         {
-            var newAmnt = NewDeckAmount(card);
-            card.Amounts.Add(newAmnt);
+            var newAmnt = new CardAmount 
+            {
+                Card = card,
+                Amount = 1,
+                Location = deck,
+                // IsRequest = true
+                // not sure when to set request
+            };
+
+            context.Attach(newAmnt);
             deckCards.Add(card.Id, newAmnt);
         }
-
-        UpdateCardCount(card, 1);
     }
 
 
@@ -235,39 +251,23 @@
         availAmnt.Amount += 1;
 
         deckAmnt.Amount -= 1;
-
-        UpdateCardCount(card, -1);
     }
 
 
-    private CardAmount NewDeckAmount(Card card) =>
-        new CardAmount {
-            Card = card,
-            Amount = 1,
-            Location = deck,
-            // IsRequest = true
-            // not sure when to set request
-        };
-
-
-    private void UpdateCardCount(Card card, int mod)
+    private async Task CommitChangesAsync()
     {
-        if (!updateCounts.TryGetValue(card.Id, out var count))
+        if (busy)
         {
-            count = 0;
+            return;
         }
 
-        updateCounts[card.Id] = count + mod;
-    }
+        busy = true;
 
-
-    private async Task CommitChanges()
-    {
         foreach(var cardAmnt in deck.Cards)
         {
             if (cardAmnt.Amount == 0)
             {
-                cardAmnt.Card.Amounts.Remove(cardAmnt);
+                context.Remove(cardAmnt);
             }
         }
 
@@ -276,8 +276,6 @@
 
             Logger.LogInformation($"trying to nav to index, at {NavigationManager.BaseUri}");
             NavigationManager.NavigateTo("Cards/Index");
-
-            updateCounts.Clear();
         }
         catch(DbUpdateConcurrencyException)
         {
@@ -285,8 +283,13 @@
 
             // TODO: provide suggestions on how to resolve errors
         }
+        finally
+        {
+            busy = false;
+        }
 
     }
+
 
     public void Dispose()
     {

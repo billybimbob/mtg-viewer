@@ -15,7 +15,7 @@ namespace MTGViewer.Data
         [Key]
         public CardUser Owner { get; set; }
 
-        public IList<CardAmount> Cards { get; } = new List<CardAmount>();
+        public ISet<CardAmount> Cards { get; } = new HashSet<CardAmount>();
     }
 
     public class CardAmount

@@ -197,23 +197,23 @@ namespace MTGViewer.Services
                 Name = card.Name,
                 Names = card.Names
                     ?.Select(s => new Name { Value = s })
-                    .ToList(),
+                    .ToHashSet(),
 
                 Layout = card.Layout,
 
                 Colors = card.Colors
                     ?.Select(s => new Color { Name = s })
-                    .ToList(),
+                    .ToHashSet(),
 
                 Types = card.Types
                     ?.Select(s => new Data.Type { Name = s })
-                    .ToList(),
+                    .ToHashSet(),
                 SubTypes = card.SubTypes
                     ?.Select(s => new SubType { Name = s })
-                    .ToList(),
+                    .ToHashSet(),
                 SuperTypes = card.SuperTypes
                     ?.Select(s => new SuperType { Name = s })
-                    .ToList(),
+                    .ToHashSet(),
 
                 ManaCost = card.ManaCost,
                 Cmc = (int?)card.Cmc ?? default,

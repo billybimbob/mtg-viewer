@@ -121,6 +121,7 @@ namespace MTGViewer.Pages.Cards
             var inContext = (await _context.Cards
                 .Select(c => c.Id)
                 .Where(id => pickedIds.Contains(id))
+                .AsNoTracking()
                 .ToListAsync())
                 .ToHashSet();
 
@@ -130,8 +131,6 @@ namespace MTGViewer.Pages.Cards
         
         private async Task AddNewCardsAsync(IEnumerable<AmountModel> newAmounts)
         {
-            bool haveChanges = false;
-
             foreach(var info in newAmounts)
             {
                 var card = await _fetch.GetIdAsync(info.Id);
@@ -146,13 +145,9 @@ namespace MTGViewer.Pages.Cards
                 card.Amounts.Add(amountEntry);
 
                 _context.Cards.Add(card);
-                haveChanges = true;
             }
 
-            if (haveChanges)
-            {
-                await _context.SaveChangesAsync();
-            }
+            await _context.SaveChangesAsync();
         }
 
     }

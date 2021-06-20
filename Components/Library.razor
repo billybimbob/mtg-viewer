@@ -79,6 +79,7 @@
     [Parameter]
     public bool IsSignedIn { get; set; } = false;
 
+    private bool busy;
     private IEnumerable<Data.Card> dbCards;
     private IEnumerable<Data.Card> viewCards;
 
@@ -88,11 +89,18 @@
 
     protected override async Task OnInitializedAsync()
     {
+        if (busy)
+        {
+            return;    
+        }
+
         await FetchCardsAsync();
     }
 
     private async Task FetchCardsAsync()
     {
+        busy = true;
+
         using var context = DbFactory.CreateDbContext();
 
         dbCards = await context.Cards
@@ -104,6 +112,8 @@
             .ToListAsync();
 
         viewCards = dbCards;
+
+        busy = false;
     }
 
 
