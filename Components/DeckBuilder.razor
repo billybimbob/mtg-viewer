@@ -178,9 +178,8 @@
             .Where(l => l.Owner == User)
             .CountAsync();
 
-        var newLoc = new Location
-        {
-            Name = $"Deck #{userDeckCount + 1}",
+        var newLoc = new Location(
+            name: $"Deck #{userDeckCount + 1}") {
             Owner = User
         };
 

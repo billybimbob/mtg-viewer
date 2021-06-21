@@ -3,17 +3,23 @@ using System.ComponentModel.DataAnnotations;
 
 using MTGViewer.Areas.Identity.Data;
 
+
+#nullable enable
+
 namespace MTGViewer.Data
 {
     public class Location
     {
+        public Location(string name)
+        {
+            Name = name;
+        }
+
         public int Id { get; set; }
 
-        [Required]
         public string Name { get; set; }
 
-        [Key]
-        public CardUser Owner { get; set; }
+        public CardUser Owner { get; set; } = null!;
 
         public ISet<CardAmount> Cards { get; } = new HashSet<CardAmount>();
     }
@@ -22,12 +28,9 @@ namespace MTGViewer.Data
     {
         public int Id { get; set; }
 
-        [Required]
-        [Key]
-        public Card Card { get; set; }
+        public Card Card { get; set; } = null!;
 
-        [Key]
-        public Location Location { get; set; }
+        public Location? Location { get; set; }
 
         public bool IsRequest { get; set; }
 

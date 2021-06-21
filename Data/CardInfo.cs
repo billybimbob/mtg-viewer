@@ -1,18 +1,25 @@
 using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 
+
+#nullable enable
 
 namespace MTGViewer.Data
 {
     public class Name
     {
+        public Name(string value)
+        {
+            Value = value;
+        }
+
         public int Id { get; set; }
+
         public string Value { get; set; }
 
-        [Required]
-        public Card Card { get; set; }
+        public Card Card { get; set; } = null!;
     }
+
 
     public class Color
     {
@@ -27,45 +34,60 @@ namespace MTGViewer.Data
             ["white"] = "w"
         };
 
+        public Color(string name)
+        {
+            Name = name;
+        }
+
         public int Id { get; set; }
 
-        [Required]
         public string Name { get; set; }
 
-        [Required]
-        public Card Card { get; set; }
+        public Card Card { get; set; } = null!;
     }
+
 
     public class SuperType
     {
+        public SuperType(string name)
+        {
+            Name = name;
+        }
+
         public int Id { get; set; }
 
-        [Required]
         public string Name { get; set; }
 
-        [Required]
-        public Card Card { get; set; }
+        public Card Card { get; set; } = null!;
     }
+
 
     public class Type
     {
+        public Type(string name)
+        {
+            Name = name;
+        }
+
         public int Id { get; set; }
 
-        [Required]
         public string Name { get; set; }
 
-        [Required]
-        public Card Card { get; set; }
+        public Card Card { get; set; } = null!;
     }
+
 
     public class SubType
     {
+        public SubType(string name)
+        {
+            Name = name;
+        }
+
         public int Id { get; set; }
 
-        [Required]
         public string Name { get; set; }
 
-        [Required]
-        public Card Card { get; set; }
+        public Card Card { get; set; } = null!;
     }
 }

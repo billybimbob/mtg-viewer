@@ -141,7 +141,7 @@ namespace MTGViewer.Pages.Cards
                     continue;
                 }
 
-                var amountEntry = new CardAmount { Card = card, Amount = info.Amount };
+                var amountEntry = new CardAmount{ Amount = info.Amount };
                 card.Amounts.Add(amountEntry);
 
                 _context.Cards.Add(card);

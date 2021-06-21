@@ -126,7 +126,7 @@ namespace MTGViewer.Services
 
         public async Task<IReadOnlyList<Card>> MatchAsync(Card card)
         {
-            if (card.Id != null && _cache.TryGetValue(card.Id, out ICard icard))
+            if (card.Id != default && _cache.TryGetValue(card.Id, out ICard icard))
             {
                 return new List<Card> { card };
             }
@@ -196,23 +196,23 @@ namespace MTGViewer.Services
                 Id = card.Id, // id should be valid
                 Name = card.Name,
                 Names = card.Names
-                    ?.Select(s => new Name { Value = s })
+                    .Select(s => new Name(s))
                     .ToHashSet(),
 
                 Layout = card.Layout,
 
                 Colors = card.Colors
-                    ?.Select(s => new Color { Name = s })
+                    .Select(s => new Color(s))
                     .ToHashSet(),
 
                 Types = card.Types
-                    ?.Select(s => new Data.Type { Name = s })
+                    .Select(s => new Data.Type(s))
                     .ToHashSet(),
                 SubTypes = card.SubTypes
-                    ?.Select(s => new SubType { Name = s })
+                    .Select(s => new SubType(s))
                     .ToHashSet(),
                 SuperTypes = card.SuperTypes
-                    ?.Select(s => new SuperType { Name = s })
+                    .Select(s => new SuperType(s))
                     .ToHashSet(),
 
                 ManaCost = card.ManaCost,

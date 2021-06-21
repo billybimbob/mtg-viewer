@@ -13,7 +13,8 @@ namespace MTGViewer.Data
 
         [Required]
         public string Name { get; set; }
-        public ISet<Name> Names { get; set; }
+
+        public ISet<Name> Names { get; set; } = new HashSet<Name>();
 
         public string Layout { get; set; }
 
@@ -22,23 +23,30 @@ namespace MTGViewer.Data
 
         [Display(Name = "Converted Mana")]
         public int? Cmc { get; set; }
-        public ISet<Color> Colors { get; set; }
 
-        public ISet<SuperType> SuperTypes { get; set; }
-        public ISet<Type> Types { get; set; }
-        public ISet<SubType> SubTypes { get; set; }
+        public ISet<Color> Colors { get; set; } = new HashSet<Color>();
+
+        public ISet<SuperType> SuperTypes { get; set; } = new HashSet<SuperType>();
+
+        public ISet<Type> Types { get; set; } = new HashSet<Type>();
+
+        public ISet<SubType> SubTypes { get; set; } = new HashSet<SubType>();
 
         public string Rarity { get; set; }
 
         [Display(Name = "Set")]
         public string SetName { get; set; }
+
         public string Artist { get; set; }
 
         public string Text { get; set; }
+
         public string Flavor { get; set; }
 
         public string Power { get; set; }
+
         public string Toughness { get; set; }
+
         public string Loyalty { get; set; }
 
         [Display(Name = "Image")]
@@ -48,7 +56,6 @@ namespace MTGViewer.Data
         // locations can be derived from amounts
         // could possibly derive amounts from locations
         public ISet<CardAmount> Amounts { get; } = new HashSet<CardAmount>();
-
 
         public IReadOnlyList<string> GetColorSymbols()
         {
@@ -60,7 +67,6 @@ namespace MTGViewer.Data
             var matches = Regex.Matches(ManaCost, @"{([^}]+)}");
             return matches.Select(m => m.Groups[1].Value).ToList();
         }
-
 
         public bool IsValid()
         {
