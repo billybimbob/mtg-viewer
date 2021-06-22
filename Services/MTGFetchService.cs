@@ -166,7 +166,8 @@ namespace MTGViewer.Services
 
         private static string? ToString(object? paramValue) => paramValue switch
         {
-            IEnumerable<string> iter => string.Join(',', iter),
+            IEnumerable<object> iter1 when !iter1.Any() => null,
+            IEnumerable<object> iter2 => string.Join(',', iter2),
             null => null,
             _ => paramValue.ToString()
         };
@@ -196,23 +197,23 @@ namespace MTGViewer.Services
                 Id = card.Id, // id should be valid
                 Name = card.Name,
                 Names = card.Names
-                    .Select(s => new Name(s))
+                    ?.Select(s => new Name(s))
                     .ToHashSet(),
 
                 Layout = card.Layout,
 
                 Colors = card.Colors
-                    .Select(s => new Color(s))
+                    ?.Select(s => new Color(s))
                     .ToHashSet(),
 
                 Types = card.Types
-                    .Select(s => new Data.Type(s))
+                    ?.Select(s => new Data.Type(s))
                     .ToHashSet(),
                 SubTypes = card.SubTypes
-                    .Select(s => new SubType(s))
+                    ?.Select(s => new SubType(s))
                     .ToHashSet(),
                 SuperTypes = card.SuperTypes
-                    .Select(s => new SuperType(s))
+                    ?.Select(s => new SuperType(s))
                     .ToHashSet(),
 
                 ManaCost = card.ManaCost,

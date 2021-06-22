@@ -1,5 +1,7 @@
 @using MTGViewer.Data
+@using MTGViewer.Data.Concurrency
 @using MTGViewer.Areas.Identity.Data
+@using Microsoft.EntityFrameworkCore.ChangeTracking
 
 @namespace MTGViewer.Components
 @implements IDisposable
@@ -253,6 +255,7 @@
     }
 
 
+
     private async Task CommitChangesAsync()
     {
         if (busy)
@@ -270,15 +273,20 @@
             }
         }
 
+        UpdateTokens();
+
         try {
             await context.SaveChangesAsync();
 
-            Logger.LogInformation($"trying to nav to index, at {NavigationManager.BaseUri}");
+            Logger.LogInformation($"successfully updated, trying to nav to index, at {NavigationManager.BaseUri}");
             NavigationManager.NavigateTo("Cards/Index");
         }
-        catch(DbUpdateConcurrencyException)
+        catch (DbUpdateConcurrencyException ex)
         {
-            Logger.LogError("issue with saving changes");
+            var amntConflicts = ex.Entries<CardAmount>();
+            var deckConflict = ex.Entries<Location>();
+
+            Logger.LogInformation($"conflicts: {amntConflicts.Count()} conflicts, and {deckConflict.Count()} conflicts");
 
             // TODO: provide suggestions on how to resolve errors
         }
@@ -286,8 +294,41 @@
         {
             busy = false;
         }
-
     }
+
+
+    private void UpdateTokens()
+    {
+        var changes = context.ChangeTracker.Entries<CardAmount>()
+            .Where(e => {
+                var amntProp = e.Property(ca => ca.Amount);
+                var amntChange = amntProp.OriginalValue - amntProp.CurrentValue;
+                return amntChange != 0;
+            })
+            .Select(e => e.Entity);
+
+        context.UpdateTokens(changes);
+        context.UpdateTokens(deck);
+    }
+
+
+    private async Task SyncAvailableAsync(IEnumerable<EntityEntry<CardAmount>> conflicts)
+    {
+        var availConflicts = conflicts.Where(e => e.Entity.Location == null);
+
+        foreach (var conflict in availConflicts)
+        {
+            var amntProp = conflict.Property(ca => ca.Amount);
+
+            var dbVals = await conflict.GetDatabaseValuesAsync();
+            var dbAmnt = dbVals.GetValue<int>(amntProp.Metadata);
+
+            var syncAmnt = dbAmnt + amntProp.CurrentValue - amntProp.CurrentValue;
+
+            conflict.Entity.Amount = syncAmnt;
+        }
+    }
+
 
 
     public void Dispose()

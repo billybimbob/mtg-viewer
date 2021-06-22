@@ -1,14 +1,13 @@
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-
 using MTGViewer.Areas.Identity.Data;
-
+using MTGViewer.Data.Concurrency;
 
 #nullable enable
 
 namespace MTGViewer.Data
 {
-    public class Location
+    public class Location : Concurrent
     {
         public Location(string name)
         {
@@ -24,7 +23,7 @@ namespace MTGViewer.Data
         public ISet<CardAmount> Cards { get; } = new HashSet<CardAmount>();
     }
 
-    public class CardAmount
+    public class CardAmount : Concurrent
     {
         public int Id { get; set; }
 
