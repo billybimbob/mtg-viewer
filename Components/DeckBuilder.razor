@@ -35,9 +35,9 @@
     </thead>
 
     <tbody>
-        @foreach (var card in dbCards)
+        @foreach (var card in _dbCards)
         {
-            var available = availables[card.Id].Amount;
+            var available = _availables[card.Id].Amount;
             <tr>
                 <td class="fw-bold">@card.Name</td>
 
@@ -67,7 +67,7 @@
 </table>
 
 
-<input @bind="deck.Name" class="form-control form-control-lg border-0"/>
+<input @bind="_deck.Name" class="form-control form-control-lg border-0"/>
 
 <table class="table mt-2">
     <thead>
@@ -81,9 +81,9 @@
     </thead>
 
     <tbody>
-        @foreach (var card in dbCards)
+        @foreach (var card in _dbCards)
         {
-            @if (deckCards.TryGetValue(card.Id, out var inDeck)
+            @if (_deckCards.TryGetValue(card.Id, out var inDeck)
                 && inDeck.Amount > 0)
             {
                 <tr>
@@ -123,44 +123,44 @@
     public int DeckId { get; set; } = default;
 
 
-    private bool busy;
-    private MTGCardContext context;
+    private bool _busy;
+    private MTGCardContext _context;
 
-    private Location deck;
-    private IReadOnlyList<Data.Card> dbCards;
+    private Location _deck;
+    private IReadOnlyList<Data.Card> _dbCards;
 
-    private IDictionary<string, CardAmount> deckCards;
-    private IDictionary<string, CardAmount> availables;
+    private IDictionary<string, CardAmount> _deckCards;
+    private IDictionary<string, CardAmount> _availables;
 
 
     protected override async Task OnInitializedAsync()
     {
-        if (busy)
+        if (_busy)
         {
             return;
         }
         
-        busy = true;
-        context = DbFactory.CreateDbContext();
+        _busy = true;
+        _context = DbFactory.CreateDbContext();
 
-        dbCards = await context.Cards
+        _dbCards = await _context.Cards
             .Include(c => c.Colors)
             .Include(c => c.Amounts)
             .ThenInclude(a => a.Location)
             .OrderBy(c => c.Name)
             .ToListAsync();
 
-        busy = false;
+        _busy = false;
     }
 
 
     protected override async Task OnParametersSetAsync()
     {
-        deck = await GetOrCreateDeckAsync();
+        _deck = await GetOrCreateDeckAsync();
 
-        deckCards = deck.Cards.ToDictionary(c => c.Card.Id);
+        _deckCards = _deck.Cards.ToDictionary(c => c.Card.Id);
 
-        availables = dbCards.ToDictionary(
+        _availables = _dbCards.ToDictionary(
             c => c.Id,
             c => c.Amounts.Single(ca => ca.Location == null));
     }
@@ -170,13 +170,13 @@
     {
         if (DeckId != default)
         {
-            return await context.Locations
+            return await _context.Locations
                 .Include(l => l.Cards)
                 .ThenInclude(a => a.Card)
                 .SingleAsync(l => l.Id == DeckId);
         }
 
-        var userDeckCount = await context.Locations
+        var userDeckCount = await _context.Locations
             .Where(l => l.Owner == User)
             .CountAsync();
 
@@ -185,7 +185,7 @@
             Owner = User
         };
 
-        context.Attach(newLoc);
+        _context.Attach(newLoc);
 
         return newLoc;
     }
@@ -193,7 +193,7 @@
 
     private void AddCardToDeck(Card card)
     {
-        if (!availables.TryGetValue(card.Id, out var availAmnt))
+        if (!_availables.TryGetValue(card.Id, out var availAmnt))
         {
             Logger.LogError($"card {card.Id} is not a listed avaliable card");
             return;
@@ -208,7 +208,7 @@
 
         availAmnt.Amount -= 1;
 
-        if (deckCards.TryGetValue(card.Id, out var deckAmnt))
+        if (_deckCards.TryGetValue(card.Id, out var deckAmnt))
         {
             deckAmnt.Amount += 1;
         }
@@ -218,26 +218,26 @@
             {
                 Card = card,
                 Amount = 1,
-                Location = deck,
+                Location = _deck,
                 // IsRequest = true
                 // not sure when to set request
             };
 
-            context.Attach(newAmnt);
-            deckCards.Add(card.Id, newAmnt);
+            _context.Attach(newAmnt);
+            _deckCards.Add(card.Id, newAmnt);
         }
     }
 
 
     private void RemoveCardFromDeck(Card card)
     {
-        if (!availables.TryGetValue(card.Id, out var availAmnt))
+        if (!_availables.TryGetValue(card.Id, out var availAmnt))
         {
             Logger.LogError($"card {card.Id} does exist in available set");
             return;
         }
 
-        if (!deckCards.TryGetValue(card.Id, out var deckAmnt))
+        if (!_deckCards.TryGetValue(card.Id, out var deckAmnt))
         {
             Logger.LogError($"card {card.Id} is not in the deck");
             return;
@@ -258,62 +258,71 @@
 
     private async Task CommitChangesAsync()
     {
-        if (busy)
+        if (_busy)
         {
             return;
         }
 
-        busy = true;
-
-        foreach(var cardAmnt in deck.Cards)
-        {
-            if (cardAmnt.Amount == 0)
-            {
-                context.Remove(cardAmnt);
-            }
-        }
-
-        UpdateTokens();
+        _busy = true;
+        PrepareChanges();
 
         try {
-            await context.SaveChangesAsync();
+            await _context.SaveChangesAsync();
 
             Logger.LogInformation($"successfully updated, trying to nav to index, at {NavigationManager.BaseUri}");
-            NavigationManager.NavigateTo("Cards/Index");
+            NavigationManager.NavigateTo("Cards/Index"); // TODO: fix nav not working
         }
         catch (DbUpdateConcurrencyException ex)
         {
-            var amntConflicts = ex.Entries<CardAmount>();
-            var deckConflict = ex.Entries<Location>();
-
-            Logger.LogInformation($"conflicts: {amntConflicts.Count()} conflicts, and {deckConflict.Count()} conflicts");
-
-            // TODO: provide suggestions on how to resolve errors
+            HandleConcurrentException(ex);
         }
         finally
         {
-            busy = false;
+            _busy = false;
         }
     }
 
 
-    private void UpdateTokens()
+    private void PrepareChanges()
     {
-        var changes = context.ChangeTracker.Entries<CardAmount>()
-            .Where(e => {
-                var amntProp = e.Property(ca => ca.Amount);
-                var amntChange = amntProp.OriginalValue - amntProp.CurrentValue;
-                return amntChange != 0;
-            })
-            .Select(e => e.Entity);
+        foreach(var cardAmnt in _deck.Cards)
+        {
+            if (cardAmnt.Amount == 0)
+            {
+                _context.Remove(cardAmnt);
+            }
+        }
 
-        context.UpdateTokens(changes);
-        context.UpdateTokens(deck);
+        var deckEntry = _context.Entry(_deck);
+        if (deckEntry.State == EntityState.Unchanged)
+        {
+            deckEntry.State = EntityState.Modified;
+        }
+    }
+
+
+    private async Task HandleConcurrentException(DbUpdateConcurrencyException ex)
+    {
+        var amntConflicts = ex.Entries<CardAmount>();
+        var deckConflict = ex.Entries<Location>().SingleOrDefault();
+
+        var numConflicts = amntConflicts.Count() + (deckConflict != null ? 1 : 0);
+        Logger.LogError($"{numConflicts} conflicts");
+
+        await SyncAvailableAsync(amntConflicts);
+
+        if (deckConflict != null)
+        {
+            await SyncDeckAsync(deckConflict);
+        }
+
+        // TODO: update razor page with db values
     }
 
 
     private async Task SyncAvailableAsync(IEnumerable<EntityEntry<CardAmount>> conflicts)
     {
+        // keep eye if Location is nonull for valid locs
         var availConflicts = conflicts.Where(e => e.Entity.Location == null);
 
         foreach (var conflict in availConflicts)
@@ -323,17 +332,32 @@
             var dbVals = await conflict.GetDatabaseValuesAsync();
             var dbAmnt = dbVals.GetValue<int>(amntProp.Metadata);
 
-            var syncAmnt = dbAmnt + amntProp.CurrentValue - amntProp.CurrentValue;
+            var syncAmnt = dbAmnt + amntProp.CurrentValue - amntProp.OriginalValue;
 
             conflict.Entity.Amount = syncAmnt;
+            _context.MatchToken(conflict.Entity, dbVals);
         }
     }
 
 
+    private async Task SyncDeckAsync(EntityEntry<Location> conflict)
+    {
+        var deck = conflict.Entity;
+
+        // use single to ensure to get new db value
+        var dbDeck = await _context.Locations
+            .Include(l => l.Cards)
+            .AsNoTracking()
+            .SingleAsync(l => l.Id == deck.Id);
+
+        deck.Cards.UnionWith(dbDeck.Cards);
+        _context.MatchToken(deck, dbDeck);
+    }
+
 
     public void Dispose()
     {
-        context.Dispose();
+        _context.Dispose();
     }
 
 }

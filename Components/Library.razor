@@ -18,7 +18,7 @@
 <div class="btn-group" role="group" aria-label="Color Buttons">
     @foreach (var color in Data.Color.COLORS)
     {
-        var active = colorFilter.Contains(color.Key) ? "active" : "";
+        var active = _colorFilter.Contains(color.Key) ? "active" : "";
 
         <button title="@color.Key Filter"
                 type="button"
@@ -44,7 +44,7 @@
     </thead>
 
     <tbody>
-        @foreach (var card in viewCards)
+        @foreach (var card in _viewCards)
         {
             <tr>
                 <td class="fw-bold">@card.Name</td>
@@ -79,17 +79,17 @@
     [Parameter]
     public bool IsSignedIn { get; set; } = false;
 
-    private bool busy;
-    private IEnumerable<Data.Card> dbCards;
-    private IEnumerable<Data.Card> viewCards;
+    private bool _busy;
+    private IEnumerable<Data.Card> _dbCards;
+    private IEnumerable<Data.Card> _viewCards;
 
-    private string searchName;
-    private readonly ISet<string> colorFilter = new HashSet<string>();
+    private string _searchName;
+    private readonly ISet<string> _colorFilter = new HashSet<string>();
 
 
     protected override async Task OnInitializedAsync()
     {
-        if (busy)
+        if (_busy)
         {
             return;    
         }
@@ -99,54 +99,55 @@
 
     private async Task FetchCardsAsync()
     {
-        busy = true;
+        _busy = true;
 
         using var context = DbFactory.CreateDbContext();
 
-        dbCards = await context.Cards
+        _dbCards = await context.Cards
             .Include(c => c.Colors)
             .Include(c => c.Amounts)
-            .ThenInclude(a => a.Location)
+            // .ThenInclude(a => a.Location)
             .OrderBy(c => c.Name)
             .AsNoTracking()
             .ToListAsync();
 
-        viewCards = dbCards;
+        _viewCards = _dbCards;
 
-        busy = false;
+        _busy = false;
     }
 
 
     private void ApplyFilters()
     {
-        var query = dbCards;
+        var query = _dbCards;
 
-        if (!string.IsNullOrWhiteSpace(searchName))
+        if (!string.IsNullOrWhiteSpace(_searchName))
         {
             query = query
-                .Where(c => c.Name.ToLower().Contains(searchName));
+                .Where(c => c.Name.ToLower().Contains(_searchName));
         }
 
-        if (colorFilter.Any())
+        if (_colorFilter.Any())
         {
             query = query
-                .Where(card =>
-                    colorFilter.Overlaps(
-                        card.Colors.Select(color => color.Name.ToLower())));
+                .Where(card => {
+                    var colors = card.Colors.Select(color => color.Name.ToLower());
+                    return _colorFilter.Overlaps(colors);
+                });
         }
 
-        viewCards = query.ToList();
+        _viewCards = query.ToList();
     }
 
     private void FilterColor(string color)
     {
-        if (colorFilter.Contains(color))
+        if (_colorFilter.Contains(color))
         {
-            colorFilter.Remove(color);
+            _colorFilter.Remove(color);
         }
         else
         {
-            colorFilter.Add(color);
+            _colorFilter.Add(color);
         }
 
         ApplyFilters();
@@ -154,7 +155,7 @@
 
     private void SearchName(ChangeEventArgs eventArgs)
     {
-        searchName = eventArgs.Value?.ToString();
+        _searchName = eventArgs.Value?.ToString();
         ApplyFilters();
     }
 

@@ -7,7 +7,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
 using MtgApiManager.Lib.Service;
-
 using MTGViewer.Services;
 
 
@@ -28,13 +27,6 @@ namespace MTGViewer
             services.AddRazorPages();
             services.AddServerSideBlazor();
 
-            services.AddDbContextFactory<MTGCardContext>(options => options
-                .UseSqlite(Configuration.GetConnectionString("MTGCardContext")));
-
-            services.AddScoped<MTGCardContext>(provider => provider
-                .GetRequiredService<IDbContextFactory<MTGCardContext>>()
-                .CreateDbContext());
-
             services.AddDatabaseDeveloperPageExceptionFilter();
 
             services.AddSingleton<DataCacheService>();
@@ -45,6 +37,13 @@ namespace MTGViewer
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
+            using (var serviceScope = app.ApplicationServices.GetService<IServiceScopeFactory>().CreateScope())
+            {
+                var contextFactory = serviceScope.ServiceProvider.GetRequiredService<IDbContextFactory<MTGCardContext>>();
+                using var context = contextFactory.CreateDbContext();
+                context.Database.EnsureCreated();
+            }
+
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();

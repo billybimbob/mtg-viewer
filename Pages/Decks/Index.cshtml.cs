@@ -42,13 +42,12 @@ namespace MTGViewer.Pages.Decks
                 .AsNoTracking()
                 .ToListAsync();
 
-            DeckColors = Decks.Select(l => 
-                l.Cards 
-                    .SelectMany(ca => ca.Card
+            DeckColors = Decks.Select(l => l.Cards 
+                .SelectMany(ca => ca.Card
                     .GetColorSymbols()
                     .Select(s => s.ToLower()))
-                .Where(c => Color.COLORS.Values.Contains(c))
                 .Distinct()
+                .Where(c => Color.COLORS.Values.Contains(c))
                 .OrderBy(c => c));
         }
 

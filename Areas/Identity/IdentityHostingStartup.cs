@@ -15,10 +15,6 @@ namespace MTGViewer.Areas.Identity
         public void Configure(IWebHostBuilder builder)
         {
             builder.ConfigureServices((context, services) => {
-                // services.AddDbContext<MTGViewerIdentityDbContext>(options =>
-                //     options.UseSqlite(
-                //         context.Configuration.GetConnectionString("MTGViewerIdentityDbContextConnection")));
-
                 services.AddDefaultIdentity<CardUser>(options => options.SignIn.RequireConfirmedAccount = true)
                     .AddEntityFrameworkStores<MTGCardContext>();
             });
