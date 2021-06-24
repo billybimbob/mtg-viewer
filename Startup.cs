@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -27,8 +26,6 @@ namespace MTGViewer
             services.AddRazorPages();
             services.AddServerSideBlazor();
 
-            services.AddDatabaseDeveloperPageExceptionFilter();
-
             services.AddSingleton<DataCacheService>();
             services.AddSingleton<MtgServiceProvider>();
             services.AddScoped<MTGFetchService>();
@@ -37,12 +34,7 @@ namespace MTGViewer
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
-            using (var serviceScope = app.ApplicationServices.GetService<IServiceScopeFactory>().CreateScope())
-            {
-                var contextFactory = serviceScope.ServiceProvider.GetRequiredService<IDbContextFactory<MTGCardContext>>();
-                using var context = contextFactory.CreateDbContext();
-                context.Database.EnsureCreated();
-            }
+            MTGViewer.Data.CardHostingStartup.CheckDatabase(app, env);
 
             if (env.IsDevelopment())
             {

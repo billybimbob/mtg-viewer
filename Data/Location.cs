@@ -18,18 +18,21 @@ namespace MTGViewer.Data
 
         public string Name { get; set; }
 
-        public CardUser Owner { get; set; } = null!;
+        public string? OwnerId { get; set; }
+        public CardUser? Owner { get; set; }
 
-        public ISet<CardAmount> Cards { get; } = new HashSet<CardAmount>();
+        public ICollection<CardAmount> Cards { get; } = new HashSet<CardAmount>();
+
+        public bool IsShared => OwnerId == default;
     }
 
     public class CardAmount : Concurrent
     {
-        public int Id { get; set; }
-
+        public string CardId { get; set; } = null!;
         public Card Card { get; set; } = null!;
 
-        public Location? Location { get; set; }
+        public int LocationId { get; set; }
+        public Location Location { get; set; } = null!;
 
         public bool IsRequest { get; set; }
 

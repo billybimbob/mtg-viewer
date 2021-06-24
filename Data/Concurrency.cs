@@ -1,19 +1,10 @@
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
 
-using System.Threading;
-using System.Threading.Tasks;
-
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
-
-using Microsoft.Extensions.Logging;
-
-#if SQLiteVersion
-using System;
-using EntityFrameworkCore.Triggered;
-#endif
 
 
 namespace MTGViewer.Data.Concurrency
@@ -61,46 +52,5 @@ namespace MTGViewer.Data.Concurrency
         }
 
     }
-
-
-#if SQLiteVersion
-    public class GuidTokenTrigger : IBeforeSaveTrigger<Concurrent> 
-    {
-        private readonly ILogger<GuidTokenTrigger> _logger;
-
-        public GuidTokenTrigger(ILogger<GuidTokenTrigger> logger)
-        {
-            _logger = logger;
-        }
-
-        public Task BeforeSave(ITriggerContext<Concurrent> trigContext, CancellationToken cancel)
-        {
-            // int id = 0;
-            // if (trigContext.Entity is CardAmount amount)
-            // {
-            //     id = amount.Id;
-            // }
-            // else if (trigContext.Entity is Location location)
-            // {
-            //     id = location.Id;
-            // }
-
-            _logger.LogInformation($"trigger for {trigContext.Entity.GetType()}"); // with id {id}");
-
-            if (trigContext.ChangeType == ChangeType.Modified)
-            {
-                // var oldTok = trigContext.Entity.ConcurrentToken;
-
-                trigContext.Entity.ConcurrentToken = Guid.NewGuid();
-
-                // var newTok = trigContext.Entity.ConcurrentToken;
-                // _logger.LogInformation($"old: {oldTok}, vs new: {newTok}");
-            }
-
-            return Task.CompletedTask;
-        }
-
-    }
-#endif
 
 }

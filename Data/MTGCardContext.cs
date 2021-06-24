@@ -14,16 +14,15 @@ public class MTGCardContext : IdentityDbContext<CardUser>
 
     public DbSet<Card> Cards { get; set; }
     public DbSet<Location> Locations { get; set; }
-
-    // public DbSet<Color> Colors { get; set; }
-    // public DbSet<Type> Types { get; set; }
-    // public DbSet<SubType> SubTypes { get; set; }
-    // public DbSet<SuperType> SuperTypes { get; set; }
+    public DbSet<CardAmount> Amounts { get; set; }
 
 
-    // protected override void OnModelCreating(ModelBuilder builder)
-    // {
-    //     base.OnModelCreating(builder);
-    // }
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        base.OnModelCreating(modelBuilder);
+
+        modelBuilder.Entity<CardAmount>()
+            .HasKey(ca => new { ca.CardId, ca.LocationId, ca.IsRequest });
+    }
 
 }

@@ -146,7 +146,6 @@
         _dbCards = await _context.Cards
             .Include(c => c.Colors)
             .Include(c => c.Amounts)
-            .ThenInclude(a => a.Location)
             .OrderBy(c => c.Name)
             .ToListAsync();
 
@@ -158,11 +157,14 @@
     {
         _deck = await GetOrCreateDeckAsync();
 
-        _deckCards = _deck.Cards.ToDictionary(c => c.Card.Id);
+        _deckCards = _deck.Cards.ToDictionary(c => c.CardId);
+
+        // TODO: change amounts to include request amounts
 
         _availables = _dbCards.ToDictionary(
             c => c.Id,
-            c => c.Amounts.Single(ca => ca.Location == null));
+            // TODO: change return location
+            c => c.Amounts.First(ca => ca.Location.IsShared));
     }
 
 
@@ -274,7 +276,7 @@
         }
         catch (DbUpdateConcurrencyException ex)
         {
-            HandleConcurrentException(ex);
+            await HandleConcurrentException(ex);
         }
         finally
         {
@@ -309,49 +311,77 @@
         var numConflicts = amntConflicts.Count() + (deckConflict != null ? 1 : 0);
         Logger.LogError($"{numConflicts} conflicts");
 
-        await SyncAvailableAsync(amntConflicts);
-
-        if (deckConflict != null)
-        {
-            await SyncDeckAsync(deckConflict);
-        }
+        await UpdateAvailableAsync(amntConflicts);
+        await UpdateDeckAsync(deckConflict);
 
         // TODO: update razor page with db values
     }
 
 
-    private async Task SyncAvailableAsync(IEnumerable<EntityEntry<CardAmount>> conflicts)
+    private async Task UpdateAvailableAsync(IEnumerable<EntityEntry<CardAmount>> conflicts)
     {
-        // keep eye if Location is nonull for valid locs
-        var availConflicts = conflicts.Where(e => e.Entity.Location == null);
+        var sharedConflicts = conflicts.Where(e => e.Entity.Location.IsShared);
 
-        foreach (var conflict in availConflicts)
+        if (!sharedConflicts.Any())
+        {
+            return;
+        }
+
+        var conflictIds = sharedConflicts
+            .Select(e => e.Entity.CardId)
+            .Distinct()
+            .ToArray();
+
+        // var sharedId = sharedConflicts.First().Entity.LocationId;
+        
+        var dbShares = await _context.Amounts
+            .Where(ca => conflictIds.Contains(ca.CardId) && ca.Location.IsShared) // TODO: change return location
+            // .Where(ca => conflictIds.Contains(ca.CardId) && ca.LocationId == sharedId)
+            .AsNoTracking()
+            .ToDictionaryAsync(ca => ca.CardId);
+
+        foreach(var conflict in sharedConflicts)
         {
             var amntProp = conflict.Property(ca => ca.Amount);
+            var availChange = amntProp.CurrentValue - amntProp.OriginalValue;
 
-            var dbVals = await conflict.GetDatabaseValuesAsync();
-            var dbAmnt = dbVals.GetValue<int>(amntProp.Metadata);
+            var dbAvail = dbShares[conflict.Entity.CardId];
 
-            var syncAmnt = dbAmnt + amntProp.CurrentValue - amntProp.OriginalValue;
-
-            conflict.Entity.Amount = syncAmnt;
-            _context.MatchToken(conflict.Entity, dbVals);
+            conflict.Entity.Amount = dbAvail.Amount - availChange;
+            _context.MatchToken(conflict.Entity, dbAvail);
         }
     }
 
 
-    private async Task SyncDeckAsync(EntityEntry<Location> conflict)
+    private async Task UpdateDeckAsync(EntityEntry<Location> conflict)
     {
-        var deck = conflict.Entity;
+        if (conflict == null || conflict.Entity.Id != _deck.Id)
+        {
+            return;
+        }
 
-        // use single to ensure to get new db value
         var dbDeck = await _context.Locations
             .Include(l => l.Cards)
             .AsNoTracking()
-            .SingleAsync(l => l.Id == deck.Id);
+            .SingleAsync(l => l.Id == _deck.Id);
+        
+        foreach(var dbCard in dbDeck.Cards)
+        {
+            if (!_deckCards.ContainsKey(dbCard.CardId))
+            {
+                _deck.Cards.Add(dbCard);
+                _deckCards.Add(dbCard.CardId, dbCard);
+                _context.Attach(dbCard);
+            }
+            else
+            {
+                // overriding conflict amount, so transfersing cancelled amount
+                _availables[dbCard.CardId].Amount += dbCard.Amount;
+            }
+        }
 
-        deck.Cards.UnionWith(dbDeck.Cards);
-        _context.MatchToken(deck, dbDeck);
+        _context.MatchToken(_deck, dbDeck);
+
     }
 
 
