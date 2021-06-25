@@ -43,6 +43,7 @@ namespace MTGViewer.Data.Triggers
 
             if (amount.Location == null)
             {
+                // TODO: change return location
                 amount.Location = await _dbContext.Locations.FindAsync(1);
             }
 

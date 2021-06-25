@@ -35,13 +35,14 @@ namespace MTGViewer.Data
                 services.AddScoped<MTGCardContext>(provider => provider
                     .GetRequiredService<IDbContextFactory<MTGCardContext>>()
                     .CreateDbContext());
-
-                services.AddDatabaseDeveloperPageExceptionFilter();
             });
         }
+    }
 
 
-        public static void CheckDatabase(IApplicationBuilder app, IWebHostEnvironment env)
+    public static class BuilderExtensions
+    {
+        public static IApplicationBuilder CheckDatabase(this IApplicationBuilder app, IWebHostEnvironment env)
         {
             using (var serviceScope = app.ApplicationServices.GetService<IServiceScopeFactory>().CreateScope())
             {
@@ -54,6 +55,8 @@ namespace MTGViewer.Data
                     AddDefaultLocation(context);
                 }
             }
+
+            return app;
         }
 
 

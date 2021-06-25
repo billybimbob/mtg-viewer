@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
 using MtgApiManager.Lib.Service;
+using MTGViewer.Data;
 using MTGViewer.Services;
 
 
@@ -13,9 +14,12 @@ namespace MTGViewer
 {
     public class Startup
     {
-        public Startup(IConfiguration configuration)
+        public IWebHostEnvironment _env;
+
+        public Startup(IConfiguration configuration, IWebHostEnvironment env)
         {
             Configuration = configuration;
+            _env = env;
         }
 
         public IConfiguration Configuration { get; }
@@ -29,14 +33,19 @@ namespace MTGViewer
             services.AddSingleton<DataCacheService>();
             services.AddSingleton<MtgServiceProvider>();
             services.AddScoped<MTGFetchService>();
+
+            if (_env.IsDevelopment())
+            {
+                services.AddDatabaseDeveloperPageExceptionFilter();
+            }
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-        public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
+        public void Configure(IApplicationBuilder app)
         {
-            MTGViewer.Data.CardHostingStartup.CheckDatabase(app, env);
+            app.CheckDatabase(_env);
 
-            if (env.IsDevelopment())
+            if (_env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
                 app.UseMigrationsEndPoint();
