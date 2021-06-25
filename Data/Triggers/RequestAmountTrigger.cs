@@ -27,24 +27,30 @@ namespace MTGViewer.Data.Triggers
                 return;
             }
 
-            var entry = _dbContext.Entry(trigContext.Entity);
+            var amount = trigContext.Entity;
 
-            if (entry.State != EntityState.Added)
+            if (trigContext.ChangeType == ChangeType.Modified)
             {
+                var entry = _dbContext.Entry(amount);
+                if (entry.State == EntityState.Detached)
+                {
+                    // attach just to load
+                    _dbContext.Attach(amount);
+                }
+
                 await entry.Reference(ca => ca.Location).LoadAsync();
             }
 
-            if (trigContext.Entity.Location == null)
+            if (amount.Location == null)
             {
-                var defaultLoc = await _dbContext.Locations.FindAsync(1);
-                trigContext.Entity.Location = defaultLoc;
+                amount.Location = await _dbContext.Locations.FindAsync(1);
             }
 
             // makes sure that non-owned locations cannot have a request
 
-            if (trigContext.Entity.Location.IsShared)
+            if (amount.Location.IsShared)
             {
-                trigContext.Entity.IsRequest = false;
+                amount.IsRequest = false;
             }
         }
 

@@ -35,7 +35,7 @@
     </thead>
 
     <tbody>
-        @foreach (var card in _dbCards)
+        @foreach (var card in _dbCards.Values)
         {
             var available = _availables[card.Id].Amount;
             <tr>
@@ -81,7 +81,7 @@
     </thead>
 
     <tbody>
-        @foreach (var card in _dbCards)
+        @foreach (var card in _dbCards.Values)
         {
             @if (_deckCards.TryGetValue(card.Id, out var inDeck)
                 && inDeck.Amount > 0)
@@ -127,7 +127,7 @@
     private MTGCardContext _context;
 
     private Location _deck;
-    private IReadOnlyList<Data.Card> _dbCards;
+    private SortedList<string, Card> _dbCards;
 
     private IDictionary<string, CardAmount> _deckCards;
     private IDictionary<string, CardAmount> _availables;
@@ -139,15 +139,19 @@
         {
             return;
         }
-        
+
         _busy = true;
         _context = DbFactory.CreateDbContext();
 
-        _dbCards = await _context.Cards
-            .Include(c => c.Colors)
-            .Include(c => c.Amounts)
-            .OrderBy(c => c.Name)
-            .ToListAsync();
+        _dbCards = new SortedList<string, Card>(
+            await _context.Cards.ToDictionaryAsync(c => c.Name));
+
+        _availables = await _context.Amounts
+            .Where(ca => ca.Location.OwnerId == default)
+            // TODO: change return location
+            // TODO: group amounts by cards
+            // .GroupBy(ca => ca.CardId)
+            .ToDictionaryAsync(ca => ca.CardId);
 
         _busy = false;
     }
@@ -156,15 +160,9 @@
     protected override async Task OnParametersSetAsync()
     {
         _deck = await GetOrCreateDeckAsync();
-
         _deckCards = _deck.Cards.ToDictionary(c => c.CardId);
 
         // TODO: change amounts to include request amounts
-
-        _availables = _dbCards.ToDictionary(
-            c => c.Id,
-            // TODO: change return location
-            c => c.Amounts.First(ca => ca.Location.IsShared));
     }
 
 
@@ -174,7 +172,6 @@
         {
             return await _context.Locations
                 .Include(l => l.Cards)
-                .ThenInclude(a => a.Card)
                 .SingleAsync(l => l.Id == DeckId);
         }
 
@@ -216,7 +213,7 @@
         }
         else
         {
-            var newAmnt = new CardAmount 
+            var newAmnt = new CardAmount
             {
                 Card = card,
                 Amount = 1,
@@ -270,13 +267,17 @@
 
         try {
             await _context.SaveChangesAsync();
+            await UpdateAvailableAsync();
 
             Logger.LogInformation($"successfully updated, trying to nav to index, at {NavigationManager.BaseUri}");
             NavigationManager.NavigateTo("Cards/Index"); // TODO: fix nav not working
         }
         catch (DbUpdateConcurrencyException ex)
         {
-            await HandleConcurrentException(ex);
+            var deckConflict = ex.Entries<Location>().SingleOrDefault();
+
+            await UpdateAvailableAsync();
+            await UpdateDeckAsync(deckConflict);
         }
         finally
         {
@@ -303,52 +304,41 @@
     }
 
 
-    private async Task HandleConcurrentException(DbUpdateConcurrencyException ex)
+    private async Task UpdateAvailableAsync()
     {
-        var amntConflicts = ex.Entries<CardAmount>();
-        var deckConflict = ex.Entries<Location>().SingleOrDefault();
-
-        var numConflicts = amntConflicts.Count() + (deckConflict != null ? 1 : 0);
-        Logger.LogError($"{numConflicts} conflicts");
-
-        await UpdateAvailableAsync(amntConflicts);
-        await UpdateDeckAsync(deckConflict);
-
-        // TODO: update razor page with db values
-    }
-
-
-    private async Task UpdateAvailableAsync(IEnumerable<EntityEntry<CardAmount>> conflicts)
-    {
-        var sharedConflicts = conflicts.Where(e => e.Entity.Location.IsShared);
-
-        if (!sharedConflicts.Any())
-        {
-            return;
-        }
-
-        var conflictIds = sharedConflicts
-            .Select(e => e.Entity.CardId)
-            .Distinct()
-            .ToArray();
-
-        // var sharedId = sharedConflicts.First().Entity.LocationId;
-        
-        var dbShares = await _context.Amounts
-            .Where(ca => conflictIds.Contains(ca.CardId) && ca.Location.IsShared) // TODO: change return location
-            // .Where(ca => conflictIds.Contains(ca.CardId) && ca.LocationId == sharedId)
+        var updatedAvails = await _context.Amounts
+            .Where(ca => ca.Location.OwnerId == default)
+            // TODO: change return location
+            // TODO: group amounts by cards
+            // .GroupBy(ca => ca.CardId)
             .AsNoTracking()
-            .ToDictionaryAsync(ca => ca.CardId);
+            .ToListAsync();
 
-        foreach(var conflict in sharedConflicts)
+        foreach(var dbAvail in updatedAvails)
         {
-            var amntProp = conflict.Property(ca => ca.Amount);
-            var availChange = amntProp.CurrentValue - amntProp.OriginalValue;
+            dbAvail.Card = await _context.Cards.FindAsync(dbAvail.CardId);
 
-            var dbAvail = dbShares[conflict.Entity.CardId];
+            if (!_dbCards.ContainsKey(dbAvail.Card.Name))
+            {
+                _dbCards.Add(dbAvail.Card.Name, dbAvail.Card);
+            }
 
-            conflict.Entity.Amount = dbAvail.Amount - availChange;
-            _context.MatchToken(conflict.Entity, dbAvail);
+            if (!_availables.TryGetValue(dbAvail.CardId, out var conflict))
+            {
+                _availables.Add(dbAvail.CardId, dbAvail);
+                _context.Attach(dbAvail);
+            }
+
+            else if (conflict.Amount != dbAvail.Amount)
+            {
+                var amntProp = _context.Entry(conflict)
+                    .Property(ca => ca.Amount);
+
+                var availChange = amntProp.CurrentValue - amntProp.OriginalValue;
+
+                conflict.Amount = dbAvail.Amount + availChange;
+                _context.MatchToken(conflict, dbAvail);
+            }
         }
     }
 
@@ -360,28 +350,33 @@
             return;
         }
 
-        var dbDeck = await _context.Locations
-            .Include(l => l.Cards)
+        var dbCards = await _context.Amounts
+            .Where(ca => ca.LocationId == _deck.Id)
             .AsNoTracking()
-            .SingleAsync(l => l.Id == _deck.Id);
-        
-        foreach(var dbCard in dbDeck.Cards)
+            .ToListAsync();
+
+        foreach(var dbCard in dbCards)
         {
-            if (!_deckCards.ContainsKey(dbCard.CardId))
+            if (_deckCards.TryGetValue(dbCard.CardId, out var currentCard))
             {
-                _deck.Cards.Add(dbCard);
-                _deckCards.Add(dbCard.CardId, dbCard);
-                _context.Attach(dbCard);
+                // overriding conflict amount, so transferring cancelled amount
+                var amntChange = dbCard.Amount - currentCard.Amount;
+                _availables[dbCard.CardId].Amount += amntChange;
+
+                _context.MatchToken(currentCard, dbCard);
             }
             else
             {
-                // overriding conflict amount, so transfersing cancelled amount
-                _availables[dbCard.CardId].Amount += dbCard.Amount;
+                // ensure reference in set to tracked entity
+                dbCard.Card = _availables[dbCard.CardId].Card;
+                dbCard.Location = _deck;
+
+                _deckCards.Add(dbCard.CardId, dbCard);
+                _context.Attach(dbCard);
             }
         }
 
-        _context.MatchToken(_deck, dbDeck);
-
+        await _context.MatchToken(_deck);
     }
 
 

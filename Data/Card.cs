@@ -9,6 +9,7 @@ namespace MTGViewer.Data
     {
         // not sure about the sha length range
         [RegularExpression(@"^[a-fA-F0-9-]{1,40}")]
+        [Key]
         public string Id { get; set; }
 
         [Required]

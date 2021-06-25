@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
+using System.Threading.Tasks;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
@@ -40,6 +41,12 @@ namespace MTGViewer.Data.Concurrency
             where E : Concurrent
         {
             context.MatchToken(current, context.Entry(dbValues).CurrentValues);
+        }
+
+        public static async Task MatchToken(this MTGCardContext context, Concurrent entity)
+        {
+            var dbProps = await context.Entry(entity).GetDatabaseValuesAsync();
+            context.MatchToken(entity, dbProps);
         }
 
 
