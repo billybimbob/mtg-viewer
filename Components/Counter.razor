@@ -1,21 +1,78 @@
 @namespace MTGViewer.Components
 
-<h1>Counter</h1>
+@inject IDbContextFactory<MTGCardContext> DbFactory
 
-<p>Current count: @currentCount</p>
+<div style="text-align:left">
+    <h1>Preview</h1>
 
-<button class="btn btn-primary" @onclick="IncrementCount">Click me</button>
+    <p>Here are some cards from our collection!</p>
+
+    <ul class="list-group list-group-horizontal">
+        @foreach ( int i in Enumerable.Range(0, 4))
+        {
+            var imgurl = getRandomCard()?.ImageUrl;
+            if (imgurl != null)
+            {
+                <li class="list-group-item"><img src="@imgurl" class="rounded"></li>
+            }
+        }
+    </ul>
+</div>
+
 
 @code {
 
-    /*
-    this file is just to test if components work
-    */
 
-    private int currentCount = 0;
+    private IEnumerable<Data.Card> _dbCards;
+    private IEnumerable<Data.Card> _viewCards;
 
-    private void IncrementCount()
+
+    private async Task FetchCardsAsync()
     {
-        currentCount++;
+        
+        using var context = DbFactory.CreateDbContext();
+
+        _dbCards = await context.Cards
+            .Include(c => c.Colors)
+            .Include(c => c.Amounts)
+            .OrderBy(c => c.Name)
+            .AsNoTracking()
+            .AsSplitQuery()
+            .ToListAsync();
+
+        _viewCards = _dbCards;
+
+
     }
+
+    protected override async Task OnInitializedAsync() //happens once
+    {
+
+        await FetchCardsAsync();
+    }
+
+
+    private Data.Card getRandomCard()
+    {
+ 
+        Random randgen = new Random();
+
+        if (_viewCards != null)
+        {
+            int randint = randgen.Next(0, _viewCards.Count());
+            Data.Card newcar = _viewCards.ToList()[randint];
+            return newcar;
+        }
+        else
+        {
+            return null;
+        }
+
+        
+    }
+
+
+
+
+
 }

@@ -100,7 +100,7 @@
     private async Task FetchCardsAsync()
     {
         _busy = true;
-
+        
         using var context = DbFactory.CreateDbContext();
 
         _dbCards = await context.Cards
