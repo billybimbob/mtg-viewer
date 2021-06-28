@@ -304,55 +304,21 @@
 
     private async Task UpdateDeckAsync(DbUpdateConcurrencyException ex)
     {
-        var deckConflict = ex.Entries<Location>()
-            .SingleOrDefault();
-
-        if (deckConflict == null || deckConflict.Entity.Id != _deck.Id)
+        if (!HasDeckConflicts(ex))
         {
             return;
         }
 
-        IEnumerable<CardAmount> dbCards = await _context.Amounts
+        var dbCards = await _context.Amounts
             .Where(ca => ca.LocationId == _deck.Id)
             .AsNoTracking()
             .ToListAsync();
 
-        var cardConflicts = ex.Entries<CardAmount>()
-            .Where(e => e.Entity.LocationId == _deck.Id)
-            .Select(e => e.Entity);
-
-        if (cardConflicts.Any())
-        {
-            dbCards = dbCards.Concat(cardConflicts)
-                .Distinct(new EntityComparer<CardAmount>(ca => ca.CardId));
-        }
-
-        var removedCards = _deckCards.Keys.Except(dbCards.Select(ca => ca.CardId));
-
-        foreach(var removedId in removedCards)
-        {
-            var deckAmount =_deckCards[removedId];
-
-            if (_context.Entry(deckAmount).State == EntityState.Unchanged)
-            {
-                _context.Remove(_deckCards[removedId]);
-                _deckCards.Remove(removedId);
-            }
-        }
+        MergeDeckRemoves(dbCards);
 
         foreach(var dbCard in dbCards)
         {
-            bool inDeck = _deckCards.TryGetValue(dbCard.CardId, out var currentCard);
-
-            if (inDeck)
-            {
-                // overriding conflict amount, so transferring cancelled amount
-                var amntChange = dbCard.Amount - currentCard.Amount;
-                _availables[dbCard.CardId].Amount += amntChange;
-
-                _context.MatchToken(currentCard, dbCard);
-            }
-            else
+            if (!_deckCards.TryGetValue(dbCard.CardId, out var currentCard))
             {
                 // ensure reference in set to tracked entity
                 dbCard.Card = _availables[dbCard.CardId].Card;
@@ -360,10 +326,68 @@
 
                 _deckCards.Add(dbCard.CardId, dbCard);
                 _context.Attach(dbCard);
+                continue;
             }
+
+            var currEntry = _context.Entry(currentCard);
+
+            if (currEntry.State == EntityState.Unchanged)
+            {
+                currentCard.Amount = dbCard.Amount;
+            }
+            else if (dbCard.Amount != currentCard.Amount)
+            {
+                // overriding conflict amount, so transferring 
+                // back cancelled amount
+                var originalAmnt = currEntry.Property(ca => ca.Amount).OriginalValue;
+                var dbDeckChange = dbCard.Amount - originalAmnt;
+
+                var availEntry = _context
+                    .Entry(_availables[dbCard.CardId])
+                    .Property(ca => ca.Amount);
+
+                availEntry.OriginalValue -= dbDeckChange;
+            }
+
+            _context.MatchToken(currentCard, dbCard);
         }
 
         await _context.MatchToken(_deck);
+    }
+
+
+    private bool HasDeckConflicts(DbUpdateConcurrencyException ex)
+    {
+        var deckConflict = ex.Entries<Location>()
+            .SingleOrDefault();
+
+        if (deckConflict != null && deckConflict.Entity.Id == _deck.Id)
+        {
+            return true;
+        }
+
+        var conflictsInDeck = ex.Entries<CardAmount>()
+            .Select(ca => ca.Entity.CardId)
+            .Intersect(_deckCards.Keys);
+
+        return conflictsInDeck.Any();
+    }
+
+
+    private void MergeDeckRemoves(IEnumerable<CardAmount> dbDeckCards)
+    {
+        var removedCards = _deckCards.Keys.Except(dbDeckCards.Select(ca => ca.CardId));
+
+        foreach(var removedId in removedCards)
+        {
+            var currAmount = _deckCards[removedId];
+
+            if (_context.Entry(currAmount).State == EntityState.Unchanged)
+            {
+                _context.Remove(currAmount);
+                _deckCards.Remove(removedId);
+            }
+        }
     }
 
 
@@ -386,11 +410,11 @@
                 _dbCards.Add(dbAvail.Card.Name, dbAvail.Card);
             }
 
+
             if (!_availables.TryGetValue(dbAvail.CardId, out var conflict))
             {
                 _availables.Add(dbAvail.CardId, dbAvail);
                 _context.Attach(dbAvail);
-
             }
             else if (conflict.Amount != dbAvail.Amount)
             {
@@ -408,7 +432,7 @@
 
     public void Dispose()
     {
-        _context.Dispose();
+        _context?.Dispose();
     }
 
 }

@@ -27,7 +27,8 @@ namespace MTGViewer.Data.Concurrency
         public static void MatchToken(
             this MTGCardContext context, Concurrent current, PropertyValues dbProps)
         {
-            var tokenProp = context.Entry(current).Property(c => c.ConcurrentToken);
+            var tokenProp = context.Entry(current)
+                .Property(c => c.ConcurrentToken);
 
 #if SQLiteVersion
             tokenProp.OriginalValue = dbProps.GetValue<Guid>(tokenProp.Metadata);
@@ -40,12 +41,16 @@ namespace MTGViewer.Data.Concurrency
         public static void MatchToken<E>(this MTGCardContext context, E current, E dbValues)
             where E : Concurrent
         {
-            context.MatchToken(current, context.Entry(dbValues).CurrentValues);
+            context.MatchToken(
+                current,
+                context.Entry(dbValues).CurrentValues);
         }
 
         public static async Task MatchToken(this MTGCardContext context, Concurrent entity)
         {
-            var dbProps = await context.Entry(entity).GetDatabaseValuesAsync();
+            var dbProps = await context.Entry(entity)
+                .GetDatabaseValuesAsync();
+
             context.MatchToken(entity, dbProps);
         }
 
