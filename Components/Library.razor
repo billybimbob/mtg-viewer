@@ -108,6 +108,7 @@
             .Include(c => c.Amounts)
             // .ThenInclude(a => a.Location)
             .OrderBy(c => c.Name)
+            .AsSplitQuery()
             .AsNoTracking()
             .ToListAsync();
 
