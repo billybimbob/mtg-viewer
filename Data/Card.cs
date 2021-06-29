@@ -15,7 +15,7 @@ namespace MTGViewer.Data
         [Required]
         public string Name { get; set; }
 
-        public ICollection<Name> Names { get; set; } = new HashSet<Name>();
+        public ICollection<Name> Names { get; init; } = new HashSet<Name>();
 
         public string Layout { get; set; }
 
@@ -25,13 +25,13 @@ namespace MTGViewer.Data
         [Display(Name = "Converted Mana")]
         public int? Cmc { get; set; }
 
-        public ICollection<Color> Colors { get; set; } = new HashSet<Color>();
+        public ICollection<Color> Colors { get; init; } = new HashSet<Color>();
 
-        public ICollection<SuperType> SuperTypes { get; set; } = new HashSet<SuperType>();
+        public ICollection<SuperType> SuperTypes { get; init; } = new HashSet<SuperType>();
 
-        public ICollection<Type> Types { get; set; } = new HashSet<Type>();
+        public ICollection<Type> Types { get; init; } = new HashSet<Type>();
 
-        public ICollection<SubType> SubTypes { get; set; } = new HashSet<SubType>();
+        public ICollection<SubType> SubTypes { get; init; } = new HashSet<SubType>();
 
         public string Rarity { get; set; }
 

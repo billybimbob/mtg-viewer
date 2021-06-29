@@ -1,5 +1,9 @@
+using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+
 using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data.Concurrency;
 
@@ -36,9 +40,91 @@ namespace MTGViewer.Data
 
         public bool IsRequest { get; set; }
 
-        [Range(1, int.MaxValue)]
+        [Range(0, int.MaxValue)]
         public int Amount { get; set; }
     }
 
+
+    [NotMapped]
+    public class AmountGroup : IEnumerable<CardAmount>
+    {
+        private CardAmount? _request;
+
+        public AmountGroup(CardAmount applied, CardAmount? request = null)
+        {
+            Applied = applied;
+            Request = request;
+        }
+
+        public CardAmount Applied { get; }
+
+        public CardAmount? Request
+        {
+            get => _request;
+            set
+            {
+                if (value != null
+                    && (!object.ReferenceEquals(Applied.Card, value.Card)
+                        || !object.ReferenceEquals(Applied.Location, value.Location)))
+                {
+                    throw new ArgumentException("Card ids are not the same");
+                }
+
+                _request = value;
+            }
+        }
+
+        public string CardId => Applied.Card?.Id
+            ?? Request?.Card?.Id
+            ?? Applied.CardId;
+
+        public Card Card
+        {
+            get => Applied.Card;
+            set
+            {
+                Applied.Card = value;
+
+                if (Request != null)
+                {
+                    Request.Card = value;
+                }
+            }
+        }
+
+        public Location Location
+        {
+            get => Applied.Location;
+            set
+            {
+                Applied.Location = value;
+
+                if (Request != null)
+                {
+                    Request.Location = value;
+                }
+            }
+        }
+
+        public int Amount =>
+            Applied.Amount + (Request?.Amount ?? 0);
+
+
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return GetEnumerator();
+        }
+
+
+        public IEnumerator<CardAmount> GetEnumerator()
+        {
+            yield return Applied;
+
+            if (Request != null)
+            {
+                yield return Request;
+            }
+        }
+    }
 
 }
