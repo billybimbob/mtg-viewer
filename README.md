@@ -17,27 +17,52 @@ dotnet tool install --global dotnet-ef
 
 The development database is sqlite, where the database is hosted on the local machine, and is not synchronized with the repo.
 
-Run all commands below in the project directory:
+The database is defined into two separate contexts:
+
+* `CardDbContext`: all card and deck data
+* `UserDbContext`: all user and account data
+
+With all of the ef commands listed below, the context must be specified, using the `-c` argument, and make sure to run all commands below in the project directory.
 
 ### Add Database Migrations and Schema
 
-```powershell
-dotnet ef migrations add InitialCreate
-dotnet ef database update
-```
+ For the `migrations add` commands, the out directory is recommended to be specified, using the `-o` argument. If the out directory is not specified, then the default target will be the `Migrations` folder.
+
+The mains steps are to create the database schema with ef core:
+
+1. Add/create the database migrations
+
+    ```powershell
+    dotnet ef migrations add AddUsers -c UserDbContext -o Migrations\Users
+    dotnet ef migrations add AddCards -c CardDbContext -o Migrations\Cards
+    ```
+
+2. Apply/update the database migrations to the actual database
+
+    ```powershell
+    dotnet ef database update -c UserDbContext
+    dotnet ef database update -c CardDbContext
+    ```
 
 ### Reset Database
 
 If the schema is modified, the best approach is to just drop all of the previous tables and rebuild the database.
 
-1. Delete the `Migrations` folder
-2. Run the following lines:
+1. Drop the database:
 
-```powershell
-dotnet ef database drop
-dotnet ef migrations add InitialCreate
-dotnet ef database update
-```
+    ```powershell
+    dotnet ef database drop -c UserDbContext
+    dotnet ef database drop -c CardDbContext
+    ```
+
+2. Delete the  files in the `Migrations` folder
+
+    ```powershell
+    rm -r Migrations\Users
+    rm -r Migrations\Cards
+    ```
+
+3. Repeat the migration and update steps [above](#add-database-migrations-and-schema)
 
 ## Run the Application
 

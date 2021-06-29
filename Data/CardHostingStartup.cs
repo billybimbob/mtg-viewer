@@ -21,26 +21,26 @@ namespace MTGViewer.Data
                 var config = context.Configuration;
                 var provider = config.GetValue("Provider", "Sqlite");
 
-                switch (provider) {
+                switch (provider)
+                {
+                    case "SqlServer":
 
-                case "SqlServer":
+                        services.AddTriggeredDbContextFactory<CardDbContext>(options => options
+                            .UseSqlServer(config.GetConnectionString("MTGCardContext"))
+                                // TODO: change connection string name
+                            .UseTriggers(triggers => triggers
+                                .AddTrigger<Triggers.RequestAmountTrigger>()) );
+                        break;
 
-                    services.AddTriggeredDbContextFactory<CardDbContext>(options => options
-                        .UseSqlServer(config.GetConnectionString("MTGCardContext"))
-                            // TODO: change connection string name
-                        .UseTriggers(triggers => triggers
-                            .AddTrigger<Triggers.RequestAmountTrigger>()) );
-                    break;
+                    case "Sqlite":
+                    default:
 
-                case "Sqlite":
-                default:
-
-                    services.AddTriggeredDbContextFactory<CardDbContext>(options => options
-                        .UseSqlite(config.GetConnectionString("MTGCardContext"))
-                        .UseTriggers(triggers => triggers
-                            .AddTrigger<Triggers.GuidTokenTrigger>()
-                            .AddTrigger<Triggers.RequestAmountTrigger>()) );
-                    break;
+                        services.AddTriggeredDbContextFactory<CardDbContext>(options => options
+                            .UseSqlite(config.GetConnectionString("MTGCardContext"))
+                            .UseTriggers(triggers => triggers
+                                .AddTrigger<Triggers.GuidTokenTrigger>()
+                                .AddTrigger<Triggers.RequestAmountTrigger>()) );
+                        break;
                 }
 
                 services.AddScoped<CardDbContext>(provider => provider

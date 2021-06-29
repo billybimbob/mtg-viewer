@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
 using MTGViewer.Data;
@@ -6,7 +5,7 @@ using MTGViewer.Data.Concurrency;
 using MTGViewer.Areas.Identity.Data;
 
 
-public class CardDbContext : IdentityDbContext<CardUser>
+public class CardDbContext : DbContext
 {
     public CardDbContext(DbContextOptions<CardDbContext> options)
         : base(options)
@@ -20,7 +19,8 @@ public class CardDbContext : IdentityDbContext<CardUser>
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        base.OnModelCreating(modelBuilder);
+        modelBuilder.Entity<CardUser>()
+            .ToTable("AspNetUsers", t => t.ExcludeFromMigrations());
 
         if (Database.IsSqlite())
         {
