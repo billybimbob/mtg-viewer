@@ -21,10 +21,10 @@ namespace MTGViewer.Pages.Cards
     public class CreateModel : PageModel
     {
         private readonly ILogger<CreateModel> _logger;
-        private readonly MTGCardContext _context;
+        private readonly CardDbContext _context;
         private readonly MTGFetchService _fetch;
 
-        public CreateModel(MTGCardContext context, MTGFetchService fetch, ILogger<CreateModel> logger)
+        public CreateModel(CardDbContext context, MTGFetchService fetch, ILogger<CreateModel> logger)
         {
             _logger = logger;
             _context = context;

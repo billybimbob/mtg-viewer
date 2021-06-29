@@ -16,7 +16,7 @@ namespace MTGViewer.Areas.Identity
         {
             builder.ConfigureServices((context, services) => {
                 services.AddDefaultIdentity<CardUser>(options => options.SignIn.RequireConfirmedAccount = true)
-                    .AddEntityFrameworkStores<MTGCardContext>();
+                    .AddEntityFrameworkStores<CardDbContext>();
             });
         }
     }

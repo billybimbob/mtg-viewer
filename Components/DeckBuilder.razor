@@ -6,7 +6,7 @@
 @implements IDisposable
 
 @inject NavigationManager NavigationManager
-@inject IDbContextFactory<MTGCardContext> DbFactory
+@inject IDbContextFactory<CardDbContext> DbFactory
 @inject ILogger<DeckBuilder> Logger
 
 
@@ -133,7 +133,7 @@
 
 
     private bool _busy;
-    private MTGCardContext _context;
+    private CardDbContext _context;
 
     private Location _deck;
     private SortedList<string, Card> _dbCards;

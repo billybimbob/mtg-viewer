@@ -18,9 +18,9 @@ namespace MTGViewer.Pages.Decks
     public class IndexModel : PageModel
     {
         private readonly UserManager<CardUser> _userManager;
-        private readonly MTGCardContext _context;
+        private readonly CardDbContext _context;
 
-        public IndexModel(UserManager<CardUser> userManager, MTGCardContext context)
+        public IndexModel(UserManager<CardUser> userManager, CardDbContext context)
         {
             _userManager = userManager;
             _context = context;

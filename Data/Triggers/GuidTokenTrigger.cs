@@ -1,4 +1,3 @@
-#if SQLiteVersion
 using System;
 using System.Threading;
 using System.Threading.Tasks;
@@ -36,7 +35,7 @@ namespace MTGViewer.Data.Triggers
             {
                 // var oldTok = trigContext.Entity.ConcurrentToken;
 
-                trigContext.Entity.ConcurrentToken = Guid.NewGuid();
+                trigContext.Entity.LiteToken = Guid.NewGuid();
 
                 // var newTok = trigContext.Entity.ConcurrentToken;
                 // _logger.LogInformation($"old: {oldTok}, vs new: {newTok}");
@@ -46,4 +45,3 @@ namespace MTGViewer.Data.Triggers
         }
     }
 }
-#endif

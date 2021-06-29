@@ -18,22 +18,33 @@ namespace MTGViewer.Data
         {
             webBuilder.ConfigureServices((context, services) =>
             {
-#if SQLiteVersion
-                services.AddTriggeredDbContextFactory<MTGCardContext>(options => options
-                    .UseSqlite(context.Configuration.GetConnectionString("MTGCardContext"))
-                    .UseTriggers(triggers => triggers
-                        .AddTrigger<Triggers.GuidTokenTrigger>()
-                        .AddTrigger<Triggers.RequestAmountTrigger>()) );
-#else                    
-                services.AddTriggerDbContextFactory<MTGCardContext>(options => options
-                    .UseSqlServer(context.Configuration.GetConnectionString("MTGCardContext"))
-                    // TODO: change connection string name
-                    .UseTriggers(triggers => triggers
-                        .AddTrigger<Triggers.RequestAmountTrigger>()) );
-#endif
+                var config = context.Configuration;
+                var provider = config.GetValue("Provider", "Sqlite");
 
-                services.AddScoped<MTGCardContext>(provider => provider
-                    .GetRequiredService<IDbContextFactory<MTGCardContext>>()
+                switch (provider) {
+
+                case "SqlServer":
+
+                    services.AddTriggeredDbContextFactory<CardDbContext>(options => options
+                        .UseSqlServer(config.GetConnectionString("MTGCardContext"))
+                            // TODO: change connection string name
+                        .UseTriggers(triggers => triggers
+                            .AddTrigger<Triggers.RequestAmountTrigger>()) );
+                    break;
+
+                case "Sqlite":
+                default:
+
+                    services.AddTriggeredDbContextFactory<CardDbContext>(options => options
+                        .UseSqlite(config.GetConnectionString("MTGCardContext"))
+                        .UseTriggers(triggers => triggers
+                            .AddTrigger<Triggers.GuidTokenTrigger>()
+                            .AddTrigger<Triggers.RequestAmountTrigger>()) );
+                    break;
+                }
+
+                services.AddScoped<CardDbContext>(provider => provider
+                    .GetRequiredService<IDbContextFactory<CardDbContext>>()
                     .CreateDbContext());
             });
         }
@@ -46,7 +57,7 @@ namespace MTGViewer.Data
         {
             using (var serviceScope = app.ApplicationServices.GetService<IServiceScopeFactory>().CreateScope())
             {
-                var contextFactory = serviceScope.ServiceProvider.GetRequiredService<IDbContextFactory<MTGCardContext>>();
+                var contextFactory = serviceScope.ServiceProvider.GetRequiredService<IDbContextFactory<CardDbContext>>();
                 using var context = contextFactory.CreateDbContext();
                 context.Database.EnsureCreated();
 
@@ -60,7 +71,7 @@ namespace MTGViewer.Data
         }
 
 
-        private static void AddDefaultLocation(MTGCardContext context)
+        private static void AddDefaultLocation(CardDbContext context)
         {
             if (context.Locations.Any())
             {

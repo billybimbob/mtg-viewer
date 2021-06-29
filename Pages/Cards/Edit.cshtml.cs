@@ -14,9 +14,9 @@ namespace MTGViewer.Pages.Cards
     [Authorize]
     public class EditModel : PageModel
     {
-        private readonly MTGCardContext _context;
+        private readonly CardDbContext _context;
 
-        public EditModel(MTGCardContext context)
+        public EditModel(CardDbContext context)
         {
             _context = context;
         }

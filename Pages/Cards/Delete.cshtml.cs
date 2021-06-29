@@ -14,9 +14,9 @@ namespace MTGViewer.Pages.Cards
     [Authorize]
     public class DeleteModel : PageModel
     {
-        private readonly MTGCardContext _context;
+        private readonly CardDbContext _context;
 
-        public DeleteModel(MTGCardContext context)
+        public DeleteModel(CardDbContext context)
         {
             _context = context;
         }

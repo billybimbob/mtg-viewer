@@ -4,10 +4,6 @@
     <TargetFramework>net5.0</TargetFramework>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
-    <DefineConstants>TRACE;SQLiteVersion</DefineConstants>
-  </PropertyGroup>
-
   <ItemGroup>
     <PackageReference Include="EntityFrameworkCore.Triggered" Version="2.3.2" />
     <PackageReference Include="Microsoft.AspNetCore.Diagnostics.EntityFrameworkCore" Version="5.0.7" />

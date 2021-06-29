@@ -29,7 +29,7 @@ namespace MTGViewer.Services
         public MTGFetchService(
             MtgServiceProvider provider,
             DataCacheService cache, 
-            MTGCardContext dbContext,
+            CardDbContext dbContext,
             ILogger<MTGFetchService> logger)
         {
             _logger = logger;

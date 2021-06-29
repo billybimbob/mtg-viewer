@@ -16,9 +16,9 @@ namespace MTGViewer.Pages.Decks
     public class BuilderModel : PageModel
     {
         private readonly UserManager<CardUser> _userManager;
-        private readonly MTGCardContext _context;
+        private readonly CardDbContext _context;
 
-        public BuilderModel(UserManager<CardUser> userManager, MTGCardContext context)
+        public BuilderModel(UserManager<CardUser> userManager, CardDbContext context)
         {
             _userManager = userManager;
             _context = context;

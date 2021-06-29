@@ -11,10 +11,10 @@ namespace MTGViewer.Data.Triggers
 {
     public class RequestAmountTrigger : IBeforeSaveTrigger<CardAmount>
     {
-        private readonly MTGCardContext _dbContext;
+        private readonly CardDbContext _dbContext;
         private readonly ILogger<GuidTokenTrigger> _logger;
 
-        public RequestAmountTrigger(MTGCardContext dbContext, ILogger<GuidTokenTrigger> logger)
+        public RequestAmountTrigger(CardDbContext dbContext, ILogger<GuidTokenTrigger> logger)
         {
             _dbContext = dbContext;
             _logger = logger;

@@ -11,9 +11,9 @@ namespace MTGViewer.Pages.Cards
 {
     public class DetailsModel : PageModel
     {
-        private readonly MTGCardContext _context;
+        private readonly CardDbContext _context;
 
-        public DetailsModel(MTGCardContext context)
+        public DetailsModel(CardDbContext context)
         {
             _context = context;
         }
