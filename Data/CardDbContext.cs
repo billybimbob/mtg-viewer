@@ -43,7 +43,4 @@ public class CardDbContext : DbContext
             .HasKey(ca => new { ca.CardId, ca.LocationId, ca.IsRequest });
     }
 
-
-
-
 }

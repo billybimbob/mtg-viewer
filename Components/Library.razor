@@ -105,7 +105,7 @@
 
         _dbCards = await context.Cards
             .Include(c => c.Colors)
-            .Include(c => c.Amounts)
+            .Include(c => c.Amounts.Where(ca => !ca.IsRequest))
             // .ThenInclude(a => a.Location)
             .OrderBy(c => c.Name)
             .AsSplitQuery()

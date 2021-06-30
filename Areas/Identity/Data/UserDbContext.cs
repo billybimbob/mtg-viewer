@@ -11,5 +11,4 @@ namespace MTGViewer.Areas.Identity.Data
         {
         }
     }
-
 }

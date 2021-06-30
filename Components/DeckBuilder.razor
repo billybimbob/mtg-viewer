@@ -97,16 +97,9 @@
                     </td>
 
                     <td>@card.SetName</td>
-                    <td>@inDeck.Applied.Amount</td>
 
-                    @if (inDeck.Request == null)
-                    {
-                        <td>0</td>
-                    }
-                    else
-                    {
-                        <td>@inDeck.Request.Amount</td>
-                    }
+                    <td>@inDeck.Applied.Amount</td>
+                    <td>@(inDeck.Request?.Amount ?? 0)</td>
 
                     <td>
                         <button title="@card.Name Remove"
@@ -169,10 +162,6 @@
     protected override async Task OnParametersSetAsync()
     {
         _deck = await GetOrCreateDeckAsync();
-
-        var deckCards = await _context.Amounts
-            .Where(ca => ca.LocationId == _deck.Id)
-            .ToListAsync();
 
         _deckCards = _deck.Cards
             .GroupBy(ca => ca.CardId)
@@ -385,7 +374,7 @@
 
     private void PrepareChanges()
     {
-        foreach(var cardAmnt in _deck.Cards)
+        foreach(var cardAmnt in _deck.Cards.ToList())
         {
             if (cardAmnt.Amount == 0)
             {
@@ -409,9 +398,9 @@
 
     private void CheckOverdraftChanges()
     {
-        foreach (var cardEntry in _deckCards)
+        foreach (var cardGroup in _deckCards.Values)
         {
-            FixOverdraft(cardEntry.Value.Card);
+            FixOverdraft(cardGroup.Card);
         }
     }
 
@@ -423,25 +412,21 @@
             return;
         }
 
-        var dbCards = await _context.Amounts
+        var dbDeckCards = await _context.Amounts
             .Where(ca => ca.LocationId == _deck.Id)
             .AsNoTracking()
             .ToListAsync();
 
-        MergeDeckRemoves(dbCards);
+        MergeDeckRemoves(dbDeckCards);
 
-        var dbGroups = dbCards.GroupBy(
-            ca => ca.CardId,
-            (id, g) => new AmountGroup(
-                g.Single(ca => !ca.IsRequest),
-                g.SingleOrDefault(ca => ca.IsRequest) ));
-
-        foreach(var dbGroup in dbGroups)
+        foreach (var dbCard in dbDeckCards)
         {
-            TrackIfNewGroup(dbGroup);
+            MergeDeckCardConflict(dbCard);
+        }
 
-            MergeCardOrRequest(dbGroup.Applied);
-            MergeCardOrRequest(dbGroup.Request);
+        foreach(var cardGroup in dbDeckCards.GroupBy(ca => ca.CardId))
+        {
+            await TrackNewCard(cardGroup);
         }
 
         await _context.MatchToken(_deck);
@@ -486,34 +471,8 @@
     }
 
 
-    private void TrackIfNewGroup(AmountGroup dbGroup)
+    private void MergeDeckCardConflict(CardAmount dbDeckCard)
     {
-        if (_deckCards.ContainsKey(dbGroup.CardId))
-        {
-            return;
-        }
-
-        // ensure reference in set to tracked entity
-        dbGroup.Card = _availables[dbGroup.CardId].Card;
-        dbGroup.Location = _deck;
-
-        _deckCards.Add(dbGroup.CardId, dbGroup);
-        _context.Attach(dbGroup.Applied);
-
-        if (dbGroup.Request != null)
-        {
-            _context.Attach(dbGroup.Request);
-        }
-    }
-
-
-    private void MergeCardOrRequest(CardAmount dbDeckCard)
-    {
-        if (dbDeckCard == null)
-        {
-            return;
-        }
-
         AmountGroup localDeckGroup;
 
         if (!_deckCards.TryGetValue(dbDeckCard.CardId, out localDeckGroup))
@@ -560,6 +519,30 @@
         }
 
         _context.MatchToken(localDeckCard, dbDeckCard);
+    }
+
+
+    private async Task TrackNewCard(IGrouping<string, CardAmount> cardGroup)
+    {
+        var cardId = cardGroup.Key;
+
+        if (_deckCards.ContainsKey(cardId))
+        {
+            return;
+        }
+
+        // ensure reference in set to tracked entity
+        var amntGroup = InitGroup(cardGroup);
+
+        if (amntGroup.Request != null)
+        {
+            _context.Attach(amntGroup.Request);
+        }
+
+        amntGroup.Card = await _context.Cards.FindAsync(cardId);
+        amntGroup.Location = _deck;
+
+        _deckCards.Add(cardId, amntGroup);
     }
 
 

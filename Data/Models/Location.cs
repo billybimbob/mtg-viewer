@@ -83,11 +83,14 @@ namespace MTGViewer.Data
             get => Applied.Card;
             set
             {
-                Applied.Card = value;
-
-                if (Request != null)
+                if (value == null)
                 {
-                    Request.Card = value;
+                    return;
+                }
+
+                foreach (var amount in this)
+                {
+                    amount.Card = value;
                 }
             }
         }
@@ -97,11 +100,9 @@ namespace MTGViewer.Data
             get => Applied.Location;
             set
             {
-                Applied.Location = value;
-
-                if (Request != null)
+                foreach(var amount in this)
                 {
-                    Request.Location = value;
+                    amount.Location = value;
                 }
             }
         }
