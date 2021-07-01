@@ -15,7 +15,8 @@
 <button title="Save Deck"
         type="button"
         class="btn btn-secondary"
-        @onclick="CommitChangesAsync">
+        @onclick="CommitChangesAsync"
+        disabled="@HasNoChanges">
     Save Changes
 </button>
 
@@ -135,6 +136,9 @@
     private IDictionary<string, CardAmount> _availables;
 
 
+    private bool HasNoChanges => !_context.ChangeTracker.HasChanges();
+
+
     protected override async Task OnInitializedAsync()
     {
         if (_busy)
@@ -167,7 +171,7 @@
             .GroupBy(ca => ca.CardId)
             .ToDictionary(g => g.Key, InitGroup);
 
-        CheckOverdraftChanges();
+        FixDeckState();
     }
 
 
@@ -214,10 +218,25 @@
                 Amount = 0
             };
 
-            _context.Attach(applied);
+            _context.Add(applied);
         }
 
         return new AmountGroup(applied, request);
+    }
+
+
+    private void RemoveDeckAmount(CardAmount removedAmount)
+    {
+        if (!removedAmount.IsRequest)
+        {
+            _deckCards.Remove(removedAmount.CardId);
+        }
+        else if (_deckCards.TryGetValue(removedAmount.CardId, out var removedGroup))
+        {
+            removedGroup.Request = null;
+        }
+
+        _context.Remove(removedAmount);
     }
 
 
@@ -251,7 +270,7 @@
             var newGroup = new AmountGroup(newAmnt);
 
             _deckCards.Add(card.Id, newGroup);
-            _context.Attach(newAmnt);
+            _context.Add(newAmnt);
         }
 
         availAmnt.Amount -= 1;
@@ -321,7 +340,7 @@
                     IsRequest = true
                 };
 
-                _context.Attach(deckGroup.Request);
+                _context.Add(deckGroup.Request);
             }
 
             // transfer overdraft to request
@@ -365,7 +384,8 @@
         finally
         {
             await UpdateAvailableAsync();
-            CheckOverdraftChanges();
+
+            FixDeckState();
 
             _busy = false;
         }
@@ -378,7 +398,7 @@
         {
             if (cardAmnt.Amount == 0)
             {
-                _context.Remove(cardAmnt);
+                RemoveDeckAmount(cardAmnt);
             }
             else if (_context.Entry(cardAmnt).State == EntityState.Deleted)
             {
@@ -396,7 +416,7 @@
     }
 
 
-    private void CheckOverdraftChanges()
+    private void FixDeckState()
     {
         foreach (var cardGroup in _deckCards.Values)
         {
@@ -426,7 +446,7 @@
 
         foreach(var cardGroup in dbDeckCards.GroupBy(ca => ca.CardId))
         {
-            await TrackNewCard(cardGroup);
+            await TrackNewCardAsync(cardGroup);
         }
 
         await _context.MatchToken(_deck);
@@ -465,7 +485,7 @@
         {
             if (_context.Entry(removedCard).State == EntityState.Unchanged)
             {
-                _context.Remove(removedCard);
+                RemoveDeckAmount(removedCard);
             }
         }
     }
@@ -498,16 +518,10 @@
 
         var currEntry = _context.Entry(localDeckCard);
 
-        if (currEntry.State == EntityState.Unchanged)
-        {
-            localDeckCard.Amount = dbDeckCard.Amount;
-        }
-
-        else if (dbDeckCard.Amount != localDeckCard.Amount)
+        if (currEntry.State != EntityState.Unchanged)
         {
             // overriding conflict amount, so transferring 
             // back cancelled amount to available
-
             var lastReadAmnt = currEntry.Property(ca => ca.Amount).OriginalValue;
             var dbAmntChange = dbDeckCard.Amount - lastReadAmnt;
 
@@ -517,12 +531,16 @@
 
             availEntry.OriginalValue -= dbAmntChange;
         }
+        else
+        {
+            localDeckCard.Amount = dbDeckCard.Amount;
+        }
 
         _context.MatchToken(localDeckCard, dbDeckCard);
     }
 
 
-    private async Task TrackNewCard(IGrouping<string, CardAmount> cardGroup)
+    private async Task TrackNewCardAsync(IGrouping<string, CardAmount> cardGroup)
     {
         var cardId = cardGroup.Key;
 
@@ -531,16 +549,26 @@
             return;
         }
 
-        // ensure reference in set to tracked entity
+        var card = await _context.Cards.FindAsync(cardId);
+
+        foreach (var amount in cardGroup)
+        {
+            // ensure reference in set to tracked entity
+            amount.Card = card;
+            amount.Location = _deck;
+        }
+
         var amntGroup = InitGroup(cardGroup);
+
+        if (_context.Entry(amntGroup.Applied).State == EntityState.Detached)
+        {
+            _context.Attach(amntGroup.Applied);
+        }
 
         if (amntGroup.Request != null)
         {
             _context.Attach(amntGroup.Request);
         }
-
-        amntGroup.Card = await _context.Cards.FindAsync(cardId);
-        amntGroup.Location = _deck;
 
         _deckCards.Add(cardId, amntGroup);
     }
@@ -578,8 +606,7 @@
             _availables.Add(dbAvailable.CardId, dbAvailable);
             _context.Attach(dbAvailable);
         }
-
-        else if (localAvailable.Amount != dbAvailable.Amount)
+        else
         {
             var localAmnt = _context.Entry(localAvailable).Property(ca => ca.Amount);
             var localAvailTaken = localAmnt.CurrentValue - localAmnt.OriginalValue;
