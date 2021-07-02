@@ -14,11 +14,62 @@
 
 <button title="Save Deck"
         type="button"
-        class="btn btn-secondary"
-        @onclick="CommitChangesAsync"
-        disabled="@HasNoChanges">
+        class="btn btn-secondary mb-3"
+        disabled="@HasNoChanges"
+        @onclick="CommitChangesAsync">
     Save Changes
 </button>
+
+
+@if (_result == SaveResult.Success)
+{
+    <div class="alert alert-success d-flex align-items-center alert-dismissible fade show" role="alert">
+        <svg class="bi bi-check-circle-fill flex-shrink-0 mr-4" 
+            viewBox="0 0 16 16"
+            width="24"
+            height="24"
+            fill="currentColor"
+            role="img"
+            aria-label="Success:">
+            <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zm-3.97-3.03a.75.75 0 0 0-1.08.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-.01-1.05z"/>
+        </svg>
+        <div>
+            Save was succesful, and values have been updated
+        </div>
+        <button type="button" 
+                class="close" 
+                aria-label="Close Success"
+                @onclick="() => _result = SaveResult.None">
+            <span aria-hidden="true">&times;</span>
+        </button>
+    </div>
+}
+else if (_result == SaveResult.Error)
+{
+    <div class="alert alert-danger d-flex align-items-center alert-dismissible fade show" role="alert">
+        <svg class="bi bi-exclamation-triangle-fill flex-shrink-0 mr-4"
+            viewBox="0 0 16 16"
+            width="24"
+            height="24"
+            fill="currentColor"
+            role="img"
+            aria-label="Danger:">
+            <path d="M8.982 1.566a1.13 1.13 0 0 0-1.96 0L.165 13.233c-.457.778.091 1.767.98 1.767h13.713c.889 0 1.438-.99.98-1.767L8.982 1.566zM8 5c.535 0 .954.462.9.995l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 5.995A.905.905 0 0 1 8 5zm.002 6a1 1 0 1 1 0 2 1 1 0 0 1 0-2z"/>
+        </svg>
+        <div>
+            <p>There are conflicts while trying to save, and values have been updated. </p>
+            <hr>
+            <p>Save again to confirm</p>
+        </div>
+        <button type="button" 
+                class="close" 
+                aria-label="Close Error"
+                @onclick="() => _result = SaveResult.None">
+            <span aria-hidden="true">&times;</span>
+        </button>
+    </div>
+}
+
 
 <h2>Available Cards</h2>
 
@@ -127,6 +178,7 @@
 
 
     private bool _busy;
+    private SaveResult _result;
     private CardDbContext _context;
 
     private Location _deck;
@@ -138,6 +190,13 @@
 
     private bool HasNoChanges => !_context.ChangeTracker.HasChanges();
 
+
+    public enum SaveResult
+    {
+        None,
+        Success,
+        Error
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -160,6 +219,7 @@
             .ToDictionaryAsync(ca => ca.CardId);
 
         _busy = false;
+        _result = SaveResult.None;
     }
 
 
@@ -225,72 +285,68 @@
     }
 
 
-    private void RemoveDeckAmount(CardAmount removedAmount)
-    {
-        if (!removedAmount.IsRequest)
-        {
-            _deckCards.Remove(removedAmount.CardId);
-        }
-        else if (_deckCards.TryGetValue(removedAmount.CardId, out var removedGroup))
-        {
-            removedGroup.Request = null;
-        }
-
-        _context.Remove(removedAmount);
-    }
-
-
     public void Dispose()
     {
-        _context?.Dispose();
+        if (_context != null)
+        {
+            _context.ChangeTracker.StateChanged -= (_, _) => _result = SaveResult.None;
+            _context.Dispose();
+        }
     }
 
 
     private void AddCardToDeck(Card card)
     {
-        if (!_availables.TryGetValue(card.Id, out var availAmnt))
+        CardAmount availAmnt;
+        
+        if (!_availables.TryGetValue(card.Id, out availAmnt))
         {
             Logger.LogError($"card {card.Id} is not a listed avaliable card");
             return;
         }
 
-        if (_deckCards.TryGetValue(card.Id, out var deckAmnt))
-        {
-            deckAmnt.Applied.Amount += 1;
-        }
-        else
+        AmountGroup deckGroup;
+
+        if (!_deckCards.TryGetValue(card.Id, out deckGroup))
         {
             var newAmnt = new CardAmount
             {
                 Card = card,
                 Location = _deck,
-                Amount = 1,
+                Amount = 0,
             };
 
-            var newGroup = new AmountGroup(newAmnt);
+            deckGroup = new AmountGroup(newAmnt);
 
-            _deckCards.Add(card.Id, newGroup);
+            _deckCards.Add(card.Id, deckGroup);
             _context.Add(newAmnt);
         }
 
+        deckGroup.Applied.Amount += 1;
         availAmnt.Amount -= 1;
 
         if (availAmnt.Amount < 0)
         {
             FixOverdraft(card);
         }
+
+        _result = SaveResult.None;
     }
 
 
     private void RemoveCardFromDeck(Card card)
     {
-        if (!_availables.TryGetValue(card.Id, out var availAmnt))
+        CardAmount availAmnt;
+
+        if (!_availables.TryGetValue(card.Id, out availAmnt))
         {
             Logger.LogError($"card {card.Id} does exist in available set");
             return;
         }
 
-        if (!_deckCards.TryGetValue(card.Id, out var deckAmnt))
+        AmountGroup deckAmnt;
+
+        if (!_deckCards.TryGetValue(card.Id, out deckAmnt))
         {
             Logger.LogError($"card {card.Id} is not in the deck");
             return;
@@ -309,21 +365,26 @@
         }
 
         deckAmnt.Applied.Amount -= 1;
-
         availAmnt.Amount += 1;
+
+        _result = SaveResult.None;
     }
 
 
 
     private void FixOverdraft(Card card)
     {
-        if (!_availables.TryGetValue(card.Id, out var availAmnt))
+        CardAmount availAmnt;
+
+        if (!_availables.TryGetValue(card.Id, out availAmnt))
         {
             Logger.LogError($"{card.Id} does not exist in available");
             return;
         }
 
-        if (!_deckCards.TryGetValue(card.Id, out var deckGroup))
+        AmountGroup deckGroup;
+
+        if (!_deckCards.TryGetValue(card.Id, out deckGroup))
         {
             Logger.LogInformation($"{card.Id} does not exist in deck");
             return;
@@ -373,12 +434,14 @@
 
         try {
             await _context.SaveChangesAsync();
+            _result = SaveResult.Success;
 
             Logger.LogInformation($"successfully updated, trying to nav to index, at {NavigationManager.BaseUri}");
             NavigationManager.NavigateTo("Cards/Index"); // TODO: fix nav not working
         }
         catch (DbUpdateConcurrencyException ex)
         {
+            _result = SaveResult.Error;
             await UpdateDeckAsync(ex);
         }
         finally
@@ -394,17 +457,19 @@
 
     private void PrepareChanges()
     {
-        foreach(var cardAmnt in _deck.Cards.ToList())
+        foreach (var cardAmnt in _deckCards.Values.SelectMany(g => g))
         {
+            // detaches when saved after a remove
+            if (_context.Entry(cardAmnt).State == EntityState.Detached)
+            {
+                _context.Add(cardAmnt);
+            }
+
             if (cardAmnt.Amount == 0)
             {
-                RemoveDeckAmount(cardAmnt);
+                _context.Remove(cardAmnt);
             }
-            else if (_context.Entry(cardAmnt).State == EntityState.Deleted)
-            {
-                // was changed since it was last removed
-                _context.Entry(cardAmnt).State = EntityState.Modified;
-            }
+            
         }
 
         var deckEntry = _context.Entry(_deck);
@@ -485,7 +550,7 @@
         {
             if (_context.Entry(removedCard).State == EntityState.Unchanged)
             {
-                RemoveDeckAmount(removedCard);
+                _context.Remove(removedCard);
             }
         }
     }
@@ -601,18 +666,19 @@
 
     private void AddOrMergeAvailable(CardAmount dbAvailable)
     {
-        if (!_availables.TryGetValue(dbAvailable.CardId, out var localAvailable))
-        {
-            _availables.Add(dbAvailable.CardId, dbAvailable);
-            _context.Attach(dbAvailable);
-        }
-        else
+        if (_availables.TryGetValue(dbAvailable.CardId, out var localAvailable))
         {
             var localAmnt = _context.Entry(localAvailable).Property(ca => ca.Amount);
             var localAvailTaken = localAmnt.CurrentValue - localAmnt.OriginalValue;
 
             localAvailable.Amount = dbAvailable.Amount + localAvailTaken;
+
             _context.MatchToken(localAvailable, dbAvailable);
+        }
+        else
+        {
+            _availables.Add(dbAvailable.CardId, dbAvailable);
+            _context.Attach(dbAvailable);
         }
     }
 
