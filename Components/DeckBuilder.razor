@@ -86,7 +86,7 @@ else if (_result == SaveResult.Error)
     </thead>
 
     <tbody>
-        @foreach (var card in _dbCards.Values)
+        @foreach (var card in SortedAvailCards)
         {
             var available = _availables[card.Id].Amount;
             <tr>
@@ -133,36 +133,33 @@ else if (_result == SaveResult.Error)
     </thead>
 
     <tbody>
-        @foreach (var card in _dbCards.Values)
+        @foreach (var card in SortedDeckCards)
         {
-            @if (_deckCards.TryGetValue(card.Id, out var inDeck)
-                && inDeck.Amount > 0)
-            {
-                <tr>
-                    <td class="fw-bold">@card.Name</td>
+            var inDeck = _deckCards[card.Id];
+            <tr>
+                <td class="fw-bold">@card.Name</td>
 
-                    <td>
-                        @foreach (var cost in card.GetColorSymbols())
-                        {
-                            <span class="m-1 ms ms-@cost.ToLower() ms-cost"></span>
-                        }
-                    </td>
+                <td>
+                    @foreach (var cost in card.GetColorSymbols())
+                    {
+                        <span class="m-1 ms ms-@cost.ToLower() ms-cost"></span>
+                    }
+                </td>
 
-                    <td>@card.SetName</td>
+                <td>@card.SetName</td>
 
-                    <td>@inDeck.Applied.Amount</td>
-                    <td>@(inDeck.Request?.Amount ?? 0)</td>
+                <td>@inDeck.Applied.Amount</td>
+                <td>@(inDeck.Request?.Amount ?? 0)</td>
 
-                    <td>
-                        <button title="@card.Name Remove"
-                                type="button"
-                                class="btn btn-outline-secondary border-0 rounded"
-                                @onclick="() => RemoveCardFromDeck(card)">
-                            Remove Card
-                        </button>
-                    </td>
-                </tr>
-            }
+                <td>
+                    <button title="@card.Name Remove"
+                            type="button"
+                            class="btn btn-outline-secondary border-0 rounded"
+                            @onclick="() => RemoveCardFromDeck(card)">
+                        Remove Card
+                    </button>
+                </td>
+            </tr>
         }
     </tbody>
 </table>
@@ -182,21 +179,24 @@ else if (_result == SaveResult.Error)
     private CardDbContext _context;
 
     private Location _deck;
-    private SortedList<string, Card> _dbCards;
+    private SortedList<string, List<Card>> _dbCards;
 
     private IDictionary<string, AmountGroup> _deckCards;
     private IDictionary<string, CardAmount> _availables;
 
 
-    private bool HasNoChanges => !_context.ChangeTracker.HasChanges();
+    private bool HasNoChanges =>
+        !_context.ChangeTracker.HasChanges();
 
+    private IEnumerable<Card> SortedAvailCards =>
+        _dbCards.Values
+            .SelectMany(l => l);
 
-    public enum SaveResult
-    {
-        None,
-        Success,
-        Error
-    }
+    private IEnumerable<Card> SortedDeckCards =>
+        SortedAvailCards
+            .Where(c => _deckCards.TryGetValue(c.Id, out var cardAmnt)
+                && cardAmnt.Amount > 0);
+
 
     protected override async Task OnInitializedAsync()
     {
@@ -208,8 +208,13 @@ else if (_result == SaveResult.Error)
         _busy = true;
         _context = DbFactory.CreateDbContext();
 
-        _dbCards = new SortedList<string, Card>(
-            await _context.Cards.ToDictionaryAsync(c => c.Name));
+        var cards = await _context.Cards.ToListAsync();
+
+        var nameGroups = cards
+            .GroupBy(c => c.Name)
+            .ToDictionary(g => g.Key, g => g.ToList());
+
+        _dbCards = new SortedList<string, List<Card>>(nameGroups);
 
         _availables = await _context.Amounts
             .Where(ca => ca.Location.OwnerId == default)
@@ -287,11 +292,7 @@ else if (_result == SaveResult.Error)
 
     public void Dispose()
     {
-        if (_context != null)
-        {
-            _context.ChangeTracker.StateChanged -= (_, _) => _result = SaveResult.None;
-            _context.Dispose();
-        }
+        _context?.Dispose();
     }
 
 
@@ -653,12 +654,6 @@ else if (_result == SaveResult.Error)
         foreach(var dbAvail in updatedAvails)
         {
             dbAvail.Card = await _context.Cards.FindAsync(dbAvail.CardId);
-
-            if (!_dbCards.ContainsKey(dbAvail.Card.Name))
-            {
-                _dbCards.Add(dbAvail.Card.Name, dbAvail.Card);
-            }
-
             AddOrMergeAvailable(dbAvail);
         }
     }
@@ -674,12 +669,22 @@ else if (_result == SaveResult.Error)
             localAvailable.Amount = dbAvailable.Amount + localAvailTaken;
 
             _context.MatchToken(localAvailable, dbAvailable);
+            return;
+        }
+
+        var availCard = dbAvailable.Card;
+
+        if (_dbCards.TryGetValue(availCard.Name, out var nameGroup))
+        {
+            nameGroup.Add(availCard);
         }
         else
         {
-            _availables.Add(dbAvailable.CardId, dbAvailable);
-            _context.Attach(dbAvailable);
+            _dbCards.Add(availCard.Name, new List<Card>{ availCard });
         }
+
+        _availables.Add(dbAvailable.CardId, dbAvailable);
+        _context.Attach(dbAvailable);
     }
 
 
