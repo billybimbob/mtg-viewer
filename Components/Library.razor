@@ -65,7 +65,10 @@
                     @if (IsSignedIn)
                     {
                         @*<a href="@Edit(card.Id)">Edit</a> |*@
-                        <a href="@Delete(card.Id)">Delete</a>
+                        <div>
+                            <a href="@Delete(card.Id)">Delete</a> |
+                            <a href="@Suggest(card.Id)">Suggest</a>
+                        </div>
                     }
                 </td>
             </tr>
@@ -164,6 +167,9 @@
     private string Edit(string id) => CardRoute("Edit", id);
     private string Details(string id) => CardRoute("Details", id);
     private string Delete(string id) => CardRoute("Delete", id);
+
+    private string Suggest(string id) =>
+        QueryHelpers.AddQueryString("Trades/Suggest", "cardid", id);
 
 
     private string CardRoute(string operation, string id) =>

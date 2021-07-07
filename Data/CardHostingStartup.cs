@@ -29,7 +29,8 @@ namespace MTGViewer.Data
                             .UseSqlServer(config.GetConnectionString("MTGCardContext"))
                                 // TODO: change connection string name
                             .UseTriggers(triggers => triggers
-                                .AddTrigger<Triggers.RequestAmountTrigger>()) );
+                                .AddTrigger<Triggers.AmountValidateTrigger>()
+                                .AddTrigger<Triggers.TradeValidateTrigger>()) );
                         break;
 
                     case "Sqlite":
@@ -38,8 +39,9 @@ namespace MTGViewer.Data
                         services.AddTriggeredDbContextFactory<CardDbContext>(options => options
                             .UseSqlite(config.GetConnectionString("MTGCardContext"))
                             .UseTriggers(triggers => triggers
-                                .AddTrigger<Triggers.GuidTokenTrigger>()
-                                .AddTrigger<Triggers.RequestAmountTrigger>()) );
+                                .AddTrigger<Triggers.AmountValidateTrigger>()
+                                .AddTrigger<Triggers.LiteTokenUpdateTrigger>()
+                                .AddTrigger<Triggers.TradeValidateTrigger>()) );
                         break;
                 }
 

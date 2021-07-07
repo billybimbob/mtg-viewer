@@ -38,17 +38,15 @@ namespace MTGViewer.Pages.Decks
             Decks = await _context.Locations
                 .Where(l => l.Owner == CardUser)
                 .Include(l => l.Cards)
-                .ThenInclude(ca => ca.Card)
+                    .ThenInclude(ca => ca.Card)
+                        .ThenInclude(c => c.Colors)
+                .AsSplitQuery()
                 .AsNoTracking()
                 .ToListAsync();
 
-            DeckColors = Decks.Select(l => l.Cards 
-                .SelectMany(ca => ca.Card
-                    .GetColorSymbols()
-                    .Select(s => s.ToLower()))
-                .Distinct()
-                .Where(c => Color.COLORS.Values.Contains(c))
-                .OrderBy(c => c));
+            DeckColors = Decks.Select(d => d
+                .GetColors()
+                .Select(c => Color.COLORS[c.Name.ToLower()]));
         }
 
     }

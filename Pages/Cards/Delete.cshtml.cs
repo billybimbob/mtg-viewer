@@ -21,7 +21,6 @@ namespace MTGViewer.Pages.Cards
             _context = context;
         }
 
-        [BindProperty]
         public Card Card { get; set; }
 
         public async Task<IActionResult> OnGetAsync(string id)

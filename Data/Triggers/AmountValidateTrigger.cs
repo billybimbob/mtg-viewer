@@ -9,12 +9,12 @@ using Microsoft.Extensions.Logging;
 
 namespace MTGViewer.Data.Triggers
 {
-    public class RequestAmountTrigger : IBeforeSaveTrigger<CardAmount>
+    public class AmountValidateTrigger : IBeforeSaveTrigger<CardAmount>
     {
         private readonly CardDbContext _dbContext;
-        private readonly ILogger<GuidTokenTrigger> _logger;
+        private readonly ILogger<LiteTokenUpdateTrigger> _logger;
 
-        public RequestAmountTrigger(CardDbContext dbContext, ILogger<GuidTokenTrigger> logger)
+        public AmountValidateTrigger(CardDbContext dbContext, ILogger<LiteTokenUpdateTrigger> logger)
         {
             _dbContext = dbContext;
             _logger = logger;
@@ -32,13 +32,16 @@ namespace MTGViewer.Data.Triggers
             if (trigContext.ChangeType == ChangeType.Modified)
             {
                 var entry = _dbContext.Entry(amount);
+
                 if (entry.State == EntityState.Detached)
                 {
                     // attach just to load
                     _dbContext.Attach(amount);
                 }
 
-                await entry.Reference(ca => ca.Location).LoadAsync();
+                await entry
+                    .Reference(ca => ca.Location)
+                    .LoadAsync();
             }
 
             if (amount.Location == null)

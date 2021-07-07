@@ -15,6 +15,7 @@ public class CardDbContext : DbContext
     public DbSet<Card> Cards { get; set; }
     public DbSet<Location> Locations { get; set; }
     public DbSet<CardAmount> Amounts { get; set; }
+    public DbSet<Trade> Trades { get; set; }
 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -41,6 +42,26 @@ public class CardDbContext : DbContext
 
         modelBuilder.Entity<CardAmount>()
             .HasKey(ca => new { ca.CardId, ca.LocationId, ca.IsRequest });
+
+        modelBuilder.Entity<Trade>(tradeBuild =>
+        {
+            tradeBuild
+                .HasOne(t => t.SrcUser)
+                .WithMany();
+
+            tradeBuild
+                .HasOne(t => t.DestUser)
+                .WithMany();
+
+            tradeBuild
+                .HasOne(t => t.SrcLocation)
+                .WithMany()
+                .OnDelete(DeleteBehavior.SetNull);
+
+            tradeBuild
+                .HasOne(t => t.DestLocation)
+                .WithMany();
+        });
     }
 
 }
