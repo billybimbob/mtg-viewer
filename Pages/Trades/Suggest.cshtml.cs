@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.Identity;
+
 using Microsoft.EntityFrameworkCore;
 
 using MTGViewer.Areas.Identity.Data;
@@ -21,6 +22,7 @@ namespace MTGViewer.Pages.Trades
 
         private string CardId
         {
+            // gets casted to guid for some reason
             get => TempData[CARD_ID].ToString();
             set => TempData[CARD_ID] = value;
         }
@@ -81,17 +83,19 @@ namespace MTGViewer.Pages.Trades
                 return NotFound();
             }
 
-            Decks = decks.Zip(decks.Select(d => d
-                .GetColors()
-                .Select(c => Color.COLORS[c.Name.ToLower()]) ));
-
-            // gets casted to guid for some reason
             Suggesting = await _dbContext.Cards.FindAsync(CardId);
 
             if (Suggesting == null)
             {
                 return NotFound();
             }
+
+            var deckColors = decks
+                .Select(d => d
+                    .GetColors()
+                    .Select(c => Color.COLORS[ c.Name.ToLower() ]));
+
+            Decks = decks.Zip(deckColors);
 
             TempData.Keep(CARD_ID);
 

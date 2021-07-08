@@ -23,7 +23,7 @@ namespace MTGViewer.Data.Concurrency
     }
 
 
-    internal static class Concurrency
+    internal static class ConcurrencyExtensions
     {
         public static void MatchToken(
             this CardDbContext context, Concurrent current, PropertyValues dbProps)

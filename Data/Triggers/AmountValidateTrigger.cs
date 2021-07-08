@@ -28,20 +28,22 @@ namespace MTGViewer.Data.Triggers
             }
 
             var amount = trigContext.Entity;
+            var entry = _dbContext.Entry(amount);
 
-            if (trigContext.ChangeType == ChangeType.Modified)
+            if (entry.State == EntityState.Detached)
             {
-                var entry = _dbContext.Entry(amount);
+                // attach just to load
+                _dbContext.Attach(amount);
+            }
 
-                if (entry.State == EntityState.Detached)
-                {
-                    // attach just to load
-                    _dbContext.Attach(amount);
-                }
+            await entry
+                .Reference(ca => ca.Location)
+                .LoadAsync();
 
-                await entry
-                    .Reference(ca => ca.Location)
-                    .LoadAsync();
+            if (amount.Location.IsShared && amount.Amount == 0)
+            {
+                _dbContext.Remove(amount);
+                return;
             }
 
             if (amount.Location == null)

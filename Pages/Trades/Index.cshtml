@@ -1,0 +1,86 @@
+@page
+@model MTGViewer.Pages.Trades.IndexModel
+
+@using Microsoft.AspNetCore.Identity
+@using MTGViewer.Areas.Identity.Data
+@using MTGViewer.Data
+
+@inject UserManager<CardUser> UserManager
+
+@{
+    var userName = UserManager.GetUserName(User);
+    ViewData["Title"] = $"{userName}'s Trades";
+}
+
+<h2>Pending Trades</h2>
+
+<form method="POST">
+    <table class="table">
+        <thead>
+            <tr>
+                <th> @Html.DisplayNameForInnerType((Trade t) => t.Card) </th>
+                <th> @Html.DisplayNameForInnerType((Trade t) => t.SrcUser) </th>
+                <th> @Html.DisplayNameForInnerType((Trade t) => t.DestLocation) </th>
+                <th> @Html.DisplayNameForInnerType((Trade t) => t.Amount) </th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var trade in Model.PendingTrades)
+            {
+                <tr>
+                    <td>@trade.Card.Name</td>
+                    <td>@trade.SrcUser.Name</td>
+                    <td>@trade.DestLocation.Name</td>
+                    <td>@trade.Amount</td>
+                    <td>
+                        <input type="submit"
+                            asp-page-handler="Accept"
+                            asp-route-tradeid="@trade.Id"
+                            class="btn btn-secondary mb-3"
+                            value="Accept" />
+                        <input type="submit"
+                            asp-page-handler="Reject"
+                            asp-route-tradeid="@trade.Id"
+                            class="btn btn-secondary mb-3"
+                            value="Reject" />
+                    </td>
+                </tr>
+            }
+        </tbody>
+
+    </table>
+</form>
+
+
+<h2>Suggestions</h2>
+
+<form method="POST">
+    <table class="table">
+        <thead>
+            <tr>
+                <th> @Html.DisplayNameForInnerType((Trade t) => t.Card) </th>
+                <th> Suggestion From </th>
+                <th> @Html.DisplayNameForInnerType((Trade t) => t.DestLocation) </th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var suggestion in Model.Suggestions)
+            {
+                <tr>
+                    <td>@suggestion.Card.Name</td>
+                    <td>@suggestion.SrcUser.Name</td>
+                    <td>@suggestion.DestLocation.Name</td>
+                    <td>
+                        <input type="submit"
+                            asp-page-handler="Ack"
+                            asp-route-suggestid="@suggestion.Id"
+                            class="btn btn-secondary mb-3"
+                            value="Acknowledge" />
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</form>

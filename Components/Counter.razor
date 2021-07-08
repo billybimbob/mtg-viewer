@@ -1,3 +1,5 @@
+@using MTGViewer.Data
+
 @namespace MTGViewer.Components
 
 @inject IDbContextFactory<CardDbContext> DbFactory
@@ -23,8 +25,8 @@
 @code {
 
 
-    private IEnumerable<Data.Card> _dbCards;
-    private IEnumerable<Data.Card> _viewCards;
+    private IEnumerable<Card> _dbCards;
+    private IEnumerable<Card> _viewCards;
 
 
     private async Task FetchCardsAsync()

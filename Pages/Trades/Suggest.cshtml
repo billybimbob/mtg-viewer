@@ -9,42 +9,48 @@
 <form method="post">
     @if (Model.Users != null)
     {
-        <div class="input-group">
-            @foreach(var user in Model.Users)
-            {
+        @foreach(var user in Model.Users)
+        {
+            <div class="input-group">
                 <div class="input-group-prepend">
                     <div class="input-group-text">
                         <input type="radio" name="userId" value="@user.Id" />
                     </div>
                 </div>
-                <span class="form-control">@user.UserName</span>
-            }
-        </div>
+                <span class="input-group-text">@user.UserName</span>
+            </div>
+        }
 
-        <input type="submit" asp-page-handler="User" value="Suggest To" />
+        <input type="submit"
+            asp-page-handler="User"
+            class="btn btn-secondary mb-3"
+            value="Suggest To" />
     }
     else
     {
-        <div class="input-group">
-            @foreach(var (deck, colors) in Model.Decks)
-            {
-                // Decks should be not null
+        // Decks should be not null
+        @foreach(var (deck, colors) in Model.Decks)
+        {
+            <div class="input-group">
                 <div class="input-group-prepend">
                     <div class="input-group-text">
                         <input type="radio" name="deckId" value="@deck.Id" />
                     </div>
                 </div>
 
-                <span class="form-control">@deck.Name</span>
-                <div class="form-control">
+                <span class="input-group-text">@deck.Name</span>
+                <div class="input-group-text">
                     @foreach(var color in colors)
                     {
                         <span class="m-1 ms ms-@color ms-cost"></span>
                     }
                 </div>
-            }
-        </div>
+            </div>
+        }
 
-        <input type="submit" asp-page-handler="Deck" value="Suggest" />
+        <input type="submit"
+            asp-page-handler="Deck"
+            class="btn btn-secondary mb-3"
+            value="Suggest" />
     }
 </form>

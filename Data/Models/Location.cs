@@ -55,15 +55,22 @@ namespace MTGViewer.Data
         public int Id { get; set; }
 
         public string CardId { get; set; } = null!;
-
         public Card Card { get; set; } = null!;
 
+        [Display(Name="From User")]
         public CardUser SrcUser { get; set; } = null!;
 
+        [Display(Name="To User")]
         public CardUser DestUser { get; set; } = null!;
 
+        public int? SrcLocationId { get; set; }
+
+        [Display(Name="From Deck")]
         public Location? SrcLocation { get; set; }
 
+        public int DestLocationId { get; set; }
+
+        [Display(Name="To Deck")]
         public Location DestLocation { get; set; } = null!;
 
         [Range(0, int.MaxValue)]
@@ -75,7 +82,7 @@ namespace MTGViewer.Data
         /// </remarks>
         public bool IsCounter { get; set; }
 
-        public bool IsSuggestion => SrcLocation == null;
+        public bool IsSuggestion => SrcLocationId == default;
     }
 
 }

@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
 using MTGViewer.Areas.Identity.Data;
+using MTGViewer.Data;
 
 
 namespace MTGViewer.Pages.Decks
@@ -34,8 +35,9 @@ namespace MTGViewer.Pages.Decks
             CardUser = await _userManager.GetUserAsync(User);
             if (id is int validId)
             {
-                var isOwner = await _context.Locations
-                    .AnyAsync(l => l.Id == validId && l.Owner == CardUser);
+                var isOwner = await _context.Locations.AnyAsync(l =>
+                    l.Id == validId
+                        && l.Owner == CardUser);
 
                 if (!isOwner)
                 {
