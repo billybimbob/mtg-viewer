@@ -37,6 +37,9 @@ namespace MTGViewer.Pages.Trades
             set => TempData[CARD_ID] = value;
         }
 
+        [TempData]
+        public string PostMessage { get; set; }
+
         public IEnumerable<CardUser> Users { get; private set; }
 
         public IEnumerable<(Location, IEnumerable<string>)> Decks { get; private set; }
@@ -112,14 +115,14 @@ namespace MTGViewer.Pages.Trades
 
             var destLoc = await _dbContext.Locations.FindAsync(deckId);
 
-            await _dbContext.Entry(destLoc)
-                .Reference(d => d.Owner)
-                .LoadAsync();
-
-            if (destLoc == null)
+            if (destLoc == null || destLoc.IsShared)
             {
                 return NotFound();
             }
+
+            await _dbContext.Entry(destLoc)
+                .Reference(d => d.Owner)
+                .LoadAsync();
 
             var srcUser = await _userManager.GetUserAsync(User);
 
@@ -127,12 +130,15 @@ namespace MTGViewer.Pages.Trades
             {
                 Card = Suggesting,
                 FromUser = srcUser,
+                ToUser = destLoc.Owner,
                 To = destLoc
             };
 
             _dbContext.Attach(suggestion);
 
             await _dbContext.SaveChangesAsync();
+
+            PostMessage = "Suggestion Successfully Created";
 
             return RedirectToPage("./Index");
         }

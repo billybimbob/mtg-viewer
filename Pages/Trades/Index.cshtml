@@ -12,6 +12,13 @@
     ViewData["Title"] = $"{userName}'s Trades";
 }
 
+@if (!string.IsNullOrEmpty(Model.PostMessage))
+{
+    <div class="alert alert-secondary" role="alert">
+        @Model.PostMessage
+    </div>
+}
+
 <h2>Pending Trades</h2>
 
 <form method="POST">
@@ -29,7 +36,11 @@
             @foreach (var trade in Model.PendingTrades)
             {
                 <tr>
-                    <td>@trade.Card.Name</td>
+                    <td>
+                        <a asp-page="/Cards/Details" asp-route-id="@trade.CardId">
+                            @trade.Card.Name
+                        </a>
+                    </td>
                     <td>@trade.FromUser.Name</td>
                     <td>@trade.To.Name</td>
                     <td>@trade.Amount</td>
@@ -70,7 +81,11 @@
             @foreach (var suggestion in Model.Suggestions)
             {
                 <tr>
-                    <td>@suggestion.Card.Name</td>
+                    <td>
+                        <a asp-page="/Cards/Details" asp-route-id="@suggestion.CardId">
+                            @suggestion.Card.Name
+                        </a>
+                    </td>
                     <td>@suggestion.FromUser.Name</td>
                     <td>@suggestion.To.Name</td>
                     <td>

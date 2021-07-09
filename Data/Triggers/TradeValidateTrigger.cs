@@ -42,18 +42,31 @@ namespace MTGViewer.Data.Triggers
                 return;
             }
 
-            await FromValidationAsync(trade);
+            // TODO: make valid failure not silent
 
-            await ToValidationAsync(trade);
+            var isValidFrom = await FromValidationAsync(trade);
+
+            if (!isValidFrom)
+            {
+                _dbContext.Remove(trade);
+                return;
+            }
+
+            var isValidTo = await ToValidationAsync(trade);
+
+            if (!isValidTo)
+            {
+                _dbContext.Remove(trade);
+            }
         }
 
 
-        private async Task FromValidationAsync(Trade trade)
+        private async Task<bool> FromValidationAsync(Trade trade)
         {
             if (trade.IsSuggestion)
             {
                 trade.IsCounter = false;
-                return;
+                return true;
             }
 
             await _dbContext.Entry(trade)
@@ -71,10 +84,12 @@ namespace MTGViewer.Data.Triggers
                 .LoadAsync();
 
             trade.FromUser = trade.From.Location.Owner;
+
+            return trade.FromUser != null;
         }
 
 
-        private async Task ToValidationAsync(Trade trade)
+        private async Task<bool> ToValidationAsync(Trade trade)
         {
             await _dbContext.Entry(trade)
                 .Reference(t => t.To)
@@ -85,6 +100,8 @@ namespace MTGViewer.Data.Triggers
                 .LoadAsync();
 
             trade.ToUser = trade.To.Owner;
+
+            return trade.ToUser != null;
         }
     }
 }

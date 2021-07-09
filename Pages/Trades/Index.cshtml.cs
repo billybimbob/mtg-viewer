@@ -67,7 +67,8 @@ namespace MTGViewer.Pages.Trades
 
             if (trade == null || trade.IsSuggestion)
             {
-                return NotFound();
+                PostMessage = "Specified trade cannot be accepted";
+                return RedirectToPage("./Index");
             }
 
             await _dbContext.Entry(trade)
@@ -116,14 +117,16 @@ namespace MTGViewer.Pages.Trades
 
             if (trade == null || trade.IsSuggestion)
             {
-                return NotFound();
+                PostMessage = "Specified trade cannot be rejected";
             }
+            else
+            {
+                _dbContext.Entry(trade).State = EntityState.Deleted;
 
-            _dbContext.Entry(trade).State = EntityState.Deleted;
+                await _dbContext.SaveChangesAsync();
 
-            await _dbContext.SaveChangesAsync();
-
-            PostMessage = "Trade Successfully Deleted";
+                PostMessage = "Trade Successfully Deleted";
+            }
 
             return RedirectToPage("./Index");
         }
@@ -135,14 +138,16 @@ namespace MTGViewer.Pages.Trades
 
             if (suggestion == null || !suggestion.IsSuggestion)
             {
-                return NotFound();
+                PostMessage = "Specified suggestion cannot be acknowledged";
             }
+            else
+            {
+                _dbContext.Entry(suggestion).State = EntityState.Deleted;
 
-            _dbContext.Entry(suggestion).State = EntityState.Deleted;
+                await _dbContext.SaveChangesAsync();
 
-            await _dbContext.SaveChangesAsync();
-
-            PostMessage = "Suggestion Acknowledged";
+                PostMessage = "Suggestion Acknowledged";
+            }
 
             return RedirectToPage("./Index");
         }
