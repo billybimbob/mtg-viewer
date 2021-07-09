@@ -48,9 +48,23 @@
             </div>
         }
 
-        <input type="submit"
-            asp-page-handler="Deck"
-            class="btn btn-secondary mb-3"
-            value="Suggest" />
+        @if (!Model.Decks.Any())
+        {
+            <div class="alert alert-danger d-flex align-items-center" role="alert">
+                <text>There are no decks to suggest to</text>
+            </div>
+
+            <a asp-page="./Suggest"
+                asp-route-cardid="@Model.Suggesting.Id"
+                class="btn btn-secondary mb-3">Back</a>
+        }
+        else
+        {
+            <input type="submit"
+                asp-page-handler="Deck"
+                class="btn btn-secondary mb-3"
+                disabled="@(!Model.Decks.Any())"
+                value="Suggest" />
+        }
     }
 </form>

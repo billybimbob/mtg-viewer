@@ -19,8 +19,8 @@
         <thead>
             <tr>
                 <th> @Html.DisplayNameForInnerType((Trade t) => t.Card) </th>
-                <th> @Html.DisplayNameForInnerType((Trade t) => t.SrcUser) </th>
-                <th> @Html.DisplayNameForInnerType((Trade t) => t.DestLocation) </th>
+                <th> @Html.DisplayNameForInnerType((Trade t) => t.FromUser) </th>
+                <th> @Html.DisplayNameForInnerType((Trade t) => t.To) </th>
                 <th> @Html.DisplayNameForInnerType((Trade t) => t.Amount) </th>
                 <th></th>
             </tr>
@@ -30,9 +30,10 @@
             {
                 <tr>
                     <td>@trade.Card.Name</td>
-                    <td>@trade.SrcUser.Name</td>
-                    <td>@trade.DestLocation.Name</td>
+                    <td>@trade.FromUser.Name</td>
+                    <td>@trade.To.Name</td>
                     <td>@trade.Amount</td>
+
                     <td>
                         <input type="submit"
                             asp-page-handler="Accept"
@@ -61,7 +62,7 @@
             <tr>
                 <th> @Html.DisplayNameForInnerType((Trade t) => t.Card) </th>
                 <th> Suggestion From </th>
-                <th> @Html.DisplayNameForInnerType((Trade t) => t.DestLocation) </th>
+                <th> @Html.DisplayNameForInnerType((Trade t) => t.To) </th>
                 <th></th>
             </tr>
         </thead>
@@ -70,8 +71,8 @@
             {
                 <tr>
                     <td>@suggestion.Card.Name</td>
-                    <td>@suggestion.SrcUser.Name</td>
-                    <td>@suggestion.DestLocation.Name</td>
+                    <td>@suggestion.FromUser.Name</td>
+                    <td>@suggestion.To.Name</td>
                     <td>
                         <input type="submit"
                             asp-page-handler="Ack"

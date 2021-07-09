@@ -41,26 +41,23 @@ namespace MTGViewer.Data
                 }
             }
 
-            modelBuilder.Entity<CardAmount>()
-                .HasKey(ca => new { ca.CardId, ca.LocationId, ca.IsRequest });
-
             modelBuilder.Entity<Trade>(tradeBuild =>
             {
                 tradeBuild
-                    .HasOne(t => t.SrcUser)
+                    .HasOne(t => t.FromUser)
                     .WithMany();
 
                 tradeBuild
-                    .HasOne(t => t.DestUser)
+                    .HasOne(t => t.ToUser)
                     .WithMany();
 
                 tradeBuild
-                    .HasOne(t => t.SrcLocation)
-                    .WithMany()
-                    .OnDelete(DeleteBehavior.SetNull);
+                    .HasOne(t => t.From)
+                    .WithOne()
+                    .OnDelete(DeleteBehavior.Cascade);
 
                 tradeBuild
-                    .HasOne(t => t.DestLocation)
+                    .HasOne(t => t.To)
                     .WithMany();
             });
         }

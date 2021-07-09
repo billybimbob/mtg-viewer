@@ -28,67 +28,63 @@ namespace MTGViewer.Data.Triggers
                 return;
             }
 
-            var trade = trigContext.Entity;
-            var entry = _dbContext.Entry(trade);
-
             // TODO: improve to make more efficient, less loads
+            var trade = trigContext.Entity;
 
-            if (entry.State == EntityState.Detached)
+            if (_dbContext.Entry(trade).State == EntityState.Detached)
             {
                 _dbContext.Attach(trade);
             }
 
-            await entry.Reference(t => t.SrcLocation).LoadAsync();
-
-            var srcLocPassed = await SrcLocValidationAsync(trade);
-
-            if (!srcLocPassed)
+            if (!trade.IsSuggestion && trade.Amount == 0)
             {
+                _dbContext.Remove(trade);
                 return;
             }
 
-            await entry.Reference(t => t.DestLocation).LoadAsync();
+            await FromValidationAsync(trade);
 
-            await _dbContext.Entry(trade.DestLocation)
-                .Reference(l => l.Owner)
-                .LoadAsync();
-
-            trade.DestUser = trade.DestLocation.Owner;
+            await ToValidationAsync(trade);
         }
 
 
-        private async Task<bool> SrcLocValidationAsync(Trade trade)
+        private async Task FromValidationAsync(Trade trade)
         {
             if (trade.IsSuggestion)
             {
-                return true;
+                trade.IsCounter = false;
+                return;
             }
 
-            var entry = _dbContext.Entry(trade);
+            await _dbContext.Entry(trade)
+                .Reference(t => t.From)
+                .LoadAsync();
 
-            await entry.Reference(t => t.Card).LoadAsync();
+            trade.Amount = Math.Min(trade.From.Amount, trade.Amount);
+            
+            await _dbContext.Entry(trade.From)
+                .Reference(l => l.Location)
+                .LoadAsync();
 
-            var srcAmount = await _dbContext.Amounts
-                .FindAsync(trade.CardId, trade.SrcLocationId, false);
-
-            if (srcAmount == null)
-            {
-                // keep eye on, not sure if want to auto remove
-                _logger.LogError("src location does not have the card to trade");
-                _dbContext.Remove(trade);
-
-                return false;
-            }
-
-            trade.Amount = Math.Min(srcAmount.Amount, trade.Amount);
-
-            await _dbContext.Entry(trade.SrcLocation)
+            await _dbContext.Entry(trade.From.Location)
                 .Reference(l => l.Owner)
                 .LoadAsync();
 
-            trade.SrcUser = trade.SrcLocation.Owner;
+            trade.FromUser = trade.From.Location.Owner;
+        }
 
-            return true;
+
+        private async Task ToValidationAsync(Trade trade)
+        {
+            await _dbContext.Entry(trade)
+                .Reference(t => t.To)
+                .LoadAsync();
+
+            await _dbContext.Entry(trade.To)
+                .Reference(l => l.Owner)
+                .LoadAsync();
+
+            trade.ToUser = trade.To.Owner;
         }
     }
 }

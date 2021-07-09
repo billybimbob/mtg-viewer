@@ -40,22 +40,20 @@ namespace MTGViewer.Data.Triggers
                 .Reference(ca => ca.Location)
                 .LoadAsync();
 
-            if (amount.Location.IsShared && amount.Amount == 0)
-            {
-                _dbContext.Remove(amount);
-                return;
-            }
-
             if (amount.Location == null)
             {
                 // TODO: change return location
                 amount.Location = await _dbContext.Locations.FindAsync(1);
             }
 
-            // makes sure that non-owned locations cannot have a request
-
-            if (amount.Location.IsShared)
+            if (!amount.Location.IsShared && amount.Amount == 0)
             {
+                _dbContext.Remove(amount);
+            }
+
+            else if (amount.Location.IsShared)
+            {
+                // makes sure that non-owned locations cannot have a request
                 amount.IsRequest = false;
             }
         }

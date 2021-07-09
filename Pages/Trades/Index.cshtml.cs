@@ -38,21 +38,23 @@ namespace MTGViewer.Pages.Trades
             var userId = _userManager.GetUserId(User);
 
             PendingTrades = await _dbContext.Trades
-                .Where(t => t.SrcLocation != default
-                    && (t.DestUser.Id == userId && !t.IsCounter 
-                        || t.SrcUser.Id == userId && t.IsCounter))
+                .Where(TradeFilter.PendingFor(userId))
+                // .Where(t => t.SrcLocationId != default
+                //     && (t.DestUser.Id == userId && !t.IsCounter 
+                //         || t.SrcUser.Id == userId && t.IsCounter))
                 .Include(t => t.Card)
-                .Include(t => t.SrcUser)
-                .Include(t => t.DestLocation)
+                .Include(t => t.FromUser)
+                .Include(t => t.To)
                 .AsSplitQuery()
                 .AsNoTrackingWithIdentityResolution()
                 .ToListAsync();
 
             Suggestions = await _dbContext.Trades
-                .Where(t => t.SrcLocation == default && t.DestUser.Id == userId)
+                .Where(TradeFilter.SuggestionFor(userId))
+                // .Where(t => t.SrcLocationId == default && t.DestUser.Id == userId)
                 .Include(t => t.Card)
-                .Include(t => t.SrcUser)
-                .Include(t => t.DestLocation)
+                .Include(t => t.FromUser)
+                .Include(t => t.To)
                 .AsSplitQuery()
                 .AsNoTrackingWithIdentityResolution()
                 .ToListAsync();
@@ -67,31 +69,35 @@ namespace MTGViewer.Pages.Trades
             {
                 return NotFound();
             }
-            
-            var srcAmount = await _dbContext.Amounts
-                .FindAsync(trade.CardId, trade.DestLocationId, false);
 
-            if (srcAmount == null || srcAmount.Amount < trade.Amount)
+            await _dbContext.Entry(trade)
+                .Reference(t => t.From)
+                .LoadAsync();
+                
+            if (trade.From.Amount < trade.Amount)
             {
                 PostMessage = "Source Deck lacks the trade amount to complete the trade";
                 return RedirectToPage("./Index");
             }
 
             var destAmount = await _dbContext.Amounts
-                .FindAsync(trade.CardId, trade.DestLocationId, false);
+                .SingleOrDefaultAsync(ca =>
+                    ca.CardId == trade.CardId
+                        && ca.LocationId == trade.ToId
+                        && !ca.IsRequest);
 
             if (destAmount == null)
             {
                 destAmount = new CardAmount
                 {
                     CardId = trade.CardId,
-                    LocationId = trade.DestLocationId
+                    LocationId = trade.ToId
                 };
 
                 _dbContext.Attach(destAmount);
             }
 
-            srcAmount.Amount -= trade.Amount;
+            trade.From.Amount -= trade.Amount;
             destAmount.Amount += trade.Amount;
 
             _dbContext.Remove(trade);

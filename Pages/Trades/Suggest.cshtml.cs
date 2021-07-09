@@ -20,14 +20,6 @@ namespace MTGViewer.Pages.Trades
     {
         private const string CARD_ID = "CardId";
 
-        private string CardId
-        {
-            // gets casted to guid for some reason
-            get => TempData[CARD_ID].ToString();
-            set => TempData[CARD_ID] = value;
-        }
-
-
         private readonly CardDbContext _dbContext;
         private readonly UserManager<CardUser> _userManager;
 
@@ -38,16 +30,29 @@ namespace MTGViewer.Pages.Trades
         }
 
 
-        public Card Suggesting { get; private set; }
+        private string CardId
+        {
+            // gets casted to guid for some reason
+            get => TempData[CARD_ID].ToString();
+            set => TempData[CARD_ID] = value;
+        }
 
         public IEnumerable<CardUser> Users { get; private set; }
 
         public IEnumerable<(Location, IEnumerable<string>)> Decks { get; private set; }
 
+        public Card Suggesting { get; private set; }
+
+        private async Task SetSuggestingAsync() =>
+            Suggesting = await _dbContext.Cards.FindAsync(CardId);
+
 
         public async Task<IActionResult> OnGetAsync(string cardId)
         {
-            Suggesting = await _dbContext.Cards.FindAsync(cardId);
+            CardId = cardId;
+            TempData.Keep(CARD_ID);
+
+            await SetSuggestingAsync();
 
             if (Suggesting == null)
             {
@@ -60,14 +65,19 @@ namespace MTGViewer.Pages.Trades
                 .Where(u => u.Id != srcId)
                 .ToListAsync();
 
-            CardId = cardId;
-
             return Page();
         }
 
 
         public async Task<IActionResult> OnPostUserAsync(string userId)
         {
+            await SetSuggestingAsync();
+
+            if (Suggesting == null)
+            {
+                return NotFound();
+            }
+
             var decks = await _dbContext.Locations
                 .Where(l => l.OwnerId == userId)
                 .Include(d => d.Owner)
@@ -77,18 +87,6 @@ namespace MTGViewer.Pages.Trades
                 .AsSplitQuery()
                 .AsNoTrackingWithIdentityResolution()
                 .ToListAsync();
-
-            if (!decks.Any())
-            {
-                return NotFound();
-            }
-
-            Suggesting = await _dbContext.Cards.FindAsync(CardId);
-
-            if (Suggesting == null)
-            {
-                return NotFound();
-            }
 
             var deckColors = decks
                 .Select(d => d
@@ -105,6 +103,13 @@ namespace MTGViewer.Pages.Trades
 
         public async Task<IActionResult> OnPostDeckAsync(int deckId)
         {
+            await SetSuggestingAsync();
+
+            if (Suggesting == null)
+            {
+                return NotFound();
+            }
+
             var destLoc = await _dbContext.Locations.FindAsync(deckId);
 
             await _dbContext.Entry(destLoc)
@@ -116,23 +121,17 @@ namespace MTGViewer.Pages.Trades
                 return NotFound();
             }
 
-            Suggesting = await _dbContext.Cards.FindAsync(CardId);
-
-            if (Suggesting == null)
-            {
-                return NotFound();
-            }
-
             var srcUser = await _userManager.GetUserAsync(User);
 
             var suggestion = new Trade
             {
                 Card = Suggesting,
-                SrcUser = srcUser,
-                DestLocation = destLoc
+                FromUser = srcUser,
+                To = destLoc
             };
 
             _dbContext.Attach(suggestion);
+
             await _dbContext.SaveChangesAsync();
 
             return RedirectToPage("./Index");

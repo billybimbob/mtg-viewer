@@ -58,6 +58,7 @@ namespace MTGViewer.Services
             var cards = matches
                 .Select(c => c.ToCard())
                 .Where(c => TestValid(c) != null)
+                .OrderBy(c => c.Name)
                 .ToList();
 
             foreach (var card in cards)
@@ -72,6 +73,7 @@ namespace MTGViewer.Services
         public async Task<Card?> GetIdAsync(string id)
         {
             Card? card;
+
             if (_cache.TryGetValue(id, out card))
             {
                 _logger.LogInformation($"using cached card for {id}");
@@ -88,6 +90,7 @@ namespace MTGViewer.Services
             }
 
             card = TestValid(match.ToCard());
+
             if (card != null)
             {
                 _cache[card.Id] = card;
@@ -124,16 +127,16 @@ namespace MTGViewer.Services
 
 
 
-        public async Task<IReadOnlyList<Card>> MatchAsync(Card card)
+        public async Task<IReadOnlyList<Card>> MatchAsync(Card search)
         {
-            if (card.Id != default && _cache.TryGetValue(card.Id, out ICard icard))
+            if (search.Id != default && _cache.TryGetValue(search.Id, out Card card))
             {
                 return new List<Card> { card };
             }
 
-            foreach (var info in card.GetType().GetProperties())
+            foreach (var info in search.GetType().GetProperties())
             {
-                QueryProperty(info, info.GetValue(card));
+                QueryProperty(info, info.GetValue(search));
             }
 
             return await SearchAsync();
