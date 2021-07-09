@@ -21,6 +21,10 @@
             </div>
         }
 
+        <a asp-page="/Cards/Index"
+            class="btn btn-secondary mb-3">
+            Back</a>
+
         <input type="submit"
             asp-page-handler="User"
             class="btn btn-secondary mb-3"
@@ -48,15 +52,16 @@
             </div>
         }
 
+        <a asp-page="./Suggest"
+            asp-route-cardid="@Model.Suggesting.Id"
+            class="btn btn-secondary mb-3">
+            Back</a>
+
         @if (!Model.Decks.Any())
         {
             <div class="alert alert-danger" role="alert">
                 There are no decks to suggest to
             </div>
-
-            <a asp-page="./Suggest"
-                asp-route-cardid="@Model.Suggesting.Id"
-                class="btn btn-secondary mb-3">Back</a>
         }
         else
         {

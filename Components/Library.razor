@@ -62,14 +62,14 @@
                 <td>@card.Amounts.Select(ca => ca.Amount).Sum()</td>
 
                 <td>
-                    <a href="@Details(card.Id)">Details</a> |
+                    <a href="@Details(card.Id)">Details</a>
                     @if (IsSignedIn)
                     {
-                        @*<a href="@Edit(card.Id)">Edit</a> |*@
-                        <div>
+                        <text>
+                            | @*<a href="@Edit(card.Id)">Edit</a> |*@
                             <a href="@Delete(card.Id)">Delete</a> |
                             <a href="@Suggest(card.Id)">Suggest</a>
-                        </div>
+                        </text>
                     }
                 </td>
             </tr>

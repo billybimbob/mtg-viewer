@@ -64,6 +64,7 @@ namespace MTGViewer.Pages.Trades
 
             Users = await _userManager.Users
                 .Where(u => u.Id != srcId)
+                .AsNoTrackingWithIdentityResolution()
                 .ToListAsync();
 
             return Page();
@@ -148,25 +149,10 @@ namespace MTGViewer.Pages.Trades
                 return NotFound();
             }
 
-            var toDeck = await _dbContext.Locations.FindAsync(deckId);
+            var toDeck = await GetDeckAndValidateAsync(deckId);
 
-            if (toDeck == null || toDeck.IsShared)
+            if (toDeck == null)
             {
-                return NotFound();
-            }
-
-            await _dbContext.Entry(toDeck)
-                .Collection(d => d.Cards)
-                .LoadAsync();
-
-            var hasSuggesting = toDeck.Cards
-                .Select(c => c.CardId)
-                .Contains(Suggesting.Id);
-
-            if (hasSuggesting)
-            {
-                PostMessage = "Deck already has suggestion";
-
                 return RedirectToPage("./Index");
             }
 
@@ -191,6 +177,46 @@ namespace MTGViewer.Pages.Trades
             PostMessage = "Suggestion Successfully Created";
 
             return RedirectToPage("./Index");
+        }
+
+
+        private async Task<Location> GetDeckAndValidateAsync(int deckId)
+        {
+            var deck = await _dbContext.Locations.FindAsync(deckId);
+
+            if (deck == null || deck.IsShared)
+            {
+                PostMessage = "Suggestion target is not valid";
+                return null;
+            }
+
+            var suggestPrior = await _dbContext.Trades
+                .Where(t => t.ToUserId == deck.OwnerId
+                    && t.CardId == Suggesting.Id)
+                    // include both suggestions and trades
+                .AnyAsync();
+
+            if (suggestPrior)
+            {
+                PostMessage = "Suggestion is redundant";
+                return null;
+            }
+
+            await _dbContext.Entry(deck)
+                .Collection(d => d.Cards)
+                .LoadAsync();
+
+            var suggestInDeck = deck.Cards
+                .Select(c => c.CardId)
+                .Contains(Suggesting.Id);
+
+            if (suggestInDeck)
+            {
+                PostMessage = "Suggestion is already in deck";
+                return null;
+            }            
+
+            return deck;
         }
     }
 
