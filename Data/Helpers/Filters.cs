@@ -8,8 +8,8 @@ namespace MTGViewer.Data
         public static Expression<Func<Trade, bool>> PendingFor(string userId) =>
             trade =>
                 trade.FromId != default
-                    && (trade.ToUser.Id == userId && !trade.IsCounter
-                        || trade.FromUser.Id == userId && trade.IsCounter);
+                    && (trade.ToUserId == userId && !trade.IsCounter
+                        || trade.FromUserId == userId && trade.IsCounter);
 
         public static Expression<Func<Trade, bool>> PendingFor(int deckId) =>
             trade =>
@@ -22,7 +22,7 @@ namespace MTGViewer.Data
 
         public static Expression<Func<Trade, bool>> SuggestionFor(string userId) =>
             trade =>
-                trade.From == default
-                    && trade.ToUser.Id ==userId;
+                trade.FromId == default
+                    && trade.ToUserId == userId;
     }
 }

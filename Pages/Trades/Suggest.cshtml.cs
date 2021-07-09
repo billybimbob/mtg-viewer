@@ -18,8 +18,6 @@ namespace MTGViewer.Pages.Trades
     [Authorize]
     public class SuggestModel : PageModel
     {
-        private const string CARD_ID = "CardId";
-
         private readonly CardDbContext _dbContext;
         private readonly UserManager<CardUser> _userManager;
 
@@ -33,8 +31,8 @@ namespace MTGViewer.Pages.Trades
         private string CardId
         {
             // gets casted to guid for some reason
-            get => TempData[CARD_ID].ToString();
-            set => TempData[CARD_ID] = value;
+            get => TempData[nameof(CardId)].ToString();
+            set => TempData[nameof(CardId)] = value;
         }
 
         [TempData]
@@ -53,7 +51,7 @@ namespace MTGViewer.Pages.Trades
         public async Task<IActionResult> OnGetAsync(string cardId)
         {
             CardId = cardId;
-            TempData.Keep(CARD_ID);
+            TempData.Keep(nameof(CardId));
 
             await SetSuggestingAsync();
 
@@ -81,7 +79,24 @@ namespace MTGViewer.Pages.Trades
                 return NotFound();
             }
 
-            var decks = await _dbContext.Locations
+            var decks = await GetDeckOptionsAsync(userId);
+
+            var deckColors = decks
+                .Select(d => d
+                    .GetColors()
+                    .Select(c => Color.COLORS[ c.Name.ToLower() ]));
+
+            Decks = decks.Zip(deckColors);
+
+            TempData.Keep(nameof(CardId));
+
+            return Page();
+        }
+
+
+        private async Task<IEnumerable<Location>> GetDeckOptionsAsync(string userId)
+        {
+            var userDecks = await _dbContext.Locations
                 .Where(l => l.OwnerId == userId)
                 .Include(d => d.Owner)
                 .Include(d => d.Cards)
@@ -91,16 +106,36 @@ namespace MTGViewer.Pages.Trades
                 .AsNoTrackingWithIdentityResolution()
                 .ToListAsync();
 
-            var deckColors = decks
-                .Select(d => d
-                    .GetColors()
-                    .Select(c => Color.COLORS[ c.Name.ToLower() ]));
+            if (!userDecks.Any())
+            {
+                return Enumerable.Empty<Location>();
+            }
 
-            Decks = decks.Zip(deckColors);
+            var suggestInDeck = await _dbContext.Amounts
+                .Where(ca => ca.Location.OwnerId == userId
+                    && ca.CardId == Suggesting.Id)
+                    // include both request and non-request amounts
+                .Select(ca => ca.Location)
+                .Distinct()
+                .AsNoTracking()
+                .ToListAsync();
 
-            TempData.Keep(CARD_ID);
+            var suggestPrior = await _dbContext.Trades
+                .Where(t => t.ToUserId == userId
+                    && t.CardId == Suggesting.Id)
+                    // include both suggestions and trades
+                .Select(t => t.To)
+                .Distinct()
+                .AsNoTracking()
+                .ToListAsync();
 
-            return Page();
+            var idCompare = new EntityComparer<Location>(l => l.Id);
+
+            var invalidDecks = suggestInDeck
+                .Concat(suggestPrior)
+                .Distinct(idCompare);
+
+            return userDecks.Except(invalidDecks, idCompare);
         }
 
 
@@ -113,25 +148,40 @@ namespace MTGViewer.Pages.Trades
                 return NotFound();
             }
 
-            var destLoc = await _dbContext.Locations.FindAsync(deckId);
+            var toDeck = await _dbContext.Locations.FindAsync(deckId);
 
-            if (destLoc == null || destLoc.IsShared)
+            if (toDeck == null || toDeck.IsShared)
             {
                 return NotFound();
             }
 
-            await _dbContext.Entry(destLoc)
+            await _dbContext.Entry(toDeck)
+                .Collection(d => d.Cards)
+                .LoadAsync();
+
+            var hasSuggesting = toDeck.Cards
+                .Select(c => c.CardId)
+                .Contains(Suggesting.Id);
+
+            if (hasSuggesting)
+            {
+                PostMessage = "Deck already has suggestion";
+
+                return RedirectToPage("./Index");
+            }
+
+            await _dbContext.Entry(toDeck)
                 .Reference(d => d.Owner)
                 .LoadAsync();
 
-            var srcUser = await _userManager.GetUserAsync(User);
+            var fromUser = await _userManager.GetUserAsync(User);
 
             var suggestion = new Trade
             {
                 Card = Suggesting,
-                FromUser = srcUser,
-                ToUser = destLoc.Owner,
-                To = destLoc
+                FromUser = fromUser,
+                ToUser = toDeck.Owner,
+                To = toDeck
             };
 
             _dbContext.Attach(suggestion);

@@ -37,7 +37,7 @@ namespace MTGViewer.Pages.Decks
 
             Deck = await _context.Locations
                 .Include(l => l.Cards)
-                .ThenInclude(ca => ca.Card)
+                    .ThenInclude(ca => ca.Card)
                 .AsNoTracking()
                 .FirstOrDefaultAsync(l => l.Id == id && l.Owner == user);
 
@@ -53,7 +53,7 @@ namespace MTGViewer.Pages.Decks
         {
             Deck = await _context.Locations
                 .Include(l => l.Cards)
-                .ThenInclude(ca => ca.Card)
+                    .ThenInclude(ca => ca.Card)
                 .SingleOrDefaultAsync(l => l.Id == id);
 
             if (Deck != null)
