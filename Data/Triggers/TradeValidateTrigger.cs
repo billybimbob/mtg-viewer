@@ -85,7 +85,7 @@ namespace MTGViewer.Data.Triggers
 
             trade.FromUser = trade.From.Location.Owner;
 
-            return trade.FromUser != null;
+            return trade.FromUser is not null;
         }
 
 
@@ -101,7 +101,7 @@ namespace MTGViewer.Data.Triggers
 
             trade.ToUser = trade.To.Owner;
 
-            return trade.ToUser != null;
+            return trade.ToUser is not null;
         }
     }
 }

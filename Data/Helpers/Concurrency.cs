@@ -97,7 +97,7 @@ namespace MTGViewer.Data.Concurrency
                 memberExpr = property.Body as MemberExpression;
             }
 
-            if (memberExpr == null)
+            if (memberExpr is null)
             {
                 return builder;
             }

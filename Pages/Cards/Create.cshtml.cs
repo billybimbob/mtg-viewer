@@ -61,7 +61,7 @@ namespace MTGViewer.Pages.Cards
         {
             _logger.LogInformation("on post");
 
-            if (Amounts != null && Amounts.Any())
+            if (Amounts is not null && Amounts.Any())
             {
                 return await FromPickedAsync();
             }
@@ -135,7 +135,7 @@ namespace MTGViewer.Pages.Cards
             {
                 var card = await _fetch.GetIdAsync(info.Id);
 
-                if (card == null)
+                if (card is null)
                 {
                     _logger.LogError($"{info.Id} failed to fail correct card");
                     continue;

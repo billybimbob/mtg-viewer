@@ -25,14 +25,14 @@ namespace MTGViewer.Pages.Cards
 
         public async Task<IActionResult> OnGetAsync(string id)
         {
-            if (id == null)
+            if (id is null)
             {
                 return NotFound();
             }
 
             Card = await _context.Cards.FindAsync(id);
 
-            if (Card == null)
+            if (Card is null)
             {
                 return NotFound();
             }
@@ -41,14 +41,14 @@ namespace MTGViewer.Pages.Cards
 
         public async Task<IActionResult> OnPostAsync(string id)
         {
-            if (id == null)
+            if (id is null)
             {
                 return NotFound();
             }
 
             Card = await _context.Cards.FindAsync(id);
 
-            if (Card != null)
+            if (Card is not null)
             {
                 _context.Cards.Remove(Card);
                 await _context.SaveChangesAsync();

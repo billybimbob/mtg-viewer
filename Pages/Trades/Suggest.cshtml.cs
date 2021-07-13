@@ -51,11 +51,10 @@ namespace MTGViewer.Pages.Trades
         public async Task<IActionResult> OnGetAsync(string cardId)
         {
             CardId = cardId;
-            TempData.Keep(nameof(CardId));
 
             await SetSuggestingAsync();
 
-            if (Suggesting == null)
+            if (Suggesting is null)
             {
                 return NotFound();
             }
@@ -67,6 +66,8 @@ namespace MTGViewer.Pages.Trades
                 .AsNoTrackingWithIdentityResolution()
                 .ToListAsync();
 
+            TempData.Keep(nameof(CardId));
+
             return Page();
         }
 
@@ -75,7 +76,7 @@ namespace MTGViewer.Pages.Trades
         {
             await SetSuggestingAsync();
 
-            if (Suggesting == null)
+            if (Suggesting is null)
             {
                 return NotFound();
             }
@@ -144,14 +145,14 @@ namespace MTGViewer.Pages.Trades
         {
             await SetSuggestingAsync();
 
-            if (Suggesting == null)
+            if (Suggesting is null)
             {
                 return NotFound();
             }
 
             var toDeck = await GetDeckAndValidateAsync(deckId);
 
-            if (toDeck == null)
+            if (toDeck is null)
             {
                 return RedirectToPage("./Index");
             }
@@ -184,7 +185,7 @@ namespace MTGViewer.Pages.Trades
         {
             var deck = await _dbContext.Locations.FindAsync(deckId);
 
-            if (deck == null || deck.IsShared)
+            if (deck is null || deck.IsShared)
             {
                 PostMessage = "Suggestion target is not valid";
                 return null;

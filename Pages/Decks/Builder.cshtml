@@ -5,7 +5,14 @@
     ViewData["Title"] = "Deck Builder";
 }
 
-<component type="typeof(Components.DeckBuilder)" 
+@* <component type="typeof(Components.DeckBuilder)" 
     render-mode="ServerPrerendered" 
     param-User="@Model.CardUser"
-    param-DeckId="@Model.DeckId" />
+    param-DeckId="@Model.DeckId" /> *@
+
+@(await Html.RenderComponentAsync<DeckBuilder>(
+    RenderMode.ServerPrerendered,
+    new {
+        User = Model.CardUser,
+        DeckId = Model.DeckId
+    }))

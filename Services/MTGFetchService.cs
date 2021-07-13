@@ -57,7 +57,7 @@ namespace MTGViewer.Services
 
             var cards = matches
                 .Select(c => c.ToCard())
-                .Where(c => TestValid(c) != null)
+                .Where(c => TestValid(c) is not null)
                 .OrderBy(c => c.Name)
                 .ToList();
 
@@ -83,7 +83,7 @@ namespace MTGViewer.Services
             _logger.LogInformation($"refetching {id}");
 
             var match = LoggedUnwrap(await _service.FindAsync(id));
-            if (match == null)
+            if (match is null)
             {
                 _logger.LogError("match returned null");
                 return null;
@@ -91,7 +91,7 @@ namespace MTGViewer.Services
 
             card = TestValid(match.ToCard());
 
-            if (card != null)
+            if (card is not null)
             {
                 _cache[card.Id] = card;
             }
@@ -103,7 +103,7 @@ namespace MTGViewer.Services
         private T? LoggedUnwrap<T>(IOperationResult<T> result) where T : class
         {
             var unwrap = result.Unwrap();
-            if (unwrap == null)
+            if (unwrap is null)
             {
                 _logger.LogError(result.Exception.ToString());
             }
@@ -145,12 +145,12 @@ namespace MTGViewer.Services
 
         private void QueryProperty(PropertyInfo info, object? objValue)
         {
-            if (info.GetSetMethod() == null || info.GetGetMethod() == null)
+            if (info.GetSetMethod() is null || info.GetGetMethod() is null)
             {
                 return;
             }
 
-            if (typeof(CardQueryParameter).GetProperty(info.Name) == null)
+            if (typeof(CardQueryParameter).GetProperty(info.Name) is null)
             {
                 return;
             }

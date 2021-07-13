@@ -22,14 +22,14 @@ namespace MTGViewer.Pages.Cards
 
         public async Task<IActionResult> OnGetAsync(string id)
         {
-            if (id == null)
+            if (id is null)
             {
                 return NotFound();
             }
 
             Card = await _context.Cards.FirstOrDefaultAsync(m => m.Id == id);
 
-            if (Card == null)
+            if (Card is null)
             {
                 return NotFound();
             }

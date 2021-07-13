@@ -9,6 +9,9 @@
     <h1 class="display-4">Welcome to the card database!</h1>
 </div>
 
-<component type="typeof(Components.Counter)" render-mode="ServerPrerendered" />
+@* <h3>This should allow you to select an image</h3>
+<input type="file" accept="image/*"> *@
 
-@* @(await Html.RenderComponentAsync<Components.Counter>(RenderMode.ServerPrerendered)) *@
+@* <component type="typeof(Components.Counter)" render-mode="ServerPrerendered" /> *@
+
+@(await Html.RenderComponentAsync<Counter>(RenderMode.ServerPrerendered))

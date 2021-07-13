@@ -41,7 +41,7 @@ namespace MTGViewer.Pages.Decks
                 .AsNoTracking()
                 .FirstOrDefaultAsync(l => l.Id == id && l.Owner == user);
 
-            if (Deck == null)
+            if (Deck is null)
             {
                 return NotFound();
             }
@@ -56,7 +56,7 @@ namespace MTGViewer.Pages.Decks
                     .ThenInclude(ca => ca.Card)
                 .SingleOrDefaultAsync(l => l.Id == id);
 
-            if (Deck != null)
+            if (Deck is not null)
             {
                 var availCards = Deck.Cards
                     .Select(ca => ca.Card.Id)

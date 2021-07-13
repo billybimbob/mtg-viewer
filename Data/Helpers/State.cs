@@ -31,7 +31,7 @@ namespace MTGViewer.Data
             get => _request;
             set
             {
-                if (value != null
+                if (value is not null
                     && (!object.ReferenceEquals(Applied.Card, value.Card)
                         || !object.ReferenceEquals(Applied.Location, value.Location)))
                 {
@@ -51,7 +51,7 @@ namespace MTGViewer.Data
             get => Applied.Card;
             set
             {
-                if (value == null)
+                if (value is null)
                 {
                     return;
                 }
@@ -89,7 +89,7 @@ namespace MTGViewer.Data
         {
             yield return Applied;
 
-            if (Request != null)
+            if (Request is not null)
             {
                 yield return Request;
             }

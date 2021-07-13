@@ -19,7 +19,7 @@ namespace MTGViewer.Data
             {
                 return true;
             }
-            else if (a == null || b == null)
+            else if (a is null || b is null)
             {
                 return false;
             }
@@ -29,7 +29,7 @@ namespace MTGViewer.Data
 
         public int GetHashCode(E entity)
         {
-            return entity == null ? 0 : _property(entity).GetHashCode();
+            return entity is null ? 0 : _property(entity).GetHashCode();
         }
     }
 

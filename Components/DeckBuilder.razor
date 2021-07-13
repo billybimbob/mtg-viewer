@@ -3,7 +3,7 @@
 @using MTGViewer.Areas.Identity.Data
 
 @namespace MTGViewer.Components
-@implements IDisposable
+@implements IAsyncDisposable
 
 @inject NavigationManager NavigationManager
 @inject IDbContextFactory<CardDbContext> DbFactory
@@ -21,54 +21,16 @@
 </button>
 
 
-@if (_result == SaveResult.Success)
-{
-    <div class="alert alert-success d-flex align-items-center alert-dismissible fade show" role="alert">
-        <svg class="bi bi-check-circle-fill flex-shrink-0 mr-4" 
-            viewBox="0 0 16 16"
-            width="24"
-            height="24"
-            fill="currentColor"
-            role="img"
-            aria-label="Success:">
-            <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zm-3.97-3.03a.75.75 0 0 0-1.08.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-.01-1.05z"/>
-        </svg>
-        <div>
-            Save was succesful, and values have been updated
-        </div>
-        <button type="button" 
-                class="close" 
-                aria-label="Close Success"
-                @onclick="() => _result = SaveResult.None">
-            <span aria-hidden="true">&times;</span>
-        </button>
-    </div>
-}
-else if (_result == SaveResult.Error)
-{
-    <div class="alert alert-danger d-flex align-items-center alert-dismissible fade show" role="alert">
-        <svg class="bi bi-exclamation-triangle-fill flex-shrink-0 mr-4"
-            viewBox="0 0 16 16"
-            width="24"
-            height="24"
-            fill="currentColor"
-            role="img"
-            aria-label="Danger:">
-            <path d="M8.982 1.566a1.13 1.13 0 0 0-1.96 0L.165 13.233c-.457.778.091 1.767.98 1.767h13.713c.889 0 1.438-.99.98-1.767L8.982 1.566zM8 5c.535 0 .954.462.9.995l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 5.995A.905.905 0 0 1 8 5zm.002 6a1 1 0 1 1 0 2 1 1 0 0 1 0-2z"/>
-        </svg>
-        <div>
-            <p>There are conflicts while trying to save, and values have been updated. </p>
-            <hr>
-            <p>Save again to confirm</p>
-        </div>
-        <button type="button" 
-                class="close" 
-                aria-label="Close Error"
-                @onclick="() => _result = SaveResult.None">
-            <span aria-hidden="true">&times;</span>
-        </button>
-    </div>
-}
+<SavePrompt @bind-Result="_result">
+    <SuccessMessage>
+        Save was succesful, and values have been updated
+    </SuccessMessage>
+    <ErrorMessage>
+        <p>There are conflicts while trying to save, and values have been updated. </p>
+        <hr>
+        <p>Save again to confirm</p>
+    </ErrorMessage>
+</SavePrompt>
 
 
 <h2>Available Cards</h2>
@@ -230,6 +192,12 @@ else if (_result == SaveResult.Error)
 
     protected override async Task OnParametersSetAsync()
     {
+        if (_busy)
+        {
+            return;
+        }
+
+        _busy = true;
         _deck = await GetOrCreateDeckAsync();
 
         _deckCards = _deck.Cards
@@ -237,6 +205,7 @@ else if (_result == SaveResult.Error)
             .ToDictionary(g => g.Key, InitGroup);
 
         FixDeckState();
+        _busy = false;
     }
 
 
@@ -274,7 +243,7 @@ else if (_result == SaveResult.Error)
         var applied = grouping.SingleOrDefault(ca => !ca.IsRequest);
         var request = grouping.SingleOrDefault(ca => ca.IsRequest);
 
-        if (applied == null)
+        if (applied is null)
         {
             applied = new CardAmount
             {
@@ -290,9 +259,12 @@ else if (_result == SaveResult.Error)
     }
 
 
-    public void Dispose()
+    public async ValueTask DisposeAsync()
     {
-        _context?.Dispose();
+        if (_context is not null)
+        {
+            await _context.DisposeAsync();
+        }
     }
 
 
@@ -393,7 +365,7 @@ else if (_result == SaveResult.Error)
 
         if (availAmnt.Amount < 0)
         {
-            if (deckGroup.Request == null)
+            if (deckGroup.Request is null)
             {
                 deckGroup.Request = new CardAmount
                 {
@@ -448,7 +420,6 @@ else if (_result == SaveResult.Error)
         finally
         {
             await UpdateAvailableAsync();
-
             FixDeckState();
 
             _busy = false;
@@ -524,7 +495,7 @@ else if (_result == SaveResult.Error)
         var deckConflict = ex.Entries<Location>()
             .SingleOrDefault();
 
-        if (deckConflict != null && deckConflict.Entity.Id == _deck.Id)
+        if (deckConflict is not null && deckConflict.Entity.Id == _deck.Id)
         {
             return false;
         }
@@ -570,7 +541,7 @@ else if (_result == SaveResult.Error)
             ? localDeckGroup.Request
             : localDeckGroup.Applied;
 
-        if (localDeckCard == null)
+        if (localDeckCard is null)
         {
             dbDeckCard.Card = localDeckGroup.Card;
             dbDeckCard.Location = localDeckGroup.Location;
@@ -631,7 +602,7 @@ else if (_result == SaveResult.Error)
             _context.Attach(amntGroup.Applied);
         }
 
-        if (amntGroup.Request != null)
+        if (amntGroup.Request is not null)
         {
             _context.Attach(amntGroup.Request);
         }

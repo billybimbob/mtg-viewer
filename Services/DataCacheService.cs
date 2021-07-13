@@ -29,7 +29,7 @@ namespace MTGViewer.Services
         {
             set
             {
-                if (key == null)
+                if (key is null)
                 {
                     return;
                 }
