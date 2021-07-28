@@ -1,0 +1,486 @@
+@using MTGViewer.Data
+@using MTGViewer.Data.Concurrency
+
+@namespace MTGViewer.Components
+@implements IAsyncDisposable
+
+@inject Logger<Trader> Log
+@inject IDbContextFactory<CardDbContext> DbFactory
+
+
+<h1>@_deck.Name Trader</h1>
+
+<button title="Save Deck"
+        type="button"
+        class="btn btn-secondary mb-3"
+        disabled="@HasNoChanges"
+        @onclick="CommitChangesAsync">
+    Save Changes
+</button>
+
+<select class="form-control" @bind="Destination">
+    @foreach (var location in DestinationOptions)
+    {
+        <option value="@location">@location.Name</option>
+    }
+</select>
+
+<div class="container">
+    <div class="row">
+
+        <div class="col">
+            <h2>@_deck.Name Cards</h2>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Card Name</th>
+                        <th>Mana Cost</th>
+                        <th>Set</th>
+                        <th>Rarity</th>
+                        <th>Amount Available</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var (cardAmount, amount) in GetMergedDestination())
+                    {
+                        var card = cardAmount.Card;
+                        <tr>
+                            <td class="fw-bold">@card.Name</td>
+                            <td>
+                                @foreach (var cost in card.GetColorSymbols())
+                                {
+                                    <span class="m-1 ms ms-@cost.ToLower() ms-cost"></span>
+                                }
+                            </td>
+                            <td>@card.SetName</td>
+                            <td>@card.Rarity</td>
+                            <td>@amount</td>
+                            <td>
+                                <button title="@card.Name Offer"
+                                        type="button"
+                                        class="btn btn-outline-secondary border-0 rounded"
+                                        disabled="@(amount==0)"
+                                        @onclick="() => OfferCard(cardAmount)">
+                                    Offer Card
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <div class="col">
+            <h2>@Destination.Name Cards</h2>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Card Name</th>
+                        <th>Mana Cost</th>
+                        <th>Set</th>
+                        <th>Rarity</th>
+                        <th>Amount Available</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var (cardAmount, amount) in GetMergedDeck())
+                    {
+                        var card = cardAmount.Card;
+                        <tr>
+                            <td class="fw-bold">@card.Name</td>
+                            <td>
+                                @foreach (var cost in card.GetColorSymbols())
+                                {
+                                    <span class="m-1 ms ms-@cost.ToLower() ms-cost"></span>
+                                }
+                            </td>
+                            <td>@card.SetName</td>
+                            <td>@card.Rarity</td>
+                            <td>@amount</td>
+                            <td>
+                                <button title="@card.Name Take"
+                                        type="button"
+                                        class="btn btn-outline-secondary border-0 rounded"
+                                        disabled="@(amount==0)"
+                                        @onclick="() => TakeCard(cardAmount)">
+                                    Take Card
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+    </div>
+    <div class="row">
+
+        <div class="col">
+            <h2>To @_deck.Name</h2>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Card Name</th>
+                        <th>Mana Cost</th>
+                        <th>From</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                    @foreach (var trade in ToDeckTrades)
+                    {
+                        <tr>
+                            <td class="fw-bold">@trade.Card.Name</td>
+                            <td>
+                                @foreach (var cost in trade.Card.GetColorSymbols())
+                                {
+                                    <span class="m-1 ms ms-@cost.ToLower() ms-cost"></span>
+                                }
+                            </td>
+                            <td>@trade.From.Location.Name</td>
+                            <td>
+                                <button title="@trade.Id Return"
+                                        type="button"
+                                        class="btn btn-outline-secondary border-0 rounded"
+                                        @onclick="() => ReturnCard(trade)">
+                                    Return
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                <tbody>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="col">
+            <h2>From @_deck.Name</h2>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Card Name</th>
+                        <th>Mana Cost</th>
+                        <th>To</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var trade in FromDeckTrades)
+                    {
+                        <tr>
+                            <td class="fw-bold">@trade.Card.Name</td>
+                            <td>
+                                @foreach (var cost in trade.Card.GetColorSymbols())
+                                {
+                                    <span class="m-1 ms ms-@cost.ToLower() ms-cost"></span>
+                                }
+                            </td>
+                            <td>@trade.To.Name</td>
+                            <td>
+                                <button title="@trade.Id Return"
+                                        type="button"
+                                        class="btn btn-outline-secondary border-0 rounded"
+                                        @onclick="() => ReturnCard(trade)">
+                                    Return
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+    </div>
+</div>
+
+
+@code {
+
+    [Parameter]
+    public int DeckId { get; set; }
+
+    [Parameter]
+    public string UserId { get; set; }
+
+    private Location Destination { get; set; }
+    private IReadOnlyList<Location> DestinationOptions { get; set; }
+
+    private CardDbContext _dbContext;
+
+    private Location _deck;
+    private IReadOnlyList<CardAmount> _cardOptions;
+    private IDictionary<(Card, Location To, Location From), Trade> _currentOffers;
+
+
+    protected override void OnInitialized()
+    {
+        _dbContext = DbFactory.CreateDbContext();
+    }
+
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _deck = await _dbContext.Locations
+            .Include(l => l.Cards)
+                .ThenInclude(ca => ca.Card)
+            .SingleAsync(l => l.Id == DeckId);
+
+        _cardOptions = await _dbContext.Amounts
+            .Where(ca => ca.Location.OwnerId == UserId)
+            .Include(ca => ca.Card)
+            .Include(ca => ca.Location)
+            .OrderBy(ca => ca.Card.Name)
+            .ToListAsync();
+
+        _currentOffers = await _dbContext.Trades
+            .Where(TradeFilter.TradesFor(DeckId))
+            .Include(t => t.Card)
+            .Include(t => t.To)
+            .Include(t => t.From)
+                .ThenInclude(ca => ca.Location)
+            .ToDictionaryAsync(t => (t.Card, To: t.To, From: t.From.Location));
+
+        DestinationOptions = _cardOptions
+            .Select(ca => ca.Location)
+            .Distinct()
+            .OrderBy(l => l.Name)
+            .ToList();
+    }
+
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_dbContext is not null)
+        {
+            await _dbContext.DisposeAsync();
+        }
+    }
+
+
+    private bool HasNoChanges =>
+        !_dbContext.ChangeTracker.HasChanges();
+
+    private IEnumerable<Trade> ToDeckTrades =>
+        _currentOffers.Values
+            .Where(t => t.ToId == DeckId && t.Amount > 0);
+
+    private IEnumerable<Trade> FromDeckTrades =>
+        _currentOffers.Values
+            .Where(t => t.FromId == DeckId && t.Amount > 0);
+
+
+    private IEnumerable<(CardAmount, int)> GetMergedDeck()
+    {
+        var merged = _deck.Cards
+            .ToDictionary(t => t.Id, t => t.Amount);
+
+        foreach (var trade in _currentOffers.Values)
+        {
+            if (trade.FromId is int fromId
+                && merged.TryGetValue(fromId, out int amount))
+            {
+                merged[fromId] = amount - trade.Amount;
+            }
+        }
+
+        foreach (var cardAmount in _deck.Cards.OrderBy(ca => ca.Card.Name))
+        {
+            yield return (cardAmount, merged[cardAmount.Id]);
+        }
+    }
+
+
+    private IEnumerable<(CardAmount, int)> GetMergedDestination()
+    {
+        var optionsFromSelect = _cardOptions
+            .Where(ca => ca.Location.Id == Destination.Id);
+
+        var merged = optionsFromSelect
+            .ToDictionary(t => t.Id, t => t.Amount);
+
+        foreach (var trade in _currentOffers.Values)
+        {
+            if (trade.FromId is int fromId
+                && merged.TryGetValue(fromId, out int amount))
+            {
+                merged[fromId] = amount - trade.Amount;
+            }
+        }
+
+        foreach (var cardAmount in optionsFromSelect.OrderBy(ca => ca.Card.Name))
+        {
+            yield return (cardAmount, merged[cardAmount.Id]);
+        }
+    }
+
+
+    private void OfferCard(CardAmount offerSource)
+    {
+        if (offerSource.Amount == 0)
+        {
+            return;
+        }
+
+        Trade trade;
+
+        var reverseOffer = (offerSource.Card, To: offerSource.Location, From: _deck);
+
+        if (_currentOffers.TryGetValue(reverseOffer, out trade) && trade.Amount > 0)
+        {
+            ReturnCard(trade);
+            return;
+        }
+
+        var offer = (offerSource.Card, To: _deck, From: offerSource.Location);
+
+        if (!_currentOffers.TryGetValue(offer, out trade))
+        {
+            trade = new Trade
+            {
+                Card = offerSource.Card,
+                To = _deck,
+                From = offerSource,
+                ProposerId = UserId,
+                ReceiverId = _deck.OwnerId,
+                Amount = 0
+            };
+
+            _currentOffers.Add(offer, trade);
+            _dbContext.Add(trade);
+        }
+
+        if (offerSource.Amount - trade.Amount <= 0)
+        {
+            Log.LogError($"cannot offer and more for {offer.Card.Name}");
+            return;
+        }
+
+        trade.Amount += 1;
+        // trade.From.Amount -= 1;
+    }
+
+
+    private void TakeCard(CardAmount takeSource)
+    {
+        if (takeSource.Amount == 0)
+        {
+            return;
+        }
+
+        Trade trade;
+
+        var reverseTake = (takeSource.Card, To: takeSource.Location, From: Destination);
+
+        if (_currentOffers.TryGetValue(reverseTake, out trade) && trade.Amount > 0)
+        {
+            ReturnCard(trade);
+            return;
+        }
+
+        var take = (takeSource.Card, To: Destination, From: takeSource.Location);
+
+        if (!_currentOffers.TryGetValue(take, out trade))
+        {
+            trade = new Trade
+            {
+                Card = takeSource.Card,
+                To = Destination,
+                From = takeSource,
+                ProposerId = UserId,
+                ReceiverId = _deck.OwnerId,
+                Amount = 0
+            };
+
+            _currentOffers.Add(take, trade);
+            _dbContext.Add(trade);
+        }
+
+        if (takeSource.Amount - trade.Amount <= 0)
+        {
+            Log.LogError($"cannot take anymore for {take.Card.Name}");
+            return;
+        }
+
+        trade.Amount += 1;
+    }
+
+
+    private void ReturnCard(Trade trade)
+    {
+        if (trade.Amount == 0)
+        {
+            return;
+        }
+
+        trade.Amount -= 1;
+    }
+
+
+    private async Task CommitChangesAsync()
+    {
+        PrepareChanges();
+        try
+        {
+            await _dbContext.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException ex)
+        {
+            await ResolveConcurrencyIssuesAsync(ex);
+        }
+    }
+
+
+    private void PrepareChanges()
+    {
+        foreach(var trade in _currentOffers.Values)
+        {
+            @* if (trade.Amount == 0)
+            {
+                _dbContext.Remove(trade);
+                continue;
+            } *@
+
+            if (_dbContext.Entry(trade).State == EntityState.Detached)
+            {
+                _dbContext.Attach(trade);
+            }
+
+            if (trade.ReceiverId == UserId)
+            {
+                trade.IsCounter = true;
+            }
+            else
+            {
+                trade.IsCounter = false;
+            }
+        }
+    }
+
+
+    private async Task ResolveConcurrencyIssuesAsync(DbUpdateConcurrencyException ex)
+    {
+        foreach(var entry in ex.Entries)
+        {
+            switch(entry.Entity)
+            {
+                case CardAmount cardAmount:
+                    var dbValues = await entry.GetDatabaseValuesAsync();
+                    var amount = _dbContext.Entry(cardAmount)
+                        .Property(ca => ca.Amount)
+                        .Metadata;
+
+                    cardAmount.Amount = dbValues.GetValue<int>(amount);
+                    _dbContext.MatchToken(cardAmount, dbValues);
+                    break;
+
+                case Trade trade:
+                    await _dbContext.MatchToken(trade);
+                    break;
+
+                default:
+                    break;
+            }
+        }
+    }
+}

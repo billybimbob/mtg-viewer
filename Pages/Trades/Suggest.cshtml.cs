@@ -123,7 +123,7 @@ namespace MTGViewer.Pages.Trades
                 .ToListAsync();
 
             var suggestPrior = await _dbContext.Trades
-                .Where(t => t.ToUserId == userId
+                .Where(t => t.ReceiverId == userId
                     && t.CardId == Suggesting.Id)
                     // include both suggestions and trades
                 .Select(t => t.To)
@@ -166,8 +166,8 @@ namespace MTGViewer.Pages.Trades
             var suggestion = new Trade
             {
                 Card = Suggesting,
-                FromUser = fromUser,
-                ToUser = toDeck.Owner,
+                Proposer = fromUser,
+                Receiver = toDeck.Owner,
                 To = toDeck
             };
 
@@ -192,7 +192,7 @@ namespace MTGViewer.Pages.Trades
             }
 
             var suggestPrior = await _dbContext.Trades
-                .Where(t => t.ToUserId == deck.OwnerId
+                .Where(t => t.ReceiverId == deck.OwnerId
                     && t.CardId == Suggesting.Id)
                     // include both suggestions and trades
                 .AnyAsync();

@@ -28,7 +28,6 @@ namespace MTGViewer.Data.Triggers
                 return;
             }
 
-            // TODO: improve to make more efficient, less loads
             var trade = trigContext.Entity;
 
             if (_dbContext.Entry(trade).State == EntityState.Detached)
@@ -36,37 +35,13 @@ namespace MTGViewer.Data.Triggers
                 _dbContext.Attach(trade);
             }
 
-            if (!trade.IsSuggestion && trade.Amount == 0)
-            {
-                _dbContext.Remove(trade);
-                return;
-            }
-
             // TODO: make valid failure not silent
 
-            var isValidFrom = await FromValidationAsync(trade);
-
-            if (!isValidFrom)
-            {
-                _dbContext.Remove(trade);
-                return;
-            }
-
-            var isValidTo = await ToValidationAsync(trade);
-
-            if (!isValidTo)
-            {
-                _dbContext.Remove(trade);
-            }
-        }
-
-
-        private async Task<bool> FromValidationAsync(Trade trade)
-        {
             if (trade.IsSuggestion)
             {
                 trade.IsCounter = false;
-                return true;
+                trade.Amount = 0;
+                return;
             }
 
             await _dbContext.Entry(trade)
@@ -74,34 +49,11 @@ namespace MTGViewer.Data.Triggers
                 .LoadAsync();
 
             trade.Amount = Math.Min(trade.From.Amount, trade.Amount);
-            
-            await _dbContext.Entry(trade.From)
-                .Reference(l => l.Location)
-                .LoadAsync();
 
-            await _dbContext.Entry(trade.From.Location)
-                .Reference(l => l.Owner)
-                .LoadAsync();
-
-            trade.FromUser = trade.From.Location.Owner;
-
-            return trade.FromUser is not null;
-        }
-
-
-        private async Task<bool> ToValidationAsync(Trade trade)
-        {
-            await _dbContext.Entry(trade)
-                .Reference(t => t.To)
-                .LoadAsync();
-
-            await _dbContext.Entry(trade.To)
-                .Reference(l => l.Owner)
-                .LoadAsync();
-
-            trade.ToUser = trade.To.Owner;
-
-            return trade.ToUser is not null;
+            if (trade.Amount == 0)
+            {
+                _dbContext.Remove(trade);
+            }
         }
     }
 }

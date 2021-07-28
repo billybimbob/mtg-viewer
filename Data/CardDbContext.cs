@@ -10,8 +10,7 @@ namespace MTGViewer.Data
     {
         public CardDbContext(DbContextOptions<CardDbContext> options)
             : base(options)
-        {
-        }
+        { }
 
         public DbSet<Card> Cards { get; set; }
         public DbSet<Location> Locations { get; set; }
@@ -44,11 +43,11 @@ namespace MTGViewer.Data
             modelBuilder.Entity<Trade>(tradeBuild =>
             {
                 tradeBuild
-                    .HasOne(t => t.FromUser)
+                    .HasOne(t => t.Proposer)
                     .WithMany();
 
                 tradeBuild
-                    .HasOne(t => t.ToUser)
+                    .HasOne(t => t.Receiver)
                     .WithMany();
 
                 tradeBuild

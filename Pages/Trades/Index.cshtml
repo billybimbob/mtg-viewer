@@ -21,48 +21,31 @@
 
 <h2>Pending Trades</h2>
 
-<form method="POST">
-    <table class="table">
-        <thead>
+<table class="table">
+    <thead>
+        <tr>
+            <th> @Html.DisplayNameForInnerType((Location l) => l.Name) </th>
+            <th> @Html.DisplayNameForInnerType((Location l) => l.Owner) </th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var deck in Model.DeckTrades)
+        {
             <tr>
-                <th> @Html.DisplayNameForInnerType((Trade t) => t.Card) </th>
-                <th> @Html.DisplayNameForInnerType((Trade t) => t.FromUser) </th>
-                <th> @Html.DisplayNameForInnerType((Trade t) => t.To) </th>
-                <th> @Html.DisplayNameForInnerType((Trade t) => t.Amount) </th>
-                <th></th>
+                <td>@deck.Name</td>
+                <td>@deck.Owner.Name</td>
+
+                <td>
+                    <a asp-page="./Propose" asp-route-deckid="@deck.Id">
+                        View
+                    </a>
+                </td>
             </tr>
-        </thead>
-        <tbody>
-            @foreach (var trade in Model.PendingTrades)
-            {
-                <tr>
-                    <td>
-                        <a asp-page="/Cards/Details" asp-route-id="@trade.CardId">
-                            @trade.Card.Name
-                        </a>
-                    </td>
-                    <td>@trade.FromUser.Name</td>
-                    <td>@trade.To.Name</td>
-                    <td>@trade.Amount</td>
+        }
+    </tbody>
 
-                    <td>
-                        <input type="submit"
-                            asp-page-handler="Accept"
-                            asp-route-tradeid="@trade.Id"
-                            class="btn btn-secondary mb-3"
-                            value="Accept" />
-                        <input type="submit"
-                            asp-page-handler="Reject"
-                            asp-route-tradeid="@trade.Id"
-                            class="btn btn-secondary mb-3"
-                            value="Reject" />
-                    </td>
-                </tr>
-            }
-        </tbody>
-
-    </table>
-</form>
+</table>
 
 
 <h2>Suggestions</h2>
@@ -86,7 +69,7 @@
                             @suggestion.Card.Name
                         </a>
                     </td>
-                    <td>@suggestion.FromUser.Name</td>
+                    <td>@suggestion.Proposer.Name</td>
                     <td>@suggestion.To.Name</td>
                     <td>
                         <input type="submit"

@@ -30,7 +30,7 @@ namespace MTGViewer.Pages.Trades
         [TempData]
         public string PostMessage { get; set; }
 
-        public IReadOnlyList<Trade> PendingTrades { get; private set; }
+        public IReadOnlyList<Location> DeckTrades { get; private set; }
         public IReadOnlyList<Trade> Suggestions { get; private set; }
 
 
@@ -38,25 +38,23 @@ namespace MTGViewer.Pages.Trades
         {
             var userId = _userManager.GetUserId(User);
 
-            PendingTrades = await _dbContext.Trades
-                .Where(TradeFilter.PendingFor(userId))
-                // .Where(t => t.FromId != default
-                //     && (t.ToUserId == userId && !t.IsCounter 
-                //         || t.FromUserId == userId && t.IsCounter))
-                .Include(t => t.Card)
-                .Include(t => t.FromUser)
+            var userTrades = await _dbContext.Trades
+                .Where(TradeFilter.ReceivingFor(userId))
                 .Include(t => t.To)
-                .AsSplitQuery()
-                .AsNoTrackingWithIdentityResolution()
+                .Include(t => t.From)
+                    .ThenInclude(ca => ca.Location)
+                .AsNoTracking()
                 .ToListAsync();
+
+            DeckTrades = userTrades
+                .SelectMany(t => t.GetLocations())
+                .ToList();
 
             Suggestions = await _dbContext.Trades
                 .Where(TradeFilter.SuggestionFor(userId))
-                // .Where(t => t.FromId == default && t.ToUserId == userId)
                 .Include(t => t.Card)
-                .Include(t => t.FromUser)
+                .Include(t => t.Proposer)
                 .Include(t => t.To)
-                .AsSplitQuery()
                 .AsNoTrackingWithIdentityResolution()
                 .ToListAsync();
         }

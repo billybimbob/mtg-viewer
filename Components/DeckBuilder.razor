@@ -10,7 +10,7 @@
 @inject ILogger<DeckBuilder> Logger
 
 
-<h1>Deck Builder</h1>
+<h1>@_deck.Name Builder</h1>
 
 <button title="Save Deck"
         type="button"
@@ -138,7 +138,7 @@
 
     private bool _busy;
     private SaveResult _result;
-    private CardDbContext _context;
+    private CardDbContext _dbContext;
 
     private Location _deck;
     private SortedList<string, List<Card>> _dbCards;
@@ -148,7 +148,7 @@
 
 
     private bool HasNoChanges =>
-        !_context.ChangeTracker.HasChanges();
+        !_dbContext.ChangeTracker.HasChanges();
 
     private IEnumerable<Card> SortedAvailCards =>
         _dbCards.Values
@@ -168,9 +168,9 @@
         }
 
         _busy = true;
-        _context = DbFactory.CreateDbContext();
+        _dbContext = DbFactory.CreateDbContext();
 
-        var cards = await _context.Cards.ToListAsync();
+        var cards = await _dbContext.Cards.ToListAsync();
 
         var nameGroups = cards
             .GroupBy(c => c.Name)
@@ -178,11 +178,9 @@
 
         _dbCards = new SortedList<string, List<Card>>(nameGroups);
 
-        _availables = await _context.Amounts
+        _availables = await _dbContext.Amounts
             .Where(ca => ca.Location.OwnerId == default)
             // TODO: change return location
-            // TODO: group amounts by cards
-            // .GroupBy(ca => ca.CardId)
             .ToDictionaryAsync(ca => ca.CardId);
 
         _busy = false;
@@ -213,12 +211,12 @@
     {
         if (DeckId != default)
         {
-            return await _context.Locations
+            return await _dbContext.Locations
                 .Include(l => l.Cards)
                 .SingleAsync(l => l.Id == DeckId);
         }
 
-        var userDeckCount = await _context.Locations
+        var userDeckCount = await _dbContext.Locations
             .Where(l => l.Owner == User)
             .CountAsync();
 
@@ -227,7 +225,7 @@
             Owner = User
         };
 
-        _context.Attach(newLoc);
+        _dbContext.Attach(newLoc);
 
         return newLoc;
     }
@@ -252,7 +250,7 @@
                 Amount = 0
             };
 
-            _context.Add(applied);
+            _dbContext.Add(applied);
         }
 
         return new AmountGroup(applied, request);
@@ -261,9 +259,9 @@
 
     public async ValueTask DisposeAsync()
     {
-        if (_context is not null)
+        if (_dbContext is not null)
         {
-            await _context.DisposeAsync();
+            await _dbContext.DisposeAsync();
         }
     }
 
@@ -292,7 +290,7 @@
             deckGroup = new AmountGroup(newAmnt);
 
             _deckCards.Add(card.Id, deckGroup);
-            _context.Add(newAmnt);
+            _dbContext.Add(newAmnt);
         }
 
         deckGroup.Applied.Amount += 1;
@@ -374,7 +372,7 @@
                     IsRequest = true
                 };
 
-                _context.Add(deckGroup.Request);
+                _dbContext.Add(deckGroup.Request);
             }
 
             // transfer overdraft to request
@@ -406,7 +404,7 @@
         PrepareChanges();
 
         try {
-            await _context.SaveChangesAsync();
+            await _dbContext.SaveChangesAsync();
             _result = SaveResult.Success;
 
             Logger.LogInformation($"successfully updated, trying to nav to index, at {NavigationManager.BaseUri}");
@@ -432,9 +430,9 @@
         foreach (var cardAmnt in _deckCards.Values.SelectMany(g => g))
         {
             // detaches when saved after a remove
-            if (_context.Entry(cardAmnt).State == EntityState.Detached)
+            if (_dbContext.Entry(cardAmnt).State == EntityState.Detached)
             {
-                _context.Add(cardAmnt);
+                _dbContext.Add(cardAmnt);
             }
 
             @* if (cardAmnt.Amount == 0)
@@ -444,7 +442,7 @@
             
         }
 
-        var deckEntry = _context.Entry(_deck);
+        var deckEntry = _dbContext.Entry(_deck);
 
         if (deckEntry.State == EntityState.Unchanged)
         {
@@ -469,7 +467,7 @@
             return;
         }
 
-        var dbDeckCards = await _context.Amounts
+        var dbDeckCards = await _dbContext.Amounts
             .Where(ca => ca.LocationId == _deck.Id)
             .AsNoTracking()
             .ToListAsync();
@@ -486,7 +484,7 @@
             await TrackNewCardAsync(cardGroup);
         }
 
-        await _context.MatchToken(_deck);
+        await _dbContext.MatchToken(_deck);
     }
 
 
@@ -520,9 +518,9 @@
 
         foreach(var removedCard in removedCards)
         {
-            if (_context.Entry(removedCard).State == EntityState.Unchanged)
+            if (_dbContext.Entry(removedCard).State == EntityState.Unchanged)
             {
-                _context.Remove(removedCard);
+                _dbContext.Remove(removedCard);
             }
         }
     }
@@ -548,12 +546,12 @@
 
             // token also is matched
             localDeckGroup.Request = dbDeckCard;
-            _context.Attach(dbDeckCard);
+            _dbContext.Attach(dbDeckCard);
 
             return;
         }
 
-        var currEntry = _context.Entry(localDeckCard);
+        var currEntry = _dbContext.Entry(localDeckCard);
 
         if (currEntry.State != EntityState.Unchanged)
         {
@@ -562,7 +560,7 @@
             var lastReadAmnt = currEntry.Property(ca => ca.Amount).OriginalValue;
             var dbAmntChange = dbDeckCard.Amount - lastReadAmnt;
 
-            var availEntry = _context
+            var availEntry = _dbContext
                 .Entry(_availables[dbDeckCard.CardId])
                 .Property(ca => ca.Amount);
 
@@ -573,7 +571,7 @@
             localDeckCard.Amount = dbDeckCard.Amount;
         }
 
-        _context.MatchToken(localDeckCard, dbDeckCard);
+        _dbContext.MatchToken(localDeckCard, dbDeckCard);
     }
 
 
@@ -586,7 +584,7 @@
             return;
         }
 
-        var card = await _context.Cards.FindAsync(cardId);
+        var card = await _dbContext.Cards.FindAsync(cardId);
 
         foreach (var amount in cardGroup)
         {
@@ -597,14 +595,14 @@
 
         var amntGroup = InitGroup(cardGroup);
 
-        if (_context.Entry(amntGroup.Applied).State == EntityState.Detached)
+        if (_dbContext.Entry(amntGroup.Applied).State == EntityState.Detached)
         {
-            _context.Attach(amntGroup.Applied);
+            _dbContext.Attach(amntGroup.Applied);
         }
 
         if (amntGroup.Request is not null)
         {
-            _context.Attach(amntGroup.Request);
+            _dbContext.Attach(amntGroup.Request);
         }
 
         _deckCards.Add(cardId, amntGroup);
@@ -614,7 +612,7 @@
 
     private async Task UpdateAvailableAsync()
     {
-        var updatedAvails = await _context.Amounts
+        var updatedAvails = await _dbContext.Amounts
             .Where(ca => ca.Location.OwnerId == default)
             // TODO: change return location
             // TODO: group amounts by cards
@@ -624,7 +622,7 @@
 
         foreach(var dbAvail in updatedAvails)
         {
-            dbAvail.Card = await _context.Cards.FindAsync(dbAvail.CardId);
+            dbAvail.Card = await _dbContext.Cards.FindAsync(dbAvail.CardId);
             AddOrMergeAvailable(dbAvail);
         }
     }
@@ -634,12 +632,12 @@
     {
         if (_availables.TryGetValue(dbAvailable.CardId, out var localAvailable))
         {
-            var localAmnt = _context.Entry(localAvailable).Property(ca => ca.Amount);
+            var localAmnt = _dbContext.Entry(localAvailable).Property(ca => ca.Amount);
             var localAvailTaken = localAmnt.CurrentValue - localAmnt.OriginalValue;
 
             localAvailable.Amount = dbAvailable.Amount + localAvailTaken;
 
-            _context.MatchToken(localAvailable, dbAvailable);
+            _dbContext.MatchToken(localAvailable, dbAvailable);
             return;
         }
 
@@ -655,7 +653,7 @@
         }
 
         _availables.Add(dbAvailable.CardId, dbAvailable);
-        _context.Attach(dbAvailable);
+        _dbContext.Attach(dbAvailable);
     }
 
 
