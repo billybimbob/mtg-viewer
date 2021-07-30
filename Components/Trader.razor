@@ -207,6 +207,7 @@
     [Parameter]
     public CardUser User { get; set; }
 
+    private bool _busy;
     private CardDbContext _dbContext;
 
     private Location _deck;
@@ -217,57 +218,11 @@
     private IReadOnlyDictionary<int, Location> _destinationOptions;
 
 
-    protected override void OnInitialized()
-    {
-        _dbContext = DbFactory.CreateDbContext();
-    }
-
-
-    protected override async Task OnParametersSetAsync()
-    {
-        _deck = await _dbContext.Locations
-            .Include(l => l.Owner)
-            .Include(l => l.Cards)
-                .ThenInclude(ca => ca.Card)
-            .SingleAsync(l => l.Id == DeckId);
-
-        _cardOptions = await _dbContext.Amounts
-            .Where(ca => ca.Location.OwnerId == User.Id)
-            .Include(ca => ca.Card)
-            .Include(ca => ca.Location)
-            .OrderBy(ca => ca.Card.Name)
-            .ToListAsync();
-
-        _currentOffers = await _dbContext.Trades
-            .Where(TradeFilter.Involves(DeckId))
-            .Include(t => t.Card)
-            .Include(t => t.To)
-            .Include(t => t.From)
-                .ThenInclude(ca => ca.Location)
-            .ToDictionaryAsync(t => (t.Card, To: t.To, From: t.From.Location));
-
-        _destinationOptions = _cardOptions
-            .Select(ca => ca.Location)
-            .Distinct()
-            .ToDictionary(l => l.Id);
-    }
-
-
-    public async ValueTask DisposeAsync()
-    {
-        if (_dbContext is not null)
-        {
-            await _dbContext.DisposeAsync();
-        }
-    }
-
-
     private Location Destination => 
         _destinationOptions.TryGetValue(_destinationId, out var dest) ? dest : null;
 
     private IEnumerable<Location> DestinationOptions =>
-        _destinationOptions.Values
-            .OrderBy(l => l.Name);
+        _destinationOptions.Values.OrderBy(l => l.Name);
 
     private bool HasNoChanges =>
         !_dbContext.ChangeTracker.HasChanges();
@@ -326,6 +281,76 @@
         foreach (var cardAmount in orderedOptions)
         {
             yield return (cardAmount, merged[cardAmount.Id]);
+        }
+    }
+
+
+
+    protected override void OnInitialized()
+    {
+        _dbContext = DbFactory.CreateDbContext();
+        base.OnInitialized();
+    }
+
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_busy)
+        {
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            await InitFieldsFromParameters();
+        }
+        finally
+        {
+            _busy = false;
+        }
+
+        await base.OnParametersSetAsync();
+    }
+
+
+    private async ValueTask InitFieldsFromParameters()
+    {
+        _deck = await _dbContext.Locations
+            .Include(l => l.Owner)
+            .Include(l => l.Cards)
+                .ThenInclude(ca => ca.Card)
+            .SingleAsync(l => l.Id == DeckId);
+
+        _cardOptions = await _dbContext.Amounts
+            .Where(ca => ca.Location.OwnerId == User.Id)
+            .Include(ca => ca.Card)
+            .Include(ca => ca.Location)
+            .OrderBy(ca => ca.Card.Name)
+            .ToListAsync();
+
+        _currentOffers = await _dbContext.Trades
+            .Where(TradeFilter.Involves(DeckId))
+            .Include(t => t.Card)
+            .Include(t => t.To)
+            .Include(t => t.From)
+                .ThenInclude(ca => ca.Location)
+            .ToDictionaryAsync(t => (t.Card, To: t.To, From: t.From.Location));
+
+        _destinationOptions = _cardOptions
+            .Select(ca => ca.Location)
+            .Distinct()
+            .ToDictionary(l => l.Id);
+
+        _dbContext.Attach(User);
+    }
+
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_dbContext is not null)
+        {
+            await _dbContext.DisposeAsync();
         }
     }
 
@@ -434,7 +459,14 @@
 
     private async Task CommitChangesAsync()
     {
+        if (_busy)
+        {
+            return;
+        }
+
+        _busy = true;
         PrepareChanges();
+
         try
         {
             await _dbContext.SaveChangesAsync();
@@ -446,6 +478,10 @@
         catch (DbUpdateException ex)
         {
             Log.LogInformation($"got error {ex}");
+        }
+        finally
+        {
+            _busy = false;
         }
     }
 

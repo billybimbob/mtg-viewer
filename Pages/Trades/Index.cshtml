@@ -42,7 +42,9 @@
                 <td>@deck.Name</td>
                 <td>@deck.Owner.Name</td>
                 <td>
-                    <a asp-page="./Review" asp-route-deckid="@deck.Id">
+                    <a asp-page="./Review" 
+                        asp-route-deckid="@deck.Id"
+                        class="btn btn-secondary mb-3" >
                         View
                     </a>
                 </td>
@@ -54,7 +56,9 @@
                 <td>@deck.Name</td>
                 <td>@deck.Owner.Name</td>
                 <td>
-                    <a asp-page="./Propose" asp-route-deckid="@deck.Id">
+                    <a asp-page="./Propose" 
+                        asp-route-deckid="@deck.Id"
+                        class="btn btn-secondary mb-3" >
                         Edit
                     </a>
                 </td>

@@ -202,6 +202,8 @@
             .GroupBy(ca => ca.CardId)
             .ToDictionary(g => g.Key, InitGroup);
 
+        _dbContext.Attach(User);
+
         FixDeckState();
         _busy = false;
     }

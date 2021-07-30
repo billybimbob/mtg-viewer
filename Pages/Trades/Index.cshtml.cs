@@ -42,24 +42,28 @@ namespace MTGViewer.Pages.Trades
             var userTrades = await _dbContext.Trades
                 .Where(TradeFilter.Involves(userId))
                 .Include(t => t.To)
+                    .ThenInclude(l => l.Owner)
                 .Include(t => t.From)
                     .ThenInclude(ca => ca.Location)
+                        .ThenInclude(l => l.Owner)
                 .AsNoTrackingWithIdentityResolution()
                 .ToListAsync();
 
-            var received = userTrades
+            var waitingUser = userTrades
                 .Where(t => t.IsWaitingOn(userId));
 
-            ReceivedTrades = received
+            ReceivedTrades = waitingUser
                 .SelectMany(t => t.GetLocations())
+                .Where(l => l.OwnerId == userId)
                 .Distinct()
                 .OrderBy(l => l.Owner.Name)
                     .ThenBy(l => l.Name)
                 .ToList();
 
             PendingTrades = userTrades
-                .Except(received)
+                .Except(waitingUser)
                 .SelectMany(t => t.GetLocations())
+                .Where(l => l.OwnerId == userId)
                 .Distinct()
                 .OrderBy(l => l.Owner.Name)
                     .ThenBy(l => l.Name)
