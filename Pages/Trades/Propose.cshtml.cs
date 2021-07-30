@@ -28,20 +28,24 @@ namespace MTGViewer.Pages.Trades
         }
 
 
-        public string UserId { get; private set; }
+        public CardUser CardUser { get; private set; }
         public int DeckId { get; private set; }
-
         public IReadOnlyList<Location> ProposeOptions { get; private set; }
+
 
         public async Task<IActionResult> OnGetAsync(int? deckId)
         {
-            UserId = _userManager.GetUserId(User);
+            CardUser = await _userManager.GetUserAsync(User);
 
             if (deckId is int id)
             {
                 var deck = await _dbContext.Locations.FindAsync(id);
 
-                if (!deck?.IsShared ?? false)
+                bool validDeck = deck != null 
+                    && !deck.IsShared 
+                    && deck.OwnerId != CardUser.Id;
+
+                if (validDeck)
                 {
                     DeckId = id;
                 }
@@ -49,9 +53,7 @@ namespace MTGViewer.Pages.Trades
 
             if (DeckId == default)
             {
-                ProposeOptions = await _dbContext.Locations
-                    .Where(l => l.OwnerId != default && l.OwnerId != UserId)
-                    .ToListAsync();
+                ProposeOptions = await GetProposeOptionsAsync();
 
                 if (!ProposeOptions.Any())
                 {
@@ -60,6 +62,34 @@ namespace MTGViewer.Pages.Trades
             }
 
             return Page();
+        }
+
+
+        private async Task<IReadOnlyList<Location>> GetProposeOptionsAsync()
+        {
+            var nonUserLocs = await _dbContext.Locations
+                .Where(l => l.OwnerId != default && l.OwnerId != CardUser.Id)
+                .Include(l => l.Owner)
+                .AsNoTrackingWithIdentityResolution()
+                .ToListAsync();
+
+            var currentTrades = await _dbContext.Trades
+                .Where(TradeFilter.Involves(CardUser.Id))
+                .Include(t => t.To)
+                .Include(t => t.From)
+                    .ThenInclude(ca => ca.Location)
+                .AsNoTrackingWithIdentityResolution()
+                .ToListAsync();
+
+            var tradeLocs = currentTrades
+                .SelectMany(t => t.GetLocations())
+                .Distinct();
+
+            return nonUserLocs
+                .Except(tradeLocs)
+                .OrderBy(l => l.Owner.Name)
+                    .ThenBy(l => l.Name)
+                .ToList();
         }
     }
 }

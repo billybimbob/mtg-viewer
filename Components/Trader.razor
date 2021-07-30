@@ -1,14 +1,22 @@
 @using MTGViewer.Data
 @using MTGViewer.Data.Concurrency
+@using MTGViewer.Areas.Identity.Data
 
 @namespace MTGViewer.Components
 @implements IAsyncDisposable
 
-@inject Logger<Trader> Log
+@inject ILogger<Trader> Log
 @inject IDbContextFactory<CardDbContext> DbFactory
 
 
 <h1>@_deck.Name Trader</h1>
+
+<select class="form-control" @bind="_destinationId">
+    @foreach (var location in DestinationOptions)
+    {
+        <option value="@location.Id">@location.Name</option>
+    }
+</select>
 
 <button title="Save Deck"
         type="button"
@@ -18,25 +26,23 @@
     Save Changes
 </button>
 
-<select class="form-control" @bind="Destination">
-    @foreach (var location in DestinationOptions)
-    {
-        <option value="@location">@location.Name</option>
-    }
-</select>
-
 <div class="container">
     <div class="row">
 
         <div class="col">
-            <h2>@_deck.Name Cards</h2>
+            @if (Destination == null)
+            {
+                <h2>@User.Name</h2>
+            }
+            else
+            {
+                <h2>@User.Name (@Destination.Name)</h2>
+            }
             <table class="table">
                 <thead>
                     <tr>
                         <th>Card Name</th>
                         <th>Mana Cost</th>
-                        <th>Set</th>
-                        <th>Rarity</th>
                         <th>Amount Available</th>
                         <th></th>
                     </tr>
@@ -53,8 +59,6 @@
                                     <span class="m-1 ms ms-@cost.ToLower() ms-cost"></span>
                                 }
                             </td>
-                            <td>@card.SetName</td>
-                            <td>@card.Rarity</td>
                             <td>@amount</td>
                             <td>
                                 <button title="@card.Name Offer"
@@ -72,14 +76,12 @@
         </div>
 
         <div class="col">
-            <h2>@Destination.Name Cards</h2>
+            <h2>@_deck.Owner.Name (@_deck.Name)</h2>
             <table class="table">
                 <thead>
                     <tr>
                         <th>Card Name</th>
                         <th>Mana Cost</th>
-                        <th>Set</th>
-                        <th>Rarity</th>
                         <th>Amount Available</th>
                         <th></th>
                     </tr>
@@ -96,8 +98,6 @@
                                     <span class="m-1 ms ms-@cost.ToLower() ms-cost"></span>
                                 }
                             </td>
-                            <td>@card.SetName</td>
-                            <td>@card.Rarity</td>
                             <td>@amount</td>
                             <td>
                                 <button title="@card.Name Take"
@@ -125,6 +125,7 @@
                         <th>Card Name</th>
                         <th>Mana Cost</th>
                         <th>From</th>
+                        <th>Amount</th>
                         <th></th>
                     </tr>
                 </thead>
@@ -139,6 +140,7 @@
                                 }
                             </td>
                             <td>@trade.From.Location.Name</td>
+                            <td>@trade.Amount</td>
                             <td>
                                 <button title="@trade.Id Return"
                                         type="button"
@@ -162,6 +164,7 @@
                         <th>Card Name</th>
                         <th>Mana Cost</th>
                         <th>To</th>
+                        <th>Amount</th>
                         <th></th>
                     </tr>
                 </thead>
@@ -177,6 +180,7 @@
                                 }
                             </td>
                             <td>@trade.To.Name</td>
+                            <td>@trade.Amount</td>
                             <td>
                                 <button title="@trade.Id Return"
                                         type="button"
@@ -201,16 +205,16 @@
     public int DeckId { get; set; }
 
     [Parameter]
-    public string UserId { get; set; }
-
-    private Location Destination { get; set; }
-    private IReadOnlyList<Location> DestinationOptions { get; set; }
+    public CardUser User { get; set; }
 
     private CardDbContext _dbContext;
 
     private Location _deck;
     private IReadOnlyList<CardAmount> _cardOptions;
     private IDictionary<(Card, Location To, Location From), Trade> _currentOffers;
+
+    private int _destinationId;
+    private IReadOnlyDictionary<int, Location> _destinationOptions;
 
 
     protected override void OnInitialized()
@@ -222,30 +226,30 @@
     protected override async Task OnParametersSetAsync()
     {
         _deck = await _dbContext.Locations
+            .Include(l => l.Owner)
             .Include(l => l.Cards)
                 .ThenInclude(ca => ca.Card)
             .SingleAsync(l => l.Id == DeckId);
 
         _cardOptions = await _dbContext.Amounts
-            .Where(ca => ca.Location.OwnerId == UserId)
+            .Where(ca => ca.Location.OwnerId == User.Id)
             .Include(ca => ca.Card)
             .Include(ca => ca.Location)
             .OrderBy(ca => ca.Card.Name)
             .ToListAsync();
 
         _currentOffers = await _dbContext.Trades
-            .Where(TradeFilter.TradesFor(DeckId))
+            .Where(TradeFilter.Involves(DeckId))
             .Include(t => t.Card)
             .Include(t => t.To)
             .Include(t => t.From)
                 .ThenInclude(ca => ca.Location)
             .ToDictionaryAsync(t => (t.Card, To: t.To, From: t.From.Location));
 
-        DestinationOptions = _cardOptions
+        _destinationOptions = _cardOptions
             .Select(ca => ca.Location)
             .Distinct()
-            .OrderBy(l => l.Name)
-            .ToList();
+            .ToDictionary(l => l.Id);
     }
 
 
@@ -258,6 +262,13 @@
     }
 
 
+    private Location Destination => 
+        _destinationOptions.TryGetValue(_destinationId, out var dest) ? dest : null;
+
+    private IEnumerable<Location> DestinationOptions =>
+        _destinationOptions.Values
+            .OrderBy(l => l.Name);
+
     private bool HasNoChanges =>
         !_dbContext.ChangeTracker.HasChanges();
 
@@ -267,7 +278,7 @@
 
     private IEnumerable<Trade> FromDeckTrades =>
         _currentOffers.Values
-            .Where(t => t.FromId == DeckId && t.Amount > 0);
+            .Where(t => t.From.Location.Id == DeckId && t.Amount > 0);
 
 
     private IEnumerable<(CardAmount, int)> GetMergedDeck()
@@ -284,7 +295,9 @@
             }
         }
 
-        foreach (var cardAmount in _deck.Cards.OrderBy(ca => ca.Card.Name))
+        var orderedDeck = _deck.Cards.OrderBy(ca => ca.Card.Name);
+
+        foreach (var cardAmount in orderedDeck)
         {
             yield return (cardAmount, merged[cardAmount.Id]);
         }
@@ -294,7 +307,7 @@
     private IEnumerable<(CardAmount, int)> GetMergedDestination()
     {
         var optionsFromSelect = _cardOptions
-            .Where(ca => ca.Location.Id == Destination.Id);
+            .Where(ca => ca.Location.Id == _destinationId);
 
         var merged = optionsFromSelect
             .ToDictionary(t => t.Id, t => t.Amount);
@@ -308,7 +321,9 @@
             }
         }
 
-        foreach (var cardAmount in optionsFromSelect.OrderBy(ca => ca.Card.Name))
+        var orderedOptions = optionsFromSelect.OrderBy(ca => ca.Card.Name);
+
+        foreach (var cardAmount in orderedOptions)
         {
             yield return (cardAmount, merged[cardAmount.Id]);
         }
@@ -341,8 +356,8 @@
                 Card = offerSource.Card,
                 To = _deck,
                 From = offerSource,
-                ProposerId = UserId,
-                ReceiverId = _deck.OwnerId,
+                Proposer = User,
+                Receiver = _deck.Owner,
                 Amount = 0
             };
 
@@ -387,8 +402,8 @@
                 Card = takeSource.Card,
                 To = Destination,
                 From = takeSource,
-                ProposerId = UserId,
-                ReceiverId = _deck.OwnerId,
+                Proposer = User,
+                Receiver = _deck.Owner,
                 Amount = 0
             };
 
@@ -428,6 +443,10 @@
         {
             await ResolveConcurrencyIssuesAsync(ex);
         }
+        catch (DbUpdateException ex)
+        {
+            Log.LogInformation($"got error {ex}");
+        }
     }
 
 
@@ -446,7 +465,7 @@
                 _dbContext.Attach(trade);
             }
 
-            if (trade.ReceiverId == UserId)
+            if (trade.ReceiverId == User.Id)
             {
                 trade.IsCounter = true;
             }

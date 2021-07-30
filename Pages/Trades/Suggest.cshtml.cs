@@ -119,7 +119,7 @@ namespace MTGViewer.Pages.Trades
                     // include both request and non-request amounts
                 .Select(ca => ca.Location)
                 .Distinct()
-                .AsNoTracking()
+                .AsNoTrackingWithIdentityResolution()
                 .ToListAsync();
 
             var suggestPrior = await _dbContext.Trades
@@ -128,16 +128,14 @@ namespace MTGViewer.Pages.Trades
                     // include both suggestions and trades
                 .Select(t => t.To)
                 .Distinct()
-                .AsNoTracking()
+                .AsNoTrackingWithIdentityResolution()
                 .ToListAsync();
-
-            var idCompare = new EntityComparer<Location>(l => l.Id);
 
             var invalidDecks = suggestInDeck
                 .Concat(suggestPrior)
-                .Distinct(idCompare);
+                .Distinct();
 
-            return userDecks.Except(invalidDecks, idCompare);
+            return userDecks.Except(invalidDecks);
         }
 
 

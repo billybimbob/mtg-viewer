@@ -110,5 +110,20 @@ namespace MTGViewer.Data
                 yield return From.Location;
             }
         }
+
+
+        public bool IsInvolved(string userId)
+        {
+            return !IsSuggestion
+                && (ReceiverId == userId || ProposerId == userId);
+        }
+
+
+        public bool IsWaitingOn(string userId)
+        {
+            return !IsSuggestion
+                && (ReceiverId == userId && !IsCounter
+                    || ProposerId == userId && IsCounter);
+        }
     }
 }

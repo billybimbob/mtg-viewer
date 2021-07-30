@@ -5,13 +5,18 @@ namespace MTGViewer.Data
 {
     public static class TradeFilter
     {
-        public static Expression<Func<Trade, bool>> ReceivingFor(string userId) =>
+        public static Expression<Func<Trade, bool>> WaitingFor(string userId) =>
             trade =>
                 trade.FromId != default
                     && (trade.ReceiverId == userId && !trade.IsCounter
                         || trade.ProposerId == userId && trade.IsCounter);
 
-        public static Expression<Func<Trade, bool>> TradesFor(int deckId) =>
+        public static Expression<Func<Trade, bool>> Involves(string userId) =>
+            trade =>
+                trade.FromId != default
+                    && (trade.ReceiverId == userId || trade.ProposerId == userId);
+
+        public static Expression<Func<Trade, bool>> Involves(int deckId) =>
             trade =>
                 trade.FromId != default
                     && (trade.ToId == deckId || trade.FromId == deckId);
