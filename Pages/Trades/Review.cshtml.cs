@@ -97,7 +97,7 @@ namespace MTGViewer.Pages.Trades
                 return NotFound();
             }
 
-            var tradesValid = deckTrades.All(t => t.From.Amount < t.Amount);
+            var tradesValid = deckTrades.All(t => t.From.Amount <= t.Amount);
 
             if (!tradesValid)
             {

@@ -19,7 +19,7 @@ namespace MTGViewer.Data
         public static Expression<Func<Trade, bool>> Involves(int deckId) =>
             trade =>
                 trade.FromId != default
-                    && (trade.ToId == deckId || trade.FromId == deckId);
+                    && (trade.ToId == deckId || trade.From.LocationId == deckId);
 
         public static Expression<Func<Trade, bool>> Suggestion =>
             trade => trade.FromId == default;

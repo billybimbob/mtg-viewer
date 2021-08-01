@@ -63,7 +63,7 @@ namespace MTGViewer.Pages.Trades
             PendingTrades = userTrades
                 .Except(waitingUser)
                 .SelectMany(t => t.GetLocations())
-                .Where(l => l.OwnerId == userId)
+                .Where(l => l.OwnerId != userId)
                 .Distinct()
                 .OrderBy(l => l.Owner.Name)
                     .ThenBy(l => l.Name)
