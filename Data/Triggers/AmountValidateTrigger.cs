@@ -9,7 +9,7 @@ using Microsoft.Extensions.Logging;
 
 namespace MTGViewer.Data.Triggers
 {
-    public class AmountValidateTrigger : IBeforeSaveTrigger<CardAmount>
+    public class AmountValidateTrigger : IBeforeSaveTrigger<CardAmount>, IAfterSaveTrigger<CardAmount>
     {
         private readonly CardDbContext _dbContext;
         private readonly ILogger<LiteTokenUpdateTrigger> _logger;
@@ -50,9 +50,23 @@ namespace MTGViewer.Data.Triggers
                 // makes sure that non-owned locations cannot have a request
                 cardAmount.IsRequest = false;
             }
-            else if (cardAmount.Amount == 0)
+        }
+
+
+        public async Task AfterSave(ITriggerContext<CardAmount> trigContext, CancellationToken cancel)
+        {
+            if (trigContext.ChangeType == ChangeType.Deleted)
             {
-                _dbContext.Remove(cardAmount);
+                return;
+            }
+
+            var cardAmount = trigContext.Entity;
+
+            if (cardAmount.Amount == 0)
+            {
+                _dbContext.Attach(cardAmount).State = EntityState.Deleted;
+
+                await _dbContext.SaveChangesAsync();
             }
         }
 

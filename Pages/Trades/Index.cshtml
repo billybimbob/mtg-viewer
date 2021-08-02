@@ -1,15 +1,10 @@
 @page
 @model MTGViewer.Pages.Trades.IndexModel
 
-@using Microsoft.AspNetCore.Identity
-@using MTGViewer.Areas.Identity.Data
 @using MTGViewer.Data
 
-@inject UserManager<CardUser> UserManager
-
 @{
-    var userName = UserManager.GetUserName(User);
-    ViewData["Title"] = $"{userName}'s Trades";
+    ViewData["Title"] = $"{Model.SelfUser.Name}'s Trades";
 }
 
 
@@ -20,43 +15,33 @@
     </div>
 }
 
-<h2>Pending Trades</h2>
-
 <a asp-page="./Propose" 
     class="btn btn-secondary mb-3">
     New Trade
 </a>
 
+<h2>Pending Trades</h2>
+
 <table class="table">
     <thead>
         <tr>
-            <th> @Html.DisplayNameForInnerType((Location l) => l.Name) </th>
-            <th> @Html.DisplayNameForInnerType((Location l) => l.Owner) </th>
+            <th>Target Deck</th>
+            <th>Trading With</th>
             <th></th>
         </tr>
     </thead>
     <tbody>
-        @foreach (var deck in Model.ReceivedTrades)
+        @foreach (var (otherUser, deck) in Model.PendingTrades)
         {
+            var proposerId = deck.OwnerId == otherUser.Id
+                ? Model.SelfUser.Id
+                : otherUser.Id;
             <tr>
                 <td>@deck.Name</td>
-                <td>@deck.Owner.Name</td>
-                <td>
-                    <a asp-page="./Review" 
-                        asp-route-deckid="@deck.Id"
-                        class="btn btn-secondary mb-3" >
-                        View
-                    </a>
-                </td>
-            </tr>
-        }
-        @foreach (var deck in Model.PendingTrades)
-        {
-            <tr>
-                <td>@deck.Name</td>
-                <td>@deck.Owner.Name</td>
+                <td>@otherUser.Name</td>
                 <td>
                     <a asp-page="./Propose" 
+                        asp-route-proposerid="@proposerId"
                         asp-route-deckid="@deck.Id"
                         class="btn btn-secondary mb-3" >
                         Edit
@@ -64,8 +49,25 @@
                 </td>
             </tr>
         }
+        @foreach (var (otherUser, deck) in Model.ReceivedTrades)
+        {
+            var proposerId = deck.OwnerId == otherUser.Id
+                ? Model.SelfUser.Id
+                : otherUser.Id;
+            <tr>
+                <td>@deck.Name</td>
+                <td>@otherUser.Name</td>
+                <td>
+                    <a asp-page="./Review" 
+                        asp-route-proposerid="@proposerId"
+                        asp-route-deckid="@deck.Id"
+                        class="btn btn-secondary mb-3" >
+                        View
+                    </a>
+                </td>
+            </tr>
+        }
     </tbody>
-
 </table>
 
 

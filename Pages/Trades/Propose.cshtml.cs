@@ -28,22 +28,26 @@ namespace MTGViewer.Pages.Trades
         }
 
 
-        public CardUser CardUser { get; private set; }
+        [TempData]
+        public string PostMessage { get; set; }
+
+        public CardUser Proposer { get; private set; }
         public int DeckId { get; private set; }
         public IReadOnlyList<Location> ProposeOptions { get; private set; }
 
+        public bool IsCounter =>
+            _userManager.GetUserId(User) != Proposer?.Id;
 
-        public async Task<IActionResult> OnGetAsync(int? deckId)
+
+        public async Task<IActionResult> OnGetAsync(string proposerId, int? deckId)
         {
-            CardUser = await _userManager.GetUserAsync(User);
-
-            if (deckId is int id)
+            if (deckId is int id && proposerId != null)
             {
                 var deck = await _dbContext.Locations.FindAsync(id);
 
-                bool validDeck = deck != null 
-                    && !deck.IsShared 
-                    && deck.OwnerId != CardUser.Id;
+                bool validDeck = deck != null
+                    && deck.IsShared == false
+                    && deck.OwnerId != proposerId;
 
                 if (validDeck)
                 {
@@ -53,12 +57,18 @@ namespace MTGViewer.Pages.Trades
 
             if (DeckId == default)
             {
+                Proposer = await _userManager.GetUserAsync(User);
                 ProposeOptions = await GetProposeOptionsAsync();
 
                 if (!ProposeOptions.Any())
                 {
-                    return NotFound();
+                    PostMessage = "There are no decks to Trade with";
+                    return RedirectToPage("./Index");
                 }
+            }
+            else
+            {
+                Proposer = await _userManager.FindByIdAsync(proposerId);
             }
 
             return Page();
@@ -68,13 +78,13 @@ namespace MTGViewer.Pages.Trades
         private async Task<IReadOnlyList<Location>> GetProposeOptionsAsync()
         {
             var nonUserLocs = await _dbContext.Locations
-                .Where(l => l.OwnerId != default && l.OwnerId != CardUser.Id)
+                .Where(l => l.OwnerId != default && l.OwnerId != Proposer.Id)
                 .Include(l => l.Owner)
                 .AsNoTrackingWithIdentityResolution()
                 .ToListAsync();
 
             var currentTrades = await _dbContext.Trades
-                .Where(TradeFilter.Involves(CardUser.Id))
+                .Where(TradeFilter.Involves(Proposer.Id))
                 .Include(t => t.To)
                 .Include(t => t.From)
                     .ThenInclude(ca => ca.Location)

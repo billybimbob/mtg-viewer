@@ -30,8 +30,9 @@ namespace MTGViewer.Pages.Trades
         [TempData]
         public string PostMessage { get; set; }
 
-        public IReadOnlyList<Location> ReceivedTrades { get; private set; }
-        public IReadOnlyList<Location> PendingTrades { get; private set; }
+        public CardUser SelfUser { get; private set; }
+        public IReadOnlyList<(CardUser, Location)> ReceivedTrades { get; private set; }
+        public IReadOnlyList<(CardUser, Location)> PendingTrades { get; private set; }
         public IReadOnlyList<Trade> Suggestions { get; private set; }
 
 
@@ -52,22 +53,11 @@ namespace MTGViewer.Pages.Trades
             var waitingUser = userTrades
                 .Where(t => t.IsWaitingOn(userId));
 
-            ReceivedTrades = waitingUser
-                .SelectMany(t => t.GetLocations())
-                .Where(l => l.OwnerId == userId)
-                .Distinct()
-                .OrderBy(l => l.Owner.Name)
-                    .ThenBy(l => l.Name)
-                .ToList();
+            SelfUser = await _userManager.FindByIdAsync(userId);
 
-            PendingTrades = userTrades
-                .Except(waitingUser)
-                .SelectMany(t => t.GetLocations())
-                .Where(l => l.OwnerId != userId)
-                .Distinct()
-                .OrderBy(l => l.Owner.Name)
-                    .ThenBy(l => l.Name)
-                .ToList();
+            ReceivedTrades = GetTradeList(userId, waitingUser);
+
+            PendingTrades = GetTradeList(userId, userTrades.Except(waitingUser));
 
             Suggestions = await _dbContext.Trades
                 .Where(TradeFilter.SuggestionFor(userId))
@@ -77,6 +67,15 @@ namespace MTGViewer.Pages.Trades
                 .AsNoTrackingWithIdentityResolution()
                 .ToListAsync();
         }
+
+
+        private IReadOnlyList<(CardUser, Location)> GetTradeList(string userId, IEnumerable<Trade> trades) =>
+            trades.GroupBy(t => t.TargetLocation)
+                .Select(g =>
+                    (User: g.First().GetOtherUser(userId), Target: g.Key))
+                .OrderBy(t => t.User.Name)
+                    .ThenBy(t => t.Target)
+                .ToList();
 
 
         public async Task<IActionResult> OnPostAsync(int suggestId)

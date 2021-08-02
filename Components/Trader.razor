@@ -26,17 +26,28 @@
     Save Changes
 </button>
 
+<SavePrompt @bind-Result="_result">
+    <SuccessMessage>
+        Save was succesful, and trades have been updated
+    </SuccessMessage>
+    <ErrorMessage>
+        <p>There are conflicts while trying to save, and values have been updated. </p>
+        <hr>
+        <p>Save again to confirm</p>
+    </ErrorMessage>
+</SavePrompt>
+
 <div class="container">
     <div class="row">
 
         <div class="col">
             @if (Destination == null)
             {
-                <h2>@User.Name</h2>
+                <h2>@Proposer.Name</h2>
             }
             else
             {
-                <h2>@User.Name (@Destination.Name)</h2>
+                <h2>@Proposer.Name (@Destination.Name)</h2>
             }
             <table class="table">
                 <thead>
@@ -65,8 +76,8 @@
                                         type="button"
                                         class="btn btn-outline-secondary border-0 rounded"
                                         disabled="@(amount==0)"
-                                        @onclick="() => OfferCard(cardAmount)">
-                                    Offer Card
+                                        @onclick="() => OfferProposer(cardAmount)">
+                                    @(IsCounter ? "Take Card" : "Offer Card")
                                 </button>
                             </td>
                         </tr>
@@ -104,8 +115,8 @@
                                         type="button"
                                         class="btn btn-outline-secondary border-0 rounded"
                                         disabled="@(amount==0)"
-                                        @onclick="() => TakeCard(cardAmount)">
-                                    Take Card
+                                        @onclick="() => TakeReceiver(cardAmount)">
+                                    @(IsCounter ? "Offer Card" : "Take Card")
                                 </button>
                             </td>
                         </tr>
@@ -118,7 +129,7 @@
     <div class="row">
 
         <div class="col">
-            <h2>To @_deck.Name</h2>
+            <h2>From @Proposer.Name</h2>
             <table class="table">
                 <thead>
                     <tr>
@@ -157,7 +168,7 @@
         </div>
 
         <div class="col">
-            <h2>From @_deck.Name</h2>
+            <h2>From @_deck.Owner.Name</h2>
             <table class="table">
                 <thead>
                     <tr>
@@ -205,17 +216,22 @@
     public int DeckId { get; set; }
 
     [Parameter]
-    public CardUser User { get; set; }
+    public CardUser Proposer { get; set; }
+
+    [Parameter]
+    public bool IsCounter { get; set; }
 
     private bool _busy;
     private CardDbContext _dbContext;
 
     private Location _deck;
+    private SaveResult _result;
     private IReadOnlyList<CardAmount> _cardOptions;
     private IDictionary<(Card, Location To, Location From), Trade> _currentOffers;
 
     private int _destinationId;
     private IReadOnlyDictionary<int, Location> _destinationOptions;
+
 
 
     private Location Destination => 
@@ -234,6 +250,77 @@
     private IEnumerable<Trade> FromDeckTrades =>
         _currentOffers.Values
             .Where(t => t.From.Location.Id == DeckId && t.Amount > 0);
+
+
+
+    protected override void OnInitialized()
+    {
+        _dbContext = DbFactory.CreateDbContext();
+        base.OnInitialized();
+    }
+
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_busy)
+        {
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            await InitFieldsFromParameters();
+        }
+        finally
+        {
+            _busy = false;
+        }
+
+        await base.OnParametersSetAsync();
+    }
+
+
+    private async ValueTask InitFieldsFromParameters()
+    {
+        _deck = await _dbContext.Locations
+            .Include(l => l.Owner)
+            .Include(l => l.Cards)
+                .ThenInclude(ca => ca.Card)
+            .SingleAsync(l => l.Id == DeckId);
+
+        _cardOptions = await _dbContext.Amounts
+            .Where(ca => ca.Location.OwnerId == Proposer.Id)
+            .Include(ca => ca.Card)
+            .Include(ca => ca.Location)
+            .OrderBy(ca => ca.Card.Name)
+            .ToListAsync();
+
+        _currentOffers = await _dbContext.Trades
+            .Where(TradeFilter.Involves(Proposer.Id, DeckId))
+            .Include(t => t.Card)
+            .Include(t => t.To)
+            .Include(t => t.From)
+                .ThenInclude(ca => ca.Location)
+            .ToDictionaryAsync(t => (t.Card, To: t.To, From: t.From.Location));
+
+        _destinationOptions = _cardOptions
+            .Select(ca => ca.Location)
+            .Distinct()
+            .ToDictionary(l => l.Id);
+
+        _dbContext.Attach(Proposer);
+    }
+
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_dbContext is not null)
+        {
+            await _dbContext.DisposeAsync();
+        }
+    }
+
 
 
     private IEnumerable<(CardAmount, int)> GetMergedDeck()
@@ -286,85 +373,16 @@
 
 
 
-    protected override void OnInitialized()
+    private void OfferProposer(CardAmount proposeSource)
     {
-        _dbContext = DbFactory.CreateDbContext();
-        base.OnInitialized();
-    }
-
-
-    protected override async Task OnParametersSetAsync()
-    {
-        if (_busy)
-        {
-            return;
-        }
-
-        _busy = true;
-        try
-        {
-            await InitFieldsFromParameters();
-        }
-        finally
-        {
-            _busy = false;
-        }
-
-        await base.OnParametersSetAsync();
-    }
-
-
-    private async ValueTask InitFieldsFromParameters()
-    {
-        _deck = await _dbContext.Locations
-            .Include(l => l.Owner)
-            .Include(l => l.Cards)
-                .ThenInclude(ca => ca.Card)
-            .SingleAsync(l => l.Id == DeckId);
-
-        _cardOptions = await _dbContext.Amounts
-            .Where(ca => ca.Location.OwnerId == User.Id)
-            .Include(ca => ca.Card)
-            .Include(ca => ca.Location)
-            .OrderBy(ca => ca.Card.Name)
-            .ToListAsync();
-
-        _currentOffers = await _dbContext.Trades
-            .Where(TradeFilter.Involves(DeckId))
-            .Include(t => t.Card)
-            .Include(t => t.To)
-            .Include(t => t.From)
-                .ThenInclude(ca => ca.Location)
-            .ToDictionaryAsync(t => (t.Card, To: t.To, From: t.From.Location));
-
-        _destinationOptions = _cardOptions
-            .Select(ca => ca.Location)
-            .Distinct()
-            .ToDictionary(l => l.Id);
-
-        _dbContext.Attach(User);
-    }
-
-
-    public async ValueTask DisposeAsync()
-    {
-        if (_dbContext is not null)
-        {
-            await _dbContext.DisposeAsync();
-        }
-    }
-
-
-    private void OfferCard(CardAmount offerSource)
-    {
-        if (offerSource.Amount == 0)
+        if (proposeSource.Amount == 0)
         {
             return;
         }
 
         Trade trade;
 
-        var reverseOffer = (offerSource.Card, To: offerSource.Location, From: _deck);
+        var reverseOffer = (proposeSource.Card, To: proposeSource.Location, From: _deck);
 
         if (_currentOffers.TryGetValue(reverseOffer, out trade) && trade.Amount > 0)
         {
@@ -372,16 +390,16 @@
             return;
         }
 
-        var offer = (offerSource.Card, To: _deck, From: offerSource.Location);
+        var offer = (proposeSource.Card, To: _deck, From: proposeSource.Location);
 
         if (!_currentOffers.TryGetValue(offer, out trade))
         {
             trade = new Trade
             {
-                Card = offerSource.Card,
+                Card = proposeSource.Card,
                 To = _deck,
-                From = offerSource,
-                Proposer = User,
+                From = proposeSource,
+                Proposer = Proposer,
                 Receiver = _deck.Owner,
                 Amount = 0
             };
@@ -390,7 +408,7 @@
             _dbContext.Add(trade);
         }
 
-        if (offerSource.Amount - trade.Amount <= 0)
+        if (proposeSource.Amount - trade.Amount <= 0)
         {
             Log.LogError($"cannot offer and more for {offer.Card.Name}");
             return;
@@ -401,21 +419,21 @@
     }
 
 
-    private void TakeCard(CardAmount takeSource)
+    private void TakeReceiver(CardAmount receiverSource)
     {
         if (Destination == null)
         {
             return;
         }
 
-        if (takeSource.Amount == 0)
+        if (receiverSource.Amount == 0)
         {
             return;
         }
 
         Trade trade;
 
-        var reverseTake = (takeSource.Card, To: takeSource.Location, From: Destination);
+        var reverseTake = (receiverSource.Card, To: receiverSource.Location, From: Destination);
 
         if (_currentOffers.TryGetValue(reverseTake, out trade) && trade.Amount > 0)
         {
@@ -423,16 +441,16 @@
             return;
         }
 
-        var take = (takeSource.Card, To: Destination, From: takeSource.Location);
+        var take = (receiverSource.Card, To: Destination, From: receiverSource.Location);
 
         if (!_currentOffers.TryGetValue(take, out trade))
         {
             trade = new Trade
             {
-                Card = takeSource.Card,
+                Card = receiverSource.Card,
                 To = Destination,
-                From = takeSource,
-                Proposer = User,
+                From = receiverSource,
+                Proposer = Proposer,
                 Receiver = _deck.Owner,
                 Amount = 0
             };
@@ -441,7 +459,7 @@
             _dbContext.Add(trade);
         }
 
-        if (takeSource.Amount - trade.Amount <= 0)
+        if (receiverSource.Amount - trade.Amount <= 0)
         {
             Log.LogError($"cannot take anymore for {take.Card.Name}");
             return;
@@ -475,13 +493,16 @@
         try
         {
             await _dbContext.SaveChangesAsync();
+            _result = SaveResult.Success;
         }
         catch (DbUpdateConcurrencyException ex)
         {
+            _result = SaveResult.Error;
             await ResolveConcurrencyIssuesAsync(ex);
         }
         catch (DbUpdateException ex)
         {
+            _result = SaveResult.Error;
             Log.LogInformation($"got error {ex}");
         }
         finally
@@ -495,24 +516,29 @@
     {
         foreach(var trade in _currentOffers.Values)
         {
-            @* if (trade.Amount == 0)
-            {
-                _dbContext.Remove(trade);
-                continue;
-            } *@
-
             if (_dbContext.Entry(trade).State == EntityState.Detached)
             {
                 _dbContext.Attach(trade);
             }
 
-            if (trade.ReceiverId == User.Id)
+            if (trade.Amount == 0)
+            {
+                _dbContext.Remove(trade);
+                continue;
+            }
+
+            if (trade.ReceiverId == Proposer.Id)
             {
                 trade.IsCounter = true;
             }
             else
             {
                 trade.IsCounter = false;
+            }
+
+            if (IsCounter)
+            {
+                trade.IsCounter = !trade.IsCounter;
             }
         }
     }
@@ -525,17 +551,33 @@
             switch(entry.Entity)
             {
                 case CardAmount cardAmount:
-                    var dbValues = await entry.GetDatabaseValuesAsync();
-                    var amount = _dbContext.Entry(cardAmount)
-                        .Property(ca => ca.Amount)
-                        .Metadata;
+                    var dbAmount = await entry.GetDatabaseValuesAsync();
+                    if (dbAmount == null)
+                    {
+                        _dbContext.Add(cardAmount);
+                    }
+                    else
+                    {
+                        var amount = _dbContext.Entry(cardAmount)
+                            .Property(ca => ca.Amount)
+                            .Metadata;
 
-                    cardAmount.Amount = dbValues.GetValue<int>(amount);
-                    _dbContext.MatchToken(cardAmount, dbValues);
+                        cardAmount.Amount = dbAmount.GetValue<int>(amount);
+                        _dbContext.MatchToken(cardAmount, dbAmount);
+                    }
                     break;
 
                 case Trade trade:
-                    await _dbContext.MatchToken(trade);
+                    var dbTrade = await entry.GetDatabaseValuesAsync();
+                    if (dbTrade == null)
+                    {
+                        _dbContext.Add(trade);
+                    }
+                    else
+                    {
+                        _dbContext.MatchToken(trade, dbTrade);
+                    }
+
                     break;
 
                 default:

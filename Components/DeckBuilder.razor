@@ -437,10 +437,10 @@
                 _dbContext.Add(cardAmnt);
             }
 
-            @* if (cardAmnt.Amount == 0)
+            if (cardAmnt.Amount == 0)
             {
-                _context.Remove(cardAmnt);
-            } *@
+                _dbContext.Remove(cardAmnt);
+            }
             
         }
 

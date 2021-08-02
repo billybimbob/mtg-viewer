@@ -102,6 +102,15 @@ namespace MTGViewer.Data
 
         public bool IsSuggestion => FromId == default;
 
+        public Location? TargetLocation =>
+            ProposerId == To.OwnerId
+                ? From?.Location
+                : To;
+
+
+        public CardUser GetOtherUser(string userId) =>
+            ProposerId != userId ? Proposer : Receiver;
+
 
         public IEnumerable<Location> GetLocations()
         {

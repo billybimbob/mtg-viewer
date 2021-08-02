@@ -9,18 +9,22 @@
 <form method="post">
     <input type="submit"
         asp-page-handler="Accept"
+        asp-route-proposerid="@Model.Proposer.Id"
         asp-route-deckid="@Model.Deck.Id"
         class="btn btn-secondary mb-3"
         value="Accept" />
 
     <input type="submit"
         asp-page-handler="Reject"
+        asp-route-proposerid="@Model.Proposer.Id"
         asp-route-deckid="@Model.Deck.Id"
         class="btn btn-secondary mb-3"
         value="Reject" />
 </form>
 
-<a asp-page="./Propose" asp-route-deckid="@Model.Deck.Id"
+<a asp-page="./Propose"
+    asp-route-proposerid="@Model.Proposer.Id"
+    asp-route-deckid="@Model.Deck.Id"
     class="btn btn-secondary mb-3">
     Edit
 </a>
@@ -30,7 +34,7 @@
     <div class="row">
 
         <div class="col">
-            <h2>Trades From @Model.Deck.Name</h2>
+            <h2>From @Model.Proposer.Name</h2>
             <table class="table">
                 <thead>
                     <tr>
@@ -62,7 +66,7 @@
         </div>
 
         <div class="col">
-            <h2>Trades To @Model.Deck.Name</h2>
+            <h2>To @Model.Deck.Owner.Name</h2>
             <table class="table">
                 <thead>
                     <tr>

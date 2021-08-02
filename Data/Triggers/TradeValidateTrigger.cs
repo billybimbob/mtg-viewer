@@ -9,7 +9,7 @@ using Microsoft.Extensions.Logging;
 
 namespace MTGViewer.Data.Triggers
 {
-    public class TradeValidateTrigger : IBeforeSaveTrigger<Trade>
+    public class TradeValidateTrigger : IBeforeSaveTrigger<Trade>, IAfterSaveTrigger<Trade>
     {
         private readonly CardDbContext _dbContext;
         private readonly ILogger<TradeValidateTrigger> _logger;
@@ -35,8 +35,6 @@ namespace MTGViewer.Data.Triggers
                 _dbContext.Attach(trade);
             }
 
-            // TODO: make valid failure not silent
-
             if (trade.IsSuggestion)
             {
                 trade.IsCounter = false;
@@ -49,10 +47,23 @@ namespace MTGViewer.Data.Triggers
                 .LoadAsync();
 
             trade.Amount = Math.Min(trade.From.Amount, trade.Amount);
+        }
+
+
+        public async Task AfterSave(ITriggerContext<Trade> trigContext, CancellationToken cancel)
+        {
+            if (trigContext.ChangeType == ChangeType.Deleted)
+            {
+                return;
+            }
+
+            var trade = trigContext.Entity;
 
             if (trade.Amount == 0)
             {
-                _dbContext.Remove(trade);
+                _dbContext.Attach(trade).State = EntityState.Deleted;
+
+                await _dbContext.SaveChangesAsync();
             }
         }
     }
