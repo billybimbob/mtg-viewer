@@ -16,6 +16,7 @@
                 <div class="input-group-prepend">
                     <div class="input-group-text">
                         <input type="radio" name="deckId" value="@deckOption.Id" />
+                        <input type="hidden" name="proposerId" value="@Model.Proposer.Id"/>
                     </div>
                 </div>
                 <span class="form-control">@deckOption.Name</span>

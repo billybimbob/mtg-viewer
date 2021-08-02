@@ -61,25 +61,10 @@ namespace MTGViewer.Pages.Trades
                 .AsNoTracking()
                 .ToListAsync();
 
-            if (!deckTrades.Any())
+            if (!CheckTrades(deckTrades))
             {
                 PostMessage = "Cannot find any trades";
                 return RedirectToPage("./Index");
-            }
-
-            var userId = _userManager.GetUserId(User);
-
-            if (deckTrades.Any(t => 
-                t.To.OwnerId != userId && t.From.Location.OwnerId != userId))
-            {
-                return NotFound();
-            }
-
-            if (!deckTrades.All(t =>
-                t.ReceiverId == userId && !t.IsCounter
-                    || t.ProposerId == userId && t.IsCounter))
-            {
-                return NotFound();
             }
 
             await _dbContext.Entry(deck)
@@ -104,6 +89,33 @@ namespace MTGViewer.Pages.Trades
         }
 
 
+        private bool CheckTrades(IEnumerable<Trade> trades)
+        {
+            if (!trades.Any())
+            {
+                PostMessage = "Cannot find any trades";
+                return false;
+            }
+
+            var userId = _userManager.GetUserId(User);
+
+            if (trades.Any(t => 
+                t.To.OwnerId != userId && t.From.Location.OwnerId != userId))
+            {
+                return false;
+            }
+
+            if (!trades.All(t =>
+                t.ReceiverId == userId && !t.IsCounter
+                    || t.ProposerId == userId && t.IsCounter))
+            {
+                return false;
+            }
+
+            return true;
+        }
+
+
         public async Task<IActionResult> OnPostAcceptAsync(string proposerId, int deckId)
         {
             if (proposerId == null)
@@ -125,18 +137,15 @@ namespace MTGViewer.Pages.Trades
                     .ThenInclude(ca => ca.Location)
                 .ToArrayAsync();
 
-            var userId = _userManager.GetUserId(User);
-
-            if (!deckTrades.Any(t => 
-                t.To.OwnerId == userId || t.From.Location.OwnerId == userId))
+            if (!CheckTrades(deckTrades))
             {
                 PostMessage = "Cannot find any trades to Accept";
                 return RedirectToPage("./Index");
             }
 
-            var tradesValid = deckTrades.All(t => t.From.Amount <= t.Amount);
+            var amountsValid = deckTrades.All(t => t.From.Amount <= t.Amount);
 
-            if (!tradesValid)
+            if (!amountsValid)
             {
                 PostMessage = "Source Deck lacks the trade amount to complete the trade";
                 return RedirectToPage("./Index");
@@ -212,10 +221,7 @@ namespace MTGViewer.Pages.Trades
                     .ThenInclude(ca => ca.Location)
                 .ToArrayAsync();
 
-            var userId = _userManager.GetUserId(User);
-
-            if (!deckTrades.Any(t => 
-                t.To.OwnerId == userId || t.From.Location.OwnerId == userId))
+            if (!CheckTrades(deckTrades))
             {
                 PostMessage = "Cannot find any trades to Reject";
                 return RedirectToPage("./Index");
@@ -226,15 +232,15 @@ namespace MTGViewer.Pages.Trades
             try
             {
                 await _dbContext.SaveChangesAsync();
-                PostMessage = "Successfully Rejected Trades";
+                PostMessage = "Successfully rejected Trade";
             }
             catch(DbUpdateConcurrencyException)
             {
-                PostMessage = "Ran into error while Rejecting";
+                PostMessage = "Ran into error while rejecting";
             }
             catch(DbUpdateException)
             {
-                PostMessage = "Ran into error while Rejecting";
+                PostMessage = "Ran into error while rejecting";
             }
 
             return RedirectToPage("./Index");

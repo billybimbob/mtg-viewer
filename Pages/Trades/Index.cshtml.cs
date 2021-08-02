@@ -31,6 +31,7 @@ namespace MTGViewer.Pages.Trades
         public string PostMessage { get; set; }
 
         public CardUser SelfUser { get; private set; }
+
         public IReadOnlyList<(CardUser, Location)> ReceivedTrades { get; private set; }
         public IReadOnlyList<(CardUser, Location)> PendingTrades { get; private set; }
         public IReadOnlyList<Trade> Suggestions { get; private set; }

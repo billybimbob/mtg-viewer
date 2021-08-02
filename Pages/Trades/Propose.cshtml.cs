@@ -69,6 +69,11 @@ namespace MTGViewer.Pages.Trades
             else
             {
                 Proposer = await _userManager.FindByIdAsync(proposerId);
+
+                if (Proposer == null)
+                {
+                    return NotFound();
+                }
             }
 
             return Page();
