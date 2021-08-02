@@ -1,8 +1,8 @@
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
-
 #nullable enable
+
 
 namespace MTGViewer.Data
 {

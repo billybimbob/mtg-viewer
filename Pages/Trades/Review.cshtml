@@ -34,39 +34,7 @@
     <div class="row">
 
         <div class="col">
-            <h2>To @Model.Proposer.Name</h2>
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th> @Html.DisplayNameForInnerType((Trade t) => t.Card) </th>
-                        <th> @Html.DisplayNameForInnerType((Trade t) => t.Card.Colors) </th>
-                        <th> @Html.DisplayNameForInnerType((Trade t) => t.To) </th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var trade in Model.FromDeck)
-                    {
-                        <tr>
-                            <td>
-                                <a asp-page="/Cards/Details" asp-route-id="@trade.CardId">
-                                    @trade.Card.Name
-                                </a>
-                            </td>
-                            <td>
-                                @foreach (var cost in trade.Card.GetColorSymbols())
-                                {
-                                    <span class="m-1 ms ms-@cost.ToLower() ms-cost"></span>
-                                }
-                            </td>
-                            <td> @trade.To.Name </td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        </div>
-
-        <div class="col">
-            <h2>To @Model.Deck.Owner.Name</h2>
+            <h2>From @Model.Proposer.Name</h2>
             <table class="table">
                 <thead>
                     <tr>
@@ -91,6 +59,38 @@
                                 }
                             </td>
                             <td> @trade.From.Location.Name </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <div class="col">
+            <h2>From @Model.Deck.Owner.Name</h2>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th> @Html.DisplayNameForInnerType((Trade t) => t.Card) </th>
+                        <th> @Html.DisplayNameForInnerType((Trade t) => t.Card.Colors) </th>
+                        <th> @Html.DisplayNameForInnerType((Trade t) => t.To) </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var trade in Model.FromDeck)
+                    {
+                        <tr>
+                            <td>
+                                <a asp-page="/Cards/Details" asp-route-id="@trade.CardId">
+                                    @trade.Card.Name
+                                </a>
+                            </td>
+                            <td>
+                                @foreach (var cost in trade.Card.GetColorSymbols())
+                                {
+                                    <span class="m-1 ms ms-@cost.ToLower() ms-cost"></span>
+                                }
+                            </td>
+                            <td> @trade.To.Name </td>
                         </tr>
                     }
                 </tbody>
