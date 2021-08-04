@@ -93,7 +93,6 @@ namespace MTGViewer.Pages.Trades
         {
             if (!trades.Any())
             {
-                PostMessage = "Cannot find any trades";
                 return false;
             }
 
@@ -143,11 +142,11 @@ namespace MTGViewer.Pages.Trades
                 return RedirectToPage("./Index");
             }
 
-            var amountsValid = deckTrades.All(t => t.From.Amount <= t.Amount);
+            var amountsInvalid = deckTrades.Any(t => t.From.Amount < t.Amount);
 
-            if (!amountsValid)
+            if (amountsInvalid)
             {
-                PostMessage = "Source Deck lacks the trade amount to complete the trade";
+                PostMessage = "Source Deck lacks the required amount to complete the trade";
                 return RedirectToPage("./Index");
             }
 
@@ -219,7 +218,7 @@ namespace MTGViewer.Pages.Trades
                 .Include(t => t.To)
                 .Include(t => t.From)
                     .ThenInclude(ca => ca.Location)
-                .ToArrayAsync();
+                .ToListAsync();
 
             if (!CheckTrades(deckTrades))
             {
@@ -227,7 +226,7 @@ namespace MTGViewer.Pages.Trades
                 return RedirectToPage("./Index");
             }
 
-            _dbContext.RemoveRange(deckTrades);
+            _dbContext.Trades.RemoveRange(deckTrades);
 
             try
             {

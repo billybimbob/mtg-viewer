@@ -12,7 +12,7 @@
 <h1>@_deck.Name Trader</h1>
 
 <select class="form-control" @bind="_destinationId">
-    @foreach (var location in DestinationOptions)
+    @foreach (var location in GetDestinationOptions())
     {
         <option value="@location.Id">@location.Name</option>
     }
@@ -21,7 +21,7 @@
 <button title="Save Deck"
         type="button"
         class="btn btn-secondary mb-3"
-        disabled="@HasNoChanges"
+        disabled="@HasNoChanges()"
         @onclick="CommitChangesAsync">
     Save Changes
 </button>
@@ -76,7 +76,7 @@
                                         type="button"
                                         class="btn btn-outline-secondary border-0 rounded"
                                         disabled="@(amount==0)"
-                                        @onclick="() => OfferProposer(cardAmount)">
+                                        @onclick="() => FromProposer(cardAmount)">
                                     @(IsCounter ? "Take Card" : "Offer Card")
                                 </button>
                             </td>
@@ -115,7 +115,7 @@
                                         type="button"
                                         class="btn btn-outline-secondary border-0 rounded"
                                         disabled="@(amount==0)"
-                                        @onclick="() => TakeReceiver(cardAmount)">
+                                        @onclick="() => FromReceiver(cardAmount)">
                                     @(IsCounter ? "Offer Card" : "Take Card")
                                 </button>
                             </td>
@@ -140,7 +140,7 @@
                         <th></th>
                     </tr>
                 </thead>
-                    @foreach (var trade in ToDeckTrades)
+                    @foreach (var trade in GetToDeckTrades())
                     {
                         <tr>
                             <td class="fw-bold">@trade.Card.Name</td>
@@ -180,7 +180,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach (var trade in FromDeckTrades)
+                    @foreach (var trade in GetFromDeckTrades())
                     {
                         <tr>
                             <td class="fw-bold">@trade.Card.Name</td>
@@ -222,34 +222,18 @@
     public bool IsCounter { get; set; }
 
     private bool _busy;
+    private SaveResult _result;
     private CardDbContext _dbContext;
 
     private Location _deck;
-    private SaveResult _result;
     private IReadOnlyList<CardAmount> _cardOptions;
     private IDictionary<(Card, Location To, Location From), Trade> _currentOffers;
 
     private int _destinationId;
     private IReadOnlyDictionary<int, Location> _destinationOptions;
 
-
-
     private Location Destination => 
         _destinationOptions.TryGetValue(_destinationId, out var dest) ? dest : null;
-
-    private IEnumerable<Location> DestinationOptions =>
-        _destinationOptions.Values.OrderBy(l => l.Name);
-
-    private bool HasNoChanges =>
-        !_dbContext.ChangeTracker.HasChanges();
-
-    private IEnumerable<Trade> ToDeckTrades =>
-        _currentOffers.Values
-            .Where(t => t.ToId == DeckId && t.Amount > 0);
-
-    private IEnumerable<Trade> FromDeckTrades =>
-        _currentOffers.Values
-            .Where(t => t.From.Location.Id == DeckId && t.Amount > 0);
 
 
 
@@ -325,15 +309,15 @@
 
     private IEnumerable<(CardAmount, int)> GetMergedDeck()
     {
-        var merged = _deck.Cards
-            .ToDictionary(t => t.Id, t => t.Amount);
+        var mergedAmounts = _deck.Cards
+            .ToDictionary(ca => ca.Id, ca => ca.Amount);
 
         foreach (var trade in _currentOffers.Values)
         {
             if (trade.FromId is int fromId
-                && merged.TryGetValue(fromId, out int amount))
+                && mergedAmounts.TryGetValue(fromId, out int amount))
             {
-                merged[fromId] = amount - trade.Amount;
+                mergedAmounts[fromId] = amount - trade.Amount;
             }
         }
 
@@ -341,9 +325,29 @@
 
         foreach (var cardAmount in orderedDeck)
         {
-            yield return (cardAmount, merged[cardAmount.Id]);
+            yield return (cardAmount, mergedAmounts[cardAmount.Id]);
         }
     }
+
+
+
+    private bool HasNoChanges() =>
+        !_dbContext.ChangeTracker.HasChanges();
+
+
+    private IEnumerable<Location> GetDestinationOptions() =>
+        _destinationOptions.Values.OrderBy(l => l.Name);
+
+
+    private IEnumerable<Trade> GetToDeckTrades() =>
+        _currentOffers.Values
+            .Where(t => t.ToId == DeckId && t.Amount > 0);
+
+
+    private IEnumerable<Trade> GetFromDeckTrades() =>
+        _currentOffers.Values
+            .Where(t => t.From.Location.Id == DeckId && t.Amount > 0);
+
 
 
     private IEnumerable<(CardAmount, int)> GetMergedDestination()
@@ -351,15 +355,15 @@
         var optionsFromSelect = _cardOptions
             .Where(ca => ca.Location.Id == _destinationId);
 
-        var merged = optionsFromSelect
-            .ToDictionary(t => t.Id, t => t.Amount);
+        var mergedAmounts = optionsFromSelect
+            .ToDictionary(ca => ca.Id, ca => ca.Amount);
 
         foreach (var trade in _currentOffers.Values)
         {
             if (trade.FromId is int fromId
-                && merged.TryGetValue(fromId, out int amount))
+                && mergedAmounts.TryGetValue(fromId, out int amount))
             {
-                merged[fromId] = amount - trade.Amount;
+                mergedAmounts[fromId] = amount - trade.Amount;
             }
         }
 
@@ -367,13 +371,13 @@
 
         foreach (var cardAmount in orderedOptions)
         {
-            yield return (cardAmount, merged[cardAmount.Id]);
+            yield return (cardAmount, mergedAmounts[cardAmount.Id]);
         }
     }
 
 
 
-    private void OfferProposer(CardAmount proposeSource)
+    private void FromProposer(CardAmount proposeSource)
     {
         if (proposeSource.Amount == 0)
         {
@@ -415,11 +419,10 @@
         }
 
         trade.Amount += 1;
-        // trade.From.Amount -= 1;
     }
 
 
-    private void TakeReceiver(CardAmount receiverSource)
+    private void FromReceiver(CardAmount receiverSource)
     {
         if (Destination == null)
         {
@@ -551,38 +554,53 @@
             switch(entry.Entity)
             {
                 case CardAmount cardAmount:
-                    var dbAmount = await entry.GetDatabaseValuesAsync();
-                    if (dbAmount == null)
-                    {
-                        _dbContext.Add(cardAmount);
-                    }
-                    else
-                    {
-                        var amount = _dbContext.Entry(cardAmount)
-                            .Property(ca => ca.Amount)
-                            .Metadata;
-
-                        cardAmount.Amount = dbAmount.GetValue<int>(amount);
-                        _dbContext.MatchToken(cardAmount, dbAmount);
-                    }
+                    await MergeCardAmount(cardAmount);
                     break;
 
                 case Trade trade:
-                    var dbTrade = await entry.GetDatabaseValuesAsync();
-                    if (dbTrade == null)
-                    {
-                        _dbContext.Add(trade);
-                    }
-                    else
-                    {
-                        _dbContext.MatchToken(trade, dbTrade);
-                    }
-
+                    await MergeTrade(trade);
                     break;
 
                 default:
                     break;
             }
+        }
+    }
+
+
+    private async Task MergeCardAmount(CardAmount cardAmount)
+    {
+        var dbAmount = await _dbContext.Entry(cardAmount)
+            .GetDatabaseValuesAsync();
+
+        if (dbAmount == null)
+        {
+            _dbContext.Add(cardAmount);
+        }
+        else
+        {
+            var amount = _dbContext.Entry(cardAmount)
+                .Property(ca => ca.Amount)
+                .Metadata;
+
+            cardAmount.Amount = dbAmount.GetValue<int>(amount);
+            _dbContext.MatchToken(cardAmount, dbAmount);
+        }
+    }
+
+
+    private async Task MergeTrade(Trade trade)
+    {
+        var dbTrade = await _dbContext.Entry(trade)
+            .GetDatabaseValuesAsync();
+
+        if (dbTrade == null)
+        {
+            _dbContext.Add(trade);
+        }
+        else
+        {
+            _dbContext.MatchToken(trade, dbTrade);
         }
     }
 }

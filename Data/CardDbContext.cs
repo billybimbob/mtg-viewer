@@ -44,20 +44,23 @@ namespace MTGViewer.Data
             {
                 tradeBuild
                     .HasOne(t => t.Proposer)
-                    .WithMany();
+                    .WithMany()
+                    .OnDelete(DeleteBehavior.Cascade);
 
                 tradeBuild
                     .HasOne(t => t.Receiver)
-                    .WithMany();
+                    .WithMany()
+                    .OnDelete(DeleteBehavior.Cascade);
 
                 tradeBuild
                     .HasOne(t => t.From)
-                    .WithOne()
+                    .WithMany()
                     .OnDelete(DeleteBehavior.Cascade);
 
                 tradeBuild
                     .HasOne(t => t.To)
-                    .WithMany();
+                    .WithMany()
+                    .OnDelete(DeleteBehavior.Cascade);
             });
         }
 

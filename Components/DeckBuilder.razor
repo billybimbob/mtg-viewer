@@ -15,7 +15,7 @@
 <button title="Save Deck"
         type="button"
         class="btn btn-secondary mb-3"
-        disabled="@HasNoChanges"
+        disabled="@HasNoChanges()"
         @onclick="CommitChangesAsync">
     Save Changes
 </button>
@@ -48,7 +48,7 @@
     </thead>
 
     <tbody>
-        @foreach (var card in SortedAvailCards)
+        @foreach (var card in GetSortedAvailCards())
         {
             var available = _availables[card.Id].Amount;
             <tr>
@@ -95,7 +95,7 @@
     </thead>
 
     <tbody>
-        @foreach (var card in SortedDeckCards)
+        @foreach (var card in GetSortedDeckCards())
         {
             var inDeck = _deckCards[card.Id];
             <tr>
@@ -147,17 +147,18 @@
     private IDictionary<string, CardAmount> _availables;
 
 
-    private bool HasNoChanges =>
+    private bool HasNoChanges() =>
         !_dbContext.ChangeTracker.HasChanges();
 
-    private IEnumerable<Card> SortedAvailCards =>
+    private IEnumerable<Card> GetSortedAvailCards() =>
         _dbCards.Values
             .SelectMany(l => l);
 
-    private IEnumerable<Card> SortedDeckCards =>
-        SortedAvailCards
+    private IEnumerable<Card> GetSortedDeckCards() =>
+        GetSortedAvailCards()
             .Where(c => _deckCards.TryGetValue(c.Id, out var cardAmnt)
                 && cardAmnt.Amount > 0);
+
 
 
     protected override async Task OnInitializedAsync()
@@ -168,23 +169,29 @@
         }
 
         _busy = true;
-        _dbContext = DbFactory.CreateDbContext();
+        try
+        {
+            _dbContext = DbFactory.CreateDbContext();
 
-        var cards = await _dbContext.Cards.ToListAsync();
+            var cards = await _dbContext.Cards.ToListAsync();
 
-        var nameGroups = cards
-            .GroupBy(c => c.Name)
-            .ToDictionary(g => g.Key, g => g.ToList());
+            var nameGroups = cards
+                .GroupBy(c => c.Name)
+                .ToDictionary(g => g.Key, g => g.ToList());
 
-        _dbCards = new SortedList<string, List<Card>>(nameGroups);
+            _dbCards = new SortedList<string, List<Card>>(nameGroups);
 
-        _availables = await _dbContext.Amounts
-            .Where(ca => ca.Location.OwnerId == default)
-            // TODO: change return location
-            .ToDictionaryAsync(ca => ca.CardId);
+            _availables = await _dbContext.Amounts
+                .Where(ca => ca.Location.OwnerId == default)
+                // TODO: change return location
+                .ToDictionaryAsync(ca => ca.CardId);
+        }
+        finally
+        {
+            _busy = false;
+        }
 
-        _busy = false;
-        _result = SaveResult.None;
+        await base.OnInitializedAsync();
     }
 
 
@@ -196,16 +203,24 @@
         }
 
         _busy = true;
-        _deck = await GetOrCreateDeckAsync();
+        try
+        {
+            _deck = await GetOrCreateDeckAsync();
 
-        _deckCards = _deck.Cards
-            .GroupBy(ca => ca.CardId)
-            .ToDictionary(g => g.Key, InitGroup);
+            _deckCards = _deck.Cards
+                .GroupBy(ca => ca.CardId)
+                .ToDictionary(g => g.Key, InitGroup);
 
-        _dbContext.Attach(User);
+            _dbContext.Attach(User);
 
-        FixDeckState();
-        _busy = false;
+            FixDeckState();
+        }
+        finally
+        {
+            _busy = false;
+        }
+
+        await base.OnParametersSetAsync();
     }
 
 
@@ -405,7 +420,8 @@
 
         PrepareChanges();
 
-        try {
+        try
+        {
             await _dbContext.SaveChangesAsync();
             _result = SaveResult.Success;
 
@@ -486,7 +502,16 @@
             await TrackNewCardAsync(cardGroup);
         }
 
-        await _dbContext.MatchToken(_deck);
+        var dbDeck = await _dbContext.Entry(_deck).GetDatabaseValuesAsync();
+
+        if (dbDeck == null)
+        {
+            _dbContext.Add(_deck);
+        }
+        else
+        {
+            _dbContext.MatchToken(_deck, dbDeck);
+        }
     }
 
 

@@ -28,6 +28,11 @@ namespace MTGViewer.Data.Concurrency
         public static void MatchToken(
             this CardDbContext context, Concurrent current, PropertyValues dbProps)
         {
+            if (dbProps == null)
+            {
+                return;
+            }
+
             if (context.Database.IsSqlite())
             {
                 var tokenProp = context.Entry(current)
@@ -53,14 +58,6 @@ namespace MTGViewer.Data.Concurrency
             context.MatchToken(
                 current,
                 context.Entry(dbValues).CurrentValues);
-        }
-
-        public static async Task MatchToken(this CardDbContext context, Concurrent entity)
-        {
-            var dbProps = await context.Entry(entity)
-                .GetDatabaseValuesAsync();
-
-            context.MatchToken(entity, dbProps);
         }
 
 
