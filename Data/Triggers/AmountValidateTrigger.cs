@@ -9,7 +9,7 @@ using Microsoft.Extensions.Logging;
 
 namespace MTGViewer.Data.Triggers
 {
-    public class AmountValidateTrigger : IBeforeSaveTrigger<CardAmount>
+    public class AmountValidateTrigger : IBeforeSaveTrigger<CardAmount>, IAfterSaveTrigger<CardAmount>
     {
         private readonly CardDbContext _dbContext;
         private readonly ILogger<LiteTokenUpdateTrigger> _logger;
@@ -27,34 +27,46 @@ namespace MTGViewer.Data.Triggers
                 return;
             }
 
-            var amount = trigContext.Entity;
-            var entry = _dbContext.Entry(amount);
+            var cardAmount = trigContext.Entity;
 
-            if (entry.State == EntityState.Detached)
+            if (_dbContext.Entry(cardAmount).State == EntityState.Detached)
             {
                 // attach just to load
-                _dbContext.Attach(amount);
+                _dbContext.Attach(cardAmount);
             }
 
-            await entry
+            await _dbContext.Entry(cardAmount)
                 .Reference(ca => ca.Location)
                 .LoadAsync();
 
-            if (amount.Location is null)
+            if (cardAmount.Location is null)
             {
                 // TODO: change return location
-                amount.Location = await _dbContext.Locations.FindAsync(1);
+                cardAmount.Location = await _dbContext.Locations.FindAsync(1);
             }
 
-            if (!amount.Location.IsShared && amount.Amount == 0)
-            {
-                _dbContext.Remove(amount);
-            }
-
-            else if (amount.Location.IsShared)
+            if (cardAmount.Location.IsShared)
             {
                 // makes sure that non-owned locations cannot have a request
-                amount.IsRequest = false;
+                cardAmount.IsRequest = false;
+            }
+        }
+
+
+        public async Task AfterSave(ITriggerContext<CardAmount> trigContext, CancellationToken cancel)
+        {
+            if (trigContext.ChangeType == ChangeType.Deleted)
+            {
+                return;
+            }
+
+            var cardAmount = trigContext.Entity;
+
+            if (cardAmount.Amount == 0)
+            {
+                _dbContext.Attach(cardAmount).State = EntityState.Deleted;
+
+                await _dbContext.SaveChangesAsync();
             }
         }
 

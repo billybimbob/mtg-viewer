@@ -51,7 +51,11 @@ namespace MTGViewer.Services
 
         public async Task<IReadOnlyList<Card>> SearchAsync()
         {
-            IEnumerable<ICard>? matches = LoggedUnwrap(await _service.AllAsync());
+            var response = await _service
+                .Where(c => c.PageSize, 10) // TODO: make size param
+                .AllAsync();
+
+            IEnumerable<ICard>? matches = LoggedUnwrap(response);
 
             matches ??= Enumerable.Empty<ICard>();
 

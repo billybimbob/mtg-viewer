@@ -10,8 +10,7 @@ namespace MTGViewer.Data
     {
         public CardDbContext(DbContextOptions<CardDbContext> options)
             : base(options)
-        {
-        }
+        { }
 
         public DbSet<Card> Cards { get; set; }
         public DbSet<Location> Locations { get; set; }
@@ -44,21 +43,24 @@ namespace MTGViewer.Data
             modelBuilder.Entity<Trade>(tradeBuild =>
             {
                 tradeBuild
-                    .HasOne(t => t.FromUser)
-                    .WithMany();
+                    .HasOne(t => t.Proposer)
+                    .WithMany()
+                    .OnDelete(DeleteBehavior.Cascade);
 
                 tradeBuild
-                    .HasOne(t => t.ToUser)
-                    .WithMany();
+                    .HasOne(t => t.Receiver)
+                    .WithMany()
+                    .OnDelete(DeleteBehavior.Cascade);
 
                 tradeBuild
                     .HasOne(t => t.From)
-                    .WithOne()
+                    .WithMany()
                     .OnDelete(DeleteBehavior.Cascade);
 
                 tradeBuild
                     .HasOne(t => t.To)
-                    .WithMany();
+                    .WithMany()
+                    .OnDelete(DeleteBehavior.Cascade);
             });
         }
 

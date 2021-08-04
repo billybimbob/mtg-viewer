@@ -30,7 +30,10 @@ namespace MTGViewer.Pages.Trades
         [TempData]
         public string PostMessage { get; set; }
 
-        public IReadOnlyList<Trade> PendingTrades { get; private set; }
+        public CardUser SelfUser { get; private set; }
+
+        public IReadOnlyList<(CardUser, Location)> ReceivedTrades { get; private set; }
+        public IReadOnlyList<(CardUser, Location)> PendingTrades { get; private set; }
         public IReadOnlyList<Trade> Suggestions { get; private set; }
 
 
@@ -38,123 +41,45 @@ namespace MTGViewer.Pages.Trades
         {
             var userId = _userManager.GetUserId(User);
 
-            PendingTrades = await _dbContext.Trades
-                .Where(TradeFilter.PendingFor(userId))
-                // .Where(t => t.FromId != default
-                //     && (t.ToUserId == userId && !t.IsCounter 
-                //         || t.FromUserId == userId && t.IsCounter))
-                .Include(t => t.Card)
-                .Include(t => t.FromUser)
+            var userTrades = await _dbContext.Trades
+                .Where(TradeFilter.Involves(userId))
                 .Include(t => t.To)
-                .AsSplitQuery()
+                    .ThenInclude(l => l.Owner)
+                .Include(t => t.From)
+                    .ThenInclude(ca => ca.Location)
+                        .ThenInclude(l => l.Owner)
                 .AsNoTrackingWithIdentityResolution()
                 .ToListAsync();
+
+            var waitingUser = userTrades
+                .Where(t => t.IsWaitingOn(userId));
+
+            SelfUser = await _userManager.FindByIdAsync(userId);
+
+            ReceivedTrades = GetTradeList(userId, waitingUser);
+
+            PendingTrades = GetTradeList(userId, userTrades.Except(waitingUser));
 
             Suggestions = await _dbContext.Trades
                 .Where(TradeFilter.SuggestionFor(userId))
-                // .Where(t => t.FromId == default && t.ToUserId == userId)
                 .Include(t => t.Card)
-                .Include(t => t.FromUser)
+                .Include(t => t.Proposer)
                 .Include(t => t.To)
-                .AsSplitQuery()
                 .AsNoTrackingWithIdentityResolution()
                 .ToListAsync();
         }
 
 
-        public async Task<IActionResult> OnPostAcceptAsync(int tradeId)
-        {
-            var trade = await GetAndValidateAcceptAsync(tradeId);
-
-            if (trade is not null)
-            {
-                await ApplyAcceptAsync(trade);
-            }
-
-            return RedirectToPage("./Index");
-        }
+        private IReadOnlyList<(CardUser, Location)> GetTradeList(string userId, IEnumerable<Trade> trades) =>
+            trades.GroupBy(t => t.TargetLocation)
+                .Select(g =>
+                    (User: g.First().GetOtherUser(userId), Target: g.Key))
+                .OrderBy(t => t.User.Name)
+                    .ThenBy(t => t.Target)
+                .ToList();
 
 
-        private async Task<Trade> GetAndValidateAcceptAsync(int tradeId)
-        {
-            var trade = await _dbContext.Trades.FindAsync(tradeId);
-
-            if (trade is null || trade.IsSuggestion)
-            {
-                PostMessage = "Specified trade cannot be accepted";
-                return null;
-            }
-
-            await _dbContext.Entry(trade)
-                .Reference(t => t.From)
-                .LoadAsync();
-                
-            if (trade.From.Amount < trade.Amount)
-            {
-                PostMessage = "Source Deck lacks the trade amount to complete the trade";
-                return null;
-            }
-
-            return trade;
-        }
-
-
-        private async Task ApplyAcceptAsync(Trade accept)
-        {
-            await _dbContext.Entry(accept)
-                .Reference(t => t.From)
-                .LoadAsync();
-
-            var destAmount = await _dbContext.Amounts
-                .SingleOrDefaultAsync(ca =>
-                    ca.CardId == accept.CardId
-                        && ca.LocationId == accept.ToId
-                        && !ca.IsRequest);
-
-            if (destAmount is null)
-            {
-                destAmount = new CardAmount
-                {
-                    CardId = accept.CardId,
-                    LocationId = accept.ToId
-                };
-
-                _dbContext.Attach(destAmount);
-            }
-
-            accept.From.Amount -= accept.Amount;
-            destAmount.Amount += accept.Amount;
-
-            _dbContext.Remove(accept);
-
-            await _dbContext.SaveChangesAsync();
-
-            PostMessage = "Trade Successfully Applied";
-        }
-
-
-        public async Task<IActionResult> OnPostRejectAsync(int tradeId)
-        {
-            var trade = await _dbContext.Trades.FindAsync(tradeId);
-
-            if (trade is null || trade.IsSuggestion)
-            {
-                PostMessage = "Specified trade cannot be rejected";
-            }
-            else
-            {
-                _dbContext.Entry(trade).State = EntityState.Deleted;
-
-                await _dbContext.SaveChangesAsync();
-
-                PostMessage = "Trade Successfully Deleted";
-            }
-
-            return RedirectToPage("./Index");
-        }
-
-
-        public async Task<IActionResult> OnPostAckAsync(int suggestId)
+        public async Task<IActionResult> OnPostAsync(int suggestId)
         {
             var suggestion = await _dbContext.Trades.FindAsync(suggestId);
 

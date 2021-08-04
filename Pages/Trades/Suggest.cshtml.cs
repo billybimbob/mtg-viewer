@@ -119,25 +119,23 @@ namespace MTGViewer.Pages.Trades
                     // include both request and non-request amounts
                 .Select(ca => ca.Location)
                 .Distinct()
-                .AsNoTracking()
+                .AsNoTrackingWithIdentityResolution()
                 .ToListAsync();
 
             var suggestPrior = await _dbContext.Trades
-                .Where(t => t.ToUserId == userId
+                .Where(t => t.ReceiverId == userId
                     && t.CardId == Suggesting.Id)
                     // include both suggestions and trades
                 .Select(t => t.To)
                 .Distinct()
-                .AsNoTracking()
+                .AsNoTrackingWithIdentityResolution()
                 .ToListAsync();
-
-            var idCompare = new EntityComparer<Location>(l => l.Id);
 
             var invalidDecks = suggestInDeck
                 .Concat(suggestPrior)
-                .Distinct(idCompare);
+                .Distinct();
 
-            return userDecks.Except(invalidDecks, idCompare);
+            return userDecks.Except(invalidDecks);
         }
 
 
@@ -166,8 +164,8 @@ namespace MTGViewer.Pages.Trades
             var suggestion = new Trade
             {
                 Card = Suggesting,
-                FromUser = fromUser,
-                ToUser = toDeck.Owner,
+                Proposer = fromUser,
+                Receiver = toDeck.Owner,
                 To = toDeck
             };
 
@@ -192,7 +190,7 @@ namespace MTGViewer.Pages.Trades
             }
 
             var suggestPrior = await _dbContext.Trades
-                .Where(t => t.ToUserId == deck.OwnerId
+                .Where(t => t.ReceiverId == deck.OwnerId
                     && t.CardId == Suggesting.Id)
                     // include both suggestions and trades
                 .AnyAsync();
