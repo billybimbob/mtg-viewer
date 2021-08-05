@@ -24,7 +24,6 @@ namespace MTGViewer.Data
                 switch (provider)
                 {
                     case "SqlServer":
-
                         services.AddTriggeredDbContextFactory<CardDbContext>(options => options
                             .UseSqlServer(config.GetConnectionString("MTGCardContext"))
                                 // TODO: change connection string name
@@ -35,7 +34,6 @@ namespace MTGViewer.Data
 
                     case "Sqlite":
                     default:
-
                         services.AddTriggeredDbContextFactory<CardDbContext>(options => options
                             .UseSqlite(config.GetConnectionString("MTGCardContext"))
                             .UseTriggers(triggers => triggers
