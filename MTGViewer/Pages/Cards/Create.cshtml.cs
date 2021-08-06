@@ -79,7 +79,9 @@ namespace MTGViewer.Pages.Cards
             if (await TryUpdateModelAsync(Card, "card"))
             {
                 Matches = await _fetch.MatchAsync(Card);
-                Amounts = Matches.Select(m => new AmountModel{ Id = m.Id }).ToList();
+                Amounts = Matches
+                    .Select(m => new AmountModel{ Id = m.MultiverseId })
+                    .ToList();
             }
 
             // if (Matches?.Count() == 1)

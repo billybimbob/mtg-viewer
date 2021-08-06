@@ -29,7 +29,6 @@ namespace MTGViewer.Services
         public MTGFetchService(
             MtgServiceProvider provider,
             DataCacheService cache, 
-            CardDbContext dbContext,
             ILogger<MTGFetchService> logger)
         {
             _logger = logger;
@@ -37,10 +36,12 @@ namespace MTGViewer.Services
             _cache = cache;
         }
 
+
         public void Reset()
         {
             _service.Reset();
         }
+
 
         public MTGFetchService Where<U>(
             Expression<Func<CardQueryParameter, U>> property, U value)
@@ -48,6 +49,7 @@ namespace MTGViewer.Services
             _service.Where(property, value);
             return this;
         }
+
 
         public async Task<IReadOnlyList<Card>> SearchAsync()
         {
@@ -67,7 +69,7 @@ namespace MTGViewer.Services
 
             foreach (var card in cards)
             {
-                _cache[card.Id] = card;
+                _cache[card.MultiverseId] = card;
             }
 
             return cards;
@@ -76,6 +78,11 @@ namespace MTGViewer.Services
 
         public async Task<Card?> GetIdAsync(string id)
         {
+            if (string.IsNullOrWhiteSpace(id))
+            {
+                return null;
+            }
+
             Card? card;
 
             if (_cache.TryGetValue(id, out card))
@@ -87,6 +94,7 @@ namespace MTGViewer.Services
             _logger.LogInformation($"refetching {id}");
 
             var match = LoggedUnwrap(await _service.FindAsync(id));
+
             if (match is null)
             {
                 _logger.LogError("match returned null");
@@ -97,7 +105,7 @@ namespace MTGViewer.Services
 
             if (card is not null)
             {
-                _cache[card.Id] = card;
+                _cache[card.MultiverseId] = card;
             }
 
             return card;
@@ -133,7 +141,8 @@ namespace MTGViewer.Services
 
         public async Task<IReadOnlyList<Card>> MatchAsync(Card search)
         {
-            if (search.Id != default && _cache.TryGetValue(search.Id, out Card card))
+            if (search.MultiverseId != default 
+                && _cache.TryGetValue(search.MultiverseId, out Card card))
             {
                 return new List<Card> { card };
             }
@@ -202,6 +211,7 @@ namespace MTGViewer.Services
             return new Card
             {
                 Id = card.Id, // id should be valid
+                MultiverseId = card.MultiverseId,
                 Name = card.Name,
                 Names = card.Names
                     ?.Select(s => new Name(s))

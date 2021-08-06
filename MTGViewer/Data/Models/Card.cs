@@ -12,6 +12,9 @@ namespace MTGViewer.Data
         public string Id { get; set; }
 
         [Required]
+        public string MultiverseId { get; set; }
+
+        [Required]
         public string Name { get; set; }
 
         public ICollection<Name> Names { get; init; } = new HashSet<Name>();

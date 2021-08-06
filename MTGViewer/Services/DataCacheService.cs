@@ -12,10 +12,15 @@ namespace MTGViewer.Services
 
         public DataCacheService(IConfiguration config, ILogger<DataCacheService> logger)
         {
+            if (!long.TryParse(config["CacheLimit"], out long limit))
+            {
+                limit = 100;
+            }
+
             _logger = logger;
             _cache = new MemoryCache(new MemoryCacheOptions
             {
-                SizeLimit = long.Parse(config["CacheLimit"])
+                SizeLimit = limit
                 // should auto evict from limit
             });
 
