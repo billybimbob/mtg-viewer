@@ -86,7 +86,8 @@ namespace MTGViewer.Tests.Services
 
             var provider = new MtgServiceProvider();
             var cache = new DataCacheService(Mock.Of<IConfiguration>(), Mock.Of<ILogger<DataCacheService>>());
-            cache[TEST_ID] = testCard;
+
+            cache[testCard.MultiverseId] = testCard;
 
             var fetch = new MTGFetchService(provider, cache, Mock.Of<ILogger<MTGFetchService>>());
 
