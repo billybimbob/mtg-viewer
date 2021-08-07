@@ -135,7 +135,7 @@ namespace MTGViewer.Pages.Cards
         {
             foreach(var info in newAmounts)
             {
-                var card = await _fetch.GetIdAsync(info.Id);
+                var card = await _fetch.FindAsync(info.Id);
 
                 if (card is null)
                 {

@@ -1,20 +1,25 @@
+using System.Threading.Tasks;
 using Xunit;
-using MTGViewer.Data;
 
+using MTGViewer.Data;
+using MTGViewer.Tests.Utils;
 
 namespace MTGViewer.Tests.Data
 {
     public class LocationTests
     {
         [Fact]
-        public void IsShared_NoOwner_ReturnsTrue()
+        public async Task IsShared_NoOwner_ReturnsTrue()
         {
-            var locaton = new Location("No owner location")
+            await using var dbContext = new CardDbContext(CardDbUtils.TestCardDbOptions());
+
+            var location = new Location("No owner location")
             {
                 Owner = null
             };
 
-            bool isShared = locaton.IsShared;
+            dbContext.Attach(location);
+            bool isShared = location.IsShared;
 
             Assert.True(isShared);
         }

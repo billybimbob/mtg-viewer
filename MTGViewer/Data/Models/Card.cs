@@ -2,10 +2,11 @@ using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Text.RegularExpressions;
+using MtgApiManager.Lib.Service;
 
 namespace MTGViewer.Data
 {
-    public class Card
+    public class Card : IQueryParameter
     {
         // not sure about the sha length range
         [RegularExpression(@"^[a-fA-F0-9-]{1,40}")]

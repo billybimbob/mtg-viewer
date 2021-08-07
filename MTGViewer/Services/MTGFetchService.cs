@@ -18,12 +18,12 @@ using MTGViewer.Data;
 
 namespace MTGViewer.Services
 {
-
-    public class MTGFetchService : IMtgQueryable<MTGFetchService, CardQueryParameter>
+    public class MTGFetchService : IMtgQueryable<MTGFetchService, Card>
     {
-        private readonly ILogger<MTGFetchService> _logger;
+        private bool _empty;
         private readonly ICardService _service;
         private readonly DataCacheService _cache;
+        private readonly ILogger<MTGFetchService> _logger;
 
 
         public MTGFetchService(
@@ -31,31 +31,84 @@ namespace MTGViewer.Services
             DataCacheService cache, 
             ILogger<MTGFetchService> logger)
         {
-            _logger = logger;
+            _empty = true;
             _service = provider.GetCardService();
             _cache = cache;
+            _logger = logger;
         }
 
 
         public void Reset()
         {
             _service.Reset();
+            _empty = true;
         }
 
 
-        public MTGFetchService Where<U>(
-            Expression<Func<CardQueryParameter, U>> property, U value)
+        public MTGFetchService Where<P>(Expression<Func<Card, P>> property, P value)
         {
-            _service.Where(property, value);
+            if (property.Body is MemberExpression expression)
+            {
+                QueryProperty(expression.Member.Name, value);
+            }
+
             return this;
         }
 
 
+
+        private void QueryProperty(string propertyName, object? objValue)
+        {
+            var propertyValue = ToString(objValue);
+
+            if (string.IsNullOrEmpty(propertyValue))
+            {
+                return;
+            }
+
+            if (typeof(CardQueryParameter).GetProperty(propertyName) == null)
+            {
+                return;
+            }
+
+            var property = PropertyExpression<CardQueryParameter, string>(propertyName);
+
+            _service.Where(property , propertyValue);
+            _empty = false;
+        }
+
+
+        private static string? ToString(object? paramValue) => paramValue switch
+        {
+            null => null,
+            IEnumerable<object> iter1 when !iter1.Any() => null,
+            IEnumerable<object> iter2 => string.Join(',', iter2),
+            _ => paramValue.ToString()
+        };
+
+
+        private static Expression<Func<Q, R>> PropertyExpression<Q, R>(string propName)
+        {
+            var xParam = Expression.Parameter(typeof(Q), "x");
+            var propExpr = Expression.Property(xParam, propName);
+
+            return Expression.Lambda<Func<Q, R>>(propExpr, xParam);
+        }
+
+
+
         public async Task<IReadOnlyList<Card>> SearchAsync()
         {
+            if (_empty)
+            {
+                return new List<Card>();
+            }
+
             var response = await _service
                 .Where(c => c.PageSize, 10) // TODO: make size param
                 .AllAsync();
+
+            _empty = true;
 
             IEnumerable<ICard>? matches = LoggedUnwrap(response);
 
@@ -76,8 +129,10 @@ namespace MTGViewer.Services
         }
 
 
-        public async Task<Card?> GetIdAsync(string id)
+        public async Task<Card?> FindAsync(string id)
         {
+            Reset();
+
             if (string.IsNullOrWhiteSpace(id))
             {
                 return null;
@@ -115,6 +170,7 @@ namespace MTGViewer.Services
         private T? LoggedUnwrap<T>(IOperationResult<T> result) where T : class
         {
             var unwrap = result.Unwrap();
+
             if (unwrap is null)
             {
                 _logger.LogError(result.Exception.ToString());
@@ -141,60 +197,31 @@ namespace MTGViewer.Services
 
         public async Task<IReadOnlyList<Card>> MatchAsync(Card search)
         {
-            if (search.MultiverseId != default 
-                && _cache.TryGetValue(search.MultiverseId, out Card card))
+            if (search.MultiverseId != default)
             {
-                return new List<Card> { card };
-            }
+                var card = await FindAsync(search.MultiverseId);
+                var results = new List<Card>();
 
-            foreach (var info in search.GetType().GetProperties())
+                if (card is not null)
+                {
+                    results.Add(card);
+                }
+
+                return results;
+            }
+            else
             {
-                QueryProperty(info, info.GetValue(search));
+                foreach (var info in search.GetType().GetProperties())
+                {
+                    if (info?.GetGetMethod() is not null
+                        && info?.GetSetMethod() is not null)
+                    {
+                        QueryProperty(info.Name, info.GetValue(search));
+                    }
+                }
+
+                return await SearchAsync();
             }
-
-            return await SearchAsync();
-        }
-
-
-        private void QueryProperty(PropertyInfo info, object? objValue)
-        {
-            if (info.GetSetMethod() is null || info.GetGetMethod() is null)
-            {
-                return;
-            }
-
-            if (typeof(CardQueryParameter).GetProperty(info.Name) is null)
-            {
-                return;
-            }
-
-            var propertyValue = ToString(objValue);
-            if (string.IsNullOrEmpty(propertyValue))
-            {
-                return;
-            }
-
-            Where(
-                PropertyExpression<CardQueryParameter, string>(info.Name),
-                propertyValue);
-        }
-
-
-        private static string? ToString(object? paramValue) => paramValue switch
-        {
-            IEnumerable<object> iter1 when !iter1.Any() => null,
-            IEnumerable<object> iter2 => string.Join(',', iter2),
-            null => null,
-            _ => paramValue.ToString()
-        };
-
-
-        private static Expression<Func<Q, R>> PropertyExpression<Q, R>(string propName)
-        {
-            var xParam = Expression.Parameter(typeof(Q), "x");
-            var propExpr = Expression.Property(xParam, propName);
-
-            return Expression.Lambda<Func<Q, R>>(propExpr, xParam);
         }
 
     }

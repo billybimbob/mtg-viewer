@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Threading.Tasks;
 
 using Xunit;
@@ -16,48 +17,126 @@ namespace MTGViewer.Tests.Services
     public class MTGFetchTests
     {
         private const string TEST_ID = "386616";
+        private const string TEST_NAME = "Narset, Enlightened Master";
+
+
+        private MTGFetchService GetNoCacheFetchService()
+        {
+            var provider = new MtgServiceProvider();
+            var cache = new DataCacheService(Mock.Of<IConfiguration>(), Mock.Of<ILogger<DataCacheService>>());
+
+            return new MTGFetchService(provider, cache, Mock.Of<ILogger<MTGFetchService>>());
+        }
 
 
         [Fact]
-        public async Task Search_NoParams_ReturnsCards()
+        public async Task Search_NoParams_ReturnsEmpty()
         {
-            var provider = new MtgServiceProvider();
-            var cache = new Mock<DataCacheService>(Mock.Of<IConfiguration>(), Mock.Of<ILogger<DataCacheService>>());
-
-            var fetch = new MTGFetchService(provider, cache.Object, Mock.Of<ILogger<MTGFetchService>>());
+            var fetch = GetNoCacheFetchService();
 
             fetch.Reset();
             var cards = await fetch.SearchAsync();
 
-            Assert.NotEmpty(cards);
+            Assert.Empty(cards);
         }
 
 
         [Fact]
-        public async Task GetId_NoCache_ReturnsCard()
+        public async Task Search_NameParam_ReturnsSameName()
         {
-            var provider = new MtgServiceProvider();
-            var cache = new Mock<DataCacheService>(Mock.Of<IConfiguration>(), Mock.Of<ILogger<DataCacheService>>());
+            var fetch = GetNoCacheFetchService();
 
-            var fetch = new MTGFetchService(provider, cache.Object, Mock.Of<ILogger<MTGFetchService>>());
+            var cards = await fetch
+                .Where(c => c.Name, TEST_NAME)
+                .SearchAsync();
 
-            var card = await fetch.GetIdAsync(TEST_ID);
+            var cardNames = cards.Select(c => c.Name);
 
-            Assert.Equal(card.Name, "Narset, Enlightened Master");
+            Assert.Contains(TEST_NAME, cardNames);
         }
 
 
         [Fact]
-        public async Task GetId_NoId_ReturnsNull()
+        public async Task Find_Id_ReturnsCard()
         {
-            var provider = new MtgServiceProvider();
-            var cache = new Mock<DataCacheService>(Mock.Of<IConfiguration>(), Mock.Of<ILogger<DataCacheService>>());
+            var fetch = GetNoCacheFetchService();
 
-            var fetch = new MTGFetchService(provider, cache.Object, Mock.Of<ILogger<MTGFetchService>>());
+            var card = await fetch.FindAsync(TEST_ID);
 
-            var card = await fetch.GetIdAsync(null);
+            Assert.Equal(card.Name, TEST_NAME);
+        }
+
+
+        [Fact]
+        public async Task Find_NoId_ReturnsNull()
+        {
+            var fetch = GetNoCacheFetchService();
+
+            var card = await fetch.FindAsync(null);
 
             Assert.Null(card);
+        }
+
+
+        [Fact]
+        public async Task Find_Cache_ReturnsCard()
+        {
+            var noCacheFetch = GetNoCacheFetchService();
+            var testCard = await noCacheFetch.FindAsync(TEST_ID);
+
+            var provider = new MtgServiceProvider();
+            var cache = new DataCacheService(Mock.Of<IConfiguration>(), Mock.Of<ILogger<DataCacheService>>());
+            cache[TEST_ID] = testCard;
+
+            var fetch = new MTGFetchService(provider, cache, Mock.Of<ILogger<MTGFetchService>>());
+
+            var card = await fetch.FindAsync(TEST_ID);
+
+            Assert.Equal(card.Name, TEST_NAME);
+        }
+
+
+        [Fact]
+        public async Task Match_Id_ReturnsCard()
+        {
+            var fetch = GetNoCacheFetchService();
+            var search = new Card
+            {
+                MultiverseId = TEST_ID
+            };
+
+            var cards = await fetch.MatchAsync(search);
+            var cardNames = cards.Select(c => c.Name);
+
+            Assert.Contains(TEST_NAME, cardNames);
+        }
+
+
+        [Fact]
+        public async Task Match_Empty_ReturnsEmpty()
+        {
+            var fetch = GetNoCacheFetchService();
+            var search = new Card();
+
+            var cards = await fetch.MatchAsync(search);
+
+            Assert.Empty(cards);
+        }
+
+
+        [Fact]
+        public async Task Match_OnlyName_ReturnsCard()
+        {
+            var fetch = GetNoCacheFetchService();
+            var search = new Card
+            {
+                Name = TEST_NAME
+            };
+
+            var cards = await fetch.MatchAsync(search);
+            var cardNames = cards.Select(c => c.Name);
+
+            Assert.Contains(TEST_NAME, cardNames);
         }
     }
 }
