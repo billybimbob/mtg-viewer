@@ -10,6 +10,7 @@ using Microsoft.Extensions.Logging;
 using MtgApiManager.Lib.Service;
 using MTGViewer.Data;
 using MTGViewer.Services;
+using MTGViewer.Tests.Utils;
 
 
 namespace MTGViewer.Tests.Services
@@ -20,19 +21,10 @@ namespace MTGViewer.Tests.Services
         private const string TEST_NAME = "Narset, Enlightened Master";
 
 
-        private MTGFetchService GetNoCacheFetchService()
-        {
-            var provider = new MtgServiceProvider();
-            var cache = new DataCacheService(Mock.Of<IConfiguration>(), Mock.Of<ILogger<DataCacheService>>());
-
-            return new MTGFetchService(provider, cache, Mock.Of<ILogger<MTGFetchService>>());
-        }
-
-
         [Fact]
         public async Task Search_NoParams_ReturnsEmpty()
         {
-            var fetch = GetNoCacheFetchService();
+            var fetch = TestHelpers.NoCacheFetchService();
 
             fetch.Reset();
             var cards = await fetch.SearchAsync();
@@ -44,7 +36,7 @@ namespace MTGViewer.Tests.Services
         [Fact]
         public async Task Search_NameParam_ReturnsSameName()
         {
-            var fetch = GetNoCacheFetchService();
+            var fetch = TestHelpers.NoCacheFetchService();
 
             var cards = await fetch
                 .Where(c => c.Name, TEST_NAME)
@@ -59,7 +51,7 @@ namespace MTGViewer.Tests.Services
         [Fact]
         public async Task Find_Id_ReturnsCard()
         {
-            var fetch = GetNoCacheFetchService();
+            var fetch = TestHelpers.NoCacheFetchService();
 
             var card = await fetch.FindAsync(TEST_ID);
 
@@ -70,7 +62,7 @@ namespace MTGViewer.Tests.Services
         [Fact]
         public async Task Find_NoId_ReturnsNull()
         {
-            var fetch = GetNoCacheFetchService();
+            var fetch = TestHelpers.NoCacheFetchService();
 
             var card = await fetch.FindAsync(null);
 
@@ -81,15 +73,14 @@ namespace MTGViewer.Tests.Services
         [Fact]
         public async Task Find_Cache_ReturnsCard()
         {
-            var noCacheFetch = GetNoCacheFetchService();
+            var noCacheFetch = TestHelpers.NoCacheFetchService();
             var testCard = await noCacheFetch.FindAsync(TEST_ID);
 
             var provider = new MtgServiceProvider();
             var cache = new DataCacheService(Mock.Of<IConfiguration>(), Mock.Of<ILogger<DataCacheService>>());
 
-            cache[testCard.MultiverseId] = testCard;
-
             var fetch = new MTGFetchService(provider, cache, Mock.Of<ILogger<MTGFetchService>>());
+            cache[testCard.MultiverseId] = testCard;
 
             var card = await fetch.FindAsync(TEST_ID);
 
@@ -100,7 +91,7 @@ namespace MTGViewer.Tests.Services
         [Fact]
         public async Task Match_Id_ReturnsCard()
         {
-            var fetch = GetNoCacheFetchService();
+            var fetch = TestHelpers.NoCacheFetchService();
             var search = new Card
             {
                 MultiverseId = TEST_ID
@@ -116,7 +107,7 @@ namespace MTGViewer.Tests.Services
         [Fact]
         public async Task Match_Empty_ReturnsEmpty()
         {
-            var fetch = GetNoCacheFetchService();
+            var fetch = TestHelpers.NoCacheFetchService();
             var search = new Card();
 
             var cards = await fetch.MatchAsync(search);
@@ -128,7 +119,7 @@ namespace MTGViewer.Tests.Services
         [Fact]
         public async Task Match_OnlyName_ReturnsCard()
         {
-            var fetch = GetNoCacheFetchService();
+            var fetch = TestHelpers.NoCacheFetchService();
             var search = new Card
             {
                 Name = TEST_NAME
