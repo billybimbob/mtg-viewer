@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using Microsoft.EntityFrameworkCore;
+using Newtonsoft.Json;
+
 using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data.Concurrency;
 
@@ -21,13 +23,19 @@ namespace MTGViewer.Data
         public int Id { get; set; }
 
         public string CardId { get; set; } = null!;
+
+        [JsonIgnore]
         public Card Card { get; set; } = null!;
 
 
         public string ProposerId { get; set; } = null!;
+
+        [JsonIgnore]
         public CardUser Proposer { get; set; } = null!;
 
         public string ReceiverId { get; set; } = null!;
+
+        [JsonIgnore]
         public CardUser Receiver { get; set; } = null!;
 
         /// <remarks>
@@ -40,12 +48,14 @@ namespace MTGViewer.Data
         public int ToId { get; set; }
 
         [Display(Name = "To Deck")]
+        [JsonIgnore]
         public Location To { get; set; } = null!;
 
 
         public int? FromId { get; set; }
 
         [Display(Name = "From Deck")]
+        [JsonIgnore]
         public CardAmount? From { get; set; }
 
 
@@ -56,7 +66,9 @@ namespace MTGViewer.Data
         public bool IsSuggestion => FromId == default;
 
         public Location? TargetLocation =>
-            ProposerId == To.OwnerId ? From?.Location : To;
+            ProposerId != To.OwnerId
+                ? To
+                : From?.Location;
 
 
         public bool IsInvolved(string userId) =>
@@ -70,8 +82,12 @@ namespace MTGViewer.Data
                     || ProposerId == userId && IsCounter);
 
 
-        public CardUser GetOtherUser(string userId) =>
-            ProposerId != userId ? Proposer : Receiver;
+        public CardUser? GetOtherUser(string userId) => userId switch
+        {
+            _ when userId == ProposerId => Receiver,
+            _ when userId == ReceiverId => Proposer,
+            _ => null
+        };
 
 
         public IEnumerable<Location> GetLocations()

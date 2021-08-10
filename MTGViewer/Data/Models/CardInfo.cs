@@ -1,5 +1,5 @@
 using System.Collections.Generic;
-using System.Text.Json.Serialization;
+using Newtonsoft.Json;
 
 #nullable enable
 
@@ -17,6 +17,7 @@ namespace MTGViewer.Data
 
         public string Value { get; set; }
 
+        [JsonIgnore]
         public Card Card { get; set; } = null!;
     }
 
@@ -43,6 +44,7 @@ namespace MTGViewer.Data
 
         public string Name { get; set; }
 
+        [JsonIgnore]
         public Card Card { get; set; } = null!;
     }
 
@@ -58,6 +60,7 @@ namespace MTGViewer.Data
 
         public string Name { get; set; }
 
+        [JsonIgnore]
         public Card Card { get; set; } = null!;
     }
 
@@ -73,6 +76,7 @@ namespace MTGViewer.Data
 
         public string Name { get; set; }
 
+        [JsonIgnore]
         public Card Card { get; set; } = null!;
     }
 
@@ -88,6 +92,7 @@ namespace MTGViewer.Data
 
         public string Name { get; set; }
 
+        [JsonIgnore]
         public Card Card { get; set; } = null!;
     }
 }

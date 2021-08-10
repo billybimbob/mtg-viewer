@@ -2,7 +2,9 @@ using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Text.RegularExpressions;
+using Newtonsoft.Json;
 using MtgApiManager.Lib.Service;
+
 
 namespace MTGViewer.Data
 {
@@ -57,8 +59,7 @@ namespace MTGViewer.Data
         [UrlAttribute]
         public string ImageUrl { get; set; }
 
-        // locations can be derived from amounts
-        // could possibly derive amounts from locations
+        [JsonIgnore]
         public ICollection<CardAmount> Amounts { get; } = new HashSet<CardAmount>();
 
         public IReadOnlyList<string> GetColorSymbols()

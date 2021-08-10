@@ -1,5 +1,6 @@
 using System.Linq;
 using System.Collections.Generic;
+using Newtonsoft.Json;
 using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data.Concurrency;
 
@@ -20,8 +21,11 @@ namespace MTGViewer.Data
         public string Name { get; set; }
 
         public string? OwnerId { get; set; }
+
+        [JsonIgnore]
         public CardUser? Owner { get; set; }
 
+        [JsonIgnore]
         public ICollection<CardAmount> Cards { get; } = new HashSet<CardAmount>();
 
         public bool IsShared => OwnerId == default;
