@@ -63,8 +63,10 @@ namespace MTGViewer.Data
         public int Amount { get; set; }
 
 
+        [JsonIgnore]
         public bool IsSuggestion => FromId == default;
 
+        [JsonIgnore]
         public Location? TargetLocation =>
             ProposerId != To.OwnerId
                 ? To

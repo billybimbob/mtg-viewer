@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
 using MTGViewer.Data.Concurrency;
@@ -6,7 +7,7 @@ using MTGViewer.Areas.Identity.Data;
 
 namespace MTGViewer.Data
 {
-    public class CardDbContext : DbContext
+    public class CardDbContext : IdentityDbContext<CardUser>
     {
         public CardDbContext(DbContextOptions<CardDbContext> options)
             : base(options)
@@ -23,8 +24,8 @@ namespace MTGViewer.Data
             modelBuilder
                 .SelectConcurrencyToken(Database)
 
-                .Entity<CardUser>(userBuild => 
-                    userBuild.ToTable("AspNetUsers", t => t.ExcludeFromMigrations()))
+                // .Entity<CardUser>(userBuild => 
+                //     userBuild.ToTable("AspNetUsers", t => t.ExcludeFromMigrations()))
 
                 .Entity<Trade>(tradeBuild =>
                 {
@@ -48,6 +49,8 @@ namespace MTGViewer.Data
                         .WithMany()
                         .OnDelete(DeleteBehavior.Cascade);
                 });
+
+            base.OnModelCreating(modelBuilder);
         }
 
     }

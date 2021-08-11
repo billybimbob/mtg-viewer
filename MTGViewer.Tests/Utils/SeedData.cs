@@ -33,6 +33,7 @@ namespace MTGViewer.Tests.Utils
             var users = GetUsers();
 
             await Task.WhenAll( users.Select(userManager.CreateAsync) );
+            dbContext.Users.AttachRange(users);
 
             var cards = await GetCards();
             var locations = GetLocations().ToList();
@@ -41,7 +42,7 @@ namespace MTGViewer.Tests.Utils
                 .Where((_, i) => i % 2 == 0)
                 .SelectMany(u => Enumerable
                     .Range(0, random.Next(4))
-                    .Select(i => new Location($"Deck #{i}")
+                    .Select(i => new Location($"Deck #{i+1}")
                     {
                         Owner = u
                     }));
@@ -62,8 +63,9 @@ namespace MTGViewer.Tests.Utils
             dbContext.Locations.AddRange(locations);
             dbContext.Amounts.AddRange(amounts);
 
-            var tradeFrom = amounts.First();
-            var tradeTo = locations.First(l => l.Id != tradeFrom.LocationId);
+            var tradeFrom = amounts.First(ca => !ca.Location.IsShared);
+            var tradeTo = locations.First(l => 
+                !l.IsShared && l.Id != tradeFrom.LocationId);
 
             var suggestCard = cards.First();
             var suggester = users.First(u => 
@@ -97,25 +99,26 @@ namespace MTGViewer.Tests.Utils
 
         private static IEnumerable<CardUser> GetUsers()
         {
-            yield return new CardUser
+            return new List<CardUser>()
             {
-                Name = "Test Name",
-                UserName = "testingname",
-                Email = "test@gmail.com"
-            };
-
-            yield return new CardUser
-            {
-                Name = "Bob Billy",
-                UserName = "bobbilly213",
-                Email = "bob@gmail.com"
-            };
-
-            yield return new CardUser
-            {
-                Name = "Steve Phil",
-                UserName = "stephenthegreat",
-                Email = "steve@gmail.com"
+                new CardUser
+                {
+                    Name = "Test Name",
+                    UserName = "testingname",
+                    Email = "test@gmail.com"
+                },
+                new CardUser
+                {
+                    Name = "Bob Billy",
+                    UserName = "bobbilly213",
+                    Email = "bob@gmail.com"
+                },
+                new CardUser
+                {
+                    Name = "Steve Phil",
+                    UserName = "stephenthegreat",
+                    Email = "steve@gmail.com"
+                }
             };
         }
 

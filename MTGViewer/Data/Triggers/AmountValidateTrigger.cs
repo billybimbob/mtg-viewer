@@ -62,7 +62,11 @@ namespace MTGViewer.Data.Triggers
 
             var cardAmount = trigContext.Entity;
 
-            if (cardAmount.Amount == 0)
+            await _dbContext.Entry(cardAmount)
+                .Reference(ca => ca.Location)
+                .LoadAsync();
+
+            if (!cardAmount.Location.IsShared && cardAmount.Amount == 0)
             {
                 _dbContext.Attach(cardAmount).State = EntityState.Deleted;
 

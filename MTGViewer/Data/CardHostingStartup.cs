@@ -8,6 +8,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
+using MTGViewer.Areas.Identity.Data;
+
 
 [assembly: HostingStartup(typeof(MTGViewer.Data.CardHostingStartup))]
 namespace MTGViewer.Data
@@ -55,16 +57,20 @@ namespace MTGViewer.Data
     {
         public static IApplicationBuilder CheckDatabase(this IApplicationBuilder app, IWebHostEnvironment env)
         {
-            using (var serviceScope = app.ApplicationServices.GetService<IServiceScopeFactory>().CreateScope())
-            {
-                var contextFactory = serviceScope.ServiceProvider.GetRequiredService<IDbContextFactory<CardDbContext>>();
-                using var context = contextFactory.CreateDbContext();
-                context.Database.EnsureCreated();
+            using var serviceScope = app.ApplicationServices
+                .GetService<IServiceScopeFactory>()
+                .CreateScope();
+            
+            var contextFactory = serviceScope.ServiceProvider
+                .GetRequiredService<IDbContextFactory<CardDbContext>>();
 
-                if (env.IsDevelopment())
-                {
-                    AddDefaultLocation(context);
-                }
+            using var context = contextFactory.CreateDbContext();
+
+            context.Database.EnsureCreated();
+
+            if (env.IsDevelopment())
+            {
+                AddDefaultLocation(context);
             }
 
             return app;
@@ -73,13 +79,11 @@ namespace MTGViewer.Data
 
         private static void AddDefaultLocation(CardDbContext context)
         {
-            if (context.Locations.Any())
+            if (!context.Locations.Any())
             {
-                return;
+                context.Locations.Add(new Location("Dev Default"));
+                context.SaveChanges();
             }
-
-            context.Locations.Add(new Location("Dev Default"));
-            context.SaveChanges();
         }
     }
 

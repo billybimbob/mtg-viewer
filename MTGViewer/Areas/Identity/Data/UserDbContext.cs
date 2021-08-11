@@ -8,7 +8,6 @@ namespace MTGViewer.Areas.Identity.Data
     {
         public UserDbContext(DbContextOptions<UserDbContext> options)
             : base(options)
-        {
-        }
+        { }
     }
 }

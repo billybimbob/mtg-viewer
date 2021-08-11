@@ -1,7 +1,10 @@
+using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 using MTGViewer.Data;
+using MTGViewer.Pages.Trades;
 using MTGViewer.Tests.Utils;
 
 
@@ -74,6 +77,37 @@ namespace MTGViewer.Tests.Data
             dbContext.Trades.Attach(trade);
 
             Assert.False(trade.IsSuggestion);
+        }
+
+
+
+        [Fact]
+        public async Task IndexOnPost_ValidSuggestion_RemovesSuggestion()
+        {
+            await using var services = TestHelpers.ServiceProvider();
+            await using var dbContext = TestHelpers.CardDbContext(services);
+
+            using var userManager = TestHelpers.CardUserManager(services);
+            var claimsFactory = TestHelpers.CardClaimsFactory(userManager);
+
+            await SeedData.AddTo(userManager, dbContext);
+
+            var suggestion = await dbContext.Trades
+                .Include(t => t.Receiver)
+                .AsNoTracking()
+                .FirstAsync(t => t.FromId == default);
+
+            var userClaim = await claimsFactory.CreateAsync(suggestion.Receiver);
+            var indexModel = new IndexModel(userManager, dbContext);
+            indexModel.SetModelContext(userClaim);
+
+            var result = await indexModel.OnPostAsync(suggestion.Id);
+            var trades = await dbContext.Trades
+                .AsNoTracking()
+                .ToListAsync();
+
+            Assert.IsType<RedirectToPageResult>(result);
+            Assert.DoesNotContain(suggestion.Id, trades.Select(t => t.Id));
         }
     }
 }

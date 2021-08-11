@@ -28,6 +28,7 @@ namespace MTGViewer.Data
         [JsonIgnore]
         public ICollection<CardAmount> Cards { get; } = new HashSet<CardAmount>();
 
+        [JsonIgnore]
         public bool IsShared => OwnerId == default;
 
         public IOrderedEnumerable<Color> GetColors() => Cards

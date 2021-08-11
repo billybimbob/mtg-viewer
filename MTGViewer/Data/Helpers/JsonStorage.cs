@@ -26,11 +26,25 @@ namespace MTGViewer.Data.Json
             // TODO: add some includes possibly?
             return new CardData
             {
-                Users = await userManager.Users.ToListAsync(),
-                Cards = await dbContext.Cards.ToListAsync(),
-                Amounts = await dbContext.Amounts.ToListAsync(),
-                Locations = await dbContext.Locations.ToListAsync(),
-                Trades = await dbContext.Trades.ToListAsync()
+                Users = await userManager.Users
+                    .AsNoTracking()
+                    .ToListAsync(),
+
+                Cards = await dbContext.Cards
+                    .AsNoTracking()
+                    .ToListAsync(),
+
+                Amounts = await dbContext.Amounts
+                    .AsNoTracking()
+                    .ToListAsync(),
+
+                Locations = await dbContext.Locations
+                    .AsNoTracking()
+                    .ToListAsync(),
+
+                Trades = await dbContext.Trades
+                    .AsNoTracking()
+                    .ToListAsync()
             };
         }
     }

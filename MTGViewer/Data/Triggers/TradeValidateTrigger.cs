@@ -46,7 +46,12 @@ namespace MTGViewer.Data.Triggers
                 .Reference(t => t.From)
                 .LoadAsync();
 
+            await _dbContext.Entry(trade)
+                .Reference(t => t.Card)
+                .LoadAsync();
+
             trade.Amount = Math.Min(trade.From.Amount, trade.Amount);
+            trade.Card = trade.From.Card;
         }
 
 
@@ -59,7 +64,7 @@ namespace MTGViewer.Data.Triggers
 
             var trade = trigContext.Entity;
 
-            if (trade.Amount == 0)
+            if (!trade.IsSuggestion && trade.Amount == 0)
             {
                 _dbContext.Attach(trade).State = EntityState.Deleted;
 

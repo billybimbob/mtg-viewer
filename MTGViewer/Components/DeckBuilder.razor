@@ -152,10 +152,12 @@
 
     private IEnumerable<Card> GetSortedAvailCards() =>
         _dbCards.Values
-            .SelectMany(l => l);
+            .SelectMany(l => l)
+            .Where(c => _availables.ContainsKey(c.Id));
 
     private IEnumerable<Card> GetSortedDeckCards() =>
-        GetSortedAvailCards()
+        _dbCards.Values
+            .SelectMany(l => l)
             .Where(c => _deckCards.TryGetValue(c.Id, out var cardAmnt)
                 && cardAmnt.Amount > 0);
 
