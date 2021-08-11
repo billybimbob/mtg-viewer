@@ -15,18 +15,19 @@ namespace MTGViewer.Data.Json
 
     public class CardData
     {
-        public List<CardUser> Users { get; set; }
-        public List<Card> Cards { get; set; }
-        public List<CardAmount> Amounts { get; set; }
-        public List<Location> Locations { get; set; }
-        public List<Trade> Trades { get; set; }
+        public IReadOnlyList<CardUser> Users { get; set; }
+        public IReadOnlyList<Card> Cards { get; set; }
+        public IReadOnlyList<CardAmount> Amounts { get; set; }
+        public IReadOnlyList<Location> Locations { get; set; }
+        public IReadOnlyList<Trade> Trades { get; set; }
 
-        public static async Task<CardData> Create(UserManager<CardUser> userManager, CardDbContext dbContext)
+
+        public static async Task<CardData> Create(CardDbContext dbContext)
         {
             // TODO: add some includes possibly?
             return new CardData
             {
-                Users = await userManager.Users
+                Users = await dbContext.Users
                     .AsNoTracking()
                     .ToListAsync(),
 
@@ -54,10 +55,9 @@ namespace MTGViewer.Data.Json
     {
         private const string CARDS_JSON = "cards.json";
 
-        public static async Task WriteToJson(
-            UserManager<CardUser> userManager, CardDbContext dbContext, string directory = null)
+        public static async Task WriteToJson(this CardDbContext dbContext, string directory = null)
         {
-            var data = await CardData.Create(userManager, dbContext);
+            var data = await CardData.Create(dbContext);
 
             directory ??= Directory.GetCurrentDirectory();
             var cardsPath = Path.Combine(directory, CARDS_JSON);
@@ -69,14 +69,13 @@ namespace MTGViewer.Data.Json
         }
 
 
-        public static async Task<bool> AddFromJson(
-            UserManager<CardUser> userManager, CardDbContext dbContext, string directory = null)
+        public static async Task<bool> AddFromJson(this CardDbContext dbContext, string directory = null)
         {
+            directory ??= Directory.GetCurrentDirectory();
+            var cardsPath = Path.Combine(directory, CARDS_JSON);
+
             try
             {
-                directory ??= Directory.GetCurrentDirectory();
-                var cardsPath = Path.Combine(directory, CARDS_JSON);
-
                 using var reader = File.OpenText(cardsPath);
 
                 var dataStr = await reader.ReadToEndAsync();
@@ -87,14 +86,7 @@ namespace MTGViewer.Data.Json
                     return false;
                 }
 
-                await Task.WhenAll(data.Users.Select(userManager.CreateAsync));
-
-                dbContext.Cards.AddRange(data.Cards);
-                dbContext.Amounts.AddRange(data.Amounts);
-                dbContext.Locations.AddRange(data.Locations);
-                dbContext.Trades.AddRange(data.Trades);
-
-                await dbContext.SaveChangesAsync();
+                await dbContext.AddData(data);
 
                 return true;
             }
@@ -106,6 +98,19 @@ namespace MTGViewer.Data.Json
             {
                 return false;
             }
+        }
+
+
+        public static async Task AddData(this CardDbContext dbContext, CardData data)
+        {
+            dbContext.Users.AddRange(data.Users);
+            dbContext.Cards.AddRange(data.Cards);
+
+            dbContext.Locations.AddRange(data.Locations);
+            dbContext.Amounts.AddRange(data.Amounts);
+            dbContext.Trades.AddRange(data.Trades);
+
+            await dbContext.SaveChangesAsync();
         }
     }
 }

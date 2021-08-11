@@ -32,7 +32,7 @@ namespace MTGViewer.Tests.Data
             await using var dbContext = TestHelpers.CardDbContext(services);
             using var userManager = TestHelpers.CardUserManager(services);
 
-            await SeedData.AddTo(userManager, dbContext);
+            await dbContext.Seed();
 
             var testUser = await userManager.Users.FirstAsync();
 

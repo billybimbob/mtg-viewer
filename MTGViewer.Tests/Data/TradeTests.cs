@@ -19,7 +19,7 @@ namespace MTGViewer.Tests.Data
             await using var dbContext = TestHelpers.CardDbContext(services);
             using var userManager = TestHelpers.CardUserManager(services);
 
-            await SeedData.AddTo(userManager, dbContext);
+            await dbContext.Seed();
 
             var toLoc = await dbContext.Locations
                 .Include(l => l.Owner)
@@ -52,7 +52,7 @@ namespace MTGViewer.Tests.Data
             await using var dbContext = TestHelpers.CardDbContext(services);
             using var userManager = TestHelpers.CardUserManager(services);
 
-            await SeedData.AddTo(userManager, dbContext);
+            await SeedData.Seed(dbContext);
 
             var fromLoc = await dbContext.Amounts
                 .Include(ca => ca.Card)
@@ -90,7 +90,7 @@ namespace MTGViewer.Tests.Data
             using var userManager = TestHelpers.CardUserManager(services);
             var claimsFactory = TestHelpers.CardClaimsFactory(userManager);
 
-            await SeedData.AddTo(userManager, dbContext);
+            await SeedData.Seed(dbContext);
 
             var suggestion = await dbContext.Trades
                 .Include(t => t.Receiver)
@@ -108,6 +108,37 @@ namespace MTGViewer.Tests.Data
 
             Assert.IsType<RedirectToPageResult>(result);
             Assert.DoesNotContain(suggestion.Id, trades.Select(t => t.Id));
+        }
+
+
+        [Fact]
+        public async Task IndexOnPost_InValidSuggestion_NoRemove()
+        {
+            await using var services = TestHelpers.ServiceProvider();
+            await using var dbContext = TestHelpers.CardDbContext(services);
+
+            using var userManager = TestHelpers.CardUserManager(services);
+            var claimsFactory = TestHelpers.CardClaimsFactory(userManager);
+
+            await dbContext.Seed();
+
+            var nonSuggestion = await dbContext.Trades
+                .Include(t => t.Receiver)
+                .AsNoTracking()
+                .FirstAsync(t => t.FromId != default);
+
+            var userClaim = await claimsFactory.CreateAsync(nonSuggestion.Receiver);
+            var indexModel = new IndexModel(userManager, dbContext);
+
+            indexModel.SetModelContext(userClaim);
+
+            var result = await indexModel.OnPostAsync(nonSuggestion.Id);
+            var trades = await dbContext.Trades
+                .AsNoTracking()
+                .ToListAsync();
+
+            Assert.IsType<RedirectToPageResult>(result);
+            Assert.Contains(nonSuggestion.Id, trades.Select(t => t.Id));
         }
     }
 }

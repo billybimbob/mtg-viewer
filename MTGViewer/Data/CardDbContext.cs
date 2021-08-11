@@ -24,9 +24,6 @@ namespace MTGViewer.Data
             modelBuilder
                 .SelectConcurrencyToken(Database)
 
-                // .Entity<CardUser>(userBuild => 
-                //     userBuild.ToTable("AspNetUsers", t => t.ExcludeFromMigrations()))
-
                 .Entity<Trade>(tradeBuild =>
                 {
                     tradeBuild

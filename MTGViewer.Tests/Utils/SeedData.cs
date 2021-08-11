@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-using Microsoft.AspNetCore.Identity;
 using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
 using MTGViewer.Data.Json;
@@ -16,29 +15,26 @@ namespace MTGViewer.Tests.Utils
         private static readonly Random random = new Random(100);
 
 
-        internal static async Task AddTo(UserManager<CardUser> userManager, CardDbContext dbContext)
+        public static async Task Seed(this CardDbContext dbContext)
         {
-            var jsonSuccess = await Storage.AddFromJson(userManager, dbContext);
+            var jsonSuccess = await dbContext.AddFromJson();
 
             if (!jsonSuccess)
             {
-                await AddFromSeeds(userManager, dbContext);
-                await Storage.WriteToJson(userManager, dbContext);
+                await dbContext.AddGenerated();
+                await dbContext.WriteToJson();
             }
+
+            dbContext.ChangeTracker.Clear();
         }
 
 
-        private static async Task AddFromSeeds(UserManager<CardUser> userManager, CardDbContext dbContext)
+        private static async Task AddGenerated(this CardDbContext dbContext)
         {
             var users = GetUsers();
-
-            await Task.WhenAll( users.Select(userManager.CreateAsync) );
-            dbContext.Users.AttachRange(users);
-
             var cards = await GetCards();
-            var locations = GetLocations().ToList();
 
-            var newLocs = users
+            var decks = users
                 .Where((_, i) => i % 2 == 0)
                 .SelectMany(u => Enumerable
                     .Range(0, random.Next(4))
@@ -46,8 +42,10 @@ namespace MTGViewer.Tests.Utils
                     {
                         Owner = u
                     }));
-
-            locations.AddRange(newLocs);
+                    
+            var locations = GetSharedLocations()
+                .Concat(decks)
+                .ToList();
 
             var amounts = cards
                 .Zip(locations, (card, location) => (card, location))
@@ -59,17 +57,14 @@ namespace MTGViewer.Tests.Utils
                 })
                 .ToList();
 
-            dbContext.Cards.AddRange(cards);
-            dbContext.Locations.AddRange(locations);
-            dbContext.Amounts.AddRange(amounts);
-
             var tradeFrom = amounts.First(ca => !ca.Location.IsShared);
             var tradeTo = locations.First(l => 
                 !l.IsShared && l.Id != tradeFrom.LocationId);
 
             var suggestCard = cards.First();
             var suggester = users.First(u => 
-                u.Id != tradeFrom.Location.OwnerId && u.Id != tradeTo.OwnerId);
+                u.Id != tradeFrom.Location.OwnerId
+                    && u.Id != tradeTo.OwnerId);
 
             var trades = new List<Trade>()
             {
@@ -91,49 +86,51 @@ namespace MTGViewer.Tests.Utils
                 }
             };
 
-            dbContext.Trades.AddRange(trades);
-
-            await dbContext.SaveChangesAsync();
-        }
-
-
-        private static IEnumerable<CardUser> GetUsers()
-        {
-            return new List<CardUser>()
+            var genData = new CardData
             {
-                new CardUser
-                {
-                    Name = "Test Name",
-                    UserName = "testingname",
-                    Email = "test@gmail.com"
-                },
-                new CardUser
-                {
-                    Name = "Bob Billy",
-                    UserName = "bobbilly213",
-                    Email = "bob@gmail.com"
-                },
-                new CardUser
-                {
-                    Name = "Steve Phil",
-                    UserName = "stephenthegreat",
-                    Email = "steve@gmail.com"
-                }
+                Users = users,
+                Cards = cards,
+                Locations = locations,
+                Amounts = amounts,
+                Trades = trades
             };
+
+            await dbContext.AddData(genData);
         }
 
 
-        private static async Task<IEnumerable<Card>> GetCards()
+        private static IReadOnlyList<CardUser> GetUsers() => new List<CardUser>()
         {
-            // TODO: do not use fetch for seeding since slow
-            var fetch = TestHelpers.NoCacheFetchService();
-            return await fetch
+            new CardUser
+            {
+                Name = "Test Name",
+                UserName = "testingname",
+                Email = "test@gmail.com"
+            },
+            new CardUser
+            {
+                Name = "Bob Billy",
+                UserName = "bobbilly213",
+                Email = "bob@gmail.com"
+            },
+            new CardUser
+            {
+                Name = "Steve Phil",
+                UserName = "stephenthegreat",
+                Email = "steve@gmail.com"
+            }
+        };
+
+
+        private static async Task<IReadOnlyList<Card>> GetCards()
+        {
+            return await TestHelpers.NoCacheFetchService()
                 .Where(c => c.Cmc, 3)
                 .SearchAsync();
         }
 
 
-        private static IEnumerable<Location> GetLocations()
+        private static IEnumerable<Location> GetSharedLocations()
         {
             yield return new Location("Test Shared");
         }

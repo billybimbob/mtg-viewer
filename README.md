@@ -26,13 +26,6 @@ All the ef core and database commands are in reference to the `MTGViewer` projec
 
 The development database is sqlite, where the database is hosted on the local machine, and is not synchronized with the repo.
 
-The database is defined into two separate contexts:
-
-* `CardDbContext`: all card and deck data
-* `UserDbContext`: all user and account data
-
-With all of the ef commands listed below, the context must be specified, using the `-c` argument, and make sure to run all commands below in the project directory.
-
 ### Add Database Migrations and Schema
 
  For the `migrations add` commands, the out directory is recommended to be specified, using the `-o` argument. If the out directory is not specified, then the default target will be the `Migrations` folder.
@@ -42,15 +35,13 @@ The mains steps are to create the database schema with ef core:
 1. Add/create the database migrations
 
     ```powershell
-    dotnet ef migrations add AddUsers -p MTGViewer -c UserDbContext -o Migrations\Users
-    dotnet ef migrations add AddCards -p MTGViewer -c CardDbContext -o Migrations\Cards
+    dotnet ef migrations add AddCards -p MTGViewer
     ```
 
 2. Apply/update the database migrations to the actual database
 
     ```powershell
-    dotnet ef database update -p MTGViewer -c UserDbContext
-    dotnet ef database update -p MTGViewer -c CardDbContext
+    dotnet ef database update -p MTGViewer
     ```
 
 ### Reset Database
@@ -60,15 +51,13 @@ If the schema is modified, the best approach is to just drop all of the previous
 1. Drop the database:
 
     ```powershell
-    dotnet ef database drop -p MTGViewer -c UserDbContext
-    dotnet ef database drop -p MTGViewer -c CardDbContext
+    dotnet ef database drop -p MTGViewer
     ```
 
 2. Delete the  files in the `Migrations` folder
 
     ```powershell
-    rm -r MTGViewer\Migrations\Users
-    rm -r MTGViewer\Migrations\Cards
+    rm -r MTGViewer\Migrations
     ```
 
 3. Repeat the migration and update steps [above](#add-database-migrations-and-schema)
