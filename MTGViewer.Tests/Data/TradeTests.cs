@@ -19,7 +19,7 @@ namespace MTGViewer.Tests.Data
             await using var dbContext = TestHelpers.CardDbContext(services);
             using var userManager = TestHelpers.CardUserManager(services);
 
-            await dbContext.Seed();
+            await dbContext.SeedAsync();
 
             var toLoc = await dbContext.Locations
                 .Include(l => l.Owner)
@@ -52,7 +52,7 @@ namespace MTGViewer.Tests.Data
             await using var dbContext = TestHelpers.CardDbContext(services);
             using var userManager = TestHelpers.CardUserManager(services);
 
-            await SeedData.Seed(dbContext);
+            await dbContext.SeedAsync();
 
             var fromLoc = await dbContext.Amounts
                 .Include(ca => ca.Card)
@@ -90,7 +90,7 @@ namespace MTGViewer.Tests.Data
             using var userManager = TestHelpers.CardUserManager(services);
             var claimsFactory = TestHelpers.CardClaimsFactory(userManager);
 
-            await SeedData.Seed(dbContext);
+            await dbContext.SeedAsync();
 
             var suggestion = await dbContext.Trades
                 .Include(t => t.Receiver)
@@ -99,6 +99,7 @@ namespace MTGViewer.Tests.Data
 
             var userClaim = await claimsFactory.CreateAsync(suggestion.Receiver);
             var indexModel = new IndexModel(userManager, dbContext);
+
             indexModel.SetModelContext(userClaim);
 
             var result = await indexModel.OnPostAsync(suggestion.Id);
@@ -112,7 +113,7 @@ namespace MTGViewer.Tests.Data
 
 
         [Fact]
-        public async Task IndexOnPost_InValidSuggestion_NoRemove()
+        public async Task IndexOnPost_InvalidSuggestion_NoRemove()
         {
             await using var services = TestHelpers.ServiceProvider();
             await using var dbContext = TestHelpers.CardDbContext(services);
@@ -120,7 +121,7 @@ namespace MTGViewer.Tests.Data
             using var userManager = TestHelpers.CardUserManager(services);
             var claimsFactory = TestHelpers.CardClaimsFactory(userManager);
 
-            await dbContext.Seed();
+            await dbContext.SeedAsync();
 
             var nonSuggestion = await dbContext.Trades
                 .Include(t => t.Receiver)
@@ -139,6 +140,53 @@ namespace MTGViewer.Tests.Data
 
             Assert.IsType<RedirectToPageResult>(result);
             Assert.Contains(nonSuggestion.Id, trades.Select(t => t.Id));
+        }
+
+
+        [Fact]
+        public async Task ReviewOnPostAccept_ValidTrade_Applied()
+        {
+            await using var services = TestHelpers.ServiceProvider();
+            await using var dbContext = TestHelpers.CardDbContext(services);
+
+            using var userManager = TestHelpers.CardUserManager(services);
+            var claimsFactory = TestHelpers.CardClaimsFactory(userManager);
+
+            await dbContext.SeedAsync();
+
+            var (proposer, receiver, deck) = await dbContext.GenerateTradeAsync();
+
+            var userClaim = await claimsFactory.CreateAsync(receiver);
+            var reviewModel = new ReviewModel(dbContext, userManager);
+
+            reviewModel.SetModelContext(userClaim);
+
+            var tradeBefore = await dbContext.Trades
+                .Where(TradeFilter.Involves(proposer.Id, deck.Id))
+                .Include(t => t.From)
+                .AsNoTracking()
+                .ToListAsync();
+
+            var result = await reviewModel.OnPostAcceptAsync(proposer.Id, deck.Id);
+
+            var tradeAfter = await dbContext.Trades
+                .Where(TradeFilter.Involves(proposer.Id, deck.Id))
+                .AsNoTracking()
+                .ToListAsync();
+
+            var fromAmounts = tradeBefore
+                .Select(ca => ca.Id)
+                .Distinct()
+                .ToArray();
+
+            var fromAfter = await dbContext.Amounts
+                .Where(ca => fromAmounts.Contains(ca.Id))
+                .AsNoTracking()
+                .ToListAsync();
+
+            Assert.IsType<RedirectToPageResult>(result);
+            Assert.False(tradeAfter.Any());
+            Assert.True(fromAfter.All(ca => ca.Amount >= 0));
         }
     }
 }

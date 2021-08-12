@@ -100,7 +100,6 @@ namespace MTGViewer.Pages.Trades
         {
             var userDecks = await _dbContext.Locations
                 .Where(l => l.OwnerId == userId)
-                .Include(d => d.Owner)
                 .Include(d => d.Cards)
                     .ThenInclude(ca => ca.Card)
                         .ThenInclude(c => c.Colors)

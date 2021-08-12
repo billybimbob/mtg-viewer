@@ -70,20 +70,26 @@ namespace MTGViewer.Pages.Trades
         }
 
 
-        private IReadOnlyList<(CardUser, Location)> GetTradeList(string userId, IEnumerable<Trade> trades) =>
-            trades.GroupBy(t => t.TargetLocation)
+        private IReadOnlyList<(CardUser, Location)> GetTradeList(
+            string userId, IEnumerable<Trade> trades)
+        {
+            return trades.GroupBy(t => t.TargetLocation)
                 .Select(g =>
-                    (User: g.First().GetOtherUser(userId), Target: g.Key))
-                .OrderBy(t => t.User.Name)
-                    .ThenBy(t => t.Target)
+                    (OtherUser: g.First().GetOtherUser(userId), Target: g.Key))
+                .OrderBy(t => t.OtherUser.Name)
+                    .ThenBy(t => t.Target.Name)
                 .ToList();
+        }
 
 
         public async Task<IActionResult> OnPostAsync(int suggestId)
         {
             var suggestion = await _dbContext.Trades.FindAsync(suggestId);
+            var userId = _userManager.GetUserId(User);
 
-            if (suggestion is null || !suggestion.IsSuggestion)
+            if (suggestion is null 
+                || !suggestion.IsSuggestion
+                || !suggestion.IsWaitingOn(userId))
             {
                 PostMessage = "Specified suggestion cannot be acknowledged";
             }

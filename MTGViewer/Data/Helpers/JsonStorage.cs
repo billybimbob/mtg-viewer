@@ -1,9 +1,7 @@
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Threading.Tasks;
 
-using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using MTGViewer.Areas.Identity.Data;
@@ -22,7 +20,7 @@ namespace MTGViewer.Data.Json
         public IReadOnlyList<Trade> Trades { get; set; }
 
 
-        public static async Task<CardData> Create(CardDbContext dbContext)
+        public static async Task<CardData> CreateAsync(CardDbContext dbContext)
         {
             // TODO: add some includes possibly?
             return new CardData
@@ -55,9 +53,9 @@ namespace MTGViewer.Data.Json
     {
         private const string CARDS_JSON = "cards.json";
 
-        public static async Task WriteToJson(this CardDbContext dbContext, string directory = null)
+        public static async Task WriteToJsonAsync(this CardDbContext dbContext, string directory = null)
         {
-            var data = await CardData.Create(dbContext);
+            var data = await CardData.CreateAsync(dbContext);
 
             directory ??= Directory.GetCurrentDirectory();
             var cardsPath = Path.Combine(directory, CARDS_JSON);
@@ -69,7 +67,7 @@ namespace MTGViewer.Data.Json
         }
 
 
-        public static async Task<bool> AddFromJson(this CardDbContext dbContext, string directory = null)
+        public static async Task<bool> AddFromJsonAsync(this CardDbContext dbContext, string directory = null)
         {
             directory ??= Directory.GetCurrentDirectory();
             var cardsPath = Path.Combine(directory, CARDS_JSON);
@@ -86,7 +84,7 @@ namespace MTGViewer.Data.Json
                     return false;
                 }
 
-                await dbContext.AddData(data);
+                await dbContext.AddDataAsync(data);
 
                 return true;
             }
@@ -101,7 +99,7 @@ namespace MTGViewer.Data.Json
         }
 
 
-        public static async Task AddData(this CardDbContext dbContext, CardData data)
+        public static async Task AddDataAsync(this CardDbContext dbContext, CardData data)
         {
             dbContext.Users.AddRange(data.Users);
             dbContext.Cards.AddRange(data.Cards);

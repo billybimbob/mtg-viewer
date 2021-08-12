@@ -74,14 +74,12 @@ namespace MTGViewer.Data
 
 
         public bool IsInvolved(string userId) =>
-            !IsSuggestion
-                && (ReceiverId == userId || ProposerId == userId);
+            ReceiverId == userId || ProposerId == userId;
 
 
         public bool IsWaitingOn(string userId) =>
-            !IsSuggestion
-                && (ReceiverId == userId && !IsCounter
-                    || ProposerId == userId && IsCounter);
+            ReceiverId == userId && !IsCounter
+                || ProposerId == userId && IsCounter;
 
 
         public CardUser? GetOtherUser(string userId) => userId switch

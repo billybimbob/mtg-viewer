@@ -98,15 +98,12 @@ namespace MTGViewer.Pages.Trades
 
             var userId = _userManager.GetUserId(User);
 
-            if (trades.Any(t => 
-                t.To.OwnerId != userId && t.From.Location.OwnerId != userId))
+            if (!trades.All(t => t.IsInvolved(userId)))
             {
                 return false;
             }
 
-            if (!trades.All(t =>
-                t.ReceiverId == userId && !t.IsCounter
-                    || t.ProposerId == userId && t.IsCounter))
+            if (!trades.All(t => t.IsWaitingOn(userId)))
             {
                 return false;
             }
@@ -134,7 +131,7 @@ namespace MTGViewer.Pages.Trades
                 .Include(t => t.To)
                 .Include(t => t.From)
                     .ThenInclude(ca => ca.Location)
-                .ToArrayAsync();
+                .ToListAsync();
 
             if (!CheckTrades(deckTrades))
             {
@@ -150,10 +147,7 @@ namespace MTGViewer.Pages.Trades
                 return RedirectToPage("./Index");
             }
 
-            foreach (var trade in deckTrades)
-            {
-                await ApplyAcceptAsync(trade);
-            }
+            await ApplyAcceptsAsync(deckTrades);
 
             try
             {
@@ -173,29 +167,55 @@ namespace MTGViewer.Pages.Trades
         }
 
 
-        private async Task ApplyAcceptAsync(Trade accept)
+        private async Task ApplyAcceptsAsync(IEnumerable<Trade> accepts)
         {
-            var destAmount = await _dbContext.Amounts
-                .SingleOrDefaultAsync(ca =>
-                    ca.CardId == accept.CardId
-                        && ca.LocationId == accept.ToId
-                        && !ca.IsRequest);
+            var destIds = accepts
+                .Select(t => t.ToId)
+                .Distinct()
+                .ToArray();
 
-            if (destAmount is null)
+            var cardIds = accepts
+                .Select(t => t.CardId)
+                .Distinct()
+                .ToArray();
+
+            // TODO: find filter that pairs card with location
+            var existing = await _dbContext.Amounts
+                .Where(ca => cardIds.Contains(ca.CardId)
+                    && destIds.Contains(ca.LocationId)
+                    && !ca.IsRequest)
+                .ToListAsync();
+
+            var acceptPairs = accepts
+                .Select(t => (t.CardId, t.ToId))        
+                .Distinct()
+                .ToHashSet();
+
+            var destMap = existing
+                .Where(ca => acceptPairs.Contains((ca.CardId, ca.LocationId)))
+                .ToDictionary(ca => (ca.CardId, ca.LocationId));
+
+            foreach(var accept in accepts)
             {
-                destAmount = new CardAmount
-                {
-                    CardId = accept.CardId,
-                    LocationId = accept.ToId
-                };
+                var key = (accept.CardId, accept.ToId);
 
-                _dbContext.Attach(destAmount);
+                if (!destMap.TryGetValue(key, out var destAmount))
+                {
+                    destAmount = new CardAmount
+                    {
+                        CardId = accept.CardId,
+                        LocationId = accept.ToId
+                    };
+
+                    destMap.Add(key, destAmount);
+                    _dbContext.Amounts.Attach(destAmount);
+                }
+
+                accept.From.Amount -= accept.Amount;
+                destAmount.Amount += accept.Amount;
             }
 
-            accept.From.Amount -= accept.Amount;
-            destAmount.Amount += accept.Amount;
-
-            _dbContext.Remove(accept);
+            _dbContext.Trades.RemoveRange(accepts);
         }
 
 
