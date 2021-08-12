@@ -30,6 +30,11 @@ namespace MTGViewer.Data.Json
                     .ToListAsync(),
 
                 Cards = await dbContext.Cards
+                    .Include(c => c.Colors)
+                    .Include(c => c.Types)
+                    .Include(c => c.SubTypes)
+                    .Include(c => c.SuperTypes)
+                    .AsSplitQuery()
                     .AsNoTracking()
                     .ToListAsync(),
 
@@ -84,7 +89,14 @@ namespace MTGViewer.Data.Json
                     return false;
                 }
 
-                await dbContext.AddDataAsync(data);
+                dbContext.Users.AddRange(data.Users);
+                dbContext.Cards.AddRange(data.Cards);
+
+                dbContext.Locations.AddRange(data.Locations);
+                dbContext.Amounts.AddRange(data.Amounts);
+                dbContext.Trades.AddRange(data.Trades);
+
+                await dbContext.SaveChangesAsync();
 
                 return true;
             }
@@ -96,19 +108,6 @@ namespace MTGViewer.Data.Json
             {
                 return false;
             }
-        }
-
-
-        public static async Task AddDataAsync(this CardDbContext dbContext, CardData data)
-        {
-            dbContext.Users.AddRange(data.Users);
-            dbContext.Cards.AddRange(data.Cards);
-
-            dbContext.Locations.AddRange(data.Locations);
-            dbContext.Amounts.AddRange(data.Amounts);
-            dbContext.Trades.AddRange(data.Trades);
-
-            await dbContext.SaveChangesAsync();
         }
     }
 }

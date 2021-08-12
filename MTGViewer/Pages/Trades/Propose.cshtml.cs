@@ -89,6 +89,7 @@ namespace MTGViewer.Pages.Trades
                 .ToListAsync();
 
             var currentTrades = await _dbContext.Trades
+                .Where(TradeFilter.NotSuggestion)
                 .Where(TradeFilter.Involves(Proposer.Id))
                 .Include(t => t.To)
                 .Include(t => t.From)

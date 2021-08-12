@@ -58,11 +58,15 @@ namespace MTGViewer.Tests.Data
                 .Include(ca => ca.Card)
                 .Include(ca => ca.Location)
                     .ThenInclude(l => l.Owner)
-                .FirstAsync(ca => ca.IsRequest == false);
+                .FirstAsync(ca => 
+                    ca.Location.OwnerId != default
+                        && ca.IsRequest == false);
 
             var toLoc = await dbContext.Locations
                 .Include(l => l.Owner)
-                .FirstAsync(l => l.OwnerId != default && l.Id != fromLoc.LocationId);
+                .FirstAsync(l => 
+                    l.OwnerId != default 
+                        && l.Id != fromLoc.LocationId);
 
             var trade = new Trade
             {
@@ -78,7 +82,6 @@ namespace MTGViewer.Tests.Data
 
             Assert.False(trade.IsSuggestion);
         }
-
 
 
         [Fact]
@@ -162,31 +165,46 @@ namespace MTGViewer.Tests.Data
             reviewModel.SetModelContext(userClaim);
 
             var tradeBefore = await dbContext.Trades
+                .Where(TradeFilter.NotSuggestion)
                 .Where(TradeFilter.Involves(proposer.Id, deck.Id))
                 .Include(t => t.From)
                 .AsNoTracking()
                 .ToListAsync();
 
+            var fromBefore = tradeBefore
+                .Select(t => t.From)
+                .Distinct();
+
+            var fromAmountIds = fromBefore
+                .Select(ca => ca.Id)
+                .ToArray();
+
             var result = await reviewModel.OnPostAcceptAsync(proposer.Id, deck.Id);
 
             var tradeAfter = await dbContext.Trades
+                .Where(TradeFilter.NotSuggestion)
                 .Where(TradeFilter.Involves(proposer.Id, deck.Id))
                 .AsNoTracking()
                 .ToListAsync();
 
-            var fromAmounts = tradeBefore
-                .Select(ca => ca.Id)
-                .Distinct()
-                .ToArray();
-
             var fromAfter = await dbContext.Amounts
-                .Where(ca => fromAmounts.Contains(ca.Id))
+                .Where(ca => fromAmountIds.Contains(ca.Id))
                 .AsNoTracking()
                 .ToListAsync();
 
+            var fromChanges = fromBefore.GroupJoin(fromAfter,
+                before => before.Id,
+                after => after.Id,
+                (before, afters) =>
+                    (before, after: afters.FirstOrDefault()))
+                .ToList();
+
             Assert.IsType<RedirectToPageResult>(result);
             Assert.False(tradeAfter.Any());
+
             Assert.True(fromAfter.All(ca => ca.Amount >= 0));
+            Assert.True(fromChanges.All(fs => 
+                fs.after is null || fs.before.Amount > fs.after.Amount));
         }
     }
 }

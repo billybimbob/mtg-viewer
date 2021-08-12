@@ -53,6 +53,7 @@ namespace MTGViewer.Pages.Trades
             }
 
             var deckTrades = await _dbContext.Trades
+                .Where(TradeFilter.NotSuggestion)
                 .Where(TradeFilter.Involves(proposerId, deckId))
                 .Include(t => t.Card)
                 .Include(t => t.To)
@@ -127,7 +128,9 @@ namespace MTGViewer.Pages.Trades
             }
 
             var deckTrades = await _dbContext.Trades
+                .Where(TradeFilter.NotSuggestion)
                 .Where(TradeFilter.Involves(proposerId, deckId))
+                .Include(t => t.Card)
                 .Include(t => t.To)
                 .Include(t => t.From)
                     .ThenInclude(ca => ca.Location)
@@ -187,7 +190,7 @@ namespace MTGViewer.Pages.Trades
                 .ToListAsync();
 
             var acceptPairs = accepts
-                .Select(t => (t.CardId, t.ToId))        
+                .Select(t => (t.CardId, t.ToId))
                 .Distinct()
                 .ToHashSet();
 
@@ -203,8 +206,8 @@ namespace MTGViewer.Pages.Trades
                 {
                     destAmount = new CardAmount
                     {
-                        CardId = accept.CardId,
-                        LocationId = accept.ToId
+                        Card = accept.Card,
+                        Location = accept.To
                     };
 
                     destMap.Add(key, destAmount);
@@ -234,6 +237,7 @@ namespace MTGViewer.Pages.Trades
             }
 
             var deckTrades = await _dbContext.Trades
+                .Where(TradeFilter.NotSuggestion)
                 .Where(TradeFilter.Involves(proposerId, deckId))
                 .Include(t => t.To)
                 .Include(t => t.From)

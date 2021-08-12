@@ -281,6 +281,7 @@
             .ToListAsync();
 
         _currentOffers = await _dbContext.Trades
+            .Where(TradeFilter.NotSuggestion)
             .Where(TradeFilter.Involves(Proposer.Id, DeckId))
             .Include(t => t.Card)
             .Include(t => t.To)

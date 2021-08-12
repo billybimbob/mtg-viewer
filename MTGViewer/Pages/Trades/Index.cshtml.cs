@@ -42,6 +42,7 @@ namespace MTGViewer.Pages.Trades
             var userId = _userManager.GetUserId(User);
 
             var userTrades = await _dbContext.Trades
+                .Where(TradeFilter.NotSuggestion)
                 .Where(TradeFilter.Involves(userId))
                 .Include(t => t.To)
                     .ThenInclude(l => l.Owner)
@@ -61,7 +62,8 @@ namespace MTGViewer.Pages.Trades
             PendingTrades = GetTradeList(userId, userTrades.Except(waitingUser));
 
             Suggestions = await _dbContext.Trades
-                .Where(TradeFilter.SuggestionFor(userId))
+                .Where(TradeFilter.Suggestion)
+                .Where(TradeFilter.Involves(userId))
                 .Include(t => t.Card)
                 .Include(t => t.Proposer)
                 .Include(t => t.To)

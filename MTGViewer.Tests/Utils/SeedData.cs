@@ -35,6 +35,9 @@ namespace MTGViewer.Tests.Utils
             var users = GetUsers();
             var cards = await GetCardsAsync();
 
+            dbContext.Users.AddRange(users);
+            dbContext.Cards.AddRange(cards);
+
             var decks = users
                 .Where((_, i) => i % 2 == 0)
                 .SelectMany(u => Enumerable
@@ -48,6 +51,8 @@ namespace MTGViewer.Tests.Utils
                 .Concat(decks)
                 .ToList();
 
+            dbContext.Locations.AddRange(locations);
+
             var amounts = cards
                 .Zip(locations, (card, location) => (card, location))
                 .Select(cl => new CardAmount
@@ -57,6 +62,8 @@ namespace MTGViewer.Tests.Utils
                     Amount = _random.Next(6)
                 })
                 .ToList();
+
+            dbContext.Amounts.AddRange(amounts);
 
             var tradeFrom = amounts.First(ca => !ca.Location.IsShared);
             var tradeTo = locations.First(l => 
@@ -87,16 +94,9 @@ namespace MTGViewer.Tests.Utils
                 }
             };
 
-            var genData = new CardData
-            {
-                Users = users,
-                Cards = cards,
-                Locations = locations,
-                Amounts = amounts,
-                Trades = trades
-            };
+            dbContext.Trades.AddRange(trades);
 
-            await dbContext.AddDataAsync(genData);
+            await dbContext.SaveChangesAsync();
         }
 
 
