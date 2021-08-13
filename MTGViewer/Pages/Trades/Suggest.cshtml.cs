@@ -40,7 +40,7 @@ namespace MTGViewer.Pages.Trades
 
         public IEnumerable<CardUser> Users { get; private set; }
 
-        public IEnumerable<(Location, IEnumerable<string>)> Decks { get; private set; }
+        public IEnumerable<(Deck, IEnumerable<string>)> Decks { get; private set; }
 
         public Card Suggesting { get; private set; }
 
@@ -96,9 +96,9 @@ namespace MTGViewer.Pages.Trades
         }
 
 
-        private async Task<IEnumerable<Location>> GetDeckOptionsAsync(string userId)
+        private async Task<IEnumerable<Deck>> GetDeckOptionsAsync(string userId)
         {
-            var userDecks = await _dbContext.Locations
+            var userDecks = await _dbContext.Decks
                 .Where(l => l.OwnerId == userId)
                 .Include(d => d.Cards)
                     .ThenInclude(ca => ca.Card)
@@ -109,19 +109,20 @@ namespace MTGViewer.Pages.Trades
 
             if (!userDecks.Any())
             {
-                return Enumerable.Empty<Location>();
+                return Enumerable.Empty<Deck>();
             }
 
             var suggestInDeck = await _dbContext.Amounts
-                .Where(ca => ca.Location.OwnerId == userId
+                .Where(ca => !ca.Location.IsShared
+                    && (ca.Location as Deck).OwnerId == userId
                     && ca.CardId == Suggesting.Id)
                     // include both request and non-request amounts
-                .Select(ca => ca.Location)
+                .Select(ca => ca.Location as Deck)
                 .Distinct()
                 .AsNoTrackingWithIdentityResolution()
                 .ToListAsync();
 
-            var suggestPrior = await _dbContext.Trades
+            var suggestPrior = await _dbContext.Suggestions
                 .Where(t => t.ReceiverId == userId
                     && t.CardId == Suggesting.Id)
                     // include both suggestions and trades
@@ -160,7 +161,7 @@ namespace MTGViewer.Pages.Trades
 
             var fromUser = await _userManager.GetUserAsync(User);
 
-            var suggestion = new Trade
+            var suggestion = new Suggestion
             {
                 Card = Suggesting,
                 Proposer = fromUser,
@@ -178,9 +179,9 @@ namespace MTGViewer.Pages.Trades
         }
 
 
-        private async Task<Location> GetDeckAndValidateAsync(int deckId)
+        private async Task<Deck> GetDeckAndValidateAsync(int deckId)
         {
-            var deck = await _dbContext.Locations.FindAsync(deckId);
+            var deck = await _dbContext.Decks.FindAsync(deckId);
 
             if (deck is null || deck.IsShared)
             {

@@ -33,11 +33,11 @@ namespace MTGViewer.Pages.Decks
         public async Task<IActionResult> OnGetAsync(int? id)
         {
             CardUser = await _userManager.GetUserAsync(User);
+
             if (id is int validId)
             {
-                var isOwner = await _context.Locations.AnyAsync(l =>
-                    l.Id == validId
-                        && l.Owner == CardUser);
+                var isOwner = await _context.Decks
+                    .AnyAsync(l => l.Id == validId && l.Owner == CardUser);
 
                 if (!isOwner)
                 {

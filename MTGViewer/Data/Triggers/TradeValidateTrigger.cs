@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using EntityFrameworkCore.Triggered;
@@ -46,12 +47,16 @@ namespace MTGViewer.Data.Triggers
                 .Reference(t => t.From)
                 .LoadAsync();
 
-            await _dbContext.Entry(trade)
-                .Reference(t => t.Card)
-                .LoadAsync();
+            var fromAmount = await _dbContext.Amounts
+                .AsNoTracking()
+                .SingleOrDefaultAsync(ca => !ca.IsRequest
+                    && ca.CardId == trade.CardId
+                    && ca.LocationId == trade.FromId);
 
-            trade.Amount = Math.Min(trade.From.Amount, trade.Amount);
-            trade.Card = trade.From.Card;
+            if (fromAmount != default)
+            {
+                trade.Amount = Math.Min(fromAmount.Amount, trade.Amount);
+            }
         }
 
 

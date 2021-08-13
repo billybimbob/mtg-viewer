@@ -12,13 +12,7 @@ using MTGViewer.Data.Concurrency;
 
 namespace MTGViewer.Data
 {
-    [Index(
-        nameof(CardId),
-        nameof(ProposerId),
-        nameof(ReceiverId), 
-        nameof(ToId), 
-        nameof(FromId), IsUnique = true)]
-    public class Trade : Concurrent
+    public class Suggestion : Concurrent
     {
         public int Id { get; set; }
 
@@ -38,48 +32,20 @@ namespace MTGViewer.Data
         [JsonIgnore]
         public CardUser Receiver { get; set; } = null!;
 
-        /// <remarks>
-        /// Specifies the trade pending, with false pending for the receiver
-        /// and true pending for the proposer
-        /// </remarks>
-        public bool IsCounter { get; set; }
-
 
         public int ToId { get; set; }
 
         [Display(Name = "To Deck")]
         [JsonIgnore]
-        public Location To { get; set; } = null!;
-
-
-        public int? FromId { get; set; }
-
-        [Display(Name = "From Deck")]
-        [JsonIgnore]
-        public CardAmount? From { get; set; }
-
-
-        [Range(0, int.MaxValue)]
-        public int Amount { get; set; }
+        public Deck To { get; set; } = null!;
 
 
         [JsonIgnore]
-        public bool IsSuggestion => FromId == default;
-
-        [JsonIgnore]
-        public Location? TargetLocation =>
-            ProposerId != To.OwnerId
-                ? To
-                : From?.Location;
+        public bool IsSuggestion { get; private set; }
 
 
         public bool IsInvolved(string userId) =>
             ReceiverId == userId || ProposerId == userId;
-
-
-        public bool IsWaitingOn(string userId) =>
-            ReceiverId == userId && !IsCounter
-                || ProposerId == userId && IsCounter;
 
 
         public CardUser? GetOtherUser(string userId) => userId switch
@@ -88,16 +54,47 @@ namespace MTGViewer.Data
             _ when userId == ReceiverId => Proposer,
             _ => null
         };
+    }
 
 
-        public IEnumerable<Location> GetLocations()
+    public class Trade : Suggestion
+    {
+        public int FromId { get; set; }
+
+        [Display(Name = "From Deck")]
+        [JsonIgnore]
+        public Deck From { get; set; } = null!;
+
+
+        /// <remarks>
+        /// Specifies the trade pending, with false pending for the receiver
+        /// and true pending for the proposer
+        /// </remarks>
+        public bool IsCounter { get; set; }
+
+
+        [Range(0, int.MaxValue)]
+        public int Amount { get; set; }
+
+
+        [JsonIgnore]
+        public Deck? TargetDeck => ReceiverId switch
+        {
+            _ when ReceiverId == To.OwnerId => To,
+            _ when ReceiverId == From.OwnerId => From,
+            _ => null
+        };
+
+
+        public bool IsWaitingOn(string userId) =>
+            ReceiverId == userId && !IsCounter
+                || ProposerId == userId && IsCounter;
+
+
+        public IEnumerable<Deck> GetDecks()
         {
             yield return To;
-
-            if (!IsSuggestion && From is not null)
-            {
-                yield return From.Location;
-            }
+            yield return From;
         }
     }
 }

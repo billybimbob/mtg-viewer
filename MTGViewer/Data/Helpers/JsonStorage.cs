@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
@@ -15,13 +16,34 @@ namespace MTGViewer.Data.Json
     {
         public IReadOnlyList<CardUser> Users { get; set; }
         public IReadOnlyList<Card> Cards { get; set; }
+
         public IReadOnlyList<CardAmount> Amounts { get; set; }
+
         public IReadOnlyList<Location> Locations { get; set; }
+        public IReadOnlyList<Deck> Decks { get; set; }
+
+        public IReadOnlyList<Suggestion> Suggestions { get; set; }
         public IReadOnlyList<Trade> Trades { get; set; }
 
 
         public static async Task<CardData> CreateAsync(CardDbContext dbContext)
         {
+            var allLocations = await dbContext.Locations
+                .AsNoTracking()
+                .ToListAsync();
+
+            var decks = await dbContext.Decks
+                .AsNoTracking()
+                .ToListAsync();
+
+            var allSuggestions = await dbContext.Suggestions
+                .AsNoTracking()
+                .ToListAsync();
+
+            var trades = await dbContext.Trades
+                .AsNoTracking()
+                .ToListAsync();
+
             // TODO: add some includes possibly?
             return new CardData
             {
@@ -42,13 +64,17 @@ namespace MTGViewer.Data.Json
                     .AsNoTracking()
                     .ToListAsync(),
 
-                Locations = await dbContext.Locations
-                    .AsNoTracking()
-                    .ToListAsync(),
+                Locations = allLocations
+                    .Except(decks, new EntityComparer<Location>(l => l.Id))
+                    .ToList(),
 
-                Trades = await dbContext.Trades
-                    .AsNoTracking()
-                    .ToListAsync()
+                Decks = decks,
+
+                Suggestions = allSuggestions
+                    .Except(trades, new EntityComparer<Suggestion>(s => s.Id))
+                    .ToList(),
+
+                Trades = trades
             };
         }
     }
@@ -92,8 +118,12 @@ namespace MTGViewer.Data.Json
                 dbContext.Users.AddRange(data.Users);
                 dbContext.Cards.AddRange(data.Cards);
 
-                dbContext.Locations.AddRange(data.Locations);
                 dbContext.Amounts.AddRange(data.Amounts);
+
+                dbContext.Locations.AddRange(data.Locations);
+                dbContext.Decks.AddRange(data.Decks);
+
+                dbContext.Suggestions.AddRange(data.Suggestions);
                 dbContext.Trades.AddRange(data.Trades);
 
                 await dbContext.SaveChangesAsync();

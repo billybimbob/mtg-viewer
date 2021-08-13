@@ -35,7 +35,7 @@ namespace MTGViewer.Pages.Decks
         {
             CardUser = await _userManager.GetUserAsync(User);
 
-            Decks = await _context.Locations
+            Decks = await _context.Decks
                 .Where(l => l.Owner == CardUser)
                 .Include(l => l.Cards)
                     .ThenInclude(ca => ca.Card)

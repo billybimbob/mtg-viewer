@@ -24,13 +24,6 @@ namespace MTGViewer.Data
 
         public static Expression<Func<Trade, bool>> Involves(string userId, int deckId) =>
             trade => (trade.ProposerId == userId || trade.ReceiverId == userId)
-                && (trade.ToId == deckId || trade.From.LocationId == deckId);
-    }
-
-
-    public static class LocationFilter
-    {
-        public static Expression<Func<Location, bool>> IsShared =>
-            location => location.OwnerId == default;
+                && (trade.ToId == deckId || trade.FromId == deckId);
     }
 }

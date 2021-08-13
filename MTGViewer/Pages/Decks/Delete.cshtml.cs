@@ -35,7 +35,7 @@ namespace MTGViewer.Pages.Decks
         {
             var user = await _userManager.GetUserAsync(User);
 
-            Deck = await _context.Locations
+            Deck = await _context.Decks
                 .Include(l => l.Cards)
                     .ThenInclude(ca => ca.Card)
                 .AsNoTracking()

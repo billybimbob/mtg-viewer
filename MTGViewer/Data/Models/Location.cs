@@ -20,20 +20,29 @@ namespace MTGViewer.Data
 
         public string Name { get; set; }
 
-        public string? OwnerId { get; set; }
-
         [JsonIgnore]
-        public CardUser? Owner { get; set; }
+        public bool IsShared { get; private set; }
 
         [JsonIgnore]
         public ICollection<CardAmount> Cards { get; } = new HashSet<CardAmount>();
 
-        [JsonIgnore]
-        public bool IsShared => OwnerId == default;
 
         public IOrderedEnumerable<Color> GetColors() => Cards
             .SelectMany(ca => ca.Card.Colors)
             .Distinct(new EntityComparer<Color>(c => c.Name))
             .OrderBy(c => c.Name);
+    }
+
+
+
+    public class Deck : Location
+    {
+        public Deck(string name) : base(name)
+        { }
+
+        public string OwnerId { get; set; } = null!;
+
+        [JsonIgnore]
+        public CardUser Owner { get; set; } = null!;
     }
 }

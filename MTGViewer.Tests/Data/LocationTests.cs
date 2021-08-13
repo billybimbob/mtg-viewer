@@ -14,10 +14,7 @@ namespace MTGViewer.Tests.Data
         {
             using var dbContext = TestHelpers.CardDbContext();
 
-            var location = new Location("No owner location")
-            {
-                Owner = null
-            };
+            var location = new Location("No owner location");
 
             dbContext.Attach(location);
 
@@ -36,7 +33,7 @@ namespace MTGViewer.Tests.Data
 
             var testUser = await userManager.Users.FirstAsync();
 
-            var location = new Location("Owned location")
+            var location = new Deck("Owned location")
             {
                 Owner = testUser
             };
@@ -44,6 +41,18 @@ namespace MTGViewer.Tests.Data
             dbContext.Attach(location);
 
             Assert.False(location.IsShared);
+        }
+
+
+        [Fact]
+        public async Task IsSharedFilter_ComputedProperty_ReturnsLocation()
+        {
+            await using var dbContext = TestHelpers.CardDbContext();
+            await dbContext.SeedAsync();
+
+            var sharedLocation = await dbContext.Locations.FirstAsync(l => l.IsShared);
+
+            Assert.True(sharedLocation.IsShared);
         }
     }
 }

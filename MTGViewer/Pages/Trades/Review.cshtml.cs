@@ -32,7 +32,7 @@ namespace MTGViewer.Pages.Trades
         public string PostMessage { get; set; }
 
         public CardUser Proposer { get; private set; }
-        public Location Deck { get; private set; }
+        public Deck Deck { get; private set; }
 
         public IReadOnlyList<Trade> ToDeck { get; private set; }
         public IReadOnlyList<Trade> FromDeck { get; private set; }
@@ -45,7 +45,7 @@ namespace MTGViewer.Pages.Trades
                 return NotFound();
             }
 
-            var deck = await _dbContext.Locations.FindAsync(deckId);
+            var deck = await _dbContext.Decks.FindAsync(deckId);
 
             if (deck == null || deck.OwnerId == proposerId)
             {
@@ -58,7 +58,6 @@ namespace MTGViewer.Pages.Trades
                 .Include(t => t.Card)
                 .Include(t => t.To)
                 .Include(t => t.From)
-                    .ThenInclude(ca => ca.Location)
                 .AsNoTracking()
                 .ToListAsync();
 
@@ -120,20 +119,18 @@ namespace MTGViewer.Pages.Trades
                 return NotFound();
             }
 
-            var deck = await _dbContext.Locations.FindAsync(deckId);
+            var deck = await _dbContext.Decks.FindAsync(deckId);
 
             if (deck == null || deck.OwnerId == proposerId)
             {
                 return NotFound();
             }
-
-            var deckTrades = await _dbContext.Trades
+            
+            var acceptQuery = _dbContext.Trades
                 .Where(TradeFilter.NotSuggestion)
-                .Where(TradeFilter.Involves(proposerId, deckId))
-                .Include(t => t.Card)
-                .Include(t => t.To)
-                .Include(t => t.From)
-                    .ThenInclude(ca => ca.Location)
+                .Where(TradeFilter.Involves(proposerId, deckId));
+
+            var deckTrades = await acceptQuery
                 .ToListAsync();
 
             if (!CheckTrades(deckTrades))
@@ -142,7 +139,22 @@ namespace MTGViewer.Pages.Trades
                 return RedirectToPage("./Index");
             }
 
-            var amountsInvalid = deckTrades.Any(t => t.From.Amount < t.Amount);
+            var nonRequestAmounts = _dbContext.Amounts
+                .Where(ca => !ca.IsRequest);
+
+            var sourceMap = await acceptQuery
+                .Join(nonRequestAmounts,
+                    t =>
+                        new { t.CardId, DeckId = t.FromId },
+                    ca =>
+                        new { ca.CardId, DeckId = ca.LocationId },
+                    (trade, amount) =>
+                        new { trade.Id, amount })
+                .ToDictionaryAsync(r => r.Id, r => r.amount);
+
+
+            var amountsInvalid = deckTrades.Any(t => 
+                !sourceMap.TryGetValue(t.Id, out var source) || source.Amount < t.Amount);
 
             if (amountsInvalid)
             {
@@ -150,7 +162,14 @@ namespace MTGViewer.Pages.Trades
                 return RedirectToPage("./Index");
             }
 
-            await ApplyAcceptsAsync(deckTrades);
+            var destMap = await acceptQuery
+                .Join(nonRequestAmounts,
+                    t =>  new { t.CardId, DeckId = t.ToId },
+                    ca => new { ca.CardId, DeckId = ca.LocationId },
+                    (trade, amount) => new { trade.Id, amount })
+                .ToDictionaryAsync(t => t.Id, t => t.amount);
+
+            ApplyAccepts(deckTrades, sourceMap, destMap);
 
             try
             {
@@ -170,39 +189,14 @@ namespace MTGViewer.Pages.Trades
         }
 
 
-        private async Task ApplyAcceptsAsync(IEnumerable<Trade> accepts)
+        private void ApplyAccepts(
+            IReadOnlyList<Trade> accepts,
+            IReadOnlyDictionary<int, CardAmount> sourceMap,
+            IDictionary<int, CardAmount> destMap)
         {
-            var destIds = accepts
-                .Select(t => t.ToId)
-                .Distinct()
-                .ToArray();
-
-            var cardIds = accepts
-                .Select(t => t.CardId)
-                .Distinct()
-                .ToArray();
-
-            // TODO: find filter that pairs card with location
-            var existing = await _dbContext.Amounts
-                .Where(ca => cardIds.Contains(ca.CardId)
-                    && destIds.Contains(ca.LocationId)
-                    && !ca.IsRequest)
-                .ToListAsync();
-
-            var acceptPairs = accepts
-                .Select(t => (t.CardId, t.ToId))
-                .Distinct()
-                .ToHashSet();
-
-            var destMap = existing
-                .Where(ca => acceptPairs.Contains((ca.CardId, ca.LocationId)))
-                .ToDictionary(ca => (ca.CardId, ca.LocationId));
-
             foreach(var accept in accepts)
             {
-                var key = (accept.CardId, accept.ToId);
-
-                if (!destMap.TryGetValue(key, out var destAmount))
+                if (!destMap.TryGetValue(accept.Id, out var destAmount))
                 {
                     destAmount = new CardAmount
                     {
@@ -210,11 +204,11 @@ namespace MTGViewer.Pages.Trades
                         Location = accept.To
                     };
 
-                    destMap.Add(key, destAmount);
+                    destMap.Add(accept.Id, destAmount);
                     _dbContext.Amounts.Attach(destAmount);
                 }
 
-                accept.From.Amount -= accept.Amount;
+                sourceMap[accept.Id].Amount -= accept.Amount;
                 destAmount.Amount += accept.Amount;
             }
 
@@ -229,7 +223,7 @@ namespace MTGViewer.Pages.Trades
                 return NotFound();
             }
 
-            var deck = await _dbContext.Locations.FindAsync(deckId);
+            var deck = await _dbContext.Decks.FindAsync(deckId);
 
             if (deck == null || deck.OwnerId == proposerId)
             {
@@ -239,9 +233,6 @@ namespace MTGViewer.Pages.Trades
             var deckTrades = await _dbContext.Trades
                 .Where(TradeFilter.NotSuggestion)
                 .Where(TradeFilter.Involves(proposerId, deckId))
-                .Include(t => t.To)
-                .Include(t => t.From)
-                    .ThenInclude(ca => ca.Location)
                 .ToListAsync();
 
             if (!CheckTrades(deckTrades))

@@ -32,9 +32,9 @@ namespace MTGViewer.Pages.Trades
 
         public CardUser SelfUser { get; private set; }
 
-        public IReadOnlyList<(CardUser, Location)> ReceivedTrades { get; private set; }
-        public IReadOnlyList<(CardUser, Location)> PendingTrades { get; private set; }
-        public IReadOnlyList<Trade> Suggestions { get; private set; }
+        public IReadOnlyList<(CardUser, Deck)> ReceivedTrades { get; private set; }
+        public IReadOnlyList<(CardUser, Deck)> PendingTrades { get; private set; }
+        public IReadOnlyList<Suggestion> Suggestions { get; private set; }
 
 
         public async Task OnGetAsync()
@@ -42,13 +42,11 @@ namespace MTGViewer.Pages.Trades
             var userId = _userManager.GetUserId(User);
 
             var userTrades = await _dbContext.Trades
-                .Where(TradeFilter.NotSuggestion)
                 .Where(TradeFilter.Involves(userId))
                 .Include(t => t.To)
                     .ThenInclude(l => l.Owner)
                 .Include(t => t.From)
-                    .ThenInclude(ca => ca.Location)
-                        .ThenInclude(l => l.Owner)
+                    .ThenInclude(l => l.Owner)
                 .AsNoTrackingWithIdentityResolution()
                 .ToListAsync();
 
@@ -61,21 +59,21 @@ namespace MTGViewer.Pages.Trades
 
             PendingTrades = GetTradeList(userId, userTrades.Except(waitingUser));
 
-            Suggestions = await _dbContext.Trades
-                .Where(TradeFilter.Suggestion)
-                .Where(TradeFilter.Involves(userId))
-                .Include(t => t.Card)
-                .Include(t => t.Proposer)
-                .Include(t => t.To)
+            Suggestions = await _dbContext.Suggestions
+                .Where(s => s.IsSuggestion)
+                .Where(s => s.ProposerId == userId || s.ReceiverId == userId)
+                .Include(s => s.Card)
+                .Include(s => s.Proposer)
+                .Include(s => s.To)
                 .AsNoTrackingWithIdentityResolution()
                 .ToListAsync();
         }
 
 
-        private IReadOnlyList<(CardUser, Location)> GetTradeList(
+        private IReadOnlyList<(CardUser, Deck)> GetTradeList(
             string userId, IEnumerable<Trade> trades)
         {
-            return trades.GroupBy(t => t.TargetLocation)
+            return trades.GroupBy(t => t.TargetDeck)
                 .Select(g =>
                     (OtherUser: g.First().GetOtherUser(userId), Target: g.Key))
                 .OrderBy(t => t.OtherUser.Name)

@@ -21,25 +21,24 @@ namespace MTGViewer.Tests.Data
 
             await dbContext.SeedAsync();
 
-            var toLoc = await dbContext.Locations
+            var toLoc = await dbContext.Decks
                 .Include(l => l.Owner)
-                .FirstAsync(l => l.OwnerId != default);
+                .FirstAsync();
 
             var proposer = await userManager.Users
                 .FirstAsync(u => u.Id != toLoc.OwnerId);
 
             var card = await dbContext.Cards.FirstAsync();
 
-            var trade = new Trade
+            var trade = new Suggestion
             {
                 Card = card,
                 Proposer = proposer,
                 Receiver = toLoc.Owner,
-                To = toLoc,
-                From = null
+                To = toLoc
             };
 
-            dbContext.Trades.Attach(trade);
+            dbContext.Suggestions.Attach(trade);
 
             Assert.True(trade.IsSuggestion);
         }
@@ -54,24 +53,22 @@ namespace MTGViewer.Tests.Data
 
             await dbContext.SeedAsync();
 
-            var fromLoc = await dbContext.Amounts
+            var fromAmount = await dbContext.Amounts
+                .Where(ca => !ca.Location.IsShared)
                 .Include(ca => ca.Card)
                 .Include(ca => ca.Location)
-                    .ThenInclude(l => l.Owner)
-                .FirstAsync(ca => 
-                    ca.Location.OwnerId != default
-                        && ca.IsRequest == false);
+                .FirstAsync(ca => ca.IsRequest == false);
 
-            var toLoc = await dbContext.Locations
+            var fromLoc = fromAmount.Location as Deck;
+
+            var toLoc = await dbContext.Decks
                 .Include(l => l.Owner)
-                .FirstAsync(l => 
-                    l.OwnerId != default 
-                        && l.Id != fromLoc.LocationId);
+                .FirstAsync(l => l.Id != fromAmount.LocationId);
 
             var trade = new Trade
             {
-                Card = fromLoc.Card,
-                Proposer = fromLoc.Location.Owner,
+                Card = fromAmount.Card,
+                Proposer = fromLoc.Owner,
                 Receiver = toLoc.Owner,
                 To = toLoc,
                 From = fromLoc,
@@ -95,10 +92,10 @@ namespace MTGViewer.Tests.Data
 
             await dbContext.SeedAsync();
 
-            var suggestion = await dbContext.Trades
+            var suggestion = await dbContext.Suggestions
                 .Include(t => t.Receiver)
                 .AsNoTracking()
-                .FirstAsync(t => t.FromId == default);
+                .FirstAsync(s => s.IsSuggestion);
 
             var userClaim = await claimsFactory.CreateAsync(suggestion.Receiver);
             var indexModel = new IndexModel(userManager, dbContext);
@@ -164,39 +161,41 @@ namespace MTGViewer.Tests.Data
 
             reviewModel.SetModelContext(userClaim);
 
-            var tradeBefore = await dbContext.Trades
+            var tradeQuery = dbContext.Trades
                 .Where(TradeFilter.NotSuggestion)
-                .Where(TradeFilter.Involves(proposer.Id, deck.Id))
-                .Include(t => t.From)
+                .Where(TradeFilter.Involves(proposer.Id, deck.Id));
+
+            var nonRequestAmounts = dbContext.Amounts
+                .Where(ca => !ca.IsRequest);
+
+            var fromBefore = await tradeQuery
+                .Join(nonRequestAmounts,
+                    t => new { t.CardId, DeckId = t.FromId },
+                    ca => new { ca.CardId, DeckId = ca.LocationId },
+                    (t, ca) => ca)
                 .AsNoTracking()
                 .ToListAsync();
-
-            var fromBefore = tradeBefore
-                .Select(t => t.From)
-                .Distinct();
-
-            var fromAmountIds = fromBefore
-                .Select(ca => ca.Id)
-                .ToArray();
 
             var result = await reviewModel.OnPostAcceptAsync(proposer.Id, deck.Id);
 
-            var tradeAfter = await dbContext.Trades
-                .Where(TradeFilter.NotSuggestion)
-                .Where(TradeFilter.Involves(proposer.Id, deck.Id))
+            var tradeAfter = await tradeQuery
                 .AsNoTracking()
                 .ToListAsync();
 
-            var fromAfter = await dbContext.Amounts
-                .Where(ca => fromAmountIds.Contains(ca.Id))
+            var fromAfter = await dbContext.Trades
+                .Join(nonRequestAmounts,
+                    t => new { t.CardId, DeckId = t.FromId },
+                    ca => new { ca.CardId, DeckId = ca.LocationId },
+                    (t, ca) => ca)
                 .AsNoTracking()
                 .ToListAsync();
 
-            var fromChanges = fromBefore.GroupJoin(fromAfter,
-                before => before.Id,
-                after => after.Id,
-                (before, afters) =>
-                    (before, after: afters.FirstOrDefault()))
+            var fromChanges = fromBefore
+                .GroupJoin(fromAfter,
+                    before => before.Id,
+                    after => after.Id,
+                    (before, afters) =>
+                        (before, after: afters.FirstOrDefault()))
                 .ToList();
 
             Assert.IsType<RedirectToPageResult>(result);
