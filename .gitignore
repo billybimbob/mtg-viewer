@@ -7,7 +7,7 @@
 *.db
 *.db-shm
 *.db-wal
-migrations/*
+*Migrations
 
 # User-specific files
 *.rsuser

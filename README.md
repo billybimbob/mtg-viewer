@@ -13,16 +13,18 @@ Magic: The Gathering Card Manager and Deck Builder, using [ASP.net](https://dotn
 dotnet tool install --global dotnet-ef
 ```
 
+## Projects
+
+There are multiple projects in the repository:
+
+* `MTGViewer`: MTG card website and database information
+* `MTGViewer.Tests`: test cases for website components
+
+All the ef core and database commands are in reference to the `MTGViewer` project, which should be specified with the `-p` argument.
+
 ## Database
 
 The development database is sqlite, where the database is hosted on the local machine, and is not synchronized with the repo.
-
-The database is defined into two separate contexts:
-
-* `CardDbContext`: all card and deck data
-* `UserDbContext`: all user and account data
-
-With all of the ef commands listed below, the context must be specified, using the `-c` argument, and make sure to run all commands below in the project directory.
 
 ### Add Database Migrations and Schema
 
@@ -33,15 +35,13 @@ The mains steps are to create the database schema with ef core:
 1. Add/create the database migrations
 
     ```powershell
-    dotnet ef migrations add AddUsers -c UserDbContext -o Migrations\Users
-    dotnet ef migrations add AddCards -c CardDbContext -o Migrations\Cards
+    dotnet ef migrations add AddCards -p MTGViewer
     ```
 
 2. Apply/update the database migrations to the actual database
 
     ```powershell
-    dotnet ef database update -c UserDbContext
-    dotnet ef database update -c CardDbContext
+    dotnet ef database update -p MTGViewer
     ```
 
 ### Reset Database
@@ -51,15 +51,13 @@ If the schema is modified, the best approach is to just drop all of the previous
 1. Drop the database:
 
     ```powershell
-    dotnet ef database drop -c UserDbContext
-    dotnet ef database drop -c CardDbContext
+    dotnet ef database drop -p MTGViewer
     ```
 
 2. Delete the  files in the `Migrations` folder
 
     ```powershell
-    rm -r Migrations\Users
-    rm -r Migrations\Cards
+    rm -r MTGViewer\Migrations
     ```
 
 3. Repeat the migration and update steps [above](#add-database-migrations-and-schema)
@@ -69,5 +67,5 @@ If the schema is modified, the best approach is to just drop all of the previous
 In the project directory:
 
 ```powershell
-dotnet watch run
+dotnet watch run -p MTGViewer
 ```
