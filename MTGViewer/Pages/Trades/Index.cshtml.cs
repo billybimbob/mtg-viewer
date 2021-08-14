@@ -47,7 +47,6 @@ namespace MTGViewer.Pages.Trades
                     .ThenInclude(l => l.Owner)
                 .Include(t => t.From)
                     .ThenInclude(l => l.Owner)
-                .AsNoTrackingWithIdentityResolution()
                 .ToListAsync();
 
             var waitingUser = userTrades
@@ -65,7 +64,6 @@ namespace MTGViewer.Pages.Trades
                 .Include(s => s.Card)
                 .Include(s => s.Proposer)
                 .Include(s => s.To)
-                .AsNoTrackingWithIdentityResolution()
                 .ToListAsync();
         }
 

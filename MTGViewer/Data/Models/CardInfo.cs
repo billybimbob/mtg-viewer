@@ -3,7 +3,6 @@ using Newtonsoft.Json;
 
 #nullable enable
 
-
 namespace MTGViewer.Data
 {
     public class Name

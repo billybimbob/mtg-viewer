@@ -53,7 +53,6 @@ namespace MTGViewer.Pages.Trades
             }
 
             var deckTrades = await _dbContext.Trades
-                .Where(TradeFilter.NotSuggestion)
                 .Where(TradeFilter.Involves(proposerId, deckId))
                 .Include(t => t.Card)
                 .Include(t => t.To)
@@ -127,7 +126,6 @@ namespace MTGViewer.Pages.Trades
             }
             
             var acceptQuery = _dbContext.Trades
-                .Where(TradeFilter.NotSuggestion)
                 .Where(TradeFilter.Involves(proposerId, deckId));
 
             var deckTrades = await acceptQuery
@@ -144,10 +142,10 @@ namespace MTGViewer.Pages.Trades
 
             var sourceMap = await acceptQuery
                 .Join(nonRequestAmounts,
-                    t =>
-                        new { t.CardId, DeckId = t.FromId },
-                    ca =>
-                        new { ca.CardId, DeckId = ca.LocationId },
+                    trade =>
+                        new { trade.CardId, DeckId = trade.FromId },
+                    amount =>
+                        new { amount.CardId, DeckId = amount.LocationId },
                     (trade, amount) =>
                         new { trade.Id, amount })
                 .ToDictionaryAsync(r => r.Id, r => r.amount);
@@ -164,16 +162,19 @@ namespace MTGViewer.Pages.Trades
 
             var destMap = await acceptQuery
                 .Join(nonRequestAmounts,
-                    t =>  new { t.CardId, DeckId = t.ToId },
-                    ca => new { ca.CardId, DeckId = ca.LocationId },
-                    (trade, amount) => new { trade.Id, amount })
+                    trade => 
+                        new { trade.CardId, DeckId = trade.ToId },
+                    amount =>
+                        new { amount.CardId, DeckId = amount.LocationId },
+                    (trade, amount) =>
+                        new { trade.Id, amount })
                 .ToDictionaryAsync(t => t.Id, t => t.amount);
-
-            ApplyAccepts(deckTrades, sourceMap, destMap);
 
             try
             {
+                ApplyAccepts(deckTrades, sourceMap, destMap);
                 await _dbContext.SaveChangesAsync();
+
                 PostMessage = "Trade successfully Applied";
             }
             catch(DbUpdateConcurrencyException)
@@ -231,7 +232,6 @@ namespace MTGViewer.Pages.Trades
             }
 
             var deckTrades = await _dbContext.Trades
-                .Where(TradeFilter.NotSuggestion)
                 .Where(TradeFilter.Involves(proposerId, deckId))
                 .ToListAsync();
 

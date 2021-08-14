@@ -29,26 +29,21 @@ namespace MTGViewer.Data.Json
         public static async Task<CardData> CreateAsync(CardDbContext dbContext)
         {
             var allLocations = await dbContext.Locations
-                .AsNoTracking()
                 .ToListAsync();
 
             var decks = await dbContext.Decks
-                .AsNoTracking()
                 .ToListAsync();
 
             var allSuggestions = await dbContext.Suggestions
-                .AsNoTracking()
                 .ToListAsync();
 
             var trades = await dbContext.Trades
-                .AsNoTracking()
                 .ToListAsync();
 
             // TODO: add some includes possibly?
             return new CardData
             {
                 Users = await dbContext.Users
-                    .AsNoTracking()
                     .ToListAsync(),
 
                 Cards = await dbContext.Cards
@@ -57,21 +52,19 @@ namespace MTGViewer.Data.Json
                     .Include(c => c.SubTypes)
                     .Include(c => c.SuperTypes)
                     .AsSplitQuery()
-                    .AsNoTracking()
                     .ToListAsync(),
 
                 Amounts = await dbContext.Amounts
-                    .AsNoTracking()
                     .ToListAsync(),
 
                 Locations = allLocations
-                    .Except(decks, new EntityComparer<Location>(l => l.Id))
+                    .Except(decks)
                     .ToList(),
 
                 Decks = decks,
 
                 Suggestions = allSuggestions
-                    .Except(trades, new EntityComparer<Suggestion>(s => s.Id))
+                    .Except(trades)
                     .ToList(),
 
                 Trades = trades

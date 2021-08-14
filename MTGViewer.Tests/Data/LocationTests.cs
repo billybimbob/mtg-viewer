@@ -45,14 +45,32 @@ namespace MTGViewer.Tests.Data
 
 
         [Fact]
-        public async Task IsSharedFilter_ComputedProperty_ReturnsLocation()
+        public async Task LocationFilter_IsShared()
         {
             await using var dbContext = TestHelpers.CardDbContext();
             await dbContext.SeedAsync();
 
             var sharedLocation = await dbContext.Locations.FirstAsync(l => l.IsShared);
+            var deck = await dbContext.Decks.FirstAsync();
 
             Assert.True(sharedLocation.IsShared);
+            Assert.False(deck.IsShared);
+        }
+
+
+        [Fact]
+        public async Task DeckFilter_IsNotShared()
+        {
+            await using var dbContext = TestHelpers.CardDbContext();
+            await dbContext.SeedAsync();
+
+            var location = await dbContext.Locations.FirstAsync(l => !l.IsShared);
+            var deck = await dbContext.Decks.FirstAsync();
+
+            Assert.True(location is Deck);
+            Assert.False(location.IsShared);
+
+            Assert.False(deck.IsShared);
         }
     }
 }

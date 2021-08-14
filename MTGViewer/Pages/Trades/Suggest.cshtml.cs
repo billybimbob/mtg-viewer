@@ -63,7 +63,7 @@ namespace MTGViewer.Pages.Trades
 
             Users = await _userManager.Users
                 .Where(u => u.Id != srcId)
-                .AsNoTrackingWithIdentityResolution()
+                .AsNoTracking()
                 .ToListAsync();
 
             TempData.Keep(nameof(CardId));
@@ -104,7 +104,6 @@ namespace MTGViewer.Pages.Trades
                     .ThenInclude(ca => ca.Card)
                         .ThenInclude(c => c.Colors)
                 .AsSplitQuery()
-                .AsNoTrackingWithIdentityResolution()
                 .ToListAsync();
 
             if (!userDecks.Any())
@@ -112,28 +111,23 @@ namespace MTGViewer.Pages.Trades
                 return Enumerable.Empty<Deck>();
             }
 
-            var suggestInDeck = await _dbContext.Amounts
-                .Where(ca => !ca.Location.IsShared
-                    && (ca.Location as Deck).OwnerId == userId
-                    && ca.CardId == Suggesting.Id)
-                    // include both request and non-request amounts
+            // include both request and non-request amounts
+            var suggestInDeck = _dbContext.Amounts
+                .Where(ca =>
+                    !ca.Location.IsShared && ca.CardId == Suggesting.Id)
                 .Select(ca => ca.Location as Deck)
-                .Distinct()
-                .AsNoTrackingWithIdentityResolution()
-                .ToListAsync();
+                .Where(d => d.OwnerId == userId);
 
-            var suggestPrior = await _dbContext.Suggestions
-                .Where(t => t.ReceiverId == userId
-                    && t.CardId == Suggesting.Id)
-                    // include both suggestions and trades
-                .Select(t => t.To)
-                .Distinct()
-                .AsNoTrackingWithIdentityResolution()
-                .ToListAsync();
+            // include both suggestions and trades
+            var suggestPrior = _dbContext.Suggestions
+                .Where(t =>
+                    t.ReceiverId == userId && t.CardId == Suggesting.Id)
+                .Select(t => t.To);
 
-            var invalidDecks = suggestInDeck
+            var invalidDecks = await suggestInDeck
                 .Concat(suggestPrior)
-                .Distinct();
+                .Distinct()
+                .ToListAsync();
 
             return userDecks.Except(invalidDecks);
         }
@@ -189,10 +183,10 @@ namespace MTGViewer.Pages.Trades
                 return null;
             }
 
+            // include both suggestions and trades
             var suggestPrior = await _dbContext.Trades
-                .Where(t => t.ReceiverId == deck.OwnerId
-                    && t.CardId == Suggesting.Id)
-                    // include both suggestions and trades
+                .Where(t => 
+                    t.ReceiverId == deck.OwnerId && t.CardId == Suggesting.Id)
                 .AnyAsync();
 
             if (suggestPrior)

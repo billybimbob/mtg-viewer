@@ -7,7 +7,6 @@ using MTGViewer.Data.Concurrency;
 
 #nullable enable
 
-
 namespace MTGViewer.Data
 {
     [Index(

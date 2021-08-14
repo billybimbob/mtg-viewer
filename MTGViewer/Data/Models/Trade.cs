@@ -1,14 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 
 using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data.Concurrency;
 
 #nullable enable
-
 
 namespace MTGViewer.Data
 {
@@ -26,6 +24,7 @@ namespace MTGViewer.Data
 
         [JsonIgnore]
         public CardUser Proposer { get; set; } = null!;
+
 
         public string ReceiverId { get; set; } = null!;
 
@@ -71,7 +70,6 @@ namespace MTGViewer.Data
         /// and true pending for the proposer
         /// </remarks>
         public bool IsCounter { get; set; }
-
 
         [Range(0, int.MaxValue)]
         public int Amount { get; set; }

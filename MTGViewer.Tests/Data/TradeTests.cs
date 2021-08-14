@@ -1,10 +1,9 @@
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
+
 using MTGViewer.Data;
-using MTGViewer.Pages.Trades;
 using MTGViewer.Tests.Utils;
 
 
@@ -81,129 +80,34 @@ namespace MTGViewer.Tests.Data
         }
 
 
+
         [Fact]
-        public async Task IndexOnPost_ValidSuggestion_RemovesSuggestion()
+        public async Task SuggestionFilter_IsSuggestion()
         {
-            await using var services = TestHelpers.ServiceProvider();
-            await using var dbContext = TestHelpers.CardDbContext(services);
-
-            using var userManager = TestHelpers.CardUserManager(services);
-            var claimsFactory = TestHelpers.CardClaimsFactory(userManager);
-
+            await using var dbContext = TestHelpers.CardDbContext();
             await dbContext.SeedAsync();
 
-            var suggestion = await dbContext.Suggestions
-                .Include(t => t.Receiver)
-                .AsNoTracking()
-                .FirstAsync(s => s.IsSuggestion);
+            var suggestion = await dbContext.Suggestions.FirstAsync(s => s.IsSuggestion);
+            var trade = await dbContext.Trades.FirstAsync();
 
-            var userClaim = await claimsFactory.CreateAsync(suggestion.Receiver);
-            var indexModel = new IndexModel(userManager, dbContext);
-
-            indexModel.SetModelContext(userClaim);
-
-            var result = await indexModel.OnPostAsync(suggestion.Id);
-            var trades = await dbContext.Trades
-                .AsNoTracking()
-                .ToListAsync();
-
-            Assert.IsType<RedirectToPageResult>(result);
-            Assert.DoesNotContain(suggestion.Id, trades.Select(t => t.Id));
+            Assert.True(suggestion.IsSuggestion);
+            Assert.False(trade.IsSuggestion);
         }
 
 
         [Fact]
-        public async Task IndexOnPost_InvalidSuggestion_NoRemove()
+        public async Task TradeFilter_IsNotSuggestion()
         {
-            await using var services = TestHelpers.ServiceProvider();
-            await using var dbContext = TestHelpers.CardDbContext(services);
-
-            using var userManager = TestHelpers.CardUserManager(services);
-            var claimsFactory = TestHelpers.CardClaimsFactory(userManager);
-
+            await using var dbContext = TestHelpers.CardDbContext();
             await dbContext.SeedAsync();
 
-            var nonSuggestion = await dbContext.Trades
-                .Include(t => t.Receiver)
-                .AsNoTracking()
-                .FirstAsync(t => t.FromId != default);
+            var suggestion = await dbContext.Suggestions.FirstAsync(s => !s.IsSuggestion);
+            var trade = await dbContext.Trades.FirstAsync();
 
-            var userClaim = await claimsFactory.CreateAsync(nonSuggestion.Receiver);
-            var indexModel = new IndexModel(userManager, dbContext);
+            Assert.True(suggestion is Trade);
+            Assert.False(suggestion.IsSuggestion);
 
-            indexModel.SetModelContext(userClaim);
-
-            var result = await indexModel.OnPostAsync(nonSuggestion.Id);
-            var trades = await dbContext.Trades
-                .AsNoTracking()
-                .ToListAsync();
-
-            Assert.IsType<RedirectToPageResult>(result);
-            Assert.Contains(nonSuggestion.Id, trades.Select(t => t.Id));
-        }
-
-
-        [Fact]
-        public async Task ReviewOnPostAccept_ValidTrade_Applied()
-        {
-            await using var services = TestHelpers.ServiceProvider();
-            await using var dbContext = TestHelpers.CardDbContext(services);
-
-            using var userManager = TestHelpers.CardUserManager(services);
-            var claimsFactory = TestHelpers.CardClaimsFactory(userManager);
-
-            await dbContext.SeedAsync();
-
-            var (proposer, receiver, deck) = await dbContext.GenerateTradeAsync();
-
-            var userClaim = await claimsFactory.CreateAsync(receiver);
-            var reviewModel = new ReviewModel(dbContext, userManager);
-
-            reviewModel.SetModelContext(userClaim);
-
-            var tradeQuery = dbContext.Trades
-                .Where(TradeFilter.NotSuggestion)
-                .Where(TradeFilter.Involves(proposer.Id, deck.Id));
-
-            var nonRequestAmounts = dbContext.Amounts
-                .Where(ca => !ca.IsRequest);
-
-            var fromBefore = await tradeQuery
-                .Join(nonRequestAmounts,
-                    t => new { t.CardId, DeckId = t.FromId },
-                    ca => new { ca.CardId, DeckId = ca.LocationId },
-                    (t, ca) => ca)
-                .AsNoTracking()
-                .ToListAsync();
-
-            var result = await reviewModel.OnPostAcceptAsync(proposer.Id, deck.Id);
-
-            var tradeAfter = await tradeQuery
-                .AsNoTracking()
-                .ToListAsync();
-
-            var fromAfter = await dbContext.Trades
-                .Join(nonRequestAmounts,
-                    t => new { t.CardId, DeckId = t.FromId },
-                    ca => new { ca.CardId, DeckId = ca.LocationId },
-                    (t, ca) => ca)
-                .AsNoTracking()
-                .ToListAsync();
-
-            var fromChanges = fromBefore
-                .GroupJoin(fromAfter,
-                    before => before.Id,
-                    after => after.Id,
-                    (before, afters) =>
-                        (before, after: afters.FirstOrDefault()))
-                .ToList();
-
-            Assert.IsType<RedirectToPageResult>(result);
-            Assert.False(tradeAfter.Any());
-
-            Assert.True(fromAfter.All(ca => ca.Amount >= 0));
-            Assert.True(fromChanges.All(fs => 
-                fs.after is null || fs.before.Amount > fs.after.Amount));
+            Assert.False(trade.IsSuggestion);
         }
     }
 }

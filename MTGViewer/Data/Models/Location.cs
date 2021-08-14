@@ -6,7 +6,6 @@ using MTGViewer.Data.Concurrency;
 
 #nullable enable
 
-
 namespace MTGViewer.Data
 {
     public class Location : Concurrent
@@ -26,13 +25,11 @@ namespace MTGViewer.Data
         [JsonIgnore]
         public ICollection<CardAmount> Cards { get; } = new HashSet<CardAmount>();
 
-
         public IOrderedEnumerable<Color> GetColors() => Cards
             .SelectMany(ca => ca.Card.Colors)
             .Distinct(new EntityComparer<Color>(c => c.Name))
             .OrderBy(c => c.Name);
     }
-
 
 
     public class Deck : Location
