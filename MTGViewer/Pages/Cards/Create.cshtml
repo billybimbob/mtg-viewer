@@ -6,126 +6,145 @@
     ViewData["Title"] = "Create";
 }
 
-<h1>Create</h1>
-
-<h4>Card</h4>
+<h1>Create Card</h1>
 <hr />
+
+@if (!string.IsNullOrEmpty(Model.ErrorMessage))
+{
+    <div class="alert alert-danger" role="alert">
+        @Model.ErrorMessage
+    </div>
+}
+
 <div class="row">
     <div class="col-md-4">
         <form method="post">
 
-        @if(Model.Matches is not null && Model.Matches.Any())
-        {
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th>
-                            @Html.DisplayNameForInnerType((Card c) => c.Name)
-                        </th>
-                        <th>
-                            @Html.DisplayNameForInnerType((Card c) => c.ManaCost)
-                        </th>
-                        <th>
-                            @Html.DisplayNameForInnerType((Card c) => c.Rarity)
-                        </th>
-                        <th>
-                            @Html.DisplayNameForInnerType((Card c) => c.SetName)
-                        </th>
-                        <th>
-                            @Html.DisplayNameForInnerType(
-                                (CreateModel.AmountModel a) => a.Amount)
-                        </th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @for(int i = 0; i < Model.Matches.Count; ++i)
-                    {
-                        var card = Model.Matches[i];
+            @if(Model.Matches is not null && Model.Matches.Any())
+            {
+                <table class="table">
+                    <thead>
                         <tr>
-                            <td>
-                                @Html.DisplayFor(_ => card.Name)
-                            </td>
-                            <td>
-                                @foreach (var cost in card.GetColorSymbols()) {
-                                    <i class="ms ms-@cost.ToLower() ms-cost"></i>
-                                }
-                            </td>
-                            <td>
-                                @Html.DisplayFor(_ => card.Rarity)
-                            </td>
-                            <td>
-                                @Html.DisplayFor(_ => card.SetName)
-                            </td>
-                            <td>
-                                <input asp-for="Amounts[i].Id"/>
-                                <input asp-for="Amounts[i].Amount"/>
-                            </td>
+                            <th>
+                                @Html.DisplayNameForInnerType((Card c) => c.Name)
+                            </th>
+                            <th>
+                                @Html.DisplayNameForInnerType((Card c) => c.ManaCost)
+                            </th>
+                            <th>
+                                @Html.DisplayNameForInnerType((Card c) => c.Rarity)
+                            </th>
+                            <th>
+                                @Html.DisplayNameForInnerType((Card c) => c.SetName)
+                            </th>
+                            <th>
+                                @Html.DisplayNameForInnerType(
+                                    (CreateModel.AmountModel a) => a.Amount)
+                            </th>
                         </tr>
-                    }
-                </tbody>
-            </table>
-        }
-        else
-        {
-            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-            <div class="form-group">
-                <label asp-for="Card.Name" class="control-label"></label>
-                <input asp-for="Card.Name" class="form-control" />
-                <span asp-validation-for="Card.Name" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="Card.ManaCost" class="control-label"></label>
-                <input asp-for="Card.ManaCost" class="form-control" />
-                <span asp-validation-for="Card.ManaCost" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="Card.Cmc" class="control-label"></label>
-                <input asp-for="Card.Cmc" class="form-control" />
-                <span asp-validation-for="Card.Cmc" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="Card.Rarity" class="control-label"></label>
-                <input asp-for="Card.Rarity" class="form-control" />
-                <span asp-validation-for="Card.Rarity" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="Card.SetName" class="control-label"></label>
-                <input asp-for="Card.SetName" class="form-control" />
-                <span asp-validation-for="Card.SetName" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="Card.Artist" class="control-label"></label>
-                <input asp-for="Card.Artist" class="form-control" />
-                <span asp-validation-for="Card.Artist" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="Card.Power" class="control-label"></label>
-                <input asp-for="Card.Power" class="form-control" />
-                <span asp-validation-for="Card.Power" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="Card.Toughness" class="control-label"></label>
-                <input asp-for="Card.Toughness" class="form-control" />
-                <span asp-validation-for="Card.Toughness" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="Card.Loyalty" class="control-label"></label>
-                <input asp-for="Card.Loyalty" class="form-control" />
-                <span asp-validation-for="Card.Loyalty" class="text-danger"></span>
-            </div>
+                    </thead>
+                    <tbody>
+                        @for(int i = 0; i < Model.Matches.Count; ++i)
+                        {
+                            var card = Model.Matches[i];
+                            <tr>
+                                <td>
+                                    @Html.DisplayFor(_ => card.Name)
+                                    <input type="hidden" asp-for="Matches[i].Name"/>
+                                </td>
+                                <td>
+                                    @foreach (var cost in card.GetColorSymbols())
+                                    {
+                                        <i class="ms ms-@cost.ToLower() ms-cost"></i>
+                                    }
+                                    <input type="hidden" asp-for="Matches[i].ManaCost"/>
+                                </td>
+                                <td>
+                                    @Html.DisplayFor(_ => card.Rarity)
+                                    <input type="hidden" asp-for="Matches[i].Rarity"/>
+                                </td>
+                                <td>
+                                    @Html.DisplayFor(_ => card.SetName)
+                                    <input type="hidden" asp-for="Matches[i].SetName"/>
+                                </td>
+                                <td>
+                                    <input asp-for="Amounts[i].Id"/>
+                                    <input asp-for="Amounts[i].Amount"/>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
 
-            @* <div class="form-group">
-                <label asp-for="CardAmount.Amount" class="control-label"></label>
-                <input asp-for="CardAmount.Amount" class="form-control" />
-                <span asp-validation-for="CardAmount.Amount" class="text-danger"></span>
-            </div> *@
-        }
+                <div class="form-group">
+                    <input type="submit"
+                           asp-page-handler="Amounts"
+                           class="btn btn-secondary"
+                           value="Create" />
 
-            <div class="form-group">
-                <input type="submit" value="Create" class="btn btn-primary" />
-            </div>
+                    <a asp-page="Create"
+                       class="btn btn-secondary">
+                       Reset
+                    </a>
+                </div>
+            }
+            else
+            {
+                <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+                <div class="form-group">
+                    <label asp-for="Card.Name" class="control-label"></label>
+                    <input asp-for="Card.Name" class="form-control" />
+                    <span asp-validation-for="Card.Name" class="text-danger"></span>
+                </div>
+                <div class="form-group">
+                    <label asp-for="Card.ManaCost" class="control-label"></label>
+                    <input asp-for="Card.ManaCost" class="form-control" />
+                    <span asp-validation-for="Card.ManaCost" class="text-danger"></span>
+                </div>
+                <div class="form-group">
+                    <label asp-for="Card.Cmc" class="control-label"></label>
+                    <input asp-for="Card.Cmc" class="form-control" />
+                    <span asp-validation-for="Card.Cmc" class="text-danger"></span>
+                </div>
+                <div class="form-group">
+                    <label asp-for="Card.Rarity" class="control-label"></label>
+                    <input asp-for="Card.Rarity" class="form-control" />
+                    <span asp-validation-for="Card.Rarity" class="text-danger"></span>
+                </div>
+                <div class="form-group">
+                    <label asp-for="Card.SetName" class="control-label"></label>
+                    <input asp-for="Card.SetName" class="form-control" />
+                    <span asp-validation-for="Card.SetName" class="text-danger"></span>
+                </div>
+                <div class="form-group">
+                    <label asp-for="Card.Artist" class="control-label"></label>
+                    <input asp-for="Card.Artist" class="form-control" />
+                    <span asp-validation-for="Card.Artist" class="text-danger"></span>
+                </div>
+                <div class="form-group">
+                    <label asp-for="Card.Power" class="control-label"></label>
+                    <input asp-for="Card.Power" class="form-control" />
+                    <span asp-validation-for="Card.Power" class="text-danger"></span>
+                </div>
+                <div class="form-group">
+                    <label asp-for="Card.Toughness" class="control-label"></label>
+                    <input asp-for="Card.Toughness" class="form-control" />
+                    <span asp-validation-for="Card.Toughness" class="text-danger"></span>
+                </div>
+                <div class="form-group">
+                    <label asp-for="Card.Loyalty" class="control-label"></label>
+                    <input asp-for="Card.Loyalty" class="form-control" />
+                    <span asp-validation-for="Card.Loyalty" class="text-danger"></span>
+                </div>
+
+                <div class="form-group">
+                    <input type="submit"
+                           asp-page-handler="Card"
+                           class="btn btn-secondary"
+                           value="Create" />
+                </div>
+            }
         </form>
-
     </div>
 </div>
 

@@ -19,10 +19,10 @@ namespace MTGViewer.Data.Json
 
         public IReadOnlyList<CardAmount> Amounts { get; set; }
 
-        public IReadOnlyList<Location> Locations { get; set; }
+        public IReadOnlyList<Location> Shares { get; set; }
         public IReadOnlyList<Deck> Decks { get; set; }
 
-        public IReadOnlyList<Suggestion> Suggestions { get; set; }
+        public IReadOnlyList<Transfer> Suggestions { get; set; }
         public IReadOnlyList<Trade> Trades { get; set; }
 
 
@@ -34,7 +34,7 @@ namespace MTGViewer.Data.Json
             var decks = await dbContext.Decks
                 .ToListAsync();
 
-            var allSuggestions = await dbContext.Suggestions
+            var allTransfers = await dbContext.Transfers
                 .ToListAsync();
 
             var trades = await dbContext.Trades
@@ -57,13 +57,13 @@ namespace MTGViewer.Data.Json
                 Amounts = await dbContext.Amounts
                     .ToListAsync(),
 
-                Locations = allLocations
+                Shares = allLocations
                     .Except(decks)
                     .ToList(),
 
                 Decks = decks,
 
-                Suggestions = allSuggestions
+                Suggestions = allTransfers
                     .Except(trades)
                     .ToList(),
 
@@ -113,10 +113,10 @@ namespace MTGViewer.Data.Json
 
                 dbContext.Amounts.AddRange(data.Amounts);
 
-                dbContext.Locations.AddRange(data.Locations);
+                dbContext.Locations.AddRange(data.Shares);
                 dbContext.Decks.AddRange(data.Decks);
 
-                dbContext.Suggestions.AddRange(data.Suggestions);
+                dbContext.Transfers.AddRange(data.Suggestions);
                 dbContext.Trades.AddRange(data.Trades);
 
                 await dbContext.SaveChangesAsync();

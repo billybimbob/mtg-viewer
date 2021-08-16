@@ -29,7 +29,7 @@ namespace MTGViewer.Tests.Data
 
             var card = await dbContext.Cards.FirstAsync();
 
-            var trade = new Suggestion
+            var trade = new Transfer
             {
                 Card = card,
                 Proposer = proposer,
@@ -37,7 +37,7 @@ namespace MTGViewer.Tests.Data
                 To = toLoc
             };
 
-            dbContext.Suggestions.Attach(trade);
+            dbContext.Transfers.Attach(trade);
 
             Assert.True(trade.IsSuggestion);
         }
@@ -80,14 +80,13 @@ namespace MTGViewer.Tests.Data
         }
 
 
-
         [Fact]
         public async Task SuggestionFilter_IsSuggestion()
         {
             await using var dbContext = TestHelpers.CardDbContext();
             await dbContext.SeedAsync();
 
-            var suggestion = await dbContext.Suggestions.FirstAsync(s => s.IsSuggestion);
+            var suggestion = await dbContext.Transfers.FirstAsync(s => s.IsSuggestion);
             var trade = await dbContext.Trades.FirstAsync();
 
             Assert.True(suggestion.IsSuggestion);
@@ -101,7 +100,7 @@ namespace MTGViewer.Tests.Data
             await using var dbContext = TestHelpers.CardDbContext();
             await dbContext.SeedAsync();
 
-            var suggestion = await dbContext.Suggestions.FirstAsync(s => !s.IsSuggestion);
+            var suggestion = await dbContext.Transfers.FirstAsync(s => !s.IsSuggestion);
             var trade = await dbContext.Trades.FirstAsync();
 
             Assert.True(suggestion is Trade);

@@ -34,7 +34,7 @@ namespace MTGViewer.Pages.Trades
 
         public IReadOnlyList<(CardUser, Deck)> ReceivedTrades { get; private set; }
         public IReadOnlyList<(CardUser, Deck)> PendingTrades { get; private set; }
-        public IReadOnlyList<Suggestion> Suggestions { get; private set; }
+        public IReadOnlyList<Transfer> Suggestions { get; private set; }
 
 
         public async Task OnGetAsync()
@@ -58,9 +58,8 @@ namespace MTGViewer.Pages.Trades
 
             PendingTrades = GetTradeList(userId, userTrades.Except(waitingUser));
 
-            Suggestions = await _dbContext.Suggestions
-                .Where(s => s.IsSuggestion)
-                .Where(s => s.ProposerId == userId || s.ReceiverId == userId)
+            Suggestions = await _dbContext.Transfers
+                .Where(t => t.IsSuggestion && t.ReceiverId == userId)
                 .Include(s => s.Card)
                 .Include(s => s.Proposer)
                 .Include(s => s.To)
@@ -68,8 +67,7 @@ namespace MTGViewer.Pages.Trades
         }
 
 
-        private IReadOnlyList<(CardUser, Deck)> GetTradeList(
-            string userId, IEnumerable<Trade> trades)
+        private IReadOnlyList<(CardUser, Deck)> GetTradeList(string userId, IEnumerable<Trade> trades)
         {
             return trades.GroupBy(t => t.TargetDeck)
                 .Select(g =>
@@ -82,12 +80,12 @@ namespace MTGViewer.Pages.Trades
 
         public async Task<IActionResult> OnPostAsync(int suggestId)
         {
-            var suggestion = await _dbContext.Trades.FindAsync(suggestId);
+            var suggestion = await _dbContext.Transfers.FindAsync(suggestId);
             var userId = _userManager.GetUserId(User);
 
             if (suggestion is null 
                 || !suggestion.IsSuggestion
-                || !suggestion.IsWaitingOn(userId))
+                || suggestion.ReceiverId != userId)
             {
                 PostMessage = "Specified suggestion cannot be acknowledged";
             }

@@ -20,7 +20,7 @@ namespace MTGViewer.Data
 
         public DbSet<CardAmount> Amounts { get; set; }
 
-        public DbSet<Suggestion> Suggestions { get; set; }
+        public DbSet<Transfer> Transfers { get; set; }
         public DbSet<Trade> Trades { get; set; }
 
 
@@ -36,11 +36,11 @@ namespace MTGViewer.Data
                     .HasValue<Location>(true)
                     .HasValue<Deck>(false))
 
-                .Entity<Suggestion>(suggestBuild =>
+                .Entity<Transfer>(suggestBuild =>
                 {
                     suggestBuild
                         .HasDiscriminator<bool>(s => s.IsSuggestion)
-                        .HasValue<Suggestion>(true)
+                        .HasValue<Transfer>(true)
                         .HasValue<Trade>(false);
 
                     suggestBuild

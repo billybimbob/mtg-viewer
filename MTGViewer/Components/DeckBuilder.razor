@@ -207,13 +207,13 @@
         _busy = true;
         try
         {
+            _dbContext.Attach(User);
+
             _deck = await GetOrCreateDeckAsync();
 
             _deckCards = _deck.Cards
                 .GroupBy(ca => ca.CardId)
                 .ToDictionary(g => g.Key, InitGroup);
-
-            _dbContext.Attach(User);
 
             FixDeckState();
         }
@@ -230,9 +230,13 @@
     {
         if (DeckId != default)
         {
-            return await _dbContext.Decks
-                .Include(l => l.Cards)
-                .SingleAsync(l => l.Id == DeckId);
+            var deck = await _dbContext.Decks.FindAsync(DeckId);
+
+            await _dbContext.Entry(deck)
+                .Collection(d => d.Cards)
+                .LoadAsync();
+
+            return deck;
         }
 
         var userDeckCount = await _dbContext.Decks
@@ -427,8 +431,9 @@
             await _dbContext.SaveChangesAsync();
             _result = SaveResult.Success;
 
-            Logger.LogInformation($"successfully updated, trying to nav to index, at {NavigationManager.BaseUri}");
-            NavigationManager.NavigateTo("Cards/Index"); // TODO: fix nav not working
+            Logger.LogInformation($"successfully updated");
+            // Logger.LogInformation($"trying to nav to index, at {NavigationManager.BaseUri}");
+            // NavigationManager.NavigateTo("Cards/Index"); // TODO: fix nav not working
         }
         catch (DbUpdateConcurrencyException ex)
         {

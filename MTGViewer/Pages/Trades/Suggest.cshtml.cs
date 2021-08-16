@@ -112,22 +112,24 @@ namespace MTGViewer.Pages.Trades
             }
 
             // include both request and non-request amounts
-            var suggestInDeck = _dbContext.Amounts
+            var suggestInDeck = await _dbContext.Amounts
                 .Where(ca =>
                     !ca.Location.IsShared && ca.CardId == Suggesting.Id)
                 .Select(ca => ca.Location as Deck)
-                .Where(d => d.OwnerId == userId);
+                .Where(d => d.OwnerId == userId)
+                .ToListAsync();
 
             // include both suggestions and trades
-            var suggestPrior = _dbContext.Suggestions
+            var suggestPrior = await _dbContext.Transfers
                 .Where(t =>
                     t.ReceiverId == userId && t.CardId == Suggesting.Id)
-                .Select(t => t.To);
-
-            var invalidDecks = await suggestInDeck
-                .Concat(suggestPrior)
+                .Select(t => t.To)
                 .Distinct()
                 .ToListAsync();
+
+            var invalidDecks = suggestInDeck
+                .Concat(suggestPrior)
+                .Distinct();
 
             return userDecks.Except(invalidDecks);
         }
@@ -155,7 +157,7 @@ namespace MTGViewer.Pages.Trades
 
             var fromUser = await _userManager.GetUserAsync(User);
 
-            var suggestion = new Suggestion
+            var suggestion = new Transfer
             {
                 Card = Suggesting,
                 Proposer = fromUser,
@@ -184,7 +186,7 @@ namespace MTGViewer.Pages.Trades
             }
 
             // include both suggestions and trades
-            var suggestPrior = await _dbContext.Trades
+            var suggestPrior = await _dbContext.Transfers
                 .Where(t => 
                     t.ReceiverId == deck.OwnerId && t.CardId == Suggesting.Id)
                 .AnyAsync();

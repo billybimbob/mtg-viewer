@@ -14,7 +14,6 @@ namespace MTGViewer.Data
         [RegularExpression(@"^[a-fA-F0-9-]{1,40}")]
         public string Id { get; set; }
 
-        [Required]
         public string MultiverseId { get; set; }
 
         [Required]

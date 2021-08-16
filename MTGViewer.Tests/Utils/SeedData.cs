@@ -75,7 +75,7 @@ namespace MTGViewer.Tests.Utils
             var suggester = users.First(u => 
                 u.Id != tradeFrom.OwnerId && u.Id != tradeTo.OwnerId);
 
-            var trades = new List<Suggestion>()
+            var transfers = new List<Transfer>()
             {
                 new Trade
                 {
@@ -86,7 +86,7 @@ namespace MTGViewer.Tests.Utils
                     From = tradeFrom,
                     Amount = _random.Next(5)
                 },
-                new Suggestion
+                new Transfer
                 {
                     Card = suggestCard,
                     Proposer = suggester,
@@ -95,7 +95,7 @@ namespace MTGViewer.Tests.Utils
                 }
             };
 
-            dbContext.Suggestions.AddRange(trades);
+            dbContext.Transfers.AddRange(transfers);
 
             await dbContext.SaveChangesAsync();
         }

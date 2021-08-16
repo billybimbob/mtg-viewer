@@ -10,7 +10,7 @@ using MTGViewer.Data.Concurrency;
 
 namespace MTGViewer.Data
 {
-    public class Suggestion : Concurrent
+    public class Transfer : Concurrent
     {
         public int Id { get; set; }
 
@@ -56,7 +56,7 @@ namespace MTGViewer.Data
     }
 
 
-    public class Trade : Suggestion
+    public class Trade : Transfer
     {
         public int FromId { get; set; }
 

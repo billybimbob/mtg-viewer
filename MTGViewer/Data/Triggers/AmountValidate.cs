@@ -9,12 +9,12 @@ using Microsoft.Extensions.Logging;
 
 namespace MTGViewer.Data.Triggers
 {
-    public class AmountValidateTrigger : IBeforeSaveTrigger<CardAmount>, IAfterSaveTrigger<CardAmount>
+    public class AmountValidate : IBeforeSaveTrigger<CardAmount>, IAfterSaveTrigger<CardAmount>
     {
         private readonly CardDbContext _dbContext;
-        private readonly ILogger<LiteTokenUpdateTrigger> _logger;
+        private readonly ILogger<LiteTokenUpdate> _logger;
 
-        public AmountValidateTrigger(CardDbContext dbContext, ILogger<LiteTokenUpdateTrigger> logger)
+        public AmountValidate(CardDbContext dbContext, ILogger<LiteTokenUpdate> logger)
         {
             _dbContext = dbContext;
             _logger = logger;
@@ -35,11 +35,13 @@ namespace MTGViewer.Data.Triggers
                 _dbContext.Attach(cardAmount);
             }
 
-            await _dbContext.Entry(cardAmount)
-                .Reference(ca => ca.Location)
-                .LoadAsync();
-
-            if (cardAmount.Location is null)
+            if (cardAmount.LocationId != default)
+            {
+                await _dbContext.Entry(cardAmount)
+                    .Reference(ca => ca.Location)
+                    .LoadAsync();
+            }
+            else if (cardAmount.Location is null)
             {
                 // TODO: change return location
                 cardAmount.Location = await _dbContext.Locations.FindAsync(1);
@@ -68,7 +70,7 @@ namespace MTGViewer.Data.Triggers
 
             if (!cardAmount.Location.IsShared && cardAmount.Amount == 0)
             {
-                _dbContext.Attach(cardAmount).State = EntityState.Deleted;
+                _dbContext.Entry(cardAmount).State = EntityState.Deleted;
 
                 await _dbContext.SaveChangesAsync();
             }

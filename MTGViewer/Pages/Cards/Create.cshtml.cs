@@ -21,23 +21,21 @@ namespace MTGViewer.Pages.Cards
     public class CreateModel : PageModel
     {
         private readonly ILogger<CreateModel> _logger;
-        private readonly CardDbContext _context;
-        private readonly MTGFetchService _fetch;
+        private readonly CardDbContext _dbContext;
+        private readonly MTGFetchService _mtgFetch;
 
-        public CreateModel(CardDbContext context, MTGFetchService fetch, ILogger<CreateModel> logger)
+        public CreateModel(CardDbContext dbContext, MTGFetchService mtgFetch, ILogger<CreateModel> logger)
         {
             _logger = logger;
-            _context = context;
-            _fetch = fetch;
+            _dbContext = dbContext;
+            _mtgFetch = mtgFetch;
         }
 
-        public Card Card { get; private set; }
 
-        public IReadOnlyList<Card> Matches { get; private set; }
+        public string ErrorMessage { get; private set; }
 
         [BindProperty]
-        public IList<AmountModel> Amounts { get; set; }
-
+        public Card Card { get; set; }
 
         public class AmountModel
         {
@@ -48,64 +46,48 @@ namespace MTGViewer.Pages.Cards
             public int Amount { get; set; }
         }
 
+        [BindProperty]
+        public IReadOnlyList<Card> Matches { get; set; }
 
-        public IActionResult OnGet()
-        {
-            _logger.LogInformation("on get");
-            return Page();
-        }
+        [BindProperty]
+        public IList<AmountModel> Amounts { get; set; }
+
 
 
         // To protect from overposting attacks, see https://aka.ms/RazorPagesCRUD
-        public async Task<IActionResult> OnPostAsync()
+        public async Task OnPostCardAsync()
         {
-            _logger.LogInformation("on post");
+            var matches = await _mtgFetch.MatchAsync(Card);
 
-            if (Amounts is not null && Amounts.Any())
+            if (!matches.Any())
             {
-                return await FromPickedAsync();
+                ErrorMessage = "No Matches were found";
             }
             else
             {
-                return await FromPostAsync();
-            }
-        }
-
-
-        private async Task<IActionResult> FromPostAsync()
-        {
-            Card = new Card();
-
-            if (await TryUpdateModelAsync(Card, "card"))
-            {
-                Matches = await _fetch.MatchAsync(Card);
+                Matches = matches;
                 Amounts = Matches
                     .Select(m => new AmountModel{ Id = m.MultiverseId })
                     .ToList();
             }
-
-            // if (Matches?.Count() == 1)
-            // {
-            //     Picked = Matches.First().Id;
-            //     return await FromPicked();
-            // }
-
-            return Page();
         }
 
-        private async Task<IActionResult> FromPickedAsync()
+
+
+        public async Task<IActionResult> OnPostAmountsAsync()
         {
             var newAmounts = await GetNewAmountsAsync();
 
             if (!newAmounts.Any())
             {
-                _logger.LogError("no amounts were set");
+                ErrorMessage = "No Amounts were Specified";
                 return Page();
             }
-
-            await AddNewCardsAsync(newAmounts);
-
-            return RedirectToPage("./Index");
+            else
+            {
+                await AddNewCardsAsync(newAmounts);
+                return RedirectToPage("./Index");
+            }
         }
 
 
@@ -120,7 +102,7 @@ namespace MTGViewer.Pages.Cards
 
             var pickedIds = picked.Select(a => a.Id).ToArray();
 
-            var inContext = (await _context.Cards
+            var inContext = (await _dbContext.Cards
                 .Select(c => c.Id)
                 .Where(id => pickedIds.Contains(id))
                 .AsNoTracking()
@@ -135,7 +117,7 @@ namespace MTGViewer.Pages.Cards
         {
             foreach(var info in newAmounts)
             {
-                var card = await _fetch.FindAsync(info.Id);
+                var card = await _mtgFetch.FindAsync(info.Id);
 
                 if (card is null)
                 {
@@ -146,10 +128,10 @@ namespace MTGViewer.Pages.Cards
                 var amountEntry = new CardAmount{ Amount = info.Amount };
                 card.Amounts.Add(amountEntry);
 
-                _context.Cards.Add(card);
+                _dbContext.Cards.Add(card);
             }
 
-            await _context.SaveChangesAsync();
+            await _dbContext.SaveChangesAsync();
         }
 
     }

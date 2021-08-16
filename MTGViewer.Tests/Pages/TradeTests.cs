@@ -25,7 +25,7 @@ namespace MTGViewer.Tests.Pages
 
             await dbContext.SeedAsync();
 
-            var suggestion = await dbContext.Suggestions
+            var suggestion = await dbContext.Transfers
                 .Include(t => t.Receiver)
                 .AsNoTracking()
                 .FirstAsync(s => s.IsSuggestion);

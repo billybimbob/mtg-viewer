@@ -82,9 +82,10 @@ namespace MTGViewer.Pages.Trades
 
         private async Task<IReadOnlyList<Deck>> GetProposeOptionsAsync()
         {
-            var nonUserLocs = _dbContext.Decks
+            var nonUserLocs = await _dbContext.Decks
                 .Where(d => d.OwnerId != Proposer.Id)
-                .Include(d => d.Owner);
+                .Include(d => d.Owner)
+                .ToListAsync();
 
             var currentTrades = await _dbContext.Trades
                 .Where(TradeFilter.Involves(Proposer.Id))
@@ -96,11 +97,11 @@ namespace MTGViewer.Pages.Trades
                 .SelectMany(t => t.GetDecks())
                 .Distinct();
 
-            return await nonUserLocs
+            return nonUserLocs
                 .Except(tradeLocs)
                 .OrderBy(l => l.Owner.Name)
                     .ThenBy(l => l.Name)
-                .ToListAsync();
+                .ToList();
         }
     }
 }
