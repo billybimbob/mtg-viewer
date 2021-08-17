@@ -2,8 +2,7 @@
 @model MTGViewer.Pages.Trades.SuggestModel
 
 @{
-    var card = Model.Suggesting;
-    ViewData["Title"] = $"Suggest {card.Name}";
+    ViewData["Title"] = $"Suggest {Model.Card.Name}";
 }
 
 <form method="post">
@@ -53,7 +52,7 @@
         }
 
         <a asp-page="./Suggest"
-            asp-route-cardid="@Model.Suggesting.Id"
+            asp-route-cardid="@Model.Card.Id"
             class="btn btn-secondary mb-3">
             Back</a>
 

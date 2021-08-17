@@ -42,19 +42,19 @@ namespace MTGViewer.Pages.Trades
 
         public IEnumerable<(Deck, IEnumerable<string>)> Decks { get; private set; }
 
-        public Card Suggesting { get; private set; }
+        public Card Card { get; private set; }
 
-        private async Task SetSuggestingAsync() =>
-            Suggesting = await _dbContext.Cards.FindAsync(CardId);
+        private async Task SetCardAsync() =>
+            Card = await _dbContext.Cards.FindAsync(CardId);
 
 
         public async Task<IActionResult> OnGetAsync(string cardId)
         {
             CardId = cardId;
 
-            await SetSuggestingAsync();
+            await SetCardAsync();
 
-            if (Suggesting is null)
+            if (Card is null)
             {
                 return NotFound();
             }
@@ -74,9 +74,9 @@ namespace MTGViewer.Pages.Trades
 
         public async Task<IActionResult> OnPostUserAsync(string userId)
         {
-            await SetSuggestingAsync();
+            await SetCardAsync();
 
-            if (Suggesting is null)
+            if (Card is null)
             {
                 return NotFound();
             }
@@ -112,21 +112,22 @@ namespace MTGViewer.Pages.Trades
             }
 
             // include both request and non-request amounts
-            var deckWithCard = await _dbContext.Amounts
-                .Where(ca => ca.CardId == Suggesting.Id
+            var decksWithCard = await _dbContext.Amounts
+                .Where(ca => ca.CardId == Card.Id
                     && ca.Location.Type == Discriminator.Deck)
                 .Select(ca => ca.Location as Deck)
                 .Where(d => d.OwnerId == userId)
+                .Distinct()
                 .ToListAsync();
 
             var transfersWithCard = await _dbContext.Transfers
-                .Where(t => t.CardId == Suggesting.Id
+                .Where(t => t.CardId == Card.Id
                     && (t.ProposerId == userId || t.ReceiverId == userId))
                 .Select(t => t.To)
                 .Distinct()
                 .ToListAsync();
 
-            var invalidDecks = deckWithCard
+            var invalidDecks = decksWithCard
                 .Concat(transfersWithCard)
                 .Distinct();
 
@@ -136,14 +137,23 @@ namespace MTGViewer.Pages.Trades
 
         public async Task<IActionResult> OnPostDeckAsync(int deckId)
         {
-            await SetSuggestingAsync();
+            await SetCardAsync();
 
-            if (Suggesting is null)
+            if (Card is null)
             {
                 return NotFound();
             }
 
-            var toDeck = await GetDeckAndValidateAsync(deckId);
+            if (deckId == default)
+            {
+                Decks = Enumerable.Empty<(Deck, IEnumerable<string>)>();
+
+                TempData.Keep(nameof(CardId));
+
+                return Page();
+            }
+
+            var toDeck = await GetAndValidateDeckAsync(deckId);
 
             if (toDeck is null)
             {
@@ -158,7 +168,7 @@ namespace MTGViewer.Pages.Trades
 
             var suggestion = new Suggestion
             {
-                Card = Suggesting,
+                Card = Card,
                 Proposer = fromUser,
                 Receiver = toDeck.Owner,
                 To = toDeck
@@ -174,7 +184,7 @@ namespace MTGViewer.Pages.Trades
         }
 
 
-        private async Task<Deck> GetDeckAndValidateAsync(int deckId)
+        private async Task<Deck> GetAndValidateDeckAsync(int deckId)
         {
             var deck = await _dbContext.Decks.FindAsync(deckId);
 
@@ -187,7 +197,7 @@ namespace MTGViewer.Pages.Trades
             // include both suggestions and trades
             var suggestPrior = await _dbContext.Suggestions
                 .Where(t => 
-                    t.ReceiverId == deck.OwnerId && t.CardId == Suggesting.Id)
+                    t.ReceiverId == deck.OwnerId && t.CardId == Card.Id)
                 .AnyAsync();
 
             if (suggestPrior)
@@ -202,7 +212,7 @@ namespace MTGViewer.Pages.Trades
 
             var suggestInDeck = deck.Cards
                 .Select(c => c.CardId)
-                .Contains(Suggesting.Id);
+                .Contains(Card.Id);
 
             if (suggestInDeck)
             {

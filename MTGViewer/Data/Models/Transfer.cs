@@ -49,7 +49,7 @@ namespace MTGViewer.Data
             ReceiverId == userId || ProposerId == userId;
 
 
-        public CardUser? GetOtherUser(string userId) => userId switch
+        public CardUser? GetOtherUser(string userId) => this switch
         {
             _ when userId == ProposerId => Receiver,
             _ when userId == ReceiverId => Proposer,
@@ -85,9 +85,9 @@ namespace MTGViewer.Data
         [JsonIgnore]
         public Deck? TargetDeck 
         {
-            get => ReceiverId switch
+            get => _target switch
             {
-                _ when _target != null => _target,
+                not null => _target,
                 _ when ReceiverId == To?.OwnerId => To,
                 _ when ReceiverId == From?.OwnerId => From,
                 _ => null
