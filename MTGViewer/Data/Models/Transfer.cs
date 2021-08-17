@@ -12,7 +12,14 @@ namespace MTGViewer.Data
 {
     public class Transfer : Concurrent
     {
+        protected Transfer()
+        { }
+
         public int Id { get; set; }
+
+        [JsonIgnore]
+        public Discriminator Type { get; set; }
+
 
         public string CardId { get; set; } = null!;
 
@@ -39,10 +46,6 @@ namespace MTGViewer.Data
         public Deck To { get; set; } = null!;
 
 
-        [JsonIgnore]
-        public bool IsSuggestion { get; private set; }
-
-
         public bool IsInvolved(string userId) =>
             ReceiverId == userId || ProposerId == userId;
 
@@ -54,6 +57,10 @@ namespace MTGViewer.Data
             _ => null
         };
     }
+
+
+    public class Suggestion : Transfer
+    { }
 
 
     public class Trade : Transfer

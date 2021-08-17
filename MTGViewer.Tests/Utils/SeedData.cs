@@ -65,11 +65,10 @@ namespace MTGViewer.Tests.Utils
 
             dbContext.Amounts.AddRange(amounts);
 
-            var source = amounts.First(ca => !ca.Location.IsShared);
+            var source = amounts.First(ca => ca.Location.Type != Discriminator.Shared);
 
-            var tradeFrom = source.Location as Deck;
-            var tradeTo = (Deck)locations.First(l => 
-                !l.IsShared && l.Id != source.LocationId);
+            var tradeFrom = (Deck)source.Location;
+            var tradeTo = decks.First(l => l.Id != source.LocationId);
 
             var suggestCard = cards.First();
             var suggester = users.First(u => 
@@ -86,7 +85,7 @@ namespace MTGViewer.Tests.Utils
                     From = tradeFrom,
                     Amount = _random.Next(5)
                 },
-                new Transfer
+                new Suggestion
                 {
                     Card = suggestCard,
                     Proposer = suggester,
@@ -134,7 +133,7 @@ namespace MTGViewer.Tests.Utils
 
         private static IEnumerable<Location> GetSharedLocations()
         {
-            yield return new Location("Test Shared");
+            yield return new Shared("Test Shared");
         }
 
 

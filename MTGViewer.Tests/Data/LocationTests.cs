@@ -14,16 +14,16 @@ namespace MTGViewer.Tests.Data
         {
             using var dbContext = TestHelpers.CardDbContext();
 
-            var location = new Location("No owner location");
+            var location = new Shared("No owner location");
 
             dbContext.Attach(location);
 
-            Assert.True(location.IsShared);
+            Assert.True(location.Type == Discriminator.Shared);
         }
 
 
         [Fact]
-        public async Task IsShared_Owner_ReturnsFalse()
+        public async Task Type_Deck_IsDeckDiscriminator()
         {
             await using var services = TestHelpers.ServiceProvider();
             await using var dbContext = TestHelpers.CardDbContext(services);
@@ -40,37 +40,21 @@ namespace MTGViewer.Tests.Data
 
             dbContext.Attach(location);
 
-            Assert.False(location.IsShared);
+            Assert.True(location.Type == Discriminator.Deck);
         }
 
 
         [Fact]
-        public async Task LocationFilter_IsShared()
+        public async Task Type_Locations_IsCorrectType()
         {
             await using var dbContext = TestHelpers.CardDbContext();
             await dbContext.SeedAsync();
 
-            var sharedLocation = await dbContext.Locations.FirstAsync(l => l.IsShared);
-            var deck = await dbContext.Decks.FirstAsync();
+            var shared = await dbContext.Locations.FirstAsync(l => l.Type == Discriminator.Shared);
+            var deck = await dbContext.Locations.FirstAsync(l => l.Type == Discriminator.Deck);
 
-            Assert.True(sharedLocation.IsShared);
-            Assert.False(deck.IsShared);
-        }
-
-
-        [Fact]
-        public async Task DeckFilter_IsNotShared()
-        {
-            await using var dbContext = TestHelpers.CardDbContext();
-            await dbContext.SeedAsync();
-
-            var location = await dbContext.Locations.FirstAsync(l => !l.IsShared);
-            var deck = await dbContext.Decks.FirstAsync();
-
-            Assert.True(location is Deck);
-            Assert.False(location.IsShared);
-
-            Assert.False(deck.IsShared);
+            Assert.True(shared is Shared);
+            Assert.True(deck is Deck);
         }
     }
 }

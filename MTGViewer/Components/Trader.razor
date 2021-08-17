@@ -274,7 +274,7 @@
             .SingleAsync(l => l.Id == DeckId);
 
         _cardOptions = await _dbContext.Amounts
-            .Where(ca => !ca.Location.IsShared)
+            .Where(ca => ca.Location.Type == Discriminator.Deck)
             .Where(ca => (ca.Location as Deck).OwnerId == Proposer.Id)
             .Include(ca => ca.Card)
             .Include(ca => ca.Location)

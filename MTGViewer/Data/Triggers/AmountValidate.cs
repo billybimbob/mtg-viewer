@@ -28,26 +28,25 @@ namespace MTGViewer.Data.Triggers
             }
 
             var cardAmount = trigContext.Entity;
+            var location = cardAmount.Location;
 
-            if (_dbContext.Entry(cardAmount).State == EntityState.Detached)
+            if (location is null)
             {
-                // attach just to load
-                _dbContext.Attach(cardAmount);
+                if (cardAmount.LocationId == default)
+                {
+                    // TODO: change return location
+                    cardAmount.Location = await _dbContext.Shares.FindAsync(1);
+                    location = cardAmount.Location;
+                }
+                else
+                {
+                    location = await _dbContext.Locations
+                        .AsNoTracking()
+                        .SingleAsync(l => l.Id == cardAmount.LocationId);
+                }
             }
 
-            if (cardAmount.LocationId != default)
-            {
-                await _dbContext.Entry(cardAmount)
-                    .Reference(ca => ca.Location)
-                    .LoadAsync();
-            }
-            else if (cardAmount.Location is null)
-            {
-                // TODO: change return location
-                cardAmount.Location = await _dbContext.Locations.FindAsync(1);
-            }
-
-            if (cardAmount.Location.IsShared)
+            if (location.Type == Discriminator.Shared)
             {
                 // makes sure that non-owned locations cannot have a request
                 cardAmount.IsRequest = false;
@@ -64,11 +63,26 @@ namespace MTGViewer.Data.Triggers
 
             var cardAmount = trigContext.Entity;
 
-            await _dbContext.Entry(cardAmount)
-                .Reference(ca => ca.Location)
-                .LoadAsync();
+            if (_dbContext.Entry(cardAmount).State == EntityState.Detached)
+            {
+                // attach just to load
+                _dbContext.Attach(cardAmount);
+            }
 
-            if (!cardAmount.Location.IsShared && cardAmount.Amount == 0)
+            Location location;
+
+            if (cardAmount.Location is null)
+            {
+                location = await _dbContext.Locations
+                    .AsNoTracking()
+                    .SingleAsync(l => l.Id == cardAmount.LocationId);
+            }
+            else
+            {
+                location = cardAmount.Location;
+            }
+
+            if (location.Type == Discriminator.Deck && cardAmount.Amount == 0)
             {
                 _dbContext.Entry(cardAmount).State = EntityState.Deleted;
 

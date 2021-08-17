@@ -58,8 +58,8 @@ namespace MTGViewer.Pages.Trades
 
             PendingTrades = GetTradeList(userId, userTrades.Except(waitingUser));
 
-            Suggestions = await _dbContext.Transfers
-                .Where(t => t.IsSuggestion && t.ReceiverId == userId)
+            Suggestions = await _dbContext.Suggestions
+                .Where(t => t.ReceiverId == userId)
                 .Include(s => s.Card)
                 .Include(s => s.Proposer)
                 .Include(s => s.To)
@@ -80,12 +80,10 @@ namespace MTGViewer.Pages.Trades
 
         public async Task<IActionResult> OnPostAsync(int suggestId)
         {
-            var suggestion = await _dbContext.Transfers.FindAsync(suggestId);
+            var suggestion = await _dbContext.Suggestions.FindAsync(suggestId);
             var userId = _userManager.GetUserId(User);
 
-            if (suggestion is null 
-                || !suggestion.IsSuggestion
-                || suggestion.ReceiverId != userId)
+            if (suggestion is null || suggestion.ReceiverId != userId)
             {
                 PostMessage = "Specified suggestion cannot be acknowledged";
             }

@@ -29,7 +29,7 @@ namespace MTGViewer.Pages.Decks
         }
 
 
-        public Location Deck { get; set; }
+        public Deck Deck { get; set; }
 
         public async Task<IActionResult> OnGetAsync(int id)
         {
@@ -51,7 +51,7 @@ namespace MTGViewer.Pages.Decks
 
         public async Task<IActionResult> OnPostAsync(int id)
         {
-            Deck = await _context.Locations
+            Deck = await _context.Decks
                 .Include(l => l.Cards)
                     .ThenInclude(ca => ca.Card)
                 .SingleOrDefaultAsync(l => l.Id == id);
@@ -66,7 +66,7 @@ namespace MTGViewer.Pages.Decks
                 var availables = await _context.Cards
                     .Where(c => availCards.Contains(c.Id))
                     // TODO: change return location
-                    .Select(c => c.Amounts.First(ca => ca.Location.IsShared))
+                    .Select(c => c.Amounts.First(ca => ca.Location.Type == Discriminator.Shared))
                     .ToDictionaryAsync(ca => ca.Card.Id);
 
                 foreach(var ca in Deck.Cards)
@@ -76,7 +76,7 @@ namespace MTGViewer.Pages.Decks
 
                 _context.RemoveRange(Deck.Cards);
 
-                _context.Locations.Remove(Deck);
+                _context.Decks.Remove(Deck);
 
                 await _context.SaveChangesAsync();
             }

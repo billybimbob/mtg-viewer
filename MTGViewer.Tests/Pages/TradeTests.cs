@@ -25,10 +25,10 @@ namespace MTGViewer.Tests.Pages
 
             await dbContext.SeedAsync();
 
-            var suggestion = await dbContext.Transfers
+            var suggestion = await dbContext.Suggestions
                 .Include(t => t.Receiver)
                 .AsNoTracking()
-                .FirstAsync(s => s.IsSuggestion);
+                .FirstAsync();
 
             var userClaim = await claimsFactory.CreateAsync(suggestion.Receiver);
             var indexModel = new IndexModel(userManager, dbContext);

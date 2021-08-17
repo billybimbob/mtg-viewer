@@ -79,7 +79,7 @@ namespace MTGViewer.Data
         {
             if (!context.Locations.Any())
             {
-                context.Locations.Add(new Location("Dev Default"));
+                context.Locations.Add(new Shared("Dev Default"));
                 context.SaveChanges();
             }
         }

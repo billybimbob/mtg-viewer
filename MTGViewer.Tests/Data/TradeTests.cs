@@ -12,7 +12,7 @@ namespace MTGViewer.Tests.Data
     public class TradeTests
     {
         [Fact]
-        public async Task IsSuggestion_NoFrom_ReturnsTrue()
+        public async Task Type_NoFrom_IsSuggestion()
         {
             await using var services = TestHelpers.ServiceProvider();
             await using var dbContext = TestHelpers.CardDbContext(services);
@@ -29,7 +29,7 @@ namespace MTGViewer.Tests.Data
 
             var card = await dbContext.Cards.FirstAsync();
 
-            var trade = new Transfer
+            var suggestion = new Suggestion
             {
                 Card = card,
                 Proposer = proposer,
@@ -37,14 +37,14 @@ namespace MTGViewer.Tests.Data
                 To = toLoc
             };
 
-            dbContext.Transfers.Attach(trade);
+            dbContext.Suggestions.Attach(suggestion);
 
-            Assert.True(trade.IsSuggestion);
+            Assert.Equal(Discriminator.Suggestion, suggestion.Type);
         }
 
 
         [Fact]
-        public async Task IsSuggestion_WithFrom_ReturnsFalse()
+        public async Task Type_WithFrom_IsTrade()
         {
             await using var services = TestHelpers.ServiceProvider();
             await using var dbContext = TestHelpers.CardDbContext(services);
@@ -53,7 +53,7 @@ namespace MTGViewer.Tests.Data
             await dbContext.SeedAsync();
 
             var fromAmount = await dbContext.Amounts
-                .Where(ca => !ca.Location.IsShared)
+                .Where(ca => ca.Location.Type == Discriminator.Deck)
                 .Include(ca => ca.Card)
                 .Include(ca => ca.Location)
                 .FirstAsync(ca => ca.IsRequest == false);
@@ -76,37 +76,21 @@ namespace MTGViewer.Tests.Data
 
             dbContext.Trades.Attach(trade);
 
-            Assert.False(trade.IsSuggestion);
+            Assert.Equal(Discriminator.Trade, trade.Type);
         }
 
 
         [Fact]
-        public async Task SuggestionFilter_IsSuggestion()
+        public async Task Type_Trades_IsCorrectType()
         {
             await using var dbContext = TestHelpers.CardDbContext();
             await dbContext.SeedAsync();
 
-            var suggestion = await dbContext.Transfers.FirstAsync(s => s.IsSuggestion);
-            var trade = await dbContext.Trades.FirstAsync();
+            var suggestion = await dbContext.Transfers.FirstAsync(t => t.Type == Discriminator.Suggestion);
+            var trade = await dbContext.Transfers.FirstAsync(t => t.Type == Discriminator.Trade);
 
-            Assert.True(suggestion.IsSuggestion);
-            Assert.False(trade.IsSuggestion);
-        }
-
-
-        [Fact]
-        public async Task TradeFilter_IsNotSuggestion()
-        {
-            await using var dbContext = TestHelpers.CardDbContext();
-            await dbContext.SeedAsync();
-
-            var suggestion = await dbContext.Transfers.FirstAsync(s => !s.IsSuggestion);
-            var trade = await dbContext.Trades.FirstAsync();
-
-            Assert.True(suggestion is Trade);
-            Assert.False(suggestion.IsSuggestion);
-
-            Assert.False(trade.IsSuggestion);
+            Assert.True(suggestion is Suggestion);
+            Assert.True(trade is Trade);
         }
     }
 }

@@ -45,9 +45,7 @@ namespace MTGViewer.Pages.Trades
             {
                 var deck = await _dbContext.Decks.FindAsync(id);
 
-                bool validDeck = deck != null
-                    && deck.IsShared == false
-                    && deck.OwnerId != proposerId;
+                bool validDeck = deck != null && deck.OwnerId != proposerId;
 
                 if (validDeck)
                 {

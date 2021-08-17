@@ -19,31 +19,20 @@ namespace MTGViewer.Data.Json
 
         public IReadOnlyList<CardAmount> Amounts { get; set; }
 
-        public IReadOnlyList<Location> Shares { get; set; }
+        public IReadOnlyList<Shared> Shares { get; set; }
         public IReadOnlyList<Deck> Decks { get; set; }
 
-        public IReadOnlyList<Transfer> Suggestions { get; set; }
+        public IReadOnlyList<Suggestion> Suggestions { get; set; }
         public IReadOnlyList<Trade> Trades { get; set; }
 
 
         public static async Task<CardData> CreateAsync(CardDbContext dbContext)
         {
-            var allLocations = await dbContext.Locations
-                .ToListAsync();
-
-            var decks = await dbContext.Decks
-                .ToListAsync();
-
-            var allTransfers = await dbContext.Transfers
-                .ToListAsync();
-
-            var trades = await dbContext.Trades
-                .ToListAsync();
-
             // TODO: add some includes possibly?
             return new CardData
             {
                 Users = await dbContext.Users
+                    .AsNoTracking()
                     .ToListAsync(),
 
                 Cards = await dbContext.Cards
@@ -52,22 +41,28 @@ namespace MTGViewer.Data.Json
                     .Include(c => c.SubTypes)
                     .Include(c => c.SuperTypes)
                     .AsSplitQuery()
+                    .AsNoTracking()
                     .ToListAsync(),
 
                 Amounts = await dbContext.Amounts
+                    .AsNoTracking()
                     .ToListAsync(),
 
-                Shares = allLocations
-                    .Except(decks)
-                    .ToList(),
+                Shares = await dbContext.Shares
+                    .AsNoTracking()
+                    .ToListAsync(),
 
-                Decks = decks,
+                Decks = await dbContext.Decks
+                    .AsNoTracking()
+                    .ToListAsync(),
 
-                Suggestions = allTransfers
-                    .Except(trades)
-                    .ToList(),
+                Suggestions = await dbContext.Suggestions
+                    .AsNoTracking()
+                    .ToListAsync(),
 
-                Trades = trades
+                Trades = await dbContext.Trades
+                    .AsNoTracking()
+                    .ToListAsync()
             };
         }
     }
@@ -113,10 +108,10 @@ namespace MTGViewer.Data.Json
 
                 dbContext.Amounts.AddRange(data.Amounts);
 
-                dbContext.Locations.AddRange(data.Shares);
+                dbContext.Shares.AddRange(data.Shares);
                 dbContext.Decks.AddRange(data.Decks);
 
-                dbContext.Transfers.AddRange(data.Suggestions);
+                dbContext.Suggestions.AddRange(data.Suggestions);
                 dbContext.Trades.AddRange(data.Trades);
 
                 await dbContext.SaveChangesAsync();

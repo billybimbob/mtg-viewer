@@ -53,19 +53,17 @@ namespace MTGViewer.Pages.Cards
         public IList<AmountModel> Amounts { get; set; }
 
 
-
         // To protect from overposting attacks, see https://aka.ms/RazorPagesCRUD
         public async Task OnPostCardAsync()
         {
-            var matches = await _mtgFetch.MatchAsync(Card);
+            Matches = await _mtgFetch.MatchAsync(Card);
 
-            if (!matches.Any())
+            if (!Matches.Any())
             {
                 ErrorMessage = "No Matches were found";
             }
             else
             {
-                Matches = matches;
                 Amounts = Matches
                     .Select(m => new AmountModel{ Id = m.MultiverseId })
                     .ToList();
@@ -103,7 +101,7 @@ namespace MTGViewer.Pages.Cards
             var pickedIds = picked.Select(a => a.Id).ToArray();
 
             var inContext = (await _dbContext.Cards
-                .Select(c => c.Id)
+                .Select(c => c.MultiverseId)
                 .Where(id => pickedIds.Contains(id))
                 .AsNoTracking()
                 .ToListAsync())

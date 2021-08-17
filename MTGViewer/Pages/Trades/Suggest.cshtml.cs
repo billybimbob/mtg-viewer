@@ -112,23 +112,22 @@ namespace MTGViewer.Pages.Trades
             }
 
             // include both request and non-request amounts
-            var suggestInDeck = await _dbContext.Amounts
-                .Where(ca =>
-                    !ca.Location.IsShared && ca.CardId == Suggesting.Id)
+            var deckWithCard = await _dbContext.Amounts
+                .Where(ca => ca.CardId == Suggesting.Id
+                    && ca.Location.Type == Discriminator.Deck)
                 .Select(ca => ca.Location as Deck)
                 .Where(d => d.OwnerId == userId)
                 .ToListAsync();
 
-            // include both suggestions and trades
-            var suggestPrior = await _dbContext.Transfers
-                .Where(t =>
-                    t.ReceiverId == userId && t.CardId == Suggesting.Id)
+            var transfersWithCard = await _dbContext.Transfers
+                .Where(t => t.CardId == Suggesting.Id
+                    && (t.ProposerId == userId || t.ReceiverId == userId))
                 .Select(t => t.To)
                 .Distinct()
                 .ToListAsync();
 
-            var invalidDecks = suggestInDeck
-                .Concat(suggestPrior)
+            var invalidDecks = deckWithCard
+                .Concat(transfersWithCard)
                 .Distinct();
 
             return userDecks.Except(invalidDecks);
@@ -157,7 +156,7 @@ namespace MTGViewer.Pages.Trades
 
             var fromUser = await _userManager.GetUserAsync(User);
 
-            var suggestion = new Transfer
+            var suggestion = new Suggestion
             {
                 Card = Suggesting,
                 Proposer = fromUser,
@@ -179,14 +178,14 @@ namespace MTGViewer.Pages.Trades
         {
             var deck = await _dbContext.Decks.FindAsync(deckId);
 
-            if (deck is null || deck.IsShared)
+            if (deck is null)
             {
                 PostMessage = "Suggestion target is not valid";
                 return null;
             }
 
             // include both suggestions and trades
-            var suggestPrior = await _dbContext.Transfers
+            var suggestPrior = await _dbContext.Suggestions
                 .Where(t => 
                     t.ReceiverId == deck.OwnerId && t.CardId == Suggesting.Id)
                 .AnyAsync();
