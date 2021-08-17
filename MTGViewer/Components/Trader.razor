@@ -276,6 +276,7 @@
         _cardOptions = await _dbContext.Amounts
             .Where(ca => ca.Location.Type == Discriminator.Deck)
             .Where(ca => (ca.Location as Deck).OwnerId == Proposer.Id)
+            .Where(ca => !ca.IsRequest)
             .Include(ca => ca.Card)
             .Include(ca => ca.Location)
             .OrderBy(ca => ca.Card.Name)
@@ -310,14 +311,13 @@
     private IEnumerable<(CardAmount, int)> GetMergedDeck()
     {
         var mergedAmounts = _deck.Cards
-            .ToDictionary(ca => ca.Id, ca => ca.Amount);
+            .ToDictionary(ca => ca.CardId, ca => ca.Amount);
 
         foreach (var trade in _currentOffers.Values)
         {
-            if (trade.FromId is int fromId
-                && mergedAmounts.TryGetValue(fromId, out int amount))
+            if (mergedAmounts.TryGetValue(trade.CardId, out int amount))
             {
-                mergedAmounts[fromId] = amount - trade.Amount;
+                mergedAmounts[trade.CardId] = amount - trade.Amount;
             }
         }
 
@@ -325,7 +325,7 @@
 
         foreach (var cardAmount in orderedDeck)
         {
-            yield return (cardAmount, mergedAmounts[cardAmount.Id]);
+            yield return (cardAmount, mergedAmounts[cardAmount.CardId]);
         }
     }
 
@@ -356,13 +356,13 @@
             .Where(ca => ca.Location.Id == _destinationId);
 
         var mergedAmounts = optionsFromSelect
-            .ToDictionary(ca => ca.Id, ca => ca.Amount);
+            .ToDictionary(ca => ca.CardId, ca => ca.Amount);
 
         foreach (var trade in _currentOffers.Values)
         {
-            if (mergedAmounts.TryGetValue(trade.FromId, out int amount))
+            if (mergedAmounts.TryGetValue(trade.CardId, out int amount))
             {
-                mergedAmounts[trade.FromId] = amount - trade.Amount;
+                mergedAmounts[trade.CardId] = amount - trade.Amount;
             }
         }
 
@@ -370,7 +370,7 @@
 
         foreach (var cardAmount in orderedOptions)
         {
-            yield return (cardAmount, mergedAmounts[cardAmount.Id]);
+            yield return (cardAmount, mergedAmounts[cardAmount.CardId]);
         }
     }
 

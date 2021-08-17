@@ -43,9 +43,7 @@ namespace MTGViewer.Pages.Trades
 
             var userTrades = await _dbContext.Trades
                 .Where(TradeFilter.Involves(userId))
-                .Include(t => t.To)
-                    .ThenInclude(l => l.Owner)
-                .Include(t => t.From)
+                .Include(t => t.TargetDeck)
                     .ThenInclude(l => l.Owner)
                 .ToListAsync();
 
@@ -59,7 +57,7 @@ namespace MTGViewer.Pages.Trades
             PendingTrades = GetTradeList(userId, userTrades.Except(waitingUser));
 
             Suggestions = await _dbContext.Suggestions
-                .Where(t => t.ReceiverId == userId)
+                .Where(s => s.ReceiverId == userId)
                 .Include(s => s.Card)
                 .Include(s => s.Proposer)
                 .Include(s => s.To)

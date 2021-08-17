@@ -85,15 +85,11 @@ namespace MTGViewer.Pages.Trades
                 .Include(d => d.Owner)
                 .ToListAsync();
 
-            var currentTrades = await _dbContext.Trades
+            var tradeLocs = await _dbContext.Trades
                 .Where(TradeFilter.Involves(Proposer.Id))
-                .Include(t => t.To)
-                .Include(t => t.From)
+                .SelectMany(t => t.Decks)
+                .Distinct()
                 .ToListAsync();
-
-            var tradeLocs = currentTrades
-                .SelectMany(t => t.GetDecks())
-                .Distinct();
 
             return nonUserLocs
                 .Except(tradeLocs)

@@ -47,5 +47,8 @@ namespace MTGViewer.Data
         [JsonIgnore]
         public CardUser Owner { get; set; } = null!;
         public string OwnerId { get; set; } = null!;
+
+        [JsonIgnore]
+        public ICollection<Transfer> Transfers { get; } = new HashSet<Transfer>();
     }
 }

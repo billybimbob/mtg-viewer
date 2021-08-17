@@ -42,6 +42,9 @@ namespace MTGViewer.Data
         public int ToId { get; set; }
 
 
+        public ICollection<Deck> Decks { get; set; } = new HashSet<Deck>();
+
+
         public bool IsInvolved(string userId) =>
             ReceiverId == userId || ProposerId == userId;
 
@@ -77,24 +80,25 @@ namespace MTGViewer.Data
         public int Amount { get; set; }
 
 
+        private Deck? _target;
+
         [JsonIgnore]
-        public Deck? TargetDeck => ReceiverId switch
+        public Deck? TargetDeck 
         {
-            _ when ReceiverId == To.OwnerId => To,
-            _ when ReceiverId == From.OwnerId => From,
-            _ => null
-        };
+            get => ReceiverId switch
+            {
+                _ when _target != null => _target,
+                _ when ReceiverId == To?.OwnerId => To,
+                _ when ReceiverId == From?.OwnerId => From,
+                _ => null
+            };
+            private set =>
+                _target = value;
+        }
 
 
         public bool IsWaitingOn(string userId) =>
             ReceiverId == userId && !IsCounter
                 || ProposerId == userId && IsCounter;
-
-
-        public IEnumerable<Deck> GetDecks()
-        {
-            yield return To;
-            yield return From;
-        }
     }
 }

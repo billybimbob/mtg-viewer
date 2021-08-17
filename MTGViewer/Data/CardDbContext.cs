@@ -39,34 +39,43 @@ namespace MTGViewer.Data
                         .HasValue<Shared>(Discriminator.Shared)
                         .HasValue<Deck>(Discriminator.Deck))
 
-                .Entity<Transfer>(suggestBuild =>
+                .Entity<Transfer>(transferBuild =>
                 {
-                    suggestBuild
+                    transferBuild
                         .HasDiscriminator(t => t.Type)
                             .HasValue<Transfer>(Discriminator.Invalid)
                             .HasValue<Suggestion>(Discriminator.Suggestion)
                             .HasValue<Trade>(Discriminator.Trade);
 
-                    suggestBuild
-                        .HasOne(s => s.Proposer)
+                    transferBuild
+                        .HasOne(t => t.Proposer)
                         .WithMany()
                         .OnDelete(DeleteBehavior.Cascade);
 
-                    suggestBuild
-                        .HasOne(s => s.Receiver)
+                    transferBuild
+                        .HasOne(t => t.Receiver)
                         .WithMany()
                         .OnDelete(DeleteBehavior.Cascade);
 
-                    suggestBuild
-                        .HasOne(s => s.To)
+                    transferBuild
+                        .HasOne(t => t.To)
                         .WithMany()
                         .OnDelete(DeleteBehavior.Cascade);
+
+                    transferBuild
+                        .HasMany(t => t.Decks)
+                        .WithMany(d => d.Transfers);
                 })
                 
                 .Entity<Trade>(tradeBuild =>
                 {
                     tradeBuild
                         .HasOne(t => t.From)
+                        .WithMany()
+                        .OnDelete(DeleteBehavior.Cascade);
+                    
+                    tradeBuild
+                        .HasOne(t => t.TargetDeck)
                         .WithMany()
                         .OnDelete(DeleteBehavior.Cascade);
                 });
