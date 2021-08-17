@@ -55,7 +55,7 @@ namespace MTGViewer.Tests.Services
 
             var card = await fetch.FindAsync(TEST_ID);
 
-            Assert.Equal(card.Name, TEST_NAME);
+            Assert.Equal(TEST_NAME, card.Name);
         }
 
 
@@ -84,7 +84,8 @@ namespace MTGViewer.Tests.Services
 
             var card = await fetch.FindAsync(TEST_ID);
 
-            Assert.Equal(card.Name, TEST_NAME);
+            Assert.Equal(TEST_ID, testCard.MultiverseId);
+            Assert.Equal(TEST_NAME, card.Name);
         }
 
 

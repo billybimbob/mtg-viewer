@@ -6,12 +6,12 @@ namespace MTGViewer.Data
     // TODO: figure out better way to create expressions
     public static class SuggestFilter
     {
-        public static Expression<Func<Transfer, bool>> Involves(string userId) =>
+        public static Expression<Func<Suggestion, bool>> Involves(string userId) =>
             suggest => suggest.ProposerId == userId 
                 || suggest.ReceiverId == userId;
 
 
-        public static Expression<Func<Transfer, bool>> Involves(string userId, int deckId) =>
+        public static Expression<Func<Suggestion, bool>> Involves(string userId, int deckId) =>
             suggest => (suggest.ProposerId == userId || suggest.ReceiverId == userId)
                 && suggest.ToId == deckId;
     }

@@ -12,7 +12,7 @@ namespace MTGViewer.Tests.Data
     public class TradeTests
     {
         [Fact]
-        public async Task Type_NoFrom_IsSuggestion()
+        public async Task Type_Suggestion_IsCorrectDiscriminator()
         {
             await using var services = TestHelpers.ServiceProvider();
             await using var dbContext = TestHelpers.CardDbContext(services);
@@ -44,7 +44,7 @@ namespace MTGViewer.Tests.Data
 
 
         [Fact]
-        public async Task Type_WithFrom_IsTrade()
+        public async Task Type_Trade_IsCorrectDiscriminator()
         {
             await using var services = TestHelpers.ServiceProvider();
             await using var dbContext = TestHelpers.CardDbContext(services);
@@ -81,7 +81,7 @@ namespace MTGViewer.Tests.Data
 
 
         [Fact]
-        public async Task Type_Trades_IsCorrectType()
+        public async Task Type_Transfers_IsCorrectType()
         {
             await using var dbContext = TestHelpers.CardDbContext();
             await dbContext.SeedAsync();
@@ -89,8 +89,8 @@ namespace MTGViewer.Tests.Data
             var suggestion = await dbContext.Transfers.FirstAsync(t => t.Type == Discriminator.Suggestion);
             var trade = await dbContext.Transfers.FirstAsync(t => t.Type == Discriminator.Trade);
 
-            Assert.True(suggestion is Suggestion);
-            Assert.True(trade is Trade);
+            Assert.IsType<Suggestion>(suggestion);
+            Assert.IsType<Trade>(trade);
         }
     }
 }

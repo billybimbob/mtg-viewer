@@ -10,7 +10,7 @@ namespace MTGViewer.Tests.Data
     public class LocationTests
     {
         [Fact]
-        public void IsShared_NoOwner_ReturnsTrue()
+        public void Type_Shared_IsCorrectDiscriminator()
         {
             using var dbContext = TestHelpers.CardDbContext();
 
@@ -18,12 +18,12 @@ namespace MTGViewer.Tests.Data
 
             dbContext.Attach(location);
 
-            Assert.True(location.Type == Discriminator.Shared);
+            Assert.Equal(Discriminator.Shared, location.Type);
         }
 
 
         [Fact]
-        public async Task Type_Deck_IsDeckDiscriminator()
+        public async Task Type_Deck_IsCorrectDiscriminator()
         {
             await using var services = TestHelpers.ServiceProvider();
             await using var dbContext = TestHelpers.CardDbContext(services);
@@ -40,7 +40,7 @@ namespace MTGViewer.Tests.Data
 
             dbContext.Attach(location);
 
-            Assert.True(location.Type == Discriminator.Deck);
+            Assert.Equal(Discriminator.Deck, location.Type);
         }
 
 
@@ -53,8 +53,8 @@ namespace MTGViewer.Tests.Data
             var shared = await dbContext.Locations.FirstAsync(l => l.Type == Discriminator.Shared);
             var deck = await dbContext.Locations.FirstAsync(l => l.Type == Discriminator.Deck);
 
-            Assert.True(shared is Shared);
-            Assert.True(deck is Deck);
+            Assert.IsType<Shared>(shared);
+            Assert.IsType<Deck>(deck);
         }
     }
 }

@@ -31,11 +31,6 @@ namespace MTGViewer.Data.Triggers
 
             var trade = trigContext.Entity;
 
-            if (_dbContext.Entry(trade).State == EntityState.Detached)
-            {
-                _dbContext.Attach(trade);
-            }
-
             var fromAmount = await _dbContext.Amounts
                 .AsNoTracking()
                 .SingleOrDefaultAsync(ca =>
@@ -58,6 +53,11 @@ namespace MTGViewer.Data.Triggers
             }
 
             var trade = trigContext.Entity;
+
+            if (_dbContext.Entry(trade).State == EntityState.Detached)
+            {
+                _dbContext.Attach(trade);
+            }
 
             if (trade.Amount == 0)
             {

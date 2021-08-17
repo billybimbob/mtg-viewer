@@ -44,9 +44,8 @@ namespace MTGViewer.Data
         public Deck(string name) : base(name)
         { }
 
-        public string OwnerId { get; set; } = null!;
-
         [JsonIgnore]
         public CardUser Owner { get; set; } = null!;
+        public string OwnerId { get; set; } = null!;
     }
 }

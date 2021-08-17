@@ -21,29 +21,25 @@ namespace MTGViewer.Data
         public Discriminator Type { get; set; }
 
 
-        public string CardId { get; set; } = null!;
-
         [JsonIgnore]
         public Card Card { get; set; } = null!;
+        public string CardId { get; set; } = null!;
 
-
-        public string ProposerId { get; set; } = null!;
 
         [JsonIgnore]
         public CardUser Proposer { get; set; } = null!;
+        public string ProposerId { get; set; } = null!;
 
-
-        public string ReceiverId { get; set; } = null!;
 
         [JsonIgnore]
         public CardUser Receiver { get; set; } = null!;
+        public string ReceiverId { get; set; } = null!;
 
-
-        public int ToId { get; set; }
 
         [Display(Name = "To Deck")]
         [JsonIgnore]
         public Deck To { get; set; } = null!;
+        public int ToId { get; set; }
 
 
         public bool IsInvolved(string userId) =>
@@ -65,11 +61,10 @@ namespace MTGViewer.Data
 
     public class Trade : Transfer
     {
-        public int FromId { get; set; }
-
         [Display(Name = "From Deck")]
         [JsonIgnore]
         public Deck From { get; set; } = null!;
+        public int FromId { get; set; }
 
 
         /// <remarks>

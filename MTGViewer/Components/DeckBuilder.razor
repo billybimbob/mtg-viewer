@@ -230,13 +230,9 @@
     {
         if (DeckId != default)
         {
-            var deck = await _dbContext.Decks.FindAsync(DeckId);
-
-            await _dbContext.Entry(deck)
-                .Collection(d => d.Cards)
-                .LoadAsync();
-
-            return deck;
+            return await _dbContext.Decks
+                .Include(d => d.Cards)
+                .SingleAsync(d => d.Id == DeckId);
         }
 
         var userDeckCount = await _dbContext.Decks
