@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Xunit;
 
 using MTGViewer.Data;
-using MTGViewer.Pages.Trades;
+using MTGViewer.Pages.Transfers;
 using MTGViewer.Tests.Utils;
 
 
@@ -15,7 +15,7 @@ namespace MTGViewer.Tests.Pages
     {
 
         [Fact]
-        public async Task IndexOnPost_ValidSuggestion_RemovesSuggestion()
+        public async Task IndexOnPostAck_ValidSuggestion_RemovesSuggestion()
         {
             await using var services = TestHelpers.ServiceProvider();
             await using var dbContext = TestHelpers.CardDbContext(services);
@@ -35,7 +35,7 @@ namespace MTGViewer.Tests.Pages
 
             indexModel.SetModelContext(userClaim);
 
-            var result = await indexModel.OnPostAsync(suggestion.Id);
+            var result = await indexModel.OnPostAckAsync(suggestion.Id);
             var trades = await dbContext.Trades
                 .AsNoTracking()
                 .ToListAsync();
@@ -46,7 +46,7 @@ namespace MTGViewer.Tests.Pages
 
 
         [Fact]
-        public async Task IndexOnPost_InvalidSuggestion_NoRemove()
+        public async Task IndexOnPostAck_InvalidSuggestion_NoRemove()
         {
             await using var services = TestHelpers.ServiceProvider();
             await using var dbContext = TestHelpers.CardDbContext(services);
@@ -66,7 +66,7 @@ namespace MTGViewer.Tests.Pages
 
             indexModel.SetModelContext(userClaim);
 
-            var result = await indexModel.OnPostAsync(nonSuggestion.Id);
+            var result = await indexModel.OnPostAckAsync(nonSuggestion.Id);
             var trades = await dbContext.Trades
                 .AsNoTracking()
                 .ToListAsync();
@@ -103,8 +103,10 @@ namespace MTGViewer.Tests.Pages
 
             var tradeSourceQuery = tradeQuery
                 .Join(nonRequestAmounts,
-                    trade => new { trade.CardId, DeckId = trade.FromId },
-                    amount => new { amount.CardId, DeckId = amount.LocationId },
+                    trade =>
+                        new { trade.CardId, DeckId = trade.FromId },
+                    amount =>
+                        new { amount.CardId, DeckId = amount.LocationId },
                     (_, amount) => amount);
 
             var fromBefore = await tradeSourceQuery.ToListAsync();
@@ -123,11 +125,13 @@ namespace MTGViewer.Tests.Pages
                 .ToList();
 
             Assert.IsType<RedirectToPageResult>(result);
-            Assert.False(tradeAfter.Any());
+            Assert.Empty(tradeAfter);
 
             Assert.True(fromAfter.All(ca => ca.Amount >= 0));
+
             Assert.True(fromChanges.All(fs => 
-                fs.after is null || fs.before.Amount > fs.after.Amount));
+                fs.after is null
+                    || fs.before.Amount > fs.after.Amount));
         }
 
 

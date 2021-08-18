@@ -13,7 +13,7 @@ using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
 
 
-namespace MTGViewer.Pages.Trades
+namespace MTGViewer.Pages.Transfers
 {
     [Authorize]
     public class ProposeModel : PageModel

@@ -13,7 +13,7 @@ using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
 
 
-namespace MTGViewer.Pages.Trades
+namespace MTGViewer.Pages.Transfers
 {
     [Authorize]
     public class IndexModel : PageModel
@@ -76,7 +76,57 @@ namespace MTGViewer.Pages.Trades
         }
 
 
-        public async Task<IActionResult> OnPostAsync(int suggestId)
+        public async Task<IActionResult> OnPostCancelAsync(string proposerId, int deckId)
+        {
+            if (proposerId == null)
+            {
+                return NotFound();
+            }
+
+            var deck = await _dbContext.Decks.FindAsync(deckId);
+
+            if (deck == null || deck.OwnerId == proposerId)
+            {
+                return NotFound();
+            }
+
+            var deckTrades = await _dbContext.Trades
+                .Where(TradeFilter.Involves(proposerId, deckId))
+                .ToListAsync();
+
+            var userId = _userManager.GetUserId(User);
+
+            var tradesValid = deckTrades.Any()
+                && deckTrades.All(t => t.IsInvolved(userId))
+                && deckTrades.All(t => !t.IsWaitingOn(userId));
+
+            if (!tradesValid)
+            {
+                PostMessage = "Not all specified trades are valid";
+                return RedirectToPage("./Index");
+            }
+
+            _dbContext.Trades.RemoveRange(deckTrades);
+
+            try
+            {
+                await _dbContext.SaveChangesAsync();
+                PostMessage = "Successfully rejected Trade";
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                PostMessage = "Ran into error while rejecting";
+            }
+            catch (DbUpdateException)
+            {
+                PostMessage = "Ran into error while rejecting";
+            }
+
+            return RedirectToPage("./Index");
+        }
+
+
+        public async Task<IActionResult> OnPostAckAsync(int suggestId)
         {
             var suggestion = await _dbContext.Suggestions.FindAsync(suggestId);
             var userId = _userManager.GetUserId(User);

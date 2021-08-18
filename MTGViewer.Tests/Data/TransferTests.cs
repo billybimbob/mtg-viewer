@@ -81,7 +81,7 @@ namespace MTGViewer.Tests.Data
 
 
         [Fact]
-        public async Task Type_Transfers_IsCorrectType()
+        public async Task Discriminator_Transfers_IsCorrectType()
         {
             await using var dbContext = TestHelpers.CardDbContext();
             await dbContext.SeedAsync();

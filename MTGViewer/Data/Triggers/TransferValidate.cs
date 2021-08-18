@@ -30,18 +30,19 @@ namespace MTGViewer.Data.Triggers
             }
 
             var transfer = trigContext.Entity;
+            var decks = await GetTransferDecks(transfer);
 
-            List<int> searchIds = new();
+            foreach (var deck in decks)
+            {
+                transfer.Decks.Add(deck);
+            }
+        }
+
+
+        private async Task<IReadOnlyList<Deck>> GetTransferDecks(Transfer transfer)
+        {
             List<Deck> decks = new();
-
-            if (transfer.To is not null)
-            {
-                decks.Add(transfer.To);
-            }
-            else if (transfer.ToId != default)
-            {
-                searchIds.Add(transfer.ToId);
-            }
+            List<int> searchIds = new();
 
             if (transfer is Trade trade)
             {
@@ -55,6 +56,15 @@ namespace MTGViewer.Data.Triggers
                 }
             }
 
+            if (transfer.To is not null)
+            {
+                decks.Add(transfer.To);
+            }
+            else if (transfer.ToId != default)
+            {
+                searchIds.Add(transfer.ToId);
+            }
+
             if (searchIds.Any())
             {
                 var searchedDecks = await _dbContext.Decks
@@ -65,10 +75,7 @@ namespace MTGViewer.Data.Triggers
                 decks.AddRange(searchedDecks);
             }
 
-            foreach (var deck in decks)
-            {
-                transfer.Decks.Add(deck);
-            }
+            return decks;
         }
     }
 }

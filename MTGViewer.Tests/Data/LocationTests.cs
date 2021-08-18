@@ -45,7 +45,7 @@ namespace MTGViewer.Tests.Data
 
 
         [Fact]
-        public async Task Type_Locations_IsCorrectType()
+        public async Task Discriminator_Locations_IsCorrectType()
         {
             await using var dbContext = TestHelpers.CardDbContext();
             await dbContext.SeedAsync();
