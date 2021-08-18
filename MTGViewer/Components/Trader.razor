@@ -9,7 +9,7 @@
 @inject IDbContextFactory<CardDbContext> DbFactory
 
 
-<h1>@_deck.Name Trader</h1>
+<h1>@_receiverDeck.Name Trader</h1>
 
 <select class="form-control" @bind="_destinationId">
     @foreach (var location in GetDestinationOptions())
@@ -87,7 +87,7 @@
         </div>
 
         <div class="col">
-            <h2>@_deck.Owner.Name (@_deck.Name)</h2>
+            <h2>@_receiverDeck.Owner.Name (@_receiverDeck.Name)</h2>
             <table class="table">
                 <thead>
                     <tr>
@@ -168,7 +168,7 @@
         </div>
 
         <div class="col">
-            <h2>From @_deck.Owner.Name</h2>
+            <h2>From @_receiverDeck.Owner.Name</h2>
             <table class="table">
                 <thead>
                     <tr>
@@ -225,16 +225,20 @@
     private SaveResult _result;
     private CardDbContext _dbContext;
 
-    private Deck _deck;
-    private IReadOnlyList<CardAmount> _cardOptions;
-    private IDictionary<(Card, Deck To, Deck From), Trade> _currentOffers;
+    private Deck _receiverDeck;
+    private IReadOnlyList<CardAmount> _proposerOptions;
+    private IDictionary<TradeKey, Trade> _currentOffers;
 
     private int _destinationId;
     private IReadOnlyDictionary<int, Deck> _destinationOptions;
 
-    private Deck Destination => 
+    private Deck Destination =>
         _destinationOptions.TryGetValue(_destinationId, out var dest) ? dest : null;
 
+
+    private record TradeKey(Card Card, Deck To, Deck From) { }
+
+    private record MergedAmount(CardAmount CardAmount, int AmountWithTrade) { }
 
 
     protected override void OnInitialized()
@@ -267,13 +271,13 @@
 
     private async ValueTask InitFieldsFromParameters()
     {
-        _deck = await _dbContext.Decks
+        _receiverDeck = await _dbContext.Decks
             .Include(l => l.Owner)
             .Include(l => l.Cards)
                 .ThenInclude(ca => ca.Card)
             .SingleAsync(l => l.Id == DeckId);
 
-        _cardOptions = await _dbContext.Amounts
+        _proposerOptions = await _dbContext.Amounts
             .Where(ca => !ca.IsRequest
                 && ca.Location.Type == Discriminator.Deck
                 && (ca.Location as Deck).OwnerId == Proposer.Id)
@@ -287,9 +291,9 @@
             .Include(t => t.Card)
             .Include(t => t.To)
             .Include(t => t.From)
-            .ToDictionaryAsync(t => (t.Card, t.To, t.From));
+            .ToDictionaryAsync(t => new TradeKey(t.Card, t.To, t.From));
 
-        _destinationOptions = _cardOptions
+        _destinationOptions = _proposerOptions
             .Select(ca => ca.Location as Deck)
             .Distinct()
             .ToDictionary(l => l.Id);
@@ -303,29 +307,6 @@
         if (_dbContext is not null)
         {
             await _dbContext.DisposeAsync();
-        }
-    }
-
-
-
-    private IEnumerable<(CardAmount, int)> GetMergedDeck()
-    {
-        var mergedAmounts = _deck.Cards
-            .ToDictionary(ca => ca.CardId, ca => ca.Amount);
-
-        foreach (var trade in _currentOffers.Values)
-        {
-            if (mergedAmounts.TryGetValue(trade.CardId, out int amount))
-            {
-                mergedAmounts[trade.CardId] = amount - trade.Amount;
-            }
-        }
-
-        var orderedDeck = _deck.Cards.OrderBy(ca => ca.Card.Name);
-
-        foreach (var cardAmount in orderedDeck)
-        {
-            yield return (cardAmount, mergedAmounts[cardAmount.CardId]);
         }
     }
 
@@ -350,19 +331,53 @@
 
 
 
-    private IEnumerable<(CardAmount, int)> GetMergedDestination()
+    private IEnumerable<MergedAmount> GetMergedDeck()
     {
-        var optionsFromSelect = _cardOptions
-            .Where(ca => ca.Location.Id == _destinationId);
-
-        var mergedAmounts = optionsFromSelect
-            .ToDictionary(ca => ca.CardId, ca => ca.Amount);
+        var mergedAmounts = _receiverDeck.Cards
+            .ToDictionary(
+                ca => (ca.CardId, ca.LocationId),
+                ca => ca.Amount);
 
         foreach (var trade in _currentOffers.Values)
         {
-            if (mergedAmounts.TryGetValue(trade.CardId, out int amount))
+            var key = (trade.CardId, trade.FromId);
+
+            if (mergedAmounts.TryGetValue(key, out int amount))
             {
-                mergedAmounts[trade.CardId] = amount - trade.Amount;
+                mergedAmounts[key] = amount - trade.Amount;
+            }
+        }
+
+        var orderedDeck = _receiverDeck.Cards.OrderBy(ca => ca.Card.Name);
+
+        foreach (var cardAmount in orderedDeck)
+        {
+            var key = (cardAmount.CardId, cardAmount.LocationId);
+
+            yield return new MergedAmount(
+                cardAmount,
+                mergedAmounts[key]);
+        }
+    }
+
+
+    private IEnumerable<MergedAmount> GetMergedDestination()
+    {
+        var optionsFromSelect = _proposerOptions
+            .Where(ca => ca.Location.Id == _destinationId);
+
+        var mergedAmounts = optionsFromSelect
+            .ToDictionary(
+                ca => (ca.CardId, ca.LocationId),
+                ca => ca.Amount);
+
+        foreach (var trade in _currentOffers.Values)
+        {
+            var key = (trade.CardId, trade.FromId);
+
+            if (mergedAmounts.TryGetValue(key, out int amount))
+            {
+                mergedAmounts[key] = amount - trade.Amount;
             }
         }
 
@@ -370,7 +385,11 @@
 
         foreach (var cardAmount in orderedOptions)
         {
-            yield return (cardAmount, mergedAmounts[cardAmount.CardId]);
+            var key = (cardAmount.CardId, cardAmount.LocationId);
+
+            yield return new MergedAmount(
+                cardAmount, 
+                mergedAmounts[key]);
         }
     }
 
@@ -387,7 +406,7 @@
 
         Trade trade;
 
-        var reverseOffer = (proposeSource.Card, To: source, From: _deck);
+        var reverseOffer = new TradeKey(proposeSource.Card, To: source, From: _receiverDeck);
 
         if (_currentOffers.TryGetValue(reverseOffer, out trade) && trade.Amount > 0)
         {
@@ -395,17 +414,17 @@
             return;
         }
 
-        var offer = (proposeSource.Card, To: _deck, From: source);
+        var offer = new TradeKey(proposeSource.Card, To: _receiverDeck, From: source);
 
         if (!_currentOffers.TryGetValue(offer, out trade))
         {
             trade = new Trade
             {
                 Card = proposeSource.Card,
-                To = _deck,
+                To = _receiverDeck,
                 From = source,
                 Proposer = Proposer,
-                Receiver = _deck.Owner,
+                Receiver = _receiverDeck.Owner,
                 Amount = 0
             };
 
@@ -439,7 +458,7 @@
 
         Trade trade;
 
-        var reverseTake = (receiverSource.Card, To: source, From: Destination);
+        var reverseTake = new TradeKey(receiverSource.Card, To: source, From: Destination);
 
         if (_currentOffers.TryGetValue(reverseTake, out trade) && trade.Amount > 0)
         {
@@ -447,7 +466,7 @@
             return;
         }
 
-        var take = (receiverSource.Card, To: Destination, From: source);
+        var take = new TradeKey(receiverSource.Card, From: Destination, To: source);
 
         if (!_currentOffers.TryGetValue(take, out trade))
         {
@@ -457,7 +476,7 @@
                 To = Destination,
                 From = source,
                 Proposer = Proposer,
-                Receiver = _deck.Owner,
+                Receiver = _receiverDeck.Owner,
                 Amount = 0
             };
 

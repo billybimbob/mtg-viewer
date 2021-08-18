@@ -28,6 +28,9 @@ namespace MTGViewer.Pages.Transfers
         }
 
 
+        public record DeckColor(Deck deck, IEnumerable<string> colors) { }
+
+
         private string CardId
         {
             // gets casted to guid for some reason
@@ -40,7 +43,7 @@ namespace MTGViewer.Pages.Transfers
 
         public IEnumerable<CardUser> Users { get; private set; }
 
-        public IEnumerable<(Deck, IEnumerable<string>)> Decks { get; private set; }
+        public IEnumerable<DeckColor> DeckColors { get; private set; }
 
         public Card Card { get; private set; }
 
@@ -88,7 +91,7 @@ namespace MTGViewer.Pages.Transfers
                     .GetColors()
                     .Select(c => Color.COLORS[ c.Name.ToLower() ]));
 
-            Decks = decks.Zip(deckColors);
+            DeckColors = decks.Zip(deckColors, (d, c) => new DeckColor(d, c));
 
             TempData.Keep(nameof(CardId));
 
@@ -146,7 +149,7 @@ namespace MTGViewer.Pages.Transfers
 
             if (deckId == default)
             {
-                Decks = Enumerable.Empty<(Deck, IEnumerable<string>)>();
+                DeckColors = Enumerable.Empty<DeckColor>();
 
                 TempData.Keep(nameof(CardId));
 

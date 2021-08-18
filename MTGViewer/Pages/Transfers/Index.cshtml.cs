@@ -27,13 +27,17 @@ namespace MTGViewer.Pages.Transfers
             _dbContext = dbContext;
         }
 
+
+        public record DeckTrade(CardUser OtherUser, Deck Target) { }
+
+
         [TempData]
         public string PostMessage { get; set; }
 
         public CardUser SelfUser { get; private set; }
 
-        public IReadOnlyList<(CardUser, Deck)> ReceivedTrades { get; private set; }
-        public IReadOnlyList<(CardUser, Deck)> PendingTrades { get; private set; }
+        public IReadOnlyList<DeckTrade> ReceivedTrades { get; private set; }
+        public IReadOnlyList<DeckTrade> PendingTrades { get; private set; }
         public IReadOnlyList<Transfer> Suggestions { get; private set; }
 
 
@@ -65,11 +69,10 @@ namespace MTGViewer.Pages.Transfers
         }
 
 
-        private IReadOnlyList<(CardUser, Deck)> GetTradeList(string userId, IEnumerable<Trade> trades)
+        private IReadOnlyList<DeckTrade> GetTradeList(string userId, IEnumerable<Trade> trades)
         {
             return trades.GroupBy(t => t.TargetDeck)
-                .Select(g =>
-                    (OtherUser: g.First().GetOtherUser(userId), Target: g.Key))
+                .Select(g => new DeckTrade( g.First().GetOtherUser(userId), g.Key) )
                 .OrderBy(t => t.OtherUser.Name)
                     .ThenBy(t => t.Target.Name)
                 .ToList();

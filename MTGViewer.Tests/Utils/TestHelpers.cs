@@ -142,11 +142,6 @@ namespace MTGViewer.Tests.Utils
         }
 
 
-        internal static void SetModelContext(this PageModel model, CardUser user)
-        {
-        }
-
-
 
         internal static MTGFetchService NoCacheFetchService()
         {

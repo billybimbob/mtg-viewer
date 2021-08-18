@@ -102,6 +102,7 @@ namespace MTGViewer.Pages.Transfers
         }
 
 
+
         private class AcceptAmounts
         {
             public IReadOnlyList<Trade> Accepts { get; init; }
@@ -197,6 +198,7 @@ namespace MTGViewer.Pages.Transfers
                         new { trade.Id, amount })
                 .ToDictionaryAsync(t => t.Id, t => t.amount);
 
+
             return new AcceptAmounts
             {
                 Accepts = deckTrades,
@@ -231,6 +233,7 @@ namespace MTGViewer.Pages.Transfers
 
             _dbContext.Trades.RemoveRange(acceptInfo.Accepts);
         }
+
 
 
         public async Task<IActionResult> OnPostRejectAsync(string proposerId, int deckId)

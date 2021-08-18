@@ -32,7 +32,7 @@
     else
     {
         // Decks should be not null
-        @foreach(var (deck, colors) in Model.Decks)
+        @foreach(var (deck, colors) in Model.DeckColors)
         {
             <div class="input-group">
                 <div class="input-group-prepend">
@@ -56,7 +56,7 @@
             class="btn btn-secondary mb-3">
             Back</a>
 
-        @if (!Model.Decks.Any())
+        @if (!Model.DeckColors.Any())
         {
             <div class="alert alert-danger" role="alert">
                 There are no decks to suggest to
@@ -67,7 +67,7 @@
             <input type="submit"
                 asp-page-handler="Deck"
                 class="btn btn-secondary mb-3"
-                disabled="@(!Model.Decks.Any())"
+                disabled="@(!Model.DeckColors.Any())"
                 value="Suggest" />
         }
     }

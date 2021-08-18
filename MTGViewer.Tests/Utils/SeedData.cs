@@ -35,65 +35,18 @@ namespace MTGViewer.Tests.Utils
             var users = GetUsers();
             var cards = await GetCardsAsync();
 
+            var decks = GetDecks(users);
+            var locations = GetShares().Concat(decks).ToList();
+
+            var amounts = GetCardAmounts(cards, locations);
+            var transfers = GetTransfers(users, cards, decks, amounts);
+
             dbContext.Users.AddRange(users);
             dbContext.Cards.AddRange(cards);
 
-            var decks = users
-                .Where((_, i) => i % 2 == 0)
-                .SelectMany(u => Enumerable
-                    .Range(0, _random.Next(4))
-                    .Select(i => new Deck($"Deck #{i+1}")
-                    {
-                        Owner = u
-                    }));
-                    
-            var locations = GetSharedLocations()
-                .Concat(decks)
-                .ToList();
-
             dbContext.Locations.AddRange(locations);
 
-            var amounts = cards
-                .Zip(locations, (card, location) => (card, location))
-                .Select(cl => new CardAmount
-                {
-                    Card = cl.card,
-                    Location = cl.location,
-                    Amount = _random.Next(6)
-                })
-                .ToList();
-
             dbContext.Amounts.AddRange(amounts);
-
-            var source = amounts.First(ca => ca.Location.Type != Discriminator.Shared);
-
-            var tradeFrom = (Deck)source.Location;
-            var tradeTo = decks.First(l => l.Id != source.LocationId);
-
-            var suggestCard = cards.First();
-            var suggester = users.First(u => 
-                u.Id != tradeFrom.OwnerId && u.Id != tradeTo.OwnerId);
-
-            var transfers = new List<Transfer>()
-            {
-                new Trade
-                {
-                    Card = source.Card,
-                    Proposer = tradeTo.Owner,
-                    Receiver = tradeFrom.Owner,
-                    To = tradeTo,
-                    From = tradeFrom,
-                    Amount = _random.Next(5)
-                },
-                new Suggestion
-                {
-                    Card = suggestCard,
-                    Proposer = suggester,
-                    Receiver = tradeTo.Owner,
-                    To = tradeTo
-                }
-            };
-
             dbContext.Transfers.AddRange(transfers);
 
             await dbContext.SaveChangesAsync();
@@ -131,14 +84,88 @@ namespace MTGViewer.Tests.Utils
         }
 
 
-        private static IEnumerable<Location> GetSharedLocations()
+        private static IEnumerable<Location> GetShares()
         {
             yield return new Shared("Test Shared");
         }
 
 
-        internal static async Task<(CardUser Proposer, CardUser Receiver, Location Deck)> GenerateTradeAsync(
-            this CardDbContext dbContext)
+        private static IReadOnlyList<Deck> GetDecks(IEnumerable<CardUser> users)
+        {
+            return users
+                .Where((_, i) => i % 2 == 0)
+                .SelectMany(u => Enumerable
+                    .Range(0, _random.Next(4))
+                    .Select(i => new Deck($"Deck #{i+1}")
+                    {
+                        Owner = u
+                    }))
+                .ToList();
+        }
+
+
+        private static IReadOnlyList<CardAmount> GetCardAmounts(
+            IEnumerable<Card> cards,
+            IEnumerable<Location> locations)
+        {
+            return cards.Zip(locations,
+                (card, location) => (card, location))
+                .Select(cl => new CardAmount
+                {
+                    Card = cl.card,
+                    Location = cl.location,
+                    Amount = _random.Next(6)
+                })
+                .ToList();
+        }
+
+
+        private static IReadOnlyList<Transfer> GetTransfers(
+            IEnumerable<CardUser> users,
+            IEnumerable<Card> cards,
+            IEnumerable<Deck> decks,
+            IEnumerable<CardAmount> amounts)
+        {
+            var source = amounts.First(ca => ca.Location.Type != Discriminator.Shared);
+
+            var tradeFrom = (Deck)source.Location;
+            var tradeTo = decks.First(l => l.Id != source.LocationId);
+
+            var suggestCard = cards.First();
+            var suggester = users.First(u => 
+                u.Id != tradeFrom.OwnerId && u.Id != tradeTo.OwnerId);
+
+            return new List<Transfer>()
+            {
+                new Trade
+                {
+                    Card = source.Card,
+                    Proposer = tradeTo.Owner,
+                    Receiver = tradeFrom.Owner,
+                    To = tradeTo,
+                    From = tradeFrom,
+                    Amount = _random.Next(5)
+                },
+                new Suggestion
+                {
+                    Card = suggestCard,
+                    Proposer = suggester,
+                    Receiver = tradeTo.Owner,
+                    To = tradeTo
+                }
+            };
+        }
+
+
+        
+        internal record TradeInfo(CardUser Proposer, CardUser Receiver, Location Deck) { }
+
+        private record TradeOptions(IReadOnlyList<Deck> To, Deck From, int Amount) { }
+
+        private record TradeLocations(IReadOnlyList<Deck> To, Deck From) { }
+
+
+        internal static async Task<TradeInfo> GenerateTradeAsync(this CardDbContext dbContext)
         {
             var partipants = await dbContext.Users
                 .Take(2)
@@ -164,13 +191,14 @@ namespace MTGViewer.Tests.Utils
 
             dbContext.Trades.AttachRange(trades);
             await dbContext.SaveChangesAsync();
+
             dbContext.ChangeTracker.Clear();
 
-            return (proposer, receiver, fromLoc);
+            return new TradeInfo(proposer, receiver, fromLoc);
         }
 
 
-        private static async Task<(IReadOnlyList<Deck> To, Deck From, int Amount)> GetTradeInfoAsync(
+        private static async Task<TradeOptions> GetTradeInfoAsync(
             this CardDbContext dbContext,
             CardUser proposer, 
             CardUser receiver)
@@ -215,11 +243,11 @@ namespace MTGViewer.Tests.Utils
                 dbContext.Attach(toAmount);
             }
 
-            return (toLocs, fromLoc, amountTrades);
+            return new TradeOptions(toLocs, fromLoc, amountTrades);
         }
 
 
-        private static async Task<(IReadOnlyList<Deck> To, Deck From)> GetOrCreateLocationsAsync(
+        private static async Task<TradeLocations> GetOrCreateLocationsAsync(
             this CardDbContext dbContext,
             CardUser proposer, 
             CardUser receiver)
@@ -254,7 +282,7 @@ namespace MTGViewer.Tests.Utils
                 dbContext.Attach(fromLoc);
             }
 
-            return (toLocs, fromLoc);
+            return new TradeLocations(toLocs, fromLoc);
         }
     }
 }
