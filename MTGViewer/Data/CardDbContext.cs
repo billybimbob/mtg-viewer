@@ -1,8 +1,9 @@
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
-using MTGViewer.Data.Concurrency;
 using MTGViewer.Areas.Identity.Data;
+using MTGViewer.Data.Concurrency;
+using MTGViewer.Data.Internal;
 
 
 namespace MTGViewer.Data

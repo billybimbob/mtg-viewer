@@ -2,7 +2,9 @@ using System.Linq;
 using System.Collections.Generic;
 using Newtonsoft.Json;
 using MTGViewer.Areas.Identity.Data;
+
 using MTGViewer.Data.Concurrency;
+using MTGViewer.Data.Internal;
 
 #nullable enable
 
@@ -20,7 +22,7 @@ namespace MTGViewer.Data
         public string Name { get; set; }
 
         [JsonIgnore]
-        public Discriminator Type { get; set; }
+        internal Discriminator Type { get; set; }
 
         [JsonIgnore]
         public ICollection<CardAmount> Cards { get; } = new HashSet<CardAmount>();

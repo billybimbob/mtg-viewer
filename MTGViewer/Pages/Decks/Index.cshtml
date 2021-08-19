@@ -15,7 +15,7 @@
     <thead>
         <tr>
             <th>
-                Deck @Html.DisplayNameForInnerType((Location c) => c.Name)
+                Deck @Html.DisplayNameForInnerType((Deck c) => c.Name)
             </th>
             <th>Number of Cards</th>
             <th>Colors</th>
@@ -23,27 +23,26 @@
         </tr>
     </thead>
     <tbody>
-    @foreach (var (deck, colors) in Enumerable.Zip(
-        Model.Decks, Model.DeckColors))
-    {
-        <tr>
-            <td>
-                @deck.Name
-            </td>
-            <td>
-                @deck.Cards.Select(ca => ca.Amount).Sum()
-            </td>
-            <td>
-                @foreach (var color in colors)
-                {
-                    <span class="m-1 ms ms-@color ms-cost"></span>
-                }
-            </td>
-            <td>
-                <a asp-page="./Builder" asp-route-id="@deck.Id">Edit</a> |
-                <a asp-page="./Delete" asp-route-id="@deck.Id">Delete</a>
-            </td>
-        </tr>
-    }
+        @foreach (var (deck, colors) in Model.DeckColors)
+        {
+            <tr>
+                <td>
+                    @deck.Name
+                </td>
+                <td>
+                    @deck.Cards.Select(ca => ca.Amount).Sum()
+                </td>
+                <td>
+                    @foreach (var color in colors)
+                    {
+                        <span class="m-1 ms ms-@color ms-cost"></span>
+                    }
+                </td>
+                <td>
+                    <a asp-page="./Builder" asp-route-id="@deck.Id">Edit</a> |
+                    <a asp-page="./Delete" asp-route-id="@deck.Id">Delete</a>
+                </td>
+            </tr>
+        }
     </tbody>
 </table>

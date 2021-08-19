@@ -46,7 +46,7 @@ namespace MTGViewer.Data.Triggers
                 }
             }
 
-            if (location.Type == Discriminator.Shared)
+            if (location is Shared)
             {
                 // makes sure that non-owned locations cannot have a request
                 cardAmount.IsRequest = false;
@@ -82,7 +82,7 @@ namespace MTGViewer.Data.Triggers
                 location = cardAmount.Location;
             }
 
-            if (location.Type == Discriminator.Deck && cardAmount.Amount == 0)
+            if (location is Deck && cardAmount.Amount == 0)
             {
                 _dbContext.Entry(cardAmount).State = EntityState.Deleted;
 

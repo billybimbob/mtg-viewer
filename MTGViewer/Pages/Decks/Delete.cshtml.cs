@@ -66,7 +66,7 @@ namespace MTGViewer.Pages.Decks
                 var availables = await _context.Cards
                     .Where(c => availCards.Contains(c.Id))
                     // TODO: change return location
-                    .Select(c => c.Amounts.First(ca => ca.Location.Type == Discriminator.Shared))
+                    .Select(c => c.Amounts.First(ca => ca.Location is MTGViewer.Data.Shared))
                     .ToDictionaryAsync(ca => ca.Card.Id);
 
                 foreach(var ca in Deck.Cards)

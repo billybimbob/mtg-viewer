@@ -18,6 +18,9 @@ namespace MTGViewer.Pages.Transfers
     [Authorize]
     public class SuggestModel : PageModel
     {
+        public record DeckColor(Deck Deck, IEnumerable<string> Colors) { }
+
+
         private readonly CardDbContext _dbContext;
         private readonly UserManager<CardUser> _userManager;
 
@@ -28,15 +31,6 @@ namespace MTGViewer.Pages.Transfers
         }
 
 
-        public record DeckColor(Deck deck, IEnumerable<string> colors) { }
-
-
-        private string CardId
-        {
-            // gets casted to guid for some reason
-            get => TempData[nameof(CardId)].ToString();
-            set => TempData[nameof(CardId)] = value;
-        }
 
         [TempData]
         public string PostMessage { get; set; }
@@ -47,15 +41,10 @@ namespace MTGViewer.Pages.Transfers
 
         public Card Card { get; private set; }
 
-        private async Task SetCardAsync() =>
-            Card = await _dbContext.Cards.FindAsync(CardId);
-
 
         public async Task<IActionResult> OnGetAsync(string cardId)
         {
-            CardId = cardId;
-
-            await SetCardAsync();
+            Card = await _dbContext.Cards.FindAsync(cardId);
 
             if (Card is null)
             {
@@ -69,15 +58,13 @@ namespace MTGViewer.Pages.Transfers
                 .AsNoTracking()
                 .ToListAsync();
 
-            TempData.Keep(nameof(CardId));
-
             return Page();
         }
 
 
-        public async Task<IActionResult> OnPostUserAsync(string userId)
+        public async Task<IActionResult> OnPostUserAsync(string cardId, string userId)
         {
-            await SetCardAsync();
+            Card = await _dbContext.Cards.FindAsync(cardId);
 
             if (Card is null)
             {
@@ -92,8 +79,6 @@ namespace MTGViewer.Pages.Transfers
                     .Select(c => Color.COLORS[ c.Name.ToLower() ]));
 
             DeckColors = decks.Zip(deckColors, (d, c) => new DeckColor(d, c));
-
-            TempData.Keep(nameof(CardId));
 
             return Page();
         }
@@ -116,8 +101,7 @@ namespace MTGViewer.Pages.Transfers
 
             // include both request and non-request amounts
             var decksWithCard = await _dbContext.Amounts
-                .Where(ca => ca.CardId == Card.Id
-                    && ca.Location.Type == Discriminator.Deck)
+                .Where(ca => ca.CardId == Card.Id && ca.Location is Deck)
                 .Select(ca => ca.Location as Deck)
                 .Where(d => d.OwnerId == userId)
                 .Distinct()
@@ -138,9 +122,9 @@ namespace MTGViewer.Pages.Transfers
         }
 
 
-        public async Task<IActionResult> OnPostDeckAsync(int deckId)
+        public async Task<IActionResult> OnPostDeckAsync(string cardId, int deckId)
         {
-            await SetCardAsync();
+            Card = await _dbContext.Cards.FindAsync(cardId);
 
             if (Card is null)
             {
@@ -150,9 +134,6 @@ namespace MTGViewer.Pages.Transfers
             if (deckId == default)
             {
                 DeckColors = Enumerable.Empty<DeckColor>();
-
-                TempData.Keep(nameof(CardId));
-
                 return Page();
             }
 

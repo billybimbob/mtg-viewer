@@ -11,6 +11,7 @@ namespace MTGViewer.Tests.Data
 {
     public class TradeTests
     {
+        /*
         [Fact]
         public async Task Type_Suggestion_IsCorrectDiscriminator()
         {
@@ -84,6 +85,7 @@ namespace MTGViewer.Tests.Data
             // Assert
             Assert.Equal(Discriminator.Trade, trade.Type);
         }
+        */
 
 
         [Fact]
@@ -92,7 +94,7 @@ namespace MTGViewer.Tests.Data
             await using var dbContext = TestHelpers.CardDbContext();
             await dbContext.SeedAsync();
 
-            var suggestion = await dbContext.Transfers.FirstAsync(t => t.Type == Discriminator.Suggestion);
+            var suggestion = await dbContext.Transfers.FirstAsync(t => t is Suggestion);
 
             Assert.IsType<Suggestion>(suggestion);
         }
@@ -104,7 +106,7 @@ namespace MTGViewer.Tests.Data
             await using var dbContext = TestHelpers.CardDbContext();
             await dbContext.SeedAsync();
 
-            var trade = await dbContext.Transfers.FirstAsync(t => t.Type == Discriminator.Trade);
+            var trade = await dbContext.Transfers.FirstAsync(t => t is Trade);
 
             Assert.IsType<Trade>(trade);
         }

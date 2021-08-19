@@ -181,10 +181,10 @@
                 .GroupBy(c => c.Name)
                 .ToDictionary(g => g.Key, g => g.ToList());
 
-            _dbCards = new SortedList<string, List<Card>>(nameGroups);
+            _dbCards = new(nameGroups);
 
             _availables = await _dbContext.Amounts
-                .Where(ca => ca.Location.Type == Discriminator.Shared)
+                .Where(ca => ca.Location is Shared)
                 // TODO: change return location
                 .ToDictionaryAsync(ca => ca.CardId);
         }
@@ -643,7 +643,7 @@
     private async Task UpdateAvailableAsync()
     {
         var updatedAvails = await _dbContext.Amounts
-            .Where(ca => ca.Location.Type == Discriminator.Shared)
+            .Where(ca => ca.Location is Shared)
             // TODO: change return location
             // TODO: group amounts by cards
             // .GroupBy(ca => ca.CardId)

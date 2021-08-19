@@ -14,13 +14,13 @@ namespace MTGViewer.Tests.Utils
 {
     public static class SeedData
     {
-        private static readonly SemaphoreSlim _fileLock = new SemaphoreSlim(1, 1);
-        private static readonly Random _random = new Random(100);
+        private static readonly Random _random = new(100);
+        private static readonly SemaphoreSlim _jsonLock = new(1, 1);
 
 
         internal static async Task SeedAsync(this CardDbContext dbContext)
         {
-            await _fileLock.WaitAsync();
+            await _jsonLock.WaitAsync();
             try
             {
                 var jsonSuccess = await dbContext.AddFromJsonAsync();
@@ -35,7 +35,7 @@ namespace MTGViewer.Tests.Utils
             }
             finally
             {
-                _fileLock.Release();
+                _jsonLock.Release();
             }
         }
 
@@ -107,7 +107,7 @@ namespace MTGViewer.Tests.Utils
             return users
                 .Where((_, i) => i % 2 == 0)
                 .SelectMany(u => Enumerable
-                    .Range(0, _random.Next(4))
+                    .Range(0, _random.Next(1, 4))
                     .Select(i => new Deck($"Deck #{i+1}")
                     {
                         Owner = u
@@ -138,8 +138,7 @@ namespace MTGViewer.Tests.Utils
             IEnumerable<Deck> decks,
             IEnumerable<CardAmount> amounts)
         {
-            var source = amounts.First(ca =>
-                ca.Location.Type == Discriminator.Deck);
+            var source = amounts.First(ca => ca.Location is Deck);
 
             var tradeFrom = (Deck)source.Location;
             var tradeTo = decks.First(l => l.Id != source.LocationId);

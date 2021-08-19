@@ -1,7 +1,7 @@
 
-namespace MTGViewer.Data
+namespace MTGViewer.Data.Internal
 {
-    public enum Discriminator
+    internal enum Discriminator
     {
         Invalid,
 

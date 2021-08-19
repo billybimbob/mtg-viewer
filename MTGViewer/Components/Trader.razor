@@ -221,6 +221,12 @@
     [Parameter]
     public bool IsCounter { get; set; }
 
+
+    private record TradeKey(Card Card, Deck To, Deck From) { }
+
+    private record MergedAmount(CardAmount CardAmount, int AmountWithTrade) { }
+
+
     private bool _busy;
     private SaveResult _result;
     private CardDbContext _dbContext;
@@ -235,10 +241,6 @@
     private Deck Destination =>
         _destinationOptions.TryGetValue(_destinationId, out var dest) ? dest : null;
 
-
-    private record TradeKey(Card Card, Deck To, Deck From) { }
-
-    private record MergedAmount(CardAmount CardAmount, int AmountWithTrade) { }
 
 
     protected override void OnInitialized()
@@ -279,7 +281,7 @@
 
         _proposerOptions = await _dbContext.Amounts
             .Where(ca => !ca.IsRequest
-                && ca.Location.Type == Discriminator.Deck
+                && ca.Location is Deck
                 && (ca.Location as Deck).OwnerId == Proposer.Id)
             .Include(ca => ca.Card)
             .Include(ca => ca.Location)

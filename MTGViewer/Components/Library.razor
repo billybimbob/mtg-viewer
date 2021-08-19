@@ -170,7 +170,7 @@
     private string Delete(string id) => CardRoute("Delete", id);
 
     private string Suggest(string id) =>
-        QueryHelpers.AddQueryString("Trades/Suggest", "cardid", id);
+        QueryHelpers.AddQueryString("Transfers/Suggest", "cardid", id);
 
 
     private string CardRoute(string operation, string id) =>

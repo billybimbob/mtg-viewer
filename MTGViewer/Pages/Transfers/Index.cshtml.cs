@@ -18,6 +18,9 @@ namespace MTGViewer.Pages.Transfers
     [Authorize]
     public class IndexModel : PageModel
     {
+        public record DeckTrade(CardUser OtherUser, Deck Target) { }
+
+
         private readonly UserManager<CardUser> _userManager;
         private readonly CardDbContext _dbContext;
 
@@ -26,9 +29,6 @@ namespace MTGViewer.Pages.Transfers
             _userManager = userManager;
             _dbContext = dbContext;
         }
-
-
-        public record DeckTrade(CardUser OtherUser, Deck Target) { }
 
 
         [TempData]

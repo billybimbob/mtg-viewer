@@ -26,6 +26,7 @@
 
         <input type="submit"
             asp-page-handler="User"
+            asp-route-cardid="@Model.Card.Id"
             class="btn btn-secondary mb-3"
             value="Suggest To" />
     }
@@ -66,6 +67,7 @@
         {
             <input type="submit"
                 asp-page-handler="Deck"
+                asp-route-cardid="@Model.Card.Id"
                 class="btn btn-secondary mb-3"
                 disabled="@(!Model.DeckColors.Any())"
                 value="Suggest" />

@@ -18,6 +18,12 @@ namespace MTGViewer.Pages.Transfers
     [Authorize]
     public class ReviewModel : PageModel
     {
+        private record AcceptAmounts(
+            IReadOnlyList<Trade> Accepts,
+            IDictionary<int, CardAmount> ToAmounts,
+            IReadOnlyDictionary<int, CardAmount> FromAmounts) { }
+
+
         private readonly CardDbContext _dbContext;
         private readonly UserManager<CardUser> _userManager;
 
@@ -101,14 +107,6 @@ namespace MTGViewer.Pages.Transfers
                 && trades.All(t => t.IsWaitingOn(userId));
         }
 
-
-
-        private class AcceptAmounts
-        {
-            public IReadOnlyList<Trade> Accepts { get; init; }
-            public IDictionary<int, CardAmount> ToAmounts { get; init; }
-            public IReadOnlyDictionary<int, CardAmount> FromAmounts { get; init; }
-        }
 
 
         public async Task<IActionResult> OnPostAcceptAsync(string proposerId, int deckId)
@@ -199,12 +197,10 @@ namespace MTGViewer.Pages.Transfers
                 .ToDictionaryAsync(t => t.Id, t => t.amount);
 
 
-            return new AcceptAmounts
-            {
-                Accepts = deckTrades,
-                ToAmounts = destMap,
-                FromAmounts = sourceMap
-            };
+            return new AcceptAmounts(
+                Accepts: deckTrades,
+                ToAmounts: destMap,
+                FromAmounts: sourceMap);
         }
 
 
