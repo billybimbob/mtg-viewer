@@ -73,7 +73,7 @@ namespace MTGViewer.Services
 
             var property = PropertyExpression<CardQueryParameter, string>(propertyName);
 
-            _service.Where(property , propertyValue);
+            _service.Where(property, propertyValue);
             _empty = false;
         }
 
@@ -199,8 +199,9 @@ namespace MTGViewer.Services
         {
             if (search.MultiverseId != default)
             {
+                List<Card> results = new();
+
                 var card = await FindAsync(search.MultiverseId);
-                var results = new List<Card>();
 
                 if (card is not null)
                 {

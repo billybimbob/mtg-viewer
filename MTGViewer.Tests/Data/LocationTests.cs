@@ -10,23 +10,20 @@ namespace MTGViewer.Tests.Data
     public class LocationTests
     {
         [Fact]
-        public void IsShared_NoOwner_ReturnsTrue()
+        public void Type_Shared_IsCorrectDiscriminator()
         {
             using var dbContext = TestHelpers.CardDbContext();
 
-            var location = new Location("No owner location")
-            {
-                Owner = null
-            };
+            var location = new Shared("No owner location");
 
             dbContext.Attach(location);
 
-            Assert.True(location.IsShared);
+            Assert.Equal(Discriminator.Shared, location.Type);
         }
 
 
         [Fact]
-        public async Task IsShared_Owner_ReturnsFalse()
+        public async Task Type_Deck_IsCorrectDiscriminator()
         {
             await using var services = TestHelpers.ServiceProvider();
             await using var dbContext = TestHelpers.CardDbContext(services);
@@ -36,14 +33,38 @@ namespace MTGViewer.Tests.Data
 
             var testUser = await userManager.Users.FirstAsync();
 
-            var location = new Location("Owned location")
+            var location = new Deck("Owned location")
             {
                 Owner = testUser
             };
 
             dbContext.Attach(location);
 
-            Assert.False(location.IsShared);
+            Assert.Equal(Discriminator.Deck, location.Type);
+        }
+
+
+        [Fact]
+        public async Task Discriminator_Shared_IsCorrectType()
+        {
+            await using var dbContext = TestHelpers.CardDbContext();
+            await dbContext.SeedAsync();
+
+            var shared = await dbContext.Locations.FirstAsync(l => l.Type == Discriminator.Shared);
+
+            Assert.IsType<Shared>(shared);
+        }
+
+
+        [Fact]
+        public async Task Discriminator_Deck_IsCorrectType()
+        {
+            await using var dbContext = TestHelpers.CardDbContext();
+            await dbContext.SeedAsync();
+
+            var deck = await dbContext.Locations.FirstAsync(l => l.Type == Discriminator.Deck);
+
+            Assert.IsType<Deck>(deck);
         }
     }
 }

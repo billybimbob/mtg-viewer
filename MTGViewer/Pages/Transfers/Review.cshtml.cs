@@ -13,7 +13,7 @@ using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
 
 
-namespace MTGViewer.Pages.Trades
+namespace MTGViewer.Pages.Transfers
 {
     [Authorize]
     public class ReviewModel : PageModel
@@ -32,7 +32,7 @@ namespace MTGViewer.Pages.Trades
         public string PostMessage { get; set; }
 
         public CardUser Proposer { get; private set; }
-        public Location Deck { get; private set; }
+        public Deck Deck { get; private set; }
 
         public IReadOnlyList<Trade> ToDeck { get; private set; }
         public IReadOnlyList<Trade> FromDeck { get; private set; }
@@ -45,7 +45,7 @@ namespace MTGViewer.Pages.Trades
                 return NotFound();
             }
 
-            var deck = await _dbContext.Locations.FindAsync(deckId);
+            var deck = await _dbContext.Decks.FindAsync(deckId);
 
             if (deck == null || deck.OwnerId == proposerId)
             {
@@ -53,18 +53,16 @@ namespace MTGViewer.Pages.Trades
             }
 
             var deckTrades = await _dbContext.Trades
-                .Where(TradeFilter.NotSuggestion)
                 .Where(TradeFilter.Involves(proposerId, deckId))
                 .Include(t => t.Card)
                 .Include(t => t.To)
                 .Include(t => t.From)
-                    .ThenInclude(ca => ca.Location)
                 .AsNoTracking()
                 .ToListAsync();
 
             if (!CheckTrades(deckTrades))
             {
-                PostMessage = "Cannot find any trades";
+                PostMessage = "Not all specified trades are valid";
                 return RedirectToPage("./Index");
             }
 
@@ -99,17 +97,17 @@ namespace MTGViewer.Pages.Trades
 
             var userId = _userManager.GetUserId(User);
 
-            if (!trades.All(t => t.IsInvolved(userId)))
-            {
-                return false;
-            }
+            return trades.All(t => t.IsInvolved(userId))
+                && trades.All(t => t.IsWaitingOn(userId));
+        }
 
-            if (!trades.All(t => t.IsWaitingOn(userId)))
-            {
-                return false;
-            }
 
-            return true;
+
+        private class AcceptAmounts
+        {
+            public IReadOnlyList<Trade> Accepts { get; init; }
+            public IDictionary<int, CardAmount> ToAmounts { get; init; }
+            public IReadOnlyDictionary<int, CardAmount> FromAmounts { get; init; }
         }
 
 
@@ -120,48 +118,32 @@ namespace MTGViewer.Pages.Trades
                 return NotFound();
             }
 
-            var deck = await _dbContext.Locations.FindAsync(deckId);
+            var deck = await _dbContext.Decks.FindAsync(deckId);
 
             if (deck == null || deck.OwnerId == proposerId)
             {
                 return NotFound();
             }
 
-            var deckTrades = await _dbContext.Trades
-                .Where(TradeFilter.NotSuggestion)
-                .Where(TradeFilter.Involves(proposerId, deckId))
-                .Include(t => t.Card)
-                .Include(t => t.To)
-                .Include(t => t.From)
-                    .ThenInclude(ca => ca.Location)
-                .ToListAsync();
+            var acceptInfo = await GetAcceptInfoAsync(proposerId, deckId);
 
-            if (!CheckTrades(deckTrades))
+            if (acceptInfo == null)
             {
-                PostMessage = "Cannot find any trades to Accept";
                 return RedirectToPage("./Index");
             }
-
-            var amountsInvalid = deckTrades.Any(t => t.From.Amount < t.Amount);
-
-            if (amountsInvalid)
-            {
-                PostMessage = "Source Deck lacks the required amount to complete the trade";
-                return RedirectToPage("./Index");
-            }
-
-            await ApplyAcceptsAsync(deckTrades);
 
             try
             {
+                ApplyAccepts(acceptInfo);
                 await _dbContext.SaveChangesAsync();
+
                 PostMessage = "Trade successfully Applied";
             }
-            catch(DbUpdateConcurrencyException)
+            catch (DbUpdateConcurrencyException)
             {
                 PostMessage = "Ran into error while Accepting";
             }
-            catch(DbUpdateException)
+            catch (DbUpdateException)
             {
                 PostMessage = "Ran into error while Accepting";
             }
@@ -170,56 +152,88 @@ namespace MTGViewer.Pages.Trades
         }
 
 
-        private async Task ApplyAcceptsAsync(IEnumerable<Trade> accepts)
+        private async Task<AcceptAmounts> GetAcceptInfoAsync(string proposerId, int deckId)
         {
-            var destIds = accepts
-                .Select(t => t.ToId)
-                .Distinct()
-                .ToArray();
+            var acceptQuery = _dbContext.Trades
+                .Where(TradeFilter.Involves(proposerId, deckId));
 
-            var cardIds = accepts
-                .Select(t => t.CardId)
-                .Distinct()
-                .ToArray();
+            var deckTrades = await acceptQuery.ToListAsync();
 
-            // TODO: find filter that pairs card with location
-            var existing = await _dbContext.Amounts
-                .Where(ca => cardIds.Contains(ca.CardId)
-                    && destIds.Contains(ca.LocationId)
-                    && !ca.IsRequest)
-                .ToListAsync();
-
-            var acceptPairs = accepts
-                .Select(t => (t.CardId, t.ToId))
-                .Distinct()
-                .ToHashSet();
-
-            var destMap = existing
-                .Where(ca => acceptPairs.Contains((ca.CardId, ca.LocationId)))
-                .ToDictionary(ca => (ca.CardId, ca.LocationId));
-
-            foreach(var accept in accepts)
+            if (!CheckTrades(deckTrades))
             {
-                var key = (accept.CardId, accept.ToId);
+                PostMessage = "Not all specified trades are valid";
+                return null;
+            }
 
-                if (!destMap.TryGetValue(key, out var destAmount))
+            var nonRequestAmounts = _dbContext.Amounts
+                .Where(ca => !ca.IsRequest);
+
+            var sourceMap = await acceptQuery
+                .Join(nonRequestAmounts,
+                    trade =>
+                        new { trade.CardId, DeckId = trade.FromId },
+                    amount =>
+                        new { amount.CardId, DeckId = amount.LocationId },
+                    (trade, amount) =>
+                        new { trade.Id, amount })
+                .ToDictionaryAsync(r => r.Id, r => r.amount);
+
+
+            var amountsInvalid = deckTrades.Any(t => 
+                !sourceMap.TryGetValue(t.Id, out var source) || source.Amount < t.Amount);
+
+            if (amountsInvalid)
+            {
+                PostMessage = "Source Deck lacks the required amount to complete the trade";
+                return null;
+            }
+
+            var destMap = await acceptQuery
+                .Join(nonRequestAmounts,
+                    trade => 
+                        new { trade.CardId, DeckId = trade.ToId },
+                    amount =>
+                        new { amount.CardId, DeckId = amount.LocationId },
+                    (trade, amount) =>
+                        new { trade.Id, amount })
+                .ToDictionaryAsync(t => t.Id, t => t.amount);
+
+
+            return new AcceptAmounts
+            {
+                Accepts = deckTrades,
+                ToAmounts = destMap,
+                FromAmounts = sourceMap
+            };
+        }
+
+
+        private void ApplyAccepts(AcceptAmounts acceptInfo)
+        {
+            foreach(var accept in acceptInfo.Accepts)
+            {
+                var sourceAmount = acceptInfo.FromAmounts[accept.Id];
+
+                if (!acceptInfo.ToAmounts.TryGetValue(accept.Id, out var destAmount))
                 {
                     destAmount = new CardAmount
                     {
                         Card = accept.Card,
-                        Location = accept.To
+                        Location = accept.To,
+                        Amount = 0
                     };
 
-                    destMap.Add(key, destAmount);
-                    _dbContext.Amounts.Attach(destAmount);
+                    acceptInfo.ToAmounts.Add(accept.Id, destAmount);
+                    _dbContext.Amounts.Add(destAmount);
                 }
 
-                accept.From.Amount -= accept.Amount;
+                sourceAmount.Amount -= accept.Amount;
                 destAmount.Amount += accept.Amount;
             }
 
-            _dbContext.Trades.RemoveRange(accepts);
+            _dbContext.Trades.RemoveRange(acceptInfo.Accepts);
         }
+
 
 
         public async Task<IActionResult> OnPostRejectAsync(string proposerId, int deckId)
@@ -229,7 +243,7 @@ namespace MTGViewer.Pages.Trades
                 return NotFound();
             }
 
-            var deck = await _dbContext.Locations.FindAsync(deckId);
+            var deck = await _dbContext.Decks.FindAsync(deckId);
 
             if (deck == null || deck.OwnerId == proposerId)
             {
@@ -237,16 +251,12 @@ namespace MTGViewer.Pages.Trades
             }
 
             var deckTrades = await _dbContext.Trades
-                .Where(TradeFilter.NotSuggestion)
                 .Where(TradeFilter.Involves(proposerId, deckId))
-                .Include(t => t.To)
-                .Include(t => t.From)
-                    .ThenInclude(ca => ca.Location)
                 .ToListAsync();
 
             if (!CheckTrades(deckTrades))
             {
-                PostMessage = "Cannot find any trades to Reject";
+                PostMessage = "Not all specified trades are valid";
                 return RedirectToPage("./Index");
             }
 
@@ -257,11 +267,11 @@ namespace MTGViewer.Pages.Trades
                 await _dbContext.SaveChangesAsync();
                 PostMessage = "Successfully rejected Trade";
             }
-            catch(DbUpdateConcurrencyException)
+            catch (DbUpdateConcurrencyException)
             {
                 PostMessage = "Ran into error while rejecting";
             }
-            catch(DbUpdateException)
+            catch (DbUpdateException)
             {
                 PostMessage = "Ran into error while rejecting";
             }

@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
@@ -15,8 +16,13 @@ namespace MTGViewer.Data.Json
     {
         public IReadOnlyList<CardUser> Users { get; set; }
         public IReadOnlyList<Card> Cards { get; set; }
+
         public IReadOnlyList<CardAmount> Amounts { get; set; }
-        public IReadOnlyList<Location> Locations { get; set; }
+
+        public IReadOnlyList<Shared> Shares { get; set; }
+        public IReadOnlyList<Deck> Decks { get; set; }
+
+        public IReadOnlyList<Suggestion> Suggestions { get; set; }
         public IReadOnlyList<Trade> Trades { get; set; }
 
 
@@ -42,7 +48,15 @@ namespace MTGViewer.Data.Json
                     .AsNoTracking()
                     .ToListAsync(),
 
-                Locations = await dbContext.Locations
+                Shares = await dbContext.Shares
+                    .AsNoTracking()
+                    .ToListAsync(),
+
+                Decks = await dbContext.Decks
+                    .AsNoTracking()
+                    .ToListAsync(),
+
+                Suggestions = await dbContext.Suggestions
                     .AsNoTracking()
                     .ToListAsync(),
 
@@ -92,8 +106,12 @@ namespace MTGViewer.Data.Json
                 dbContext.Users.AddRange(data.Users);
                 dbContext.Cards.AddRange(data.Cards);
 
-                dbContext.Locations.AddRange(data.Locations);
                 dbContext.Amounts.AddRange(data.Amounts);
+
+                dbContext.Shares.AddRange(data.Shares);
+                dbContext.Decks.AddRange(data.Decks);
+
+                dbContext.Suggestions.AddRange(data.Suggestions);
                 dbContext.Trades.AddRange(data.Trades);
 
                 await dbContext.SaveChangesAsync();

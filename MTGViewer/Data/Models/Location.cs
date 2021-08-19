@@ -6,12 +6,11 @@ using MTGViewer.Data.Concurrency;
 
 #nullable enable
 
-
 namespace MTGViewer.Data
 {
     public class Location : Concurrent
     {
-        public Location(string name)
+        protected Location(string name)
         {
             Name = name;
         }
@@ -20,20 +19,36 @@ namespace MTGViewer.Data
 
         public string Name { get; set; }
 
-        public string? OwnerId { get; set; }
-
         [JsonIgnore]
-        public CardUser? Owner { get; set; }
+        public Discriminator Type { get; set; }
 
         [JsonIgnore]
         public ICollection<CardAmount> Cards { get; } = new HashSet<CardAmount>();
-
-        [JsonIgnore]
-        public bool IsShared => OwnerId == default;
 
         public IOrderedEnumerable<Color> GetColors() => Cards
             .SelectMany(ca => ca.Card.Colors)
             .Distinct(new EntityComparer<Color>(c => c.Name))
             .OrderBy(c => c.Name);
+    }
+
+
+    public class Shared : Location
+    {
+        public Shared(string name) : base(name)
+        { }
+    }
+
+
+    public class Deck : Location
+    {
+        public Deck(string name) : base(name)
+        { }
+
+        [JsonIgnore]
+        public CardUser Owner { get; set; } = null!;
+        public string OwnerId { get; set; } = null!;
+
+        [JsonIgnore]
+        public ICollection<Transfer> Transfers { get; } = new HashSet<Transfer>();
     }
 }

@@ -7,7 +7,6 @@ using MTGViewer.Data.Concurrency;
 
 #nullable enable
 
-
 namespace MTGViewer.Data
 {
     [Index(
@@ -18,15 +17,13 @@ namespace MTGViewer.Data
     {
         public int Id { get; set; }
 
+        [JsonIgnore]
+        public Card Card { get; set; } = null!;
         public string CardId { get; set; } = null!;
 
         [JsonIgnore]
-        public Card Card { get; set; } = null!;
-
-        public int LocationId { get; set; }
-
-        [JsonIgnore]
         public Location Location { get; set; } = null!;
+        public int LocationId { get; set; }
 
         public bool IsRequest { get; set; }
 

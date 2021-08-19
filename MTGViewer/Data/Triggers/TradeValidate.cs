@@ -9,12 +9,12 @@ using Microsoft.Extensions.Logging;
 
 namespace MTGViewer.Data.Triggers
 {
-    public class TradeValidateTrigger : IBeforeSaveTrigger<Trade>, IAfterSaveTrigger<Trade>
+    public class TradeValidate : IBeforeSaveTrigger<Trade>, IAfterSaveTrigger<Trade>
     {
         private readonly CardDbContext _dbContext;
-        private readonly ILogger<TradeValidateTrigger> _logger;
+        private readonly ILogger<TradeValidate> _logger;
 
-        public TradeValidateTrigger(CardDbContext dbContext, ILogger<TradeValidateTrigger> logger)
+        public TradeValidate(CardDbContext dbContext, ILogger<TradeValidate> logger)
         {
             _dbContext = dbContext;
             _logger = logger;
@@ -30,28 +30,17 @@ namespace MTGViewer.Data.Triggers
 
             var trade = trigContext.Entity;
 
-            if (_dbContext.Entry(trade).State == EntityState.Detached)
+            var fromAmount = await _dbContext.Amounts
+                .AsNoTracking()
+                .SingleOrDefaultAsync(ca =>
+                    !ca.IsRequest
+                        && ca.CardId == trade.CardId
+                        && ca.LocationId == trade.FromId);
+
+            if (fromAmount != default)
             {
-                _dbContext.Attach(trade);
+                trade.Amount = Math.Min(fromAmount.Amount, trade.Amount);
             }
-
-            if (trade.IsSuggestion)
-            {
-                trade.IsCounter = false;
-                trade.Amount = 0;
-                return;
-            }
-
-            await _dbContext.Entry(trade)
-                .Reference(t => t.From)
-                .LoadAsync();
-
-            await _dbContext.Entry(trade)
-                .Reference(t => t.Card)
-                .LoadAsync();
-
-            trade.Amount = Math.Min(trade.From.Amount, trade.Amount);
-            trade.Card = trade.From.Card;
         }
 
 
@@ -64,9 +53,14 @@ namespace MTGViewer.Data.Triggers
 
             var trade = trigContext.Entity;
 
-            if (!trade.IsSuggestion && trade.Amount == 0)
+            if (_dbContext.Entry(trade).State == EntityState.Detached)
             {
-                _dbContext.Attach(trade).State = EntityState.Deleted;
+                _dbContext.Attach(trade);
+            }
+
+            if (trade.Amount == 0)
+            {
+                _dbContext.Entry(trade).State = EntityState.Deleted;
 
                 await _dbContext.SaveChangesAsync();
             }

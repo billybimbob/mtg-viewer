@@ -13,7 +13,7 @@ using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
 
 
-namespace MTGViewer.Pages.Trades
+namespace MTGViewer.Pages.Transfers
 {
     [Authorize]
     public class ProposeModel : PageModel
@@ -33,7 +33,7 @@ namespace MTGViewer.Pages.Trades
 
         public CardUser Proposer { get; private set; }
         public int DeckId { get; private set; }
-        public IReadOnlyList<Location> ProposeOptions { get; private set; }
+        public IReadOnlyList<Deck> ProposeOptions { get; private set; }
 
         public bool IsCounter =>
             _userManager.GetUserId(User) != Proposer?.Id;
@@ -43,11 +43,9 @@ namespace MTGViewer.Pages.Trades
         {
             if (deckId is int id && proposerId != null)
             {
-                var deck = await _dbContext.Locations.FindAsync(id);
+                var deck = await _dbContext.Decks.FindAsync(id);
 
-                bool validDeck = deck != null
-                    && deck.IsShared == false
-                    && deck.OwnerId != proposerId;
+                bool validDeck = deck != null && deck.OwnerId != proposerId;
 
                 if (validDeck)
                 {
@@ -80,26 +78,18 @@ namespace MTGViewer.Pages.Trades
         }
 
 
-        private async Task<IReadOnlyList<Location>> GetProposeOptionsAsync()
+        private async Task<IReadOnlyList<Deck>> GetProposeOptionsAsync()
         {
-            var nonUserLocs = await _dbContext.Locations
-                .Where(l => l.OwnerId != default && l.OwnerId != Proposer.Id)
-                .Include(l => l.Owner)
-                .AsNoTrackingWithIdentityResolution()
+            var nonUserLocs = await _dbContext.Decks
+                .Where(d => d.OwnerId != Proposer.Id)
+                .Include(d => d.Owner)
                 .ToListAsync();
 
-            var currentTrades = await _dbContext.Trades
-                .Where(TradeFilter.NotSuggestion)
+            var tradeLocs = await _dbContext.Trades
                 .Where(TradeFilter.Involves(Proposer.Id))
-                .Include(t => t.To)
-                .Include(t => t.From)
-                    .ThenInclude(ca => ca.Location)
-                .AsNoTrackingWithIdentityResolution()
+                .SelectMany(t => t.Decks)
+                .Distinct()
                 .ToListAsync();
-
-            var tradeLocs = currentTrades
-                .SelectMany(t => t.GetLocations())
-                .Distinct();
 
             return nonUserLocs
                 .Except(tradeLocs)

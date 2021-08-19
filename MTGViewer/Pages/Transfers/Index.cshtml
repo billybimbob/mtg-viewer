@@ -1,5 +1,5 @@
 @page
-@model MTGViewer.Pages.Trades.IndexModel
+@model MTGViewer.Pages.Transfers.IndexModel
 
 @using MTGViewer.Data
 
@@ -31,24 +31,34 @@
         </tr>
     </thead>
     <tbody>
-        @foreach (var (otherUser, deck) in Model.PendingTrades)
-        {
-            var proposerId = deck.OwnerId == otherUser.Id
-                ? Model.SelfUser.Id
-                : otherUser.Id;
-            <tr>
-                <td>@deck.Name</td>
-                <td>@otherUser.Name</td>
-                <td>
-                    <a asp-page="./Propose" 
-                        asp-route-proposerid="@proposerId"
-                        asp-route-deckid="@deck.Id"
-                        class="btn btn-secondary mb-3" >
-                        Edit
-                    </a>
-                </td>
-            </tr>
-        }
+        <form method="post">
+            @foreach (var (otherUser, deck) in Model.PendingTrades)
+            {
+                var proposerId = deck.OwnerId == otherUser.Id
+                    ? Model.SelfUser.Id
+                    : otherUser.Id;
+                <tr>
+                    <td>@deck.Name</td>
+                    <td>@otherUser.Name</td>
+                    <td>
+                        <input type="submit"
+                               asp-page-handler="Cancel"
+                               asp-route-proposerid="@proposerId"
+                               asp-route-deckid="@deck.Id"
+                               class="btn btn-secondary mb-3" 
+                               value="Cancel">
+
+                        <a asp-page="./Propose" 
+                           asp-route-proposerid="@proposerId"
+                           asp-route-deckid="@deck.Id"
+                           class="btn btn-secondary mb-3" >
+                           Edit
+                        </a>
+                    </td>
+                </tr>
+            }
+        </form>
+
         @foreach (var (otherUser, deck) in Model.ReceivedTrades)
         {
             var proposerId = deck.OwnerId == otherUser.Id
@@ -59,10 +69,10 @@
                 <td>@otherUser.Name</td>
                 <td>
                     <a asp-page="./Review" 
-                        asp-route-proposerid="@proposerId"
-                        asp-route-deckid="@deck.Id"
-                        class="btn btn-secondary mb-3" >
-                        View
+                       asp-route-proposerid="@proposerId"
+                       asp-route-deckid="@deck.Id"
+                       class="btn btn-secondary mb-3">
+                       View
                     </a>
                 </td>
             </tr>
@@ -88,17 +98,19 @@
             {
                 <tr>
                     <td>
-                        <a asp-page="/Cards/Details" asp-route-id="@suggestion.CardId">
-                            @suggestion.Card.Name
+                        <a asp-page="/Cards/Details"
+                           asp-route-id="@suggestion.CardId">
+                           @suggestion.Card.Name
                         </a>
                     </td>
                     <td>@suggestion.Proposer.Name</td>
                     <td>@suggestion.To.Name</td>
                     <td>
                         <input type="submit"
-                            asp-route-suggestid="@suggestion.Id"
-                            class="btn btn-secondary mb-3"
-                            value="Acknowledge" />
+                               asp-page-handler="Ack"
+                               asp-route-suggestid="@suggestion.Id"
+                               class="btn btn-secondary mb-3"
+                               value="Acknowledge" />
                     </td>
                 </tr>
             }

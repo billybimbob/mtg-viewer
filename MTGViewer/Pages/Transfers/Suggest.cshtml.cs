@@ -13,7 +13,7 @@ using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
 
 
-namespace MTGViewer.Pages.Trades
+namespace MTGViewer.Pages.Transfers
 {
     [Authorize]
     public class SuggestModel : PageModel
@@ -28,6 +28,9 @@ namespace MTGViewer.Pages.Trades
         }
 
 
+        public record DeckColor(Deck deck, IEnumerable<string> colors) { }
+
+
         private string CardId
         {
             // gets casted to guid for some reason
@@ -40,21 +43,21 @@ namespace MTGViewer.Pages.Trades
 
         public IEnumerable<CardUser> Users { get; private set; }
 
-        public IEnumerable<(Location, IEnumerable<string>)> Decks { get; private set; }
+        public IEnumerable<DeckColor> DeckColors { get; private set; }
 
-        public Card Suggesting { get; private set; }
+        public Card Card { get; private set; }
 
-        private async Task SetSuggestingAsync() =>
-            Suggesting = await _dbContext.Cards.FindAsync(CardId);
+        private async Task SetCardAsync() =>
+            Card = await _dbContext.Cards.FindAsync(CardId);
 
 
         public async Task<IActionResult> OnGetAsync(string cardId)
         {
             CardId = cardId;
 
-            await SetSuggestingAsync();
+            await SetCardAsync();
 
-            if (Suggesting is null)
+            if (Card is null)
             {
                 return NotFound();
             }
@@ -63,7 +66,7 @@ namespace MTGViewer.Pages.Trades
 
             Users = await _userManager.Users
                 .Where(u => u.Id != srcId)
-                .AsNoTrackingWithIdentityResolution()
+                .AsNoTracking()
                 .ToListAsync();
 
             TempData.Keep(nameof(CardId));
@@ -74,9 +77,9 @@ namespace MTGViewer.Pages.Trades
 
         public async Task<IActionResult> OnPostUserAsync(string userId)
         {
-            await SetSuggestingAsync();
+            await SetCardAsync();
 
-            if (Suggesting is null)
+            if (Card is null)
             {
                 return NotFound();
             }
@@ -88,7 +91,7 @@ namespace MTGViewer.Pages.Trades
                     .GetColors()
                     .Select(c => Color.COLORS[ c.Name.ToLower() ]));
 
-            Decks = decks.Zip(deckColors);
+            DeckColors = decks.Zip(deckColors, (d, c) => new DeckColor(d, c));
 
             TempData.Keep(nameof(CardId));
 
@@ -96,42 +99,39 @@ namespace MTGViewer.Pages.Trades
         }
 
 
-        private async Task<IEnumerable<Location>> GetDeckOptionsAsync(string userId)
+        private async Task<IEnumerable<Deck>> GetDeckOptionsAsync(string userId)
         {
-            var userDecks = await _dbContext.Locations
+            var userDecks = await _dbContext.Decks
                 .Where(l => l.OwnerId == userId)
                 .Include(d => d.Cards)
                     .ThenInclude(ca => ca.Card)
                         .ThenInclude(c => c.Colors)
                 .AsSplitQuery()
-                .AsNoTrackingWithIdentityResolution()
                 .ToListAsync();
 
             if (!userDecks.Any())
             {
-                return Enumerable.Empty<Location>();
+                return Enumerable.Empty<Deck>();
             }
 
-            var suggestInDeck = await _dbContext.Amounts
-                .Where(ca => ca.Location.OwnerId == userId
-                    && ca.CardId == Suggesting.Id)
-                    // include both request and non-request amounts
-                .Select(ca => ca.Location)
+            // include both request and non-request amounts
+            var decksWithCard = await _dbContext.Amounts
+                .Where(ca => ca.CardId == Card.Id
+                    && ca.Location.Type == Discriminator.Deck)
+                .Select(ca => ca.Location as Deck)
+                .Where(d => d.OwnerId == userId)
                 .Distinct()
-                .AsNoTrackingWithIdentityResolution()
                 .ToListAsync();
 
-            var suggestPrior = await _dbContext.Trades
-                .Where(t => t.ReceiverId == userId
-                    && t.CardId == Suggesting.Id)
-                    // include both suggestions and trades
+            var transfersWithCard = await _dbContext.Transfers
+                .Where(t => t.CardId == Card.Id
+                    && (t.ProposerId == userId || t.ReceiverId == userId))
                 .Select(t => t.To)
                 .Distinct()
-                .AsNoTrackingWithIdentityResolution()
                 .ToListAsync();
 
-            var invalidDecks = suggestInDeck
-                .Concat(suggestPrior)
+            var invalidDecks = decksWithCard
+                .Concat(transfersWithCard)
                 .Distinct();
 
             return userDecks.Except(invalidDecks);
@@ -140,14 +140,23 @@ namespace MTGViewer.Pages.Trades
 
         public async Task<IActionResult> OnPostDeckAsync(int deckId)
         {
-            await SetSuggestingAsync();
+            await SetCardAsync();
 
-            if (Suggesting is null)
+            if (Card is null)
             {
                 return NotFound();
             }
 
-            var toDeck = await GetDeckAndValidateAsync(deckId);
+            if (deckId == default)
+            {
+                DeckColors = Enumerable.Empty<DeckColor>();
+
+                TempData.Keep(nameof(CardId));
+
+                return Page();
+            }
+
+            var toDeck = await GetAndValidateDeckAsync(deckId);
 
             if (toDeck is null)
             {
@@ -160,9 +169,9 @@ namespace MTGViewer.Pages.Trades
 
             var fromUser = await _userManager.GetUserAsync(User);
 
-            var suggestion = new Trade
+            var suggestion = new Suggestion
             {
-                Card = Suggesting,
+                Card = Card,
                 Proposer = fromUser,
                 Receiver = toDeck.Owner,
                 To = toDeck
@@ -178,20 +187,20 @@ namespace MTGViewer.Pages.Trades
         }
 
 
-        private async Task<Location> GetDeckAndValidateAsync(int deckId)
+        private async Task<Deck> GetAndValidateDeckAsync(int deckId)
         {
-            var deck = await _dbContext.Locations.FindAsync(deckId);
+            var deck = await _dbContext.Decks.FindAsync(deckId);
 
-            if (deck is null || deck.IsShared)
+            if (deck is null)
             {
                 PostMessage = "Suggestion target is not valid";
                 return null;
             }
 
-            var suggestPrior = await _dbContext.Trades
-                .Where(t => t.ReceiverId == deck.OwnerId
-                    && t.CardId == Suggesting.Id)
-                    // include both suggestions and trades
+            // include both suggestions and trades
+            var suggestPrior = await _dbContext.Suggestions
+                .Where(t => 
+                    t.ReceiverId == deck.OwnerId && t.CardId == Card.Id)
                 .AnyAsync();
 
             if (suggestPrior)
@@ -206,7 +215,7 @@ namespace MTGViewer.Pages.Trades
 
             var suggestInDeck = deck.Cards
                 .Select(c => c.CardId)
-                .Contains(Suggesting.Id);
+                .Contains(Card.Id);
 
             if (suggestInDeck)
             {

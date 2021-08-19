@@ -8,8 +8,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
-using MTGViewer.Areas.Identity.Data;
-
 
 [assembly: HostingStartup(typeof(MTGViewer.Data.CardHostingStartup))]
 namespace MTGViewer.Data
@@ -30,8 +28,9 @@ namespace MTGViewer.Data
                             .UseSqlServer(config.GetConnectionString("MTGCardContext"))
                                 // TODO: change connection string name
                             .UseTriggers(triggers => triggers
-                                .AddTrigger<Triggers.AmountValidateTrigger>()
-                                .AddTrigger<Triggers.TradeValidateTrigger>()) );
+                                .AddTrigger<Triggers.AmountValidate>()
+                                .AddTrigger<Triggers.TradeValidate>()
+                                .AddTrigger<Triggers.TransferValidate>()) );
                         break;
 
                     case "Sqlite":
@@ -39,9 +38,10 @@ namespace MTGViewer.Data
                         services.AddTriggeredDbContextFactory<CardDbContext>(options => options
                             .UseSqlite(config.GetConnectionString("MTGCardContext"))
                             .UseTriggers(triggers => triggers
-                                .AddTrigger<Triggers.AmountValidateTrigger>()
-                                .AddTrigger<Triggers.LiteTokenUpdateTrigger>()
-                                .AddTrigger<Triggers.TradeValidateTrigger>()) );
+                                .AddTrigger<Triggers.AmountValidate>()
+                                .AddTrigger<Triggers.LiteTokenUpdate>()
+                                .AddTrigger<Triggers.TradeValidate>()
+                                .AddTrigger<Triggers.TransferValidate>()) );
                         break;
                 }
 
@@ -81,7 +81,7 @@ namespace MTGViewer.Data
         {
             if (!context.Locations.Any())
             {
-                context.Locations.Add(new Location("Dev Default"));
+                context.Locations.Add(new Shared("Dev Default"));
                 context.SaveChanges();
             }
         }

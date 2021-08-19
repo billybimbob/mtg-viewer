@@ -52,7 +52,8 @@ namespace MTGViewer.Data.Concurrency
         {
             var concurrentType = typeof(Concurrent);
 
-            return concurrentType.Assembly.GetExportedTypes()
+            return concurrentType.Assembly
+                .GetExportedTypes()
                 .Where(t => 
                     t.IsSubclassOf(concurrentType) && !t.IsAbstract);
         }

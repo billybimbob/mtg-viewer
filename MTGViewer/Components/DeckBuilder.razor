@@ -140,7 +140,7 @@
     private SaveResult _result;
     private CardDbContext _dbContext;
 
-    private Location _deck;
+    private Deck _deck;
     private SortedList<string, List<Card>> _dbCards;
 
     private IDictionary<string, AmountGroup> _deckCards;
@@ -184,7 +184,7 @@
             _dbCards = new SortedList<string, List<Card>>(nameGroups);
 
             _availables = await _dbContext.Amounts
-                .Where(ca => ca.Location.OwnerId == default)
+                .Where(ca => ca.Location.Type == Discriminator.Shared)
                 // TODO: change return location
                 .ToDictionaryAsync(ca => ca.CardId);
         }
@@ -207,13 +207,13 @@
         _busy = true;
         try
         {
+            _dbContext.Attach(User);
+
             _deck = await GetOrCreateDeckAsync();
 
             _deckCards = _deck.Cards
                 .GroupBy(ca => ca.CardId)
                 .ToDictionary(g => g.Key, InitGroup);
-
-            _dbContext.Attach(User);
 
             FixDeckState();
         }
@@ -226,20 +226,20 @@
     }
 
 
-    private async Task<Location> GetOrCreateDeckAsync()
+    private async Task<Deck> GetOrCreateDeckAsync()
     {
         if (DeckId != default)
         {
-            return await _dbContext.Locations
-                .Include(l => l.Cards)
-                .SingleAsync(l => l.Id == DeckId);
+            return await _dbContext.Decks
+                .Include(d => d.Cards)
+                .SingleAsync(d => d.Id == DeckId);
         }
 
-        var userDeckCount = await _dbContext.Locations
+        var userDeckCount = await _dbContext.Decks
             .Where(l => l.Owner == User)
             .CountAsync();
 
-        var newLoc = new Location($"Deck #{userDeckCount + 1}")
+        var newLoc = new Deck($"Deck #{userDeckCount + 1}")
         {
             Owner = User
         };
@@ -427,8 +427,9 @@
             await _dbContext.SaveChangesAsync();
             _result = SaveResult.Success;
 
-            Logger.LogInformation($"successfully updated, trying to nav to index, at {NavigationManager.BaseUri}");
-            NavigationManager.NavigateTo("Cards/Index"); // TODO: fix nav not working
+            Logger.LogInformation($"successfully updated");
+            // Logger.LogInformation($"trying to nav to index, at {NavigationManager.BaseUri}");
+            // NavigationManager.NavigateTo("Cards/Index"); // TODO: fix nav not working
         }
         catch (DbUpdateConcurrencyException ex)
         {
@@ -642,7 +643,7 @@
     private async Task UpdateAvailableAsync()
     {
         var updatedAvails = await _dbContext.Amounts
-            .Where(ca => ca.Location.OwnerId == default)
+            .Where(ca => ca.Location.Type == Discriminator.Shared)
             // TODO: change return location
             // TODO: group amounts by cards
             // .GroupBy(ca => ca.CardId)
@@ -684,6 +685,5 @@
         _availables.Add(dbAvailable.CardId, dbAvailable);
         _dbContext.Attach(dbAvailable);
     }
-
 
 }
