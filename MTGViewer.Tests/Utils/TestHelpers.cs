@@ -142,6 +142,18 @@ namespace MTGViewer.Tests.Utils
         }
 
 
+        internal static async Task SetModelContextAsync(
+            this PageModel model, 
+            UserManager<CardUser> userManager,
+            CardUser user)
+        {
+            var claimsFactory = CardClaimsFactory(userManager);
+            var userClaim = await claimsFactory.CreateAsync(user);
+
+            model.SetModelContext(userClaim);
+        }
+
+
 
         internal static MTGFetchService NoCacheFetchService()
         {

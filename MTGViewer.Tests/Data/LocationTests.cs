@@ -45,15 +45,25 @@ namespace MTGViewer.Tests.Data
 
 
         [Fact]
-        public async Task Discriminator_Locations_IsCorrectType()
+        public async Task Discriminator_Shared_IsCorrectType()
         {
             await using var dbContext = TestHelpers.CardDbContext();
             await dbContext.SeedAsync();
 
             var shared = await dbContext.Locations.FirstAsync(l => l.Type == Discriminator.Shared);
-            var deck = await dbContext.Locations.FirstAsync(l => l.Type == Discriminator.Deck);
 
             Assert.IsType<Shared>(shared);
+        }
+
+
+        [Fact]
+        public async Task Discriminator_Deck_IsCorrectType()
+        {
+            await using var dbContext = TestHelpers.CardDbContext();
+            await dbContext.SeedAsync();
+
+            var deck = await dbContext.Locations.FirstAsync(l => l.Type == Discriminator.Deck);
+
             Assert.IsType<Deck>(deck);
         }
     }

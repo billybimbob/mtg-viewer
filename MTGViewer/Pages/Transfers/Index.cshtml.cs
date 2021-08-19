@@ -71,8 +71,12 @@ namespace MTGViewer.Pages.Transfers
 
         private IReadOnlyList<DeckTrade> GetTradeList(string userId, IEnumerable<Trade> trades)
         {
-            return trades.GroupBy(t => t.TargetDeck)
-                .Select(g => new DeckTrade( g.First().GetOtherUser(userId), g.Key) )
+            return trades
+                .GroupBy(t => t.TargetDeck)
+                .Select(g =>
+                    new DeckTrade(
+                        g.First().GetOtherUser(userId),
+                        g.Key))
                 .OrderBy(t => t.OtherUser.Name)
                     .ThenBy(t => t.Target.Name)
                 .ToList();

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 
@@ -13,40 +14,51 @@ namespace MTGViewer.Tests.Utils
 {
     public static class SeedData
     {
+        private static readonly SemaphoreSlim _fileLock = new SemaphoreSlim(1, 1);
         private static readonly Random _random = new Random(100);
 
 
         internal static async Task SeedAsync(this CardDbContext dbContext)
         {
-            var jsonSuccess = await dbContext.AddFromJsonAsync();
-
-            if (!jsonSuccess)
+            await _fileLock.WaitAsync();
+            try
             {
-                await dbContext.AddGeneratedAsync();
-                await dbContext.WriteToJsonAsync();
-            }
+                var jsonSuccess = await dbContext.AddFromJsonAsync();
 
-            dbContext.ChangeTracker.Clear();
+                if (!jsonSuccess)
+                {
+                    await dbContext.AddGeneratedAsync();
+                    await dbContext.WriteToJsonAsync();
+                }
+
+                dbContext.ChangeTracker.Clear();
+            }
+            finally
+            {
+                _fileLock.Release();
+            }
         }
 
 
         private static async Task AddGeneratedAsync(this CardDbContext dbContext)
         {
             var users = GetUsers();
-            var cards = await GetCardsAsync();
 
+            dbContext.Users.AddRange(users);
+
+            var cards = await GetCardsAsync();
             var decks = GetDecks(users);
             var locations = GetShares().Concat(decks).ToList();
 
-            var amounts = GetCardAmounts(cards, locations);
-            var transfers = GetTransfers(users, cards, decks, amounts);
-
-            dbContext.Users.AddRange(users);
             dbContext.Cards.AddRange(cards);
-
             dbContext.Locations.AddRange(locations);
 
+            var amounts = GetCardAmounts(cards, locations);
+
             dbContext.Amounts.AddRange(amounts);
+
+            var transfers = GetTransfers(users, cards, decks, amounts);
+
             dbContext.Transfers.AddRange(transfers);
 
             await dbContext.SaveChangesAsync();
@@ -126,7 +138,8 @@ namespace MTGViewer.Tests.Utils
             IEnumerable<Deck> decks,
             IEnumerable<CardAmount> amounts)
         {
-            var source = amounts.First(ca => ca.Location.Type != Discriminator.Shared);
+            var source = amounts.First(ca =>
+                ca.Location.Type == Discriminator.Deck);
 
             var tradeFrom = (Deck)source.Location;
             var tradeTo = decks.First(l => l.Id != source.LocationId);

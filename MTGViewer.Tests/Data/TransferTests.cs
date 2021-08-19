@@ -14,6 +14,7 @@ namespace MTGViewer.Tests.Data
         [Fact]
         public async Task Type_Suggestion_IsCorrectDiscriminator()
         {
+            // Arrange
             await using var services = TestHelpers.ServiceProvider();
             await using var dbContext = TestHelpers.CardDbContext(services);
             using var userManager = TestHelpers.CardUserManager(services);
@@ -37,8 +38,10 @@ namespace MTGViewer.Tests.Data
                 To = toLoc
             };
 
+            // Act
             dbContext.Suggestions.Attach(suggestion);
 
+            // Assert
             Assert.Equal(Discriminator.Suggestion, suggestion.Type);
         }
 
@@ -46,6 +49,7 @@ namespace MTGViewer.Tests.Data
         [Fact]
         public async Task Type_Trade_IsCorrectDiscriminator()
         {
+            // Arrange
             await using var services = TestHelpers.ServiceProvider();
             await using var dbContext = TestHelpers.CardDbContext(services);
             using var userManager = TestHelpers.CardUserManager(services);
@@ -74,22 +78,34 @@ namespace MTGViewer.Tests.Data
                 Amount = 3
             };
 
+            // Act
             dbContext.Trades.Attach(trade);
 
+            // Assert
             Assert.Equal(Discriminator.Trade, trade.Type);
         }
 
 
         [Fact]
-        public async Task Discriminator_Transfers_IsCorrectType()
+        public async Task Discriminator_Suggestion_IsCorrectType()
         {
             await using var dbContext = TestHelpers.CardDbContext();
             await dbContext.SeedAsync();
 
             var suggestion = await dbContext.Transfers.FirstAsync(t => t.Type == Discriminator.Suggestion);
-            var trade = await dbContext.Transfers.FirstAsync(t => t.Type == Discriminator.Trade);
 
             Assert.IsType<Suggestion>(suggestion);
+        }
+
+
+        [Fact]
+        public async Task Discriminator_Trade_IsCorrectType()
+        {
+            await using var dbContext = TestHelpers.CardDbContext();
+            await dbContext.SeedAsync();
+
+            var trade = await dbContext.Transfers.FirstAsync(t => t.Type == Discriminator.Trade);
+
             Assert.IsType<Trade>(trade);
         }
     }
