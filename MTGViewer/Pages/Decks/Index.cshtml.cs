@@ -35,19 +35,19 @@ namespace MTGViewer.Pages.Decks
         public string PostMessage { get; set; }
 
         public CardUser CardUser { get; private set; }
-        public IEnumerable<DeckColor> DeckColors { get; private set; }
-        public IEnumerable<CardAmount> Requests { get; private set; }
+        public IReadOnlyList<DeckColor> DeckColors { get; private set; }
+        public IReadOnlyList<CardAmount> Requests { get; private set; }
 
         public CardAmount PickedRequest { get; private set; }
-        public IEnumerable<Deck> RequestSources { get; private set; }
+        public IReadOnlyList<Deck> RequestSources { get; private set; }
 
 
-        public async Task OnGet()
+        public async Task OnGetAsync()
         {
-            CardUser = await _userManager.GetUserAsync(User);
+            var user = await _userManager.GetUserAsync(User);
 
             var decks = await _dbContext.Decks
-                .Where(l => l.Owner == CardUser)
+                .Where(l => l.OwnerId == user.Id)
                 .Include(l => l.Cards)
                     .ThenInclude(ca => ca.Card)
                         .ThenInclude(c => c.Colors)
@@ -59,56 +59,84 @@ namespace MTGViewer.Pages.Decks
                     .GetColors()
                     .Select(c => Color.COLORS[c.Name.ToLower()]));
 
-            DeckColors = decks.Zip(colors, (d, cs) => new DeckColor(d, cs));
-
-            Requests = await _dbContext.Amounts
+            var requests = await _dbContext.Amounts
                 .Where(ca => ca.IsRequest
                     && ca.Location is Deck
-                    && (ca.Location as Deck).OwnerId == CardUser.Id)
+                    && (ca.Location as Deck).OwnerId == user.Id)
+                .Include(ca => ca.Card)
+                .Include(ca => ca.Location)
                 .Distinct()
                 .ToListAsync();
+
+            CardUser = user;
+
+            DeckColors = decks
+                .Zip(colors, (d, cs) => new DeckColor(d, cs))
+                .ToList();
+
+            Requests = requests;
         }
 
 
         public async Task<IActionResult> OnPostRequestAsync(int requestId)
         {
-            PickedRequest = await _dbContext.Amounts.FindAsync(requestId);
+            var request = await _dbContext.Amounts
+                .Include(ca => ca.Location)
+                .Include(ca => ca.Card)
+                .FirstOrDefaultAsync(ca => ca.Id == requestId);
 
-            if (PickedRequest == null || PickedRequest.Location is not Deck)
+            if (request == default || request.Location is not Deck)
             {
                 return NotFound();
             }
 
-            CardUser = await _userManager.GetUserAsync(User);
+            var user = await _userManager.GetUserAsync(User);
 
-            var possibleSources = await _dbContext.Amounts
+            var possibleSources = _dbContext.Amounts
                 .Where(ca => !ca.IsRequest
-                    && ca.CardId == PickedRequest.CardId
-                    && ca.Location is Deck)
+                    && ca.CardId == request.CardId
+                    && ca.Location is Deck
+                    && (ca.Location as Deck).OwnerId != user.Id)
+                .Include(ca => ca.Location)
+                    .ThenInclude(l => (l as Deck).Owner);
+
+            var sources = await possibleSources
+                .GroupJoin( _dbContext.Trades,
+                    amount => 
+                        new { amount.CardId, DeckId = amount.LocationId },
+                    trade =>
+                        new { trade.CardId, DeckId = trade.FromId },
+                    (amount, trades) =>
+                        new { amount, trades })
+                .SelectMany(
+                    ats =>
+                        ats.trades.DefaultIfEmpty(),
+                    (ats, trade) =>
+                        new { ats.amount, trade })
+                .Where(at => at.trade == default)
+                .Select(at => at.amount)
+                .ToListAsync();
+            
+            CardUser = user;
+
+            PickedRequest = request;
+
+            RequestSources = sources
                 .Select(ca => ca.Location as Deck)
-                .Where(d => d.OwnerId == CardUser.Id)
                 .Distinct()
-                .ToListAsync();
-
-            var alreadyRequested = await _dbContext.Trades
-                .Where(t => t.CardId == PickedRequest.CardId
-                    && t.ToId == PickedRequest.LocationId
-                    && t.ProposerId == CardUser.Id)
-                .Select(t => t.From)
-                .Distinct()
-                .ToListAsync();
-
-            RequestSources = possibleSources.Except(alreadyRequested);
+                .ToList();
 
             return Page();
         }
 
 
-        public async Task<IActionResult> OnPostDeckAsync(int requestId, int deckId)
+        public async Task<IActionResult> OnPostTradeAsync(int requestId, int deckId, int amount)
         {
-            var request = await _dbContext.Amounts.FindAsync(requestId);
+            var request = await _dbContext.Amounts
+                .Include(ca => ca.Location)
+                .FirstOrDefaultAsync(ca => ca.Id == requestId);
 
-            if (request == null || request.Location is not Deck)
+            if (request == default || request.Location is not Deck)
             {
                 return NotFound();
             }
@@ -117,7 +145,7 @@ namespace MTGViewer.Pages.Decks
                 .Include(d => d.Owner)
                 .FirstOrDefaultAsync(d => d.Id == deckId);
 
-            if (target == null)
+            if (target == default)
             {
                 return NotFound();
             }
@@ -136,6 +164,28 @@ namespace MTGViewer.Pages.Decks
                 return RedirectToPage("./Index");
             }
 
+            var targetAmount = await _dbContext.Amounts
+                .AsNoTracking()
+                .FirstOrDefaultAsync(ca =>
+                    !ca.IsRequest
+                        && ca.CardId == request.CardId
+                        && ca.LocationId == target.Id);
+
+            if (targetAmount == default)
+            {
+                PostMessage = "Target deck is no longer valid";
+                return RedirectToPage("./Index");
+            }
+
+            var upperLimit = System.Math.Min(request.Amount, targetAmount.Amount);
+
+            amount = amount switch
+            {
+                < 1 => 1,
+                _ when amount > upperLimit => upperLimit,
+                _ => amount
+            };
+
             var trade = new Trade
             {
                 Card = request.Card,
@@ -143,7 +193,7 @@ namespace MTGViewer.Pages.Decks
                 Receiver = target.Owner,
                 From = target,
                 To = (Deck)request.Location,
-                Amount = request.Amount
+                Amount = amount
             };
 
             _dbContext.Trades.Attach(trade);

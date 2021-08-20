@@ -212,8 +212,7 @@ namespace MTGViewer.Tests.Pages
                 .AsNoTracking();
 
             var tradeSourceQuery = tradeQuery
-                .Join(
-                    dbContext.Amounts.Where(ca => !ca.IsRequest),
+                .Join( dbContext.Amounts.Where(ca => !ca.IsRequest),
                     trade =>
                         new { trade.CardId, DeckId = trade.FromId },
                     amount =>
