@@ -9,45 +9,8 @@ namespace MTGViewer.Tests.Data
 {
     public class LocationTests
     {
-        /*
         [Fact]
-        public void Type_Shared_IsCorrectDiscriminator()
-        {
-            using var dbContext = TestHelpers.CardDbContext();
-
-            var location = new Shared("No owner location");
-
-            dbContext.Attach(location);
-
-            Assert.Equal(Discriminator.Shared, location.Type);
-        }
-
-
-        [Fact]
-        public async Task Type_Deck_IsCorrectDiscriminator()
-        {
-            await using var services = TestHelpers.ServiceProvider();
-            await using var dbContext = TestHelpers.CardDbContext(services);
-            using var userManager = TestHelpers.CardUserManager(services);
-
-            await dbContext.SeedAsync();
-
-            var testUser = await userManager.Users.FirstAsync();
-
-            var location = new Deck("Owned location")
-            {
-                Owner = testUser
-            };
-
-            dbContext.Attach(location);
-
-            Assert.Equal(Discriminator.Deck, location.Type);
-        }
-        */
-
-
-        [Fact]
-        public async Task Discriminator_Shared_IsCorrectType()
+        public async Task First_IsShared_CorrectType()
         {
             await using var dbContext = TestHelpers.CardDbContext();
             await dbContext.SeedAsync();
@@ -59,7 +22,7 @@ namespace MTGViewer.Tests.Data
 
 
         [Fact]
-        public async Task Discriminator_Deck_IsCorrectType()
+        public async Task First_IsDeck_CorrectType()
         {
             await using var dbContext = TestHelpers.CardDbContext();
             await dbContext.SeedAsync();
@@ -67,6 +30,19 @@ namespace MTGViewer.Tests.Data
             var deck = await dbContext.Locations.FirstAsync(l => l is Deck);
 
             Assert.IsType<Deck>(deck);
+        }
+
+
+        [Fact]
+        public async Task First_MultipleQueries_SameReference()
+        {
+            await using var dbContext = TestHelpers.CardDbContext();
+            await dbContext.SeedAsync();
+
+            var deck1 = await dbContext.Locations.FirstAsync(l => l is Deck);
+            var deck2 = await dbContext.Locations.FirstAsync(l => l is Deck);
+
+            Assert.Same(deck1, deck2);
         }
     }
 }

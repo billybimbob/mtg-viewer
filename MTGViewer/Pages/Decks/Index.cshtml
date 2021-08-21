@@ -7,9 +7,16 @@
 }
 
 
+@if (!string.IsNullOrEmpty(Model.PostMessage))
+{
+    <div class="alert alert-secondary" role="alert">
+        @Model.PostMessage
+    </div>
+}
+
 @if (Model.PickedRequest != null)
 {
-    <h2>Deck Options for @Model.PickedRequest.Card.Name</h2>
+    <h2>Request Options for @Model.PickedRequest.Card.Name</h2>
 
     <form method="post">
         <table class="table">
@@ -35,22 +42,23 @@
         </table>
 
         <div class="form-group">
-            <label for="amountRange">Amount to Request</label>
+            <label for="amount">Amount to Request: </label>
+            <output id="result" for="amount">1</output>
 
-            <!-- not sure on max value -->
             <input type="range"
-                   id="amountRange"
-                   class="form-control-range"
+                   id="amount"
                    name="amount"
-                   min="1" max="20" step="1"
-                   value="1" />
+                   class="form-control-range"
+                   min="1" max="@Model.PickedRequest.Amount"
+                   value="1"
+                   oninput="result.value = value" />
         </div>
 
         <input type="submit"
-               asp-page-handler="Trade"
+               asp-page-handler="Submit"
                asp-route-requestid="@Model.PickedRequest.Id"
                class="btn btn-secondary mb-3"
-               value="Request" />
+               value="Submit" />
     </form>
 }
 else
@@ -83,8 +91,14 @@ else
                         }
                     </td>
                     <td>
-                        <a asp-page="./Builder" asp-route-id="@deck.Id"> Edit </a> |
-                        <a asp-page="./Delete" asp-route-id="@deck.Id"> Delete </a>
+                        <a asp-page="./Builder"
+                           asp-route-id="@deck.Id"
+                           class="btn btn-secondary mb-3">
+                           Edit </a>
+                        <a asp-page="./Delete"
+                           asp-route-id="@deck.Id"
+                           class="btn btn-secondary mb-3">
+                           Delete </a>
                     </td>
                 </tr>
             }
@@ -120,7 +134,7 @@ else
                                    asp-page-handler="Request"
                                    asp-route-requestid="@request.Id"
                                    class="btn btn-secondary mb-3"
-                                   value="Trade" />
+                                   value="Request" />
                         </td>
                     </tr>
                 }

@@ -62,14 +62,15 @@
                 <td>@card.Amounts.Select(ca => ca.Amount).Sum()</td>
 
                 <td>
-                    <a href="@Details(card.Id)">Details</a>
+                    <a href="@Details(card.Id)"
+                       class="btn btn-secondary mr-2">
+                       Details </a>
+
                     @if (IsSignedIn)
                     {
-                        <text>
-                            | @*<a href="@Edit(card.Id)">Edit</a> |*@
-                            <a href="@Delete(card.Id)">Delete</a> |
-                            <a href="@Suggest(card.Id)">Suggest</a>
-                        </text>
+                        <a href="@Suggest(card.Id)"
+                            class="btn btn-secondary">
+                            Suggest </a>
                     }
                 </td>
             </tr>
@@ -165,9 +166,7 @@
     }
 
 
-    private string Edit(string id) => CardRoute("Edit", id);
     private string Details(string id) => CardRoute("Details", id);
-    private string Delete(string id) => CardRoute("Delete", id);
 
     private string Suggest(string id) =>
         QueryHelpers.AddQueryString("Transfers/Suggest", "cardid", id);

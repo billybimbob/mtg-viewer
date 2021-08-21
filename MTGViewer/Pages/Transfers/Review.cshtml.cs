@@ -163,11 +163,8 @@ namespace MTGViewer.Pages.Transfers
                 return null;
             }
 
-            var nonRequestAmounts = _dbContext.Amounts
-                .Where(ca => !ca.IsRequest);
-
             var sourceMap = await acceptQuery
-                .Join(nonRequestAmounts,
+                .Join( _dbContext.Amounts.Where(ca => !ca.IsRequest),
                     trade =>
                         new { trade.CardId, DeckId = trade.FromId },
                     amount =>
@@ -187,7 +184,7 @@ namespace MTGViewer.Pages.Transfers
             }
 
             var destMap = await acceptQuery
-                .Join(nonRequestAmounts,
+                .Join( _dbContext.Amounts.Where(ca => !ca.IsRequest),
                     trade => 
                         new { trade.CardId, DeckId = trade.ToId },
                     amount =>

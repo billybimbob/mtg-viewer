@@ -99,8 +99,18 @@
     </dl>
 </div>
 <div>
-    @* <a asp-page="./Edit" asp-route-id="@Model.Card.Id">Edit</a> |
-    <a asp-page="./Index">Back to List</a> *@
+    <!--a asp-page="./Edit"
+       asp-route-id="@Model.Card.Id"
+       class="btn btn-secondary mb-3">
+       Edit </a-->
+
+    <a asp-page="./Delete"
+       asp-route-id="@Model.Card.Id"
+       class="btn btn-danger mb-3">
+       Delete </a>
+
     <!-- js hack -->
-    <a href="javascript:history.go(-1)">Back</a>
+    <a href="javascript:history.go(-1)"
+       class="btn btn-secondary mb-3">
+       Back </a>
 </div>

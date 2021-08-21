@@ -47,8 +47,9 @@ namespace MTGViewer.Pages.Transfers
 
             var userTrades = await _dbContext.Trades
                 .Where(TradeFilter.Involves(userId))
-                .Include(t => t.TargetDeck)
-                    .ThenInclude(l => l.Owner)
+                .Include(t => t.Proposer)
+                .Include(t => t.Receiver)
+                .Include(t => t.TargetDeck.Owner)
                 .ToListAsync();
 
             var waitingUser = userTrades

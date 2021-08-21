@@ -75,7 +75,7 @@
                                 <button title="@card.Name Offer"
                                         type="button"
                                         class="btn btn-outline-secondary border-0 rounded"
-                                        disabled="@(amount==0)"
+                                        disabled="@(amount == 0)"
                                         @onclick="() => FromProposer(cardAmount)">
                                     @(IsCounter ? "Take Card" : "Offer Card")
                                 </button>
@@ -114,7 +114,7 @@
                                 <button title="@card.Name Take"
                                         type="button"
                                         class="btn btn-outline-secondary border-0 rounded"
-                                        disabled="@(amount==0)"
+                                        disabled="@(amount == 0 || Destination == null)"
                                         @onclick="() => FromReceiver(cardAmount)">
                                     @(IsCounter ? "Offer Card" : "Take Card")
                                 </button>
@@ -155,6 +155,7 @@
                             <td>
                                 <button title="@trade.Id Return"
                                         type="button"
+                                        disabled="@(Destination == null)"
                                         class="btn btn-outline-secondary border-0 rounded"
                                         @onclick="() => ReturnCard(trade)">
                                     Return
@@ -399,16 +400,16 @@
 
     private void FromProposer(CardAmount proposeSource)
     {
-        var source = proposeSource.Location as Deck;
+        var fromDeck = proposeSource.Location as Deck;
 
-        if (proposeSource.Amount == 0 || source is null)
+        if (proposeSource.Amount == 0 || fromDeck is null)
         {
             return;
         }
 
         Trade trade;
 
-        var reverseOffer = new TradeKey(proposeSource.Card, To: source, From: _receiverDeck);
+        var reverseOffer = new TradeKey(proposeSource.Card, To: fromDeck, From: _receiverDeck);
 
         if (_currentOffers.TryGetValue(reverseOffer, out trade) && trade.Amount > 0)
         {
@@ -416,7 +417,7 @@
             return;
         }
 
-        var offer = new TradeKey(proposeSource.Card, To: _receiverDeck, From: source);
+        var offer = new TradeKey(proposeSource.Card, To: _receiverDeck, From: fromDeck);
 
         if (!_currentOffers.TryGetValue(offer, out trade))
         {
@@ -424,8 +425,8 @@
             {
                 Card = proposeSource.Card,
                 To = _receiverDeck,
-                From = source,
-                Proposer = Proposer,
+                From = fromDeck,
+                Proposer = fromDeck.Owner,
                 Receiver = _receiverDeck.Owner,
                 Amount = 0
             };
@@ -451,16 +452,16 @@
             return;
         }
 
-        var source = receiverSource.Location as Deck;
+        var fromDeck = receiverSource.Location as Deck;
 
-        if (receiverSource.Amount == 0 || source is null)
+        if (receiverSource.Amount == 0 || fromDeck is null)
         {
             return;
         }
 
         Trade trade;
 
-        var reverseTake = new TradeKey(receiverSource.Card, To: source, From: Destination);
+        var reverseTake = new TradeKey(receiverSource.Card, To: fromDeck, From: Destination);
 
         if (_currentOffers.TryGetValue(reverseTake, out trade) && trade.Amount > 0)
         {
@@ -468,7 +469,7 @@
             return;
         }
 
-        var take = new TradeKey(receiverSource.Card, From: Destination, To: source);
+        var take = new TradeKey(receiverSource.Card, To: Destination, From: fromDeck);
 
         if (!_currentOffers.TryGetValue(take, out trade))
         {
@@ -476,9 +477,9 @@
             {
                 Card = receiverSource.Card,
                 To = Destination,
-                From = source,
-                Proposer = Proposer,
-                Receiver = _receiverDeck.Owner,
+                From = fromDeck,
+                Proposer = Destination.Owner,
+                Receiver = fromDeck.Owner,
                 Amount = 0
             };
 

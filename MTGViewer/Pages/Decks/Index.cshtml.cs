@@ -130,9 +130,10 @@ namespace MTGViewer.Pages.Decks
         }
 
 
-        public async Task<IActionResult> OnPostTradeAsync(int requestId, int deckId, int amount)
+        public async Task<IActionResult> OnPostSubmitAsync(int requestId, int deckId, int amount)
         {
             var request = await _dbContext.Amounts
+                .Include(ca => ca.Card)
                 .Include(ca => ca.Location)
                 .FirstOrDefaultAsync(ca => ca.Id == requestId);
 
@@ -147,15 +148,17 @@ namespace MTGViewer.Pages.Decks
 
             if (target == default)
             {
-                return NotFound();
+                PostMessage = "Deck selected is invalid";
+                return await OnPostRequestAsync(requestId);
             }
             
             var user = await _userManager.GetUserAsync(User);
 
             var isPriorRequest = await _dbContext.Trades
                 .Where(t => t.CardId == request.CardId
+                    && t.ProposerId == user.Id
                     && t.ToId == request.LocationId
-                    && t.ProposerId == user.Id)
+                    && t.FromId == target.Id)
                 .AnyAsync();
 
             if (isPriorRequest)

@@ -42,7 +42,6 @@ namespace MTGViewer.Data
         public Deck To { get; set; } = null!;
         public int ToId { get; set; }
 
-
         public ICollection<Deck> Decks { get; set; } = new HashSet<Deck>();
 
 
