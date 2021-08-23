@@ -51,15 +51,18 @@ namespace MTGViewer.Pages.Transfers
                 return NotFound();
             }
 
-            var deck = await _dbContext.Decks.FindAsync(deckId);
+            var deck = await _dbContext.Decks
+                .Include(d => d.Owner)
+                .SingleOrDefaultAsync(d =>
+                    d.Id == deckId && d.OwnerId != proposerId);
 
-            if (deck == null || deck.OwnerId == proposerId)
+            if (deck == null)
             {
                 return NotFound();
             }
 
             var deckTrades = await _dbContext.Trades
-                .Where(TradeFilter.Involves(proposerId, deckId))
+                .Where(TradeFilter.Involves(proposerId, deck.Id))
                 .Include(t => t.Card)
                 .Include(t => t.To)
                 .Include(t => t.From)
@@ -72,16 +75,12 @@ namespace MTGViewer.Pages.Transfers
                 return RedirectToPage("./Index");
             }
 
-            await _dbContext.Entry(deck)
-                .Reference(l => l.Owner)
-                .LoadAsync();
-
             Deck = deck;
 
             Proposer = await _userManager.FindByIdAsync(proposerId);
 
             ToDeck = deckTrades
-                .Where(t => t.To.Id == deckId)
+                .Where(t => t.To.Id == deck.Id)
                 .OrderBy(t => t.Card.Name)
                 .ToList();
 
@@ -116,9 +115,10 @@ namespace MTGViewer.Pages.Transfers
                 return NotFound();
             }
 
-            var deck = await _dbContext.Decks.FindAsync(deckId);
+            var validDeck = await _dbContext.Decks
+                .AnyAsync(d => d.Id == deckId && d.OwnerId != proposerId);
 
-            if (deck == null || deck.OwnerId == proposerId)
+            if (!validDeck)
             {
                 return NotFound();
             }
@@ -130,16 +130,12 @@ namespace MTGViewer.Pages.Transfers
                 return RedirectToPage("./Index");
             }
 
+            ApplyAccepts(acceptInfo);
+
             try
             {
-                ApplyAccepts(acceptInfo);
                 await _dbContext.SaveChangesAsync();
-
                 PostMessage = "Trade successfully Applied";
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                PostMessage = "Ran into error while Accepting";
             }
             catch (DbUpdateException)
             {
@@ -259,10 +255,6 @@ namespace MTGViewer.Pages.Transfers
             {
                 await _dbContext.SaveChangesAsync();
                 PostMessage = "Successfully rejected Trade";
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                PostMessage = "Ran into error while rejecting";
             }
             catch (DbUpdateException)
             {

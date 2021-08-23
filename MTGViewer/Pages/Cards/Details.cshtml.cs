@@ -27,7 +27,7 @@ namespace MTGViewer.Pages.Cards
                 return NotFound();
             }
 
-            Card = await _context.Cards.FirstOrDefaultAsync(m => m.Id == id);
+            Card = await _context.Cards.FindAsync(id);
 
             if (Card is null)
             {

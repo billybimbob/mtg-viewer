@@ -91,9 +91,10 @@ namespace MTGViewer.Pages.Transfers
                 return NotFound();
             }
 
-            var deck = await _dbContext.Decks.FindAsync(deckId);
+            var validDeck = await _dbContext.Decks
+                .AnyAsync(d => d.Id == deckId && d.OwnerId != proposerId);
 
-            if (deck == null || deck.OwnerId == proposerId)
+            if (!validDeck)
             {
                 return NotFound();
             }
@@ -121,10 +122,6 @@ namespace MTGViewer.Pages.Transfers
                 await _dbContext.SaveChangesAsync();
                 PostMessage = "Successfully rejected Trade";
             }
-            catch (DbUpdateConcurrencyException)
-            {
-                PostMessage = "Ran into error while rejecting";
-            }
             catch (DbUpdateException)
             {
                 PostMessage = "Ran into error while rejecting";
@@ -142,14 +139,19 @@ namespace MTGViewer.Pages.Transfers
             if (suggestion is null || suggestion.ReceiverId != userId)
             {
                 PostMessage = "Specified suggestion cannot be acknowledged";
+                return RedirectToPage("./Index");
             }
-            else
+
+            _dbContext.Entry(suggestion).State = EntityState.Deleted;
+
+            try
             {
-                _dbContext.Entry(suggestion).State = EntityState.Deleted;
-
                 await _dbContext.SaveChangesAsync();
-
                 PostMessage = "Suggestion Acknowledged";
+            }
+            catch (DbUpdateException)
+            {
+                PostMessage = "Ran into issue while trying to Acknowledge";
             }
 
             return RedirectToPage("./Index");

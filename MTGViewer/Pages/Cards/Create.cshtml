@@ -70,7 +70,9 @@
                                 <td>
                                     <input type="hidden" asp-for="Matches[i].MultiverseId"/>
                                     <input asp-for="Amounts[i].Id"/>
+
                                     <input asp-for="Amounts[i].Amount"/>
+                                    <span asp-validation-for="Amounts[i].Amount" class="text-danger"></span>
                                 </td>
                             </tr>
                         }

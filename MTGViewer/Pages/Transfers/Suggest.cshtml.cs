@@ -35,23 +35,26 @@ namespace MTGViewer.Pages.Transfers
         [TempData]
         public string PostMessage { get; set; }
 
-        public IEnumerable<CardUser> Users { get; private set; }
-
-        public IEnumerable<DeckColor> DeckColors { get; private set; }
-
         public Card Card { get; private set; }
+
+        public IReadOnlyList<CardUser> Users { get; private set; }
+
+        public IReadOnlyList<DeckColor> DeckColors { get; private set; }
+
 
 
         public async Task<IActionResult> OnGetAsync(string cardId)
         {
-            Card = await _dbContext.Cards.FindAsync(cardId);
+            var card = await _dbContext.Cards.FindAsync(cardId);
 
-            if (Card is null)
+            if (card is null)
             {
                 return NotFound();
             }
 
             var srcId = _userManager.GetUserId(User);
+
+            Card = card;
 
             Users = await _userManager.Users
                 .Where(u => u.Id != srcId)
@@ -64,30 +67,41 @@ namespace MTGViewer.Pages.Transfers
 
         public async Task<IActionResult> OnPostUserAsync(string cardId, string userId)
         {
-            Card = await _dbContext.Cards.FindAsync(cardId);
+            var card = await _dbContext.Cards.FindAsync(cardId);
 
-            if (Card is null)
+            if (card is null)
             {
                 return NotFound();
             }
 
-            var decks = await GetDeckOptionsAsync(userId);
+            var user = await _userManager.FindByIdAsync(userId);
 
-            var deckColors = decks
+            if (user is null)
+            {
+                return NotFound();
+            }
+
+            var decks = await GetDeckOptionsAsync(card, user);
+
+            var colors = decks
                 .Select(d => d
                     .GetColors()
                     .Select(c => Color.COLORS[ c.Name.ToLower() ]));
 
-            DeckColors = decks.Zip(deckColors, (d, c) => new DeckColor(d, c));
+            Card = card;
+
+            DeckColors = decks
+                .Zip(colors, (deck, color) => new DeckColor(deck, color))
+                .ToList();
 
             return Page();
         }
 
 
-        private async Task<IEnumerable<Deck>> GetDeckOptionsAsync(string userId)
+        private async Task<IEnumerable<Deck>> GetDeckOptionsAsync(Card card, CardUser user)
         {
             var userDecks = await _dbContext.Decks
-                .Where(l => l.OwnerId == userId)
+                .Where(l => l.OwnerId == user.Id)
                 .Include(d => d.Cards)
                     .ThenInclude(ca => ca.Card)
                         .ThenInclude(c => c.Colors)
@@ -101,15 +115,15 @@ namespace MTGViewer.Pages.Transfers
 
             // include both request and non-request amounts
             var decksWithCard = await _dbContext.Amounts
-                .Where(ca => ca.CardId == Card.Id && ca.Location is Deck)
+                .Where(ca => ca.CardId == card.Id && ca.Location is Deck)
                 .Select(ca => ca.Location as Deck)
-                .Where(d => d.OwnerId == userId)
+                .Where(d => d.OwnerId == user.Id)
                 .Distinct()
                 .ToListAsync();
 
             var transfersWithCard = await _dbContext.Transfers
-                .Where(t => t.CardId == Card.Id
-                    && (t.ProposerId == userId || t.ReceiverId == userId))
+                .Where(t => t.CardId == card.Id
+                    && (t.ProposerId == user.Id || t.ReceiverId == user.Id))
                 .Select(t => t.To)
                 .Distinct()
                 .ToListAsync();
@@ -124,20 +138,20 @@ namespace MTGViewer.Pages.Transfers
 
         public async Task<IActionResult> OnPostDeckAsync(string cardId, int deckId)
         {
-            Card = await _dbContext.Cards.FindAsync(cardId);
+            var card = await _dbContext.Cards.FindAsync(cardId);
 
-            if (Card is null)
+            if (card is null)
             {
                 return NotFound();
             }
 
             if (deckId == default)
             {
-                DeckColors = Enumerable.Empty<DeckColor>();
+                DeckColors = new List<DeckColor>();
                 return Page();
             }
 
-            var toDeck = await GetAndValidateDeckAsync(deckId);
+            var toDeck = await GetSuggestionDeckAsync(card, deckId);
 
             if (toDeck is null)
             {
@@ -152,7 +166,7 @@ namespace MTGViewer.Pages.Transfers
 
             var suggestion = new Suggestion
             {
-                Card = Card,
+                Card = card,
                 Proposer = fromUser,
                 Receiver = toDeck.Owner,
                 To = toDeck
@@ -160,17 +174,26 @@ namespace MTGViewer.Pages.Transfers
 
             _dbContext.Attach(suggestion);
 
-            await _dbContext.SaveChangesAsync();
-
-            PostMessage = "Suggestion Successfully Created";
+            try
+            {
+                await _dbContext.SaveChangesAsync();
+                PostMessage = "Suggestion Successfully Created";
+            }
+            catch (DbUpdateException)
+            {
+                PostMessage = "Ran into issue while creating Suggestion";
+            }
 
             return RedirectToPage("./Index");
         }
 
 
-        private async Task<Deck> GetAndValidateDeckAsync(int deckId)
+        private async Task<Deck> GetSuggestionDeckAsync(Card card, int deckId)
         {
-            var deck = await _dbContext.Decks.FindAsync(deckId);
+            var deck = await _dbContext.Decks
+                .Include(d => d.Cards)
+                .Include(d => d.Owner)
+                .SingleOrDefaultAsync(d => d.Id == deckId);
 
             if (deck is null)
             {
@@ -180,9 +203,8 @@ namespace MTGViewer.Pages.Transfers
 
             // include both suggestions and trades
             var suggestPrior = await _dbContext.Suggestions
-                .Where(t => 
-                    t.ReceiverId == deck.OwnerId && t.CardId == Card.Id)
-                .AnyAsync();
+                .AnyAsync(t => 
+                    t.ReceiverId == deck.OwnerId && t.CardId == card.Id);
 
             if (suggestPrior)
             {
@@ -190,13 +212,9 @@ namespace MTGViewer.Pages.Transfers
                 return null;
             }
 
-            await _dbContext.Entry(deck)
-                .Collection(d => d.Cards)
-                .LoadAsync();
-
             var suggestInDeck = deck.Cards
                 .Select(c => c.CardId)
-                .Contains(Card.Id);
+                .Contains(card.Id);
 
             if (suggestInDeck)
             {

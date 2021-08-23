@@ -58,11 +58,20 @@ namespace MTGViewer.Data.Triggers
                 _dbContext.Attach(trade);
             }
 
-            if (trade.Amount == 0)
+            if (trade.Amount > 0)
             {
-                _dbContext.Entry(trade).State = EntityState.Deleted;
+                return;
+            }
 
+            _dbContext.Entry(trade).State = EntityState.Deleted;
+
+            try
+            {
                 await _dbContext.SaveChangesAsync();
+            }
+            catch (DbUpdateException e)
+            {
+                _logger.LogError(e.ToString());
             }
         }
     }

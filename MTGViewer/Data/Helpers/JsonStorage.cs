@@ -117,11 +117,15 @@ namespace MTGViewer.Data.Json
 
                 return true;
             }
+            catch (FileNotFoundException)
+            {
+                return false;
+            }
             catch (JsonReaderException)
             {
                 return false;
             }
-            catch (FileNotFoundException)
+            catch (DbUpdateException)
             {
                 return false;
             }

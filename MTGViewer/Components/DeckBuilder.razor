@@ -66,7 +66,7 @@
                 <td>@available</td>
 
                 <td>
-                    <button title="@card.Name Add"
+                    <button title="Add @card.Name"
                             type="button"
                             class="btn btn-outline-secondary border-0 rounded"
                             disabled="@(available==0)"
@@ -114,7 +114,7 @@
                 <td>@(inDeck.Request?.Amount ?? 0)</td>
 
                 <td>
-                    <button title="@card.Name Remove"
+                    <button title="Remove @card.Name"
                             type="button"
                             class="btn btn-outline-secondary border-0 rounded"
                             @onclick="() => RemoveCardFromDeck(card)">
@@ -575,8 +575,8 @@
             dbDeckCard.Location = localDeckGroup.Location;
 
             // token also is matched
-            localDeckGroup.Request = dbDeckCard;
             _dbContext.Attach(dbDeckCard);
+            localDeckGroup.Request = dbDeckCard;
 
             return;
         }

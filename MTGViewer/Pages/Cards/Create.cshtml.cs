@@ -50,7 +50,7 @@ namespace MTGViewer.Pages.Cards
         public IReadOnlyList<Card> Matches { get; set; }
 
         [BindProperty]
-        public IList<AmountModel> Amounts { get; set; }
+        public IReadOnlyList<AmountModel> Amounts { get; set; }
 
 
         // To protect from overposting attacks, see https://aka.ms/RazorPagesCRUD
@@ -123,13 +123,22 @@ namespace MTGViewer.Pages.Cards
                     continue;
                 }
 
-                var amountEntry = new CardAmount{ Amount = info.Amount };
-                card.Amounts.Add(amountEntry);
+                card.Amounts.Add(new CardAmount
+                {
+                    Amount = info.Amount
+                });
 
                 _dbContext.Cards.Add(card);
             }
 
-            await _dbContext.SaveChangesAsync();
+            try
+            {
+                await _dbContext.SaveChangesAsync();
+            }
+            catch (DbUpdateException e)
+            {
+                _logger.LogError(e.ToString());
+            }
         }
 
     }

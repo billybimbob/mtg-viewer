@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 using System.Threading.Tasks;
 
@@ -14,14 +15,16 @@ namespace MTGViewer.Pages.Cards
     [Authorize]
     public class DeleteModel : PageModel
     {
-        private readonly CardDbContext _context;
+        private readonly CardDbContext _dbContext;
+        private readonly ILogger<DeleteModel> _logger;
 
-        public DeleteModel(CardDbContext context)
+        public DeleteModel(CardDbContext dbContext, ILogger<DeleteModel> logger)
         {
-            _context = context;
+            _dbContext = dbContext;
+            _logger = logger;
         }
 
-        public Card Card { get; set; }
+        public Card Card { get; private set; }
 
         public async Task<IActionResult> OnGetAsync(string id)
         {
@@ -30,14 +33,16 @@ namespace MTGViewer.Pages.Cards
                 return NotFound();
             }
 
-            Card = await _context.Cards.FindAsync(id);
+            Card = await _dbContext.Cards.FindAsync(id);
 
             if (Card is null)
             {
                 return NotFound();
             }
+
             return Page();
         }
+
 
         public async Task<IActionResult> OnPostAsync(string id)
         {
@@ -46,12 +51,22 @@ namespace MTGViewer.Pages.Cards
                 return NotFound();
             }
 
-            Card = await _context.Cards.FindAsync(id);
+            Card = await _dbContext.Cards.FindAsync(id);
 
-            if (Card is not null)
+            if (Card is null)
             {
-                _context.Cards.Remove(Card);
-                await _context.SaveChangesAsync();
+                return RedirectToPage("./Index");
+            }
+
+            _dbContext.Cards.Remove(Card);
+
+            try
+            {
+                await _dbContext.SaveChangesAsync();
+            }
+            catch (DbUpdateException e)
+            {
+                _logger.LogError(e.ToString());
             }
 
             return RedirectToPage("./Index");

@@ -34,17 +34,17 @@ namespace MTGViewer.Pages.Decks
         {
             CardUser = await _userManager.GetUserAsync(User);
 
-            if (id is int validId)
+            if (id is int deckId)
             {
                 var isOwner = await _context.Decks
-                    .AnyAsync(l => l.Id == validId && l.Owner == CardUser);
+                    .AnyAsync(l => l.Id == deckId && l.Owner == CardUser);
 
                 if (!isOwner)
                 {
                     return NotFound();
                 }
 
-                DeckId = validId;
+                DeckId = deckId;
             }
             else
             {

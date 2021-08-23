@@ -82,11 +82,20 @@ namespace MTGViewer.Data.Triggers
                 location = cardAmount.Location;
             }
 
-            if (location is Deck && cardAmount.Amount == 0)
+            if (location is not Deck || cardAmount.Amount > 0)
             {
-                _dbContext.Entry(cardAmount).State = EntityState.Deleted;
+                return;
+            }
 
+            _dbContext.Entry(cardAmount).State = EntityState.Deleted;
+
+            try
+            {
                 await _dbContext.SaveChangesAsync();
+            }
+            catch (DbUpdateException e)
+            {
+                _logger.LogError(e.ToString());
             }
         }
 

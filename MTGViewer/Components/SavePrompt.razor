@@ -18,8 +18,9 @@
         </div>
 
         <button type="button" 
-                class="close" 
+                title="Close Success"
                 aria-label="Close Success"
+                class="close" 
                 @onclick="ClearResult">
             <span aria-hidden="true">&times;</span>
         </button>
@@ -41,8 +42,9 @@ else if (Result is SaveResult.Error)
             @ErrorMessage
         </div>
         <button type="button" 
-                class="close" 
+                title="Close Error"
                 aria-label="Close Error"
+                class="close" 
                 @onclick="ClearResult">
             <span aria-hidden="true">&times;</span>
         </button>

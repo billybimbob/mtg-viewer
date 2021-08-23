@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 using MTGViewer.Areas.Identity.Data;
 
@@ -20,26 +21,30 @@ namespace MTGViewer.Pages.Decks
     public class DeleteModel : PageModel
     {
         private readonly UserManager<CardUser> _userManager;
-        private readonly CardDbContext _context;
+        private readonly CardDbContext _dbContext;
+        private readonly ILogger<DeleteModel> _logger;
 
-        public DeleteModel(UserManager<CardUser> userManager, CardDbContext context)
+        public DeleteModel(
+            UserManager<CardUser> userManager, CardDbContext dbContext, ILogger<DeleteModel> logger)
         {
             _userManager = userManager;
-            _context = context;
+            _dbContext = dbContext;
+            _logger = logger;
         }
 
 
-        public Deck Deck { get; set; }
+        public Deck Deck { get; private set; }
+
 
         public async Task<IActionResult> OnGetAsync(int id)
         {
             var user = await _userManager.GetUserAsync(User);
 
-            Deck = await _context.Decks
+            Deck = await _dbContext.Decks
                 .Include(l => l.Cards)
                     .ThenInclude(ca => ca.Card)
                 .AsNoTracking()
-                .FirstOrDefaultAsync(l => l.Id == id && l.Owner == user);
+                .FirstOrDefaultAsync(l => l.Id == id && l.OwnerId == user.Id);
 
             if (Deck is null)
             {
@@ -51,34 +56,44 @@ namespace MTGViewer.Pages.Decks
 
         public async Task<IActionResult> OnPostAsync(int id)
         {
-            Deck = await _context.Decks
-                .Include(l => l.Cards)
-                    .ThenInclude(ca => ca.Card)
-                .SingleOrDefaultAsync(l => l.Id == id);
+            Deck = await _dbContext.Decks.FindAsync(id);
 
-            if (Deck is not null)
+            if (Deck is null)
             {
-                var availCards = Deck.Cards
-                    .Select(ca => ca.Card.Id)
-                    .Distinct()
-                    .ToArray();
+                return RedirectToPage("./Index");
+            }
 
-                var availables = await _context.Cards
-                    .Where(c => availCards.Contains(c.Id))
-                    // TODO: change return location
-                    .Select(c => c.Amounts.First(ca => ca.Location is MTGViewer.Data.Shared))
-                    .ToDictionaryAsync(ca => ca.Card.Id);
+            var deckAmounts = _dbContext.Amounts
+                .Where(ca => ca.LocationId == Deck.Id);
 
-                foreach(var ca in Deck.Cards)
+            var sharedAmounts = _dbContext.Amounts
+                .Where(ca => ca.Location is Data.Shared);
+
+            var amountPairs = await deckAmounts
+                .Join( sharedAmounts,
+                    deck => deck.CardId,
+                    shared => shared.CardId,
+                    (deck, shared) => new { deck, shared })
+                .ToListAsync();
+
+            foreach(var pair in amountPairs)
+            {
+                if (!pair.deck.IsRequest)
                 {
-                    availables[ca.Card.Id].Amount += ca.Amount;
+                    pair.shared.Amount += pair.deck.Amount;
                 }
+            }
 
-                _context.RemoveRange(Deck.Cards);
+            _dbContext.RemoveRange(Deck.Cards);
+            _dbContext.Decks.Remove(Deck);
 
-                _context.Decks.Remove(Deck);
-
-                await _context.SaveChangesAsync();
+            try
+            {
+                await _dbContext.SaveChangesAsync();
+            }
+            catch (DbUpdateException e)
+            {
+                _logger.LogError(e.ToString());
             }
 
             return RedirectToPage("./Index");

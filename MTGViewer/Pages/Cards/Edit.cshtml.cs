@@ -57,7 +57,9 @@ namespace MTGViewer.Pages.Cards
             }
             catch (DbUpdateConcurrencyException)
             {
-                if (!CardExists(Card.Id))
+                var cardExists = await _context.Cards.AnyAsync(e => e.Id == Card.Id);
+
+                if (!cardExists)
                 {
                     return NotFound();
                 }

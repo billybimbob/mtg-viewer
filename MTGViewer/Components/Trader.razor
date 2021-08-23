@@ -62,6 +62,7 @@
                     @foreach (var (cardAmount, amount) in GetMergedDestination())
                     {
                         var card = cardAmount.Card;
+                        var action = IsCounter ? "Take" : "Offer";
                         <tr>
                             <td class="fw-bold">@card.Name</td>
                             <td>
@@ -72,12 +73,12 @@
                             </td>
                             <td>@amount</td>
                             <td>
-                                <button title="@card.Name Offer"
+                                <button title="@action @card.Name"
                                         type="button"
                                         class="btn btn-outline-secondary border-0 rounded"
                                         disabled="@(amount == 0)"
                                         @onclick="() => FromProposer(cardAmount)">
-                                    @(IsCounter ? "Take Card" : "Offer Card")
+                                    @action Card
                                 </button>
                             </td>
                         </tr>
@@ -101,6 +102,7 @@
                     @foreach (var (cardAmount, amount) in GetMergedDeck())
                     {
                         var card = cardAmount.Card;
+                        var action = IsCounter ? "Offer" : "Take";
                         <tr>
                             <td class="fw-bold">@card.Name</td>
                             <td>
@@ -111,12 +113,12 @@
                             </td>
                             <td>@amount</td>
                             <td>
-                                <button title="@card.Name Take"
+                                <button title="@action @card.Name"
                                         type="button"
                                         class="btn btn-outline-secondary border-0 rounded"
                                         disabled="@(amount == 0 || Destination == null)"
                                         @onclick="() => FromReceiver(cardAmount)">
-                                    @(IsCounter ? "Offer Card" : "Take Card")
+                                    @action Card
                                 </button>
                             </td>
                         </tr>
@@ -153,7 +155,7 @@
                             <td>@trade.From.Name</td>
                             <td>@trade.Amount</td>
                             <td>
-                                <button title="@trade.Id Return"
+                                <button title="Return @trade.Card.Name"
                                         type="button"
                                         disabled="@(Destination == null)"
                                         class="btn btn-outline-secondary border-0 rounded"
@@ -194,7 +196,7 @@
                             <td>@trade.To.Name</td>
                             <td>@trade.Amount</td>
                             <td>
-                                <button title="@trade.Id Return"
+                                <button title="Return @trade.Card.Name"
                                         type="button"
                                         class="btn btn-outline-secondary border-0 rounded"
                                         @onclick="() => ReturnCard(trade)">
