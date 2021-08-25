@@ -39,8 +39,8 @@ namespace MTGViewer.Data
 
         [Display(Name = "To Deck")]
         [JsonIgnore]
-        public Deck To { get; set; } = null!;
-        public int ToId { get; set; }
+        public Deck? To { get; set; }
+        public int? ToId { get; set; }
 
         public ICollection<Deck> Decks { get; set; } = new HashSet<Deck>();
 
@@ -59,22 +59,34 @@ namespace MTGViewer.Data
 
 
     public class Suggestion : Transfer
-    { }
+    {
+        [MaxLength(80)]
+        public string? Comment { get; set; }
+    }
 
 
     public class Trade : Transfer
     {
+
+        [Display(Name = "To Deck")]
+        [JsonIgnore]
+        public new Deck To
+        {
+            get => base.To ?? null!;
+            set => base.To = value;
+        }
+        public new int ToId
+        {
+            get => base.ToId ?? default;
+            set => base.ToId = value;
+        }
+
+
         [Display(Name = "From Deck")]
         [JsonIgnore]
         public Deck From { get; set; } = null!;
         public int FromId { get; set; }
 
-
-        /// <remarks>
-        /// Specifies the trade pending, with false pending for the receiver
-        /// and true pending for the proposer
-        /// </remarks>
-        public bool IsCounter { get; set; }
 
         [Range(0, int.MaxValue)]
         public int Amount { get; set; }
@@ -95,10 +107,5 @@ namespace MTGViewer.Data
             private set =>
                 _target = value;
         }
-
-
-        public bool IsWaitingOn(string userId) =>
-            ReceiverId == userId && !IsCounter
-                || ProposerId == userId && IsCounter;
     }
 }

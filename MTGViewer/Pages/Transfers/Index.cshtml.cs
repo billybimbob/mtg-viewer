@@ -18,7 +18,7 @@ namespace MTGViewer.Pages.Transfers
     [Authorize]
     public class IndexModel : PageModel
     {
-        public record DeckTrade(CardUser OtherUser, Deck Target) { }
+        public record DeckTrade(Deck Deck, int NumberOrTrades) { }
 
 
         private readonly UserManager<CardUser> _userManager;
@@ -34,11 +34,14 @@ namespace MTGViewer.Pages.Transfers
         [TempData]
         public string PostMessage { get; set; }
 
-        public CardUser SelfUser { get; private set; }
+        public CardUser SelfUser { get; set; }
 
         public IReadOnlyList<DeckTrade> ReceivedTrades { get; private set; }
         public IReadOnlyList<DeckTrade> PendingTrades { get; private set; }
+        public IReadOnlyList<DeckTrade> PossibleRequests { get; private set; }
+
         public IReadOnlyList<Transfer> Suggestions { get; private set; }
+
 
 
         public async Task OnGetAsync()
@@ -47,19 +50,47 @@ namespace MTGViewer.Pages.Transfers
 
             var userTrades = await _dbContext.Trades
                 .Where(TradeFilter.Involves(userId))
-                .Include(t => t.Proposer)
-                .Include(t => t.Receiver)
-                .Include(t => t.TargetDeck.Owner)
+                .Include(t => t.To)
+                .Include(t => t.From)
                 .ToListAsync();
 
-            var waitingUser = userTrades
-                .Where(t => t.IsWaitingOn(userId));
+            // var requestDecks = await _dbContext.Decks
+            //     .Where(d => d.OwnerId == userId && d.Cards.Any(ca => ca.IsRequest))
+            //     .ToListAsync();
+
+            var requestDecks = await _dbContext.Amounts
+                .Where(ca => !ca.IsRequest
+                    && ca.Location is Deck
+                    && (ca.Location as Deck).OwnerId == userId)
+                .GroupBy(ca => ca.LocationId)
+                .Select(g => new { Id = g.Key, Count = g.Count() })
+                .Join(_dbContext.Decks,
+                    lc => lc.Id,
+                    d => d.Id,
+                    (lc, deck) => new { deck, count = lc.Count })
+                .Select(dc => new DeckTrade(dc.deck, dc.count))
+                .ToListAsync();
+
 
             SelfUser = await _userManager.FindByIdAsync(userId);
 
-            ReceivedTrades = GetTradeList(userId, waitingUser);
+            ReceivedTrades = userTrades
+                .Where(t => t.ReceiverId == userId)
+                .GroupBy(t => t.From)
+                .Select(g => new DeckTrade(g.Key, g.Count()))
+                .OrderBy(t => t.Deck.Name)
+                .ToList();
 
-            PendingTrades = GetTradeList(userId, userTrades.Except(waitingUser));
+            PendingTrades = userTrades
+                .Where(t => t.ProposerId == userId)
+                .GroupBy(t => t.To)
+                .Select(g => new DeckTrade(g.Key, g.Count()))
+                .OrderBy(t => t.Deck.Name)
+                .ToList();
+
+            PossibleRequests = requestDecks
+                .Except(PendingTrades, new EntityComparer<DeckTrade>(dt => dt.Deck))
+                .ToList();
 
             Suggestions = await _dbContext.Suggestions
                 .Where(s => s.ReceiverId == userId)
@@ -70,73 +101,14 @@ namespace MTGViewer.Pages.Transfers
         }
 
 
-        private IReadOnlyList<DeckTrade> GetTradeList(string userId, IEnumerable<Trade> trades)
+
+        public async Task<IActionResult> OnPostAsync(int suggestId)
         {
-            return trades
-                .GroupBy(t => t.TargetDeck)
-                .Select(g =>
-                    new DeckTrade(
-                        g.First().GetOtherUser(userId),
-                        g.Key))
-                .OrderBy(t => t.OtherUser.Name)
-                    .ThenBy(t => t.Target.Name)
-                .ToList();
-        }
-
-
-        public async Task<IActionResult> OnPostCancelAsync(string proposerId, int deckId)
-        {
-            if (proposerId == null)
-            {
-                return NotFound();
-            }
-
-            var validDeck = await _dbContext.Decks
-                .AnyAsync(d => d.Id == deckId && d.OwnerId != proposerId);
-
-            if (!validDeck)
-            {
-                return NotFound();
-            }
-
-            var deckTrades = await _dbContext.Trades
-                .Where(TradeFilter.Involves(proposerId, deckId))
-                .ToListAsync();
-
             var userId = _userManager.GetUserId(User);
+            var suggestion = await _dbContext.Suggestions
+                .SingleOrDefaultAsync(s => s.Id == suggestId && s.ReceiverId == userId);
 
-            var tradesValid = deckTrades.Any()
-                && deckTrades.All(t => t.IsInvolved(userId))
-                && deckTrades.All(t => !t.IsWaitingOn(userId));
-
-            if (!tradesValid)
-            {
-                PostMessage = "Not all specified trades are valid";
-                return RedirectToPage("./Index");
-            }
-
-            _dbContext.Trades.RemoveRange(deckTrades);
-
-            try
-            {
-                await _dbContext.SaveChangesAsync();
-                PostMessage = "Successfully rejected Trade";
-            }
-            catch (DbUpdateException)
-            {
-                PostMessage = "Ran into error while rejecting";
-            }
-
-            return RedirectToPage("./Index");
-        }
-
-
-        public async Task<IActionResult> OnPostAckAsync(int suggestId)
-        {
-            var suggestion = await _dbContext.Suggestions.FindAsync(suggestId);
-            var userId = _userManager.GetUserId(User);
-
-            if (suggestion is null || suggestion.ReceiverId != userId)
+            if (suggestion is null)
             {
                 PostMessage = "Specified suggestion cannot be acknowledged";
                 return RedirectToPage("./Index");

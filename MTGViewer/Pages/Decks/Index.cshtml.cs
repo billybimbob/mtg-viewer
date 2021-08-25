@@ -139,8 +139,8 @@ namespace MTGViewer.Pages.Decks
                 Card = request.Card,
                 Proposer = user,
                 Receiver = target.Owner,
-                From = target,
                 To = (Deck)request.Location,
+                From = target,
                 Amount = amount
             };
 

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -10,6 +11,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
 using MTGViewer.Areas.Identity.Data;
+using MTGViewer.Data.Concurrency;
 using MTGViewer.Data;
 
 
@@ -19,9 +21,10 @@ namespace MTGViewer.Pages.Transfers
     public class ReviewModel : PageModel
     {
         private record AcceptAmounts(
-            IReadOnlyList<Trade> Accepts,
-            IDictionary<int, CardAmount> ToAmounts,
-            IReadOnlyDictionary<int, CardAmount> FromAmounts) { }
+            Trade Accept,
+            CardAmount Request,
+            CardAmount ToAmount,
+            CardAmount FromAmount) { }
 
 
         private readonly CardDbContext _dbContext;
@@ -37,100 +40,73 @@ namespace MTGViewer.Pages.Transfers
         [TempData]
         public string PostMessage { get; set; }
 
-        public CardUser Proposer { get; private set; }
-        public Deck Deck { get; private set; }
+        public CardUser Receiver { get; private set; }
+        public Deck Source { get; set; }
 
-        public IReadOnlyList<Trade> ToDeck { get; private set; }
-        public IReadOnlyList<Trade> FromDeck { get; private set; }
+        public IReadOnlyList<Trade> Trades { get; private set; }
+
+        // [BindProperty]
+        // public IReadOnlyList<string> TradeTokens { get; set; }
 
 
-        public async Task<IActionResult> OnGetAsync(string proposerId, int deckId)
+        public async Task<IActionResult> OnGetAsync(int deckId)
         {
-            if (proposerId == null)
+            if (deckId == default)
             {
                 return NotFound();
             }
 
+            var userId = _userManager.GetUserId(User);
+            
             var deck = await _dbContext.Decks
                 .Include(d => d.Owner)
                 .SingleOrDefaultAsync(d =>
-                    d.Id == deckId && d.OwnerId != proposerId);
+                    d.Id == deckId && d.OwnerId == userId);
 
-            if (deck == null)
+            if (deck == default)
             {
                 return NotFound();
             }
 
             var deckTrades = await _dbContext.Trades
-                .Where(TradeFilter.Involves(proposerId, deck.Id))
+                .Where(t => t.ReceiverId == userId && t.FromId == deckId)
                 .Include(t => t.Card)
                 .Include(t => t.To)
-                .Include(t => t.From)
-                .AsNoTracking()
+                .OrderBy(t => t.Card.Name)
                 .ToListAsync();
 
-            if (!CheckTrades(deckTrades))
+            // var tokens = deckTrades
+            //     .Select(_dbContext.GetToken)
+            //     .Select(o => o?.ToString())
+            //     .ToList();
+
+            if (!deckTrades.Any())
             {
-                PostMessage = "Not all specified trades are valid";
+                PostMessage = "No trades were found";
                 return RedirectToPage("./Index");
             }
 
-            Deck = deck;
-
-            Proposer = await _userManager.FindByIdAsync(proposerId);
-
-            ToDeck = deckTrades
-                .Where(t => t.To.Id == deck.Id)
-                .OrderBy(t => t.Card.Name)
-                .ToList();
-
-            FromDeck = deckTrades
-                .Except(ToDeck)
-                .OrderBy(t => t.Card.Name)
-                .ToList();
+            Receiver = deck.Owner;
+            Source = deck;
+            Trades = deckTrades;
+            // TradeTokens = tokens;
 
             return Page();
         }
 
 
-        private bool CheckTrades(IEnumerable<Trade> trades)
+
+        public async Task<IActionResult> OnPostAcceptAsync(int deckId, int tradeId)
         {
-            if (!trades.Any())
-            {
-                return false;
-            }
-
-            var userId = _userManager.GetUserId(User);
-
-            return trades.All(t => t.IsInvolved(userId))
-                && trades.All(t => t.IsWaitingOn(userId));
-        }
-
-
-
-        public async Task<IActionResult> OnPostAcceptAsync(string proposerId, int deckId)
-        {
-            if (proposerId == null)
-            {
-                return NotFound();
-            }
-
-            var validDeck = await _dbContext.Decks
-                .AnyAsync(d => d.Id == deckId && d.OwnerId != proposerId);
-
-            if (!validDeck)
-            {
-                return NotFound();
-            }
-
-            var acceptInfo = await GetAcceptInfoAsync(proposerId, deckId);
+            var acceptInfo = await GetAcceptInfoAsync(tradeId);
 
             if (acceptInfo == null)
             {
-                return RedirectToPage("./Index");
+                return RedirectToPage("./Review", new { deckId });
             }
 
-            ApplyAccepts(acceptInfo);
+            ApplyAccept(acceptInfo);
+            await CascadeIfComplete(acceptInfo);
 
             try
             {
@@ -142,68 +118,81 @@ namespace MTGViewer.Pages.Transfers
                 PostMessage = "Ran into error while Accepting";
             }
 
-            return RedirectToPage("./Index");
+            return RedirectToPage("./Review");
         }
 
 
-        private async Task<AcceptAmounts> GetAcceptInfoAsync(string proposerId, int deckId)
+
+        private async Task<AcceptAmounts> GetAcceptInfoAsync(int tradeId)
         {
-            var acceptQuery = _dbContext.Trades
-                .Where(TradeFilter.Involves(proposerId, deckId));
-
-            var deckTrades = await acceptQuery.ToListAsync();
-
-            if (!CheckTrades(deckTrades))
+            if (tradeId == default)
             {
-                PostMessage = "Not all specified trades are valid";
+                PostMessage = "No card was specified";
                 return null;
             }
 
-            var sourceMap = await acceptQuery
-                .Join( _dbContext.Amounts.Where(ca => !ca.IsRequest),
-                    trade =>
-                        new { trade.CardId, DeckId = trade.FromId },
-                    amount =>
-                        new { amount.CardId, DeckId = amount.LocationId },
-                    (trade, amount) =>
-                        new { trade.Id, amount })
-                .ToDictionaryAsync(r => r.Id, r => r.amount);
+            var userId = _userManager.GetUserId(User);
+            var deckTrade = await _dbContext.Trades
+                .Include(t => t.Card)
+                .Include(t => t.To)
+                .SingleOrDefaultAsync(t => t.Id == tradeId && t.From.OwnerId == userId);
 
+            if (deckTrade == default)
+            {
+                PostMessage = "Trade could not be found";
+                return null;
+            }
 
-            var amountsInvalid = deckTrades.Any(t => 
-                !sourceMap.TryGetValue(t.Id, out var source) || source.Amount < t.Amount);
+            var tradeDeckIds = new []{ deckTrade.ToId, deckTrade.FromId };
+            var tradeAmounts = await _dbContext.Amounts
+                .Where(ca =>
+                    ca.CardId == deckTrade.CardId
+                        && tradeDeckIds.Contains(ca.LocationId))
+                .ToListAsync();
 
-            if (amountsInvalid)
+            var amountsValid = tradeAmounts.Any(ca =>
+                !ca.IsRequest && ca.LocationId == deckTrade.FromId);
+
+            if (!amountsValid)
             {
                 PostMessage = "Source Deck lacks the required amount to complete the trade";
                 return null;
             }
 
-            var destMap = await acceptQuery
-                .Join( _dbContext.Amounts.Where(ca => !ca.IsRequest),
-                    trade => 
-                        new { trade.CardId, DeckId = trade.ToId },
-                    amount =>
-                        new { amount.CardId, DeckId = amount.LocationId },
-                    (trade, amount) =>
-                        new { trade.Id, amount })
-                .ToDictionaryAsync(t => t.Id, t => t.amount);
-
-
-            return new AcceptAmounts(
-                Accepts: deckTrades,
-                ToAmounts: destMap,
-                FromAmounts: sourceMap);
+            return new AcceptAmounts (
+                Accept: deckTrade,
+                Request: tradeAmounts
+                    .SingleOrDefault(ca =>
+                        ca.IsRequest && ca.LocationId == deckTrade.ToId),
+                ToAmount: tradeAmounts
+                    .SingleOrDefault(ca =>
+                        !ca.IsRequest && ca.LocationId == deckTrade.ToId),
+                FromAmount: tradeAmounts
+                    .Single(ca =>
+                        !ca.IsRequest && ca.LocationId == deckTrade.FromId)
+            );
         }
 
 
-        private void ApplyAccepts(AcceptAmounts acceptInfo)
+        private void ApplyAccept(AcceptAmounts acceptInfo)
         {
-            foreach(var accept in acceptInfo.Accepts)
-            {
-                var sourceAmount = acceptInfo.FromAmounts[accept.Id];
+            var request = acceptInfo.Request;
 
-                if (!acceptInfo.ToAmounts.TryGetValue(accept.Id, out var destAmount))
+            if (request is not null)
+            {
+                var accept = acceptInfo.Accept;
+                var sourceAmount = acceptInfo.FromAmount;
+                var changeOptions = new []
+                {
+                    accept.Amount,
+                    sourceAmount.Amount,
+                    request.Amount
+                };
+
+                var change = changeOptions.Min();
+                var destAmount = acceptInfo.ToAmount;
+
+                if (destAmount == default)
                 {
                     destAmount = new CardAmount
                     {
@@ -212,44 +201,63 @@ namespace MTGViewer.Pages.Transfers
                         Amount = 0
                     };
 
-                    acceptInfo.ToAmounts.Add(accept.Id, destAmount);
                     _dbContext.Amounts.Add(destAmount);
                 }
 
-                sourceAmount.Amount -= accept.Amount;
-                destAmount.Amount += accept.Amount;
+                sourceAmount.Amount -= change;
+                destAmount.Amount += change;
+                request.Amount -= change;
             }
 
-            _dbContext.Trades.RemoveRange(acceptInfo.Accepts);
+            if (request?.Amount == 0)
+            {
+                _dbContext.Amounts.Remove(request);
+            }
+
+            _dbContext.Trades.Remove(acceptInfo.Accept);
+        }
+
+
+        private async Task CascadeIfComplete(AcceptAmounts acceptInfo)
+        {
+            var request = acceptInfo.Request;
+
+            if (request?.Amount > 0)
+            {
+                return;
+            }
+
+            var accepted = acceptInfo.Accept;
+            var remainingTrades = await _dbContext.Trades
+                .Where(t => t.Id != accepted.Id 
+                    && t.ProposerId == accepted.ProposerId
+                    && t.CardId == accepted.CardId)
+                .ToListAsync();
+
+            _dbContext.Trades.RemoveRange(remainingTrades);
         }
 
 
 
-        public async Task<IActionResult> OnPostRejectAsync(string proposerId, int deckId)
+        public async Task<IActionResult> OnPostRejectAsync(int deckId, int tradeId)
         {
-            if (proposerId == null)
+            if (tradeId == default)
             {
-                return NotFound();
+                PostMessage = "Card was not specified";
+                return RedirectToPage("./Review", new { deckId });
             }
 
-            var deck = await _dbContext.Decks.FindAsync(deckId);
+            var userId = _userManager.GetUserId(User);
+            var deckTrade = await _dbContext.Trades
+                .SingleOrDefaultAsync(t => t.Id == tradeId && t.From.OwnerId == userId);
 
-            if (deck == null || deck.OwnerId == proposerId)
+            if (deckTrade == default)
             {
-                return NotFound();
+                PostMessage = "Trade could not be found";
+                return RedirectToPage("./Review", new { deckId });
             }
 
-            var deckTrades = await _dbContext.Trades
-                .Where(TradeFilter.Involves(proposerId, deckId))
-                .ToListAsync();
-
-            if (!CheckTrades(deckTrades))
-            {
-                PostMessage = "Not all specified trades are valid";
-                return RedirectToPage("./Index");
-            }
-
-            _dbContext.Trades.RemoveRange(deckTrades);
+            _dbContext.Trades.Remove(deckTrade);
 
             try
             {
@@ -261,7 +269,7 @@ namespace MTGViewer.Pages.Transfers
                 PostMessage = "Ran into error while rejecting";
             }
 
-            return RedirectToPage("./Index");
+            return RedirectToPage("./Review", new { deckId });
         }
     }
 }

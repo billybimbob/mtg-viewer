@@ -69,8 +69,8 @@
                                 </td>
                                 <td>
                                     <input type="hidden" asp-for="Matches[i].MultiverseId"/>
-                                    <input asp-for="Amounts[i].Id"/>
 
+                                    <input asp-for="Amounts[i].Id"/>
                                     <input asp-for="Amounts[i].Amount"/>
                                     <span asp-validation-for="Amounts[i].Amount" class="text-danger"></span>
                                 </td>
@@ -80,15 +80,15 @@
                 </table>
 
                 <div class="form-group">
-                    <input type="submit"
-                           asp-page-handler="Amounts"
-                           class="btn btn-secondary"
-                           value="Create" />
-
                     <a asp-page="Create"
                        class="btn btn-secondary">
                        Reset
                     </a>
+
+                    <input type="submit"
+                           asp-page-handler="Amounts"
+                           class="btn btn-secondary"
+                           value="Add" />
                 </div>
             }
             else
@@ -144,7 +144,7 @@
                     <input type="submit"
                            asp-page-handler="Card"
                            class="btn btn-secondary"
-                           value="Create" />
+                           value="Search" />
                 </div>
             }
         </form>

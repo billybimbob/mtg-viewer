@@ -14,7 +14,7 @@ namespace MTGViewer.Tests.Pages
     public class TransferTests
     {
         [Fact]
-        public async Task IndexOnPostAck_ValidSuggestion_RemovesSuggestion()
+        public async Task IndexOnPost_ValidSuggestion_RemovesSuggestion()
         {
             // Arrange
             await using var services = TestHelpers.ServiceProvider();
@@ -33,17 +33,17 @@ namespace MTGViewer.Tests.Pages
             await indexModel.SetModelContextAsync(userManager, suggestion.Receiver);
 
             // Act
-            var result = await indexModel.OnPostAckAsync(suggestion.Id);
-            var suggestions = await suggestQuery.ToListAsync();
+            var result = await indexModel.OnPostAsync(suggestion.Id);
+            var suggestions = await suggestQuery.Select(t => t.Id).ToListAsync();
 
             // Assert
             Assert.IsType<RedirectToPageResult>(result);
-            Assert.DoesNotContain(suggestion.Id, suggestions.Select(t => t.Id));
+            Assert.DoesNotContain(suggestion.Id, suggestions);
         }
 
 
         [Fact]
-        public async Task IndexOnPostAck_WrongUser_NoRemove()
+        public async Task IndexOnPost_WrongUser_NoRemove()
         {
             // Arrange
             await using var services = TestHelpers.ServiceProvider();
@@ -62,17 +62,17 @@ namespace MTGViewer.Tests.Pages
             await indexModel.SetModelContextAsync(userManager, suggestion.Proposer);
 
             // Act
-            var result = await indexModel.OnPostAckAsync(suggestion.Id);
-            var suggestions = await suggestQuery.ToListAsync();
+            var result = await indexModel.OnPostAsync(suggestion.Id);
+            var suggestions = await suggestQuery.Select(t => t.Id).ToListAsync();
 
             // Assert
             Assert.IsType<RedirectToPageResult>(result);
-            Assert.Contains(suggestion.Id, suggestions.Select(t => t.Id));
+            Assert.Contains(suggestion.Id, suggestions);
         }
 
 
         [Fact]
-        public async Task IndexOnPostAck_InvalidSuggestion_NoRemove()
+        public async Task IndexOnPost_InvalidSuggestion_NoRemove()
         {
             // Arrange
             await using var services = TestHelpers.ServiceProvider();
@@ -91,17 +91,17 @@ namespace MTGViewer.Tests.Pages
             await indexModel.SetModelContextAsync(userManager, nonSuggestion.Receiver);
 
             // Act
-            var result = await indexModel.OnPostAckAsync(nonSuggestion.Id);
-            var suggestions = await tradeQuery.ToListAsync();
+            var result = await indexModel.OnPostAsync(nonSuggestion.Id);
+            var suggestions = await tradeQuery.Select(t => t.Id).ToListAsync();
 
             // Assert
             Assert.IsType<RedirectToPageResult>(result);
-            Assert.Contains(nonSuggestion.Id, suggestions.Select(t => t.Id));
+            Assert.Contains(nonSuggestion.Id, suggestions);
         }
 
 
         [Fact]
-        public async Task IndexOnPostCancel_ValidTrade_RemovesTrade()
+        public async Task StatusOnPost_ValidTrade_RemovesTrade()
         {
             // Arrange
             await using var services = TestHelpers.ServiceProvider();
@@ -109,86 +109,98 @@ namespace MTGViewer.Tests.Pages
             using var userManager = TestHelpers.CardUserManager(services);
 
             await dbContext.SeedAsync();
-            var (proposer, receiver, deck) = await dbContext.GenerateTradeAsync();
+            var (proposer, receiver, fromDeck) = await dbContext.GenerateTradeAsync();
 
-            var indexModel = new IndexModel(userManager, dbContext);
-            await indexModel.SetModelContextAsync(userManager, proposer);
+            var statusModel = new StatusModel(userManager, dbContext);
+            await statusModel.SetModelContextAsync(userManager, proposer);
 
-            var involveQuery = dbContext.Trades
-                .Where(TradeFilter.Involves(proposer.Id, deck.Id));
-
-            // Act
-            var tradeExistsBefore = await involveQuery.AnyAsync();
-            var result = await indexModel.OnPostCancelAsync(proposer.Id, deck.Id);
-            var tradeExistsAfter = await involveQuery.AnyAsync();
-
-            // Assert
-            Assert.IsType<RedirectToPageResult>(result);
-            Assert.True(tradeExistsBefore);
-            Assert.False(tradeExistsAfter);
-        }
-
-
-        [Fact]
-        public async Task IndexOnPostCancel_WrongUser_NoRemove()
-        {
-            // Arrange
-            await using var services = TestHelpers.ServiceProvider();
-            await using var dbContext = TestHelpers.CardDbContext(services);
-            using var userManager = TestHelpers.CardUserManager(services);
-
-            await dbContext.SeedAsync();
-            var (proposer, receiver, deck) = await dbContext.GenerateTradeAsync();
-
-            var indexModel = new IndexModel(userManager, dbContext);
-            await indexModel.SetModelContextAsync(userManager, receiver);
-
-            var involveQuery = dbContext.Trades
-                .Where(TradeFilter.Involves(proposer.Id, deck.Id));
-
-            // Act
-            var tradeExistsBefore = await involveQuery.AnyAsync();
-            var result = await indexModel.OnPostCancelAsync(proposer.Id, deck.Id);
-            var tradeExistsAfter = await involveQuery.AnyAsync();
-
-            // Assert
-            Assert.IsType<RedirectToPageResult>(result);
-            Assert.True(tradeExistsBefore);
-            Assert.True(tradeExistsAfter);
-        }
-
-
-        [Fact]
-        public async Task IndexOnPostCancel_InvalidTrade_NoRemove()
-        {
-            // Arrange
-            await using var services = TestHelpers.ServiceProvider();
-            await using var dbContext = TestHelpers.CardDbContext(services);
-            using var userManager = TestHelpers.CardUserManager(services);
-
-            await dbContext.SeedAsync();
-
-            var (proposer, receiver, deck) = await dbContext.GenerateTradeAsync();
-            
-            var indexModel = new IndexModel(userManager, dbContext);
-            await indexModel.SetModelContextAsync(userManager, proposer);
-
-            var involveQuery = dbContext.Trades
-                .Where(TradeFilter.Involves(proposer.Id, deck.Id));
-
-            var wrongDeck = await dbContext.Decks
+            var trade = await dbContext.Trades
                 .AsNoTracking()
-                .FirstAsync(t => t.Id != deck.Id);
+                .FirstAsync(t => t.ProposerId == proposer.Id && t.FromId == fromDeck.Id);
+
+            var requestsQuery = dbContext.Trades
+                .Where(t => t.ProposerId == proposer.Id && t.ToId == trade.ToId)
+                .AsNoTracking()
+                .Select(t => t.Id);
 
             // Act
-            var tradeExistsBefore = await involveQuery.AnyAsync();
-            var result = await indexModel.OnPostCancelAsync(proposer.Id, wrongDeck.Id);
-            var tradeExistsAfter = await involveQuery.AnyAsync();
+            var requestsBefore = await requestsQuery.ToListAsync();
+            var result = await statusModel.OnPostAsync(trade.ToId);
+            var requestsAfter = await requestsQuery.ToListAsync();
 
             // Assert
-            Assert.IsType<NotFoundResult>(result);
-            Assert.True(tradeExistsBefore);
-            Assert.True(tradeExistsAfter);
+            Assert.IsType<RedirectToPageResult>(result);
+            Assert.NotEqual(requestsBefore, requestsAfter);
+            Assert.DoesNotContain(trade.Id, requestsAfter);
+        }
+
+
+        [Fact]
+        public async Task StatusOnPost_WrongUser_NoRemove()
+        {
+            // Arrange
+            await using var services = TestHelpers.ServiceProvider();
+            await using var dbContext = TestHelpers.CardDbContext(services);
+            using var userManager = TestHelpers.CardUserManager(services);
+
+            await dbContext.SeedAsync();
+            var (proposer, receiver, fromDeck) = await dbContext.GenerateTradeAsync();
+
+            var statusModel = new StatusModel(userManager, dbContext);
+            await statusModel.SetModelContextAsync(userManager, receiver);
+
+            var trade = await dbContext.Trades
+                .AsNoTracking()
+                .FirstAsync(t => t.ProposerId == proposer.Id && t.FromId == fromDeck.Id);
+
+            var requestsQuery = dbContext.Trades
+                .Where(t => t.ProposerId == proposer.Id && t.ToId == trade.ToId)
+                .AsNoTracking()
+                .Select(t => t.Id);
+
+            // Act
+            var requestsBefore = await requestsQuery.ToListAsync();
+            var result = await statusModel.OnPostAsync(trade.ToId);
+            var requestsAfter = await requestsQuery.ToListAsync();
+
+            // Assert
+            Assert.IsType<RedirectToPageResult>(result);
+            Assert.Equal(requestsBefore, requestsAfter);
+        }
+
+
+        [Fact]
+        public async Task StatusOnPost_InvalidTrade_NoRemove()
+        {
+            // Arrange
+            await using var services = TestHelpers.ServiceProvider();
+            await using var dbContext = TestHelpers.CardDbContext(services);
+            using var userManager = TestHelpers.CardUserManager(services);
+
+            await dbContext.SeedAsync();
+
+            var (proposer, receiver, fromDeck) = await dbContext.GenerateTradeAsync();
+            
+            var statusModel = new StatusModel(userManager, dbContext);
+            await statusModel.SetModelContextAsync(userManager, proposer);
+
+            var trade = await dbContext.Trades
+                .AsNoTracking()
+                .FirstAsync(t => t.ProposerId == proposer.Id && t.FromId == fromDeck.Id);
+
+            var requestsQuery = dbContext.Trades
+                .Where(t => t.ProposerId == proposer.Id && t.ToId == trade.ToId)
+                .AsNoTracking()
+                .Select(t => t.Id);
+
+            // Act
+            var requestsBefore = await requestsQuery.ToListAsync();
+            var result = await statusModel.OnPostAsync(fromDeck.Id);
+            var requestsAfter = await requestsQuery.ToListAsync();
+
+            // Assert
+            Assert.IsType<RedirectToPageResult>(result);
+            Assert.Equal(requestsBefore, requestsAfter);
         }
 
 
@@ -202,51 +214,39 @@ namespace MTGViewer.Tests.Pages
             using var userManager = TestHelpers.CardUserManager(services);
 
             await dbContext.SeedAsync();
-            var (proposer, receiver, deck) = await dbContext.GenerateTradeAsync();
+            var (proposer, receiver, fromDeck) = await dbContext.GenerateTradeAsync();
 
             var reviewModel = new ReviewModel(dbContext, userManager);
             await reviewModel.SetModelContextAsync(userManager, receiver);
 
-            var tradeQuery = dbContext.Trades
-                .Where(TradeFilter.Involves(proposer.Id, deck.Id))
+            var trade = await dbContext.Trades
+                .AsNoTracking()
+                .FirstAsync(t => t.ProposerId == proposer.Id && t.FromId == fromDeck.Id);
+
+            var tradeSourceQuery = dbContext.Amounts
+                .Where(ca => !ca.IsRequest
+                    && ca.CardId == trade.CardId
+                    && ca.LocationId == fromDeck.Id)
                 .AsNoTracking();
 
-            var tradeSourceQuery = tradeQuery
-                .Join( dbContext.Amounts.Where(ca => !ca.IsRequest),
-                    trade =>
-                        new { trade.CardId, DeckId = trade.FromId },
-                    amount =>
-                        new { amount.CardId, DeckId = amount.LocationId },
-                    (_, amount) => amount);
-
             // Act
-            var fromBefore = await tradeSourceQuery.ToListAsync();
+            var fromBefore = await tradeSourceQuery.SingleAsync();
+            var result = await reviewModel.OnPostAcceptAsync(fromDeck.Id, trade.Id);
+            var fromAfter = await tradeSourceQuery.SingleOrDefaultAsync();
 
-            var result = await reviewModel.OnPostAcceptAsync(proposer.Id, deck.Id);
+            var tradeAfter = await dbContext.Trades
+                .Where(t => t.ProposerId == proposer.Id && t.ToId == trade.ToId)
+                .AsNoTracking()
+                .Select(t => t.Id)
+                .ToListAsync();
 
-            var tradeAfter = await tradeQuery.ToListAsync();
-            var fromAfter = await tradeSourceQuery.ToListAsync();
-
-            var fromChange = fromBefore
-                .GroupJoin(fromAfter,
-                    before => before.Id,
-                    after => after.Id,
-                    (before, afters) =>
-                        (before, after: afters.FirstOrDefault()))
-                .ToList();
+            var changeCheck = fromAfter is null
+                || fromBefore.Amount > fromAfter.Amount && fromAfter.Amount >= 0;
 
             // Assert
             Assert.IsType<RedirectToPageResult>(result);
-            Assert.Empty(tradeAfter);
-
-            var fromAfterValid = fromAfter.All(ca =>
-                ca.Amount >= 0);
-
-            var fromChangeValid = fromChange.All(fs => 
-                fs.after is null || fs.before.Amount > fs.after.Amount);
-
-            Assert.True(fromAfterValid);
-            Assert.True(fromChangeValid);
+            Assert.DoesNotContain(trade.Id, tradeAfter);
+            Assert.True(changeCheck);
         }
 
 
@@ -259,23 +259,40 @@ namespace MTGViewer.Tests.Pages
             using var userManager = TestHelpers.CardUserManager(services);
 
             await dbContext.SeedAsync();
-            var (proposer, receiver, deck) = await dbContext.GenerateTradeAsync();
+            var (proposer, receiver, fromDeck) = await dbContext.GenerateTradeAsync();
 
             var reviewModel = new ReviewModel(dbContext, userManager);
             await reviewModel.SetModelContextAsync(userManager, receiver);
 
-            var involveQuery = dbContext.Trades
-                .Where(TradeFilter.Involves(proposer.Id, deck.Id));
+            var trade = await dbContext.Trades
+                .AsNoTracking()
+                .FirstAsync(t => t.ProposerId == proposer.Id && t.FromId == fromDeck.Id);
+
+            var tradeSourceQuery = dbContext.Amounts
+                .Where(ca => !ca.IsRequest
+                    && ca.CardId == trade.CardId
+                    && ca.LocationId == fromDeck.Id)
+                .AsNoTracking();
 
             // Act
-            var tradeExistsBefore = await involveQuery.AnyAsync();
-            var result = await reviewModel.OnPostRejectAsync(proposer.Id, deck.Id);
-            var tradeExistsAfter = await involveQuery.AnyAsync();
+            var fromBefore = await tradeSourceQuery.SingleAsync();
+            var result = await reviewModel.OnPostRejectAsync(fromDeck.Id, trade.Id);
+            var fromAfter = await tradeSourceQuery.SingleOrDefaultAsync();
+
+            var tradesAfter = await dbContext.Trades
+                .Where(t => t.ProposerId == proposer.Id && t.ToId == trade.ToId)
+                .AsNoTracking()
+                .Select(t => t.Id)
+                .ToListAsync();
+            
+            var changeCheck = fromAfter is not null
+                && fromBefore.Amount == fromAfter.Amount
+                && fromAfter.Amount >= 0;
 
             // Assert
             Assert.IsType<RedirectToPageResult>(result);
-            Assert.True(tradeExistsBefore);
-            Assert.False(tradeExistsAfter);
+            Assert.DoesNotContain(trade.Id, tradesAfter);
+            Assert.True(changeCheck);
         }
     }
 }

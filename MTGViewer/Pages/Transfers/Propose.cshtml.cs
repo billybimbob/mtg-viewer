@@ -36,8 +36,6 @@ namespace MTGViewer.Pages.Transfers
 
         public IReadOnlyList<Deck> ProposeOptions { get; private set; }
 
-        public bool IsCounter =>
-            _userManager.GetUserId(User) != Proposer?.Id;
 
 
         public async Task<IActionResult> OnGetAsync(string proposerId, int? deckId)

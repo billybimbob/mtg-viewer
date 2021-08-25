@@ -5,7 +5,6 @@
 @namespace MTGViewer.Components
 @implements IAsyncDisposable
 
-@inject NavigationManager NavigationManager
 @inject IDbContextFactory<CardDbContext> DbFactory
 @inject ILogger<DeckBuilder> Logger
 
@@ -20,6 +19,8 @@
     Save Changes
 </button>
 
+<input type="checkbox" @bind="_autoTake" id="auto-take"/>
+<label for="auto-take">Auto Take From Available</label>
 
 <SavePrompt @bind-Result="_result">
     <SuccessMessage>
@@ -69,7 +70,6 @@
                     <button title="Add @card.Name"
                             type="button"
                             class="btn btn-outline-secondary border-0 rounded"
-                            disabled="@(available==0)"
                             @onclick="() => AddCardToDeck(card)">
                         Add Card
                     </button>
@@ -135,7 +135,11 @@
     [Parameter]
     public int DeckId { get; set; } = default;
 
+    [Parameter]
+    public bool AutoTake { get; set; }
 
+
+    private bool _autoTake;
     private bool _busy;
     private SaveResult _result;
     private CardDbContext _dbContext;
@@ -215,7 +219,12 @@
                 .GroupBy(ca => ca.CardId)
                 .ToDictionary(g => g.Key, InitGroup);
 
-            FixDeckState();
+            _autoTake = AutoTake;
+
+            if (_autoTake)
+            {
+                AutoTakeRequests();
+            }
         }
         finally
         {
@@ -428,8 +437,6 @@
             _result = SaveResult.Success;
 
             Logger.LogInformation($"successfully updated");
-            // Logger.LogInformation($"trying to nav to index, at {NavigationManager.BaseUri}");
-            // NavigationManager.NavigateTo("Cards/Index"); // TODO: fix nav not working
         }
         catch (DbUpdateConcurrencyException ex)
         {
@@ -439,7 +446,11 @@
         finally
         {
             await UpdateAvailableAsync();
-            FixDeckState();
+
+            if (_autoTake)
+            {
+                AutoTakeRequests();
+            }
 
             _busy = false;
         }
@@ -472,7 +483,7 @@
     }
 
 
-    private void FixDeckState()
+    private void AutoTakeRequests()
     {
         foreach (var cardGroup in _deckCards.Values)
         {

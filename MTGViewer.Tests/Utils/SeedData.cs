@@ -170,11 +170,11 @@ namespace MTGViewer.Tests.Utils
 
 
         
-        internal record TradeInfo(CardUser Proposer, CardUser Receiver, Location Deck) { }
+        internal record TradeInfo(CardUser Proposer, CardUser Receiver, Deck From) { }
 
-        private record TradeOptions(IReadOnlyList<Deck> To, Deck From, int Amount) { }
+        private record TradeOptions(Deck To, IReadOnlyList<Deck> From, int Amount) { }
 
-        private record TradeLocations(IReadOnlyList<Deck> To, Deck From) { }
+        private record TradeLocations(Deck To, IReadOnlyList<Deck> From) { }
 
 
         internal static async Task<TradeInfo> GenerateTradeAsync(this CardDbContext dbContext)
@@ -186,27 +186,41 @@ namespace MTGViewer.Tests.Utils
             var proposer = partipants.First();
             var receiver = partipants.Last();
 
-            var (toLocs, fromLoc, amountTrades) = await dbContext.GetTradeInfoAsync(proposer, receiver);
+            var (toLoc, fromLocs, amountTrades) = await dbContext.GetTradeInfoAsync(proposer, receiver);
 
             var trades = Enumerable
                 .Range(0, amountTrades)
-                .Zip(fromLoc.Cards, (_, ca) => ca)
+                .Zip(toLoc.Cards, (_, ca) => ca)
                 .Select(ca => new Trade
                 {
                     Card = ca.Card,
                     Proposer = proposer,
                     Receiver = receiver,
-                    To = toLocs[_random.Next(toLocs.Count)],
-                    From = ca.Location as Deck,
+                    To = toLoc,
+                    From = fromLocs[_random.Next(fromLocs.Count)],
                     Amount = _random.Next(1, ca.Amount)
-                });
+                })
+                .ToList();
+
+            var requests = trades
+                .Select(t => new CardAmount
+                {
+                    Card = t.Card,
+                    Location = toLoc,
+                    Amount = t.Amount,
+                    IsRequest = true
+                })
+                .ToList();
+
+            var validFrom = fromLocs.First(d => d.Cards.Any());
 
             dbContext.Trades.AttachRange(trades);
-            await dbContext.SaveChangesAsync();
+            dbContext.Amounts.AttachRange(requests);
 
+            await dbContext.SaveChangesAsync();
             dbContext.ChangeTracker.Clear();
 
-            return new TradeInfo(proposer, receiver, fromLoc);
+            return new TradeInfo(proposer, receiver, validFrom);
         }
 
 
@@ -218,44 +232,44 @@ namespace MTGViewer.Tests.Utils
             var cards = await dbContext.Cards.ToListAsync();
             var amountTrades = _random.Next(1, cards.Count / 2);
 
-            var (toLocs, fromLoc) = await dbContext.GetOrCreateLocationsAsync(proposer, receiver);
+            var (toLoc, fromLocs) = await dbContext.GetOrCreateLocationsAsync(proposer, receiver);
 
-            var fromCards = fromLoc.Cards.Select(ca => ca.Card);
-            var newCards = cards.Except(fromCards);
+            var toCards = toLoc.Cards.Select(ca => ca.Card);
+            var newCards = cards.Except(toCards);
 
-            while (fromLoc.Cards.Count < amountTrades && newCards.Any())
+            while (toLoc.Cards.Count < amountTrades && newCards.Any())
             {
                 var newAmount = new CardAmount
                 {
                     Card = newCards.First(),
-                    Location = fromLoc,
+                    Location = toLoc,
                     Amount = _random.Next(1, 3)
                 };
 
                 dbContext.Amounts.Attach(newAmount);
             }
 
-            var toAmountPair = (Card: fromCards.First(), Deck: toLocs.First());
+            var fromAmountPair = (Card: toCards.First(), Deck: fromLocs.First());
 
-            var toAmount = await dbContext.Amounts
+            var fromAmount = await dbContext.Amounts
                 .SingleOrDefaultAsync(ca => 
-                    ca.CardId == toAmountPair.Card.Id
-                        && ca.LocationId == toAmountPair.Deck.Id
+                    ca.CardId == fromAmountPair.Card.Id
+                        && ca.LocationId == fromAmountPair.Deck.Id
                         && ca.IsRequest == false);
 
-            if (toAmount == default)
+            if (fromAmount == default)
             {
-                toAmount = new CardAmount
+                fromAmount = new CardAmount
                 {
-                    Card = toAmountPair.Card,
-                    Location = toAmountPair.Deck,
+                    Card = fromAmountPair.Card,
+                    Location = fromAmountPair.Deck,
                     Amount = 1
                 };
 
-                dbContext.Attach(toAmount);
+                dbContext.Attach(fromAmount);
             }
 
-            return new TradeOptions(toLocs, fromLoc, amountTrades);
+            return new TradeOptions(toLoc, fromLocs, amountTrades);
         }
 
 
@@ -264,37 +278,37 @@ namespace MTGViewer.Tests.Utils
             CardUser proposer, 
             CardUser receiver)
         {
-            var toLocs = await dbContext.Decks
-                .Where(l => l.OwnerId == proposer.Id)
-                .ToListAsync();
+            var toLoc = await dbContext.Decks
+                .Include(l => l.Cards)
+                    .ThenInclude(ca => ca.Card)
+                .FirstOrDefaultAsync(l => l.OwnerId == proposer.Id);
 
-            if (!toLocs.Any())
+            if (toLoc == default)
             {
-                var toLoc = new Deck("Trade deck")
+                toLoc = new Deck("Trade deck")
                 {
                     Owner = proposer
                 };
 
                 dbContext.Attach(toLoc);
-                toLocs.Add(toLoc);
             }
 
-            var fromLoc = await dbContext.Decks
-                .Include(l => l.Cards)
-                    .ThenInclude(ca => ca.Card)
-                .FirstOrDefaultAsync(l => l.OwnerId == receiver.Id);
+            var fromLocs = await dbContext.Decks
+                .Where(l => l.OwnerId == receiver.Id)
+                .ToListAsync();
 
-            if (fromLoc == default)
+            if (!fromLocs.Any())
             {
-                fromLoc = new Deck("Trade deck")
+                var fromLoc = new Deck("Trade deck")
                 {
                     Owner = receiver
                 };
 
                 dbContext.Attach(fromLoc);
+                fromLocs.Add(fromLoc);
             }
 
-            return new TradeLocations(toLocs, fromLoc);
+            return new TradeLocations(toLoc, fromLocs);
         }
     }
 }

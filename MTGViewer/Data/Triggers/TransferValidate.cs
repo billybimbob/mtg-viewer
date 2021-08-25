@@ -60,9 +60,9 @@ namespace MTGViewer.Data.Triggers
             {
                 decks.Add(transfer.To);
             }
-            else if (transfer.ToId != default)
+            else if (transfer.ToId is int toId)
             {
-                searchIds.Add(transfer.ToId);
+                searchIds.Add(toId);
             }
 
             if (searchIds.Any())
