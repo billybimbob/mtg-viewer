@@ -5,7 +5,7 @@
     ViewData["Title"] = $"Suggest {Model.Card.Name}";
 }
 
-<form method="post">
+<form method="POST">
     @if (Model.Users is not null)
     {
         @foreach(var user in Model.Users)

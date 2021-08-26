@@ -19,7 +19,14 @@ namespace MTGViewer.Pages.Decks
     [Authorize]
     public class IndexModel : PageModel
     {
-        public record DeckColor(Deck Deck, IEnumerable<string> Colors) { }
+        public enum DeckState
+        {
+            Invalid,
+            Valid,
+            Requesting
+        }
+
+        public record DeckColor(Deck Deck, IEnumerable<string> Colors, DeckState State) { }
 
 
         private readonly UserManager<CardUser> _userManager;
@@ -37,10 +44,10 @@ namespace MTGViewer.Pages.Decks
 
         public CardUser CardUser { get; private set; }
         public IReadOnlyList<DeckColor> DeckColors { get; private set; }
-        public IReadOnlyList<CardAmount> Requests { get; private set; }
 
-        public CardAmount PickedRequest { get; private set; }
-        public IReadOnlyList<Deck> RequestSources { get; private set; }
+        // public IReadOnlyList<CardAmount> Requests { get; private set; }
+        // public CardAmount PickedRequest { get; private set; }
+        // public IReadOnlyList<Deck> RequestSources { get; private set; }
 
 
         public async Task OnGetAsync()
@@ -48,8 +55,8 @@ namespace MTGViewer.Pages.Decks
             var user = await _userManager.GetUserAsync(User);
 
             var decks = await _dbContext.Decks
-                .Where(l => l.OwnerId == user.Id)
-                .Include(l => l.Cards)
+                .Where(d => d.OwnerId == user.Id)
+                .Include(d => d.Cards)
                     .ThenInclude(ca => ca.Card)
                         .ThenInclude(c => c.Colors)
                 .AsSplitQuery()
@@ -60,24 +67,67 @@ namespace MTGViewer.Pages.Decks
                     .GetColors()
                     .Select(c => Color.COLORS[c.Name.ToLower()]));
 
-            var requests = await _dbContext.Amounts
-                .Where(ca => ca.IsRequest
-                    && ca.Location is Deck
-                    && (ca.Location as Deck).OwnerId == user.Id)
-                .Include(ca => ca.Card)
-                .Include(ca => ca.Location)
-                .ToListAsync();
+            var states = GetDeckStates(
+                decks, await GetRequestingAsync(user));
+
+            // var requests = await _dbContext.Amounts
+            //     .Where(ca => ca.IsRequest
+            //         && ca.Location is Deck
+            //         && (ca.Location as Deck).OwnerId == user.Id)
+            //     .Include(ca => ca.Card)
+            //     .Include(ca => ca.Location)
+            //     .ToListAsync();
 
             CardUser = user;
 
             DeckColors = decks
-                .Zip(colors, (d, cs) => new DeckColor(d, cs))
+                .Zip(colors, (deck, color) => (deck, color))
+                .Zip(states, (dc, state) => new DeckColor(dc.deck, dc.color, state))
                 .ToList();
 
-            Requests = requests;
+            // Requests = requests;
         }
 
 
+        private async Task<IReadOnlyList<Deck>> GetRequestingAsync(CardUser user)
+        {
+            var userDecks = _dbContext.Decks
+                .Where(d => d.OwnerId == user.Id);
+
+            var userTrades = _dbContext.Trades
+                .Where(t => t.ProposerId == user.Id);
+
+            return await userDecks
+                .Join( userTrades,
+                    d => d.Id, t => t.ToId, (deck, trade) => deck)
+                .Distinct()
+                .ToListAsync();
+        }
+
+
+        private IEnumerable<DeckState> GetDeckStates(IEnumerable<Deck> decks, IEnumerable<Deck> requestDecks)
+        {
+            requestDecks = requestDecks.ToHashSet();
+
+            foreach(var deck in decks)
+            {
+                if (requestDecks.Contains(deck))
+                {
+                    yield return DeckState.Requesting;
+                }
+                else if (deck.Cards.Any(ca => ca.IsRequest))
+                {
+                    yield return DeckState.Invalid;
+                }
+                else
+                {
+                    yield return DeckState.Valid;
+                }
+            }
+        }
+
+
+        /*
         public async Task<IActionResult> OnPostRequestAsync(int requestId)
         {
             var request = await GetRequestInfoAsync(requestId);
@@ -188,20 +238,12 @@ namespace MTGViewer.Pages.Decks
                     .ThenInclude(l => (l as Deck).Owner);
 
             var validSources = await possibleSources
-                .GroupJoin( _dbContext.Trades,
+                Join( _dbContext.Trades,
                     amount => 
                         new { amount.CardId, DeckId = amount.LocationId },
                     trade =>
                         new { trade.CardId, DeckId = trade.FromId },
-                    (amount, trades) =>
-                        new { amount, trades })
-                .SelectMany(
-                    ats =>
-                        ats.trades.DefaultIfEmpty(),
-                    (ats, trade) =>
-                        new { ats.amount, trade })
-                .Where(at => at.trade == default)
-                .Select(at => at.amount)
+                    (amount, trade) => amount)
                 .ToListAsync();
 
             return validSources
@@ -262,5 +304,6 @@ namespace MTGViewer.Pages.Decks
                 _ => amount
             };
         }
+        */
     }
 }

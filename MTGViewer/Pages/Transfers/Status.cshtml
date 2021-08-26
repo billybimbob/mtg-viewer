@@ -1,14 +1,94 @@
 @page
 @model MTGViewer.Pages.Transfers.StatusModel
+@using MTGViewer.Data
+    
 
 @{
     ViewData["Title"] = $"{Model.Proposer.Name}'s Trades";
 }
 
+<h1>To @Model.Destination.Name</h1>
 
-@* <input type="submit"
-        asp-page-handler="Cancel"
-        asp-route-proposerid="@proposerId"
-        asp-route-deckid="@deck.Id"
-        class="btn btn-secondary mb-3" 
-        value="Cancel"> *@
+
+@if (!string.IsNullOrEmpty(Model.PostMessage))
+{
+    <div class="alert alert-secondary" role="alert">
+        @Model.PostMessage
+    </div>
+}
+
+<form method="POST">
+    <input type="hidden" 
+           asp-for="Destination.Id"
+           value="deckId" />
+
+    <input type="submit"
+           class="btn btn-secondary mb-3"
+           value="Cancel" />
+</form>
+
+<h2>Request Progress</h2>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th> @Html.DisplayNameForInnerType((CardAmount ca) => ca.Card) </th>
+            <th> @Html.DisplayNameForInnerType((Card c) => c.ManaCost) </th>
+            <th> Requested Amount </th>
+            <th> Current Amount </th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var (request, actual) in Model.RequestPairs)
+        {
+            <tr>
+                <td>
+                    <a asp-page="/Cards/Details"
+                       asp-route-id="@request.CardId">
+                       @request.Card.Name </a>
+                </td>
+                <td>
+                    @foreach (var cost in request.Card.GetColorSymbols())
+                    {
+                        <span class="m-1 ms ms-@cost.ToLower() ms-cost"></span>
+                    }
+                </td>
+                <td> @request.Amount </td>
+                <td> @(actual?.Amount ?? 0) </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<h2>Current Requests</h2>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th> @Html.DisplayNameForInnerType((Trade t) => t.Card) </th>
+            <th> @Html.DisplayNameForInnerType((Card c) => c.ManaCost) </th>
+            <th> @Html.DisplayNameForInnerType((Trade t) => t.From) </th>
+            <th> @Html.DisplayNameForInnerType((Trade t) => t.Amount) </th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var trade in Model.Trades)
+        {
+            <tr>
+                <td>
+                    <a asp-page="/Cards/Details"
+                       asp-route-id="@trade.CardId">
+                       @trade.Card.Name </a>
+                </td>
+                <td>
+                    @foreach (var cost in trade.Card.GetColorSymbols())
+                    {
+                        <span class="m-1 ms ms-@cost.ToLower() ms-cost"></span>
+                    }
+                </td>
+                <td> @trade.From.Name </td>
+                <td> @trade.Amount </td>
+            </tr>
+        }
+    </tbody>
+</table>

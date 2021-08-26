@@ -33,10 +33,15 @@ namespace MTGViewer.Pages.Transfers
         }
 
 
+        [TempData]
+        public string PostMessage { get; set; }
+
+        public bool TargetsExist { get; private set; }
+
         public Deck Deck { get; private set; }
         public CardUser Proposer { get; private set; }
-        public IReadOnlyList<CardAmount> Requests { get; private set; }
 
+        public IReadOnlyList<CardAmount> Requests { get; private set; }
 
 
         public async Task<IActionResult> OnGetAsync(int deckId)
@@ -50,24 +55,28 @@ namespace MTGViewer.Pages.Transfers
                 return NotFound();
             }
 
-            var isDeckValid = await _dbContext.Trades
-                .Where(t => t.ToId == deckId && t.ProposerId == user.Id)
-                .AnyAsync();
-
-            if (!isDeckValid)
-            {
-                return NotFound();
-            }
-
             var cardRequests = await _dbContext.Amounts
+                .Include(ca => ca.Card)
                 .Where(ca => ca.IsRequest && ca.LocationId == deckId)
                 .ToListAsync();
 
+            var alreadyRequested = await _dbContext.Trades
+                .Where(t => t.ToId == deckId && t.ProposerId == user.Id)
+                .AnyAsync();
+
+
             if (!cardRequests.Any())
             {
-                return NotFound();
+                PostMessage = "There are no possible requests";
+                return RedirectToPage("./Index");
             }
 
+            if (cardRequests.Any() && alreadyRequested)
+            {
+                return RedirectToPage("./Transfers/Status", new { deckId });
+            }
+
+            TargetsExist = await AnyTradeRequestsAsync(user, deckId);
             Deck = deck;
             Proposer = user;
             Requests = cardRequests;
@@ -76,39 +85,52 @@ namespace MTGViewer.Pages.Transfers
         }
 
 
-        public async Task<bool> IsDeckValid(int deckId, string userId)
+        private async Task<bool> AnyTradeRequestsAsync(CardUser user, int deckId)
         {
-            var validDeck = await _dbContext.Decks
-                .AnyAsync(d => d.Id == deckId && d.OwnerId == userId);
+            var possibleAmounts = _dbContext.Amounts
+                .Where(ca => !ca.IsRequest
+                    && ca.Location is Deck
+                    && (ca.Location as Deck).OwnerId != user.Id);
 
-            if (!validDeck)
-            {
-                return false;
-            }
+            var cardRequests = _dbContext.Amounts
+                .Where(ca => ca.IsRequest && ca.LocationId == deckId);
 
-            var alreadyRequested = await _dbContext.Trades
-                .Where(t => t.ToId == deckId && t.ProposerId == userId)
+            return await possibleAmounts
+                .Join( cardRequests,
+                    amount => amount.CardId,
+                    request => request.CardId,
+                    (amount, request) => new { amount, request })
                 .AnyAsync();
-
-            return !alreadyRequested;
         }
 
 
         public async Task<IActionResult> OnPostAsync(int deckId)
         {
             var user = await _userManager.GetUserAsync(User);
-            var isDeckValid = await IsDeckValid(deckId, user.Id);
+            var validDeck = await _dbContext.Decks
+                .AnyAsync(d => d.Id == deckId && d.OwnerId == user.Id);
 
-            if (!isDeckValid)
+            if (!validDeck)
             {
                 return NotFound();
+            }
+
+            var alreadyRequested = await _dbContext.Trades
+                .Where(t => t.ToId == deckId && t.ProposerId == user.Id)
+                .AnyAsync();
+
+            if (alreadyRequested)
+            {
+                PostMessage = "Request is already sent";
+                return RedirectToPage("./Index");
             }
 
             var tradeRequests = await FindTradeRequestsAsync(user, deckId);
 
             if (!tradeRequests.Any())
             {
-                return NotFound();
+                PostMessage = "There are no possible decks to request to";
+                return RedirectToPage("./Index");
             }
 
             _dbContext.Trades.AttachRange(tradeRequests);
@@ -129,29 +151,25 @@ namespace MTGViewer.Pages.Transfers
         private async Task<IReadOnlyList<Trade>> FindTradeRequestsAsync(CardUser user, int deckId)
         {
             var possibleAmounts = _dbContext.Amounts
-                .Include(ca => ca.Card)
-                .Include(ca => ca.Location as Deck)
-                    .ThenInclude(d => d.Owner)
                 .Where(ca => !ca.IsRequest
                     && ca.Location is Deck
-                    && (ca.Location as Deck).OwnerId != user.Id);
+                    && (ca.Location as Deck).OwnerId != user.Id)
+                .Include(ca => ca.Card)
+                .Include(ca => ca.Location)
+                    .ThenInclude(l => (l as Deck).Owner);
 
             var cardRequests = _dbContext.Amounts
                 .Where(ca => ca.IsRequest && ca.LocationId == deckId);
 
-
             var requestTargets = await possibleAmounts
-                .GroupJoin( cardRequests,
+                .Join( cardRequests,
                     amount => amount.CardId,
                     request => request.CardId,
-                    (amount, requests) => new { amount, requests })
-                .SelectMany(
-                    ars => ars.requests.DefaultIfEmpty(),
-                    (ars, request) => new { ars.amount, request })
+                    (amount, request) => new { amount, request })
                 .ToListAsync();
 
 
-            var newTrades =  requestTargets.Select(ar =>
+            var newTrades = requestTargets.Select(ar =>
             {
                 var toDeck = (Deck) ar.request.Location;
                 var fromDeck = (Deck) ar.amount.Location;

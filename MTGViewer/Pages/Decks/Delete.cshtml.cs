@@ -38,33 +38,44 @@ namespace MTGViewer.Pages.Decks
 
         public async Task<IActionResult> OnGetAsync(int id)
         {
-            var user = await _userManager.GetUserAsync(User);
+            var userId = _userManager.GetUserId(User);
 
-            Deck = await _dbContext.Decks
+            var deck = await _dbContext.Decks
                 .Include(l => l.Cards)
                     .ThenInclude(ca => ca.Card)
                 .AsNoTracking()
-                .FirstOrDefaultAsync(l => l.Id == id && l.OwnerId == user.Id);
+                .FirstOrDefaultAsync(l => l.Id == id && l.OwnerId == userId);
 
-            if (Deck is null)
+            if (deck is null)
             {
                 return NotFound();
             }
+
+            var currentlyRequested = await _dbContext.Trades
+                .Where(t => t.ToId == id && t.ProposerId == userId)
+                .AnyAsync();
+
+            if (currentlyRequested)
+            {
+                return NotFound();
+            }
+
+            Deck = deck;
 
             return Page();
         }
 
         public async Task<IActionResult> OnPostAsync(int id)
         {
-            Deck = await _dbContext.Decks.FindAsync(id);
+            var deck = await _dbContext.Decks.FindAsync(id);
 
-            if (Deck is null)
+            if (deck is null)
             {
                 return RedirectToPage("./Index");
             }
 
             var deckAmounts = _dbContext.Amounts
-                .Where(ca => ca.LocationId == Deck.Id);
+                .Where(ca => ca.LocationId == deck.Id);
 
             var sharedAmounts = _dbContext.Amounts
                 .Where(ca => ca.Location is Data.Shared);
@@ -76,6 +87,7 @@ namespace MTGViewer.Pages.Decks
                     (deck, shared) => new { deck, shared })
                 .ToListAsync();
 
+
             foreach(var pair in amountPairs)
             {
                 if (!pair.deck.IsRequest)
@@ -84,8 +96,8 @@ namespace MTGViewer.Pages.Decks
                 }
             }
 
-            _dbContext.RemoveRange(Deck.Cards);
-            _dbContext.Decks.Remove(Deck);
+            _dbContext.Amounts.RemoveRange(deck.Cards);
+            _dbContext.Decks.Remove(deck);
 
             try
             {

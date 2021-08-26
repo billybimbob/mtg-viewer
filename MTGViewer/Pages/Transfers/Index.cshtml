@@ -14,11 +14,11 @@
         @Model.PostMessage
     </div>
 }
-
+@* 
 <a asp-page="./Propose" 
     class="btn btn-secondary mb-3">
     New Trade
-</a>
+</a> *@
 
 <h2>Pending Trades</h2>
 
@@ -31,7 +31,7 @@
         </tr>
     </thead>
     <tbody>
-        <form method="post">
+        <form method="POST">
             @foreach (var (deck, numCards) in Model.PendingTrades)
             {
                 <tr>
@@ -64,7 +64,7 @@
 </table>
 
 
-<h2>Possible Requests</h2>
+@* <h2>Possible Requests</h2>
 
 <table class="table">
     <thead>
@@ -89,7 +89,7 @@
             </tr>
         }
     </tbody>
-</table>
+</table> *@
 
 
 <h2>Suggestions</h2>
@@ -104,7 +104,7 @@
         </tr>
     </thead>
     <tbody>
-        <form method="post">
+        <form method="POST">
             @foreach (var suggestion in Model.Suggestions)
             {
                 <tr>

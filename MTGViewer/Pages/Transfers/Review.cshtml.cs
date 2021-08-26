@@ -11,9 +11,9 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
 using MTGViewer.Areas.Identity.Data;
-using MTGViewer.Data.Concurrency;
 using MTGViewer.Data;
 
+#nullable enable
 
 namespace MTGViewer.Pages.Transfers
 {
@@ -22,9 +22,10 @@ namespace MTGViewer.Pages.Transfers
     {
         private record AcceptAmounts(
             Trade Accept,
-            CardAmount Request,
-            CardAmount ToAmount,
-            CardAmount FromAmount) { }
+            CardAmount? ToAmount,
+            CardAmount? ToRequest,
+            CardAmount FromAmount,
+            CardAmount? FromRequest) { }
 
 
         private readonly CardDbContext _dbContext;
@@ -38,12 +39,12 @@ namespace MTGViewer.Pages.Transfers
 
 
         [TempData]
-        public string PostMessage { get; set; }
+        public string? PostMessage { get; set; }
 
-        public CardUser Receiver { get; private set; }
-        public Deck Source { get; set; }
+        public Deck? Source { get; set; }
+        public CardUser? Receiver { get; private set; }
 
-        public IReadOnlyList<Trade> Trades { get; private set; }
+        public IReadOnlyList<Trade>? Trades { get; private set; }
 
         // [BindProperty]
         // public IReadOnlyList<string> TradeTokens { get; set; }
@@ -86,8 +87,8 @@ namespace MTGViewer.Pages.Transfers
                 return RedirectToPage("./Index");
             }
 
-            Receiver = deck.Owner;
             Source = deck;
+            Receiver = deck.Owner;
             Trades = deckTrades;
             // TradeTokens = tokens;
 
@@ -123,7 +124,7 @@ namespace MTGViewer.Pages.Transfers
 
 
 
-        private async Task<AcceptAmounts> GetAcceptInfoAsync(int tradeId)
+        private async Task<AcceptAmounts?> GetAcceptInfoAsync(int tradeId)
         {
             if (tradeId == default)
             {
@@ -135,6 +136,7 @@ namespace MTGViewer.Pages.Transfers
             var deckTrade = await _dbContext.Trades
                 .Include(t => t.Card)
                 .Include(t => t.To)
+                .Include(t => t.From)
                 .SingleOrDefaultAsync(t => t.Id == tradeId && t.From.OwnerId == userId);
 
             if (deckTrade == default)
@@ -146,8 +148,7 @@ namespace MTGViewer.Pages.Transfers
             var tradeDeckIds = new []{ deckTrade.ToId, deckTrade.FromId };
             var tradeAmounts = await _dbContext.Amounts
                 .Where(ca =>
-                    ca.CardId == deckTrade.CardId
-                        && tradeDeckIds.Contains(ca.LocationId))
+                    ca.CardId == deckTrade.CardId && tradeDeckIds.Contains(ca.LocationId))
                 .ToListAsync();
 
             var amountsValid = tradeAmounts.Any(ca =>
@@ -161,66 +162,83 @@ namespace MTGViewer.Pages.Transfers
 
             return new AcceptAmounts (
                 Accept: deckTrade,
-                Request: tradeAmounts
-                    .SingleOrDefault(ca =>
-                        ca.IsRequest && ca.LocationId == deckTrade.ToId),
+
                 ToAmount: tradeAmounts
                     .SingleOrDefault(ca =>
                         !ca.IsRequest && ca.LocationId == deckTrade.ToId),
+
+                ToRequest: tradeAmounts
+                    .SingleOrDefault(ca =>
+                        ca.IsRequest && ca.LocationId == deckTrade.ToId),
+
                 FromAmount: tradeAmounts
                     .Single(ca =>
-                        !ca.IsRequest && ca.LocationId == deckTrade.FromId)
+                        !ca.IsRequest && ca.LocationId == deckTrade.FromId),
+
+                FromRequest: tradeAmounts
+                    .SingleOrDefault(ca =>
+                        ca.IsRequest && ca.LocationId == deckTrade.FromId)
             );
         }
 
 
         private void ApplyAccept(AcceptAmounts acceptInfo)
         {
-            var request = acceptInfo.Request;
+            var (accept, toAmount, toRequest, fromAmount, fromRequest) = acceptInfo;
 
-            if (request is not null)
+            if (toRequest is not null)
             {
-                var accept = acceptInfo.Accept;
-                var sourceAmount = acceptInfo.FromAmount;
-                var changeOptions = new []
+                if (toAmount == default)
                 {
-                    accept.Amount,
-                    sourceAmount.Amount,
-                    request.Amount
-                };
-
-                var change = changeOptions.Min();
-                var destAmount = acceptInfo.ToAmount;
-
-                if (destAmount == default)
-                {
-                    destAmount = new CardAmount
+                    toAmount = new CardAmount
                     {
                         Card = accept.Card,
                         Location = accept.To,
                         Amount = 0
                     };
 
-                    _dbContext.Amounts.Add(destAmount);
+                    _dbContext.Amounts.Add(toAmount);
                 }
 
-                sourceAmount.Amount -= change;
-                destAmount.Amount += change;
-                request.Amount -= change;
+                if (fromRequest == default)
+                {
+                    fromRequest = new CardAmount
+                    {
+                        Card = accept.Card,
+                        Location = accept.From,
+                        Amount = 0,
+                        IsRequest = true
+                    };
+
+                    _dbContext.Amounts.Add(fromRequest);
+                }
+
+                var changeOptions = new [] { accept.Amount, fromAmount.Amount, toRequest.Amount };
+                var change = changeOptions.Min();
+
+                toAmount.Amount += change;
+                toRequest.Amount -= change;
+                fromAmount.Amount -= change;
+                fromRequest.Amount += change;
             }
 
-            if (request?.Amount == 0)
+            if (toRequest?.Amount == 0)
             {
-                _dbContext.Amounts.Remove(request);
+                _dbContext.Amounts.Remove(toRequest);
             }
 
-            _dbContext.Trades.Remove(acceptInfo.Accept);
+            if (fromAmount.Amount == 0)
+            {
+                _dbContext.Amounts.Remove(fromAmount);
+            }
+
+            _dbContext.Trades.Remove(accept);
         }
 
 
         private async Task CascadeIfComplete(AcceptAmounts acceptInfo)
         {
-            var request = acceptInfo.Request;
+            var request = acceptInfo.ToRequest;
 
             if (request?.Amount > 0)
             {
@@ -228,6 +246,7 @@ namespace MTGViewer.Pages.Transfers
             }
 
             var accepted = acceptInfo.Accept;
+
             var remainingTrades = await _dbContext.Trades
                 .Where(t => t.Id != accepted.Id 
                     && t.ProposerId == accepted.ProposerId

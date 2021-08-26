@@ -14,11 +14,12 @@
     </div>
 }
 
+@*
 @if (Model.PickedRequest != null)
 {
     <h2>Request Options for @Model.PickedRequest.Card.Name</h2>
 
-    <form method="post">
+    <form method="POST">
         <table class="table">
             <thead>
                 <tr>
@@ -63,82 +64,120 @@
 }
 else
 {
-    <h2>@Model.CardUser.Name's Decks</h2>
+ *@
+ 
+<h2>@Model.CardUser.Name's Decks</h2>
 
-    <a class="btn btn-secondary" asp-page="./Builder">New Deck</a>
+<a class="btn btn-secondary" asp-page="./Builder">New Deck</a>
 
-    <table class="table">
-        <thead>
+<table class="table">
+    <thead>
+        <tr>
+            <th>
+                Deck @Html.DisplayNameForInnerType((Deck d) => d.Name)
+            </th>
+            <th>Number of Cards</th>
+            <th>Colors</th>
+            <th>State</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var (deck, colors, state) in Model.DeckColors)
+        {
             <tr>
-                <th>
-                    Deck @Html.DisplayNameForInnerType((Deck d) => d.Name)
-                </th>
-                <th>Number of Cards</th>
-                <th>Colors</th>
-                <th></th>
+                <td> @deck.Name </td>
+                <td> @deck.Cards.Select(ca => ca.Amount).Sum() </td>
+                <td>
+                    @foreach (var color in colors)
+                    {
+                        <span class="m-1 ms ms-@color ms-cost"></span>
+                    }
+                </td>
+                <td> @state.ToString() </td>
+                <td>
+                    @switch (state)
+                    {
+                        case IndexModel.DeckState.Invalid:
+                            <a asp-page="./Builder"
+                               asp-route-id="@deck.Id"
+                               class="btn btn-secondary mb-3">
+                               Edit </a>
+
+                            <a asp-page="./Delete"
+                               asp-route-id="@deck.Id"
+                               class="btn btn-secondary mb-3">
+                               Delete </a>
+
+                            <a asp-page="/Transfers/Request"
+                               asp-route-deckid="@deck.Id"
+                               class="btn btn-secondary mb-3">
+                               Request </a>
+                            break;
+
+                        case IndexModel.DeckState.Valid:
+                            <a asp-page="./Builder"
+                               asp-route-id="@deck.Id"
+                               class="btn btn-secondary mb-3">
+                               Edit </a>
+
+                            <a asp-page="./Delete"
+                               asp-route-id="@deck.Id"
+                               class="btn btn-secondary mb-3">
+                               Delete </a>
+                            break;
+
+                        case IndexModel.DeckState.Requesting:
+                            <a asp-page="/Transfers/Status"
+                               asp-route-deckid="@deck.Id"
+                               class="btn btn-secondary mb-3">
+                               Status </a>
+                            break;
+                        
+                        default:
+                            break;
+                    }
+                </td>
             </tr>
-        </thead>
-        <tbody>
-            @foreach (var (deck, colors) in Model.DeckColors)
+        }
+    </tbody>
+</table>
+
+@* 
+<h2>@Model.CardUser.Name's Request Trade Options</h2>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>
+                @Html.DisplayNameForInnerType((CardAmount ca) => ca.Card) Name
+            </th>
+            <th> Deck </th>
+            <th>
+                @Html.DisplayNameForInnerType((CardAmount ca) => ca.Amount)
+            </th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        <form method="POST">
+            @foreach (var request in Model.Requests)
             {
                 <tr>
-                    <td> @deck.Name </td>
-                    <td> @deck.Cards.Select(ca => ca.Amount).Sum() </td>
+                    <td> @request.Card.Name </td>
+                    <td> @request.Location.Name </td>
+                    <td> @request.Amount </td>
                     <td>
-                        @foreach (var color in colors)
-                        {
-                            <span class="m-1 ms ms-@color ms-cost"></span>
-                        }
-                    </td>
-                    <td>
-                        <a asp-page="./Builder"
-                           asp-route-id="@deck.Id"
-                           class="btn btn-secondary mb-3">
-                           Edit </a>
-                        <a asp-page="./Delete"
-                           asp-route-id="@deck.Id"
-                           class="btn btn-secondary mb-3">
-                           Delete </a>
+                        <input type="submit"
+                                asp-page-handler="Request"
+                                asp-route-requestid="@request.Id"
+                                class="btn btn-secondary mb-3"
+                                value="Request" />
                     </td>
                 </tr>
             }
-        </tbody>
-    </table>
+        </form>
+    </tbody>
+</table>
 
-
-    <h2>@Model.CardUser.Name's Request Trade Options</h2>
-
-    <table class="table">
-        <thead>
-            <tr>
-                <th>
-                    @Html.DisplayNameForInnerType((CardAmount ca) => ca.Card) Name
-                </th>
-                <th> Deck </th>
-                <th>
-                    @Html.DisplayNameForInnerType((CardAmount ca) => ca.Amount)
-                </th>
-                <th></th>
-            </tr>
-        </thead>
-        <tbody>
-            <form method="post">
-                @foreach (var request in Model.Requests)
-                {
-                    <tr>
-                        <td> @request.Card.Name </td>
-                        <td> @request.Location.Name </td>
-                        <td> @request.Amount </td>
-                        <td>
-                            <input type="submit"
-                                   asp-page-handler="Request"
-                                   asp-route-requestid="@request.Id"
-                                   class="btn btn-secondary mb-3"
-                                   value="Request" />
-                        </td>
-                    </tr>
-                }
-            </form>
-        </tbody>
-    </table>
-}
+} *@
