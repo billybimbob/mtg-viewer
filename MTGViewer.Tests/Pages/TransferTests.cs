@@ -294,26 +294,5 @@ namespace MTGViewer.Tests.Pages
             Assert.DoesNotContain(trade.Id, tradesAfter);
             Assert.True(changeCheck);
         }
-
-
-        [Fact]
-        public void Join_DuplicateKeyMatches_PairEachUnique()
-        {
-            var arr1 = new []{ 1, 3, 3, 7};
-            var arr2 = new []{ 2, 3 };
-
-            var joined1 = arr1
-                .Join(arr2, i => i, i => i, (i1, i2) => (i1, i2))
-                .ToList();
-
-            var joined2 = arr2
-                .Join(arr1, i => i, i => i, (i2, i1) => (i1, i2))
-                .ToList();
-
-            Assert.Contains((3, 3), joined1);
-            Assert.Equal(2, joined1.Count);
-
-            Assert.Equal(joined1, joined2);
-        }
     }
 }

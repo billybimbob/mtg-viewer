@@ -53,7 +53,7 @@
                                     <input type="hidden" asp-for="Matches[i].Name"/>
                                 </td>
                                 <td>
-                                    @foreach (var cost in card.GetColorSymbols())
+                                    @foreach (var cost in card.GetManaSymbols())
                                     {
                                         <i class="ms ms-@cost.ToLower() ms-cost"></i>
                                     }

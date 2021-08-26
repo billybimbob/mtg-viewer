@@ -65,7 +65,7 @@
                         <tr>
                             <td class="fw-bold">@card.Name</td>
                             <td>
-                                @foreach (var cost in card.GetColorSymbols())
+                                @foreach (var cost in card.GetManaSymbols())
                                 {
                                     <span class="m-1 ms ms-@cost.ToLower() ms-cost"></span>
                                 }
@@ -104,7 +104,7 @@
                         <tr>
                             <td class="fw-bold">@card.Name</td>
                             <td>
-                                @foreach (var cost in card.GetColorSymbols())
+                                @foreach (var cost in card.GetManaSymbols())
                                 {
                                     <span class="m-1 ms ms-@cost.ToLower() ms-cost"></span>
                                 }
@@ -145,7 +145,7 @@
                         <tr>
                             <td class="fw-bold">@trade.Card.Name</td>
                             <td>
-                                @foreach (var cost in trade.Card.GetColorSymbols())
+                                @foreach (var cost in trade.Card.GetManaSymbols())
                                 {
                                     <span class="m-1 ms ms-@cost.ToLower() ms-cost"></span>
                                 }
@@ -186,7 +186,7 @@
                         <tr>
                             <td class="fw-bold">@trade.Card.Name</td>
                             <td>
-                                @foreach (var cost in trade.Card.GetColorSymbols())
+                                @foreach (var cost in trade.Card.GetManaSymbols())
                                 {
                                     <span class="m-1 ms ms-@cost.ToLower() ms-cost"></span>
                                 }

@@ -99,7 +99,7 @@ namespace MTGViewer.Pages.Transfers
                 .Join( cardRequests,
                     amount => amount.CardId,
                     request => request.CardId,
-                    (amount, request) => new { amount, request })
+                    (amount, request) => amount)
                 .AnyAsync();
         }
 

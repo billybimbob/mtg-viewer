@@ -31,6 +31,13 @@ namespace MTGViewer.Data
             .SelectMany(ca => ca.Card.Colors)
             .Distinct(new EntityComparer<Color>(c => c.Name))
             .OrderBy(c => c.Name);
+
+        public IOrderedEnumerable<string> GetColorSymbols() => Cards
+            .SelectMany(ca => ca.Card.GetManaSymbols())
+            .Distinct()
+            .Select(s => s.ToLower())
+            .Where(s => Color.COLORS.Values.Contains(s))
+            .OrderBy(s => s);
     }
 
 

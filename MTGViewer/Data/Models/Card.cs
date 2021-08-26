@@ -62,7 +62,7 @@ namespace MTGViewer.Data
         [JsonIgnore]
         public ICollection<CardAmount> Amounts { get; } = new HashSet<CardAmount>();
 
-        public IReadOnlyList<string> GetColorSymbols()
+        public IReadOnlyList<string> GetManaSymbols()
         {
             if (string.IsNullOrEmpty(ManaCost))
             {

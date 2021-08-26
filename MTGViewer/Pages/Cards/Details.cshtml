@@ -22,7 +22,7 @@
             @Html.DisplayNameFor(m => m.Card.ManaCost)
         </dt>
         <dd class="col-sm-10">
-        @foreach (var cost in Model.Card.GetColorSymbols()) {
+        @foreach (var cost in Model.Card.GetManaSymbols()) {
             <i class="ms ms-@cost.ToLower() ms-cost"></i>
         }
         </dd>

@@ -48,7 +48,7 @@
                        @request.Card.Name </a>
                 </td>
                 <td>
-                    @foreach (var cost in request.Card.GetColorSymbols())
+                    @foreach (var cost in request.Card.GetManaSymbols())
                     {
                         <span class="m-1 ms ms-@cost.ToLower() ms-cost"></span>
                     }
@@ -81,7 +81,7 @@
                        @trade.Card.Name </a>
                 </td>
                 <td>
-                    @foreach (var cost in trade.Card.GetColorSymbols())
+                    @foreach (var cost in trade.Card.GetManaSymbols())
                     {
                         <span class="m-1 ms ms-@cost.ToLower() ms-cost"></span>
                     }

@@ -51,7 +51,7 @@
                 <td class="fw-bold">@card.Name</td>
 
                 <td>
-                    @foreach (var cost in card.GetColorSymbols())
+                    @foreach (var cost in card.GetManaSymbols())
                     {
                         <span class="m-1 ms ms-@cost.ToLower() ms-cost"></span>
                     }

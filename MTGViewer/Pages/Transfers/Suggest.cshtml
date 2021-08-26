@@ -8,6 +8,15 @@
 <form method="POST">
     @if (Model.Users is not null)
     {
+        <h2>Pick which user to suggest @Model.Card.Name to</h2>
+
+        @if (!Model.Users.Any())
+        {
+            <div class="alert alert-danger" role="alert">
+                There are no users to suggest to
+            </div>
+        }
+
         @foreach(var user in Model.Users)
         {
             <div class="input-group">
@@ -21,23 +30,28 @@
         }
 
         <a asp-page="/Cards/Index"
-            class="btn btn-secondary mb-3">
-            Back</a>
+           class="btn btn-secondary mb-3">
+           Back </a>
 
-        <input type="submit"
-            asp-page-handler="User"
-            asp-route-cardid="@Model.Card.Id"
-            class="btn btn-secondary mb-3"
-            value="Suggest To" />
+        @if (Model.Users.Any())
+        {
+            <input type="submit"
+                asp-page-handler="User"
+                asp-route-cardid="@Model.Card.Id"
+                class="btn btn-secondary mb-3"
+                value="Suggest To" />
+        }
     }
     else
     {
+        <h2>Pick the deck to suggest @Model.Card.Name (Optional)</h2>
+
         @foreach(var (deck, colors) in Model.DeckColors)
         {
             <div class="input-group">
                 <div class="input-group-prepend">
                     <div class="input-group-text">
-                        <input type="radio" name="deckId" value="@deck.Id" />
+                        <input type="radio" asp-for="Suggestion.ToId" value="@deck.Id" />
                     </div>
                 </div>
 
@@ -51,25 +65,27 @@
             </div>
         }
 
-        <a asp-page="./Suggest"
-            asp-route-cardid="@Model.Card.Id"
-            class="btn btn-secondary mb-3">
-            Back</a>
+        <div class="form-group">
+            <label asp-for="Suggestion.Comment" class="control-label"></label>
+            <input asp-for="Suggestion.Comment" class="form-control" type="text" />
+        </div>
 
-        @if (!Model.DeckColors.Any())
-        {
-            <div class="alert alert-danger" role="alert">
-                There are no decks to suggest to
-            </div>
-        }
-        else
-        {
-            <input type="submit"
-                asp-page-handler="Deck"
-                asp-route-cardid="@Model.Card.Id"
-                class="btn btn-secondary mb-3"
-                disabled="@(!Model.DeckColors.Any())"
-                value="Suggest" />
-        }
+        <a asp-page="./Suggest"
+           asp-route-cardid="@Model.Card.Id"
+           class="btn btn-secondary mb-3">
+           Back </a>
+
+        <input type="hidden"
+               asp-for="Suggestion.CardId"
+               value="@Model.Card.Id" />
+
+        <input type="hidden"
+               asp-for="Suggestion.ReceiverId"
+               value="@Model.PickedUser.Id" />
+
+        <input type="submit"
+               asp-page-handler="Suggest"
+               class="btn btn-secondary mb-3"
+               value="Suggest" />
     }
 </form>

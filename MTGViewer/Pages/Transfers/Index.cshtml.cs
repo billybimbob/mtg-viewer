@@ -40,7 +40,7 @@ namespace MTGViewer.Pages.Transfers
         public IReadOnlyList<DeckTrade> PendingTrades { get; private set; }
 
         // public IReadOnlyList<DeckTrade> PossibleRequests { get; private set; }
-        public IReadOnlyList<Transfer> Suggestions { get; private set; }
+        public IReadOnlyList<Suggestion> Suggestions { get; private set; }
 
 
 

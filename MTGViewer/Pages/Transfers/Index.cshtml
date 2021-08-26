@@ -100,6 +100,7 @@
             <th> @Html.DisplayNameForInnerType((Suggestion t) => t.Card) </th>
             <th> Suggestion From </th>
             <th> @Html.DisplayNameForInnerType((Suggestion t) => t.To) </th>
+            <th> @Html.DisplayNameForInnerType((Suggestion t) => t.Comment) </th>
             <th></th>
         </tr>
     </thead>
@@ -114,7 +115,8 @@
                            @suggestion.Card.Name </a>
                     </td>
                     <td>@suggestion.Proposer.Name</td>
-                    <td>@suggestion.To.Name</td>
+                    <td>@(suggestion.To?.Name ?? "")</td>
+                    <td>@suggestion.Comment</td>
                     <td>
                         <input type="submit"
                                asp-route-suggestid="@suggestion.Id"

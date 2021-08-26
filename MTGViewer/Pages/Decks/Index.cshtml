@@ -14,57 +14,6 @@
     </div>
 }
 
-@*
-@if (Model.PickedRequest != null)
-{
-    <h2>Request Options for @Model.PickedRequest.Card.Name</h2>
-
-    <form method="POST">
-        <table class="table">
-            <thead>
-                <tr>
-                    <th> Deck @Html.DisplayNameForInnerType((Deck d) => d.Name) </th> 
-                    <th> @Html.DisplayNameForInnerType((Deck d) => d.Owner) </th> 
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var source in Model.RequestSources)
-                {
-                    <tr>
-                        <td> @source.Name </td>
-                        <td> @source.Owner.Name </td>
-                        <td>
-                            <input type="radio" name="deckId" value="@source.Id" />
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </table>
-
-        <div class="form-group">
-            <label for="amount">Amount to Request: </label>
-            <output id="result" for="amount">1</output>
-
-            <input type="range"
-                   id="amount"
-                   name="amount"
-                   class="form-control-range"
-                   min="1" max="@Model.PickedRequest.Amount"
-                   value="1"
-                   oninput="result.value = value" />
-        </div>
-
-        <input type="submit"
-               asp-page-handler="Submit"
-               asp-route-requestid="@Model.PickedRequest.Id"
-               class="btn btn-secondary mb-3"
-               value="Submit" />
-    </form>
-}
-else
-{
- *@
  
 <h2>@Model.CardUser.Name's Decks</h2>
 
@@ -142,42 +91,3 @@ else
         }
     </tbody>
 </table>
-
-@* 
-<h2>@Model.CardUser.Name's Request Trade Options</h2>
-
-<table class="table">
-    <thead>
-        <tr>
-            <th>
-                @Html.DisplayNameForInnerType((CardAmount ca) => ca.Card) Name
-            </th>
-            <th> Deck </th>
-            <th>
-                @Html.DisplayNameForInnerType((CardAmount ca) => ca.Amount)
-            </th>
-            <th></th>
-        </tr>
-    </thead>
-    <tbody>
-        <form method="POST">
-            @foreach (var request in Model.Requests)
-            {
-                <tr>
-                    <td> @request.Card.Name </td>
-                    <td> @request.Location.Name </td>
-                    <td> @request.Amount </td>
-                    <td>
-                        <input type="submit"
-                                asp-page-handler="Request"
-                                asp-route-requestid="@request.Id"
-                                class="btn btn-secondary mb-3"
-                                value="Request" />
-                    </td>
-                </tr>
-            }
-        </form>
-    </tbody>
-</table>
-
-} *@
