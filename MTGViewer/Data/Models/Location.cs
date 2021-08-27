@@ -1,7 +1,6 @@
 using System.Linq;
 using System.Collections.Generic;
 using Newtonsoft.Json;
-using MTGViewer.Areas.Identity.Data;
 
 using MTGViewer.Data.Concurrency;
 using MTGViewer.Data.Internal;
@@ -17,12 +16,13 @@ namespace MTGViewer.Data
             Name = name;
         }
 
-        public int Id { get; set; }
+        [JsonProperty]
+        public int Id { get; private set; }
 
         public string Name { get; set; }
 
         [JsonIgnore]
-        internal Discriminator Type { get; set; }
+        internal Discriminator Type { get; private set; }
 
         [JsonIgnore]
         public ICollection<CardAmount> Cards { get; } = new HashSet<CardAmount>();
@@ -54,8 +54,8 @@ namespace MTGViewer.Data
         { }
 
         [JsonIgnore]
-        public CardUser Owner { get; set; } = null!;
-        public string OwnerId { get; set; } = null!;
+        public UserRef Owner { get; init; } = null!;
+        public string OwnerId { get; init; } = null!;
 
         [JsonIgnore]
         public ICollection<Transfer> Transfers { get; } = new HashSet<Transfer>();

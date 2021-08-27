@@ -43,12 +43,18 @@ namespace MTGViewer.Tests.Utils
         internal static CardDbContext CardDbContext(IServiceProvider services = null)
         {
             services ??= ServiceProvider();
+            return new CardDbContext( DbContextOptions<CardDbContext>(services) );
+        }
 
-            var dbBuilder = new DbContextOptionsBuilder<CardDbContext>()
+
+        private static DbContextOptions<D> DbContextOptions<D>(IServiceProvider services)
+            where D : DbContext
+        {
+            var dbBuilder = new DbContextOptionsBuilder<D>()
                 .UseInMemoryDatabase("Test Database")
                 .UseInternalServiceProvider(services);
 
-            return new CardDbContext(dbBuilder.Options);
+            return dbBuilder.Options;
         }
 
 
@@ -56,7 +62,7 @@ namespace MTGViewer.Tests.Utils
         {
             services ??= ServiceProvider();
 
-            var userDb = CardDbContext(services);
+            var userDb = new UserDbContext( DbContextOptions<UserDbContext>(services) );
             var store = new UserStore<CardUser>(userDb);
 
             var options = new Mock<IOptions<IdentityOptions>>();

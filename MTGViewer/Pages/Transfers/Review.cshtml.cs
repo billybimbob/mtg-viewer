@@ -42,7 +42,7 @@ namespace MTGViewer.Pages.Transfers
         public string? PostMessage { get; set; }
 
         public Deck? Source { get; set; }
-        public CardUser? Receiver { get; private set; }
+        public UserRef? Receiver { get; private set; }
 
         public IReadOnlyList<Trade>? Trades { get; private set; }
 

@@ -34,7 +34,7 @@ namespace MTGViewer.Pages.Transfers
         [TempData]
         public string PostMessage { get; set; }
 
-        public CardUser SelfUser { get; set; }
+        public UserRef SelfUser { get; set; }
 
         public IReadOnlyList<DeckTrade> ReceivedTrades { get; private set; }
         public IReadOnlyList<DeckTrade> PendingTrades { get; private set; }
@@ -46,7 +46,7 @@ namespace MTGViewer.Pages.Transfers
 
         public async Task OnGetAsync()
         {
-            var user = await _userManager.GetUserAsync(User);
+            var user = await _dbContext.Users.FindAsync( _userManager.GetUserId(User) );
 
             var userTrades = await _dbContext.Trades
                 .Where(TradeFilter.Involves(user.Id))

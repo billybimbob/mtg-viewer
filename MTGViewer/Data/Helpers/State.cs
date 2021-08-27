@@ -49,30 +49,11 @@ namespace MTGViewer.Data
         public Card Card
         {
             get => Applied.Card;
-            set
-            {
-                if (value is null)
-                {
-                    return;
-                }
-
-                foreach (var amount in this)
-                {
-                    amount.Card = value;
-                }
-            }
         }
 
         public Location Location
         {
             get => Applied.Location;
-            set
-            {
-                foreach(var amount in this)
-                {
-                    amount.Location = value;
-                }
-            }
         }
 
         public int Amount =>

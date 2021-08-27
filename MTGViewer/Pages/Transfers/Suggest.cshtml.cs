@@ -36,7 +36,7 @@ namespace MTGViewer.Pages.Transfers
 
         public Card Card { get; private set; }
 
-        public IReadOnlyList<CardUser> Users { get; private set; }
+        public IReadOnlyList<UserRef> Users { get; private set; }
 
 
         public async Task<IActionResult> OnGetAsync(string cardId)
@@ -55,11 +55,11 @@ namespace MTGViewer.Pages.Transfers
         }
 
 
-        public async Task<IReadOnlyList<CardUser>> GetPossibleUsersAsync(string cardId)
+        public async Task<IReadOnlyList<UserRef>> GetPossibleUsersAsync(string cardId)
         {
             var proposerId = _userManager.GetUserId(User);
 
-            var nonProposers = _userManager.Users
+            var nonProposers = _dbContext.Users
                 .Where(u => u.Id != proposerId);
 
             var cardSuggests = _dbContext.Suggestions
@@ -85,8 +85,8 @@ namespace MTGViewer.Pages.Transfers
 
 
 
-        public CardUser PickedUser { get; private set; }
-
+        public UserRef Proposer { get; private set; }
+        public UserRef Receiver { get; private set; }
         public IReadOnlyList<DeckColor> DeckColors { get; private set; }
 
 
@@ -99,18 +99,21 @@ namespace MTGViewer.Pages.Transfers
                 return NotFound();
             }
 
-            var user = await _userManager.FindByIdAsync(userId);
+            var proposer = await _dbContext.Users.FindAsync( _userManager.GetUserId(User) );
+            var receiver = await _dbContext.Users.FindAsync(userId);
 
-            if (user is null)
+            if (receiver is null)
             {
                 return NotFound();
             }
 
-            var decks = await GetValidDecksAsync(card, user);
+            var decks = await GetValidDecksAsync(card, receiver);
             var colors = decks.Select(d => d.GetColorSymbols());
 
+            Proposer = proposer;
+            Receiver = receiver;
+
             Card = card;
-            PickedUser = user;
             DeckColors = decks
                 .Zip(colors, (deck, color) => new DeckColor(deck, color))
                 .ToList();
@@ -119,7 +122,7 @@ namespace MTGViewer.Pages.Transfers
         }
 
 
-        private async Task<IReadOnlyList<Deck>> GetValidDecksAsync(Card card, CardUser user)
+        private async Task<IReadOnlyList<Deck>> GetValidDecksAsync(Card card, UserRef user)
         {
             var userDecks = _dbContext.Decks
                 .Where(l => l.OwnerId == user.Id)
@@ -133,8 +136,8 @@ namespace MTGViewer.Pages.Transfers
 
             var decksWithoutCard = userDecks
                 .GroupJoin( userCardAmounts,
-                    d => d.Id,
-                    ca => ca.LocationId,
+                    deck => deck.Id,
+                    amount => amount.LocationId,
                     (deck, amounts) => new { deck, amounts })
                 .SelectMany(
                     das => das.amounts.DefaultIfEmpty(),
@@ -149,8 +152,8 @@ namespace MTGViewer.Pages.Transfers
 
             var validDecks = decksWithoutCard
                 .GroupJoin( transfersWithCard,
-                    d => d.Id,
-                    t => t.ToId,
+                    deck => deck.Id,
+                    transfer => transfer.ToId,
                     (deck, transfers) => new { deck, transfers })
                 .SelectMany(
                     dts => dts.transfers.DefaultIfEmpty(),
@@ -195,8 +198,6 @@ namespace MTGViewer.Pages.Transfers
 
         private async Task<bool> IsValidSuggestionAsync(Suggestion suggestion)
         {
-            suggestion.ProposerId = _userManager.GetUserId(User);
-
             // include both suggestions and trades
             var suggestPrior = await _dbContext.Suggestions
                 .AnyAsync(t =>

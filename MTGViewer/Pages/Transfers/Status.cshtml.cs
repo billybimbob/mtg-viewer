@@ -36,7 +36,7 @@ namespace MTGViewer.Pages.Transfers
         public string? PostMessage { get; set; }
 
         public Deck? Destination { get; private set; }
-        public CardUser? Proposer { get; private set; }
+        public UserRef? Proposer { get; private set; }
 
         public IReadOnlyList<Trade>? Trades { get; private set; }
         public IReadOnlyList<RequestPair>? RequestPairs { get; private set; }
@@ -80,7 +80,7 @@ namespace MTGViewer.Pages.Transfers
 
             if (pairs.Any() && !deckTrades.Any())
             {
-                return RedirectToPage("./Transfers/Request", new { deckId });
+                return RedirectToPage("./Request", new { deckId });
             }
 
             Destination = deck;

@@ -27,18 +27,18 @@ namespace MTGViewer.Pages.Decks
         }
 
 
-        public CardUser CardUser { get; private set; }
+        public string UserId { get; private set; }
         public int DeckId { get; private set; }
 
 
         public async Task<IActionResult> OnGetAsync(int? id)
         {
-            CardUser = await _userManager.GetUserAsync(User);
+            UserId = _userManager.GetUserId(User);
 
             if (id is int deckId)
             {
                 var isOwner = await _dbContext.Decks
-                    .AnyAsync(l => l.Id == deckId && l.Owner == CardUser);
+                    .AnyAsync(l => l.Id == deckId && l.Owner.Id == UserId);
 
                 if (!isOwner)
                 {
@@ -46,7 +46,7 @@ namespace MTGViewer.Pages.Decks
                 }
 
                 var currentlyRequested = await _dbContext.Trades
-                    .Where(t => t.ToId == id && t.ProposerId == CardUser.Id)
+                    .Where(t => t.ToId == id && t.ProposerId == UserId)
                     .AnyAsync();
 
                 if (currentlyRequested)

@@ -17,6 +17,7 @@ using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Logging;
 
 using MTGViewer.Areas.Identity.Data;
+using MTGViewer.Data;
 
 
 namespace MTGViewer.Areas.Identity.Pages.Account
@@ -26,17 +27,20 @@ namespace MTGViewer.Areas.Identity.Pages.Account
     {
         private readonly SignInManager<CardUser> _signInManager;
         private readonly UserManager<CardUser> _userManager;
+        private readonly CardDbContext _cardContext;
         private readonly ILogger<RegisterModel> _logger;
         private readonly IEmailSender _emailSender;
 
         public RegisterModel(
             UserManager<CardUser> userManager,
             SignInManager<CardUser> signInManager,
+            CardDbContext cardContext,
             ILogger<RegisterModel> logger,
             IEmailSender emailSender)
         {
             _userManager = userManager;
             _signInManager = signInManager;
+            _cardContext = cardContext;
             _logger = logger;
             _emailSender = emailSender;
         }
@@ -90,7 +94,12 @@ namespace MTGViewer.Areas.Identity.Pages.Account
                     Email = Input.Email
                 };
 
+                var userRef = new UserRef(user);
+                _cardContext.Users.Add(userRef);
+
                 var result = await _userManager.CreateAsync(user, Input.Password);
+                await _cardContext.SaveChangesAsync();
+
                 if (result.Succeeded)
                 {
                     _logger.LogInformation("User created a new account with password.");

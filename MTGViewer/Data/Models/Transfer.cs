@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using Newtonsoft.Json;
 
-using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data.Concurrency;
 using MTGViewer.Data.Internal;
 
@@ -16,40 +15,41 @@ namespace MTGViewer.Data
         protected Transfer()
         { }
 
-        public int Id { get; set; }
+        [JsonProperty]
+        public int Id { get; private set; }
 
         [JsonIgnore]
-        internal Discriminator Type { get; set; }
-
-
-        [JsonIgnore]
-        public Card Card { get; set; } = null!;
-        public string CardId { get; set; } = null!;
+        internal Discriminator Type { get; private set; }
 
 
         [JsonIgnore]
-        public CardUser Proposer { get; set; } = null!;
-        public string ProposerId { get; set; } = null!;
+        public Card Card { get; init; } = null!;
+        public string CardId { get; init; } = null!;
 
 
         [JsonIgnore]
-        public CardUser Receiver { get; set; } = null!;
-        public string ReceiverId { get; set; } = null!;
+        public UserRef Proposer { get; init; } = null!;
+        public string ProposerId { get; init; } = null!;
+
+
+        [JsonIgnore]
+        public UserRef Receiver { get; init; } = null!;
+        public string ReceiverId { get; init; } = null!;
 
 
         [Display(Name = "To Deck")]
         [JsonIgnore]
-        public Deck? To { get; set; }
+        public Deck? To { get; set; } // TODO: make init prop
         public int? ToId { get; set; }
 
-        public ICollection<Deck> Decks { get; set; } = new HashSet<Deck>();
+        public ICollection<Deck> Decks { get; } = new HashSet<Deck>();
 
 
         public bool IsInvolved(string userId) =>
             ReceiverId == userId || ProposerId == userId;
 
 
-        public CardUser? GetOtherUser(string userId) => this switch
+        public UserRef? GetOtherUser(string userId) => this switch
         {
             _ when userId == ProposerId => Receiver,
             _ when userId == ReceiverId => Proposer,
@@ -84,8 +84,8 @@ namespace MTGViewer.Data
 
         [Display(Name = "From Deck")]
         [JsonIgnore]
-        public Deck From { get; set; } = null!;
-        public int FromId { get; set; }
+        public Deck From { get; init; } = null!;
+        public int FromId { get; init; }
 
 
         [Range(0, int.MaxValue)]

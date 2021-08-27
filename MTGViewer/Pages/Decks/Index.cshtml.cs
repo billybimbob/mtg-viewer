@@ -42,13 +42,15 @@ namespace MTGViewer.Pages.Decks
         [TempData]
         public string PostMessage { get; set; }
 
-        public CardUser CardUser { get; private set; }
+        public UserRef CardUser { get; private set; }
         public IReadOnlyList<DeckColor> DeckColors { get; private set; }
 
 
         public async Task OnGetAsync()
         {
-            var user = await _userManager.GetUserAsync(User);
+            var userId = _userManager.GetUserId(User);
+            var user = await _dbContext.Users.FindAsync(userId);
+
             var decks = await _dbContext.Decks
                 .Where(d => d.OwnerId == user.Id)
                 .Include(d => d.Cards)
@@ -67,7 +69,7 @@ namespace MTGViewer.Pages.Decks
         }
 
 
-        private async Task<IReadOnlyList<Deck>> GetRequestingAsync(CardUser user)
+        private async Task<IReadOnlyList<Deck>> GetRequestingAsync(UserRef user)
         {
             var userDecks = _dbContext.Decks
                 .Where(d => d.OwnerId == user.Id);
@@ -77,7 +79,9 @@ namespace MTGViewer.Pages.Decks
 
             return await userDecks
                 .Join( userTrades,
-                    d => d.Id, t => t.ToId, (deck, trade) => deck)
+                    deck => deck.Id,
+                    trade => trade.ToId,
+                    (deck, trade) => deck)
                 .Distinct()
                 .ToListAsync();
         }

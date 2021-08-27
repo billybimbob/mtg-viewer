@@ -21,16 +21,15 @@ namespace MTGViewer.Tests.Pages
             await using var dbContext = TestHelpers.CardDbContext(services);
             using var userManager = TestHelpers.CardUserManager(services);
 
-            await dbContext.SeedAsync();
+            await dbContext.SeedAsync(userManager);
 
             var suggestQuery = dbContext.Suggestions.AsNoTracking();
 
-            var suggestion = await suggestQuery
-                .Include(s => s.Receiver)
-                .FirstAsync();
+            var suggestion = await suggestQuery.FirstAsync();
+            var user = await userManager.FindByIdAsync(suggestion.ReceiverId);
 
             var indexModel = new IndexModel(userManager, dbContext);
-            await indexModel.SetModelContextAsync(userManager, suggestion.Receiver);
+            await indexModel.SetModelContextAsync(userManager, user);
 
             // Act
             var result = await indexModel.OnPostAsync(suggestion.Id);
@@ -50,16 +49,15 @@ namespace MTGViewer.Tests.Pages
             await using var dbContext = TestHelpers.CardDbContext(services);
             using var userManager = TestHelpers.CardUserManager(services);
 
-            await dbContext.SeedAsync();
+            await dbContext.SeedAsync(userManager);
 
             var suggestQuery = dbContext.Suggestions.AsNoTracking();
 
-            var suggestion = await suggestQuery
-                .Include(s => s.Proposer)
-                .FirstAsync();
+            var suggestion = await suggestQuery.FirstAsync();
+            var user = await userManager.FindByIdAsync(suggestion.ProposerId);
 
             var indexModel = new IndexModel(userManager, dbContext);
-            await indexModel.SetModelContextAsync(userManager, suggestion.Proposer);
+            await indexModel.SetModelContextAsync(userManager, user);
 
             // Act
             var result = await indexModel.OnPostAsync(suggestion.Id);
@@ -79,16 +77,15 @@ namespace MTGViewer.Tests.Pages
             await using var dbContext = TestHelpers.CardDbContext(services);
             using var userManager = TestHelpers.CardUserManager(services);
 
-            await dbContext.SeedAsync();
+            await dbContext.SeedAsync(userManager);
 
             var tradeQuery = dbContext.Trades.AsNoTracking();
 
-            var nonSuggestion = await tradeQuery
-                .Include(t => t.Receiver)
-                .FirstAsync();
+            var nonSuggestion = await tradeQuery.FirstAsync();
+            var user = await userManager.FindByIdAsync(nonSuggestion.ReceiverId);
 
             var indexModel = new IndexModel(userManager, dbContext);
-            await indexModel.SetModelContextAsync(userManager, nonSuggestion.Receiver);
+            await indexModel.SetModelContextAsync(userManager, user);
 
             // Act
             var result = await indexModel.OnPostAsync(nonSuggestion.Id);
@@ -108,11 +105,13 @@ namespace MTGViewer.Tests.Pages
             await using var dbContext = TestHelpers.CardDbContext(services);
             using var userManager = TestHelpers.CardUserManager(services);
 
-            await dbContext.SeedAsync();
+            await dbContext.SeedAsync(userManager);
+
             var (proposer, receiver, fromDeck) = await dbContext.GenerateTradeAsync();
+            var user = await userManager.FindByIdAsync(proposer.Id);
 
             var statusModel = new StatusModel(userManager, dbContext);
-            await statusModel.SetModelContextAsync(userManager, proposer);
+            await statusModel.SetModelContextAsync(userManager, user);
 
             var trade = await dbContext.Trades
                 .AsNoTracking()
@@ -143,11 +142,13 @@ namespace MTGViewer.Tests.Pages
             await using var dbContext = TestHelpers.CardDbContext(services);
             using var userManager = TestHelpers.CardUserManager(services);
 
-            await dbContext.SeedAsync();
+            await dbContext.SeedAsync(userManager);
+
             var (proposer, receiver, fromDeck) = await dbContext.GenerateTradeAsync();
+            var user = await userManager.FindByIdAsync(receiver.Id);
 
             var statusModel = new StatusModel(userManager, dbContext);
-            await statusModel.SetModelContextAsync(userManager, receiver);
+            await statusModel.SetModelContextAsync(userManager, user);
 
             var trade = await dbContext.Trades
                 .AsNoTracking()
@@ -177,12 +178,13 @@ namespace MTGViewer.Tests.Pages
             await using var dbContext = TestHelpers.CardDbContext(services);
             using var userManager = TestHelpers.CardUserManager(services);
 
-            await dbContext.SeedAsync();
+            await dbContext.SeedAsync(userManager);
 
             var (proposer, receiver, fromDeck) = await dbContext.GenerateTradeAsync();
+            var user = await userManager.FindByIdAsync(proposer.Id);
             
             var statusModel = new StatusModel(userManager, dbContext);
-            await statusModel.SetModelContextAsync(userManager, proposer);
+            await statusModel.SetModelContextAsync(userManager, user);
 
             var trade = await dbContext.Trades
                 .AsNoTracking()
@@ -213,11 +215,13 @@ namespace MTGViewer.Tests.Pages
             await using var dbContext = TestHelpers.CardDbContext(services);
             using var userManager = TestHelpers.CardUserManager(services);
 
-            await dbContext.SeedAsync();
+            await dbContext.SeedAsync(userManager);
+
             var (proposer, receiver, fromDeck) = await dbContext.GenerateTradeAsync();
+            var user = await userManager.FindByIdAsync(receiver.Id);
 
             var reviewModel = new ReviewModel(dbContext, userManager);
-            await reviewModel.SetModelContextAsync(userManager, receiver);
+            await reviewModel.SetModelContextAsync(userManager, user);
 
             var trade = await dbContext.Trades
                 .AsNoTracking()
@@ -258,11 +262,13 @@ namespace MTGViewer.Tests.Pages
             await using var dbContext = TestHelpers.CardDbContext(services);
             using var userManager = TestHelpers.CardUserManager(services);
 
-            await dbContext.SeedAsync();
+            await dbContext.SeedAsync(userManager);
+
             var (proposer, receiver, fromDeck) = await dbContext.GenerateTradeAsync();
+            var user = await userManager.FindByIdAsync(receiver.Id);
 
             var reviewModel = new ReviewModel(dbContext, userManager);
-            await reviewModel.SetModelContextAsync(userManager, receiver);
+            await reviewModel.SetModelContextAsync(userManager, user);
 
             var trade = await dbContext.Trades
                 .AsNoTracking()

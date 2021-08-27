@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
 using MTGViewer.Areas.Identity.Data;
@@ -18,17 +20,19 @@ namespace MTGViewer.Tests.Utils
         private static readonly SemaphoreSlim _jsonLock = new(1, 1);
 
 
-        internal static async Task SeedAsync(this CardDbContext dbContext)
+        internal static async Task SeedAsync(
+            this CardDbContext dbContext, UserManager<CardUser> userManager = null)
         {
             await _jsonLock.WaitAsync();
             try
             {
-                var jsonSuccess = await dbContext.AddFromJsonAsync();
+                var jsonSuccess = await dbContext.AddFromJsonAsync(userManager);
 
                 if (!jsonSuccess)
                 {
-                    await dbContext.AddGeneratedAsync();
-                    await dbContext.WriteToJsonAsync();
+                    userManager ??= TestHelpers.CardUserManager();
+                    await dbContext.AddGeneratedAsync(userManager);
+                    await dbContext.WriteToJsonAsync(userManager);
                 }
 
                 dbContext.ChangeTracker.Clear();
@@ -40,14 +44,17 @@ namespace MTGViewer.Tests.Utils
         }
 
 
-        private static async Task AddGeneratedAsync(this CardDbContext dbContext)
+        private static async Task AddGeneratedAsync(
+            this CardDbContext dbContext, UserManager<CardUser> userManager)
         {
             var users = GetUsers();
+            var userRefs = users.Select(u => new UserRef(u)).ToList();
 
-            dbContext.Users.AddRange(users);
+            await Task.WhenAll(users.Select(userManager.CreateAsync));
+            dbContext.Users.AddRange(userRefs);
 
             var cards = await GetCardsAsync();
-            var decks = GetDecks(users);
+            var decks = GetDecks(userRefs);
             var locations = GetShares().Concat(decks).ToList();
 
             dbContext.Cards.AddRange(cards);
@@ -57,7 +64,7 @@ namespace MTGViewer.Tests.Utils
 
             dbContext.Amounts.AddRange(amounts);
 
-            var transfers = GetTransfers(users, cards, decks, amounts);
+            var transfers = GetTransfers(userRefs, cards, decks, amounts);
 
             dbContext.Transfers.AddRange(transfers);
 
@@ -102,7 +109,7 @@ namespace MTGViewer.Tests.Utils
         }
 
 
-        private static IReadOnlyList<Deck> GetDecks(IEnumerable<CardUser> users)
+        private static IReadOnlyList<Deck> GetDecks(IEnumerable<UserRef> users)
         {
             return users
                 .Where((_, i) => i % 2 == 0)
@@ -133,7 +140,7 @@ namespace MTGViewer.Tests.Utils
 
 
         private static IReadOnlyList<Transfer> GetTransfers(
-            IEnumerable<CardUser> users,
+            IEnumerable<UserRef> users,
             IEnumerable<Card> cards,
             IEnumerable<Deck> decks,
             IEnumerable<CardAmount> amounts)
@@ -170,7 +177,7 @@ namespace MTGViewer.Tests.Utils
 
 
         
-        internal record TradeInfo(CardUser Proposer, CardUser Receiver, Deck From) { }
+        internal record TradeInfo(UserRef Proposer, UserRef Receiver, Deck From) { }
 
         private record TradeOptions(Deck To, IReadOnlyList<Deck> From, int Amount) { }
 
@@ -226,8 +233,8 @@ namespace MTGViewer.Tests.Utils
 
         private static async Task<TradeOptions> GetTradeInfoAsync(
             this CardDbContext dbContext,
-            CardUser proposer, 
-            CardUser receiver)
+            UserRef proposer, 
+            UserRef receiver)
         {
             var cards = await dbContext.Cards.ToListAsync();
             var amountTrades = _random.Next(1, cards.Count / 2);
@@ -275,8 +282,8 @@ namespace MTGViewer.Tests.Utils
 
         private static async Task<TradeLocations> GetOrCreateLocationsAsync(
             this CardDbContext dbContext,
-            CardUser proposer, 
-            CardUser receiver)
+            UserRef proposer, 
+            UserRef receiver)
         {
             var toLoc = await dbContext.Decks
                 .Include(l => l.Cards)

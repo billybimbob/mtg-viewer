@@ -1,6 +1,5 @@
 @using MTGViewer.Data
 @using MTGViewer.Data.Concurrency
-@using MTGViewer.Areas.Identity.Data
 
 @namespace MTGViewer.Components
 @implements IAsyncDisposable
@@ -43,11 +42,11 @@
         <div class="col">
             @if (Destination == null)
             {
-                <h2>@Proposer.Name</h2>
+                <h2>@_proposer.Name</h2>
             }
             else
             {
-                <h2>@Proposer.Name (@Destination.Name)</h2>
+                <h2>@_proposer.Name (@Destination.Name)</h2>
             }
             <table class="table">
                 <thead>
@@ -129,7 +128,7 @@
     <div class="row">
 
         <div class="col">
-            <h2>From @Proposer.Name</h2>
+            <h2>From @_proposer.Name</h2>
             <table class="table">
                 <thead>
                     <tr>
@@ -217,7 +216,7 @@
     public int DeckId { get; set; }
 
     [Parameter]
-    public CardUser Proposer { get; set; }
+    public string ProposerId { get; set; }
 
 
     private record TradeKey(Card Card, Deck To, Deck From) { }
@@ -229,8 +228,10 @@
     private SaveResult _result;
     private CardDbContext _dbContext;
 
-    private Deck _receiverDeck;
+    private UserRef _proposer;
     private IReadOnlyList<CardAmount> _proposerOptions;
+
+    private Deck _receiverDeck;
     private IDictionary<TradeKey, Trade> _currentOffers;
 
     private int _destinationId;
@@ -277,17 +278,19 @@
                 .ThenInclude(ca => ca.Card)
             .SingleAsync(l => l.Id == DeckId);
 
+        _proposer = await _dbContext.Users.FindAsync(ProposerId);
+
         _proposerOptions = await _dbContext.Amounts
             .Where(ca => !ca.IsRequest
                 && ca.Location is Deck
-                && (ca.Location as Deck).OwnerId == Proposer.Id)
+                && (ca.Location as Deck).OwnerId == _proposer.Id)
             .Include(ca => ca.Card)
             .Include(ca => ca.Location)
             .OrderBy(ca => ca.Card.Name)
             .ToListAsync();
 
         _currentOffers = await _dbContext.Trades
-            .Where(TradeFilter.Involves(Proposer.Id, DeckId))
+            .Where(TradeFilter.Involves(_proposer.Id, DeckId))
             .Include(t => t.Card)
             .Include(t => t.To)
             .Include(t => t.From)
@@ -298,7 +301,7 @@
             .Distinct()
             .ToDictionary(l => l.Id);
 
-        _dbContext.Attach(Proposer);
+        _dbContext.Attach(_proposer);
     }
 
 

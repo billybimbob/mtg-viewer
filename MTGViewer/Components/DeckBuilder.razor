@@ -130,7 +130,7 @@
 @code {
 
     [Parameter]
-    public CardUser User { get; set; }
+    public string UserId { get; set; }
 
     [Parameter]
     public int DeckId { get; set; } = default;
@@ -144,6 +144,7 @@
     private SaveResult _result;
     private CardDbContext _dbContext;
 
+    private UserRef _user;
     private Deck _deck;
     private SortedList<string, List<Card>> _dbCards;
 
@@ -211,7 +212,7 @@
         _busy = true;
         try
         {
-            _dbContext.Attach(User);
+            _user = await _dbContext.Users.FindAsync(UserId);
 
             _deck = await GetOrCreateDeckAsync();
 
@@ -245,12 +246,12 @@
         }
 
         var userDeckCount = await _dbContext.Decks
-            .Where(l => l.Owner == User)
+            .Where(l => l.Owner.Id == _user.Id)
             .CountAsync();
 
         var newLoc = new Deck($"Deck #{userDeckCount + 1}")
         {
-            Owner = User
+            Owner = _user
         };
 
         _dbContext.Attach(newLoc);
@@ -582,13 +583,9 @@
 
         if (localDeckCard is null)
         {
-            dbDeckCard.Card = localDeckGroup.Card;
-            dbDeckCard.Location = localDeckGroup.Location;
-
             // token also is matched
             _dbContext.Attach(dbDeckCard);
             localDeckGroup.Request = dbDeckCard;
-
             return;
         }
 
@@ -627,13 +624,6 @@
 
         var card = await _dbContext.Cards.FindAsync(cardId);
 
-        foreach (var amount in cardGroup)
-        {
-            // ensure reference in set to tracked entity
-            amount.Card = card;
-            amount.Location = _deck;
-        }
-
         var amntGroup = InitGroup(cardGroup);
 
         if (_dbContext.Entry(amntGroup.Applied).State == EntityState.Detached)
@@ -663,13 +653,12 @@
 
         foreach(var dbAvail in updatedAvails)
         {
-            dbAvail.Card = await _dbContext.Cards.FindAsync(dbAvail.CardId);
-            AddOrMergeAvailable(dbAvail);
+            await AddOrMergeAvailableAsync(dbAvail);
         }
     }
 
 
-    private void AddOrMergeAvailable(CardAmount dbAvailable)
+    private async Task AddOrMergeAvailableAsync(CardAmount dbAvailable)
     {
         if (_availables.TryGetValue(dbAvailable.CardId, out var localAvailable))
         {
@@ -694,7 +683,10 @@
         }
 
         _availables.Add(dbAvailable.CardId, dbAvailable);
-        _dbContext.Attach(dbAvailable);
+
+        await _dbContext.Attach(dbAvailable)
+            .Reference(ca => ca.Card)
+            .LoadAsync();
     }
 
 }

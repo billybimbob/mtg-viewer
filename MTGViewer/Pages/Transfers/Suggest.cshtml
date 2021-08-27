@@ -26,7 +26,7 @@
                         <input type="radio" name="userId" value="@user.Id" />
                     </div>
                 </div>
-                <span class="input-group-text">@user.UserName</span>
+                <span class="input-group-text">@user.Name</span>
             </div>
         }
 
@@ -82,8 +82,12 @@
                value="@Model.Card.Id" />
 
         <input type="hidden"
+               asp-for="Suggestion.ProposerId"
+               value="@Model.Proposer.Id" />
+
+        <input type="hidden"
                asp-for="Suggestion.ReceiverId"
-               value="@Model.PickedUser.Id" />
+               value="@Model.Receiver.Id" />
 
         <input type="submit"
                asp-page-handler="Suggest"
