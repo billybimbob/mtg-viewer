@@ -55,7 +55,7 @@
                                 <td>
                                     @foreach (var cost in card.GetManaSymbols())
                                     {
-                                        <i class="ms ms-@cost.ToLower() ms-cost"></i>
+                                        <i class="ms ms-@cost ms-cost"></i>
                                     }
                                     <input type="hidden" asp-for="Matches[i].ManaCost"/>
                                 </td>
@@ -80,15 +80,15 @@
                 </table>
 
                 <div class="form-group">
-                    <a asp-page="Create"
-                       class="btn btn-secondary">
-                       Reset
-                    </a>
-
                     <input type="submit"
                            asp-page-handler="Amounts"
                            class="btn btn-secondary"
                            value="Add" />
+
+                    <a asp-page="Create"
+                       class="btn btn-secondary">
+                       Reset
+                    </a>
                 </div>
             }
             else

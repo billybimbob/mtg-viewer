@@ -8,6 +8,7 @@
 
 
 <h1>Request for @Model.Deck.Name</h1>
+<hr />
 
 @if (Model.TargetsExist)
 {
@@ -53,7 +54,7 @@ else
                 <td>
                     @foreach (var cost in request.Card.GetManaSymbols())
                     {
-                        <span class="m-1 ms ms-@cost.ToLower() ms-cost"></span>
+                        <span class="m-1 ms ms-@cost ms-cost"></span>
                     }
                 </td>
                 <td> @request.Amount </td>

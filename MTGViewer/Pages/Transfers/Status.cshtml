@@ -8,6 +8,7 @@
 }
 
 <h1>To @Model.Destination.Name</h1>
+<hr />
 
 
 @if (!string.IsNullOrEmpty(Model.PostMessage))
@@ -17,17 +18,25 @@
     </div>
 }
 
-<form method="POST">
-    <input type="hidden" 
-           asp-for="Destination.Id"
-           value="deckId" />
+<div class="alert alert-secondary" role="alert">
+    <p>Do you want cancel the requests listed below?</p>
+    <p>
+        Even if the requests will not be fullfilled, cancelling will
+        allow to edit or delete the deck @Model.Destination.Name
+    </p>
 
-    <input type="submit"
-           class="btn btn-secondary mb-3"
-           value="Cancel" />
-</form>
+    <form method="POST">
+        <input type="hidden" 
+            asp-for="Destination.Id"
+            value="deckId" />
 
-<h2>Request Progress</h2>
+        <input type="submit"
+            class="btn btn-secondary mb-3"
+            value="Confirm Cancel" />
+    </form>
+</div>
+
+<h2>@Model.Destination.Name Amount Progress</h2>
 
 <table class="table">
     <thead>
@@ -50,7 +59,7 @@
                 <td>
                     @foreach (var cost in request.Card.GetManaSymbols())
                     {
-                        <span class="m-1 ms ms-@cost.ToLower() ms-cost"></span>
+                        <span class="m-1 ms ms-@cost ms-cost"></span>
                     }
                 </td>
                 <td> @request.Amount </td>
@@ -60,13 +69,14 @@
     </tbody>
 </table>
 
-<h2>Current Requests</h2>
+<h2>Current Trade Requests</h2>
 
 <table class="table">
     <thead>
         <tr>
             <th> @Html.DisplayNameForInnerType((Trade t) => t.Card) </th>
             <th> @Html.DisplayNameForInnerType((Card c) => c.ManaCost) </th>
+            <th> Request With </th>
             <th> @Html.DisplayNameForInnerType((Trade t) => t.From) </th>
             <th> @Html.DisplayNameForInnerType((Trade t) => t.Amount) </th>
         </tr>
@@ -83,9 +93,10 @@
                 <td>
                     @foreach (var cost in trade.Card.GetManaSymbols())
                     {
-                        <span class="m-1 ms ms-@cost.ToLower() ms-cost"></span>
+                        <span class="m-1 ms ms-@cost ms-cost"></span>
                     }
                 </td>
+                <td> @trade.From.Owner.Name </td>
                 <td> @trade.From.Name </td>
                 <td> @trade.Amount </td>
             </tr>

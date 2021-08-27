@@ -27,6 +27,7 @@ namespace MTGViewer.Data
         [JsonIgnore]
         public ICollection<CardAmount> Cards { get; } = new HashSet<CardAmount>();
 
+
         public IOrderedEnumerable<Color> GetColors() => Cards
             .SelectMany(ca => ca.Card.Colors)
             .Distinct(new EntityComparer<Color>(c => c.Name))
@@ -35,7 +36,6 @@ namespace MTGViewer.Data
         public IOrderedEnumerable<string> GetColorSymbols() => Cards
             .SelectMany(ca => ca.Card.GetManaSymbols())
             .Distinct()
-            .Select(s => s.ToLower())
             .Where(s => Color.COLORS.Values.Contains(s))
             .OrderBy(s => s);
     }

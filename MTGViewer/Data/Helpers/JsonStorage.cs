@@ -85,10 +85,10 @@ namespace MTGViewer.Data.Json
         }
 
 
-        public static async Task<bool> AddFromJsonAsync(this CardDbContext dbContext, string directory = null)
+        public static async Task<bool> AddFromJsonAsync(this CardDbContext dbContext, string path = null)
         {
-            directory ??= Directory.GetCurrentDirectory();
-            var cardsPath = Path.Combine(directory, CARDS_JSON);
+            path ??= Path.Combine(Directory.GetCurrentDirectory(), CARDS_JSON);
+            var cardsPath = Path.ChangeExtension(path, ".json");
 
             try
             {

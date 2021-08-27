@@ -138,10 +138,11 @@ namespace MTGViewer.Pages.Transfers
             try
             {
                 await _dbContext.SaveChangesAsync();
+                PostMessage = "Request was successfully sent";
             }
-            catch (DbUpdateException e)
+            catch (DbUpdateException)
             {
-                _logger.LogError($"ran into error {e}");
+                PostMessage = "Ran into issue while trying to send request";
             }
 
             return RedirectToPage("./Index");
@@ -159,7 +160,9 @@ namespace MTGViewer.Pages.Transfers
                     .ThenInclude(l => (l as Deck).Owner);
 
             var cardRequests = _dbContext.Amounts
-                .Where(ca => ca.IsRequest && ca.LocationId == deckId);
+                .Where(ca => ca.IsRequest && ca.LocationId == deckId)
+                .Include(ca => ca.Card)
+                .Include(ca => ca.Location);
 
             var requestTargets = await possibleAmounts
                 .Join( cardRequests,

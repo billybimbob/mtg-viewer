@@ -31,19 +31,12 @@ namespace MTGViewer.Pages.Transfers
         }
 
 
-
         [TempData]
         public string PostMessage { get; set; }
 
         public Card Card { get; private set; }
 
         public IReadOnlyList<CardUser> Users { get; private set; }
-
-        public CardUser PickedUser { get; private set; }
-        public IReadOnlyList<DeckColor> DeckColors { get; private set; }
-
-        [BindProperty]
-        public Suggestion Suggestion { get; set; }
 
 
         public async Task<IActionResult> OnGetAsync(string cardId)
@@ -91,6 +84,12 @@ namespace MTGViewer.Pages.Transfers
         }
 
 
+
+        public CardUser PickedUser { get; private set; }
+
+        public IReadOnlyList<DeckColor> DeckColors { get; private set; }
+
+
         public async Task<IActionResult> OnPostUserAsync(string cardId, string userId)
         {
             var card = await _dbContext.Cards.FindAsync(cardId);
@@ -118,7 +117,6 @@ namespace MTGViewer.Pages.Transfers
 
             return Page();
         }
-
 
 
         private async Task<IReadOnlyList<Deck>> GetValidDecksAsync(Card card, CardUser user)
@@ -165,6 +163,11 @@ namespace MTGViewer.Pages.Transfers
                 .AsNoTrackingWithIdentityResolution()
                 .ToListAsync();
         }
+
+
+
+        [BindProperty]
+        public Suggestion Suggestion { get; set; }
 
 
         public async Task<IActionResult> OnPostSuggestAsync()

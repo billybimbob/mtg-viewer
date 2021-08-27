@@ -9,6 +9,7 @@
 
 
 <h1>From @Model.Source.Name</h1>
+<hr />
 
 @* <a asp-page="./Propose"
     asp-route-proposerid="@Model.Proposer.Id"
@@ -49,7 +50,7 @@
                     <td>
                         @foreach (var cost in trade.Card.GetManaSymbols())
                         {
-                            <span class="m-1 ms ms-@cost.ToLower() ms-cost"></span>
+                            <span class="m-1 ms ms-@cost ms-cost"></span>
                         }
                     </td>
                     <td> @trade.To.Name </td>

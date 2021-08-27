@@ -9,6 +9,7 @@
     @if (Model.Users is not null)
     {
         <h2>Pick which user to suggest @Model.Card.Name to</h2>
+        <hr />
 
         @if (!Model.Users.Any())
         {
@@ -45,6 +46,7 @@
     else
     {
         <h2>Pick the deck to suggest @Model.Card.Name (Optional)</h2>
+        <hr />
 
         @foreach(var (deck, colors) in Model.DeckColors)
         {

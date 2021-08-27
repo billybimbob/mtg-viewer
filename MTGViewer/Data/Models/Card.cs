@@ -62,16 +62,17 @@ namespace MTGViewer.Data
         [JsonIgnore]
         public ICollection<CardAmount> Amounts { get; } = new HashSet<CardAmount>();
 
+
         public IReadOnlyList<string> GetManaSymbols()
         {
             if (string.IsNullOrEmpty(ManaCost))
             {
-                return Enumerable.Empty<string>().ToList();
+                return new List<string>();
             }
 
             var matches = Regex.Matches(ManaCost, @"{([^}]+)}");
             return matches
-                .Select(m => m.Groups[1].Value.Replace("/", ""))
+                .Select(m => m.Groups[1].Value.Replace("/", "").ToLower())
                 .ToList();
         }
 

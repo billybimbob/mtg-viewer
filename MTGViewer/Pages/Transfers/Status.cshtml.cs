@@ -65,7 +65,9 @@ namespace MTGViewer.Pages.Transfers
                 .Where(t => t.ProposerId == userId && t.ToId == deckId)
                 .Include(t => t.Card)
                 .Include(t => t.From)
-                .OrderBy(t => t.Card.Name)
+                    .ThenInclude(d => d.Owner)
+                .OrderBy(t => t.From.Owner.Name)
+                    .ThenBy(t => t.Card.Name)
                 .ToListAsync();
 
             var pairs = await GetRequestPairsAsync(deckId);
@@ -95,7 +97,8 @@ namespace MTGViewer.Pages.Transfers
         {
             var deckRequests = _dbContext.Amounts
                 .Where(ca => ca.IsRequest && ca.LocationId == deckId)
-                .Include(ca => ca.Card);
+                .Include(ca => ca.Card)
+                .OrderBy(ca => ca.Card.Name);
 
             var actualAmounts = _dbContext.Amounts
                 .Where(ca => !ca.IsRequest && ca.LocationId == deckId);
@@ -110,7 +113,6 @@ namespace MTGViewer.Pages.Transfers
                 .SelectMany(
                     ras => ras.acts.DefaultIfEmpty(),
                     (ras, actual) => new RequestPair(ras.request, actual))
-                .OrderBy(rp => rp.Request.Card.Name)
                 .ToListAsync();
         }
 
