@@ -33,13 +33,33 @@
         </tr>
     </thead>
     <tbody>
-        @foreach (var (deck, colors, state) in Model.DeckColors)
+        @foreach (var (deck, state) in Model.Decks)
         {
             <tr>
-                <td> @deck.Name </td>
+                <td>
+                    @if (state is IndexModel.State.Valid or IndexModel.State.Invalid)
+                    {
+                        <a asp-page="./Builder"
+                           asp-route-id="@deck.Id"
+                           class="fw-bold">
+                           @deck.Name </a>
+                    }
+                    else if (state is IndexModel.State.Requesting)
+                    {
+                        <a asp-page="/Transfers/Status"
+                           asp-route-deckid="@deck.Id"
+                           class="fw-bold">
+                           @deck.Name </a>
+                    }
+                    else
+                    {
+                        <text> @deck.Name </text>
+                    }
+                </td>
+
                 <td> @deck.Cards.Select(ca => ca.Amount).Sum() </td>
                 <td>
-                    @foreach (var color in colors)
+                    @foreach (var color in deck.GetColorSymbols())
                     {
                         <span class="m-1 ms ms-@color ms-cost"></span>
                     }
@@ -48,15 +68,10 @@
                 <td>
                     @switch (state)
                     {
-                        case IndexModel.DeckState.Invalid:
-                            <a asp-page="./Builder"
-                               asp-route-id="@deck.Id"
-                               class="btn btn-secondary mb-3">
-                               Edit </a>
-
+                        case IndexModel.State.Invalid:
                             <a asp-page="./Delete"
                                asp-route-id="@deck.Id"
-                               class="btn btn-secondary mb-3">
+                               class="btn btn-danger mb-3">
                                Delete </a>
 
                             <a asp-page="/Transfers/Request"
@@ -65,26 +80,13 @@
                                Request </a>
                             break;
 
-                        case IndexModel.DeckState.Valid:
-                            <a asp-page="./Builder"
-                               asp-route-id="@deck.Id"
-                               class="btn btn-secondary mb-3">
-                               Edit </a>
-
+                        case IndexModel.State.Valid:
+                        case IndexModel.State.Requesting:
+                        default:
                             <a asp-page="./Delete"
                                asp-route-id="@deck.Id"
-                               class="btn btn-secondary mb-3">
+                               class="btn btn-danger mb-3">
                                Delete </a>
-                            break;
-
-                        case IndexModel.DeckState.Requesting:
-                            <a asp-page="/Transfers/Status"
-                               asp-route-deckid="@deck.Id"
-                               class="btn btn-secondary mb-3">
-                               Status </a>
-                            break;
-                        
-                        default:
                             break;
                     }
                 </td>

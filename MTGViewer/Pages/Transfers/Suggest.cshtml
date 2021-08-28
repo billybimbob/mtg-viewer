@@ -48,7 +48,7 @@
         <h2>Pick the deck to suggest @Model.Card.Name (Optional)</h2>
         <hr />
 
-        @foreach(var (deck, colors) in Model.DeckColors)
+        @foreach(var deck in Model.Decks)
         {
             <div class="input-group">
                 <div class="input-group-prepend">
@@ -59,7 +59,7 @@
 
                 <span class="input-group-text">@deck.Name</span>
                 <div class="input-group-text">
-                    @foreach(var color in colors)
+                    @foreach(var color in deck.GetColorSymbols())
                     {
                         <span class="m-1 ms ms-@color ms-cost"></span>
                     }

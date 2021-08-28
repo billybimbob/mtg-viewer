@@ -39,49 +39,49 @@ namespace MTGViewer.Pages.Transfers
         public IReadOnlyList<DeckTrade> ReceivedTrades { get; private set; }
         public IReadOnlyList<DeckTrade> PendingTrades { get; private set; }
 
-        // public IReadOnlyList<DeckTrade> PossibleRequests { get; private set; }
+        public IReadOnlyList<DeckTrade> PossibleRequests { get; private set; }
         public IReadOnlyList<Suggestion> Suggestions { get; private set; }
 
 
 
         public async Task OnGetAsync()
         {
-            var user = await _dbContext.Users.FindAsync( _userManager.GetUserId(User) );
+            var userId = _userManager.GetUserId(User);
 
             var userTrades = await _dbContext.Trades
-                .Where(TradeFilter.Involves(user.Id))
+                .Where(TradeFilter.Involves(userId))
                 .Include(t => t.To)
                 .Include(t => t.From)
                 .ToListAsync();
 
-            // var requestDecks = await _dbContext.Decks
-            //     .Where(d => d.OwnerId == userId && d.Cards.Any(ca => ca.IsRequest))
-            //     .Select(d => new DeckTrade(d, d.Cards.Count))
-            //     .ToListAsync();
+            var requestDecks = await _dbContext.Decks
+                .Where(d => d.OwnerId == userId && d.Cards.Any(ca => ca.IsRequest))
+                .Select(d => new DeckTrade(d, d.Cards.Count))
+                .ToListAsync();
 
 
-            SelfUser = user;
+            SelfUser = await _dbContext.Users.FindAsync(userId);
 
             ReceivedTrades = userTrades
-                .Where(t => t.ReceiverId == user.Id)
+                .Where(t => t.ReceiverId == userId)
                 .GroupBy(t => t.From)
                 .Select(g => new DeckTrade(g.Key, g.Count()))
                 .OrderBy(t => t.Deck.Name)
                 .ToList();
 
             PendingTrades = userTrades
-                .Where(t => t.ProposerId == user.Id)
+                .Where(t => t.ProposerId == userId)
                 .GroupBy(t => t.To)
                 .Select(g => new DeckTrade(g.Key, g.Count()))
                 .OrderBy(t => t.Deck.Name)
                 .ToList();
 
-            // PossibleRequests = requestDecks
-            //     .Except(PendingTrades, new EntityComparer<DeckTrade>(dt => dt.Deck))
-            //     .ToList();
+            PossibleRequests = requestDecks
+                .Except(PendingTrades, new EntityComparer<DeckTrade>(dt => dt.Deck))
+                .ToList();
 
             Suggestions = await _dbContext.Suggestions
-                .Where(s => s.ReceiverId == user.Id)
+                .Where(s => s.ReceiverId == userId)
                 .Include(s => s.Card)
                 .Include(s => s.Proposer)
                 .Include(s => s.To)

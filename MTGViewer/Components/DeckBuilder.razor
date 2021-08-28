@@ -110,7 +110,7 @@
 
                 <td>@card.SetName</td>
 
-                <td>@inDeck.Applied.Amount</td>
+                <td>@inDeck.Actual.Amount</td>
                 <td>@(inDeck.Request?.Amount ?? 0)</td>
 
                 <td>
@@ -148,7 +148,7 @@
     private Deck _deck;
     private SortedList<string, List<Card>> _dbCards;
 
-    private IDictionary<string, AmountGroup> _deckCards;
+    private IDictionary<string, AmountPair> _deckCards;
     private IDictionary<string, CardAmount> _availables;
 
 
@@ -260,7 +260,7 @@
     }
 
 
-    private AmountGroup InitGroup(IGrouping<string, CardAmount> grouping)
+    private AmountPair InitGroup(IGrouping<string, CardAmount> grouping)
     {
         if (!grouping.Any())
         {
@@ -282,7 +282,7 @@
             _dbContext.Add(applied);
         }
 
-        return new AmountGroup(applied, request);
+        return new AmountPair(applied, request);
     }
 
 
@@ -305,7 +305,7 @@
             return;
         }
 
-        AmountGroup deckGroup;
+        AmountPair deckGroup;
 
         if (!_deckCards.TryGetValue(card.Id, out deckGroup))
         {
@@ -316,13 +316,13 @@
                 Amount = 0,
             };
 
-            deckGroup = new AmountGroup(newAmnt);
+            deckGroup = new AmountPair(newAmnt);
 
             _deckCards.Add(card.Id, deckGroup);
             _dbContext.Add(newAmnt);
         }
 
-        deckGroup.Applied.Amount += 1;
+        deckGroup.Actual.Amount += 1;
         availAmnt.Amount -= 1;
 
         if (availAmnt.Amount < 0)
@@ -344,7 +344,7 @@
             return;
         }
 
-        AmountGroup deckAmnt;
+        AmountPair deckAmnt;
 
         if (!_deckCards.TryGetValue(card.Id, out deckAmnt))
         {
@@ -358,13 +358,13 @@
             return;
         }
 
-        if (deckAmnt.Applied.Amount == 0)
+        if (deckAmnt.Actual.Amount == 0)
         {
             Logger.LogError($"there are no more of {card.Id} to remove");
             return;
         }
 
-        deckAmnt.Applied.Amount -= 1;
+        deckAmnt.Actual.Amount -= 1;
         availAmnt.Amount += 1;
 
         _result = SaveResult.None;
@@ -382,7 +382,7 @@
             return;
         }
 
-        AmountGroup deckGroup;
+        AmountPair deckGroup;
 
         if (!_deckCards.TryGetValue(card.Id, out deckGroup))
         {
@@ -405,7 +405,7 @@
             }
 
             // transfer overdraft to request
-            deckGroup.Applied.Amount += availAmnt.Amount;
+            deckGroup.Actual.Amount += availAmnt.Amount;
             deckGroup.Request.Amount -= availAmnt.Amount;
             availAmnt.Amount = 0;
         }
@@ -414,7 +414,7 @@
         {
             int changeAmnt = Math.Min(availAmnt.Amount, deckGroup.Request.Amount);
 
-            deckGroup.Applied.Amount += changeAmnt;
+            deckGroup.Actual.Amount += changeAmnt;
             deckGroup.Request.Amount -= changeAmnt;
             availAmnt.Amount -= changeAmnt;
         }
@@ -570,7 +570,7 @@
 
     private void MergeDeckCardConflict(CardAmount dbDeckCard)
     {
-        AmountGroup localDeckGroup;
+        AmountPair localDeckGroup;
 
         if (!_deckCards.TryGetValue(dbDeckCard.CardId, out localDeckGroup))
         {
@@ -579,7 +579,7 @@
 
         var localDeckCard = dbDeckCard.IsRequest
             ? localDeckGroup.Request
-            : localDeckGroup.Applied;
+            : localDeckGroup.Actual;
 
         if (localDeckCard is null)
         {
@@ -626,9 +626,9 @@
 
         var amntGroup = InitGroup(cardGroup);
 
-        if (_dbContext.Entry(amntGroup.Applied).State == EntityState.Detached)
+        if (_dbContext.Entry(amntGroup.Actual).State == EntityState.Detached)
         {
-            _dbContext.Attach(amntGroup.Applied);
+            _dbContext.Attach(amntGroup.Actual);
         }
 
         if (amntGroup.Request is not null)

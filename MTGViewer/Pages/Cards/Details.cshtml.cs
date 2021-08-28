@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 
 using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
@@ -34,9 +35,14 @@ namespace MTGViewer.Pages.Cards
 
             IsSignedIn = _signInManager.IsSignedIn(User);
 
-            Card = await _dbContext.Cards.FindAsync(id);
+            Card = await _dbContext.Cards
+                .Include(c => c.SuperTypes)
+                .Include(c => c.Types)
+                .Include(c => c.SubTypes)
+                .AsSplitQuery()
+                .SingleOrDefaultAsync(c => c.Id == id);
 
-            if (Card is null)
+            if (Card == default)
             {
                 return NotFound();
             }

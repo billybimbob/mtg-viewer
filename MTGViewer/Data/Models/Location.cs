@@ -57,7 +57,7 @@ namespace MTGViewer.Data
         public UserRef Owner { get; init; } = null!;
         public string OwnerId { get; init; } = null!;
 
-        [JsonIgnore]
-        public ICollection<Transfer> Transfers { get; } = new HashSet<Transfer>();
+        // [JsonIgnore]
+        // public ICollection<Transfer> Transfers { get; } = new HashSet<Transfer>();
     }
 }

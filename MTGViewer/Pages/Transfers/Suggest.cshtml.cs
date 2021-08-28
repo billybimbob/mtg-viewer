@@ -18,9 +18,6 @@ namespace MTGViewer.Pages.Transfers
     [Authorize]
     public class SuggestModel : PageModel
     {
-        public record DeckColor(Deck Deck, IEnumerable<string> Colors) { }
-
-
         private readonly CardDbContext _dbContext;
         private readonly UserManager<CardUser> _userManager;
 
@@ -87,7 +84,7 @@ namespace MTGViewer.Pages.Transfers
 
         public UserRef Proposer { get; private set; }
         public UserRef Receiver { get; private set; }
-        public IReadOnlyList<DeckColor> DeckColors { get; private set; }
+        public IReadOnlyList<Deck> Decks { get; private set; }
 
 
         public async Task<IActionResult> OnPostUserAsync(string cardId, string userId)
@@ -108,15 +105,12 @@ namespace MTGViewer.Pages.Transfers
             }
 
             var decks = await GetValidDecksAsync(card, receiver);
-            var colors = decks.Select(d => d.GetColorSymbols());
 
             Proposer = proposer;
             Receiver = receiver;
 
             Card = card;
-            DeckColors = decks
-                .Zip(colors, (deck, color) => new DeckColor(deck, color))
-                .ToList();
+            Decks = decks;
 
             return Page();
         }

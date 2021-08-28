@@ -74,22 +74,38 @@ namespace MTGViewer.Pages.Transfers
 
         private async Task<IReadOnlyList<Deck>> GetProposeOptionsAsync(string proposerId)
         {
-            var nonUserLocs = await _dbContext.Decks
+            var nonUserDecks = _dbContext.Decks
                 .Where(d => d.OwnerId != proposerId)
-                .Include(d => d.Owner)
-                .ToListAsync();
+                .Include(d => d.Owner);
 
-            var tradeLocs = await _dbContext.Trades
-                .Where(TradeFilter.Involves(proposerId))
-                .SelectMany(t => t.Decks)
-                .Distinct()
-                .ToListAsync();
+            var userTrades = _dbContext.Trades
+                .Where(TradeFilter.Involves(proposerId));
 
-            return nonUserLocs
-                .Except(tradeLocs)
-                .OrderBy(l => l.Owner.Name)
-                    .ThenBy(l => l.Name)
-                .ToList();
+            var exceptTo = nonUserDecks
+                .GroupJoin( userTrades,
+                    deck => deck.Id,
+                    trade => trade.ToId,
+                    (deck, trades) => new { deck, trades })
+                .SelectMany(
+                    dts => dts.trades.DefaultIfEmpty(),
+                    (dts, trade) => new { dts.deck, trade })
+                .Where(dt => dt.trade == default)
+                .Select(dt => dt.deck);
+
+            var exceptTrades = exceptTo
+                .GroupJoin( userTrades,
+                    deck => deck.Id,
+                    trade => trade.FromId,
+                    (deck, trades) => new { deck, trades })
+                .SelectMany(
+                    dts => dts.trades.DefaultIfEmpty(),
+                    (dts, trade) => new { dts.deck, trade })
+                .Where(dt => dt.trade == default)
+                .Select(dt => dt.deck);
+
+            return await exceptTrades
+                .AsNoTrackingWithIdentityResolution()
+                .ToListAsync();
         }
     }
 }

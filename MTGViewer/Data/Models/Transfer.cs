@@ -27,11 +27,13 @@ namespace MTGViewer.Data
         public string CardId { get; init; } = null!;
 
 
+        [Display(Name = "Offered By")]
         [JsonIgnore]
         public UserRef Proposer { get; init; } = null!;
         public string ProposerId { get; init; } = null!;
 
 
+        [Display(Name = "Sent To")]
         [JsonIgnore]
         public UserRef Receiver { get; init; } = null!;
         public string ReceiverId { get; init; } = null!;
@@ -42,7 +44,7 @@ namespace MTGViewer.Data
         public Deck? To { get; set; } // TODO: make init prop
         public int? ToId { get; set; }
 
-        public ICollection<Deck> Decks { get; } = new HashSet<Deck>();
+        // public ICollection<Deck> Decks { get; } = new HashSet<Deck>();
 
 
         public bool IsInvolved(string userId) =>

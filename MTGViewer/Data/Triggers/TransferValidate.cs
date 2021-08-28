@@ -32,10 +32,10 @@ namespace MTGViewer.Data.Triggers
             var transfer = trigContext.Entity;
             var decks = await GetTransferDecks(transfer);
 
-            foreach (var deck in decks)
-            {
-                transfer.Decks.Add(deck);
-            }
+            // foreach (var deck in decks)
+            // {
+            //     transfer.Decks.Add(deck);
+            // }
         }
 
 

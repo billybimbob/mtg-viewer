@@ -19,9 +19,6 @@ namespace MTGViewer.Pages.Transfers
     [Authorize]
     public class StatusModel : PageModel
     {
-        public record RequestPair(CardAmount Request, CardAmount? Actual) { }
-
-
         private readonly UserManager<CardUser> _userManager;
         private readonly CardDbContext _dbContext;
 
@@ -39,7 +36,7 @@ namespace MTGViewer.Pages.Transfers
         public UserRef? Proposer { get; private set; }
 
         public IReadOnlyList<Trade>? Trades { get; private set; }
-        public IReadOnlyList<RequestPair>? RequestPairs { get; private set; }
+        public IReadOnlyList<AmountPair>? Amounts { get; private set; }
 
 
         public async Task<IActionResult> OnGetAsync(int deckId)
@@ -61,6 +58,14 @@ namespace MTGViewer.Pages.Transfers
                 return NotFound();
             }
 
+            var pairs = await GetAmountPairsAsync(deckId);
+
+            if (!pairs.Any())
+            {
+                PostMessage = "The request is complete";
+                return RedirectToPage("./Index");
+            }
+
             var deckTrades = await _dbContext.Trades
                 .Where(t => t.ProposerId == userId && t.ToId == deckId)
                 .Include(t => t.Card)
@@ -70,30 +75,21 @@ namespace MTGViewer.Pages.Transfers
                     .ThenBy(t => t.Card.Name)
                 .ToListAsync();
 
-            var pairs = await GetRequestPairsAsync(deckId);
-
-            if (!pairs.Any())
-            {
-                PostMessage = "The request is complete";
-                return RedirectToPage("./Index");
-            }
-
-            if (pairs.Any() && !deckTrades.Any())
+            if (!deckTrades.Any())
             {
                 return RedirectToPage("./Request", new { deckId });
             }
 
             Destination = deck;
             Proposer = deck.Owner;
-
             Trades = deckTrades;
-            RequestPairs = pairs;
+            Amounts = pairs;
 
             return Page();
         }
 
 
-        private async Task<IReadOnlyList<RequestPair>> GetRequestPairsAsync(int deckId)
+        private async Task<IReadOnlyList<AmountPair>> GetAmountPairsAsync(int deckId)
         {
             var deckRequests = _dbContext.Amounts
                 .Where(ca => ca.IsRequest && ca.LocationId == deckId)
@@ -112,7 +108,7 @@ namespace MTGViewer.Pages.Transfers
                     (request, acts) => new { request, acts })
                 .SelectMany(
                     ras => ras.acts.DefaultIfEmpty(),
-                    (ras, actual) => new RequestPair(ras.request, actual))
+                    (ras, actual) => new AmountPair(ras.request, actual))
                 .ToListAsync();
         }
 

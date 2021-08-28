@@ -30,6 +30,7 @@
         <tr>
             <th> @Html.DisplayNameForInnerType((Trade t) => t.Card) </th>
             <th> @Html.DisplayNameForInnerType((Trade t) => t.Card.ManaCost) </th>
+            <th> @Html.DisplayNameForInnerType((Trade t) => t.Proposer) </th>
             <th> @Html.DisplayNameForInnerType((Trade t) => t.To) </th>
             <th> @Html.DisplayNameForInnerType((Trade t) => t.Amount) </th>
             <th></th>
@@ -53,21 +54,22 @@
                             <span class="m-1 ms ms-@cost ms-cost"></span>
                         }
                     </td>
+                    <td> @trade.Proposer.Name </td>
                     <td> @trade.To.Name </td>
                     <td> @trade.Amount </td>
-                </tr>
-                <tr>
-                    <input type="submit"
-                        asp-page-handler="Accept"
-                        asp-route-tradid="@trade.Id"
-                        class="btn btn-secondary mb-3"
-                        value="Accept" />
+                    <td>
+                        <input type="submit"
+                            asp-page-handler="Accept"
+                            asp-route-tradid="@trade.Id"
+                            class="btn btn-secondary mb-3"
+                            value="Accept" />
 
-                    <input type="submit"
-                        asp-page-handler="Reject"
-                        asp-route-tradid="@trade.Id"
-                        class="btn btn-secondary mb-3"
-                        value="Reject" />
+                        <input type="submit"
+                            asp-page-handler="Reject"
+                            asp-route-tradid="@trade.Id"
+                            class="btn btn-secondary mb-3"
+                            value="Reject" />
+                    </td>
                 </tr>
             }
         </form>

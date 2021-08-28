@@ -19,14 +19,14 @@ namespace MTGViewer.Pages.Decks
     [Authorize]
     public class IndexModel : PageModel
     {
-        public enum DeckState
+        public enum State
         {
             Invalid,
             Valid,
             Requesting
         }
 
-        public record DeckColor(Deck Deck, IEnumerable<string> Colors, DeckState State) { }
+        public record DeckState(Deck Deck, State State) { }
 
 
         private readonly UserManager<CardUser> _userManager;
@@ -43,7 +43,7 @@ namespace MTGViewer.Pages.Decks
         public string PostMessage { get; set; }
 
         public UserRef CardUser { get; private set; }
-        public IReadOnlyList<DeckColor> DeckColors { get; private set; }
+        public IReadOnlyList<DeckState> Decks { get; private set; }
 
 
         public async Task OnGetAsync()
@@ -57,14 +57,12 @@ namespace MTGViewer.Pages.Decks
                     .ThenInclude(ca => ca.Card)
                 .ToListAsync();
 
-            var colors = decks.Select(d => d.GetColorSymbols());
             var states = GetDeckStates(
                 decks, await GetRequestingAsync(user));
 
             CardUser = user;
-            DeckColors = decks
-                .Zip(colors, (deck, color) => (deck, color))
-                .Zip(states, (dc, state) => new DeckColor(dc.deck, dc.color, state))
+            Decks = decks
+                .Zip(states, (deck, state) => new DeckState(deck, state))
                 .ToList();
         }
 
@@ -87,7 +85,7 @@ namespace MTGViewer.Pages.Decks
         }
 
 
-        private IEnumerable<DeckState> GetDeckStates(IEnumerable<Deck> decks, IEnumerable<Deck> requestDecks)
+        private IEnumerable<State> GetDeckStates(IEnumerable<Deck> decks, IEnumerable<Deck> requestDecks)
         {
             requestDecks = requestDecks.ToHashSet();
 
@@ -95,15 +93,15 @@ namespace MTGViewer.Pages.Decks
             {
                 if (requestDecks.Contains(deck))
                 {
-                    yield return DeckState.Requesting;
+                    yield return State.Requesting;
                 }
                 else if (deck.Cards.Any(ca => ca.IsRequest))
                 {
-                    yield return DeckState.Invalid;
+                    yield return State.Invalid;
                 }
                 else
                 {
-                    yield return DeckState.Valid;
+                    yield return State.Valid;
                 }
             }
         }

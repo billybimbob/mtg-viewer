@@ -25,7 +25,27 @@ namespace MTGViewer.Pages.Transfers
             CardAmount? ToAmount,
             CardAmount? ToRequest,
             CardAmount FromAmount,
-            CardAmount? FromRequest) { }
+            CardAmount? FromRequest)
+        {
+            public static AcceptAmounts FromTrade(Trade trade, IEnumerable<CardAmount> amounts)
+            {
+                return new AcceptAmounts (
+                    trade,
+
+                    amounts.SingleOrDefault(ca =>
+                        !ca.IsRequest && ca.LocationId == trade.ToId),
+
+                    amounts.SingleOrDefault(ca =>
+                        ca.IsRequest && ca.LocationId == trade.ToId),
+
+                    amounts.Single(ca =>
+                        !ca.IsRequest && ca.LocationId == trade.FromId),
+
+                    amounts.SingleOrDefault(ca =>
+                        ca.IsRequest && ca.LocationId == trade.FromId)
+                );
+            }
+        }
 
 
         private readonly CardDbContext _dbContext;
@@ -45,9 +65,6 @@ namespace MTGViewer.Pages.Transfers
         public UserRef? Receiver { get; private set; }
 
         public IReadOnlyList<Trade>? Trades { get; private set; }
-
-        // [BindProperty]
-        // public IReadOnlyList<string> TradeTokens { get; set; }
 
 
         public async Task<IActionResult> OnGetAsync(int deckId)
@@ -72,14 +89,10 @@ namespace MTGViewer.Pages.Transfers
             var deckTrades = await _dbContext.Trades
                 .Where(t => t.ReceiverId == userId && t.FromId == deckId)
                 .Include(t => t.Card)
+                .Include(t => t.Proposer)
                 .Include(t => t.To)
                 .OrderBy(t => t.Card.Name)
                 .ToListAsync();
-
-            // var tokens = deckTrades
-            //     .Select(_dbContext.GetToken)
-            //     .Select(o => o?.ToString())
-            //     .ToList();
 
             if (!deckTrades.Any())
             {
@@ -90,7 +103,6 @@ namespace MTGViewer.Pages.Transfers
             Source = deck;
             Receiver = deck.Owner;
             Trades = deckTrades;
-            // TradeTokens = tokens;
 
             return Page();
         }
@@ -133,6 +145,7 @@ namespace MTGViewer.Pages.Transfers
             }
 
             var userId = _userManager.GetUserId(User);
+
             var deckTrade = await _dbContext.Trades
                 .Include(t => t.Card)
                 .Include(t => t.To)
@@ -145,40 +158,31 @@ namespace MTGViewer.Pages.Transfers
                 return null;
             }
 
-            var tradeDeckIds = new []{ deckTrade.ToId, deckTrade.FromId };
-            var tradeAmounts = await _dbContext.Amounts
-                .Where(ca =>
-                    ca.CardId == deckTrade.CardId && tradeDeckIds.Contains(ca.LocationId))
-                .ToListAsync();
+            var tradeAmounts = await GetTradeAmountsAsync(deckTrade);
 
-            var amountsValid = tradeAmounts.Any(ca =>
-                !ca.IsRequest && ca.LocationId == deckTrade.FromId);
-
-            if (!amountsValid)
+            if (tradeAmounts == default)
             {
                 PostMessage = "Source Deck lacks the required amount to complete the trade";
                 return null;
             }
 
-            return new AcceptAmounts (
-                Accept: deckTrade,
+            return AcceptAmounts.FromTrade(deckTrade, tradeAmounts);
+        }
 
-                ToAmount: tradeAmounts
-                    .SingleOrDefault(ca =>
-                        !ca.IsRequest && ca.LocationId == deckTrade.ToId),
 
-                ToRequest: tradeAmounts
-                    .SingleOrDefault(ca =>
-                        ca.IsRequest && ca.LocationId == deckTrade.ToId),
+        private async Task<IReadOnlyList<CardAmount>?> GetTradeAmountsAsync(Trade trade)
+        {
+            var tradeDeckIds = new []{ trade.ToId, trade.FromId };
 
-                FromAmount: tradeAmounts
-                    .Single(ca =>
-                        !ca.IsRequest && ca.LocationId == deckTrade.FromId),
+            var tradeAmounts = await _dbContext.Amounts
+                .Where(ca =>
+                    ca.CardId == trade.CardId && tradeDeckIds.Contains(ca.LocationId))
+                .ToListAsync();
 
-                FromRequest: tradeAmounts
-                    .SingleOrDefault(ca =>
-                        ca.IsRequest && ca.LocationId == deckTrade.FromId)
-            );
+            var amountsValid = tradeAmounts.Any(ca =>
+                !ca.IsRequest && ca.LocationId == trade.FromId);
+
+            return amountsValid ? tradeAmounts : null;
         }
 
 

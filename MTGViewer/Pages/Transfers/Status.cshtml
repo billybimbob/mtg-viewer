@@ -22,7 +22,7 @@
     <p>Do you want cancel the requests listed below?</p>
     <p>
         Even if the requests will not be fullfilled, cancelling will
-        allow to edit or delete the deck @Model.Destination.Name
+        allow to edit the deck @Model.Destination.Name
     </p>
 
     <form method="POST">
@@ -48,22 +48,23 @@
         </tr>
     </thead>
     <tbody>
-        @foreach (var (request, actual) in Model.RequestPairs)
+        @foreach (var pair in Model.Amounts)
         {
             <tr>
                 <td>
                     <a asp-page="/Cards/Details"
-                       asp-route-id="@request.CardId">
-                       @request.Card.Name </a>
+                       asp-route-id="@pair.CardId"
+                       class="fw-bold">
+                       @pair.Card.Name </a>
                 </td>
                 <td>
-                    @foreach (var cost in request.Card.GetManaSymbols())
+                    @foreach (var cost in pair.Card.GetManaSymbols())
                     {
                         <span class="m-1 ms ms-@cost ms-cost"></span>
                     }
                 </td>
-                <td> @request.Amount </td>
-                <td> @(actual?.Amount ?? 0) </td>
+                <td> @(pair.Request?.Amount ?? 0) </td>
+                <td> @(pair.Actual?.Amount ?? 0) </td>
             </tr>
         }
     </tbody>
