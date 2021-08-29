@@ -31,19 +31,19 @@
             value="deckId" />
 
         <input type="submit"
-            class="btn btn-secondary mb-3"
+            class="btn btn-danger mb-3"
             value="Confirm Cancel" />
     </form>
 </div>
 
-<h2>@Model.Destination.Name Amount Progress</h2>
+<h2>@Model.Destination.Name Amounts</h2>
 
 <table class="table">
     <thead>
         <tr>
             <th> @Html.DisplayNameForInnerType((CardAmount ca) => ca.Card) </th>
             <th> @Html.DisplayNameForInnerType((Card c) => c.ManaCost) </th>
-            <th> Requested Amount </th>
+            <th> Requests </th>
             <th> Current Amount </th>
         </tr>
     </thead>

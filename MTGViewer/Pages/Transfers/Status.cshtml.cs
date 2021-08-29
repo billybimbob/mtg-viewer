@@ -50,6 +50,8 @@ namespace MTGViewer.Pages.Transfers
             
             var deck = await _dbContext.Decks
                 .Include(d => d.Owner)
+                .Include(d => d.Cards.OrderBy(ca => ca.Card.Name))
+                    .ThenInclude(ca => ca.Card)
                 .SingleOrDefaultAsync(d =>
                     d.Id == deckId && d.OwnerId == userId);
 
@@ -58,11 +60,9 @@ namespace MTGViewer.Pages.Transfers
                 return NotFound();
             }
 
-            var pairs = await GetAmountPairsAsync(deckId);
-
-            if (!pairs.Any())
+            if (!deck.Cards.Any(ca => ca.IsRequest))
             {
-                PostMessage = "The request is complete";
+                PostMessage = $"There are no requests for {deck.Name}";
                 return RedirectToPage("./Index");
             }
 
@@ -82,35 +82,16 @@ namespace MTGViewer.Pages.Transfers
 
             Destination = deck;
             Proposer = deck.Owner;
+
             Trades = deckTrades;
-            Amounts = pairs;
+            Amounts = deck.Cards
+                .GroupBy(ca => ca.CardId)
+                .Select(g => new AmountPair(g))
+                .ToList();
 
             return Page();
         }
 
-
-        private async Task<IReadOnlyList<AmountPair>> GetAmountPairsAsync(int deckId)
-        {
-            var deckRequests = _dbContext.Amounts
-                .Where(ca => ca.IsRequest && ca.LocationId == deckId)
-                .Include(ca => ca.Card)
-                .OrderBy(ca => ca.Card.Name);
-
-            var actualAmounts = _dbContext.Amounts
-                .Where(ca => !ca.IsRequest && ca.LocationId == deckId);
-
-            return await deckRequests
-                .GroupJoin( actualAmounts,
-                    request =>
-                        new { request.CardId, request.LocationId },
-                    actual =>
-                        new { actual.CardId, actual.LocationId },
-                    (request, acts) => new { request, acts })
-                .SelectMany(
-                    ras => ras.acts.DefaultIfEmpty(),
-                    (ras, actual) => new AmountPair(ras.request, actual))
-                .ToListAsync();
-        }
 
 
         public async Task<IActionResult> OnPostAsync(int deckId)
@@ -122,6 +103,7 @@ namespace MTGViewer.Pages.Transfers
             }
 
             var userId = _userManager.GetUserId(User);
+
             var validDeck = await _dbContext.Decks
                 .Include(d => d.Owner)
                 .AnyAsync(d => d.Id == deckId && d.OwnerId == userId);
@@ -141,6 +123,7 @@ namespace MTGViewer.Pages.Transfers
                 PostMessage = "No trades were found";
                 return RedirectToPage("./Index");
             }
+
 
             _dbContext.Trades.RemoveRange(deckTrades);
 

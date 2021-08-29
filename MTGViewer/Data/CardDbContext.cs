@@ -82,10 +82,6 @@ namespace MTGViewer.Data
                 .HasOne(t => t.To)
                 .WithMany()
                 .OnDelete(DeleteBehavior.Cascade);
-
-            // builder
-            //     .HasMany(t => t.Decks)
-            //     .WithMany(d => d.Transfers);
         }
     }
 

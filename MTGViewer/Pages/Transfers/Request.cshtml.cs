@@ -138,14 +138,15 @@ namespace MTGViewer.Pages.Transfers
             try
             {
                 await _dbContext.SaveChangesAsync();
+
                 PostMessage = "Request was successfully sent";
+                return RedirectToPage("./Status", new { deckId });
             }
             catch (DbUpdateException)
             {
                 PostMessage = "Ran into issue while trying to send request";
+                return RedirectToPage("./Index");
             }
-
-            return RedirectToPage("./Index");
         }
 
 

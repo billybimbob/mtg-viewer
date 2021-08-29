@@ -42,7 +42,7 @@ namespace MTGViewer.Pages.Cards
                 .Include(c => c.SuperTypes)
                 .Include(c => c.Types)
                 .Include(c => c.SubTypes)
-                .Include(c => c.Amounts)
+                .Include(c => c.Amounts.OrderBy(ca => ca.Location.Name))
                     .ThenInclude(ca => ca.Location)
                 .AsSplitQuery()
                 .SingleOrDefaultAsync(c => c.Id == id);
@@ -53,9 +53,8 @@ namespace MTGViewer.Pages.Cards
             }
 
             Locations = Card.Amounts
-                .Select(ca => ca.Location)
-                .Distinct()
-                .OrderBy(l => l.Name)
+                .GroupBy(ca => ca.LocationId)
+                .Select(g => g.First().Location)
                 .ToList();
 
             return Page();

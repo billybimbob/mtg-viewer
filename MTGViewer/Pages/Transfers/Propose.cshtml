@@ -9,14 +9,15 @@
 @if (Model.ProposeOptions is not null)
 {
     <h1>Select Deck to Trade With</h1>
-    <form method="get">
+    <form method="GET">
+        <input type="hidden" name="proposerId" value="@Model.ProposerId"/>
+
         @foreach (var deckOption in Model.ProposeOptions)
         {
             <div class="input-group">
                 <div class="input-group-prepend">
                     <div class="input-group-text">
                         <input type="radio" name="deckId" value="@deckOption.Id" />
-                        <input type="hidden" name="proposerId" value="@Model.Proposer.Id"/>
                     </div>
                 </div>
                 <span class="form-control">@deckOption.Name</span>
@@ -35,6 +36,6 @@ else
         RenderMode.ServerPrerendered,
         new {
             DeckId = Model.DeckId,
-            Proposer = Model.Proposer
+            ProposerId = Model.ProposerId
         }))
 }

@@ -46,8 +46,7 @@ namespace MTGViewer.Pages.Decks
             var userId = _userManager.GetUserId(User);
 
             var deck = await _dbContext.Decks
-                .AsNoTrackingWithIdentityResolution()
-                .Include(l => l.Cards)
+                .Include(l => l.Cards.OrderBy(ca => ca.Card.Name))
                     .ThenInclude(ca => ca.Card)
                 .FirstOrDefaultAsync(l =>
                     l.Id == id && l.OwnerId == userId);
@@ -92,9 +91,9 @@ namespace MTGViewer.Pages.Decks
                 return RedirectToPage("./Index");
             }
 
-            var success = await ReturnCardsAsync(deck);
+            var returned = await ReturnCardsAsync(deck);
 
-            if (!success)
+            if (!returned)
             {
                 PostMesssage = "Failed to return all cards";
                 return RedirectToPage("./Index");

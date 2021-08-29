@@ -26,7 +26,25 @@ namespace MTGViewer.Pages.Decks
             Requesting
         }
 
-        public record DeckState(Deck Deck, State State) { }
+        public record DeckState(Deck Deck, State State)
+        {
+            public DeckState(Deck deck, bool isRequest)
+                : this(deck, State.Invalid)
+            {
+                if (isRequest)
+                {
+                    State = State.Requesting;
+                }
+                else if (deck.Cards.Any(ca => ca.IsRequest))
+                {
+                    State = State.Invalid;
+                }
+                else
+                {
+                    State = State.Valid;
+                }
+            }
+        }
 
 
         private readonly UserManager<CardUser> _userManager;
@@ -49,61 +67,41 @@ namespace MTGViewer.Pages.Decks
         public async Task OnGetAsync()
         {
             var userId = _userManager.GetUserId(User);
-            var user = await _dbContext.Users.FindAsync(userId);
 
-            var decks = await _dbContext.Decks
-                .Where(d => d.OwnerId == user.Id)
-                .Include(d => d.Cards)
-                    .ThenInclude(ca => ca.Card)
-                .ToListAsync();
-
-            var states = GetDeckStates(
-                decks, await GetRequestingAsync(user));
-
-            CardUser = user;
-            Decks = decks
-                .Zip(states, (deck, state) => new DeckState(deck, state))
-                .ToList();
+            CardUser = await _dbContext.Users.FindAsync(userId);
+            Decks = await GetDeckStatesAsync(userId);
         }
 
 
-        private async Task<IReadOnlyList<Deck>> GetRequestingAsync(UserRef user)
+        private async Task<IReadOnlyList<DeckState>> GetDeckStatesAsync(string userId)
         {
             var userDecks = _dbContext.Decks
-                .Where(d => d.OwnerId == user.Id);
+                .Where(d => d.OwnerId == userId)
+                .Include(d => d.Cards)
+                    .ThenInclude(ca => ca.Card);
 
             var userTrades = _dbContext.Trades
-                .Where(t => t.ProposerId == user.Id);
+                .Where(t => t.ProposerId == userId);
 
-            return await userDecks
-                .Join( userTrades,
+
+            var deckRequestInfos = await userDecks
+                .GroupJoin( userTrades,
                     deck => deck.Id,
                     trade => trade.ToId,
-                    (deck, trade) => deck)
-                .Distinct()
+                    (deck, trades) =>
+                        new { deck, trades })
+                .SelectMany(
+                    dts => dts.trades.DefaultIfEmpty(),
+                    (dts, trade) => 
+                        new { dts.deck, isRequest = trade != default})
                 .ToListAsync();
-        }
 
 
-        private IEnumerable<State> GetDeckStates(IEnumerable<Deck> decks, IEnumerable<Deck> requestDecks)
-        {
-            requestDecks = requestDecks.ToHashSet();
-
-            foreach(var deck in decks)
-            {
-                if (requestDecks.Contains(deck))
-                {
-                    yield return State.Requesting;
-                }
-                else if (deck.Cards.Any(ca => ca.IsRequest))
-                {
-                    yield return State.Invalid;
-                }
-                else
-                {
-                    yield return State.Valid;
-                }
-            }
+            return deckRequestInfos
+                .Distinct()
+                .OrderBy(db => db.deck.Name)
+                .Select(db => new DeckState(db.deck, db.isRequest))
+                .ToList();
         }
     }
 }

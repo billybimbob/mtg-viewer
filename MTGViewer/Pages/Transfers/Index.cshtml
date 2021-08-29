@@ -26,32 +26,30 @@
     <thead>
         <tr>
             <th>Target Deck</th>
-            <th>Number of Cards</th>
+            <th>Number of Requests</th>
             <th></th>
         </tr>
     </thead>
     <tbody>
-        <form method="POST">
-            @foreach (var (deck, numCards) in Model.PendingTrades)
-            {
-                <tr>
-                    <td>@deck.Name</td>
-                    <td>@numCards</td>
-                    <td>
-                        <a asp-page="./Status" 
-                           asp-route-deckid="@deck.Id"
-                           class="btn btn-secondary mb-3" >
-                           Status </a>
-                    </td>
-                </tr>
-            }
-        </form>
-
-        @foreach (var (deck, numCards) in Model.ReceivedTrades)
+        @foreach (var (deck, numRequests) in Model.PendingTrades)
         {
             <tr>
                 <td>@deck.Name</td>
-                <td>@numCards</td>
+                <td>@numRequests</td>
+                <td>
+                    <a asp-page="./Status" 
+                        asp-route-deckid="@deck.Id"
+                        class="btn btn-secondary mb-3" >
+                        Status </a>
+                </td>
+            </tr>
+        }
+
+        @foreach (var (deck, numRequests) in Model.ReceivedTrades)
+        {
+            <tr>
+                <td>@deck.Name</td>
+                <td>@numRequests</td>
                 <td>
                     <a asp-page="./Review" 
                        asp-route-deckid="@deck.Id"
@@ -75,11 +73,11 @@
         </tr>
     </thead>
     <tbody>
-        @foreach (var (deck, numCards) in Model.PossibleRequests)
+        @foreach (var deck in Model.PossibleRequests)
         {
             <tr>
-                <td>@deck.Name</td>
-                <td>@numCards</td>
+                <td> @deck.Name </td>
+                <td> @deck.Cards.Count() </td>
                 <td>
                     <a asp-page="./Request" 
                        asp-route-deckid="@deck.Id"
@@ -105,26 +103,26 @@
         </tr>
     </thead>
     <tbody>
-        <form method="POST">
-            @foreach (var suggestion in Model.Suggestions)
-            {
-                <tr>
-                    <td>
-                        <a asp-page="/Cards/Details"
-                           asp-route-id="@suggestion.CardId">
-                           @suggestion.Card.Name </a>
-                    </td>
-                    <td>@suggestion.Proposer.Name</td>
-                    <td>@(suggestion.To?.Name ?? "")</td>
-                    <td>@suggestion.Comment</td>
-                    <td>
+        @foreach (var suggestion in Model.Suggestions)
+        {
+            <tr>
+                <td>
+                    <a asp-page="/Cards/Details"
+                        asp-route-id="@suggestion.CardId">
+                        @suggestion.Card.Name </a>
+                </td>
+                <td>@suggestion.Proposer.Name</td>
+                <td>@(suggestion.To?.Name ?? "")</td>
+                <td>@suggestion.Comment</td>
+                <td>
+                    <form method="POST">
                         <input type="submit"
-                               asp-route-suggestid="@suggestion.Id"
-                               class="btn btn-secondary mb-3"
-                               value="Acknowledge" />
-                    </td>
-                </tr>
-            }
-        </form>
+                            asp-route-suggestid="@suggestion.Id"
+                            class="btn btn-secondary mb-3"
+                            value="Acknowledge" />
+                    </form>
+                </td>
+            </tr>
+        }
     </tbody>
 </table>

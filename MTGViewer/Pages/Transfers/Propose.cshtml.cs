@@ -31,7 +31,7 @@ namespace MTGViewer.Pages.Transfers
         [TempData]
         public string PostMessage { get; set; }
 
-        public UserRef Proposer { get; private set; }
+        public string ProposerId { get; private set; }
         public int DeckId { get; private set; }
 
         public IReadOnlyList<Deck> ProposeOptions { get; private set; }
@@ -47,10 +47,12 @@ namespace MTGViewer.Pages.Transfers
 
                 if (validDeck)
                 {
-                    Proposer = await _dbContext.Users.FindAsync(proposerId);
+                    ProposerId = proposerId;
                     DeckId = id;
 
-                    if (Proposer == null)
+                    var proposer = await _dbContext.Users.FindAsync(proposerId);
+
+                    if (proposer == null)
                     {
                         return NotFound();
                     }
@@ -59,8 +61,8 @@ namespace MTGViewer.Pages.Transfers
                 }
             }
 
-            Proposer = await _dbContext.Users.FindAsync( _userManager.GetUserId(User) );
-            ProposeOptions = await GetProposeOptionsAsync(Proposer.Id);
+            ProposerId = _userManager.GetUserId(User);
+            ProposeOptions = await GetProposeOptionsAsync(ProposerId);
 
             if (!ProposeOptions.Any())
             {

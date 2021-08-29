@@ -25,7 +25,7 @@ namespace MTGViewer.Data
         internal Discriminator Type { get; private set; }
 
         [JsonIgnore]
-        public ICollection<CardAmount> Cards { get; } = new HashSet<CardAmount>();
+        public ICollection<CardAmount> Cards { get; } = new List<CardAmount>();
 
 
         public IOrderedEnumerable<Color> GetColors() => Cards
@@ -56,8 +56,5 @@ namespace MTGViewer.Data
         [JsonIgnore]
         public UserRef Owner { get; init; } = null!;
         public string OwnerId { get; init; } = null!;
-
-        // [JsonIgnore]
-        // public ICollection<Transfer> Transfers { get; } = new HashSet<Transfer>();
     }
 }

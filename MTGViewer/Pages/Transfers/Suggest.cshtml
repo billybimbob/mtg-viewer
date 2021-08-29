@@ -5,49 +5,51 @@
     ViewData["Title"] = $"Suggest {Model.Card.Name}";
 }
 
-<form method="POST">
-    @if (Model.Users is not null)
+@if (Model.Users is not null)
+{
+    <h2>Pick which user to suggest @Model.Card.Name to</h2>
+    <hr />
+
+    @if (!Model.Users.Any())
     {
-        <h2>Pick which user to suggest @Model.Card.Name to</h2>
-        <hr />
+        <div class="alert alert-danger" role="alert">
+            There are no users to suggest to
+        </div>
+    }
 
-        @if (!Model.Users.Any())
-        {
-            <div class="alert alert-danger" role="alert">
-                There are no users to suggest to
-            </div>
-        }
-
-        @foreach(var user in Model.Users)
-        {
-            <div class="input-group">
-                <div class="input-group-prepend">
-                    <div class="input-group-text">
-                        <input type="radio" name="userId" value="@user.Id" />
-                    </div>
+    @foreach(var user in Model.Users)
+    {
+        <div class="input-group">
+            <div class="input-group-prepend">
+                <div class="input-group-text">
+                    <input type="radio" name="userId" value="@user.Id" />
                 </div>
-                <span class="input-group-text">@user.Name</span>
             </div>
-        }
+            <span class="input-group-text">@user.Name</span>
+        </div>
+    }
 
         <a asp-page="/Cards/Index"
-           class="btn btn-secondary mb-3">
-           Back </a>
+            class="btn btn-secondary mb-3">
+            Back </a>
 
-        @if (Model.Users.Any())
-        {
+    @if (Model.Users.Any())
+    {
+        <form method="POST">
             <input type="submit"
                 asp-page-handler="User"
                 asp-route-cardid="@Model.Card.Id"
                 class="btn btn-secondary mb-3"
                 value="Suggest To" />
-        }
+        </form>
     }
-    else
-    {
-        <h2>Pick the deck to suggest @Model.Card.Name (Optional)</h2>
-        <hr />
+}
+else
+{
+    <h2>Pick the deck to suggest @Model.Card.Name (Optional)</h2>
+    <hr />
 
+    <form method="POST">
         @foreach(var deck in Model.Decks)
         {
             <div class="input-group">
@@ -73,25 +75,25 @@
         </div>
 
         <a asp-page="./Suggest"
-           asp-route-cardid="@Model.Card.Id"
-           class="btn btn-secondary mb-3">
-           Back </a>
+            asp-route-cardid="@Model.Card.Id"
+            class="btn btn-secondary mb-3">
+            Back </a>
 
         <input type="hidden"
-               asp-for="Suggestion.CardId"
-               value="@Model.Card.Id" />
+            asp-for="Suggestion.CardId"
+            value="@Model.Card.Id" />
 
         <input type="hidden"
-               asp-for="Suggestion.ProposerId"
-               value="@Model.Proposer.Id" />
+            asp-for="Suggestion.ProposerId"
+            value="@Model.Proposer.Id" />
 
         <input type="hidden"
-               asp-for="Suggestion.ReceiverId"
-               value="@Model.Receiver.Id" />
+            asp-for="Suggestion.ReceiverId"
+            value="@Model.Receiver.Id" />
 
         <input type="submit"
-               asp-page-handler="Suggest"
-               class="btn btn-secondary mb-3"
-               value="Suggest" />
-    }
-</form>
+            asp-page-handler="Suggest"
+            class="btn btn-secondary mb-3"
+            value="Suggest" />
+    </form>
+}

@@ -44,8 +44,6 @@ namespace MTGViewer.Data
         public Deck? To { get; set; } // TODO: make init prop
         public int? ToId { get; set; }
 
-        // public ICollection<Deck> Decks { get; } = new HashSet<Deck>();
-
 
         public bool IsInvolved(string userId) =>
             ReceiverId == userId || ProposerId == userId;

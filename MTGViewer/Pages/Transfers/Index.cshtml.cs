@@ -39,7 +39,7 @@ namespace MTGViewer.Pages.Transfers
         public IReadOnlyList<DeckTrade> ReceivedTrades { get; private set; }
         public IReadOnlyList<DeckTrade> PendingTrades { get; private set; }
 
-        public IReadOnlyList<DeckTrade> PossibleRequests { get; private set; }
+        public IReadOnlyList<Deck> PossibleRequests { get; private set; }
         public IReadOnlyList<Suggestion> Suggestions { get; private set; }
 
 
@@ -56,7 +56,7 @@ namespace MTGViewer.Pages.Transfers
 
             var requestDecks = await _dbContext.Decks
                 .Where(d => d.OwnerId == userId && d.Cards.Any(ca => ca.IsRequest))
-                .Select(d => new DeckTrade(d, d.Cards.Count))
+                .Include(d => d.Cards.Where(ca => ca.IsRequest))
                 .ToListAsync();
 
 
@@ -77,7 +77,7 @@ namespace MTGViewer.Pages.Transfers
                 .ToList();
 
             PossibleRequests = requestDecks
-                .Except(PendingTrades, new EntityComparer<DeckTrade>(dt => dt.Deck))
+                .Except(PendingTrades.Select(dt => dt.Deck))
                 .ToList();
 
             Suggestions = await _dbContext.Suggestions

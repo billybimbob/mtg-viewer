@@ -30,7 +30,6 @@ namespace MTGViewer.Data
                             .UseTriggers(triggers => triggers
                                 .AddTrigger<Triggers.AmountValidate>()
                                 .AddTrigger<Triggers.TradeValidate>() ));
-                                // .AddTrigger<Triggers.TransferValidate>()) );
                         break;
 
                     case "Sqlite":
@@ -41,7 +40,6 @@ namespace MTGViewer.Data
                                 .AddTrigger<Triggers.AmountValidate>()
                                 .AddTrigger<Triggers.LiteTokenUpdate>()
                                 .AddTrigger<Triggers.TradeValidate>() ));
-                                // .AddTrigger<Triggers.TransferValidate>()) );
                         break;
                 }
 

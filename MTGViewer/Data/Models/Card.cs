@@ -20,7 +20,7 @@ namespace MTGViewer.Data
         [Required]
         public string Name { get; init; }
 
-        public ICollection<Name> Names { get; init; } = new HashSet<Name>();
+        public ICollection<Name> Names { get; init; } = new List<Name>();
 
         public string Layout { get; init; }
 
@@ -30,13 +30,13 @@ namespace MTGViewer.Data
         [Display(Name = "Converted Mana")]
         public int? Cmc { get; init; }
 
-        public ICollection<Color> Colors { get; init; } = new HashSet<Color>();
+        public ICollection<Color> Colors { get; init; } = new List<Color>();
 
-        public ICollection<SuperType> SuperTypes { get; init; } = new HashSet<SuperType>();
+        public ICollection<SuperType> SuperTypes { get; init; } = new List<SuperType>();
 
-        public ICollection<Type> Types { get; init; } = new HashSet<Type>();
+        public ICollection<Type> Types { get; init; } = new List<Type>();
 
-        public ICollection<SubType> SubTypes { get; init; } = new HashSet<SubType>();
+        public ICollection<SubType> SubTypes { get; init; } = new List<SubType>();
 
         public string Rarity { get; init; }
 
@@ -60,7 +60,7 @@ namespace MTGViewer.Data
         public string ImageUrl { get; init; }
 
         [JsonIgnore]
-        public ICollection<CardAmount> Amounts { get; } = new HashSet<CardAmount>();
+        public ICollection<CardAmount> Amounts { get; } = new List<CardAmount>();
 
 
         public IReadOnlyList<string> GetManaSymbols()

@@ -30,48 +30,47 @@
         <tr>
             <th> @Html.DisplayNameForInnerType((Trade t) => t.Card) </th>
             <th> @Html.DisplayNameForInnerType((Trade t) => t.Card.ManaCost) </th>
-            <th> @Html.DisplayNameForInnerType((Trade t) => t.Proposer) </th>
+            <th> Requested By </th>
             <th> @Html.DisplayNameForInnerType((Trade t) => t.To) </th>
             <th> @Html.DisplayNameForInnerType((Trade t) => t.Amount) </th>
             <th></th>
         </tr>
     </thead>
     <tbody>
-        <form method="POST">
-            <input type="hidden" asp-for="Source.Id" value="deckId" />
+        @foreach (var trade in Model.Trades)
+        {
+            <tr>
+                <td>
+                    <a asp-page="/Cards/Details"
+                        asp-route-id="@trade.CardId">
+                        @trade.Card.Name </a>
+                </td>
+                <td>
+                    @foreach (var cost in trade.Card.GetManaSymbols())
+                    {
+                        <span class="m-1 ms ms-@cost ms-cost"></span>
+                    }
+                </td>
+                <td> @trade.Proposer.Name </td>
+                <td> @trade.To.Name </td>
+                <td> @trade.Amount </td>
+                <td>
+                    <form method="POST">
+                        <input type="hidden" name="deckid" value="@Model.Source.Id" />
+                        <input type="hidden" name="tradeid" value="@trade.Id" />
 
-            @foreach (var trade in Model.Trades)
-            {
-                <tr>
-                    <td>
-                        <a asp-page="/Cards/Details"
-                           asp-route-id="@trade.CardId">
-                           @trade.Card.Name </a>
-                    </td>
-                    <td>
-                        @foreach (var cost in trade.Card.GetManaSymbols())
-                        {
-                            <span class="m-1 ms ms-@cost ms-cost"></span>
-                        }
-                    </td>
-                    <td> @trade.Proposer.Name </td>
-                    <td> @trade.To.Name </td>
-                    <td> @trade.Amount </td>
-                    <td>
                         <input type="submit"
                             asp-page-handler="Accept"
-                            asp-route-tradid="@trade.Id"
                             class="btn btn-secondary mb-3"
                             value="Accept" />
 
                         <input type="submit"
                             asp-page-handler="Reject"
-                            asp-route-tradid="@trade.Id"
                             class="btn btn-secondary mb-3"
                             value="Reject" />
-                    </td>
-                </tr>
-            }
-        </form>
+                    </form>
+                </td>
+            </tr>
+        }
     </tbody>
 </table>

@@ -96,7 +96,6 @@ namespace MTGViewer.Pages.Transfers
 
             if (!deckTrades.Any())
             {
-                PostMessage = "No trades were found";
                 return RedirectToPage("./Index");
             }
 
@@ -131,9 +130,8 @@ namespace MTGViewer.Pages.Transfers
                 PostMessage = "Ran into error while Accepting";
             }
 
-            return RedirectToPage("./Review");
+            return RedirectToPage("./Review", new { deckId });
         }
-
 
 
         private async Task<AcceptAmounts?> GetAcceptInfoAsync(int tradeId)

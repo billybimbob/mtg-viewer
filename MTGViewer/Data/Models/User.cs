@@ -31,6 +31,6 @@ namespace MTGViewer.Data
         public string Name { get; private set; }
 
         [JsonIgnore]
-        public ICollection<Deck> Decks { get; } = new HashSet<Deck>();
+        public ICollection<Deck> Decks { get; } = new List<Deck>();
     }
 }
