@@ -7,15 +7,30 @@ using MTGViewer.Tests.Utils;
 
 namespace MTGViewer.Tests.Data
 {
-    public class LocationTests
+    public class LocationTests : IAsyncLifetime
     {
+        private readonly CardDbContext _dbContext;
+
+        public LocationTests()
+        {
+            _dbContext = TestFactory.CardDbContext();
+        }
+
+        public async Task InitializeAsync()
+        {
+            await _dbContext.SeedAsync();
+        }
+
+        public async Task DisposeAsync()
+        {
+            await _dbContext.DisposeAsync();
+        }
+
+
         [Fact]
         public async Task First_IsShared_CorrectType()
         {
-            await using var dbContext = TestFactory.CardDbContext();
-            await dbContext.SeedAsync();
-
-            var shared = await dbContext.Locations.FirstAsync(l => l is Shared);
+            var shared = await _dbContext.Locations.FirstAsync(l => l is Shared);
 
             Assert.IsType<Shared>(shared);
         }
@@ -24,10 +39,7 @@ namespace MTGViewer.Tests.Data
         [Fact]
         public async Task First_IsDeck_CorrectType()
         {
-            await using var dbContext = TestFactory.CardDbContext();
-            await dbContext.SeedAsync();
-
-            var deck = await dbContext.Locations.FirstAsync(l => l is Deck);
+            var deck = await _dbContext.Locations.FirstAsync(l => l is Deck);
 
             Assert.IsType<Deck>(deck);
         }
@@ -36,11 +48,8 @@ namespace MTGViewer.Tests.Data
         [Fact]
         public async Task First_MultipleQueries_SameReference()
         {
-            await using var dbContext = TestFactory.CardDbContext();
-            await dbContext.SeedAsync();
-
-            var deck1 = await dbContext.Locations.FirstAsync(l => l is Deck);
-            var deck2 = await dbContext.Locations.FirstAsync(l => l is Deck);
+            var deck1 = await _dbContext.Locations.FirstAsync(l => l is Deck);
+            var deck2 = await _dbContext.Locations.FirstAsync(l => l is Deck);
 
             Assert.Same(deck1, deck2);
         }

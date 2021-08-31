@@ -1,12 +1,17 @@
 using System.Linq;
 using System.Threading.Tasks;
+
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 using Moq;
 using Xunit;
 
+using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
 using MTGViewer.Pages.Decks;
 using MTGViewer.Tests.Utils;
@@ -14,30 +19,54 @@ using MTGViewer.Tests.Utils;
 
 namespace MTGViewer.Tests.Pages.Decks
 {
-    public class DeleteTests
+    public class DeleteTests : IAsyncLifetime
     {
+        private readonly ServiceProvider _services;
+        private readonly CardDbContext _dbContext;
+        private readonly UserManager<CardUser> _userManager;
+
+        private readonly DeleteModel _deleteModel;
+
+
+        public DeleteTests()
+        {
+            _services = TestFactory.ServiceProvider();
+            _dbContext = TestFactory.CardDbContext(_services);
+            _userManager = TestFactory.CardUserManager(_services);
+
+            _deleteModel = new DeleteModel(_userManager, _dbContext, Mock.Of<ILogger<DeleteModel>>());
+        }
+
+
+        public async Task InitializeAsync()
+        {
+            await _dbContext.SeedAsync(_userManager);
+        }
+
+
+        public async Task DisposeAsync()
+        {
+            await _services.DisposeAsync();
+            await _dbContext.DisposeAsync();
+            _userManager.Dispose();
+        }
+
+
         [Fact]
         public async Task OnPost_WrongUser_NoChange()
         {
             // Arrange
-            await using var services = TestFactory.ServiceProvider();
-            await using var dbContext = TestFactory.CardDbContext(services);
-            using var userManager = TestFactory.CardUserManager(services);
+            var deck = await _dbContext.CreateDeckAsync();
+            var wrongUser = await _dbContext.Users.FirstAsync(u => u.Id != deck.OwnerId);
 
-            await dbContext.SeedAsync(userManager);
+            await _deleteModel.SetModelContextAsync(_userManager, wrongUser.Id);
 
-            var deleteModel = new DeleteModel(userManager, dbContext, Mock.Of<ILogger<DeleteModel>>());
-            var deck = await dbContext.CreateDeckAsync();
-            var wrongUser = await dbContext.Users.FirstAsync(u => u.Id != deck.OwnerId);
-
-            await deleteModel.SetModelContextAsync(userManager, wrongUser.Id);
-
-            var deckQuery = dbContext.Decks
+            var deckQuery = _dbContext.Decks
                 .Where(d => d.Id == deck.Id)
                 .AsNoTracking();
 
             // Act
-            var result = await deleteModel.OnPostAsync(deck.Id);
+            var result = await _deleteModel.OnPostAsync(deck.Id);
             var deckAfter = await deckQuery.SingleOrDefaultAsync();
 
             // // Assert
@@ -50,24 +79,17 @@ namespace MTGViewer.Tests.Pages.Decks
         public async Task OnPost_InvalidDeck_NoChange()
         {
             // Arrange
-            await using var services = TestFactory.ServiceProvider();
-            await using var dbContext = TestFactory.CardDbContext(services);
-            using var userManager = TestFactory.CardUserManager(services);
-
-            await dbContext.SeedAsync(userManager);
-
-            var deleteModel = new DeleteModel(userManager, dbContext, Mock.Of<ILogger<DeleteModel>>());
-            var deck = await dbContext.CreateDeckAsync();
+            var deck = await _dbContext.CreateDeckAsync();
             var wrongDeck = -1;
 
-            await deleteModel.SetModelContextAsync(userManager, deck.OwnerId);
+            await _deleteModel.SetModelContextAsync(_userManager, deck.OwnerId);
 
-            var deckQuery = dbContext.Decks
+            var deckQuery = _dbContext.Decks
                 .Where(d => d.Id == deck.Id)
                 .AsNoTracking();
 
             // Act
-            var result = await deleteModel.OnPostAsync(wrongDeck);
+            var result = await _deleteModel.OnPostAsync(wrongDeck);
             var deckAfter = await deckQuery.SingleOrDefaultAsync();
 
             // // Assert
@@ -80,33 +102,26 @@ namespace MTGViewer.Tests.Pages.Decks
         public async Task OnPost_ValidDeck_ReturnsCards()
         {
             // Arrange
-            await using var services = TestFactory.ServiceProvider();
-            await using var dbContext = TestFactory.CardDbContext(services);
-            using var userManager = TestFactory.CardUserManager(services);
+            var deck = await _dbContext.CreateDeckAsync();
 
-            await dbContext.SeedAsync(userManager);
+            await _deleteModel.SetModelContextAsync(_userManager, deck.OwnerId);
 
-            var deleteModel = new DeleteModel(userManager, dbContext, Mock.Of<ILogger<DeleteModel>>());
-            var deck = await dbContext.CreateDeckAsync();
-
-            await deleteModel.SetModelContextAsync(userManager, deck.OwnerId);
-
-            var deckCards = await dbContext.Amounts
+            var deckCards = await _dbContext.Amounts
                 .Where(ca => ca.LocationId == deck.Id)
                 .Select(ca => ca.CardId)
                 .ToListAsync();
 
-            var deckQuery = dbContext.Decks
+            var deckQuery = _dbContext.Decks
                 .Where(d => d.Id == deck.Id)
                 .AsNoTracking();
 
-            var sharedQuery = dbContext.Amounts
+            var sharedQuery = _dbContext.Amounts
                 .Where(ca => ca.Location is Shared && deckCards.Contains(ca.CardId))
                 .Select(ca => ca.Amount);
 
             // Act
             var sharedBefore = await sharedQuery.ToListAsync();
-            var result = await deleteModel.OnPostAsync(deck.Id);
+            var result = await _deleteModel.OnPostAsync(deck.Id);
 
             var deckAfter = await deckQuery.SingleOrDefaultAsync();
             var sharedAfter = await sharedQuery.ToListAsync();
@@ -126,13 +141,6 @@ namespace MTGViewer.Tests.Pages.Decks
         // public async Task OnPost_ActiveTrades_CascadesDelete()
         // {
         //     // Arrange
-        //     await using var services = TestFactory.ServiceProvider();
-        //     await using var dbContext = TestFactory.CardDbContext(services);
-        //     using var userManager = TestFactory.CardUserManager(services);
-
-        //     await dbContext.SeedAsync(userManager);
-
-        //     var deleteModel = new DeleteModel(userManager, dbContext, Mock.Of<ILogger<DeleteModel>>());
         //     var deck = await dbContext.CreateDeckAsync();
 
         //     await deleteModel.SetModelContextAsync(userManager, deck.OwnerId);

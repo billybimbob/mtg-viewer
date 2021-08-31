@@ -54,6 +54,11 @@ namespace MTGViewer.Data
                     .HasValue<Location>(Discriminator.Invalid)
                     .HasValue<Shared>(Discriminator.Shared)
                     .HasValue<Deck>(Discriminator.Deck);
+
+            builder
+                .HasMany(l => l.Cards)
+                .WithOne(ca => ca.Location)
+                .OnDelete(DeleteBehavior.Restrict);
         }
     }
 

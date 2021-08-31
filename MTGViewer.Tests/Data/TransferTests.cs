@@ -1,4 +1,3 @@
-using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
@@ -9,15 +8,30 @@ using MTGViewer.Tests.Utils;
 
 namespace MTGViewer.Tests.Data
 {
-    public class TradeTests
+    public class TradeTests : IAsyncLifetime
     {
+        private readonly CardDbContext _dbContext;
+
+        public TradeTests()
+        {
+            _dbContext = TestFactory.CardDbContext();
+        }
+
+        public async Task InitializeAsync()
+        {
+            await _dbContext.SeedAsync();
+        }
+
+        public async Task DisposeAsync()
+        {
+            await _dbContext.DisposeAsync();
+        }
+
+
         [Fact]
         public async Task First_IsSuggestion_CorrectType()
         {
-            await using var dbContext = TestFactory.CardDbContext();
-            await dbContext.SeedAsync();
-
-            var suggestion = await dbContext.Transfers.FirstAsync(t => t is Suggestion);
+            var suggestion = await _dbContext.Transfers.FirstAsync(t => t is Suggestion);
 
             Assert.IsType<Suggestion>(suggestion);
         }
@@ -26,10 +40,7 @@ namespace MTGViewer.Tests.Data
         [Fact]
         public async Task First_IsTrade_CorrectType()
         {
-            await using var dbContext = TestFactory.CardDbContext();
-            await dbContext.SeedAsync();
-
-            var trade = await dbContext.Transfers.FirstAsync(t => t is Trade);
+            var trade = await _dbContext.Transfers.FirstAsync(t => t is Trade);
 
             Assert.IsType<Trade>(trade);
         }

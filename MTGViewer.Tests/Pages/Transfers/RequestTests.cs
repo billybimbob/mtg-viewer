@@ -1,11 +1,16 @@
 using System.Linq;
 using System.Threading.Tasks;
+
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Identity;
+
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
 
+using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
 using MTGViewer.Pages.Transfers;
 using MTGViewer.Tests.Utils;
@@ -13,29 +18,53 @@ using MTGViewer.Tests.Utils;
 
 namespace MTGViewer.Tests.Pages.Transfers
 {
-    public class RequestTests
+    public class RequestTests : IAsyncLifetime
     {
+        private readonly ServiceProvider _services;
+        private readonly CardDbContext _dbContext;
+        private readonly UserManager<CardUser> _userManager;
+
+        private readonly RequestModel _requestModel;
+
+        public RequestTests()
+        {
+            _services = TestFactory.ServiceProvider();
+            _dbContext = TestFactory.CardDbContext(_services);
+            _userManager = TestFactory.CardUserManager(_services);
+
+            _requestModel = new RequestModel(
+                _dbContext, _userManager, Mock.Of<ILogger<RequestModel>>());
+        }
+
+
+        public async Task InitializeAsync()
+        {
+            await _dbContext.SeedAsync(_userManager);
+        }
+
+
+        public async Task DisposeAsync()
+        {
+            await _services.DisposeAsync();
+            await _dbContext.DisposeAsync();
+            _userManager.Dispose();
+        }
+
+
         [Fact]
         public async Task OnPost_WrongUser_NoChange()
         {
             // Arrange
-            await using var services = TestFactory.ServiceProvider();
-            await using var dbContext = TestFactory.CardDbContext(services);
-            using var userManager = TestFactory.CardUserManager(services);
+            var deck = await _dbContext.CreateRequestDeckAsync();
 
-            await dbContext.SeedAsync(userManager);
+            var wrongUser = await _dbContext.Users.FirstAsync(u => u.Id != deck.Owner.Id);
+            var tradesQuery = _dbContext.Trades.AsNoTracking();
 
-            var deck = await dbContext.CreateRequestDeckAsync();
-            var requestModel = new RequestModel(dbContext, userManager, Mock.Of<ILogger<RequestModel>>());
-
-            var wrongUser = await dbContext.Users.FirstAsync(u => u.Id != deck.Owner.Id);
-            var tradesQuery = dbContext.Trades.AsNoTracking();
-
-            await requestModel.SetModelContextAsync(userManager, wrongUser.Id);
+            await _requestModel.SetModelContextAsync(_userManager, wrongUser.Id);
 
             // Act
             var tradesBefore = await tradesQuery.ToListAsync();
-            var result = await requestModel.OnPostAsync(deck.Id);
+            var result = await _requestModel.OnPostAsync(deck.Id);
             var tradesAfter = await tradesQuery.ToListAsync();
 
             // // Assert
@@ -49,25 +78,18 @@ namespace MTGViewer.Tests.Pages.Transfers
         public async Task OnPost_InvalidDeck_NoChange()
         {
             // Arrange
-            await using var services = TestFactory.ServiceProvider();
-            await using var dbContext = TestFactory.CardDbContext(services);
-            using var userManager = TestFactory.CardUserManager(services);
+            var deck = await _dbContext.CreateRequestDeckAsync();
 
-            await dbContext.SeedAsync(userManager);
-
-            var deck = await dbContext.CreateRequestDeckAsync();
-            var requestModel = new RequestModel(dbContext, userManager, Mock.Of<ILogger<RequestModel>>());
-
-            var tradesQuery = dbContext.Trades.AsNoTracking();
-            var wrongDeck = dbContext.Decks
+            var tradesQuery = _dbContext.Trades.AsNoTracking();
+            var wrongDeck = _dbContext.Decks
                 .AsNoTracking()
                 .FirstAsync(t => t.Id != deck.Id);
 
-            await requestModel.SetModelContextAsync(userManager, deck.Owner.Id);
+            await _requestModel.SetModelContextAsync(_userManager, deck.Owner.Id);
 
             // Act
             var tradesBefore = await tradesQuery.ToListAsync();
-            var result = await requestModel.OnPostAsync(wrongDeck.Id);
+            var result = await _requestModel.OnPostAsync(wrongDeck.Id);
             var tradesAfter = await tradesQuery.ToListAsync();
 
             // // Assert
@@ -81,21 +103,14 @@ namespace MTGViewer.Tests.Pages.Transfers
         public async Task OnPost_ValidDeck_Requests()
         {
             // Arrange
-            await using var services = TestFactory.ServiceProvider();
-            await using var dbContext = TestFactory.CardDbContext(services);
-            using var userManager = TestFactory.CardUserManager(services);
+            var deck = await _dbContext.CreateRequestDeckAsync();
+            var tradesQuery = _dbContext.Trades.AsNoTracking();
 
-            await dbContext.SeedAsync(userManager);
-
-            var deck = await dbContext.CreateRequestDeckAsync();
-            var requestModel = new RequestModel(dbContext, userManager, Mock.Of<ILogger<RequestModel>>());
-            var tradesQuery = dbContext.Trades.AsNoTracking();
-
-            await requestModel.SetModelContextAsync(userManager, deck.Owner.Id);
+            await _requestModel.SetModelContextAsync(_userManager, deck.Owner.Id);
 
             // Act
             var tradesBefore = await tradesQuery.ToListAsync();
-            var result = await requestModel.OnPostAsync(deck.Id);
+            var result = await _requestModel.OnPostAsync(deck.Id);
 
             var tradesAfter = await tradesQuery.ToListAsync();
             var addedTrades = tradesAfter.Except(
@@ -113,25 +128,18 @@ namespace MTGViewer.Tests.Pages.Transfers
         public async Task OnPost_MultipleSources_RequestsAll()
         {
             // Arrange
-            await using var services = TestFactory.ServiceProvider();
-            await using var dbContext = TestFactory.CardDbContext(services);
-            using var userManager = TestFactory.CardUserManager(services);
+            var deck = await _dbContext.CreateRequestDeckAsync();
+            var tradesQuery = _dbContext.Trades.AsNoTracking();
 
-            await dbContext.SeedAsync(userManager);
+            await _requestModel.SetModelContextAsync(_userManager, deck.Owner.Id);
 
-            var deck = await dbContext.CreateRequestDeckAsync();
-            var requestModel = new RequestModel(dbContext, userManager, Mock.Of<ILogger<RequestModel>>());
-            var tradesQuery = dbContext.Trades.AsNoTracking();
-
-            await requestModel.SetModelContextAsync(userManager, deck.Owner.Id);
-
-            var requestCard = await dbContext.Amounts
+            var requestCard = await _dbContext.Amounts
                 .Where(ca => ca.LocationId == deck.Id && ca.IsRequest)
                 .Select(ca => ca.Card)
                 .AsNoTracking()
                 .FirstAsync();
 
-            var nonOwner = await dbContext.Users
+            var nonOwner = await _dbContext.Users
                 .FirstAsync(u => u.Id != deck.OwnerId);
 
             var extraLocations = Enumerable
@@ -151,15 +159,15 @@ namespace MTGViewer.Tests.Pages.Transfers
                 })
                 .ToList();
 
-            dbContext.Decks.AttachRange(extraLocations);
-            dbContext.Amounts.AttachRange(amounts);
+            _dbContext.Decks.AttachRange(extraLocations);
+            _dbContext.Amounts.AttachRange(amounts);
 
-            await dbContext.SaveChangesAsync();
-            dbContext.ChangeTracker.Clear();
+            await _dbContext.SaveChangesAsync();
+            _dbContext.ChangeTracker.Clear();
 
             // Act
             var tradesBefore = await tradesQuery.ToListAsync();
-            var result = await requestModel.OnPostAsync(deck.Id);
+            var result = await _requestModel.OnPostAsync(deck.Id);
 
             var tradesAfter = await tradesQuery.ToListAsync();
             var addedTrades = tradesAfter.Except(
@@ -171,6 +179,7 @@ namespace MTGViewer.Tests.Pages.Transfers
             // // Assert
             Assert.IsType<RedirectToPageResult>(result);
             Assert.NotEqual(tradesBefore, tradesAfter);
+
             Assert.All(addedTrades, t => Assert.Equal(deck.Id, t.ToId));
             Assert.All(extraLocations, l => Assert.Contains(l.Id, addedTargets));
         }

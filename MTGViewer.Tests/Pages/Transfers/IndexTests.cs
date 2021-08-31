@@ -1,35 +1,64 @@
 using System.Linq;
 using System.Threading.Tasks;
+
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Identity;
+
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
+using MTGViewer.Areas.Identity.Data;
+using MTGViewer.Data;
 using MTGViewer.Pages.Transfers;
 using MTGViewer.Tests.Utils;
 
 
 namespace MTGViewer.Tests.Pages.Transfers
 {
-    public class IndexTests
+    public class IndexTests : IAsyncLifetime
     {
+        private readonly ServiceProvider _services;
+        private readonly CardDbContext _dbContext;
+        private readonly UserManager<CardUser> _userManager;
+
+        private readonly IndexModel _indexModel;
+
+        public IndexTests()
+        {
+            _services = TestFactory.ServiceProvider();
+            _dbContext = TestFactory.CardDbContext(_services);
+            _userManager = TestFactory.CardUserManager(_services);
+
+            _indexModel = new IndexModel(_userManager, _dbContext);
+        }
+
+
+        public async Task InitializeAsync()
+        {
+            await _dbContext.SeedAsync(_userManager);
+        }
+
+
+        public async Task DisposeAsync()
+        {
+            await _services.DisposeAsync();
+            await _dbContext.DisposeAsync();
+            _userManager.Dispose();
+        }
+
+
         [Fact]
         public async Task OnPost_ValidSuggestion_RemovesSuggestion()
         {
             // Arrange
-            await using var services = TestFactory.ServiceProvider();
-            await using var dbContext = TestFactory.CardDbContext(services);
-            using var userManager = TestFactory.CardUserManager(services);
-
-            await dbContext.SeedAsync(userManager);
-
-            var indexModel = new IndexModel(userManager, dbContext);
-            var suggestQuery = dbContext.Suggestions.AsNoTracking();
+            var suggestQuery = _dbContext.Suggestions.AsNoTracking();
             var suggestion = await suggestQuery.FirstAsync();
 
-            await indexModel.SetModelContextAsync(userManager, suggestion.ReceiverId);
+            await _indexModel.SetModelContextAsync(_userManager, suggestion.ReceiverId);
 
             // Act
-            var result = await indexModel.OnPostAsync(suggestion.Id);
+            var result = await _indexModel.OnPostAsync(suggestion.Id);
             var suggestions = await suggestQuery.Select(t => t.Id).ToListAsync();
 
             // Assert
@@ -42,20 +71,13 @@ namespace MTGViewer.Tests.Pages.Transfers
         public async Task OnPost_WrongUser_NoRemove()
         {
             // Arrange
-            await using var services = TestFactory.ServiceProvider();
-            await using var dbContext = TestFactory.CardDbContext(services);
-            using var userManager = TestFactory.CardUserManager(services);
-
-            await dbContext.SeedAsync(userManager);
-
-            var indexModel = new IndexModel(userManager, dbContext);
-            var suggestQuery = dbContext.Suggestions.AsNoTracking();
+            var suggestQuery = _dbContext.Suggestions.AsNoTracking();
             var suggestion = await suggestQuery.FirstAsync();
 
-            await indexModel.SetModelContextAsync(userManager, suggestion.ProposerId);
+            await _indexModel.SetModelContextAsync(_userManager, suggestion.ProposerId);
 
             // Act
-            var result = await indexModel.OnPostAsync(suggestion.Id);
+            var result = await _indexModel.OnPostAsync(suggestion.Id);
             var suggestions = await suggestQuery.Select(t => t.Id).ToListAsync();
 
             // Assert
@@ -68,20 +90,13 @@ namespace MTGViewer.Tests.Pages.Transfers
         public async Task OnPost_InvalidSuggestion_NoRemove()
         {
             // Arrange
-            await using var services = TestFactory.ServiceProvider();
-            await using var dbContext = TestFactory.CardDbContext(services);
-            using var userManager = TestFactory.CardUserManager(services);
-
-            await dbContext.SeedAsync(userManager);
-
-            var indexModel = new IndexModel(userManager, dbContext);
-            var tradeQuery = dbContext.Trades.AsNoTracking();
+            var tradeQuery = _dbContext.Trades.AsNoTracking();
             var nonSuggestion = await tradeQuery.FirstAsync();
 
-            await indexModel.SetModelContextAsync(userManager, nonSuggestion.ReceiverId);
+            await _indexModel.SetModelContextAsync(_userManager, nonSuggestion.ReceiverId);
 
             // Act
-            var result = await indexModel.OnPostAsync(nonSuggestion.Id);
+            var result = await _indexModel.OnPostAsync(nonSuggestion.Id);
             var suggestions = await tradeQuery.Select(t => t.Id).ToListAsync();
 
             // Assert
