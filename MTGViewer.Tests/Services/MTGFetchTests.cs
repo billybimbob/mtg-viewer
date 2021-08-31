@@ -21,10 +21,10 @@ namespace MTGViewer.Tests.Services
         private const string TEST_NAME = "Narset, Enlightened Master";
 
 
-        [Fact]
+        [Fact(Skip = "Calls external api")]
         public async Task Search_NoParams_ReturnsEmpty()
         {
-            var fetch = TestHelpers.NoCacheFetchService();
+            var fetch = TestFactory.NoCacheFetchService();
 
             fetch.Reset();
             var cards = await fetch.SearchAsync();
@@ -33,10 +33,10 @@ namespace MTGViewer.Tests.Services
         }
 
 
-        [Fact]
+        [Fact(Skip = "Calls external api")]
         public async Task Search_NameParam_ReturnsSameName()
         {
-            var fetch = TestHelpers.NoCacheFetchService();
+            var fetch = TestFactory.NoCacheFetchService();
 
             var cards = await fetch
                 .Where(c => c.Name, TEST_NAME)
@@ -48,10 +48,10 @@ namespace MTGViewer.Tests.Services
         }
 
 
-        [Fact]
+        [Fact(Skip = "Calls external api")]
         public async Task Find_Id_ReturnsCard()
         {
-            var fetch = TestHelpers.NoCacheFetchService();
+            var fetch = TestFactory.NoCacheFetchService();
 
             var card = await fetch.FindAsync(TEST_ID);
 
@@ -59,10 +59,10 @@ namespace MTGViewer.Tests.Services
         }
 
 
-        [Fact]
+        [Fact(Skip = "Calls external api")]
         public async Task Find_NoId_ReturnsNull()
         {
-            var fetch = TestHelpers.NoCacheFetchService();
+            var fetch = TestFactory.NoCacheFetchService();
 
             var card = await fetch.FindAsync(null);
 
@@ -70,10 +70,10 @@ namespace MTGViewer.Tests.Services
         }
 
 
-        [Fact]
+        [Fact(Skip = "Calls external api")]
         public async Task Find_Cache_ReturnsCard()
         {
-            var noCacheFetch = TestHelpers.NoCacheFetchService();
+            var noCacheFetch = TestFactory.NoCacheFetchService();
             var testCard = await noCacheFetch.FindAsync(TEST_ID);
 
             var provider = new MtgServiceProvider();
@@ -89,10 +89,10 @@ namespace MTGViewer.Tests.Services
         }
 
 
-        [Fact]
+        [Fact(Skip = "Calls external api")]
         public async Task Match_Id_ReturnsCard()
         {
-            var fetch = TestHelpers.NoCacheFetchService();
+            var fetch = TestFactory.NoCacheFetchService();
             var search = new Card
             {
                 MultiverseId = TEST_ID
@@ -105,10 +105,10 @@ namespace MTGViewer.Tests.Services
         }
 
 
-        [Fact]
+        [Fact(Skip = "Calls external api")]
         public async Task Match_Empty_ReturnsEmpty()
         {
-            var fetch = TestHelpers.NoCacheFetchService();
+            var fetch = TestFactory.NoCacheFetchService();
             var search = new Card();
 
             var cards = await fetch.MatchAsync(search);
@@ -117,10 +117,10 @@ namespace MTGViewer.Tests.Services
         }
 
 
-        [Fact]
+        [Fact(Skip = "Calls external api")]
         public async Task Match_OnlyName_ReturnsCard()
         {
-            var fetch = TestHelpers.NoCacheFetchService();
+            var fetch = TestFactory.NoCacheFetchService();
             var search = new Card
             {
                 Name = TEST_NAME

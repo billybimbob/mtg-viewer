@@ -14,7 +14,7 @@ namespace MTGViewer.Tests.Data
         [Fact]
         public async Task First_IsSuggestion_CorrectType()
         {
-            await using var dbContext = TestHelpers.CardDbContext();
+            await using var dbContext = TestFactory.CardDbContext();
             await dbContext.SeedAsync();
 
             var suggestion = await dbContext.Transfers.FirstAsync(t => t is Suggestion);
@@ -26,7 +26,7 @@ namespace MTGViewer.Tests.Data
         [Fact]
         public async Task First_IsTrade_CorrectType()
         {
-            await using var dbContext = TestHelpers.CardDbContext();
+            await using var dbContext = TestFactory.CardDbContext();
             await dbContext.SeedAsync();
 
             var trade = await dbContext.Transfers.FirstAsync(t => t is Trade);

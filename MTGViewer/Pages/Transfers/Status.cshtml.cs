@@ -50,7 +50,8 @@ namespace MTGViewer.Pages.Transfers
             
             var deck = await _dbContext.Decks
                 .Include(d => d.Owner)
-                .Include(d => d.Cards.OrderBy(ca => ca.Card.Name))
+                .Include(d => d.Cards
+                    .OrderBy(ca => ca.Card.Name))
                     .ThenInclude(ca => ca.Card)
                 .SingleOrDefaultAsync(d =>
                     d.Id == deckId && d.OwnerId == userId);

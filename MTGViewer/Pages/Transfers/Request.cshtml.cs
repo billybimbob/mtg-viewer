@@ -59,21 +59,21 @@ namespace MTGViewer.Pages.Transfers
                 .Where(ca => ca.IsRequest && ca.LocationId == deckId)
                 .ToListAsync();
 
-            var alreadyRequested = await _dbContext.Trades
-                .Where(t => t.ToId == deckId && t.ProposerId == userId)
-                .AnyAsync();
-
-
             if (!cardRequests.Any())
             {
                 PostMessage = "There are no possible requests";
                 return RedirectToPage("./Index");
             }
 
-            if (cardRequests.Any() && alreadyRequested)
+            var alreadyRequested = await _dbContext.Trades
+                .Where(t => t.ToId == deckId && t.ProposerId == userId)
+                .AnyAsync();
+
+            if (alreadyRequested)
             {
                 return RedirectToPage("./Status", new { deckId });
             }
+
 
             TargetsExist = await AnyTradeRequestsAsync(userId, deckId);
             Deck = deck;
@@ -100,6 +100,7 @@ namespace MTGViewer.Pages.Transfers
                     (amount, request) => amount)
                 .AnyAsync();
         }
+
 
 
         public async Task<IActionResult> OnPostAsync(int deckId)

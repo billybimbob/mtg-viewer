@@ -30,7 +30,7 @@ using MTGViewer.Services;
 
 namespace MTGViewer.Tests.Utils
 {
-    public static class TestHelpers
+    public static class TestFactory
     {
         internal static ServiceProvider ServiceProvider()
         {
@@ -154,6 +154,19 @@ namespace MTGViewer.Tests.Utils
             CardUser user)
         {
             var claimsFactory = CardClaimsFactory(userManager);
+            var userClaim = await claimsFactory.CreateAsync(user);
+
+            model.SetModelContext(userClaim);
+        }
+
+
+        internal static async Task SetModelContextAsync(
+            this PageModel model, 
+            UserManager<CardUser> userManager,
+            string userId)
+        {
+            var claimsFactory = CardClaimsFactory(userManager);
+            var user = await userManager.FindByIdAsync(userId);
             var userClaim = await claimsFactory.CreateAsync(user);
 
             model.SetModelContext(userClaim);

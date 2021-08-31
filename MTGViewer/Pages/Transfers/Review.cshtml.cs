@@ -108,17 +108,25 @@ namespace MTGViewer.Pages.Transfers
 
 
 
-        public async Task<IActionResult> OnPostAcceptAsync(int deckId, int tradeId)
+        public async Task<IActionResult> OnPostAcceptAsync(int tradeId)
         {
-            var acceptInfo = await GetAcceptInfoAsync(tradeId);
+            var deckTrade = await GetDeckTradeAsync(tradeId);
 
-            if (acceptInfo == null)
+            if (deckTrade == null)
             {
-                return RedirectToPage("./Review", new { deckId });
+                return RedirectToPage("./Index");
             }
 
-            ApplyAccept(acceptInfo);
-            await CascadeIfComplete(acceptInfo);
+            var acceptAmounts = await GetAcceptAmountsAsync(deckTrade);
+
+            if (acceptAmounts == null)
+            {
+                return RedirectToPage("./Review",
+                    new { deckId = deckTrade.FromId });
+            }
+
+            ApplyAccept(acceptAmounts);
+            await CascadeIfComplete(acceptAmounts);
 
             try
             {
@@ -130,11 +138,12 @@ namespace MTGViewer.Pages.Transfers
                 PostMessage = "Ran into error while Accepting";
             }
 
-            return RedirectToPage("./Review", new { deckId });
+            return RedirectToPage("./Review",
+                new { deckId = deckTrade.FromId });
         }
 
 
-        private async Task<AcceptAmounts?> GetAcceptInfoAsync(int tradeId)
+        private async Task<Trade?> GetDeckTradeAsync(int tradeId)
         {
             if (tradeId == default)
             {
@@ -148,7 +157,8 @@ namespace MTGViewer.Pages.Transfers
                 .Include(t => t.Card)
                 .Include(t => t.To)
                 .Include(t => t.From)
-                .SingleOrDefaultAsync(t => t.Id == tradeId && t.From.OwnerId == userId);
+                .SingleOrDefaultAsync(t =>
+                    t.Id == tradeId && t.From.OwnerId == userId);
 
             if (deckTrade == default)
             {
@@ -156,19 +166,11 @@ namespace MTGViewer.Pages.Transfers
                 return null;
             }
 
-            var tradeAmounts = await GetTradeAmountsAsync(deckTrade);
-
-            if (tradeAmounts == default)
-            {
-                PostMessage = "Source Deck lacks the required amount to complete the trade";
-                return null;
-            }
-
-            return AcceptAmounts.FromTrade(deckTrade, tradeAmounts);
+            return deckTrade;
         }
 
 
-        private async Task<IReadOnlyList<CardAmount>?> GetTradeAmountsAsync(Trade trade)
+        private async Task<AcceptAmounts?> GetAcceptAmountsAsync(Trade trade)
         {
             var tradeDeckIds = new []{ trade.ToId, trade.FromId };
 
@@ -180,7 +182,13 @@ namespace MTGViewer.Pages.Transfers
             var amountsValid = tradeAmounts.Any(ca =>
                 !ca.IsRequest && ca.LocationId == trade.FromId);
 
-            return amountsValid ? tradeAmounts : null;
+            if (!amountsValid)
+            {
+                PostMessage = "Source Deck lacks the required amount to complete the trade";
+                return null;
+            }
+
+            return AcceptAmounts.FromTrade(trade, tradeAmounts);
         }
 
 
@@ -260,12 +268,12 @@ namespace MTGViewer.Pages.Transfers
 
 
 
-        public async Task<IActionResult> OnPostRejectAsync(int deckId, int tradeId)
+        public async Task<IActionResult> OnPostRejectAsync(int tradeId)
         {
             if (tradeId == default)
             {
                 PostMessage = "Card was not specified";
-                return RedirectToPage("./Review", new { deckId });
+                return RedirectToPage("./Index");
             }
 
             var userId = _userManager.GetUserId(User);
@@ -275,7 +283,7 @@ namespace MTGViewer.Pages.Transfers
             if (deckTrade == default)
             {
                 PostMessage = "Trade could not be found";
-                return RedirectToPage("./Review", new { deckId });
+                return RedirectToPage("./Index");
             }
 
             _dbContext.Trades.Remove(deckTrade);
@@ -290,7 +298,8 @@ namespace MTGViewer.Pages.Transfers
                 PostMessage = "Ran into error while rejecting";
             }
 
-            return RedirectToPage("./Review", new { deckId });
+            return RedirectToPage("./Review",
+                new { deckId = deckTrade.FromId });
         }
     }
 }

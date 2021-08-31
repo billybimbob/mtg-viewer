@@ -12,7 +12,7 @@ namespace MTGViewer.Tests.Data
         [Fact]
         public async Task First_IsShared_CorrectType()
         {
-            await using var dbContext = TestHelpers.CardDbContext();
+            await using var dbContext = TestFactory.CardDbContext();
             await dbContext.SeedAsync();
 
             var shared = await dbContext.Locations.FirstAsync(l => l is Shared);
@@ -24,7 +24,7 @@ namespace MTGViewer.Tests.Data
         [Fact]
         public async Task First_IsDeck_CorrectType()
         {
-            await using var dbContext = TestHelpers.CardDbContext();
+            await using var dbContext = TestFactory.CardDbContext();
             await dbContext.SeedAsync();
 
             var deck = await dbContext.Locations.FirstAsync(l => l is Deck);
@@ -36,7 +36,7 @@ namespace MTGViewer.Tests.Data
         [Fact]
         public async Task First_MultipleQueries_SameReference()
         {
-            await using var dbContext = TestHelpers.CardDbContext();
+            await using var dbContext = TestFactory.CardDbContext();
             await dbContext.SeedAsync();
 
             var deck1 = await dbContext.Locations.FirstAsync(l => l is Deck);

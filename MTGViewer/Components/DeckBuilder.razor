@@ -260,29 +260,24 @@
     }
 
 
-    private AmountPair InitGroup(IGrouping<string, CardAmount> grouping)
+    private AmountPair InitGroup(IEnumerable<CardAmount> amounts)
     {
-        if (!grouping.Any())
-        {
-            throw new System.ArgumentException("Grouping is empty");
-        }
+        var pair = new AmountPair(amounts);
 
-        var applied = grouping.SingleOrDefault(ca => !ca.IsRequest);
-        var request = grouping.SingleOrDefault(ca => ca.IsRequest);
-
-        if (applied is null)
+        if (pair.Actual is null)
         {
-            applied = new CardAmount
+            var actual = new CardAmount
             {
-                Card = request.Card,
-                Location = request.Location,
+                Card = pair.Card,
+                Location = pair.Location,
                 Amount = 0
             };
 
-            _dbContext.Add(applied);
+            _dbContext.Add(actual);
+            pair.Actual = actual;
         }
 
-        return new AmountPair(applied, request);
+        return pair;
     }
 
 
@@ -622,8 +617,8 @@
             return;
         }
 
+        // card now tracked by context
         var card = await _dbContext.Cards.FindAsync(cardId);
-
         var amntGroup = InitGroup(cardGroup);
 
         if (_dbContext.Entry(amntGroup.Actual).State == EntityState.Detached)
@@ -631,7 +626,8 @@
             _dbContext.Attach(amntGroup.Actual);
         }
 
-        if (amntGroup.Request is not null)
+        if (amntGroup.Request is not null
+            && _dbContext.Entry(amntGroup.Request).State == EntityState.Detached)
         {
             _dbContext.Attach(amntGroup.Request);
         }

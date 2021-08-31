@@ -46,7 +46,8 @@ namespace MTGViewer.Pages.Decks
             var userId = _userManager.GetUserId(User);
 
             var deck = await _dbContext.Decks
-                .Include(l => l.Cards.OrderBy(ca => ca.Card.Name))
+                .Include(l => l.Cards
+                    .OrderBy(ca => ca.Card.Name))
                     .ThenInclude(ca => ca.Card)
                 .FirstOrDefaultAsync(l =>
                     l.Id == id && l.OwnerId == userId);

@@ -4,11 +4,11 @@ using System.Collections.Generic;
 
 namespace MTGViewer.Data
 {
-    internal class EntityComparer<E> : IEqualityComparer<E>
+    public class EntityComparer<E> : IEqualityComparer<E>
     {
         private Func<E, object> _property;
 
-        internal EntityComparer(Func<E, object> property)
+        public EntityComparer(Func<E, object> property)
         {
             _property = property;
         }
