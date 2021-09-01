@@ -19,11 +19,6 @@ namespace MTGViewer.Data
 
     public static class TradeFilter
     {
-        public static Expression<Func<Trade, bool>> WaitingFor(string userId) =>
-            trade => trade.ReceiverId == userId && !trade.IsCounter
-                || trade.ProposerId == userId && trade.IsCounter;
-
-
         public static Expression<Func<Trade, bool>> Involves(string userId) =>
             trade => trade.ProposerId == userId 
                 || trade.ReceiverId == userId;

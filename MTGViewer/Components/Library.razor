@@ -8,6 +8,7 @@
 
 
 <h1>Card Collection</h1>
+<hr />
 
 <a class="btn btn-secondary" href="Cards/Create">Add Card</a>
 
@@ -48,29 +49,30 @@
         @foreach (var card in _viewCards)
         {
             <tr>
-                <td class="fw-bold">@card.Name</td>
-
                 <td>
-                    @foreach (var cost in card.GetColorSymbols())
+                    <a title="Details @card.Name"
+                       href="Cards/Details/@card.Id"
+                       class="fw-bold">
+                       @card.Name
+                    </a>
+                </td>
+                <td>
+                    @foreach (var cost in card.GetManaSymbols())
                     {
-                        <span class="m-1 ms ms-@cost.ToLower() ms-cost"></span>
+                        <span class="m-1 ms ms-@cost ms-cost"></span>
                     }
                 </td>
-
                 <td>@card.SetName</td>
                 <td>@card.Rarity</td>
                 <td>@card.Amounts.Select(ca => ca.Amount).Sum()</td>
 
                 <td>
-                    <a href="@Details(card.Id)"
-                       class="btn btn-secondary mr-2">
-                       Details </a>
-
                     @if (IsSignedIn)
                     {
-                        <a href="@Suggest(card.Id)"
-                            class="btn btn-secondary">
-                            Suggest </a>
+                        <a title="Suggest @card.Name"
+                           href="Transfers/Suggest/@card.Id"
+                           class="btn btn-secondary">
+                           Suggest </a>
                     }
                 </td>
             </tr>

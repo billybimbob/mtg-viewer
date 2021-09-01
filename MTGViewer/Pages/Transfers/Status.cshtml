@@ -1,0 +1,106 @@
+@page
+@model MTGViewer.Pages.Transfers.StatusModel
+@using MTGViewer.Data
+    
+
+@{
+    ViewData["Title"] = $"{Model.Proposer.Name}'s Trades";
+}
+
+<h1>To @Model.Destination.Name</h1>
+<hr />
+
+
+@if (!string.IsNullOrEmpty(Model.PostMessage))
+{
+    <div class="alert alert-secondary" role="alert">
+        @Model.PostMessage
+    </div>
+}
+
+<div class="alert alert-secondary" role="alert">
+    <p>Do you want cancel the requests listed below?</p>
+    <p>
+        Even if the requests will not be fullfilled, cancelling will
+        allow to edit the deck @Model.Destination.Name
+    </p>
+
+    <form method="POST">
+        <input type="hidden" 
+            asp-for="Destination.Id"
+            value="deckId" />
+
+        <input type="submit"
+            class="btn btn-danger mb-3"
+            value="Confirm Cancel" />
+    </form>
+</div>
+
+<h2>@Model.Destination.Name Amounts</h2>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th> @Html.DisplayNameForInnerType((CardAmount ca) => ca.Card) </th>
+            <th> @Html.DisplayNameForInnerType((Card c) => c.ManaCost) </th>
+            <th> Requests </th>
+            <th> Current Amount </th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var pair in Model.Amounts)
+        {
+            <tr>
+                <td>
+                    <a asp-page="/Cards/Details"
+                       asp-route-id="@pair.CardId"
+                       class="fw-bold">
+                       @pair.Card.Name </a>
+                </td>
+                <td>
+                    @foreach (var cost in pair.Card.GetManaSymbols())
+                    {
+                        <span class="m-1 ms ms-@cost ms-cost"></span>
+                    }
+                </td>
+                <td> @(pair.Request?.Amount ?? 0) </td>
+                <td> @(pair.Actual?.Amount ?? 0) </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<h2>Current Trade Requests</h2>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th> @Html.DisplayNameForInnerType((Trade t) => t.Card) </th>
+            <th> @Html.DisplayNameForInnerType((Card c) => c.ManaCost) </th>
+            <th> Request With </th>
+            <th> @Html.DisplayNameForInnerType((Trade t) => t.From) </th>
+            <th> @Html.DisplayNameForInnerType((Trade t) => t.Amount) </th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var trade in Model.Trades)
+        {
+            <tr>
+                <td>
+                    <a asp-page="/Cards/Details"
+                       asp-route-id="@trade.CardId">
+                       @trade.Card.Name </a>
+                </td>
+                <td>
+                    @foreach (var cost in trade.Card.GetManaSymbols())
+                    {
+                        <span class="m-1 ms ms-@cost ms-cost"></span>
+                    }
+                </td>
+                <td> @trade.From.Owner.Name </td>
+                <td> @trade.From.Name </td>
+                <td> @trade.Amount </td>
+            </tr>
+        }
+    </tbody>
+</table>

@@ -14,11 +14,11 @@
         @Model.PostMessage
     </div>
 }
-
+@* 
 <a asp-page="./Propose" 
     class="btn btn-secondary mb-3">
     New Trade
-</a>
+</a> *@
 
 <h2>Pending Trades</h2>
 
@@ -26,54 +26,63 @@
     <thead>
         <tr>
             <th>Target Deck</th>
-            <th>Trading With</th>
+            <th>Number of Requests</th>
             <th></th>
         </tr>
     </thead>
     <tbody>
-        <form method="post">
-            @foreach (var (otherUser, deck) in Model.PendingTrades)
-            {
-                var proposerId = deck.OwnerId == otherUser.Id
-                    ? Model.SelfUser.Id
-                    : otherUser.Id;
-                <tr>
-                    <td>@deck.Name</td>
-                    <td>@otherUser.Name</td>
-                    <td>
-                        <input type="submit"
-                               asp-page-handler="Cancel"
-                               asp-route-proposerid="@proposerId"
-                               asp-route-deckid="@deck.Id"
-                               class="btn btn-secondary mb-3" 
-                               value="Cancel">
-
-                        <a asp-page="./Propose" 
-                           asp-route-proposerid="@proposerId"
-                           asp-route-deckid="@deck.Id"
-                           class="btn btn-secondary mb-3" >
-                           Edit
-                        </a>
-                    </td>
-                </tr>
-            }
-        </form>
-
-        @foreach (var (otherUser, deck) in Model.ReceivedTrades)
+        @foreach (var (deck, numRequests) in Model.PendingTrades)
         {
-            var proposerId = deck.OwnerId == otherUser.Id
-                ? Model.SelfUser.Id
-                : otherUser.Id;
             <tr>
                 <td>@deck.Name</td>
-                <td>@otherUser.Name</td>
+                <td>@numRequests</td>
+                <td>
+                    <a asp-page="./Status" 
+                        asp-route-deckid="@deck.Id"
+                        class="btn btn-secondary mb-3" >
+                        Status </a>
+                </td>
+            </tr>
+        }
+
+        @foreach (var (deck, numRequests) in Model.ReceivedTrades)
+        {
+            <tr>
+                <td>@deck.Name</td>
+                <td>@numRequests</td>
                 <td>
                     <a asp-page="./Review" 
-                       asp-route-proposerid="@proposerId"
                        asp-route-deckid="@deck.Id"
                        class="btn btn-secondary mb-3">
-                       View
-                    </a>
+                       View </a>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+
+<h2>Possible Requests</h2>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th> Deck Name </th>
+            <th> Number of Requests </th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var deck in Model.PossibleRequests)
+        {
+            <tr>
+                <td> @deck.Name </td>
+                <td> @deck.Cards.Count() </td>
+                <td>
+                    <a asp-page="./Request" 
+                       asp-route-deckid="@deck.Id"
+                       class="btn btn-secondary mb-3">
+                       Request </a>
                 </td>
             </tr>
         }
@@ -83,37 +92,37 @@
 
 <h2>Suggestions</h2>
 
-<form method="post">
-    <table class="table">
-        <thead>
+<table class="table">
+    <thead>
+        <tr>
+            <th> @Html.DisplayNameForInnerType((Suggestion t) => t.Card) </th>
+            <th> Suggestion From </th>
+            <th> @Html.DisplayNameForInnerType((Suggestion t) => t.To) </th>
+            <th> @Html.DisplayNameForInnerType((Suggestion t) => t.Comment) </th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var suggestion in Model.Suggestions)
+        {
             <tr>
-                <th> @Html.DisplayNameForInnerType((Trade t) => t.Card) </th>
-                <th> Suggestion From </th>
-                <th> @Html.DisplayNameForInnerType((Trade t) => t.To) </th>
-                <th></th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var suggestion in Model.Suggestions)
-            {
-                <tr>
-                    <td>
-                        <a asp-page="/Cards/Details"
-                           asp-route-id="@suggestion.CardId">
-                           @suggestion.Card.Name
-                        </a>
-                    </td>
-                    <td>@suggestion.Proposer.Name</td>
-                    <td>@suggestion.To.Name</td>
-                    <td>
+                <td>
+                    <a asp-page="/Cards/Details"
+                        asp-route-id="@suggestion.CardId">
+                        @suggestion.Card.Name </a>
+                </td>
+                <td>@suggestion.Proposer.Name</td>
+                <td>@(suggestion.To?.Name ?? "")</td>
+                <td>@suggestion.Comment</td>
+                <td>
+                    <form method="POST">
                         <input type="submit"
-                               asp-page-handler="Ack"
-                               asp-route-suggestid="@suggestion.Id"
-                               class="btn btn-secondary mb-3"
-                               value="Acknowledge" />
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
-</form>
+                            asp-route-suggestid="@suggestion.Id"
+                            class="btn btn-secondary mb-3"
+                            value="Acknowledge" />
+                    </form>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>

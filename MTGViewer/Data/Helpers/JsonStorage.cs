@@ -1,8 +1,11 @@
+using System.Linq;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+
 using Newtonsoft.Json;
 using MTGViewer.Areas.Identity.Data;
 
@@ -14,8 +17,9 @@ namespace MTGViewer.Data.Json
     public class CardData
     {
         public IReadOnlyList<CardUser> Users { get; set; }
-        public IReadOnlyList<Card> Cards { get; set; }
+        public IReadOnlyList<UserRef> Refs { get; set; }
 
+        public IReadOnlyList<Card> Cards { get; set; }
         public IReadOnlyList<CardAmount> Amounts { get; set; }
 
         public IReadOnlyList<Shared> Shares { get; set; }
@@ -25,12 +29,19 @@ namespace MTGViewer.Data.Json
         public IReadOnlyList<Trade> Trades { get; set; }
 
 
-        public static async Task<CardData> CreateAsync(CardDbContext dbContext)
+        public static async Task<CardData> CreateAsync(
+            CardDbContext dbContext, UserManager<CardUser> userManager = null)
         {
             // TODO: add some includes possibly?
             return new CardData
             {
-                Users = await dbContext.Users
+                Users = userManager is null
+                    ? new List<CardUser>()
+                    : await userManager.Users
+                        .AsNoTracking()
+                        .ToListAsync(),
+
+                Refs = await dbContext.Users
                     .AsNoTracking()
                     .ToListAsync(),
 
@@ -71,9 +82,10 @@ namespace MTGViewer.Data.Json
     {
         private const string CARDS_JSON = "cards.json";
 
-        public static async Task WriteToJsonAsync(this CardDbContext dbContext, string directory = null)
+        public static async Task WriteToJsonAsync(
+            this CardDbContext dbContext, UserManager<CardUser> userManager, string directory = null)
         {
-            var data = await CardData.CreateAsync(dbContext);
+            var data = await CardData.CreateAsync(dbContext, userManager);
 
             directory ??= Directory.GetCurrentDirectory();
             var cardsPath = Path.Combine(directory, CARDS_JSON);
@@ -85,10 +97,11 @@ namespace MTGViewer.Data.Json
         }
 
 
-        public static async Task<bool> AddFromJsonAsync(this CardDbContext dbContext, string directory = null)
+        public static async Task<bool> AddFromJsonAsync(
+            this CardDbContext dbContext, UserManager<CardUser> userManager = null, string path = null)
         {
-            directory ??= Directory.GetCurrentDirectory();
-            var cardsPath = Path.Combine(directory, CARDS_JSON);
+            path ??= Path.Combine(Directory.GetCurrentDirectory(), CARDS_JSON);
+            var cardsPath = Path.ChangeExtension(path, ".json");
 
             try
             {
@@ -102,9 +115,14 @@ namespace MTGViewer.Data.Json
                     return false;
                 }
 
-                dbContext.Users.AddRange(data.Users);
-                dbContext.Cards.AddRange(data.Cards);
+                if (userManager is not null && (data.Users?.Any() ?? false))
+                {
+                    await Task.WhenAll( data.Users.Select(userManager.CreateAsync) );
+                }
 
+                dbContext.Users.AddRange(data.Refs);
+
+                dbContext.Cards.AddRange(data.Cards);
                 dbContext.Amounts.AddRange(data.Amounts);
 
                 dbContext.Shares.AddRange(data.Shares);

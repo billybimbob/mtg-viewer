@@ -12,6 +12,4 @@
 @* <h3>This should allow you to select an image</h3>
 <input type="file" accept="image/*"> *@
 
-@* <component type="typeof(Components.Counter)" render-mode="ServerPrerendered" /> *@
-
 @(await Html.RenderComponentAsync<Counter>(RenderMode.ServerPrerendered))

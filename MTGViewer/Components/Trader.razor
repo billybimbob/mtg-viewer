@@ -1,6 +1,6 @@
 @using MTGViewer.Data
 @using MTGViewer.Data.Concurrency
-@using MTGViewer.Areas.Identity.Data
+@using MTGViewer.Data.Internal
 
 @namespace MTGViewer.Components
 @implements IAsyncDisposable
@@ -43,11 +43,11 @@
         <div class="col">
             @if (Destination == null)
             {
-                <h2>@Proposer.Name</h2>
+                <h2>@_proposer.Name</h2>
             }
             else
             {
-                <h2>@Proposer.Name (@Destination.Name)</h2>
+                <h2>@_proposer.Name (@Destination.Name)</h2>
             }
             <table class="table">
                 <thead>
@@ -62,23 +62,22 @@
                     @foreach (var (cardAmount, amount) in GetMergedDestination())
                     {
                         var card = cardAmount.Card;
-                        var action = IsCounter ? "Take" : "Offer";
                         <tr>
                             <td class="fw-bold">@card.Name</td>
                             <td>
-                                @foreach (var cost in card.GetColorSymbols())
+                                @foreach (var cost in card.GetManaSymbols())
                                 {
-                                    <span class="m-1 ms ms-@cost.ToLower() ms-cost"></span>
+                                    <span class="m-1 ms ms-@cost ms-cost"></span>
                                 }
                             </td>
                             <td>@amount</td>
                             <td>
-                                <button title="@action @card.Name"
+                                <button title="Offer @card.Name"
                                         type="button"
                                         class="btn btn-outline-secondary border-0 rounded"
                                         disabled="@(amount == 0)"
                                         @onclick="() => FromProposer(cardAmount)">
-                                    @action Card
+                                    Offer Card
                                 </button>
                             </td>
                         </tr>
@@ -102,23 +101,22 @@
                     @foreach (var (cardAmount, amount) in GetMergedDeck())
                     {
                         var card = cardAmount.Card;
-                        var action = IsCounter ? "Offer" : "Take";
                         <tr>
                             <td class="fw-bold">@card.Name</td>
                             <td>
-                                @foreach (var cost in card.GetColorSymbols())
+                                @foreach (var cost in card.GetManaSymbols())
                                 {
-                                    <span class="m-1 ms ms-@cost.ToLower() ms-cost"></span>
+                                    <span class="m-1 ms ms-@cost ms-cost"></span>
                                 }
                             </td>
                             <td>@amount</td>
                             <td>
-                                <button title="@action @card.Name"
+                                <button title="Take @card.Name"
                                         type="button"
                                         class="btn btn-outline-secondary border-0 rounded"
                                         disabled="@(amount == 0 || Destination == null)"
                                         @onclick="() => FromReceiver(cardAmount)">
-                                    @action Card
+                                    Take Card
                                 </button>
                             </td>
                         </tr>
@@ -131,7 +129,7 @@
     <div class="row">
 
         <div class="col">
-            <h2>From @Proposer.Name</h2>
+            <h2>From @_proposer.Name</h2>
             <table class="table">
                 <thead>
                     <tr>
@@ -147,9 +145,9 @@
                         <tr>
                             <td class="fw-bold">@trade.Card.Name</td>
                             <td>
-                                @foreach (var cost in trade.Card.GetColorSymbols())
+                                @foreach (var cost in trade.Card.GetManaSymbols())
                                 {
-                                    <span class="m-1 ms ms-@cost.ToLower() ms-cost"></span>
+                                    <span class="m-1 ms ms-@cost ms-cost"></span>
                                 }
                             </td>
                             <td>@trade.From.Name</td>
@@ -188,9 +186,9 @@
                         <tr>
                             <td class="fw-bold">@trade.Card.Name</td>
                             <td>
-                                @foreach (var cost in trade.Card.GetColorSymbols())
+                                @foreach (var cost in trade.Card.GetManaSymbols())
                                 {
-                                    <span class="m-1 ms ms-@cost.ToLower() ms-cost"></span>
+                                    <span class="m-1 ms ms-@cost ms-cost"></span>
                                 }
                             </td>
                             <td>@trade.To.Name</td>
@@ -219,10 +217,7 @@
     public int DeckId { get; set; }
 
     [Parameter]
-    public CardUser Proposer { get; set; }
-
-    [Parameter]
-    public bool IsCounter { get; set; }
+    public string ProposerId { get; set; }
 
 
     private record TradeKey(Card Card, Deck To, Deck From) { }
@@ -234,8 +229,10 @@
     private SaveResult _result;
     private CardDbContext _dbContext;
 
-    private Deck _receiverDeck;
+    private UserRef _proposer;
     private IReadOnlyList<CardAmount> _proposerOptions;
+
+    private Deck _receiverDeck;
     private IDictionary<TradeKey, Trade> _currentOffers;
 
     private int _destinationId;
@@ -282,17 +279,19 @@
                 .ThenInclude(ca => ca.Card)
             .SingleAsync(l => l.Id == DeckId);
 
+        _proposer = await _dbContext.Users.FindAsync(ProposerId);
+
         _proposerOptions = await _dbContext.Amounts
             .Where(ca => !ca.IsRequest
                 && ca.Location is Deck
-                && (ca.Location as Deck).OwnerId == Proposer.Id)
+                && (ca.Location as Deck).OwnerId == _proposer.Id)
             .Include(ca => ca.Card)
             .Include(ca => ca.Location)
             .OrderBy(ca => ca.Card.Name)
             .ToListAsync();
 
         _currentOffers = await _dbContext.Trades
-            .Where(TradeFilter.Involves(Proposer.Id, DeckId))
+            .Where(TradeFilter.Involves(_proposer.Id, DeckId))
             .Include(t => t.Card)
             .Include(t => t.To)
             .Include(t => t.From)
@@ -303,7 +302,7 @@
             .Distinct()
             .ToDictionary(l => l.Id);
 
-        _dbContext.Attach(Proposer);
+        _dbContext.Attach(_proposer);
     }
 
 
@@ -555,20 +554,6 @@
             {
                 _dbContext.Remove(trade);
                 continue;
-            }
-
-            if (trade.ReceiverId == Proposer.Id)
-            {
-                trade.IsCounter = true;
-            }
-            else
-            {
-                trade.IsCounter = false;
-            }
-
-            if (IsCounter)
-            {
-                trade.IsCounter = !trade.IsCounter;
             }
         }
     }

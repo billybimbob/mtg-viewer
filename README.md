@@ -24,7 +24,12 @@ All the ef core and database commands are in reference to the `MTGViewer` projec
 
 ## Database
 
-The development database is sqlite, where the database is hosted on the local machine, and is not synchronized with the repo.
+The development database is sqlite, where the database is hosted on the local machine, and is not synchronized with the repo.The database is defined into two separate contexts:
+
+* `CardDbContext`: all card and deck data
+* `UserDbContext`: all user and account data
+
+With all of the ef commands listed below, the context must be specified, using the `-c` argument, and make sure to run all commands below in the project directory.
 
 ### Add Database Migrations and Schema
 
@@ -35,13 +40,15 @@ The mains steps are to create the database schema with ef core:
 1. Add/create the database migrations
 
     ```powershell
-    dotnet ef migrations add AddCards -p MTGViewer
+    dotnet ef migrations add AddUsers -p MTGViewer -c UserDbContext -o Migrations\Users
+    dotnet ef migrations add AddCards -p MTGViewer -c CardDbContext -o Migrations\Cards
     ```
 
 2. Apply/update the database migrations to the actual database
 
     ```powershell
-    dotnet ef database update -p MTGViewer
+    dotnet ef database update -p MTGViewer -c UserDbContext
+    dotnet ef database update -p MTGViewer -c CardDbContext
     ```
 
 ### Reset Database
@@ -51,13 +58,15 @@ If the schema is modified, the best approach is to just drop all of the previous
 1. Drop the database:
 
     ```powershell
-    dotnet ef database drop -p MTGViewer
+    dotnet ef database drop -p MTGViewer -c UserDbContext
+    dotnet ef database drop -p MTGViewer -c CardDbContext
     ```
 
 2. Delete the  files in the `Migrations` folder
 
     ```powershell
-    rm -r MTGViewer\Migrations
+    rm -r MTGViewer\Migrations\Users
+    rm -r MTGViewer\Migrations\Cards
     ```
 
 3. Repeat the migration and update steps [above](#add-database-migrations-and-schema)

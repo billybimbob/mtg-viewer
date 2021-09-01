@@ -31,13 +31,11 @@ namespace MTGViewer.Pages.Transfers
         [TempData]
         public string PostMessage { get; set; }
 
-        public CardUser Proposer { get; private set; }
+        public string ProposerId { get; private set; }
         public int DeckId { get; private set; }
 
         public IReadOnlyList<Deck> ProposeOptions { get; private set; }
 
-        public bool IsCounter =>
-            _userManager.GetUserId(User) != Proposer?.Id;
 
 
         public async Task<IActionResult> OnGetAsync(string proposerId, int? deckId)
@@ -49,10 +47,12 @@ namespace MTGViewer.Pages.Transfers
 
                 if (validDeck)
                 {
-                    Proposer = await _userManager.FindByIdAsync(proposerId);
+                    ProposerId = proposerId;
                     DeckId = id;
 
-                    if (Proposer == null)
+                    var proposer = await _dbContext.Users.FindAsync(proposerId);
+
+                    if (proposer == null)
                     {
                         return NotFound();
                     }
@@ -61,8 +61,8 @@ namespace MTGViewer.Pages.Transfers
                 }
             }
 
-            Proposer = await _userManager.GetUserAsync(User);
-            ProposeOptions = await GetProposeOptionsAsync(Proposer.Id);
+            ProposerId = _userManager.GetUserId(User);
+            ProposeOptions = await GetProposeOptionsAsync(ProposerId);
 
             if (!ProposeOptions.Any())
             {
@@ -76,22 +76,38 @@ namespace MTGViewer.Pages.Transfers
 
         private async Task<IReadOnlyList<Deck>> GetProposeOptionsAsync(string proposerId)
         {
-            var nonUserLocs = await _dbContext.Decks
+            var nonUserDecks = _dbContext.Decks
                 .Where(d => d.OwnerId != proposerId)
-                .Include(d => d.Owner)
-                .ToListAsync();
+                .Include(d => d.Owner);
 
-            var tradeLocs = await _dbContext.Trades
-                .Where(TradeFilter.Involves(proposerId))
-                .SelectMany(t => t.Decks)
-                .Distinct()
-                .ToListAsync();
+            var userTrades = _dbContext.Trades
+                .Where(TradeFilter.Involves(proposerId));
 
-            return nonUserLocs
-                .Except(tradeLocs)
-                .OrderBy(l => l.Owner.Name)
-                    .ThenBy(l => l.Name)
-                .ToList();
+            var exceptTo = nonUserDecks
+                .GroupJoin( userTrades,
+                    deck => deck.Id,
+                    trade => trade.ToId,
+                    (deck, trades) => new { deck, trades })
+                .SelectMany(
+                    dts => dts.trades.DefaultIfEmpty(),
+                    (dts, trade) => new { dts.deck, trade })
+                .Where(dt => dt.trade == default)
+                .Select(dt => dt.deck);
+
+            var exceptTrades = exceptTo
+                .GroupJoin( userTrades,
+                    deck => deck.Id,
+                    trade => trade.FromId,
+                    (deck, trades) => new { deck, trades })
+                .SelectMany(
+                    dts => dts.trades.DefaultIfEmpty(),
+                    (dts, trade) => new { dts.deck, trade })
+                .Where(dt => dt.trade == default)
+                .Select(dt => dt.deck);
+
+            return await exceptTrades
+                .AsNoTrackingWithIdentityResolution()
+                .ToListAsync();
         }
     }
 }

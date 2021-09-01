@@ -12,66 +12,67 @@ namespace MTGViewer.Data
     {
         // not sure about the sha length range
         [RegularExpression(@"^[a-fA-F0-9-]{1,40}")]
-        public string Id { get; set; }
+        public string Id { get; init; }
 
         [Required]
-        public string MultiverseId { get; set; }
+        public string MultiverseId { get; init; }
 
         [Required]
-        public string Name { get; set; }
+        public string Name { get; init; }
 
-        public ICollection<Name> Names { get; init; } = new HashSet<Name>();
+        public ICollection<Name> Names { get; init; } = new List<Name>();
 
-        public string Layout { get; set; }
+        public string Layout { get; init; }
 
         [Display(Name = "Mana")]
-        public string ManaCost { get; set; }
+        public string ManaCost { get; init; }
 
         [Display(Name = "Converted Mana")]
-        public int? Cmc { get; set; }
+        public int? Cmc { get; init; }
 
-        public ICollection<Color> Colors { get; init; } = new HashSet<Color>();
+        public ICollection<Color> Colors { get; init; } = new List<Color>();
 
-        public ICollection<SuperType> SuperTypes { get; init; } = new HashSet<SuperType>();
+        public ICollection<SuperType> SuperTypes { get; init; } = new List<SuperType>();
 
-        public ICollection<Type> Types { get; init; } = new HashSet<Type>();
+        public ICollection<Type> Types { get; init; } = new List<Type>();
 
-        public ICollection<SubType> SubTypes { get; init; } = new HashSet<SubType>();
+        public ICollection<SubType> SubTypes { get; init; } = new List<SubType>();
 
-        public string Rarity { get; set; }
+        public string Rarity { get; init; }
 
         [Display(Name = "Set")]
-        public string SetName { get; set; }
+        public string SetName { get; init; }
 
-        public string Artist { get; set; }
+        public string Artist { get; init; }
 
-        public string Text { get; set; }
+        public string Text { get; init; }
 
-        public string Flavor { get; set; }
+        public string Flavor { get; init; }
 
-        public string Power { get; set; }
+        public string Power { get; init; }
 
-        public string Toughness { get; set; }
+        public string Toughness { get; init; }
 
-        public string Loyalty { get; set; }
+        public string Loyalty { get; init; }
 
         [Display(Name = "Image")]
         [UrlAttribute]
-        public string ImageUrl { get; set; }
+        public string ImageUrl { get; init; }
 
         [JsonIgnore]
-        public ICollection<CardAmount> Amounts { get; } = new HashSet<CardAmount>();
+        public ICollection<CardAmount> Amounts { get; } = new List<CardAmount>();
 
-        public IReadOnlyList<string> GetColorSymbols()
+
+        public IReadOnlyList<string> GetManaSymbols()
         {
             if (string.IsNullOrEmpty(ManaCost))
             {
-                return Enumerable.Empty<string>().ToList();
+                return new List<string>();
             }
 
             var matches = Regex.Matches(ManaCost, @"{([^}]+)}");
             return matches
-                .Select(m => m.Groups[1].Value.Replace("/", ""))
+                .Select(m => m.Groups[1].Value.Replace("/", "").ToLower())
                 .ToList();
         }
 

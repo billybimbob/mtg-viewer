@@ -1,33 +1,96 @@
 @page
 @model MTGViewer.Pages.Decks.DeleteModel
+@using MTGViewer.Data
 
 @{
     ViewData["Title"] = "Delete Deck";
 }
 
-<h1>Delete</h1>
+<h1>Delete @Model.Deck.Name</h1>
 
-<h3>Are you sure you want to delete this?</h3>
+<h3>Are you sure you want to delete this deck?</h3>
 
-<div>
-    <h4>@Model.Deck.Name</h4>
-    <hr/>
+<table class="table mt-2">
+    <thead>
+        <tr>
+            <th>Card Name</th>
+            <th>Mana Cost</th>
+            <th>Set</th>
+            <th>Deck Amount</th>
+            <th>Requests</th>
+        </tr>
+    </thead>
 
-    <dl class="row">
-    @foreach(var card in Model.Deck.Cards.OrderBy(c => c.Card.Name))
-    {
-        <dt class="col-sm-3">@card.Card.Name</dt>
-        <dd class="col-sm-1">@card.Amount</dd>
-    }
-    </dl>
+    <tbody>
+        @foreach (var pair in Model.Cards)
+        {
+            <tr>
+                <td>
+                    <a asp-page="/Cards/Details"
+                       asp-route-id="@pair.CardId"
+                       class="fw-bold">
+                       @pair.Card.Name </a>
+                </td>
+                <td>
+                    @foreach (var cost in pair.Card.GetManaSymbols())
+                    {
+                        <span class="m-1 ms ms-@cost ms-cost"></span>
+                    }
+                </td>
 
-    <form method="post">
-        <!-- js hack -->
-        <a href="javascript:history.go(-1)"
-           class="btn btn-secondary">
-           Back </a>
+                <td>@pair.Card.SetName</td>
+                <td>@(pair.Actual?.Amount ?? 0)</td>
+                <td>@(pair.Request?.Amount ?? 0)</td>
+            </tr>
+        }
+    </tbody>
+</table>
 
-        <input type="hidden" asp-for="Deck.Id" />
-        <input type="submit" value="Delete" class="btn btn-danger" />
-    </form>
-</div>
+
+@if (Model.Trades.Any())
+{
+    <div class="my-3">
+        <h3>The following trades will also be deleted</h3>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th> @Html.DisplayNameForInnerType((Trade t) => t.Proposer) </th>
+                    <th> @Html.DisplayNameForInnerType((Trade t) => t.Receiver) </th>
+                    <th> @Html.DisplayNameForInnerType((Trade t) => t.To) </th>
+                    <th> @Html.DisplayNameForInnerType((Trade t) => t.From) </th>
+                    <th> @Html.DisplayNameForInnerType((Trade t) => t.Card) </th>
+                    <th> @Html.DisplayNameForInnerType((Card c) => c.ManaCost) </th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach(var trade in Model.Trades)
+                {
+                    <tr>
+                        <td> @trade.Proposer.Name </td>
+                        <td> @trade.Receiver.Name </td>
+                        <td> @trade.To.Name </td>
+                        <td> @trade.From.Name </td>
+                        <td> @trade.Card.Name </td>
+                        <td>
+                            @foreach (var cost in trade.Card.GetManaSymbols())
+                            {
+                                <span class="m-1 ms ms-@cost ms-cost"></span>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+
+<form method="POST">
+    <!-- js hack -->
+    <a href="javascript:history.go(-1)"
+        class="btn btn-secondary">
+        Back </a>
+
+    <input type="hidden" asp-for="Deck.Id" />
+    <input type="submit" value="Delete" class="btn btn-danger" />
+</form>

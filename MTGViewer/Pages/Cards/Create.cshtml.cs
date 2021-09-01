@@ -53,6 +53,11 @@ namespace MTGViewer.Pages.Cards
         public IReadOnlyList<AmountModel> Amounts { get; set; }
 
 
+        public void OnGet()
+        {
+        }
+
+
         // To protect from overposting attacks, see https://aka.ms/RazorPagesCRUD
         public async Task OnPostCardAsync()
         {
@@ -74,7 +79,7 @@ namespace MTGViewer.Pages.Cards
 
         public async Task<IActionResult> OnPostAmountsAsync()
         {
-            var newAmounts = await GetNewAmountsAsync();
+            var newAmounts = await FilterNewAmountsAsync(Amounts);
 
             if (!newAmounts.Any())
             {
@@ -89,13 +94,13 @@ namespace MTGViewer.Pages.Cards
         }
 
 
-        private async Task<IEnumerable<AmountModel>> GetNewAmountsAsync()
+        private async Task<IEnumerable<AmountModel>> FilterNewAmountsAsync(IEnumerable<AmountModel> amounts)
         {
-            var picked = Amounts.Where(a => a.Amount > 0);
+            var picked = amounts.Where(a => a.Amount > 0);
 
             if (!picked.Any())
             {
-                return Enumerable.Empty<AmountModel>();
+                return picked;
             }
 
             var pickedIds = picked.Select(a => a.Id).ToArray();

@@ -1,9 +1,11 @@
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.RazorPages;
-using Microsoft.EntityFrameworkCore;
-
 using System.Threading.Tasks;
 
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+
+using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
 
 
@@ -11,14 +13,18 @@ namespace MTGViewer.Pages.Cards
 {
     public class DetailsModel : PageModel
     {
-        private readonly CardDbContext _context;
+        private readonly CardDbContext _dbContext;
+        private readonly SignInManager<CardUser> _signInManager;
 
-        public DetailsModel(CardDbContext context)
+        public DetailsModel(SignInManager<CardUser> signInManager, CardDbContext dbContext)
         {
-            _context = context;
+            _signInManager = signInManager;
+            _dbContext = dbContext;
         }
 
+        public bool IsSignedIn { get; private set; }
         public Card Card { get; private set; }
+
 
         public async Task<IActionResult> OnGetAsync(string id)
         {
@@ -27,9 +33,16 @@ namespace MTGViewer.Pages.Cards
                 return NotFound();
             }
 
-            Card = await _context.Cards.FindAsync(id);
+            IsSignedIn = _signInManager.IsSignedIn(User);
 
-            if (Card is null)
+            Card = await _dbContext.Cards
+                .Include(c => c.SuperTypes)
+                .Include(c => c.Types)
+                .Include(c => c.SubTypes)
+                .AsSplitQuery()
+                .SingleOrDefaultAsync(c => c.Id == id);
+
+            if (Card == default)
             {
                 return NotFound();
             }

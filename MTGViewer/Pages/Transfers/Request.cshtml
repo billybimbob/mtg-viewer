@@ -1,0 +1,64 @@
+@page
+@model MTGViewer.Pages.Transfers.RequestModel
+@using MTGViewer.Data
+
+@{
+    ViewData["Title"] = $"{Model.Deck.Name} Requests";
+}
+
+
+<h1>Request for @Model.Deck.Name</h1>
+<hr />
+
+@if (Model.TargetsExist)
+{
+    <div class="alert alert-secondary" role="alert">
+        <p>Are you sure you send requests for the listed cards below?</p>
+        <p>While a request is active, you cannot edit the deck @Model.Deck.Name</p>
+
+        <form method="POST">
+            <input type="hidden" asp-for="Deck.Id" name="deckId" />
+
+            <input type="submit" 
+                class="btn btn-secondary mb-3"
+                value="Confirm"/>
+        </form>
+    </div>
+}
+else
+{
+    <div class="alert alert-warning" role="alert">
+        There are no possible decks to requests to
+    </div>
+}
+
+<h2>Cards to Request</h2>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th> @Html.DisplayNameForInnerType((CardAmount ca) => ca.Card) </th>
+            <th> @Html.DisplayNameForInnerType((Card c) => c.ManaCost) </th>
+            <th> @Html.DisplayNameForInnerType((CardAmount ca) => ca.Amount) </th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var request in Model.Requests)
+        {
+            <tr>
+                <td>
+                    <a asp-page="/Cards/Details"
+                        asp-route-id="@request.CardId">
+                        @request.Card.Name </a>
+                </td>
+                <td>
+                    @foreach (var cost in request.Card.GetManaSymbols())
+                    {
+                        <span class="m-1 ms ms-@cost ms-cost"></span>
+                    }
+                </td>
+                <td> @request.Amount </td>
+            </tr>
+        } 
+    </tbody>
+</table>

@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Threading.Tasks;
 
 using Microsoft.AspNetCore.Mvc;
@@ -17,29 +18,38 @@ namespace MTGViewer.Pages.Decks
     public class BuilderModel : PageModel
     {
         private readonly UserManager<CardUser> _userManager;
-        private readonly CardDbContext _context;
+        private readonly CardDbContext _dbContext;
 
-        public BuilderModel(UserManager<CardUser> userManager, CardDbContext context)
+        public BuilderModel(UserManager<CardUser> userManager, CardDbContext dbContext)
         {
             _userManager = userManager;
-            _context = context;
+            _dbContext = dbContext;
         }
 
 
-        public CardUser CardUser { get; private set; }
+        public string UserId { get; private set; }
         public int DeckId { get; private set; }
 
 
         public async Task<IActionResult> OnGetAsync(int? id)
         {
-            CardUser = await _userManager.GetUserAsync(User);
+            UserId = _userManager.GetUserId(User);
 
             if (id is int deckId)
             {
-                var isOwner = await _context.Decks
-                    .AnyAsync(l => l.Id == deckId && l.Owner == CardUser);
+                var isOwner = await _dbContext.Decks
+                    .AnyAsync(l => l.Id == deckId && l.Owner.Id == UserId);
 
                 if (!isOwner)
+                {
+                    return NotFound();
+                }
+
+                var currentlyRequested = await _dbContext.Trades
+                    .Where(t => t.ToId == id && t.ProposerId == UserId)
+                    .AnyAsync();
+
+                if (currentlyRequested)
                 {
                     return NotFound();
                 }

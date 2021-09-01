@@ -1,30 +1,23 @@
-@page
+@page "/Cards/Details/{id}"
 @model MTGViewer.Pages.Cards.DetailsModel
 
 @{
     ViewData["Title"] = "Details";
 }
 
-<h1>Details</h1>
+<h1>@Model.Card.Name</h1>
 
 <div>
-    <h4>Card</h4>
     <hr />
     <dl class="row">
-        <dt class="col-sm-2">
-            @Html.DisplayNameFor(m => m.Card.Name)
-        </dt>
-        <dd class="col-sm-10">
-            @Html.DisplayFor(m => m.Card.Name)
-        </dd>
-
         <dt class="col-sm-2">
             @Html.DisplayNameFor(m => m.Card.ManaCost)
         </dt>
         <dd class="col-sm-10">
-        @foreach (var cost in Model.Card.GetColorSymbols()) {
-            <i class="ms ms-@cost.ToLower() ms-cost"></i>
-        }
+            @foreach (var cost in Model.Card.GetManaSymbols())
+            {
+                <i class="ms ms-@cost ms-cost"></i>
+            }
         </dd>
 
         <dt class="col-sm-2">
@@ -46,6 +39,27 @@
         </dt>
         <dd class="col-sm-10">
             @Html.DisplayFor(m => m.Card.SetName)
+        </dd>
+
+        <dt class="col-sm-2">
+            @Html.DisplayNameFor(m => m.Card.SuperTypes)
+        </dt>
+        <dd class="col-sm-10">
+            @(string.Join(" ", Model.Card.SuperTypes.Select(st => st.Name)))
+        </dd>
+
+        <dt class="col-sm-2">
+            @Html.DisplayNameFor(m => m.Card.Types)
+        </dt>
+        <dd class="col-sm-10">
+            @(string.Join(" ", Model.Card.Types.Select(st => st.Name)))
+        </dd>
+
+        <dt class="col-sm-2">
+            @Html.DisplayNameFor(m => m.Card.SubTypes)
+        </dt>
+        <dd class="col-sm-10">
+            @(string.Join(" ", Model.Card.SubTypes.Select(st => st.Name)))
         </dd>
 
         <dt class="col-sm-2">
@@ -109,8 +123,11 @@
        class="btn btn-secondary mb-3">
        Edit </a-->
 
-    <a asp-page="./Delete"
-       asp-route-id="@Model.Card.Id"
-       class="btn btn-danger mb-3">
-       Delete </a>
+    @if (Model.IsSignedIn)
+    {
+        <a asp-page="./Delete"
+           asp-route-id="@Model.Card.Id"
+           class="btn btn-danger mb-3">
+           Delete </a>
+    }
 </div>

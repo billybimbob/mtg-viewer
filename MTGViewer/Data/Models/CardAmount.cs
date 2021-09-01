@@ -15,15 +15,16 @@ namespace MTGViewer.Data
         nameof(IsRequest), IsUnique = true)]
     public class CardAmount : Concurrent
     {
-        public int Id { get; set; }
+        [JsonProperty]
+        public int Id { get; private set; }
 
         [JsonIgnore]
-        public Card Card { get; set; } = null!;
-        public string CardId { get; set; } = null!;
+        public Card Card { get; init; } = null!;
+        public string CardId { get; init; } = null!;
 
         [JsonIgnore]
         public Location Location { get; set; } = null!;
-        public int LocationId { get; set; }
+        public int LocationId { get; init; }
 
         public bool IsRequest { get; set; }
 

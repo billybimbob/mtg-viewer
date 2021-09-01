@@ -30,6 +30,11 @@ namespace MTGViewer.Data.Triggers
 
             var trade = trigContext.Entity;
 
+            if ((trade as Transfer).ToId is null)
+            {
+                throw new DbUpdateException("Trade cannot have 'To' property missing");
+            }
+
             var fromAmount = await _dbContext.Amounts
                 .AsNoTracking()
                 .SingleOrDefaultAsync(ca =>

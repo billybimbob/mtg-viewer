@@ -20,25 +20,28 @@ namespace MTGViewer.Tests.Services
         private const string TEST_ID = "386616";
         private const string TEST_NAME = "Narset, Enlightened Master";
 
+        private readonly MTGFetchService _fetch;
 
-        [Fact]
+        public MTGFetchTests()
+        {
+            _fetch = TestFactory.NoCacheFetchService();
+        }
+
+
+        [Fact(Skip = "Calls external api")]
         public async Task Search_NoParams_ReturnsEmpty()
         {
-            var fetch = TestHelpers.NoCacheFetchService();
-
-            fetch.Reset();
-            var cards = await fetch.SearchAsync();
+            _fetch.Reset();
+            var cards = await _fetch.SearchAsync();
 
             Assert.Empty(cards);
         }
 
 
-        [Fact]
+        [Fact(Skip = "Calls external api")]
         public async Task Search_NameParam_ReturnsSameName()
         {
-            var fetch = TestHelpers.NoCacheFetchService();
-
-            var cards = await fetch
+            var cards = await _fetch
                 .Where(c => c.Name, TEST_NAME)
                 .SearchAsync();
 
@@ -48,85 +51,76 @@ namespace MTGViewer.Tests.Services
         }
 
 
-        [Fact]
+        [Fact(Skip = "Calls external api")]
         public async Task Find_Id_ReturnsCard()
         {
-            var fetch = TestHelpers.NoCacheFetchService();
-
-            var card = await fetch.FindAsync(TEST_ID);
+            var card = await _fetch.FindAsync(TEST_ID);
 
             Assert.Equal(TEST_NAME, card.Name);
         }
 
 
-        [Fact]
+        [Fact(Skip = "Calls external api")]
         public async Task Find_NoId_ReturnsNull()
         {
-            var fetch = TestHelpers.NoCacheFetchService();
-
-            var card = await fetch.FindAsync(null);
+            var card = await _fetch.FindAsync(null);
 
             Assert.Null(card);
         }
 
 
-        [Fact]
+        [Fact(Skip = "Calls external api")]
         public async Task Find_Cache_ReturnsCard()
         {
-            var noCacheFetch = TestHelpers.NoCacheFetchService();
-            var testCard = await noCacheFetch.FindAsync(TEST_ID);
-
+            var testCard = await _fetch.FindAsync(TEST_ID);
             var provider = new MtgServiceProvider();
             var cache = new DataCacheService(Mock.Of<IConfiguration>(), Mock.Of<ILogger<DataCacheService>>());
 
-            var fetch = new MTGFetchService(provider, cache, Mock.Of<ILogger<MTGFetchService>>());
+            var cacheFetch = new MTGFetchService(provider, cache, Mock.Of<ILogger<MTGFetchService>>());
             cache[testCard.MultiverseId] = testCard;
 
-            var card = await fetch.FindAsync(TEST_ID);
+            var card = await cacheFetch.FindAsync(TEST_ID);
 
             Assert.Equal(TEST_ID, testCard.MultiverseId);
             Assert.Equal(TEST_NAME, card.Name);
         }
 
 
-        [Fact]
+        [Fact(Skip = "Calls external api")]
         public async Task Match_Id_ReturnsCard()
         {
-            var fetch = TestHelpers.NoCacheFetchService();
             var search = new Card
             {
                 MultiverseId = TEST_ID
             };
 
-            var cards = await fetch.MatchAsync(search);
+            var cards = await _fetch.MatchAsync(search);
             var cardNames = cards.Select(c => c.Name);
 
             Assert.Contains(TEST_NAME, cardNames);
         }
 
 
-        [Fact]
+        [Fact(Skip = "Calls external api")]
         public async Task Match_Empty_ReturnsEmpty()
         {
-            var fetch = TestHelpers.NoCacheFetchService();
             var search = new Card();
 
-            var cards = await fetch.MatchAsync(search);
+            var cards = await _fetch.MatchAsync(search);
 
             Assert.Empty(cards);
         }
 
 
-        [Fact]
+        [Fact(Skip = "Calls external api")]
         public async Task Match_OnlyName_ReturnsCard()
         {
-            var fetch = TestHelpers.NoCacheFetchService();
             var search = new Card
             {
                 Name = TEST_NAME
             };
 
-            var cards = await fetch.MatchAsync(search);
+            var cards = await _fetch.MatchAsync(search);
             var cardNames = cards.Select(c => c.Name);
 
             Assert.Contains(TEST_NAME, cardNames);

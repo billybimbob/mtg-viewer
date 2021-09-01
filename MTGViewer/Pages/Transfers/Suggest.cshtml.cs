@@ -18,9 +18,6 @@ namespace MTGViewer.Pages.Transfers
     [Authorize]
     public class SuggestModel : PageModel
     {
-        public record DeckColor(Deck Deck, IEnumerable<string> Colors) { }
-
-
         private readonly CardDbContext _dbContext;
         private readonly UserManager<CardUser> _userManager;
 
@@ -31,16 +28,12 @@ namespace MTGViewer.Pages.Transfers
         }
 
 
-
         [TempData]
         public string PostMessage { get; set; }
 
         public Card Card { get; private set; }
 
-        public IReadOnlyList<CardUser> Users { get; private set; }
-
-        public IReadOnlyList<DeckColor> DeckColors { get; private set; }
-
+        public IReadOnlyList<UserRef> Users { get; private set; }
 
 
         public async Task<IActionResult> OnGetAsync(string cardId)
@@ -52,17 +45,46 @@ namespace MTGViewer.Pages.Transfers
                 return NotFound();
             }
 
-            var srcId = _userManager.GetUserId(User);
-
             Card = card;
-
-            Users = await _userManager.Users
-                .Where(u => u.Id != srcId)
-                .AsNoTracking()
-                .ToListAsync();
+            Users = await GetPossibleUsersAsync(cardId);
 
             return Page();
         }
+
+
+        public async Task<IReadOnlyList<UserRef>> GetPossibleUsersAsync(string cardId)
+        {
+            var proposerId = _userManager.GetUserId(User);
+
+            var nonProposers = _dbContext.Users
+                .Where(u => u.Id != proposerId);
+
+            var cardSuggests = _dbContext.Suggestions
+                .Where(s => s.CardId == cardId && s.ToId == default);
+
+            var notSuggested = nonProposers
+                .GroupJoin( cardSuggests,
+                    user => user.Id,
+                    suggest => suggest.ReceiverId,
+                    (user, suggests) =>
+                        new { user, suggests })
+                .SelectMany(
+                    uss => uss.suggests.DefaultIfEmpty(),
+                    (uss, suggest) =>
+                        new { uss.user, suggest })
+                .Where(us => us.suggest == default)
+                .Select(us => us.user);
+
+            return await notSuggested
+                .AsNoTracking()
+                .ToListAsync();
+        }
+
+
+
+        public UserRef Proposer { get; private set; }
+        public UserRef Receiver { get; private set; }
+        public IReadOnlyList<Deck> Decks { get; private set; }
 
 
         public async Task<IActionResult> OnPostUserAsync(string cardId, string userId)
@@ -74,105 +96,85 @@ namespace MTGViewer.Pages.Transfers
                 return NotFound();
             }
 
-            var user = await _userManager.FindByIdAsync(userId);
+            var proposer = await _dbContext.Users.FindAsync( _userManager.GetUserId(User) );
+            var receiver = await _dbContext.Users.FindAsync(userId);
 
-            if (user is null)
+            if (receiver is null)
             {
                 return NotFound();
             }
 
-            var decks = await GetDeckOptionsAsync(card, user);
+            var decks = await GetValidDecksAsync(card, receiver);
 
-            var colors = decks
-                .Select(d => d
-                    .GetColors()
-                    .Select(c => Color.COLORS[ c.Name.ToLower() ]));
+            Proposer = proposer;
+            Receiver = receiver;
 
             Card = card;
-
-            DeckColors = decks
-                .Zip(colors, (deck, color) => new DeckColor(deck, color))
-                .ToList();
+            Decks = decks;
 
             return Page();
         }
 
 
-        private async Task<IEnumerable<Deck>> GetDeckOptionsAsync(Card card, CardUser user)
+        private async Task<IReadOnlyList<Deck>> GetValidDecksAsync(Card card, UserRef user)
         {
-            var userDecks = await _dbContext.Decks
+            var userDecks = _dbContext.Decks
                 .Where(l => l.OwnerId == user.Id)
                 .Include(d => d.Cards)
-                    .ThenInclude(ca => ca.Card)
-                        .ThenInclude(c => c.Colors)
-                .AsSplitQuery()
-                .ToListAsync();
+                    .ThenInclude(ca => ca.Card);
 
-            if (!userDecks.Any())
-            {
-                return Enumerable.Empty<Deck>();
-            }
+            var userCardAmounts = _dbContext.Amounts
+                .Where(ca => ca.CardId == card.Id
+                    && ca.Location is Deck
+                    && (ca.Location as Deck).OwnerId == user.Id);
 
-            // include both request and non-request amounts
-            var decksWithCard = await _dbContext.Amounts
-                .Where(ca => ca.CardId == card.Id && ca.Location is Deck)
-                .Select(ca => ca.Location as Deck)
-                .Where(d => d.OwnerId == user.Id)
-                .Distinct()
-                .ToListAsync();
+            var decksWithoutCard = userDecks
+                .GroupJoin( userCardAmounts,
+                    deck => deck.Id,
+                    amount => amount.LocationId,
+                    (deck, amounts) => new { deck, amounts })
+                .SelectMany(
+                    das => das.amounts.DefaultIfEmpty(),
+                    (das, amount) => new { das.deck, amount })
+                .Where(da => da.amount == default)
+                .Select(da => da.deck);
 
-            var transfersWithCard = await _dbContext.Transfers
+
+            var transfersWithCard = _dbContext.Transfers
                 .Where(t => t.CardId == card.Id
-                    && (t.ProposerId == user.Id || t.ReceiverId == user.Id))
-                .Select(t => t.To)
-                .Distinct()
+                    && (t.ProposerId == user.Id || t.ReceiverId == user.Id));
+
+            var validDecks = decksWithoutCard
+                .GroupJoin( transfersWithCard,
+                    deck => deck.Id,
+                    transfer => transfer.ToId,
+                    (deck, transfers) => new { deck, transfers })
+                .SelectMany(
+                    dts => dts.transfers.DefaultIfEmpty(),
+                    (dts, transfer) => new { dts.deck, transfer })
+                .Where(dt => dt.transfer == default)
+                .Select(dt => dt.deck);
+
+
+            return await validDecks
+                .AsNoTrackingWithIdentityResolution()
                 .ToListAsync();
-
-            var invalidDecks = decksWithCard
-                .Concat(transfersWithCard)
-                .Distinct();
-
-            return userDecks.Except(invalidDecks);
         }
 
 
-        public async Task<IActionResult> OnPostDeckAsync(string cardId, int deckId)
+
+        [BindProperty]
+        public Suggestion Suggestion { get; set; }
+
+
+        public async Task<IActionResult> OnPostSuggestAsync()
         {
-            var card = await _dbContext.Cards.FindAsync(cardId);
+            _dbContext.Attach(Suggestion);
 
-            if (card is null)
-            {
-                return NotFound();
-            }
-
-            if (deckId == default)
-            {
-                DeckColors = new List<DeckColor>();
-                return Page();
-            }
-
-            var toDeck = await GetSuggestionDeckAsync(card, deckId);
-
-            if (toDeck is null)
+            if (!await IsValidSuggestionAsync(Suggestion))
             {
                 return RedirectToPage("./Index");
             }
-
-            await _dbContext.Entry(toDeck)
-                .Reference(d => d.Owner)
-                .LoadAsync();
-
-            var fromUser = await _userManager.GetUserAsync(User);
-
-            var suggestion = new Suggestion
-            {
-                Card = card,
-                Proposer = fromUser,
-                Receiver = toDeck.Owner,
-                To = toDeck
-            };
-
-            _dbContext.Attach(suggestion);
 
             try
             {
@@ -188,41 +190,51 @@ namespace MTGViewer.Pages.Transfers
         }
 
 
-        private async Task<Deck> GetSuggestionDeckAsync(Card card, int deckId)
+        private async Task<bool> IsValidSuggestionAsync(Suggestion suggestion)
         {
-            var deck = await _dbContext.Decks
-                .Include(d => d.Cards)
-                .Include(d => d.Owner)
-                .SingleOrDefaultAsync(d => d.Id == deckId);
-
-            if (deck is null)
-            {
-                PostMessage = "Suggestion target is not valid";
-                return null;
-            }
-
             // include both suggestions and trades
             var suggestPrior = await _dbContext.Suggestions
-                .AnyAsync(t => 
-                    t.ReceiverId == deck.OwnerId && t.CardId == card.Id);
+                .AnyAsync(t =>
+                    t.ReceiverId == suggestion.ReceiverId
+                        && t.CardId == suggestion.CardId
+                        && t.ToId == suggestion.ToId);
 
             if (suggestPrior)
             {
                 PostMessage = "Suggestion is redundant";
-                return null;
+                return false;
             }
 
-            var suggestInDeck = deck.Cards
+            if (suggestion.ToId is null)
+            {
+                return true;
+            }
+
+            await _dbContext.Entry(suggestion)
+                .Reference(s => s.To)
+                .LoadAsync();
+
+            if (suggestion.ReceiverId != suggestion.To?.OwnerId)
+            {
+                PostMessage = "Suggestion target is not valid";
+                return false;
+            }
+
+            await _dbContext.Entry(suggestion.To)
+                .Collection(t => t.Cards)
+                .LoadAsync();
+
+            var suggestInDeck = suggestion.To.Cards
                 .Select(c => c.CardId)
-                .Contains(card.Id);
+                .Contains(suggestion.CardId);
 
             if (suggestInDeck)
             {
                 PostMessage = "Suggestion is already in deck";
-                return null;
-            }            
+                return false;
+            }
 
-            return deck;
+            return true;
         }
     }
 

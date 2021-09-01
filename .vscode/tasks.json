@@ -37,6 +37,84 @@
                 "/consoleloggerparameters:NoSummary"
             ],
             "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "test",
+            "command": "dotnet",
+            "type": "process",
+            "args": [ "test" ],
+            "problemMatcher": "$msCompile",
+            "group": {
+                "kind": "test",
+                "isDefault": true
+            }
+        },
+        {
+            "label": "migrate",
+            "command": "dotnet",
+            "type": "process",
+            "args": [
+                "ef",
+                "migrations",
+                "add",
+                "${input:migration}",
+                "--project", "MTGViewer",
+                "--context", "${input:context}"
+            ],
+        },
+        {
+            "label": "remove",
+            "command": "dotnet",
+            "type": "process",
+            "args": [
+                "ef",
+                "migrations",
+                "remove",
+                "--project", "MTGViewer",
+                "--context", "${input:context}"
+            ]
+        },
+        {
+            "label": "update",
+            "command": "dotnet",
+            "type": "process",
+            "args": [
+                "ef",
+                "database",
+                "update",
+                "--project", "MTGViewer",
+                "--context", "${input:context}"
+            ]
+        },
+        {
+            "label": "drop",
+            "command": "dotnet",
+            "type": "process",
+            "args": [
+                "ef",
+                "database",
+                "drop",
+                "--project", "MTGViewer",
+                "--context", "${input:context}"
+            ]
+        }
+    ],
+    "inputs": [
+        {
+            "id": "context",
+            "type": "pickString",
+            "description": "Which database context do you want to modify?",
+            "options": [
+                "CardDbContext",
+                "UserDbContext"
+            ],
+            "default": "CardDbContext"
+        },
+        {
+            "id": "migration",
+            "type": "promptString",
+            "description": "Enter the name of the migration",
+            "default": "NewMigration"
         }
     ]
 }

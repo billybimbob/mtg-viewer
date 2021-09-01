@@ -1,4 +1,6 @@
+using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -9,11 +11,9 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 using MTGViewer.Areas.Identity.Data;
-
-using System.Threading.Tasks;
-
 using MTGViewer.Data;
 
+#nullable enable
 
 namespace MTGViewer.Pages.Decks
 {
@@ -33,70 +33,126 @@ namespace MTGViewer.Pages.Decks
         }
 
 
-        public Deck Deck { get; private set; }
+        [TempData]
+        public string? PostMesssage { get; set; }
+
+        public Deck? Deck { get; private set; }
+        public IReadOnlyList<AmountPair>? Cards { get; private set; }
+        public IReadOnlyList<Trade>? Trades { get; private set; }
 
 
         public async Task<IActionResult> OnGetAsync(int id)
         {
-            var user = await _userManager.GetUserAsync(User);
+            var userId = _userManager.GetUserId(User);
 
-            Deck = await _dbContext.Decks
-                .Include(l => l.Cards)
+            var deck = await _dbContext.Decks
+                .Include(l => l.Cards
+                    .OrderBy(ca => ca.Card.Name))
                     .ThenInclude(ca => ca.Card)
-                .AsNoTracking()
-                .FirstOrDefaultAsync(l => l.Id == id && l.OwnerId == user.Id);
+                .FirstOrDefaultAsync(l =>
+                    l.Id == id && l.OwnerId == userId);
 
-            if (Deck is null)
+            if (deck == default)
             {
                 return NotFound();
             }
 
+            var deckTrades = await _dbContext.Trades
+                .Where(t => t.ToId == id || t.FromId == id)
+                .Include(t => t.Card)
+                .Include(t => t.Proposer)
+                .Include(t => t.Receiver)
+                .Include(t => t.To)
+                .Include(t => t.From)
+                .ToListAsync();
+
+            Deck = deck;
+            Cards = deck.Cards
+                .GroupBy(ca => ca.CardId)
+                .Select(g => new AmountPair(g))
+                .ToList();
+
+            Trades = deckTrades;
+
             return Page();
         }
 
+
+
         public async Task<IActionResult> OnPostAsync(int id)
         {
-            Deck = await _dbContext.Decks.FindAsync(id);
+            var userId = _userManager.GetUserId(User);
 
-            if (Deck is null)
+            var deck = await _dbContext.Decks
+                .FirstOrDefaultAsync(l =>
+                    l.Id == id && l.OwnerId == userId);
+
+            if (deck == default)
             {
                 return RedirectToPage("./Index");
             }
 
+            var returned = await ReturnCardsAsync(deck);
+
+            if (!returned)
+            {
+                PostMesssage = "Failed to return all cards";
+                return RedirectToPage("./Index");
+            }
+
+            _dbContext.Amounts.RemoveRange(deck.Cards);
+            _dbContext.Decks.Remove(deck);
+
+            try
+            {
+                await _dbContext.SaveChangesAsync();
+                PostMesssage = $"Successfully deleted {deck.Name}";
+
+            }
+            catch (DbUpdateException)
+            {
+                PostMesssage = $"Ran into issue while trying to delete {deck.Name}";
+            }
+
+            return RedirectToPage("./Index");
+        }
+
+
+        private async Task<bool> ReturnCardsAsync(Deck deck)
+        {
             var deckAmounts = _dbContext.Amounts
-                .Where(ca => ca.LocationId == Deck.Id);
+                .Where(ca => ca.LocationId == deck.Id);
 
             var sharedAmounts = _dbContext.Amounts
                 .Where(ca => ca.Location is Data.Shared);
 
             var amountPairs = await deckAmounts
-                .Join( sharedAmounts,
+                .GroupJoin( sharedAmounts,
                     deck => deck.CardId,
                     shared => shared.CardId,
-                    (deck, shared) => new { deck, shared })
+                    (deck, shares) => new { deck, shares })
+                .SelectMany(
+                    dss => dss.shares.DefaultIfEmpty(),
+                    (dss, shared) => new { dss.deck, shared })
                 .ToListAsync();
+
+
+            var noMatch = amountPairs.Any(ds => ds.shared == default);
+
+            if (noMatch)
+            {
+                return false;
+            }
 
             foreach(var pair in amountPairs)
             {
                 if (!pair.deck.IsRequest)
                 {
-                    pair.shared.Amount += pair.deck.Amount;
+                    pair.shared!.Amount += pair.deck.Amount;
                 }
             }
 
-            _dbContext.RemoveRange(Deck.Cards);
-            _dbContext.Decks.Remove(Deck);
-
-            try
-            {
-                await _dbContext.SaveChangesAsync();
-            }
-            catch (DbUpdateException e)
-            {
-                _logger.LogError(e.ToString());
-            }
-
-            return RedirectToPage("./Index");
+            return true;
         }
     }
 }

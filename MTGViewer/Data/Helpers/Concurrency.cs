@@ -15,10 +15,10 @@ namespace MTGViewer.Data.Concurrency
     public class Concurrent
     {
         [ConcurrencyCheck]
-        public Guid LiteToken { get; set; } = Guid.NewGuid();
+        internal Guid LiteToken { get; set; } = Guid.NewGuid();
 
         [Timestamp]
-        public byte[] SqlToken { get; set; }
+        internal byte[] SqlToken { get; set; }
     }
 
 
@@ -31,7 +31,8 @@ namespace MTGViewer.Data.Concurrency
                 foreach(var concurrentType in ConcurrencyExtensions.GetConcurrentTypes())
                 {
                     builder.Entity(concurrentType)
-                        .IgnoreExceptToken(c => c.SqlToken);
+                        .Property(nameof(Concurrent.SqlToken));
+                        // .IgnoreExceptToken(c => c.SqlToken);
                 }
             }
             // else if (database.IsSqlite())
@@ -40,7 +41,8 @@ namespace MTGViewer.Data.Concurrency
                 foreach(var concurrentType in ConcurrencyExtensions.GetConcurrentTypes())
                 {
                     builder.Entity(concurrentType)
-                        .IgnoreExceptToken(c => c.LiteToken);
+                        .Property(nameof(Concurrent.LiteToken));
+                        // .IgnoreExceptToken(c => c.LiteToken);
                 }
             }
 
@@ -91,6 +93,19 @@ namespace MTGViewer.Data.Concurrency
             return builder;
         }
 
+
+        public static object GetToken(this CardDbContext context, Concurrent current)
+        {
+            // not great, since boxes
+            if (context.Database.IsSqlServer())
+            {
+                return current.SqlToken;
+            }
+            else
+            {
+                return current.LiteToken;
+            }
+        }
 
 
         public static void MatchToken(

@@ -1,49 +1,67 @@
-@page
+@page "/Transfers/Suggest/{cardId}"
 @model MTGViewer.Pages.Transfers.SuggestModel
 
 @{
     ViewData["Title"] = $"Suggest {Model.Card.Name}";
 }
 
-<form method="post">
-    @if (Model.Users is not null)
+@if (Model.Users is not null)
+{
+    <h2>Pick which user to suggest @Model.Card.Name to</h2>
+    <hr />
+
+    @if (!Model.Users.Any())
     {
-        @foreach(var user in Model.Users)
-        {
-            <div class="input-group">
-                <div class="input-group-prepend">
-                    <div class="input-group-text">
-                        <input type="radio" name="userId" value="@user.Id" />
-                    </div>
+        <div class="alert alert-danger" role="alert">
+            There are no users to suggest to
+        </div>
+    }
+
+    @foreach(var user in Model.Users)
+    {
+        <div class="input-group">
+            <div class="input-group-prepend">
+                <div class="input-group-text">
+                    <input type="radio" name="userId" value="@user.Id" />
                 </div>
-                <span class="input-group-text">@user.UserName</span>
             </div>
-        }
+            <span class="input-group-text">@user.Name</span>
+        </div>
+    }
 
         <a asp-page="/Cards/Index"
             class="btn btn-secondary mb-3">
-            Back</a>
+            Back </a>
 
-        <input type="submit"
-            asp-page-handler="User"
-            asp-route-cardid="@Model.Card.Id"
-            class="btn btn-secondary mb-3"
-            value="Suggest To" />
-    }
-    else
+    @if (Model.Users.Any())
     {
-        @foreach(var (deck, colors) in Model.DeckColors)
+        <form method="POST">
+            <input type="submit"
+                asp-page-handler="User"
+                asp-route-cardid="@Model.Card.Id"
+                class="btn btn-secondary mb-3"
+                value="Suggest To" />
+        </form>
+    }
+}
+else
+{
+    <h2>Pick the deck to suggest @Model.Card.Name (Optional)</h2>
+    <hr />
+
+    <form method="POST">
+        @foreach(var deck in Model.Decks)
         {
             <div class="input-group">
                 <div class="input-group-prepend">
                     <div class="input-group-text">
-                        <input type="radio" name="deckId" value="@deck.Id" />
+                        <input type="radio" asp-for="Suggestion.ToId" value="@deck.Id" />
                     </div>
                 </div>
 
                 <span class="input-group-text">@deck.Name</span>
                 <div class="input-group-text">
-                    @foreach(var color in colors)
+                    @foreach(var color in deck.GetColorSymbols())
                     {
                         <span class="m-1 ms ms-@color ms-cost"></span>
                     }
@@ -51,25 +69,31 @@
             </div>
         }
 
+        <div class="form-group">
+            <label asp-for="Suggestion.Comment" class="control-label"></label>
+            <input asp-for="Suggestion.Comment" class="form-control" type="text" />
+        </div>
+
         <a asp-page="./Suggest"
             asp-route-cardid="@Model.Card.Id"
             class="btn btn-secondary mb-3">
-            Back</a>
+            Back </a>
 
-        @if (!Model.DeckColors.Any())
-        {
-            <div class="alert alert-danger" role="alert">
-                There are no decks to suggest to
-            </div>
-        }
-        else
-        {
-            <input type="submit"
-                asp-page-handler="Deck"
-                asp-route-cardid="@Model.Card.Id"
-                class="btn btn-secondary mb-3"
-                disabled="@(!Model.DeckColors.Any())"
-                value="Suggest" />
-        }
-    }
-</form>
+        <input type="hidden"
+            asp-for="Suggestion.CardId"
+            value="@Model.Card.Id" />
+
+        <input type="hidden"
+            asp-for="Suggestion.ProposerId"
+            value="@Model.Proposer.Id" />
+
+        <input type="hidden"
+            asp-for="Suggestion.ReceiverId"
+            value="@Model.Receiver.Id" />
+
+        <input type="submit"
+            asp-page-handler="Suggest"
+            class="btn btn-secondary mb-3"
+            value="Suggest" />
+    </form>
+}

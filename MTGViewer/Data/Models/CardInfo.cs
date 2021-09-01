@@ -12,12 +12,14 @@ namespace MTGViewer.Data
             Value = value;
         }
 
-        public int Id { get; set; }
+        [JsonProperty]
+        public int Id { get; private set; }
 
-        public string Value { get; set; }
+        [JsonProperty]
+        public string Value { get; private set; }
 
         [JsonIgnore]
-        public Card Card { get; set; } = null!;
+        public Card Card { get; private set; } = null!;
     }
 
 
@@ -39,12 +41,14 @@ namespace MTGViewer.Data
             Name = name;
         }
 
-        public int Id { get; set; }
+        [JsonProperty]
+        public int Id { get; private set; }
 
-        public string Name { get; set; }
+        [JsonProperty]
+        public string Name { get; private set; }
 
         [JsonIgnore]
-        public Card Card { get; set; } = null!;
+        public Card Card { get; private set; } = null!;
     }
 
 
@@ -55,12 +59,14 @@ namespace MTGViewer.Data
             Name = name;
         }
 
-        public int Id { get; set; }
+        [JsonProperty]
+        public int Id { get; private set; }
 
-        public string Name { get; set; }
+        [JsonProperty]
+        public string Name { get; private set; }
 
         [JsonIgnore]
-        public Card Card { get; set; } = null!;
+        public Card Card { get; private set; } = null!;
     }
 
 
@@ -71,12 +77,14 @@ namespace MTGViewer.Data
             Name = name;
         }
 
-        public int Id { get; set; }
+        [JsonProperty]
+        public int Id { get; private set; }
 
-        public string Name { get; set; }
+        [JsonProperty]
+        public string Name { get; private set; }
 
         [JsonIgnore]
-        public Card Card { get; set; } = null!;
+        public Card Card { get; private set; } = null!;
     }
 
 
@@ -87,11 +95,13 @@ namespace MTGViewer.Data
             Name = name;
         }
 
-        public int Id { get; set; }
+        [JsonProperty]
+        public int Id { get; private set; }
 
-        public string Name { get; set; }
+        [JsonProperty]
+        public string Name { get; private set; }
 
         [JsonIgnore]
-        public Card Card { get; set; } = null!;
+        public Card Card { get; private set; } = null!;
     }
 }

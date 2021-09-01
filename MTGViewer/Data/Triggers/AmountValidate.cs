@@ -20,6 +20,7 @@ namespace MTGViewer.Data.Triggers
             _logger = logger;
         }
 
+
         public async Task BeforeSave(ITriggerContext<CardAmount> trigContext, CancellationToken cancel)
         {
             if (trigContext.ChangeType == ChangeType.Deleted)

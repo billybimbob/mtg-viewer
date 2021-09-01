@@ -1,11 +1,10 @@
 @using MTGViewer.Data
 @using MTGViewer.Data.Concurrency
-@using MTGViewer.Areas.Identity.Data
+@using MTGViewer.Data.Internal
 
 @namespace MTGViewer.Components
 @implements IAsyncDisposable
 
-@inject NavigationManager NavigationManager
 @inject IDbContextFactory<CardDbContext> DbFactory
 @inject ILogger<DeckBuilder> Logger
 
@@ -20,6 +19,8 @@
     Save Changes
 </button>
 
+<input type="checkbox" @bind="_autoTake" id="auto-take"/>
+<label for="auto-take">Auto Take From Available</label>
 
 <SavePrompt @bind-Result="_result">
     <SuccessMessage>
@@ -55,9 +56,9 @@
                 <td class="fw-bold">@card.Name</td>
 
                 <td>
-                    @foreach (var cost in card.GetColorSymbols())
+                    @foreach (var cost in card.GetManaSymbols())
                     {
-                        <span class="m-1 ms ms-@cost.ToLower() ms-cost"></span>
+                        <span class="m-1 ms ms-@cost ms-cost"></span>
                     }
                 </td>
 
@@ -69,7 +70,6 @@
                     <button title="Add @card.Name"
                             type="button"
                             class="btn btn-outline-secondary border-0 rounded"
-                            disabled="@(available==0)"
                             @onclick="() => AddCardToDeck(card)">
                         Add Card
                     </button>
@@ -102,15 +102,15 @@
                 <td class="fw-bold">@card.Name</td>
 
                 <td>
-                    @foreach (var cost in card.GetColorSymbols())
+                    @foreach (var cost in card.GetManaSymbols())
                     {
-                        <span class="m-1 ms ms-@cost.ToLower() ms-cost"></span>
+                        <span class="m-1 ms ms-@cost ms-cost"></span>
                     }
                 </td>
 
                 <td>@card.SetName</td>
 
-                <td>@inDeck.Applied.Amount</td>
+                <td>@inDeck.Actual.Amount</td>
                 <td>@(inDeck.Request?.Amount ?? 0)</td>
 
                 <td>
@@ -130,20 +130,25 @@
 @code {
 
     [Parameter]
-    public CardUser User { get; set; }
+    public string UserId { get; set; }
 
     [Parameter]
     public int DeckId { get; set; } = default;
 
+    [Parameter]
+    public bool AutoTake { get; set; }
 
+
+    private bool _autoTake;
     private bool _busy;
     private SaveResult _result;
     private CardDbContext _dbContext;
 
+    private UserRef _user;
     private Deck _deck;
     private SortedList<string, List<Card>> _dbCards;
 
-    private IDictionary<string, AmountGroup> _deckCards;
+    private IDictionary<string, AmountPair> _deckCards;
     private IDictionary<string, CardAmount> _availables;
 
 
@@ -207,7 +212,7 @@
         _busy = true;
         try
         {
-            _dbContext.Attach(User);
+            _user = await _dbContext.Users.FindAsync(UserId);
 
             _deck = await GetOrCreateDeckAsync();
 
@@ -215,7 +220,12 @@
                 .GroupBy(ca => ca.CardId)
                 .ToDictionary(g => g.Key, InitGroup);
 
-            FixDeckState();
+            _autoTake = AutoTake;
+
+            if (_autoTake)
+            {
+                AutoTakeRequests();
+            }
         }
         finally
         {
@@ -236,12 +246,12 @@
         }
 
         var userDeckCount = await _dbContext.Decks
-            .Where(l => l.Owner == User)
+            .Where(l => l.Owner.Id == _user.Id)
             .CountAsync();
 
         var newLoc = new Deck($"Deck #{userDeckCount + 1}")
         {
-            Owner = User
+            Owner = _user
         };
 
         _dbContext.Attach(newLoc);
@@ -250,29 +260,24 @@
     }
 
 
-    private AmountGroup InitGroup(IGrouping<string, CardAmount> grouping)
+    private AmountPair InitGroup(IEnumerable<CardAmount> amounts)
     {
-        if (!grouping.Any())
-        {
-            throw new System.ArgumentException("Grouping is empty");
-        }
+        var pair = new AmountPair(amounts);
 
-        var applied = grouping.SingleOrDefault(ca => !ca.IsRequest);
-        var request = grouping.SingleOrDefault(ca => ca.IsRequest);
-
-        if (applied is null)
+        if (pair.Actual is null)
         {
-            applied = new CardAmount
+            var actual = new CardAmount
             {
-                Card = request.Card,
-                Location = request.Location,
+                Card = pair.Card,
+                Location = pair.Location,
                 Amount = 0
             };
 
-            _dbContext.Add(applied);
+            _dbContext.Add(actual);
+            pair.Actual = actual;
         }
 
-        return new AmountGroup(applied, request);
+        return pair;
     }
 
 
@@ -295,7 +300,7 @@
             return;
         }
 
-        AmountGroup deckGroup;
+        AmountPair deckGroup;
 
         if (!_deckCards.TryGetValue(card.Id, out deckGroup))
         {
@@ -306,13 +311,13 @@
                 Amount = 0,
             };
 
-            deckGroup = new AmountGroup(newAmnt);
+            deckGroup = new AmountPair(newAmnt);
 
             _deckCards.Add(card.Id, deckGroup);
             _dbContext.Add(newAmnt);
         }
 
-        deckGroup.Applied.Amount += 1;
+        deckGroup.Actual.Amount += 1;
         availAmnt.Amount -= 1;
 
         if (availAmnt.Amount < 0)
@@ -334,7 +339,7 @@
             return;
         }
 
-        AmountGroup deckAmnt;
+        AmountPair deckAmnt;
 
         if (!_deckCards.TryGetValue(card.Id, out deckAmnt))
         {
@@ -348,13 +353,13 @@
             return;
         }
 
-        if (deckAmnt.Applied.Amount == 0)
+        if (deckAmnt.Actual.Amount == 0)
         {
             Logger.LogError($"there are no more of {card.Id} to remove");
             return;
         }
 
-        deckAmnt.Applied.Amount -= 1;
+        deckAmnt.Actual.Amount -= 1;
         availAmnt.Amount += 1;
 
         _result = SaveResult.None;
@@ -372,7 +377,7 @@
             return;
         }
 
-        AmountGroup deckGroup;
+        AmountPair deckGroup;
 
         if (!_deckCards.TryGetValue(card.Id, out deckGroup))
         {
@@ -395,7 +400,7 @@
             }
 
             // transfer overdraft to request
-            deckGroup.Applied.Amount += availAmnt.Amount;
+            deckGroup.Actual.Amount += availAmnt.Amount;
             deckGroup.Request.Amount -= availAmnt.Amount;
             availAmnt.Amount = 0;
         }
@@ -404,7 +409,7 @@
         {
             int changeAmnt = Math.Min(availAmnt.Amount, deckGroup.Request.Amount);
 
-            deckGroup.Applied.Amount += changeAmnt;
+            deckGroup.Actual.Amount += changeAmnt;
             deckGroup.Request.Amount -= changeAmnt;
             availAmnt.Amount -= changeAmnt;
         }
@@ -428,8 +433,6 @@
             _result = SaveResult.Success;
 
             Logger.LogInformation($"successfully updated");
-            // Logger.LogInformation($"trying to nav to index, at {NavigationManager.BaseUri}");
-            // NavigationManager.NavigateTo("Cards/Index"); // TODO: fix nav not working
         }
         catch (DbUpdateConcurrencyException ex)
         {
@@ -439,7 +442,11 @@
         finally
         {
             await UpdateAvailableAsync();
-            FixDeckState();
+
+            if (_autoTake)
+            {
+                AutoTakeRequests();
+            }
 
             _busy = false;
         }
@@ -472,7 +479,7 @@
     }
 
 
-    private void FixDeckState()
+    private void AutoTakeRequests()
     {
         foreach (var cardGroup in _deckCards.Values)
         {
@@ -558,7 +565,7 @@
 
     private void MergeDeckCardConflict(CardAmount dbDeckCard)
     {
-        AmountGroup localDeckGroup;
+        AmountPair localDeckGroup;
 
         if (!_deckCards.TryGetValue(dbDeckCard.CardId, out localDeckGroup))
         {
@@ -567,17 +574,13 @@
 
         var localDeckCard = dbDeckCard.IsRequest
             ? localDeckGroup.Request
-            : localDeckGroup.Applied;
+            : localDeckGroup.Actual;
 
         if (localDeckCard is null)
         {
-            dbDeckCard.Card = localDeckGroup.Card;
-            dbDeckCard.Location = localDeckGroup.Location;
-
             // token also is matched
             _dbContext.Attach(dbDeckCard);
             localDeckGroup.Request = dbDeckCard;
-
             return;
         }
 
@@ -614,23 +617,17 @@
             return;
         }
 
+        // card now tracked by context
         var card = await _dbContext.Cards.FindAsync(cardId);
-
-        foreach (var amount in cardGroup)
-        {
-            // ensure reference in set to tracked entity
-            amount.Card = card;
-            amount.Location = _deck;
-        }
-
         var amntGroup = InitGroup(cardGroup);
 
-        if (_dbContext.Entry(amntGroup.Applied).State == EntityState.Detached)
+        if (_dbContext.Entry(amntGroup.Actual).State == EntityState.Detached)
         {
-            _dbContext.Attach(amntGroup.Applied);
+            _dbContext.Attach(amntGroup.Actual);
         }
 
-        if (amntGroup.Request is not null)
+        if (amntGroup.Request is not null
+            && _dbContext.Entry(amntGroup.Request).State == EntityState.Detached)
         {
             _dbContext.Attach(amntGroup.Request);
         }
@@ -652,13 +649,12 @@
 
         foreach(var dbAvail in updatedAvails)
         {
-            dbAvail.Card = await _dbContext.Cards.FindAsync(dbAvail.CardId);
-            AddOrMergeAvailable(dbAvail);
+            await AddOrMergeAvailableAsync(dbAvail);
         }
     }
 
 
-    private void AddOrMergeAvailable(CardAmount dbAvailable)
+    private async Task AddOrMergeAvailableAsync(CardAmount dbAvailable)
     {
         if (_availables.TryGetValue(dbAvailable.CardId, out var localAvailable))
         {
@@ -683,7 +679,10 @@
         }
 
         _availables.Add(dbAvailable.CardId, dbAvailable);
-        _dbContext.Attach(dbAvailable);
+
+        await _dbContext.Attach(dbAvailable)
+            .Reference(ca => ca.Card)
+            .LoadAsync();
     }
 
 }
