@@ -23,6 +23,7 @@ namespace MTGViewer.Tests.Pages.Transfers
         private readonly UserManager<CardUser> _userManager;
 
         private readonly StatusModel _statusModel;
+        private TradeSet _trades;
 
         public StatusTests()
         {
@@ -37,6 +38,7 @@ namespace MTGViewer.Tests.Pages.Transfers
         public async Task InitializeAsync()
         {
             await _dbContext.SeedAsync(_userManager);
+            _trades = await _dbContext.CreateTradeSetAsync();
         }
 
 
@@ -52,22 +54,19 @@ namespace MTGViewer.Tests.Pages.Transfers
         public async Task OnPost_WrongUser_NoChange()
         {
             // Arrange
-            var (proposer, receiver, toDeck) = await _dbContext.GenerateRequestAsync();
-
-            await _statusModel.SetModelContextAsync(_userManager, receiver.Id);
-
             var trade = await _dbContext.Trades
                 .AsNoTracking()
-                .FirstAsync(t => t.ProposerId == proposer.Id && t.ToId == toDeck.Id);
+                .FirstAsync(t => t.ProposerId == _trades.ProposerId && t.ToId == _trades.ToId);
+
+            await _statusModel.SetModelContextAsync(_userManager, trade.ReceiverId);
 
             var requestsQuery = _dbContext.Trades
-                .Where(t => t.ProposerId == proposer.Id && t.ToId == trade.ToId)
+                .Where(t => t.ProposerId == _trades.ProposerId && t.ToId == _trades.ToId)
                 .Select(t => t.Id);
 
             // Act
             var requestsBefore = await requestsQuery.ToListAsync();
-            var result = await _statusModel.OnPostAsync(trade.ToId);
-
+            var result = await _statusModel.OnPostAsync(_trades.ToId);
             var requestsAfter = await requestsQuery.ToListAsync();
 
             // Assert
@@ -81,22 +80,19 @@ namespace MTGViewer.Tests.Pages.Transfers
         public async Task OnPost_InvalidTrade_NoChange()
         {
             // Arrange
-            var (proposer, receiver, toDeck) = await _dbContext.GenerateRequestAsync();
-
-            await _statusModel.SetModelContextAsync(_userManager, proposer.Id);
+            await _statusModel.SetModelContextAsync(_userManager, _trades.ProposerId);
 
             var trade = await _dbContext.Trades
                 .AsNoTracking()
-                .FirstAsync(t => t.ProposerId == proposer.Id && t.ToId == toDeck.Id);
+                .FirstAsync(t => t.ProposerId == _trades.ProposerId && t.ToId == _trades.ToId);
 
             var requestsQuery = _dbContext.Trades
-                .Where(t => t.ProposerId == proposer.Id && t.ToId == trade.ToId)
+                .Where(t => t.ProposerId == _trades.ProposerId && t.ToId == _trades.ToId)
                 .Select(t => t.Id);
 
             // Act
             var requestsBefore = await requestsQuery.ToListAsync();
             var result = await _statusModel.OnPostAsync(trade.FromId);
-
             var requestsAfter = await requestsQuery.ToListAsync();
 
             // Assert
@@ -110,22 +106,19 @@ namespace MTGViewer.Tests.Pages.Transfers
         public async Task OnPost_ValidTrade_RemovesTrade()
         {
             // Arrange
-            var (proposer, receiver, toDeck) = await _dbContext.GenerateRequestAsync();
-
-            await _statusModel.SetModelContextAsync(_userManager, proposer.Id);
+            await _statusModel.SetModelContextAsync(_userManager, _trades.ProposerId);
 
             var trade = await _dbContext.Trades
                 .AsNoTracking()
-                .FirstAsync(t => t.ProposerId == proposer.Id && t.ToId == toDeck.Id);
+                .FirstAsync(t => t.ProposerId == _trades.ProposerId && t.ToId == _trades.ToId);
 
             var requestsQuery = _dbContext.Trades
-                .Where(t => t.ProposerId == proposer.Id && t.ToId == trade.ToId)
+                .Where(t => t.ProposerId == _trades.ProposerId && t.ToId == _trades.ToId)
                 .Select(t => t.Id);
 
             // Act
             var requestsBefore = await requestsQuery.ToListAsync();
-            var result = await _statusModel.OnPostAsync(trade.ToId);
-
+            var result = await _statusModel.OnPostAsync(_trades.ToId);
             var requestsAfter = await requestsQuery.ToListAsync();
 
             // Assert

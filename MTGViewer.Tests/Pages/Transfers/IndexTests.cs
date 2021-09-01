@@ -97,11 +97,11 @@ namespace MTGViewer.Tests.Pages.Transfers
 
             // Act
             var result = await _indexModel.OnPostAsync(nonSuggestion.Id);
-            var suggestions = await tradeQuery.Select(t => t.Id).ToListAsync();
+            var trades = await tradeQuery.Select(t => t.Id).ToListAsync();
 
             // Assert
             Assert.IsType<RedirectToPageResult>(result);
-            Assert.Contains(nonSuggestion.Id, suggestions);
+            Assert.Contains(nonSuggestion.Id, trades);
         }
    }
 }

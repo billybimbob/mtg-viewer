@@ -49,7 +49,7 @@ namespace MTGViewer.Pages.Transfers
             var userId = _userManager.GetUserId(User);
 
             var userTrades = await _dbContext.Trades
-                .Where(TradeFilter.Involves(userId))
+                .Where(t => t.ProposerId == userId || t.ReceiverId == userId)
                 .Include(t => t.To)
                 .Include(t => t.From)
                 .ToListAsync();

@@ -53,6 +53,11 @@ namespace MTGViewer.Pages.Cards
         public IReadOnlyList<AmountModel> Amounts { get; set; }
 
 
+        public void OnGet()
+        {
+        }
+
+
         // To protect from overposting attacks, see https://aka.ms/RazorPagesCRUD
         public async Task OnPostCardAsync()
         {

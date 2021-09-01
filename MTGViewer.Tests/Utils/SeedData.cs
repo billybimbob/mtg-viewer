@@ -295,15 +295,8 @@ namespace MTGViewer.Tests.Utils
         }
 
 
-        
-        internal record TradeInfo(UserRef Proposer, UserRef Receiver, Deck To) { }
 
-        private record RequestSet(Deck To, IReadOnlyList<Trade> Trades) { }
-
-        private record TradeLocations(Deck To, IReadOnlyList<Deck> From) { }
-
-
-        internal static async Task<TradeInfo> GenerateRequestAsync(this CardDbContext dbContext)
+        internal static async Task<TradeSet> CreateTradeSetAsync(this CardDbContext dbContext)
         {
             var users = await dbContext.Users
                 .ToListAsync();
@@ -312,22 +305,25 @@ namespace MTGViewer.Tests.Utils
                 .Select(user => (user, key: _random.Next(users.Count)))
                 .OrderBy(uk => uk.key)
                 .Take(2)
-                .Select(wk => wk.user)
+                .Select(uk => uk.user)
                 .ToList();
 
             var proposer = partipants[0];
             var receiver = partipants[1];
 
-            var toLocation = await dbContext.CreateRequestSetAsync(proposer, receiver);
+            var trades = await dbContext.CreateTradesAsync(proposer, receiver);
 
             await dbContext.SaveChangesAsync();
             dbContext.ChangeTracker.Clear();
 
-            return new TradeInfo(proposer, receiver, toLocation);
+            return new TradeSet(trades);
         }
 
 
-        private static async Task<Deck> CreateRequestSetAsync(
+        private record TradeLocations(Deck To, IReadOnlyList<Deck> From) { }
+
+
+        private static async Task<IReadOnlyList<Trade>> CreateTradesAsync(
             this CardDbContext dbContext,
             UserRef proposer, 
             UserRef receiver)
@@ -360,7 +356,7 @@ namespace MTGViewer.Tests.Utils
 
             dbContext.Trades.AddRange(trades);
 
-            return to;
+            return trades;
         }
 
 
