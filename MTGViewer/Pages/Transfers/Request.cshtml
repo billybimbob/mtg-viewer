@@ -43,21 +43,22 @@ else
         </tr>
     </thead>
     <tbody>
-        @foreach (var request in Model.Requests)
+        @foreach (var requestGroup in Model.Requests)
         {
+            var card = requestGroup.Cards.First();
             <tr>
                 <td>
                     <a asp-page="/Cards/Details"
-                        asp-route-id="@request.CardId">
-                        @request.Card.Name </a>
+                        asp-route-id="@card.Id">
+                        @card.Name </a>
                 </td>
                 <td>
-                    @foreach (var cost in request.Card.GetManaSymbols())
+                    @foreach (var cost in card.GetManaSymbols())
                     {
                         <span class="m-1 ms ms-@cost ms-cost"></span>
                     }
                 </td>
-                <td> @request.Amount </td>
+                <td> @requestGroup.Amount </td>
             </tr>
         } 
     </tbody>

@@ -42,7 +42,9 @@
             "label": "test",
             "command": "dotnet",
             "type": "process",
-            "args": [ "test" ],
+            "args": [
+                "test"
+            ],
             "problemMatcher": "$msCompile",
             "group": {
                 "kind": "test",
@@ -58,9 +60,12 @@
                 "migrations",
                 "add",
                 "${input:migration}",
-                "--project", "MTGViewer",
-                "--context", "${input:context}"
+                "--project",
+                "MTGViewer",
+                "--context",
+                "${input:context}"
             ],
+            "problemMatcher": "$msCompile"
         },
         {
             "label": "remove",
@@ -70,9 +75,12 @@
                 "ef",
                 "migrations",
                 "remove",
-                "--project", "MTGViewer",
-                "--context", "${input:context}"
-            ]
+                "--project",
+                "MTGViewer",
+                "--context",
+                "${input:context}"
+            ],
+            "problemMatcher": "$msCompile"
         },
         {
             "label": "update",
@@ -82,9 +90,12 @@
                 "ef",
                 "database",
                 "update",
-                "--project", "MTGViewer",
-                "--context", "${input:context}"
-            ]
+                "--project",
+                "MTGViewer",
+                "--context",
+                "${input:context}"
+            ],
+            "problemMatcher": "$msCompile"
         },
         {
             "label": "drop",
@@ -94,9 +105,12 @@
                 "ef",
                 "database",
                 "drop",
-                "--project", "MTGViewer",
-                "--context", "${input:context}"
-            ]
+                "--project",
+                "MTGViewer",
+                "--context",
+                "${input:context}"
+            ],
+            "problemMatcher": "$msCompile"
         }
     ],
     "inputs": [
@@ -108,7 +122,7 @@
                 "CardDbContext",
                 "UserDbContext"
             ],
-            "default": "CardDbContext"
+            "default": "CardDbContext",
         },
         {
             "id": "migration",

@@ -68,8 +68,10 @@ namespace MTGViewer.Pages.Decks
         {
             var userId = _userManager.GetUserId(User);
 
-            CardUser = await _dbContext.Users.FindAsync(userId);
             Decks = await GetDeckStatesAsync(userId);
+
+            CardUser = Decks.FirstOrDefault()?.Deck.Owner
+                ?? await _dbContext.Users.FindAsync(userId);
         }
 
 
@@ -77,6 +79,7 @@ namespace MTGViewer.Pages.Decks
         {
             var userDecks = _dbContext.Decks
                 .Where(d => d.OwnerId == userId)
+                .Include(d => d.Owner)
                 .Include(d => d.Cards)
                     .ThenInclude(ca => ca.Card);
 

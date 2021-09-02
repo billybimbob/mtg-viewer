@@ -85,7 +85,7 @@ namespace MTGViewer.Data
 
             builder
                 .HasOne(t => t.To)
-                .WithMany()
+                .WithMany(d => d.ToRequests)
                 .OnDelete(DeleteBehavior.Cascade);
         }
     }
@@ -97,7 +97,7 @@ namespace MTGViewer.Data
         {
             builder
                 .HasOne(t => t.From)
-                .WithMany()
+                .WithMany(d => d.FromRequests)
                 .OnDelete(DeleteBehavior.Cascade);
             
             builder

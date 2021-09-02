@@ -37,7 +37,7 @@ namespace MTGViewer.Pages.Decks
         public string? PostMesssage { get; set; }
 
         public Deck? Deck { get; private set; }
-        public IReadOnlyList<AmountPair>? Cards { get; private set; }
+        public IReadOnlyList<NamePair>? Cards { get; private set; }
         public IReadOnlyList<Trade>? Trades { get; private set; }
 
 
@@ -64,12 +64,13 @@ namespace MTGViewer.Pages.Decks
                 .Include(t => t.Receiver)
                 .Include(t => t.To)
                 .Include(t => t.From)
+                .OrderBy(t => t.Card.Name)
                 .ToListAsync();
 
             Deck = deck;
             Cards = deck.Cards
-                .GroupBy(ca => ca.CardId)
-                .Select(g => new AmountPair(g))
+                .GroupBy(ca => ca.Card.Name)
+                .Select(g => new NamePair(g))
                 .ToList();
 
             Trades = deckTrades;

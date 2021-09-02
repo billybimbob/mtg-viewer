@@ -24,23 +24,24 @@
     <tbody>
         @foreach (var pair in Model.Cards)
         {
+            var card = pair.Cards.First();
             <tr>
                 <td>
                     <a asp-page="/Cards/Details"
-                       asp-route-id="@pair.CardId"
+                       asp-route-id="@card.Id"
                        class="fw-bold">
-                       @pair.Card.Name </a>
+                       @pair.Name </a>
                 </td>
                 <td>
-                    @foreach (var cost in pair.Card.GetManaSymbols())
+                    @foreach (var cost in card.GetManaSymbols())
                     {
                         <span class="m-1 ms ms-@cost ms-cost"></span>
                     }
                 </td>
 
-                <td>@pair.Card.SetName</td>
-                <td>@(pair.Actual?.Amount ?? 0)</td>
-                <td>@(pair.Request?.Amount ?? 0)</td>
+                <td>@card.SetName</td>
+                <td>@(pair.Actuals?.Amount ?? 0)</td>
+                <td>@(pair.Requests?.Amount ?? 0)</td>
             </tr>
         }
     </tbody>

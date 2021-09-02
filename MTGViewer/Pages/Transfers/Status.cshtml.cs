@@ -36,7 +36,7 @@ namespace MTGViewer.Pages.Transfers
         public UserRef? Proposer { get; private set; }
 
         public IReadOnlyList<Trade>? Trades { get; private set; }
-        public IReadOnlyList<AmountPair>? Amounts { get; private set; }
+        public IReadOnlyList<NamePair>? Amounts { get; private set; }
 
 
         public async Task<IActionResult> OnGetAsync(int deckId)
@@ -86,8 +86,8 @@ namespace MTGViewer.Pages.Transfers
 
             Trades = deckTrades;
             Amounts = deck.Cards
-                .GroupBy(ca => ca.CardId)
-                .Select(g => new AmountPair(g))
+                .GroupBy(ca => ca.Card.Name)
+                .Select(g => new NamePair(g))
                 .ToList();
 
             return Page();
@@ -105,28 +105,25 @@ namespace MTGViewer.Pages.Transfers
 
             var userId = _userManager.GetUserId(User);
 
-            var validDeck = await _dbContext.Decks
-                .Include(d => d.Owner)
-                .AnyAsync(d => d.Id == deckId && d.OwnerId == userId);
+            var deck = await _dbContext.Decks
+                .Include(d => d.ToRequests
+                    .Where(t => t is Trade && t.ProposerId == userId))
+                .SingleOrDefaultAsync(d => d.Id == deckId && d.OwnerId == userId);
 
-            if (!validDeck)
+            if (deck == default)
             {
                 PostMessage = "Deck is not valid";
                 return RedirectToPage("./Index");
             }
 
-            var deckTrades = await _dbContext.Trades
-                .Where(t => t.ProposerId == userId && t.ToId == deckId)
-                .ToListAsync();
-
-            if (!deckTrades.Any())
+            if (!deck.ToRequests.Any())
             {
                 PostMessage = "No trades were found";
                 return RedirectToPage("./Index");
             }
 
 
-            _dbContext.Trades.RemoveRange(deckTrades);
+            _dbContext.Trades.RemoveRange(deck.ToRequests.Cast<Trade>());
 
             try
             {

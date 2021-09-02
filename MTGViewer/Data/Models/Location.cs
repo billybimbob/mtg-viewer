@@ -56,5 +56,12 @@ namespace MTGViewer.Data
         [JsonIgnore]
         public UserRef Owner { get; init; } = null!;
         public string OwnerId { get; init; } = null!;
+
+
+        [JsonIgnore]
+        public ICollection<Transfer> ToRequests { get; } = new List<Transfer>();
+
+        [JsonIgnore]
+        public ICollection<Trade> FromRequests { get; } = new List<Trade>();
     }
 }

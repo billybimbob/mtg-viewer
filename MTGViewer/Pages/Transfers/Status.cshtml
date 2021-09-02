@@ -50,21 +50,22 @@
     <tbody>
         @foreach (var pair in Model.Amounts)
         {
+            var card = pair.Cards.First();
             <tr>
                 <td>
                     <a asp-page="/Cards/Details"
-                       asp-route-id="@pair.CardId"
+                       asp-route-id="@card.Id"
                        class="fw-bold">
-                       @pair.Card.Name </a>
+                       @pair.Name </a>
                 </td>
                 <td>
-                    @foreach (var cost in pair.Card.GetManaSymbols())
+                    @foreach (var cost in card.GetManaSymbols())
                     {
                         <span class="m-1 ms ms-@cost ms-cost"></span>
                     }
                 </td>
-                <td> @(pair.Request?.Amount ?? 0) </td>
-                <td> @(pair.Actual?.Amount ?? 0) </td>
+                <td> @(pair.Requests?.Amount ?? 0) </td>
+                <td> @(pair.Actuals?.Amount ?? 0) </td>
             </tr>
         }
     </tbody>
@@ -77,6 +78,7 @@
         <tr>
             <th> @Html.DisplayNameForInnerType((Trade t) => t.Card) </th>
             <th> @Html.DisplayNameForInnerType((Card c) => c.ManaCost) </th>
+            <th> @Html.DisplayNameForInnerType((Card c) => c.SetName) </th>
             <th> Request With </th>
             <th> @Html.DisplayNameForInnerType((Trade t) => t.From) </th>
             <th> @Html.DisplayNameForInnerType((Trade t) => t.Amount) </th>
@@ -97,6 +99,7 @@
                         <span class="m-1 ms ms-@cost ms-cost"></span>
                     }
                 </td>
+                <td> @trade.Card.SetName </td>
                 <td> @trade.From.Owner.Name </td>
                 <td> @trade.From.Name </td>
                 <td> @trade.Amount </td>

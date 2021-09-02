@@ -57,10 +57,12 @@ namespace MTGViewer.Pages.Transfers
             var requestDecks = await _dbContext.Decks
                 .Where(d => d.OwnerId == userId && d.Cards.Any(ca => ca.IsRequest))
                 .Include(d => d.Cards.Where(ca => ca.IsRequest))
+                .Include(d => d.Owner)
                 .ToListAsync();
 
 
-            SelfUser = await _dbContext.Users.FindAsync(userId);
+            SelfUser = requestDecks.FirstOrDefault()?.Owner
+                ?? await _dbContext.Users.FindAsync(userId);
 
             ReceivedTrades = userTrades
                 .Where(t => t.ReceiverId == userId)

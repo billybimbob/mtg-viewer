@@ -40,13 +40,21 @@ namespace MTGViewer.Pages.Transfers
 
         public Deck Deck { get; private set; }
 
-        public IReadOnlyList<CardAmount> Requests { get; private set; }
+        public IReadOnlyList<NameGroup> Requests { get; private set; }
 
 
         public async Task<IActionResult> OnGetAsync(int deckId)
         {
             var userId = _userManager.GetUserId(User);
+
             var deck = await _dbContext.Decks
+                .Include(d => d.Cards
+                    .Where(ca => ca.IsRequest))
+                    .ThenInclude(ca => ca.Card)
+                .Include(d => d.ToRequests
+                    .Where(t => t is Trade && t.ProposerId == userId))
+                .AsSplitQuery()
+                .AsNoTrackingWithIdentityResolution()
                 .SingleOrDefaultAsync(d => d.Id == deckId && d.OwnerId == userId);
 
             if (deck == default)
@@ -54,30 +62,26 @@ namespace MTGViewer.Pages.Transfers
                 return NotFound();
             }
 
-            var cardRequests = await _dbContext.Amounts
-                .Include(ca => ca.Card)
-                .Where(ca => ca.IsRequest && ca.LocationId == deckId)
-                .ToListAsync();
-
-            if (!cardRequests.Any())
+            if (!deck.Cards.Any())
             {
                 PostMessage = "There are no possible requests";
                 return RedirectToPage("./Index");
             }
 
-            var alreadyRequested = await _dbContext.Trades
-                .Where(t => t.ToId == deckId && t.ProposerId == userId)
-                .AnyAsync();
-
-            if (alreadyRequested)
+            if (deck.ToRequests.Any())
             {
                 return RedirectToPage("./Status", new { deckId });
             }
 
 
             TargetsExist = await AnyTradeRequestsAsync(userId, deckId);
+
             Deck = deck;
-            Requests = cardRequests;
+
+            Requests = deck.Cards
+                .GroupBy(ca => ca.Card.Name)
+                .Select(g => new NameGroup(g))
+                .ToList();
 
             return Page();
         }
@@ -95,8 +99,8 @@ namespace MTGViewer.Pages.Transfers
 
             return await possibleAmounts
                 .Join( cardRequests,
-                    amount => amount.CardId,
-                    request => request.CardId,
+                    amount => amount.Card.Name,
+                    request => request.Card.Name,
                     (amount, request) => amount)
                 .AnyAsync();
         }
@@ -106,27 +110,30 @@ namespace MTGViewer.Pages.Transfers
         public async Task<IActionResult> OnPostAsync(int deckId)
         {
             var userId = _userManager.GetUserId(User);
-            var user = await _dbContext.Users.FindAsync(userId);
 
-            var validDeck = await _dbContext.Decks
-                .AnyAsync(d => d.Id == deckId && d.OwnerId == user.Id);
+            var deck = await _dbContext.Decks
+                .Include(d => d.Owner)
+                .Include(d => d.Cards
+                    .Where(ca => ca.IsRequest))
+                    .ThenInclude(ca => ca.Card)
+                .Include(d => d.ToRequests
+                    .Where(t => t is Trade && t.ProposerId == userId))
+                .AsSplitQuery()
+                .SingleOrDefaultAsync(d => d.Id == deckId && d.OwnerId == userId);
 
-            if (!validDeck)
+            if (deck == default)
             {
                 return NotFound();
             }
 
-            var alreadyRequested = await _dbContext.Trades
-                .Where(t => t.ToId == deckId && t.ProposerId == user.Id)
-                .AnyAsync();
-
-            if (alreadyRequested)
+            if (deck.ToRequests.Any())
             {
                 PostMessage = "Request is already sent";
                 return RedirectToPage("./Index");
             }
 
-            var tradeRequests = await FindTradeRequestsAsync(user, deckId);
+            var user = deck.Owner;
+            var tradeRequests = await FindTradeRequestsAsync(deck);
 
             if (!tradeRequests.Any())
             {
@@ -151,46 +158,106 @@ namespace MTGViewer.Pages.Transfers
         }
 
 
-        private async Task<IReadOnlyList<Trade>> FindTradeRequestsAsync(UserRef user, int deckId)
+        private async Task<IEnumerable<Trade>> FindTradeRequestsAsync(Deck deck)
         {
-            var possibleAmounts = _dbContext.Amounts
+            // deck.Cards will only be requests
+            if (!deck.Cards.Any())
+            {
+                return Enumerable.Empty<Trade>();
+            }
+
+
+            var requestNames = deck.Cards
+                .Select(ca => ca.Card.Name)
+                .Distinct()
+                .ToArray();
+
+            var requestTargets = await _dbContext.Amounts
                 .Where(ca => !ca.IsRequest
                     && ca.Location is Deck
-                    && (ca.Location as Deck).OwnerId != user.Id)
+                    && (ca.Location as Deck).OwnerId != deck.OwnerId
+                    && requestNames.Contains(ca.Card.Name))
                 .Include(ca => ca.Card)
                 .Include(ca => ca.Location)
-                    .ThenInclude(l => (l as Deck).Owner);
-
-            var cardRequests = _dbContext.Amounts
-                .Where(ca => ca.IsRequest && ca.LocationId == deckId)
-                .Include(ca => ca.Card)
-                .Include(ca => ca.Location);
-
-            var requestTargets = await possibleAmounts
-                .Join( cardRequests,
-                    amount => amount.CardId,
-                    request => request.CardId,
-                    (amount, request) => new { amount, request })
+                    .ThenInclude(l => (l as Deck).Owner)
                 .ToListAsync();
 
-
-            var newTrades = requestTargets.Select(ar =>
+            if (!requestTargets.Any())
             {
-                var toDeck = (Deck) ar.request.Location;
-                var fromDeck = (Deck) ar.amount.Location;
-                return new Trade
+                return Enumerable.Empty<Trade>();
+            }
+
+
+            // TODO: figure out how to query more on server
+
+            var requestGroups = deck.Cards
+                .GroupBy(
+                    ca => ca.Card.Name,
+                    (name, cas) =>
+                        (name, amount: cas.Select(ca => ca.Amount).Sum()) );
+
+            var requestMatches = requestGroups
+                .Join( requestTargets,
+                    g => g.name,
+                    target => target.Card.Name,
+                    (g, target) => (g.name, g.amount, target));
+
+            var dividedAmounts = requestMatches
+                .GroupBy(
+                    nat => (nat.name, nat.target.LocationId),
+                    (_, nats) =>
+                    {
+                        // amount should be the same for all in nats
+                        var targets = nats.Select(nat => nat.target);
+                        var totalRequest = nats.First().amount;
+
+                        return GetRequestAmounts(targets, totalRequest);
+                    })
+                .SelectMany(ta => ta)
+                .Where(ta => ta.amount > 0);
+
+            var newTrades = dividedAmounts
+                .Select(ta =>
                 {
-                    Card = ar.request.Card,
-                    Proposer = user,
-                    Receiver = fromDeck.Owner,
-                    From = fromDeck,
-                    To = toDeck,
-                    // TODO: change how to split amounts
-                    Amount = Math.Min(ar.request.Amount, ar.amount.Amount)
-                };
-            });
+                    var fromDeck = (Deck) ta.target.Location;
+                    return new Trade
+                    {
+                        Card = ta.target.Card,
+                        Proposer = deck.Owner,
+                        Receiver = fromDeck.Owner,
+                        From = fromDeck,
+                        To = deck,
+                        Amount = Math.Min(ta.target.Amount, ta.amount)
+                    };
+                });
             
             return newTrades.ToList();
+        }
+
+
+        private IEnumerable<(CardAmount target, int amount)> GetRequestAmounts(
+            IEnumerable<CardAmount> targets, int requestTotal)
+        {
+            var amounts = new List<int>();
+
+            foreach (var target in targets)
+            {
+                // TODO: prioritize requesting from exact card matches
+                if (requestTotal == 0)
+                {
+                    break;
+                }
+
+                var amount = Math.Min(target.Amount, requestTotal);
+
+                amounts.Add(amount);
+                requestTotal -= amount;
+            }
+
+            amounts.AddRange(
+                Enumerable.Repeat(0, targets.Count() - amounts.Count));
+
+            return targets.Zip(amounts);
         }
     }
 }

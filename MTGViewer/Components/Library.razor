@@ -51,7 +51,7 @@
             <tr>
                 <td>
                     <a title="Details @card.Name"
-                       href="Cards/Details/@card.Id"
+                       href="Cards/Details?id=@card.Id"
                        class="fw-bold">
                        @card.Name
                     </a>
@@ -166,15 +166,4 @@
         _searchName = eventArgs.Value?.ToString();
         ApplyFilters();
     }
-
-
-    private string Details(string id) => CardRoute("Details", id);
-
-    private string Suggest(string id) =>
-        QueryHelpers.AddQueryString("Transfers/Suggest", "cardid", id);
-
-
-    private string CardRoute(string operation, string id) =>
-        QueryHelpers.AddQueryString($"Cards/{operation}", "id", id);
-
 }

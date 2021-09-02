@@ -2,12 +2,14 @@ using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Text.RegularExpressions;
+using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using MtgApiManager.Lib.Service;
 
 
 namespace MTGViewer.Data
 {
+    [Index(nameof(Name), nameof(Cmc))]
     public class Card : IQueryParameter
     {
         // not sure about the sha length range

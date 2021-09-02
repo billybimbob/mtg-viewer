@@ -37,19 +37,13 @@ namespace MTGViewer.Pages.Decks
 
             if (id is int deckId)
             {
-                var isOwner = await _dbContext.Decks
-                    .AnyAsync(l => l.Id == deckId && l.Owner.Id == UserId);
+                var deck = await _dbContext.Decks
+                    .Include(d => d.ToRequests
+                        .Where(t => t is Trade && t.ProposerId == UserId))
+                    .AsNoTrackingWithIdentityResolution()
+                    .SingleOrDefaultAsync(l => l.Id == deckId && l.Owner.Id == UserId);
 
-                if (!isOwner)
-                {
-                    return NotFound();
-                }
-
-                var currentlyRequested = await _dbContext.Trades
-                    .Where(t => t.ToId == id && t.ProposerId == UserId)
-                    .AnyAsync();
-
-                if (currentlyRequested)
+                if (deck == default || deck.ToRequests.Any())
                 {
                     return NotFound();
                 }
