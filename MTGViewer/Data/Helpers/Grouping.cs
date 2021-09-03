@@ -26,14 +26,18 @@ namespace MTGViewer.Data
                 throw new ArgumentException("All cards do not match the name");
             }
 
+            if (_amounts.Any(ca => ca.Card.ManaCost != ManaCost))
+            {
+                throw new ArgumentException("All cards do not match the mana cost");
+            }
+
             if (_amounts.Any(ca => ca.LocationId != LocationId))
             {
                 throw new ArgumentException("All cards do not have the same location");
             }
         }
 
-        public NameGroup(params CardAmount[] amounts)
-            : this(amounts.AsEnumerable())
+        public NameGroup(params CardAmount[] amounts) : this(amounts.AsEnumerable())
         { }
 
 
@@ -41,6 +45,7 @@ namespace MTGViewer.Data
 
         public string Name => First.Card.Name;
 
+        public string ManaCost => First.Card.ManaCost;
 
         public IEnumerable<string> CardIds => _amounts.Select(ca => ca.CardId);
         public IEnumerable<Card> Cards => _amounts.Select(ca => ca.Card);
@@ -50,27 +55,29 @@ namespace MTGViewer.Data
         public Location Location => First.Location;
 
 
-        public int Amount => _amounts.Select(ca => ca.Amount).Sum();
-        //     set
-        //     {
-        //         int change = Amount - value;
-        //         while (change > 0 && First.Amount > 0)
-        //         {
-        //             int mod = Math.Min(change, First.Amount);
+        public int Amount
+        {
+            get => _amounts.Select(ca => ca.Amount).Sum();
+            set
+            {
+                int change = Amount - value;
+                while (change > 0 && First.Amount > 0)
+                {
+                    int mod = Math.Min(change, First.Amount);
 
-        //             First.Amount -= mod;
-        //             change -= mod;
+                    First.Amount -= mod;
+                    change -= mod;
 
-        //             if (First.Amount == 0)
-        //             {
-        //                 // cycle amount
-        //                 var firstLink = _amounts.First!;
-        //                 _amounts.Remove(firstLink);
-        //                 _amounts.AddLast(firstLink);
-        //             }
-        //         }
-        //     }
-        // }
+                    if (First.Amount == 0)
+                    {
+                        // cycle amount
+                        var firstLink = _amounts.First!;
+                        _amounts.Remove(firstLink);
+                        _amounts.AddLast(firstLink);
+                    }
+                }
+            }
+        }
 
 
         // public void Add(CardAmount amount)
@@ -122,8 +129,7 @@ namespace MTGViewer.Data
         }
 
 
-        public NamePair(params CardAmount[] amounts)
-            : this(amounts.AsEnumerable())
+        public NamePair(params CardAmount[] amounts) : this(amounts.AsEnumerable())
         { }
 
 
@@ -219,9 +225,9 @@ namespace MTGViewer.Data
 
 
 
-    public class RequestPair : IEnumerable<CardAmount>
+    public class AmountPair : IEnumerable<CardAmount>
     {
-        public RequestPair(CardAmount amount1, CardAmount? amount2 = null)
+        public AmountPair(CardAmount amount1, CardAmount? amount2 = null)
         {
             if (amount1.IsRequest && (amount2?.IsRequest ?? false))
             {
@@ -240,7 +246,7 @@ namespace MTGViewer.Data
         }
 
 
-        public RequestPair(IEnumerable<CardAmount> amounts)
+        public AmountPair(IEnumerable<CardAmount> amounts)
         {
             if (!amounts.Any())
             {

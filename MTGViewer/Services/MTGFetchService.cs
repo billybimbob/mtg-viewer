@@ -81,8 +81,8 @@ namespace MTGViewer.Services
         private static string? ToString(object? paramValue) => paramValue switch
         {
             null => null,
-            IEnumerable<object> iter1 when !iter1.Any() => null,
-            IEnumerable<object> iter2 => string.Join(',', iter2),
+            IEnumerable<object> iter when iter.Any() => string.Join(',', iter),
+            IEnumerable<object> _ => null,
             _ => paramValue.ToString()
         };
 
@@ -241,25 +241,27 @@ namespace MTGViewer.Services
                 Id = card.Id, // id should be valid
                 MultiverseId = card.MultiverseId,
                 Name = card.Name,
-                Names = card.Names
-                    ?.Select(s => new Name(s))
-                    .ToHashSet(),
+                Names = (card.Names?.Select(s => new Name(s))
+                    ?? Enumerable.Empty<Name>())
+                    .ToList(),
 
                 Layout = card.Layout,
 
-                Colors = card.Colors
-                    ?.Select(s => new Color(s))
-                    .ToHashSet(),
+                Colors = (card.Colors?.Select(s => new Color(s))
+                    ?? Enumerable.Empty<Color>())
+                    .ToList(),
 
-                Types = card.Types
-                    ?.Select(s => new Data.Type(s))
-                    .ToHashSet(),
-                SubTypes = card.SubTypes
-                    ?.Select(s => new SubType(s))
-                    .ToHashSet(),
-                SuperTypes = card.SuperTypes
-                    ?.Select(s => new SuperType(s))
-                    .ToHashSet(),
+                Types = (card.Types?.Select(s => new Data.Type(s))
+                    ?? Enumerable.Empty<Data.Type>())
+                    .ToList(),
+
+                SubTypes = (card.SubTypes?.Select(s => new SubType(s))
+                    ?? Enumerable.Empty<SubType>())
+                    .ToList(),
+
+                SuperTypes = (card.SuperTypes?.Select(s => new SuperType(s))
+                    ?? Enumerable.Empty<SuperType>())
+                    .ToList(),
 
                 ManaCost = card.ManaCost,
                 Cmc = (int?)card.Cmc ?? default,

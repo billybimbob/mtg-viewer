@@ -54,8 +54,9 @@ namespace MTGViewer.Pages.Cards
             }
 
             Locations = Card.Amounts
-                .GroupBy(ca => ca.Location) // groupby to keep sorted order
-                .Select(g => g.Key)
+                // group by to keep sorted order
+                .GroupBy(ca => ca.Location,
+                    (location, _) => location)
                 .ToList();
 
             return Page();

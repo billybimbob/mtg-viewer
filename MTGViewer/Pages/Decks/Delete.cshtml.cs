@@ -69,8 +69,8 @@ namespace MTGViewer.Pages.Decks
 
             Deck = deck;
             Cards = deck.Cards
-                .GroupBy(ca => ca.Card.Name)
-                .Select(g => new NamePair(g))
+                .GroupBy(ca => ca.Card.Name,
+                    (_, amounts) => new NamePair(amounts))
                 .ToList();
 
             Trades = deckTrades;

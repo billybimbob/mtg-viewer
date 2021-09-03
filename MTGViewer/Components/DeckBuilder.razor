@@ -148,7 +148,7 @@
     private Deck _deck;
     private SortedList<string, List<Card>> _dbCards;
 
-    private IDictionary<string, RequestPair> _deckCards;
+    private IDictionary<string, AmountPair> _deckCards;
     private IDictionary<string, CardAmount> _availables;
 
 
@@ -260,9 +260,9 @@
     }
 
 
-    private RequestPair InitGroup(IEnumerable<CardAmount> amounts)
+    private AmountPair InitGroup(IEnumerable<CardAmount> amounts)
     {
-        var pair = new RequestPair(amounts);
+        var pair = new AmountPair(amounts);
 
         if (pair.Actual is null)
         {
@@ -300,7 +300,7 @@
             return;
         }
 
-        RequestPair deckGroup;
+        AmountPair deckGroup;
 
         if (!_deckCards.TryGetValue(card.Id, out deckGroup))
         {
@@ -339,7 +339,7 @@
             return;
         }
 
-        RequestPair deckAmnt;
+        AmountPair deckAmnt;
 
         if (!_deckCards.TryGetValue(card.Id, out deckAmnt))
         {
@@ -377,7 +377,7 @@
             return;
         }
 
-        RequestPair deckGroup;
+        AmountPair deckGroup;
 
         if (!_deckCards.TryGetValue(card.Id, out deckGroup))
         {
@@ -565,7 +565,7 @@
 
     private void MergeDeckCardConflict(CardAmount dbDeckCard)
     {
-        RequestPair localDeckGroup;
+        AmountPair localDeckGroup;
 
         if (!_deckCards.TryGetValue(dbDeckCard.CardId, out localDeckGroup))
         {

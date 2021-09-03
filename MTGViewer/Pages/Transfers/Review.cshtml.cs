@@ -23,20 +23,22 @@ namespace MTGViewer.Pages.Transfers
         private record AcceptAmounts(
             Trade Accept,
             CardAmount? ToAmount,
-            CardAmount? ToRequest,
+            NameGroup? ToRequests,
             CardAmount FromAmount,
             CardAmount? FromRequest)
         {
             public static AcceptAmounts FromTrade(Trade trade, IEnumerable<CardAmount> amounts)
             {
-                return new AcceptAmounts (
+                var toRequests = amounts
+                    .Where(ca => ca.IsRequest && ca.LocationId == trade.ToId);
+
+                return new AcceptAmounts(
                     trade,
 
                     amounts.SingleOrDefault(ca =>
                         !ca.IsRequest && ca.LocationId == trade.ToId),
 
-                    amounts.SingleOrDefault(ca =>
-                        ca.IsRequest && ca.LocationId == trade.ToId),
+                    toRequests.Any() ? new NameGroup(toRequests) : null,
 
                     amounts.Single(ca =>
                         !ca.IsRequest && ca.LocationId == trade.FromId),
@@ -172,11 +174,16 @@ namespace MTGViewer.Pages.Transfers
 
         private async Task<AcceptAmounts?> GetAcceptAmountsAsync(Trade trade)
         {
-            var tradeDeckIds = new []{ trade.ToId, trade.FromId };
-
             var tradeAmounts = await _dbContext.Amounts
                 .Where(ca =>
-                    ca.CardId == trade.CardId && tradeDeckIds.Contains(ca.LocationId))
+                    ca.IsRequest
+                        && ca.LocationId == trade.ToId 
+                        && ca.Card.Name == trade.Card.Name
+                    || !ca.IsRequest
+                        && ca.LocationId == trade.ToId
+                        && ca.CardId == trade.CardId
+                    || ca.LocationId == trade.FromId
+                        && ca.CardId == trade.CardId)
                 .ToListAsync();
 
             var amountsValid = tradeAmounts.Any(ca =>
@@ -194,11 +201,11 @@ namespace MTGViewer.Pages.Transfers
 
         private void ApplyAccept(AcceptAmounts acceptInfo)
         {
-            var (accept, toAmount, toRequest, fromAmount, fromRequest) = acceptInfo;
+            var (accept, toAmount, toRequests, fromAmount, fromRequest) = acceptInfo;
 
-            if (toRequest is not null)
+            if (toRequests is not null)
             {
-                if (toAmount == default)
+                if (toAmount is null)
                 {
                     toAmount = new CardAmount
                     {
@@ -210,7 +217,7 @@ namespace MTGViewer.Pages.Transfers
                     _dbContext.Amounts.Add(toAmount);
                 }
 
-                if (fromRequest == default)
+                if (fromRequest is null)
                 {
                     fromRequest = new CardAmount
                     {
@@ -223,18 +230,21 @@ namespace MTGViewer.Pages.Transfers
                     _dbContext.Amounts.Add(fromRequest);
                 }
 
-                var changeOptions = new [] { accept.Amount, fromAmount.Amount, toRequest.Amount };
+                var changeOptions = new [] { accept.Amount, fromAmount.Amount, toRequests.Amount };
                 var change = changeOptions.Min();
 
+                // TODO: prioritize change to exact request amount
                 toAmount.Amount += change;
-                toRequest.Amount -= change;
+                toRequests.Amount -= change;
                 fromAmount.Amount -= change;
                 fromRequest.Amount += change;
             }
 
-            if (toRequest?.Amount == 0)
+            var finishedRequests = toRequests?.Where(ca  => ca.Amount == 0);
+
+            if (finishedRequests?.Any() ?? false)
             {
-                _dbContext.Amounts.Remove(toRequest);
+                _dbContext.Amounts.RemoveRange(finishedRequests);
             }
 
             if (fromAmount.Amount == 0)
@@ -248,9 +258,9 @@ namespace MTGViewer.Pages.Transfers
 
         private async Task CascadeIfComplete(AcceptAmounts acceptInfo)
         {
-            var request = acceptInfo.ToRequest;
+            var requests = acceptInfo.ToRequests;
 
-            if (request?.Amount > 0)
+            if (requests?.Amount > 0)
             {
                 return;
             }
@@ -260,7 +270,8 @@ namespace MTGViewer.Pages.Transfers
             var remainingTrades = await _dbContext.Trades
                 .Where(t => t.Id != accepted.Id 
                     && t.ProposerId == accepted.ProposerId
-                    && t.CardId == accepted.CardId)
+                    && t.ToId == accepted.ToId
+                    && t.Card.Name == accepted.Card.Name)
                 .ToListAsync();
 
             _dbContext.Trades.RemoveRange(remainingTrades);

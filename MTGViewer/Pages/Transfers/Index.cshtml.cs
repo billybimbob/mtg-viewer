@@ -66,15 +66,15 @@ namespace MTGViewer.Pages.Transfers
 
             ReceivedTrades = userTrades
                 .Where(t => t.ReceiverId == userId)
-                .GroupBy(t => t.From)
-                .Select(g => new DeckTrade(g.Key, g.Count()))
+                .GroupBy(t => t.From,
+                    (from, trades) => new DeckTrade(from, trades.Count()) )
                 .OrderBy(t => t.Deck.Name)
                 .ToList();
 
             PendingTrades = userTrades
                 .Where(t => t.ProposerId == userId)
-                .GroupBy(t => t.To)
-                .Select(g => new DeckTrade(g.Key, g.Count()))
+                .GroupBy(t => t.To,
+                    (to, trades) => new DeckTrade(to, trades.Count()) )
                 .OrderBy(t => t.Deck.Name)
                 .ToList();
 
@@ -95,8 +95,10 @@ namespace MTGViewer.Pages.Transfers
         public async Task<IActionResult> OnPostAsync(int suggestId)
         {
             var userId = _userManager.GetUserId(User);
+
             var suggestion = await _dbContext.Suggestions
-                .SingleOrDefaultAsync(s => s.Id == suggestId && s.ReceiverId == userId);
+                .SingleOrDefaultAsync(s =>
+                    s.Id == suggestId && s.ReceiverId == userId);
 
             if (suggestion is null)
             {

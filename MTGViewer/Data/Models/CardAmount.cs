@@ -2,7 +2,6 @@ using System;
 using System.ComponentModel.DataAnnotations;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
-
 using MTGViewer.Data.Concurrency;
 
 #nullable enable
