@@ -16,37 +16,37 @@ using MTGViewer.Data;
 
 namespace MTGViewer.Pages.Decks
 {
+    public enum State
+    {
+        Invalid,
+        Valid,
+        Requesting
+    }
+
+    public record DeckState(Deck Deck, State State)
+    {
+        public DeckState(Deck deck, bool isRequest)
+            : this(deck, State.Invalid)
+        {
+            if (isRequest)
+            {
+                State = State.Requesting;
+            }
+            else if (deck.Cards.Any(ca => ca.IsRequest))
+            {
+                State = State.Invalid;
+            }
+            else
+            {
+                State = State.Valid;
+            }
+        }
+    }
+
+
     [Authorize]
     public class IndexModel : PageModel
     {
-        public enum State
-        {
-            Invalid,
-            Valid,
-            Requesting
-        }
-
-        public record DeckState(Deck Deck, State State)
-        {
-            public DeckState(Deck deck, bool isRequest)
-                : this(deck, State.Invalid)
-            {
-                if (isRequest)
-                {
-                    State = State.Requesting;
-                }
-                else if (deck.Cards.Any(ca => ca.IsRequest))
-                {
-                    State = State.Invalid;
-                }
-                else
-                {
-                    State = State.Valid;
-                }
-            }
-        }
-
-
         private readonly UserManager<CardUser> _userManager;
         private readonly CardDbContext _dbContext;
 

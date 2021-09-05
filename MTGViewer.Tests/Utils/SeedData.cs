@@ -103,9 +103,11 @@ namespace MTGViewer.Tests.Utils
         }
 
 
-        private static IEnumerable<Location> GetShares()
+        private static IReadOnlyList<Location> GetShares()
         {
-            yield return new Shared("Test Shared");
+            return Enumerable.Range(0, 3)
+                .Select(i => new Shared($"Box #{i+1}"))
+                .ToList();
         }
 
 

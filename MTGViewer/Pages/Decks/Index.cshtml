@@ -37,7 +37,7 @@
         {
             <tr>
                 <td>
-                    @if (state is IndexModel.State.Requesting)
+                    @if (state is State.Requesting)
                     {
                         <a asp-page="./Viewer"
                            asp-route-deckid="@deck.Id"
@@ -61,14 +61,14 @@
                     }
                 </td>
                 <td>
-                    @if (state is IndexModel.State.Requesting)
+                    @if (state is State.Requesting)
                     {
                         <a asp-page="/Transfers/Status"
                            asp-route-deckid="@deck.Id"
                            class="fw-bold">
                            @state.ToString() </a>
                     }
-                    else if (state is IndexModel.State.Invalid)
+                    else if (state is State.Invalid)
                     {
                         <a asp-page="/Transfers/Request"
                            asp-route-deckid="@deck.Id"

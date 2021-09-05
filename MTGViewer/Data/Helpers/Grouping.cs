@@ -61,7 +61,7 @@ namespace MTGViewer.Data
             set
             {
                 int change = Amount - value;
-                while (change > 0 && First.Amount > 0)
+                while (change != 0 && First.Amount > 0)
                 {
                     int mod = Math.Min(change, First.Amount);
 
@@ -221,6 +221,65 @@ namespace MTGViewer.Data
 
             return amounts.GetEnumerator();
         }
+    }
+
+
+
+    public class AmountGroup : IEnumerable<CardAmount>
+    {
+        private readonly LinkedList<CardAmount> _amounts;
+
+        public AmountGroup(IEnumerable<CardAmount> amounts)
+        {
+            _amounts = new(amounts);
+
+            if (!_amounts.Any())
+            {
+                throw new ArgumentException("The amounts are empty");
+            }
+
+            if (_amounts.Any(ca => ca.Card != Card)
+                && _amounts.Any(ca => ca.CardId != CardId))
+            {
+                throw new ArgumentException("All cards do not match the name");
+            }
+        }
+
+        private CardAmount First => _amounts.First!.Value;
+
+
+        public string CardId => First.CardId;
+        public Card Card => First.Card;
+
+
+        public int Amount
+        {
+            get => _amounts.Select(ca => ca.Amount).Sum();
+            set
+            {
+                int change = Amount - value;
+                while (change != 0 && First.Amount > 0)
+                {
+                    int mod = Math.Min(change, First.Amount);
+
+                    First.Amount -= mod;
+                    change -= mod;
+
+                    if (First.Amount == 0)
+                    {
+                        // cycle amount
+                        var firstLink = _amounts.First!;
+                        _amounts.Remove(firstLink);
+                        _amounts.AddLast(firstLink);
+                    }
+                }
+            }
+        }
+
+
+        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+
+        public IEnumerator<CardAmount> GetEnumerator() => _amounts.GetEnumerator();
     }
 
 

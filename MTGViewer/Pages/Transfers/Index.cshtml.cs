@@ -15,12 +15,12 @@ using MTGViewer.Data;
 
 namespace MTGViewer.Pages.Transfers
 {
+    public record DeckTrade(Deck Deck, int NumberOrTrades) { }
+
+
     [Authorize]
     public class IndexModel : PageModel
     {
-        public record DeckTrade(Deck Deck, int NumberOrTrades) { }
-
-
         private readonly UserManager<CardUser> _userManager;
         private readonly CardDbContext _dbContext;
 
