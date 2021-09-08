@@ -8,7 +8,7 @@ namespace MTGViewer.Services
 {
     public interface ISharedStorage
     {
-        Task ReturnAsync(IEnumerable<(Card, int numCopies)> returning);
+        Task ReturnAsync(IEnumerable<(Card, int numCopies)> returns);
 
         Task OptimizeAsync();
     }
@@ -21,7 +21,6 @@ namespace MTGViewer.Services
         {
             return storage.ReturnAsync(returns.AsEnumerable());
         }
-
 
         public static Task ReturnAsync(this ISharedStorage storage, Card card, int numCopies)
         {

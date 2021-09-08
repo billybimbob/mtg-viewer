@@ -115,6 +115,7 @@
             .Include(c => c.Amounts.Where(ca => !ca.IsRequest))
             // .ThenInclude(a => a.Location)
             .OrderBy(c => c.Name)
+                .ThenBy(c => c.SetName)
             .AsSplitQuery()
             .AsNoTracking()
             .ToListAsync();

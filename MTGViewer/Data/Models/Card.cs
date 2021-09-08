@@ -46,19 +46,19 @@ namespace MTGViewer.Data
 
         public string Artist { get; init; } = null!;
 
-        public string Text { get; init; } = null!;
+        public string? Text { get; init; }
 
-        public string Flavor { get; init; } = null!;
+        public string? Flavor { get; init; }
 
-        public string Power { get; init; } = null!;
+        public string? Power { get; init; }
 
-        public string Toughness { get; init; } = null!;
+        public string? Toughness { get; init; }
 
-        public string Loyalty { get; init; } = null!;
+        public string? Loyalty { get; init; }
 
         [Display(Name = "Image")]
         [UrlAttribute]
-        public string? ImageUrl { get; init; } = null!;
+        public string? ImageUrl { get; init; }
 
         [JsonIgnore]
         public ICollection<CardAmount> Amounts { get; } = new List<CardAmount>();

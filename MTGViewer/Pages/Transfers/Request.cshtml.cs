@@ -40,7 +40,7 @@ namespace MTGViewer.Pages.Transfers
 
         public Deck Deck { get; private set; }
 
-        public IReadOnlyList<NameGroup> Requests { get; private set; }
+        public IReadOnlyList<SameNameGroup> Requests { get; private set; }
 
 
         public async Task<IActionResult> OnGetAsync(int deckId)
@@ -74,7 +74,7 @@ namespace MTGViewer.Pages.Transfers
 
             Requests = deck.Cards
                 .GroupBy(ca => ca.Card.Name,
-                    (_, amounts) => new NameGroup(amounts))
+                    (_, amounts) => new SameNameGroup(amounts))
                 .ToList();
 
             return Page();
@@ -188,29 +188,17 @@ namespace MTGViewer.Pages.Transfers
             // TODO: figure out how to query more on server
             var requestGroups = deck.Cards
                 .GroupBy(ca => ca.Card.Name,
-                    (_, amounts) => new NameGroup(amounts));
+                    (_, amounts) => new SameNameGroup(amounts));
 
             var requestMatches = requestGroups
                 .Join( targets,
                     group => group.Name,
                     target => target.Card.Name,
-                    (group, target) => (group, target));
+                    (group, target) => 
+                        // TODO: prioritize requesting from exact card matches
+                        (target, amount: Math.Min(target.Amount, group.Amount)) );
 
-            var dividedAmounts = requestMatches
-                // .GroupBy(gt => (gt.group, gt.target.LocationId),
-                //     (gl, nats) =>
-                //     {
-                //         var targets = nats.Select(nat => nat.target);
-                //         var totalRequest = gl.group.Amount;
-
-                //         return DivideAmongTargets(targets, totalRequest);
-                //     })
-                // .SelectMany(ta => ta)
-                // .Where(ta => ta.amount > 0);
-                .Select(gt => 
-                    (gt.target, amount: Math.Min(gt.group.Amount, gt.target.Amount)) );
-
-            var newTrades = dividedAmounts
+            var newTrades = requestMatches
                 .Select(ta =>
                 {
                     var fromDeck = (Deck) ta.target.Location;
@@ -219,39 +207,13 @@ namespace MTGViewer.Pages.Transfers
                         Card = ta.target.Card,
                         Proposer = deck.Owner,
                         Receiver = fromDeck.Owner,
-                        From = fromDeck,
                         To = deck,
-                        Amount = Math.Min(ta.target.Amount, ta.amount)
+                        From = fromDeck,
+                        Amount = ta.amount
                     };
                 });
             
             return newTrades.ToList();
-        }
-
-
-        private IEnumerable<(CardAmount target, int amount)> DivideAmongTargets(
-            IEnumerable<CardAmount> targets, int requestTotal)
-        {
-            var amounts = new List<int>();
-
-            foreach (var target in targets)
-            {
-                // TODO: prioritize requesting from exact card matches
-                if (requestTotal == 0)
-                {
-                    break;
-                }
-
-                var amount = Math.Min(target.Amount, requestTotal);
-
-                amounts.Add(amount);
-                requestTotal -= amount;
-            }
-
-            amounts.AddRange(
-                Enumerable.Repeat(0, targets.Count() - amounts.Count));
-
-            return targets.Zip(amounts);
         }
     }
 }

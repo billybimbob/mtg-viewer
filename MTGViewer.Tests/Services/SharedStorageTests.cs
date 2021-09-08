@@ -19,7 +19,7 @@ namespace MTGViewer.Tests.Services
     {
         private readonly ServiceProvider _services;
         private readonly CardDbContext _dbContext;
-        private readonly ISharedStorage _sharedStorage;
+        private readonly ExpandableSharedService _sharedStorage;
 
 
         public SharedStorageTests()
@@ -27,8 +27,7 @@ namespace MTGViewer.Tests.Services
             _services = TestFactory.ServiceProvider();
             _dbContext = TestFactory.CardDbContext(_services);
 
-            _sharedStorage = new ExpandableSharedService(
-                Mock.Of<IConfiguration>(), _dbContext);
+            _sharedStorage = new(Mock.Of<IConfiguration>(), _dbContext);
         }
 
 
@@ -42,6 +41,7 @@ namespace MTGViewer.Tests.Services
         {
             await _services.DisposeAsync();
             await _dbContext.DisposeAsync();
+            _sharedStorage.Dispose();
         }
 
 
@@ -76,17 +76,51 @@ namespace MTGViewer.Tests.Services
         }
 
 
-        // [Fact]
-        // public async Task Return_LargeAmount_SplitMultiple()
-        // {
-        // }
+        [Fact]
+        public async Task Return_NullCard_NoChange()
+        {
+            var copies = 4;
+            Card card = null;
+
+            var sharedAmountQuery = _dbContext.Amounts
+                .Where(ca => ca.Location is Shared)
+                .Select(ca => ca.Amount);
+
+            var sharedBefore = await sharedAmountQuery.SumAsync();
+            await _sharedStorage.ReturnAsync(card, copies);
+            var sharedAfter = await sharedAmountQuery.SumAsync();
+
+            Assert.Equal(sharedBefore, sharedAfter);
+        }
+
+
+        [Theory]
+        [InlineData(-3)]
+        [InlineData(0)]
+        [InlineData(-10)]
+        public async Task Return_InvalidCopies_NoChange(int copies)
+        {
+            var card = await _dbContext.Cards
+                .AsNoTracking()
+                .FirstAsync();
+
+            var sharedAmountQuery = _dbContext.Amounts
+                .Where(ca => ca.Location is Shared)
+                .Select(ca => ca.Amount);
+
+            var sharedBefore = await sharedAmountQuery.SumAsync();
+            await _sharedStorage.ReturnAsync(card, copies);
+            var sharedAfter = await sharedAmountQuery.SumAsync();
+
+            Assert.Equal(sharedBefore, sharedAfter);
+        }
 
 
         [Fact]
         public async Task Optimize_LargeAmounts_SplitMultiple()
         {
-            var card = await _dbContext.Cards.AsNoTracking().FirstAsync();
             var copies = 120;
+            var card = await _dbContext.Cards.AsNoTracking().FirstAsync();
 
             var spotQuery = _dbContext.Amounts
                 .Where(ca => ca.Location is Shared && ca.CardId == card.Id)

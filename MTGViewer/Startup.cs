@@ -32,7 +32,9 @@ namespace MTGViewer
 
             services.AddSingleton<DataCacheService>();
             services.AddSingleton<MtgServiceProvider>();
+
             services.AddScoped<MTGFetchService>();
+            services.AddScoped<ISharedStorage, ExpandableSharedService>();
 
             if (_env.IsDevelopment())
             {

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 using Microsoft.EntityFrameworkCore;
@@ -10,10 +11,12 @@ using MTGViewer.Data;
 
 namespace MTGViewer.Services
 {
-    public class ExpandableSharedService : ISharedStorage
+    public class ExpandableSharedService : ISharedStorage, IDisposable
     {
         private readonly int _boxSize;
         private readonly CardDbContext _dbContext;
+        // needed since CardDbContext is not thread safe
+        private readonly SemaphoreSlim _lock;
 
         public ExpandableSharedService(IConfiguration config, CardDbContext dbContext)
         {
@@ -23,31 +26,51 @@ namespace MTGViewer.Services
             {
                 _boxSize = 80;
             }
+
+            _lock = new(1, 1);
+        }
+
+
+        public void Dispose()
+        { 
+            _dbContext.Dispose();
+            _lock.Dispose();
         }
 
 
 
-
-        public async Task ReturnAsync(IEnumerable<(Card, int)> returning)
+        public async Task ReturnAsync(IEnumerable<(Card, int numCopies)> returns)
         {
-            if (!returning.Any())
+            if (InvalidReturns(returns))
             {
                 return;
             }
 
-            var newReturns = await ReturnExistingAsync(returning);
-
-            if (newReturns.Any())
-            {
-                await ReturnNewAsync(newReturns);
-            }
-
+            await _lock.WaitAsync();
             try
             {
+                var newReturns = await ReturnExistingAsync(returns);
+
+                if (newReturns.Any())
+                {
+                    await ReturnNewAsync(newReturns);
+                }
+
+                // intentionally throw db exception
                 await _dbContext.SaveChangesAsync();
             }
-            catch (DbUpdateException)
-            { }
+            finally
+            {
+                _lock.Release();
+            }
+        }
+
+
+        private bool InvalidReturns(IEnumerable<(Card card, int numCopies)> returns)
+        {
+            return !returns.Any()
+                || returns.Any(cn => cn.card == null)
+                || returns.Any(cn => cn.numCopies <= 0);
         }
 
 
@@ -64,7 +87,7 @@ namespace MTGViewer.Services
 
             var returnGroups = returnAmounts
                 .GroupBy(ca => ca.CardId,
-                    (_, amounts) => new AmountGroup(amounts))
+                    (_, amounts) => new SameCardGroup(amounts))
                 .ToDictionary(ag => ag.CardId);
 
             foreach (var (card, numCopies) in returning)
@@ -81,25 +104,36 @@ namespace MTGViewer.Services
         }
 
 
-        private async Task ReturnNewAsync(IEnumerable<(Card, int)> newReturns)
+        private async Task<IReadOnlyList<CardAmount>> GetSortedAmountsAsync()
         {
             // loading all shared cards, could be memory inefficient
             // TODO: find more efficient way to determining card position
 
-            var sortedSharedAmounts = await _dbContext.Amounts
+            return await _dbContext.Amounts
                 .Where(ca => ca.Location is Shared)
                 .Include(ca => ca.Location)
                 .Include(ca => ca.Card)
                 .OrderBy(ca => ca.Card.Name)
                     .ThenBy(ca => ca.Card.SetName)
                 .ToListAsync();
+        }
 
-            var sortedBoxes = sortedSharedAmounts
+
+        private IReadOnlyList<Shared> GetSortedBoxes(IReadOnlyList<CardAmount> boxAmounts)
+        {
+            return boxAmounts
                 .Select(ca => ca.Location)
                 .Distinct()
                 .Cast<Shared>()
                 .OrderBy(s => s.Id)
                 .ToList();
+        }
+
+
+        private async Task ReturnNewAsync(IEnumerable<(Card, int)> newReturns)
+        {
+            var sortedSharedAmounts = await GetSortedAmountsAsync();
+            var sortedBoxes = GetSortedBoxes(sortedSharedAmounts);
 
             var cardIndices = new List<int>(sortedSharedAmounts.Count);
             var cardCount = 0;
@@ -158,36 +192,28 @@ namespace MTGViewer.Services
 
         public async Task OptimizeAsync()
         {
-            var sortedSharedAmounts = await _dbContext.Amounts
-                .Where(ca => ca.Location is Shared)
-                .Include(ca => ca.Location)
-                .Include(ca => ca.Card)
-                .OrderBy(ca => ca.Card.Name)
-                    .ThenBy(ca => ca.Card.SetName)
-                .ToListAsync();
-
-            var sortedBoxes = sortedSharedAmounts
-                .Select(ca => ca.Location)
-                .Distinct()
-                .Cast<Shared>()
-                .OrderBy(s => s.Id)
-                .ToList();
-
-            AddNewBoxAmounts(sortedSharedAmounts, sortedBoxes);
-
-            _dbContext.Amounts.RemoveRange(
-                sortedSharedAmounts.Where(ca => ca.Amount == 0));
-
+            await _lock.WaitAsync();
             try
             {
+                var sortedSharedAmounts = await GetSortedAmountsAsync();
+                var sortedBoxes = GetSortedBoxes(sortedSharedAmounts);
+
+                AddUpdatedBoxAmounts(sortedSharedAmounts, sortedBoxes);
+
+                _dbContext.Amounts.RemoveRange(
+                    sortedSharedAmounts.Where(ca => ca.Amount == 0));
+
+                // intentionally throw db exception
                 await _dbContext.SaveChangesAsync();
             }
-            catch (DbUpdateException)
-            { }
+            finally
+            {
+                _lock.Release();
+            }
         }
 
 
-        private void AddNewBoxAmounts(
+        private void AddUpdatedBoxAmounts(
             IReadOnlyList<CardAmount> sharedAmounts, IReadOnlyList<Shared> boxes)
         {
             var oldAmounts = sharedAmounts

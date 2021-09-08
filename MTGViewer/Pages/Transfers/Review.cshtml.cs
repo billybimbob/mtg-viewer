@@ -84,7 +84,7 @@ namespace MTGViewer.Pages.Transfers
         {
             public Trade Accept { get; }
             public CardAmount? ToAmount { get; }
-            public NameGroup? ToRequests { get; }
+            public SameNameGroup? ToRequests { get; }
             public CardAmount FromAmount { get; }
             public CardAmount? FromRequest { get; }
 
@@ -99,7 +99,7 @@ namespace MTGViewer.Pages.Transfers
                     .Where(ca => ca.IsRequest && ca.LocationId == trade.ToId);
 
                 ToRequests = toRequests.Any()
-                    ? new NameGroup(toRequests)
+                    ? new SameNameGroup(toRequests)
                     : null;
 
                 FromAmount = amounts.Single(ca =>

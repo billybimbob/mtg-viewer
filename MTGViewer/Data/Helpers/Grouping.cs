@@ -7,12 +7,12 @@ using System.Linq;
 
 namespace MTGViewer.Data
 {
-    public class NameGroup : IEnumerable<CardAmount>
+    public class SameNameGroup : IEnumerable<CardAmount>
     {
         // guranteed >= 1 CardAmounts in linkedlist
         private readonly LinkedList<CardAmount> _amounts;
 
-        public NameGroup(IEnumerable<CardAmount> amounts)
+        public SameNameGroup(IEnumerable<CardAmount> amounts)
         {
             _amounts = new(amounts);
 
@@ -37,7 +37,7 @@ namespace MTGViewer.Data
             }
         }
 
-        public NameGroup(params CardAmount[] amounts) : this(amounts.AsEnumerable())
+        public SameNameGroup(params CardAmount[] amounts) : this(amounts.AsEnumerable())
         { }
 
 
@@ -80,22 +80,6 @@ namespace MTGViewer.Data
         }
 
 
-        // public void Add(CardAmount amount)
-        // {
-        //     if (amount.Card.Name != Name)
-        //     {
-        //         return;
-        //     }
-
-        //     if (amount.LocationId != LocationId)
-        //     {
-        //         return;
-        //     }
-
-        //     _amounts.AddLast(amount);
-        // }
-
-
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
         public IEnumerator<CardAmount> GetEnumerator() => _amounts.GetEnumerator();
@@ -103,9 +87,9 @@ namespace MTGViewer.Data
 
 
 
-    public class NamePair : IEnumerable<CardAmount>
+    public class SameNamePair : IEnumerable<CardAmount>
     {
-        public NamePair(IEnumerable<CardAmount> amounts)
+        public SameNamePair(IEnumerable<CardAmount> amounts)
         {
             if (!amounts.Any())
             {
@@ -117,25 +101,25 @@ namespace MTGViewer.Data
 
             if (actuals.Any())
             {
-                Actuals = new NameGroup(actuals);
+                Actuals = new SameNameGroup(actuals);
             }
 
             if (requests.Any())
             {
-                Requests = new NameGroup(requests);
+                Requests = new SameNameGroup(requests);
             }
 
             CheckCorrectPair();
         }
 
 
-        public NamePair(params CardAmount[] amounts) : this(amounts.AsEnumerable())
+        public SameNamePair(params CardAmount[] amounts) : this(amounts.AsEnumerable())
         { }
 
 
         // Applied and Request are guaranteed to not both be null
-        public NameGroup? Actuals { get; } // private set; }
-        public NameGroup? Requests { get; } //private set; }
+        public SameNameGroup? Actuals { get; } // private set; }
+        public SameNameGroup? Requests { get; } //private set; }
 
 
         private void CheckCorrectPair()
@@ -225,11 +209,11 @@ namespace MTGViewer.Data
 
 
 
-    public class AmountGroup : IEnumerable<CardAmount>
+    public class SameCardGroup : IEnumerable<CardAmount>
     {
         private readonly LinkedList<CardAmount> _amounts;
 
-        public AmountGroup(IEnumerable<CardAmount> amounts)
+        public SameCardGroup(IEnumerable<CardAmount> amounts)
         {
             _amounts = new(amounts);
 
@@ -244,6 +228,10 @@ namespace MTGViewer.Data
                 throw new ArgumentException("All cards do not match the name");
             }
         }
+
+        public SameCardGroup(CardAmount amount, params CardAmount[] amounts)
+            : this(amounts.Prepend(amount))
+        { }
 
         private CardAmount First => _amounts.First!.Value;
 
@@ -277,6 +265,17 @@ namespace MTGViewer.Data
         }
 
 
+        public void Add(CardAmount amount)
+        {
+            if (amount.Card.Name != Card.Name)
+            {
+                return;
+            }
+
+            _amounts.AddLast(amount);
+        }
+
+
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
         public IEnumerator<CardAmount> GetEnumerator() => _amounts.GetEnumerator();
@@ -284,9 +283,9 @@ namespace MTGViewer.Data
 
 
 
-    public class AmountPair : IEnumerable<CardAmount>
+    public class SameAmountPair : IEnumerable<CardAmount>
     {
-        public AmountPair(CardAmount amount1, CardAmount? amount2 = null)
+        public SameAmountPair(CardAmount amount1, CardAmount? amount2 = null)
         {
             if (amount1.IsRequest && (amount2?.IsRequest ?? false))
             {
@@ -305,7 +304,7 @@ namespace MTGViewer.Data
         }
 
 
-        public AmountPair(IEnumerable<CardAmount> amounts)
+        public SameAmountPair(IEnumerable<CardAmount> amounts)
         {
             if (!amounts.Any())
             {

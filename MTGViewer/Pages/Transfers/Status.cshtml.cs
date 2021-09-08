@@ -36,7 +36,7 @@ namespace MTGViewer.Pages.Transfers
         public UserRef? Proposer { get; private set; }
 
         public IReadOnlyList<Trade>? Trades { get; private set; }
-        public IReadOnlyList<NamePair>? Amounts { get; private set; }
+        public IReadOnlyList<SameNamePair>? Amounts { get; private set; }
 
 
         public async Task<IActionResult> OnGetAsync(int deckId)
@@ -87,7 +87,7 @@ namespace MTGViewer.Pages.Transfers
             Trades = deckTrades;
             Amounts = deck.Cards
                 .GroupBy(ca => ca.Card.Name,
-                    (_, amounts) => new NamePair(amounts))
+                    (_, amounts) => new SameNamePair(amounts))
                 .ToList();
 
             return Page();

@@ -36,7 +36,7 @@ namespace MTGViewer.Data
         public IOrderedEnumerable<string> GetColorSymbols() => Cards
             .SelectMany(ca => ca.Card.GetManaSymbols())
             .Distinct()
-            .Where(s => Color.COLORS.Values.Contains(s))
+            .Intersect(Color.COLORS.Values)
             .OrderBy(s => s);
     }
 

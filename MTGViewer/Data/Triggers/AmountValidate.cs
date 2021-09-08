@@ -31,23 +31,17 @@ namespace MTGViewer.Data.Triggers
             var cardAmount = trigContext.Entity;
             var location = cardAmount.Location;
 
-            if (location is null)
+            if (_dbContext.Entry(cardAmount).State == EntityState.Detached)
             {
-                if (cardAmount.LocationId == default)
-                {
-                    // TODO: change return location
-                    cardAmount.Location = await _dbContext.Shares.FindAsync(1);
-                    location = cardAmount.Location;
-                }
-                else
-                {
-                    location = await _dbContext.Locations
-                        .AsNoTracking()
-                        .SingleAsync(l => l.Id == cardAmount.LocationId);
-                }
+                // attach just to load
+                _dbContext.Attach(cardAmount);
             }
 
-            if (location is Shared)
+            await _dbContext.Entry(cardAmount)
+                .Reference(ca => ca.Location)
+                .LoadAsync();
+
+            if (cardAmount.Location is Shared)
             {
                 // makes sure that non-owned locations cannot have a request
                 cardAmount.IsRequest = false;
@@ -70,20 +64,11 @@ namespace MTGViewer.Data.Triggers
                 _dbContext.Attach(cardAmount);
             }
 
-            Location location;
+            await _dbContext.Entry(cardAmount)
+                .Reference(ca => ca.Location)
+                .LoadAsync();
 
-            if (cardAmount.Location is null)
-            {
-                location = await _dbContext.Locations
-                    .AsNoTracking()
-                    .SingleAsync(l => l.Id == cardAmount.LocationId);
-            }
-            else
-            {
-                location = cardAmount.Location;
-            }
-
-            if (location is not Deck || cardAmount.Amount > 0)
+            if (cardAmount.Location is not Deck || cardAmount.Amount > 0)
             {
                 return;
             }
