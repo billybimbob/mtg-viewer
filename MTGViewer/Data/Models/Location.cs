@@ -16,7 +16,7 @@ namespace MTGViewer.Data
             Name = name;
         }
 
-        [JsonProperty]
+        [JsonRequired]
         public int Id { get; private set; }
 
         public string Name { get; set; }
@@ -41,13 +41,6 @@ namespace MTGViewer.Data
     }
 
 
-    public class Shared : Location
-    {
-        public Shared(string name) : base(name)
-        { }
-    }
-
-
     public class Deck : Location
     {
         public Deck(string name) : base(name)
@@ -63,5 +56,36 @@ namespace MTGViewer.Data
 
         [JsonIgnore]
         public ICollection<Trade> FromRequests { get; } = new List<Trade>();
+    }
+
+
+    public class Box : Location
+    {
+        public Box(string name) : base(name)
+        { }
+
+        [JsonIgnore]
+        public Bin Bin { get; set; } = null!;
+        public int BinId { get; private set; }
+
+        public string? Color { get; init; }
+    }
+
+
+    public class Bin
+    {
+        public Bin(string name)
+        {
+            Name = name;
+        }
+
+        [JsonRequired]
+        public int Id { get; private set; }
+
+        [JsonRequired]
+        public string Name { get; private set; }
+
+        [JsonIgnore]
+        public ICollection<Box> Boxes = new List<Box>();
     }
 }

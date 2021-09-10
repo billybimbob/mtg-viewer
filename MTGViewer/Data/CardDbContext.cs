@@ -19,8 +19,10 @@ namespace MTGViewer.Data
         public DbSet<CardAmount> Amounts { get; set; }
 
         public DbSet<Location> Locations { get; set; }
-        public DbSet<Shared> Shares { get; set; }
         public DbSet<Deck> Decks { get; set; }
+
+        public DbSet<Box> Boxes { get; set; }
+        public DbSet<Bin> Bins { get; set; }
 
         public DbSet<Transfer> Transfers { get; set; }
         public DbSet<Suggestion> Suggestions { get; set; }
@@ -52,7 +54,7 @@ namespace MTGViewer.Data
             builder
                 .HasDiscriminator(l => l.Type)
                     .HasValue<Location>(Discriminator.Invalid)
-                    .HasValue<Shared>(Discriminator.Shared)
+                    .HasValue<Box>(Discriminator.Box)
                     .HasValue<Deck>(Discriminator.Deck);
 
             builder

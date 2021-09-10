@@ -41,7 +41,7 @@ namespace MTGViewer.Data.Triggers
                 .Reference(ca => ca.Location)
                 .LoadAsync();
 
-            if (cardAmount.Location is Shared)
+            if (cardAmount.Location is Box)
             {
                 // makes sure that non-owned locations cannot have a request
                 cardAmount.IsRequest = false;

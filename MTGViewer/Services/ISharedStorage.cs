@@ -8,6 +8,8 @@ namespace MTGViewer.Services
 {
     public interface ISharedStorage
     {
+        IQueryable<Box> Shares { get; }
+
         Task ReturnAsync(IEnumerable<(Card, int numCopies)> returns);
 
         Task OptimizeAsync();

@@ -18,8 +18,7 @@
             class="form-control">
             @foreach (var cardAlt in Model.CardAlts)
             {
-                <option value="@cardAlt.Id" 
-                    selected="@(cardAlt.Id == Model.Card.Id)" >
+                <option value="@cardAlt.Id" selected="@(cardAlt.Id == Model.Card.Id)" >
                     @cardAlt.Name (@cardAlt.SetName)
                 </option>
             }

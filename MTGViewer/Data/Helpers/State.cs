@@ -16,7 +16,7 @@ namespace MTGViewer.Data.Internal
         Suggestion,
         Trade,
 
-        Shared,
+        Box,
         Deck
     }
 }

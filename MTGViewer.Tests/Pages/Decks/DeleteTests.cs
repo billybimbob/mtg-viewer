@@ -123,7 +123,7 @@ namespace MTGViewer.Tests.Pages.Decks
                 .AsNoTracking();
 
             var sharedQuery = _dbContext.Amounts
-                .Where(ca => ca.Location is Shared && deckCards.Contains(ca.CardId))
+                .Where(ca => ca.Location is Box && deckCards.Contains(ca.CardId))
                 .Select(ca => ca.Amount);
 
             // Act

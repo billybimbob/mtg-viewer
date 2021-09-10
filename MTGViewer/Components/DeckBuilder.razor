@@ -191,7 +191,7 @@
             _dbCards = new(nameGroups);
 
             var shares = await _dbContext.Amounts
-                .Where(ca => ca.Location is Shared)
+                .Where(ca => ca.Location is Box)
                 // TODO: change return location
                 .ToListAsync();
 
@@ -633,7 +633,7 @@
     private async Task UpdateAvailableAsync()
     {
         var updatedAvails = await _dbContext.Amounts
-            .Where(ca => ca.Location is Shared)
+            .Where(ca => ca.Location is Box)
             // TODO: change return location
             // TODO: group amounts by cards
             // .GroupBy(ca => ca.CardId)

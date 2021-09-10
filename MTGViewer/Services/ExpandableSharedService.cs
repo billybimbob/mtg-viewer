@@ -38,6 +38,8 @@ namespace MTGViewer.Services
         }
 
 
+        public IQueryable<Box> Shares => _dbContext.Boxes;
+
 
         public async Task ReturnAsync(IEnumerable<(Card, int numCopies)> returns)
         {
@@ -82,8 +84,13 @@ namespace MTGViewer.Services
                 .ToArray();
 
             var returnAmounts = await _dbContext.Amounts
-                .Where(ca => ca.Location is Shared && returnIds.Contains(ca.CardId))
+                .Where(ca => ca.Location is Box && returnIds.Contains(ca.CardId))
                 .ToListAsync();
+
+            if (!returnAmounts.Any())
+            {
+                return returning.ToList();
+            }
 
             var returnGroups = returnAmounts
                 .GroupBy(ca => ca.CardId,
@@ -110,7 +117,7 @@ namespace MTGViewer.Services
             // TODO: find more efficient way to determining card position
 
             return await _dbContext.Amounts
-                .Where(ca => ca.Location is Shared)
+                .Where(ca => ca.Location is Box)
                 .Include(ca => ca.Location)
                 .Include(ca => ca.Card)
                 .OrderBy(ca => ca.Card.Name)
@@ -119,12 +126,12 @@ namespace MTGViewer.Services
         }
 
 
-        private IReadOnlyList<Shared> GetSortedBoxes(IReadOnlyList<CardAmount> boxAmounts)
+        private IReadOnlyList<Box> GetSortedBoxes(IReadOnlyList<CardAmount> boxAmounts)
         {
             return boxAmounts
                 .Select(ca => ca.Location)
                 .Distinct()
-                .Cast<Shared>()
+                .Cast<Box>()
                 .OrderBy(s => s.Id)
                 .ToList();
         }
@@ -133,6 +140,12 @@ namespace MTGViewer.Services
         private async Task ReturnNewAsync(IEnumerable<(Card, int)> newReturns)
         {
             var sortedSharedAmounts = await GetSortedAmountsAsync();
+
+            if (!sortedSharedAmounts.Any())
+            {
+                throw new DbUpdateException("There are no possible boxes to return the cards to");
+            }
+
             var sortedBoxes = GetSortedBoxes(sortedSharedAmounts);
 
             var cardIndices = new List<int>(sortedSharedAmounts.Count);
@@ -214,7 +227,7 @@ namespace MTGViewer.Services
 
 
         private void AddUpdatedBoxAmounts(
-            IReadOnlyList<CardAmount> sharedAmounts, IReadOnlyList<Shared> boxes)
+            IReadOnlyList<CardAmount> sharedAmounts, IReadOnlyList<Box> boxes)
         {
             var oldAmounts = sharedAmounts
                 .Select(ca => (ca.Card, ca.Amount))
@@ -258,8 +271,8 @@ namespace MTGViewer.Services
         }
 
 
-        private IEnumerable<(Shared, int)> DivideToBoxAmounts(
-            IReadOnlyList<Shared> boxes, int cardIndex, int numCopies)
+        private IEnumerable<(Box, int)> DivideToBoxAmounts(
+            IReadOnlyList<Box> boxes, int cardIndex, int numCopies)
         {
             var amounts = new List<int>{ _boxSize - cardIndex % _boxSize };
             var givenAmounts = _boxSize;

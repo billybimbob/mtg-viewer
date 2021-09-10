@@ -14,7 +14,7 @@ namespace MTGViewer.Data
         nameof(IsRequest), IsUnique = true)]
     public class CardAmount : Concurrent
     {
-        [JsonProperty]
+        [JsonRequired]
         public int Id { get; private set; }
 
         [JsonIgnore]

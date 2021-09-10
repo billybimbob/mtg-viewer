@@ -47,8 +47,9 @@ namespace MTGViewer.Pages.Decks
                 return NotFound();
             }
 
-            CanEdit = Deck.OwnerId == _userManager.GetUserId(User)
-                && !Deck.ToRequests.Any();
+            var userId = _userManager.GetUserId(User);
+
+            CanEdit = Deck.OwnerId == userId && !Deck.ToRequests.Any();
 
             Amounts = Deck.Cards
                 .GroupBy(ca => ca.CardId,

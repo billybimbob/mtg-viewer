@@ -1,6 +1,5 @@
 @using System.Linq
 @using MTGViewer.Data
-@using Microsoft.AspNetCore.WebUtilities
 
 @namespace MTGViewer.Components
 
@@ -10,28 +9,33 @@
 <h1>Card Collection</h1>
 <hr />
 
-<a class="btn btn-secondary" href="Cards/Create">Add Card</a>
-
-@* <div class="input-group my-3">
-    <span class="input-group-text">Name:</span> *@
-<input class="formcontrol" placeholder="Name" @onchange="SearchName" />
-@* </div> *@
-
-<div class="btn-group" role="group" aria-label="Color Buttons">
-    @foreach (var color in Data.Color.COLORS)
-    {
-        var active = _colorFilter.Contains(color.Key) ? "active" : "";
-
-        <button title="@color.Key Filter"
-                type="button"
-                class="btn btn-outline-secondary border-0 rounded @active"
-                @onclick="() => FilterColor(color.Key)">
-            <span class="ms ms-@color.Value ms-cost"> </span>
-        </button>
-    }
+<div>
+    <a class="btn btn-secondary" href="Cards/Create">Add Card</a>
+    <a class="btn btn-secondary" href="Boxes/">Shared Collection</a>
 </div>
 
-<button class="btn btn-secondary" @onclick="FetchCardsAsync">Refresh</button>
+<div>
+    @* <div class="input-group my-3">
+        <span class="input-group-text">Name:</span> *@
+    <input class="formcontrol" placeholder="Name" @onchange="SearchName" />
+    @* </div> *@
+
+    <div class="btn-group" role="group" aria-label="Color Buttons">
+        @foreach (var color in Data.Color.COLORS)
+        {
+            var active = _colorFilter.Contains(color.Key) ? "active" : "";
+
+            <button title="@color.Key Filter"
+                    type="button"
+                    class="btn btn-outline-secondary border-0 rounded @active"
+                    @onclick="() => FilterColor(color.Key)">
+                <span class="ms ms-@color.Value ms-cost"> </span>
+            </button>
+        }
+    </div>
+
+    <button class="btn btn-secondary" @onclick="FetchCardsAsync">Refresh</button>
+</div>
 
 <table class="table">
     <thead>

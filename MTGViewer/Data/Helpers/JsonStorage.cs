@@ -22,8 +22,9 @@ namespace MTGViewer.Data.Json
         public IReadOnlyList<Card> Cards { get; set; }
         public IReadOnlyList<CardAmount> Amounts { get; set; }
 
-        public IReadOnlyList<Shared> Shares { get; set; }
         public IReadOnlyList<Deck> Decks { get; set; }
+        public IReadOnlyList<Box> Boxes { get; set; }
+        public IReadOnlyList<Bin> Bins { get; set; }
 
         public IReadOnlyList<Suggestion> Suggestions { get; set; }
         public IReadOnlyList<Trade> Trades { get; set; }
@@ -38,11 +39,11 @@ namespace MTGViewer.Data.Json
                 Users = userManager is null
                     ? new List<CardUser>()
                     : await userManager.Users
-                        .AsNoTracking()
+                        .AsNoTrackingWithIdentityResolution()
                         .ToListAsync(),
 
                 Refs = await dbContext.Users
-                    .AsNoTracking()
+                    .AsNoTrackingWithIdentityResolution()
                     .ToListAsync(),
 
                 Cards = await dbContext.Cards
@@ -51,27 +52,31 @@ namespace MTGViewer.Data.Json
                     .Include(c => c.SubTypes)
                     .Include(c => c.SuperTypes)
                     .AsSplitQuery()
-                    .AsNoTracking()
+                    .AsNoTrackingWithIdentityResolution()
                     .ToListAsync(),
 
                 Amounts = await dbContext.Amounts
-                    .AsNoTracking()
+                    .AsNoTrackingWithIdentityResolution()
                     .ToListAsync(),
 
-                Shares = await dbContext.Shares
-                    .AsNoTracking()
+                Boxes = await dbContext.Boxes
+                    .AsNoTrackingWithIdentityResolution()
+                    .ToListAsync(),
+                
+                Bins = await dbContext.Bins
+                    .AsNoTrackingWithIdentityResolution()
                     .ToListAsync(),
 
                 Decks = await dbContext.Decks
-                    .AsNoTracking()
+                    .AsNoTrackingWithIdentityResolution()
                     .ToListAsync(),
 
                 Suggestions = await dbContext.Suggestions
-                    .AsNoTracking()
+                    .AsNoTrackingWithIdentityResolution()
                     .ToListAsync(),
 
                 Trades = await dbContext.Trades
-                    .AsNoTracking()
+                    .AsNoTrackingWithIdentityResolution()
                     .ToListAsync()
             };
         }
@@ -125,7 +130,7 @@ namespace MTGViewer.Data.Json
                 dbContext.Cards.AddRange(data.Cards);
                 dbContext.Amounts.AddRange(data.Amounts);
 
-                dbContext.Shares.AddRange(data.Shares);
+                dbContext.Boxes.AddRange(data.Boxes);
                 dbContext.Decks.AddRange(data.Decks);
 
                 dbContext.Suggestions.AddRange(data.Suggestions);

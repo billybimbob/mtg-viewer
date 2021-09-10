@@ -55,7 +55,7 @@ namespace MTGViewer.Tests.Utils
 
             var cards = await GetCardsAsync();
             var decks = GetDecks(userRefs);
-            var locations = GetShares().Concat(decks).ToList();
+            var locations = GetBoxes().Concat(decks).ToList();
 
             dbContext.Cards.AddRange(cards);
             dbContext.Locations.AddRange(locations);
@@ -103,10 +103,16 @@ namespace MTGViewer.Tests.Utils
         }
 
 
-        private static IReadOnlyList<Location> GetShares()
+        private static IReadOnlyList<Location> GetBoxes()
         {
+            // just use same bin for now
+            var bin = new Bin("Bin #1");
+
             return Enumerable.Range(0, 3)
-                .Select(i => new Shared($"Box #{i+1}"))
+                .Select(i => new Box($"Box #{i+1}")
+                {
+                    Bin = bin
+                })
                 .ToList();
         }
 
@@ -198,7 +204,7 @@ namespace MTGViewer.Tests.Utils
                 Owner = owner
             };
 
-            var shared = await dbContext.Shares.FirstAsync();
+            var shared = await dbContext.Boxes.FirstAsync();
             var sharedAmounts = deckCards
                 .Select(c => new CardAmount
                 {

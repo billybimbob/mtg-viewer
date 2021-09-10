@@ -57,7 +57,7 @@ namespace MTGViewer.Data
         public string? Loyalty { get; init; }
 
         [Display(Name = "Image")]
-        [UrlAttribute]
+        [Url]
         public string? ImageUrl { get; init; }
 
         [JsonIgnore]

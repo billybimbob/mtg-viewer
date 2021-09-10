@@ -58,7 +58,7 @@ namespace MTGViewer.Tests.Services
                 .FirstAsync();
 
             var sharedQuery = _dbContext.Amounts
-                .Where(ca => ca.Location is Shared && ca.CardId == card.Id)
+                .Where(ca => ca.Location is Box && ca.CardId == card.Id)
                 .Include(ca => ca.Location)
                 .AsNoTracking();
 
@@ -69,7 +69,7 @@ namespace MTGViewer.Tests.Services
 
             var sharedAfter = await sharedQuery.FirstAsync();
 
-            Assert.IsType<Shared>(sharedAfter.Location);
+            Assert.IsType<Box>(sharedAfter.Location);
 
             Assert.Equal(card.Id, sharedAfter.CardId);
             Assert.Equal(copies, sharedAfter.Amount - beforeAmount);
@@ -83,7 +83,7 @@ namespace MTGViewer.Tests.Services
             Card card = null;
 
             var sharedAmountQuery = _dbContext.Amounts
-                .Where(ca => ca.Location is Shared)
+                .Where(ca => ca.Location is Box)
                 .Select(ca => ca.Amount);
 
             var sharedBefore = await sharedAmountQuery.SumAsync();
@@ -105,7 +105,7 @@ namespace MTGViewer.Tests.Services
                 .FirstAsync();
 
             var sharedAmountQuery = _dbContext.Amounts
-                .Where(ca => ca.Location is Shared)
+                .Where(ca => ca.Location is Box)
                 .Select(ca => ca.Amount);
 
             var sharedBefore = await sharedAmountQuery.SumAsync();
@@ -117,13 +117,36 @@ namespace MTGViewer.Tests.Services
 
 
         [Fact]
+        public async Task Return_NoBoxes_ThrowsException()
+        {
+            var boxes = await _dbContext.Boxes
+                .Include(b => b.Cards)
+                .ToListAsync();
+
+            _dbContext.Amounts.RemoveRange(boxes.SelectMany(b => b.Cards));
+            _dbContext.Boxes.RemoveRange(boxes);
+
+            await _dbContext.SaveChangesAsync();
+            _dbContext.ChangeTracker.Clear();
+
+            var copies = 4;
+            var card = await _dbContext.Cards
+                .AsNoTracking()
+                .FirstAsync();
+
+            await Assert.ThrowsAsync<DbUpdateException>(() =>
+                _sharedStorage.ReturnAsync(card, copies) );
+        }
+
+
+        [Fact]
         public async Task Optimize_LargeAmounts_SplitMultiple()
         {
             var copies = 120;
             var card = await _dbContext.Cards.AsNoTracking().FirstAsync();
 
             var spotQuery = _dbContext.Amounts
-                .Where(ca => ca.Location is Shared && ca.CardId == card.Id)
+                .Where(ca => ca.Location is Box && ca.CardId == card.Id)
                 .Include(ca => ca.Location)
                 .AsNoTracking();
 
@@ -133,7 +156,7 @@ namespace MTGViewer.Tests.Services
             await _sharedStorage.OptimizeAsync();
             var newSpots = await spotQuery.ToListAsync();
 
-            Assert.All(newSpots, ca => Assert.IsType<Shared>(ca.Location));
+            Assert.All(newSpots, ca => Assert.IsType<Box>(ca.Location));
             Assert.All(newSpots, ca => Assert.True(ca.Amount < copies));
 
             Assert.Equal(
