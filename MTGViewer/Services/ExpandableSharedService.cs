@@ -72,7 +72,7 @@ namespace MTGViewer.Services
         {
             return !returns.Any()
                 || returns.Any(cn => cn.card == null)
-                || returns.Any(cn => cn.numCopies <= 0);
+                || returns.Any(cn => cn.numCopies < 0);
         }
 
 
@@ -118,7 +118,6 @@ namespace MTGViewer.Services
 
             return await _dbContext.Amounts
                 .Where(ca => ca.Location is Box)
-                .Include(ca => ca.Location)
                 .Include(ca => ca.Card)
                 .OrderBy(ca => ca.Card.Name)
                     .ThenBy(ca => ca.Card.SetName)
@@ -126,27 +125,23 @@ namespace MTGViewer.Services
         }
 
 
-        private IReadOnlyList<Box> GetSortedBoxes(IReadOnlyList<CardAmount> boxAmounts)
+        private async Task<IReadOnlyList<Box>> GetSortedBoxesAsync()
         {
-            return boxAmounts
-                .Select(ca => ca.Location)
-                .Distinct()
-                .Cast<Box>()
+            return await _dbContext.Boxes
                 .OrderBy(s => s.Id)
-                .ToList();
+                .ToListAsync();
         }
 
 
         private async Task ReturnNewAsync(IEnumerable<(Card, int)> newReturns)
         {
             var sortedSharedAmounts = await GetSortedAmountsAsync();
+            var sortedBoxes = await GetSortedBoxesAsync();
 
-            if (!sortedSharedAmounts.Any())
+            if (!sortedBoxes.Any())
             {
                 throw new DbUpdateException("There are no possible boxes to return the cards to");
             }
-
-            var sortedBoxes = GetSortedBoxes(sortedSharedAmounts);
 
             var cardIndices = new List<int>(sortedSharedAmounts.Count);
             var cardCount = 0;
@@ -159,8 +154,18 @@ namespace MTGViewer.Services
 
             foreach (var (card, numCopies) in newReturns)
             {
-                var amountIndex = FindAmountIndex(sortedSharedAmounts, card);
-                var cardIndex = cardIndices[amountIndex];
+                int cardIndex;
+
+                if (sortedSharedAmounts.Any())
+                {
+                    var amountIndex = FindAmountIndex(sortedSharedAmounts, card);
+                    cardIndex = cardIndices[amountIndex];
+                }
+                else
+                {
+                    cardIndex = 0;
+                }
+
                 var boxIndex = Math.Min(cardIndex / _boxSize, sortedBoxes.Count - 1);
 
                 var newSpot = new CardAmount
@@ -180,15 +185,15 @@ namespace MTGViewer.Services
             // TODO: use binary search
             var amountIndex = -1;
 
-            foreach (var sharedAmount in sortedAmounts)
+            foreach (var boxAmount in sortedAmounts)
             {
-                var sharedCard = sharedAmount.Card;
+                var boxCard = boxAmount.Card;
 
                 var nameCompare = string.Compare(
-                    sharedCard.Name, card.Name, StringComparison.InvariantCulture);
+                    boxCard.Name, card.Name, StringComparison.InvariantCulture);
 
                 var setCompare = string.Compare(
-                    sharedCard.SetName, card.SetName, StringComparison.InvariantCulture);
+                    boxCard.SetName, card.SetName, StringComparison.InvariantCulture);
 
                 if (nameCompare > 0 || nameCompare == 0 && setCompare > 0)
                 {
@@ -208,13 +213,13 @@ namespace MTGViewer.Services
             await _lock.WaitAsync();
             try
             {
-                var sortedSharedAmounts = await GetSortedAmountsAsync();
-                var sortedBoxes = GetSortedBoxes(sortedSharedAmounts);
+                var sortedBoxAmounts = await GetSortedAmountsAsync();
+                var sortedBoxes = await GetSortedBoxesAsync();
 
-                AddUpdatedBoxAmounts(sortedSharedAmounts, sortedBoxes);
+                AddUpdatedBoxAmounts(sortedBoxAmounts, sortedBoxes);
 
                 _dbContext.Amounts.RemoveRange(
-                    sortedSharedAmounts.Where(ca => ca.Amount == 0));
+                    sortedBoxAmounts.Where(ca => ca.Amount == 0));
 
                 // intentionally throw db exception
                 await _dbContext.SaveChangesAsync();

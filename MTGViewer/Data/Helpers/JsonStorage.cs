@@ -1,6 +1,7 @@
 using System.Linq;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
 
 using Microsoft.AspNetCore.Identity;
@@ -10,7 +11,7 @@ using Newtonsoft.Json;
 using MTGViewer.Areas.Identity.Data;
 
 
-namespace MTGViewer.Data.Json
+namespace MTGViewer.Data.Seed
 {
     // TODO: make reading use less memory
 
@@ -31,16 +32,17 @@ namespace MTGViewer.Data.Json
 
 
         public static async Task<CardData> CreateAsync(
-            CardDbContext dbContext, UserManager<CardUser> userManager = null)
+            CardDbContext dbContext,
+            UserManager<CardUser> userManager = default,
+            CancellationToken cancel = default)
         {
-            // TODO: add some includes possibly?
             return new CardData
             {
                 Users = userManager is null
                     ? new List<CardUser>()
                     : await userManager.Users
                         .AsNoTrackingWithIdentityResolution()
-                        .ToListAsync(),
+                        .ToListAsync(cancel),
 
                 Refs = await dbContext.Users
                     .AsNoTrackingWithIdentityResolution()
@@ -53,31 +55,31 @@ namespace MTGViewer.Data.Json
                     .Include(c => c.SuperTypes)
                     .AsSplitQuery()
                     .AsNoTrackingWithIdentityResolution()
-                    .ToListAsync(),
+                    .ToListAsync(cancel),
 
                 Amounts = await dbContext.Amounts
                     .AsNoTrackingWithIdentityResolution()
-                    .ToListAsync(),
+                    .ToListAsync(cancel),
 
                 Boxes = await dbContext.Boxes
                     .AsNoTrackingWithIdentityResolution()
-                    .ToListAsync(),
+                    .ToListAsync(cancel),
                 
                 Bins = await dbContext.Bins
                     .AsNoTrackingWithIdentityResolution()
-                    .ToListAsync(),
+                    .ToListAsync(cancel),
 
                 Decks = await dbContext.Decks
                     .AsNoTrackingWithIdentityResolution()
-                    .ToListAsync(),
+                    .ToListAsync(cancel),
 
                 Suggestions = await dbContext.Suggestions
                     .AsNoTrackingWithIdentityResolution()
-                    .ToListAsync(),
+                    .ToListAsync(cancel),
 
                 Trades = await dbContext.Trades
                     .AsNoTrackingWithIdentityResolution()
-                    .ToListAsync()
+                    .ToListAsync(cancel)
             };
         }
     }
@@ -85,17 +87,20 @@ namespace MTGViewer.Data.Json
 
     public static class Storage
     {
+        public const string USER_PASSWORD = "Password1!";
         private const string CARDS_JSON = "cards.json";
 
         public static async Task WriteToJsonAsync(
-            this CardDbContext dbContext, UserManager<CardUser> userManager, string directory = null)
+            CardDbContext dbContext,
+            UserManager<CardUser> userManager,
+            string path = default,
+            CancellationToken cancel = default)
         {
-            var data = await CardData.CreateAsync(dbContext, userManager);
+            var data = await CardData.CreateAsync(dbContext, userManager, cancel);
 
-            directory ??= Directory.GetCurrentDirectory();
-            var cardsPath = Path.Combine(directory, CARDS_JSON);
+            path ??= Path.Combine(Directory.GetCurrentDirectory(), CARDS_JSON);
 
-            await using var writer = File.CreateText(cardsPath);
+            await using var writer = File.CreateText(path);
 
             var dataStr = JsonConvert.SerializeObject(data, Formatting.Indented);
             await writer.WriteAsync(dataStr);
@@ -103,7 +108,10 @@ namespace MTGViewer.Data.Json
 
 
         public static async Task<bool> AddFromJsonAsync(
-            this CardDbContext dbContext, UserManager<CardUser> userManager = null, string path = null)
+            CardDbContext dbContext,
+            UserManager<CardUser> userManager = default,
+            string path = default,
+            CancellationToken cancel = default)
         {
             path ??= Path.Combine(Directory.GetCurrentDirectory(), CARDS_JSON);
             var cardsPath = Path.ChangeExtension(path, ".json");
@@ -113,16 +121,16 @@ namespace MTGViewer.Data.Json
                 using var reader = File.OpenText(cardsPath);
 
                 var dataStr = await reader.ReadToEndAsync();
-                var data = JsonConvert.DeserializeObject<CardData>(dataStr);
+                var data = JsonConvert.DeserializeObject<CardData>(
+                    dataStr,
+                    new JsonSerializerSettings
+                    {
+                        MissingMemberHandling = MissingMemberHandling.Error
+                    });
 
                 if (data is null)
                 {
                     return false;
-                }
-
-                if (userManager is not null && (data.Users?.Any() ?? false))
-                {
-                    await Task.WhenAll( data.Users.Select(userManager.CreateAsync) );
                 }
 
                 dbContext.Users.AddRange(data.Refs);
@@ -130,13 +138,20 @@ namespace MTGViewer.Data.Json
                 dbContext.Cards.AddRange(data.Cards);
                 dbContext.Amounts.AddRange(data.Amounts);
 
+                dbContext.Bins.AddRange(data.Bins);
                 dbContext.Boxes.AddRange(data.Boxes);
                 dbContext.Decks.AddRange(data.Decks);
 
                 dbContext.Suggestions.AddRange(data.Suggestions);
                 dbContext.Trades.AddRange(data.Trades);
 
-                await dbContext.SaveChangesAsync();
+                await dbContext.SaveChangesAsync(cancel);
+
+                if (userManager is not null && (data.Users?.Any() ?? false))
+                {
+                    await Task.WhenAll(
+                        data.Users.Select(u => userManager.CreateAsync(u, USER_PASSWORD)) );
+                }
 
                 return true;
             }
@@ -144,7 +159,7 @@ namespace MTGViewer.Data.Json
             {
                 return false;
             }
-            catch (JsonReaderException)
+            catch (JsonSerializationException)
             {
                 return false;
             }

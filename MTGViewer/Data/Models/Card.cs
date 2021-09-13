@@ -8,6 +8,8 @@ using MtgApiManager.Lib.Service;
 
 #nullable enable
 
+// adding annotations for validator
+
 namespace MTGViewer.Data
 {
     [Index(nameof(Name), nameof(ManaCost))]
@@ -15,17 +17,22 @@ namespace MTGViewer.Data
     {
         // not sure about the sha length range
         [RegularExpression(@"^[a-fA-F0-9-]{1,40}")]
+        [Required]
         public string Id { get; init; } = null!;
 
+        [Required]
         public string MultiverseId { get; init; } = null!;
 
+        [Required]
         public string Name { get; init; } = null!;
 
         public ICollection<Name> Names { get; init; } = new List<Name>();
 
+        [Required]
         public string Layout { get; init; } = null!;
 
         [Display(Name = "Mana")]
+        [Required]
         public string ManaCost { get; init; } = null!;
 
         [Display(Name = "Converted Mana")]
@@ -39,11 +46,14 @@ namespace MTGViewer.Data
 
         public ICollection<SubType> SubTypes { get; init; } = new List<SubType>();
 
+        [Required]
         public string Rarity { get; init; } = null!;
 
         [Display(Name = "Set")]
+        [Required]
         public string SetName { get; init; } = null!;
 
+        [Required]
         public string Artist { get; init; } = null!;
 
         public string? Text { get; init; }

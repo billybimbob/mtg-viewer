@@ -6,7 +6,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
 using MtgApiManager.Lib.Service;
-using MTGViewer.Data;
 using MTGViewer.Services;
 
 
@@ -45,8 +44,6 @@ namespace MTGViewer
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
         public void Configure(IApplicationBuilder app)
         {
-            app.CheckDatabase(_env);
-
             if (_env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();

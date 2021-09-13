@@ -66,7 +66,7 @@ namespace MTGViewer.Data
 
         [JsonIgnore]
         public Bin Bin { get; set; } = null!;
-        public int BinId { get; private set; }
+        public int BinId { get; init; }
 
         public string? Color { get; init; }
     }

@@ -1,12 +1,18 @@
-using System.Linq;
+using System;
+using System.Threading;
+using System.Threading.Tasks;
 
-using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.EntityFrameworkCore;
 
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+
+using MTGViewer.Areas.Identity.Data;
+using MTGViewer.Data.Seed;
+using MTGViewer.Services;
 
 
 [assembly: HostingStartup(typeof(MTGViewer.Data.CardHostingStartup))]
@@ -46,43 +52,65 @@ namespace MTGViewer.Data
                 services.AddScoped<CardDbContext>(provider => provider
                     .GetRequiredService<IDbContextFactory<CardDbContext>>()
                     .CreateDbContext());
+
+                services.AddHostedService<CardSetup>();
             });
         }
     }
 
 
-    public static class BuilderExtensions
+
+    public class CardSetup : IHostedService
     {
-        public static IApplicationBuilder CheckDatabase(this IApplicationBuilder app, IWebHostEnvironment env)
+        private readonly IServiceProvider _serviceProvider;
+        private readonly IWebHostEnvironment _env;
+
+        public CardSetup(IServiceProvider serviceProvider, IWebHostEnvironment env)
         {
-            using var serviceScope = app.ApplicationServices
-                .GetService<IServiceScopeFactory>()
-                .CreateScope();
-            
-            var contextFactory = serviceScope.ServiceProvider
-                .GetRequiredService<IDbContextFactory<CardDbContext>>();
-
-            using var context = contextFactory.CreateDbContext();
-
-            context.Database.EnsureCreated();
-
-            if (env.IsDevelopment())
-            {
-                AddDefaultLocation(context);
-            }
-
-            return app;
+            _serviceProvider = serviceProvider;
+            _env = env;
         }
 
 
-        private static void AddDefaultLocation(CardDbContext context)
+        public async Task StartAsync(CancellationToken cancel)
         {
-            if (!context.Locations.Any())
+            using var scope = _serviceProvider.CreateScope();
+            var scopeProvider = scope.ServiceProvider;
+
+            var dbContext = scopeProvider.GetRequiredService<CardDbContext>();
+            await dbContext.Database.MigrateAsync(cancel);
+
+            if (!_env.IsDevelopment())
             {
-                context.Locations.Add(new Box("Dev Default"));
-                context.SaveChanges();
+                return;
             }
+
+            var anyCards = await dbContext.Cards.AnyAsync(cancel);
+
+            if (anyCards)
+            {
+                return;
+            }
+
+            var sharedStorage = scopeProvider.GetRequiredService<ISharedStorage>();
+            var userManager = scopeProvider.GetRequiredService<UserManager<CardUser>>();
+            var fetchService = scopeProvider.GetRequiredService<MTGFetchService>();
+
+            var cardGen = new CardDataGenerator(dbContext, sharedStorage, userManager, fetchService);
+            var jsonSuccess = await cardGen.AddFromJsonAsync(cancel: cancel);
+
+            if (jsonSuccess)
+            {
+                return;
+            }
+
+            await cardGen.GenerateAsync(cancel);
+            await cardGen.WriteToJsonAsync(cancel: cancel);
+            await sharedStorage.OptimizeAsync();
         }
+
+
+        public Task StopAsync(CancellationToken cancel) => Task.CompletedTask;
     }
 
 }

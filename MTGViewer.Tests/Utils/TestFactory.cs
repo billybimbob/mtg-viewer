@@ -25,6 +25,7 @@ using Moq;
 using MtgApiManager.Lib.Service;
 using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
+using MTGViewer.Data.Seed;
 using MTGViewer.Services;
 
 
@@ -180,6 +181,17 @@ namespace MTGViewer.Tests.Utils
             var cache = new DataCacheService(Mock.Of<IConfiguration>(), Mock.Of<ILogger<DataCacheService>>());
 
             return new MTGFetchService(provider, cache, Mock.Of<ILogger<MTGFetchService>>());
+        }
+
+
+        internal static CardDataGenerator CardDataGenerator(
+            CardDbContext dbContext,
+            UserManager<CardUser> userManager)
+        {
+            var sharedStorage = new ExpandableSharedService(Mock.Of<IConfiguration>(), dbContext);
+            var fetch = NoCacheFetchService();
+
+            return new CardDataGenerator(dbContext, sharedStorage, userManager, fetch);
         }
     }
 }

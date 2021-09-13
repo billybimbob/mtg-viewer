@@ -9,7 +9,7 @@ using Microsoft.EntityFrameworkCore;
 
 using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
-using MTGViewer.Data.Json;
+using MTGViewer.Data.Seed;
 
 
 namespace MTGViewer.Tests.Utils
@@ -26,13 +26,16 @@ namespace MTGViewer.Tests.Utils
             await _jsonLock.WaitAsync();
             try
             {
-                var jsonSuccess = await dbContext.AddFromJsonAsync(userManager);
+                // don't use card gen to allow for null userManager
+                var jsonSuccess = await Storage.AddFromJsonAsync(dbContext, userManager);
 
                 if (!jsonSuccess)
                 {
                     userManager ??= TestFactory.CardUserManager();
-                    await dbContext.AddGeneratedAsync(userManager);
-                    await dbContext.WriteToJsonAsync(userManager);
+                    var cardGen = TestFactory.CardDataGenerator(dbContext, userManager);
+
+                    await cardGen.GenerateAsync();
+                    await cardGen.WriteToJsonAsync();
                 }
 
                 dbContext.ChangeTracker.Clear();
@@ -43,145 +46,6 @@ namespace MTGViewer.Tests.Utils
             }
         }
 
-
-        private static async Task AddGeneratedAsync(
-            this CardDbContext dbContext, UserManager<CardUser> userManager)
-        {
-            var users = GetUsers();
-            var userRefs = users.Select(u => new UserRef(u)).ToList();
-
-            await Task.WhenAll(users.Select(userManager.CreateAsync));
-            dbContext.Users.AddRange(userRefs);
-
-            var cards = await GetCardsAsync();
-            var decks = GetDecks(userRefs);
-            var locations = GetBoxes().Concat(decks).ToList();
-
-            dbContext.Cards.AddRange(cards);
-            dbContext.Locations.AddRange(locations);
-
-            var amounts = GetCardAmounts(cards, locations);
-
-            dbContext.Amounts.AddRange(amounts);
-
-            var transfers = GetTransfers(userRefs, cards, decks, amounts);
-
-            dbContext.Transfers.AddRange(transfers);
-
-            await dbContext.SaveChangesAsync();
-        }
-
-
-        private static IReadOnlyList<CardUser> GetUsers() => new List<CardUser>()
-        {
-            new CardUser
-            {
-                Name = "Test Name",
-                UserName = "testingname",
-                Email = "test@gmail.com"
-            },
-            new CardUser
-            {
-                Name = "Bob Billy",
-                UserName = "bobbilly213",
-                Email = "bob@gmail.com"
-            },
-            new CardUser
-            {
-                Name = "Steve Phil",
-                UserName = "stephenthegreat",
-                Email = "steve@gmail.com"
-            }
-        };
-
-
-        private static async Task<IReadOnlyList<Card>> GetCardsAsync()
-        {
-            return await TestFactory.NoCacheFetchService()
-                .Where(c => c.Cmc, 3)
-                .SearchAsync();
-        }
-
-
-        private static IReadOnlyList<Location> GetBoxes()
-        {
-            // just use same bin for now
-            var bin = new Bin("Bin #1");
-
-            return Enumerable.Range(0, 3)
-                .Select(i => new Box($"Box #{i+1}")
-                {
-                    Bin = bin
-                })
-                .ToList();
-        }
-
-
-        private static IReadOnlyList<Deck> GetDecks(IEnumerable<UserRef> users)
-        {
-            return users
-                .Where((_, i) => i % 2 == 0)
-                .SelectMany(u => Enumerable
-                    .Range(0, _random.Next(1, 4))
-                    .Select(i => new Deck($"Deck #{i+1}")
-                    {
-                        Owner = u
-                    }))
-                .ToList();
-        }
-
-
-        private static IReadOnlyList<CardAmount> GetCardAmounts(
-            IEnumerable<Card> cards,
-            IEnumerable<Location> locations)
-        {
-            return cards.Zip(locations,
-                (card, location) => (card, location))
-                .Select(cl => new CardAmount
-                {
-                    Card = cl.card,
-                    Location = cl.location,
-                    Amount = _random.Next(6)
-                })
-                .ToList();
-        }
-
-
-        private static IReadOnlyList<Transfer> GetTransfers(
-            IEnumerable<UserRef> users,
-            IEnumerable<Card> cards,
-            IEnumerable<Deck> decks,
-            IEnumerable<CardAmount> amounts)
-        {
-            var source = amounts.First(ca => ca.Location is Deck);
-
-            var tradeFrom = (Deck)source.Location;
-            var tradeTo = decks.First(l => l.Id != source.LocationId);
-
-            var suggestCard = cards.First();
-            var suggester = users.First(u => 
-                u.Id != tradeFrom.OwnerId && u.Id != tradeTo.OwnerId);
-
-            return new List<Transfer>()
-            {
-                new Trade
-                {
-                    Card = source.Card,
-                    Proposer = tradeTo.Owner,
-                    Receiver = tradeFrom.Owner,
-                    To = tradeTo,
-                    From = tradeFrom,
-                    Amount = _random.Next(5)
-                },
-                new Suggestion
-                {
-                    Card = suggestCard,
-                    Proposer = suggester,
-                    Receiver = tradeTo.Owner,
-                    To = tradeTo
-                }
-            };
-        }
 
 
         internal static async Task<Deck> CreateDeckAsync(this CardDbContext dbContext)

@@ -246,7 +246,7 @@ namespace MTGViewer.Data
             set
             {
                 int change = Amount - value;
-                while (change != 0 && First.Amount > 0)
+                while (change < 0 || change > 0 && First.Amount > 0)
                 {
                     int mod = Math.Min(change, First.Amount);
 
