@@ -1,9 +1,12 @@
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Primitives;
 
 using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
@@ -22,8 +25,12 @@ namespace MTGViewer.Pages.Cards
             _dbContext = dbContext;
         }
 
+        [TempData]
+        public string Reffer { get; set; }
+
         public bool IsSignedIn { get; private set; }
         public Card Card { get; private set; }
+        public IReadOnlyList<Card> CardAlts { get; private set; }
 
 
         public async Task<IActionResult> OnGetAsync(string id)
@@ -46,10 +53,29 @@ namespace MTGViewer.Pages.Cards
             {
                 return NotFound();
             }
-            else
+
+            CardAlts = await _dbContext.Cards
+                .Where(c => c.Name == Card.Name)
+                .OrderBy(c => c.SetName)
+                .ToListAsync();
+
+
+            // kind of a hack, TODO: figure out better way than tempdata
+            if (Request.Headers["Referer"] != StringValues.Empty)
             {
-                return Page();
+                var reffer = Request.Headers["Referer"].ToString();
+
+                if (reffer.Contains("Details"))
+                {
+                    TempData.Keep(nameof(Reffer));
+                }
+                else
+                {
+                    Reffer = reffer;
+                }
             }
+
+            return Page();
         }
     }
 }

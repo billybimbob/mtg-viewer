@@ -46,13 +46,13 @@ namespace MTGViewer.Pages.Transfers
             }
 
             Card = card;
-            Users = await GetPossibleUsersAsync(cardId);
+            Users = await GetPossibleUsersAsync(card);
 
             return Page();
         }
 
 
-        public async Task<IReadOnlyList<UserRef>> GetPossibleUsersAsync(string cardId)
+        public async Task<IReadOnlyList<UserRef>> GetPossibleUsersAsync(Card card)
         {
             var proposerId = _userManager.GetUserId(User);
 
@@ -60,7 +60,7 @@ namespace MTGViewer.Pages.Transfers
                 .Where(u => u.Id != proposerId);
 
             var cardSuggests = _dbContext.Suggestions
-                .Where(s => s.CardId == cardId && s.ToId == default);
+                .Where(s => s.Card.Name == card.Name && s.ToId == default);
 
             var notSuggested = nonProposers
                 .GroupJoin( cardSuggests,
@@ -124,7 +124,7 @@ namespace MTGViewer.Pages.Transfers
                     .ThenInclude(ca => ca.Card);
 
             var userCardAmounts = _dbContext.Amounts
-                .Where(ca => ca.CardId == card.Id
+                .Where(ca => ca.Card.Name == card.Name
                     && ca.Location is Deck
                     && (ca.Location as Deck).OwnerId == user.Id);
 
@@ -141,7 +141,7 @@ namespace MTGViewer.Pages.Transfers
 
 
             var transfersWithCard = _dbContext.Transfers
-                .Where(t => t.CardId == card.Id
+                .Where(t => t.Card.Name == card.Name
                     && (t.ProposerId == user.Id || t.ReceiverId == user.Id));
 
             var validDecks = decksWithoutCard

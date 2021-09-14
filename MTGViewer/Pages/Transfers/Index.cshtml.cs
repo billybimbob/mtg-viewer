@@ -15,12 +15,12 @@ using MTGViewer.Data;
 
 namespace MTGViewer.Pages.Transfers
 {
+    public record DeckTrade(Deck Deck, int NumberOrTrades) { }
+
+
     [Authorize]
     public class IndexModel : PageModel
     {
-        public record DeckTrade(Deck Deck, int NumberOrTrades) { }
-
-
         private readonly UserManager<CardUser> _userManager;
         private readonly CardDbContext _dbContext;
 
@@ -57,22 +57,24 @@ namespace MTGViewer.Pages.Transfers
             var requestDecks = await _dbContext.Decks
                 .Where(d => d.OwnerId == userId && d.Cards.Any(ca => ca.IsRequest))
                 .Include(d => d.Cards.Where(ca => ca.IsRequest))
+                .Include(d => d.Owner)
                 .ToListAsync();
 
 
-            SelfUser = await _dbContext.Users.FindAsync(userId);
+            SelfUser = requestDecks.FirstOrDefault()?.Owner
+                ?? await _dbContext.Users.FindAsync(userId);
 
             ReceivedTrades = userTrades
                 .Where(t => t.ReceiverId == userId)
-                .GroupBy(t => t.From)
-                .Select(g => new DeckTrade(g.Key, g.Count()))
+                .GroupBy(t => t.From,
+                    (from, trades) => new DeckTrade(from, trades.Count()) )
                 .OrderBy(t => t.Deck.Name)
                 .ToList();
 
             PendingTrades = userTrades
                 .Where(t => t.ProposerId == userId)
-                .GroupBy(t => t.To)
-                .Select(g => new DeckTrade(g.Key, g.Count()))
+                .GroupBy(t => t.To,
+                    (to, trades) => new DeckTrade(to, trades.Count()) )
                 .OrderBy(t => t.Deck.Name)
                 .ToList();
 
@@ -93,8 +95,10 @@ namespace MTGViewer.Pages.Transfers
         public async Task<IActionResult> OnPostAsync(int suggestId)
         {
             var userId = _userManager.GetUserId(User);
+
             var suggestion = await _dbContext.Suggestions
-                .SingleOrDefaultAsync(s => s.Id == suggestId && s.ReceiverId == userId);
+                .SingleOrDefaultAsync(s =>
+                    s.Id == suggestId && s.ReceiverId == userId);
 
             if (suggestion is null)
             {

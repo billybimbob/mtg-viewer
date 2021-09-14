@@ -16,7 +16,7 @@ namespace MTGViewer.Data
             Name = name;
         }
 
-        [JsonProperty]
+        [JsonRequired]
         public int Id { get; private set; }
 
         public string Name { get; set; }
@@ -36,15 +36,8 @@ namespace MTGViewer.Data
         public IOrderedEnumerable<string> GetColorSymbols() => Cards
             .SelectMany(ca => ca.Card.GetManaSymbols())
             .Distinct()
-            .Where(s => Color.COLORS.Values.Contains(s))
+            .Intersect(Color.COLORS.Values)
             .OrderBy(s => s);
-    }
-
-
-    public class Shared : Location
-    {
-        public Shared(string name) : base(name)
-        { }
     }
 
 
@@ -56,5 +49,43 @@ namespace MTGViewer.Data
         [JsonIgnore]
         public UserRef Owner { get; init; } = null!;
         public string OwnerId { get; init; } = null!;
+
+
+        [JsonIgnore]
+        public ICollection<Transfer> ToRequests { get; } = new List<Transfer>();
+
+        [JsonIgnore]
+        public ICollection<Trade> FromRequests { get; } = new List<Trade>();
+    }
+
+
+    public class Box : Location
+    {
+        public Box(string name) : base(name)
+        { }
+
+        [JsonIgnore]
+        public Bin Bin { get; set; } = null!;
+        public int BinId { get; init; }
+
+        public string? Color { get; init; }
+    }
+
+
+    public class Bin
+    {
+        public Bin(string name)
+        {
+            Name = name;
+        }
+
+        [JsonRequired]
+        public int Id { get; private set; }
+
+        [JsonRequired]
+        public string Name { get; private set; }
+
+        [JsonIgnore]
+        public ICollection<Box> Boxes = new List<Box>();
     }
 }

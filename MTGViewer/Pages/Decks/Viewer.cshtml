@@ -1,0 +1,53 @@
+@page
+@using MTGViewer.Data
+@model MTGViewer.Pages.Decks.ViewerModel
+
+@{
+    ViewData["Title"] = $"{Model.Deck.Name} Viewer";
+}
+
+
+<h2>@Model.Deck.Owner.Name's @Model.Deck.Name</h2>
+<hr />
+
+@if (Model.CanEdit)
+{
+    <a asp-page="./Builder"
+        asp-route-id="@Model.Deck.Id"
+        class="btn btn-secondary mb-3" >
+        Edit</a>
+}
+
+<table class="table">
+    <thead>
+        <tr>
+            <th> @Html.DisplayNameForInnerType((CardAmount ca) => ca.Card) </th>
+            <th> @Html.DisplayNameForInnerType((Card c) => c.ManaCost) </th>
+            <th> @Html.DisplayNameForInnerType((Card c) => c.SetName) </th>
+            <th> Requests </th>
+            <th> Current Amount </th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var pair in Model.Amounts)
+        {
+            <tr>
+                <td>
+                    <a asp-page="/Cards/Details"
+                       asp-route-id="@pair.CardId"
+                       class="fw-bold">
+                       @pair.Card.Name </a>
+                </td>
+                <td>
+                    @foreach (var cost in pair.Card.GetManaSymbols())
+                    {
+                        <span class="m-1 ms ms-@cost ms-cost"></span>
+                    }
+                </td>
+                <td> @pair.Card.SetName </td>
+                <td> @(pair.Request?.Amount ?? 0) </td>
+                <td> @(pair.Actual?.Amount ?? 0) </td>
+            </tr>
+        }
+    </tbody>
+</table>

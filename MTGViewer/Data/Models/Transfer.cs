@@ -15,7 +15,7 @@ namespace MTGViewer.Data
         protected Transfer()
         { }
 
-        [JsonProperty]
+        [JsonRequired]
         public int Id { get; private set; }
 
         [JsonIgnore]

@@ -1,4 +1,4 @@
-@page "/Cards/Details/{id}"
+@page
 @model MTGViewer.Pages.Cards.DetailsModel
 
 @{
@@ -6,9 +6,28 @@
 }
 
 <h1>@Model.Card.Name</h1>
+<hr />
 
 <div>
-    <hr />
+    <label for="cardPick">Alternate Versions</label>
+    <form method="GET">
+        <select title="Pick Card"
+            onchange="this.form.submit()"
+            id="cardPick"
+            name="id" 
+            class="form-control">
+            @foreach (var cardAlt in Model.CardAlts)
+            {
+                <option value="@cardAlt.Id" selected="@(cardAlt.Id == Model.Card.Id)" >
+                    @cardAlt.Name (@cardAlt.SetName)
+                </option>
+            }
+        </select>
+    </form>
+</div>
+
+<hr />
+<div>
     <dl class="row">
         <dt class="col-sm-2">
             @Html.DisplayNameFor(m => m.Card.ManaCost)
@@ -114,7 +133,8 @@
 </div>
 <div>
     <!-- js hack -->
-    <a href="javascript:history.go(-1)"
+    <!--a href="javascript:history.go(-1)" -->
+    <a href="@Model.Reffer"
        class="btn btn-secondary mb-3">
        Back </a>
 

@@ -30,9 +30,9 @@ namespace MTGViewer.Tests.Data
         [Fact]
         public async Task First_IsShared_CorrectType()
         {
-            var shared = await _dbContext.Locations.FirstAsync(l => l is Shared);
+            var shared = await _dbContext.Locations.FirstAsync(l => l is Box);
 
-            Assert.IsType<Shared>(shared);
+            Assert.IsType<Box>(shared);
         }
 
 

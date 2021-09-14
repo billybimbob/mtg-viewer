@@ -1,4 +1,3 @@
-using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using MTGViewer.Data.Concurrency;
@@ -14,17 +13,19 @@ namespace MTGViewer.Data
         { }
 
 
-        public DbSet<UserRef> Users { get; set; }
-        public DbSet<Card> Cards { get; set; }
-        public DbSet<CardAmount> Amounts { get; set; }
+        public DbSet<UserRef> Users => Set<UserRef>();
+        public DbSet<Card> Cards => Set<Card>();
+        public DbSet<CardAmount> Amounts => Set<CardAmount>();
 
-        public DbSet<Location> Locations { get; set; }
-        public DbSet<Shared> Shares { get; set; }
-        public DbSet<Deck> Decks { get; set; }
+        public DbSet<Location> Locations => Set<Location>();
+        public DbSet<Deck> Decks => Set<Deck>();
 
-        public DbSet<Transfer> Transfers { get; set; }
-        public DbSet<Suggestion> Suggestions { get; set; }
-        public DbSet<Trade> Trades { get; set; }
+        public DbSet<Box> Boxes => Set<Box>();
+        public DbSet<Bin> Bins => Set<Bin>();
+
+        public DbSet<Transfer> Transfers => Set<Transfer>();
+        public DbSet<Suggestion> Suggestions => Set<Suggestion>();
+        public DbSet<Trade> Trades => Set<Trade>();
 
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -52,7 +53,7 @@ namespace MTGViewer.Data
             builder
                 .HasDiscriminator(l => l.Type)
                     .HasValue<Location>(Discriminator.Invalid)
-                    .HasValue<Shared>(Discriminator.Shared)
+                    .HasValue<Box>(Discriminator.Box)
                     .HasValue<Deck>(Discriminator.Deck);
 
             builder
@@ -85,7 +86,7 @@ namespace MTGViewer.Data
 
             builder
                 .HasOne(t => t.To)
-                .WithMany()
+                .WithMany(d => d.ToRequests)
                 .OnDelete(DeleteBehavior.Cascade);
         }
     }
@@ -97,7 +98,7 @@ namespace MTGViewer.Data
         {
             builder
                 .HasOne(t => t.From)
-                .WithMany()
+                .WithMany(d => d.FromRequests)
                 .OnDelete(DeleteBehavior.Cascade);
             
             builder

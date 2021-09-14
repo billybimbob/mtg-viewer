@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -13,6 +14,7 @@ using Xunit;
 
 using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
+using MTGViewer.Services;
 using MTGViewer.Pages.Decks;
 using MTGViewer.Tests.Utils;
 
@@ -35,7 +37,15 @@ namespace MTGViewer.Tests.Pages.Decks
             _dbContext = TestFactory.CardDbContext(_services);
             _userManager = TestFactory.CardUserManager(_services);
 
-            _deleteModel = new DeleteModel(_userManager, _dbContext, Mock.Of<ILogger<DeleteModel>>());
+            var sharedStorage = new ExpandableSharedService(
+                Mock.Of<IConfiguration>(),
+                _dbContext);
+
+            _deleteModel = new DeleteModel(
+                _userManager,
+                _dbContext, 
+                sharedStorage,
+                Mock.Of<ILogger<DeleteModel>>());
         }
 
 
@@ -113,7 +123,7 @@ namespace MTGViewer.Tests.Pages.Decks
                 .AsNoTracking();
 
             var sharedQuery = _dbContext.Amounts
-                .Where(ca => ca.Location is Shared && deckCards.Contains(ca.CardId))
+                .Where(ca => ca.Location is Box && deckCards.Contains(ca.CardId))
                 .Select(ca => ca.Amount);
 
             // Act

@@ -20,6 +20,35 @@
     New Trade
 </a> *@
 
+
+<h2>Received Trades</h2>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>Target Deck</th>
+            <th>Number of Requests</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var (deck, numRequests) in Model.ReceivedTrades)
+        {
+            <tr>
+                <td>@deck.Name</td>
+                <td>@numRequests</td>
+                <td>
+                    <a asp-page="./Review" 
+                       asp-route-deckid="@deck.Id"
+                       class="btn btn-secondary mb-3">
+                       View </a>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+
 <h2>Pending Trades</h2>
 
 <table class="table">
@@ -41,20 +70,6 @@
                         asp-route-deckid="@deck.Id"
                         class="btn btn-secondary mb-3" >
                         Status </a>
-                </td>
-            </tr>
-        }
-
-        @foreach (var (deck, numRequests) in Model.ReceivedTrades)
-        {
-            <tr>
-                <td>@deck.Name</td>
-                <td>@numRequests</td>
-                <td>
-                    <a asp-page="./Review" 
-                       asp-route-deckid="@deck.Id"
-                       class="btn btn-secondary mb-3">
-                       View </a>
                 </td>
             </tr>
         }

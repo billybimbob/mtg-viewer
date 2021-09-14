@@ -2,30 +2,38 @@ using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Text.RegularExpressions;
+using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using MtgApiManager.Lib.Service;
 
+#nullable enable
+
+// adding annotations for validator
 
 namespace MTGViewer.Data
 {
+    [Index(nameof(Name), nameof(ManaCost))]
     public class Card : IQueryParameter
     {
         // not sure about the sha length range
         [RegularExpression(@"^[a-fA-F0-9-]{1,40}")]
-        public string Id { get; init; }
+        [Required]
+        public string Id { get; init; } = null!;
 
         [Required]
-        public string MultiverseId { get; init; }
+        public string MultiverseId { get; init; } = null!;
 
         [Required]
-        public string Name { get; init; }
+        public string Name { get; init; } = null!;
 
         public ICollection<Name> Names { get; init; } = new List<Name>();
 
-        public string Layout { get; init; }
+        [Required]
+        public string Layout { get; init; } = null!;
 
         [Display(Name = "Mana")]
-        public string ManaCost { get; init; }
+        [Required]
+        public string ManaCost { get; init; } = null!;
 
         [Display(Name = "Converted Mana")]
         public int? Cmc { get; init; }
@@ -38,26 +46,29 @@ namespace MTGViewer.Data
 
         public ICollection<SubType> SubTypes { get; init; } = new List<SubType>();
 
-        public string Rarity { get; init; }
+        [Required]
+        public string Rarity { get; init; } = null!;
 
         [Display(Name = "Set")]
-        public string SetName { get; init; }
+        [Required]
+        public string SetName { get; init; } = null!;
 
-        public string Artist { get; init; }
+        [Required]
+        public string Artist { get; init; } = null!;
 
-        public string Text { get; init; }
+        public string? Text { get; init; }
 
-        public string Flavor { get; init; }
+        public string? Flavor { get; init; }
 
-        public string Power { get; init; }
+        public string? Power { get; init; }
 
-        public string Toughness { get; init; }
+        public string? Toughness { get; init; }
 
-        public string Loyalty { get; init; }
+        public string? Loyalty { get; init; }
 
         [Display(Name = "Image")]
-        [UrlAttribute]
-        public string ImageUrl { get; init; }
+        [Url]
+        public string? ImageUrl { get; init; }
 
         [JsonIgnore]
         public ICollection<CardAmount> Amounts { get; } = new List<CardAmount>();

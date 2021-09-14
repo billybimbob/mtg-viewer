@@ -12,10 +12,10 @@ namespace MTGViewer.Data
             Value = value;
         }
 
-        [JsonProperty]
+        [JsonRequired]
         public int Id { get; private set; }
 
-        [JsonProperty]
+        [JsonRequired]
         public string Value { get; private set; }
 
         [JsonIgnore]
@@ -41,10 +41,10 @@ namespace MTGViewer.Data
             Name = name;
         }
 
-        [JsonProperty]
+        [JsonRequired]
         public int Id { get; private set; }
 
-        [JsonProperty]
+        [JsonRequired]
         public string Name { get; private set; }
 
         [JsonIgnore]
@@ -59,10 +59,10 @@ namespace MTGViewer.Data
             Name = name;
         }
 
-        [JsonProperty]
+        [JsonRequired]
         public int Id { get; private set; }
 
-        [JsonProperty]
+        [JsonRequired]
         public string Name { get; private set; }
 
         [JsonIgnore]
@@ -77,10 +77,10 @@ namespace MTGViewer.Data
             Name = name;
         }
 
-        [JsonProperty]
+        [JsonRequired]
         public int Id { get; private set; }
 
-        [JsonProperty]
+        [JsonRequired]
         public string Name { get; private set; }
 
         [JsonIgnore]
@@ -95,10 +95,10 @@ namespace MTGViewer.Data
             Name = name;
         }
 
-        [JsonProperty]
+        [JsonRequired]
         public int Id { get; private set; }
 
-        [JsonProperty]
+        [JsonRequired]
         public string Name { get; private set; }
 
         [JsonIgnore]

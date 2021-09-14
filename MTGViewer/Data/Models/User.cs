@@ -24,10 +24,10 @@ namespace MTGViewer.Data
         }
 
         [Key]
-        [JsonProperty]
+        [JsonRequired]
         public string Id { get; private set; }
 
-        [JsonProperty]
+        [JsonRequired]
         public string Name { get; private set; }
 
         [JsonIgnore]

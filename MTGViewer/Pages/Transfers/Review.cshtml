@@ -8,7 +8,7 @@
 }
 
 
-<h1>From @Model.Source.Name</h1>
+<h1>Requests From @Model.Source.Name</h1>
 <hr />
 
 @* <a asp-page="./Propose"
@@ -29,7 +29,8 @@
     <thead>
         <tr>
             <th> @Html.DisplayNameForInnerType((Trade t) => t.Card) </th>
-            <th> @Html.DisplayNameForInnerType((Trade t) => t.Card.ManaCost) </th>
+            <th> @Html.DisplayNameForInnerType((Card c) => c.ManaCost) </th>
+            <th> @Html.DisplayNameForInnerType((Card c) => c.SetName) </th>
             <th> Requested By </th>
             <th> @Html.DisplayNameForInnerType((Trade t) => t.To) </th>
             <th> @Html.DisplayNameForInnerType((Trade t) => t.Amount) </th>
@@ -51,8 +52,13 @@
                         <span class="m-1 ms ms-@cost ms-cost"></span>
                     }
                 </td>
+                <td> @trade.Card.SetName </td>
                 <td> @trade.Proposer.Name </td>
-                <td> @trade.To.Name </td>
+                <td>
+                    <a asp-page="/Decks/Viewer"
+                       asp-route-deckid="@trade.ToId">
+                       @trade.To.Name </a>
+                </td>
                 <td> @trade.Amount </td>
                 <td>
                     <form method="POST">

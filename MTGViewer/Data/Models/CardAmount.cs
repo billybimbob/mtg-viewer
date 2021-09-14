@@ -2,7 +2,6 @@ using System;
 using System.ComponentModel.DataAnnotations;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
-
 using MTGViewer.Data.Concurrency;
 
 #nullable enable
@@ -15,7 +14,7 @@ namespace MTGViewer.Data
         nameof(IsRequest), IsUnique = true)]
     public class CardAmount : Concurrent
     {
-        [JsonProperty]
+        [JsonRequired]
         public int Id { get; private set; }
 
         [JsonIgnore]

@@ -20,34 +20,6 @@ namespace MTGViewer.Pages.Transfers
     [Authorize]
     public class ReviewModel : PageModel
     {
-        private record AcceptAmounts(
-            Trade Accept,
-            CardAmount? ToAmount,
-            CardAmount? ToRequest,
-            CardAmount FromAmount,
-            CardAmount? FromRequest)
-        {
-            public static AcceptAmounts FromTrade(Trade trade, IEnumerable<CardAmount> amounts)
-            {
-                return new AcceptAmounts (
-                    trade,
-
-                    amounts.SingleOrDefault(ca =>
-                        !ca.IsRequest && ca.LocationId == trade.ToId),
-
-                    amounts.SingleOrDefault(ca =>
-                        ca.IsRequest && ca.LocationId == trade.ToId),
-
-                    amounts.Single(ca =>
-                        !ca.IsRequest && ca.LocationId == trade.FromId),
-
-                    amounts.SingleOrDefault(ca =>
-                        ca.IsRequest && ca.LocationId == trade.FromId)
-                );
-            }
-        }
-
-
         private readonly CardDbContext _dbContext;
         private readonly UserManager<CardUser> _userManager;
 
@@ -108,12 +80,44 @@ namespace MTGViewer.Pages.Transfers
 
 
 
+        private class AcceptAmounts
+        {
+            public Trade Accept { get; }
+            public CardAmount? ToAmount { get; }
+            public SameNameGroup? ToRequests { get; }
+            public CardAmount FromAmount { get; }
+            public CardAmount? FromRequest { get; }
+
+            public AcceptAmounts(Trade trade, IEnumerable<CardAmount> amounts)
+            {
+                Accept = trade;
+
+                ToAmount = amounts.SingleOrDefault(ca =>
+                    !ca.IsRequest && ca.LocationId == trade.ToId);
+
+                var toRequests = amounts
+                    .Where(ca => ca.IsRequest && ca.LocationId == trade.ToId);
+
+                ToRequests = toRequests.Any()
+                    ? new SameNameGroup(toRequests)
+                    : null;
+
+                FromAmount = amounts.Single(ca =>
+                    !ca.IsRequest && ca.LocationId == trade.FromId);
+
+                FromRequest = amounts.SingleOrDefault(ca =>
+                    ca.IsRequest && ca.LocationId == trade.FromId);
+            }
+        }
+
+
         public async Task<IActionResult> OnPostAcceptAsync(int tradeId)
         {
             var deckTrade = await GetDeckTradeAsync(tradeId);
 
             if (deckTrade == null)
             {
+                PostMessage = "Trade could not be found";
                 return RedirectToPage("./Index");
             }
 
@@ -121,6 +125,7 @@ namespace MTGViewer.Pages.Transfers
 
             if (acceptAmounts == null)
             {
+                PostMessage = "Source Deck lacks the required amount to complete the trade";
                 return RedirectToPage("./Review",
                     new { deckId = deckTrade.FromId });
             }
@@ -147,7 +152,6 @@ namespace MTGViewer.Pages.Transfers
         {
             if (tradeId == default)
             {
-                PostMessage = "No card was specified";
                 return null;
             }
 
@@ -162,7 +166,6 @@ namespace MTGViewer.Pages.Transfers
 
             if (deckTrade == default)
             {
-                PostMessage = "Trade could not be found";
                 return null;
             }
 
@@ -172,11 +175,16 @@ namespace MTGViewer.Pages.Transfers
 
         private async Task<AcceptAmounts?> GetAcceptAmountsAsync(Trade trade)
         {
-            var tradeDeckIds = new []{ trade.ToId, trade.FromId };
-
             var tradeAmounts = await _dbContext.Amounts
                 .Where(ca =>
-                    ca.CardId == trade.CardId && tradeDeckIds.Contains(ca.LocationId))
+                    ca.IsRequest
+                        && ca.LocationId == trade.ToId 
+                        && ca.Card.Name == trade.Card.Name
+                    || !ca.IsRequest
+                        && ca.LocationId == trade.ToId
+                        && ca.CardId == trade.CardId
+                    || ca.LocationId == trade.FromId
+                        && ca.CardId == trade.CardId)
                 .ToListAsync();
 
             var amountsValid = tradeAmounts.Any(ca =>
@@ -184,21 +192,25 @@ namespace MTGViewer.Pages.Transfers
 
             if (!amountsValid)
             {
-                PostMessage = "Source Deck lacks the required amount to complete the trade";
                 return null;
             }
 
-            return AcceptAmounts.FromTrade(trade, tradeAmounts);
+            return new AcceptAmounts(trade, tradeAmounts);
         }
 
 
         private void ApplyAccept(AcceptAmounts acceptInfo)
         {
-            var (accept, toAmount, toRequest, fromAmount, fromRequest) = acceptInfo;
+            var accept = acceptInfo.Accept;
+            var toRequests = acceptInfo.ToRequests;
+            var fromAmount = acceptInfo.FromAmount;
 
-            if (toRequest is not null)
+            if (toRequests is not null)
             {
-                if (toAmount == default)
+                var toAmount = acceptInfo.ToAmount;
+                var fromRequest = acceptInfo.FromRequest;
+
+                if (toAmount is null)
                 {
                     toAmount = new CardAmount
                     {
@@ -210,7 +222,7 @@ namespace MTGViewer.Pages.Transfers
                     _dbContext.Amounts.Add(toAmount);
                 }
 
-                if (fromRequest == default)
+                if (fromRequest is null)
                 {
                     fromRequest = new CardAmount
                     {
@@ -223,18 +235,22 @@ namespace MTGViewer.Pages.Transfers
                     _dbContext.Amounts.Add(fromRequest);
                 }
 
-                var changeOptions = new [] { accept.Amount, fromAmount.Amount, toRequest.Amount };
+                var changeOptions = new [] { accept.Amount, fromAmount.Amount, toRequests.Amount };
                 var change = changeOptions.Min();
 
+                // TODO: prioritize change to exact request amount
                 toAmount.Amount += change;
-                toRequest.Amount -= change;
+                toRequests.Amount -= change;
                 fromAmount.Amount -= change;
                 fromRequest.Amount += change;
             }
 
-            if (toRequest?.Amount == 0)
+            var finishedRequests = toRequests?.Where(ca  => ca.Amount == 0)
+                ?? Enumerable.Empty<CardAmount>();
+
+            if (finishedRequests.Any())
             {
-                _dbContext.Amounts.Remove(toRequest);
+                _dbContext.Amounts.RemoveRange(finishedRequests);
             }
 
             if (fromAmount.Amount == 0)
@@ -248,9 +264,9 @@ namespace MTGViewer.Pages.Transfers
 
         private async Task CascadeIfComplete(AcceptAmounts acceptInfo)
         {
-            var request = acceptInfo.ToRequest;
+            var requests = acceptInfo.ToRequests;
 
-            if (request?.Amount > 0)
+            if (requests?.Amount > 0)
             {
                 return;
             }
@@ -260,7 +276,8 @@ namespace MTGViewer.Pages.Transfers
             var remainingTrades = await _dbContext.Trades
                 .Where(t => t.Id != accepted.Id 
                     && t.ProposerId == accepted.ProposerId
-                    && t.CardId == accepted.CardId)
+                    && t.ToId == accepted.ToId
+                    && t.Card.Name == accepted.Card.Name)
                 .ToListAsync();
 
             _dbContext.Trades.RemoveRange(remainingTrades);

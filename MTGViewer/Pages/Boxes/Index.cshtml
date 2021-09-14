@@ -1,0 +1,56 @@
+@page
+@model MTGViewer.Pages.Boxes.IndexModel
+@using MTGViewer.Data
+
+@{
+    ViewData["Title"] = "Shared Boxes";
+}
+
+<h1>Shared Collection</h1>
+
+<a asp-page="Create" class="btn btn-secondary">Add Box</a>
+
+@if (!string.IsNullOrEmpty(Model.PostMessage))
+{
+    <div class="alert alert-secondary" role="alert">
+        @Model.PostMessage
+    </div>
+}
+
+@foreach (var box in Model.Boxes)
+{
+    <h3>@box.Name (@box.Bin.Name)</h3>
+    <table class="table">
+        <thead>
+            <tr>
+                <th> @Html.DisplayNameForInnerType((CardAmount ca) => ca.Card) </th>
+                <th> @Html.DisplayNameForInnerType((Card c) => c.ManaCost) </th>
+                <th> @Html.DisplayNameForInnerType((Card c) => c.SetName) </th>
+                <th> @Html.DisplayNameForInnerType((Card c) => c.Rarity) </th>
+                <th> Current Amount </th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var amount in box.Cards)
+            {
+                <tr>
+                    <td>
+                        <a asp-page="/Cards/Details"
+                            asp-route-id="@amount.CardId"
+                            class="fw-bold">
+                            @amount.Card.Name </a>
+                    </td>
+                    <td>
+                        @foreach (var cost in amount.Card.GetManaSymbols())
+                        {
+                            <span class="m-1 ms ms-@cost ms-cost"></span>
+                        }
+                    </td>
+                    <td> @amount.Card.SetName </td>
+                    <td> @amount.Card.Rarity </td>
+                    <td> @amount.Amount </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
