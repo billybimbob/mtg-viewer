@@ -40,7 +40,7 @@ namespace MTGViewer.Pages.Transfers
 
         public Deck Deck { get; private set; }
 
-        public IReadOnlyList<SameNameGroup> Requests { get; private set; }
+        public IReadOnlyList<CardNameGroup> Requests { get; private set; }
 
 
         public async Task<IActionResult> OnGetAsync(int deckId)
@@ -74,7 +74,7 @@ namespace MTGViewer.Pages.Transfers
 
             Requests = deck.Cards
                 .GroupBy(ca => ca.Card.Name,
-                    (_, amounts) => new SameNameGroup(amounts))
+                    (_, amounts) => new CardNameGroup(amounts))
                 .ToList();
 
             return Page();
@@ -187,7 +187,7 @@ namespace MTGViewer.Pages.Transfers
             // TODO: figure out how to query more on server
             var requestGroups = deck.Cards
                 .GroupBy(ca => ca.Card.Name,
-                    (_, amounts) => new SameNameGroup(amounts));
+                    (_, amounts) => new CardNameGroup(amounts));
 
             var requestMatches = requestGroups
                 .Join( targets,

@@ -36,6 +36,16 @@ namespace MTGViewer.Data.Seed
         }
 
 
+
+        public Task<bool> AddFromJsonAsync(string path = default, CancellationToken cancel = default) =>
+            Storage.AddFromJsonAsync(_dbContext, _userManager, path, cancel);
+
+
+        public Task WriteToJsonAsync(string path = default, CancellationToken cancel = default) =>
+            Storage.WriteToJsonAsync(_dbContext, _userManager, path, cancel);
+
+
+
         public async Task GenerateAsync(CancellationToken cancel = default)
         {
             var users = GetUsers();
@@ -72,18 +82,10 @@ namespace MTGViewer.Data.Seed
 
             await _sharedStorage.ReturnAsync(boxAmounts);
 
-            // TODO: figure out why passwords are not correct
+            // TODO: fix created accounts not being verified
             await Task.WhenAll(
                 users.Select(u => _userManager.CreateAsync(u, Storage.USER_PASSWORD)));
         }
-
-
-        public Task WriteToJsonAsync(string path = default, CancellationToken cancel = default) =>
-            Storage.WriteToJsonAsync(_dbContext, _userManager, path, cancel);
-
-
-        public Task<bool> AddFromJsonAsync(string path = default, CancellationToken cancel = default) =>
-            Storage.AddFromJsonAsync(_dbContext, _userManager, path, cancel);
 
 
         private IReadOnlyList<CardUser> GetUsers() => new List<CardUser>()
@@ -173,9 +175,9 @@ namespace MTGViewer.Data.Seed
             IEnumerable<UserRef> users,
             IEnumerable<Card> cards,
             IEnumerable<Deck> decks,
-            IEnumerable<CardAmount> amounts)
+            IEnumerable<DeckAmount> amounts)
         {
-            var source = amounts.First(ca => ca.Location is Deck);
+            var source = amounts.First();
 
             // TODO: do not use id comparisons
             var tradeFrom = (Deck)source.Location;

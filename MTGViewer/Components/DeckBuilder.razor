@@ -148,8 +148,8 @@
     private Deck _deck;
     private SortedList<string, List<Card>> _dbCards;
 
-    private IDictionary<string, SameAmountPair> _deckCards;
-    private IDictionary<string, SameCardGroup> _availables;
+    private IDictionary<string, RequestGroup> _deckCards;
+    private IDictionary<string, CardGroup> _availables;
 
 
     private bool HasNoChanges() =>
@@ -197,7 +197,7 @@
 
             _availables = shares
                 .GroupBy(ca => ca.CardId,
-                    (_, amounts) => new SameCardGroup(amounts))
+                    (_, amounts) => new CardGroup(amounts))
                 .ToDictionary(cg => cg.CardId);
         }
         finally
@@ -267,9 +267,9 @@
     }
 
 
-    private SameAmountPair InitGroup(IEnumerable<DeckAmount> amounts)
+    private RequestGroup InitGroup(IEnumerable<DeckAmount> amounts)
     {
-        var pair = new SameAmountPair(amounts);
+        var pair = new RequestGroup(amounts);
 
         if (pair.Actual is null)
         {

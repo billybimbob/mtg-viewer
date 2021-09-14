@@ -27,7 +27,7 @@ namespace MTGViewer.Pages.Decks
 
         public bool CanEdit { get; private set; }
         public Deck Deck { get; private set; }
-        public IEnumerable<SameAmountPair> Amounts { get; private set; }
+        public IEnumerable<RequestGroup> Amounts { get; private set; }
 
         public async Task<IActionResult> OnGetAsync(int deckId)
         {
@@ -53,7 +53,7 @@ namespace MTGViewer.Pages.Decks
 
             Amounts = Deck.Cards
                 .GroupBy(ca => ca.CardId,
-                    (_, amounts) => new SameAmountPair(amounts))
+                    (_, amounts) => new RequestGroup(amounts))
                 .ToList();
 
             return Page();

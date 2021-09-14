@@ -99,13 +99,12 @@ namespace MTGViewer.Data
             var cardGen = new CardDataGenerator(dbContext, sharedStorage, userManager, fetchService);
             var jsonSuccess = await cardGen.AddFromJsonAsync(cancel: cancel);
 
-            if (jsonSuccess)
+            if (!jsonSuccess)
             {
-                return;
+                await cardGen.GenerateAsync(cancel);
+                await cardGen.WriteToJsonAsync(cancel: cancel);
             }
-
-            await cardGen.GenerateAsync(cancel);
-            await cardGen.WriteToJsonAsync(cancel: cancel);
+            
             await sharedStorage.OptimizeAsync();
         }
 

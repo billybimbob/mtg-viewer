@@ -48,13 +48,16 @@ namespace MTGViewer.Tests.Utils
 
 
 
-        internal static async Task<Deck> CreateDeckAsync(this CardDbContext dbContext)
+        internal static async Task<Deck> CreateDeckAsync(this CardDbContext dbContext, int numCards = default)
         {
             var users = await dbContext.Users.ToListAsync();
             var owner = users[_random.Next(users.Count)];
-
             var cards = await dbContext.Cards.ToListAsync();
-            var numCards = _random.Next(1, cards.Count / 2);
+
+            if (numCards <= 0)
+            {
+                numCards = _random.Next(1, cards.Count / 2);
+            }
 
             var deckCards = cards
                 .Select(card => (card, key: _random.Next(cards.Count)))
@@ -68,15 +71,6 @@ namespace MTGViewer.Tests.Utils
                 Owner = owner
             };
 
-            var shared = await dbContext.Boxes.FirstAsync();
-            var boxAmounts = deckCards
-                .Select(c => new BoxAmount
-                {
-                    Card = c,
-                    Location = shared,
-                    Amount = 1
-                });
-
             var deckAmounts = deckCards
                 .Select(c => new DeckAmount
                 {
@@ -86,7 +80,6 @@ namespace MTGViewer.Tests.Utils
                 });
 
             dbContext.Attach(newDeck);
-            dbContext.BoxAmounts.AttachRange(boxAmounts);
             dbContext.DeckAmounts.AttachRange(deckAmounts);
 
             await dbContext.SaveChangesAsync();

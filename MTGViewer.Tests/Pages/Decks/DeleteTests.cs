@@ -28,7 +28,6 @@ namespace MTGViewer.Tests.Pages.Decks
         private readonly UserManager<CardUser> _userManager;
 
         private readonly DeleteModel _deleteModel;
-        private Deck _deck;
 
 
         public DeleteTests()
@@ -52,7 +51,6 @@ namespace MTGViewer.Tests.Pages.Decks
         public async Task InitializeAsync()
         {
             await _dbContext.SeedAsync(_userManager);
-            _deck = await _dbContext.CreateDeckAsync();
         }
 
 
@@ -68,16 +66,17 @@ namespace MTGViewer.Tests.Pages.Decks
         public async Task OnPost_WrongUser_NoChange()
         {
             // Arrange
-            var wrongUser = await _dbContext.Users.FirstAsync(u => u.Id != _deck.OwnerId);
+            var deck = await _dbContext.CreateDeckAsync();
+            var wrongUser = await _dbContext.Users.FirstAsync(u => u.Id != deck.OwnerId);
 
             await _deleteModel.SetModelContextAsync(_userManager, wrongUser.Id);
 
             var deckQuery = _dbContext.Decks
-                .Where(d => d.Id == _deck.Id)
+                .Where(d => d.Id == deck.Id)
                 .AsNoTracking();
 
             // Act
-            var result = await _deleteModel.OnPostAsync(_deck.Id);
+            var result = await _deleteModel.OnPostAsync(deck.Id);
             var deckAfter = await deckQuery.SingleOrDefaultAsync();
 
             // // Assert
@@ -90,11 +89,12 @@ namespace MTGViewer.Tests.Pages.Decks
         public async Task OnPost_InvalidDeck_NoChange()
         {
             // Arrange
-            await _deleteModel.SetModelContextAsync(_userManager, _deck.OwnerId);
+            var deck = await _dbContext.CreateDeckAsync();
+            await _deleteModel.SetModelContextAsync(_userManager, deck.OwnerId);
 
             var wrongDeck = -1;
             var deckQuery = _dbContext.Decks
-                .Where(d => d.Id == _deck.Id)
+                .Where(d => d.Id == deck.Id)
                 .AsNoTracking();
 
             // Act
@@ -107,19 +107,23 @@ namespace MTGViewer.Tests.Pages.Decks
         }
 
 
-        [Fact]
-        public async Task OnPost_ValidDeck_ReturnsCards()
+        [Theory]
+        [InlineData(0)]
+        [InlineData(5)]
+        [InlineData(10)]
+        public async Task OnPost_ValidDeck_ReturnsCards(int numCopies)
         {
             // Arrange
-            await _deleteModel.SetModelContextAsync(_userManager, _deck.OwnerId);
+            var deck = await _dbContext.CreateDeckAsync(numCopies);
+            await _deleteModel.SetModelContextAsync(_userManager, deck.OwnerId);
 
             var deckCards = await _dbContext.DeckAmounts
-                .Where(ca => ca.LocationId == _deck.Id)
+                .Where(ca => ca.LocationId == deck.Id)
                 .Select(ca => ca.CardId)
                 .ToListAsync();
 
             var deckQuery = _dbContext.Decks
-                .Where(d => d.Id == _deck.Id)
+                .Where(d => d.Id == deck.Id)
                 .AsNoTracking();
 
             var sharedQuery = _dbContext.BoxAmounts
@@ -128,7 +132,7 @@ namespace MTGViewer.Tests.Pages.Decks
 
             // Act
             var sharedBefore = await sharedQuery.ToListAsync();
-            var result = await _deleteModel.OnPostAsync(_deck.Id);
+            var result = await _deleteModel.OnPostAsync(deck.Id);
 
             var sharedAfter = await sharedQuery.ToListAsync();
             var deckAfter = await deckQuery.SingleOrDefaultAsync();
@@ -142,56 +146,5 @@ namespace MTGViewer.Tests.Pages.Decks
             Assert.NotEqual(sharedBefore, sharedAfter);
             Assert.All(sharedChanged, ba => Assert.True(ba.before <= ba.after));
         }
-
-
-        // [Fact]
-        // public async Task OnPost_ActiveTrades_CascadesDelete()
-        // {
-        //     // Arrange
-        //     await _deleteModel.SetModelContextAsync(_userManager, _deck.OwnerId);
-
-        //     var cardsQuery = _dbContext.Amounts
-        //         .Where(ca => ca.LocationId == _deck.Id)
-        //         .AsNoTracking();
-
-        //     var deckQuery = _dbContext.Decks
-        //         .Where(d => d.Id == _deck.Id)
-        //         .AsNoTracking();
-
-        //     // Act
-        //     var cardsBefore = await cardsQuery.ToListAsync();
-
-        //     var target = await _dbContext.Decks
-        //         .Include(d => d.Owner)
-        //         .FirstAsync(d => d.Id != _deck.Id);
-
-        //     var tradeBefore = new Trade
-        //     {
-        //         Proposer = _deck.Owner,
-        //         Receiver = target.Owner,
-        //         To = target,
-        //         From = _deck,
-        //         Card = cardsBefore[0].Card,
-        //         Amount = 2
-        //     };
-
-        //     _dbContext.Trades.Attach(tradeBefore);
-        //     await _dbContext.SaveChangesAsync();
-        //     _dbContext.ChangeTracker.Clear();
-
-        //     var result = await _deleteModel.OnPostAsync(_deck.Id);
-
-        //     var deckAfter = await deckQuery.SingleOrDefaultAsync();
-        //     var cardsAfter = await cardsQuery.ToListAsync();
-        //     var tradeAfter = await _dbContext.Trades
-        //         .AsNoTracking()
-        //         .SingleOrDefaultAsync(t => t.Id == tradeBefore.Id);
-
-        //     // // Assert
-        //     Assert.IsType<RedirectToPageResult>(result);
-        //     Assert.Null(deckAfter);
-        //     Assert.Empty(cardsAfter);
-        //     Assert.Null(tradeAfter);
-        // }
     }
 }

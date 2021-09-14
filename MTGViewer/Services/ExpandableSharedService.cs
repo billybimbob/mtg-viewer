@@ -94,7 +94,7 @@ namespace MTGViewer.Services
 
             var returnGroups = returnAmounts
                 .GroupBy(ca => ca.CardId,
-                    (_, amounts) => new SameCardGroup(amounts))
+                    (_, amounts) => new CardGroup(amounts))
                 .ToDictionary(ag => ag.CardId);
 
             foreach (var (card, numCopies) in returning)
@@ -185,25 +185,36 @@ namespace MTGViewer.Services
 
         private int FindAmountIndex(IReadOnlyList<CardAmount> sortedAmounts, Card card)
         {
-            // TODO: use binary search
             var amountIndex = -1;
 
-            foreach (var boxAmount in sortedAmounts)
+            var low = 0;
+            var high = sortedAmounts.Count;
+
+            while (low <= high)
             {
-                var boxCard = boxAmount.Card;
+                amountIndex = (low + high) / 2;
+
+                var boxCard = sortedAmounts[amountIndex].Card;
 
                 var nameCompare = string.Compare(
-                    boxCard.Name, card.Name, StringComparison.InvariantCulture);
+                    card.Name, boxCard.Name, StringComparison.InvariantCulture);
 
                 var setCompare = string.Compare(
-                    boxCard.SetName, card.SetName, StringComparison.InvariantCulture);
+                    card.SetName, boxCard.SetName, StringComparison.InvariantCulture);
 
-                if (nameCompare > 0 || nameCompare == 0 && setCompare > 0)
+                if (nameCompare == 0 && setCompare == 0)
                 {
                     break;
                 }
-
-                amountIndex++;
+                
+                if (nameCompare > 0 || nameCompare == 0 && setCompare > 0)
+                {
+                    low = amountIndex + 1;
+                }
+                else
+                {
+                    high = amountIndex - 1;
+                }
             }
 
             return Math.Max(0, amountIndex);
@@ -246,14 +257,13 @@ namespace MTGViewer.Services
                 shared.Amount = 0;
             }
 
-            var amountMap = sharedAmounts
-                .ToDictionary(ca => (ca.CardId, ca.LocationId));
-
+            var amountMap = sharedAmounts.ToDictionary(ca => (ca.CardId, ca.LocationId));
+            var boxCounts = boxes.ToDictionary(b => b.Id, _ => 0); // faster than summing every time
             var cardIndex = 0;
 
             foreach (var (card, oldNumCopies) in oldAmounts)
             {
-                var boxAmounts = DivideToBoxAmounts(boxes, cardIndex, oldNumCopies);
+                var boxAmounts = DivideToBoxAmounts(boxes, boxCounts, cardIndex, oldNumCopies);
 
                 foreach (var (box, newNumCopies) in boxAmounts)
                 {
@@ -272,6 +282,7 @@ namespace MTGViewer.Services
                     }
 
                     boxAmount.Amount += newNumCopies;
+                    boxCounts[box.Id] += newNumCopies;
                 }
 
                 cardIndex += oldNumCopies;
@@ -280,29 +291,31 @@ namespace MTGViewer.Services
 
 
         private IEnumerable<(Box, int)> DivideToBoxAmounts(
-            IReadOnlyList<Box> boxes, int cardIndex, int numCopies)
+            IReadOnlyList<Box> boxes,
+            IReadOnlyDictionary<int, int> boxCounts,
+            int cardIndex,
+            int numCopies)
         {
-            var amounts = new List<int>{ _boxSize - cardIndex % _boxSize };
-            var givenAmounts = _boxSize;
-
-            while (givenAmounts + _boxSize < numCopies)
-            {
-                amounts.Add(_boxSize);
-                givenAmounts += _boxSize;
-            }
-
             var startBox = cardIndex / _boxSize;
             var endBox = (cardIndex + numCopies) / _boxSize;
 
-            if (startBox != endBox)
+            var numBoxes = endBox - startBox + 1;
+            var amounts = new List<int>(numBoxes);
+
+            var boxRange = boxes
+                .Skip(startBox)
+                .Take(numBoxes);
+
+            foreach (var box in boxRange)
             {
-                amounts.Add((cardIndex + numCopies) % _boxSize);
+                var remainingSpace = Math.Max(0, _boxSize - boxCounts[box.Id]);
+                var boxAmount = Math.Min(numCopies, remainingSpace);
+
+                amounts.Add(boxAmount);
+                numCopies -= boxAmount;
             }
 
-            return boxes
-                .Skip(startBox)
-                .Take(endBox - startBox + 1)
-                .Zip(amounts);
+            return boxRange.Zip(amounts).ToList();
         }
     }
 }

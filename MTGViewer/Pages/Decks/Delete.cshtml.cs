@@ -43,7 +43,7 @@ namespace MTGViewer.Pages.Decks
         public string? PostMesssage { get; set; }
 
         public Deck? Deck { get; private set; }
-        public IReadOnlyList<SameNamePair>? Cards { get; private set; }
+        public IReadOnlyList<RequestNameGroup>? Cards { get; private set; }
         public IReadOnlyList<Trade>? Trades { get; private set; }
 
 
@@ -76,7 +76,7 @@ namespace MTGViewer.Pages.Decks
             Deck = deck;
             Cards = deck.Cards
                 .GroupBy(ca => ca.Card.Name,
-                    (_, amounts) => new SameNamePair(amounts))
+                    (_, amounts) => new RequestNameGroup(amounts))
                 .ToList();
 
             Trades = deckTrades;
