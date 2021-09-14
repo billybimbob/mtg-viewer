@@ -68,7 +68,7 @@
                 </td>
                 <td>@card.SetName</td>
                 <td>@card.Rarity</td>
-                <td>@card.Amounts.Select(ca => ca.Amount).Sum()</td>
+                <td>@card.Amounts.Sum(ca => ca.Amount)</td>
 
                 <td>
                     @if (IsSignedIn)

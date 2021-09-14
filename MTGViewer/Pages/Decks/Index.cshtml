@@ -53,7 +53,7 @@
                     }
                 </td>
 
-                <td> @deck.Cards.Select(ca => ca.Amount).Sum() </td>
+                <td> @deck.Cards.Sum(ca => ca.Amount) </td>
                 <td>
                     @foreach (var color in deck.GetColorSymbols())
                     {

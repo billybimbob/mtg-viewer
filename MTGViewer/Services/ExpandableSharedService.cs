@@ -133,7 +133,7 @@ namespace MTGViewer.Services
         }
 
 
-        private async Task ReturnNewAsync(IEnumerable<(Card, int)> newReturns)
+        private async Task ReturnNewAsync(IEnumerable<(Card card, int numCopies)> newReturns)
         {
             var sortedSharedAmounts = await GetSortedAmountsAsync();
             var sortedBoxes = await GetSortedBoxesAsync();
@@ -152,7 +152,11 @@ namespace MTGViewer.Services
                 cardCount += shared.Amount;
             }
 
-            foreach (var (card, numCopies) in newReturns)
+            var returnGroups = newReturns
+                .GroupBy(ci => ci.card, (card, cis) =>
+                    (card, numCopies: cis.Sum(ci => ci.numCopies)) );
+
+            foreach (var (card, numCopies) in returnGroups)
             {
                 int cardIndex;
 

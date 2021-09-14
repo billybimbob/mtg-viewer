@@ -57,7 +57,7 @@ namespace MTGViewer.Data
 
         public int Amount
         {
-            get => _amounts.Select(ca => ca.Amount).Sum();
+            get => _amounts.Sum(ca => ca.Amount);
             set
             {
                 int change = Amount - value;
@@ -242,7 +242,7 @@ namespace MTGViewer.Data
 
         public int Amount
         {
-            get => _amounts.Select(ca => ca.Amount).Sum();
+            get => _amounts.Sum(ca => ca.Amount);
             set
             {
                 int change = Amount - value;
@@ -260,6 +260,11 @@ namespace MTGViewer.Data
                         _amounts.Remove(firstLink);
                         _amounts.AddLast(firstLink);
                     }
+                }
+
+                if (change > 0) // all amounts are zero
+                {
+                    First.Amount -= change;
                 }
             }
         }

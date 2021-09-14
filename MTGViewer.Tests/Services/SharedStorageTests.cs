@@ -160,8 +160,8 @@ namespace MTGViewer.Tests.Services
             Assert.All(newSpots, ca => Assert.True(ca.Amount < copies));
 
             Assert.Equal(
-                oldSpots.Select(ca => ca.Amount).Sum(),
-                newSpots.Select(ca => ca.Amount).Sum());
+                oldSpots.Sum(ca => ca.Amount),
+                newSpots.Sum(ca => ca.Amount));
         }
     }
 }
