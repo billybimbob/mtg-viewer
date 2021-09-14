@@ -114,7 +114,7 @@ namespace MTGViewer.Pages.Decks
                 .Select(ca => (ca.Card, ca.Amount))
                 .ToList();
 
-            _dbContext.Amounts.RemoveRange(deck.Cards);
+            _dbContext.DeckAmounts.RemoveRange(deck.Cards);
             _dbContext.Decks.Remove(deck);
 
             try

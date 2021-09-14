@@ -23,21 +23,6 @@ namespace MTGViewer.Data
 
         [JsonIgnore]
         internal Discriminator Type { get; private set; }
-
-        [JsonIgnore]
-        public ICollection<CardAmount> Cards { get; } = new List<CardAmount>();
-
-
-        public IOrderedEnumerable<Color> GetColors() => Cards
-            .SelectMany(ca => ca.Card.Colors)
-            .Distinct(new EntityComparer<Color>(c => c.Name))
-            .OrderBy(c => c.Name);
-
-        public IOrderedEnumerable<string> GetColorSymbols() => Cards
-            .SelectMany(ca => ca.Card.GetManaSymbols())
-            .Distinct()
-            .Intersect(Color.COLORS.Values)
-            .OrderBy(s => s);
     }
 
 
@@ -52,10 +37,21 @@ namespace MTGViewer.Data
 
 
         [JsonIgnore]
-        public ICollection<Transfer> ToRequests { get; } = new List<Transfer>();
+        public ICollection<DeckAmount> Cards { get; } = new List<DeckAmount>();
 
         [JsonIgnore]
-        public ICollection<Trade> FromRequests { get; } = new List<Trade>();
+        public ICollection<Trade> TradesTo { get; } = new List<Trade>();
+
+        [JsonIgnore]
+        public ICollection<Trade> TradesFrom { get; } = new List<Trade>();
+
+        [JsonIgnore]
+        public ICollection<Suggestion> Suggestions { get; } = new List<Suggestion>();
+
+
+        public IOrderedEnumerable<Color> GetColors() => Cards.GetColors();
+
+        public IOrderedEnumerable<string> GetColorSymbols() => Cards.GetColorSymbols();
     }
 
 
@@ -69,6 +65,14 @@ namespace MTGViewer.Data
         public int BinId { get; init; }
 
         public string? Color { get; init; }
+
+        [JsonIgnore]
+        public ICollection<BoxAmount> Cards { get; } = new List<BoxAmount>();
+
+
+        public IOrderedEnumerable<Color> GetColors() => Cards.GetColors();
+
+        public IOrderedEnumerable<string> GetColorSymbols() => Cards.GetColorSymbols();
     }
 
 
@@ -87,5 +91,28 @@ namespace MTGViewer.Data
 
         [JsonIgnore]
         public ICollection<Box> Boxes = new List<Box>();
+    }
+
+
+    internal static class AmountColors
+    {
+        internal static IOrderedEnumerable<Color> GetColors(
+            this IEnumerable<CardAmount> amounts)
+        {
+            return amounts
+                .SelectMany(ca => ca.Card.Colors)
+                .Distinct(new EntityComparer<Color>(c => c.Name))
+                .OrderBy(c => c.Name);
+        }
+
+        internal static IOrderedEnumerable<string> GetColorSymbols(
+            this IEnumerable<CardAmount> amounts)
+        {
+            return amounts
+                .SelectMany(ca => ca.Card.GetManaSymbols())
+                .Distinct()
+                .Intersect(Data.Color.COLORS.Values)
+                .OrderBy(s => s);
+        }
     }
 }

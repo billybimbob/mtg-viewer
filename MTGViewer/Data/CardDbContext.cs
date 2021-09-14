@@ -15,15 +15,19 @@ namespace MTGViewer.Data
 
         public DbSet<UserRef> Users => Set<UserRef>();
         public DbSet<Card> Cards => Set<Card>();
-        public DbSet<CardAmount> Amounts => Set<CardAmount>();
 
-        public DbSet<Location> Locations => Set<Location>();
+
+        // public DbSet<CardAmount> Amounts => Set<CardAmount>();
+        public DbSet<BoxAmount> BoxAmounts => Set<BoxAmount>();
+        public DbSet<DeckAmount> DeckAmounts => Set<DeckAmount>();
+
+        // public DbSet<Location> Locations => Set<Location>();
         public DbSet<Deck> Decks => Set<Deck>();
 
         public DbSet<Box> Boxes => Set<Box>();
         public DbSet<Bin> Bins => Set<Bin>();
 
-        public DbSet<Transfer> Transfers => Set<Transfer>();
+        // public DbSet<Transfer> Transfers => Set<Transfer>();
         public DbSet<Suggestion> Suggestions => Set<Suggestion>();
         public DbSet<Trade> Trades => Set<Trade>();
 
@@ -31,10 +35,20 @@ namespace MTGViewer.Data
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+
             modelBuilder.SelectConcurrencyToken(Database);
 
             new LocationConfiguration()
                 .Configure(modelBuilder.Entity<Location>());
+            
+            new BoxConfiguration()
+                .Configure(modelBuilder.Entity<Box>());
+
+            new DeckConfiguration()
+                .Configure(modelBuilder.Entity<Deck>());
+
+            new AmountConfiguration()
+                .Configure(modelBuilder.Entity<CardAmount>());
             
             new TransferConfiguration()
                 .Configure(modelBuilder.Entity<Transfer>());
@@ -56,10 +70,47 @@ namespace MTGViewer.Data
                     .HasValue<Box>(Discriminator.Box)
                     .HasValue<Deck>(Discriminator.Deck);
 
+            // builder
+            //     .HasMany(l => l.Cards)
+            //     .WithOne(ca => ca.Location)
+            //     .OnDelete(DeleteBehavior.Restrict);
+        }
+    }
+
+
+    public class BoxConfiguration : IEntityTypeConfiguration<Box>
+    {
+        public void Configure(EntityTypeBuilder<Box> builder)
+        {
             builder
-                .HasMany(l => l.Cards)
-                .WithOne(ca => ca.Location)
+                .HasMany(b => b.Cards)
+                .WithOne(ba => ba.Box)
                 .OnDelete(DeleteBehavior.Restrict);
+        }
+    }
+
+
+    public class DeckConfiguration : IEntityTypeConfiguration<Deck>
+    {
+        public void Configure(EntityTypeBuilder<Deck> builder)
+        {
+            builder
+                .HasMany(d => d.Cards)
+                .WithOne(da => da.Deck)
+                .OnDelete(DeleteBehavior.Restrict);
+        }
+    }
+
+
+    public class AmountConfiguration : IEntityTypeConfiguration<CardAmount>
+    {
+        public void Configure(EntityTypeBuilder<CardAmount> builder)
+        {
+            builder
+                .HasDiscriminator(ca => ca.Type)
+                    .HasValue<CardAmount>(Discriminator.Invalid)
+                    .HasValue<BoxAmount>(Discriminator.BoxAmount)
+                    .HasValue<DeckAmount>(Discriminator.DeckAmount);
         }
     }
 
@@ -83,11 +134,6 @@ namespace MTGViewer.Data
                 .HasOne(t => t.Receiver)
                 .WithMany()
                 .OnDelete(DeleteBehavior.Cascade);
-
-            builder
-                .HasOne(t => t.To)
-                .WithMany(d => d.ToRequests)
-                .OnDelete(DeleteBehavior.Cascade);
         }
     }
 
@@ -97,13 +143,30 @@ namespace MTGViewer.Data
         public void Configure(EntityTypeBuilder<Trade> builder)
         {
             builder
+                .HasOne(t => t.To)
+                .WithMany(d => d.TradesTo)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder
                 .HasOne(t => t.From)
-                .WithMany(d => d.FromRequests)
+                .WithMany(d => d.TradesFrom)
                 .OnDelete(DeleteBehavior.Cascade);
             
             builder
                 .HasOne(t => t.TargetDeck)
                 .WithMany()
+                .OnDelete(DeleteBehavior.Cascade);
+        }
+    }
+
+
+    public class SuggestionConfiguration : IEntityTypeConfiguration<Suggestion>
+    {
+        public void Configure(EntityTypeBuilder<Suggestion> builder)
+        {
+            builder
+                .HasOne(s => s.To)
+                .WithMany(d => d.Suggestions)
                 .OnDelete(DeleteBehavior.Cascade);
         }
     }

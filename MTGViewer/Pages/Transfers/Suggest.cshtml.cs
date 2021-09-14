@@ -123,12 +123,12 @@ namespace MTGViewer.Pages.Transfers
                 .Include(d => d.Cards)
                     .ThenInclude(ca => ca.Card);
 
-            var userCardAmounts = _dbContext.Amounts
-                .Where(ca => ca.Card.Name == card.Name
-                    && ca.Location is Deck
-                    && (ca.Location as Deck).OwnerId == user.Id);
 
-            var decksWithoutCard = userDecks
+            var userCardAmounts = _dbContext.DeckAmounts
+                .Where(da => da.Card.Name == card.Name
+                    && da.Deck.OwnerId == user.Id);
+
+            var withoutAmounts = userDecks
                 .GroupJoin( userCardAmounts,
                     deck => deck.Id,
                     amount => amount.LocationId,
@@ -140,12 +140,12 @@ namespace MTGViewer.Pages.Transfers
                 .Select(da => da.deck);
 
 
-            var transfersWithCard = _dbContext.Transfers
-                .Where(t => t.Card.Name == card.Name
-                    && (t.ProposerId == user.Id || t.ReceiverId == user.Id));
+            var suggestsWithCard = _dbContext.Suggestions
+                .Where(s => s.Card.Name == card.Name
+                    && (s.ProposerId == user.Id || s.ReceiverId == user.Id));
 
-            var validDecks = decksWithoutCard
-                .GroupJoin( transfersWithCard,
+            var withoutSuggests = withoutAmounts
+                .GroupJoin( suggestsWithCard,
                     deck => deck.Id,
                     transfer => transfer.ToId,
                     (deck, transfers) => new { deck, transfers })
@@ -156,7 +156,23 @@ namespace MTGViewer.Pages.Transfers
                 .Select(dt => dt.deck);
 
 
-            return await validDecks
+            var tradesWithCard = _dbContext.Trades
+                .Where(t => t.Card.Name == card.Name
+                    && (t.ProposerId == user.Id || t.ReceiverId == user.Id));
+
+            var withoutTrades = withoutSuggests
+                .GroupJoin( tradesWithCard,
+                    deck => deck.Id,
+                    transfer => transfer.ToId,
+                    (deck, transfers) => new { deck, transfers })
+                .SelectMany(
+                    dts => dts.transfers.DefaultIfEmpty(),
+                    (dts, transfer) => new { dts.deck, transfer })
+                .Where(dt => dt.transfer == default)
+                .Select(dt => dt.deck);
+
+
+            return await withoutTrades
                 .AsNoTrackingWithIdentityResolution()
                 .ToListAsync();
         }

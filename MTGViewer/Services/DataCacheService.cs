@@ -24,7 +24,7 @@ namespace MTGViewer.Services
                 // should auto evict from limit
             });
 
-            _options = new MemoryCacheEntryOptions
+            _options = new()
             {
                 Size = 1,
             };

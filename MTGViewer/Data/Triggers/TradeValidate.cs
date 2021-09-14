@@ -29,14 +29,13 @@ namespace MTGViewer.Data.Triggers
             }
 
             var trade = trigContext.Entity;
-            var transfer = trade as Transfer;
 
-            if (transfer.ToId is null && transfer.To is null)
-            {
-                throw new DbUpdateException("Trade cannot have 'To' property missing");
-            }
+            // if (transfer.ToId is null && transfer.To is null)
+            // {
+            //     throw new DbUpdateException("Trade cannot have 'To' property missing");
+            // }
 
-            var fromAmount = await _dbContext.Amounts
+            var fromAmount = await _dbContext.DeckAmounts
                 .AsNoTracking()
                 .SingleOrDefaultAsync(ca =>
                     !ca.IsRequest

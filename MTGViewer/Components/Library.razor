@@ -116,7 +116,9 @@
 
         _dbCards = await context.Cards
             .Include(c => c.Colors)
-            .Include(c => c.Amounts.Where(ca => !ca.IsRequest))
+            .Include(c => c.Amounts
+                .Where(ca => ca is BoxAmount 
+                    || ca is DeckAmount && !(ca as DeckAmount).IsRequest))
             // .ThenInclude(a => a.Location)
             .OrderBy(c => c.Name)
                 .ThenBy(c => c.SetName)

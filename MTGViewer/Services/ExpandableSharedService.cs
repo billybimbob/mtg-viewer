@@ -83,8 +83,8 @@ namespace MTGViewer.Services
                 .Select(ra => ra.card.Id)
                 .ToArray();
 
-            var returnAmounts = await _dbContext.Amounts
-                .Where(ca => ca.Location is Box && returnIds.Contains(ca.CardId))
+            var returnAmounts = await _dbContext.BoxAmounts
+                .Where(ba => returnIds.Contains(ba.CardId))
                 .ToListAsync();
 
             if (!returnAmounts.Any())
@@ -111,13 +111,12 @@ namespace MTGViewer.Services
         }
 
 
-        private async Task<IReadOnlyList<CardAmount>> GetSortedAmountsAsync()
+        private async Task<IReadOnlyList<BoxAmount>> GetSortedAmountsAsync()
         {
             // loading all shared cards, could be memory inefficient
             // TODO: find more efficient way to determining card position
 
-            return await _dbContext.Amounts
-                .Where(ca => ca.Location is Box)
+            return await _dbContext.BoxAmounts
                 .Include(ca => ca.Card)
                 .OrderBy(ca => ca.Card.Name)
                     .ThenBy(ca => ca.Card.SetName)
@@ -172,14 +171,14 @@ namespace MTGViewer.Services
 
                 var boxIndex = Math.Min(cardIndex / _boxSize, sortedBoxes.Count - 1);
 
-                var newSpot = new CardAmount
+                var newSpot = new BoxAmount
                 {
                     Card = card,
                     Location = sortedBoxes[boxIndex],
                     Amount = numCopies
                 };
 
-                _dbContext.Amounts.Attach(newSpot);
+                _dbContext.BoxAmounts.Attach(newSpot);
             }
         }
 
@@ -222,8 +221,8 @@ namespace MTGViewer.Services
 
                 AddUpdatedBoxAmounts(sortedBoxAmounts, sortedBoxes);
 
-                _dbContext.Amounts.RemoveRange(
-                    sortedBoxAmounts.Where(ca => ca.Amount == 0));
+                _dbContext.BoxAmounts.RemoveRange(
+                    sortedBoxAmounts.Where(ba => ba.Amount == 0));
 
                 // intentionally throw db exception
                 await _dbContext.SaveChangesAsync();
@@ -236,7 +235,7 @@ namespace MTGViewer.Services
 
 
         private void AddUpdatedBoxAmounts(
-            IReadOnlyList<CardAmount> sharedAmounts, IReadOnlyList<Box> boxes)
+            IReadOnlyList<BoxAmount> sharedAmounts, IReadOnlyList<Box> boxes)
         {
             var oldAmounts = sharedAmounts
                 .Select(ca => (ca.Card, ca.Amount))
@@ -262,7 +261,7 @@ namespace MTGViewer.Services
 
                     if (!amountMap.TryGetValue(cardBox, out var boxAmount))
                     {
-                        boxAmount = new CardAmount
+                        boxAmount = new()
                         {
                             Card = card,
                             Location = box

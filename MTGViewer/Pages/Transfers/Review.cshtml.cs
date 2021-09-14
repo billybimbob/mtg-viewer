@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -83,12 +82,12 @@ namespace MTGViewer.Pages.Transfers
         private class AcceptAmounts
         {
             public Trade Accept { get; }
-            public CardAmount? ToAmount { get; }
+            public DeckAmount? ToAmount { get; }
             public SameNameGroup? ToRequests { get; }
-            public CardAmount FromAmount { get; }
-            public CardAmount? FromRequest { get; }
+            public DeckAmount FromAmount { get; }
+            public DeckAmount? FromRequest { get; }
 
-            public AcceptAmounts(Trade trade, IEnumerable<CardAmount> amounts)
+            public AcceptAmounts(Trade trade, IEnumerable<DeckAmount> amounts)
             {
                 Accept = trade;
 
@@ -175,16 +174,17 @@ namespace MTGViewer.Pages.Transfers
 
         private async Task<AcceptAmounts?> GetAcceptAmountsAsync(Trade trade)
         {
-            var tradeAmounts = await _dbContext.Amounts
-                .Where(ca =>
-                    ca.IsRequest
-                        && ca.LocationId == trade.ToId 
-                        && ca.Card.Name == trade.Card.Name
-                    || !ca.IsRequest
-                        && ca.LocationId == trade.ToId
-                        && ca.CardId == trade.CardId
-                    || ca.LocationId == trade.FromId
-                        && ca.CardId == trade.CardId)
+            // TODO: fix request check
+            var tradeAmounts = await _dbContext.DeckAmounts
+                .Where(da =>
+                    da.RequestType == RequestType.Insert
+                        && da.LocationId == trade.ToId 
+                        && da.Card.Name == trade.Card.Name
+                    || !da.IsRequest
+                        && da.LocationId == trade.ToId
+                        && da.CardId == trade.CardId
+                    || da.LocationId == trade.FromId
+                        && da.CardId == trade.CardId)
                 .ToListAsync();
 
             var amountsValid = tradeAmounts.Any(ca =>
@@ -212,27 +212,27 @@ namespace MTGViewer.Pages.Transfers
 
                 if (toAmount is null)
                 {
-                    toAmount = new CardAmount
+                    toAmount = new()
                     {
                         Card = accept.Card,
                         Location = accept.To,
                         Amount = 0
                     };
 
-                    _dbContext.Amounts.Add(toAmount);
+                    _dbContext.DeckAmounts.Add(toAmount);
                 }
 
                 if (fromRequest is null)
                 {
-                    fromRequest = new CardAmount
+                    fromRequest = new()
                     {
                         Card = accept.Card,
                         Location = accept.From,
                         Amount = 0,
-                        IsRequest = true
+                        RequestType = RequestType.Insert
                     };
 
-                    _dbContext.Amounts.Add(fromRequest);
+                    _dbContext.DeckAmounts.Add(fromRequest);
                 }
 
                 var changeOptions = new [] { accept.Amount, fromAmount.Amount, toRequests.Amount };
@@ -245,17 +245,20 @@ namespace MTGViewer.Pages.Transfers
                 fromRequest.Amount += change;
             }
 
-            var finishedRequests = toRequests?.Where(ca  => ca.Amount == 0)
-                ?? Enumerable.Empty<CardAmount>();
+            var finishedRequests =
+                toRequests?
+                    .Where(ca  => ca.Amount == 0)
+                    .Cast<DeckAmount>()
+                ?? Enumerable.Empty<DeckAmount>();
 
             if (finishedRequests.Any())
             {
-                _dbContext.Amounts.RemoveRange(finishedRequests);
+                _dbContext.DeckAmounts.RemoveRange(finishedRequests);
             }
 
             if (fromAmount.Amount == 0)
             {
-                _dbContext.Amounts.Remove(fromAmount);
+                _dbContext.DeckAmounts.Remove(fromAmount);
             }
 
             _dbContext.Trades.Remove(accept);

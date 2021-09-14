@@ -113,7 +113,7 @@ namespace MTGViewer.Tests.Pages.Decks
             // Arrange
             await _deleteModel.SetModelContextAsync(_userManager, _deck.OwnerId);
 
-            var deckCards = await _dbContext.Amounts
+            var deckCards = await _dbContext.DeckAmounts
                 .Where(ca => ca.LocationId == _deck.Id)
                 .Select(ca => ca.CardId)
                 .ToListAsync();
@@ -122,8 +122,8 @@ namespace MTGViewer.Tests.Pages.Decks
                 .Where(d => d.Id == _deck.Id)
                 .AsNoTracking();
 
-            var sharedQuery = _dbContext.Amounts
-                .Where(ca => ca.Location is Box && deckCards.Contains(ca.CardId))
+            var sharedQuery = _dbContext.BoxAmounts
+                .Where(ca => deckCards.Contains(ca.CardId))
                 .Select(ca => ca.Amount);
 
             // Act

@@ -106,8 +106,8 @@ namespace MTGViewer.Pages.Transfers
             var userId = _userManager.GetUserId(User);
 
             var deck = await _dbContext.Decks
-                .Include(d => d.ToRequests
-                    .Where(t => t is Trade && t.ProposerId == userId))
+                .Include(d => d.TradesTo
+                    .Where(t => t.ProposerId == userId))
                 .SingleOrDefaultAsync(d => d.Id == deckId && d.OwnerId == userId);
 
             if (deck == default)
@@ -116,14 +116,14 @@ namespace MTGViewer.Pages.Transfers
                 return RedirectToPage("./Index");
             }
 
-            if (!deck.ToRequests.Any())
+            if (!deck.TradesTo.Any())
             {
                 PostMessage = "No trades were found";
                 return RedirectToPage("./Index");
             }
 
 
-            _dbContext.Trades.RemoveRange(deck.ToRequests.Cast<Trade>());
+            _dbContext.Trades.RemoveRange(deck.TradesTo);
 
             try
             {

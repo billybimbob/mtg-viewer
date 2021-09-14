@@ -50,14 +50,23 @@ namespace MTGViewer.Data.Seed
 
             var transfers = GetTransfers(userRefs, cards, decks, deckAmounts);
 
+            var suggestions = transfers
+                .Where(t => t is Suggestion)
+                .Cast<Suggestion>();
+
+            var trades = transfers
+                .Where(t => t is Trade)
+                .Cast<Trade>();
+
             _dbContext.Users.AddRange(userRefs);
 
             _dbContext.Cards.AddRange(cards);
             _dbContext.Decks.AddRange(decks);
             _dbContext.Boxes.AddRange(boxes);
 
-            _dbContext.Amounts.AddRange(deckAmounts);
-            _dbContext.Transfers.AddRange(transfers);
+            _dbContext.DeckAmounts.AddRange(deckAmounts);
+            _dbContext.Suggestions.AddRange(suggestions);
+            _dbContext.Trades.AddRange(trades);
 
             await _dbContext.SaveChangesAsync(cancel);
 
@@ -136,13 +145,13 @@ namespace MTGViewer.Data.Seed
         }
 
 
-        private IReadOnlyList<CardAmount> GetDeckAmounts(
+        private IReadOnlyList<DeckAmount> GetDeckAmounts(
             IEnumerable<Card> cards,
             IEnumerable<Deck> decks)
         {
             return cards.Zip(decks,
                 (card, deck) => (card, deck))
-                .Select(cl => new CardAmount
+                .Select(cl => new DeckAmount
                 {
                     Card = cl.card,
                     Location = cl.deck,

@@ -36,8 +36,8 @@ namespace MTGViewer.Pages.Decks
                 .Include(d => d.Cards
                     .OrderBy(ca => ca.Card.Name))
                     .ThenInclude(ca => ca.Card)
-                .Include(d => d.ToRequests
-                    .Where(t => t is Trade && t.ProposerId == t.To.OwnerId))
+                .Include(d => d.TradesTo
+                    .Where(t => t.ProposerId == t.To.OwnerId))
                 .AsSplitQuery()
                 .AsNoTrackingWithIdentityResolution()
                 .SingleOrDefaultAsync(d => d.Id == deckId);
@@ -49,7 +49,7 @@ namespace MTGViewer.Pages.Decks
 
             var userId = _userManager.GetUserId(User);
 
-            CanEdit = Deck.OwnerId == userId && !Deck.ToRequests.Any();
+            CanEdit = Deck.OwnerId == userId && !Deck.TradesTo.Any();
 
             Amounts = Deck.Cards
                 .GroupBy(ca => ca.CardId,

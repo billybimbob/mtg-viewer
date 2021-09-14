@@ -17,6 +17,20 @@ namespace MTGViewer.Data.Internal
         Trade,
 
         Box,
-        Deck
+        Deck,
+
+        BoxAmount,
+        DeckAmount
+    }
+}
+
+
+namespace MTGViewer.Data
+{
+    public enum RequestType
+    {
+        None,
+        Insert,
+        Delete,
     }
 }

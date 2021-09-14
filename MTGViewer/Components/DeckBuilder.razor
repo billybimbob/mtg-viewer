@@ -190,8 +190,8 @@
 
             _dbCards = new(nameGroups);
 
-            var shares = await _dbContext.Amounts
-                .Where(ca => ca.Location is Box)
+            var shares = await _dbContext.BoxAmounts
+                // .Where(ca => ca.Location is Box)
                 // TODO: change return location
                 .ToListAsync();
 
@@ -267,13 +267,13 @@
     }
 
 
-    private SameAmountPair InitGroup(IEnumerable<CardAmount> amounts)
+    private SameAmountPair InitGroup(IEnumerable<DeckAmount> amounts)
     {
         var pair = new SameAmountPair(amounts);
 
         if (pair.Actual is null)
         {
-            var actual = new CardAmount
+            var actual = new DeckAmount
             {
                 Card = pair.Card,
                 Location = pair.Location,
@@ -307,7 +307,7 @@
 
         if (!_deckCards.TryGetValue(card.Id, out var deckGroup))
         {
-            var newAmnt = new CardAmount
+            var newAmnt = new DeckAmount
             {
                 Card = card,
                 Location = _deck,
@@ -384,11 +384,11 @@
         {
             if (deckGroup.Request is null)
             {
-                deckGroup.Request = new CardAmount
+                deckGroup.Request = new DeckAmount
                 {
                     Card = deckGroup.Card,
                     Location = deckGroup.Location,
-                    IsRequest = true
+                    RequestType = RequestType.Insert
                 };
 
                 _dbContext.Add(deckGroup.Request);
@@ -490,7 +490,7 @@
             return;
         }
 
-        var dbDeckCards = await _dbContext.Amounts
+        var dbDeckCards = await _dbContext.DeckAmounts
             .Where(ca => ca.LocationId == _deck.Id)
             .AsNoTracking()
             .ToListAsync();
@@ -558,7 +558,7 @@
     }
 
 
-    private void MergeDeckCardConflict(CardAmount dbDeckCard)
+    private void MergeDeckCardConflict(DeckAmount dbDeckCard)
     {
         if (!_deckCards.TryGetValue(dbDeckCard.CardId, out var localDeckGroup))
         {
@@ -601,7 +601,7 @@
     }
 
 
-    private async Task TrackNewCardAsync(IGrouping<string, CardAmount> cardGroup)
+    private async Task TrackNewCardAsync(IGrouping<string, DeckAmount> cardGroup)
     {
         var cardId = cardGroup.Key;
 
@@ -632,8 +632,8 @@
 
     private async Task UpdateAvailableAsync()
     {
-        var updatedAvails = await _dbContext.Amounts
-            .Where(ca => ca.Location is Box)
+        var updatedAvails = await _dbContext.BoxAmounts
+            // .Where(ca => ca.Location is Box)
             // TODO: change return location
             // TODO: group amounts by cards
             // .GroupBy(ca => ca.CardId)

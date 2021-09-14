@@ -57,7 +57,7 @@ namespace MTGViewer.Tests.Services
                 .Skip(cardIndex)
                 .FirstAsync();
 
-            var sharedQuery = _dbContext.Amounts
+            var sharedQuery = _dbContext.BoxAmounts
                 .Where(ca => ca.Location is Box && ca.CardId == card.Id)
                 .Include(ca => ca.Location)
                 .AsNoTracking();
@@ -82,7 +82,7 @@ namespace MTGViewer.Tests.Services
             var copies = 4;
             Card card = null;
 
-            var sharedAmountQuery = _dbContext.Amounts
+            var sharedAmountQuery = _dbContext.BoxAmounts
                 .Where(ca => ca.Location is Box)
                 .Select(ca => ca.Amount);
 
@@ -104,7 +104,7 @@ namespace MTGViewer.Tests.Services
                 .AsNoTracking()
                 .FirstAsync();
 
-            var sharedAmountQuery = _dbContext.Amounts
+            var sharedAmountQuery = _dbContext.BoxAmounts
                 .Where(ca => ca.Location is Box)
                 .Select(ca => ca.Amount);
 
@@ -123,7 +123,7 @@ namespace MTGViewer.Tests.Services
                 .Include(b => b.Cards)
                 .ToListAsync();
 
-            _dbContext.Amounts.RemoveRange(boxes.SelectMany(b => b.Cards));
+            _dbContext.BoxAmounts.RemoveRange(boxes.SelectMany(b => b.Cards));
             _dbContext.Boxes.RemoveRange(boxes);
 
             await _dbContext.SaveChangesAsync();
@@ -145,7 +145,7 @@ namespace MTGViewer.Tests.Services
             var copies = 120;
             var card = await _dbContext.Cards.AsNoTracking().FirstAsync();
 
-            var spotQuery = _dbContext.Amounts
+            var spotQuery = _dbContext.BoxAmounts
                 .Where(ca => ca.Location is Box && ca.CardId == card.Id)
                 .Include(ca => ca.Location)
                 .AsNoTracking();

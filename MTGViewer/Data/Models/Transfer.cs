@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using Newtonsoft.Json;
 
@@ -39,12 +38,6 @@ namespace MTGViewer.Data
         public string ReceiverId { get; init; } = null!;
 
 
-        [Display(Name = "To Deck")]
-        [JsonIgnore]
-        public Deck? To { get; set; } // TODO: make init prop
-        public int? ToId { get; set; }
-
-
         public bool IsInvolved(string userId) =>
             ReceiverId == userId || ProposerId == userId;
 
@@ -60,6 +53,12 @@ namespace MTGViewer.Data
 
     public class Suggestion : Transfer
     {
+        [Display(Name = "To Deck")]
+        [JsonIgnore]
+        public Deck? To { get; init; }
+        public int? ToId { get; init; }
+
+
         [MaxLength(80)]
         public string? Comment { get; set; }
     }
@@ -67,19 +66,10 @@ namespace MTGViewer.Data
 
     public class Trade : Transfer
     {
-
         [Display(Name = "To Deck")]
         [JsonIgnore]
-        public new Deck To
-        {
-            get => base.To ?? null!;
-            set => base.To = value;
-        }
-        public new int ToId
-        {
-            get => base.ToId ?? default;
-            set => base.ToId = value;
-        }
+        public Deck To { get; init; } = null!;
+        public int ToId { get; init; }
 
 
         [Display(Name = "From Deck")]

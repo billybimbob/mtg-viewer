@@ -62,7 +62,7 @@ namespace MTGViewer.Pages.Transfers
                 return RedirectToPage("./Index");
             }
 
-            if (deck.ToRequests.Any())
+            if (deck.TradesTo.Any())
             {
                 return RedirectToPage("./Status", new { deckId });
             }
@@ -92,8 +92,8 @@ namespace MTGViewer.Pages.Transfers
                     .ThenInclude(ca => ca.Card);
 
             var withTradeRequests = withCardRequests
-                .Include(d => d.ToRequests
-                    .Where(t => t is Trade && t.ProposerId == userId))
+                .Include(d => d.TradesTo
+                    .Where(t => t.ProposerId == userId))
                 .AsSplitQuery();
 
             return withTradeRequests;
@@ -102,10 +102,10 @@ namespace MTGViewer.Pages.Transfers
 
         private IQueryable<CardAmount> RequestTargetsFor(Deck deck)
         {
-            var deckIncludes = _dbContext.Amounts
+            var deckIncludes = _dbContext.DeckAmounts
                 .Include(ca => ca.Card)
-                .Include(ca => ca.Location)
-                    .ThenInclude(l => (l as Deck).Owner);
+                .Include(ca => ca.Deck)
+                    .ThenInclude(d => d.Owner);
 
             var requestNames = deck.Cards
                 .Select(ca => ca.Card.Name)
@@ -114,8 +114,7 @@ namespace MTGViewer.Pages.Transfers
 
             return deckIncludes
                 .Where(ca => !ca.IsRequest
-                    && ca.Location is Deck
-                    && (ca.Location as Deck).OwnerId != deck.OwnerId
+                    && ca.Deck.OwnerId != deck.OwnerId
                     && requestNames.Contains(ca.Card.Name));
         }
 
@@ -133,7 +132,7 @@ namespace MTGViewer.Pages.Transfers
                 return NotFound();
             }
 
-            if (deck.ToRequests.Any())
+            if (deck.TradesTo.Any())
             {
                 PostMessage = "Request is already sent";
                 return RedirectToPage("./Index");

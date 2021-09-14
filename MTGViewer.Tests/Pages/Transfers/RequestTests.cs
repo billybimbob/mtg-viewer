@@ -128,7 +128,7 @@ namespace MTGViewer.Tests.Pages.Transfers
             // Arrange
             await _requestModel.SetModelContextAsync(_userManager, _requestDeck.Owner.Id);
 
-            var requestCard = await _dbContext.Amounts
+            var requestCard = await _dbContext.DeckAmounts
                 .Where(ca => ca.LocationId == _requestDeck.Id && ca.IsRequest)
                 .Select(ca => ca.Card)
                 .AsNoTracking()
@@ -146,7 +146,7 @@ namespace MTGViewer.Tests.Pages.Transfers
                 .ToList();
 
             var amounts = extraLocations
-                .Select(loc => new CardAmount
+                .Select(loc => new DeckAmount
                 {
                     Card = requestCard,
                     Location = loc,
@@ -155,7 +155,7 @@ namespace MTGViewer.Tests.Pages.Transfers
                 .ToList();
 
             _dbContext.Decks.AttachRange(extraLocations);
-            _dbContext.Amounts.AttachRange(amounts);
+            _dbContext.DeckAmounts.AttachRange(amounts);
 
             await _dbContext.SaveChangesAsync();
             _dbContext.ChangeTracker.Clear();

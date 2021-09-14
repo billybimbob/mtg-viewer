@@ -21,11 +21,13 @@ namespace MTGViewer.Data.Seed
         public IReadOnlyList<UserRef> Refs { get; set; }
 
         public IReadOnlyList<Card> Cards { get; set; }
-        public IReadOnlyList<CardAmount> Amounts { get; set; }
 
         public IReadOnlyList<Deck> Decks { get; set; }
         public IReadOnlyList<Box> Boxes { get; set; }
         public IReadOnlyList<Bin> Bins { get; set; }
+
+        public IReadOnlyList<BoxAmount> BoxAmounts { get; set; }
+        public IReadOnlyList<DeckAmount> DeckAmounts { get; set; }
 
         public IReadOnlyList<Suggestion> Suggestions { get; set; }
         public IReadOnlyList<Trade> Trades { get; set; }
@@ -57,10 +59,6 @@ namespace MTGViewer.Data.Seed
                     .AsNoTrackingWithIdentityResolution()
                     .ToListAsync(cancel),
 
-                Amounts = await dbContext.Amounts
-                    .AsNoTrackingWithIdentityResolution()
-                    .ToListAsync(cancel),
-
                 Boxes = await dbContext.Boxes
                     .AsNoTrackingWithIdentityResolution()
                     .ToListAsync(cancel),
@@ -70,6 +68,14 @@ namespace MTGViewer.Data.Seed
                     .ToListAsync(cancel),
 
                 Decks = await dbContext.Decks
+                    .AsNoTrackingWithIdentityResolution()
+                    .ToListAsync(cancel),
+
+                BoxAmounts = await dbContext.BoxAmounts
+                    .AsNoTrackingWithIdentityResolution()
+                    .ToListAsync(cancel),
+
+                DeckAmounts = await dbContext.DeckAmounts
                     .AsNoTrackingWithIdentityResolution()
                     .ToListAsync(cancel),
 
@@ -134,13 +140,14 @@ namespace MTGViewer.Data.Seed
                 }
 
                 dbContext.Users.AddRange(data.Refs);
-
                 dbContext.Cards.AddRange(data.Cards);
-                dbContext.Amounts.AddRange(data.Amounts);
 
                 dbContext.Bins.AddRange(data.Bins);
                 dbContext.Boxes.AddRange(data.Boxes);
                 dbContext.Decks.AddRange(data.Decks);
+
+                dbContext.BoxAmounts.AddRange(data.BoxAmounts);
+                dbContext.DeckAmounts.AddRange(data.DeckAmounts);
 
                 dbContext.Suggestions.AddRange(data.Suggestions);
                 dbContext.Trades.AddRange(data.Trades);

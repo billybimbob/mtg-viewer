@@ -87,9 +87,9 @@ namespace MTGViewer.Data
 
 
 
-    public class SameNamePair : IEnumerable<CardAmount>
+    public class SameNamePair : IEnumerable<DeckAmount>
     {
-        public SameNamePair(IEnumerable<CardAmount> amounts)
+        public SameNamePair(IEnumerable<DeckAmount> amounts)
         {
             if (!amounts.Any())
             {
@@ -101,19 +101,19 @@ namespace MTGViewer.Data
 
             if (actuals.Any())
             {
-                Actuals = new SameNameGroup(actuals);
+                Actuals = new(actuals);
             }
 
             if (requests.Any())
             {
-                Requests = new SameNameGroup(requests);
+                Requests = new(requests);
             }
 
             CheckCorrectPair();
         }
 
 
-        public SameNamePair(params CardAmount[] amounts) : this(amounts.AsEnumerable())
+        public SameNamePair(params DeckAmount[] amounts) : this(amounts.AsEnumerable())
         { }
 
 
@@ -189,18 +189,20 @@ namespace MTGViewer.Data
 
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
-        public IEnumerator<CardAmount> GetEnumerator()
+        public IEnumerator<DeckAmount> GetEnumerator()
         {
-            var amounts = Enumerable.Empty<CardAmount>();
+            var amounts = Enumerable.Empty<DeckAmount>();
 
             if (Actuals is not null)
             {
-                amounts = amounts.Concat(Actuals);
+                amounts = amounts.Concat(
+                    Actuals.Cast<DeckAmount>());
             }
 
             if (Requests is not null)
             {
-                amounts = amounts.Concat(Requests);
+                amounts = amounts.Concat(
+                    Requests.Cast<DeckAmount>());
             }
 
             return amounts.GetEnumerator();
@@ -288,9 +290,9 @@ namespace MTGViewer.Data
 
 
 
-    public class SameAmountPair : IEnumerable<CardAmount>
+    public class SameAmountPair : IEnumerable<DeckAmount>
     {
-        public SameAmountPair(CardAmount amount1, CardAmount? amount2 = null)
+        public SameAmountPair(DeckAmount amount1, DeckAmount? amount2 = null)
         {
             if (amount1.IsRequest && (amount2?.IsRequest ?? false))
             {
@@ -309,7 +311,7 @@ namespace MTGViewer.Data
         }
 
 
-        public SameAmountPair(IEnumerable<CardAmount> amounts)
+        public SameAmountPair(IEnumerable<DeckAmount> amounts)
         {
             if (!amounts.Any())
             {
@@ -324,11 +326,11 @@ namespace MTGViewer.Data
 
 
         // Applied and Request are guaranteed to not both be null
-        private CardAmount? _actual;
-        private CardAmount? _request;
+        private DeckAmount? _actual;
+        private DeckAmount? _request;
 
 
-        public CardAmount? Actual
+        public DeckAmount? Actual
         {
             get => _actual;
             set
@@ -345,7 +347,7 @@ namespace MTGViewer.Data
         }
 
 
-        public CardAmount? Request
+        public DeckAmount? Request
         {
             get => _request;
             set
@@ -402,7 +404,7 @@ namespace MTGViewer.Data
         }
 
 
-        public IEnumerator<CardAmount> GetEnumerator()
+        public IEnumerator<DeckAmount> GetEnumerator()
         {
             if (Actual is not null)
             {

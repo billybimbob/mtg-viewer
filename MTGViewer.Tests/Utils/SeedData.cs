@@ -69,8 +69,8 @@ namespace MTGViewer.Tests.Utils
             };
 
             var shared = await dbContext.Boxes.FirstAsync();
-            var sharedAmounts = deckCards
-                .Select(c => new CardAmount
+            var boxAmounts = deckCards
+                .Select(c => new BoxAmount
                 {
                     Card = c,
                     Location = shared,
@@ -78,19 +78,16 @@ namespace MTGViewer.Tests.Utils
                 });
 
             var deckAmounts = deckCards
-                .Select(c => new CardAmount
+                .Select(c => new DeckAmount
                 {
                     Card = c,
                     Location = newDeck,
                     Amount = _random.Next(1, 3)
                 });
 
-            var amounts = sharedAmounts
-                .Concat(deckAmounts)
-                .ToList();
-
             dbContext.Attach(newDeck);
-            dbContext.AttachRange(amounts);
+            dbContext.BoxAmounts.AttachRange(boxAmounts);
+            dbContext.DeckAmounts.AttachRange(deckAmounts);
 
             await dbContext.SaveChangesAsync();
             dbContext.ChangeTracker.Clear();
@@ -125,13 +122,13 @@ namespace MTGViewer.Tests.Utils
                 };
 
                 var amounts = decks
-                    .Select(deck => new CardAmount
+                    .Select(deck => new DeckAmount
                     {
                         Card = card,
                         Location = deck
                     });
 
-                dbContext.Amounts.AddRange(amounts);
+                dbContext.DeckAmounts.AddRange(amounts);
                 cardOptions.Add(card);
             }
 
@@ -149,16 +146,16 @@ namespace MTGViewer.Tests.Utils
             };
 
             var requests = targetCards
-                .Select(card => new CardAmount
+                .Select(card => new DeckAmount
                 {
                     Card = card,
                     Location = newDeck,
-                    IsRequest = true
+                    RequestType = RequestType.Insert
                 })
                 .ToList();
 
             dbContext.Decks.Attach(newDeck);
-            dbContext.Amounts.AttachRange(requests);
+            dbContext.DeckAmounts.AttachRange(requests);
 
             await dbContext.SaveChangesAsync();
             dbContext.ChangeTracker.Clear();
@@ -215,7 +212,7 @@ namespace MTGViewer.Tests.Utils
                 var toRequest = await dbContext.GetToRequestAsync(
                     tradeCard, to, fromAmount.Amount);
 
-                trades.Add(new Trade
+                trades.Add(new()
                 {
                     Card = tradeCard,
                     Proposer = proposer,
@@ -244,7 +241,7 @@ namespace MTGViewer.Tests.Utils
 
             if (toLoc == default)
             {
-                toLoc = new Deck("Trade deck")
+                toLoc = new("Trade deck")
                 {
                     Owner = proposer
                 };
@@ -274,14 +271,14 @@ namespace MTGViewer.Tests.Utils
         private static async Task<CardAmount> GetFromAmountAsync(
             this CardDbContext dbContext, Card card, Deck from)
         {
-            var fromAmount = await dbContext.Amounts
+            var fromAmount = await dbContext.DeckAmounts
                 .SingleOrDefaultAsync(ca => !ca.IsRequest
                     && ca.CardId == card.Id
                     && ca.LocationId == from.Id);
 
             if (fromAmount == default)
             {
-                fromAmount = new CardAmount
+                fromAmount = new()
                 {
                     Card = card,
                     Location = from,
@@ -298,22 +295,22 @@ namespace MTGViewer.Tests.Utils
         private static async Task<CardAmount> GetToRequestAsync(
             this CardDbContext dbContext, Card card, Deck to, int maxAmount)
         {
-            var toRequest = await dbContext.Amounts
+            var toRequest = await dbContext.DeckAmounts
                 .SingleOrDefaultAsync(ca => ca.IsRequest
                     && ca.CardId == card.Id
                     && ca.LocationId == to.Id);
 
             if (toRequest == default)
             {
-                toRequest = new CardAmount
+                toRequest = new()
                 {
                     Card = card,
                     Location = to,
                     Amount = _random.Next(1, maxAmount),
-                    IsRequest = true
+                    RequestType = RequestType.Insert
                 };
 
-                dbContext.Amounts.Attach(toRequest);
+                dbContext.DeckAmounts.Attach(toRequest);
             }
 
             return toRequest;
