@@ -51,6 +51,7 @@ namespace MTGViewer.Pages.Transfers
             var deck = await _dbContext.Decks
                 .Include(d => d.Owner)
                 .Include(d => d.Cards
+                    .Where(da => da.Intent != Intent.Return)
                     .OrderBy(ca => ca.Card.Name))
                     .ThenInclude(ca => ca.Card)
                 .SingleOrDefaultAsync(d =>
@@ -61,7 +62,7 @@ namespace MTGViewer.Pages.Transfers
                 return NotFound();
             }
 
-            if (!deck.Cards.Any(ca => ca.IsRequest))
+            if (!deck.Cards.Any(ca => ca.HasIntent))
             {
                 PostMessage = $"There are no requests for {deck.Name}";
                 return RedirectToPage("./Index");

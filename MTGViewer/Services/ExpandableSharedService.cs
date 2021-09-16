@@ -134,7 +134,6 @@ namespace MTGViewer.Services
 
         private async Task ReturnNewAsync(IEnumerable<(Card card, int numCopies)> newReturns)
         {
-            var sortedSharedAmounts = await GetSortedAmountsAsync();
             var sortedBoxes = await GetSortedBoxesAsync();
 
             if (!sortedBoxes.Any())
@@ -142,14 +141,8 @@ namespace MTGViewer.Services
                 throw new DbUpdateException("There are no possible boxes to return the cards to");
             }
 
-            var cardIndices = new List<int>(sortedSharedAmounts.Count);
-            var cardCount = 0;
-
-            foreach (var shared in sortedSharedAmounts)
-            {
-                cardIndices.Add( cardCount );
-                cardCount += shared.Amount;
-            }
+            var sortedSharedAmounts = await GetSortedAmountsAsync();
+            var cardIndices = GetCardIndices(sortedSharedAmounts);
 
             var returnGroups = newReturns
                 .GroupBy(ci => ci.card, (card, cis) =>
@@ -157,18 +150,9 @@ namespace MTGViewer.Services
 
             foreach (var (card, numCopies) in returnGroups)
             {
-                int cardIndex;
+                var amountIndex = FindAmountIndex(sortedSharedAmounts, card);
 
-                if (sortedSharedAmounts.Any())
-                {
-                    var amountIndex = FindAmountIndex(sortedSharedAmounts, card);
-                    cardIndex = cardIndices[amountIndex];
-                }
-                else
-                {
-                    cardIndex = 0;
-                }
-
+                var cardIndex = cardIndices.ElementAtOrDefault(amountIndex);
                 var boxIndex = Math.Min(cardIndex / _boxSize, sortedBoxes.Count - 1);
 
                 var newSpot = new BoxAmount
@@ -183,9 +167,29 @@ namespace MTGViewer.Services
         }
 
 
+        private IReadOnlyList<int> GetCardIndices(IEnumerable<BoxAmount> boxAmounts)
+        {
+            var cardIndices = new List<int>(boxAmounts.Count());
+            var cardCount = 0;
+
+            foreach (var shared in boxAmounts)
+            {
+                cardIndices.Add( cardCount );
+                cardCount += shared.Amount;
+            }
+
+            return cardIndices;
+        }
+
+
         private int FindAmountIndex(IReadOnlyList<CardAmount> sortedAmounts, Card card)
         {
-            var amountIndex = -1;
+            var amountIndex = 0;
+
+            if (!sortedAmounts.Any())
+            {
+                return amountIndex;
+            }
 
             var low = 0;
             var high = sortedAmounts.Count;
@@ -217,7 +221,7 @@ namespace MTGViewer.Services
                 }
             }
 
-            return Math.Max(0, amountIndex);
+            return amountIndex;
         }
 
 

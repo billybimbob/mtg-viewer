@@ -61,7 +61,7 @@ namespace MTGViewer.Tests.Pages.Transfers
                 .FirstAsync(t => t.ProposerId == _trades.ProposerId && t.ToId == _trades.ToId);
 
             var fromQuery = _dbContext.DeckAmounts
-                .Where(ca => !ca.IsRequest
+                .Where(ca => !ca.HasIntent
                     && ca.CardId == trade.CardId
                     && ca.LocationId == trade.FromId)
                 .AsNoTracking();
@@ -94,7 +94,7 @@ namespace MTGViewer.Tests.Pages.Transfers
                 .FirstAsync(t => t.ProposerId == _trades.ProposerId && t.ToId == _trades.ToId);
 
             var fromQuery = _dbContext.DeckAmounts
-                .Where(ca => !ca.IsRequest
+                .Where(ca => !ca.HasIntent
                     && ca.CardId == trade.CardId
                     && ca.LocationId == trade.FromId)
                 .AsNoTracking();
@@ -131,7 +131,7 @@ namespace MTGViewer.Tests.Pages.Transfers
             await _reviewModel.SetModelContextAsync(_userManager, trade.ReceiverId);
 
             var tradeSourceQuery = _dbContext.DeckAmounts
-                .Where(ca => !ca.IsRequest
+                .Where(ca => !ca.HasIntent
                     && ca.CardId == trade.CardId
                     && ca.LocationId == trade.FromId)
                 .AsNoTracking();
@@ -167,7 +167,7 @@ namespace MTGViewer.Tests.Pages.Transfers
             await _reviewModel.SetModelContextAsync(_userManager, trade.ReceiverId);
 
             var fromAmount = await _dbContext.DeckAmounts
-                .SingleAsync(ca => !ca.IsRequest
+                .SingleAsync(ca => !ca.HasIntent
                     && ca.CardId == trade.CardId
                     && ca.LocationId == trade.FromId);
 
@@ -206,12 +206,12 @@ namespace MTGViewer.Tests.Pages.Transfers
 
             var fromAmount = await _dbContext.DeckAmounts
                 .AsNoTracking()
-                .SingleAsync(ca => !ca.IsRequest
+                .SingleAsync(ca => !ca.HasIntent
                     && ca.CardId == trade.CardId
                     && ca.LocationId == trade.FromId);
 
             var toRequest = await _dbContext.DeckAmounts
-                .SingleAsync(ca => ca.IsRequest
+                .SingleAsync(ca => ca.HasIntent
                     && ca.CardId == trade.CardId
                     && ca.LocationId == _trades.ToId);
 
@@ -250,13 +250,13 @@ namespace MTGViewer.Tests.Pages.Transfers
                 .FirstAsync(t => t.ProposerId == _trades.ProposerId && t.ToId == _trades.ToId);
 
             var toQuery = _dbContext.DeckAmounts
-                .Where(ca => !ca.IsRequest
+                .Where(ca => !ca.HasIntent
                     && ca.CardId == trade.CardId
                     && ca.LocationId == _trades.ToId)
                 .AsNoTracking();
 
             var fromQuery = _dbContext.DeckAmounts
-                .Where(ca => !ca.IsRequest
+                .Where(ca => !ca.HasIntent
                     && ca.CardId == trade.CardId
                     && ca.LocationId == trade.FromId)
                 .AsNoTracking();
@@ -289,13 +289,13 @@ namespace MTGViewer.Tests.Pages.Transfers
                 .FirstAsync(t => t.ProposerId == _trades.ProposerId && t.ToId == _trades.ToId);
 
             var toQuery = _dbContext.DeckAmounts
-                .Where(ca => !ca.IsRequest
+                .Where(ca => !ca.HasIntent
                     && ca.CardId == trade.CardId
                     && ca.LocationId == _trades.ToId)
                 .AsNoTracking();
 
             var fromQuery = _dbContext.DeckAmounts
-                .Where(ca => !ca.IsRequest
+                .Where(ca => !ca.HasIntent
                     && ca.CardId == trade.CardId
                     && ca.LocationId == trade.FromId)
                 .AsNoTracking();
@@ -332,13 +332,13 @@ namespace MTGViewer.Tests.Pages.Transfers
             await _reviewModel.SetModelContextAsync(_userManager, trade.ReceiverId);
 
             var toQuery = _dbContext.DeckAmounts
-                .Where(ca => !ca.IsRequest
+                .Where(ca => !ca.HasIntent
                     && ca.CardId == trade.CardId
                     && ca.LocationId == _trades.ToId)
                 .AsNoTracking();
 
             var fromQuery = _dbContext.DeckAmounts
-                .Where(ca => !ca.IsRequest
+                .Where(ca => !ca.HasIntent
                     && ca.CardId == trade.CardId
                     && ca.LocationId == trade.FromId)
                 .AsNoTracking();

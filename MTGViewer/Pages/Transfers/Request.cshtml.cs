@@ -88,7 +88,8 @@ namespace MTGViewer.Pages.Transfers
 
             var withCardRequests = userDeck
                 .Include(d => d.Cards
-                    .Where(ca => ca.IsRequest))
+                    .Where(da => da.Intent == Intent.Take)
+                    .OrderBy(da => da.Card.Name))
                     .ThenInclude(ca => ca.Card);
 
             var withTradeRequests = withCardRequests
@@ -100,20 +101,21 @@ namespace MTGViewer.Pages.Transfers
         }
 
 
-        private IQueryable<CardAmount> RequestTargetsFor(Deck deck)
+        private IQueryable<DeckAmount> RequestTargetsFor(Deck deck)
         {
             var deckIncludes = _dbContext.DeckAmounts
                 .Include(ca => ca.Card)
                 .Include(ca => ca.Deck)
                     .ThenInclude(d => d.Owner);
 
+            // Cards only has takes
             var requestNames = deck.Cards
                 .Select(ca => ca.Card.Name)
                 .Distinct()
                 .ToArray();
 
             return deckIncludes
-                .Where(ca => !ca.IsRequest
+                .Where(ca => !ca.HasIntent
                     && ca.Deck.OwnerId != deck.OwnerId
                     && requestNames.Contains(ca.Card.Name));
         }
@@ -182,7 +184,7 @@ namespace MTGViewer.Pages.Transfers
         }
 
 
-        private IReadOnlyList<Trade> FindTradeMatches(Deck deck, IEnumerable<CardAmount> targets)
+        private IReadOnlyList<Trade> FindTradeMatches(Deck deck, IEnumerable<DeckAmount> targets)
         {
             // TODO: figure out how to query more on server
             var requestGroups = deck.Cards
@@ -198,18 +200,14 @@ namespace MTGViewer.Pages.Transfers
                         (target, amount: Math.Min(target.Amount, group.Amount)) );
 
             var newTrades = requestMatches
-                .Select(ta =>
+                .Select(ta => new Trade
                 {
-                    var fromDeck = (Deck) ta.target.Location;
-                    return new Trade
-                    {
-                        Card = ta.target.Card,
-                        Proposer = deck.Owner,
-                        Receiver = fromDeck.Owner,
-                        To = deck,
-                        From = fromDeck,
-                        Amount = ta.amount
-                    };
+                    Card = ta.target.Card,
+                    Amount = ta.amount,
+                    To = deck,
+                    From = ta.target.Deck,
+                    Proposer = deck.Owner,
+                    Receiver = ta.target.Deck.Owner,
                 });
             
             return newTrades.ToList();

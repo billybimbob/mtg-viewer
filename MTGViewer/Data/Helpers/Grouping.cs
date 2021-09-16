@@ -60,23 +60,7 @@ namespace MTGViewer.Data
                         _amounts.AddLast(firstLink);
                     }
                 }
-
-                if (change > 0) // all amounts are zero
-                {
-                    First.Amount -= change;
-                }
             }
-        }
-
-
-        public void Add(CardAmount amount)
-        {
-            if (amount.Card.Name != Card.Name)
-            {
-                return;
-            }
-
-            _amounts.AddLast(amount);
         }
 
 
@@ -163,8 +147,8 @@ namespace MTGViewer.Data
         }
 
 
-        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
-
+        IEnumerator IEnumerable.GetEnumerator() =>
+            GetEnumerator();
 
         public IEnumerator<CardAmount> GetEnumerator() =>
             _amounts.GetEnumerator();
@@ -172,28 +156,9 @@ namespace MTGViewer.Data
 
 
 
-    /// <summary>Group of deck amounts with the deck and same card</summary>
+    /// <summary>Group of deck amounts with the same deck and same card</summary>
     public class RequestGroup : IEnumerable<DeckAmount>
     {
-        public RequestGroup(DeckAmount amount1, DeckAmount? amount2 = null)
-        {
-            if (amount1.IsRequest && (amount2?.IsRequest ?? false))
-            {
-                throw new ArgumentException("Pair cannot both be requests");
-            }
-
-            if (!amount1.IsRequest && !(amount2?.IsRequest ?? true))
-            {
-                throw new ArgumentException("Pair must have one request");
-            }
-
-            Actual = amount1.IsRequest ? amount2 : amount1;
-            Request = amount1.IsRequest ? amount1 : amount2;
-
-            CheckCorrectPair();
-        }
-
-
         public RequestGroup(IEnumerable<DeckAmount> amounts)
         {
             if (!amounts.Any())
@@ -201,16 +166,28 @@ namespace MTGViewer.Data
                 throw new ArgumentException("The group is empty");
             }
 
-            Actual = amounts.FirstOrDefault(ca => !ca.IsRequest);
-            Request = amounts.FirstOrDefault(ca => ca.IsRequest);
+            _actual = amounts.FirstOrDefault(ca => 
+                ca.Intent is Intent.None);
 
-            CheckCorrectPair();
+            _take = amounts.FirstOrDefault(ca =>
+                ca.Intent is Intent.Take);
+
+            _return = amounts.FirstOrDefault(ca =>
+                ca.Intent is Intent.Return);
+
+            CheckCorrectAmount();
         }
 
 
-        // Applied and Request are guaranteed to not both be null
+        public RequestGroup(params DeckAmount[] amounts)
+            : this(amounts.AsEnumerable())
+        { }
+
+
+        // Guaranteed to not all be null
         private DeckAmount? _actual;
-        private DeckAmount? _request;
+        private DeckAmount? _take;
+        private DeckAmount? _return;
 
 
         public DeckAmount? Actual
@@ -218,47 +195,71 @@ namespace MTGViewer.Data
             get => _actual;
             set
             {
-                if (value is null)
+                if (value is null || value.Intent is not Intent.None)
                 {
-                    return;
+                    throw new ArgumentException("Amount is not a valid actual amount");
                 }
 
                 _actual = value;
 
-                CheckCorrectPair();
+                CheckCorrectAmount();
             }
         }
 
 
-        public DeckAmount? Request
+        public DeckAmount? Take
         {
-            get => _request;
+            get => _take;
             set
             {
-                if (value is null)
+                if (value is null || value.Intent is not Intent.Take)
                 {
-                    return;
+                    throw new ArgumentException("Amount is not a valid take amount");
                 }
 
-                _request = value;
+                _take = value;
 
-                CheckCorrectPair();
+                CheckCorrectAmount();
             }
         }
 
 
-        private void CheckCorrectPair()
+        public DeckAmount? Return
         {
-            if (Actual is null || Request is null)
+            get => _return;
+            set
+            {
+                if (value is null || value.Intent is not Intent.Return)
+                {
+                    throw new ArgumentException("Amount is not a valid return amount");
+                }
+
+                _return = value;
+
+                CheckCorrectAmount();
+            }
+        }
+
+
+        private void CheckCorrectAmount()
+        {
+            if (this.Count() == 1)
             {
                 return;
             }
 
-            var idsSame = Actual.CardId == Request.CardId
-                && Actual.LocationId == Request.LocationId;
+            var cardId = CardId;
+            var locationId = LocationId;
 
-            var refsSame = object.ReferenceEquals(Actual.Card, Request.Card)
-                && object.ReferenceEquals(Actual.Location, Request.Location);
+            var idsSame = this.All(da =>
+                da.CardId == cardId && da.LocationId == locationId);
+
+            var card = Card;
+            var location = Location;
+
+            var refsSame = this.All(da =>
+                object.ReferenceEquals(da.Card, card)
+                    && object.ReferenceEquals(da.Location, location));
 
             if (!idsSame && !refsSame)
             {
@@ -268,23 +269,28 @@ namespace MTGViewer.Data
         }
 
 
-        public string CardId => 
-            Actual?.CardId ?? Request?.CardId ?? null!;
+        public string CardId =>
+            this.Select(da => da.CardId).First();
 
         public Card Card =>
-            Actual?.Card ?? Request?.Card ?? null!;
+            this.Select(da => da.Card).First();
+
+
+        public int LocationId =>
+            this.Select(da => da.LocationId).First();
 
         public Location Location =>
-            Actual?.Location ?? Request?.Location ?? null!;
+            this.Select(da => da.Location).First();
+
 
         public int Amount =>
-            (Actual?.Amount ?? 0) + (Request?.Amount ?? 0);
+            (Actual?.Amount ?? 0)
+                + (Take?.Amount ?? 0)
+                - (Return?.Amount ?? 0);
 
 
-        IEnumerator IEnumerable.GetEnumerator()
-        {
-            return GetEnumerator();
-        }
+        IEnumerator IEnumerable.GetEnumerator() =>
+            GetEnumerator();
 
 
         public IEnumerator<DeckAmount> GetEnumerator()
@@ -294,9 +300,14 @@ namespace MTGViewer.Data
                 yield return Actual;
             }
 
-            if (Request is not null)
+            if (Take is not null)
             {
-                yield return Request;
+                yield return Take;
+            }
+
+            if (Return is not null)
+            {
+                yield return Return;
             }
         }
     }
@@ -315,17 +326,23 @@ namespace MTGViewer.Data
                 throw new ArgumentException("The group is empty");
             }
 
-            var actuals = amounts.Where(ca => !ca.IsRequest);
-            var requests = amounts.Where(ca => ca.IsRequest);
+            var actuals = amounts.Where(da => da.Intent is Intent.None);
+            var takes   = amounts.Where(da => da.Intent is Intent.Take);
+            var returns = amounts.Where(da => da.Intent is Intent.Return);
 
             if (actuals.Any())
             {
                 Actuals = new(actuals);
             }
 
-            if (requests.Any())
+            if (takes.Any())
             {
-                Requests = new(requests);
+                Takes = new(takes);
+            }
+
+            if (returns.Any())
+            {
+                Returns = new(returns);
             }
 
             CheckCorrectPair();
@@ -337,21 +354,21 @@ namespace MTGViewer.Data
         { }
 
 
-        // Applied and Request are guaranteed to not both be null
+        // Guaranteed to not all be null
         public CardNameGroup? Actuals { get; }
-        public CardNameGroup? Requests { get; }
+        public CardNameGroup? Takes { get; }
+        public CardNameGroup? Returns { get; }
 
 
         private void CheckCorrectPair()
         {
-            if (Actuals is null || Requests is null)
-            {
-                return;
-            }
+            var name = Name;
+            var locationId = LocationId;
+            var location = Location;
 
-            var nameSame = Actuals.Name == Requests.Name;
-            var idSame = Actuals.LocationId == Requests.LocationId;
-            var refSame = object.ReferenceEquals(Actuals.Location, Requests.Location);
+            var nameSame = AllGroups(cg => cg.Name == name);
+            var idSame = AllGroups(cg => cg.LocationId == locationId);
+            var refSame = AllGroups(cg => object.ReferenceEquals(cg.Location, location));
 
             if (!nameSame || !idSame && !refSame)
             {
@@ -361,43 +378,65 @@ namespace MTGViewer.Data
         }
 
 
+        private bool AllGroups(Func<CardNameGroup, bool> groupPredicate)
+        {
+            return (Actuals is null || groupPredicate(Actuals))
+                && (Takes is null || groupPredicate(Takes))
+                && (Returns is null || groupPredicate(Returns));
+        }
+
+
         public string Name =>
-            Actuals?.Name ?? Requests?.Name ?? null!;
+            Actuals?.Name
+                ?? Takes?.Name
+                ?? Returns?.Name
+                ?? null!;
 
         public Location Location =>
-            Actuals?.Location ?? Requests?.Location ?? null!;
+            Actuals?.Location
+                ?? Takes?.Location
+                ?? Returns?.Location
+                ?? null!;
+
+        public int LocationId =>
+            Actuals?.LocationId
+                ?? Takes?.LocationId
+                ?? Returns?.LocationId
+                ?? default;
 
         public int Amount =>
-            (Actuals?.Amount ?? 0) + (Requests?.Amount ?? 0);
+            (Actuals?.Amount ?? 0)
+                + (Takes?.Amount ?? 0)
+                - (Returns?.Amount ?? 0);
 
 
         public IEnumerable<string> CardIds =>
-            (Actuals?.CardIds ?? Enumerable.Empty<string>())
-                .Concat(Requests?.CardIds ?? Enumerable.Empty<string>());
+            this.Select(da => da.CardId);
 
         public IEnumerable<Card> Cards =>
-            (Actuals?.Cards ?? Enumerable.Empty<Card>())
-                .Concat(Requests?.Cards ?? Enumerable.Empty<Card>());
+            this.Select(da => da.Card);
         
-
 
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
 
         public IEnumerator<DeckAmount> GetEnumerator()
         {
-            var amounts = Enumerable.Empty<DeckAmount>();
+            var amounts = new List<DeckAmount>();
 
             if (Actuals is not null)
             {
-                amounts = amounts.Concat(
-                    Actuals.Cast<DeckAmount>());
+                amounts.AddRange( Actuals.Cast<DeckAmount>() );
             }
 
-            if (Requests is not null)
+            if (Takes is not null)
             {
-                amounts = amounts.Concat(
-                    Requests.Cast<DeckAmount>());
+                amounts.AddRange( Takes.Cast<DeckAmount>() );
+            }
+
+            if (Returns is not null)
+            {
+                amounts.AddRange( Returns.Cast<DeckAmount>() );
             }
 
             return amounts.GetEnumerator();

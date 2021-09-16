@@ -129,7 +129,7 @@ namespace MTGViewer.Tests.Pages.Transfers
             await _requestModel.SetModelContextAsync(_userManager, _requestDeck.Owner.Id);
 
             var requestCard = await _dbContext.DeckAmounts
-                .Where(ca => ca.LocationId == _requestDeck.Id && ca.IsRequest)
+                .Where(ca => ca.LocationId == _requestDeck.Id && ca.HasIntent)
                 .Select(ca => ca.Card)
                 .AsNoTracking()
                 .FirstAsync();

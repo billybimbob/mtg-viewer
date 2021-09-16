@@ -27,10 +27,10 @@ namespace MTGViewer.Data.Internal
 
 namespace MTGViewer.Data
 {
-    public enum RequestType
+    public enum Intent
     {
         None,
-        Insert,
-        Delete,
+        Take,
+        Return,
     }
 }

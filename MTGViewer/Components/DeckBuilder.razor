@@ -19,9 +19,6 @@
     Save Changes
 </button>
 
-<input type="checkbox" @bind="_autoTake" id="auto-take"/>
-<label for="auto-take">Auto Take From Available</label>
-
 <SavePrompt @bind-Result="_result">
     <SuccessMessage>
         Save was succesful, and values have been updated
@@ -43,15 +40,13 @@
             <th>Mana Cost</th>
             <th>Set</th>
             <th>Rarity</th>
-            <th>Amount Available</th>
             <th></th>
         </tr>
     </thead>
 
     <tbody>
-        @foreach (var card in AvailableCards)
+        @foreach (var card in SortedCards)
         {
-            var available = _availables[card.Id];
             <tr>
                 <td class="fw-bold">@card.Name</td>
 
@@ -64,8 +59,6 @@
 
                 <td>@card.SetName</td>
                 <td>@card.Rarity</td>
-                <td>@available.Amount</td>
-
                 <td>
                     <button title="Add @card.Name"
                             type="button"
@@ -97,7 +90,7 @@
     <tbody>
         @foreach (var card in DeckCards)
         {
-            var pair = _deckCards[card.Id];
+            var group = _deckCards[card.Id];
             <tr>
                 <td class="fw-bold">@card.Name</td>
 
@@ -110,8 +103,8 @@
 
                 <td>@card.SetName</td>
 
-                <td>@pair.Actual.Amount</td>
-                <td>@(pair.Request?.Amount ?? 0)</td>
+                <td>@((group.Actual?.Amount ?? 0) - (group.Return?.Amount ?? 0))</td>
+                <td>@(group.Take?.Amount ?? 0)</td>
 
                 <td>
                     <button title="Remove @card.Name"
@@ -135,11 +128,7 @@
     [Parameter]
     public int DeckId { get; set; } = default;
 
-    [Parameter]
-    public bool AutoTake { get; set; }
 
-
-    private bool _autoTake;
     private bool _busy;
     private SaveResult _result;
     private CardDbContext _dbContext;
@@ -147,9 +136,7 @@
     private UserRef _user;
     private Deck _deck;
     private SortedList<string, List<Card>> _dbCards;
-
     private IDictionary<string, RequestGroup> _deckCards;
-    private IDictionary<string, CardGroup> _availables;
 
 
     private bool HasNoChanges() =>
@@ -158,10 +145,6 @@
 
     private IEnumerable<Card> SortedCards => 
         _dbCards.Values.SelectMany(cg => cg);
-
-    private IEnumerable<Card> AvailableCards =>
-        SortedCards
-            .Where(c => _availables.ContainsKey(c.Id));
 
     private IEnumerable<Card> DeckCards =>
         SortedCards
@@ -195,10 +178,10 @@
                 // TODO: change return location
                 .ToListAsync();
 
-            _availables = shares
+            @* _availables = shares
                 .GroupBy(ca => ca.CardId,
                     (_, amounts) => new CardGroup(amounts))
-                .ToDictionary(cg => cg.CardId);
+                .ToDictionary(cg => cg.CardId); *@
         }
         finally
         {
@@ -226,13 +209,6 @@
             _deckCards = _deck.Cards
                 .GroupBy(ca => ca.CardId)
                 .ToDictionary(g => g.Key, InitGroup);
-
-            _autoTake = AutoTake;
-
-            if (_autoTake)
-            {
-                AutoTakeRequests();
-            }
         }
         finally
         {
@@ -280,7 +256,7 @@
                 Amount = 0
             };
 
-            _dbContext.Add(actual);
+            _dbContext.DeckAmounts.Add(actual);
             pair.Actual = actual;
         }
 
@@ -299,81 +275,88 @@
 
     private void AddCardToDeck(Card card)
     {
-        if (!_availables.TryGetValue(card.Id, out var availAmnt))
+        _result = SaveResult.None;
+
+        bool hasGroup = _deckCards.TryGetValue(card.Id, out var deckGroup);
+
+        if (hasGroup && deckGroup.Return?.Amount > 0)
         {
-            Logger.LogError($"card {card.Id} is not a listed avaliable card");
+            deckGroup.Return.Amount -= 1;
             return;
         }
 
-        if (!_deckCards.TryGetValue(card.Id, out var deckGroup))
+        if (!hasGroup || deckGroup.Take is null)
         {
-            var newAmnt = new DeckAmount
+            var takeAmount = new DeckAmount
             {
                 Card = card,
                 Location = _deck,
+                Intent = Intent.Take,
                 Amount = 0,
             };
 
-            deckGroup = new(newAmnt);
+            _dbContext.DeckAmounts.Add(takeAmount);
 
-            _deckCards.Add(card.Id, deckGroup);
-            _dbContext.Add(newAmnt);
+            if (hasGroup)
+            {
+                deckGroup.Take = takeAmount;
+            }
+            else
+            {
+                deckGroup = new(takeAmount);
+                _deckCards.Add(card.Id, deckGroup);
+            }
         }
 
-        deckGroup.Actual.Amount += 1;
-        availAmnt.Amount -= 1;
-
-        if (availAmnt.Amount < 0)
-        {
-            FixOverdraft(card);
-        }
-
-        _result = SaveResult.None;
+        deckGroup.Take.Amount += 1;
     }
 
 
     private void RemoveCardFromDeck(Card card)
     {
-        if (!_availables.TryGetValue(card.Id, out var availAmnt))
-        {
-            Logger.LogError($"card {card.Id} does exist in available set");
-            return;
-        }
+        _result = SaveResult.None;
 
-        if (!_deckCards.TryGetValue(card.Id, out var deckAmnt))
+        if (!_deckCards.TryGetValue(card.Id, out var deckGroup))
         {
             Logger.LogError($"card {card.Id} is not in the deck");
             return;
         }
 
-        if (deckAmnt.Request?.Amount > 0)
+        if (deckGroup.Take?.Amount > 0)
         {
-            deckAmnt.Request.Amount -= 1;
+            deckGroup.Take.Amount -= 1;
             return;
         }
 
-        if (deckAmnt.Actual.Amount == 0)
+        var actualRemain = deckGroup.Actual?.Amount ?? 0 - deckGroup.Return?.Amount ?? 0;
+
+        if (actualRemain == 0)
         {
             Logger.LogError($"there are no more of {card.Id} to remove");
             return;
         }
 
-        deckAmnt.Actual.Amount -= 1;
-        availAmnt.Amount += 1;
+        if (deckGroup.Return is null)
+        {
+            var returnAmount = new DeckAmount
+            {
+                Card = deckGroup.Card,
+                Location = _deck,
+                Intent = Intent.Return,
+                Amount = 0
+            };
 
-        _result = SaveResult.None;
+            deckGroup.Return = returnAmount;
+            _dbContext.DeckAmounts.Attach(returnAmount);
+        }
+
+        deckGroup.Return.Amount += 1;
     }
 
 
 
-    private void FixOverdraft(Card card)
+    @* private void FixOverdraft(Card card)
     {
-        if (!_availables.TryGetValue(card.Id, out var availAmnt))
-        {
-            Logger.LogError($"{card.Id} does not exist in available");
-            return;
-        }
-
         if (!_deckCards.TryGetValue(card.Id, out var deckGroup))
         {
             Logger.LogInformation($"{card.Id} does not exist in deck");
@@ -388,7 +371,7 @@
                 {
                     Card = deckGroup.Card,
                     Location = deckGroup.Location,
-                    RequestType = RequestType.Insert
+                    Request = Request.Insert
                 };
 
                 _dbContext.Add(deckGroup.Request);
@@ -408,7 +391,7 @@
             deckGroup.Request.Amount -= changeAmnt;
             availAmnt.Amount -= changeAmnt;
         }
-    }
+    } *@
 
 
     private async Task CommitChangesAsync()
@@ -436,13 +419,6 @@
         }
         finally
         {
-            await UpdateAvailableAsync();
-
-            if (_autoTake)
-            {
-                AutoTakeRequests();
-            }
-
             _busy = false;
         }
     }
@@ -474,15 +450,6 @@
     }
 
 
-    private void AutoTakeRequests()
-    {
-        foreach (var cardGroup in _deckCards.Values)
-        {
-            FixOverdraft(cardGroup.Card);
-        }
-    }
-
-
     private async Task UpdateDeckAsync(DbUpdateConcurrencyException ex)
     {
         if (HasNoDeckConflicts(ex))
@@ -507,11 +474,13 @@
             await TrackNewCardAsync(cardGroup);
         }
 
+        CapDeletes();
+
         var dbDeck = await _dbContext.Entry(_deck).GetDatabaseValuesAsync();
 
         if (dbDeck == null)
         {
-            _dbContext.Add(_deck);
+            _dbContext.Decks.Add(_deck);
         }
         else
         {
@@ -565,39 +534,44 @@
             return;
         }
 
-        var localDeckCard = dbDeckCard.IsRequest
-            ? localDeckGroup.Request
-            : localDeckGroup.Actual;
-
-        if (localDeckCard is null)
+        var localDeckCard = dbDeckCard.Intent switch
         {
-            // token also is matched
-            _dbContext.Attach(dbDeckCard);
-            localDeckGroup.Request = dbDeckCard;
+            Intent.None => localDeckGroup.Actual,
+            Intent.Take => localDeckGroup.Take,
+            Intent.Return => localDeckGroup.Return,
+            _ => null
+        };
+
+        if (localDeckCard is not null)
+        {
+            // keep local by default
+            _dbContext.MatchToken(localDeckCard, dbDeckCard);
+
+            if (_dbContext.Entry(localDeckCard).State == EntityState.Unchanged)
+            {
+                localDeckCard.Amount = dbDeckCard.Amount;
+            }
+
             return;
         }
 
-        var currEntry = _dbContext.Entry(localDeckCard);
-
-        if (currEntry.State != EntityState.Unchanged)
+        switch (dbDeckCard.Intent)
         {
-            // overriding conflict amount, so transferring 
-            // back cancelled amount to available
-            var lastReadAmnt = currEntry.Property(ca => ca.Amount).OriginalValue;
-            var dbAmntChange = dbDeckCard.Amount - lastReadAmnt;
+            case Intent.None:
+                localDeckGroup.Actual = dbDeckCard;
+                break;
 
-            var availEntry = _dbContext
-                .Entry(_availables[dbDeckCard.CardId])
-                .Property(ca => ca.Amount);
+            case Intent.Take:
+                localDeckGroup.Take = dbDeckCard;
+                break;
 
-            availEntry.OriginalValue -= dbAmntChange;
-        }
-        else
-        {
-            localDeckCard.Amount = dbDeckCard.Amount;
+            case Intent.Return:
+                localDeckGroup.Return = dbDeckCard;
+                break;
         }
 
-        _dbContext.MatchToken(localDeckCard, dbDeckCard);
+        // token also is matched
+        _dbContext.DeckAmounts.Attach(dbDeckCard);
     }
 
 
@@ -616,21 +590,42 @@
 
         if (_dbContext.Entry(amntGroup.Actual).State == EntityState.Detached)
         {
-            _dbContext.Attach(amntGroup.Actual);
+            _dbContext.DeckAmounts.Attach(amntGroup.Actual);
         }
 
-        if (amntGroup.Request is not null
-            && _dbContext.Entry(amntGroup.Request).State == EntityState.Detached)
+        if (amntGroup.Take is not null
+            && _dbContext.Entry(amntGroup.Take).State == EntityState.Detached)
         {
-            _dbContext.Attach(amntGroup.Request);
+            _dbContext.DeckAmounts.Attach(amntGroup.Take);
+        }
+
+        if (amntGroup.Return is not null
+            && _dbContext.Entry(amntGroup.Return).State == EntityState.Detached)
+        {
+            _dbContext.DeckAmounts.Attach(amntGroup.Return);
         }
 
         _deckCards.Add(cardId, amntGroup);
     }
 
 
+    private void CapDeletes()
+    {
+        foreach(var cardGroup in _deckCards.Values)
+        {
+            if (cardGroup.Return is not null)
+            {
+                var currentDelete = cardGroup.Return.Amount;
+                var capAmount = cardGroup.Actual?.Amount ?? currentDelete;
 
-    private async Task UpdateAvailableAsync()
+                cardGroup.Return.Amount = Math.Min(currentDelete, capAmount);
+            }
+        }
+    }
+
+
+
+    @* private async Task UpdateAvailableAsync()
     {
         var updatedAvails = await _dbContext.BoxAmounts
             // .Where(ca => ca.Location is Box)
@@ -699,5 +694,5 @@
         {
             _availables.Add(availCard.Id, new(dbAvailable));
         }
-    }
+    } *@
 }

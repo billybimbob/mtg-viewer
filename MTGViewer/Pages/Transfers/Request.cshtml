@@ -43,9 +43,9 @@ else
         </tr>
     </thead>
     <tbody>
-        @foreach (var requestGroup in Model.Requests)
+        @foreach (var cardGroup in Model.Requests)
         {
-            var card = requestGroup.Cards.First();
+            var card = cardGroup.Cards.First();
             <tr>
                 <td>
                     <a asp-page="/Cards/Details"
@@ -58,7 +58,7 @@ else
                         <span class="m-1 ms ms-@cost ms-cost"></span>
                     }
                 </td>
-                <td> @requestGroup.Amount </td>
+                <td> @cardGroup.Amount </td>
             </tr>
         } 
     </tbody>

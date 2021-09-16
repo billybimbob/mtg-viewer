@@ -53,8 +53,9 @@ namespace MTGViewer.Pages.Decks
 
             var deck = await _dbContext.Decks
                 .Include(l => l.Cards
-                    .OrderBy(ca => ca.Card.Name))
-                    .ThenInclude(ca => ca.Card)
+                    .Where(da => da.Intent != Intent.Return)
+                    .OrderBy(da => da.Card.Name))
+                    .ThenInclude(da => da.Card)
                 .FirstOrDefaultAsync(l =>
                     l.Id == id && l.OwnerId == userId);
 
@@ -101,16 +102,8 @@ namespace MTGViewer.Pages.Decks
                 return RedirectToPage("./Index");
             }
 
-            // var returned = await ReturnCardsAsync(deck);
-
-            // if (!returned)
-            // {
-            //     PostMesssage = "Failed to return all cards";
-            //     return RedirectToPage("./Index");
-            // }
-
             var returningCards = deck.Cards
-                .Where(ca => !ca.IsRequest)
+                .Where(ca => !ca.HasIntent)
                 .Select(ca => (ca.Card, ca.Amount))
                 .ToList();
 
@@ -131,43 +124,5 @@ namespace MTGViewer.Pages.Decks
 
             return RedirectToPage("./Index");
         }
-
-
-        // private async Task<bool> ReturnCardsAsync(Deck deck)
-        // {
-        //     var deckAmounts = _dbContext.Amounts
-        //         .Where(ca => ca.LocationId == deck.Id);
-
-        //     var sharedAmounts = _dbContext.Amounts
-        //         .Where(ca => ca.Location is Data.Shared);
-
-        //     var amountPairs = await deckAmounts
-        //         .GroupJoin( sharedAmounts,
-        //             deck => deck.CardId,
-        //             shared => shared.CardId,
-        //             (deck, shares) => new { deck, shares })
-        //         .SelectMany(
-        //             dss => dss.shares.DefaultIfEmpty(),
-        //             (dss, shared) => new { dss.deck, shared })
-        //         .ToListAsync();
-
-
-        //     var noMatch = amountPairs.Any(ds => ds.shared == default);
-
-        //     if (noMatch)
-        //     {
-        //         return false;
-        //     }
-
-        //     foreach(var pair in amountPairs)
-        //     {
-        //         if (!pair.deck.IsRequest)
-        //         {
-        //             pair.shared!.Amount += pair.deck.Amount;
-        //         }
-        //     }
-
-        //     return true;
-        // }
     }
 }

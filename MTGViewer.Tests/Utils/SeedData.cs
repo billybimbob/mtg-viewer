@@ -143,7 +143,7 @@ namespace MTGViewer.Tests.Utils
                 {
                     Card = card,
                     Location = newDeck,
-                    RequestType = RequestType.Insert
+                    Intent = Intent.Take
                 })
                 .ToList();
 
@@ -265,7 +265,7 @@ namespace MTGViewer.Tests.Utils
             this CardDbContext dbContext, Card card, Deck from)
         {
             var fromAmount = await dbContext.DeckAmounts
-                .SingleOrDefaultAsync(ca => !ca.IsRequest
+                .SingleOrDefaultAsync(ca => !ca.HasIntent
                     && ca.CardId == card.Id
                     && ca.LocationId == from.Id);
 
@@ -289,7 +289,7 @@ namespace MTGViewer.Tests.Utils
             this CardDbContext dbContext, Card card, Deck to, int maxAmount)
         {
             var toRequest = await dbContext.DeckAmounts
-                .SingleOrDefaultAsync(ca => ca.IsRequest
+                .SingleOrDefaultAsync(ca => ca.HasIntent
                     && ca.CardId == card.Id
                     && ca.LocationId == to.Id);
 
@@ -300,7 +300,7 @@ namespace MTGViewer.Tests.Utils
                     Card = card,
                     Location = to,
                     Amount = _random.Next(1, maxAmount),
-                    RequestType = RequestType.Insert
+                    Intent = Intent.Take
                 };
 
                 dbContext.DeckAmounts.Attach(toRequest);

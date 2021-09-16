@@ -92,20 +92,20 @@ namespace MTGViewer.Pages.Transfers
                 Accept = trade;
 
                 ToAmount = amounts.SingleOrDefault(ca =>
-                    !ca.IsRequest && ca.LocationId == trade.ToId);
+                    !ca.HasIntent && ca.LocationId == trade.ToId);
 
                 var toRequests = amounts
-                    .Where(ca => ca.IsRequest && ca.LocationId == trade.ToId);
+                    .Where(ca => ca.HasIntent && ca.LocationId == trade.ToId);
 
                 ToRequests = toRequests.Any()
                     ? new CardNameGroup(toRequests)
                     : null;
 
                 FromAmount = amounts.Single(ca =>
-                    !ca.IsRequest && ca.LocationId == trade.FromId);
+                    !ca.HasIntent && ca.LocationId == trade.FromId);
 
                 FromRequest = amounts.SingleOrDefault(ca =>
-                    ca.IsRequest && ca.LocationId == trade.FromId);
+                    ca.HasIntent && ca.LocationId == trade.FromId);
             }
         }
 
@@ -177,10 +177,10 @@ namespace MTGViewer.Pages.Transfers
             // TODO: fix request check
             var tradeAmounts = await _dbContext.DeckAmounts
                 .Where(da =>
-                    da.RequestType == RequestType.Insert
+                    da.Intent == Intent.Take
                         && da.LocationId == trade.ToId 
                         && da.Card.Name == trade.Card.Name
-                    || !da.IsRequest
+                    || !da.HasIntent
                         && da.LocationId == trade.ToId
                         && da.CardId == trade.CardId
                     || da.LocationId == trade.FromId
@@ -188,7 +188,7 @@ namespace MTGViewer.Pages.Transfers
                 .ToListAsync();
 
             var amountsValid = tradeAmounts.Any(ca =>
-                !ca.IsRequest && ca.LocationId == trade.FromId);
+                !ca.HasIntent && ca.LocationId == trade.FromId);
 
             if (!amountsValid)
             {
@@ -229,7 +229,7 @@ namespace MTGViewer.Pages.Transfers
                         Card = accept.Card,
                         Location = accept.From,
                         Amount = 0,
-                        RequestType = RequestType.Insert
+                        Intent = Data.Intent.Take
                     };
 
                     _dbContext.DeckAmounts.Add(fromRequest);

@@ -38,7 +38,7 @@ namespace MTGViewer.Data.Triggers
             var fromAmount = await _dbContext.DeckAmounts
                 .AsNoTracking()
                 .SingleOrDefaultAsync(ca =>
-                    !ca.IsRequest
+                    !ca.HasIntent
                         && ca.CardId == trade.CardId
                         && (ca.LocationId == trade.FromId || ca.Location == trade.From));
 

@@ -56,7 +56,7 @@ namespace MTGViewer.Data
     [Index(
         nameof(LocationId),
         nameof(CardId),
-        nameof(RequestType), IsUnique = true)]
+        nameof(Intent), IsUnique = true)]
     public class DeckAmount : CardAmount
     {
         public DeckAmount() : base()
@@ -73,12 +73,12 @@ namespace MTGViewer.Data
             init => Location = value;
         }
 
-        public RequestType RequestType { get; init; }
+        public Intent Intent { get; init; }
 
         [JsonIgnore]
-        public bool IsRequest
+        public bool HasIntent
         {
-            get => RequestType is not RequestType.None;
+            get => Intent is not Intent.None;
             private set { }
         }
     }

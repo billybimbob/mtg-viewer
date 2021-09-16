@@ -34,6 +34,7 @@ namespace MTGViewer.Pages.Decks
             Deck = await _dbContext.Decks
                 .Include(d => d.Owner)
                 .Include(d => d.Cards
+                    .Where(da => da.Intent != Intent.Return)
                     .OrderBy(ca => ca.Card.Name))
                     .ThenInclude(ca => ca.Card)
                 .Include(d => d.TradesTo

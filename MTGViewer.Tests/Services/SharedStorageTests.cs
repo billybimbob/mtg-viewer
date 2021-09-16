@@ -115,6 +115,22 @@ namespace MTGViewer.Tests.Services
 
 
         [Fact]
+        public async Task Return_EmptyReturns_NoChange()
+        {
+            var emptyReturns = Enumerable.Empty<(Card, int)>();
+
+            var sharedAmountQuery = _dbContext.BoxAmounts
+                .Select(ca => ca.Amount);
+
+            var sharedBefore = await sharedAmountQuery.SumAsync();
+            await _sharedStorage.ReturnAsync(emptyReturns);
+            var sharedAfter = await sharedAmountQuery.SumAsync();
+
+            Assert.Equal(sharedBefore, sharedAfter);
+        }
+
+
+        [Fact]
         public async Task Return_NoBoxes_ThrowsException()
         {
             var boxes = await _dbContext.Boxes

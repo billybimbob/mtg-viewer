@@ -22,15 +22,15 @@
     </thead>
 
     <tbody>
-        @foreach (var pair in Model.Cards)
+        @foreach (var nameGroup in Model.Cards)
         {
-            var card = pair.Cards.First();
+            var card = nameGroup.Cards.First();
             <tr>
                 <td>
                     <a asp-page="/Cards/Details"
                        asp-route-id="@card.Id"
                        class="fw-bold">
-                       @pair.Name </a>
+                       @nameGroup.Name </a>
                 </td>
                 <td>
                     @foreach (var cost in card.GetManaSymbols())
@@ -40,8 +40,8 @@
                 </td>
 
                 <td>@card.SetName</td>
-                <td>@(pair.Actuals?.Amount ?? 0)</td>
-                <td>@(pair.Requests?.Amount ?? 0)</td>
+                <td>@(nameGroup.Actuals?.Amount ?? 0)</td>
+                <td>@(nameGroup.Takes?.Amount ?? 0)</td>
             </tr>
         }
     </tbody>
