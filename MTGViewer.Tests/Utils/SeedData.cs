@@ -253,7 +253,7 @@ namespace MTGViewer.Tests.Utils
                     Owner = receiver
                 };
 
-                dbContext.Attach(fromLoc);
+                dbContext.Decks.Attach(fromLoc);
                 fromLocs.Add(fromLoc);
             }
 
@@ -261,13 +261,14 @@ namespace MTGViewer.Tests.Utils
         }
 
 
-        private static async Task<CardAmount> GetFromAmountAsync(
+        private static async Task<DeckAmount> GetFromAmountAsync(
             this CardDbContext dbContext, Card card, Deck from)
         {
             var fromAmount = await dbContext.DeckAmounts
-                .SingleOrDefaultAsync(ca => !ca.HasIntent
-                    && ca.CardId == card.Id
-                    && ca.LocationId == from.Id);
+                .SingleOrDefaultAsync(da =>
+                    da.LocationId == from.Id
+                        && da.CardId == card.Id
+                        && da.Intent == Intent.None);
 
             if (fromAmount == default)
             {
@@ -275,10 +276,11 @@ namespace MTGViewer.Tests.Utils
                 {
                     Card = card,
                     Location = from,
-                    Amount = _random.Next(1, 3)
+                    Amount = _random.Next(1, 3),
+                    Intent = Intent.None
                 };
 
-                dbContext.Attach(fromAmount);
+                dbContext.DeckAmounts.Attach(fromAmount);
             }
 
             return fromAmount;
@@ -289,9 +291,10 @@ namespace MTGViewer.Tests.Utils
             this CardDbContext dbContext, Card card, Deck to, int maxAmount)
         {
             var toRequest = await dbContext.DeckAmounts
-                .SingleOrDefaultAsync(ca => ca.HasIntent
-                    && ca.CardId == card.Id
-                    && ca.LocationId == to.Id);
+                .SingleOrDefaultAsync(da =>
+                    da.LocationId == to.Id
+                        && da.CardId == card.Id
+                        && da.Intent == Intent.Take);
 
             if (toRequest == default)
             {

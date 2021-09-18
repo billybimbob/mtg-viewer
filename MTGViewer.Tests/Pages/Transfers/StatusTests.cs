@@ -31,7 +31,7 @@ namespace MTGViewer.Tests.Pages.Transfers
             _dbContext = TestFactory.CardDbContext(_services);
             _userManager = TestFactory.CardUserManager(_services);
 
-            _statusModel = new StatusModel(_userManager, _dbContext);
+            _statusModel = new(_userManager, _dbContext);
         }
 
 

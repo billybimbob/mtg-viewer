@@ -34,7 +34,7 @@ namespace MTGViewer.Tests.Pages.Transfers
             _dbContext = TestFactory.CardDbContext(_services);
             _userManager = TestFactory.CardUserManager(_services);
 
-            _requestModel = new RequestModel(
+            _requestModel = new(
                 _dbContext, _userManager, Mock.Of<ILogger<RequestModel>>());
         }
 
@@ -129,7 +129,7 @@ namespace MTGViewer.Tests.Pages.Transfers
             await _requestModel.SetModelContextAsync(_userManager, _requestDeck.Owner.Id);
 
             var requestCard = await _dbContext.DeckAmounts
-                .Where(ca => ca.LocationId == _requestDeck.Id && ca.HasIntent)
+                .Where(ca => ca.LocationId == _requestDeck.Id && ca.Intent != Intent.None)
                 .Select(ca => ca.Card)
                 .AsNoTracking()
                 .FirstAsync();

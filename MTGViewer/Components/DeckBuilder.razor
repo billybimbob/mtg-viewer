@@ -173,12 +173,12 @@
 
             _dbCards = new(nameGroups);
 
-            var shares = await _dbContext.BoxAmounts
+            @* var shares = await _dbContext.BoxAmounts
                 // .Where(ca => ca.Location is Box)
                 // TODO: change return location
                 .ToListAsync();
 
-            @* _availables = shares
+            _availables = shares
                 .GroupBy(ca => ca.CardId,
                     (_, amounts) => new CardGroup(amounts))
                 .ToDictionary(cg => cg.CardId); *@
@@ -237,7 +237,7 @@
             Owner = _user
         };
 
-        _dbContext.Attach(newLoc);
+        _dbContext.Decks.Attach(newLoc);
 
         return newLoc;
     }
@@ -431,7 +431,7 @@
             // detaches when saved after a remove
             if (_dbContext.Entry(cardAmnt).State == EntityState.Detached)
             {
-                _dbContext.Add(cardAmnt);
+                _dbContext.DeckAmounts.Add(cardAmnt);
             }
 
             if (cardAmnt.Amount == 0)

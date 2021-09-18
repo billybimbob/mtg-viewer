@@ -92,10 +92,10 @@ namespace MTGViewer.Pages.Decks
             var userId = _userManager.GetUserId(User);
 
             var deck = await _dbContext.Decks
-                .Include(ca => ca.Cards)
-                    .ThenInclude(ca => ca.Card)
-                .FirstOrDefaultAsync(l =>
-                    l.Id == id && l.OwnerId == userId);
+                .Include(d => d.Cards)
+                    .ThenInclude(da => da.Card)
+                .FirstOrDefaultAsync(d =>
+                    d.Id == id && d.OwnerId == userId);
 
             if (deck == default)
             {
@@ -103,8 +103,8 @@ namespace MTGViewer.Pages.Decks
             }
 
             var returningCards = deck.Cards
-                .Where(ca => !ca.HasIntent)
-                .Select(ca => (ca.Card, ca.Amount))
+                .Where(da => da.Intent is Intent.None)
+                .Select(da => (da.Card, da.Amount))
                 .ToList();
 
             _dbContext.DeckAmounts.RemoveRange(deck.Cards);

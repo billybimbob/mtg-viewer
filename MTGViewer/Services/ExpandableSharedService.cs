@@ -32,20 +32,29 @@ namespace MTGViewer.Services
 
 
         public void Dispose()
-        { 
+        {
             _dbContext.Dispose();
             _lock.Dispose();
         }
 
 
-        public IQueryable<Box> Shares => _dbContext.Boxes;
+        public IQueryable<Box> Boxes =>
+            _dbContext.Boxes.AsNoTrackingWithIdentityResolution();
+
+        public IQueryable<BoxAmount> Cards =>
+            _dbContext.BoxAmounts.AsNoTrackingWithIdentityResolution();
 
 
         public async Task ReturnAsync(IEnumerable<(Card, int numCopies)> returns)
         {
-            if (InvalidReturns(returns))
+            if (!returns.Any())
             {
                 return;
+            }
+
+            if (InvalidReturns(returns))
+            {
+                throw new ArgumentException("Given returns are invalid");
             }
 
             await _lock.WaitAsync();
@@ -70,9 +79,8 @@ namespace MTGViewer.Services
 
         private bool InvalidReturns(IEnumerable<(Card card, int numCopies)> returns)
         {
-            return !returns.Any()
-                || returns.Any(cn => cn.card == null)
-                || returns.Any(cn => cn.numCopies < 0);
+            return returns.Any(cn => cn.card == null)
+                || returns.Any(cn => cn.numCopies <= 0);
         }
 
 
@@ -138,7 +146,7 @@ namespace MTGViewer.Services
 
             if (!sortedBoxes.Any())
             {
-                throw new DbUpdateException("There are no possible boxes to return the cards to");
+                throw new InvalidOperationException("There are no possible boxes to return the cards to");
             }
 
             var sortedSharedAmounts = await GetSortedAmountsAsync();
@@ -210,7 +218,7 @@ namespace MTGViewer.Services
                 {
                     break;
                 }
-                
+
                 if (nameCompare > 0 || nameCompare == 0 && setCompare > 0)
                 {
                     low = amountIndex + 1;
@@ -281,7 +289,7 @@ namespace MTGViewer.Services
                             Location = box
                         };
 
-                        _dbContext.Attach(boxAmount);
+                        _dbContext.BoxAmounts.Attach(boxAmount);
                         amountMap.Add(cardBox, boxAmount);
                     }
 

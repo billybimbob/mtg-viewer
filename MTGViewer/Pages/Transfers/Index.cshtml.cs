@@ -55,8 +55,10 @@ namespace MTGViewer.Pages.Transfers
                 .ToListAsync();
 
             var requestDecks = await _dbContext.Decks
-                .Where(d => d.OwnerId == userId && d.Cards.Any(ca => ca.HasIntent))
-                .Include(d => d.Cards.Where(ca => ca.HasIntent))
+                .Where(d => d.OwnerId == userId
+                    && d.Cards.Any(da => da.Intent == Intent.Take))
+                .Include(d => d.Cards
+                    .Where(da => da.Intent == Intent.Take))
                 .Include(d => d.Owner)
                 .ToListAsync();
 

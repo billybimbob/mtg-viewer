@@ -1,5 +1,7 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Threading.Tasks;
 
 using Microsoft.AspNetCore.Authorization;
@@ -91,21 +93,21 @@ namespace MTGViewer.Pages.Transfers
             {
                 Accept = trade;
 
-                ToAmount = amounts.SingleOrDefault(ca =>
-                    !ca.HasIntent && ca.LocationId == trade.ToId);
+                ToAmount = amounts.SingleOrDefault(da => 
+                    da.Intent == Intent.None && da.LocationId == trade.ToId);
 
-                var toRequests = amounts
-                    .Where(ca => ca.HasIntent && ca.LocationId == trade.ToId);
+                var toRequests = amounts.Where(da =>
+                    da.Intent == Intent.Take && da.LocationId == trade.ToId);
 
                 ToRequests = toRequests.Any()
                     ? new CardNameGroup(toRequests)
-                    : null;
+                    : default;
 
-                FromAmount = amounts.Single(ca =>
-                    !ca.HasIntent && ca.LocationId == trade.FromId);
+                FromAmount = amounts.Single(da =>
+                    da.Intent == Intent.None && da.LocationId == trade.FromId);
 
-                FromRequest = amounts.SingleOrDefault(ca =>
-                    ca.HasIntent && ca.LocationId == trade.FromId);
+                FromRequest = amounts.SingleOrDefault(da =>
+                    da.Intent == Intent.Take && da.LocationId == trade.FromId);
             }
         }
 
@@ -174,21 +176,13 @@ namespace MTGViewer.Pages.Transfers
 
         private async Task<AcceptAmounts?> GetAcceptAmountsAsync(Trade trade)
         {
-            // TODO: fix request check
             var tradeAmounts = await _dbContext.DeckAmounts
-                .Where(da =>
-                    da.Intent == Intent.Take
-                        && da.LocationId == trade.ToId 
-                        && da.Card.Name == trade.Card.Name
-                    || !da.HasIntent
-                        && da.LocationId == trade.ToId
-                        && da.CardId == trade.CardId
-                    || da.LocationId == trade.FromId
-                        && da.CardId == trade.CardId)
+                .Where( TradeTargetsFilter(trade) )
                 .ToListAsync();
 
             var amountsValid = tradeAmounts.Any(ca =>
-                !ca.HasIntent && ca.LocationId == trade.FromId);
+                ca.Intent == Intent.None
+                    && ca.LocationId == trade.FromId);
 
             if (!amountsValid)
             {
@@ -196,6 +190,36 @@ namespace MTGViewer.Pages.Transfers
             }
 
             return new AcceptAmounts(trade, tradeAmounts);
+        }
+
+
+        private Expression<Func<DeckAmount, bool>> TradeTargetsFilter(Trade trade)
+        {
+            // Expression<Func<DeckAmount, bool>> toPredicate = da =>
+            //     da.LocationId == trade.ToId 
+            //         && (da.Intent == Intent.Take && da.Card.Name == trade.Card.Name
+            //             || da.Intent == Intent.None && da.CardId == trade.CardId);
+
+
+            // Expression<Func<DeckAmount, bool>> fromPredicate = da =>
+            //     da.LocationId == trade.FromId
+            //         && (da.Intent == Intent.None || da.Intent == Intent.Take)
+            //         && da.CardId == trade.CardId;
+
+
+            // return Expression.Lambda<Func<DeckAmount, bool>>(
+            //     Expression.OrElse(toPredicate.Body, fromPredicate.Body),
+            //     Expression.Parameter(typeof(DeckAmount)));
+
+            // TODO: make more readable
+            return da =>
+                da.LocationId == trade.FromId
+                    && da.CardId == trade.CardId
+                    && (da.Intent == Intent.None || da.Intent == Intent.Take)
+
+                || da.LocationId == trade.ToId 
+                    && (da.CardId == trade.CardId && da.Intent == Intent.None
+                        || da.Card.Name == trade.Card.Name && da.Intent == Intent.Take);
         }
 
 
@@ -219,7 +243,7 @@ namespace MTGViewer.Pages.Transfers
                         Amount = 0
                     };
 
-                    _dbContext.DeckAmounts.Add(toAmount);
+                    _dbContext.DeckAmounts.Attach(toAmount);
                 }
 
                 if (fromRequest is null)
@@ -232,7 +256,7 @@ namespace MTGViewer.Pages.Transfers
                         Intent = Data.Intent.Take
                     };
 
-                    _dbContext.DeckAmounts.Add(fromRequest);
+                    _dbContext.DeckAmounts.Attach(fromRequest);
                 }
 
                 var changeOptions = new [] { accept.Amount, fromAmount.Amount, toRequests.Amount };
@@ -245,9 +269,8 @@ namespace MTGViewer.Pages.Transfers
                 fromRequest.Amount += change;
             }
 
-            var finishedRequests =
-                toRequests?
-                    .Where(ca  => ca.Amount == 0)
+            var finishedRequests = toRequests
+                    ?.Where(ca  => ca.Amount == 0)
                     .Cast<DeckAmount>()
                 ?? Enumerable.Empty<DeckAmount>();
 

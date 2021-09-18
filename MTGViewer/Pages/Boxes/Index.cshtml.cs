@@ -4,10 +4,8 @@ using System.Threading.Tasks;
 
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
-using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Services;
 using MTGViewer.Data;
 
@@ -32,7 +30,7 @@ namespace MTGViewer.Pages.Boxes
 
         public async Task OnGetAsync()
         {
-            Boxes = await _sharedStorage.Shares
+            Boxes = await _sharedStorage.Boxes
                 .Include(b => b.Bin)
                 .Include(b => b.Cards
                     .Where(ca => ca.Amount > 0)

@@ -62,7 +62,7 @@ namespace MTGViewer.Pages.Transfers
                 return NotFound();
             }
 
-            if (!deck.Cards.Any(ca => ca.HasIntent))
+            if (deck.Cards.All(da => da.Intent == Intent.None))
             {
                 PostMessage = $"There are no requests for {deck.Name}";
                 return RedirectToPage("./Index");

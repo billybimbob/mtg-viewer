@@ -8,7 +8,9 @@ namespace MTGViewer.Services
 {
     public interface ISharedStorage
     {
-        IQueryable<Box> Shares { get; }
+        IQueryable<Box> Boxes { get; }
+
+        IQueryable<BoxAmount> Cards { get; }
 
         Task ReturnAsync(IEnumerable<(Card, int numCopies)> returns);
 

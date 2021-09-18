@@ -115,9 +115,9 @@ namespace MTGViewer.Pages.Transfers
                 .ToArray();
 
             return deckIncludes
-                .Where(ca => !ca.HasIntent
-                    && ca.Deck.OwnerId != deck.OwnerId
-                    && requestNames.Contains(ca.Card.Name));
+                .Where(da => da.Intent == Intent.None
+                    && da.Deck.OwnerId != deck.OwnerId
+                    && requestNames.Contains(da.Card.Name));
         }
 
 

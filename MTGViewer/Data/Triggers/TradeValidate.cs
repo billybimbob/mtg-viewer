@@ -37,10 +37,10 @@ namespace MTGViewer.Data.Triggers
 
             var fromAmount = await _dbContext.DeckAmounts
                 .AsNoTracking()
-                .SingleOrDefaultAsync(ca =>
-                    !ca.HasIntent
-                        && ca.CardId == trade.CardId
-                        && (ca.LocationId == trade.FromId || ca.Location == trade.From));
+                .SingleOrDefaultAsync(da =>
+                    da.Intent == Intent.None
+                        && da.CardId == trade.CardId
+                        && (da.LocationId == trade.FromId || da.Location == trade.From));
 
             if (fromAmount != default)
             {
@@ -60,7 +60,7 @@ namespace MTGViewer.Data.Triggers
 
             if (_dbContext.Entry(trade).State == EntityState.Detached)
             {
-                _dbContext.Attach(trade);
+                _dbContext.Trades.Attach(trade);
             }
 
             if (trade.Amount > 0)

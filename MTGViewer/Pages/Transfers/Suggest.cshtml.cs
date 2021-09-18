@@ -185,7 +185,7 @@ namespace MTGViewer.Pages.Transfers
 
         public async Task<IActionResult> OnPostSuggestAsync()
         {
-            _dbContext.Attach(Suggestion);
+            _dbContext.Suggestions.Attach(Suggestion);
 
             if (!await IsValidSuggestionAsync(Suggestion))
             {

@@ -41,10 +41,6 @@ namespace MTGViewer.Data
         { }
 
         [JsonIgnore]
-        [NotMapped]
-        public int BoxId => LocationId;
-
-        [JsonIgnore]
         public Box Box
         {
             get => (Location as Box)!;
@@ -63,10 +59,6 @@ namespace MTGViewer.Data
         { }
 
         [JsonIgnore]
-        [NotMapped]
-        public int DeckId => LocationId;
-
-        [JsonIgnore]
         public Deck Deck
         {
             get => (Location as Deck)!;
@@ -74,12 +66,5 @@ namespace MTGViewer.Data
         }
 
         public Intent Intent { get; init; }
-
-        [JsonIgnore]
-        public bool HasIntent
-        {
-            get => Intent is not Intent.None;
-            private set { }
-        }
     }
 }

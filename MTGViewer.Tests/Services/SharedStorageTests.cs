@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -77,19 +78,13 @@ namespace MTGViewer.Tests.Services
 
 
         [Fact]
-        public async Task Return_NullCard_NoChange()
+        public async Task Return_NullCard_ThrowException()
         {
             var copies = 4;
             Card card = null;
 
-            var sharedAmountQuery = _dbContext.BoxAmounts
-                .Select(ca => ca.Amount);
-
-            var sharedBefore = await sharedAmountQuery.SumAsync();
-            await _sharedStorage.ReturnAsync(card, copies);
-            var sharedAfter = await sharedAmountQuery.SumAsync();
-
-            Assert.Equal(sharedBefore, sharedAfter);
+            await Assert.ThrowsAsync<ArgumentException>(() =>
+                _sharedStorage.ReturnAsync(card, copies) );
         }
 
 
@@ -97,33 +92,25 @@ namespace MTGViewer.Tests.Services
         [InlineData(-3)]
         [InlineData(0)]
         [InlineData(-10)]
-        public async Task Return_InvalidCopies_NoChange(int copies)
+        public async Task Return_InvalidCopies_ThrowsException(int copies)
         {
             var card = await _dbContext.Cards
                 .AsNoTracking()
                 .FirstAsync();
 
-            var sharedAmountQuery = _dbContext.BoxAmounts
-                .Select(ca => ca.Amount);
-
-            var sharedBefore = await sharedAmountQuery.SumAsync();
-            await _sharedStorage.ReturnAsync(card, copies);
-            var sharedAfter = await sharedAmountQuery.SumAsync();
-
-            Assert.Equal(sharedBefore, sharedAfter);
+            await Assert.ThrowsAsync<ArgumentException>(() =>
+                _sharedStorage.ReturnAsync(card, copies) );
         }
 
 
         [Fact]
         public async Task Return_EmptyReturns_NoChange()
         {
-            var emptyReturns = Enumerable.Empty<(Card, int)>();
-
             var sharedAmountQuery = _dbContext.BoxAmounts
-                .Select(ca => ca.Amount);
+                .Select(ba => ba.Amount);
 
             var sharedBefore = await sharedAmountQuery.SumAsync();
-            await _sharedStorage.ReturnAsync(emptyReturns);
+            await _sharedStorage.ReturnAsync();
             var sharedAfter = await sharedAmountQuery.SumAsync();
 
             Assert.Equal(sharedBefore, sharedAfter);
@@ -148,7 +135,7 @@ namespace MTGViewer.Tests.Services
                 .AsNoTracking()
                 .FirstAsync();
 
-            await Assert.ThrowsAsync<DbUpdateException>(() =>
+            await Assert.ThrowsAsync<InvalidOperationException>(() =>
                 _sharedStorage.ReturnAsync(card, copies) );
         }
 

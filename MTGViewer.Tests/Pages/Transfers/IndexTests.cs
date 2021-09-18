@@ -30,7 +30,7 @@ namespace MTGViewer.Tests.Pages.Transfers
             _dbContext = TestFactory.CardDbContext(_services);
             _userManager = TestFactory.CardUserManager(_services);
 
-            _indexModel = new IndexModel(_userManager, _dbContext);
+            _indexModel = new(_userManager, _dbContext);
         }
 
 

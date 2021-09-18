@@ -61,7 +61,7 @@ namespace MTGViewer.Data.Triggers
             if (_dbContext.Entry(deckAmount).State == EntityState.Detached)
             {
                 // attach just to load
-                _dbContext.Attach(deckAmount);
+                _dbContext.DeckAmounts.Attach(deckAmount);
             }
 
             if (deckAmount.Amount > 0)

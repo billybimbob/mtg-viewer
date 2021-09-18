@@ -40,7 +40,9 @@ namespace MTGViewer.Pages.Decks
 
 
         public Deck Deck { get; private set; }
+        
         public bool HasPendings { get; private set; }
+
         public IReadOnlyList<RequestNameGroup> CardGroups { get; private set; }
 
 
@@ -96,7 +98,8 @@ namespace MTGViewer.Pages.Decks
 
             return _dbContext.BoxAmounts
                 .Where(ba => ba.Amount > 0
-                    && requestNames.Contains(ba.Card.Name));
+                    && requestNames.Contains(ba.Card.Name))
+                .Include(ba => ba.Card);
         }
 
 
@@ -119,60 +122,100 @@ namespace MTGViewer.Pages.Decks
 
             try
             {
-                await _dbContext.SaveChangesAsync();
                 await _sharedStorage.ReturnAsync(boxReturns);
+                await _dbContext.SaveChangesAsync();
             }
             catch (DbUpdateException e)
             {
                 _logger.LogError($"ran into db error {e}");
             }
 
-            return RedirectToPage("./Index");
+            return Page();
         }
 
 
         private void ApplyTakes(Deck deck, IEnumerable<BoxAmount> availables)
         {
-            var takeCards = deck.Cards
-                .Where(da => da.Intent is Intent.Take);
+            var takeCards = deck.Cards.Where(da => da.Intent is Intent.Take);
 
             if (!takeCards.Any() || !availables.Any())
             {
                 return;
             }
 
-            var takeGroups = takeCards
-                .GroupBy(da => da.Card.Name,
-                    (_, amounts) => new CardNameGroup(amounts))
-                .ToDictionary(tg => tg.Name);
+            var actualCards = GetMatchedActuals(deck, availables);
 
-            var availGroups = availables
-                .GroupBy(ba => ba.Card.Name,
-                    (_, amounts) => new CardNameGroup(amounts))
-                .ToDictionary(ag => ag.Name);
+            var takeGroups = ToCardNameGroups(takeCards);
+            var availGroups = ToCardNameGroups(availables);
+            var actualGroups = ToCardNameGroups(actualCards);
 
             var matches = takeGroups.Values
                 .Join( availGroups.Values,
-                    tg => tg.Name,
-                    ag => ag.Name,
-                    (tg, ag) => (tg.Name, Math.Min(tg.Amount, ag.Amount))
-                );
+                    take => take.Name,
+                    avail => avail.Name,
+                    (take, avail) =>
+                        (take.Name, Math.Min(take.Amount, avail.Amount)) );
 
             // TODO: prioritize taking from exact card matches
             foreach (var (name, amount) in matches)
             {
-                takeGroups[name].Amount += amount;
+                actualGroups[name].Amount += amount;
+
+                takeGroups[name].Amount -= amount;
                 availGroups[name].Amount -= amount;
             }
 
-            _dbContext.DeckAmounts.RemoveRange(takeCards.Where(da => da.Amount == 0));
+            // do not remove empty availables
+            var emptyAmounts = actualCards
+                .Concat(takeCards)
+                .Where(da => da.Amount == 0);
+
+            _dbContext.DeckAmounts.RemoveRange(emptyAmounts);
+        }
+
+
+        private IEnumerable<DeckAmount> GetMatchedActuals(Deck deck, IEnumerable<BoxAmount> availables)
+        {
+            var actualCards = deck.Cards.Where(da => da.Intent is Intent.None);
+
+            var missingActualCards = availables
+                .GroupJoin( actualCards,
+                    available => available.CardId,
+                    actual => actual.CardId,
+                    (available, actuals) => (available, actuals))
+                .Where(aas => !aas.actuals.Any())
+                .Select(aa => aa.available.Card);
+
+            var newActuals = missingActualCards
+                .Select(card => new DeckAmount
+                {
+                    Card = card,
+                    Location = deck,
+                    Amount = 0,
+                    Intent = Intent.None
+                });
+
+            _dbContext.DeckAmounts.AddRange(newActuals);
+
+            // new cards included in future enumerations
+            return actualCards;
+        }
+
+
+        private IReadOnlyDictionary<string, CardNameGroup> ToCardNameGroups(
+            IEnumerable<CardAmount> amounts)
+        {
+            return amounts
+                .GroupBy(da => da.Card.Name,
+                    (_, amounts) => new CardNameGroup(amounts))
+                .ToDictionary(ag => ag.Name);
         }
 
 
         private IEnumerable<(Card, int)> ApplyDeckReturns(Deck deck)
         {
             var returns = deck.Cards.Where(da => da.Intent is Intent.Return);
-            var actuals = deck.Cards.Where(da => !da.HasIntent);
+            var actuals = deck.Cards.Where(da => da.Intent is Intent.None);
 
             if (!returns.Any())
             {
@@ -183,41 +226,28 @@ namespace MTGViewer.Pages.Decks
                 .GroupJoin( actuals,
                     ret => ret.CardId,
                     act => act.CardId,
-                    (Return, Actuals) => (Return, Actuals))
-                .SelectMany(
-                    ras => ras.Actuals.DefaultIfEmpty(),
-                    (ras, Actual) => (ras.Return, Actual))
+                    (Return, Actuals) =>
+                        (Actual: Actuals.SingleOrDefault(), Return) )
                 .ToList();
 
-            if (returnPairs.Any(ra => ra.Actual == default))
+            if (returnPairs.Any(ar => ar.Actual == default || ar.Return.Amount > ar.Actual.Amount))
             {
                 return Enumerable.Empty<(Card, int)>();
             }
 
-            bool hasDuplicates = returnPairs
-                .GroupBy(ra => ra.Return.Id, (_, ras) => ras.Count())
-                .Any(cnt => cnt > 1);
-
-            if (hasDuplicates)
+            foreach (var (actualCard, returnCard) in returnPairs)
             {
-                return Enumerable.Empty<(Card, int)>();
+                actualCard.Amount -= returnCard.Amount;
             }
 
-            var cappedReturns = returnPairs
-                .Select(ra =>
-                    (ra.Actual, Change: Math.Min(ra.Actual.Amount, ra.Return.Amount)))
-                .ToList();
+            var emptyAmounts = actuals
+                .Where(da => da.Amount == 0)
+                .Concat(returns);
 
-            foreach (var (actual, change) in cappedReturns)
-            {
-                actual.Amount -= change;
-            }
+            _dbContext.DeckAmounts.RemoveRange(emptyAmounts);
 
-            _dbContext.DeckAmounts.RemoveRange(returns);
-            _dbContext.DeckAmounts.RemoveRange(actuals.Where(da => da.Amount == 0));
-
-            return cappedReturns
-                .Select(ac => (ac.Actual.Card, ac.Change))
+            return returnPairs
+                .Select(ar => (ar.Actual.Card, ar.Return.Amount))
                 .ToList();
         }
     }

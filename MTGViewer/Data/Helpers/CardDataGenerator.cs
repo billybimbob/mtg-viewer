@@ -166,7 +166,7 @@ namespace MTGViewer.Data.Seed
         private IReadOnlyList<(Card, int)> GetBoxAmounts(IEnumerable<Card> cards)
         {
             return cards
-                .Select(c => (c, _random.Next(6)))
+                .Select(c => (c, _random.Next(1, 6)))
                 .ToList();
         }
 

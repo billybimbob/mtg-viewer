@@ -40,7 +40,7 @@ namespace MTGViewer.Tests.Pages.Decks
                 Mock.Of<IConfiguration>(),
                 _dbContext);
 
-            _deleteModel = new DeleteModel(
+            _deleteModel = new(
                 _userManager,
                 _dbContext, 
                 sharedStorage,

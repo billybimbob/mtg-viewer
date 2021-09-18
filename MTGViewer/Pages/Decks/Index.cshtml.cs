@@ -32,7 +32,7 @@ namespace MTGViewer.Pages.Decks
             {
                 State = State.Requesting;
             }
-            else if (deck.Cards.Any(ca => ca.HasIntent))
+            else if (deck.Cards.Any(da => da.Intent != Intent.None))
             {
                 State = State.Invalid;
             }

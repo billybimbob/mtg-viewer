@@ -118,7 +118,7 @@
             .Include(c => c.Colors)
             .Include(c => c.Amounts
                 .Where(ca => ca is BoxAmount 
-                    || ca is DeckAmount && !(ca as DeckAmount).HasIntent))
+                    || ca is DeckAmount && (ca as DeckAmount).Intent == Intent.None))
             // .ThenInclude(a => a.Location)
             .OrderBy(c => c.Name)
                 .ThenBy(c => c.SetName)
