@@ -195,22 +195,6 @@ namespace MTGViewer.Pages.Transfers
 
         private Expression<Func<DeckAmount, bool>> TradeTargetsFilter(Trade trade)
         {
-            // Expression<Func<DeckAmount, bool>> toPredicate = da =>
-            //     da.LocationId == trade.ToId 
-            //         && (da.Intent == Intent.Take && da.Card.Name == trade.Card.Name
-            //             || da.Intent == Intent.None && da.CardId == trade.CardId);
-
-
-            // Expression<Func<DeckAmount, bool>> fromPredicate = da =>
-            //     da.LocationId == trade.FromId
-            //         && (da.Intent == Intent.None || da.Intent == Intent.Take)
-            //         && da.CardId == trade.CardId;
-
-
-            // return Expression.Lambda<Func<DeckAmount, bool>>(
-            //     Expression.OrElse(toPredicate.Body, fromPredicate.Body),
-            //     Expression.Parameter(typeof(DeckAmount)));
-
             // TODO: make more readable
             return da =>
                 da.LocationId == trade.FromId

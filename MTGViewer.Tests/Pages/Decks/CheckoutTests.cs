@@ -98,69 +98,44 @@ namespace MTGViewer.Tests.Pages.Decks
         public async Task OnPost_ValidTake_AppliesTake()
         {
             // Arrange
-            var takeTarget = await _dbContext.BoxAmounts
-                .Include(ba => ba.Card)
-                .AsNoTracking()
-                .FirstAsync(ba => ba.Amount > 0);
+            var request = await _dbContext.GetTakeRequestAsync();
 
-            var targetAmount = takeTarget.Amount;
+            var deckOwnerId = await _dbContext.Decks
+                .Where(d => d.Id == request.LocationId)
+                .Select(d => d.OwnerId)
+                .SingleAsync();
 
-            var deckTarget = await _dbContext.Decks
-                .AsNoTracking()
-                .FirstAsync();
+            await _checkoutModel.SetModelContextAsync(_userManager, deckOwnerId);
 
-            await _checkoutModel.SetModelContextAsync(_userManager, deckTarget.OwnerId);
-
-            var deckTakeQuery = _dbContext.DeckAmounts
-                .Where(da => da.LocationId == deckTarget.Id
-                    && da.CardId == takeTarget.CardId
-                    && da.Intent == Intent.Take);
-
-            var deckTake = await deckTakeQuery.SingleOrDefaultAsync();
-
-            if (deckTake == default)
-            {
-                deckTake = new()
-                {
-                    Card = takeTarget.Card,
-                    Location = deckTarget,
-                    Intent = Intent.Take
-                };
-
-                _dbContext.DeckAmounts.Attach(deckTake);
-            }
-
-            deckTake.Amount = targetAmount;
-
-            await _dbContext.SaveChangesAsync();
-            _dbContext.ChangeTracker.Clear();
-
-            var takeAmountQuery = deckTakeQuery.Select(da => da.Amount);
+            var takeAmountQuery = _dbContext.DeckAmounts
+                .Where(da => da.Id == request.Id)
+                .Select(da => da.Amount);
 
             var actualAmountQuery = _dbContext.DeckAmounts
-                .Where(da => da.LocationId == deckTarget.Id
-                    && da.CardId == takeTarget.CardId
+                .Where(da => da.LocationId == request.LocationId
+                    && da.CardId == request.CardId
                     && da.Intent == Intent.None)
                 .Select(da => da.Amount);
 
             var boxAmountQuery = _dbContext.BoxAmounts
-                .Where(ba => ba.Id == takeTarget.Id)
+                .Where(ba => ba.CardId == request.CardId)
                 .Select(ba => ba.Amount);
+
+            var targetAmount = request.Amount;
 
             // Act
             var takeAmountBefore = await takeAmountQuery.SingleAsync();
             var actualAmountBefore = await actualAmountQuery.SingleOrDefaultAsync();
-            var boxTakeBefore = await boxAmountQuery.SingleAsync();
+            var boxTakeBefore = await boxAmountQuery.SumAsync();
 
-            var result = await _checkoutModel.OnPostAsync(deckTarget.Id);
+            var result = await _checkoutModel.OnPostAsync(request.LocationId);
 
             var takeAmountAfter = await takeAmountQuery.SingleOrDefaultAsync();
             var actualAmountAfter = await actualAmountQuery.SingleAsync();
-            var boxTakeAfter = await boxAmountQuery.SingleAsync();
+            var boxTakeAfter = await boxAmountQuery.SumAsync();
 
             // Assert
             Assert.IsType<PageResult>(result);
-
             Assert.Equal(targetAmount, takeAmountBefore - takeAmountAfter);
             Assert.Equal(targetAmount, actualAmountAfter - actualAmountBefore);
             Assert.Equal(targetAmount, boxTakeBefore - boxTakeAfter);
@@ -170,24 +145,151 @@ namespace MTGViewer.Tests.Pages.Decks
         [Fact]
         public async Task OnPost_InsufficientTake_TakeLowered()
         {
+            // Arrange
+            var targetMod = 2;
+            var request = await _dbContext.GetTakeRequestAsync(targetMod);
+
+            var deckOwnerId = await _dbContext.Decks
+                .Where(d => d.Id == request.LocationId)
+                .Select(d => d.OwnerId)
+                .SingleAsync();
+
+            await _checkoutModel.SetModelContextAsync(_userManager, deckOwnerId);
+
+            var takeAmountQuery = _dbContext.DeckAmounts
+                .Where(da => da.Id == request.Id)
+                .Select(da => da.Amount);
+
+            var actualAmountQuery = _dbContext.DeckAmounts
+                .Where(da => da.LocationId == request.LocationId
+                    && da.CardId == request.CardId
+                    && da.Intent == Intent.None)
+                .Select(da => da.Amount);
+
+            var boxAmountQuery = _dbContext.BoxAmounts
+                .Where(ba => ba.CardId == request.CardId)
+                .Select(ba => ba.Amount);
+
+            var targetLimit = request.Amount - targetMod;
+
+            // Act
+            var takeAmountBefore = await takeAmountQuery.SingleAsync();
+            var actualAmountBefore = await actualAmountQuery.SingleOrDefaultAsync();
+            var boxTakeBefore = await boxAmountQuery.SumAsync();
+
+            var result = await _checkoutModel.OnPostAsync(request.LocationId);
+
+            var takeAmountAfter = await takeAmountQuery.SingleAsync();
+            var actualAmountAfter = await actualAmountQuery.SingleAsync();
+            var boxTakeAfter = await boxAmountQuery.SumAsync();
+
+            // Assert
+            Assert.IsType<PageResult>(result);
+            Assert.Equal(targetLimit, takeAmountBefore - takeAmountAfter);
+            Assert.Equal(targetLimit, actualAmountAfter - actualAmountBefore);
+            Assert.Equal(targetLimit, boxTakeBefore - boxTakeAfter);
         }
 
 
-        [Fact]
-        public async Task OnPost_ValidReturn_AppliesReturn()
+        [Theory]
+        [InlineData(0)]
+        [InlineData(-2)]
+        public async Task OnPost_ValidReturn_AppliesReturn(int targetMod)
         {
+            // Arrange
+            var request = await _dbContext.GetReturnRequestAsync(targetMod);
+
+            var deckOwnerId = await _dbContext.Decks
+                .Where(d => d.Id == request.LocationId)
+                .Select(d => d.OwnerId)
+                .SingleAsync();
+
+            await _checkoutModel.SetModelContextAsync(_userManager, deckOwnerId);
+
+            var returnAmountQuery = _dbContext.DeckAmounts
+                .Where(da => da.Id == request.Id)
+                .Select(da => da.Amount);
+
+            var actualAmountQuery = _dbContext.DeckAmounts
+                .Where(da => da.LocationId == request.LocationId
+                    && da.CardId == request.CardId
+                    && da.Intent == Intent.None)
+                .Select(da => da.Amount);
+
+            var boxAmountQuery = _dbContext.BoxAmounts
+                .Where(ba => ba.CardId == request.CardId)
+                .Select(ba => ba.Amount);
+
+            var returnAmount = request.Amount;
+
+            // Act
+            var returnAmountBefore = await returnAmountQuery.SingleAsync();
+            var actualAmountBefore = await actualAmountQuery.SingleAsync();
+            var boxTakeBefore = await boxAmountQuery.SumAsync();
+
+            var result = await _checkoutModel.OnPostAsync(request.LocationId);
+
+            var returnAmountAfter = await returnAmountQuery.SingleOrDefaultAsync();
+            var actualAmountAfter = await actualAmountQuery.SingleOrDefaultAsync();
+            var boxTakeAfter = await boxAmountQuery.SumAsync();
+
+            // Assert
+            Assert.IsType<PageResult>(result);
+            Assert.Equal(returnAmount, returnAmountBefore - returnAmountAfter);
+            Assert.Equal(returnAmount, actualAmountBefore - actualAmountAfter);
+            Assert.Equal(returnAmount, boxTakeAfter - boxTakeBefore);
         }
 
 
         [Fact]
         public async Task OnPost_InsufficientReturn_NoChange()
         {
+            // Arrange
+            var request = await _dbContext.GetReturnRequestAsync(2);
+
+            var deckOwnerId = await _dbContext.Decks
+                .Where(d => d.Id == request.LocationId)
+                .Select(d => d.OwnerId)
+                .SingleAsync();
+
+            await _checkoutModel.SetModelContextAsync(_userManager, deckOwnerId);
+
+            var returnAmountQuery = _dbContext.DeckAmounts
+                .Where(da => da.Id == request.Id)
+                .Select(da => da.Amount);
+
+            var actualAmountQuery = _dbContext.DeckAmounts
+                .Where(da => da.LocationId == request.LocationId
+                    && da.CardId == request.CardId
+                    && da.Intent == Intent.None)
+                .Select(da => da.Amount);
+
+            var boxAmountQuery = _dbContext.BoxAmounts
+                .Where(ba => ba.CardId == request.CardId)
+                .Select(ba => ba.Amount);
+
+            // Act
+            var returnAmountBefore = await returnAmountQuery.SingleAsync();
+            var actualAmountBefore = await actualAmountQuery.SingleAsync();
+            var boxTakeBefore = await boxAmountQuery.SumAsync();
+
+            var result = await _checkoutModel.OnPostAsync(request.LocationId);
+
+            var returnAmountAfter = await returnAmountQuery.SingleAsync();
+            var actualAmountAfter = await actualAmountQuery.SingleAsync();
+            var boxTakeAfter = await boxAmountQuery.SumAsync();
+
+            // Assert
+            Assert.IsType<PageResult>(result);
+            Assert.Equal(returnAmountBefore, returnAmountAfter);
+            Assert.Equal(actualAmountBefore, actualAmountAfter);
+            Assert.Equal(boxTakeBefore, boxTakeAfter);
         }
 
 
-        [Fact]
-        public async Task OnPost_MixedTakeReturns_AppliesChanges()
-        {
-        }
+        // [Fact]
+        // public async Task OnPost_MixedTakeReturns_AppliesChanges()
+        // {
+        // }
     }
 }

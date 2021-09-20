@@ -118,33 +118,33 @@ namespace MTGViewer.Tests.Pages.Decks
             await _deleteModel.SetModelContextAsync(_userManager, deck.OwnerId);
 
             var deckCards = await _dbContext.DeckAmounts
-                .Where(ca => ca.LocationId == deck.Id)
-                .Select(ca => ca.CardId)
+                .Where(da => da.LocationId == deck.Id)
+                .Select(da => da.CardId)
                 .ToListAsync();
 
             var deckQuery = _dbContext.Decks
                 .Where(d => d.Id == deck.Id)
                 .AsNoTracking();
 
-            var sharedQuery = _dbContext.BoxAmounts
-                .Where(ca => deckCards.Contains(ca.CardId))
-                .Select(ca => ca.Amount);
+            var boxQuery = _dbContext.BoxAmounts
+                .Where(ba => deckCards.Contains(ba.CardId))
+                .Select(ba => ba.Amount);
 
             // Act
-            var sharedBefore = await sharedQuery.ToListAsync();
+            var boxBefore = await boxQuery.ToListAsync();
             var result = await _deleteModel.OnPostAsync(deck.Id);
 
-            var sharedAfter = await sharedQuery.ToListAsync();
+            var boxAfter = await boxQuery.ToListAsync();
             var deckAfter = await deckQuery.SingleOrDefaultAsync();
 
-            var sharedChanged = sharedBefore.Zip( sharedAfter,
-                (before, after) => (before, after));
+            var boxChange = boxBefore.Zip(boxAfter, (before, after) => (before, after));
 
             // // Assert
             Assert.IsType<RedirectToPageResult>(result);
+
             Assert.Null(deckAfter);
-            Assert.NotEqual(sharedBefore, sharedAfter);
-            Assert.All(sharedChanged, ba => Assert.True(ba.before <= ba.after));
+            Assert.NotEqual(boxBefore, boxAfter);
+            Assert.All(boxChange, ba => Assert.True(ba.before <= ba.after));
         }
     }
 }

@@ -94,7 +94,7 @@ namespace MTGViewer.Data
                 _ when ReceiverId == From?.OwnerId => From,
                 _ => null
             };
-            private set =>
+            private init =>
                 _target = value;
         }
     }
