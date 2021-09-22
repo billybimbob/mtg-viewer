@@ -50,7 +50,7 @@ namespace MTGViewer.Pages.Decks
         {
             var userId = _userManager.GetUserId(User);
 
-            var deck = await DeckWithCards(userId, id)
+            var deck = await DeckWithCardsAndRequests(userId, id)
                 .AsNoTrackingWithIdentityResolution()
                 .SingleOrDefaultAsync();
 
@@ -59,44 +59,66 @@ namespace MTGViewer.Pages.Decks
                 return NotFound();
             }
 
-            bool hasDeletes = deck.Cards.Any(da => da.Intent is Intent.Return);
+            var hasReturns = deck.ExchangesFrom.Any(ex => !ex.IsTrade);
+
+            var cardNameGroups = deck.Cards
+                .GroupBy(ca => ca.Card.Name,
+                    (name, amounts) => (name, amounts));
+
+            var deckRequests = deck.ExchangesTo.Concat(deck.ExchangesFrom);
+
 
             Deck = deck;
 
-            HasPendings = hasDeletes || await AvailablesForTake(deck).AnyAsync();
+            HasPendings = hasReturns || await AvailablesForTake(deck).AnyAsync();
 
-            CardGroups = deck.Cards
-                .GroupBy(da => da.Card.Name,
-                    (_, amounts) => new RequestNameGroup(amounts))
+            CardGroups = cardNameGroups
+                .GroupJoin( deckRequests,
+                    nas => nas.name,
+                    ex => ex.Card.Name,
+                    (nas, exchanges) =>
+                        new RequestNameGroup(nas.amounts, exchanges))
                 .ToList();
 
             return Page();
         }
 
 
-        private IQueryable<Deck> DeckWithCards(string userId, int deckId)
+        private IQueryable<Deck> DeckWithCardsAndRequests(string userId, int deckId)
         {
             var userDeck = _dbContext.Decks
                 .Where(d => d.Id == deckId && d.OwnerId == userId);
 
-            var withCardRequests = userDeck
+            var withCards = userDeck
                 .Include(d => d.Cards
                     .OrderBy(da => da.Card.Name))
                     .ThenInclude(ca => ca.Card);
 
-            return withCardRequests;
+            var withTakes = withCards
+                .Include(d => d.ExchangesTo
+                    .Where(ex => !ex.IsTrade)
+                    .OrderBy(ex => ex.Card.Name))
+                    .ThenInclude(ex => ex.Card);
+
+            var withReturns = withTakes
+                .Include(d => d.ExchangesFrom
+                    .Where(ex => !ex.IsTrade)
+                    .OrderBy(ex => ex.Card.Name))
+                    .ThenInclude(ex => ex.Card);
+
+            return withReturns.AsSplitQuery();
         }
 
 
-        private IQueryable<BoxAmount> AvailablesForTake(Deck deck)
+        private IQueryable<CardAmount> AvailablesForTake(Deck deck)
         {
-            var requestNames = deck.Cards
-                .Where(da => da.Intent is Intent.Take)
+            var requestNames = deck.ExchangesTo
+                .Where(da => !da.IsTrade)
                 .Select(da => da.Card.Name)
                 .Distinct()
                 .ToArray();
 
-            return _dbContext.BoxAmounts
+            return _dbContext.Amounts
                 .Where(ba => ba.Amount > 0
                     && requestNames.Contains(ba.Card.Name))
                 .Include(ba => ba.Card);
@@ -107,7 +129,7 @@ namespace MTGViewer.Pages.Decks
         public async Task<IActionResult> OnPostAsync(int id)
         {
             var userId = _userManager.GetUserId(User);
-            var deck = await DeckWithCards(userId, id).SingleOrDefaultAsync();
+            var deck = await DeckWithCardsAndRequests(userId, id).SingleOrDefaultAsync();
 
             if (deck == default)
             {
@@ -134,20 +156,20 @@ namespace MTGViewer.Pages.Decks
         }
 
 
-        private void ApplyTakes(Deck deck, IEnumerable<BoxAmount> availables)
+        private void ApplyTakes(Deck deck, IEnumerable<CardAmount> availables)
         {
-            var takeCards = deck.Cards.Where(da => da.Intent is Intent.Take);
+            var takeCards = deck.ExchangesTo.Where(ex => ex.IsTrade);
 
             if (!takeCards.Any() || !availables.Any())
             {
                 return;
             }
 
-            var actualCards = GetMatchedActuals(deck, availables);
+            AddMatchedActuals(deck, availables);
 
-            var takeGroups = ToCardNameGroups(takeCards);
+            var takeGroups = ToExchangeNameGroups(takeCards);
             var availGroups = ToCardNameGroups(availables);
-            var actualGroups = ToCardNameGroups(actualCards);
+            var actualGroups = ToCardNameGroups(deck.Cards);
 
             var matches = takeGroups.Values
                 .Join( availGroups.Values,
@@ -160,26 +182,26 @@ namespace MTGViewer.Pages.Decks
             foreach (var (name, amount) in matches)
             {
                 actualGroups[name].Amount += amount;
-
-                takeGroups[name].Amount -= amount;
                 availGroups[name].Amount -= amount;
+                takeGroups[name].Amount -= amount;
             }
 
             // do not remove empty availables
-            var emptyAmounts = actualCards
-                .Concat(takeCards)
-                .Where(da => da.Amount == 0);
+            var emptyAmounts = deck.Cards.Where(da => da.Amount == 0);
 
-            _dbContext.DeckAmounts.RemoveRange(emptyAmounts);
+            var finishedRequests = deck.ExchangesTo
+                .Concat(deck.ExchangesFrom)
+                .Where(ex => ex.Amount == 0);
+
+            _dbContext.Amounts.RemoveRange(emptyAmounts);
+            _dbContext.Exchanges.RemoveRange(finishedRequests);
         }
 
 
-        private IEnumerable<DeckAmount> GetMatchedActuals(Deck deck, IEnumerable<BoxAmount> availables)
+        private void AddMatchedActuals(Deck deck, IEnumerable<CardAmount> availables)
         {
-            var actualCards = deck.Cards.Where(da => da.Intent is Intent.None);
-
             var missingActualCards = availables
-                .GroupJoin( actualCards,
+                .GroupJoin( deck.Cards,
                     available => available.CardId,
                     actual => actual.CardId,
                     (available, actuals) => (available, actuals))
@@ -187,18 +209,14 @@ namespace MTGViewer.Pages.Decks
                 .Select(aa => aa.available.Card);
 
             var newActuals = missingActualCards
-                .Select(card => new DeckAmount
+                .Select(card => new CardAmount
                 {
                     Card = card,
                     Location = deck,
-                    Amount = 0,
-                    Intent = Intent.None
+                    Amount = 0
                 });
 
-            _dbContext.DeckAmounts.AddRange(newActuals);
-
-            // new cards included in future enumerations
-            return actualCards;
+            _dbContext.Amounts.AddRange(newActuals);
         }
 
 
@@ -206,16 +224,25 @@ namespace MTGViewer.Pages.Decks
             IEnumerable<CardAmount> amounts)
         {
             return amounts
-                .GroupBy(da => da.Card.Name,
+                .GroupBy(ca => ca.Card.Name,
                     (_, amounts) => new CardNameGroup(amounts))
-                .ToDictionary(ag => ag.Name);
+                .ToDictionary(eg => eg.Name);
+        }
+        
+
+        private IReadOnlyDictionary<string, ExchangeNameGroup> ToExchangeNameGroups(
+            IEnumerable<Exchange> exchanges)
+        {
+            return exchanges
+                .GroupBy(ex => ex.Card.Name,
+                    (_, exchanges) => new ExchangeNameGroup(exchanges))
+                .ToDictionary(eg => eg.Name);
         }
 
 
         private IEnumerable<(Card, int)> ApplyDeckReturns(Deck deck)
         {
-            var returns = deck.Cards.Where(da => da.Intent is Intent.Return);
-            var actuals = deck.Cards.Where(da => da.Intent is Intent.None);
+            var returns = deck.ExchangesFrom.Where(ex => !ex.IsTrade);
 
             if (!returns.Any())
             {
@@ -223,14 +250,15 @@ namespace MTGViewer.Pages.Decks
             }
 
             var returnPairs = returns
-                .GroupJoin( actuals,
+                .GroupJoin( deck.Cards,
                     ret => ret.CardId,
                     act => act.CardId,
                     (Return, Actuals) =>
                         (Actual: Actuals.SingleOrDefault(), Return) )
                 .ToList();
 
-            if (returnPairs.Any(ar => ar.Actual == default || ar.Return.Amount > ar.Actual.Amount))
+            if (returnPairs.Any(ar =>
+                ar.Actual == default || ar.Return.Amount > ar.Actual.Amount))
             {
                 return Enumerable.Empty<(Card, int)>();
             }
@@ -240,11 +268,11 @@ namespace MTGViewer.Pages.Decks
                 actualCard.Amount -= returnCard.Amount;
             }
 
-            var emptyAmounts = actuals
-                .Where(da => da.Amount == 0)
-                .Concat(returns);
+            var emptyAmounts = deck.Cards.Where(ca => ca.Amount == 0);
+            var finishedReturns = returns.Where(ca => ca.Amount == 0);
 
-            _dbContext.DeckAmounts.RemoveRange(emptyAmounts);
+            _dbContext.Amounts.RemoveRange(emptyAmounts);
+            _dbContext.Exchanges.RemoveRange(finishedReturns);
 
             return returnPairs
                 .Select(ar => (ar.Actual.Card, ar.Return.Amount))

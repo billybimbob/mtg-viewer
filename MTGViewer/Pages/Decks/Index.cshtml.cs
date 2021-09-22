@@ -1,4 +1,3 @@
-using System;
 using System.Linq;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -25,14 +24,13 @@ namespace MTGViewer.Pages.Decks
 
     public record DeckState(Deck Deck, State State)
     {
-        public DeckState(Deck deck, bool isRequest)
-            : this(deck, State.Invalid)
+        public DeckState(Deck deck) : this(deck, State.Invalid)
         {
-            if (isRequest)
+            if (deck.ExchangesTo.Any(ex => ex.IsTrade))
             {
                 State = State.Requesting;
             }
-            else if (deck.Cards.Any(da => da.Intent != Intent.None))
+            else if (deck.ExchangesTo.Any(ex => !ex.IsTrade))
             {
                 State = State.Invalid;
             }
@@ -81,30 +79,12 @@ namespace MTGViewer.Pages.Decks
                 .Where(d => d.OwnerId == userId)
                 .Include(d => d.Owner)
                 .Include(d => d.Cards)
-                    .ThenInclude(ca => ca.Card);
+                .Include(d => d.ExchangesTo);
 
-            var userTrades = _dbContext.Trades
-                .Where(t => t.ProposerId == userId);
-
-
-            var deckRequestInfos = await userDecks
-                .GroupJoin( userTrades,
-                    deck => deck.Id,
-                    trade => trade.ToId,
-                    (deck, trades) =>
-                        new { deck, trades })
-                .SelectMany(
-                    dts => dts.trades.DefaultIfEmpty(),
-                    (dts, trade) => 
-                        new { dts.deck, isRequest = trade != default})
+            return await userDecks
+                .Select(deck => new DeckState(deck))
+                .AsSplitQuery()
                 .ToListAsync();
-
-
-            return deckRequestInfos
-                .Distinct()
-                .OrderBy(db => db.deck.Name)
-                .Select(db => new DeckState(db.deck, db.isRequest))
-                .ToList();
         }
     }
 }

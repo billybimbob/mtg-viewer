@@ -256,7 +256,7 @@
                 Amount = 0
             };
 
-            _dbContext.DeckAmounts.Add(actual);
+            _dbContext.Amounts.Add(actual);
             pair.Actual = actual;
         }
 
@@ -295,7 +295,7 @@
                 Amount = 0,
             };
 
-            _dbContext.DeckAmounts.Add(takeAmount);
+            _dbContext.Amounts.Add(takeAmount);
 
             if (hasGroup)
             {
@@ -347,7 +347,7 @@
             };
 
             deckGroup.Return = returnAmount;
-            _dbContext.DeckAmounts.Attach(returnAmount);
+            _dbContext.Amounts.Attach(returnAmount);
         }
 
         deckGroup.Return.Amount += 1;
@@ -431,7 +431,7 @@
             // detaches when saved after a remove
             if (_dbContext.Entry(cardAmnt).State == EntityState.Detached)
             {
-                _dbContext.DeckAmounts.Add(cardAmnt);
+                _dbContext.Amounts.Add(cardAmnt);
             }
 
             if (cardAmnt.Amount == 0)
@@ -457,7 +457,7 @@
             return;
         }
 
-        var dbDeckCards = await _dbContext.DeckAmounts
+        var dbDeckCards = await _dbContext.Amounts
             .Where(ca => ca.LocationId == _deck.Id)
             .AsNoTracking()
             .ToListAsync();
@@ -571,7 +571,7 @@
         }
 
         // token also is matched
-        _dbContext.DeckAmounts.Attach(dbDeckCard);
+        _dbContext.Amounts.Attach(dbDeckCard);
     }
 
 
@@ -590,19 +590,19 @@
 
         if (_dbContext.Entry(amntGroup.Actual).State == EntityState.Detached)
         {
-            _dbContext.DeckAmounts.Attach(amntGroup.Actual);
+            _dbContext.Amounts.Attach(amntGroup.Actual);
         }
 
         if (amntGroup.Take is not null
             && _dbContext.Entry(amntGroup.Take).State == EntityState.Detached)
         {
-            _dbContext.DeckAmounts.Attach(amntGroup.Take);
+            _dbContext.Amounts.Attach(amntGroup.Take);
         }
 
         if (amntGroup.Return is not null
             && _dbContext.Entry(amntGroup.Return).State == EntityState.Detached)
         {
-            _dbContext.DeckAmounts.Attach(amntGroup.Return);
+            _dbContext.Amounts.Attach(amntGroup.Return);
         }
 
         _deckCards.Add(cardId, amntGroup);

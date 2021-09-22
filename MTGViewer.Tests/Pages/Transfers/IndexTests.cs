@@ -90,7 +90,7 @@ namespace MTGViewer.Tests.Pages.Transfers
         public async Task OnPost_InvalidSuggestion_NoRemove()
         {
             // Arrange
-            var tradeQuery = _dbContext.Trades.AsNoTracking();
+            var tradeQuery = _dbContext.Exchanges.AsNoTracking();
             var nonSuggestion = await tradeQuery.FirstAsync();
 
             await _indexModel.SetModelContextAsync(_userManager, nonSuggestion.ReceiverId);

@@ -23,6 +23,34 @@ namespace MTGViewer.Data
 
         [JsonIgnore]
         internal Discriminator Type { get; private set; }
+
+
+        [JsonIgnore]
+        public ICollection<Change> ChangesTo { get; } = new List<Change>();
+
+        [JsonIgnore]
+        public ICollection<Change> ChangesFrom { get; } = new List<Change>();
+
+        [JsonIgnore]
+        public ICollection<CardAmount> Cards { get; } = new List<CardAmount>();
+
+
+        public IOrderedEnumerable<Color> GetColors()
+        {
+            return Cards
+                .SelectMany(ca => ca.Card.Colors)
+                .Distinct(new EntityComparer<Color>(c => c.Name))
+                .OrderBy(c => c.Name);
+        }
+
+        public IOrderedEnumerable<string> GetColorSymbols()
+        {
+            return Cards
+                .SelectMany(ca => ca.Card.GetManaSymbols())
+                .Distinct()
+                .Intersect(Data.Color.COLORS.Values)
+                .OrderBy(s => s);
+        }
     }
 
 
@@ -35,23 +63,14 @@ namespace MTGViewer.Data
         public UserRef Owner { get; init; } = null!;
         public string OwnerId { get; init; } = null!;
 
+        [JsonIgnore]
+        public ICollection<Exchange> ExchangesTo { get; } = new List<Exchange>();
 
         [JsonIgnore]
-        public ICollection<DeckAmount> Cards { get; } = new List<DeckAmount>();
-
-        [JsonIgnore]
-        public ICollection<Trade> TradesTo { get; } = new List<Trade>();
-
-        [JsonIgnore]
-        public ICollection<Trade> TradesFrom { get; } = new List<Trade>();
+        public ICollection<Exchange> ExchangesFrom { get; } = new List<Exchange>();
 
         [JsonIgnore]
         public ICollection<Suggestion> Suggestions { get; } = new List<Suggestion>();
-
-
-        public IOrderedEnumerable<Color> GetColors() => Cards.GetColors();
-
-        public IOrderedEnumerable<string> GetColorSymbols() => Cards.GetColorSymbols();
     }
 
 
@@ -65,14 +84,6 @@ namespace MTGViewer.Data
         public int BinId { get; init; }
 
         public string? Color { get; init; }
-
-        [JsonIgnore]
-        public ICollection<BoxAmount> Cards { get; } = new List<BoxAmount>();
-
-
-        public IOrderedEnumerable<Color> GetColors() => Cards.GetColors();
-
-        public IOrderedEnumerable<string> GetColorSymbols() => Cards.GetColorSymbols();
     }
 
 
@@ -91,28 +102,5 @@ namespace MTGViewer.Data
 
         [JsonIgnore]
         public ICollection<Box> Boxes = new List<Box>();
-    }
-
-
-    internal static class AmountColors
-    {
-        internal static IOrderedEnumerable<Color> GetColors(
-            this IEnumerable<CardAmount> amounts)
-        {
-            return amounts
-                .SelectMany(ca => ca.Card.Colors)
-                .Distinct(new EntityComparer<Color>(c => c.Name))
-                .OrderBy(c => c.Name);
-        }
-
-        internal static IOrderedEnumerable<string> GetColorSymbols(
-            this IEnumerable<CardAmount> amounts)
-        {
-            return amounts
-                .SelectMany(ca => ca.Card.GetManaSymbols())
-                .Distinct()
-                .Intersect(Data.Color.COLORS.Values)
-                .OrderBy(s => s);
-        }
     }
 }

@@ -65,8 +65,8 @@ namespace MTGViewer.Data.Seed
                 .Cast<Suggestion>();
 
             var trades = transfers
-                .Where(t => t is Trade)
-                .Cast<Trade>();
+                .Where(t => t is Exchange)
+                .Cast<Exchange>();
 
             _dbContext.Users.AddRange(userRefs);
 
@@ -74,9 +74,9 @@ namespace MTGViewer.Data.Seed
             _dbContext.Decks.AddRange(decks);
             _dbContext.Boxes.AddRange(boxes);
 
-            _dbContext.DeckAmounts.AddRange(deckAmounts);
+            _dbContext.Amounts.AddRange(deckAmounts);
             _dbContext.Suggestions.AddRange(suggestions);
-            _dbContext.Trades.AddRange(trades);
+            _dbContext.Exchanges.AddRange(trades);
 
             await _dbContext.SaveChangesAsync(cancel);
 
@@ -189,7 +189,7 @@ namespace MTGViewer.Data.Seed
 
             return new List<Transfer>()
             {
-                new Trade
+                new Exchange
                 {
                     Card = source.Card,
                     Proposer = tradeTo.Owner,

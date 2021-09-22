@@ -38,12 +38,13 @@ namespace MTGViewer.Pages.Decks
             if (id is int deckId)
             {
                 var deck = await _dbContext.Decks
-                    .Include(d => d.TradesTo
-                        .Where(t => t.ProposerId == UserId))
+                    .Include(d => d.ExchangesTo
+                        .Where(ex => ex.IsTrade))
                     .AsNoTrackingWithIdentityResolution()
-                    .SingleOrDefaultAsync(l => l.Id == deckId && l.Owner.Id == UserId);
+                    .SingleOrDefaultAsync(l => 
+                        l.Id == deckId && l.Owner.Id == UserId);
 
-                if (deck == default || deck.TradesTo.Any())
+                if (deck == default || deck.ExchangesTo.Any())
                 {
                     return NotFound();
                 }

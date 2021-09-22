@@ -28,12 +28,11 @@
 <table class="table">
     <thead>
         <tr>
-            <th> @Html.DisplayNameForInnerType((Trade t) => t.Card) </th>
+            <th> @Html.DisplayNameForInnerType((Exchange t) => t.Card) </th>
             <th> @Html.DisplayNameForInnerType((Card c) => c.ManaCost) </th>
             <th> @Html.DisplayNameForInnerType((Card c) => c.SetName) </th>
-            <th> Requested By </th>
-            <th> @Html.DisplayNameForInnerType((Trade t) => t.To) </th>
-            <th> @Html.DisplayNameForInnerType((Trade t) => t.Amount) </th>
+            <th> @Html.DisplayNameForInnerType((Exchange t) => t.To) </th>
+            <th> @Html.DisplayNameForInnerType((Exchange t) => t.Amount) </th>
             <th></th>
         </tr>
     </thead>
@@ -53,7 +52,6 @@
                     }
                 </td>
                 <td> @trade.Card.SetName </td>
-                <td> @trade.Proposer.Name </td>
                 <td>
                     <a asp-page="/Decks/Viewer"
                        asp-route-deckid="@trade.ToId">

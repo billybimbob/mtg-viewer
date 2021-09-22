@@ -54,13 +54,13 @@ namespace MTGViewer.Tests.Pages.Transfers
         public async Task OnPost_WrongUser_NoChange()
         {
             // Arrange
-            var trade = await _dbContext.Trades
+            var trade = await _dbContext.Exchanges
                 .AsNoTracking()
                 .FirstAsync(t => t.ProposerId == _trades.ProposerId && t.ToId == _trades.ToId);
 
             await _statusModel.SetModelContextAsync(_userManager, trade.ReceiverId);
 
-            var requestsQuery = _dbContext.Trades
+            var requestsQuery = _dbContext.Exchanges
                 .Where(t => t.ProposerId == _trades.ProposerId && t.ToId == _trades.ToId)
                 .Select(t => t.Id);
 
@@ -82,11 +82,11 @@ namespace MTGViewer.Tests.Pages.Transfers
             // Arrange
             await _statusModel.SetModelContextAsync(_userManager, _trades.ProposerId);
 
-            var trade = await _dbContext.Trades
+            var trade = await _dbContext.Exchanges
                 .AsNoTracking()
                 .FirstAsync(t => t.ProposerId == _trades.ProposerId && t.ToId == _trades.ToId);
 
-            var requestsQuery = _dbContext.Trades
+            var requestsQuery = _dbContext.Exchanges
                 .Where(t => t.ProposerId == _trades.ProposerId && t.ToId == _trades.ToId)
                 .Select(t => t.Id);
 
@@ -108,11 +108,11 @@ namespace MTGViewer.Tests.Pages.Transfers
             // Arrange
             await _statusModel.SetModelContextAsync(_userManager, _trades.ProposerId);
 
-            var trade = await _dbContext.Trades
+            var trade = await _dbContext.Exchanges
                 .AsNoTracking()
                 .FirstAsync(t => t.ProposerId == _trades.ProposerId && t.ToId == _trades.ToId);
 
-            var requestsQuery = _dbContext.Trades
+            var requestsQuery = _dbContext.Exchanges
                 .Where(t => t.ProposerId == _trades.ProposerId && t.ToId == _trades.ToId)
                 .Select(t => t.Id);
 

@@ -30,7 +30,7 @@ namespace MTGViewer.Data.Seed
         public IReadOnlyList<DeckAmount> DeckAmounts { get; set; }
 
         public IReadOnlyList<Suggestion> Suggestions { get; set; }
-        public IReadOnlyList<Trade> Trades { get; set; }
+        public IReadOnlyList<Exchange> Trades { get; set; }
 
 
         public static async Task<CardData> CreateAsync(
@@ -71,11 +71,11 @@ namespace MTGViewer.Data.Seed
                     .AsNoTrackingWithIdentityResolution()
                     .ToListAsync(cancel),
 
-                BoxAmounts = await dbContext.BoxAmounts
+                BoxAmounts = await dbContext.Amounts
                     .AsNoTrackingWithIdentityResolution()
                     .ToListAsync(cancel),
 
-                DeckAmounts = await dbContext.DeckAmounts
+                DeckAmounts = await dbContext.Amounts
                     .AsNoTrackingWithIdentityResolution()
                     .ToListAsync(cancel),
 
@@ -83,7 +83,7 @@ namespace MTGViewer.Data.Seed
                     .AsNoTrackingWithIdentityResolution()
                     .ToListAsync(cancel),
 
-                Trades = await dbContext.Trades
+                Trades = await dbContext.Exchanges
                     .AsNoTrackingWithIdentityResolution()
                     .ToListAsync(cancel)
             };
@@ -146,11 +146,11 @@ namespace MTGViewer.Data.Seed
                 dbContext.Boxes.AddRange(data.Boxes);
                 dbContext.Decks.AddRange(data.Decks);
 
-                dbContext.BoxAmounts.AddRange(data.BoxAmounts);
-                dbContext.DeckAmounts.AddRange(data.DeckAmounts);
+                dbContext.Amounts.AddRange(data.BoxAmounts);
+                dbContext.Amounts.AddRange(data.DeckAmounts);
 
                 dbContext.Suggestions.AddRange(data.Suggestions);
-                dbContext.Trades.AddRange(data.Trades);
+                dbContext.Exchanges.AddRange(data.Trades);
 
                 await dbContext.SaveChangesAsync(cancel);
 

@@ -42,7 +42,7 @@ namespace MTGViewer.Services
             _dbContext.Boxes.AsNoTrackingWithIdentityResolution();
 
         public IQueryable<BoxAmount> Cards =>
-            _dbContext.BoxAmounts.AsNoTrackingWithIdentityResolution();
+            _dbContext.Amounts.AsNoTrackingWithIdentityResolution();
 
 
         public async Task ReturnAsync(IEnumerable<(Card, int numCopies)> returns)
@@ -91,7 +91,7 @@ namespace MTGViewer.Services
                 .Select(ra => ra.card.Id)
                 .ToArray();
 
-            var returnAmounts = await _dbContext.BoxAmounts
+            var returnAmounts = await _dbContext.Amounts
                 .Where(ba => returnIds.Contains(ba.CardId))
                 .ToListAsync();
 
@@ -124,7 +124,7 @@ namespace MTGViewer.Services
             // loading all shared cards, could be memory inefficient
             // TODO: find more efficient way to determining card position
 
-            return await _dbContext.BoxAmounts
+            return await _dbContext.Amounts
                 .Include(ca => ca.Card)
                 .OrderBy(ca => ca.Card.Name)
                     .ThenBy(ca => ca.Card.SetName)
@@ -170,7 +170,7 @@ namespace MTGViewer.Services
                     Amount = numCopies
                 };
 
-                _dbContext.BoxAmounts.Attach(newSpot);
+                _dbContext.Amounts.Attach(newSpot);
             }
         }
 
@@ -244,7 +244,7 @@ namespace MTGViewer.Services
 
                 AddUpdatedBoxAmounts(sortedBoxAmounts, sortedBoxes);
 
-                _dbContext.BoxAmounts.RemoveRange(
+                _dbContext.Amounts.RemoveRange(
                     sortedBoxAmounts.Where(ba => ba.Amount == 0));
 
                 // intentionally throw db exception
@@ -289,7 +289,7 @@ namespace MTGViewer.Services
                             Location = box
                         };
 
-                        _dbContext.BoxAmounts.Attach(boxAmount);
+                        _dbContext.Amounts.Attach(boxAmount);
                         amountMap.Add(cardBox, boxAmount);
                     }
 

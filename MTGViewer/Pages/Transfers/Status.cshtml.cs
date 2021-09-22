@@ -35,8 +35,8 @@ namespace MTGViewer.Pages.Transfers
         public Deck? Destination { get; private set; }
         public UserRef? Proposer { get; private set; }
 
-        public IReadOnlyList<Trade>? Trades { get; private set; }
-        public IReadOnlyList<RequestNameGroup>? Amounts { get; private set; }
+        public IReadOnlyList<Exchange>? Trades { get; private set; }
+        public IReadOnlyList<RequestNameGroup>? CardGroups { get; private set; }
 
 
         public async Task<IActionResult> OnGetAsync(int deckId)
@@ -51,9 +51,12 @@ namespace MTGViewer.Pages.Transfers
             var deck = await _dbContext.Decks
                 .Include(d => d.Owner)
                 .Include(d => d.Cards
-                    .Where(da => da.Intent != Intent.Return)
                     .OrderBy(ca => ca.Card.Name))
                     .ThenInclude(ca => ca.Card)
+                .Include(d => d.ExchangesTo
+                    .OrderBy(ex => ex.Card.Name))
+                    .ThenInclude(ex => ex.Card)
+                .AsSplitQuery()
                 .SingleOrDefaultAsync(d =>
                     d.Id == deckId && d.OwnerId == userId);
 
@@ -62,33 +65,36 @@ namespace MTGViewer.Pages.Transfers
                 return NotFound();
             }
 
-            if (deck.Cards.All(da => da.Intent == Intent.None))
+            if (!deck.ExchangesTo.Any(ex => !ex.IsTrade))
             {
                 PostMessage = $"There are no requests for {deck.Name}";
                 return RedirectToPage("./Index");
             }
 
-            var deckTrades = await _dbContext.Trades
-                .Where(t => t.ProposerId == userId && t.ToId == deckId)
-                .Include(t => t.Card)
-                .Include(t => t.From)
-                    .ThenInclude(d => d.Owner)
-                .OrderBy(t => t.From.Owner.Name)
-                    .ThenBy(t => t.Card.Name)
-                .ToListAsync();
-
-            if (!deckTrades.Any())
+            if (!deck.ExchangesTo.Any(ex => ex.IsTrade))
             {
                 return RedirectToPage("./Request", new { deckId });
             }
 
+            var cardNameGroups = deck.Cards
+                .GroupBy(ca => ca.Card.Name,
+                    (name, amounts) => (name, amounts));
+
+
             Destination = deck;
+
             Proposer = deck.Owner;
 
-            Trades = deckTrades;
-            Amounts = deck.Cards
-                .GroupBy(ca => ca.Card.Name,
-                    (_, amounts) => new RequestNameGroup(amounts))
+            Trades = deck.ExchangesTo
+                .Where(ex => ex.IsTrade)
+                .ToList();
+
+            CardGroups = cardNameGroups
+                .GroupJoin( deck.ExchangesTo,
+                    nas => nas.name,
+                    ex => ex.Card.Name,
+                    (nas, exchanges) =>
+                        new RequestNameGroup(nas.amounts, exchanges))
                 .ToList();
 
             return Page();
@@ -106,9 +112,13 @@ namespace MTGViewer.Pages.Transfers
 
             var userId = _userManager.GetUserId(User);
 
+            // keep eye on, could possibly remove trades not started
+            // by the user
+            // makes the assumption that trades are always started by
+            // the owner of the To deck
             var deck = await _dbContext.Decks
-                .Include(d => d.TradesTo
-                    .Where(t => t.ProposerId == userId))
+                .Include(d => d.ExchangesTo
+                    .Where(ex => ex.IsTrade))
                 .SingleOrDefaultAsync(d => d.Id == deckId && d.OwnerId == userId);
 
             if (deck == default)
@@ -117,14 +127,14 @@ namespace MTGViewer.Pages.Transfers
                 return RedirectToPage("./Index");
             }
 
-            if (!deck.TradesTo.Any())
+            if (!deck.ExchangesTo.Any())
             {
                 PostMessage = "No trades were found";
                 return RedirectToPage("./Index");
             }
 
 
-            _dbContext.Trades.RemoveRange(deck.TradesTo);
+            _dbContext.Exchanges.RemoveRange(deck.ExchangesTo);
 
             try
             {

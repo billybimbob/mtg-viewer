@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using Newtonsoft.Json;
 
 #nullable enable
@@ -13,9 +14,7 @@ namespace MTGViewer.Data
         }
 
         [JsonRequired]
-        public int Id { get; private set; }
-
-        [JsonRequired]
+        [Key]
         public string Value { get; private set; }
 
         [JsonIgnore]
@@ -42,9 +41,7 @@ namespace MTGViewer.Data
         }
 
         [JsonRequired]
-        public int Id { get; private set; }
-
-        [JsonRequired]
+        [Key]
         public string Name { get; private set; }
 
         [JsonIgnore]
@@ -60,9 +57,7 @@ namespace MTGViewer.Data
         }
 
         [JsonRequired]
-        public int Id { get; private set; }
-
-        [JsonRequired]
+        [Key]
         public string Name { get; private set; }
 
         [JsonIgnore]
@@ -78,9 +73,7 @@ namespace MTGViewer.Data
         }
 
         [JsonRequired]
-        public int Id { get; private set; }
-
-        [JsonRequired]
+        [Key]
         public string Name { get; private set; }
 
         [JsonIgnore]
@@ -96,9 +89,7 @@ namespace MTGViewer.Data
         }
 
         [JsonRequired]
-        public int Id { get; private set; }
-
-        [JsonRequired]
+        [Key]
         public string Name { get; private set; }
 
         [JsonIgnore]

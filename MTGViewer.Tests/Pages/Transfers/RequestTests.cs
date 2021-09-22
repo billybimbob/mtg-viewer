@@ -61,7 +61,7 @@ namespace MTGViewer.Tests.Pages.Transfers
             var wrongUser = await _dbContext.Users.FirstAsync(u => u.Id != _requestDeck.Owner.Id);
             await _requestModel.SetModelContextAsync(_userManager, wrongUser.Id);
 
-            var tradesQuery = _dbContext.Trades.AsNoTracking();
+            var tradesQuery = _dbContext.Exchanges.AsNoTracking();
 
             // Act
             var tradesBefore = await tradesQuery.ToListAsync();
@@ -81,7 +81,7 @@ namespace MTGViewer.Tests.Pages.Transfers
             // Arrange
             await _requestModel.SetModelContextAsync(_userManager, _requestDeck.Owner.Id);
 
-            var tradesQuery = _dbContext.Trades.AsNoTracking();
+            var tradesQuery = _dbContext.Exchanges.AsNoTracking();
             var wrongDeck = _dbContext.Decks
                 .AsNoTracking()
                 .FirstAsync(t => t.Id != _requestDeck.Id);
@@ -104,7 +104,7 @@ namespace MTGViewer.Tests.Pages.Transfers
             // Arrange
             await _requestModel.SetModelContextAsync(_userManager, _requestDeck.Owner.Id);
 
-            var tradesQuery = _dbContext.Trades.AsNoTracking();
+            var tradesQuery = _dbContext.Exchanges.AsNoTracking();
 
             // Act
             var tradesBefore = await tradesQuery.ToListAsync();
@@ -113,7 +113,7 @@ namespace MTGViewer.Tests.Pages.Transfers
 
             var addedTrades = tradesAfter.Except(
                 tradesBefore,
-                new EntityComparer<Trade>(t => t.Id));
+                new EntityComparer<Exchange>(t => t.Id));
 
             // // Assert
             Assert.IsType<RedirectToPageResult>(result);
@@ -128,7 +128,7 @@ namespace MTGViewer.Tests.Pages.Transfers
             // Arrange
             await _requestModel.SetModelContextAsync(_userManager, _requestDeck.Owner.Id);
 
-            var requestCard = await _dbContext.DeckAmounts
+            var requestCard = await _dbContext.Amounts
                 .Where(ca => ca.LocationId == _requestDeck.Id && ca.Intent != Intent.None)
                 .Select(ca => ca.Card)
                 .AsNoTracking()
@@ -155,12 +155,12 @@ namespace MTGViewer.Tests.Pages.Transfers
                 .ToList();
 
             _dbContext.Decks.AttachRange(extraLocations);
-            _dbContext.DeckAmounts.AttachRange(amounts);
+            _dbContext.Amounts.AttachRange(amounts);
 
             await _dbContext.SaveChangesAsync();
             _dbContext.ChangeTracker.Clear();
             
-            var tradesQuery = _dbContext.Trades.AsNoTracking();
+            var tradesQuery = _dbContext.Exchanges.AsNoTracking();
 
             // Act
             var tradesBefore = await tradesQuery.ToListAsync();
@@ -169,7 +169,7 @@ namespace MTGViewer.Tests.Pages.Transfers
 
             var addedTrades = tradesAfter.Except(
                 tradesBefore,
-                new EntityComparer<Trade>(t => t.Id));
+                new EntityComparer<Exchange>(t => t.Id));
 
             var addedTargets = addedTrades.Select(t => t.FromId);
 

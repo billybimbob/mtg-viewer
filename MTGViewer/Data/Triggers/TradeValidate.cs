@@ -9,7 +9,7 @@ using Microsoft.Extensions.Logging;
 
 namespace MTGViewer.Data.Triggers
 {
-    public class TradeValidate : IBeforeSaveTrigger<Trade>, IAfterSaveTrigger<Trade>
+    public class TradeValidate : IBeforeSaveTrigger<Exchange>, IAfterSaveTrigger<Exchange>
     {
         private readonly CardDbContext _dbContext;
         private readonly ILogger<TradeValidate> _logger;
@@ -21,7 +21,7 @@ namespace MTGViewer.Data.Triggers
         }
 
 
-        public async Task BeforeSave(ITriggerContext<Trade> trigContext, CancellationToken cancel)
+        public async Task BeforeSave(ITriggerContext<Exchange> trigContext, CancellationToken cancel)
         {
             if (trigContext.ChangeType == ChangeType.Deleted)
             {
@@ -35,11 +35,10 @@ namespace MTGViewer.Data.Triggers
             //     throw new DbUpdateException("Trade cannot have 'To' property missing");
             // }
 
-            var fromAmount = await _dbContext.DeckAmounts
+            var fromAmount = await _dbContext.Amounts
                 .AsNoTracking()
                 .SingleOrDefaultAsync(da =>
-                    da.Intent == Intent.None
-                        && da.CardId == trade.CardId
+                    da.CardId == trade.CardId
                         && (da.LocationId == trade.FromId || da.Location == trade.From));
 
             if (fromAmount != default)
@@ -49,7 +48,7 @@ namespace MTGViewer.Data.Triggers
         }
 
 
-        public async Task AfterSave(ITriggerContext<Trade> trigContext, CancellationToken cancel)
+        public async Task AfterSave(ITriggerContext<Exchange> trigContext, CancellationToken cancel)
         {
             if (trigContext.ChangeType == ChangeType.Deleted)
             {
@@ -60,7 +59,7 @@ namespace MTGViewer.Data.Triggers
 
             if (_dbContext.Entry(trade).State == EntityState.Detached)
             {
-                _dbContext.Trades.Attach(trade);
+                _dbContext.Exchanges.Attach(trade);
             }
 
             if (trade.Amount > 0)

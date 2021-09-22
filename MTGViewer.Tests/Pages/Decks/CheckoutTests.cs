@@ -107,17 +107,17 @@ namespace MTGViewer.Tests.Pages.Decks
 
             await _checkoutModel.SetModelContextAsync(_userManager, deckOwnerId);
 
-            var takeAmountQuery = _dbContext.DeckAmounts
+            var takeAmountQuery = _dbContext.Amounts
                 .Where(da => da.Id == request.Id)
                 .Select(da => da.Amount);
 
-            var actualAmountQuery = _dbContext.DeckAmounts
+            var actualAmountQuery = _dbContext.Amounts
                 .Where(da => da.LocationId == request.LocationId
                     && da.CardId == request.CardId
                     && da.Intent == Intent.None)
                 .Select(da => da.Amount);
 
-            var boxAmountQuery = _dbContext.BoxAmounts
+            var boxAmountQuery = _dbContext.Amounts
                 .Where(ba => ba.CardId == request.CardId)
                 .Select(ba => ba.Amount);
 
@@ -156,17 +156,17 @@ namespace MTGViewer.Tests.Pages.Decks
 
             await _checkoutModel.SetModelContextAsync(_userManager, deckOwnerId);
 
-            var takeAmountQuery = _dbContext.DeckAmounts
+            var takeAmountQuery = _dbContext.Amounts
                 .Where(da => da.Id == request.Id)
                 .Select(da => da.Amount);
 
-            var actualAmountQuery = _dbContext.DeckAmounts
+            var actualAmountQuery = _dbContext.Amounts
                 .Where(da => da.LocationId == request.LocationId
                     && da.CardId == request.CardId
                     && da.Intent == Intent.None)
                 .Select(da => da.Amount);
 
-            var boxAmountQuery = _dbContext.BoxAmounts
+            var boxAmountQuery = _dbContext.Amounts
                 .Where(ba => ba.CardId == request.CardId)
                 .Select(ba => ba.Amount);
 
@@ -206,17 +206,17 @@ namespace MTGViewer.Tests.Pages.Decks
 
             await _checkoutModel.SetModelContextAsync(_userManager, deckOwnerId);
 
-            var returnAmountQuery = _dbContext.DeckAmounts
+            var returnAmountQuery = _dbContext.Amounts
                 .Where(da => da.Id == request.Id)
                 .Select(da => da.Amount);
 
-            var actualAmountQuery = _dbContext.DeckAmounts
+            var actualAmountQuery = _dbContext.Amounts
                 .Where(da => da.LocationId == request.LocationId
                     && da.CardId == request.CardId
                     && da.Intent == Intent.None)
                 .Select(da => da.Amount);
 
-            var boxAmountQuery = _dbContext.BoxAmounts
+            var boxAmountQuery = _dbContext.Amounts
                 .Where(ba => ba.CardId == request.CardId)
                 .Select(ba => ba.Amount);
 
@@ -254,17 +254,17 @@ namespace MTGViewer.Tests.Pages.Decks
 
             await _checkoutModel.SetModelContextAsync(_userManager, deckOwnerId);
 
-            var returnAmountQuery = _dbContext.DeckAmounts
+            var returnAmountQuery = _dbContext.Amounts
                 .Where(da => da.Id == request.Id)
                 .Select(da => da.Amount);
 
-            var actualAmountQuery = _dbContext.DeckAmounts
+            var actualAmountQuery = _dbContext.Amounts
                 .Where(da => da.LocationId == request.LocationId
                     && da.CardId == request.CardId
                     && da.Intent == Intent.None)
                 .Select(da => da.Amount);
 
-            var boxAmountQuery = _dbContext.BoxAmounts
+            var boxAmountQuery = _dbContext.Amounts
                 .Where(ba => ba.CardId == request.CardId)
                 .Select(ba => ba.Amount);
 

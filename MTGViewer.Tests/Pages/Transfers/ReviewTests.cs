@@ -56,11 +56,11 @@ namespace MTGViewer.Tests.Pages.Transfers
             // Arrange
             await _reviewModel.SetModelContextAsync(_userManager, _trades.ProposerId);
 
-            var trade = await _dbContext.Trades
+            var trade = await _dbContext.Exchanges
                 .AsNoTracking()
                 .FirstAsync(t => t.ProposerId == _trades.ProposerId && t.ToId == _trades.ToId);
 
-            var fromQuery = _dbContext.DeckAmounts
+            var fromQuery = _dbContext.Amounts
                 .Where(da => da.Intent == Intent.None
                     && da.CardId == trade.CardId
                     && da.LocationId == trade.FromId)
@@ -71,7 +71,7 @@ namespace MTGViewer.Tests.Pages.Transfers
             var result = await _reviewModel.OnPostAcceptAsync(trade.Id);
             var fromAfter = await fromQuery.SingleAsync();
 
-            var tradeAfter = await _dbContext.Trades
+            var tradeAfter = await _dbContext.Exchanges
                 .Where(t => t.ProposerId == _trades.ProposerId && t.ToId == _trades.ToId)
                 .Select(t => t.Id)
                 .ToListAsync();
@@ -89,17 +89,17 @@ namespace MTGViewer.Tests.Pages.Transfers
             // Arrange
             await _reviewModel.SetModelContextAsync(_userManager, _trades.ProposerId);
 
-            var trade = await _dbContext.Trades
+            var trade = await _dbContext.Exchanges
                 .AsNoTracking()
                 .FirstAsync(t => t.ProposerId == _trades.ProposerId && t.ToId == _trades.ToId);
 
-            var fromQuery = _dbContext.DeckAmounts
+            var fromQuery = _dbContext.Amounts
                 .Where(da => da.Intent == Intent.None
                     && da.CardId == trade.CardId
                     && da.LocationId == trade.FromId)
                 .AsNoTracking();
 
-            var wrongTrade = await _dbContext.Trades
+            var wrongTrade = await _dbContext.Exchanges
                 .AsNoTracking()
                 .FirstAsync(t => t.ToId != _trades.ToId);
 
@@ -108,7 +108,7 @@ namespace MTGViewer.Tests.Pages.Transfers
             var result = await _reviewModel.OnPostAcceptAsync(wrongTrade.Id);
             var fromAfter = await fromQuery.SingleAsync();
 
-            var tradesAfter = await _dbContext.Trades
+            var tradesAfter = await _dbContext.Exchanges
                 .Where(t => t.ProposerId == _trades.ProposerId && t.ToId == _trades.ToId)
                 .Select(t => t.Id)
                 .ToListAsync();
@@ -124,13 +124,13 @@ namespace MTGViewer.Tests.Pages.Transfers
         public async Task OnPostAccept_ValidTrade_AmountsChanged()
         {
             // Arrange
-            var trade = await _dbContext.Trades
+            var trade = await _dbContext.Exchanges
                 .AsNoTracking()
                 .FirstAsync(t => t.ProposerId == _trades.ProposerId && t.ToId == _trades.ToId);
 
             await _reviewModel.SetModelContextAsync(_userManager, trade.ReceiverId);
 
-            var tradeSourceQuery = _dbContext.DeckAmounts
+            var tradeSourceQuery = _dbContext.Amounts
                 .Where(da => da.Intent == Intent.None
                     && da.CardId == trade.CardId
                     && da.LocationId == trade.FromId)
@@ -144,7 +144,7 @@ namespace MTGViewer.Tests.Pages.Transfers
             var changeCheck = fromAfter is null
                 || fromBefore.Amount > fromAfter.Amount && fromAfter.Amount >= 0;
 
-            var tradeAfter = await _dbContext.Trades
+            var tradeAfter = await _dbContext.Exchanges
                 .Where(t => t.ProposerId == _trades.ProposerId && t.ToId == _trades.ToId)
                 .Select(t => t.Id)
                 .ToListAsync();
@@ -160,13 +160,13 @@ namespace MTGViewer.Tests.Pages.Transfers
         public async Task OnPostAccept_LackAmount_CompletesOnlyTrade()
         {
             // Arrange
-            var trade = await _dbContext.Trades
+            var trade = await _dbContext.Exchanges
                 .AsNoTracking()
                 .FirstAsync(t => t.ProposerId == _trades.ProposerId && t.ToId == _trades.ToId);
 
             await _reviewModel.SetModelContextAsync(_userManager, trade.ReceiverId);
 
-            var fromAmount = await _dbContext.DeckAmounts
+            var fromAmount = await _dbContext.Amounts
                 .SingleAsync(da => da.Intent == Intent.None
                     && da.CardId == trade.CardId
                     && da.LocationId == trade.FromId);
@@ -176,7 +176,7 @@ namespace MTGViewer.Tests.Pages.Transfers
             await _dbContext.SaveChangesAsync();
             _dbContext.ChangeTracker.Clear();
 
-            var requestQuery = _dbContext.Trades
+            var requestQuery = _dbContext.Exchanges
                 .Where(t => t.ProposerId == _trades.ProposerId && t.ToId == _trades.ToId)
                 .Select(t => t.Id);
 
@@ -200,17 +200,17 @@ namespace MTGViewer.Tests.Pages.Transfers
             // Arrange
             await _reviewModel.SetModelContextAsync(_userManager, _trades.ProposerId);
 
-            var trade = await _dbContext.Trades
+            var trade = await _dbContext.Exchanges
                 .AsNoTracking()
                 .FirstAsync(t => t.ProposerId == _trades.ProposerId && t.ToId == _trades.ToId);
 
-            var fromAmount = await _dbContext.DeckAmounts
+            var fromAmount = await _dbContext.Amounts
                 .AsNoTracking()
                 .SingleAsync(da => da.Intent == Intent.None
                     && da.CardId == trade.CardId
                     && da.LocationId == trade.FromId);
 
-            var toRequest = await _dbContext.DeckAmounts
+            var toRequest = await _dbContext.Amounts
                 .SingleAsync(da => da.Intent == Intent.Take
                     && da.CardId == trade.CardId
                     && da.LocationId == _trades.ToId);
@@ -220,7 +220,7 @@ namespace MTGViewer.Tests.Pages.Transfers
             await _dbContext.SaveChangesAsync();
             _dbContext.ChangeTracker.Clear();
 
-            var requestQuery = _dbContext.Trades
+            var requestQuery = _dbContext.Exchanges
                 .Where(t => t.ProposerId == _trades.ProposerId && t.ToId == _trades.ToId)
                 .Select(t => t.Id);
 
@@ -245,17 +245,17 @@ namespace MTGViewer.Tests.Pages.Transfers
             // Arrange
             await _reviewModel.SetModelContextAsync(_userManager, _trades.ProposerId);
 
-            var trade = await _dbContext.Trades
+            var trade = await _dbContext.Exchanges
                 .AsNoTracking()
                 .FirstAsync(t => t.ProposerId == _trades.ProposerId && t.ToId == _trades.ToId);
 
-            var toQuery = _dbContext.DeckAmounts
+            var toQuery = _dbContext.Amounts
                 .Where(da => da.Intent == Intent.None
                     && da.CardId == trade.CardId
                     && da.LocationId == _trades.ToId)
                 .AsNoTracking();
 
-            var fromQuery = _dbContext.DeckAmounts
+            var fromQuery = _dbContext.Amounts
                 .Where(ca => ca.Intent == Intent.None
                     && ca.CardId == trade.CardId
                     && ca.LocationId == trade.FromId)
@@ -266,7 +266,7 @@ namespace MTGViewer.Tests.Pages.Transfers
             var result = await _reviewModel.OnPostRejectAsync(trade.Id);
             var fromAfter = await fromQuery.SingleOrDefaultAsync();
 
-            var tradesAfter = await _dbContext.Trades
+            var tradesAfter = await _dbContext.Exchanges
                 .Where(t => t.ProposerId == _trades.ProposerId && t.ToId == _trades.ToId)
                 .Select(t => t.Id)
                 .ToListAsync();
@@ -284,23 +284,23 @@ namespace MTGViewer.Tests.Pages.Transfers
             // Arrange
             await _reviewModel.SetModelContextAsync(_userManager, _trades.ProposerId);
 
-            var trade = await _dbContext.Trades
+            var trade = await _dbContext.Exchanges
                 .AsNoTracking()
                 .FirstAsync(t => t.ProposerId == _trades.ProposerId && t.ToId == _trades.ToId);
 
-            var toQuery = _dbContext.DeckAmounts
+            var toQuery = _dbContext.Amounts
                 .Where(da => da.Intent == Intent.None
                     && da.CardId == trade.CardId
                     && da.LocationId == _trades.ToId)
                 .AsNoTracking();
 
-            var fromQuery = _dbContext.DeckAmounts
+            var fromQuery = _dbContext.Amounts
                 .Where(da => da.Intent == Intent.None
                     && da.CardId == trade.CardId
                     && da.LocationId == trade.FromId)
                 .AsNoTracking();
 
-            var wrongTrade = await _dbContext.Trades
+            var wrongTrade = await _dbContext.Exchanges
                 .AsNoTracking()
                 .FirstAsync(t => t.ToId != _trades.ToId);
 
@@ -309,7 +309,7 @@ namespace MTGViewer.Tests.Pages.Transfers
             var result = await _reviewModel.OnPostRejectAsync(wrongTrade.Id);
             var fromAfter = await fromQuery.SingleOrDefaultAsync();
 
-            var tradesAfter = await _dbContext.Trades
+            var tradesAfter = await _dbContext.Exchanges
                 .Where(t => t.ProposerId == _trades.ProposerId && t.ToId == _trades.ToId)
                 .Select(t => t.Id)
                 .ToListAsync();
@@ -325,19 +325,19 @@ namespace MTGViewer.Tests.Pages.Transfers
         public async Task OnPostReject_ValidTrade_RemovesTrade()
         {
             // Arrange
-            var trade = await _dbContext.Trades
+            var trade = await _dbContext.Exchanges
                 .AsNoTracking()
                 .FirstAsync(t => t.ProposerId == _trades.Proposer.Id && t.ToId == _trades.ToId);
 
             await _reviewModel.SetModelContextAsync(_userManager, trade.ReceiverId);
 
-            var toQuery = _dbContext.DeckAmounts
+            var toQuery = _dbContext.Amounts
                 .Where(ca => ca.Intent == Intent.None
                     && ca.CardId == trade.CardId
                     && ca.LocationId == _trades.ToId)
                 .AsNoTracking();
 
-            var fromQuery = _dbContext.DeckAmounts
+            var fromQuery = _dbContext.Amounts
                 .Where(da => da.Intent == Intent.None
                     && da.CardId == trade.CardId
                     && da.LocationId == trade.FromId)
@@ -348,7 +348,7 @@ namespace MTGViewer.Tests.Pages.Transfers
             var result = await _reviewModel.OnPostRejectAsync(trade.Id);
             var fromAfter = await fromQuery.SingleOrDefaultAsync();
 
-            var tradesAfter = await _dbContext.Trades
+            var tradesAfter = await _dbContext.Exchanges
                 .Where(t => t.ProposerId == _trades.ProposerId && t.ToId == _trades.ToId)
                 .Select(t => t.Id)
                 .ToListAsync();

@@ -56,13 +56,13 @@ namespace MTGViewer.Pages.Transfers
                 return NotFound();
             }
 
-            if (!deck.Cards.Any())
+            if (!deck.ExchangesTo.Any(ex => !ex.IsTrade))
             {
                 PostMessage = "There are no possible requests";
                 return RedirectToPage("./Index");
             }
 
-            if (deck.TradesTo.Any())
+            if (deck.ExchangesTo.Any(ex => ex.IsTrade))
             {
                 return RedirectToPage("./Status", new { deckId });
             }
@@ -86,38 +86,37 @@ namespace MTGViewer.Pages.Transfers
             var userDeck = _dbContext.Decks
                 .Where(d => d.Id == deckId && d.OwnerId == userId);
 
-            var withCardRequests = userDeck
+            var withCards = userDeck
                 .Include(d => d.Cards
-                    .Where(da => da.Intent == Intent.Take)
                     .OrderBy(da => da.Card.Name))
                     .ThenInclude(ca => ca.Card);
 
-            var withTradeRequests = withCardRequests
-                .Include(d => d.TradesTo
-                    .Where(t => t.ProposerId == userId))
-                .AsSplitQuery();
+            var withTradeRequests = withCards
+                .Include(d => d.ExchangesTo
+                    .OrderBy(da => da.Card.Name))
+                    .ThenInclude(ca => ca.Card);
 
-            return withTradeRequests;
+            return withTradeRequests.AsSplitQuery();
         }
 
 
-        private IQueryable<DeckAmount> RequestTargetsFor(Deck deck)
+        private IQueryable<CardAmount> RequestTargetsFor(Deck deck)
         {
-            var deckIncludes = _dbContext.DeckAmounts
+            var deckIncludes = _dbContext.Amounts
                 .Include(ca => ca.Card)
-                .Include(ca => ca.Deck)
-                    .ThenInclude(d => d.Owner);
+                .Include(ca => ca.Location)
+                    .ThenInclude(l => (l as Deck).Owner);
 
-            // Cards only has takes
-            var requestNames = deck.Cards
+            var requestNames = deck.ExchangesTo
+                .Where(ex => !ex.IsTrade)
                 .Select(ca => ca.Card.Name)
                 .Distinct()
                 .ToArray();
 
             return deckIncludes
-                .Where(da => da.Intent == Intent.None
-                    && da.Deck.OwnerId != deck.OwnerId
-                    && requestNames.Contains(da.Card.Name));
+                .Where(ca => ca.Location is Deck
+                    && (ca.Location as Deck).OwnerId != deck.OwnerId
+                    && requestNames.Contains(ca.Card.Name));
         }
 
 
@@ -134,7 +133,7 @@ namespace MTGViewer.Pages.Transfers
                 return NotFound();
             }
 
-            if (deck.TradesTo.Any())
+            if (deck.ExchangesTo.Any(ex => ex.IsTrade))
             {
                 PostMessage = "Request is already sent";
                 return RedirectToPage("./Index");
@@ -148,7 +147,7 @@ namespace MTGViewer.Pages.Transfers
                 return RedirectToPage("./Index");
             }
 
-            _dbContext.Trades.AttachRange(tradeRequests);
+            _dbContext.Exchanges.AttachRange(tradeRequests);
 
             try
             {
@@ -165,26 +164,25 @@ namespace MTGViewer.Pages.Transfers
         }
 
 
-        private async Task<IEnumerable<Trade>> CreateTradeRequestsAsync(Deck deck)
+        private async Task<IEnumerable<Exchange>> CreateTradeRequestsAsync(Deck deck)
         {
-            // deck.Cards will only be requests
-            if (!deck.Cards.Any())
+            if (!deck.ExchangesTo.Any(ex => !ex.IsTrade))
             {
-                return Enumerable.Empty<Trade>();
+                return Enumerable.Empty<Exchange>();
             }
 
             var requestTargets = await RequestTargetsFor(deck).ToListAsync();
 
             if (!requestTargets.Any())
             {
-                return Enumerable.Empty<Trade>();
+                return Enumerable.Empty<Exchange>();
             }
 
             return FindTradeMatches(deck, requestTargets);
         }
 
 
-        private IReadOnlyList<Trade> FindTradeMatches(Deck deck, IEnumerable<DeckAmount> targets)
+        private IReadOnlyList<Exchange> FindTradeMatches(Deck deck, IEnumerable<CardAmount> targets)
         {
             // TODO: figure out how to query more on server
             var requestGroups = deck.Cards
@@ -200,16 +198,18 @@ namespace MTGViewer.Pages.Transfers
                         (target, amount: Math.Min(target.Amount, group.Amount)) );
 
             var newTrades = requestMatches
-                .Select(ta => new Trade
+                .Select(ta => 
                 {
-                    Card = ta.target.Card,
-                    Amount = ta.amount,
-                    To = deck,
-                    From = ta.target.Deck,
-                    Proposer = deck.Owner,
-                    Receiver = ta.target.Deck.Owner,
+                    var from = (Deck)ta.target.Location;
+                    return new Exchange
+                    {
+                        Card = ta.target.Card,
+                        To = deck,
+                        From = from,
+                        Amount = ta.amount,
+                    };
                 });
-            
+                
             return newTrades.ToList();
         }
     }

@@ -11,60 +11,62 @@ using MTGViewer.Data.Internal;
 
 namespace MTGViewer.Data
 {
+    [Index(
+        nameof(LocationId),
+        nameof(CardId), IsUnique = true)]
     public class CardAmount : Concurrent
     {
-        protected CardAmount()
-        { }
-
         [JsonRequired]
         public int Id { get; private set; }
 
-        [JsonIgnore]
-        internal Discriminator Type { get; private set; }
+        // [JsonIgnore]
+        // internal Discriminator Type { get; private set; }
 
         [JsonIgnore]
         public Card Card { get; init; } = null!;
         public string CardId { get; init; } = null!;
 
+
         [JsonIgnore]
         public Location Location { get; init; } = null!;
         public int LocationId { get; init; }
+
 
         [Range(0, int.MaxValue)]
         public int Amount { get; set; }
     }
 
 
-    public class BoxAmount : CardAmount
-    {
-        public BoxAmount() : base()
-        { }
+    // public class BoxAmount : CardAmount
+    // {
+    //     public BoxAmount() : base()
+    //     { }
 
-        [JsonIgnore]
-        public Box Box
-        {
-            get => (Location as Box)!;
-            init => Location = value;
-        }
-    }
+    //     [JsonIgnore]
+    //     public Box Box
+    //     {
+    //         get => (Location as Box)!;
+    //         init => Location = value;
+    //     }
+    // }
 
 
-    [Index(
-        nameof(LocationId),
-        nameof(CardId),
-        nameof(Intent), IsUnique = true)]
-    public class DeckAmount : CardAmount
-    {
-        public DeckAmount() : base()
-        { }
+    // [Index(
+    //     nameof(LocationId),
+    //     nameof(CardId),
+    //     nameof(Intent), IsUnique = true)]
+    // public class DeckAmount : CardAmount
+    // {
+    //     public DeckAmount() : base()
+    //     { }
 
-        [JsonIgnore]
-        public Deck Deck
-        {
-            get => (Location as Deck)!;
-            init => Location = value;
-        }
+    //     [JsonIgnore]
+    //     public Deck Deck
+    //     {
+    //         get => (Location as Deck)!;
+    //         init => Location = value;
+    //     }
 
-        public Intent Intent { get; init; }
-    }
+    //     public Intent Intent { get; init; }
+    // }
 }

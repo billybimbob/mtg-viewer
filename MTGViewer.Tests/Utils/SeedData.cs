@@ -80,7 +80,7 @@ namespace MTGViewer.Tests.Utils
                 });
 
             dbContext.Attach(newDeck);
-            dbContext.DeckAmounts.AttachRange(deckAmounts);
+            dbContext.Amounts.AttachRange(deckAmounts);
 
             await dbContext.SaveChangesAsync();
             dbContext.ChangeTracker.Clear();
@@ -121,7 +121,7 @@ namespace MTGViewer.Tests.Utils
                         Location = deck
                     });
 
-                dbContext.DeckAmounts.AddRange(amounts);
+                dbContext.Amounts.AddRange(amounts);
                 cardOptions.Add(card);
             }
 
@@ -148,7 +148,7 @@ namespace MTGViewer.Tests.Utils
                 .ToList();
 
             dbContext.Decks.Attach(newDeck);
-            dbContext.DeckAmounts.AttachRange(requests);
+            dbContext.Amounts.AttachRange(requests);
 
             await dbContext.SaveChangesAsync();
             dbContext.ChangeTracker.Clear();
@@ -185,7 +185,7 @@ namespace MTGViewer.Tests.Utils
         private record TradeLocations(Deck To, IReadOnlyList<Deck> From) { }
 
 
-        private static async Task<IReadOnlyList<Trade>> CreateTradesAsync(
+        private static async Task<IReadOnlyList<Exchange>> CreateTradesAsync(
             this CardDbContext dbContext,
             UserRef proposer, 
             UserRef receiver)
@@ -195,7 +195,7 @@ namespace MTGViewer.Tests.Utils
             var cards = await dbContext.Cards.ToListAsync();
             var amountTrades = _random.Next(1, cards.Count / 2);
 
-            var trades = new List<Trade>();
+            var trades = new List<Exchange>();
 
             foreach(var tradeCard in cards.Take(amountTrades))
             {
@@ -215,7 +215,7 @@ namespace MTGViewer.Tests.Utils
                 });
             }
 
-            dbContext.Trades.AddRange(trades);
+            dbContext.Exchanges.AddRange(trades);
 
             return trades;
         }
@@ -263,7 +263,7 @@ namespace MTGViewer.Tests.Utils
         private static async Task<DeckAmount> GetFromAmountAsync(
             this CardDbContext dbContext, Card card, Deck from)
         {
-            var fromAmount = await dbContext.DeckAmounts
+            var fromAmount = await dbContext.Amounts
                 .SingleOrDefaultAsync(da =>
                     da.LocationId == from.Id
                         && da.CardId == card.Id
@@ -279,7 +279,7 @@ namespace MTGViewer.Tests.Utils
                     Intent = Intent.None
                 };
 
-                dbContext.DeckAmounts.Attach(fromAmount);
+                dbContext.Amounts.Attach(fromAmount);
             }
 
             return fromAmount;
@@ -289,7 +289,7 @@ namespace MTGViewer.Tests.Utils
         private static async Task<DeckAmount> GetToRequestAsync(
             this CardDbContext dbContext, Card card, Deck to, int maxAmount)
         {
-            var toRequest = await dbContext.DeckAmounts
+            var toRequest = await dbContext.Amounts
                 .SingleOrDefaultAsync(da =>
                     da.LocationId == to.Id
                         && da.CardId == card.Id
@@ -305,7 +305,7 @@ namespace MTGViewer.Tests.Utils
                     Intent = Intent.Take
                 };
 
-                dbContext.DeckAmounts.Attach(toRequest);
+                dbContext.Amounts.Attach(toRequest);
             }
 
             return toRequest;
@@ -319,13 +319,13 @@ namespace MTGViewer.Tests.Utils
                 .AsNoTracking()
                 .FirstAsync();
 
-            var takeTarget = await dbContext.BoxAmounts
+            var takeTarget = await dbContext.Amounts
                 .Where(ba => ba.Amount > 0)
                 .Select(ba => ba.Card)
                 .AsNoTracking()
                 .FirstAsync();
 
-            var deckTake = await dbContext.DeckAmounts
+            var deckTake = await dbContext.Amounts
                 .Include(ba => ba.Card)
                 .SingleOrDefaultAsync(da =>
                     da.LocationId == deckTarget.Id
@@ -341,10 +341,10 @@ namespace MTGViewer.Tests.Utils
                     Intent = Intent.Take
                 };
 
-                dbContext.DeckAmounts.Attach(deckTake);
+                dbContext.Amounts.Attach(deckTake);
             }
 
-            var targetCap = await dbContext.BoxAmounts
+            var targetCap = await dbContext.Amounts
                 .Where(ba => ba.CardId == deckTake.CardId)
                 .Select(ba => ba.Amount)
                 .SumAsync();
@@ -361,13 +361,13 @@ namespace MTGViewer.Tests.Utils
         internal static async Task<DeckAmount> GetReturnRequestAsync(
             this CardDbContext dbContext, int targetMod = 0)
         {
-            var returnTarget = await dbContext.DeckAmounts
+            var returnTarget = await dbContext.Amounts
                 .Include(da => da.Card)
                 .Include(da => da.Location)
                 .AsNoTracking()
                 .FirstAsync(da => da.Amount > 0);
 
-            var deckReturn = await dbContext.DeckAmounts
+            var deckReturn = await dbContext.Amounts
                 .SingleOrDefaultAsync(da =>
                     da.LocationId == returnTarget.LocationId
                         && da.CardId == returnTarget.CardId
@@ -382,7 +382,7 @@ namespace MTGViewer.Tests.Utils
                     Intent = Intent.Return
                 };
 
-                dbContext.DeckAmounts.Attach(deckReturn);
+                dbContext.Amounts.Attach(deckReturn);
             }
 
             deckReturn.Amount = Math.Max(1, returnTarget.Amount + targetMod);

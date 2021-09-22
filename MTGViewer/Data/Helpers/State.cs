@@ -13,9 +13,6 @@ namespace MTGViewer.Data.Internal
     {
         Invalid,
 
-        Suggestion,
-        Trade,
-
         Box,
         Deck,
 
@@ -30,6 +27,7 @@ namespace MTGViewer.Data
     public enum Intent
     {
         None,
+        Trade,
         Take,
         Return,
     }

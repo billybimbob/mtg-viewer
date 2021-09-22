@@ -9,12 +9,12 @@ using Microsoft.Extensions.Logging;
 
 namespace MTGViewer.Data.Triggers
 {
-    public class AmountValidate : IAfterSaveTrigger<DeckAmount>
+    public class AmountValidate : IAfterSaveTrigger<CardAmount>
     {
         private readonly CardDbContext _dbContext;
-        private readonly ILogger<LiteTokenUpdate> _logger;
+        private readonly ILogger<AmountValidate> _logger;
 
-        public AmountValidate(CardDbContext dbContext, ILogger<LiteTokenUpdate> logger)
+        public AmountValidate(CardDbContext dbContext, ILogger<AmountValidate> logger)
         {
             _dbContext = dbContext;
             _logger = logger;
@@ -49,27 +49,36 @@ namespace MTGViewer.Data.Triggers
         // }
 
 
-        public async Task AfterSave(ITriggerContext<DeckAmount> trigContext, CancellationToken cancel)
+        public async Task AfterSave(ITriggerContext<CardAmount> trigContext, CancellationToken cancel)
         {
             if (trigContext.ChangeType == ChangeType.Deleted)
             {
                 return;
             }
 
-            var deckAmount = trigContext.Entity;
+            var cardAmount = trigContext.Entity;
 
-            if (_dbContext.Entry(deckAmount).State == EntityState.Detached)
+            if (_dbContext.Entry(cardAmount).State == EntityState.Detached)
             {
                 // attach just to load
-                _dbContext.DeckAmounts.Attach(deckAmount);
+                _dbContext.Amounts.Attach(cardAmount);
             }
 
-            if (deckAmount.Amount > 0)
+            if (cardAmount.Amount > 0)
             {
                 return;
             }
 
-            _dbContext.Entry(deckAmount).State = EntityState.Deleted;
+            await _dbContext.Entry(cardAmount)
+                .Reference(ca => ca.Location)
+                .LoadAsync();
+
+            if (cardAmount.Location is not Deck)
+            {
+                return;
+            }
+
+            _dbContext.Entry(cardAmount).State = EntityState.Deleted;
 
             try
             {

@@ -124,7 +124,7 @@ namespace MTGViewer.Pages.Transfers
                     .ThenInclude(ca => ca.Card);
 
 
-            var userCardAmounts = _dbContext.DeckAmounts
+            var userCardAmounts = _dbContext.Amounts
                 .Where(da => da.Card.Name == card.Name
                     && da.Deck.OwnerId == user.Id);
 
@@ -156,7 +156,7 @@ namespace MTGViewer.Pages.Transfers
                 .Select(dt => dt.deck);
 
 
-            var tradesWithCard = _dbContext.Trades
+            var tradesWithCard = _dbContext.Exchanges
                 .Where(t => t.Card.Name == card.Name
                     && (t.ProposerId == user.Id || t.ReceiverId == user.Id));
 

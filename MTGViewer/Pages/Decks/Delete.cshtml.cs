@@ -44,7 +44,7 @@ namespace MTGViewer.Pages.Decks
 
         public Deck? Deck { get; private set; }
         public IReadOnlyList<RequestNameGroup>? Cards { get; private set; }
-        public IReadOnlyList<Trade>? Trades { get; private set; }
+        public IReadOnlyList<Exchange>? Trades { get; private set; }
 
 
         public async Task<IActionResult> OnGetAsync(int id)
@@ -52,8 +52,7 @@ namespace MTGViewer.Pages.Decks
             var userId = _userManager.GetUserId(User);
 
             var deck = await _dbContext.Decks
-                .Include(l => l.Cards
-                    .Where(da => da.Intent != Intent.Return)
+                .Include(d => d.Cards
                     .OrderBy(da => da.Card.Name))
                     .ThenInclude(da => da.Card)
                 .FirstOrDefaultAsync(l =>
@@ -64,20 +63,24 @@ namespace MTGViewer.Pages.Decks
                 return NotFound();
             }
 
-            var deckTrades = await _dbContext.Trades
-                .Where(t => t.ToId == id || t.FromId == id)
-                .Include(t => t.Card)
-                .Include(t => t.Proposer)
-                .Include(t => t.Receiver)
-                .Include(t => t.To)
-                .Include(t => t.From)
-                .OrderBy(t => t.Card.Name)
+            var deckTrades = await _dbContext.Exchanges
+                .Where(ex => (ex.ToId == id || ex.FromId == id) && ex.IsTrade)
+                .Include(ex => ex.Card)
+                .Include(ex => ex.To)
+                .Include(ex => ex.From)
+                .OrderBy(ex => ex.Card.Name)
                 .ToListAsync();
 
             Deck = deck;
+
             Cards = deck.Cards
-                .GroupBy(ca => ca.Card.Name,
-                    (_, amounts) => new RequestNameGroup(amounts))
+                .GroupBy( ca => ca.Card.Name,
+                    (name, amounts) => (name, amounts))
+                .GroupJoin( deckTrades,
+                    nas => nas.name,
+                    ex => ex.Card.Name,
+                    (nas, exchanges) =>
+                        new RequestNameGroup(nas.amounts, exchanges))
                 .ToList();
 
             Trades = deckTrades;
@@ -103,11 +106,10 @@ namespace MTGViewer.Pages.Decks
             }
 
             var returningCards = deck.Cards
-                .Where(da => da.Intent is Intent.None)
                 .Select(da => (da.Card, da.Amount))
                 .ToList();
 
-            _dbContext.DeckAmounts.RemoveRange(deck.Cards);
+            _dbContext.Amounts.RemoveRange(deck.Cards);
             _dbContext.Decks.Remove(deck);
 
             try
