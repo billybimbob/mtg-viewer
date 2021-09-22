@@ -125,8 +125,9 @@ namespace MTGViewer.Pages.Transfers
 
 
             var userCardAmounts = _dbContext.Amounts
-                .Where(da => da.Card.Name == card.Name
-                    && da.Deck.OwnerId == user.Id);
+                .Where(ca => ca.Card.Name == card.Name
+                    && ca.Location is Deck
+                    && (ca.Location as Deck).OwnerId == user.Id);
 
             var withoutAmounts = userDecks
                 .GroupJoin( userCardAmounts,
@@ -141,38 +142,41 @@ namespace MTGViewer.Pages.Transfers
 
 
             var suggestsWithCard = _dbContext.Suggestions
-                .Where(s => s.Card.Name == card.Name
-                    && (s.ProposerId == user.Id || s.ReceiverId == user.Id));
+                .Where(s => 
+                    s.Card.Name == card.Name && s.ReceiverId == user.Id);
 
             var withoutSuggests = withoutAmounts
                 .GroupJoin( suggestsWithCard,
                     deck => deck.Id,
                     transfer => transfer.ToId,
-                    (deck, transfers) => new { deck, transfers })
+                    (deck, suggests) => new { deck, suggests })
                 .SelectMany(
-                    dts => dts.transfers.DefaultIfEmpty(),
-                    (dts, transfer) => new { dts.deck, transfer })
-                .Where(dt => dt.transfer == default)
+                    dts => dts.suggests.DefaultIfEmpty(),
+                    (dts, suggest) => new { dts.deck, suggest })
+                .Where(dt => dt.suggest == default)
                 .Select(dt => dt.deck);
 
 
             var tradesWithCard = _dbContext.Exchanges
-                .Where(t => t.Card.Name == card.Name
-                    && (t.ProposerId == user.Id || t.ReceiverId == user.Id));
+                .Where(ex => ex.IsTrade
+                    && ex.Card.Name == card.Name
+                    && ex.ToId != default
+                    && ex.To.OwnerId == user.Id);
 
             var withoutTrades = withoutSuggests
                 .GroupJoin( tradesWithCard,
                     deck => deck.Id,
                     transfer => transfer.ToId,
-                    (deck, transfers) => new { deck, transfers })
+                    (deck, trades) => new { deck, trades })
                 .SelectMany(
-                    dts => dts.transfers.DefaultIfEmpty(),
-                    (dts, transfer) => new { dts.deck, transfer })
-                .Where(dt => dt.transfer == default)
+                    dts => dts.trades.DefaultIfEmpty(),
+                    (dts, trade) => new { dts.deck, trade })
+                .Where(dt => dt.trade == default)
                 .Select(dt => dt.deck);
 
 
             return await withoutTrades
+                .AsSplitQuery()
                 .AsNoTrackingWithIdentityResolution()
                 .ToListAsync();
         }

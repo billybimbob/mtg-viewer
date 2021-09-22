@@ -40,7 +40,7 @@ namespace MTGViewer.Pages.Transfers
 
         public Deck Deck { get; private set; }
 
-        public IReadOnlyList<CardNameGroup> Requests { get; private set; }
+        public IReadOnlyList<ExchangeNameGroup> Requests { get; private set; }
 
 
         public async Task<IActionResult> OnGetAsync(int deckId)
@@ -72,9 +72,9 @@ namespace MTGViewer.Pages.Transfers
 
             Deck = deck;
 
-            Requests = deck.Cards
+            Requests = deck.ExchangesTo
                 .GroupBy(ca => ca.Card.Name,
-                    (_, amounts) => new CardNameGroup(amounts))
+                    (_, exchanges) => new ExchangeNameGroup(exchanges))
                 .ToList();
 
             return Page();
@@ -86,17 +86,12 @@ namespace MTGViewer.Pages.Transfers
             var userDeck = _dbContext.Decks
                 .Where(d => d.Id == deckId && d.OwnerId == userId);
 
-            var withCards = userDeck
-                .Include(d => d.Cards
-                    .OrderBy(da => da.Card.Name))
-                    .ThenInclude(ca => ca.Card);
-
-            var withTradeRequests = withCards
+            var withTradeRequests = userDeck
                 .Include(d => d.ExchangesTo
                     .OrderBy(da => da.Card.Name))
                     .ThenInclude(ca => ca.Card);
 
-            return withTradeRequests.AsSplitQuery();
+            return withTradeRequests;
         }
 
 

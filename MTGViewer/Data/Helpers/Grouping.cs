@@ -7,62 +7,62 @@ using System.Linq;
 
 namespace MTGViewer.Data
 {
-    /// <summary>Group of card amounts with the exact same card</summary>
-    public class CardGroup : IEnumerable<CardAmount>
-    {
-        public CardGroup(IEnumerable<CardAmount> amounts)
-        {
-            _amounts = new(amounts);
+    // /// <summary>Group of card amounts with the exact same card</summary>
+    // public class CardGroup : IEnumerable<CardAmount>
+    // {
+    //     public CardGroup(IEnumerable<CardAmount> amounts)
+    //     {
+    //         _amounts = new(amounts);
 
-            if (!_amounts.Any())
-            {
-                throw new ArgumentException("The amounts are empty");
-            }
+    //         if (!_amounts.Any())
+    //         {
+    //             throw new ArgumentException("The amounts are empty");
+    //         }
 
-            if (_amounts.Any(ca => ca.Card != Card)
-                && _amounts.Any(ca => ca.CardId != CardId))
-            {
-                throw new ArgumentException("All cards do not match the name");
-            }
-        }
-
-
-        private readonly LinkedList<CardAmount> _amounts;
-
-        private CardAmount First => _amounts.First!.Value;
-
-        public string CardId => First.CardId;
-        public Card Card => First.Card;
+    //         if (_amounts.Any(ca => ca.Card != Card)
+    //             && _amounts.Any(ca => ca.CardId != CardId))
+    //         {
+    //             throw new ArgumentException("All cards do not match the name");
+    //         }
+    //     }
 
 
-        public int Amount
-        {
-            get => _amounts.Sum(ca => ca.Amount);
-            set
-            {
-                int change = Amount - value;
-                while (change < 0 || change > 0 && First.Amount > 0)
-                {
-                    int mod = Math.Min(change, First.Amount);
+    //     private readonly LinkedList<CardAmount> _amounts;
 
-                    First.Amount -= mod;
-                    change -= mod;
+    //     private CardAmount First => _amounts.First!.Value;
 
-                    if (First.Amount == 0)
-                    {
-                        // cycle amount
-                        var firstLink = _amounts.First!;
-                        _amounts.Remove(firstLink);
-                        _amounts.AddLast(firstLink);
-                    }
-                }
-            }
-        }
+    //     public string CardId => First.CardId;
+    //     public Card Card => First.Card;
 
-        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
-        public IEnumerator<CardAmount> GetEnumerator() => _amounts.GetEnumerator();
-    }
+    //     public int Amount
+    //     {
+    //         get => _amounts.Sum(ca => ca.Amount);
+    //         set
+    //         {
+    //             int change = Amount - value;
+    //             while (change < 0 || change > 0 && First.Amount > 0)
+    //             {
+    //                 int mod = Math.Min(change, First.Amount);
+
+    //                 First.Amount -= mod;
+    //                 change -= mod;
+
+    //                 if (First.Amount == 0)
+    //                 {
+    //                     // cycle amount
+    //                     var firstLink = _amounts.First!;
+    //                     _amounts.Remove(firstLink);
+    //                     _amounts.AddLast(firstLink);
+    //                 }
+    //             }
+    //         }
+    //     }
+
+    //     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+
+    //     public IEnumerator<CardAmount> GetEnumerator() => _amounts.GetEnumerator();
+    // }
 
 
 
@@ -235,17 +235,25 @@ namespace MTGViewer.Data
     /// <summary>Group of deck amounts with the same deck and same card</summary>
     public class RequestGroup
     {
-        public RequestGroup(CardAmount? actual, IEnumerable<Exchange> exchanges)
+        public RequestGroup(CardAmount? amount, IEnumerable<Exchange> exchanges)
         {
-            _actual = actual;
+            _actual = amount;
             _take = exchanges.FirstOrDefault(ex => !ex.IsTrade && ex.ToId != default);
             _return = exchanges.FirstOrDefault(ex => !ex.IsTrade && ex.FromId != default);
 
             CheckGroup();
         }
 
-        public RequestGroup(CardAmount? actual, params Exchange[] exchanges)
-            : this(actual, exchanges.AsEnumerable())
+        public RequestGroup(CardAmount? amount, params Exchange[] exchanges)
+            : this(amount, exchanges.AsEnumerable())
+        { }
+
+        public RequestGroup(IEnumerable<Exchange> exchanges)
+            : this(null, exchanges)
+        { }
+
+        public RequestGroup(params Exchange[] exchanges)
+            : this(exchanges.AsEnumerable())
         { }
 
 
@@ -406,17 +414,20 @@ namespace MTGViewer.Data
     {
         public RequestNameGroup(IEnumerable<CardAmount> amounts, IEnumerable<Exchange> exchanges)
         {
-            if (!amounts.Any())
-            {
-                throw new ArgumentException("The group is empty");
-            }
+            // do a full outer join
+            var amountTable = amounts.ToDictionary(ca => ca.CardId);
+            var exchangeLookup = exchanges.ToLookup(ex => ex.CardId);
 
-            _requestGroups = amounts
-                .GroupJoin( exchanges,
-                    ca => ca.CardId,
-                    ex => ex.CardId,
-                    (amount, exchanges) =>
-                        new RequestGroup(amount, exchanges))
+            var allCardIds = exchangeLookup
+                .Select(g => g.Key)
+                .Union(amountTable.Keys);
+
+            _requestGroups = allCardIds
+                .Select(cid =>
+                {
+                    amountTable.TryGetValue(cid, out var amount);
+                    return new RequestGroup(amount, exchangeLookup[cid]);
+                })
                 .ToList();
 
             CheckGroups();

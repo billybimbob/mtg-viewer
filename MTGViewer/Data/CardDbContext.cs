@@ -14,20 +14,21 @@ namespace MTGViewer.Data
 
 
         public DbSet<UserRef> Users => Set<UserRef>();
+
         public DbSet<Card> Cards => Set<Card>();
-
-
         public DbSet<CardAmount> Amounts => Set<CardAmount>();
 
         // public DbSet<Location> Locations => Set<Location>();
         public DbSet<Deck> Decks => Set<Deck>();
-
         public DbSet<Box> Boxes => Set<Box>();
         public DbSet<Bin> Bins => Set<Bin>();
 
-        public DbSet<Suggestion> Suggestions => Set<Suggestion>();
         public DbSet<Exchange> Exchanges => Set<Exchange>();
+        public DbSet<Suggestion> Suggestions => Set<Suggestion>();
+
         public DbSet<Change> Changes => Set<Change>();
+        public DbSet<Transaction> Transactions => Set<Transaction>();
+
 
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -41,15 +42,6 @@ namespace MTGViewer.Data
 
             new LocationConfiguration()
                 .Configure(modelBuilder.Entity<Location>());
-            
-            // new BoxConfiguration()
-            //     .Configure(modelBuilder.Entity<Box>());
-
-            // new DeckConfiguration()
-            //     .Configure(modelBuilder.Entity<Deck>());
-
-            // new AmountConfiguration()
-            //     .Configure(modelBuilder.Entity<CardAmount>());
 
             new ExchangeConfiguration()
                 .Configure(modelBuilder.Entity<Exchange>());
@@ -59,6 +51,9 @@ namespace MTGViewer.Data
             
             new TransactionConfiguration()
                 .Configure(modelBuilder.Entity<Transaction>());
+
+            new SuggestionConfiguration()
+                .Configure(modelBuilder.Entity<Suggestion>());
         }
     }
 
@@ -92,43 +87,6 @@ namespace MTGViewer.Data
                 .OnDelete(DeleteBehavior.Restrict);
         }
     }
-
-
-    // public class BoxConfiguration : IEntityTypeConfiguration<Box>
-    // {
-    //     public void Configure(EntityTypeBuilder<Box> builder)
-    //     {
-    //         builder
-    //             .HasMany(b => b.Cards)
-    //             .WithOne(ba => ba.Box)
-    //             .OnDelete(DeleteBehavior.Restrict);
-    //     }
-    // }
-
-
-    // public class DeckConfiguration : IEntityTypeConfiguration<Deck>
-    // {
-    //     public void Configure(EntityTypeBuilder<Deck> builder)
-    //     {
-    //         builder
-    //             .HasMany(d => d.Cards)
-    //             .WithOne(da => da.Deck)
-    //             .OnDelete(DeleteBehavior.Restrict);
-    //     }
-    // }
-
-
-    // public class AmountConfiguration : IEntityTypeConfiguration<CardAmount>
-    // {
-    //     public void Configure(EntityTypeBuilder<CardAmount> builder)
-    //     {
-    //         builder
-    //             .HasDiscriminator(ca => ca.Type)
-    //                 .HasValue<CardAmount>(Discriminator.Invalid)
-    //                 .HasValue<BoxAmount>(Discriminator.BoxAmount)
-    //                 .HasValue<DeckAmount>(Discriminator.DeckAmount);
-    //     }
-    // }
 
 
     public class ExchangeConfiguration : IEntityTypeConfiguration<Exchange>

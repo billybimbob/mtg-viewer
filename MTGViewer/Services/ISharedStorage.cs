@@ -10,7 +10,7 @@ namespace MTGViewer.Services
     {
         IQueryable<Box> Boxes { get; }
 
-        IQueryable<BoxAmount> Cards { get; }
+        IQueryable<CardAmount> Cards { get; }
 
         Task ReturnAsync(IEnumerable<(Card, int numCopies)> returns);
 

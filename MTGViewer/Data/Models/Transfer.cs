@@ -2,7 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using Microsoft.EntityFrameworkCore;
+
 using Newtonsoft.Json;
+using MTGViewer.Data.Concurrency;
 
 #nullable enable
 
@@ -40,7 +42,7 @@ namespace MTGViewer.Data
         nameof(ToId),
         nameof(FromId),
         nameof(CardId), IsUnique = true)]
-    public class Exchange
+    public class Exchange : Concurrent
     {
         [JsonRequired]
         public int Id { get; private set; }
@@ -72,9 +74,10 @@ namespace MTGViewer.Data
         [JsonIgnore]
         public bool IsTrade
         {
-            get =>  _isTrade
+            get => _isTrade
                 || (ToId != null || To != null)
                     && (FromId != null || From != null);
+
             private init => _isTrade = value;
         }
     }
@@ -107,8 +110,9 @@ namespace MTGViewer.Data
         public int Amount { get; set; }
 
 
-        public int TransactionId { get; init; }
+        [JsonIgnore]
         public Transaction Transaction { get; init; } = null!;
+        public int TransactionId { get; init; }
     }
 
 

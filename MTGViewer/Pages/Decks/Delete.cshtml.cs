@@ -43,49 +43,80 @@ namespace MTGViewer.Pages.Decks
         public string? PostMesssage { get; set; }
 
         public Deck? Deck { get; private set; }
-        public IReadOnlyList<RequestNameGroup>? Cards { get; private set; }
+        public IReadOnlyList<RequestNameGroup>? NameGroups { get; private set; }
+
         public IReadOnlyList<Exchange>? Trades { get; private set; }
 
 
         public async Task<IActionResult> OnGetAsync(int id)
         {
-            var userId = _userManager.GetUserId(User);
-
-            var deck = await _dbContext.Decks
-                .Include(d => d.Cards
-                    .OrderBy(da => da.Card.Name))
-                    .ThenInclude(da => da.Card)
-                .FirstOrDefaultAsync(l =>
-                    l.Id == id && l.OwnerId == userId);
+            var deck = await DeckWithExchanges(id).FirstOrDefaultAsync();
 
             if (deck == default)
             {
                 return NotFound();
             }
 
-            var deckTrades = await _dbContext.Exchanges
-                .Where(ex => (ex.ToId == id || ex.FromId == id) && ex.IsTrade)
-                .Include(ex => ex.Card)
-                .Include(ex => ex.To)
-                .Include(ex => ex.From)
+            var deckTrades = deck.GetAllExchanges()
+                .Where(ex => ex.IsTrade)
                 .OrderBy(ex => ex.Card.Name)
-                .ToListAsync();
+                .ToList();
 
             Deck = deck;
 
-            Cards = deck.Cards
-                .GroupBy( ca => ca.Card.Name,
-                    (name, amounts) => (name, amounts))
-                .GroupJoin( deckTrades,
-                    nas => nas.name,
-                    ex => ex.Card.Name,
-                    (nas, exchanges) =>
-                        new RequestNameGroup(nas.amounts, exchanges))
-                .ToList();
+            NameGroups = DeckNameGroup(deck).ToList();
 
             Trades = deckTrades;
 
             return Page();
+        }
+
+
+        private IQueryable<Deck> DeckWithExchanges(int deckId)
+        {
+            var userId = _userManager.GetUserId(User);
+
+            var deck = _dbContext.Decks
+                .Where(d => d.Id == deckId && d.OwnerId == userId);
+
+            var withCards = deck
+                .Include(d => d.Cards)
+                    .ThenInclude(da => da.Card);
+
+            var withToTrades = withCards
+                .Include(d => d.ExchangesTo)
+                    .ThenInclude(ex => ex.Card)
+                .Include(d => d.ExchangesTo)
+                    .ThenInclude(ex => ex.From);
+
+            var withFromTrades = withToTrades
+                .Include(d => d.ExchangesFrom)
+                    .ThenInclude(ex => ex.Card)
+                .Include(d => d.ExchangesFrom)
+                    .ThenInclude(ex => ex.To);
+
+            return withFromTrades
+                .AsSplitQuery()
+                .AsNoTrackingWithIdentityResolution();
+        }
+
+
+        private IEnumerable<RequestNameGroup> DeckNameGroup(Deck deck)
+        {
+            var amountsByName = deck.Cards
+                .ToLookup(ca => ca.Card.Name);
+
+            var requestsByName = deck.GetAllExchanges()
+                .Where(ex => !ex.IsTrade)
+                .ToLookup(ex => ex.Card.Name);
+
+            var cardNames = amountsByName
+                .Select(g => g.Key)
+                .Union(requestsByName.Select(g => g.Key))
+                .OrderBy(cn => cn);
+
+            return cardNames.Select(cn =>
+                new RequestNameGroup(amountsByName[cn], requestsByName[cn]));
         }
 
 
@@ -111,6 +142,8 @@ namespace MTGViewer.Pages.Decks
 
             _dbContext.Amounts.RemoveRange(deck.Cards);
             _dbContext.Decks.Remove(deck);
+
+            // keep eye on, possibly remove exchanges and suggestions
 
             try
             {

@@ -61,26 +61,32 @@ namespace MTGViewer.Pages.Decks
 
             var hasReturns = deck.ExchangesFrom.Any(ex => !ex.IsTrade);
 
-            var cardNameGroups = deck.Cards
-                .GroupBy(ca => ca.Card.Name,
-                    (name, amounts) => (name, amounts));
-
-            var deckRequests = deck.ExchangesTo.Concat(deck.ExchangesFrom);
-
-
             Deck = deck;
 
             HasPendings = hasReturns || await AvailablesForTake(deck).AnyAsync();
 
-            CardGroups = cardNameGroups
-                .GroupJoin( deckRequests,
-                    nas => nas.name,
-                    ex => ex.Card.Name,
-                    (nas, exchanges) =>
-                        new RequestNameGroup(nas.amounts, exchanges))
-                .ToList();
+            CardGroups = DeckNameGroups(deck).ToList();
 
             return Page();
+        }
+
+
+        private IEnumerable<RequestNameGroup> DeckNameGroups(Deck deck)
+        {
+            var amountsByName = deck.Cards
+                .ToLookup(ca => ca.Card.Name);
+
+            var requestsByName = deck.GetAllExchanges()
+                .Where(ex => !ex.IsTrade)
+                .ToLookup(ex => ex.Card.Name);
+
+            var cardNames = amountsByName
+                .Select(g => g.Key)
+                .Union(requestsByName.Select(g => g.Key))
+                .OrderBy(cn => cn);
+
+            return cardNames.Select(cn =>
+                new RequestNameGroup(amountsByName[cn], requestsByName[cn]));
         }
 
 
@@ -90,20 +96,17 @@ namespace MTGViewer.Pages.Decks
                 .Where(d => d.Id == deckId && d.OwnerId == userId);
 
             var withCards = userDeck
-                .Include(d => d.Cards
-                    .OrderBy(da => da.Card.Name))
+                .Include(d => d.Cards)
                     .ThenInclude(ca => ca.Card);
 
             var withTakes = withCards
                 .Include(d => d.ExchangesTo
-                    .Where(ex => !ex.IsTrade)
-                    .OrderBy(ex => ex.Card.Name))
+                    .Where(ex => !ex.IsTrade))
                     .ThenInclude(ex => ex.Card);
 
             var withReturns = withTakes
                 .Include(d => d.ExchangesFrom
-                    .Where(ex => !ex.IsTrade)
-                    .OrderBy(ex => ex.Card.Name))
+                    .Where(ex => !ex.IsTrade))
                     .ThenInclude(ex => ex.Card);
 
             return withReturns.AsSplitQuery();
@@ -188,10 +191,7 @@ namespace MTGViewer.Pages.Decks
 
             // do not remove empty availables
             var emptyAmounts = deck.Cards.Where(da => da.Amount == 0);
-
-            var finishedRequests = deck.ExchangesTo
-                .Concat(deck.ExchangesFrom)
-                .Where(ex => ex.Amount == 0);
+            var finishedRequests = deck.GetAllExchanges().Where(ex => ex.Amount == 0);
 
             _dbContext.Amounts.RemoveRange(emptyAmounts);
             _dbContext.Exchanges.RemoveRange(finishedRequests);

@@ -38,11 +38,12 @@ namespace MTGViewer.Services
         }
 
 
-        public IQueryable<Box> Boxes =>
-            _dbContext.Boxes.AsNoTrackingWithIdentityResolution();
+        public IQueryable<Box> Boxes => _dbContext.Boxes
+            .AsNoTrackingWithIdentityResolution();
 
-        public IQueryable<BoxAmount> Cards =>
-            _dbContext.Amounts.AsNoTrackingWithIdentityResolution();
+        public IQueryable<CardAmount> Cards => _dbContext.Amounts
+            .Where(ca => ca.Location is Box)
+            .AsNoTrackingWithIdentityResolution();
 
 
         public async Task ReturnAsync(IEnumerable<(Card, int numCopies)> returns)
@@ -101,8 +102,7 @@ namespace MTGViewer.Services
             }
 
             var returnGroups = returnAmounts
-                .GroupBy(ca => ca.CardId,
-                    (_, amounts) => new CardGroup(amounts))
+                .GroupBy(ca => ca.CardId, (_, amounts) => amounts.First())
                 .ToDictionary(ag => ag.CardId);
 
             foreach (var (card, numCopies) in returning)
@@ -119,7 +119,7 @@ namespace MTGViewer.Services
         }
 
 
-        private async Task<IReadOnlyList<BoxAmount>> GetSortedAmountsAsync()
+        private async Task<IReadOnlyList<CardAmount>> GetSortedAmountsAsync()
         {
             // loading all shared cards, could be memory inefficient
             // TODO: find more efficient way to determining card position
@@ -163,7 +163,7 @@ namespace MTGViewer.Services
                 var cardIndex = cardIndices.ElementAtOrDefault(amountIndex);
                 var boxIndex = Math.Min(cardIndex / _boxSize, sortedBoxes.Count - 1);
 
-                var newSpot = new BoxAmount
+                var newSpot = new CardAmount
                 {
                     Card = card,
                     Location = sortedBoxes[boxIndex],
@@ -175,7 +175,7 @@ namespace MTGViewer.Services
         }
 
 
-        private IReadOnlyList<int> GetCardIndices(IEnumerable<BoxAmount> boxAmounts)
+        private IReadOnlyList<int> GetCardIndices(IEnumerable<CardAmount> boxAmounts)
         {
             var cardIndices = new List<int>(boxAmounts.Count());
             var cardCount = 0;
@@ -258,7 +258,7 @@ namespace MTGViewer.Services
 
 
         private void AddUpdatedBoxAmounts(
-            IReadOnlyList<BoxAmount> sharedAmounts, IReadOnlyList<Box> boxes)
+            IReadOnlyList<CardAmount> sharedAmounts, IReadOnlyList<Box> boxes)
         {
             var oldAmounts = sharedAmounts
                 .Select(ca => (ca.Card, ca.Amount))

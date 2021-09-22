@@ -35,7 +35,7 @@ namespace MTGViewer.Pages.Transfers
         public Deck? Source { get; set; }
         public UserRef? Receiver { get; private set; }
 
-        public IReadOnlyList<Exchange>? Trades { get; private set; }
+        public IEnumerable<Exchange>? Trades { get; private set; }
 
 
         public async Task<IActionResult> OnGetAsync(int deckId)
@@ -49,6 +49,13 @@ namespace MTGViewer.Pages.Transfers
             
             var deck = await _dbContext.Decks
                 .Include(d => d.Owner)
+                .Include(d => d.ExchangesFrom)
+                    .ThenInclude(ex => ex.Card)
+                .Include(d => d.ExchangesFrom
+                    .Where(ex => ex.IsTrade)
+                    .OrderBy(ex => ex.Card.Name))
+                    .ThenInclude(ex => ex.To!.Owner)
+                .AsNoTrackingWithIdentityResolution()
                 .SingleOrDefaultAsync(d =>
                     d.Id == deckId && d.OwnerId == userId);
 
@@ -57,21 +64,14 @@ namespace MTGViewer.Pages.Transfers
                 return NotFound();
             }
 
-            var deckTrades = await _dbContext.Exchanges
-                .Where(t => t.FromId == deckId)
-                .Include(t => t.Card)
-                .Include(t => t.To)
-                .OrderBy(t => t.Card.Name)
-                .ToListAsync();
-
-            if (!deckTrades.Any())
+            if (!deck.ExchangesFrom.Any())
             {
                 return RedirectToPage("./Index");
             }
 
             Source = deck;
             Receiver = deck.Owner;
-            Trades = deckTrades;
+            Trades = deck.ExchangesFrom;
 
             return Page();
         }
@@ -81,29 +81,29 @@ namespace MTGViewer.Pages.Transfers
         private class AcceptAmounts
         {
             public Exchange Accept { get; }
-            public CardAmount? AmountTo { get; }
-            public CardAmount AmountFrom { get; }
-            public ExchangeNameGroup? RequestsTo { get; }
-            public Exchange? RequestFrom { get; }
+            public CardAmount? ToAmount { get; }
+            public CardAmount FromAmount { get; }
+            public ExchangeNameGroup? ToTakes { get; }
+            public Exchange? FromTakes { get; }
 
             public AcceptAmounts(
                 Exchange trade,
                 IEnumerable<CardAmount> amounts,
-                IEnumerable<Exchange> requests)
+                IEnumerable<Exchange> takes)
             {
                 Accept = trade;
 
-                AmountTo = amounts.SingleOrDefault(ca => ca.LocationId == trade.ToId);
+                ToAmount = amounts.SingleOrDefault(ca => ca.LocationId == trade.ToId);
 
-                var toRequests = requests.Where(ex => ex.ToId == trade.ToId);
+                var toTakes = takes.Where(ex => ex.ToId == trade.ToId);
 
-                RequestsTo = toRequests.Any()
-                    ? new ExchangeNameGroup(toRequests)
+                ToTakes = toTakes.Any()
+                    ? new ExchangeNameGroup(toTakes)
                     : default;
 
-                AmountFrom = amounts.Single(ca => ca.LocationId == trade.FromId);
+                FromAmount = amounts.Single(ca => ca.LocationId == trade.FromId);
 
-                RequestFrom = requests.SingleOrDefault(ex => ex.FromId == trade.FromId);
+                FromTakes = takes.SingleOrDefault(ex => ex.FromId == trade.FromId);
             }
         }
 
@@ -182,11 +182,8 @@ namespace MTGViewer.Pages.Transfers
                 return null;
             }
 
-            var tradeTos = tradeDecks.SelectMany(d => d.ExchangesTo);
-            var tradeFroms = tradeDecks.SelectMany(d => d.ExchangesFrom);
-
-            var tradeRequests = tradeTos.Concat(tradeFroms);
-            var tradeAmounts = tradeDecks.SelectMany(d => d.Cards);
+            var tradeAmounts = tradeDecks.SelectMany(d => d.Cards).ToList();
+            var tradeRequests = tradeDecks.SelectMany(d => d.ExchangesTo).ToList();
 
             return new AcceptAmounts(trade, tradeAmounts, tradeRequests);
         }
@@ -201,62 +198,65 @@ namespace MTGViewer.Pages.Transfers
                 .Include(d => d.Cards
                     .Where(ca => ca.CardId == trade.CardId));
 
-            var withRequests = withCards
+            var withTakes = withCards
                 .Include(d => d.ExchangesTo
-                    .Where(ex => ex.CardId == trade.CardId))
-                .Include(d => d.ExchangesFrom
-                    .Where(ex => ex.CardId == trade.CardId));
+                    .Where(ex => !ex.IsTrade)
+                    .Where(ex =>
+                        ex.ToId == trade.FromId
+                            && ex.CardId == trade.CardId
+                        || ex.ToId == trade.ToId
+                            && ex.Card.Name == trade.Card.Name));
 
-            return withRequests.AsSplitQuery();
+            return withTakes.AsSplitQuery();
         }
 
 
         private void ApplyAccept(AcceptAmounts acceptInfo)
         {
             var accept = acceptInfo.Accept;
-            var requestsTo = acceptInfo.RequestsTo;
-            var amountFrom = acceptInfo.AmountFrom;
+            var toTakes = acceptInfo.ToTakes;
+            var fromAmount = acceptInfo.FromAmount;
 
-            if (requestsTo is not null)
+            if (toTakes is not null)
             {
-                var amountTo = acceptInfo.AmountTo;
-                var requestFrom = acceptInfo.RequestFrom;
+                var toAmount = acceptInfo.ToAmount;
+                var fromTakes = acceptInfo.FromTakes;
 
-                if (amountTo is null)
+                if (toAmount is null)
                 {
-                    amountTo = new()
+                    toAmount = new()
                     {
                         Card = accept.Card,
                         Location = accept.To!,
                         Amount = 0
                     };
 
-                    _dbContext.Amounts.Attach(amountTo);
+                    _dbContext.Amounts.Attach(toAmount);
                 }
 
-                if (requestFrom is null)
+                if (fromTakes is null)
                 {
-                    requestFrom = new()
+                    fromTakes = new()
                     {
                         Card = accept.Card,
                         From = accept.From,
                         Amount = 0
                     };
 
-                    _dbContext.Exchanges.Attach(requestFrom);
+                    _dbContext.Exchanges.Attach(fromTakes);
                 }
 
-                var changeOptions = new [] { accept.Amount, amountFrom.Amount, requestsTo.Amount };
+                var changeOptions = new [] { accept.Amount, fromAmount.Amount, toTakes.Amount };
                 var change = changeOptions.Min();
 
                 // TODO: prioritize change to exact request amount
-                amountTo.Amount += change;
-                requestsTo.Amount -= change;
-                amountFrom.Amount -= change;
-                requestFrom.Amount += change;
+                toAmount.Amount += change;
+                toTakes.Amount -= change;
+                fromAmount.Amount -= change;
+                fromTakes.Amount += change;
             }
 
-            var finishedRequests = requestsTo
+            var finishedRequests = toTakes
                 ?.Where(ca  => ca.Amount == 0)
                 ?? Enumerable.Empty<Exchange>();
 
@@ -265,9 +265,9 @@ namespace MTGViewer.Pages.Transfers
                 _dbContext.Exchanges.RemoveRange(finishedRequests);
             }
 
-            if (amountFrom.Amount == 0)
+            if (fromAmount.Amount == 0)
             {
-                _dbContext.Amounts.Remove(amountFrom);
+                _dbContext.Amounts.Remove(fromAmount);
             }
 
             _dbContext.Exchanges.Remove(accept);
@@ -276,7 +276,7 @@ namespace MTGViewer.Pages.Transfers
 
         private async Task CascadeIfComplete(AcceptAmounts acceptInfo)
         {
-            var requests = acceptInfo.RequestsTo;
+            var requests = acceptInfo.ToTakes;
 
             if (requests?.Amount > 0)
             {

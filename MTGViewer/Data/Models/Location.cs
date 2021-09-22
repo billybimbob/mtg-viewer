@@ -64,13 +64,16 @@ namespace MTGViewer.Data
         public string OwnerId { get; init; } = null!;
 
         [JsonIgnore]
+        public ICollection<Suggestion> Suggestions { get; } = new List<Suggestion>();
+
+        [JsonIgnore]
         public ICollection<Exchange> ExchangesTo { get; } = new List<Exchange>();
 
         [JsonIgnore]
         public ICollection<Exchange> ExchangesFrom { get; } = new List<Exchange>();
 
-        [JsonIgnore]
-        public ICollection<Suggestion> Suggestions { get; } = new List<Suggestion>();
+        public IEnumerable<Exchange> GetAllExchanges() =>
+            ExchangesTo.Concat(ExchangesFrom); // guranteed to be unique between both properties
     }
 
 

@@ -46,6 +46,7 @@ namespace MTGViewer.Pages.Cards
                     .OrderBy(ca => ca.Location.Name))
                     .ThenInclude(ca => ca.Location)
                 .AsSplitQuery()
+                .AsNoTrackingWithIdentityResolution()
                 .SingleOrDefaultAsync(c => c.Id == id);
 
             if (Card == default)

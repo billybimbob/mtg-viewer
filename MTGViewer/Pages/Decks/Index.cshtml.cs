@@ -82,6 +82,7 @@ namespace MTGViewer.Pages.Decks
                 .Include(d => d.ExchangesTo);
 
             return await userDecks
+                .OrderBy(d => d.Name)
                 .Select(deck => new DeckState(deck))
                 .AsSplitQuery()
                 .ToListAsync();
