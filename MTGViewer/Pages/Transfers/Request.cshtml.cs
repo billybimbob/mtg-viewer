@@ -47,7 +47,7 @@ namespace MTGViewer.Pages.Transfers
         {
             var userId = _userManager.GetUserId(User);
 
-            var deck = await DeckWithRequests(userId, deckId)
+            var deck = await DeckWithTos(userId, deckId)
                 .AsNoTrackingWithIdentityResolution()
                 .SingleOrDefaultAsync();
 
@@ -56,7 +56,7 @@ namespace MTGViewer.Pages.Transfers
                 return NotFound();
             }
 
-            if (!deck.ExchangesTo.Any(ex => !ex.IsTrade))
+            if (deck.ExchangesTo.All(ex => ex.IsTrade))
             {
                 PostMessage = "There are no possible requests";
                 return RedirectToPage("./Index");
@@ -73,6 +73,7 @@ namespace MTGViewer.Pages.Transfers
             Deck = deck;
 
             Requests = deck.ExchangesTo
+                .Where(ex => !ex.IsTrade)
                 .GroupBy(ca => ca.Card.Name,
                     (_, exchanges) => new ExchangeNameGroup(exchanges))
                 .ToList();
@@ -81,37 +82,34 @@ namespace MTGViewer.Pages.Transfers
         }
 
 
-        private IQueryable<Deck> DeckWithRequests(string userId, int deckId)
+        private IQueryable<Deck> DeckWithTos(string userId, int deckId)
         {
-            var userDeck = _dbContext.Decks
-                .Where(d => d.Id == deckId && d.OwnerId == userId);
+            return _dbContext.Decks
+                .Where(d => d.Id == deckId && d.OwnerId == userId)
 
-            var withTradeRequests = userDeck
+                .Include(d => d.ExchangesTo)
+                    .ThenInclude(ca => ca.Card)
                 .Include(d => d.ExchangesTo
-                    .OrderBy(da => da.Card.Name))
-                    .ThenInclude(ca => ca.Card);
-
-            return withTradeRequests;
+                    .OrderBy(da => da.Card.Name));
         }
 
 
         private IQueryable<CardAmount> RequestTargetsFor(Deck deck)
         {
-            var deckIncludes = _dbContext.Amounts
-                .Include(ca => ca.Card)
-                .Include(ca => ca.Location)
-                    .ThenInclude(l => (l as Deck).Owner);
-
             var requestNames = deck.ExchangesTo
                 .Where(ex => !ex.IsTrade)
                 .Select(ca => ca.Card.Name)
                 .Distinct()
                 .ToArray();
 
-            return deckIncludes
+            return _dbContext.Amounts
                 .Where(ca => ca.Location is Deck
                     && (ca.Location as Deck).OwnerId != deck.OwnerId
-                    && requestNames.Contains(ca.Card.Name));
+                    && requestNames.Contains(ca.Card.Name))
+
+                .Include(ca => ca.Card)
+                .Include(ca => ca.Location)
+                    .ThenInclude(l => (l as Deck).Owner);
         }
 
 
@@ -120,7 +118,7 @@ namespace MTGViewer.Pages.Transfers
         {
             var userId = _userManager.GetUserId(User);
 
-            var deck = await DeckWithRequests(userId, deckId)
+            var deck = await DeckWithTos(userId, deckId)
                 .SingleOrDefaultAsync();
 
             if (deck == default)

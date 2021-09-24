@@ -58,22 +58,22 @@ namespace MTGViewer.Tests.Services
                 .Skip(cardIndex)
                 .FirstAsync();
 
-            var sharedQuery = _dbContext.Amounts
-                .Where(ca => ca.CardId == card.Id)
+            var boxesQuery = _dbContext.Amounts
+                .Where(ca => ca.Location is Box && ca.CardId == card.Id)
                 .Include(ca => ca.Location)
                 .AsNoTracking();
 
-            var sharedBefore = await sharedQuery.FirstOrDefaultAsync();
-            var beforeAmount = sharedBefore?.Amount ?? 0;
-
+            var boxesBefore = await boxesQuery.ToListAsync();
             await _sharedStorage.ReturnAsync(card, copies);
 
-            var sharedAfter = await sharedQuery.FirstAsync();
+            var boxesAfter = await boxesQuery.ToListAsync();
+            var boxesChange = boxesAfter.Sum(ca => ca.Amount)
+                - boxesBefore.Sum(ca => ca.Amount);
 
-            Assert.IsType<Box>(sharedAfter.Location);
+            Assert.All(boxesAfter, ca => Assert.IsType<Box>(ca.Location));
+            Assert.All(boxesAfter, ca => Assert.Equal(card.Id, ca.CardId));
 
-            Assert.Equal(card.Id, sharedAfter.CardId);
-            Assert.Equal(copies, sharedAfter.Amount - beforeAmount);
+            Assert.Equal(copies, boxesChange);
         }
 
 
@@ -107,7 +107,8 @@ namespace MTGViewer.Tests.Services
         public async Task Return_EmptyReturns_NoChange()
         {
             var sharedAmountQuery = _dbContext.Amounts
-                .Select(ba => ba.Amount);
+                .Where(ca => ca.Location is Box)
+                .Select(ca => ca.Amount);
 
             var sharedBefore = await sharedAmountQuery.SumAsync();
             await _sharedStorage.ReturnAsync();
@@ -147,29 +148,29 @@ namespace MTGViewer.Tests.Services
             var card = await _dbContext.Cards
                 .FirstAsync();
 
-            var boxAmountQuery = _dbContext.Amounts
-                .Where(ca => ca.CardId == card.Id)
+            var boxesTrackedQuery = _dbContext.Amounts
+                .Where(ca => ca.Location is Box && ca.CardId == card.Id)
                 .Include(ca => ca.Location);
 
-            var boxAmounts = await boxAmountQuery.ToListAsync();
+            var boxAmounts = await boxesTrackedQuery.ToListAsync();
             _dbContext.Amounts.RemoveRange(boxAmounts);
 
             await _dbContext.SaveChangesAsync();
             _dbContext.ChangeTracker.Clear();
 
-            var sharedQuery = boxAmountQuery.AsNoTracking();
+            var boxesQuery = boxesTrackedQuery.AsNoTracking();
 
-            var sharedBefore = await sharedQuery.FirstOrDefaultAsync();
-            var beforeAmount = sharedBefore?.Amount ?? 0;
-
+            var boxesBefore = await boxesQuery.ToListAsync();
             await _sharedStorage.ReturnAsync(card, copies);
 
-            var sharedAfter = await sharedQuery.FirstAsync();
+            var boxesAfter = await boxesQuery.ToListAsync();
+            var boxesChange = boxesAfter.Sum(ca => ca.Amount)
+                - boxesBefore.Sum(ca => ca.Amount);
 
-            Assert.IsType<Box>(sharedAfter.Location);
+            Assert.All(boxesAfter, ca => Assert.IsType<Box>(ca.Location));
+            Assert.All(boxesAfter, ca => Assert.Equal(card.Id, ca.CardId));
 
-            Assert.Equal(card.Id, sharedAfter.CardId);
-            Assert.Equal(copies, sharedAfter.Amount - beforeAmount);
+            Assert.Equal(copies, boxesChange);
         }
 
 
@@ -179,16 +180,17 @@ namespace MTGViewer.Tests.Services
             var copies = 6;
             var card = await _dbContext.Cards.AsNoTracking().FirstAsync();
 
-            var sharedAmountQuery = _dbContext.Amounts
+            var boxAmountQuery = _dbContext.Amounts
+                .Where(ca => ca.Location is Box)
                 .Select(ca => ca.Amount);
 
             await _sharedStorage.ReturnAsync(card, copies);
-            var sharedBefore = await sharedAmountQuery.SumAsync();
+            var boxesBefore = await boxAmountQuery.SumAsync();
 
             await _sharedStorage.OptimizeAsync();
-            var sharedAfter = await sharedAmountQuery.SumAsync();
+            var boxesAfter = await boxAmountQuery.SumAsync();
 
-            Assert.Equal(sharedBefore, sharedAfter);
+            Assert.Equal(boxesBefore, boxesAfter);
         }
 
 
@@ -198,29 +200,23 @@ namespace MTGViewer.Tests.Services
             var copies = 120;
             var card = await _dbContext.Cards.AsNoTracking().FirstAsync();
 
-            var spotQuery = _dbContext.Amounts
-                .Where(ca => ca.CardId == card.Id)
+            var boxesQuery = _dbContext.Amounts
+                .Where(ca => ca.Location is Box && ca.CardId == card.Id)
                 .Include(ca => ca.Location)
                 .AsNoTracking();
 
-            var sharedAmountQuery = _dbContext.Amounts
-                .Select(ca => ca.Amount);
-
             await _sharedStorage.ReturnAsync(card, copies);
-            var oldSpots = await spotQuery.ToListAsync();
-            var sharedBefore = await sharedAmountQuery.SumAsync();
+            var oldSpots = await boxesQuery.ToListAsync();
+            var totalBefore = oldSpots.Sum(ca => ca.Amount);
 
             await _sharedStorage.OptimizeAsync();
-            var newSpots = await spotQuery.ToListAsync();
-            var sharedAfter = await sharedAmountQuery.SumAsync();
+            var newSpots = await boxesQuery.ToListAsync();
+            var totalAfter = newSpots.Sum(ca => ca.Amount);
 
             Assert.All(newSpots, ca => Assert.IsType<Box>(ca.Location));
             Assert.All(newSpots, ca => Assert.True(ca.Amount < copies));
 
-            Assert.Equal(sharedBefore, sharedAfter);
-            Assert.Equal(
-                oldSpots.Sum(ca => ca.Amount),
-                newSpots.Sum(ca => ca.Amount));
+            Assert.Equal(totalBefore, totalAfter);
         }
     }
 }

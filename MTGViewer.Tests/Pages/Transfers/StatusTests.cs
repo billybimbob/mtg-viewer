@@ -55,14 +55,15 @@ namespace MTGViewer.Tests.Pages.Transfers
         {
             // Arrange
             var trade = await _dbContext.Exchanges
+                .Include(ex => ex.From)
                 .AsNoTracking()
-                .FirstAsync(t => t.ProposerId == _trades.ProposerId && t.ToId == _trades.ToId);
+                .FirstAsync(ex => ex.IsTrade && ex.ToId == _trades.ToId);
 
-            await _statusModel.SetModelContextAsync(_userManager, trade.ReceiverId);
+            await _statusModel.SetModelContextAsync(_userManager, trade.From.OwnerId);
 
             var requestsQuery = _dbContext.Exchanges
-                .Where(t => t.ProposerId == _trades.ProposerId && t.ToId == _trades.ToId)
-                .Select(t => t.Id);
+                .Where(ex => ex.IsTrade && ex.ToId == _trades.ToId)
+                .Select(ex => ex.Id);
 
             // Act
             var requestsBefore = await requestsQuery.ToListAsync();
@@ -80,19 +81,19 @@ namespace MTGViewer.Tests.Pages.Transfers
         public async Task OnPost_InvalidTrade_NoChange()
         {
             // Arrange
-            await _statusModel.SetModelContextAsync(_userManager, _trades.ProposerId);
+            await _statusModel.SetModelContextAsync(_userManager, _trades.To.OwnerId);
 
             var trade = await _dbContext.Exchanges
                 .AsNoTracking()
-                .FirstAsync(t => t.ProposerId == _trades.ProposerId && t.ToId == _trades.ToId);
+                .FirstAsync(ex => ex.IsTrade && ex.ToId == _trades.ToId);
 
             var requestsQuery = _dbContext.Exchanges
-                .Where(t => t.ProposerId == _trades.ProposerId && t.ToId == _trades.ToId)
-                .Select(t => t.Id);
+                .Where(ex => ex.IsTrade && ex.ToId == _trades.ToId)
+                .Select(ex => ex.Id);
 
             // Act
             var requestsBefore = await requestsQuery.ToListAsync();
-            var result = await _statusModel.OnPostAsync(trade.FromId);
+            var result = await _statusModel.OnPostAsync(trade.FromId.Value);
             var requestsAfter = await requestsQuery.ToListAsync();
 
             // Assert
@@ -106,15 +107,15 @@ namespace MTGViewer.Tests.Pages.Transfers
         public async Task OnPost_ValidTrade_RemovesTrade()
         {
             // Arrange
-            await _statusModel.SetModelContextAsync(_userManager, _trades.ProposerId);
+            await _statusModel.SetModelContextAsync(_userManager, _trades.To.OwnerId);
 
             var trade = await _dbContext.Exchanges
                 .AsNoTracking()
-                .FirstAsync(t => t.ProposerId == _trades.ProposerId && t.ToId == _trades.ToId);
+                .FirstAsync(ex => ex.IsTrade && ex.ToId == _trades.ToId);
 
             var requestsQuery = _dbContext.Exchanges
-                .Where(t => t.ProposerId == _trades.ProposerId && t.ToId == _trades.ToId)
-                .Select(t => t.Id);
+                .Where(ex => ex.IsTrade && ex.ToId == _trades.ToId)
+                .Select(ex => ex.Id);
 
             // Act
             var requestsBefore = await requestsQuery.ToListAsync();

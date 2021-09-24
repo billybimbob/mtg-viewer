@@ -53,7 +53,7 @@ namespace MTGViewer.Pages.Transfers
                 return NotFound();
             }
 
-            if (!deck.ExchangesTo.Any(ex => !ex.IsTrade))
+            if (deck.ExchangesTo.All(ex => ex.IsTrade))
             {
                 PostMessage = $"There are no requests for {deck.Name}";
                 return RedirectToPage("./Index");
@@ -83,26 +83,22 @@ namespace MTGViewer.Pages.Transfers
         {
             var userId = _userManager.GetUserId(User);
             
-            var deckWithOwner = _dbContext.Decks
+            return _dbContext.Decks
                 .Where(d => d.Id == deckId && d.OwnerId == userId)
-                .Include(d => d.Owner);
 
-            var withCards = deckWithOwner
+                .Include(d => d.Owner)
                 .Include(d => d.Cards)
-                    .ThenInclude(ca => ca.Card);
+                    .ThenInclude(ca => ca.Card)
 
-            var withTos = withCards
                 .Include(d => d.ExchangesTo)
                     .ThenInclude(ex => ex.Card)
                 .Include(d => d.ExchangesTo)
-                    .ThenInclude(ex => ex.From!.Owner);
+                    .ThenInclude(ex => ex.From!.Owner)
 
-            var withOrderedTos = withTos
                 .Include(d => d.ExchangesTo
                     .OrderBy(ex => ex.From!.Owner.Name)
-                        .ThenBy(ex => ex.Card.Name));
+                        .ThenBy(ex => ex.Card.Name))
 
-            return withOrderedTos
                 .AsSplitQuery()
                 .AsNoTrackingWithIdentityResolution();
         }

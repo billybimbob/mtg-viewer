@@ -46,13 +46,13 @@ namespace MTGViewer.Pages.Transfers
             }
 
             Card = card;
-            Users = await GetPossibleUsersAsync(card);
+            Users = await NotSuggestedUsers(card).ToListAsync();
 
             return Page();
         }
 
 
-        public async Task<IReadOnlyList<UserRef>> GetPossibleUsersAsync(Card card)
+        public IQueryable<UserRef> NotSuggestedUsers(Card card)
         {
             var proposerId = _userManager.GetUserId(User);
 
@@ -62,7 +62,7 @@ namespace MTGViewer.Pages.Transfers
             var cardSuggests = _dbContext.Suggestions
                 .Where(s => s.Card.Name == card.Name && s.ToId == default);
 
-            var notSuggested = nonProposers
+            return nonProposers
                 .GroupJoin( cardSuggests,
                     user => user.Id,
                     suggest => suggest.ReceiverId,
@@ -72,12 +72,10 @@ namespace MTGViewer.Pages.Transfers
                     uss => uss.suggests.DefaultIfEmpty(),
                     (uss, suggest) =>
                         new { uss.user, suggest })
-                .Where(us => us.suggest == default)
-                .Select(us => us.user);
 
-            return await notSuggested
-                .AsNoTracking()
-                .ToListAsync();
+                .Where(us => us.suggest == default)
+                .Select(us => us.user)
+                .AsNoTracking();
         }
 
 
@@ -104,7 +102,7 @@ namespace MTGViewer.Pages.Transfers
                 return NotFound();
             }
 
-            var decks = await GetValidDecksAsync(card, receiver);
+            var decks = await DecksWithoutCard(card, receiver).ToListAsync();
 
             Proposer = proposer;
             Receiver = receiver;
@@ -116,20 +114,18 @@ namespace MTGViewer.Pages.Transfers
         }
 
 
-        private async Task<IReadOnlyList<Deck>> GetValidDecksAsync(Card card, UserRef user)
+        private IQueryable<Deck> DecksWithoutCard(Card card, UserRef user)
         {
             var userDecks = _dbContext.Decks
-                .Where(l => l.OwnerId == user.Id)
-                .Include(d => d.Cards)
-                    .ThenInclude(ca => ca.Card);
-
+                .Where(l => l.OwnerId == user.Id);
 
             var userCardAmounts = _dbContext.Amounts
                 .Where(ca => ca.Card.Name == card.Name
                     && ca.Location is Deck
                     && (ca.Location as Deck).OwnerId == user.Id);
 
-            var withoutAmounts = userDecks
+
+            var withoutAmounts = userDecks 
                 .GroupJoin( userCardAmounts,
                     deck => deck.Id,
                     amount => amount.LocationId,
@@ -137,22 +133,24 @@ namespace MTGViewer.Pages.Transfers
                 .SelectMany(
                     das => das.amounts.DefaultIfEmpty(),
                     (das, amount) => new { das.deck, amount })
+
                 .Where(da => da.amount == default)
                 .Select(da => da.deck);
 
 
             var suggestsWithCard = _dbContext.Suggestions
-                .Where(s => 
-                    s.Card.Name == card.Name && s.ReceiverId == user.Id);
+                .Where(s => s.Card.Name == card.Name 
+                    && s.ReceiverId == user.Id);
 
             var withoutSuggests = withoutAmounts
                 .GroupJoin( suggestsWithCard,
                     deck => deck.Id,
-                    transfer => transfer.ToId,
+                    suggest => suggest.ToId,
                     (deck, suggests) => new { deck, suggests })
                 .SelectMany(
                     dts => dts.suggests.DefaultIfEmpty(),
                     (dts, suggest) => new { dts.deck, suggest })
+
                 .Where(dt => dt.suggest == default)
                 .Select(dt => dt.deck);
 
@@ -171,14 +169,16 @@ namespace MTGViewer.Pages.Transfers
                 .SelectMany(
                     dts => dts.trades.DefaultIfEmpty(),
                     (dts, trade) => new { dts.deck, trade })
+
                 .Where(dt => dt.trade == default)
                 .Select(dt => dt.deck);
 
 
-            return await withoutTrades
+            return withoutTrades
+                .Include(d => d.Cards)
+                    .ThenInclude(ca => ca.Card)
                 .AsSplitQuery()
-                .AsNoTrackingWithIdentityResolution()
-                .ToListAsync();
+                .AsNoTrackingWithIdentityResolution();
         }
 
 

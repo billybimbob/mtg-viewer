@@ -48,9 +48,7 @@ namespace MTGViewer.Pages.Decks
 
         public async Task<IActionResult> OnGetAsync(int id)
         {
-            var userId = _userManager.GetUserId(User);
-
-            var deck = await DeckWithCardsAndRequests(userId, id)
+            var deck = await DeckWithCardsAndRequests(id)
                 .AsNoTrackingWithIdentityResolution()
                 .SingleOrDefaultAsync();
 
@@ -90,26 +88,25 @@ namespace MTGViewer.Pages.Decks
         }
 
 
-        private IQueryable<Deck> DeckWithCardsAndRequests(string userId, int deckId)
+        private IQueryable<Deck> DeckWithCardsAndRequests(int deckId)
         {
-            var userDeck = _dbContext.Decks
-                .Where(d => d.Id == deckId && d.OwnerId == userId);
+            var userId = _userManager.GetUserId(User);
 
-            var withCards = userDeck
+            return _dbContext.Decks
+                .Where(d => d.Id == deckId && d.OwnerId == userId)
+
                 .Include(d => d.Cards)
-                    .ThenInclude(ca => ca.Card);
+                    .ThenInclude(ca => ca.Card)
 
-            var withTakes = withCards
                 .Include(d => d.ExchangesTo
                     .Where(ex => !ex.IsTrade))
-                    .ThenInclude(ex => ex.Card);
+                    .ThenInclude(ex => ex.Card)
 
-            var withReturns = withTakes
                 .Include(d => d.ExchangesFrom
                     .Where(ex => !ex.IsTrade))
-                    .ThenInclude(ex => ex.Card);
+                    .ThenInclude(ex => ex.Card)
 
-            return withReturns.AsSplitQuery();
+                .AsSplitQuery();
         }
 
 
@@ -122,8 +119,9 @@ namespace MTGViewer.Pages.Decks
                 .ToArray();
 
             return _dbContext.Amounts
-                .Where(ba => ba.Amount > 0
-                    && requestNames.Contains(ba.Card.Name))
+                .Where(ca => ca.Location is Box
+                    && ca.Amount > 0
+                    && requestNames.Contains(ca.Card.Name))
                 .Include(ba => ba.Card);
         }
 
@@ -131,8 +129,7 @@ namespace MTGViewer.Pages.Decks
 
         public async Task<IActionResult> OnPostAsync(int id)
         {
-            var userId = _userManager.GetUserId(User);
-            var deck = await DeckWithCardsAndRequests(userId, id).SingleOrDefaultAsync();
+            var deck = await DeckWithCardsAndRequests(id).SingleOrDefaultAsync();
 
             if (deck == default)
             {

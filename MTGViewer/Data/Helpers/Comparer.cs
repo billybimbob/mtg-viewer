@@ -2,9 +2,9 @@ using System;
 using System.Collections.Generic;
 
 
-namespace MTGViewer.Data
+namespace MTGViewer.Data.Internal
 {
-    public class EntityComparer<E> : IEqualityComparer<E>
+    internal class EntityComparer<E> : IEqualityComparer<E>
     {
         private Func<E, object> _property;
 

@@ -76,26 +76,22 @@ namespace MTGViewer.Pages.Decks
         {
             var userId = _userManager.GetUserId(User);
 
-            var deck = _dbContext.Decks
-                .Where(d => d.Id == deckId && d.OwnerId == userId);
+            return _dbContext.Decks
+                .Where(d => d.Id == deckId && d.OwnerId == userId)
 
-            var withCards = deck
                 .Include(d => d.Cards)
-                    .ThenInclude(da => da.Card);
+                    .ThenInclude(da => da.Card)
 
-            var withToTrades = withCards
                 .Include(d => d.ExchangesTo)
                     .ThenInclude(ex => ex.Card)
                 .Include(d => d.ExchangesTo)
-                    .ThenInclude(ex => ex.From);
+                    .ThenInclude(ex => ex.From)
 
-            var withFromTrades = withToTrades
                 .Include(d => d.ExchangesFrom)
                     .ThenInclude(ex => ex.Card)
                 .Include(d => d.ExchangesFrom)
-                    .ThenInclude(ex => ex.To);
+                    .ThenInclude(ex => ex.To)
 
-            return withFromTrades
                 .AsSplitQuery()
                 .AsNoTrackingWithIdentityResolution();
         }

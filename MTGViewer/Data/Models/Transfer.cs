@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.EntityFrameworkCore;
 
 using Newtonsoft.Json;
@@ -42,7 +43,7 @@ namespace MTGViewer.Data
         nameof(ToId),
         nameof(FromId),
         nameof(CardId), IsUnique = true)]
-    public class Exchange : Concurrent
+    public class Exchange : Concurrent, ICardQuantity
     {
         [JsonRequired]
         public int Id { get; private set; }
@@ -80,6 +81,19 @@ namespace MTGViewer.Data
 
             private init => _isTrade = value;
         }
+
+
+        [NotMapped]
+        [JsonIgnore]
+        public Location Location => IsTrade
+            ? throw new InvalidOperationException("Trade references multiple locations")
+            : From ?? To ?? null!;
+
+        [NotMapped]
+        [JsonIgnore]
+        public int LocationId => IsTrade
+            ? throw new InvalidOperationException("Trade references multiple locations")
+            : FromId ?? ToId ?? default;
     }
 
 

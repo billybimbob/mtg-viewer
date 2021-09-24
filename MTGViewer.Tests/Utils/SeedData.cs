@@ -262,8 +262,8 @@ namespace MTGViewer.Tests.Utils
             this CardDbContext dbContext, Card card, Deck from)
         {
             var fromAmount = await dbContext.Amounts
-                .SingleOrDefaultAsync(da =>
-                    da.LocationId == from.Id && da.CardId == card.Id);
+                .SingleOrDefaultAsync(ca =>
+                    ca.LocationId == from.Id && ca.CardId == card.Id);
 
             if (fromAmount == default)
             {
@@ -314,7 +314,7 @@ namespace MTGViewer.Tests.Utils
 
             var takeTarget = await dbContext.Amounts
                 .Where(ca => ca.Location is Box && ca.Amount > 0)
-                .Select(ba => ba.Card)
+                .Select(ca => ca.Card)
                 .AsNoTracking()
                 .FirstAsync();
 
@@ -336,8 +336,8 @@ namespace MTGViewer.Tests.Utils
             }
 
             var targetCap = await dbContext.Amounts
-                .Where(ba => ba.CardId == deckTake.CardId)
-                .Select(ba => ba.Amount)
+                .Where(ca => ca.Location is Box && ca.CardId == deckTake.CardId)
+                .Select(ca => ca.Amount)
                 .SumAsync();
 
             deckTake.Amount = Math.Max(1, targetCap + targetMod);
@@ -353,8 +353,8 @@ namespace MTGViewer.Tests.Utils
             this CardDbContext dbContext, int targetMod = 0)
         {
             var returnTarget = await dbContext.Amounts
-                .Include(da => da.Card)
-                .Include(da => da.Location)
+                .Include(ca => ca.Card)
+                .Include(ca => ca.Location)
                 .AsNoTracking()
                 .FirstAsync(ca => ca.Location is Deck && ca.Amount > 0);
 

@@ -93,7 +93,7 @@ namespace MTGViewer.Services
                 .ToArray();
 
             var returnAmounts = await _dbContext.Amounts
-                .Where(ba => returnIds.Contains(ba.CardId))
+                .Where(ca => ca.Location is Box && returnIds.Contains(ca.CardId))
                 .ToListAsync();
 
             if (!returnAmounts.Any())
@@ -125,6 +125,7 @@ namespace MTGViewer.Services
             // TODO: find more efficient way to determining card position
 
             return await _dbContext.Amounts
+                .Where(ca => ca.Location is Box)
                 .Include(ca => ca.Card)
                 .OrderBy(ca => ca.Card.Name)
                     .ThenBy(ca => ca.Card.SetName)

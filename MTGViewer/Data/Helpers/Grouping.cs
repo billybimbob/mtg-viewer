@@ -7,65 +7,6 @@ using System.Linq;
 
 namespace MTGViewer.Data
 {
-    // /// <summary>Group of card amounts with the exact same card</summary>
-    // public class CardGroup : IEnumerable<CardAmount>
-    // {
-    //     public CardGroup(IEnumerable<CardAmount> amounts)
-    //     {
-    //         _amounts = new(amounts);
-
-    //         if (!_amounts.Any())
-    //         {
-    //             throw new ArgumentException("The amounts are empty");
-    //         }
-
-    //         if (_amounts.Any(ca => ca.Card != Card)
-    //             && _amounts.Any(ca => ca.CardId != CardId))
-    //         {
-    //             throw new ArgumentException("All cards do not match the name");
-    //         }
-    //     }
-
-
-    //     private readonly LinkedList<CardAmount> _amounts;
-
-    //     private CardAmount First => _amounts.First!.Value;
-
-    //     public string CardId => First.CardId;
-    //     public Card Card => First.Card;
-
-
-    //     public int Amount
-    //     {
-    //         get => _amounts.Sum(ca => ca.Amount);
-    //         set
-    //         {
-    //             int change = Amount - value;
-    //             while (change < 0 || change > 0 && First.Amount > 0)
-    //             {
-    //                 int mod = Math.Min(change, First.Amount);
-
-    //                 First.Amount -= mod;
-    //                 change -= mod;
-
-    //                 if (First.Amount == 0)
-    //                 {
-    //                     // cycle amount
-    //                     var firstLink = _amounts.First!;
-    //                     _amounts.Remove(firstLink);
-    //                     _amounts.AddLast(firstLink);
-    //                 }
-    //             }
-    //         }
-    //     }
-
-    //     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
-
-    //     public IEnumerator<CardAmount> GetEnumerator() => _amounts.GetEnumerator();
-    // }
-
-
-
     /// <summary>Group of card amounts with the same card name</summary>
     public class CardNameGroup : IEnumerable<CardAmount>
     {
@@ -106,7 +47,6 @@ namespace MTGViewer.Data
         private CardAmount First => _amounts.First!.Value;
 
         public string Name => First.Card.Name;
-
         public string ManaCost => First.Card.ManaCost;
 
         public IEnumerable<string> CardIds => _amounts.Select(ca => ca.CardId);
@@ -161,17 +101,22 @@ namespace MTGViewer.Data
 
             if (_exchanges.Any(ex => ex.Card.Name != Name))
             {
-                throw new ArgumentException("All cards do not match the name");
+                throw new ArgumentException("All exchanges do not match the name");
             }
 
             if (_exchanges.Any(ex => ex.Card.ManaCost != ManaCost))
             {
-                throw new ArgumentException("All cards do not match the mana cost");
+                throw new ArgumentException("All exchanges do not match the mana cost");
             }
 
-            if (_exchanges.Any(ex => ex.ToId != ToId || ex.FromId != FromId))
+            if (_exchanges.Any(ex => ex.IsTrade != IsTrade))
             {
-                throw new ArgumentException("All cards do not have the same location");
+                throw new ArgumentException("All exchanges are not matching trades");
+            }
+
+            if (_exchanges.Any(ex => ex.ToId != ToId && ex.FromId != FromId))
+            {
+                throw new ArgumentException("All exchanges do not have the same location");
             }
         }
 
@@ -199,6 +144,8 @@ namespace MTGViewer.Data
 
         public int? FromId => First.FromId;
         public Deck? From => First.From;
+
+        public bool IsTrade => First.IsTrade;
 
 
         public int Amount

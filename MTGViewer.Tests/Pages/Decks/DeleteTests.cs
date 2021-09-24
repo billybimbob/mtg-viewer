@@ -118,8 +118,8 @@ namespace MTGViewer.Tests.Pages.Decks
             await _deleteModel.SetModelContextAsync(_userManager, deck.OwnerId);
 
             var deckCards = await _dbContext.Amounts
-                .Where(da => da.LocationId == deck.Id)
-                .Select(da => da.CardId)
+                .Where(ca => ca.LocationId == deck.Id)
+                .Select(ca => ca.CardId)
                 .ToListAsync();
 
             var deckQuery = _dbContext.Decks
@@ -127,8 +127,8 @@ namespace MTGViewer.Tests.Pages.Decks
                 .AsNoTracking();
 
             var boxQuery = _dbContext.Amounts
-                .Where(ba => deckCards.Contains(ba.CardId))
-                .Select(ba => ba.Amount);
+                .Where(ca => deckCards.Contains(ca.CardId))
+                .Select(ca => ca.Amount);
 
             // Act
             var boxBefore = await boxQuery.ToListAsync();

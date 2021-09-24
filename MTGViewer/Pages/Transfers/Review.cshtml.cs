@@ -45,19 +45,7 @@ namespace MTGViewer.Pages.Transfers
                 return NotFound();
             }
 
-            var userId = _userManager.GetUserId(User);
-            
-            var deck = await _dbContext.Decks
-                .Include(d => d.Owner)
-                .Include(d => d.ExchangesFrom)
-                    .ThenInclude(ex => ex.Card)
-                .Include(d => d.ExchangesFrom
-                    .Where(ex => ex.IsTrade)
-                    .OrderBy(ex => ex.Card.Name))
-                    .ThenInclude(ex => ex.To!.Owner)
-                .AsNoTrackingWithIdentityResolution()
-                .SingleOrDefaultAsync(d =>
-                    d.Id == deckId && d.OwnerId == userId);
+            var deck = await DeckWithFromTrades(deckId).SingleOrDefaultAsync();
 
             if (deck == default)
             {
@@ -77,58 +65,59 @@ namespace MTGViewer.Pages.Transfers
         }
 
 
-
-        private class AcceptAmounts
+        private IQueryable<Deck> DeckWithFromTrades(int deckId)
         {
-            public Exchange Accept { get; }
-            public CardAmount? ToAmount { get; }
-            public CardAmount FromAmount { get; }
-            public ExchangeNameGroup? ToTakes { get; }
-            public Exchange? FromTakes { get; }
+            var userId = _userManager.GetUserId(User);
 
-            public AcceptAmounts(
-                Exchange trade,
-                IEnumerable<CardAmount> amounts,
-                IEnumerable<Exchange> takes)
-            {
-                Accept = trade;
+            return _dbContext.Decks
+                .Where(d => d.Id == deckId && d.OwnerId == userId)
+                .Include(d => d.Owner)
 
-                ToAmount = amounts.SingleOrDefault(ca => ca.LocationId == trade.ToId);
+                .Include(d => d.ExchangesFrom)
+                    .ThenInclude(ex => ex.Card)
 
-                var toTakes = takes.Where(ex => ex.ToId == trade.ToId);
+                .Include(d => d.ExchangesFrom)
+                    .ThenInclude(ex => ex.To!.Owner)
 
-                ToTakes = toTakes.Any()
-                    ? new ExchangeNameGroup(toTakes)
-                    : default;
+                .Include(d => d.ExchangesFrom
+                    .Where(ex => ex.IsTrade)
+                    .OrderBy(ex => ex.Card.Name))
 
-                FromAmount = amounts.Single(ca => ca.LocationId == trade.FromId);
-
-                FromTakes = takes.SingleOrDefault(ex => ex.FromId == trade.FromId);
-            }
+                .AsNoTrackingWithIdentityResolution();
         }
+
+
+        private record AcceptRequest(
+            Exchange Trade, 
+            ExchangeNameGroup? ToRequests,
+            CardAmount FromAmount) { }
+
+        private record AcceptTargets(
+            CardAmount ToAmount,
+            Exchange FromRequest) { }
 
 
         public async Task<IActionResult> OnPostAcceptAsync(int tradeId)
         {
-            var deckTrade = await GetDeckTradeAsync(tradeId);
+            var trade = await GetTradeAsync(tradeId);
 
-            if (deckTrade == null)
+            if (trade == null)
             {
                 PostMessage = "Trade could not be found";
                 return RedirectToPage("./Index");
             }
 
-            var acceptAmounts = await GetAcceptAmountsAsync(deckTrade);
+            var acceptRequest = GetAcceptRequest(trade);
 
-            if (acceptAmounts == null)
+            if (acceptRequest == null)
             {
                 PostMessage = "Source Deck lacks the required amount to complete the trade";
                 return RedirectToPage("./Review",
-                    new { deckId = deckTrade.FromId });
+                    new { deckId = trade.FromId });
             }
 
-            ApplyAccept(acceptAmounts);
-            await CascadeIfComplete(acceptAmounts);
+            ApplyAccept(acceptRequest);
+            await CascadeIfComplete(acceptRequest);
 
             try
             {
@@ -141,128 +130,115 @@ namespace MTGViewer.Pages.Transfers
             }
 
             return RedirectToPage("./Review",
-                new { deckId = deckTrade.FromId });
+                new { deckId = trade.FromId });
         }
 
 
-        private async Task<Exchange?> GetDeckTradeAsync(int tradeId)
+        private async Task<Exchange?> GetTradeAsync(int tradeId)
         {
             if (tradeId == default)
             {
                 return null;
             }
 
+            var tradeCard = await _dbContext.Exchanges
+                .Where(ex => ex.IsTrade && ex.Id == tradeId)
+                .Select(ex => ex.Card)
+                .SingleOrDefaultAsync();
+
+            if (tradeCard == default)
+            {
+                return null;
+            }
+
+            return await TradeWithTargets(tradeId, tradeCard).SingleOrDefaultAsync();
+        }
+
+
+        private IQueryable<Exchange> TradeWithTargets(int tradeId, Card tradeCard)
+        {
             var userId = _userManager.GetUserId(User);
 
-            var deckTrade = await _dbContext.Exchanges
-                .Include(ex => ex.Card)
-                .SingleOrDefaultAsync(ex => ex.IsTrade
-                    && ex.Id == tradeId 
-                    && ex.From != default
-                    && ex.From!.OwnerId == userId);
+            return _dbContext.Exchanges
+                .Where(t => t.IsTrade 
+                    && t.Id == tradeId
+                    && t.To != default 
+                    && t.From != default && t.From!.OwnerId == userId)
 
-            if (deckTrade == default)
+                .Include(t => t.To)
+                    .ThenInclude(d => d!.Cards
+                        .Where(ca => ca.CardId == tradeCard.Id))
+                        .ThenInclude(ca => ca.Card)
+
+                .Include(t => t.To)
+                    .ThenInclude(d => d!.ExchangesTo
+                        .Where(ex => !ex.IsTrade
+                            && ex.Card.Name == tradeCard.Name))
+                        .ThenInclude(ex => ex.Card)
+
+                .Include(t => t.From)
+                    .ThenInclude(d => d!.Cards
+                        .Where(ca => ca.CardId == tradeCard.Id))
+                        .ThenInclude(ex => ex.Card)
+
+                .Include(t => t.From)
+                    .ThenInclude(d => d!.ExchangesTo
+                        .Where(ex => !ex.IsTrade 
+                            && ex.CardId == tradeCard.Id))
+                        .ThenInclude(ex => ex.Card)
+
+                .AsSplitQuery();
+        }
+
+
+
+        private AcceptRequest? GetAcceptRequest(Exchange trade)
+        {
+            if (!trade.IsTrade)
             {
                 return null;
             }
 
-            return deckTrade;
-        }
+            var tradeValid = trade.From?.Cards
+                .Select(ca => ca.CardId)
+                .Contains(trade.CardId)
+                ?? false;
 
-
-        private async Task<AcceptAmounts?> GetAcceptAmountsAsync(Exchange trade)
-        {
-            var tradeDecks = await TradeTargets(trade).ToListAsync();
-
-            var amountsValid = tradeDecks
-                .Any(d => d.Id == trade.FromId && d.Cards.Any());
-
-            if (!amountsValid)
+            if (!tradeValid)
             {
                 return null;
             }
 
-            var tradeAmounts = tradeDecks.SelectMany(d => d.Cards).ToList();
-            var tradeRequests = tradeDecks.SelectMany(d => d.ExchangesTo).ToList();
+            var toRequests = trade.To!.ExchangesTo
+                .Where(ex => !ex.IsTrade && ex.Card.Name == trade.Card.Name);
 
-            return new AcceptAmounts(trade, tradeAmounts, tradeRequests);
+            return new AcceptRequest(
+                Trade: trade,
+
+                ToRequests: toRequests.Any()
+                    ? new ExchangeNameGroup(toRequests) : default,
+
+                FromAmount: trade.From!.Cards
+                    .Single(ca => ca.CardId == trade.CardId));
         }
 
 
-        private IQueryable<Deck> TradeTargets(Exchange trade)
+        private void ApplyAccept(AcceptRequest acceptRequest)
         {
-            var tradeDecks = _dbContext.Decks
-                .Where(d => d.Id == trade.FromId || d.Id == trade.ToId);
+            var (trade, toRequests, fromAmount) = acceptRequest;
 
-            var withCards = tradeDecks
-                .Include(d => d.Cards
-                    .Where(ca => ca.CardId == trade.CardId));
-
-            var withTakes = withCards
-                .Include(d => d.ExchangesTo
-                    .Where(ex => !ex.IsTrade)
-                    .Where(ex =>
-                        ex.ToId == trade.FromId
-                            && ex.CardId == trade.CardId
-                        || ex.ToId == trade.ToId
-                            && ex.Card.Name == trade.Card.Name));
-
-            return withTakes.AsSplitQuery();
-        }
-
-
-        private void ApplyAccept(AcceptAmounts acceptInfo)
-        {
-            var accept = acceptInfo.Accept;
-            var toTakes = acceptInfo.ToTakes;
-            var fromAmount = acceptInfo.FromAmount;
-
-            if (toTakes is not null)
+            if (toRequests is not null)
             {
-                var toAmount = acceptInfo.ToAmount;
-                var fromTakes = acceptInfo.FromTakes;
+                var (toAmount, fromRequest) = GetAcceptTargets(acceptRequest);
 
-                if (toAmount is null)
-                {
-                    toAmount = new()
-                    {
-                        Card = accept.Card,
-                        Location = accept.To!,
-                        Amount = 0
-                    };
-
-                    _dbContext.Amounts.Attach(toAmount);
-                }
-
-                if (fromTakes is null)
-                {
-                    fromTakes = new()
-                    {
-                        Card = accept.Card,
-                        From = accept.From,
-                        Amount = 0
-                    };
-
-                    _dbContext.Exchanges.Attach(fromTakes);
-                }
-
-                var changeOptions = new [] { accept.Amount, fromAmount.Amount, toTakes.Amount };
+                var changeOptions = new [] { trade.Amount, fromAmount.Amount, toRequests.Amount };
                 var change = changeOptions.Min();
 
                 // TODO: prioritize change to exact request amount
                 toAmount.Amount += change;
-                toTakes.Amount -= change;
+                toRequests.Amount -= change;
                 fromAmount.Amount -= change;
-                fromTakes.Amount += change;
-            }
-
-            var finishedRequests = toTakes
-                ?.Where(ca  => ca.Amount == 0)
-                ?? Enumerable.Empty<Exchange>();
-
-            if (finishedRequests.Any())
-            {
-                _dbContext.Exchanges.RemoveRange(finishedRequests);
+                fromRequest.Amount += change;
             }
 
             if (fromAmount.Amount == 0)
@@ -270,34 +246,79 @@ namespace MTGViewer.Pages.Transfers
                 _dbContext.Amounts.Remove(fromAmount);
             }
 
-            _dbContext.Exchanges.Remove(accept);
+            var finishedRequests = toRequests
+                ?.Where(ex  => ex.Amount == 0)
+                ?? Enumerable.Empty<Exchange>();
+
+            _dbContext.Exchanges.RemoveRange(finishedRequests);
+            _dbContext.Exchanges.Remove(trade);
         }
 
 
-        private async Task CascadeIfComplete(AcceptAmounts acceptInfo)
+        private AcceptTargets GetAcceptTargets(AcceptRequest request)
         {
-            var requests = acceptInfo.ToTakes;
+            var trade = request.Trade;
+
+            var toAmount = request.Trade.To!.Cards
+                .SingleOrDefault(ca => ca.CardId == trade.CardId);
+
+            if (toAmount is null)
+            {
+                toAmount = new()
+                {
+                    Card = trade.Card,
+                    Location = trade.To!,
+                    Amount = 0
+                };
+
+                _dbContext.Amounts.Attach(toAmount);
+            }
+
+            var fromRequest = trade.From!.ExchangesTo
+                .SingleOrDefault(ex => ex.CardId == trade.CardId);
+
+            if (fromRequest is null)
+            {
+                fromRequest = new()
+                {
+                    Card = trade.Card,
+                    To = trade.From,
+                    Amount = 0
+                };
+
+                _dbContext.Exchanges.Attach(fromRequest);
+            }
+
+            return new AcceptTargets(toAmount, fromRequest);
+        }
+
+
+
+        private async Task CascadeIfComplete(AcceptRequest acceptRequest)
+        {
+            var requests = acceptRequest.ToRequests;
 
             if (requests?.Amount > 0)
             {
                 return;
             }
 
-            var accepted = acceptInfo.Accept;
+            var accepted = acceptRequest.Trade;
 
             // keep eye on, could possibly remove trades not started
             // by the user
-            // makes the assumption that trades are always started by
+            // current makes the assumption that trades are always started by
             // the owner of the To deck
             var remainingTrades = await _dbContext.Exchanges
-                .Where(t => t.IsTrade
-                    && t.Id != accepted.Id 
-                    && t.ToId == accepted.ToId
-                    && t.Card.Name == accepted.Card.Name)
+                .Where(ex => ex.IsTrade
+                    && ex.Id != accepted.Id 
+                    && ex.ToId == accepted.ToId
+                    && ex.Card.Name == accepted.Card.Name)
                 .ToListAsync();
 
             _dbContext.Exchanges.RemoveRange(remainingTrades);
         }
+
 
 
 

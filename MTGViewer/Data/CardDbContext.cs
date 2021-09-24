@@ -18,7 +18,6 @@ namespace MTGViewer.Data
         public DbSet<Card> Cards => Set<Card>();
         public DbSet<CardAmount> Amounts => Set<CardAmount>();
 
-        // public DbSet<Location> Locations => Set<Location>();
         public DbSet<Deck> Decks => Set<Deck>();
         public DbSet<Box> Boxes => Set<Box>();
         public DbSet<Bin> Bins => Set<Bin>();
@@ -37,29 +36,20 @@ namespace MTGViewer.Data
 
             modelBuilder.SelectConcurrencyToken(Database);
 
-            new CardConfiguration()
-                .Configure(modelBuilder.Entity<Card>());
+            modelBuilder.ApplyConfiguration(new CardConfiguration());
+            modelBuilder.ApplyConfiguration(new LocationConfiguration());
 
-            new LocationConfiguration()
-                .Configure(modelBuilder.Entity<Location>());
-
-            new ExchangeConfiguration()
-                .Configure(modelBuilder.Entity<Exchange>());
+            modelBuilder.ApplyConfiguration(new ExchangeConfiguration());
+            modelBuilder.ApplyConfiguration(new SuggestionConfiguration());
             
-            new ChangeConfiguration()
-                .Configure(modelBuilder.Entity<Change>());
-            
-            new TransactionConfiguration()
-                .Configure(modelBuilder.Entity<Transaction>());
-
-            new SuggestionConfiguration()
-                .Configure(modelBuilder.Entity<Suggestion>());
+            modelBuilder.ApplyConfiguration(new ChangeConfiguration());
+            modelBuilder.ApplyConfiguration(new TransactionConfiguration());
         }
     }
 
 
 
-    public class CardConfiguration : IEntityTypeConfiguration<Card>
+    internal class CardConfiguration : IEntityTypeConfiguration<Card>
     {
         public void Configure(EntityTypeBuilder<Card> builder)
         {
@@ -71,7 +61,7 @@ namespace MTGViewer.Data
         }
     }
 
-    public class LocationConfiguration : IEntityTypeConfiguration<Location>
+    internal class LocationConfiguration : IEntityTypeConfiguration<Location>
     {
         public void Configure(EntityTypeBuilder<Location> builder)
         {
@@ -89,7 +79,7 @@ namespace MTGViewer.Data
     }
 
 
-    public class ExchangeConfiguration : IEntityTypeConfiguration<Exchange>
+    internal class ExchangeConfiguration : IEntityTypeConfiguration<Exchange>
     {
         public void Configure(EntityTypeBuilder<Exchange> builder)
         {
@@ -102,11 +92,15 @@ namespace MTGViewer.Data
                 .HasOne(e => e.From)
                 .WithMany(d => d.ExchangesFrom)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            builder
+                .Property(ex => ex.IsTrade)
+                .UsePropertyAccessMode(PropertyAccessMode.Property);
         }
     }
 
 
-    public class ChangeConfiguration : IEntityTypeConfiguration<Change>
+    internal class ChangeConfiguration : IEntityTypeConfiguration<Change>
     {
         public void Configure(EntityTypeBuilder<Change> builder)
         {
@@ -123,7 +117,7 @@ namespace MTGViewer.Data
     }
 
 
-    public class TransactionConfiguration : IEntityTypeConfiguration<Transaction>
+    internal class TransactionConfiguration : IEntityTypeConfiguration<Transaction>
     {
         public void Configure(EntityTypeBuilder<Transaction> builder)
         {
@@ -134,7 +128,7 @@ namespace MTGViewer.Data
     }
 
 
-    public class SuggestionConfiguration : IEntityTypeConfiguration<Suggestion>
+    internal class SuggestionConfiguration : IEntityTypeConfiguration<Suggestion>
     {
         public void Configure(EntityTypeBuilder<Suggestion> builder)
         {

@@ -53,24 +53,20 @@ namespace MTGViewer.Pages.Decks
 
         private IQueryable<Deck> DeckWithCardsAndExchanges(int deckId)
         {
-            var deckWithOwner = _dbContext.Decks
+            return _dbContext.Decks
                 .Where(d => d.Id == deckId)
-                .Include(d => d.Owner);
 
-            var withCards = deckWithOwner
+                .Include(d => d.Owner)
                 .Include(d => d.Cards)
-                    .ThenInclude(ca => ca.Card);
+                    .ThenInclude(ca => ca.Card)
 
-            var withTos = withCards
                 .Include(d => d.ExchangesTo)
-                    .ThenInclude(ex => ex.Card);
+                    .ThenInclude(ex => ex.Card)
 
-            var withReturns = withTos
                 .Include(d => d.ExchangesFrom
                     .Where(ex => !ex.IsTrade))
-                    .ThenInclude(ca => ca.Card);
+                    .ThenInclude(ca => ca.Card)
 
-            return withReturns
                 .AsSplitQuery()
                 .AsNoTrackingWithIdentityResolution();
         }
@@ -88,11 +84,12 @@ namespace MTGViewer.Pages.Decks
             var cardIds = amountsById
                 .Select(g => g.Key)
                 .Union(requestsById
-                    . Select(g => g.Key))
-                .OrderBy(cid => cid);
+                    . Select(g => g.Key));
 
-            return cardIds.Select(cid =>
-                new RequestGroup(amountsById[cid], requestsById[cid]));
+            return cardIds
+                .Select(cid =>
+                    new RequestGroup(amountsById[cid], requestsById[cid]))
+                .OrderBy(rg => rg.Card.Name);
         }
     }
 }
