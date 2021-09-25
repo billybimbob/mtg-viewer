@@ -66,7 +66,7 @@ namespace MTGViewer.Tests.Pages.Transfers
 
             // Act
             var fromBefore = await fromQuery.SingleAsync();
-            var result = await _reviewModel.OnPostAcceptAsync(trade.Id);
+            var result = await _reviewModel.OnPostAcceptAsync(trade.Id, trade.Amount);
             var fromAfter = await fromQuery.SingleAsync();
 
             var tradeAfter = await _dbContext.Exchanges
@@ -102,7 +102,7 @@ namespace MTGViewer.Tests.Pages.Transfers
 
             // Act
             var fromBefore = await fromQuery.SingleAsync();
-            var result = await _reviewModel.OnPostAcceptAsync(wrongTrade.Id);
+            var result = await _reviewModel.OnPostAcceptAsync(wrongTrade.Id, trade.Amount);
             var fromAfter = await fromQuery.SingleAsync();
 
             var tradesAfter = await _dbContext.Exchanges
@@ -117,14 +117,22 @@ namespace MTGViewer.Tests.Pages.Transfers
         }
 
 
-        [Fact]
-        public async Task OnPostAccept_ValidTrade_AmountsAndRequestsChanged()
+        [Theory]
+        [InlineData(-1)]
+        [InlineData(1)]
+        [InlineData(5)]
+        public async Task OnPostAccept_ValidTrade_AmountsAndRequestsChanged(int amount)
         {
             // Arrange
             var trade = await _dbContext.Exchanges
                 .Include(ex => ex.From)
                 .AsNoTracking()
                 .FirstAsync(ex => ex.IsTrade && ex.ToId == _trades.ToId);
+
+            if (amount <= 0)
+            {
+                amount = trade.Amount;
+            }
 
             await _reviewModel.SetModelContextAsync(_userManager, trade.From.OwnerId);
 
@@ -140,7 +148,7 @@ namespace MTGViewer.Tests.Pages.Transfers
             var toBefore = await toAmountQuery.SingleOrDefaultAsync();
             var fromBefore = await fromAmountQuery.SingleAsync();
 
-            var result = await _reviewModel.OnPostAcceptAsync(trade.Id);
+            var result = await _reviewModel.OnPostAcceptAsync(trade.Id, amount);
 
             var toAfter = await toAmountQuery.SingleAsync();
             var fromAfter = await fromAmountQuery.SingleOrDefaultAsync();
@@ -196,7 +204,7 @@ namespace MTGViewer.Tests.Pages.Transfers
             var fromBefore = await fromAmountQuery.SingleAsync();
             var requestBefore = await requestQuery.ToListAsync();
 
-            var result = await _reviewModel.OnPostAcceptAsync(trade.Id);
+            var result = await _reviewModel.OnPostAcceptAsync(trade.Id, trade.Amount);
 
             var toAfter = await toAmountQuery.SingleAsync();
             var fromAfter = await fromAmountQuery.SingleOrDefaultAsync();

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -35,7 +36,7 @@ namespace MTGViewer.Pages.Transfers
         public Deck? Source { get; set; }
         public UserRef? Receiver { get; private set; }
 
-        public IEnumerable<Exchange>? Trades { get; private set; }
+        public IReadOnlyList<Exchange>? Trades { get; private set; }
 
 
         public async Task<IActionResult> OnGetAsync(int deckId)
@@ -45,7 +46,8 @@ namespace MTGViewer.Pages.Transfers
                 return NotFound();
             }
 
-            var deck = await DeckWithFromTrades(deckId).SingleOrDefaultAsync();
+            var deck = await DeckWithCardsAndFromTrades(deckId)
+                .SingleOrDefaultAsync();
 
             if (deck == default)
             {
@@ -59,19 +61,21 @@ namespace MTGViewer.Pages.Transfers
 
             Source = deck;
             Receiver = deck.Owner;
-            Trades = deck.ExchangesFrom;
+            Trades = CappedFromTrades(deck);
 
             return Page();
         }
 
 
-        private IQueryable<Deck> DeckWithFromTrades(int deckId)
+        private IQueryable<Deck> DeckWithCardsAndFromTrades(int deckId)
         {
             var userId = _userManager.GetUserId(User);
 
             return _dbContext.Decks
                 .Where(d => d.Id == deckId && d.OwnerId == userId)
+
                 .Include(d => d.Owner)
+                .Include(d => d.Cards)
 
                 .Include(d => d.ExchangesFrom)
                     .ThenInclude(ex => ex.Card)
@@ -83,7 +87,29 @@ namespace MTGViewer.Pages.Transfers
                     .Where(ex => ex.IsTrade)
                     .OrderBy(ex => ex.Card.Name))
 
+                .AsSplitQuery()
                 .AsNoTrackingWithIdentityResolution();
+        }
+
+
+        private IReadOnlyList<Exchange> CappedFromTrades(Deck deck)
+        {
+            var trades = deck.ExchangesFrom.Where(ex => ex.IsTrade);
+
+            var tradesWithAmountCap = trades
+                .Join( deck.Cards,
+                    ex => ex.CardId,
+                    ca => ca.CardId,
+                    (trade, amount) =>
+                        (trade, cap: amount.Amount));
+
+            foreach (var (trade, cap) in tradesWithAmountCap)
+            {
+                // modifications are not saved
+                trade.Amount = Math.Min(trade.Amount, cap);
+            }
+
+            return trades.ToList();
         }
 
 
@@ -97,7 +123,7 @@ namespace MTGViewer.Pages.Transfers
             Exchange FromRequest) { }
 
 
-        public async Task<IActionResult> OnPostAcceptAsync(int tradeId)
+        public async Task<IActionResult> OnPostAcceptAsync(int tradeId, int amount)
         {
             var trade = await GetTradeAsync(tradeId);
 
@@ -111,13 +137,14 @@ namespace MTGViewer.Pages.Transfers
 
             if (acceptRequest == null)
             {
-                PostMessage = "Source Deck lacks the required amount to complete the trade";
+                PostMessage = "Source Deck lacks the cards to complete the trade";
                 return RedirectToPage("./Review",
                     new { deckId = trade.FromId });
             }
 
-            ApplyAccept(acceptRequest);
-            await CascadeIfComplete(acceptRequest);
+            ApplyAccept(acceptRequest, amount);
+
+            await UpdateRemainingTrades(acceptRequest);
 
             try
             {
@@ -223,7 +250,7 @@ namespace MTGViewer.Pages.Transfers
         }
 
 
-        private void ApplyAccept(AcceptRequest acceptRequest)
+        private void ApplyAccept(AcceptRequest acceptRequest, int amount)
         {
             var (trade, toRequests, fromAmount) = acceptRequest;
 
@@ -231,12 +258,30 @@ namespace MTGViewer.Pages.Transfers
             {
                 var (toAmount, fromRequest) = GetAcceptTargets(acceptRequest);
 
-                var changeOptions = new [] { trade.Amount, fromAmount.Amount, toRequests.Amount };
-                var change = changeOptions.Min();
+                var changeOptions = new []
+                {
+                    amount, trade.Amount, toRequests.Amount, fromAmount.Amount
+                };
 
-                // TODO: prioritize change to exact request amount
+                var change = changeOptions.Min();
+                var exactRequest = toRequests
+                    .SingleOrDefault(ex => ex.CardId == trade.CardId);
+
+                if (exactRequest != default)
+                {
+                    int exactChange = Math.Min(change, exactRequest.Amount);
+                    int nonExactChange = change - exactChange;
+
+                    // exactRequest mod is also reflected in toRequests
+                    exactRequest.Amount = exactChange;
+                    toRequests.Amount -= nonExactChange;
+                }
+                else
+                {
+                    toRequests.Amount -= change;
+                }
+
                 toAmount.Amount += change;
-                toRequests.Amount -= change;
                 fromAmount.Amount -= change;
                 fromRequest.Amount += change;
             }
@@ -294,29 +339,44 @@ namespace MTGViewer.Pages.Transfers
 
 
 
-        private async Task CascadeIfComplete(AcceptRequest acceptRequest)
+        private async Task UpdateRemainingTrades(AcceptRequest acceptRequest)
         {
-            var requests = acceptRequest.ToRequests;
+            var toRequests = acceptRequest.ToRequests;
 
-            if (requests?.Amount > 0)
+            if (toRequests == default)
             {
                 return;
             }
 
-            var accepted = acceptRequest.Trade;
+            var trade = acceptRequest.Trade;
 
             // keep eye on, could possibly remove trades not started
             // by the user
-            // current makes the assumption that trades are always started by
-            // the owner of the To deck
+            // current impl makes the assumption that trades are always 
+            // started by the owner of the To deck
+
             var remainingTrades = await _dbContext.Exchanges
                 .Where(ex => ex.IsTrade
-                    && ex.Id != accepted.Id 
-                    && ex.ToId == accepted.ToId
-                    && ex.Card.Name == accepted.Card.Name)
+                    && ex.Id != trade.Id 
+                    && ex.ToId == trade.ToId
+                    && ex.Card.Name == trade.Card.Name)
                 .ToListAsync();
 
-            _dbContext.Exchanges.RemoveRange(remainingTrades);
+            if (!remainingTrades.Any())
+            {
+                return;
+            }
+
+            if (toRequests.Amount == 0)
+            {
+                _dbContext.Exchanges.RemoveRange(remainingTrades);
+                return;
+            }
+
+            foreach (var remaining in remainingTrades)
+            {
+                remaining.Amount = toRequests.Amount;
+            }
         }
 
 

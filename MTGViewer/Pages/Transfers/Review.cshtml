@@ -57,9 +57,24 @@
                        asp-route-deckid="@trade.ToId">
                        @trade.To.Name </a>
                 </td>
-                <td> @trade.Amount </td>
-                <td>
-                    <form method="POST">
+
+                <form method="POST">
+                    <td>
+                        <div>
+                            <input type="range" 
+                                class="form-control"
+                                name="amount"
+                                value="@trade.Amount" min="1" max="@trade.Amount"
+                                oninput="rangeLabel.value=this.value"/>
+
+                            <input type="text"
+                                id="rangeLabel"
+                                class="form-control"
+                                value="@trade.Amount"
+                                readonly />
+                        </div>
+                    </td>
+                    <td>
                         <input type="hidden" name="tradeid" value="@trade.Id" />
 
                         <input type="submit"
@@ -71,8 +86,8 @@
                             asp-page-handler="Reject"
                             class="btn btn-secondary mb-3"
                             value="Reject" />
-                    </form>
-                </td>
+                    </td>
+                </form>
             </tr>
         }
     </tbody>

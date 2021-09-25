@@ -62,8 +62,10 @@ namespace MTGViewer.Data
             get => _amounts.Sum(ca => ca.Amount);
             set
             {
+                var lastCycle = _amounts.Last!.Value;
                 int change = Amount - value;
-                while (change < 0 || change > 0 && First.Amount > 0)
+
+                while (change < 0 || change > 0 && lastCycle.Amount > 0)
                 {
                     int mod = Math.Min(change, First.Amount);
 

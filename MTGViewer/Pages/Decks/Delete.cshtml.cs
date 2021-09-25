@@ -143,8 +143,8 @@ namespace MTGViewer.Pages.Decks
 
             try
             {
-                await _sharedStorage.ReturnAsync(returningCards);
                 await _dbContext.SaveChangesAsync();
+                await _sharedStorage.ReturnAsync(returningCards);
 
                 PostMesssage = $"Successfully deleted {deck.Name}";
             }

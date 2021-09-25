@@ -89,6 +89,7 @@ namespace MTGViewer.Pages.Transfers
 
                 .Include(d => d.ExchangesTo)
                     .ThenInclude(ca => ca.Card)
+
                 .Include(d => d.ExchangesTo
                     .OrderBy(da => da.Card.Name));
         }
@@ -118,8 +119,7 @@ namespace MTGViewer.Pages.Transfers
         {
             var userId = _userManager.GetUserId(User);
 
-            var deck = await DeckWithTos(userId, deckId)
-                .SingleOrDefaultAsync();
+            var deck = await DeckWithTos(userId, deckId).SingleOrDefaultAsync();
 
             if (deck == default)
             {
@@ -178,29 +178,35 @@ namespace MTGViewer.Pages.Transfers
         private IReadOnlyList<Exchange> FindTradeMatches(Deck deck, IEnumerable<CardAmount> targets)
         {
             // TODO: figure out how to query more on server
-            var requestGroups = deck.Cards
-                .GroupBy(ca => ca.Card.Name,
-                    (_, amounts) => new CardNameGroup(amounts));
+            // TODO: prioritize requesting from exact card matches
 
-            var requestMatches = requestGroups
-                .Join( targets,
-                    group => group.Name,
+            var requests = deck.ExchangesTo.Where(ex => !ex.IsTrade);
+
+            var requestMatches = targets
+                .GroupJoin( requests,
                     target => target.Card.Name,
-                    (group, target) => 
-                        // TODO: prioritize requesting from exact card matches
-                        (target, amount: Math.Min(target.Amount, group.Amount)) );
+                    request => request.Card.Name,
+                    (target, requestMatches) =>
+                        (target, amount: requestMatches.Sum(ca => ca.Amount)));
+
+            // var requestGroups = deck.ExchangesTo
+            //     .Where(ex => !ex.IsTrade)
+            //     .GroupBy(ex => ex.Card.Name,
+            //         (_, requests) => new ExchangeNameGroup(requests));
+
+            // var requestMatches = requestGroups
+            //     .Join( targets,
+            //         group => group.Name,
+            //         target => target.Card.Name,
+            //         (group, Target) => (Target, group.Amount));
 
             var newTrades = requestMatches
-                .Select(ta => 
+                .Select(ta => new Exchange
                 {
-                    var from = (Deck)ta.target.Location;
-                    return new Exchange
-                    {
-                        Card = ta.target.Card,
-                        To = deck,
-                        From = from,
-                        Amount = ta.amount,
-                    };
+                    Card = ta.target.Card,
+                    To = deck,
+                    From = (Deck) ta.target.Location,
+                    Amount = ta.amount
                 });
                 
             return newTrades.ToList();

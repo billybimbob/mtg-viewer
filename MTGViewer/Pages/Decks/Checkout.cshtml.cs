@@ -144,8 +144,8 @@ namespace MTGViewer.Pages.Decks
 
             try
             {
-                await _sharedStorage.ReturnAsync(boxReturns);
                 await _dbContext.SaveChangesAsync();
+                await _sharedStorage.ReturnAsync(boxReturns);
             }
             catch (DbUpdateException e)
             {
@@ -158,44 +158,33 @@ namespace MTGViewer.Pages.Decks
 
         private void ApplyTakes(Deck deck, IEnumerable<CardAmount> availables)
         {
-            var takeCards = deck.ExchangesTo.Where(ex => ex.IsTrade);
+            var takeCards = deck.ExchangesTo.Where(ex => !ex.IsTrade);
 
-            if (!takeCards.Any() || !availables.Any())
+            if (!availables.Any() || !takeCards.Any())
             {
                 return;
             }
 
-            AddMatchedActuals(deck, availables);
+            var actuals = GetAllActuals(deck, availables);
 
-            var takeGroups = ToExchangeNameGroups(takeCards);
-            var availGroups = ToCardNameGroups(availables);
-            var actualGroups = ToCardNameGroups(deck.Cards);
+            ApplyExactTakes(takeCards, availables, actuals);
 
-            var matches = takeGroups.Values
-                .Join( availGroups.Values,
-                    take => take.Name,
-                    avail => avail.Name,
-                    (take, avail) =>
-                        (take.Name, Math.Min(take.Amount, avail.Amount)) );
+            var remainingTakes = takeCards.Where(ex => ex.Amount > 0);
+            var remainingAvails = availables.Where(ca => ca.Amount > 0);
 
-            // TODO: prioritize taking from exact card matches
-            foreach (var (name, amount) in matches)
-            {
-                actualGroups[name].Amount += amount;
-                availGroups[name].Amount -= amount;
-                takeGroups[name].Amount -= amount;
-            }
+            ApplyCloseTakes(remainingTakes, remainingAvails, actuals);
 
-            // do not remove empty availables
             var emptyAmounts = deck.Cards.Where(da => da.Amount == 0);
             var finishedRequests = deck.GetAllExchanges().Where(ex => ex.Amount == 0);
 
+            // do not remove empty availables
             _dbContext.Amounts.RemoveRange(emptyAmounts);
             _dbContext.Exchanges.RemoveRange(finishedRequests);
         }
 
 
-        private void AddMatchedActuals(Deck deck, IEnumerable<CardAmount> availables)
+        private IReadOnlyDictionary<string, CardAmount> GetAllActuals(
+            Deck deck, IEnumerable<CardAmount> availables)
         {
             var missingActualCards = availables
                 .GroupJoin( deck.Cards,
@@ -203,7 +192,8 @@ namespace MTGViewer.Pages.Decks
                     actual => actual.CardId,
                     (available, actuals) => (available, actuals))
                 .Where(aas => !aas.actuals.Any())
-                .Select(aa => aa.available.Card);
+                .Select(aa => aa.available.Card)
+                .Distinct();
 
             var newActuals = missingActualCards
                 .Select(card => new CardAmount
@@ -214,27 +204,82 @@ namespace MTGViewer.Pages.Decks
                 });
 
             _dbContext.Amounts.AddRange(newActuals);
+
+            return deck.Cards.ToDictionary(ca => ca.CardId);
         }
 
 
-        private IReadOnlyDictionary<string, CardNameGroup> ToCardNameGroups(
-            IEnumerable<CardAmount> amounts)
+        private void ApplyExactTakes(
+            IEnumerable<Exchange> takes,
+            IEnumerable<CardAmount> availables,
+            IReadOnlyDictionary<string, CardAmount> actuals)
         {
-            return amounts
-                .GroupBy(ca => ca.Card.Name,
-                    (_, amounts) => new CardNameGroup(amounts))
-                .ToDictionary(eg => eg.Name);
-        }
-        
+            var exactMatches = takes
+                .GroupJoin( availables,
+                    take => take.CardId,
+                    avail => avail.CardId,
+                    (take, avails) => (take, avails))
+                .Where(tas => 
+                    tas.avails.Any());
 
-        private IReadOnlyDictionary<string, ExchangeNameGroup> ToExchangeNameGroups(
-            IEnumerable<Exchange> exchanges)
+            foreach (var (take, avails) in exactMatches)
+            {
+                using var availableToTake = avails.GetEnumerator();
+                var actual = actuals[take.CardId];
+
+                while (take.Amount > 0 && availableToTake.MoveNext())
+                {
+                    var currentAvail = availableToTake.Current;
+                    int amountTaken = Math.Min(take.Amount, currentAvail.Amount);
+
+                    currentAvail.Amount -= amountTaken;
+                    take.Amount -= amountTaken;
+
+                    actual.Amount += amountTaken;
+                }
+            }
+        }
+
+
+        private void ApplyCloseTakes(
+            IEnumerable<Exchange> takes,
+            IEnumerable<CardAmount> availables,
+            IReadOnlyDictionary<string, CardAmount> actuals)
         {
-            return exchanges
+            var takesByName = takes
                 .GroupBy(ex => ex.Card.Name,
-                    (_, exchanges) => new ExchangeNameGroup(exchanges))
-                .ToDictionary(eg => eg.Name);
+                    (_, takes) => new ExchangeNameGroup(takes));
+
+            var availsByName = availables
+                .GroupBy(ca => ca.Card.Name,
+                    (_, avails) => new CardNameGroup(avails));
+
+            var closeMatches = takesByName
+                .Join( availsByName,
+                    takeGroup => takeGroup.Name,
+                    availGroup => availGroup.Name,
+                    (takes, availGroup) => (takes, availGroup));
+
+
+            foreach (var (takeGroup, availGroup) in closeMatches)
+            {
+                using var closeAvails = availGroup.GetEnumerator();
+
+                while (takeGroup.Amount > 0 && closeAvails.MoveNext())
+                {
+                    var currentAvail = closeAvails.Current;
+                    var actual = actuals[currentAvail.CardId];
+
+                    int amountTaken = Math.Min(takeGroup.Amount, currentAvail.Amount);
+
+                    takeGroup.Amount -= amountTaken;
+                    currentAvail.Amount -= amountTaken;
+
+                    actual.Amount += amountTaken;
+                }
+            }
         }
+
 
 
         private IEnumerable<(Card, int)> ApplyDeckReturns(Deck deck)
@@ -252,13 +297,10 @@ namespace MTGViewer.Pages.Decks
                     act => act.CardId,
                     (Return, Actuals) =>
                         (Actual: Actuals.SingleOrDefault(), Return) )
-                .ToList();
 
-            if (returnPairs.Any(ar =>
-                ar.Actual == default || ar.Return.Amount > ar.Actual.Amount))
-            {
-                return Enumerable.Empty<(Card, int)>();
-            }
+                .Where(ar => ar.Actual != default 
+                    && ar.Actual.Amount >= ar.Return.Amount)
+                .ToList();
 
             foreach (var (actualCard, returnCard) in returnPairs)
             {
@@ -266,13 +308,13 @@ namespace MTGViewer.Pages.Decks
             }
 
             var emptyAmounts = deck.Cards.Where(ca => ca.Amount == 0);
-            var finishedReturns = returns.Where(ca => ca.Amount == 0);
+            var appliedReturns = returnPairs.Select(ar => ar.Return);
 
             _dbContext.Amounts.RemoveRange(emptyAmounts);
-            _dbContext.Exchanges.RemoveRange(finishedReturns);
+            _dbContext.Exchanges.RemoveRange(appliedReturns);
 
-            return returnPairs
-                .Select(ar => (ar.Actual.Card, ar.Return.Amount))
+            return appliedReturns
+                .Select(ex => (ex.Card, ex.Amount))
                 .ToList();
         }
     }

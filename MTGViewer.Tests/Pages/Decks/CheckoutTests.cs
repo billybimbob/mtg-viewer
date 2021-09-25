@@ -107,7 +107,7 @@ namespace MTGViewer.Tests.Pages.Decks
 
             await _checkoutModel.SetModelContextAsync(_userManager, deckOwnerId);
 
-            var takeAmountQuery = _dbContext.Amounts
+            var takeAmountQuery = _dbContext.Exchanges
                 .Where(da => da.Id == request.Id)
                 .Select(da => da.Amount);
 
