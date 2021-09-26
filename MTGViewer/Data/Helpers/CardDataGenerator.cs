@@ -58,25 +58,19 @@ namespace MTGViewer.Data.Seed
             var boxAmounts = GetBoxAmounts(cards);
             var deckAmounts = GetDeckAmounts(cards, decks);
 
-            var transfers = GetTransfers(userRefs, cards, decks, deckAmounts);
-
-            var suggestions = transfers
-                .Where(t => t is Suggestion)
-                .Cast<Suggestion>();
-
-            var trades = transfers
-                .Where(t => t is Trade)
-                .Cast<Trade>();
+            var trades = GetTrades(userRefs, cards, decks, deckAmounts);
+            var suggestions = GetSuggestions(userRefs, cards, decks, deckAmounts);
 
             _dbContext.Users.AddRange(userRefs);
-
             _dbContext.Cards.AddRange(cards);
+
             _dbContext.Decks.AddRange(decks);
             _dbContext.Boxes.AddRange(boxes);
 
-            _dbContext.DeckAmounts.AddRange(deckAmounts);
+            _dbContext.Amounts.AddRange(deckAmounts);
+
             _dbContext.Suggestions.AddRange(suggestions);
-            _dbContext.Trades.AddRange(trades);
+            _dbContext.Exchanges.AddRange(trades);
 
             await _dbContext.SaveChangesAsync(cancel);
 
@@ -147,13 +141,13 @@ namespace MTGViewer.Data.Seed
         }
 
 
-        private IReadOnlyList<DeckAmount> GetDeckAmounts(
+        private IReadOnlyList<CardAmount> GetDeckAmounts(
             IEnumerable<Card> cards,
             IEnumerable<Deck> decks)
         {
             return cards.Zip(decks,
                 (card, deck) => (card, deck))
-                .Select(cl => new DeckAmount
+                .Select(cl => new CardAmount
                 {
                     Card = cl.card,
                     Location = cl.deck,
@@ -171,37 +165,44 @@ namespace MTGViewer.Data.Seed
         }
 
 
-        private IReadOnlyList<Transfer> GetTransfers(
+        private IReadOnlyList<Exchange> GetTrades(
             IEnumerable<UserRef> users,
             IEnumerable<Card> cards,
             IEnumerable<Deck> decks,
-            IEnumerable<DeckAmount> amounts)
+            IEnumerable<CardAmount> amounts)
         {
             var source = amounts.First();
-
-            // TODO: do not use id comparisons
             var tradeFrom = (Deck)source.Location;
             var tradeTo = decks.First(l => l != source.Location);
 
-            var suggestCard = cards.First();
-            var suggester = users.First(u => 
-                u != tradeFrom.Owner && u != tradeTo.Owner);
-
-            return new List<Transfer>()
+            return new List<Exchange>()
             {
-                new Trade
+                new Exchange
                 {
                     Card = source.Card,
-                    Proposer = tradeTo.Owner,
-                    Receiver = tradeFrom.Owner,
                     To = tradeTo,
                     From = tradeFrom,
                     Amount = _random.Next(5)
-                },
+                }
+            };
+        }
+
+
+        private IReadOnlyList<Suggestion> GetSuggestions(
+            IEnumerable<UserRef> users,
+            IEnumerable<Card> cards,
+            IEnumerable<Deck> decks,
+            IEnumerable<CardAmount> amounts)
+        {
+            var source = amounts.First();
+            var suggestCard = cards.First();
+            var tradeTo = decks.First(l => l != source.Location);
+
+            return new List<Suggestion>()
+            {
                 new Suggestion
                 {
                     Card = suggestCard,
-                    Proposer = suggester,
                     Receiver = tradeTo.Owner,
                     To = tradeTo
                 }

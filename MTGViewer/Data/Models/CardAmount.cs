@@ -1,70 +1,46 @@
 using System;
 using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 
 using MTGViewer.Data.Concurrency;
-using MTGViewer.Data.Internal;
 
 #nullable enable
 
 namespace MTGViewer.Data
 {
-    public class CardAmount : Concurrent
+    public interface ICardQuantity
     {
-        protected CardAmount()
-        { }
+        Card Card { get; }
+        string CardId { get; }
 
-        [JsonRequired]
-        public int Id { get; private set; }
+        Location Location { get; }
+        int LocationId { get; }
 
-        [JsonIgnore]
-        internal Discriminator Type { get; private set; }
-
-        [JsonIgnore]
-        public Card Card { get; init; } = null!;
-        public string CardId { get; init; } = null!;
-
-        [JsonIgnore]
-        public Location Location { get; init; } = null!;
-        public int LocationId { get; init; }
-
-        [Range(0, int.MaxValue)]
-        public int Amount { get; set; }
-    }
-
-
-    public class BoxAmount : CardAmount
-    {
-        public BoxAmount() : base()
-        { }
-
-        [JsonIgnore]
-        public Box Box
-        {
-            get => (Location as Box)!;
-            init => Location = value;
-        }
+        int Amount { get; }
     }
 
 
     [Index(
         nameof(LocationId),
-        nameof(CardId),
-        nameof(Intent), IsUnique = true)]
-    public class DeckAmount : CardAmount
+        nameof(CardId), IsUnique = true)]
+    public class CardAmount : Concurrent, ICardQuantity
     {
-        public DeckAmount() : base()
-        { }
+        [JsonRequired]
+        public int Id { get; private set; }
+
 
         [JsonIgnore]
-        public Deck Deck
-        {
-            get => (Location as Deck)!;
-            init => Location = value;
-        }
+        public Card Card { get; init; } = null!;
+        public string CardId { get; init; } = null!;
 
-        public Intent Intent { get; init; }
+
+        [JsonIgnore]
+        public Location Location { get; init; } = null!;
+        public int LocationId { get; init; }
+
+
+        [Range(0, int.MaxValue)]
+        public int Amount { get; set; }
     }
 }

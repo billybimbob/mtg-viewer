@@ -32,7 +32,7 @@
         </tr>
     </thead>
     <tbody>
-        @foreach (var (deck, numRequests) in Model.ReceivedTrades)
+        @foreach (var (deck, numRequests) in Model.TakeFroms)
         {
             <tr>
                 <td>@deck.Name</td>
@@ -60,7 +60,7 @@
         </tr>
     </thead>
     <tbody>
-        @foreach (var (deck, numRequests) in Model.PendingTrades)
+        @foreach (var (deck, numRequests) in Model.PendingTakeTos)
         {
             <tr>
                 <td>@deck.Name</td>
@@ -88,7 +88,7 @@
         </tr>
     </thead>
     <tbody>
-        @foreach (var deck in Model.PossibleRequests)
+        @foreach (var deck in Model.PossibleTakeTos)
         {
             <tr>
                 <td> @deck.Name </td>
@@ -111,7 +111,6 @@
     <thead>
         <tr>
             <th> @Html.DisplayNameForInnerType((Suggestion t) => t.Card) </th>
-            <th> Suggestion From </th>
             <th> @Html.DisplayNameForInnerType((Suggestion t) => t.To) </th>
             <th> @Html.DisplayNameForInnerType((Suggestion t) => t.Comment) </th>
             <th></th>
@@ -126,7 +125,6 @@
                         asp-route-id="@suggestion.CardId">
                         @suggestion.Card.Name </a>
                 </td>
-                <td>@suggestion.Proposer.Name</td>
                 <td>@(suggestion.To?.Name ?? "")</td>
                 <td>@suggestion.Comment</td>
                 <td>

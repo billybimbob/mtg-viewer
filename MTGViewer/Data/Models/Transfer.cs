@@ -1,35 +1,25 @@
 using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-using Newtonsoft.Json;
+using System.ComponentModel.DataAnnotations.Schema;
+using Microsoft.EntityFrameworkCore;
 
+using Newtonsoft.Json;
 using MTGViewer.Data.Concurrency;
-using MTGViewer.Data.Internal;
 
 #nullable enable
 
 namespace MTGViewer.Data
 {
-    public class Transfer : Concurrent
+    public class Suggestion
     {
-        protected Transfer()
-        { }
-
         [JsonRequired]
         public int Id { get; private set; }
-
-        [JsonIgnore]
-        internal Discriminator Type { get; private set; }
 
 
         [JsonIgnore]
         public Card Card { get; init; } = null!;
         public string CardId { get; init; } = null!;
-
-
-        [Display(Name = "Offered By")]
-        [JsonIgnore]
-        public UserRef Proposer { get; init; } = null!;
-        public string ProposerId { get; init; } = null!;
 
 
         [Display(Name = "Sent To")]
@@ -38,21 +28,6 @@ namespace MTGViewer.Data
         public string ReceiverId { get; init; } = null!;
 
 
-        public bool IsInvolved(string userId) =>
-            ReceiverId == userId || ProposerId == userId;
-
-
-        public UserRef? GetOtherUser(string userId) => this switch
-        {
-            _ when userId == ProposerId => Receiver,
-            _ when userId == ReceiverId => Proposer,
-            _ => null
-        };
-    }
-
-
-    public class Suggestion : Transfer
-    {
         [Display(Name = "To Deck")]
         [JsonIgnore]
         public Deck? To { get; init; }
@@ -64,38 +39,104 @@ namespace MTGViewer.Data
     }
 
 
-    public class Trade : Transfer
+    [Index(
+        nameof(ToId),
+        nameof(FromId),
+        nameof(CardId), IsUnique = true)]
+    public class Exchange : Concurrent, ICardQuantity
     {
+        [JsonRequired]
+        public int Id { get; private set; }
+
+
+        [JsonIgnore]
+        public Card Card { get; init; } = null!;
+        public string CardId { get; init; } = null!;
+
+
         [Display(Name = "To Deck")]
         [JsonIgnore]
-        public Deck To { get; init; } = null!;
+        public Deck? To { get; init; } = null!;
+        public int? ToId { get; init; }
+
+
+        [Display(Name = "From Deck")]
+        [JsonIgnore]
+        public Deck? From { get; init; } = null!;
+        public int? FromId { get; init; }
+
+
+        [Range(1, int.MaxValue)]
+        public int Amount { get; set; }
+
+
+        private readonly bool _isTrade;
+
+        [JsonIgnore]
+        public bool IsTrade
+        {
+            get => _isTrade
+                || (ToId != null || To != null)
+                    && (FromId != null || From != null);
+
+            private init => _isTrade = value;
+        }
+
+
+        [NotMapped]
+        [JsonIgnore]
+        public Location Location => IsTrade
+            ? throw new InvalidOperationException("Trade references multiple locations")
+            : From ?? To ?? null!;
+
+        [NotMapped]
+        [JsonIgnore]
+        public int LocationId => IsTrade
+            ? throw new InvalidOperationException("Trade references multiple locations")
+            : FromId ?? ToId ?? default;
+    }
+
+
+    public class Change
+    {
+        [JsonRequired]
+        public int Id { get; private set; }
+
+
+        [JsonIgnore]
+        public Card Card { get; init; } = null!;
+        public string CardId { get; init; } = null!;
+
+
+        [Display(Name = "To Deck")]
+        [JsonIgnore]
+        public Location To { get; init; } = null!;
         public int ToId { get; init; }
 
 
         [Display(Name = "From Deck")]
         [JsonIgnore]
-        public Deck From { get; init; } = null!;
+        public Location From { get; init; } = null!;
         public int FromId { get; init; }
 
 
-        [Range(0, int.MaxValue)]
+        [Range(1, int.MaxValue)]
         public int Amount { get; set; }
 
 
-        private Deck? _target;
+        [JsonIgnore]
+        public Transaction Transaction { get; init; } = null!;
+        public int TransactionId { get; init; }
+    }
+
+
+    public class Transaction
+    {
+        public int Id { get; private set; }
+
+        public DateTime Applied { get; private set; }
 
         [JsonIgnore]
-        public Deck? TargetDeck 
-        {
-            get => _target switch
-            {
-                not null => _target,
-                _ when ReceiverId == To?.OwnerId => To,
-                _ when ReceiverId == From?.OwnerId => From,
-                _ => null
-            };
-            private init =>
-                _target = value;
-        }
+        public ICollection<Change> Changes = new List<Change>();
     }
 }

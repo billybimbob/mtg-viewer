@@ -117,18 +117,18 @@ namespace MTGViewer.Tests.Pages.Decks
             var deck = await _dbContext.CreateDeckAsync(numCopies);
             await _deleteModel.SetModelContextAsync(_userManager, deck.OwnerId);
 
-            var deckCards = await _dbContext.DeckAmounts
-                .Where(da => da.LocationId == deck.Id)
-                .Select(da => da.CardId)
+            var deckCards = await _dbContext.Amounts
+                .Where(ca => ca.LocationId == deck.Id)
+                .Select(ca => ca.CardId)
                 .ToListAsync();
 
             var deckQuery = _dbContext.Decks
                 .Where(d => d.Id == deck.Id)
                 .AsNoTracking();
 
-            var boxQuery = _dbContext.BoxAmounts
-                .Where(ba => deckCards.Contains(ba.CardId))
-                .Select(ba => ba.Amount);
+            var boxQuery = _dbContext.Amounts
+                .Where(ca => deckCards.Contains(ca.CardId))
+                .Select(ca => ca.Amount);
 
             // Act
             var boxBefore = await boxQuery.ToListAsync();

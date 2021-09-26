@@ -27,37 +27,72 @@ namespace MTGViewer.Pages.Decks
 
         public bool CanEdit { get; private set; }
         public Deck Deck { get; private set; }
-        public IEnumerable<RequestGroup> Amounts { get; private set; }
+        public IEnumerable<RequestGroup> Cards { get; private set; }
 
         public async Task<IActionResult> OnGetAsync(int deckId)
         {
-            Deck = await _dbContext.Decks
-                .Include(d => d.Owner)
-                .Include(d => d.Cards
-                    .Where(da => da.Intent != Intent.Return)
-                    .OrderBy(ca => ca.Card.Name))
-                    .ThenInclude(ca => ca.Card)
-                .Include(d => d.TradesTo
-                    .Where(t => t.ProposerId == t.To.OwnerId))
-                .AsSplitQuery()
-                .AsNoTrackingWithIdentityResolution()
-                .SingleOrDefaultAsync(d => d.Id == deckId);
+            var deck = await DeckWithCardsAndExchanges(deckId).SingleOrDefaultAsync();
 
-            if (Deck == default)
+            if (deck == default)
             {
                 return NotFound();
             }
 
             var userId = _userManager.GetUserId(User);
 
-            CanEdit = Deck.OwnerId == userId && !Deck.TradesTo.Any();
+            Deck = deck;
 
-            Amounts = Deck.Cards
-                .GroupBy(ca => ca.CardId,
-                    (_, amounts) => new RequestGroup(amounts))
-                .ToList();
+            CanEdit = deck.OwnerId == userId 
+                && !deck.ExchangesTo.Any(ex => ex.IsTrade);
+
+            Cards = DeckCardGroups(deck).ToList();
 
             return Page();
+        }
+
+
+        private IQueryable<Deck> DeckWithCardsAndExchanges(int deckId)
+        {
+            return _dbContext.Decks
+                .Where(d => d.Id == deckId)
+
+                .Include(d => d.Owner)
+                .Include(d => d.Cards)
+                    .ThenInclude(ca => ca.Card)
+
+                .Include(d => d.ExchangesTo)
+                    .ThenInclude(ex => ex.Card)
+
+                .Include(d => d.ExchangesFrom
+                    .Where(ex => !ex.IsTrade))
+                    .ThenInclude(ca => ca.Card)
+
+                .AsSplitQuery()
+                .AsNoTrackingWithIdentityResolution();
+        }
+
+
+        private IEnumerable<RequestGroup> DeckCardGroups(Deck deck)
+        {
+            var amountsById = deck.Cards
+                .ToDictionary(ca => ca.CardId);
+
+            var requestsById = deck.GetAllExchanges()
+                .Where(ex => !ex.IsTrade)
+                .ToLookup(ex => ex.CardId);
+
+            var cardIds = amountsById
+                .Select(g => g.Key)
+                .Union(requestsById
+                    . Select(g => g.Key));
+
+            return cardIds
+                .Select(cid =>
+                {
+                    amountsById.TryGetValue(cid, out var amount);
+                    return new RequestGroup(amount, requestsById[cid]);
+                })
+                .OrderBy(rg => rg.Card.Name);
         }
     }
 }

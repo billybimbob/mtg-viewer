@@ -38,11 +38,12 @@ namespace MTGViewer.Services
         }
 
 
-        public IQueryable<Box> Boxes =>
-            _dbContext.Boxes.AsNoTrackingWithIdentityResolution();
+        public IQueryable<Box> Boxes => _dbContext.Boxes
+            .AsNoTrackingWithIdentityResolution();
 
-        public IQueryable<BoxAmount> Cards =>
-            _dbContext.BoxAmounts.AsNoTrackingWithIdentityResolution();
+        public IQueryable<CardAmount> Cards => _dbContext.Amounts
+            .Where(ca => ca.Location is Box)
+            .AsNoTrackingWithIdentityResolution();
 
 
         public async Task ReturnAsync(IEnumerable<(Card, int numCopies)> returns)
@@ -91,8 +92,8 @@ namespace MTGViewer.Services
                 .Select(ra => ra.card.Id)
                 .ToArray();
 
-            var returnAmounts = await _dbContext.BoxAmounts
-                .Where(ba => returnIds.Contains(ba.CardId))
+            var returnAmounts = await _dbContext.Amounts
+                .Where(ca => ca.Location is Box && returnIds.Contains(ca.CardId))
                 .ToListAsync();
 
             if (!returnAmounts.Any())
@@ -101,8 +102,7 @@ namespace MTGViewer.Services
             }
 
             var returnGroups = returnAmounts
-                .GroupBy(ca => ca.CardId,
-                    (_, amounts) => new CardGroup(amounts))
+                .GroupBy(ca => ca.CardId, (_, amounts) => amounts.First())
                 .ToDictionary(ag => ag.CardId);
 
             foreach (var (card, numCopies) in returning)
@@ -119,12 +119,13 @@ namespace MTGViewer.Services
         }
 
 
-        private async Task<IReadOnlyList<BoxAmount>> GetSortedAmountsAsync()
+        private async Task<IReadOnlyList<CardAmount>> GetSortedAmountsAsync()
         {
             // loading all shared cards, could be memory inefficient
             // TODO: find more efficient way to determining card position
 
-            return await _dbContext.BoxAmounts
+            return await _dbContext.Amounts
+                .Where(ca => ca.Location is Box)
                 .Include(ca => ca.Card)
                 .OrderBy(ca => ca.Card.Name)
                     .ThenBy(ca => ca.Card.SetName)
@@ -163,19 +164,19 @@ namespace MTGViewer.Services
                 var cardIndex = cardIndices.ElementAtOrDefault(amountIndex);
                 var boxIndex = Math.Min(cardIndex / _boxSize, sortedBoxes.Count - 1);
 
-                var newSpot = new BoxAmount
+                var newSpot = new CardAmount
                 {
                     Card = card,
                     Location = sortedBoxes[boxIndex],
                     Amount = numCopies
                 };
 
-                _dbContext.BoxAmounts.Attach(newSpot);
+                _dbContext.Amounts.Attach(newSpot);
             }
         }
 
 
-        private IReadOnlyList<int> GetCardIndices(IEnumerable<BoxAmount> boxAmounts)
+        private IReadOnlyList<int> GetCardIndices(IEnumerable<CardAmount> boxAmounts)
         {
             var cardIndices = new List<int>(boxAmounts.Count());
             var cardCount = 0;
@@ -244,7 +245,7 @@ namespace MTGViewer.Services
 
                 AddUpdatedBoxAmounts(sortedBoxAmounts, sortedBoxes);
 
-                _dbContext.BoxAmounts.RemoveRange(
+                _dbContext.Amounts.RemoveRange(
                     sortedBoxAmounts.Where(ba => ba.Amount == 0));
 
                 // intentionally throw db exception
@@ -258,7 +259,7 @@ namespace MTGViewer.Services
 
 
         private void AddUpdatedBoxAmounts(
-            IReadOnlyList<BoxAmount> sharedAmounts, IReadOnlyList<Box> boxes)
+            IReadOnlyList<CardAmount> sharedAmounts, IReadOnlyList<Box> boxes)
         {
             var oldAmounts = sharedAmounts
                 .Select(ca => (ca.Card, ca.Amount))
@@ -289,7 +290,7 @@ namespace MTGViewer.Services
                             Location = box
                         };
 
-                        _dbContext.BoxAmounts.Attach(boxAmount);
+                        _dbContext.Amounts.Attach(boxAmount);
                         amountMap.Add(cardBox, boxAmount);
                     }
 

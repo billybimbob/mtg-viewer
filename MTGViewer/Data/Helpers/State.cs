@@ -12,25 +12,7 @@ namespace MTGViewer.Data.Internal
     internal enum Discriminator
     {
         Invalid,
-
-        Suggestion,
-        Trade,
-
         Box,
         Deck,
-
-        BoxAmount,
-        DeckAmount
-    }
-}
-
-
-namespace MTGViewer.Data
-{
-    public enum Intent
-    {
-        None,
-        Take,
-        Return,
     }
 }

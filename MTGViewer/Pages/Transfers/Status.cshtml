@@ -42,12 +42,12 @@
 <table class="table">
     <thead>
         <tr>
-            <th> @Html.DisplayNameForInnerType((Trade t) => t.Card) </th>
+            <th> @Html.DisplayNameForInnerType((Exchange t) => t.Card) </th>
             <th> @Html.DisplayNameForInnerType((Card c) => c.ManaCost) </th>
             <th> @Html.DisplayNameForInnerType((Card c) => c.SetName) </th>
             <th> Request With </th>
-            <th> @Html.DisplayNameForInnerType((Trade t) => t.From) </th>
-            <th> @Html.DisplayNameForInnerType((Trade t) => t.Amount) </th>
+            <th> @Html.DisplayNameForInnerType((Exchange t) => t.From) </th>
+            <th> @Html.DisplayNameForInnerType((Exchange t) => t.Amount) </th>
         </tr>
     </thead>
     <tbody>
@@ -91,15 +91,15 @@
         </tr>
     </thead>
     <tbody>
-        @foreach (var nameGroup in Model.Amounts)
+        @foreach (var group in Model.CardGroups)
         {
-            var card = nameGroup.Cards.First();
+            var card = group.Cards.First();
             <tr>
                 <td>
                     <a asp-page="/Cards/Details"
                        asp-route-id="@card.Id"
                        class="fw-bold">
-                       @nameGroup.Name </a>
+                       @group.Name </a>
                 </td>
                 <td>
                     @foreach (var cost in card.GetManaSymbols())
@@ -107,8 +107,8 @@
                         <span class="m-1 ms ms-@cost ms-cost"></span>
                     }
                 </td>
-                <td> @(nameGroup.Takes?.Amount ?? 0) </td>
-                <td> @(nameGroup.Actuals?.Amount ?? 0) </td>
+                <td> @group.Requests </td>
+                <td> @group.InDeck </td>
             </tr>
         }
     </tbody>

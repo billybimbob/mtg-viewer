@@ -43,46 +43,76 @@ namespace MTGViewer.Pages.Decks
         public string? PostMesssage { get; set; }
 
         public Deck? Deck { get; private set; }
-        public IReadOnlyList<RequestNameGroup>? Cards { get; private set; }
-        public IReadOnlyList<Trade>? Trades { get; private set; }
+        public IReadOnlyList<RequestNameGroup>? NameGroups { get; private set; }
+
+        public IReadOnlyList<Exchange>? Trades { get; private set; }
 
 
         public async Task<IActionResult> OnGetAsync(int id)
         {
-            var userId = _userManager.GetUserId(User);
-
-            var deck = await _dbContext.Decks
-                .Include(l => l.Cards
-                    .Where(da => da.Intent != Intent.Return)
-                    .OrderBy(da => da.Card.Name))
-                    .ThenInclude(da => da.Card)
-                .FirstOrDefaultAsync(l =>
-                    l.Id == id && l.OwnerId == userId);
+            var deck = await DeckWithExchanges(id).FirstOrDefaultAsync();
 
             if (deck == default)
             {
                 return NotFound();
             }
 
-            var deckTrades = await _dbContext.Trades
-                .Where(t => t.ToId == id || t.FromId == id)
-                .Include(t => t.Card)
-                .Include(t => t.Proposer)
-                .Include(t => t.Receiver)
-                .Include(t => t.To)
-                .Include(t => t.From)
-                .OrderBy(t => t.Card.Name)
-                .ToListAsync();
+            var deckTrades = deck.GetAllExchanges()
+                .Where(ex => ex.IsTrade)
+                .OrderBy(ex => ex.Card.Name)
+                .ToList();
 
             Deck = deck;
-            Cards = deck.Cards
-                .GroupBy(ca => ca.Card.Name,
-                    (_, amounts) => new RequestNameGroup(amounts))
-                .ToList();
+
+            NameGroups = DeckNameGroup(deck).ToList();
 
             Trades = deckTrades;
 
             return Page();
+        }
+
+
+        private IQueryable<Deck> DeckWithExchanges(int deckId)
+        {
+            var userId = _userManager.GetUserId(User);
+
+            return _dbContext.Decks
+                .Where(d => d.Id == deckId && d.OwnerId == userId)
+
+                .Include(d => d.Cards)
+                    .ThenInclude(da => da.Card)
+
+                .Include(d => d.ExchangesTo)
+                    .ThenInclude(ex => ex.Card)
+                .Include(d => d.ExchangesTo)
+                    .ThenInclude(ex => ex.From)
+
+                .Include(d => d.ExchangesFrom)
+                    .ThenInclude(ex => ex.Card)
+                .Include(d => d.ExchangesFrom)
+                    .ThenInclude(ex => ex.To)
+
+                .AsSplitQuery()
+                .AsNoTrackingWithIdentityResolution();
+        }
+
+
+        private IEnumerable<RequestNameGroup> DeckNameGroup(Deck deck)
+        {
+            var amountsByName = deck.Cards
+                .ToLookup(ca => ca.Card.Name);
+
+            var requestsByName = deck.GetAllExchanges()
+                .Where(ex => !ex.IsTrade)
+                .ToLookup(ex => ex.Card.Name);
+
+            var cardNames = amountsByName
+                .Select(g => g.Key)
+                .Union(requestsByName.Select(g => g.Key))
+                .OrderBy(cn => cn);
+
+            return cardNames.Select(cn =>
+                new RequestNameGroup(amountsByName[cn], requestsByName[cn]));
         }
 
 
@@ -103,17 +133,18 @@ namespace MTGViewer.Pages.Decks
             }
 
             var returningCards = deck.Cards
-                .Where(da => da.Intent is Intent.None)
                 .Select(da => (da.Card, da.Amount))
                 .ToList();
 
-            _dbContext.DeckAmounts.RemoveRange(deck.Cards);
+            _dbContext.Amounts.RemoveRange(deck.Cards);
             _dbContext.Decks.Remove(deck);
+
+            // keep eye on, possibly remove exchanges and suggestions
 
             try
             {
-                await _sharedStorage.ReturnAsync(returningCards);
                 await _dbContext.SaveChangesAsync();
+                await _sharedStorage.ReturnAsync(returningCards);
 
                 PostMesssage = $"Successfully deleted {deck.Name}";
             }

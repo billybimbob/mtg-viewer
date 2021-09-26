@@ -22,7 +22,7 @@
     </thead>
 
     <tbody>
-        @foreach (var nameGroup in Model.Cards)
+        @foreach (var nameGroup in Model.NameGroups)
         {
             var card = nameGroup.Cards.First();
             <tr>
@@ -40,8 +40,8 @@
                 </td>
 
                 <td>@card.SetName</td>
-                <td>@(nameGroup.Actuals?.Amount ?? 0)</td>
-                <td>@(nameGroup.Takes?.Amount ?? 0)</td>
+                <td>@nameGroup.InDeck</td>
+                <td>@nameGroup.Requests</td>
             </tr>
         }
     </tbody>
@@ -55,11 +55,9 @@
         <table class="table">
             <thead>
                 <tr>
-                    <th> @Html.DisplayNameForInnerType((Trade t) => t.Proposer) </th>
-                    <th> @Html.DisplayNameForInnerType((Trade t) => t.Receiver) </th>
-                    <th> @Html.DisplayNameForInnerType((Trade t) => t.To) </th>
-                    <th> @Html.DisplayNameForInnerType((Trade t) => t.From) </th>
-                    <th> @Html.DisplayNameForInnerType((Trade t) => t.Card) </th>
+                    <th> @Html.DisplayNameForInnerType((Exchange t) => t.To) </th>
+                    <th> @Html.DisplayNameForInnerType((Exchange t) => t.From) </th>
+                    <th> @Html.DisplayNameForInnerType((Exchange t) => t.Card) </th>
                     <th> @Html.DisplayNameForInnerType((Card c) => c.ManaCost) </th>
                 </tr>
             </thead>
@@ -67,8 +65,6 @@
                 @foreach(var trade in Model.Trades)
                 {
                     <tr>
-                        <td> @trade.Proposer.Name </td>
-                        <td> @trade.Receiver.Name </td>
                         <td> @trade.To.Name </td>
                         <td> @trade.From.Name </td>
                         <td> @trade.Card.Name </td>

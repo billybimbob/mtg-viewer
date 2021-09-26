@@ -35,8 +35,8 @@ namespace MTGViewer.Pages.Transfers
         public Deck? Destination { get; private set; }
         public UserRef? Proposer { get; private set; }
 
-        public IReadOnlyList<Trade>? Trades { get; private set; }
-        public IReadOnlyList<RequestNameGroup>? Amounts { get; private set; }
+        public IReadOnlyList<Exchange>? Trades { get; private set; }
+        public IReadOnlyList<RequestNameGroup>? CardGroups { get; private set; }
 
 
         public async Task<IActionResult> OnGetAsync(int deckId)
@@ -46,52 +46,81 @@ namespace MTGViewer.Pages.Transfers
                 return NotFound();
             }
 
-            var userId = _userManager.GetUserId(User);
-            
-            var deck = await _dbContext.Decks
-                .Include(d => d.Owner)
-                .Include(d => d.Cards
-                    .Where(da => da.Intent != Intent.Return)
-                    .OrderBy(ca => ca.Card.Name))
-                    .ThenInclude(ca => ca.Card)
-                .SingleOrDefaultAsync(d =>
-                    d.Id == deckId && d.OwnerId == userId);
+            var deck = await DeckWithCardsAndTos(deckId).SingleOrDefaultAsync();
 
             if (deck == default)
             {
                 return NotFound();
             }
 
-            if (deck.Cards.All(da => da.Intent == Intent.None))
+            if (!deck.ExchangesTo.Any(ex => !ex.IsTrade))
             {
                 PostMessage = $"There are no requests for {deck.Name}";
                 return RedirectToPage("./Index");
             }
 
-            var deckTrades = await _dbContext.Trades
-                .Where(t => t.ProposerId == userId && t.ToId == deckId)
-                .Include(t => t.Card)
-                .Include(t => t.From)
-                    .ThenInclude(d => d.Owner)
-                .OrderBy(t => t.From.Owner.Name)
-                    .ThenBy(t => t.Card.Name)
-                .ToListAsync();
-
-            if (!deckTrades.Any())
+            if (!deck.ExchangesTo.Any(ex => ex.IsTrade))
             {
                 return RedirectToPage("./Request", new { deckId });
             }
 
+
             Destination = deck;
+
             Proposer = deck.Owner;
 
-            Trades = deckTrades;
-            Amounts = deck.Cards
-                .GroupBy(ca => ca.Card.Name,
-                    (_, amounts) => new RequestNameGroup(amounts))
+            Trades = deck.ExchangesTo
+                .Where(ex => ex.IsTrade)
                 .ToList();
 
+            CardGroups = DeckNameGroups(deck).ToList();
+
             return Page();
+        }
+
+
+        private IQueryable<Deck> DeckWithCardsAndTos(int deckId)
+        {
+            var userId = _userManager.GetUserId(User);
+            
+            return _dbContext.Decks
+                .Where(d => d.Id == deckId && d.OwnerId == userId)
+
+                .Include(d => d.Owner)
+                .Include(d => d.Cards)
+                    .ThenInclude(ca => ca.Card)
+
+                .Include(d => d.ExchangesTo)
+                    .ThenInclude(ex => ex.Card)
+                .Include(d => d.ExchangesTo)
+                    .ThenInclude(ex => ex.From!.Owner)
+
+                .Include(d => d.ExchangesTo
+                    .OrderBy(ex => ex.From!.Owner.Name)
+                        .ThenBy(ex => ex.Card.Name))
+
+                .AsSplitQuery()
+                .AsNoTrackingWithIdentityResolution();
+        }
+
+
+        private IEnumerable<RequestNameGroup> DeckNameGroups(Deck deck)
+        {
+            var amountsByName = deck.Cards
+                .ToLookup(ca => ca.Card.Name);
+
+            var requestsByName = deck.ExchangesTo
+                .Where(ex => !ex.IsTrade)
+                .ToLookup(ex => ex.Card.Name);
+
+            var cardNames = amountsByName
+                .Select(g => g.Key)
+                .Union(requestsByName
+                    .Select(g => g.Key))
+                .OrderBy(cn => cn);
+
+            return cardNames.Select(cn =>
+                new RequestNameGroup(amountsByName[cn], requestsByName[cn]));
         }
 
 
@@ -106,10 +135,13 @@ namespace MTGViewer.Pages.Transfers
 
             var userId = _userManager.GetUserId(User);
 
+            // keep eye on, could possibly remove trades not started by the user
+            // makes the assumption that trades are always started by the owner of the To deck
             var deck = await _dbContext.Decks
-                .Include(d => d.TradesTo
-                    .Where(t => t.ProposerId == userId))
-                .SingleOrDefaultAsync(d => d.Id == deckId && d.OwnerId == userId);
+                .Include(d => d.ExchangesTo
+                    .Where(ex => ex.IsTrade))
+                .SingleOrDefaultAsync(d =>
+                    d.Id == deckId && d.OwnerId == userId);
 
             if (deck == default)
             {
@@ -117,14 +149,13 @@ namespace MTGViewer.Pages.Transfers
                 return RedirectToPage("./Index");
             }
 
-            if (!deck.TradesTo.Any())
+            if (!deck.ExchangesTo.Any(ex => ex.IsTrade))
             {
                 PostMessage = "No trades were found";
                 return RedirectToPage("./Index");
             }
 
-
-            _dbContext.Trades.RemoveRange(deck.TradesTo);
+            _dbContext.Exchanges.RemoveRange(deck.ExchangesTo);
 
             try
             {
