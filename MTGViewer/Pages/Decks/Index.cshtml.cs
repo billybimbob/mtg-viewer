@@ -66,26 +66,27 @@ namespace MTGViewer.Pages.Decks
         {
             var userId = _userManager.GetUserId(User);
 
-            Decks = await GetDeckStatesAsync(userId);
+            Decks = await DeckStates(userId).ToListAsync();
 
             CardUser = Decks.FirstOrDefault()?.Deck.Owner
                 ?? await _dbContext.Users.FindAsync(userId);
         }
 
 
-        private async Task<IReadOnlyList<DeckState>> GetDeckStatesAsync(string userId)
+        private IQueryable<DeckState> DeckStates(string userId)
         {
-            var userDecks = _dbContext.Decks
+            return _dbContext.Decks
                 .Where(d => d.OwnerId == userId)
                 .Include(d => d.Owner)
-                .Include(d => d.Cards)
-                .Include(d => d.ExchangesTo);
 
-            return await userDecks
+                .Include(d => d.Cards)
+                    .ThenInclude(ca => ca.Card)
+                .Include(d => d.ExchangesTo)
+                    .ThenInclude(ca => ca.Card)
+
                 .OrderBy(d => d.Name)
                 .Select(deck => new DeckState(deck))
-                .AsSplitQuery()
-                .ToListAsync();
+                .AsSplitQuery();
         }
     }
 }

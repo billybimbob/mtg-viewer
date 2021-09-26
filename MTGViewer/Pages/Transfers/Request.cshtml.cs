@@ -56,7 +56,7 @@ namespace MTGViewer.Pages.Transfers
                 return NotFound();
             }
 
-            if (deck.ExchangesTo.All(ex => ex.IsTrade))
+            if (!deck.ExchangesTo.Any(ex => !ex.IsTrade))
             {
                 PostMessage = "There are no possible requests";
                 return RedirectToPage("./Index");

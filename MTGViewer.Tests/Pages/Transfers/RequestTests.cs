@@ -90,7 +90,7 @@ namespace MTGViewer.Tests.Pages.Transfers
 
             var wrongDeck = _dbContext.Decks
                 .AsNoTracking()
-                .FirstAsync(t => t.Id != _requestDeck.Id);
+                .FirstAsync(t => t.OwnerId != _requestDeck.OwnerId);
 
             // Act
             var tradesBefore = await tradeIdsQuery.ToListAsync();
@@ -109,7 +109,9 @@ namespace MTGViewer.Tests.Pages.Transfers
             // Arrange
             await _requestModel.SetModelContextAsync(_userManager, _requestDeck.OwnerId);
 
-            var tradesQuery = _dbContext.Exchanges.AsNoTracking();
+            var tradesQuery = _dbContext.Exchanges
+                .Where(ex => ex.IsTrade)
+                .AsNoTracking();
 
             // Act
             var tradesBefore = await tradesQuery.ToListAsync();

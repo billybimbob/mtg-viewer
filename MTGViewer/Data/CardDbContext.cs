@@ -36,7 +36,7 @@ namespace MTGViewer.Data
 
             modelBuilder.SelectConcurrencyToken(Database);
 
-            modelBuilder.ApplyConfiguration(new CardConfiguration());
+            // modelBuilder.ApplyConfiguration(new CardConfiguration());
             modelBuilder.ApplyConfiguration(new LocationConfiguration());
 
             modelBuilder.ApplyConfiguration(new ExchangeConfiguration());
@@ -49,17 +49,17 @@ namespace MTGViewer.Data
 
 
 
-    internal class CardConfiguration : IEntityTypeConfiguration<Card>
-    {
-        public void Configure(EntityTypeBuilder<Card> builder)
-        {
-            builder.OwnsMany(c => c.Names);
-            builder.OwnsMany(c => c.Colors);
-            builder.OwnsMany(c => c.SuperTypes);
-            builder.OwnsMany(c => c.Types);
-            builder.OwnsMany(c => c.SubTypes);
-        }
-    }
+    // internal class CardConfiguration : IEntityTypeConfiguration<Card>
+    // {
+    //     public void Configure(EntityTypeBuilder<Card> builder)
+    //     {
+    //         builder.OwnsMany(c => c.Names);
+    //         builder.OwnsMany(c => c.Colors);
+    //         builder.OwnsMany(c => c.SuperTypes);
+    //         builder.OwnsMany(c => c.Types);
+    //         builder.OwnsMany(c => c.SubTypes);
+    //     }
+    // }
 
     internal class LocationConfiguration : IEntityTypeConfiguration<Location>
     {

@@ -147,9 +147,9 @@
         _dbCards.Values.SelectMany(cg => cg);
 
     private IEnumerable<Card> DeckCards =>
-        SortedCards.Where(c =>
-            _deckCards.TryGetValue(c.Id, out var cardGroup)
-                && cardGroup.Amount > 0);
+        SortedCards.Where(c => _deckCards != null
+            && _deckCards.TryGetValue(c.Id, out var cardGroup)
+            && cardGroup.Amount > 0);
 
     private IQueryable<Deck> DeckQuery =>
         _dbContext.Decks
@@ -255,7 +255,10 @@
                 . Select(g => g.Key));
 
         return cardIds.Select(cid =>
-            new RequestGroup(amountsById[cid], requestsById[cid]));
+        {
+            amountsById.TryGetValue(cid, out var amount);
+            return new RequestGroup(amount, requestsById[cid]);
+        });
     }
 
 
@@ -270,6 +273,11 @@
 
     private void AddCardToDeck(Card card)
     {
+        if (_deck == null || _deckCards == null)
+        {
+            return;
+        }
+
         _result = SaveResult.None;
 
         bool hasGroup = _deckCards.TryGetValue(card.Id, out var deckGroup);
@@ -308,6 +316,11 @@
 
     private void RemoveCardFromDeck(Card card)
     {
+        if (_deck == null || _deckCards == null)
+        {
+            return;
+        }
+
         _result = SaveResult.None;
 
         if (!_deckCards.TryGetValue(card.Id, out var deckGroup))
@@ -351,6 +364,11 @@
 
     private async Task CommitChangesAsync()
     {
+        if (_deck == null || _deckCards == null)
+        {
+            return;
+        }
+
         if (_busy)
         {
             return;

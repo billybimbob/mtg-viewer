@@ -94,14 +94,15 @@ namespace MTGViewer.Pages.Transfers
 
         private IReadOnlyList<Exchange> CappedFromTrades(Deck deck)
         {
-            var trades = deck.ExchangesFrom.Where(ex => ex.IsTrade);
+            var trades = deck.ExchangesFrom
+                .Where(ex => ex.IsTrade)
+                .ToList();
 
             var tradesWithAmountCap = trades
                 .Join( deck.Cards,
                     ex => ex.CardId,
                     ca => ca.CardId,
-                    (trade, amount) =>
-                        (trade, cap: amount.Amount));
+                    (trade, actual) => (trade, actual.Amount));
 
             foreach (var (trade, cap) in tradesWithAmountCap)
             {
@@ -109,12 +110,13 @@ namespace MTGViewer.Pages.Transfers
                 trade.Amount = Math.Min(trade.Amount, cap);
             }
 
-            return trades.ToList();
+            return trades;
         }
 
 
+
         private record AcceptRequest(
-            Exchange Trade, 
+            Exchange Trade,
             ExchangeNameGroup? ToRequests,
             CardAmount FromAmount) { }
 
@@ -187,9 +189,9 @@ namespace MTGViewer.Pages.Transfers
             var userId = _userManager.GetUserId(User);
 
             return _dbContext.Exchanges
-                .Where(t => t.IsTrade 
+                .Where(t => t.IsTrade
                     && t.Id == tradeId
-                    && t.To != default 
+                    && t.To != default
                     && t.From != default && t.From!.OwnerId == userId)
 
                 .Include(t => t.To)
@@ -210,7 +212,7 @@ namespace MTGViewer.Pages.Transfers
 
                 .Include(t => t.From)
                     .ThenInclude(d => d!.ExchangesTo
-                        .Where(ex => !ex.IsTrade 
+                        .Where(ex => !ex.IsTrade
                             && ex.CardId == tradeCard.Id))
                         .ThenInclude(ex => ex.Card)
 
@@ -254,37 +256,7 @@ namespace MTGViewer.Pages.Transfers
         {
             var (trade, toRequests, fromAmount) = acceptRequest;
 
-            if (toRequests is not null)
-            {
-                var (toAmount, fromRequest) = GetAcceptTargets(acceptRequest);
-
-                var changeOptions = new []
-                {
-                    amount, trade.Amount, toRequests.Amount, fromAmount.Amount
-                };
-
-                var change = changeOptions.Min();
-                var exactRequest = toRequests
-                    .SingleOrDefault(ex => ex.CardId == trade.CardId);
-
-                if (exactRequest != default)
-                {
-                    int exactChange = Math.Min(change, exactRequest.Amount);
-                    int nonExactChange = change - exactChange;
-
-                    // exactRequest mod is also reflected in toRequests
-                    exactRequest.Amount = exactChange;
-                    toRequests.Amount -= nonExactChange;
-                }
-                else
-                {
-                    toRequests.Amount -= change;
-                }
-
-                toAmount.Amount += change;
-                fromAmount.Amount -= change;
-                fromRequest.Amount += change;
-            }
+            ModifyAmountsAndRequests(acceptRequest, amount);
 
             if (fromAmount.Amount == 0)
             {
@@ -297,6 +269,44 @@ namespace MTGViewer.Pages.Transfers
 
             _dbContext.Exchanges.RemoveRange(finishedRequests);
             _dbContext.Exchanges.Remove(trade);
+        }
+
+
+        private void ModifyAmountsAndRequests(AcceptRequest acceptRequest, int requestAmount)
+        {
+            var (trade, toRequests, fromAmount) = acceptRequest;
+
+            if (toRequests == default)
+            {
+                return;
+            }
+
+            var (toAmount, fromRequest) = GetAcceptTargets(acceptRequest);
+
+            var exactRequest = toRequests
+                .SingleOrDefault(ex => ex.CardId == trade.CardId);
+
+            int change = new [] {
+                requestAmount, trade.Amount,
+                toRequests.Amount, fromAmount.Amount }.Min();
+
+            if (exactRequest != default)
+            {
+                int exactChange = Math.Min(change, exactRequest.Amount);
+                int nonExactChange = change - exactChange;
+
+                // exactRequest mod is also reflected in toRequests
+                exactRequest.Amount = exactChange;
+                toRequests.Amount -= nonExactChange;
+            }
+            else
+            {
+                toRequests.Amount -= change;
+            }
+
+            toAmount.Amount += change;
+            fromAmount.Amount -= change;
+            fromRequest.Amount += change;
         }
 
 
@@ -341,23 +351,21 @@ namespace MTGViewer.Pages.Transfers
 
         private async Task UpdateRemainingTrades(AcceptRequest acceptRequest)
         {
-            var toRequests = acceptRequest.ToRequests;
+            var (trade, toRequests, _) = acceptRequest;
 
             if (toRequests == default)
             {
                 return;
             }
 
-            var trade = acceptRequest.Trade;
-
             // keep eye on, could possibly remove trades not started
             // by the user
-            // current impl makes the assumption that trades are always 
+            // current impl makes the assumption that trades are always
             // started by the owner of the To deck
 
             var remainingTrades = await _dbContext.Exchanges
                 .Where(ex => ex.IsTrade
-                    && ex.Id != trade.Id 
+                    && ex.Id != trade.Id
                     && ex.ToId == trade.ToId
                     && ex.Card.Name == trade.Card.Name)
                 .ToListAsync();
@@ -394,7 +402,7 @@ namespace MTGViewer.Pages.Transfers
 
             var deckTrade = await _dbContext.Exchanges
                 .SingleOrDefaultAsync(ex => ex.IsTrade
-                    && ex.Id == tradeId 
+                    && ex.Id == tradeId
                     && ex.From != default
                     && ex.From!.OwnerId == userId);
 

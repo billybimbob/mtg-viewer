@@ -59,23 +59,29 @@ namespace MTGViewer.Pages.Transfers
             SelfUser = await _dbContext.Users.FindAsync(userId);
 
             TakeFroms = userExchanges
-                .Where(ex => ex.From.OwnerId == userId)
+                .Where(ex => ex.IsTrade
+                    && ex.From != default && ex.From.OwnerId == userId)
                 .GroupBy(t => t.From,
                     (from, trades) => new DeckTrade(from, trades.Count()) )
                 .OrderBy(t => t.Deck.Name)
                 .ToList();
 
-            PendingTakeTos = userExchanges
-                .Where(ex => ex.To.OwnerId == userId && ex.IsTrade)
+            var userTakes = userExchanges
+                .Where(ex => ex.To != default && ex.To.OwnerId == userId);
+
+            PendingTakeTos = userTakes
+                .Where(ex => ex.IsTrade)
                 .GroupBy(t => t.To,
                     (to, trades) => new DeckTrade(to, trades.Count()) )
                 .OrderBy(t => t.Deck.Name)
                 .ToList();
 
-            PossibleTakeTos = userExchanges
-                .Where(ex => ex.To.OwnerId == userId && !ex.IsTrade)
+            var pendingDecks = PendingTakeTos.Select(dt => dt.Deck);
+
+            PossibleTakeTos = userTakes
+                .Where(ex => !ex.IsTrade)
                 .Select(ex => ex.To)
-                .Distinct()
+                .Except(pendingDecks)
                 .OrderBy(d => d.Name)
                 .ToList();
 
@@ -83,6 +89,7 @@ namespace MTGViewer.Pages.Transfers
                 .Where(s => s.ReceiverId == userId)
                 .Include(s => s.Card)
                 .Include(s => s.To)
+                .OrderBy(s => s.Card.Name)
                 .ToListAsync();
         }
 

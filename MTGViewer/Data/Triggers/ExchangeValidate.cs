@@ -21,44 +21,30 @@ namespace MTGViewer.Data.Triggers
         }
 
 
-        public async Task BeforeSave(ITriggerContext<Exchange> trigContext, CancellationToken cancel)
+        public Task BeforeSave(ITriggerContext<Exchange> trigContext, CancellationToken cancel)
         {
             if (trigContext.ChangeType == ChangeType.Deleted)
             {
-                return;
+                return Task.CompletedTask;
             }
 
             var exchange = trigContext.Entity;
 
-            if (exchange.ToId == exchange.FromId && exchange.To == exchange.From)
+            if (exchange.ToId != null && exchange.ToId == exchange.FromId
+                || exchange.To != null && exchange.To == exchange.From)
             {
                 throw new DbUpdateException
                     ("Trade cannot have the same location for both 'To' and 'From'");
             }
 
-            int capTargetId;
-            Deck capTarget;
-
-            if (exchange.FromId == default && exchange.From == default)
+            if (exchange.ToId == null && exchange.To == null
+                && exchange.FromId == null && exchange.From == null)
             {
-                capTargetId = exchange.ToId.Value;
-                capTarget = exchange.To;
-            }
-            else
-            {
-                capTargetId = exchange.FromId.Value;
-                capTarget = exchange.To;
+                throw new DbUpdateException
+                    ("Trade must have at least one of To or From defined");
             }
 
-            var capAmount = await _dbContext.Amounts
-                .AsNoTracking()
-                .SingleOrDefaultAsync(ca => ca.CardId == exchange.CardId
-                    && (ca.LocationId == capTargetId || ca.Location == capTarget));
-
-            if (capAmount != default)
-            {
-                exchange.Amount = Math.Min(capAmount.Amount, exchange.Amount);
-            }
+            return Task.CompletedTask;
         }
 
 

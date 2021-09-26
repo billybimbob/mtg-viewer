@@ -35,15 +35,15 @@ namespace MTGViewer.Data
         public ICollection<CardAmount> Cards { get; } = new List<CardAmount>();
 
 
-        public IOrderedEnumerable<Color> GetColors()
-        {
-            return Cards
-                .SelectMany(ca => ca.Card.Colors)
-                .Distinct(new EntityComparer<Color>(c => c.Name))
-                .OrderBy(c => c.Name);
-        }
+        // public IOrderedEnumerable<Color> GetColors()
+        // {
+        //     return Cards
+        //         .SelectMany(ca => ca.Card.Colors)
+        //         .Distinct(new EntityComparer<Color>(c => c.Name))
+        //         .OrderBy(c => c.Name);
+        // }
 
-        public IOrderedEnumerable<string> GetColorSymbols()
+        public virtual IOrderedEnumerable<string> GetColorSymbols()
         {
             return Cards
                 .SelectMany(ca => ca.Card.GetManaSymbols())
@@ -74,6 +74,21 @@ namespace MTGViewer.Data
 
         public IEnumerable<Exchange> GetAllExchanges() =>
             ExchangesTo.Concat(ExchangesFrom); // guranteed to be unique between both properties
+
+        
+        public override IOrderedEnumerable<string> GetColorSymbols()
+        {
+            var cardSymbols = Cards
+                .SelectMany(ca => ca.Card.GetManaSymbols());
+
+            var exchangeSymbols = GetAllExchanges()
+                .SelectMany(ex => ex.Card.GetManaSymbols());
+
+            return cardSymbols
+                .Union(exchangeSymbols)
+                .Intersect(Data.Color.COLORS.Values)
+                .OrderBy(s => s);
+        }
     }
 
 

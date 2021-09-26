@@ -61,17 +61,17 @@
                 <form method="POST">
                     <td>
                         <div>
+                            <input type="text"
+                                id="amountLabel"
+                                class="form-control"
+                                value="@trade.Amount"
+                                readonly />
+
                             <input type="range" 
                                 class="form-control"
                                 name="amount"
                                 value="@trade.Amount" min="1" max="@trade.Amount"
-                                oninput="rangeLabel.value=this.value"/>
-
-                            <input type="text"
-                                id="rangeLabel"
-                                class="form-control"
-                                value="@trade.Amount"
-                                readonly />
+                                oninput="amountLabel.value=this.value"/>
                         </div>
                     </td>
                     <td>

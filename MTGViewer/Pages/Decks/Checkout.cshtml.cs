@@ -191,7 +191,8 @@ namespace MTGViewer.Pages.Decks
                     available => available.CardId,
                     actual => actual.CardId,
                     (available, actuals) => (available, actuals))
-                .Where(aas => !aas.actuals.Any())
+                .Where(aas => 
+                    !aas.actuals.Any())
                 .Select(aa => aa.available.Card)
                 .Distinct();
 
@@ -282,33 +283,28 @@ namespace MTGViewer.Pages.Decks
 
 
 
-        private IEnumerable<(Card, int)> ApplyDeckReturns(Deck deck)
+        private IReadOnlyList<(Card, int)> ApplyDeckReturns(Deck deck)
         {
             var returns = deck.ExchangesFrom.Where(ex => !ex.IsTrade);
 
-            if (!returns.Any())
-            {
-                return Enumerable.Empty<(Card, int)>();
-            }
-
-            var returnPairs = returns
-                .GroupJoin( deck.Cards,
-                    ret => ret.CardId,
+            var returnPairs = deck.Cards
+                .Join( returns,
                     act => act.CardId,
-                    (Return, Actuals) =>
-                        (Actual: Actuals.SingleOrDefault(), Return) )
+                    ret => ret.CardId,
+                    (Actual, Return) => (Actual, Return));
 
-                .Where(ar => ar.Actual != default 
-                    && ar.Actual.Amount >= ar.Return.Amount)
-                .ToList();
+            var appliedReturns = new List<Exchange>();
 
-            foreach (var (actualCard, returnCard) in returnPairs)
+            foreach (var (actual, returnRequest) in returnPairs)
             {
-                actualCard.Amount -= returnCard.Amount;
+                if (actual.Amount >= returnRequest.Amount)
+                {
+                    actual.Amount -= returnRequest.Amount;
+                    appliedReturns.Add(returnRequest);
+                }
             }
 
             var emptyAmounts = deck.Cards.Where(ca => ca.Amount == 0);
-            var appliedReturns = returnPairs.Select(ar => ar.Return);
 
             _dbContext.Amounts.RemoveRange(emptyAmounts);
             _dbContext.Exchanges.RemoveRange(appliedReturns);

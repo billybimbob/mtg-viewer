@@ -80,7 +80,6 @@ namespace MTGViewer.Pages.Transfers
 
 
 
-        public UserRef Proposer { get; private set; }
         public UserRef Receiver { get; private set; }
         public IReadOnlyList<Deck> Decks { get; private set; }
 
@@ -94,7 +93,13 @@ namespace MTGViewer.Pages.Transfers
                 return NotFound();
             }
 
-            var proposer = await _dbContext.Users.FindAsync( _userManager.GetUserId(User) );
+            var currentUserId = _userManager.GetUserId(User);
+            
+            if (currentUserId == userId)
+            {
+                return NotFound();
+            }
+
             var receiver = await _dbContext.Users.FindAsync(userId);
 
             if (receiver is null)
@@ -104,7 +109,6 @@ namespace MTGViewer.Pages.Transfers
 
             var decks = await DecksWithoutCard(card, receiver).ToListAsync();
 
-            Proposer = proposer;
             Receiver = receiver;
 
             Card = card;

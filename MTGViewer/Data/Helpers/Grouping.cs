@@ -29,7 +29,7 @@ namespace MTGViewer.Data
                 throw new ArgumentException("All cards do not match the mana cost");
             }
 
-            if (_amounts.Any(ca => ca.LocationId != LocationId))
+            if (_amounts.Any(ca => ca.LocationId != LocationId && ca.Location != Location))
             {
                 throw new ArgumentException("All cards do not have the same location");
             }
@@ -116,7 +116,9 @@ namespace MTGViewer.Data
                 throw new ArgumentException("All exchanges are not matching trades");
             }
 
-            if (_exchanges.Any(ex => ex.ToId != ToId && ex.FromId != FromId))
+            if (_exchanges.Any(ex =>
+                ex.ToId != ToId && ex.To != To
+                    && ex.FromId != FromId && ex.From != From))
             {
                 throw new ArgumentException("All exchanges do not have the same location");
             }
@@ -141,10 +143,10 @@ namespace MTGViewer.Data
         public IEnumerable<Card> Cards => _exchanges.Select(ca => ca.Card);
 
 
-        public int? ToId => First.ToId;
+        public int? ToId => First.ToId ?? First.To?.Id;
         public Deck? To => First.To;
 
-        public int? FromId => First.FromId;
+        public int? FromId => First.FromId ?? First.From?.Id;
         public Deck? From => First.From;
 
         public bool IsTrade => First.IsTrade;
@@ -187,8 +189,12 @@ namespace MTGViewer.Data
         public RequestGroup(CardAmount? amount, IEnumerable<Exchange> exchanges)
         {
             _actual = amount;
-            _take = exchanges.FirstOrDefault(ex => !ex.IsTrade && ex.ToId != default);
-            _return = exchanges.FirstOrDefault(ex => !ex.IsTrade && ex.FromId != default);
+
+            _take = exchanges.FirstOrDefault(ex => 
+                !ex.IsTrade && (ex.ToId != default || ex.To?.Id != default));
+
+            _return = exchanges.FirstOrDefault(ex =>
+                !ex.IsTrade && (ex.FromId != default || ex.From?.Id != default));
 
             CheckGroup();
         }
@@ -233,7 +239,9 @@ namespace MTGViewer.Data
             get => _take;
             set
             {
-                if (value is null || value.IsTrade || value.ToId == default)
+                if (value is null 
+                    || value.IsTrade 
+                    || value.ToId == default && value.To?.Id == default)
                 {
                     throw new ArgumentException("Amount is not a valid take amount");
                 }
@@ -249,7 +257,9 @@ namespace MTGViewer.Data
             get => _return;
             set
             {
-                if (value is null || value.IsTrade || value.FromId == default)
+                if (value is null
+                    || value.IsTrade 
+                    || value.FromId == default && value.From?.Id == default)
                 {
                     throw new ArgumentException("Amount is not a valid return amount");
                 }
@@ -326,7 +336,7 @@ namespace MTGViewer.Data
             Actual?.CardId
                 ?? Take?.CardId
                 ?? Return?.CardId
-                ?? null!;
+                ?? Card.Id;
 
         public Card Card =>
             Actual?.Card
@@ -339,7 +349,7 @@ namespace MTGViewer.Data
             Actual?.LocationId
                 ?? Take?.ToId
                 ?? Return?.FromId
-                ?? default;
+                ?? Location.Id;
 
         public Location Location =>
             Actual?.Location
@@ -364,8 +374,8 @@ namespace MTGViewer.Data
         public RequestNameGroup(IEnumerable<CardAmount> amounts, IEnumerable<Exchange> exchanges)
         {
             // do a full outer join
-            var amountTable = amounts.ToDictionary(ca => ca.CardId);
-            var exchangeLookup = exchanges.ToLookup(ex => ex.CardId);
+            var amountTable = amounts.ToDictionary(ca => ca.CardId ?? ca.Card.Id);
+            var exchangeLookup = exchanges.ToLookup(ex => ex.CardId ?? ex.Card.Id);
 
             var allCardIds = exchangeLookup
                 .Select(g => g.Key)

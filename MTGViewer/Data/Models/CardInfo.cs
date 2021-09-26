@@ -13,6 +13,7 @@ namespace MTGViewer.Data
             Value = value;
         }
 
+        [JsonRequired]
         public int Id { get; private set; }
 
         [JsonRequired]
@@ -41,6 +42,7 @@ namespace MTGViewer.Data
             Name = name;
         }
 
+        [JsonRequired]
         public int Id { get; private set; }
 
         [JsonRequired]
@@ -58,6 +60,7 @@ namespace MTGViewer.Data
             Name = name;
         }
 
+        [JsonRequired]
         public int Id { get; private set; }
 
         [JsonRequired]
@@ -75,6 +78,7 @@ namespace MTGViewer.Data
             Name = name;
         }
 
+        [JsonRequired]
         public int Id { get; private set; }
 
         [JsonRequired]
@@ -92,6 +96,7 @@ namespace MTGViewer.Data
             Name = name;
         }
 
+        [JsonRequired]
         public int Id { get; private set; }
 
         [JsonRequired]

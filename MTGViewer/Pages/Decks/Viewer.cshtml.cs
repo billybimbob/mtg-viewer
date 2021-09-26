@@ -88,7 +88,10 @@ namespace MTGViewer.Pages.Decks
 
             return cardIds
                 .Select(cid =>
-                    new RequestGroup(amountsById[cid], requestsById[cid]))
+                {
+                    amountsById.TryGetValue(cid, out var amount);
+                    return new RequestGroup(amount, requestsById[cid]);
+                })
                 .OrderBy(rg => rg.Card.Name);
         }
     }
