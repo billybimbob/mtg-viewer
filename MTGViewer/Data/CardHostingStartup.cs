@@ -35,7 +35,8 @@ namespace MTGViewer.Data
                                 // TODO: change connection string name
                             .UseTriggers(triggers => triggers
                                 .AddTrigger<Triggers.AmountValidate>()
-                                .AddTrigger<Triggers.ExchangeValidate>() ));
+                                .AddTrigger<Triggers.RequestValidate>()
+                                .AddTrigger<Triggers.TradeValidate>() ));
                         break;
 
                     case "Sqlite":
@@ -45,7 +46,8 @@ namespace MTGViewer.Data
                             .UseTriggers(triggers => triggers
                                 .AddTrigger<Triggers.AmountValidate>()
                                 .AddTrigger<Triggers.LiteTokenUpdate>()
-                                .AddTrigger<Triggers.ExchangeValidate>() ));
+                                .AddTrigger<Triggers.RequestValidate>()
+                                .AddTrigger<Triggers.TradeValidate>() ));
                         break;
                 }
 

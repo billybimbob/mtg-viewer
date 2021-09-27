@@ -43,9 +43,9 @@ namespace MTGViewer.Pages.Decks
         public string? PostMesssage { get; set; }
 
         public Deck? Deck { get; private set; }
-        public IReadOnlyList<RequestNameGroup>? NameGroups { get; private set; }
+        public IReadOnlyList<AmountRequestNameGroup>? NameGroups { get; private set; }
 
-        public IReadOnlyList<Exchange>? Trades { get; private set; }
+        public IReadOnlyList<Trade>? Trades { get; private set; }
 
 
         public async Task<IActionResult> OnGetAsync(int id)
@@ -57,9 +57,9 @@ namespace MTGViewer.Pages.Decks
                 return NotFound();
             }
 
-            var deckTrades = deck.GetAllExchanges()
-                .Where(ex => ex.IsTrade)
-                .OrderBy(ex => ex.Card.Name)
+            var deckTrades = deck.TradesTo
+                .Concat(deck.TradesFrom)
+                .OrderBy(t => t.Card.Name)
                 .ToList();
 
             Deck = deck;
@@ -82,14 +82,19 @@ namespace MTGViewer.Pages.Decks
                 .Include(d => d.Cards)
                     .ThenInclude(da => da.Card)
 
-                .Include(d => d.ExchangesTo)
+                .Include(d => d.Requests)
                     .ThenInclude(ex => ex.Card)
-                .Include(d => d.ExchangesTo)
+                .Include(d => d.Requests)
+                    .ThenInclude(ex => ex.Target)
+
+                .Include(d => d.TradesTo)
+                    .ThenInclude(ex => ex.Card)
+                .Include(d => d.TradesTo)
                     .ThenInclude(ex => ex.From)
 
-                .Include(d => d.ExchangesFrom)
+                .Include(d => d.TradesFrom)
                     .ThenInclude(ex => ex.Card)
-                .Include(d => d.ExchangesFrom)
+                .Include(d => d.TradesFrom)
                     .ThenInclude(ex => ex.To)
 
                 .AsSplitQuery()
@@ -97,13 +102,12 @@ namespace MTGViewer.Pages.Decks
         }
 
 
-        private IEnumerable<RequestNameGroup> DeckNameGroup(Deck deck)
+        private IEnumerable<AmountRequestNameGroup> DeckNameGroup(Deck deck)
         {
             var amountsByName = deck.Cards
                 .ToLookup(ca => ca.Card.Name);
 
-            var requestsByName = deck.GetAllExchanges()
-                .Where(ex => !ex.IsTrade)
+            var requestsByName = deck.Requests
                 .ToLookup(ex => ex.Card.Name);
 
             var cardNames = amountsByName
@@ -112,7 +116,7 @@ namespace MTGViewer.Pages.Decks
                 .OrderBy(cn => cn);
 
             return cardNames.Select(cn =>
-                new RequestNameGroup(amountsByName[cn], requestsByName[cn]));
+                new AmountRequestNameGroup(amountsByName[cn], requestsByName[cn]));
         }
 
 

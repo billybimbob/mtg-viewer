@@ -43,7 +43,7 @@ namespace MTGViewer.Pages.Decks
         
         public bool HasPendings { get; private set; }
 
-        public IReadOnlyList<RequestNameGroup> CardGroups { get; private set; }
+        public IReadOnlyList<AmountRequestNameGroup> CardGroups { get; private set; }
 
 
         public async Task<IActionResult> OnGetAsync(int id)
@@ -57,7 +57,7 @@ namespace MTGViewer.Pages.Decks
                 return NotFound();
             }
 
-            var hasReturns = deck.ExchangesFrom.Any(ex => !ex.IsTrade);
+            var hasReturns = deck.Requests.Any(cr => cr.IsReturn);
 
             Deck = deck;
 
@@ -69,13 +69,12 @@ namespace MTGViewer.Pages.Decks
         }
 
 
-        private IEnumerable<RequestNameGroup> DeckNameGroups(Deck deck)
+        private IEnumerable<AmountRequestNameGroup> DeckNameGroups(Deck deck)
         {
             var amountsByName = deck.Cards
                 .ToLookup(ca => ca.Card.Name);
 
-            var requestsByName = deck.GetAllExchanges()
-                .Where(ex => !ex.IsTrade)
+            var requestsByName = deck.Requests
                 .ToLookup(ex => ex.Card.Name);
 
             var cardNames = amountsByName
@@ -84,7 +83,7 @@ namespace MTGViewer.Pages.Decks
                 .OrderBy(cn => cn);
 
             return cardNames.Select(cn =>
-                new RequestNameGroup(amountsByName[cn], requestsByName[cn]));
+                new AmountRequestNameGroup(amountsByName[cn], requestsByName[cn]));
         }
 
 
@@ -94,27 +93,21 @@ namespace MTGViewer.Pages.Decks
 
             return _dbContext.Decks
                 .Where(d => d.Id == deckId && d.OwnerId == userId)
+                .AsSplitQuery()
 
                 .Include(d => d.Cards)
                     .ThenInclude(ca => ca.Card)
 
-                .Include(d => d.ExchangesTo
-                    .Where(ex => !ex.IsTrade))
-                    .ThenInclude(ex => ex.Card)
-
-                .Include(d => d.ExchangesFrom
-                    .Where(ex => !ex.IsTrade))
-                    .ThenInclude(ex => ex.Card)
-
-                .AsSplitQuery();
+                .Include(d => d.Requests)
+                    .ThenInclude(ex => ex.Card);
         }
 
 
         private IQueryable<CardAmount> AvailablesForTake(Deck deck)
         {
-            var requestNames = deck.ExchangesTo
-                .Where(da => !da.IsTrade)
-                .Select(da => da.Card.Name)
+            var requestNames = deck.Requests
+                .Where(cr => !cr.IsReturn)
+                .Select(cr => cr.Card.Name)
                 .Distinct()
                 .ToArray();
 
@@ -158,7 +151,7 @@ namespace MTGViewer.Pages.Decks
 
         private void ApplyTakes(Deck deck, IEnumerable<CardAmount> availables)
         {
-            var takeCards = deck.ExchangesTo.Where(ex => !ex.IsTrade);
+            var takeCards = deck.Requests.Where(cr => !cr.IsReturn);
 
             if (!availables.Any() || !takeCards.Any())
             {
@@ -174,12 +167,12 @@ namespace MTGViewer.Pages.Decks
 
             ApplyCloseTakes(remainingTakes, remainingAvails, actuals);
 
-            var emptyAmounts = deck.Cards.Where(da => da.Amount == 0);
-            var finishedRequests = deck.GetAllExchanges().Where(ex => ex.Amount == 0);
+            var emptyAmounts = deck.Cards.Where(ca => ca.Amount == 0);
+            var finishedRequests = deck.Requests.Where(cr => cr.Amount == 0);
 
             // do not remove empty availables
             _dbContext.Amounts.RemoveRange(emptyAmounts);
-            _dbContext.Exchanges.RemoveRange(finishedRequests);
+            _dbContext.Requests.RemoveRange(finishedRequests);
         }
 
 
@@ -211,7 +204,7 @@ namespace MTGViewer.Pages.Decks
 
 
         private void ApplyExactTakes(
-            IEnumerable<Exchange> takes,
+            IEnumerable<CardRequest> takes,
             IEnumerable<CardAmount> availables,
             IReadOnlyDictionary<string, CardAmount> actuals)
         {
@@ -243,13 +236,13 @@ namespace MTGViewer.Pages.Decks
 
 
         private void ApplyCloseTakes(
-            IEnumerable<Exchange> takes,
+            IEnumerable<CardRequest> takes,
             IEnumerable<CardAmount> availables,
             IReadOnlyDictionary<string, CardAmount> actuals)
         {
             var takesByName = takes
                 .GroupBy(ex => ex.Card.Name,
-                    (_, takes) => new ExchangeNameGroup(takes));
+                    (_, takes) => new RequestNameGroup(takes));
 
             var availsByName = availables
                 .GroupBy(ca => ca.Card.Name,
@@ -285,7 +278,7 @@ namespace MTGViewer.Pages.Decks
 
         private IReadOnlyList<(Card, int)> ApplyDeckReturns(Deck deck)
         {
-            var returns = deck.ExchangesFrom.Where(ex => !ex.IsTrade);
+            var returns = deck.Requests.Where(cr => cr.IsReturn);
 
             var returnPairs = deck.Cards
                 .Join( returns,
@@ -293,7 +286,7 @@ namespace MTGViewer.Pages.Decks
                     ret => ret.CardId,
                     (Actual, Return) => (Actual, Return));
 
-            var appliedReturns = new List<Exchange>();
+            var appliedReturns = new List<CardRequest>();
 
             foreach (var (actual, returnRequest) in returnPairs)
             {
@@ -307,7 +300,7 @@ namespace MTGViewer.Pages.Decks
             var emptyAmounts = deck.Cards.Where(ca => ca.Amount == 0);
 
             _dbContext.Amounts.RemoveRange(emptyAmounts);
-            _dbContext.Exchanges.RemoveRange(appliedReturns);
+            _dbContext.Requests.RemoveRange(appliedReturns);
 
             return appliedReturns
                 .Select(ex => (ex.Card, ex.Amount))

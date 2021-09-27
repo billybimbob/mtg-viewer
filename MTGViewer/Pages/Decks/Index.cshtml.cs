@@ -26,11 +26,11 @@ namespace MTGViewer.Pages.Decks
     {
         public DeckState(Deck deck) : this(deck, State.Invalid)
         {
-            if (deck.ExchangesTo.Any(ex => ex.IsTrade))
+            if (deck.TradesTo.Any())
             {
                 State = State.Requesting;
             }
-            else if (deck.ExchangesTo.Any(ex => !ex.IsTrade))
+            else if (deck.Requests.Any(cr => !cr.IsReturn))
             {
                 State = State.Invalid;
             }
@@ -81,7 +81,11 @@ namespace MTGViewer.Pages.Decks
 
                 .Include(d => d.Cards)
                     .ThenInclude(ca => ca.Card)
-                .Include(d => d.ExchangesTo)
+                .Include(d => d.Requests
+                    .Where(cr => !cr.IsReturn))
+                    .ThenInclude(cr => cr.Card)
+
+                .Include(d => d.TradesTo)
                     .ThenInclude(ca => ca.Card)
 
                 .OrderBy(d => d.Name)

@@ -54,26 +54,26 @@ namespace MTGViewer.Tests.Pages.Transfers
         public async Task OnPost_WrongUser_NoChange()
         {
             // Arrange
-            var trade = await _dbContext.Exchanges
-                .Include(ex => ex.From)
+            var trade = await _dbContext.Trades
+                .Include(t => t.From)
                 .AsNoTracking()
-                .FirstAsync(ex => ex.IsTrade && ex.ToId == _trades.ToId);
+                .FirstAsync(t => t.ToId == _trades.ToId);
 
             await _statusModel.SetModelContextAsync(_userManager, trade.From.OwnerId);
 
-            var requestsQuery = _dbContext.Exchanges
-                .Where(ex => ex.IsTrade && ex.ToId == _trades.ToId)
-                .Select(ex => ex.Id);
+            var tradesQuery = _dbContext.Trades
+                .Where(t => t.ToId == _trades.ToId)
+                .Select(t => t.Id);
 
             // Act
-            var requestsBefore = await requestsQuery.ToListAsync();
+            var tradesBefore = await tradesQuery.ToListAsync();
             var result = await _statusModel.OnPostAsync(_trades.ToId);
-            var requestsAfter = await requestsQuery.ToListAsync();
+            var tradesAfter = await tradesQuery.ToListAsync();
 
             // Assert
             Assert.IsType<RedirectToPageResult>(result);
-            Assert.Equal(requestsBefore, requestsAfter);
-            Assert.Contains(trade.Id, requestsAfter);
+            Assert.Equal(tradesBefore, tradesAfter);
+            Assert.Contains(trade.Id, tradesAfter);
         }
 
 
@@ -83,23 +83,23 @@ namespace MTGViewer.Tests.Pages.Transfers
             // Arrange
             await _statusModel.SetModelContextAsync(_userManager, _trades.To.OwnerId);
 
-            var trade = await _dbContext.Exchanges
+            var trade = await _dbContext.Trades
                 .AsNoTracking()
-                .FirstAsync(ex => ex.IsTrade && ex.ToId == _trades.ToId);
+                .FirstAsync(t => t.ToId == _trades.ToId);
 
-            var requestsQuery = _dbContext.Exchanges
-                .Where(ex => ex.IsTrade && ex.ToId == _trades.ToId)
-                .Select(ex => ex.Id);
+            var tradesQuery = _dbContext.Trades
+                .Where(t => t.ToId == _trades.ToId)
+                .Select(t => t.Id);
 
             // Act
-            var requestsBefore = await requestsQuery.ToListAsync();
-            var result = await _statusModel.OnPostAsync(trade.FromId.Value);
-            var requestsAfter = await requestsQuery.ToListAsync();
+            var tradesBefore = await tradesQuery.ToListAsync();
+            var result = await _statusModel.OnPostAsync(trade.FromId);
+            var tradesAfter = await tradesQuery.ToListAsync();
 
             // Assert
             Assert.IsType<RedirectToPageResult>(result);
-            Assert.Equal(requestsBefore, requestsAfter);
-            Assert.Contains(trade.Id, requestsAfter);
+            Assert.Equal(tradesBefore, tradesAfter);
+            Assert.Contains(trade.Id, tradesAfter);
         }
 
 
@@ -109,23 +109,23 @@ namespace MTGViewer.Tests.Pages.Transfers
             // Arrange
             await _statusModel.SetModelContextAsync(_userManager, _trades.To.OwnerId);
 
-            var trade = await _dbContext.Exchanges
+            var trade = await _dbContext.Trades
                 .AsNoTracking()
-                .FirstAsync(ex => ex.IsTrade && ex.ToId == _trades.ToId);
+                .FirstAsync(t => t.ToId == _trades.ToId);
 
-            var requestsQuery = _dbContext.Exchanges
-                .Where(ex => ex.IsTrade && ex.ToId == _trades.ToId)
+            var tradesQuery = _dbContext.Trades
+                .Where(t => t.ToId == _trades.ToId)
                 .Select(ex => ex.Id);
 
             // Act
-            var requestsBefore = await requestsQuery.ToListAsync();
+            var tradesBefore = await tradesQuery.ToListAsync();
             var result = await _statusModel.OnPostAsync(_trades.ToId);
-            var requestsAfter = await requestsQuery.ToListAsync();
+            var tradesAfter = await tradesQuery.ToListAsync();
 
             // Assert
             Assert.IsType<RedirectToPageResult>(result);
-            Assert.NotEqual(requestsBefore, requestsAfter);
-            Assert.DoesNotContain(trade.Id, requestsAfter);
+            Assert.NotEqual(tradesBefore, tradesAfter);
+            Assert.DoesNotContain(trade.Id, tradesAfter);
         }
     }
 }

@@ -32,7 +32,7 @@
         </tr>
     </thead>
     <tbody>
-        @foreach (var (deck, numRequests) in Model.TakeFroms)
+        @foreach (var (deck, numRequests) in Model.ReceivedTrades)
         {
             <tr>
                 <td>@deck.Name</td>
@@ -60,7 +60,7 @@
         </tr>
     </thead>
     <tbody>
-        @foreach (var (deck, numRequests) in Model.PendingTakeTos)
+        @foreach (var (deck, numRequests) in Model.SentTrades)
         {
             <tr>
                 <td>@deck.Name</td>
@@ -88,7 +88,7 @@
         </tr>
     </thead>
     <tbody>
-        @foreach (var deck in Model.PossibleTakeTos)
+        @foreach (var deck in Model.PossibleTrades)
         {
             <tr>
                 <td> @deck.Name </td>

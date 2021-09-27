@@ -136,7 +136,7 @@
     private UserRef _user;
     private Deck _deck;
     private SortedList<string, List<Card>> _dbCards;
-    private IDictionary<string, RequestGroup> _deckCards;
+    private IDictionary<string, AmountRequestGroup> _deckCards;
 
 
     private bool HasNoChanges() =>
@@ -155,10 +155,7 @@
         _dbContext.Decks
             .Where(d => d.Id == DeckId)
             .Include(d => d.Cards)
-            .Include(d => d.ExchangesTo
-                .Where(ex => !ex.IsTrade))
-            .Include(d => d.ExchangesFrom
-                .Where(ex => !ex.IsTrade))
+            .Include(d => d.Requests)
             .AsSplitQuery();
 
 
@@ -240,13 +237,12 @@
     }
 
 
-    private IEnumerable<RequestGroup> GetDeckCardGroups(Deck deck)
+    private IEnumerable<AmountRequestGroup> GetDeckCardGroups(Deck deck)
     {
         var amountsById = deck.Cards
             .ToDictionary(ca => ca.CardId);
 
-        var requestsById = deck.GetAllExchanges()
-            .Where(ex => !ex.IsTrade)
+        var requestsById = deck.Requests
             .ToLookup(ex => ex.CardId);
 
         var cardIds = amountsById
@@ -257,7 +253,7 @@
         return cardIds.Select(cid =>
         {
             amountsById.TryGetValue(cid, out var amount);
-            return new RequestGroup(amount, requestsById[cid]);
+            return new AmountRequestGroup(amount, requestsById[cid]);
         });
     }
 
@@ -290,14 +286,14 @@
 
         if (!hasGroup || deckGroup.Take is null)
         {
-            var takeAmount = new Exchange
+            var takeAmount = new CardRequest
             {
                 Card = card,
-                To = _deck,
+                Target = _deck,
                 Amount = 0,
             };
 
-            _dbContext.Exchanges.Add(takeAmount);
+            _dbContext.Requests.Attach(takeAmount);
 
             if (hasGroup)
             {
@@ -346,15 +342,16 @@
 
         if (deckGroup.Return is null)
         {
-            var returnAmount = new Exchange
+            var returnAmount = new CardRequest
             {
                 Card = deckGroup.Card,
-                From = _deck,
+                Target = _deck,
+                IsReturn = true,
                 Amount = 0
             };
 
+            _dbContext.Requests.Attach(returnAmount);
             deckGroup.Return = returnAmount;
-            _dbContext.Exchanges.Attach(returnAmount);
         }
 
         deckGroup.Return.Amount += 1;
@@ -398,18 +395,16 @@
 
     private void PrepareChanges()
     {
-        var exchanges = _deck.GetAllExchanges().Where(ex => !ex.IsTrade);
-
-        foreach (var exchange in exchanges)
+        foreach (var request in _deck.Requests)
         {
-            if (exchange.Amount == 0)
+            if (request.Amount == 0)
             {
-                _dbContext.Exchanges.Remove(exchange);
+                _dbContext.Requests.Remove(request);
             }
             // detaches when saved after a remove
-            else if (_dbContext.Entry(exchange).State == EntityState.Detached)
+            else if (_dbContext.Entry(request).State == EntityState.Detached)
             {
-                _dbContext.Exchanges.Add(exchange);
+                _dbContext.Requests.Add(request);
             }
         }
 
@@ -484,28 +479,25 @@
         }
 
 
-        var localRequests = _deck.GetAllExchanges().Where(ex => !ex.IsTrade);
-        var dbRequests = dbDeck.GetAllExchanges().Where(ex => !ex.IsTrade);
-
-        var removedReqeusts = localRequests
-            .GroupJoin( dbRequests,
-                rq => (rq.CardId, rq.ToId, rq.FromId),
-                db => (db.CardId, db.ToId, db.FromId),
+        var removedRequests = _deck.Requests
+            .GroupJoin( dbDeck.Requests,
+                rq => (rq.CardId, rq.TargetId, rq.IsReturn),
+                db => (db.CardId, db.TargetId, db.IsReturn),
                 (local, dbs) =>
                     (local, noDb: !dbs.Any()))
             .Where(ln => ln.noDb)
             .Select(ln => ln.local);
 
-        foreach (var removedRequest in removedReqeusts)
+        foreach (var removedRequest in removedRequests)
         {
             if (_dbContext.Entry(removedRequest).State == EntityState.Unchanged)
             {
                 removedRequest.Amount = 0;
-                _dbContext.Exchanges.Remove(removedRequest);
+                _dbContext.Requests.Remove(removedRequest);
             }
             else
             {
-                _dbContext.Exchanges.Add(removedRequest);
+                _dbContext.Requests.Add(removedRequest);
             }
         }
     }
@@ -531,7 +523,7 @@
             _dbContext.MatchToken(localCard, dbCard);
         }
 
-        var dbTakes = dbDeck.ExchangesTo.Where(ex => !ex.IsTrade);
+        var dbTakes = dbDeck.Requests.Where(cr => !cr.IsReturn);
 
         foreach (var dbTake in dbTakes)
         {
@@ -551,7 +543,7 @@
             _dbContext.MatchToken(localTake, dbTake);
         }
 
-        var dbReturns = dbDeck.ExchangesFrom.Where(ex => !ex.IsTrade);
+        var dbReturns = dbDeck.Requests.Where(cr => cr.IsReturn);
 
         foreach (var dbReturn in dbReturns)
         {
@@ -597,7 +589,7 @@
             _dbContext.Amounts.Attach(dbCard);
         }
 
-        var dbTakes = dbDeck.ExchangesTo.Where(ex => !ex.IsTrade);
+        var dbTakes = dbDeck.Requests.Where(cr => !cr.IsReturn);
 
         foreach (var dbTake in dbTakes)
         {
@@ -618,10 +610,10 @@
                 _deckCards.Add(dbTake.CardId, localGroup);
             }
 
-            _dbContext.Exchanges.Attach(dbTake);
+            _dbContext.Requests.Attach(dbTake);
         }
 
-        var dbReturns = dbDeck.ExchangesFrom.Where(ex => !ex.IsTrade);
+        var dbReturns = dbDeck.Requests.Where(cr => cr.IsReturn);
 
         foreach (var dbReturn in dbReturns)
         {
@@ -642,7 +634,7 @@
                 _deckCards.Add(dbReturn.CardId, localGroup);
             }
 
-            _dbContext.Exchanges.Attach(dbReturn);
+            _dbContext.Requests.Attach(dbReturn);
         }
     }
 

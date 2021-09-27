@@ -70,7 +70,7 @@ namespace MTGViewer.Data.Seed
             _dbContext.Amounts.AddRange(deckAmounts);
 
             _dbContext.Suggestions.AddRange(suggestions);
-            _dbContext.Exchanges.AddRange(trades);
+            _dbContext.Trades.AddRange(trades);
 
             await _dbContext.SaveChangesAsync(cancel);
 
@@ -165,7 +165,7 @@ namespace MTGViewer.Data.Seed
         }
 
 
-        private IReadOnlyList<Exchange> GetTrades(
+        private IReadOnlyList<Trade> GetTrades(
             IEnumerable<UserRef> users,
             IEnumerable<Card> cards,
             IEnumerable<Deck> decks,
@@ -175,9 +175,9 @@ namespace MTGViewer.Data.Seed
             var tradeFrom = (Deck)source.Location;
             var tradeTo = decks.First(l => l != source.Location);
 
-            return new List<Exchange>()
+            return new List<Trade>()
             {
-                new Exchange
+                new Trade
                 {
                     Card = source.Card,
                     To = tradeTo,

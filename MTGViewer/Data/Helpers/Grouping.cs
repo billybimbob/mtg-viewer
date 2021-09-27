@@ -90,71 +90,65 @@ namespace MTGViewer.Data
 
 
 
-    public class ExchangeNameGroup : IEnumerable<Exchange>
+    public class RequestNameGroup : IEnumerable<CardRequest>
     {
-        public ExchangeNameGroup(IEnumerable<Exchange> exchanges)
+        public RequestNameGroup(IEnumerable<CardRequest> requests)
         {
-            _exchanges = new(exchanges);
+            _requests = new(requests);
 
-            if (!_exchanges.Any())
+            if (!_requests.Any())
             {
                 throw new ArgumentException("The exchanges are empty");
             }
 
-            if (_exchanges.Any(ex => ex.Card.Name != Name))
+            if (_requests.Any(ex => ex.Card.Name != Name))
             {
                 throw new ArgumentException("All exchanges do not match the name");
             }
 
-            if (_exchanges.Any(ex => ex.Card.ManaCost != ManaCost))
+            if (_requests.Any(ex => ex.Card.ManaCost != ManaCost))
             {
                 throw new ArgumentException("All exchanges do not match the mana cost");
             }
 
-            if (_exchanges.Any(ex => ex.IsTrade != IsTrade))
+            if (_requests.Any(ex => ex.IsReturn != IsReturn))
             {
                 throw new ArgumentException("All exchanges are not matching trades");
             }
 
-            if (_exchanges.Any(ex =>
-                ex.ToId != ToId && ex.To != To
-                    && ex.FromId != FromId && ex.From != From))
+            if (_requests.Any(ex => ex.TargetId != TargetId && ex.Target != Target))
             {
                 throw new ArgumentException("All exchanges do not have the same location");
             }
         }
 
-        public ExchangeNameGroup(params Exchange[] amounts)
+        public RequestNameGroup(params CardRequest[] amounts)
             : this(amounts.AsEnumerable())
         { }
 
 
         // guranteed >= 1 CardAmounts in linkedlist
-        private readonly LinkedList<Exchange> _exchanges;
+        private readonly LinkedList<CardRequest> _requests;
 
 
-        private Exchange First => _exchanges.First!.Value;
+        private CardRequest First => _requests.First!.Value;
 
         public string Name => First.Card.Name;
-
         public string ManaCost => First.Card.ManaCost;
 
-        public IEnumerable<string> CardIds => _exchanges.Select(ca => ca.CardId);
-        public IEnumerable<Card> Cards => _exchanges.Select(ca => ca.Card);
+        public IEnumerable<string> CardIds => _requests.Select(ca => ca.CardId);
+        public IEnumerable<Card> Cards => _requests.Select(ca => ca.Card);
 
 
-        public int? ToId => First.ToId ?? First.To?.Id;
-        public Deck? To => First.To;
+        public int TargetId => First.TargetId;
+        public Deck Target => First.Target;
 
-        public int? FromId => First.FromId ?? First.From?.Id;
-        public Deck? From => First.From;
-
-        public bool IsTrade => First.IsTrade;
+        public bool IsReturn => First.IsReturn;
 
 
         public int Amount
         {
-            get => _exchanges.Sum(ca => ca.Amount);
+            get => _requests.Sum(ca => ca.Amount);
             set
             {
                 int change = Amount - value;
@@ -168,9 +162,9 @@ namespace MTGViewer.Data
                     if (First.Amount == 0)
                     {
                         // cycle amount
-                        var firstLink = _exchanges.First!;
-                        _exchanges.Remove(firstLink);
-                        _exchanges.AddLast(firstLink);
+                        var firstLink = _requests.First!;
+                        _requests.Remove(firstLink);
+                        _requests.AddLast(firstLink);
                     }
                 }
             }
@@ -178,44 +172,40 @@ namespace MTGViewer.Data
 
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
-        public IEnumerator<Exchange> GetEnumerator() => _exchanges.GetEnumerator();
+        public IEnumerator<CardRequest> GetEnumerator() => _requests.GetEnumerator();
     }
 
 
 
     /// <summary>Group of deck amounts with the same deck and same card</summary>
-    public class RequestGroup
+    public class AmountRequestGroup
     {
-        public RequestGroup(CardAmount? amount, IEnumerable<Exchange> exchanges)
+        public AmountRequestGroup(CardAmount? amount, IEnumerable<CardRequest> requests)
         {
             _actual = amount;
-
-            _take = exchanges.FirstOrDefault(ex => 
-                !ex.IsTrade && (ex.ToId != default || ex.To?.Id != default));
-
-            _return = exchanges.FirstOrDefault(ex =>
-                !ex.IsTrade && (ex.FromId != default || ex.From?.Id != default));
+            _take = requests.FirstOrDefault(cr => !cr.IsReturn);
+            _return = requests.FirstOrDefault(cr => cr.IsReturn);
 
             CheckGroup();
         }
 
-        public RequestGroup(CardAmount? amount, params Exchange[] exchanges)
+        public AmountRequestGroup(CardAmount? amount, params CardRequest[] exchanges)
             : this(amount, exchanges.AsEnumerable())
         { }
 
-        public RequestGroup(IEnumerable<Exchange> exchanges)
+        public AmountRequestGroup(IEnumerable<CardRequest> exchanges)
             : this(null, exchanges)
         { }
 
-        public RequestGroup(params Exchange[] exchanges)
+        public AmountRequestGroup(params CardRequest[] exchanges)
             : this(exchanges.AsEnumerable())
         { }
 
 
         // Guaranteed to not all be null
         private CardAmount? _actual;
-        private Exchange? _take;
-        private Exchange? _return;
+        private CardRequest? _take;
+        private CardRequest? _return;
 
 
         public CardAmount? Actual
@@ -234,14 +224,12 @@ namespace MTGViewer.Data
             }
         }
 
-        public Exchange? Take
+        public CardRequest? Take
         {
             get => _take;
             set
             {
-                if (value is null 
-                    || value.IsTrade 
-                    || value.ToId == default && value.To?.Id == default)
+                if (value is null || !value.IsReturn)
                 {
                     throw new ArgumentException("Amount is not a valid take amount");
                 }
@@ -252,14 +240,12 @@ namespace MTGViewer.Data
             }
         }
 
-        public Exchange? Return
+        public CardRequest? Return
         {
             get => _return;
             set
             {
-                if (value is null
-                    || value.IsTrade 
-                    || value.FromId == default && value.From?.Id == default)
+                if (value is null || value.IsReturn)
                 {
                     throw new ArgumentException("Amount is not a valid return amount");
                 }
@@ -303,10 +289,10 @@ namespace MTGViewer.Data
                 || Actual.CardId == cardId && Actual.LocationId == locationId;
 
             var sameTakeIds = Take == null 
-                || Take.CardId == cardId && Take.ToId == locationId;
+                || Take.CardId == cardId && Take.TargetId == locationId;
 
             var sameRetIds = Return == null 
-                || Return.CardId == cardId && Return.FromId == locationId;
+                || Return.CardId == cardId && Return.TargetId == locationId;
 
             return sameActIds && sameTakeIds && sameRetIds;
         }
@@ -322,11 +308,11 @@ namespace MTGViewer.Data
 
             var sameTakeRefs = Take == null 
                 || object.ReferenceEquals(Take.Card, card)
-                    && object.ReferenceEquals(Take.To, location);
+                    && object.ReferenceEquals(Take.Target, location);
 
             var sameRetRefs = Return == null 
                 || object.ReferenceEquals(Return.Card, card)
-                    && object.ReferenceEquals(Return.From, location);
+                    && object.ReferenceEquals(Return.Target, location);
 
             return sameActRefs && sameTakeRefs && sameRetRefs;
         }
@@ -347,14 +333,14 @@ namespace MTGViewer.Data
 
         public int LocationId =>
             Actual?.LocationId
-                ?? Take?.ToId
-                ?? Return?.FromId
+                ?? Take?.TargetId
+                ?? Return?.TargetId
                 ?? Location.Id;
 
         public Location Location =>
             Actual?.Location
-                ?? Take?.To
-                ?? Return?.From
+                ?? Take?.Target
+                ?? Return?.Target
                 ?? null!;
 
 
@@ -369,13 +355,13 @@ namespace MTGViewer.Data
     /// <summary>
     /// Group of card amounts with the same card name, and the same deck
     /// </summary>
-    public class RequestNameGroup : IEnumerable<RequestGroup>
+    public class AmountRequestNameGroup : IEnumerable<AmountRequestGroup>
     {
-        public RequestNameGroup(IEnumerable<CardAmount> amounts, IEnumerable<Exchange> exchanges)
+        public AmountRequestNameGroup(IEnumerable<CardAmount> amounts, IEnumerable<CardRequest> requests)
         {
             // do a full outer join
             var amountTable = amounts.ToDictionary(ca => ca.CardId ?? ca.Card.Id);
-            var exchangeLookup = exchanges.ToLookup(ex => ex.CardId ?? ex.Card.Id);
+            var exchangeLookup = requests.ToLookup(ex => ex.CardId ?? ex.Card.Id);
 
             var allCardIds = exchangeLookup
                 .Select(g => g.Key)
@@ -385,14 +371,14 @@ namespace MTGViewer.Data
                 .Select(cid =>
                 {
                     amountTable.TryGetValue(cid, out var amount);
-                    return new RequestGroup(amount, exchangeLookup[cid]);
+                    return new AmountRequestGroup(amount, exchangeLookup[cid]);
                 })
                 .ToList();
 
             CheckGroups();
         }
 
-        private readonly IReadOnlyList<RequestGroup> _requestGroups;
+        private readonly IReadOnlyList<AmountRequestGroup> _requestGroups;
 
 
         private void CheckGroups()
@@ -443,7 +429,7 @@ namespace MTGViewer.Data
         IEnumerator IEnumerable.GetEnumerator() => 
             GetEnumerator();
 
-        public IEnumerator<RequestGroup> GetEnumerator() =>
+        public IEnumerator<AmountRequestGroup> GetEnumerator() =>
             _requestGroups.GetEnumerator();
     }
 
@@ -451,22 +437,17 @@ namespace MTGViewer.Data
 
 
     /// <summary>Group of trades with the same proposer and to deck</summary>
-    public class TradeSet : IEnumerable<Exchange>
+    public class TradeSet : IEnumerable<Trade>
     {
-        private IEnumerable<Exchange> _trades;
+        private IEnumerable<Trade> _trades;
 
-        public TradeSet(IEnumerable<Exchange> exchanges)
+        public TradeSet(IEnumerable<Trade> trades)
         {
-            _trades = exchanges.ToList();
+            _trades = trades.ToList();
 
             if (!_trades.Any())
             {
                 throw new ArgumentException("The trade group is empty");
-            }
-
-            if (_trades.Any(e => !e.IsTrade))
-            {
-                throw new ArgumentException("All exchanges are not trades");
             }
 
             if (_trades.Any(t => t.ToId != ToId && t.To != To))
@@ -476,7 +457,7 @@ namespace MTGViewer.Data
         }
 
 
-        private Exchange First => _trades.First();
+        private Trade First => _trades.First();
 
         public int ToId => (int)First.ToId!;
         public Deck To => First.To!;
@@ -484,6 +465,6 @@ namespace MTGViewer.Data
 
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
-        public IEnumerator<Exchange> GetEnumerator() => _trades.GetEnumerator();
+        public IEnumerator<Trade> GetEnumerator() => _trades.GetEnumerator();
     }
 }

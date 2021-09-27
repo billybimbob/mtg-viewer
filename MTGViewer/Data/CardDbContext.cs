@@ -16,18 +16,19 @@ namespace MTGViewer.Data
         public DbSet<UserRef> Users => Set<UserRef>();
 
         public DbSet<Card> Cards => Set<Card>();
-        public DbSet<CardAmount> Amounts => Set<CardAmount>();
 
         public DbSet<Deck> Decks => Set<Deck>();
         public DbSet<Box> Boxes => Set<Box>();
         public DbSet<Bin> Bins => Set<Bin>();
 
-        public DbSet<Exchange> Exchanges => Set<Exchange>();
-        public DbSet<Suggestion> Suggestions => Set<Suggestion>();
+        public DbSet<CardAmount> Amounts => Set<CardAmount>();
+        public DbSet<CardRequest> Requests => Set<CardRequest>();
 
         public DbSet<Change> Changes => Set<Change>();
         public DbSet<Transaction> Transactions => Set<Transaction>();
 
+        public DbSet<Trade> Trades => Set<Trade>();
+        public DbSet<Suggestion> Suggestions => Set<Suggestion>();
 
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -38,12 +39,12 @@ namespace MTGViewer.Data
 
             // modelBuilder.ApplyConfiguration(new CardConfiguration());
             modelBuilder.ApplyConfiguration(new LocationConfiguration());
+            modelBuilder.ApplyConfiguration(new DeckConfiguration());
 
-            modelBuilder.ApplyConfiguration(new ExchangeConfiguration());
-            modelBuilder.ApplyConfiguration(new SuggestionConfiguration());
-            
-            modelBuilder.ApplyConfiguration(new ChangeConfiguration());
+            modelBuilder.ApplyConfiguration(new BoxConfiguration());
             modelBuilder.ApplyConfiguration(new TransactionConfiguration());
+
+            modelBuilder.ApplyConfiguration(new SuggestionConfiguration());
         }
     }
 
@@ -75,44 +76,50 @@ namespace MTGViewer.Data
                 .HasMany(l => l.Cards)
                 .WithOne(ca => ca.Location)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            builder
+                .HasMany(l => l.ChangesTo)
+                .WithOne(c => c.To)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder
+                .HasMany(l => l.ChangesFrom)
+                .WithOne(c => c.From)
+                .OnDelete(DeleteBehavior.Cascade);
         }
     }
 
 
-    internal class ExchangeConfiguration : IEntityTypeConfiguration<Exchange>
+    internal class DeckConfiguration : IEntityTypeConfiguration<Deck>
     {
-        public void Configure(EntityTypeBuilder<Exchange> builder)
+        public void Configure(EntityTypeBuilder<Deck> builder)
         {
             builder
-                .HasOne(e => e.To)
-                .WithMany(d => d.ExchangesTo)
+                .HasMany(d => d.Requests)
+                .WithOne(cr => cr.Target)
                 .OnDelete(DeleteBehavior.Cascade);
 
             builder
-                .HasOne(e => e.From)
-                .WithMany(d => d.ExchangesFrom)
+                .HasMany(d => d.TradesTo)
+                .WithOne(t => t.To)
                 .OnDelete(DeleteBehavior.Cascade);
 
             builder
-                .Property(ex => ex.IsTrade)
-                .UsePropertyAccessMode(PropertyAccessMode.Property);
+                .HasMany(d => d.TradesFrom)
+                .WithOne(t => t.From)
+                .OnDelete(DeleteBehavior.Cascade);
         }
     }
 
 
-    internal class ChangeConfiguration : IEntityTypeConfiguration<Change>
+    internal class BoxConfiguration : IEntityTypeConfiguration<Box>
     {
-        public void Configure(EntityTypeBuilder<Change> builder)
+        public void Configure(EntityTypeBuilder<Box> builder)
         {
             builder
-                .HasOne(c => c.To)
-                .WithMany(l => l.ChangesTo)
-                .OnDelete(DeleteBehavior.Cascade);
-
-            builder
-                .HasOne(c => c.From)
-                .WithMany(l => l.ChangesFrom)
-                .OnDelete(DeleteBehavior.Cascade);
+                .HasOne(b => b.Bin)
+                .WithMany(b => b.Boxes)
+                .OnDelete(DeleteBehavior.Restrict);
         }
     }
 
@@ -124,6 +131,11 @@ namespace MTGViewer.Data
             builder
                 .Property(t => t.Applied)
                 .HasDefaultValueSql("getdate()");
+
+            builder
+                .HasMany(t => t.Changes)
+                .WithOne(c => c.Transaction)
+                .OnDelete(DeleteBehavior.Cascade);
         }
     }
 
@@ -134,7 +146,12 @@ namespace MTGViewer.Data
         {
             builder
                 .HasOne(s => s.To)
-                .WithMany(d => d.Suggestions)
+                .WithMany()
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder
+                .HasOne(s => s.Receiver)
+                .WithMany()
                 .OnDelete(DeleteBehavior.Cascade);
         }
     }

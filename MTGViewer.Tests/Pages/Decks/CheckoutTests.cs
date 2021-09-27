@@ -101,18 +101,18 @@ namespace MTGViewer.Tests.Pages.Decks
             var request = await _dbContext.GetTakeRequestAsync();
 
             var deckOwnerId = await _dbContext.Decks
-                .Where(d => d.Id == request.ToId)
+                .Where(d => d.Id == request.TargetId)
                 .Select(d => d.OwnerId)
                 .SingleAsync();
 
             await _checkoutModel.SetModelContextAsync(_userManager, deckOwnerId);
 
-            var takeAmountQuery = _dbContext.Exchanges
-                .Where(da => da.Id == request.Id)
-                .Select(da => da.Amount);
+            var takeAmountQuery = _dbContext.Requests
+                .Where(cr => cr.Id == request.Id)
+                .Select(cr => cr.Amount);
 
             var actualAmountQuery = _dbContext.Amounts
-                .Where(ca => ca.LocationId == request.ToId && ca.CardId == request.CardId)
+                .Where(ca => ca.LocationId == request.TargetId && ca.CardId == request.CardId)
                 .Select(ca => ca.Amount);
 
             var boxAmountQuery = _dbContext.Amounts
@@ -126,7 +126,7 @@ namespace MTGViewer.Tests.Pages.Decks
             var actualAmountBefore = await actualAmountQuery.SingleOrDefaultAsync();
             var boxTakeBefore = await boxAmountQuery.SumAsync();
 
-            var result = await _checkoutModel.OnPostAsync(request.ToId.Value);
+            var result = await _checkoutModel.OnPostAsync(request.TargetId);
 
             var takeAmountAfter = await takeAmountQuery.SingleOrDefaultAsync();
             var actualAmountAfter = await actualAmountQuery.SingleAsync();
@@ -148,18 +148,18 @@ namespace MTGViewer.Tests.Pages.Decks
             var request = await _dbContext.GetTakeRequestAsync(targetMod);
 
             var deckOwnerId = await _dbContext.Decks
-                .Where(d => d.Id == request.ToId)
+                .Where(d => d.Id == request.TargetId)
                 .Select(d => d.OwnerId)
                 .SingleAsync();
 
             await _checkoutModel.SetModelContextAsync(_userManager, deckOwnerId);
 
-            var takeRequestQuery = _dbContext.Exchanges
-                .Where(ex => ex.Id == request.Id)
-                .Select(ex => ex.Amount);
+            var takeRequestQuery = _dbContext.Requests
+                .Where(cr => cr.Id == request.Id)
+                .Select(cr => cr.Amount);
 
             var actualAmountQuery = _dbContext.Amounts
-                .Where(ca => ca.LocationId == request.ToId && ca.CardId == request.CardId)
+                .Where(ca => ca.LocationId == request.TargetId && ca.CardId == request.CardId)
                 .Select(ca => ca.Amount);
 
             var boxAmountQuery = _dbContext.Amounts
@@ -173,7 +173,7 @@ namespace MTGViewer.Tests.Pages.Decks
             var actualAmountBefore = await actualAmountQuery.SingleOrDefaultAsync();
             var boxTakeBefore = await boxAmountQuery.SumAsync();
 
-            var result = await _checkoutModel.OnPostAsync(request.ToId.Value);
+            var result = await _checkoutModel.OnPostAsync(request.TargetId);
 
             var takeAmountAfter = await takeRequestQuery.SingleAsync();
             var actualAmountAfter = await actualAmountQuery.SingleAsync();
@@ -196,18 +196,18 @@ namespace MTGViewer.Tests.Pages.Decks
             var request = await _dbContext.GetReturnRequestAsync(targetMod);
 
             var deckOwnerId = await _dbContext.Decks
-                .Where(d => d.Id == request.FromId)
+                .Where(d => d.Id == request.TargetId)
                 .Select(d => d.OwnerId)
                 .SingleAsync();
 
             await _checkoutModel.SetModelContextAsync(_userManager, deckOwnerId);
 
-            var returnRequestQuery = _dbContext.Exchanges
-                .Where(ex => ex.Id == request.Id)
-                .Select(ex => ex.Amount);
+            var returnRequestQuery = _dbContext.Requests
+                .Where(cr => cr.Id == request.Id)
+                .Select(cr => cr.Amount);
 
             var actualAmountQuery = _dbContext.Amounts
-                .Where(ca => ca.LocationId == request.FromId && ca.CardId == request.CardId)
+                .Where(ca => ca.LocationId == request.TargetId && ca.CardId == request.CardId)
                 .Select(ca => ca.Amount);
 
             var boxAmountQuery = _dbContext.Amounts
@@ -221,7 +221,7 @@ namespace MTGViewer.Tests.Pages.Decks
             var actualAmountBefore = await actualAmountQuery.SingleAsync();
             var boxTakeBefore = await boxAmountQuery.SumAsync();
 
-            var result = await _checkoutModel.OnPostAsync(request.FromId.Value);
+            var result = await _checkoutModel.OnPostAsync(request.TargetId);
 
             var returnAmountAfter = await returnRequestQuery.SingleOrDefaultAsync();
             var actualAmountAfter = await actualAmountQuery.SingleOrDefaultAsync();
@@ -242,18 +242,18 @@ namespace MTGViewer.Tests.Pages.Decks
             var request = await _dbContext.GetReturnRequestAsync(2);
 
             var deckOwnerId = await _dbContext.Decks
-                .Where(d => d.Id == request.FromId)
+                .Where(d => d.Id == request.TargetId)
                 .Select(d => d.OwnerId)
                 .SingleAsync();
 
             await _checkoutModel.SetModelContextAsync(_userManager, deckOwnerId);
 
-            var returnAmountQuery = _dbContext.Exchanges
-                .Where(ex => ex.Id == request.Id)
-                .Select(ex => ex.Amount);
+            var returnAmountQuery = _dbContext.Requests
+                .Where(cr => cr.Id == request.Id)
+                .Select(cr => cr.Amount);
 
             var actualAmountQuery = _dbContext.Amounts
-                .Where(ca => ca.LocationId == request.FromId && ca.CardId == request.CardId)
+                .Where(ca => ca.LocationId == request.TargetId && ca.CardId == request.CardId)
                 .Select(ca => ca.Amount);
 
             var boxAmountQuery = _dbContext.Amounts
@@ -265,7 +265,7 @@ namespace MTGViewer.Tests.Pages.Decks
             var actualAmountBefore = await actualAmountQuery.SingleAsync();
             var boxTakeBefore = await boxAmountQuery.SumAsync();
 
-            var result = await _checkoutModel.OnPostAsync(request.FromId.Value);
+            var result = await _checkoutModel.OnPostAsync(request.TargetId);
 
             var returnAmountAfter = await returnAmountQuery.SingleAsync();
             var actualAmountAfter = await actualAmountQuery.SingleAsync();

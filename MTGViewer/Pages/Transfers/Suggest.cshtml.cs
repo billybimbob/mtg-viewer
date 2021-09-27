@@ -159,11 +159,8 @@ namespace MTGViewer.Pages.Transfers
                 .Select(dt => dt.deck);
 
 
-            var tradesWithCard = _dbContext.Exchanges
-                .Where(ex => ex.IsTrade
-                    && ex.Card.Name == card.Name
-                    && ex.ToId != default
-                    && ex.To.OwnerId == user.Id);
+            var tradesWithCard = _dbContext.Trades
+                .Where(t => t.Card.Name == card.Name && t.To.OwnerId == user.Id);
 
             var withoutTrades = withoutSuggests
                 .GroupJoin( tradesWithCard,

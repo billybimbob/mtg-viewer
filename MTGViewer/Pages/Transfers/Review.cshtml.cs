@@ -36,7 +36,7 @@ namespace MTGViewer.Pages.Transfers
         public Deck? Source { get; set; }
         public UserRef? Receiver { get; private set; }
 
-        public IReadOnlyList<Exchange>? Trades { get; private set; }
+        public IReadOnlyList<Trade>? Trades { get; private set; }
 
 
         public async Task<IActionResult> OnGetAsync(int deckId)
@@ -46,7 +46,7 @@ namespace MTGViewer.Pages.Transfers
                 return NotFound();
             }
 
-            var deck = await DeckWithCardsAndFromTrades(deckId)
+            var deck = await DeckWithCardsAndTradesFrom(deckId)
                 .SingleOrDefaultAsync();
 
             if (deck == default)
@@ -54,7 +54,7 @@ namespace MTGViewer.Pages.Transfers
                 return NotFound();
             }
 
-            if (!deck.ExchangesFrom.Any())
+            if (!deck.TradesFrom.Any())
             {
                 return RedirectToPage("./Index");
             }
@@ -67,7 +67,7 @@ namespace MTGViewer.Pages.Transfers
         }
 
 
-        private IQueryable<Deck> DeckWithCardsAndFromTrades(int deckId)
+        private IQueryable<Deck> DeckWithCardsAndTradesFrom(int deckId)
         {
             var userId = _userManager.GetUserId(User);
 
@@ -77,28 +77,22 @@ namespace MTGViewer.Pages.Transfers
                 .Include(d => d.Owner)
                 .Include(d => d.Cards)
 
-                .Include(d => d.ExchangesFrom)
-                    .ThenInclude(ex => ex.Card)
+                .Include(d => d.TradesFrom)
+                    .ThenInclude(t => t.Card)
+                .Include(d => d.TradesFrom)
+                    .ThenInclude(t => t.To.Owner)
 
-                .Include(d => d.ExchangesFrom)
-                    .ThenInclude(ex => ex.To!.Owner)
-
-                .Include(d => d.ExchangesFrom
-                    .Where(ex => ex.IsTrade)
-                    .OrderBy(ex => ex.Card.Name))
+                .Include(d => d.TradesFrom
+                    .OrderBy(t => t.Card.Name))
 
                 .AsSplitQuery()
                 .AsNoTrackingWithIdentityResolution();
         }
 
 
-        private IReadOnlyList<Exchange> CappedFromTrades(Deck deck)
+        private IReadOnlyList<Trade> CappedFromTrades(Deck deck)
         {
-            var trades = deck.ExchangesFrom
-                .Where(ex => ex.IsTrade)
-                .ToList();
-
-            var tradesWithAmountCap = trades
+            var tradesWithAmountCap = deck.TradesFrom
                 .Join( deck.Cards,
                     ex => ex.CardId,
                     ca => ca.CardId,
@@ -110,19 +104,19 @@ namespace MTGViewer.Pages.Transfers
                 trade.Amount = Math.Min(trade.Amount, cap);
             }
 
-            return trades;
+            return deck.TradesFrom.ToList();
         }
 
 
 
         private record AcceptRequest(
-            Exchange Trade,
-            ExchangeNameGroup? ToRequests,
+            Trade Trade,
+            RequestNameGroup? ToTakes,
             CardAmount FromAmount) { }
 
         private record AcceptTargets(
             CardAmount ToAmount,
-            Exchange FromRequest) { }
+            CardRequest FromTake) { }
 
 
         public async Task<IActionResult> OnPostAcceptAsync(int tradeId, int amount)
@@ -163,16 +157,16 @@ namespace MTGViewer.Pages.Transfers
         }
 
 
-        private async Task<Exchange?> GetTradeAsync(int tradeId)
+        private async Task<Trade?> GetTradeAsync(int tradeId)
         {
             if (tradeId == default)
             {
                 return null;
             }
 
-            var tradeCard = await _dbContext.Exchanges
-                .Where(ex => ex.IsTrade && ex.Id == tradeId)
-                .Select(ex => ex.Card)
+            var tradeCard = await _dbContext.Trades
+                .Where(t => t.Id == tradeId)
+                .Select(t => t.Card)
                 .SingleOrDefaultAsync();
 
             if (tradeCard == default)
@@ -184,36 +178,31 @@ namespace MTGViewer.Pages.Transfers
         }
 
 
-        private IQueryable<Exchange> TradeWithTargets(int tradeId, Card tradeCard)
+        private IQueryable<Trade> TradeWithTargets(int tradeId, Card tradeCard)
         {
             var userId = _userManager.GetUserId(User);
 
-            return _dbContext.Exchanges
-                .Where(t => t.IsTrade
-                    && t.Id == tradeId
-                    && t.To != default
-                    && t.From != default && t.From!.OwnerId == userId)
+            return _dbContext.Trades
+                .Where(t => t.Id == tradeId && t.From.OwnerId == userId)
 
                 .Include(t => t.To)
-                    .ThenInclude(d => d!.Cards
+                    .ThenInclude(d => d.Cards
                         .Where(ca => ca.CardId == tradeCard.Id))
                         .ThenInclude(ca => ca.Card)
 
                 .Include(t => t.To)
-                    .ThenInclude(d => d!.ExchangesTo
-                        .Where(ex => !ex.IsTrade
-                            && ex.Card.Name == tradeCard.Name))
+                    .ThenInclude(d => d.Requests
+                        .Where(cr => !cr.IsReturn && cr.Card.Name == tradeCard.Name))
                         .ThenInclude(ex => ex.Card)
 
                 .Include(t => t.From)
-                    .ThenInclude(d => d!.Cards
+                    .ThenInclude(d => d.Cards
                         .Where(ca => ca.CardId == tradeCard.Id))
                         .ThenInclude(ex => ex.Card)
 
                 .Include(t => t.From)
-                    .ThenInclude(d => d!.ExchangesTo
-                        .Where(ex => !ex.IsTrade
-                            && ex.CardId == tradeCard.Id))
+                    .ThenInclude(d => d.Requests
+                        .Where(cr => !cr.IsReturn && cr.CardId == tradeCard.Id))
                         .ThenInclude(ex => ex.Card)
 
                 .AsSplitQuery();
@@ -221,31 +210,25 @@ namespace MTGViewer.Pages.Transfers
 
 
 
-        private AcceptRequest? GetAcceptRequest(Exchange trade)
+        private AcceptRequest? GetAcceptRequest(Trade trade)
         {
-            if (!trade.IsTrade)
-            {
-                return null;
-            }
-
-            var tradeValid = trade.From?.Cards
+            var tradeValid = trade.From.Cards
                 .Select(ca => ca.CardId)
-                .Contains(trade.CardId)
-                ?? false;
+                .Contains(trade.CardId);
 
             if (!tradeValid)
             {
                 return null;
             }
 
-            var toRequests = trade.To!.ExchangesTo
-                .Where(ex => !ex.IsTrade && ex.Card.Name == trade.Card.Name);
+            var toTakes = trade.To.Requests
+                .Where(cr => !cr.IsReturn && cr.Card.Name == trade.Card.Name);
 
             return new AcceptRequest(
                 Trade: trade,
 
-                ToRequests: toRequests.Any()
-                    ? new ExchangeNameGroup(toRequests) : default,
+                ToTakes: toTakes.Any()
+                    ? new RequestNameGroup(toTakes) : default,
 
                 FromAmount: trade.From!.Cards
                     .Single(ca => ca.CardId == trade.CardId));
@@ -265,10 +248,10 @@ namespace MTGViewer.Pages.Transfers
 
             var finishedRequests = toRequests
                 ?.Where(ex  => ex.Amount == 0)
-                ?? Enumerable.Empty<Exchange>();
+                ?? Enumerable.Empty<CardRequest>();
 
-            _dbContext.Exchanges.RemoveRange(finishedRequests);
-            _dbContext.Exchanges.Remove(trade);
+            _dbContext.Requests.RemoveRange(finishedRequests);
+            _dbContext.Trades.Remove(trade);
         }
 
 
@@ -329,22 +312,23 @@ namespace MTGViewer.Pages.Transfers
                 _dbContext.Amounts.Attach(toAmount);
             }
 
-            var fromRequest = trade.From!.ExchangesTo
-                .SingleOrDefault(ex => ex.CardId == trade.CardId);
+            var fromTake = trade.From.Requests
+                .SingleOrDefault(cr => 
+                    !cr.IsReturn && cr.CardId == trade.CardId);
 
-            if (fromRequest is null)
+            if (fromTake is null)
             {
-                fromRequest = new()
+                fromTake = new()
                 {
                     Card = trade.Card,
-                    To = trade.From,
+                    Target = trade.From,
                     Amount = 0
                 };
 
-                _dbContext.Exchanges.Attach(fromRequest);
+                _dbContext.Requests.Attach(fromTake);
             }
 
-            return new AcceptTargets(toAmount, fromRequest);
+            return new AcceptTargets(toAmount, fromTake);
         }
 
 
@@ -363,11 +347,10 @@ namespace MTGViewer.Pages.Transfers
             // current impl makes the assumption that trades are always
             // started by the owner of the To deck
 
-            var remainingTrades = await _dbContext.Exchanges
-                .Where(ex => ex.IsTrade
-                    && ex.Id != trade.Id
-                    && ex.ToId == trade.ToId
-                    && ex.Card.Name == trade.Card.Name)
+            var remainingTrades = await _dbContext.Trades
+                .Where(t => t.Id != trade.Id
+                    && t.ToId == trade.ToId
+                    && t.Card.Name == trade.Card.Name)
                 .ToListAsync();
 
             if (!remainingTrades.Any())
@@ -377,7 +360,7 @@ namespace MTGViewer.Pages.Transfers
 
             if (toRequests.Amount == 0)
             {
-                _dbContext.Exchanges.RemoveRange(remainingTrades);
+                _dbContext.Trades.RemoveRange(remainingTrades);
                 return;
             }
 
@@ -400,11 +383,10 @@ namespace MTGViewer.Pages.Transfers
 
             var userId = _userManager.GetUserId(User);
 
-            var deckTrade = await _dbContext.Exchanges
-                .SingleOrDefaultAsync(ex => ex.IsTrade
-                    && ex.Id == tradeId
-                    && ex.From != default
-                    && ex.From!.OwnerId == userId);
+            var deckTrade = await _dbContext.Trades
+                .SingleOrDefaultAsync(t => t.Id == tradeId
+                    && t.From != default
+                    && t.From!.OwnerId == userId);
 
             if (deckTrade == default)
             {
@@ -412,7 +394,7 @@ namespace MTGViewer.Pages.Transfers
                 return RedirectToPage("./Index");
             }
 
-            _dbContext.Exchanges.Remove(deckTrade);
+            _dbContext.Trades.Remove(deckTrade);
 
             try
             {

@@ -27,7 +27,7 @@ namespace MTGViewer.Pages.Decks
 
         public bool CanEdit { get; private set; }
         public Deck Deck { get; private set; }
-        public IEnumerable<RequestGroup> Cards { get; private set; }
+        public IEnumerable<AmountRequestGroup> Cards { get; private set; }
 
         public async Task<IActionResult> OnGetAsync(int deckId)
         {
@@ -42,8 +42,7 @@ namespace MTGViewer.Pages.Decks
 
             Deck = deck;
 
-            CanEdit = deck.OwnerId == userId 
-                && !deck.ExchangesTo.Any(ex => ex.IsTrade);
+            CanEdit = deck.OwnerId == userId && !deck.TradesTo.Any();
 
             Cards = DeckCardGroups(deck).ToList();
 
@@ -60,11 +59,10 @@ namespace MTGViewer.Pages.Decks
                 .Include(d => d.Cards)
                     .ThenInclude(ca => ca.Card)
 
-                .Include(d => d.ExchangesTo)
+                .Include(d => d.TradesTo)
                     .ThenInclude(ex => ex.Card)
 
-                .Include(d => d.ExchangesFrom
-                    .Where(ex => !ex.IsTrade))
+                .Include(d => d.Requests)
                     .ThenInclude(ca => ca.Card)
 
                 .AsSplitQuery()
@@ -72,13 +70,12 @@ namespace MTGViewer.Pages.Decks
         }
 
 
-        private IEnumerable<RequestGroup> DeckCardGroups(Deck deck)
+        private IEnumerable<AmountRequestGroup> DeckCardGroups(Deck deck)
         {
             var amountsById = deck.Cards
                 .ToDictionary(ca => ca.CardId);
 
-            var requestsById = deck.GetAllExchanges()
-                .Where(ex => !ex.IsTrade)
+            var requestsById = deck.Requests
                 .ToLookup(ex => ex.CardId);
 
             var cardIds = amountsById
@@ -90,7 +87,7 @@ namespace MTGViewer.Pages.Decks
                 .Select(cid =>
                 {
                     amountsById.TryGetValue(cid, out var amount);
-                    return new RequestGroup(amount, requestsById[cid]);
+                    return new AmountRequestGroup(amount, requestsById[cid]);
                 })
                 .OrderBy(rg => rg.Card.Name);
         }

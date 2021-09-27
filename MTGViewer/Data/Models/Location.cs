@@ -24,15 +24,14 @@ namespace MTGViewer.Data
         [JsonIgnore]
         internal Discriminator Type { get; private set; }
 
+        [JsonIgnore]
+        public ICollection<CardAmount> Cards { get; } = new List<CardAmount>();
 
         [JsonIgnore]
         public ICollection<Change> ChangesTo { get; } = new List<Change>();
 
         [JsonIgnore]
         public ICollection<Change> ChangesFrom { get; } = new List<Change>();
-
-        [JsonIgnore]
-        public ICollection<CardAmount> Cards { get; } = new List<CardAmount>();
 
 
         // public IOrderedEnumerable<Color> GetColors()
@@ -63,17 +62,15 @@ namespace MTGViewer.Data
         public UserRef Owner { get; init; } = null!;
         public string OwnerId { get; init; } = null!;
 
-        [JsonIgnore]
-        public ICollection<Suggestion> Suggestions { get; } = new List<Suggestion>();
 
         [JsonIgnore]
-        public ICollection<Exchange> ExchangesTo { get; } = new List<Exchange>();
+        public ICollection<CardRequest> Requests { get; } = new List<CardRequest>();
 
         [JsonIgnore]
-        public ICollection<Exchange> ExchangesFrom { get; } = new List<Exchange>();
+        public ICollection<Trade> TradesTo { get; } = new List<Trade>();
 
-        public IEnumerable<Exchange> GetAllExchanges() =>
-            ExchangesTo.Concat(ExchangesFrom); // guranteed to be unique between both properties
+        [JsonIgnore]
+        public ICollection<Trade> TradesFrom { get; } = new List<Trade>();
 
         
         public override IOrderedEnumerable<string> GetColorSymbols()
@@ -81,11 +78,11 @@ namespace MTGViewer.Data
             var cardSymbols = Cards
                 .SelectMany(ca => ca.Card.GetManaSymbols());
 
-            var exchangeSymbols = GetAllExchanges()
+            var requestSymbols = Requests
                 .SelectMany(ex => ex.Card.GetManaSymbols());
 
             return cardSymbols
-                .Union(exchangeSymbols)
+                .Union(requestSymbols)
                 .Intersect(Data.Color.COLORS.Values)
                 .OrderBy(s => s);
         }
@@ -119,6 +116,6 @@ namespace MTGViewer.Data
         public string Name { get; private set; }
 
         [JsonIgnore]
-        public ICollection<Box> Boxes = new List<Box>();
+        public ICollection<Box> Boxes { get; } = new List<Box>();
     }
 }

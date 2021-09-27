@@ -15,7 +15,7 @@ using MTGViewer.Data;
 
 namespace MTGViewer.Pages.Transfers
 {
-    public record DeckTrade(Deck Deck, int NumberOrTrades) { }
+    public record DeckTrade(Deck Deck, int NumberOfTrades) { }
 
 
     [Authorize]
@@ -36,9 +36,10 @@ namespace MTGViewer.Pages.Transfers
 
         public UserRef SelfUser { get; set; }
 
-        public IReadOnlyList<DeckTrade> TakeFroms { get; private set; }
-        public IReadOnlyList<DeckTrade> PendingTakeTos { get; private set; }
-        public IReadOnlyList<Deck> PossibleTakeTos { get; private set; }
+        public IReadOnlyList<DeckTrade> ReceivedTrades { get; private set; }
+        public IReadOnlyList<DeckTrade> SentTrades { get; private set; }
+
+        public IReadOnlyList<Deck> PossibleTrades { get; private set; }
 
         public IReadOnlyList<Suggestion> Suggestions { get; private set; }
 
@@ -47,41 +48,31 @@ namespace MTGViewer.Pages.Transfers
         public async Task OnGetAsync()
         {
             var userId = _userManager.GetUserId(User);
-
-            var userExchanges = await _dbContext.Exchanges
-                .Where(ex => ex.To.OwnerId == userId
-                    || ex.From.OwnerId == userId && ex.IsTrade)
-                .Include(ex => ex.To.Owner)
-                .Include(ex => ex.From.Owner)
-                .Include(ex => ex.Card)
-                .ToListAsync();
+            var userDecks = await DeckWithTakesAndTrades(userId).ToListAsync();
 
             SelfUser = await _dbContext.Users.FindAsync(userId);
 
-            TakeFroms = userExchanges
-                .Where(ex => ex.IsTrade
-                    && ex.From != default && ex.From.OwnerId == userId)
-                .GroupBy(t => t.From,
-                    (from, trades) => new DeckTrade(from, trades.Count()) )
-                .OrderBy(t => t.Deck.Name)
-                .ToList();
-
-            var userTakes = userExchanges
-                .Where(ex => ex.To != default && ex.To.OwnerId == userId);
-
-            PendingTakeTos = userTakes
-                .Where(ex => ex.IsTrade)
+            ReceivedTrades = userDecks
+                .SelectMany(d => d.TradesFrom)
                 .GroupBy(t => t.To,
-                    (to, trades) => new DeckTrade(to, trades.Count()) )
-                .OrderBy(t => t.Deck.Name)
+                    (to, trades) => new DeckTrade(to, trades.Count()))
+                .OrderBy(dt => dt.Deck.Name)
                 .ToList();
 
-            var pendingDecks = PendingTakeTos.Select(dt => dt.Deck);
+            SentTrades = userDecks
+                .SelectMany(d => d.TradesTo)
+                .GroupBy(t => t.From,
+                    (from, trades) => new DeckTrade(from, trades.Count()))
+                .OrderBy(dt => dt.Deck.Name)
+                .ToList();
 
-            PossibleTakeTos = userTakes
-                .Where(ex => !ex.IsTrade)
-                .Select(ex => ex.To)
-                .Except(pendingDecks)
+            var sentDecks = SentTrades.Select(dt => dt.Deck);
+
+            PossibleTrades = userDecks
+                .SelectMany(
+                    d => d.Requests.Where(cr => !cr.IsReturn),
+                    (_, take) => take.Target)
+                .Except(sentDecks)
                 .OrderBy(d => d.Name)
                 .ToList();
 
@@ -91,6 +82,32 @@ namespace MTGViewer.Pages.Transfers
                 .Include(s => s.To)
                 .OrderBy(s => s.Card.Name)
                 .ToListAsync();
+        }
+
+
+        public IQueryable<Deck> DeckWithTakesAndTrades(string userId)
+        {
+            return _dbContext.Decks
+                .Where(d => d.OwnerId == userId)
+                .AsSplitQuery()
+
+                .Include(d => d.Requests)
+                    .ThenInclude(cr => cr.Card)
+                .Include(d => d.Requests)
+                    .ThenInclude(cr => cr.Target)
+
+                .Include(d => d.Requests
+                    .Where(cr => !cr.IsReturn))
+
+                .Include(d => d.TradesTo)
+                    .ThenInclude(t => t.Card)
+                .Include(d => d.TradesTo)
+                    .ThenInclude(t => t.From)
+
+                .Include(d => d.TradesFrom)
+                    .ThenInclude(t => t.Card)
+                .Include(d => d.TradesFrom)
+                    .ThenInclude(t => t.To);
         }
 
 

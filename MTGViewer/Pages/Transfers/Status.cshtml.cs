@@ -35,8 +35,8 @@ namespace MTGViewer.Pages.Transfers
         public Deck? Destination { get; private set; }
         public UserRef? Proposer { get; private set; }
 
-        public IReadOnlyList<Exchange>? Trades { get; private set; }
-        public IReadOnlyList<RequestNameGroup>? CardGroups { get; private set; }
+        public IReadOnlyList<Trade>? Trades { get; private set; }
+        public IReadOnlyList<AmountRequestNameGroup>? CardGroups { get; private set; }
 
 
         public async Task<IActionResult> OnGetAsync(int deckId)
@@ -53,13 +53,13 @@ namespace MTGViewer.Pages.Transfers
                 return NotFound();
             }
 
-            if (!deck.ExchangesTo.Any(ex => !ex.IsTrade))
+            if (deck.Requests.All(cr => cr.IsReturn))
             {
                 PostMessage = $"There are no requests for {deck.Name}";
                 return RedirectToPage("./Index");
             }
 
-            if (!deck.ExchangesTo.Any(ex => ex.IsTrade))
+            if (!deck.TradesTo.Any())
             {
                 return RedirectToPage("./Request", new { deckId });
             }
@@ -69,9 +69,7 @@ namespace MTGViewer.Pages.Transfers
 
             Proposer = deck.Owner;
 
-            Trades = deck.ExchangesTo
-                .Where(ex => ex.IsTrade)
-                .ToList();
+            Trades = deck.TradesTo.ToList();
 
             CardGroups = DeckNameGroups(deck).ToList();
 
@@ -90,13 +88,17 @@ namespace MTGViewer.Pages.Transfers
                 .Include(d => d.Cards)
                     .ThenInclude(ca => ca.Card)
 
-                .Include(d => d.ExchangesTo)
-                    .ThenInclude(ex => ex.Card)
-                .Include(d => d.ExchangesTo)
-                    .ThenInclude(ex => ex.From!.Owner)
+                .Include(d => d.Requests
+                    .Where(cr => !cr.IsReturn))
+                    .ThenInclude(t => t.Card)
 
-                .Include(d => d.ExchangesTo
-                    .OrderBy(ex => ex.From!.Owner.Name)
+                .Include(d => d.TradesTo)
+                    .ThenInclude(t => t.Card)
+                .Include(d => d.TradesTo)
+                    .ThenInclude(t => t.From.Owner)
+
+                .Include(d => d.TradesTo
+                    .OrderBy(ex => ex.From.Owner.Name)
                         .ThenBy(ex => ex.Card.Name))
 
                 .AsSplitQuery()
@@ -104,13 +106,13 @@ namespace MTGViewer.Pages.Transfers
         }
 
 
-        private IEnumerable<RequestNameGroup> DeckNameGroups(Deck deck)
+        private IEnumerable<AmountRequestNameGroup> DeckNameGroups(Deck deck)
         {
             var amountsByName = deck.Cards
                 .ToLookup(ca => ca.Card.Name);
 
-            var requestsByName = deck.ExchangesTo
-                .Where(ex => !ex.IsTrade)
+            var requestsByName = deck.Requests
+                .Where(cr => !cr.IsReturn)
                 .ToLookup(ex => ex.Card.Name);
 
             var cardNames = amountsByName
@@ -120,7 +122,7 @@ namespace MTGViewer.Pages.Transfers
                 .OrderBy(cn => cn);
 
             return cardNames.Select(cn =>
-                new RequestNameGroup(amountsByName[cn], requestsByName[cn]));
+                new AmountRequestNameGroup(amountsByName[cn], requestsByName[cn]));
         }
 
 
@@ -138,8 +140,7 @@ namespace MTGViewer.Pages.Transfers
             // keep eye on, could possibly remove trades not started by the user
             // makes the assumption that trades are always started by the owner of the To deck
             var deck = await _dbContext.Decks
-                .Include(d => d.ExchangesTo
-                    .Where(ex => ex.IsTrade))
+                .Include(d => d.TradesTo)
                 .SingleOrDefaultAsync(d =>
                     d.Id == deckId && d.OwnerId == userId);
 
@@ -149,13 +150,13 @@ namespace MTGViewer.Pages.Transfers
                 return RedirectToPage("./Index");
             }
 
-            if (!deck.ExchangesTo.Any(ex => ex.IsTrade))
+            if (!deck.TradesTo.Any())
             {
                 PostMessage = "No trades were found";
                 return RedirectToPage("./Index");
             }
 
-            _dbContext.Exchanges.RemoveRange(deck.ExchangesTo);
+            _dbContext.Trades.RemoveRange(deck.TradesTo);
 
             try
             {
