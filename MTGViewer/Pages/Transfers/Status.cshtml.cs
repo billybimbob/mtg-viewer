@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -46,7 +47,8 @@ namespace MTGViewer.Pages.Transfers
                 return NotFound();
             }
 
-            var deck = await DeckWithCardsAndTos(deckId).SingleOrDefaultAsync();
+            var deck = await DeckForStatus(deckId)
+                .SingleOrDefaultAsync();
 
             if (deck == default)
             {
@@ -69,7 +71,7 @@ namespace MTGViewer.Pages.Transfers
 
             Proposer = deck.Owner;
 
-            Trades = deck.TradesTo.ToList();
+            Trades = CappedToTrades(deck).ToList();
 
             CardGroups = DeckNameGroups(deck).ToList();
 
@@ -77,7 +79,7 @@ namespace MTGViewer.Pages.Transfers
         }
 
 
-        private IQueryable<Deck> DeckWithCardsAndTos(int deckId)
+        private IQueryable<Deck> DeckForStatus(int deckId)
         {
             var userId = _userManager.GetUserId(User);
             
@@ -94,8 +96,13 @@ namespace MTGViewer.Pages.Transfers
 
                 .Include(d => d.TradesTo)
                     .ThenInclude(t => t.Card)
+
                 .Include(d => d.TradesTo)
                     .ThenInclude(t => t.From.Owner)
+
+                .Include(d => d.TradesTo)
+                    .ThenInclude(t => t.From)
+                        .ThenInclude(d => d.Cards)
 
                 .Include(d => d.TradesTo
                     .OrderBy(ex => ex.From.Owner.Name)
@@ -106,23 +113,48 @@ namespace MTGViewer.Pages.Transfers
         }
 
 
+        private IEnumerable<Trade> CappedToTrades(Deck deck)
+        {
+            var fromTargets = deck.TradesTo
+                .SelectMany(t => t.From.Cards)
+                .Distinct();
+
+            var tradesWithAmountCap = deck.TradesTo
+                .GroupJoin( fromTargets,
+                    t => (t.CardId, t.FromId),
+                    ca => (ca.CardId, ca.LocationId),
+                    (trade, targets) => (trade, targets))
+                .SelectMany(
+                    tts => tts.targets.DefaultIfEmpty(),
+                    (tts, target) => (tts.trade, target?.Amount ?? 0));
+
+            foreach (var (trade, cap) in tradesWithAmountCap)
+            {
+                // modifications are not saved
+                trade.Amount = Math.Min(trade.Amount, cap);
+            }
+
+            return deck.TradesTo.Where(t => t.Amount > 0);
+        }
+
+
         private IEnumerable<AmountRequestNameGroup> DeckNameGroups(Deck deck)
         {
             var amountsByName = deck.Cards
                 .ToLookup(ca => ca.Card.Name);
 
-            var requestsByName = deck.Requests
+            var takesByName = deck.Requests
                 .Where(cr => !cr.IsReturn)
                 .ToLookup(ex => ex.Card.Name);
 
             var cardNames = amountsByName
                 .Select(g => g.Key)
-                .Union(requestsByName
+                .Union(takesByName
                     .Select(g => g.Key))
-                .OrderBy(cn => cn);
+                .OrderBy(name => name);
 
-            return cardNames.Select(cn =>
-                new AmountRequestNameGroup(amountsByName[cn], requestsByName[cn]));
+            return cardNames.Select(cn => 
+                new AmountRequestNameGroup(amountsByName[cn], takesByName[cn]));
         }
 
 

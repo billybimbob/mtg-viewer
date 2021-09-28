@@ -7,7 +7,7 @@
 }
 
 
-<h1>Request for @Model.Deck.Name</h1>
+<h1>Requests for @Model.Deck.Name</h1>
 <hr />
 
 @if (Model.TargetsExist)
@@ -17,7 +17,7 @@
         <p>While a request is active, you cannot edit the deck @Model.Deck.Name</p>
 
         <form method="POST">
-            <input type="hidden" asp-for="Deck.Id" name="deckId" />
+            <input type="hidden" asp-for="Deck.Id"/>
 
             <input type="submit" 
                 class="btn btn-secondary mb-3"

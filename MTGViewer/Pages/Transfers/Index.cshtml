@@ -32,11 +32,11 @@
         </tr>
     </thead>
     <tbody>
-        @foreach (var (deck, numRequests) in Model.ReceivedTrades)
+        @foreach (var deck in Model.ReceivedTrades)
         {
             <tr>
                 <td>@deck.Name</td>
-                <td>@numRequests</td>
+                <td>@deck.TradesFrom.Count</td>
                 <td>
                     <a asp-page="./Review" 
                        asp-route-deckid="@deck.Id"
@@ -60,11 +60,11 @@
         </tr>
     </thead>
     <tbody>
-        @foreach (var (deck, numRequests) in Model.SentTrades)
+        @foreach (var deck in Model.SentTrades)
         {
             <tr>
                 <td>@deck.Name</td>
-                <td>@numRequests</td>
+                <td>@deck.TradesTo.Count</td>
                 <td>
                     <a asp-page="./Status" 
                         asp-route-deckid="@deck.Id"
@@ -92,7 +92,7 @@
         {
             <tr>
                 <td> @deck.Name </td>
-                <td> @deck.Cards.Count() </td>
+                <td> @deck.Requests.Count(cr => !cr.IsReturn) </td>
                 <td>
                     <a asp-page="./Request" 
                        asp-route-deckid="@deck.Id"

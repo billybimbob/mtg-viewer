@@ -64,14 +64,15 @@ namespace MTGViewer.Tests.Services
                 .AsNoTracking();
 
             var boxesBefore = await boxesQuery.ToListAsync();
+
             await _sharedStorage.ReturnAsync(card, copies);
 
             var boxesAfter = await boxesQuery.ToListAsync();
-            var boxesChange = boxesAfter.Sum(ca => ca.Amount)
-                - boxesBefore.Sum(ca => ca.Amount);
+            var boxesChange = boxesAfter.Sum(ca => ca.Amount) - boxesBefore.Sum(ca => ca.Amount);
 
             Assert.All(boxesAfter, ca => Assert.IsType<Box>(ca.Location));
-            Assert.All(boxesAfter, ca => Assert.Equal(card.Id, ca.CardId));
+
+            Assert.Contains(card.Id, boxesAfter.Select(ca => ca.CardId));
 
             Assert.Equal(copies, boxesChange);
         }
@@ -118,6 +119,52 @@ namespace MTGViewer.Tests.Services
         }
 
 
+        [Theory]
+        [InlineData(1, 2, 0.5f)]
+        [InlineData(2, 3, 0.25f)]
+        public async Task Return_MultipleCards_Success(int cardIdx1, int cardIdx2, float split)
+        {
+            var copies = 12;
+
+            var card1 = await _dbContext.Cards
+                .Skip(cardIdx1)
+                .AsNoTracking()
+                .FirstAsync();
+
+            var card2 = await _dbContext.Cards
+                .Skip(cardIdx2)
+                .AsNoTracking()
+                .FirstAsync();
+
+            int copy1 = (int)(copies * split);
+            int copy2 = (int)(copies * (1 - split));
+
+            copies = copy1 + copy2;
+
+            var boxesQuery = _dbContext.Amounts
+                .Where(ca => ca.Location is Box 
+                    && (ca.CardId == card1.Id || ca.CardId == card2.Id))
+                .Include(ca => ca.Location)
+                .AsNoTracking();
+
+            var boxesBefore = await boxesQuery.ToListAsync();
+
+            await _sharedStorage.ReturnAsync((card1, copy1), (card2, copy2));
+
+            var boxesAfter = await boxesQuery.ToListAsync();
+            var boxesAfterIds = boxesAfter.Select(ca => ca.CardId);
+
+            var boxesChange = boxesAfter.Sum(ca => ca.Amount) - boxesBefore.Sum(ca => ca.Amount);
+
+            Assert.All(boxesAfter, ca => Assert.IsType<Box>(ca.Location));
+
+            Assert.Contains(card1.Id, boxesAfterIds);
+            Assert.Contains(card2.Id, boxesAfterIds);
+
+            Assert.Equal(copies, boxesChange);
+        }
+
+
         [Fact]
         public async Task Return_NoBoxes_ThrowsException()
         {
@@ -145,8 +192,7 @@ namespace MTGViewer.Tests.Services
         public async Task Return_NewCard_Success()
         {
             var copies = 4;
-            var card = await _dbContext.Cards
-                .FirstAsync();
+            var card = await _dbContext.Cards.FirstAsync();
 
             var boxesTrackedQuery = _dbContext.Amounts
                 .Where(ca => ca.Location is Box && ca.CardId == card.Id)

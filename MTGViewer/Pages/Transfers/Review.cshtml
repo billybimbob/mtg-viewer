@@ -8,15 +8,8 @@
 }
 
 
-<h1>Requests From @Model.Source.Name</h1>
+<h1>Trades From @Model.Source.Name</h1>
 <hr />
-
-@* <a asp-page="./Propose"
-    asp-route-proposerid="@Model.Proposer.Id"
-    asp-route-deckid="@Model.Deck.Id"
-    class="btn btn-secondary mb-3">
-    Edit
-</a> *@
 
 @if (!string.IsNullOrEmpty(Model.PostMessage))
 {
@@ -75,7 +68,7 @@
                         </div>
                     </td>
                     <td>
-                        <input type="hidden" name="tradeid" value="@trade.Id" />
+                        <input type="hidden" asp-for="@trade.Id" />
 
                         <input type="submit"
                             asp-page-handler="Accept"

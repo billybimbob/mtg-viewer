@@ -46,7 +46,7 @@ namespace MTGViewer.Pages.Transfers
                 return NotFound();
             }
 
-            var deck = await DeckWithCardsAndTradesFrom(deckId)
+            var deck = await DeckForReview(deckId)
                 .SingleOrDefaultAsync();
 
             if (deck == default)
@@ -61,13 +61,13 @@ namespace MTGViewer.Pages.Transfers
 
             Source = deck;
             Receiver = deck.Owner;
-            Trades = CappedFromTrades(deck);
+            Trades = CappedFromTrades(deck).ToList();
 
             return Page();
         }
 
 
-        private IQueryable<Deck> DeckWithCardsAndTradesFrom(int deckId)
+        private IQueryable<Deck> DeckForReview(int deckId)
         {
             var userId = _userManager.GetUserId(User);
 
@@ -79,6 +79,7 @@ namespace MTGViewer.Pages.Transfers
 
                 .Include(d => d.TradesFrom)
                     .ThenInclude(t => t.Card)
+
                 .Include(d => d.TradesFrom)
                     .ThenInclude(t => t.To.Owner)
 
@@ -90,13 +91,16 @@ namespace MTGViewer.Pages.Transfers
         }
 
 
-        private IReadOnlyList<Trade> CappedFromTrades(Deck deck)
+        private IEnumerable<Trade> CappedFromTrades(Deck deck)
         {
             var tradesWithAmountCap = deck.TradesFrom
-                .Join( deck.Cards,
-                    ex => ex.CardId,
+                .GroupJoin( deck.Cards,
+                    t => t.CardId,
                     ca => ca.CardId,
-                    (trade, actual) => (trade, actual.Amount));
+                    (trade, actuals) => (trade, actuals))
+                .SelectMany(
+                    ta => ta.actuals.DefaultIfEmpty(),
+                    (ta, actual) => (ta.trade, actual?.Amount ?? 0));
 
             foreach (var (trade, cap) in tradesWithAmountCap)
             {
@@ -104,7 +108,7 @@ namespace MTGViewer.Pages.Transfers
                 trade.Amount = Math.Min(trade.Amount, cap);
             }
 
-            return deck.TradesFrom.ToList();
+            return deck.TradesFrom.Where(t => t.Amount > 0);
         }
 
 
@@ -174,11 +178,12 @@ namespace MTGViewer.Pages.Transfers
                 return null;
             }
 
-            return await TradeWithTargets(tradeId, tradeCard).SingleOrDefaultAsync();
+            return await TradeForReview(tradeId, tradeCard)
+                .SingleOrDefaultAsync();
         }
 
 
-        private IQueryable<Trade> TradeWithTargets(int tradeId, Card tradeCard)
+        private IQueryable<Trade> TradeForReview(int tradeId, Card tradeCard)
         {
             var userId = _userManager.GetUserId(User);
 

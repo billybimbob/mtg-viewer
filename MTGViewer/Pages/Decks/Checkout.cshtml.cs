@@ -43,12 +43,10 @@ namespace MTGViewer.Pages.Decks
         
         public bool HasPendings { get; private set; }
 
-        public IReadOnlyList<AmountRequestNameGroup> CardGroups { get; private set; }
-
 
         public async Task<IActionResult> OnGetAsync(int id)
         {
-            var deck = await DeckWithCardsAndRequests(id)
+            var deck = await DeckForCheckout(id)
                 .AsNoTrackingWithIdentityResolution()
                 .SingleOrDefaultAsync();
 
@@ -57,55 +55,45 @@ namespace MTGViewer.Pages.Decks
                 return NotFound();
             }
 
-            var hasReturns = deck.Requests.Any(cr => cr.IsReturn);
+            if (deck.TradesTo.Any())
+            {
+                return RedirectToPage("./Index");
+            }
 
             Deck = deck;
 
-            HasPendings = hasReturns || await AvailablesForTake(deck).AnyAsync();
-
-            CardGroups = DeckNameGroups(deck).ToList();
+            HasPendings = deck.Requests.Any(cr => cr.IsReturn) 
+                || await TakeTargets(deck).AnyAsync();
 
             return Page();
         }
 
 
-        private IEnumerable<AmountRequestNameGroup> DeckNameGroups(Deck deck)
-        {
-            var amountsByName = deck.Cards
-                .ToLookup(ca => ca.Card.Name);
-
-            var requestsByName = deck.Requests
-                .ToLookup(ex => ex.Card.Name);
-
-            var cardNames = amountsByName
-                .Select(g => g.Key)
-                .Union(requestsByName.Select(g => g.Key))
-                .OrderBy(cn => cn);
-
-            return cardNames.Select(cn =>
-                new AmountRequestNameGroup(amountsByName[cn], requestsByName[cn]));
-        }
-
-
-        private IQueryable<Deck> DeckWithCardsAndRequests(int deckId)
+        private IQueryable<Deck> DeckForCheckout(int deckId)
         {
             var userId = _userManager.GetUserId(User);
 
             return _dbContext.Decks
                 .Where(d => d.Id == deckId && d.OwnerId == userId)
-                .AsSplitQuery()
 
-                .Include(d => d.Cards)
+                .Include(d => d.Cards
+                    .OrderBy(ca => ca.Card.Name)
+                        .ThenBy(ca => ca.Card.SetName))
                     .ThenInclude(ca => ca.Card)
 
-                .Include(d => d.Requests)
-                    .ThenInclude(ex => ex.Card);
+                .Include(d => d.Requests
+                    .OrderBy(cr => cr.Card.Name)
+                        .ThenBy(ca => ca.Card.SetName))
+                    .ThenInclude(cr => cr.Card)
+
+                .Include(d => d.TradesTo)
+                .AsSplitQuery();
         }
 
 
-        private IQueryable<CardAmount> AvailablesForTake(Deck deck)
+        private IQueryable<CardAmount> TakeTargets(Deck deck)
         {
-            var requestNames = deck.Requests
+            var takeNames = deck.Requests
                 .Where(cr => !cr.IsReturn)
                 .Select(cr => cr.Card.Name)
                 .Distinct()
@@ -114,7 +102,7 @@ namespace MTGViewer.Pages.Decks
             return _dbContext.Amounts
                 .Where(ca => ca.Location is Box
                     && ca.Amount > 0
-                    && requestNames.Contains(ca.Card.Name))
+                    && takeNames.Contains(ca.Card.Name))
                 .Include(ba => ba.Card);
         }
 
@@ -122,14 +110,19 @@ namespace MTGViewer.Pages.Decks
 
         public async Task<IActionResult> OnPostAsync(int id)
         {
-            var deck = await DeckWithCardsAndRequests(id).SingleOrDefaultAsync();
+            var deck = await DeckForCheckout(id).SingleOrDefaultAsync();
 
             if (deck == default)
             {
                 return NotFound();
             }
 
-            var availables = await AvailablesForTake(deck).ToListAsync();
+            if (deck.TradesTo.Any())
+            {
+                return RedirectToPage("./Index");
+            }
+
+            var availables = await TakeTargets(deck).ToListAsync();
 
             ApplyTakes(deck, availables);
 
@@ -147,6 +140,7 @@ namespace MTGViewer.Pages.Decks
 
             return Page();
         }
+
 
 
         private void ApplyTakes(Deck deck, IEnumerable<CardAmount> availables)
@@ -209,28 +203,20 @@ namespace MTGViewer.Pages.Decks
             IReadOnlyDictionary<string, CardAmount> actuals)
         {
             var exactMatches = takes
-                .GroupJoin( availables,
+                .Join( availables,
                     take => take.CardId,
                     avail => avail.CardId,
-                    (take, avails) => (take, avails))
-                .Where(tas => 
-                    tas.avails.Any());
+                    (take, avail) => (take, avail));
 
-            foreach (var (take, avails) in exactMatches)
+            foreach (var (take, available) in exactMatches)
             {
-                using var availableToTake = avails.GetEnumerator();
                 var actual = actuals[take.CardId];
+                int amountTaken = Math.Min(take.Amount, available.Amount);
 
-                while (take.Amount > 0 && availableToTake.MoveNext())
-                {
-                    var currentAvail = availableToTake.Current;
-                    int amountTaken = Math.Min(take.Amount, currentAvail.Amount);
+                available.Amount -= amountTaken;
+                take.Amount -= amountTaken;
 
-                    currentAvail.Amount -= amountTaken;
-                    take.Amount -= amountTaken;
-
-                    actual.Amount += amountTaken;
-                }
+                actual.Amount += amountTaken;
             }
         }
 
@@ -252,7 +238,7 @@ namespace MTGViewer.Pages.Decks
                 .Join( availsByName,
                     takeGroup => takeGroup.Name,
                     availGroup => availGroup.Name,
-                    (takes, availGroup) => (takes, availGroup));
+                    (takeGroup, availGroup) => (takeGroup, availGroup));
 
 
             foreach (var (takeGroup, availGroup) in closeMatches)
@@ -286,6 +272,7 @@ namespace MTGViewer.Pages.Decks
                     ret => ret.CardId,
                     (Actual, Return) => (Actual, Return));
 
+            // TODO: change to atomic returns, all or nothing
             var appliedReturns = new List<CardRequest>();
 
             foreach (var (actual, returnRequest) in returnPairs)

@@ -50,7 +50,7 @@ namespace MTGViewer.Pages.Decks
 
         public async Task<IActionResult> OnGetAsync(int id)
         {
-            var deck = await DeckWithExchanges(id).FirstOrDefaultAsync();
+            var deck = await DeckForDelete(id).FirstOrDefaultAsync();
 
             if (deck == default)
             {
@@ -72,7 +72,7 @@ namespace MTGViewer.Pages.Decks
         }
 
 
-        private IQueryable<Deck> DeckWithExchanges(int deckId)
+        private IQueryable<Deck> DeckForDelete(int deckId)
         {
             var userId = _userManager.GetUserId(User);
 

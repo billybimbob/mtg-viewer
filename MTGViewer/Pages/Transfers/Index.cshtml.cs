@@ -15,9 +15,6 @@ using MTGViewer.Data;
 
 namespace MTGViewer.Pages.Transfers
 {
-    public record DeckTrade(Deck Deck, int NumberOfTrades) { }
-
-
     [Authorize]
     public class IndexModel : PageModel
     {
@@ -36,9 +33,8 @@ namespace MTGViewer.Pages.Transfers
 
         public UserRef SelfUser { get; set; }
 
-        public IReadOnlyList<DeckTrade> ReceivedTrades { get; private set; }
-        public IReadOnlyList<DeckTrade> SentTrades { get; private set; }
-
+        public IReadOnlyList<Deck> ReceivedTrades { get; private set; }
+        public IReadOnlyList<Deck> SentTrades { get; private set; }
         public IReadOnlyList<Deck> PossibleTrades { get; private set; }
 
         public IReadOnlyList<Suggestion> Suggestions { get; private set; }
@@ -48,31 +44,22 @@ namespace MTGViewer.Pages.Transfers
         public async Task OnGetAsync()
         {
             var userId = _userManager.GetUserId(User);
-            var userDecks = await DeckWithTakesAndTrades(userId).ToListAsync();
+
+            var userDecks = await DeckForTransfers(userId).ToListAsync();
 
             SelfUser = await _dbContext.Users.FindAsync(userId);
 
             ReceivedTrades = userDecks
-                .SelectMany(d => d.TradesFrom)
-                .GroupBy(t => t.To,
-                    (to, trades) => new DeckTrade(to, trades.Count()))
-                .OrderBy(dt => dt.Deck.Name)
+                .Where(d => d.TradesFrom.Any())
                 .ToList();
 
             SentTrades = userDecks
-                .SelectMany(d => d.TradesTo)
-                .GroupBy(t => t.From,
-                    (from, trades) => new DeckTrade(from, trades.Count()))
-                .OrderBy(dt => dt.Deck.Name)
+                .Where(d => d.TradesTo.Any())
                 .ToList();
 
-            var sentDecks = SentTrades.Select(dt => dt.Deck);
-
             PossibleTrades = userDecks
-                .SelectMany(
-                    d => d.Requests.Where(cr => !cr.IsReturn),
-                    (_, take) => take.Target)
-                .Except(sentDecks)
+                .Where(d => d.Requests.Any(cr => !cr.IsReturn))
+                .Except(SentTrades)
                 .OrderBy(d => d.Name)
                 .ToList();
 
@@ -85,29 +72,18 @@ namespace MTGViewer.Pages.Transfers
         }
 
 
-        public IQueryable<Deck> DeckWithTakesAndTrades(string userId)
+        public IQueryable<Deck> DeckForTransfers(string userId)
         {
             return _dbContext.Decks
                 .Where(d => d.OwnerId == userId)
-                .AsSplitQuery()
 
-                .Include(d => d.Requests)
-                    .ThenInclude(cr => cr.Card)
-                .Include(d => d.Requests)
-                    .ThenInclude(cr => cr.Target)
-
+                .Include(d => d.TradesFrom)
+                .Include(d => d.TradesTo)
                 .Include(d => d.Requests
                     .Where(cr => !cr.IsReturn))
 
-                .Include(d => d.TradesTo)
-                    .ThenInclude(t => t.Card)
-                .Include(d => d.TradesTo)
-                    .ThenInclude(t => t.From)
-
-                .Include(d => d.TradesFrom)
-                    .ThenInclude(t => t.Card)
-                .Include(d => d.TradesFrom)
-                    .ThenInclude(t => t.To);
+                .OrderBy(d => d.Name)
+                .AsSplitQuery();
         }
 
 

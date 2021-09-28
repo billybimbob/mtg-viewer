@@ -45,7 +45,7 @@ namespace MTGViewer.Pages.Transfers
 
         public async Task<IActionResult> OnGetAsync(int deckId)
         {
-            var deck = await DeckWithTakesAndTradesTo(deckId)
+            var deck = await DeckForRequest(deckId)
                 .AsNoTrackingWithIdentityResolution()
                 .SingleOrDefaultAsync();
 
@@ -66,7 +66,7 @@ namespace MTGViewer.Pages.Transfers
             }
 
 
-            TargetsExist = await RequestTargetsFor(deck).AnyAsync();
+            TargetsExist = await TakeTargets(deck).AnyAsync();
 
             Deck = deck;
 
@@ -80,7 +80,7 @@ namespace MTGViewer.Pages.Transfers
         }
 
 
-        private IQueryable<Deck> DeckWithTakesAndTradesTo(int deckId)
+        private IQueryable<Deck> DeckForRequest(int deckId)
         {
             var userId = _userManager.GetUserId(User);
 
@@ -88,18 +88,18 @@ namespace MTGViewer.Pages.Transfers
                 .Where(d => d.Id == deckId && d.OwnerId == userId)
 
                 .Include(d => d.Requests
-                    .Where(cr => !cr.IsReturn))
+                    .Where(cr => !cr.IsReturn)
+                    .OrderBy(cr => cr.Card.Name))
                     .ThenInclude(cr => cr.Card)
 
-                .Include(d => d.TradesTo
-                    .OrderBy(da => da.Card.Name))
-                    .ThenInclude(ca => ca.Card);
+                .Include(d => d.TradesTo)
+                .AsSplitQuery();
         }
 
 
-        private IQueryable<CardAmount> RequestTargetsFor(Deck deck)
+        private IQueryable<CardAmount> TakeTargets(Deck deck)
         {
-            var requestNames = deck.Requests
+            var takeNames = deck.Requests
                 .Where(ex => !ex.IsReturn)
                 .Select(ca => ca.Card.Name)
                 .Distinct()
@@ -108,18 +108,17 @@ namespace MTGViewer.Pages.Transfers
             return _dbContext.Amounts
                 .Where(ca => ca.Location is Deck
                     && (ca.Location as Deck).OwnerId != deck.OwnerId
-                    && requestNames.Contains(ca.Card.Name))
+                    && takeNames.Contains(ca.Card.Name))
 
                 .Include(ca => ca.Card)
-                .Include(ca => ca.Location)
-                    .ThenInclude(l => (l as Deck).Owner);
+                .Include(ca => ca.Location);
         }
 
 
 
         public async Task<IActionResult> OnPostAsync(int deckId)
         {
-            var deck = await DeckWithTakesAndTradesTo(deckId)
+            var deck = await DeckForRequest(deckId)
                 .SingleOrDefaultAsync();
 
             if (deck == default)
@@ -165,7 +164,7 @@ namespace MTGViewer.Pages.Transfers
                 return Enumerable.Empty<Trade>();
             }
 
-            var requestTargets = await RequestTargetsFor(deck).ToListAsync();
+            var requestTargets = await TakeTargets(deck).ToListAsync();
 
             if (!requestTargets.Any())
             {

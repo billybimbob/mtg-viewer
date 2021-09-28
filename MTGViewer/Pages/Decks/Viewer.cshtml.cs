@@ -31,7 +31,7 @@ namespace MTGViewer.Pages.Decks
 
         public async Task<IActionResult> OnGetAsync(int deckId)
         {
-            var deck = await DeckWithCardsAndExchanges(deckId).SingleOrDefaultAsync();
+            var deck = await DeckForViewer(deckId).SingleOrDefaultAsync();
 
             if (deck == default)
             {
@@ -50,7 +50,7 @@ namespace MTGViewer.Pages.Decks
         }
 
 
-        private IQueryable<Deck> DeckWithCardsAndExchanges(int deckId)
+        private IQueryable<Deck> DeckForViewer(int deckId)
         {
             return _dbContext.Decks
                 .Where(d => d.Id == deckId)

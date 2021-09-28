@@ -34,14 +34,6 @@ namespace MTGViewer.Data
         public ICollection<Change> ChangesFrom { get; } = new List<Change>();
 
 
-        // public IOrderedEnumerable<Color> GetColors()
-        // {
-        //     return Cards
-        //         .SelectMany(ca => ca.Card.Colors)
-        //         .Distinct(new EntityComparer<Color>(c => c.Name))
-        //         .OrderBy(c => c.Name);
-        // }
-
         public virtual IOrderedEnumerable<string> GetColorSymbols()
         {
             return Cards
@@ -50,6 +42,15 @@ namespace MTGViewer.Data
                 .Intersect(Data.Color.COLORS.Values)
                 .OrderBy(s => s);
         }
+
+
+        // public IOrderedEnumerable<Color> GetColors()
+        // {
+        //     return Cards
+        //         .SelectMany(ca => ca.Card.Colors)
+        //         .Distinct(new EntityComparer<Color>(c => c.Name))
+        //         .OrderBy(c => c.Name);
+        // }
     }
 
 

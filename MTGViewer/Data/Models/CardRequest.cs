@@ -29,9 +29,10 @@ namespace MTGViewer.Data
         public int TargetId { get; init; }
 
 
+        public bool IsReturn { get; init; }
+
+
         [Range(1, int.MaxValue)]
         public int Amount { get; set; }
-
-        public bool IsReturn { get; init; }
     }
 }

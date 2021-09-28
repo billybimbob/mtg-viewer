@@ -7,7 +7,7 @@
     ViewData["Title"] = $"{Model.Proposer.Name}'s Trades";
 }
 
-<h1>Requests To @Model.Destination.Name</h1>
+<h1>Trades To @Model.Destination.Name</h1>
 <hr />
 
 
@@ -26,9 +26,7 @@
     </p>
 
     <form method="POST">
-        <input type="hidden" 
-            asp-for="Destination.Id"
-            value="deckId" />
+        <input type="hidden" asp-for="Destination.Id" />
 
         <input type="submit"
             class="btn btn-danger mb-3"
@@ -37,7 +35,7 @@
 </div>
 
 
-<h2>Current Trade Requests</h2>
+<h2>Current Trades</h2>
 
 <table class="table">
     <thead>

@@ -151,7 +151,7 @@
             && _deckCards.TryGetValue(c.Id, out var cardGroup)
             && cardGroup.Amount > 0);
 
-    private IQueryable<Deck> DeckQuery =>
+    private IQueryable<Deck> DeckForBuilder =>
         _dbContext.Decks
             .Where(d => d.Id == DeckId)
             .Include(d => d.Cards)
@@ -219,7 +219,7 @@
     {
         if (DeckId != default)
         {
-            return await DeckQuery.SingleAsync();
+            return await DeckForBuilder.SingleAsync();
         }
 
         var userDeckCount = await _dbContext.Decks
@@ -424,7 +424,7 @@
             return;
         }
 
-        var dbDeck = await DeckQuery
+        var dbDeck = await DeckForBuilder
             .AsNoTracking()
             .SingleOrDefaultAsync();
 
