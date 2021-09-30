@@ -30,8 +30,8 @@ namespace MTGViewer.Data
 
 
         [JsonIgnore]
-        public Location From { get; init; } = null!;
-        public int FromId { get; init; }
+        public Location? From { get; init; } = null!;
+        public int? FromId { get; init; }
 
 
         [Range(1, int.MaxValue)]

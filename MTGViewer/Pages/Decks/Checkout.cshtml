@@ -12,11 +12,19 @@
 {
     <div class="alert alert-secondary" role="alert">
         <p>Do you want to exchange card requests with the shared collection?</p>
+        <p>Alternatively, requests can be made to other players</p>
 
-        <form method="POST">
-            <input type="hidden" asp-for="Deck.Id" />
-            <input type="submit" value="Exchange" class="btn btn-secondary" />
-        </form>
+        <div>
+            <form method="POST">
+                <input type="hidden" asp-for="Deck.Id" />
+                <input type="submit" value="Exchange" class="btn btn-secondary" />
+            </form>
+
+            <a asp-page="/Transfers/Request"
+                asp-route-deckid="@Model.Deck.Id"
+                class="btn btn-secondary mb-3">
+                Player Request </a>
+        </div>
     </div>
 }
 else
@@ -28,44 +36,46 @@ else
 
 
 <div class="container">
+    @if (Model.Deck.Cards.Any())
+    {
+        <div class="row">
+            <h2>Current Cards</h2>
 
-    <div class="row">
-        <h2>Current Cards</h2>
-
-        <table class="table mt-2">
-            <thead>
-                <tr>
-                    <th>@Html.DisplayNameForInnerType((Card c) => c.Name)</th>
-                    <th>@Html.DisplayNameForInnerType((Card c) => c.ManaCost)</th>
-                    <th>@Html.DisplayNameForInnerType((Card c) => c.SetName)</th>
-                    <th>@Html.DisplayNameForInnerType((CardAmount ca) => ca.Amount)</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var amount in Model.Deck.Cards)
-                {
-                    var card = amount.Card;
+            <table class="table mt-2">
+                <thead>
                     <tr>
-                        <td>
-                            <a asp-page="/Cards/Details"
-                            asp-route-id="@card.Id"
-                            class="fw-bold">
-                            @card.Name </a>
-                        </td>
-                        <td>
-                            @foreach (var cost in card.GetManaSymbols())
-                            {
-                                <span class="m-1 ms ms-@cost ms-cost"></span>
-                            }
-                        </td>
-
-                        <td>@card.SetName</td>
-                        <td>@amount.Amount</td>
+                        <th>@Html.DisplayNameForInnerType((Card c) => c.Name)</th>
+                        <th>@Html.DisplayNameForInnerType((Card c) => c.ManaCost)</th>
+                        <th>@Html.DisplayNameForInnerType((Card c) => c.SetName)</th>
+                        <th>@Html.DisplayNameForInnerType((CardAmount ca) => ca.Amount)</th>
                     </tr>
-                }
-            </tbody>
-        </table>
-    </div>
+                </thead>
+                <tbody>
+                    @foreach (var amount in Model.Deck.Cards)
+                    {
+                        var card = amount.Card;
+                        <tr>
+                            <td>
+                                <a asp-page="/Cards/Details"
+                                asp-route-id="@card.Id"
+                                class="fw-bold">
+                                @card.Name </a>
+                            </td>
+                            <td>
+                                @foreach (var cost in card.GetManaSymbols())
+                                {
+                                    <span class="m-1 ms ms-@cost ms-cost"></span>
+                                }
+                            </td>
+
+                            <td>@card.SetName</td>
+                            <td>@amount.Amount</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
 
     <div class="row">
         <div class="col">
@@ -77,7 +87,7 @@ else
                         <th>@Html.DisplayNameForInnerType((Card c) => c.Name)</th>
                         <th>@Html.DisplayNameForInnerType((Card c) => c.ManaCost)</th>
                         <th>@Html.DisplayNameForInnerType((Card c) => c.SetName)</th>
-                        <th>@Html.DisplayNameForInnerType((CardRequest ca) => ca.Amount)</th>
+                        <th>@Html.DisplayNameForInnerType((CardRequest cr) => cr.Amount)</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -114,7 +124,7 @@ else
                         <th>@Html.DisplayNameForInnerType((Card c) => c.Name)</th>
                         <th>@Html.DisplayNameForInnerType((Card c) => c.ManaCost)</th>
                         <th>@Html.DisplayNameForInnerType((Card c) => c.SetName)</th>
-                        <th>@Html.DisplayNameForInnerType((CardRequest ca) => ca.Amount)</th>
+                        <th>@Html.DisplayNameForInnerType((CardRequest cr) => cr.Amount)</th>
                     </tr>
                 </thead>
                 <tbody>

@@ -133,7 +133,7 @@ namespace MTGViewer.Tests.Pages.Decks
             var boxTakeAfter = await boxAmountQuery.SumAsync();
 
             // Assert
-            Assert.IsType<PageResult>(result);
+            Assert.IsType<RedirectToPageResult>(result);
             Assert.Equal(targetAmount, takeAmountBefore - takeAmountAfter);
             Assert.Equal(targetAmount, actualAmountAfter - actualAmountBefore);
             Assert.Equal(targetAmount, boxTakeBefore - boxTakeAfter);
@@ -180,7 +180,7 @@ namespace MTGViewer.Tests.Pages.Decks
             var boxTakeAfter = await boxAmountQuery.SumAsync();
 
             // Assert
-            Assert.IsType<PageResult>(result);
+            Assert.IsType<RedirectToPageResult>(result);
             Assert.Equal(targetLimit, takeAmountBefore - takeAmountAfter);
             Assert.Equal(targetLimit, actualAmountAfter - actualAmountBefore);
             Assert.Equal(targetLimit, boxTakeBefore - boxTakeAfter);
@@ -228,7 +228,7 @@ namespace MTGViewer.Tests.Pages.Decks
             var boxTakeAfter = await boxAmountQuery.SumAsync();
 
             // Assert
-            Assert.IsType<PageResult>(result);
+            Assert.IsType<RedirectToPageResult>(result);
             Assert.Equal(returnAmount, returnAmountBefore - returnAmountAfter);
             Assert.Equal(returnAmount, actualAmountBefore - actualAmountAfter);
             Assert.Equal(returnAmount, boxTakeAfter - boxTakeBefore);
@@ -272,7 +272,7 @@ namespace MTGViewer.Tests.Pages.Decks
             var boxTakeAfter = await boxAmountQuery.SumAsync();
 
             // Assert
-            Assert.IsType<PageResult>(result);
+            Assert.IsType<RedirectToPageResult>(result);
             Assert.Equal(returnAmountBefore, returnAmountAfter);
             Assert.Equal(actualAmountBefore, actualAmountAfter);
             Assert.Equal(boxTakeBefore, boxTakeAfter);

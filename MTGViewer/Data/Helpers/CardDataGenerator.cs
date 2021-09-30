@@ -116,11 +116,12 @@ namespace MTGViewer.Data.Seed
         private IReadOnlyList<Box> GetBoxes()
         {
             // just use same bin for now
-            var bin = new Bin("Bin #1");
+            var bin = new Bin { Name = "Bin #1" };
 
             return Enumerable.Range(0, 3)
-                .Select(i => new Box($"Box #{i+1}")
+                .Select(i => new Box
                 {
+                    Name = $"Box #{i+1}",
                     Bin = bin
                 })
                 .ToList();
@@ -133,8 +134,9 @@ namespace MTGViewer.Data.Seed
                 .Where((_, i) => i % 2 == 0)
                 .SelectMany(u => Enumerable
                     .Range(0, _random.Next(2, 4))
-                    .Select(i => new Deck($"Deck #{i+1}")
+                    .Select(i => new Deck
                     {
+                        Name = $"Deck #{i+1}",
                         Owner = u
                     }))
                 .ToList();
@@ -157,10 +159,10 @@ namespace MTGViewer.Data.Seed
         }
 
 
-        private IReadOnlyList<(Card, int)> GetBoxAmounts(IEnumerable<Card> cards)
+        private IReadOnlyList<CardReturn> GetBoxAmounts(IEnumerable<Card> cards)
         {
             return cards
-                .Select(c => (c, _random.Next(1, 6)))
+                .Select(card => new CardReturn(card, _random.Next(1, 6)))
                 .ToList();
         }
 
@@ -208,5 +210,6 @@ namespace MTGViewer.Data.Seed
                 }
             };
         }
+
     }
 }

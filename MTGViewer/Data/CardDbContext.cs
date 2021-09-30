@@ -1,5 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+
 using MTGViewer.Data.Concurrency;
 using MTGViewer.Data.Internal;
 
@@ -39,11 +41,11 @@ namespace MTGViewer.Data
 
             // modelBuilder.ApplyConfiguration(new CardConfiguration());
             modelBuilder.ApplyConfiguration(new LocationConfiguration());
+
             modelBuilder.ApplyConfiguration(new DeckConfiguration());
-
             modelBuilder.ApplyConfiguration(new BoxConfiguration());
-            modelBuilder.ApplyConfiguration(new TransactionConfiguration());
 
+            modelBuilder.ApplyConfiguration(new TransactionConfiguration(Database));
             modelBuilder.ApplyConfiguration(new SuggestionConfiguration());
         }
     }
@@ -85,7 +87,7 @@ namespace MTGViewer.Data
             builder
                 .HasMany(l => l.ChangesFrom)
                 .WithOne(c => c.From)
-                .OnDelete(DeleteBehavior.Cascade);
+                .OnDelete(DeleteBehavior.SetNull);
         }
     }
 
@@ -126,11 +128,21 @@ namespace MTGViewer.Data
 
     internal class TransactionConfiguration : IEntityTypeConfiguration<Transaction>
     {
+        private readonly DatabaseFacade _database;
+
+        public TransactionConfiguration(DatabaseFacade database)
+        {
+            _database = database;
+        }
+
         public void Configure(EntityTypeBuilder<Transaction> builder)
         {
+            // TODO; add more database cases
+            var dateFunc = _database.IsSqlite() ? "datetime('now', 'localtime')" : "getdate()";
+
             builder
                 .Property(t => t.Applied)
-                .HasDefaultValueSql("getdate()");
+                .HasDefaultValueSql(dateFunc);
 
             builder
                 .HasMany(t => t.Changes)

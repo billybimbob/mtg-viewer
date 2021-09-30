@@ -15,6 +15,7 @@ using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
 using MTGViewer.Services;
 
+#nullable enable
 
 namespace MTGViewer.Pages.Decks
 {
@@ -39,7 +40,7 @@ namespace MTGViewer.Pages.Decks
         }
 
 
-        public Deck Deck { get; private set; }
+        public Deck? Deck { get; private set; }
         
         public bool HasPendings { get; private set; }
 
@@ -83,7 +84,7 @@ namespace MTGViewer.Pages.Decks
 
                 .Include(d => d.Requests
                     .OrderBy(cr => cr.Card.Name)
-                        .ThenBy(ca => ca.Card.SetName))
+                        .ThenBy(cr => cr.Card.SetName))
                     .ThenInclude(cr => cr.Card)
 
                 .Include(d => d.TradesTo)
@@ -103,7 +104,8 @@ namespace MTGViewer.Pages.Decks
                 .Where(ca => ca.Location is Box
                     && ca.Amount > 0
                     && takeNames.Contains(ca.Card.Name))
-                .Include(ba => ba.Card);
+                .Include(ca => ca.Card)
+                .Include(ca => ca.Location);
         }
 
 
@@ -119,7 +121,7 @@ namespace MTGViewer.Pages.Decks
 
             if (deck.TradesTo.Any())
             {
-                return RedirectToPage("./Index");
+                return RedirectToPage("Index");
             }
 
             var availables = await TakeTargets(deck).ToListAsync();
@@ -130,36 +132,43 @@ namespace MTGViewer.Pages.Decks
 
             try
             {
+                if (boxReturns.Any())
+                {
+                    await _sharedStorage.ReturnAsync(boxReturns);
+                }
+
                 await _dbContext.SaveChangesAsync();
-                await _sharedStorage.ReturnAsync(boxReturns);
             }
             catch (DbUpdateException e)
             {
                 _logger.LogError($"ran into db error {e}");
             }
 
-            return Page();
+            return RedirectToPage("Changes", new { deckId = id });
         }
 
 
 
         private void ApplyTakes(Deck deck, IEnumerable<CardAmount> availables)
         {
-            var takeCards = deck.Requests.Where(cr => !cr.IsReturn);
+            var takes = deck.Requests.Where(cr => !cr.IsReturn);
 
-            if (!availables.Any() || !takeCards.Any())
+            if (!availables.Any() || !takes.Any())
             {
                 return;
             }
 
+            var transaction = new Transaction();
             var actuals = GetAllActuals(deck, availables);
 
-            ApplyExactTakes(takeCards, availables, actuals);
+            _dbContext.Transactions.Attach(transaction);
 
-            var remainingTakes = takeCards.Where(ex => ex.Amount > 0);
+            ApplyExactTakes(transaction, takes, availables, actuals);
+
+            var remainingTakes = takes.Where(ex => ex.Amount > 0);
             var remainingAvails = availables.Where(ca => ca.Amount > 0);
 
-            ApplyCloseTakes(remainingTakes, remainingAvails, actuals);
+            ApplyCloseTakes(transaction, remainingTakes, remainingAvails, actuals);
 
             var emptyAmounts = deck.Cards.Where(ca => ca.Amount == 0);
             var finishedRequests = deck.Requests.Where(cr => cr.Amount == 0);
@@ -178,6 +187,7 @@ namespace MTGViewer.Pages.Decks
                     available => available.CardId,
                     actual => actual.CardId,
                     (available, actuals) => (available, actuals))
+
                 .Where(aas => 
                     !aas.actuals.Any())
                 .Select(aa => aa.available.Card)
@@ -198,6 +208,7 @@ namespace MTGViewer.Pages.Decks
 
 
         private void ApplyExactTakes(
+            Transaction transaction,
             IEnumerable<CardRequest> takes,
             IEnumerable<CardAmount> availables,
             IReadOnlyDictionary<string, CardAmount> actuals)
@@ -213,15 +224,28 @@ namespace MTGViewer.Pages.Decks
                 var actual = actuals[take.CardId];
                 int amountTaken = Math.Min(take.Amount, available.Amount);
 
+                actual.Amount += amountTaken;
                 available.Amount -= amountTaken;
                 take.Amount -= amountTaken;
 
-                actual.Amount += amountTaken;
+                var newChange = new Change
+                {
+                    Card = available.Card,
+
+                    To = actual.Location,
+                    From = available.Location,
+
+                    Amount = amountTaken,
+                    Transaction = transaction
+                };
+
+                _dbContext.Changes.Attach(newChange);
             }
         }
 
 
         private void ApplyCloseTakes(
+            Transaction transaction,
             IEnumerable<CardRequest> takes,
             IEnumerable<CardAmount> availables,
             IReadOnlyDictionary<string, CardAmount> actuals)
@@ -252,17 +276,30 @@ namespace MTGViewer.Pages.Decks
 
                     int amountTaken = Math.Min(takeGroup.Amount, currentAvail.Amount);
 
-                    takeGroup.Amount -= amountTaken;
-                    currentAvail.Amount -= amountTaken;
-
                     actual.Amount += amountTaken;
+
+                    currentAvail.Amount -= amountTaken;
+                    takeGroup.Amount -= amountTaken;
+
+                    var newChange = new Change
+                    {
+                        Card = currentAvail.Card,
+
+                        To = actual.Location,
+                        From = currentAvail.Location,
+
+                        Amount = amountTaken,
+                        Transaction = transaction
+                    };
+
+                    _dbContext.Changes.Attach(newChange);
                 }
             }
         }
 
 
 
-        private IReadOnlyList<(Card, int)> ApplyDeckReturns(Deck deck)
+        private IReadOnlyList<CardReturn> ApplyDeckReturns(Deck deck)
         {
             var returns = deck.Requests.Where(cr => cr.IsReturn);
 
@@ -290,7 +327,7 @@ namespace MTGViewer.Pages.Decks
             _dbContext.Requests.RemoveRange(appliedReturns);
 
             return appliedReturns
-                .Select(ex => (ex.Card, ex.Amount))
+                .Select(cr => new CardReturn(cr.Card, cr.Amount, deck))
                 .ToList();
         }
     }

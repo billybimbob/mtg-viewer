@@ -57,8 +57,7 @@ namespace MTGViewer.Pages.Decks
                 return NotFound();
             }
 
-            var deckTrades = deck.TradesTo
-                .Concat(deck.TradesFrom)
+            var deckTrades = deck.GetTrades()
                 .OrderBy(t => t.Card.Name)
                 .ToList();
 
@@ -137,18 +136,21 @@ namespace MTGViewer.Pages.Decks
             }
 
             var returningCards = deck.Cards
-                .Select(da => (da.Card, da.Amount))
+                // no source, since deck is being deleted
+                .Select(da => new CardReturn(da.Card, da.Amount))
                 .ToList();
 
             _dbContext.Amounts.RemoveRange(deck.Cards);
             _dbContext.Decks.Remove(deck);
 
-            // keep eye on, possibly remove exchanges and suggestions
-
             try
             {
+                if (returningCards.Any())
+                {
+                    await _sharedStorage.ReturnAsync(returningCards);
+                }
+
                 await _dbContext.SaveChangesAsync();
-                await _sharedStorage.ReturnAsync(returningCards);
 
                 PostMesssage = $"Successfully deleted {deck.Name}";
             }

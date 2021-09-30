@@ -189,16 +189,16 @@ namespace MTGViewer.Data
             CheckGroup();
         }
 
-        public AmountRequestGroup(CardAmount? amount, params CardRequest[] exchanges)
-            : this(amount, exchanges.AsEnumerable())
+        public AmountRequestGroup(CardAmount? amount, params CardRequest[] requests)
+            : this(amount, requests.AsEnumerable())
         { }
 
-        public AmountRequestGroup(IEnumerable<CardRequest> exchanges)
-            : this(null, exchanges)
+        public AmountRequestGroup(IEnumerable<CardRequest> requests)
+            : this(null, requests)
         { }
 
-        public AmountRequestGroup(params CardRequest[] exchanges)
-            : this(exchanges.AsEnumerable())
+        public AmountRequestGroup(params CardRequest[] requests)
+            : this(requests.AsEnumerable())
         { }
 
 
@@ -229,7 +229,7 @@ namespace MTGViewer.Data
             get => _take;
             set
             {
-                if (value is null || !value.IsReturn)
+                if (value is null || value.IsReturn)
                 {
                     throw new ArgumentException("Amount is not a valid take amount");
                 }
@@ -245,7 +245,7 @@ namespace MTGViewer.Data
             get => _return;
             set
             {
-                if (value is null || value.IsReturn)
+                if (value is null || !value.IsReturn)
                 {
                     throw new ArgumentException("Amount is not a valid return amount");
                 }
@@ -439,9 +439,11 @@ namespace MTGViewer.Data
     /// <summary>Group of trades with the same proposer and to deck</summary>
     public class TradeSet : IEnumerable<Trade>
     {
-        private IEnumerable<Trade> _trades;
+        private readonly IReadOnlyCollection<Trade> _trades;
+        private readonly bool _useToTarget;
+        private readonly Trade _first;
 
-        public TradeSet(IEnumerable<Trade> trades)
+        public TradeSet(IEnumerable<Trade> trades, bool useToTarget)
         {
             _trades = trades.ToList();
 
@@ -450,17 +452,30 @@ namespace MTGViewer.Data
                 throw new ArgumentException("The trade group is empty");
             }
 
-            if (_trades.Any(t => t.ToId != ToId && t.To != To))
+            _first = _trades.First();
+
+            if (useToTarget
+                && _first.To != null 
+                && _trades.All(t => t.To == _first.To))
+            {
+                _useToTarget = true;
+            }
+            else if (!useToTarget
+                && _first.From != null 
+                && _trades.All(t => t.From == _first.From))
+            {
+                _useToTarget = false;
+            }
+            else
             {
                 throw new ArgumentException("All trade destinations are not the same");
             }
         }
 
 
-        private Trade First => _trades.First();
-
-        public int ToId => (int)First.ToId!;
-        public Deck To => First.To!;
+        public Deck Target => _useToTarget ? _first.To : _first.From;
+        public int TargetId => Target?.Id
+            ?? (_useToTarget ? _first.ToId : _first.FromId);
 
 
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();

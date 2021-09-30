@@ -31,8 +31,8 @@ namespace MTGViewer.Data
                 {
                     case "SqlServer":
                         services.AddTriggeredDbContextFactory<CardDbContext>(options => options
-                            .UseSqlServer(config.GetConnectionString("MTGCardContext"))
                                 // TODO: change connection string name
+                            .UseSqlServer(config.GetConnectionString("MTGCardContext"))
                             .UseTriggers(triggers => triggers
                                 .AddTrigger<Triggers.AmountValidate>()
                                 .AddTrigger<Triggers.RequestValidate>()

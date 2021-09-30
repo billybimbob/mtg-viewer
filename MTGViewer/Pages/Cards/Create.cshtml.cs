@@ -125,24 +125,6 @@ namespace MTGViewer.Pages.Cards
         
         private async Task AddNewCardsAsync(IEnumerable<AmountModel> newAmounts)
         {
-            // foreach(var info in newAmounts)
-            // {
-            //     var card = await _mtgFetch.FindAsync(info.Id);
-
-            //     if (card is null)
-            //     {
-            //         _logger.LogError($"{info.Id} failed to fail correct card");
-            //         continue;
-            //     }
-
-            //     card.Amounts.Add(new CardAmount
-            //     {
-            //         Amount = info.Amount
-            //     });
-
-            //     _dbContext.Cards.Add(card);
-            // }
-
             var fetchedCards = await Task.WhenAll(
                 newAmounts.Select(am => _mtgFetch.FindAsync(am.Id)));
 
@@ -152,13 +134,18 @@ namespace MTGViewer.Pages.Cards
             _dbContext.Cards.AddRange(validResults);
 
             var newCards = validResults
-                .Zip(newAmounts.Select(am => am.Amount))
+                .Zip(newAmounts.Select(am => am.Amount),
+                    (card, numCopies) => new CardReturn(card, numCopies))
                 .ToList();
 
             try
             {
                 await _dbContext.SaveChangesAsync();
-                await _sharedStorage.ReturnAsync(newCards);
+
+                if (newCards.Any())
+                {
+                    await _sharedStorage.ReturnAsync(newCards);
+                }
             }
             catch (DbUpdateException e)
             {

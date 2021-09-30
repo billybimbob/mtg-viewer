@@ -145,8 +145,9 @@ namespace MTGViewer.Tests.Pages.Transfers
 
             var extraLocations = Enumerable
                 .Range(0, 3)
-                .Select(i => new Deck($"Extra Deck #{i}")
+                .Select(i => new Deck
                 {
+                    Name = $"Extra Deck #{i}",
                     Owner = nonOwner
                 })
                 .ToList();

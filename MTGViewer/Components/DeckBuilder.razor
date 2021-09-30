@@ -226,8 +226,9 @@
             .Where(l => l.Owner.Id == _user.Id)
             .CountAsync();
 
-        var newLoc = new Deck($"Deck #{userDeckCount + 1}")
+        var newLoc = new Deck
         {
+            Name = $"Deck #{userDeckCount + 1}",
             Owner = _user
         };
 

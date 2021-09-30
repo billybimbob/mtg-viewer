@@ -68,7 +68,8 @@
                         </div>
                     </td>
                     <td>
-                        <input type="hidden" asp-for="@trade.Id" />
+                        <input type="hidden" asp-for="Source.Id" />
+                        <input type="hidden" asp-for="@trade.Id" name="tradeId" />
 
                         <input type="submit"
                             asp-page-handler="Accept"

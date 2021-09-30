@@ -38,7 +38,7 @@ namespace MTGViewer.Tests.Pages.Transfers
         public async Task InitializeAsync()
         {
             await _dbContext.SeedAsync(_userManager);
-            _trades = await _dbContext.CreateTradeSetAsync();
+            _trades = await _dbContext.CreateTradeSetAsync(isToSet: false);
         }
 
 
@@ -50,18 +50,30 @@ namespace MTGViewer.Tests.Pages.Transfers
         }
 
 
+        private IQueryable<Trade> TradesInSet => 
+            _dbContext.Requests
+                .Where(cr => !cr.IsReturn)
+                .Join(_dbContext.Trades,
+                    request => request.TargetId,
+                    trade => trade.ToId,
+                    (_, trade) => trade)
+                .Distinct()
+                .Where(t => t.FromId == _trades.TargetId);
+
+
         [Fact]
         public async Task OnPostAccept_WrongUser_NoChange()
         {
             // Arrange
-            await _reviewModel.SetModelContextAsync(_userManager, _trades.To.OwnerId);
-
-            var trade = await _dbContext.Trades
+            var trade = await TradesInSet
+                .Include(t => t.To)
                 .AsNoTracking()
-                .FirstAsync(t => t.ToId == _trades.ToId);
+                .FirstAsync();
+
+            await _reviewModel.SetModelContextAsync(_userManager, trade.To.OwnerId);
 
             var fromQuery = _dbContext.Amounts
-                .Where(ca => ca.CardId == trade.CardId && ca.LocationId == trade.FromId)
+                .Where(ca => ca.CardId == trade.CardId && ca.LocationId == _trades.TargetId)
                 .AsNoTracking();
 
             // Act
@@ -69,10 +81,7 @@ namespace MTGViewer.Tests.Pages.Transfers
             var result = await _reviewModel.OnPostAcceptAsync(trade.Id, trade.Amount);
             var fromAfter = await fromQuery.SingleAsync();
 
-            var tradeAfter = await _dbContext.Trades
-                .Where(t => t.ToId == _trades.ToId)
-                .Select(t => t.Id)
-                .ToListAsync();
+            var tradeAfter = await TradesInSet.Select(t => t.Id).ToListAsync();
 
             // Assert
             Assert.IsType<RedirectToPageResult>(result);
@@ -85,30 +94,22 @@ namespace MTGViewer.Tests.Pages.Transfers
         public async Task OnPostAccept_InvalidTrade_NoChange()
         {            
             // Arrange
-            var trade = await _dbContext.Trades
-                .Include(ex => ex.From)
-                .AsNoTracking()
-                .FirstAsync(t => t.ToId == _trades.ToId);
+            await _reviewModel.SetModelContextAsync(_userManager, _trades.Target.OwnerId);
 
-            await _reviewModel.SetModelContextAsync(_userManager, trade.From.OwnerId);
+            var trade = await TradesInSet.AsNoTracking().FirstAsync();
 
             var fromQuery = _dbContext.Amounts
                 .Where(ca => ca.CardId == trade.CardId && ca.LocationId == trade.FromId)
                 .AsNoTracking();
 
-            var wrongTrade = await _dbContext.Trades
-                .AsNoTracking()
-                .FirstAsync(t => t.ToId != _trades.ToId);
+            var wrongTradeId = 0;
 
             // Act
             var fromBefore = await fromQuery.SingleAsync();
-            var result = await _reviewModel.OnPostAcceptAsync(wrongTrade.Id, trade.Amount);
+            var result = await _reviewModel.OnPostAcceptAsync(wrongTradeId, trade.Amount);
             var fromAfter = await fromQuery.SingleAsync();
 
-            var tradesAfter = await _dbContext.Trades
-                .Where(t => t.ToId == _trades.ToId)
-                .Select(ex => ex.Id)
-                .ToListAsync();
+            var tradesAfter = await TradesInSet.Select(t => t.Id).ToListAsync();
 
             // Assert
             Assert.IsType<RedirectToPageResult>(result);
@@ -124,24 +125,21 @@ namespace MTGViewer.Tests.Pages.Transfers
         public async Task OnPostAccept_ValidTrade_AmountsAndRequestsChanged(int amount)
         {
             // Arrange
-            var trade = await _dbContext.Trades
-                .Include(ex => ex.From)
-                .AsNoTracking()
-                .FirstAsync(t => t.ToId == _trades.ToId);
+            await _reviewModel.SetModelContextAsync(_userManager, _trades.Target.OwnerId);
+
+            var trade = await TradesInSet.AsNoTracking().FirstAsync();
 
             if (amount <= 0)
             {
                 amount = trade.Amount;
             }
 
-            await _reviewModel.SetModelContextAsync(_userManager, trade.From.OwnerId);
-
             var toAmountQuery = _dbContext.Amounts
                 .Where(ca => ca.CardId == trade.CardId && ca.LocationId == trade.ToId)
                 .Select(ca => ca.Amount);
 
             var fromAmountQuery = _dbContext.Amounts
-                .Where(ca => ca.CardId == trade.CardId && ca.LocationId == trade.FromId)
+                .Where(ca => ca.CardId == trade.CardId && ca.LocationId == _trades.TargetId)
                 .Select(ca => ca.Amount);
 
             // Act
@@ -153,10 +151,7 @@ namespace MTGViewer.Tests.Pages.Transfers
             var toAfter = await toAmountQuery.SingleAsync();
             var fromAfter = await fromAmountQuery.SingleOrDefaultAsync();
 
-            var tradeAfter = await _dbContext.Trades
-                .Where(t => t.ToId == _trades.ToId)
-                .Select(ex => ex.Id)
-                .ToListAsync();
+            var tradeAfter = await TradesInSet.Select(t => t.Id).ToListAsync();
 
             // Assert
             Assert.IsType<RedirectToPageResult>(result);
@@ -172,15 +167,12 @@ namespace MTGViewer.Tests.Pages.Transfers
         public async Task OnPostAccept_LackAmount_OnlyRemovesTrade()
         {
             // Arrange
-            var trade = await _dbContext.Trades
-                .Include(ex => ex.From)
-                .AsNoTracking()
-                .FirstAsync(t => t.ToId == _trades.ToId);
+            await _reviewModel.SetModelContextAsync(_userManager, _trades.Target.OwnerId);
 
-            await _reviewModel.SetModelContextAsync(_userManager, trade.From.OwnerId);
+            var trade = await TradesInSet.AsNoTracking().FirstAsync();
 
             var fromAmount = await _dbContext.Amounts
-                .SingleAsync(ca => ca.CardId == trade.CardId && ca.LocationId == trade.FromId);
+                .SingleAsync(ca => ca.CardId == trade.CardId && ca.LocationId == _trades.TargetId);
 
             fromAmount.Amount = 0;
 
@@ -192,25 +184,23 @@ namespace MTGViewer.Tests.Pages.Transfers
                 .Select(ca => ca.Amount);
 
             var fromAmountQuery = _dbContext.Amounts
-                .Where(ca => ca.CardId == trade.CardId && ca.LocationId == trade.FromId)
+                .Where(ca => ca.CardId == trade.CardId && ca.LocationId == _trades.TargetId)
                 .Select(ca => ca.Amount);
 
-            var requestQuery = _dbContext.Trades
-                .Where(t => t.ToId == _trades.ToId)
-                .Select(ex => ex.Id);
+            var tradesQuery = TradesInSet.Select(t => t.Id);
 
             // Act
             var toBefore = await toAmountQuery.SingleOrDefaultAsync();
             var fromBefore = await fromAmountQuery.SingleAsync();
-            var requestBefore = await requestQuery.ToListAsync();
+            var tradesBefore = await tradesQuery.ToListAsync();
 
             var result = await _reviewModel.OnPostAcceptAsync(trade.Id, trade.Amount);
 
             var toAfter = await toAmountQuery.SingleAsync();
             var fromAfter = await fromAmountQuery.SingleOrDefaultAsync();
-            var requestAfter = await requestQuery.ToListAsync();
+            var tradesAfter = await tradesQuery.ToListAsync();
 
-            var requestsFinished = requestBefore.Except(requestAfter);
+            var tradesFinished = tradesBefore.Except(tradesAfter);
 
             // Assert
             Assert.IsType<RedirectToPageResult>(result);
@@ -218,8 +208,8 @@ namespace MTGViewer.Tests.Pages.Transfers
             Assert.Equal(toBefore, toAfter);
             Assert.Equal(fromBefore, fromAfter);
 
-            Assert.Single(requestsFinished);
-            Assert.Contains(trade.Id, requestsFinished);
+            Assert.Single(tradesFinished);
+            Assert.Contains(trade.Id, tradesFinished);
         }
 
 
@@ -227,19 +217,19 @@ namespace MTGViewer.Tests.Pages.Transfers
         public async Task OnPostReject_WrongUser_NoChange()
         {
             // Arrange
-            var trade = await _dbContext.Trades
-                .Include(ex => ex.To)
+            var trade = await TradesInSet
+                .Include(t => t.To)
                 .AsNoTracking()
-                .FirstAsync(ex => ex.ToId == _trades.ToId);
+                .FirstAsync();
 
             await _reviewModel.SetModelContextAsync(_userManager, trade.To.OwnerId);
 
             var toQuery = _dbContext.Amounts
-                .Where(ca => ca.CardId == trade.CardId && ca.LocationId == _trades.ToId)
+                .Where(ca => ca.CardId == trade.CardId && ca.LocationId == trade.ToId)
                 .AsNoTracking();
 
             var fromQuery = _dbContext.Amounts
-                .Where(ca => ca.CardId == trade.CardId && ca.LocationId == trade.FromId)
+                .Where(ca => ca.CardId == trade.CardId && ca.LocationId == _trades.TargetId)
                 .AsNoTracking();
 
             // Act
@@ -247,10 +237,7 @@ namespace MTGViewer.Tests.Pages.Transfers
             var result = await _reviewModel.OnPostRejectAsync(trade.Id);
             var fromAfter = await fromQuery.SingleOrDefaultAsync();
 
-            var tradesAfter = await _dbContext.Trades
-                .Where(t => t.ToId == _trades.ToId)
-                .Select(ex => ex.Id)
-                .ToListAsync();
+            var tradesAfter = await TradesInSet.Select(t => t.Id).ToListAsync();
 
             // Assert
             Assert.IsType<RedirectToPageResult>(result);
@@ -263,34 +250,26 @@ namespace MTGViewer.Tests.Pages.Transfers
         public async Task OnPostReject_InvalidTrade_NoChange()
         {
             // Arrange
-            var trade = await _dbContext.Trades
-                .Include(ex => ex.From)
-                .AsNoTracking()
-                .FirstAsync(t => t.ToId == _trades.ToId);
+            await _reviewModel.SetModelContextAsync(_userManager, _trades.Target.OwnerId);
 
-            await _reviewModel.SetModelContextAsync(_userManager, trade.From.OwnerId);
+            var trade = await TradesInSet.AsNoTracking().FirstAsync();
 
             var toQuery = _dbContext.Amounts
-                .Where(ca => ca.CardId == trade.CardId && ca.LocationId == _trades.ToId)
+                .Where(ca => ca.CardId == trade.CardId && ca.LocationId == trade.ToId)
                 .AsNoTracking();
 
             var fromQuery = _dbContext.Amounts
-                .Where(ca => ca.CardId == trade.CardId && ca.LocationId == trade.FromId)
+                .Where(ca => ca.CardId == trade.CardId && ca.LocationId == _trades.TargetId)
                 .AsNoTracking();
 
-            var wrongTrade = await _dbContext.Trades
-                .AsNoTracking()
-                .FirstAsync(t => t.ToId != _trades.ToId);
+            var wrongTradeId = 0;
 
             // Act
             var fromBefore = await fromQuery.SingleAsync();
-            var result = await _reviewModel.OnPostRejectAsync(wrongTrade.Id);
+            var result = await _reviewModel.OnPostRejectAsync(wrongTradeId);
             var fromAfter = await fromQuery.SingleOrDefaultAsync();
 
-            var tradesAfter = await _dbContext.Trades
-                .Where(t => t.ToId == _trades.ToId)
-                .Select(ex => ex.Id)
-                .ToListAsync();
+            var tradesAfter = await TradesInSet.Select(t => t.Id).ToListAsync();
 
             // Assert
             Assert.IsType<RedirectToPageResult>(result);
@@ -303,19 +282,16 @@ namespace MTGViewer.Tests.Pages.Transfers
         public async Task OnPostReject_ValidTrade_RemovesTrade()
         {
             // Arrange
-            var trade = await _dbContext.Trades
-                .Include(ex => ex.From)
-                .AsNoTracking()
-                .FirstAsync(t => t.ToId == _trades.ToId);
+            await _reviewModel.SetModelContextAsync(_userManager, _trades.Target.OwnerId);
 
-            await _reviewModel.SetModelContextAsync(_userManager, trade.From.OwnerId);
+            var trade = await TradesInSet.AsNoTracking().FirstAsync();
 
             var toQuery = _dbContext.Amounts
-                .Where(ca => ca.CardId == trade.CardId && ca.LocationId == _trades.ToId)
+                .Where(ca => ca.CardId == trade.CardId && ca.LocationId == trade.ToId)
                 .AsNoTracking();
 
             var fromQuery = _dbContext.Amounts
-                .Where(ca => ca.CardId == trade.CardId && ca.LocationId == trade.FromId)
+                .Where(ca => ca.CardId == trade.CardId && ca.LocationId == _trades.TargetId)
                 .AsNoTracking();
 
             // Act
@@ -323,10 +299,7 @@ namespace MTGViewer.Tests.Pages.Transfers
             var result = await _reviewModel.OnPostRejectAsync(trade.Id);
             var fromAfter = await fromQuery.SingleOrDefaultAsync();
 
-            var tradesAfter = await _dbContext.Trades
-                .Where(t => t.ToId == _trades.ToId)
-                .Select(ex => ex.Id)
-                .ToListAsync();
+            var tradesAfter = await TradesInSet.Select(t => t.Id).ToListAsync();
             
             var changeCheck = fromAfter is not null
                 && fromBefore.Amount == fromAfter.Amount

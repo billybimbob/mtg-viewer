@@ -10,12 +10,22 @@
 <h2>@Model.Deck.Owner.Name's @Model.Deck.Name</h2>
 <hr />
 
-@if (Model.CanEdit)
+@if (Model.IsOwner)
 {
-    <a asp-page="./Builder"
-        asp-route-id="@Model.Deck.Id"
-        class="btn btn-secondary mb-3" >
-        Edit</a>
+    <div class="mb-3">
+        @if (!Model.Deck.TradesTo.Any())
+        {
+            <a asp-page="Builder"
+                asp-route-id="@Model.Deck.Id"
+                class="btn btn-secondary" >
+                Edit</a>
+        }
+
+        <a asp-page="Changes"
+            asp-route-deckid="@Model.Deck.Id"
+            class="btn btn-secondary" >
+            History </a>
+    </div>
 }
 
 <table class="table">

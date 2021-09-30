@@ -8,7 +8,10 @@
 
 <h1>Shared Collection</h1>
 
-<a asp-page="Create" class="btn btn-secondary">Add Box</a>
+<div class="mb-3">
+    <a asp-page="Create" class="btn btn-secondary">Add Box</a>
+    <a asp-page="Changes" class="btn btn-secondary">History </a>
+</div>
 
 @if (!string.IsNullOrEmpty(Model.PostMessage))
 {
@@ -17,21 +20,55 @@
     </div>
 }
 
-@foreach (var box in Model.Boxes)
-{
-    <h3>@box.Name (@box.Bin.Name)</h3>
-    <table class="table">
-        <thead>
+<table class="table">
+    <thead>
+        <tr>
+            <th> Box </th>
+            <th> @Html.DisplayNameForInnerType((CardAmount ca) => ca.Card) </th>
+            <th> @Html.DisplayNameForInnerType((Card c) => c.ManaCost) </th>
+            <th> @Html.DisplayNameForInnerType((Card c) => c.SetName) </th>
+            <th> @Html.DisplayNameForInnerType((Card c) => c.Rarity) </th>
+            <th> Current Amount </th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var box in Model.Boxes)
+        {
+            var firstAmount = box.Cards.FirstOrDefault();
+            var boxSpan = Math.Max(1, box.Cards.Count);
+
             <tr>
-                <th> @Html.DisplayNameForInnerType((CardAmount ca) => ca.Card) </th>
-                <th> @Html.DisplayNameForInnerType((Card c) => c.ManaCost) </th>
-                <th> @Html.DisplayNameForInnerType((Card c) => c.SetName) </th>
-                <th> @Html.DisplayNameForInnerType((Card c) => c.Rarity) </th>
-                <th> Current Amount </th>
+                <td rowspan="@boxSpan" class="fw-bold"> @box.Name (@box.Bin.Name) </td>
+
+                @if (firstAmount != null)
+                {
+                    <td>
+                        <a asp-page="/Cards/Details"
+                            asp-route-id="@firstAmount.CardId"
+                            class="fw-bold">
+                            @firstAmount.Card.Name </a>
+                    </td>
+                    <td>
+                        @foreach (var cost in firstAmount.Card.GetManaSymbols())
+                        {
+                            <span class="m-1 ms ms-@cost ms-cost"></span>
+                        }
+                    </td>
+                    <td> @firstAmount.Card.SetName </td>
+                    <td> @firstAmount.Card.Rarity </td>
+                    <td> @firstAmount.Amount </td>
+                }
+                else
+                {
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                }
             </tr>
-        </thead>
-        <tbody>
-            @foreach (var amount in box.Cards)
+
+            @foreach (var amount in box.Cards.Skip(1))
             {
                 <tr>
                     <td>
@@ -51,6 +88,6 @@
                     <td> @amount.Amount </td>
                 </tr>
             }
-        </tbody>
-    </table>
-}
+        }
+    </tbody>
+</table

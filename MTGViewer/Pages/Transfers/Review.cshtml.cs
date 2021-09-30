@@ -33,7 +33,9 @@ namespace MTGViewer.Pages.Transfers
         [TempData]
         public string? PostMessage { get; set; }
 
+        [BindProperty]
         public Deck? Source { get; set; }
+
         public UserRef? Receiver { get; private set; }
 
         public IReadOnlyList<Trade>? Trades { get; private set; }
@@ -130,7 +132,7 @@ namespace MTGViewer.Pages.Transfers
             if (trade == null)
             {
                 PostMessage = "Trade could not be found";
-                return RedirectToPage("./Index");
+                return RedirectToPage("Review", new { deckId = Source?.Id });
             }
 
             var acceptRequest = GetAcceptRequest(trade);
@@ -138,8 +140,7 @@ namespace MTGViewer.Pages.Transfers
             if (acceptRequest == null)
             {
                 PostMessage = "Source Deck lacks the cards to complete the trade";
-                return RedirectToPage("./Review",
-                    new { deckId = trade.FromId });
+                return RedirectToPage("Review", new { deckId = Source?.Id });
             }
 
             ApplyAccept(acceptRequest, amount);
@@ -156,8 +157,7 @@ namespace MTGViewer.Pages.Transfers
                 PostMessage = "Ran into error while Accepting";
             }
 
-            return RedirectToPage("./Review",
-                new { deckId = trade.FromId });
+            return RedirectToPage("Review", new { deckId = Source?.Id });
         }
 
 
@@ -198,17 +198,17 @@ namespace MTGViewer.Pages.Transfers
                 .Include(t => t.To)
                     .ThenInclude(d => d.Requests
                         .Where(cr => !cr.IsReturn && cr.Card.Name == tradeCard.Name))
-                        .ThenInclude(ex => ex.Card)
+                        .ThenInclude(cr => cr.Card)
 
                 .Include(t => t.From)
                     .ThenInclude(d => d.Cards
                         .Where(ca => ca.CardId == tradeCard.Id))
-                        .ThenInclude(ex => ex.Card)
+                        .ThenInclude(ca => ca.Card)
 
                 .Include(t => t.From)
                     .ThenInclude(d => d.Requests
                         .Where(cr => !cr.IsReturn && cr.CardId == tradeCard.Id))
-                        .ThenInclude(ex => ex.Card)
+                        .ThenInclude(cr => cr.Card)
 
                 .AsSplitQuery();
         }
@@ -295,6 +295,16 @@ namespace MTGViewer.Pages.Transfers
             toAmount.Amount += change;
             fromAmount.Amount -= change;
             fromRequest.Amount += change;
+
+            var newChange = new Change
+            {
+                Card = trade.Card,
+                To = toAmount.Location,
+                From = fromAmount.Location,
+                Transaction = new()
+            };
+
+            _dbContext.Changes.Attach(newChange);
         }
 
 
@@ -382,21 +392,20 @@ namespace MTGViewer.Pages.Transfers
         {
             if (tradeId == default)
             {
-                PostMessage = "Card was not specified";
-                return RedirectToPage("./Index");
+                PostMessage = "Trade is not specified";
+                return RedirectToPage("Review", new { deckId = Source?.Id });
             }
 
             var userId = _userManager.GetUserId(User);
 
             var deckTrade = await _dbContext.Trades
-                .SingleOrDefaultAsync(t => t.Id == tradeId
-                    && t.From != default
-                    && t.From!.OwnerId == userId);
+                .SingleOrDefaultAsync(t => 
+                    t.Id == tradeId && t.From.OwnerId == userId);
 
             if (deckTrade == default)
             {
                 PostMessage = "Trade could not be found";
-                return RedirectToPage("./Index");
+                return RedirectToPage("Review", new { deckId = Source?.Id });
             }
 
             _dbContext.Trades.Remove(deckTrade);
@@ -411,8 +420,7 @@ namespace MTGViewer.Pages.Transfers
                 PostMessage = "Ran into error while rejecting";
             }
 
-            return RedirectToPage("./Review",
-                new { deckId = deckTrade.FromId });
+            return RedirectToPage("Review", new { deckId = Source?.Id });
         }
     }
 }

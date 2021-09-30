@@ -30,7 +30,7 @@ namespace MTGViewer.Pages.Decks
             {
                 State = State.Requesting;
             }
-            else if (deck.Requests.Any(cr => !cr.IsReturn))
+            else if (deck.Requests.Any())
             {
                 State = State.Invalid;
             }
@@ -81,12 +81,12 @@ namespace MTGViewer.Pages.Decks
 
                 .Include(d => d.Cards)
                     .ThenInclude(ca => ca.Card)
-                .Include(d => d.Requests
-                    .Where(cr => !cr.IsReturn))
+
+                .Include(d => d.Requests)
                     .ThenInclude(cr => cr.Card)
 
                 .Include(d => d.TradesTo)
-                    .ThenInclude(ca => ca.Card)
+                    .ThenInclude(t => t.Card)
 
                 .OrderBy(d => d.Name)
                 .Select(deck => new DeckState(deck))

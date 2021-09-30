@@ -11,15 +11,13 @@ namespace MTGViewer.Data
 {
     public class Location : Concurrent
     {
-        protected Location(string name)
-        {
-            Name = name;
-        }
+        protected Location()
+        { }
 
         [JsonRequired]
         public int Id { get; private set; }
 
-        public string Name { get; set; }
+        public string Name { get; set; } = null!;
 
         [JsonIgnore]
         internal Discriminator Type { get; private set; }
@@ -34,6 +32,9 @@ namespace MTGViewer.Data
         public ICollection<Change> ChangesFrom { get; } = new List<Change>();
 
 
+        public IEnumerable<Change> GetChanges() => ChangesTo.Concat(ChangesFrom);
+
+
         public virtual IOrderedEnumerable<string> GetColorSymbols()
         {
             return Cards
@@ -42,7 +43,6 @@ namespace MTGViewer.Data
                 .Intersect(Data.Color.COLORS.Values)
                 .OrderBy(s => s);
         }
-
 
         // public IOrderedEnumerable<Color> GetColors()
         // {
@@ -56,9 +56,6 @@ namespace MTGViewer.Data
 
     public class Deck : Location
     {
-        public Deck(string name) : base(name)
-        { }
-
         [JsonIgnore]
         public UserRef Owner { get; init; } = null!;
         public string OwnerId { get; init; } = null!;
@@ -72,6 +69,9 @@ namespace MTGViewer.Data
 
         [JsonIgnore]
         public ICollection<Trade> TradesFrom { get; } = new List<Trade>();
+
+
+        public IEnumerable<Trade> GetTrades() => TradesTo.Concat(TradesFrom);
 
         
         public override IOrderedEnumerable<string> GetColorSymbols()
@@ -92,9 +92,6 @@ namespace MTGViewer.Data
 
     public class Box : Location
     {
-        public Box(string name) : base(name)
-        { }
-
         [JsonIgnore]
         public Bin Bin { get; set; } = null!;
         public int BinId { get; init; }
@@ -105,16 +102,11 @@ namespace MTGViewer.Data
 
     public class Bin
     {
-        public Bin(string name)
-        {
-            Name = name;
-        }
-
         [JsonRequired]
         public int Id { get; private set; }
 
         [JsonRequired]
-        public string Name { get; private set; }
+        public string Name { get; init; } = null!;
 
         [JsonIgnore]
         public ICollection<Box> Boxes { get; } = new List<Box>();

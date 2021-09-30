@@ -25,7 +25,8 @@ namespace MTGViewer.Pages.Decks
         }
 
 
-        public bool CanEdit { get; private set; }
+        public bool IsOwner { get; private set; }
+
         public Deck Deck { get; private set; }
         public IEnumerable<AmountRequestGroup> Cards { get; private set; }
 
@@ -40,10 +41,8 @@ namespace MTGViewer.Pages.Decks
 
             var userId = _userManager.GetUserId(User);
 
+            IsOwner = deck.OwnerId == userId;
             Deck = deck;
-
-            CanEdit = deck.OwnerId == userId && !deck.TradesTo.Any();
-
             Cards = DeckCardGroups(deck).ToList();
 
             return Page();
@@ -60,10 +59,10 @@ namespace MTGViewer.Pages.Decks
                     .ThenInclude(ca => ca.Card)
 
                 .Include(d => d.TradesTo)
-                    .ThenInclude(ex => ex.Card)
+                    .ThenInclude(t => t.Card)
 
                 .Include(d => d.Requests)
-                    .ThenInclude(ca => ca.Card)
+                    .ThenInclude(cr => cr.Card)
 
                 .AsSplitQuery()
                 .AsNoTrackingWithIdentityResolution();

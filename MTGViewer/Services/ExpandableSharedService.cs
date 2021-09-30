@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using MTGViewer.Data;
 
+#nullable enable
 
 namespace MTGViewer.Services
 {
@@ -46,30 +47,31 @@ namespace MTGViewer.Services
             .AsNoTrackingWithIdentityResolution();
 
 
-        public async Task ReturnAsync(IEnumerable<(Card, int numCopies)> returns)
+        public async Task<Transaction> ReturnAsync(IEnumerable<CardReturn> returns)
         {
-            if (!returns.Any())
-            {
-                return;
-            }
-
             if (InvalidReturns(returns))
             {
                 throw new ArgumentException("Given returns are invalid");
             }
 
+
             await _lock.WaitAsync();
             try
             {
-                var newReturns = await ReturnExistingAsync(returns);
+                var newTransaction = new Transaction();
+                _dbContext.Transactions.Add(newTransaction);
+
+                var newReturns = await ReturnExistingAsync(newTransaction, returns);
 
                 if (newReturns.Any())
                 {
-                    await ReturnNewAsync(newReturns);
+                    await ReturnNewAsync(newTransaction, newReturns);
                 }
 
-                // intentionally throw db exception
+                // intentionally leave db exception unhandled
                 await _dbContext.SaveChangesAsync();
+
+                return newTransaction;
             }
             finally
             {
@@ -78,22 +80,24 @@ namespace MTGViewer.Services
         }
 
 
-        private bool InvalidReturns(IEnumerable<(Card card, int numCopies)> returns)
+        private bool InvalidReturns(IEnumerable<CardReturn> returns)
         {
-            return returns.Any(cn => cn.card == null)
-                || returns.Any(cn => cn.numCopies <= 0);
+            return !returns.Any() 
+                || returns.Any(cn => cn.Card == null || cn.NumCopies <= 0);
         }
 
 
-        private async Task<IReadOnlyList<(Card, int)>> ReturnExistingAsync(
-            IEnumerable<(Card card, int)> returning)
+        private async Task<IReadOnlyList<CardReturn>> ReturnExistingAsync(
+            Transaction transaction,
+            IEnumerable<CardReturn> returning)
         {
             var returnIds = returning
-                .Select(ra => ra.card.Id)
+                .Select(cr => cr.Card.Id)
                 .ToArray();
 
             var returnAmounts = await _dbContext.Amounts
                 .Where(ca => ca.Location is Box && returnIds.Contains(ca.CardId))
+                .Include(ca => ca.Location)
                 .ToListAsync();
 
             if (!returnAmounts.Any())
@@ -101,20 +105,43 @@ namespace MTGViewer.Services
                 return returning.ToList();
             }
 
-            var returnGroups = returnAmounts
+            var returnTargets = returnAmounts
                 .GroupBy(ca => ca.CardId, (_, amounts) => amounts.First())
                 .ToDictionary(ag => ag.CardId);
 
-            foreach (var (card, numCopies) in returning)
+            var changes = new Dictionary<(string, int), Change>();
+
+            foreach (var (card, numCopies, deck) in returning)
             {
-                if (returnGroups.TryGetValue(card.Id, out var group))
+                if (!returnTargets.TryGetValue(card.Id, out var target))
                 {
-                    group.Amount += numCopies;
+                    continue;
                 }
+
+                var changeKey = (card.Id, deck?.Id ?? 0);
+
+                if (!changes.TryGetValue(changeKey, out var change))
+                {
+                    change = new()
+                    {
+                        Card = card,
+                        To = target.Location,
+                        From = deck,
+                        Amount = 0,
+                        Transaction = transaction
+                    };
+
+                    changes.Add(changeKey, change);
+                }
+
+                target.Amount += numCopies;
+                change.Amount += numCopies;
             }
 
+            _dbContext.Changes.AttachRange(changes.Values);
+
             return returning
-                .Where(ra => !returnGroups.ContainsKey(ra.card.Id))
+                .Where(cr => !returnTargets.ContainsKey(cr.Card.Id))
                 .ToList();
         }
 
@@ -141,37 +168,51 @@ namespace MTGViewer.Services
         }
 
 
-        private async Task ReturnNewAsync(IEnumerable<(Card card, int numCopies)> newReturns)
+        private async Task ReturnNewAsync(
+            Transaction transaction, IEnumerable<CardReturn> newReturns)
         {
             var sortedBoxes = await GetSortedBoxesAsync();
 
             if (!sortedBoxes.Any())
             {
-                throw new InvalidOperationException("There are no possible boxes to return the cards to");
+                throw new InvalidOperationException(
+                    "There are no possible boxes to return the cards to");
             }
 
             var sortedSharedAmounts = await GetSortedAmountsAsync();
             var cardIndices = GetCardIndices(sortedSharedAmounts);
 
-            var returnGroups = newReturns
-                .GroupBy(ci => ci.card, (card, cis) =>
-                    (card, numCopies: cis.Sum(ci => ci.numCopies)) );
+            var combinedReturns = newReturns
+                .GroupBy(
+                    cr => (cr.Card, cr.Deck),
+                    (cd, crs) => (cd.Card, crs.Sum(cr => cr.NumCopies), cd.Deck));
 
-            foreach (var (card, numCopies) in returnGroups)
+            foreach (var (card, numCopies, source) in combinedReturns)
             {
                 var amountIndex = FindAmountIndex(sortedSharedAmounts, card);
-
                 var cardIndex = cardIndices.ElementAtOrDefault(amountIndex);
                 var boxIndex = Math.Min(cardIndex / _boxSize, sortedBoxes.Count - 1);
+
+                var box = sortedBoxes[boxIndex];
 
                 var newSpot = new CardAmount
                 {
                     Card = card,
-                    Location = sortedBoxes[boxIndex],
+                    Location = box,
                     Amount = numCopies
                 };
 
+                var newChange = new Change
+                {
+                    Card = card,
+                    To = box,
+                    From = source,
+                    Amount = numCopies,
+                    Transaction = transaction
+                };
+
                 _dbContext.Amounts.Attach(newSpot);
+                _dbContext.Changes.Attach(newChange);
             }
         }
 
@@ -235,18 +276,17 @@ namespace MTGViewer.Services
 
 
 
-        public async Task OptimizeAsync()
+        public async Task<Transaction?> OptimizeAsync()
         {
+            Transaction? newTransaction = null;
+
             await _lock.WaitAsync();
             try
             {
                 var sortedBoxAmounts = await GetSortedAmountsAsync();
                 var sortedBoxes = await GetSortedBoxesAsync();
 
-                AddUpdatedBoxAmounts(sortedBoxAmounts, sortedBoxes);
-
-                _dbContext.Amounts.RemoveRange(
-                    sortedBoxAmounts.Where(ba => ba.Amount == 0));
+                newTransaction = AddUpdatedBoxAmounts(sortedBoxAmounts, sortedBoxes);
 
                 // intentionally throw db exception
                 await _dbContext.SaveChangesAsync();
@@ -255,14 +295,16 @@ namespace MTGViewer.Services
             {
                 _lock.Release();
             }
+
+            return newTransaction;
         }
 
 
-        private void AddUpdatedBoxAmounts(
+        private Transaction? AddUpdatedBoxAmounts(
             IReadOnlyList<CardAmount> sharedAmounts, IReadOnlyList<Box> boxes)
         {
             var oldAmounts = sharedAmounts
-                .Select(ca => (ca.Card, ca.Amount))
+                .Select(ca => (ca.Card, ca.Location, ca.Amount))
                 .ToList();
 
             foreach (var shared in sharedAmounts)
@@ -270,24 +312,32 @@ namespace MTGViewer.Services
                 shared.Amount = 0;
             }
 
-            var amountMap = sharedAmounts.ToDictionary(ca => (ca.CardId, ca.LocationId));
-            var boxCounts = boxes.ToDictionary(b => b.Id, _ => 0); // faster than summing every time
+            var newTransaction = new Transaction();
+            var changes = newTransaction.Changes;
+
+            // faster than summing every time
+            var boxSpace = boxes
+                .ToDictionary(b => b.Id, _ => 0);
+
+            var amountMap = sharedAmounts
+                .ToDictionary(ca => (ca.CardId, ca.LocationId));
+
             var cardIndex = 0;
 
-            foreach (var (card, oldNumCopies) in oldAmounts)
+            foreach (var (card, oldBox, oldNumCopies) in oldAmounts)
             {
-                var boxAmounts = DivideToBoxAmounts(boxes, boxCounts, cardIndex, oldNumCopies);
+                var boxAmounts = DivideToBoxAmounts(boxes, boxSpace, cardIndex, oldNumCopies);
 
-                foreach (var (box, newNumCopies) in boxAmounts)
+                foreach (var (newBox, newNumCopies) in boxAmounts)
                 {
-                    var cardBox = (card.Id, box.Id);
+                    var cardBox = (card.Id, newBox.Id);
 
                     if (!amountMap.TryGetValue(cardBox, out var boxAmount))
                     {
                         boxAmount = new()
                         {
                             Card = card,
-                            Location = box
+                            Location = newBox
                         };
 
                         _dbContext.Amounts.Attach(boxAmount);
@@ -295,17 +345,43 @@ namespace MTGViewer.Services
                     }
 
                     boxAmount.Amount += newNumCopies;
-                    boxCounts[box.Id] += newNumCopies;
+                    boxSpace[newBox.Id] += newNumCopies;
+
+                    if (oldBox == newBox)
+                    {
+                        continue;
+                    }
+
+                    changes.Add( new()
+                    {
+                        Card = card,
+                        From = oldBox,
+                        To = newBox,
+                        Amount = newNumCopies
+                    });
                 }
 
                 cardIndex += oldNumCopies;
+            }
+
+            _dbContext.Amounts.RemoveRange(
+                sharedAmounts.Where(ca => ca.Amount == 0));
+
+            if (changes.Any())
+            {
+                _dbContext.Transactions.Add(newTransaction);
+                return newTransaction;
+            }
+            else
+            {
+                return null;
             }
         }
 
 
         private IEnumerable<(Box, int)> DivideToBoxAmounts(
             IReadOnlyList<Box> boxes,
-            IReadOnlyDictionary<int, int> boxCounts,
+            IReadOnlyDictionary<int, int> boxSpace,
             int cardIndex,
             int numCopies)
         {
@@ -321,7 +397,7 @@ namespace MTGViewer.Services
 
             foreach (var box in boxRange)
             {
-                var remainingSpace = Math.Max(0, _boxSize - boxCounts[box.Id]);
+                var remainingSpace = Math.Max(0, _boxSize - boxSpace[box.Id]);
                 var boxAmount = Math.Min(numCopies, remainingSpace);
 
                 amounts.Add(boxAmount);
