@@ -23,13 +23,13 @@ namespace MTGViewer.Data
         internal Discriminator Type { get; private set; }
 
         [JsonIgnore]
-        public ICollection<CardAmount> Cards { get; } = new List<CardAmount>();
+        public List<CardAmount> Cards { get; } = new();
 
         [JsonIgnore]
-        public ICollection<Change> ChangesTo { get; } = new List<Change>();
+        public List<Change> ChangesTo { get; } = new();
 
         [JsonIgnore]
-        public ICollection<Change> ChangesFrom { get; } = new List<Change>();
+        public List<Change> ChangesFrom { get; } = new();
 
 
         public IEnumerable<Change> GetChanges() => ChangesTo.Concat(ChangesFrom);
@@ -62,13 +62,13 @@ namespace MTGViewer.Data
 
 
         [JsonIgnore]
-        public ICollection<CardRequest> Requests { get; } = new List<CardRequest>();
+        public List<CardRequest> Requests { get; } = new();
 
         [JsonIgnore]
-        public ICollection<Trade> TradesTo { get; } = new List<Trade>();
+        public List<Trade> TradesTo { get; } = new();
 
         [JsonIgnore]
-        public ICollection<Trade> TradesFrom { get; } = new List<Trade>();
+        public List<Trade> TradesFrom { get; } = new();
 
 
         public IEnumerable<Trade> GetTrades() => TradesTo.Concat(TradesFrom);
@@ -109,6 +109,6 @@ namespace MTGViewer.Data
         public string Name { get; init; } = null!;
 
         [JsonIgnore]
-        public ICollection<Box> Boxes { get; } = new List<Box>();
+        public List<Box> Boxes { get; } = new();
     }
 }

@@ -110,7 +110,9 @@ namespace MTGViewer.Pages.Transfers
                 trade.Amount = Math.Min(trade.Amount, cap);
             }
 
-            return deck.TradesFrom.Where(t => t.Amount > 0);
+            return deck.TradesFrom
+                .Where(t => t.Amount > 0)
+                .OrderBy(t => t.Card.Name);
         }
 
 

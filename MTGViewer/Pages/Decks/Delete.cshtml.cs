@@ -82,19 +82,19 @@ namespace MTGViewer.Pages.Decks
                     .ThenInclude(da => da.Card)
 
                 .Include(d => d.Requests)
-                    .ThenInclude(ex => ex.Card)
+                    .ThenInclude(cr => cr.Card)
                 .Include(d => d.Requests)
-                    .ThenInclude(ex => ex.Target)
+                    .ThenInclude(cr => cr.Target)
 
                 .Include(d => d.TradesTo)
-                    .ThenInclude(ex => ex.Card)
+                    .ThenInclude(t => t.Card)
                 .Include(d => d.TradesTo)
-                    .ThenInclude(ex => ex.From)
+                    .ThenInclude(t => t.From)
 
                 .Include(d => d.TradesFrom)
-                    .ThenInclude(ex => ex.Card)
+                    .ThenInclude(t => t.Card)
                 .Include(d => d.TradesFrom)
-                    .ThenInclude(ex => ex.To)
+                    .ThenInclude(t => t.To)
 
                 .AsSplitQuery()
                 .AsNoTrackingWithIdentityResolution();

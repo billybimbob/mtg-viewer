@@ -12,7 +12,8 @@ namespace MTGViewer.Data
     [Index(
         nameof(ToId),
         nameof(FromId),
-        nameof(CardId), IsUnique = true)]
+        nameof(CardId),
+        nameof(TransactionId), IsUnique = true)]
     public class Change
     {
         [JsonRequired]
@@ -51,6 +52,6 @@ namespace MTGViewer.Data
         public DateTime Applied { get; private set; }
 
         [JsonIgnore]
-        public ICollection<Change> Changes { get; } = new List<Change>();
+        public List<Change> Changes { get; } = new();
     }
 }

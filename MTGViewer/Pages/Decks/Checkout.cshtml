@@ -14,23 +14,33 @@
         <p>Do you want to exchange card requests with the shared collection?</p>
         <p>Alternatively, requests can be made to other players</p>
 
-        <div>
-            <form method="POST">
-                <input type="hidden" asp-for="Deck.Id" />
-                <input type="submit" value="Exchange" class="btn btn-secondary" />
-            </form>
+        <form method="POST" class="d-inline">
+            <input type="hidden" asp-for="Deck.Id" />
+            <input type="submit" value="Exchange" class="btn btn-secondary" />
+        </form>
 
-            <a asp-page="/Transfers/Request"
-                asp-route-deckid="@Model.Deck.Id"
-                class="btn btn-secondary mb-3">
-                Player Request </a>
-        </div>
+        <a asp-page="/Transfers/Request"
+            asp-route-deckid="@Model.Deck.Id"
+            class="btn btn-secondary">
+            Player Request </a>
+    </div>
+}
+else if (!Model.Deck.Requests.Any())
+{
+    <div class="alert alert-warning" role="alert">
+        There are no pending changes for the deck
     </div>
 }
 else
 {
-    <div class="alert alert-warning" role="alert">
-        There are no pending changes for the deck
+    <div class="alert alert-secondary" role="alert">
+        <p>There are no possibles cards requested in the shared pool.</p>
+        <p>Requests can be made to other players get the cards.</p>
+
+        <a asp-page="/Transfers/Request"
+            asp-route-deckid="@Model.Deck.Id"
+            class="btn btn-secondary">
+            Player Request </a>
     </div>
 }
 

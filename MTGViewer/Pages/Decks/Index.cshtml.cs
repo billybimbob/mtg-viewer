@@ -17,14 +17,14 @@ namespace MTGViewer.Pages.Decks
 {
     public enum State
     {
-        Invalid,
-        Valid,
+        Theorycraft,
+        Built,
         Requesting
     }
 
     public record DeckState(Deck Deck, State State)
     {
-        public DeckState(Deck deck) : this(deck, State.Invalid)
+        public DeckState(Deck deck) : this(deck, State.Theorycraft)
         {
             if (deck.TradesTo.Any())
             {
@@ -32,11 +32,11 @@ namespace MTGViewer.Pages.Decks
             }
             else if (deck.Requests.Any())
             {
-                State = State.Invalid;
+                State = State.Theorycraft;
             }
             else
             {
-                State = State.Valid;
+                State = State.Built;
             }
         }
     }

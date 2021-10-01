@@ -54,6 +54,7 @@ namespace MTGViewer.Tests.Utils
             var dbBuilder = new DbContextOptionsBuilder<D>()
                 .UseInMemoryDatabase("Test Database")
                 .UseInternalServiceProvider(services);
+                // .UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking);
 
             return dbBuilder.Options;
         }

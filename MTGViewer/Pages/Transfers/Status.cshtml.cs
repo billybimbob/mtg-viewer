@@ -105,8 +105,8 @@ namespace MTGViewer.Pages.Transfers
                         .ThenInclude(d => d.Cards)
 
                 .Include(d => d.TradesTo
-                    .OrderBy(ex => ex.From.Owner.Name)
-                        .ThenBy(ex => ex.Card.Name))
+                    .OrderBy(t => t.From.Owner.Name)
+                        .ThenBy(t => t.Card.Name))
 
                 .AsSplitQuery()
                 .AsNoTrackingWithIdentityResolution();

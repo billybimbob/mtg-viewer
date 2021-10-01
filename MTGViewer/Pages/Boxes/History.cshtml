@@ -1,5 +1,5 @@
 @page
-@model MTGViewer.Pages.Boxes.ChangesModel
+@model MTGViewer.Pages.Boxes.HistoryModel
 @using MTGViewer.Data
 
 @{
@@ -7,6 +7,13 @@
 }
 
 <h1>Change To Boxes</h1>
+
+@if (!string.IsNullOrEmpty(Model.PostMessage))
+{
+    <div class="alert alert-secondary" role="alert">
+        @Model.PostMessage
+    </div>
+}
 
 <table class="table">
     <thead>
@@ -41,7 +48,7 @@
                     <td> @firstChange.Amount </td>
 
                     <td rowspan="@changes.Count">
-                        @if (Model.IsSharedTransaction.ContainsKey(firstTransaction.Id))
+                        @if (Model.IsSharedTransaction.Contains(firstTransaction.Id))
                         {
                             <form method="POST">
                                 <input type="hidden" asp-for="@firstTransaction.Id" name="transactionId"/>
@@ -89,7 +96,7 @@
                     <td> @firstChange.Amount </td>
 
                     <td rowspan="@changes.Count">
-                        @if (Model.IsSharedTransaction.ContainsKey(transaction.Id))
+                        @if (Model.IsSharedTransaction.Contains(transaction.Id))
                         {
                             <form method="POST">
                                 <input type="hidden" asp-for="@transaction.Id" name="transactionId"/>

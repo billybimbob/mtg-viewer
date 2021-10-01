@@ -1,0 +1,64 @@
+@page "{deckid:int}"
+@model MTGViewer.Pages.Decks.HistoryModel
+@using MTGViewer.Data
+
+@{
+    ViewData["Title"] = $"{Model.Deck.Name} Change History";
+}
+
+<h1>Changes To @Model.Deck.Name</h1>
+
+@if (!string.IsNullOrEmpty(Model.PostMessage))
+{
+    <div class="alert alert-secondary" role="alert">
+        @Model.PostMessage
+    </div>
+}
+
+<table class="table">
+    <thead>
+        <tr>
+            <th> @Html.DisplayNameForInnerType((Transaction t) => t.Applied) </th>
+            <th> @Html.DisplayNameForInnerType((Change c) => c.Card) </th>
+            <th> @Html.DisplayNameForInnerType((Change c) => c.To) </th>
+            <th> @Html.DisplayNameForInnerType((Change c) => c.From) </th>
+            <th> @Html.DisplayNameForInnerType((Change c) => c.Amount) </th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var transaction in Model.Transactions)
+        {
+            var changes = transaction.Changes;
+            var firstChange = changes.First(); // guranteed >= 1 changes
+            var restChanges = changes.Skip(1);
+
+            <tr>
+                <td rowspan="@changes.Count"> @transaction.Applied </td>
+
+                <td> @firstChange.Card.Name </td>
+                <td> @(firstChange.To == Model.Deck ? "--" : firstChange.To.Name) </td>
+                <td> @(firstChange.From == Model.Deck ? "--" : firstChange.From?.Name ?? "") </td>
+                <td> @firstChange.Amount </td>
+
+                <td rowspan="@changes.Count">
+                    <form method="POST">
+                        <input type="hidden" asp-for="Deck.Id" />
+                        <input type="hidden" asp-for="@transaction.Id" name="transactionId"/>
+                        <input type="submit" value="Remove" class="btn btn-secondary" />
+                    </form>
+                </td>
+            </tr>
+
+            @foreach (var change in restChanges)
+            {
+                <tr>
+                    <td> @change.Card.Name </td>
+                    <td> @(change.To == Model.Deck ? "--" : change.To.Name) </td>
+                    <td> @(change.From == Model.Deck ? "--" : change.From?.Name ?? "") </td>
+                    <td> @change.Amount </td>
+                </tr>
+            }
+        }
+    </tbody>
+</table>

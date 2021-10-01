@@ -48,9 +48,9 @@ namespace MTGViewer.Tests.Pages.Decks
         }
 
 
-        public async Task InitializeAsync()
+        public Task InitializeAsync()
         {
-            await _dbContext.SeedAsync(_userManager);
+            return _dbContext.SeedAsync(_userManager);
         }
 
 
@@ -62,6 +62,18 @@ namespace MTGViewer.Tests.Pages.Decks
         }
 
 
+        private IQueryable<Deck> Deck(Deck deck) =>
+            _dbContext.Decks
+                .Where(d => d.Id == deck.Id)
+                .AsNoTracking();
+
+
+        private IQueryable<CardAmount> DeckCards(Deck deck) =>
+            _dbContext.Amounts
+                .Where(ca => ca.LocationId == deck.Id)
+                .AsNoTracking();
+
+
         [Fact]
         public async Task OnPost_WrongUser_NoChange()
         {
@@ -71,15 +83,11 @@ namespace MTGViewer.Tests.Pages.Decks
 
             await _deleteModel.SetModelContextAsync(_userManager, wrongUser.Id);
 
-            var deckQuery = _dbContext.Decks
-                .Where(d => d.Id == deck.Id)
-                .AsNoTracking();
-
             // Act
             var result = await _deleteModel.OnPostAsync(deck.Id);
-            var deckAfter = await deckQuery.SingleOrDefaultAsync();
+            var deckAfter = await Deck(deck).SingleOrDefaultAsync();
 
-            // // Assert
+            // Assert
             Assert.IsType<RedirectToPageResult>(result);
             Assert.NotNull(deckAfter);
         }
@@ -93,13 +101,10 @@ namespace MTGViewer.Tests.Pages.Decks
             await _deleteModel.SetModelContextAsync(_userManager, deck.OwnerId);
 
             var wrongDeck = -1;
-            var deckQuery = _dbContext.Decks
-                .Where(d => d.Id == deck.Id)
-                .AsNoTracking();
 
             // Act
             var result = await _deleteModel.OnPostAsync(wrongDeck);
-            var deckAfter = await deckQuery.SingleOrDefaultAsync();
+            var deckAfter = await Deck(deck).SingleOrDefaultAsync();
 
             // // Assert
             Assert.IsType<RedirectToPageResult>(result);
@@ -115,16 +120,12 @@ namespace MTGViewer.Tests.Pages.Decks
         {
             // Arrange
             var deck = await _dbContext.CreateDeckAsync(numCopies);
+
             await _deleteModel.SetModelContextAsync(_userManager, deck.OwnerId);
 
-            var deckCards = await _dbContext.Amounts
-                .Where(ca => ca.LocationId == deck.Id)
+            var deckCards = await DeckCards(deck)
                 .Select(ca => ca.CardId)
                 .ToListAsync();
-
-            var deckQuery = _dbContext.Decks
-                .Where(d => d.Id == deck.Id)
-                .AsNoTracking();
 
             var boxQuery = _dbContext.Amounts
                 .Where(ca => deckCards.Contains(ca.CardId))
@@ -135,11 +136,11 @@ namespace MTGViewer.Tests.Pages.Decks
             var result = await _deleteModel.OnPostAsync(deck.Id);
 
             var boxAfter = await boxQuery.ToListAsync();
-            var deckAfter = await deckQuery.SingleOrDefaultAsync();
+            var deckAfter = await Deck(deck).SingleOrDefaultAsync();
 
             var boxChange = boxBefore.Zip(boxAfter, (before, after) => (before, after));
 
-            // // Assert
+            // Assert
             Assert.IsType<RedirectToPageResult>(result);
 
             Assert.Null(deckAfter);

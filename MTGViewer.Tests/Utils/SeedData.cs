@@ -48,7 +48,7 @@ namespace MTGViewer.Tests.Utils
 
 
 
-        internal static async Task<Deck> CreateDeckAsync(this CardDbContext dbContext, int numCards = default)
+        internal static async Task<Deck> CreateDeckAsync(this CardDbContext dbContext, int numCards = 0)
         {
             var users = await dbContext.Users.ToListAsync();
             var owner = users[_random.Next(users.Count)];
@@ -413,6 +413,47 @@ namespace MTGViewer.Tests.Utils
             dbContext.ChangeTracker.Clear();
 
             return deckReturn;
+        }
+
+
+        internal static async Task<Transaction> CreateTransactionAsync(
+            this CardDbContext dbContext, int numCards = 0)
+        {
+            var transaction = new Transaction();
+
+            var boxes = await dbContext.Boxes.ToListAsync();
+            var cards = await dbContext.Cards.ToListAsync();
+            var deck = await dbContext.Decks.FirstAsync();
+
+            if (numCards <= 0)
+            {
+                numCards = _random.Next(1, cards.Count / 2);
+            }
+
+            var changeCards = cards
+                .Select(card => (card, key: _random.Next(cards.Count)))
+                .OrderBy(ck => ck.key)
+                .Take(numCards)
+                .Select(ck => ck.card)
+                .ToList();
+
+            var changes = changeCards
+                .Select(card => new Change
+                {
+                    Card = card,
+                    To = deck,
+                    From = boxes[_random.Next(boxes.Count)],
+                    Amount = _random.Next(1, 3),
+                    Transaction = transaction
+                });
+
+            dbContext.Transactions.Attach(transaction);
+            dbContext.Changes.AttachRange(changes);
+
+            await dbContext.SaveChangesAsync();
+            dbContext.ChangeTracker.Clear();
+
+            return transaction;
         }
     }
 }

@@ -40,6 +40,9 @@ namespace MTGViewer.Pages.Decks
         }
 
 
+        [TempData]
+        public string? PostMessage { get; set; }
+
         public Deck? Deck { get; private set; }
         
         public bool HasPendings { get; private set; }
@@ -58,7 +61,7 @@ namespace MTGViewer.Pages.Decks
 
             if (deck.TradesTo.Any())
             {
-                return RedirectToPage("./Index");
+                return RedirectToPage("Index");
             }
 
             Deck = deck;
@@ -138,13 +141,16 @@ namespace MTGViewer.Pages.Decks
                 }
 
                 await _dbContext.SaveChangesAsync();
+
+                PostMessage = "Successfully exchanged cards";
             }
             catch (DbUpdateException e)
             {
                 _logger.LogError($"ran into db error {e}");
+                PostMessage = "Ran into issue while trying to checkout";
             }
 
-            return RedirectToPage("Changes", new { deckId = id });
+            return RedirectToPage("History", new { deckId = id });
         }
 
 

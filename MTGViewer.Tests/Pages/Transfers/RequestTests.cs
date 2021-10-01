@@ -54,6 +54,12 @@ namespace MTGViewer.Tests.Pages.Transfers
         }
 
 
+        private IQueryable<Trade> AllTrades =>
+            _dbContext.Trades
+                .AsNoTracking()
+                .OrderBy(t => t.Id);
+
+
         [Fact]
         public async Task OnPost_WrongUser_NoChange()
         {
@@ -61,14 +67,12 @@ namespace MTGViewer.Tests.Pages.Transfers
             var wrongUser = await _dbContext.Users.FirstAsync(u => u.Id != _requestDeck.OwnerId);
             await _requestModel.SetModelContextAsync(_userManager, wrongUser.Id);
 
-            var tradeIdsQuery = _dbContext.Trades
-                .OrderBy(t => t.Id)
-                .Select(t => t.Id);
+            var allTradeIds = AllTrades.Select(t => t.Id);
 
             // Act
-            var tradesBefore = await tradeIdsQuery.ToListAsync();
+            var tradesBefore = await allTradeIds.ToListAsync();
             var result = await _requestModel.OnPostAsync(_requestDeck.Id);
-            var tradesAfter = await tradeIdsQuery.ToListAsync();
+            var tradesAfter = await allTradeIds.ToListAsync();
 
             // // Assert
             Assert.IsType<NotFoundResult>(result);
@@ -82,18 +86,15 @@ namespace MTGViewer.Tests.Pages.Transfers
             // Arrange
             await _requestModel.SetModelContextAsync(_userManager, _requestDeck.OwnerId);
 
-            var tradeIdsQuery = _dbContext.Trades
-                .OrderBy(t => t.Id)
-                .Select(t => t.Id);
-
+            var allTradeIds = AllTrades.Select(t => t.Id);
             var wrongDeck = await _dbContext.Decks
                 .AsNoTracking()
                 .FirstAsync(d => d.OwnerId != _requestDeck.OwnerId);
 
             // Act
-            var tradesBefore = await tradeIdsQuery.ToListAsync();
+            var tradesBefore = await allTradeIds.ToListAsync();
             var result = await _requestModel.OnPostAsync(wrongDeck.Id);
-            var tradesAfter = await tradeIdsQuery.ToListAsync();
+            var tradesAfter = await allTradeIds.ToListAsync();
 
             // // Assert
             Assert.IsType<NotFoundResult>(result);
@@ -106,12 +107,11 @@ namespace MTGViewer.Tests.Pages.Transfers
         {
             // Arrange
             await _requestModel.SetModelContextAsync(_userManager, _requestDeck.OwnerId);
-            var tradesQuery = _dbContext.Trades.AsNoTracking();
 
             // Act
-            var tradesBefore = await tradesQuery.ToListAsync();
+            var tradesBefore = await AllTrades.ToListAsync();
             var result = await _requestModel.OnPostAsync(_requestDeck.Id);
-            var tradesAfter = await tradesQuery.ToListAsync();
+            var tradesAfter = await AllTrades.ToListAsync();
 
             var addedTrades = tradesAfter
                 .GroupJoin( tradesBefore,
@@ -135,8 +135,8 @@ namespace MTGViewer.Tests.Pages.Transfers
             await _requestModel.SetModelContextAsync(_userManager, _requestDeck.OwnerId);
 
             var requestCard = await _dbContext.Requests
-                .Where(ex => ex.TargetId == _requestDeck.Id)
-                .Select(ex => ex.Card)
+                .Where(cr => cr.TargetId == _requestDeck.Id)
+                .Select(cr => cr.Card)
                 .AsNoTracking()
                 .FirstAsync();
 
@@ -167,12 +167,10 @@ namespace MTGViewer.Tests.Pages.Transfers
             await _dbContext.SaveChangesAsync();
             _dbContext.ChangeTracker.Clear();
             
-            var tradesQuery = _dbContext.Trades.AsNoTracking();
-
             // Act
-            var tradesBefore = await tradesQuery.ToListAsync();
+            var tradesBefore = await AllTrades.ToListAsync();
             var result = await _requestModel.OnPostAsync(_requestDeck.Id);
-            var tradesAfter = await tradesQuery.ToListAsync();
+            var tradesAfter = await AllTrades.ToListAsync();
 
             var addedTrades = tradesAfter
                 .GroupJoin( tradesBefore,

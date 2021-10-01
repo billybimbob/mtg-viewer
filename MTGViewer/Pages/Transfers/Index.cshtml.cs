@@ -34,8 +34,7 @@ namespace MTGViewer.Pages.Transfers
         public UserRef SelfUser { get; set; }
 
         public IReadOnlyList<Deck> ReceivedTrades { get; private set; }
-        public IReadOnlyList<Deck> SentTrades { get; private set; }
-        public IReadOnlyList<Deck> PossibleTrades { get; private set; }
+        public IReadOnlyList<Deck> RequestDecks { get; private set; }
 
         public IReadOnlyList<Suggestion> Suggestions { get; private set; }
 
@@ -53,14 +52,8 @@ namespace MTGViewer.Pages.Transfers
                 .Where(d => d.TradesFrom.Any())
                 .ToList();
 
-            SentTrades = userDecks
-                .Where(d => d.TradesTo.Any())
-                .ToList();
-
-            PossibleTrades = userDecks
-                .Where(d => d.Requests.Any(cr => !cr.IsReturn))
-                .Except(SentTrades)
-                .OrderBy(d => d.Name)
+            RequestDecks = userDecks
+                .Where(d => d.TradesTo.Any() || d.Requests.Any(cr => !cr.IsReturn))
                 .ToList();
 
             Suggestions = await _dbContext.Suggestions
@@ -79,8 +72,13 @@ namespace MTGViewer.Pages.Transfers
 
                 .Include(d => d.TradesFrom)
                 .Include(d => d.TradesTo)
+
                 .Include(d => d.Requests
                     .Where(cr => !cr.IsReturn))
+                    .ThenInclude(cr => cr.Card)
+
+                .Include(d => d.Cards)
+                    .ThenInclude(ca => ca.Card)
 
                 .OrderBy(d => d.Name)
                 .AsSplitQuery();

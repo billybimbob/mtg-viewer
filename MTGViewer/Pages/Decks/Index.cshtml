@@ -15,8 +15,7 @@
 }
 
  
-<h2>@Model.CardUser.Name's Decks</h2>
-<hr/>
+<h1>@Model.CardUser.Name's Decks</h1>
 
 <a class="btn btn-secondary mb-3" asp-page="./Builder">New Deck</a>
 
@@ -68,7 +67,7 @@
                            class="fw-bold">
                            @state.ToString() </a>
                     }
-                    else if (state is State.Invalid)
+                    else if (state is State.Theorycraft)
                     {
                         <a asp-page="Checkout"
                            asp-route-id="@deck.Id"
@@ -81,7 +80,7 @@
                     }
                 </td>
                 <td>
-                    <a asp-page="Changes"
+                    <a asp-page="History"
                         asp-route-deckid="@deck.Id"
                         class="btn btn-secondary">
                         History </a>

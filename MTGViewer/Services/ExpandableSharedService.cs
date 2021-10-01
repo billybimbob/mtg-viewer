@@ -242,7 +242,7 @@ namespace MTGViewer.Services
             }
 
             var low = 0;
-            var high = sortedAmounts.Count;
+            var high = sortedAmounts.Count - 1;
 
             while (low <= high)
             {
@@ -278,31 +278,36 @@ namespace MTGViewer.Services
 
         public async Task<Transaction?> OptimizeAsync()
         {
-            Transaction? newTransaction = null;
-
             await _lock.WaitAsync();
             try
             {
                 var sortedBoxAmounts = await GetSortedAmountsAsync();
                 var sortedBoxes = await GetSortedBoxesAsync();
 
-                newTransaction = AddUpdatedBoxAmounts(sortedBoxAmounts, sortedBoxes);
+                var newTransaction = AddUpdatedBoxAmounts(sortedBoxAmounts, sortedBoxes);
+
+                if (!ValidateChanges(newTransaction, sortedBoxAmounts))
+                {
+                    return null;
+                }
 
                 // intentionally throw db exception
                 await _dbContext.SaveChangesAsync();
+
+                return newTransaction;
             }
             finally
             {
                 _lock.Release();
             }
-
-            return newTransaction;
         }
 
 
-        private Transaction? AddUpdatedBoxAmounts(
+        private Transaction AddUpdatedBoxAmounts(
             IReadOnlyList<CardAmount> sharedAmounts, IReadOnlyList<Box> boxes)
         {
+            var newTransaction = new Transaction();
+
             var oldAmounts = sharedAmounts
                 .Select(ca => (ca.Card, ca.Location, ca.Amount))
                 .ToList();
@@ -311,9 +316,6 @@ namespace MTGViewer.Services
             {
                 shared.Amount = 0;
             }
-
-            var newTransaction = new Transaction();
-            var changes = newTransaction.Changes;
 
             // faster than summing every time
             var boxSpace = boxes
@@ -324,25 +326,14 @@ namespace MTGViewer.Services
 
             var cardIndex = 0;
 
+
             foreach (var (card, oldBox, oldNumCopies) in oldAmounts)
             {
                 var boxAmounts = DivideToBoxAmounts(boxes, boxSpace, cardIndex, oldNumCopies);
 
                 foreach (var (newBox, newNumCopies) in boxAmounts)
                 {
-                    var cardBox = (card.Id, newBox.Id);
-
-                    if (!amountMap.TryGetValue(cardBox, out var boxAmount))
-                    {
-                        boxAmount = new()
-                        {
-                            Card = card,
-                            Location = newBox
-                        };
-
-                        _dbContext.Amounts.Attach(boxAmount);
-                        amountMap.Add(cardBox, boxAmount);
-                    }
+                    var boxAmount = FindOrAddBoxAmount(amountMap, card, newBox);
 
                     boxAmount.Amount += newNumCopies;
                     boxSpace[newBox.Id] += newNumCopies;
@@ -352,7 +343,7 @@ namespace MTGViewer.Services
                         continue;
                     }
 
-                    changes.Add( new()
+                    newTransaction.Changes.Add(new()
                     {
                         Card = card,
                         From = oldBox,
@@ -364,22 +355,11 @@ namespace MTGViewer.Services
                 cardIndex += oldNumCopies;
             }
 
-            _dbContext.Amounts.RemoveRange(
-                sharedAmounts.Where(ca => ca.Amount == 0));
-
-            if (changes.Any())
-            {
-                _dbContext.Transactions.Add(newTransaction);
-                return newTransaction;
-            }
-            else
-            {
-                return null;
-            }
+            return newTransaction;
         }
 
 
-        private IEnumerable<(Box, int)> DivideToBoxAmounts(
+        private IReadOnlyList<(Box, int)> DivideToBoxAmounts(
             IReadOnlyList<Box> boxes,
             IReadOnlyDictionary<int, int> boxSpace,
             int cardIndex,
@@ -405,6 +385,44 @@ namespace MTGViewer.Services
             }
 
             return boxRange.Zip(amounts).ToList();
+        }
+
+
+        private CardAmount FindOrAddBoxAmount(
+            IDictionary<(string, int), CardAmount> boxAmounts, Card card, Box box)
+        {
+            var cardBox = (card.Id, box.Id);
+
+            if (!boxAmounts.TryGetValue(cardBox, out var boxAmount))
+            {
+                boxAmount = new()
+                {
+                    Card = card,
+                    Location = box
+                };
+
+                _dbContext.Amounts.Attach(boxAmount);
+                boxAmounts.Add(cardBox, boxAmount);
+            }
+
+            return boxAmount;
+        }
+
+
+        private bool ValidateChanges(
+            Transaction optimizeChanges, IReadOnlyList<CardAmount> boxAmounts)
+        {
+            if (!optimizeChanges.Changes.Any())
+            {
+                return false;
+            }
+
+            var emptyAmounts = boxAmounts.Where(ca => ca.Amount == 0);
+
+            _dbContext.Amounts.RemoveRange(emptyAmounts);
+            _dbContext.Transactions.Add(optimizeChanges);
+
+            return true;
         }
     }
 }

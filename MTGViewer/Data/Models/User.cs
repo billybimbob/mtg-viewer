@@ -29,8 +29,5 @@ namespace MTGViewer.Data
 
         [JsonRequired]
         public string Name { get; private set; }
-
-        [JsonIgnore]
-        public ICollection<Deck> Decks { get; } = new List<Deck>();
     }
 }

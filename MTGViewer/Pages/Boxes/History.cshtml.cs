@@ -13,88 +13,93 @@ using MTGViewer.Data;
 
 namespace MTGViewer.Pages.Boxes
 {
-    public record BoxAndTransactions(
-        Box Box,
-        IReadOnlyList<Transaction> Transactions) { }
+    public record BoxAndTransactions(Box Box, IReadOnlyList<Transaction> Transactions) { }
 
 
-    public class ChangesModel : PageModel
+    public class HistoryModel : PageModel
     {
         private readonly CardDbContext _dbContext;
-        private readonly ILogger<ChangesModel> _logger;
+        private readonly ILogger<HistoryModel> _logger;
 
-        public ChangesModel(CardDbContext dbContext, ILogger<ChangesModel> logger)
+        public HistoryModel(CardDbContext dbContext, ILogger<HistoryModel> logger)
         {
             _dbContext = dbContext;
             _logger = logger;
         }
 
 
+        [TempData]
+        public string? PostMessage { get; set; }
+
         public IReadOnlyList<BoxAndTransactions>? Boxes { get; private set; }
 
-        public IReadOnlyDictionary<int, bool>? IsSharedTransaction { get; private set; }
+        public IReadOnlySet<int>? IsSharedTransaction { get; private set; }
 
 
         public async Task OnGetAsync()
         {
-            var boxes = await BoxWithChanges().ToListAsync();
+            var boxes = await BoxForHistory().ToListAsync();
 
             Boxes = boxes.Select(WithTransactions).ToList();
 
             IsSharedTransaction = boxes
                 .SelectMany(b => b.GetChanges())
-                .GroupBy(c => c.Transaction, (t, _) => t)
-                .ToDictionary(
-                    t => t.Id, 
-                    t => t.Changes.All(IsShared));
+                .Where(IsShared)
+                .Select(c => c.TransactionId)
+                .ToHashSet();
         }
 
 
-        private IQueryable<Box> BoxWithChanges()
+        private IQueryable<Box> BoxForHistory()
         {
+            // order by doesn't seem to work, possible bug?
             return _dbContext.Boxes
-                .AsSplitQuery()
-                .AsNoTrackingWithIdentityResolution()
 
                 .Include(b => b.ChangesTo)
                     .ThenInclude(c => c.Transaction)
-
                 .Include(b => b.ChangesTo)
                     .ThenInclude(c => c.Card)
                 .Include(b => b.ChangesTo)
                     .ThenInclude(c => c.From)
 
                 .Include(b => b.ChangesTo
-                    .OrderBy(c => c.Transaction.Applied)
-                        .ThenBy(c => c.Card.Name))
+                    .OrderBy(c => c.Card.Name))
 
                 .Include(b => b.ChangesFrom)
                     .ThenInclude(c => c.Transaction)
-
                 .Include(b => b.ChangesFrom)
                     .ThenInclude(c => c.Card)
                 .Include(b => b.ChangesFrom)
                     .ThenInclude(c => c.To)
 
                 .Include(b => b.ChangesFrom
-                    .OrderBy(c => c.Transaction.Applied)
-                        .ThenBy(c => c.Card.Name))
+                    .OrderBy(c => c.Card.Name))
                         
-                .OrderBy(b => b.Id);
+                .OrderBy(b => b.Id)
+                .AsSplitQuery()
+                .AsNoTrackingWithIdentityResolution();
         }
+
+
+        // private void 
 
 
         private BoxAndTransactions WithTransactions(Box box)
         {
-            var tos = box.ChangesTo
-                .GroupBy(c => c.Transaction, (t, _) => t);
+            var toTransactions = box.ChangesTo.Select(c => c.Transaction);
+            var fromTransactions = box.ChangesFrom.Select(c => c.Transaction);
 
-            var froms = box.ChangesFrom
-                .GroupBy(c => c.Transaction, (t, _) => t);
-
-            var transactions = tos
-                .Concat(froms)
+            var transactions = toTransactions
+                .Union(fromTransactions)
+                .OrderByDescending(t => t.Applied)
                 .ToList();
+
+            // db sort not working
+            foreach (var transaction in transactions)
+            {
+                transaction.Changes.Sort(
+                    (c1, c2) => c1.Card.Name.CompareTo(c2.Card.Name));
+            }
 
             return new BoxAndTransactions(box, transactions);
         }
@@ -124,13 +129,15 @@ namespace MTGViewer.Pages.Boxes
             try
             {
                 await _dbContext.SaveChangesAsync();
+                PostMessage = "Successfully removed the transaction";
             }
             catch (DbUpdateException e)
             {
                 _logger.LogError($"ran into error while removing the transaction {e}");
+                PostMessage = "Ran into issue while removing transaction";
             }
 
-            return RedirectToPage("Changes");
+            return RedirectToPage("History");
         }
     }
 }
