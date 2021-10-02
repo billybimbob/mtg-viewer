@@ -31,57 +31,54 @@ namespace MTGViewer.Pages.Boxes
         [TempData]
         public string? PostMessage { get; set; }
 
-        public IReadOnlyList<BoxAndTransactions>? Boxes { get; private set; }
+        public IReadOnlyList<Transfer>? Transfers { get; private set; }
 
+        public IReadOnlySet<(int, int?, int)>? IsFirstTransfer { get; private set; }
         public IReadOnlySet<int>? IsSharedTransaction { get; private set; }
 
 
         public async Task OnGetAsync()
         {
-            var boxes = await BoxForHistory().ToListAsync();
+            var changes = await ChangesForHistory().ToListAsync();
 
-            Boxes = boxes.Select(WithTransactions).ToList();
+            Transfers = changes
+                .GroupBy(c => (c.Transaction, c.From, c.To),
+                    (tof, changes) => new Transfer(
+                        tof.Transaction, 
+                        tof.From, 
+                        tof.To, 
+                        changes.ToList()))
+                .ToList();
 
-            IsSharedTransaction = boxes
-                .SelectMany(b => b.GetChanges())
+            IsFirstTransfer = changes
+                .Select(c => (c.TransactionId, c.FromId, c.ToId))
+                .ToHashSet();
+
+            IsSharedTransaction = changes
                 .Where(IsShared)
                 .Select(c => c.TransactionId)
                 .ToHashSet();
         }
 
 
-        private IQueryable<Box> BoxForHistory()
+        private IQueryable<Change> ChangesForHistory()
         {
-            // order by doesn't seem to work, possible bug?
-            return _dbContext.Boxes
+            return _dbContext.Changes
+                .Where(c => c.To is Box || c.From is Box)
 
-                .Include(b => b.ChangesTo)
-                    .ThenInclude(c => c.Transaction)
-                .Include(b => b.ChangesTo)
-                    .ThenInclude(c => c.Card)
-                .Include(b => b.ChangesTo)
-                    .ThenInclude(c => c.From)
+                .Include(c => c.Transaction)
+                .Include(c => c.From)
+                .Include(c => c.To)
+                .Include(c => c.Card)
 
-                .Include(b => b.ChangesTo
-                    .OrderBy(c => c.Card.Name))
-
-                .Include(b => b.ChangesFrom)
-                    .ThenInclude(c => c.Transaction)
-                .Include(b => b.ChangesFrom)
-                    .ThenInclude(c => c.Card)
-                .Include(b => b.ChangesFrom)
-                    .ThenInclude(c => c.To)
-
-                .Include(b => b.ChangesFrom
-                    .OrderBy(c => c.Card.Name))
+                .OrderByDescending(c => c.Transaction.Applied)
+                    .ThenBy(c => c.From!.Name)
+                    .ThenBy(c => c.To.Name)
+                        .ThenBy(c => c.Card.Name)
+                        .ThenBy(c => c.Amount)
                         
-                .OrderBy(b => b.Id)
-                .AsSplitQuery()
                 .AsNoTrackingWithIdentityResolution();
         }
-
-
-        // private void 
 
 
         private BoxAndTransactions WithTransactions(Box box)

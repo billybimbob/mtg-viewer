@@ -7,8 +7,7 @@
 }
 
 
-<h2>@Model.Deck.Owner.Name's @Model.Deck.Name</h2>
-<hr />
+<h1>@Model.Deck.Owner.Name's @Model.Deck.Name</h1>
 
 @if (Model.IsOwner)
 {
@@ -34,7 +33,7 @@
             <th> @Html.DisplayNameForInnerType((CardAmount ca) => ca.Card) </th>
             <th> @Html.DisplayNameForInnerType((Card c) => c.ManaCost) </th>
             <th> @Html.DisplayNameForInnerType((Card c) => c.SetName) </th>
-            <th> Current Amount </th>
+            <th> Cards In Deck </th>
             <th> Take Requests </th>
             <th> Return Requests </th>
         </tr>

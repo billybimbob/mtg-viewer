@@ -101,22 +101,22 @@ namespace MTGViewer.Data
                 throw new ArgumentException("The exchanges are empty");
             }
 
-            if (_requests.Any(ex => ex.Card.Name != Name))
+            if (_requests.Any(cr => cr.Card.Name != Name))
             {
                 throw new ArgumentException("All exchanges do not match the name");
             }
 
-            if (_requests.Any(ex => ex.Card.ManaCost != ManaCost))
+            if (_requests.Any(cr => cr.Card.ManaCost != ManaCost))
             {
                 throw new ArgumentException("All exchanges do not match the mana cost");
             }
 
-            if (_requests.Any(ex => ex.IsReturn != IsReturn))
+            if (_requests.Any(cr => cr.IsReturn != IsReturn))
             {
                 throw new ArgumentException("All exchanges are not matching trades");
             }
 
-            if (_requests.Any(ex => ex.TargetId != TargetId && ex.Target != Target))
+            if (_requests.Any(cr => cr.TargetId != TargetId && cr.Target != Target))
             {
                 throw new ArgumentException("All exchanges do not have the same location");
             }
@@ -361,9 +361,9 @@ namespace MTGViewer.Data
         {
             // do a full outer join
             var amountTable = amounts.ToDictionary(ca => ca.CardId ?? ca.Card.Id);
-            var exchangeLookup = requests.ToLookup(ex => ex.CardId ?? ex.Card.Id);
+            var requestLookup = requests.ToLookup(cr => cr.CardId ?? cr.Card.Id);
 
-            var allCardIds = exchangeLookup
+            var allCardIds = requestLookup
                 .Select(g => g.Key)
                 .Union(amountTable.Keys);
 
@@ -371,7 +371,7 @@ namespace MTGViewer.Data
                 .Select(cid =>
                 {
                     amountTable.TryGetValue(cid, out var amount);
-                    return new AmountRequestGroup(amount, exchangeLookup[cid]);
+                    return new AmountRequestGroup(amount, requestLookup[cid]);
                 })
                 .ToList();
 
@@ -433,6 +433,13 @@ namespace MTGViewer.Data
             _requestGroups.GetEnumerator();
     }
 
+
+
+    public record Transfer(
+        Transaction Transaction, 
+        Location? From, 
+        Location To,
+        IReadOnlyList<Change> Changes) { }
 
 
 

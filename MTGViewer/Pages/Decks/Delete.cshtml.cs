@@ -57,7 +57,8 @@ namespace MTGViewer.Pages.Decks
                 return NotFound();
             }
 
-            var deckTrades = deck.GetTrades()
+            var deckTrades = deck
+                .GetTrades()
                 .OrderBy(t => t.Card.Name)
                 .ToList();
 
@@ -107,7 +108,7 @@ namespace MTGViewer.Pages.Decks
                 .ToLookup(ca => ca.Card.Name);
 
             var requestsByName = deck.Requests
-                .ToLookup(ex => ex.Card.Name);
+                .ToLookup(cr => cr.Card.Name);
 
             var cardNames = amountsByName
                 .Select(g => g.Key)

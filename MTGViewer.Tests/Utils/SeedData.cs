@@ -416,6 +416,43 @@ namespace MTGViewer.Tests.Utils
         }
 
 
+        internal static async Task<(CardRequest take, CardRequest ret)> GetMixedRequestDeckAsync(
+            this CardDbContext dbContext)
+        {
+            var returnTarget = await dbContext.Amounts
+                .Include(ca => ca.Card)
+                .Include(ca => ca.Location)
+                .AsNoTracking()
+                .FirstAsync(ca => ca.Location is Deck && ca.Amount > 0);
+
+            var deckTarget = (Deck)returnTarget.Location;
+
+            var takeTarget = await dbContext.Amounts
+                .Where(ca => ca.Location is Box 
+                    && ca.Amount > 0
+                    && ca.CardId != returnTarget.CardId)
+                .Select(ca => ca.Card)
+                .AsNoTracking()
+                .FirstAsync();
+
+            var targetCap = await dbContext.Amounts
+                .Where(ca => ca.Location is Box && ca.CardId == takeTarget.Id)
+                .Select(ca => ca.Amount)
+                .SumAsync();
+
+            var deckReturn = await dbContext.FindRequestAsync(
+                returnTarget.Card, deckTarget, isReturn: true, returnTarget.Amount);
+
+            var deckTake = await dbContext.FindRequestAsync(
+                takeTarget, deckTarget, isReturn: false, targetCap);
+
+            await dbContext.SaveChangesAsync();
+            dbContext.ChangeTracker.Clear();
+
+            return (deckTake, deckReturn);
+        }
+
+
         internal static async Task<Transaction> CreateTransactionAsync(
             this CardDbContext dbContext, int numCards = 0)
         {

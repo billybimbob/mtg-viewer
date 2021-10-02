@@ -53,16 +53,16 @@ namespace MTGViewer.Data
         public string CardId { get; init; } = null!;
 
 
-        [Display(Name = "To Deck")]
-        [JsonIgnore]
-        public Deck To { get; init; } = null!;
-        public int ToId { get; init; }
-
-
         [Display(Name = "From Deck")]
         [JsonIgnore]
         public Deck From { get; init; } = null!;
         public int FromId { get; init; }
+
+
+        [Display(Name = "To Deck")]
+        [JsonIgnore]
+        public Deck To { get; init; } = null!;
+        public int ToId { get; init; }
 
 
         [Range(1, int.MaxValue)]

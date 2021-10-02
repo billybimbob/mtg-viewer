@@ -14,15 +14,15 @@
         <p>Do you want to exchange card requests with the shared collection?</p>
         <p>Alternatively, requests can be made to other players</p>
 
-        <form method="POST" class="d-inline">
+        <form method="POST">
             <input type="hidden" asp-for="Deck.Id" />
-            <input type="submit" value="Exchange" class="btn btn-secondary" />
-        </form>
+            <input type="submit" class="btn btn-secondary" value="Exchange" />
 
-        <a asp-page="/Transfers/Request"
-            asp-route-deckid="@Model.Deck.Id"
-            class="btn btn-secondary">
-            Player Request </a>
+            <a asp-page="/Transfers/Request"
+                asp-route-deckid="@Model.Deck.Id"
+                class="btn btn-secondary">
+                Player Request </a>
+        </form>
     </div>
 }
 else if (!Model.Deck.Requests.Any())

@@ -18,19 +18,23 @@
     </div>
 }
 
+
+<h2>Received Trades</h2>
+
 <table class="table">
     <thead>
         <tr>
             <th> @Html.DisplayNameForInnerType((Trade t) => t.Card) </th>
-            <th> @Html.DisplayNameForInnerType((Card c) => c.ManaCost) </th>
             <th> @Html.DisplayNameForInnerType((Card c) => c.SetName) </th>
+            <th> Requested By </th>
             <th> @Html.DisplayNameForInnerType((Trade t) => t.To) </th>
+            <th> Deck Color </th>
             <th> @Html.DisplayNameForInnerType((Trade t) => t.Amount) </th>
             <th></th>
         </tr>
     </thead>
     <tbody>
-        @foreach (var trade in Model.Trades)
+        @foreach (var trade in Model.Source.TradesFrom)
         {
             <tr>
                 <td>
@@ -38,34 +42,31 @@
                         asp-route-id="@trade.CardId">
                         @trade.Card.Name </a>
                 </td>
-                <td>
-                    @foreach (var cost in trade.Card.GetManaSymbols())
-                    {
-                        <span class="m-1 ms ms-@cost ms-cost"></span>
-                    }
-                </td>
+
                 <td> @trade.Card.SetName </td>
+                <td> @trade.To.Owner.Name </td>
                 <td>
                     <a asp-page="/Decks/Viewer"
                        asp-route-deckid="@trade.ToId">
                        @trade.To.Name </a>
                 </td>
 
+                <td>
+                    @foreach (var cost in trade.To.GetColorSymbols())
+                    {
+                        <span class="m-1 ms ms-@cost ms-cost"></span>
+                    }
+                </td>
+
                 <form method="POST">
                     <td>
-                        <div>
-                            <input type="text"
-                                id="amountLabel"
-                                class="form-control"
-                                value="@trade.Amount"
-                                readonly />
-
-                            <input type="range" 
-                                class="form-control"
-                                name="amount"
-                                value="@trade.Amount" min="1" max="@trade.Amount"
-                                oninput="amountLabel.value=this.value"/>
-                        </div>
+                        <select title="trade amount" name="amount" class="form-control form-control-sm">
+                            @for (int i = 1; i < trade.Amount; ++i)
+                            {
+                                <option>@i</option>
+                            }
+                            <option selected>@trade.Amount</option>
+                        </select>
                     </td>
                     <td>
                         <input type="hidden" asp-for="Source.Id" />
@@ -86,3 +87,43 @@
         }
     </tbody>
 </table>
+
+
+@if (Model.Source.Cards.Any())
+{
+    <h2>Current Cards</h2>
+
+    <table class="table">
+        <thead>
+            <tr>
+                <th>@Html.DisplayNameForInnerType((Card c) => c.Name)</th>
+                <th>@Html.DisplayNameForInnerType((Card c) => c.ManaCost)</th>
+                <th>@Html.DisplayNameForInnerType((Card c) => c.SetName)</th>
+                <th>@Html.DisplayNameForInnerType((CardAmount ca) => ca.Amount)</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var amount in Model.Source.Cards)
+            {
+                var card = amount.Card;
+                <tr>
+                    <td>
+                        <a asp-page="/Cards/Details"
+                            asp-route-id="@card.Id"
+                            class="fw-bold">
+                            @card.Name </a>
+                    </td>
+                    <td>
+                        @foreach (var cost in card.GetManaSymbols())
+                        {
+                            <span class="m-1 ms ms-@cost ms-cost"></span>
+                        }
+                    </td>
+
+                    <td>@card.SetName</td>
+                    <td>@amount.Amount</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}

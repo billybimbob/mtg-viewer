@@ -8,15 +8,13 @@
 
 <h1>Shared Collection</h1>
 
-<div class="mb-3">
+<form method="POST" class="mb-3">
     <a asp-page="Create" class="btn btn-secondary">Add Box</a>
 
-    <form method="POST" class="d-inline">
-        <input type="submit" value="Optimize" class="btn btn-secondary" />
-    </form>
+    <input type="submit" class="btn btn-secondary" value="Optimize" />
 
     <a asp-page="History" class="btn btn-secondary">History </a>
-</div>
+</form>
 
 @if (!string.IsNullOrEmpty(Model.PostMessage))
 {

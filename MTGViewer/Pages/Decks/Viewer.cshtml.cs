@@ -75,7 +75,7 @@ namespace MTGViewer.Pages.Decks
                 .ToDictionary(ca => ca.CardId);
 
             var requestsById = deck.Requests
-                .ToLookup(ex => ex.CardId);
+                .ToLookup(cr => cr.CardId);
 
             var cardIds = amountsById
                 .Select(g => g.Key)

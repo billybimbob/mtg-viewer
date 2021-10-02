@@ -271,9 +271,70 @@ namespace MTGViewer.Tests.Pages.Decks
         }
 
 
-        // [Fact]
-        // public async Task OnPost_MixedTakeReturns_AppliesChanges()
-        // {
-        // }
+        [Fact]
+        public async Task OnPost_TradeActive_NoChange()
+        {
+            var request = await _dbContext.GetReturnRequestAsync(2);
+            var deckOwnerId = await RequestOwnerId(request).SingleAsync();
+
+            var tradeTarget = await _dbContext.Amounts
+                .Where(ca => ca.Location is Deck
+                    && (ca.Location as Deck).OwnerId != deckOwnerId)
+                .Select(ca => ca.Location)
+                .FirstAsync();
+
+            var activeTrade = new Trade
+            {
+                Card = request.Card,
+                To = request.Target,
+                From = (Deck)tradeTarget,
+                Amount = 3
+            };
+
+            _dbContext.Trades.Attach(activeTrade);
+            await _dbContext.SaveChangesAsync();
+            _dbContext.ChangeTracker.Clear();
+
+            await _checkoutModel.SetModelContextAsync(_userManager, deckOwnerId);
+
+            var boxBefore = await BoxAmount(request).SumAsync();
+            var actualBefore = await ActualAmount(request).SingleAsync();
+
+            var result = await _checkoutModel.OnPostAsync(request.TargetId);
+
+            var boxAfter = await BoxAmount(request).SumAsync();
+            var actualAfter = await ActualAmount(request).SingleAsync();
+
+            Assert.IsType<RedirectToPageResult>(result);
+            Assert.Equal(boxBefore, boxAfter);
+            Assert.Equal(actualBefore, actualAfter);
+        }
+
+
+        [Fact]
+        public async Task OnPost_MixedTakeReturns_AppliesChanges()
+        {
+            var (take, ret) = await _dbContext.GetMixedRequestDeckAsync();
+            var deckOwnerId = await RequestOwnerId(take).SingleAsync();
+
+            await _checkoutModel.SetModelContextAsync(_userManager, deckOwnerId);
+
+            var takeTarget = take.Amount;
+            var retTarget = ret.Amount;
+
+            var actualTakeBefore = await ActualAmount(take).SingleOrDefaultAsync();
+            var actualRetBefore = await ActualAmount(ret).SingleAsync();
+
+            var result = await _checkoutModel.OnPostAsync(take.TargetId);
+
+            var actualTakeAfter = await ActualAmount(take).SingleAsync();
+            var actualRetAfter = await ActualAmount(ret).SingleOrDefaultAsync();
+
+            Assert.IsType<RedirectToPageResult>(result);
+
+            Assert.Equal(take.TargetId, ret.TargetId);
+            Assert.Equal(takeTarget, actualTakeAfter - actualTakeBefore);
+            Assert.Equal(retTarget, actualRetBefore - actualRetAfter);
+        }
     }
 }

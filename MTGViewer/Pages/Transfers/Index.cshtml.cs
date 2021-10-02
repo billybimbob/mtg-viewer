@@ -81,7 +81,8 @@ namespace MTGViewer.Pages.Transfers
                     .ThenInclude(ca => ca.Card)
 
                 .OrderBy(d => d.Name)
-                .AsSplitQuery();
+                .AsSplitQuery()
+                .AsNoTrackingWithIdentityResolution();
         }
 
 

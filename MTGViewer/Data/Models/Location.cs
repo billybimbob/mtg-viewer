@@ -80,7 +80,7 @@ namespace MTGViewer.Data
                 .SelectMany(ca => ca.Card.GetManaSymbols());
 
             var requestSymbols = Requests
-                .SelectMany(ex => ex.Card.GetManaSymbols());
+                .SelectMany(cr => cr.Card.GetManaSymbols());
 
             return cardSymbols
                 .Union(requestSymbols)

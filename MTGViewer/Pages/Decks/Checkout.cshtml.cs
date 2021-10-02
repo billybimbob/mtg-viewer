@@ -133,6 +133,8 @@ namespace MTGViewer.Pages.Decks
 
             var boxReturns = ApplyDeckReturns(deck);
 
+            RemoveEmpty(deck);
+
             try
             {
                 if (boxReturns.Any())
@@ -171,17 +173,10 @@ namespace MTGViewer.Pages.Decks
 
             ApplyExactTakes(transaction, takes, availables, actuals);
 
-            var remainingTakes = takes.Where(ex => ex.Amount > 0);
+            var remainingTakes = takes.Where(cr => cr.Amount > 0);
             var remainingAvails = availables.Where(ca => ca.Amount > 0);
 
             ApplyCloseTakes(transaction, remainingTakes, remainingAvails, actuals);
-
-            var emptyAmounts = deck.Cards.Where(ca => ca.Amount == 0);
-            var finishedRequests = deck.Requests.Where(cr => cr.Amount == 0);
-
-            // do not remove empty availables
-            _dbContext.Amounts.RemoveRange(emptyAmounts);
-            _dbContext.Requests.RemoveRange(finishedRequests);
         }
 
 
@@ -257,7 +252,7 @@ namespace MTGViewer.Pages.Decks
             IReadOnlyDictionary<string, CardAmount> actuals)
         {
             var takesByName = takes
-                .GroupBy(ex => ex.Card.Name,
+                .GroupBy(cr => cr.Card.Name,
                     (_, takes) => new RequestNameGroup(takes));
 
             var availsByName = availables
@@ -327,14 +322,27 @@ namespace MTGViewer.Pages.Decks
                 }
             }
 
-            var emptyAmounts = deck.Cards.Where(ca => ca.Amount == 0);
-
-            _dbContext.Amounts.RemoveRange(emptyAmounts);
-            _dbContext.Requests.RemoveRange(appliedReturns);
-
-            return appliedReturns
+            var cardsReturning = appliedReturns
                 .Select(cr => new CardReturn(cr.Card, cr.Amount, deck))
                 .ToList();
+
+            foreach (var ret in appliedReturns)
+            {
+                ret.Amount = 0;
+            }
+
+            return cardsReturning;
+        }
+
+
+        private void RemoveEmpty(Deck deck)
+        {
+            var emptyAmounts = deck.Cards.Where(ca => ca.Amount == 0);
+            var finishedRequests = deck.Requests.Where(cr => cr.Amount == 0);
+
+            // do not remove empty availables
+            _dbContext.Amounts.RemoveRange(emptyAmounts);
+            _dbContext.Requests.RemoveRange(finishedRequests);
         }
     }
 }

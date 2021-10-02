@@ -18,103 +18,49 @@
 <table class="table">
     <thead>
         <tr>
-            <th> Box </th>
             <th> @Html.DisplayNameForInnerType((Transaction t) => t.Applied) </th>
-            <th> @Html.DisplayNameForInnerType((Change c) => c.Card) </th>
-            <th> @Html.DisplayNameForInnerType((Change c) => c.To) </th>
             <th> @Html.DisplayNameForInnerType((Change c) => c.From) </th>
+            <th> @Html.DisplayNameForInnerType((Change c) => c.To) </th>
+            <th> @Html.DisplayNameForInnerType((Change c) => c.Card) </th>
             <th> @Html.DisplayNameForInnerType((Change c) => c.Amount) </th>
             <th></th>
         </tr>
     </thead>
     <tbody>
-        @foreach (var (box, transactions) in Model.Boxes)
+        @foreach (var (transaction, from, to, changes) in Model.Transfers)
         {
-            var firstTransaction = transactions.FirstOrDefault();
+            var firstChange = changes.First(); // guranteed >= 1 changes
 
-            @if (firstTransaction != null)
-            {
-                var numChanges = transactions.Sum(t => t.Changes.Count);
-                var changes = firstTransaction.Changes;
-                var firstChange = changes.First();
-
-                <tr>
-                    <td rowspan="@numChanges" class="fw-bold"> @box.Name </td>
-                    <td rowspan="@changes.Count"> @firstTransaction.Applied </td>
-
-                    <td> @firstChange.Card.Name </td>
-                    <td> @(firstChange.To == box ? "--" : firstChange.To.Name) </td>
-                    <td> @(firstChange.From == box ? "--" : firstChange.From?.Name ?? "") </td>
-                    <td> @firstChange.Amount </td>
-
-                    <td rowspan="@changes.Count">
-                        @if (Model.IsSharedTransaction.Contains(firstTransaction.Id))
-                        {
-                            <form method="POST">
-                                <input type="hidden" asp-for="@firstTransaction.Id" name="transactionId"/>
-                                <input type="submit" value="Remove" class="btn btn-secondary" />
-                            </form>
-                        }
-                    </td>
-                </tr>
-
-                @foreach (var change in changes.Skip(1))
+            <tr>
+                @if (Model.IsFirstTransfer.Contains( (transaction.Id, from?.Id, to.Id) ))
                 {
-                    <tr>
-                        <td> @change.Card.Name </td>
-                        <td> @(change.To == box ? "--" : change.To.Name) </td>
-                        <td> @(change.From == box ? "--" : change.From?.Name ?? "") </td>
-                        <td> @change.Amount </td>
-                    </tr>
+                    <td rowspan="@transaction.Changes.Count"> @transaction.Applied </td>
                 }
-            }
-            else
-            {
-                <tr>
-                    <td class="fw-bold">@box.Name</td>
-                    <td></td>
-                    <td></td>
-                    <td></td>
-                    <td></td>
-                    <td></td>
-                    <td></td>
-                </tr>
-            }
 
-            @foreach (var transaction in transactions.Skip(1))
-            {
-                var changes = transaction.Changes;
-                var firstChange = changes.First(); // guranteed >= 1 changes
-                var restChanges = changes.Skip(1);
+                <td rowspan="@changes.Count"> @(firstChange.From?.Name ?? "Added") </td>
+                <td rowspan="@changes.Count"> @firstChange.To.Name </td>
 
-                <tr>
-                    <td rowspan="@changes.Count"> @transaction.Applied </td>
+                <td> @firstChange.Card.Name </td>
+                <td> @firstChange.Amount </td>
 
-                    <td> @firstChange.Card.Name </td>
-                    <td> @(firstChange.To == box ? "--" : firstChange.To.Name) </td>
-                    <td> @(firstChange.From == box ? "--" : firstChange.From?.Name ?? "") </td>
-                    <td> @firstChange.Amount </td>
-
-                    <td rowspan="@changes.Count">
-                        @if (Model.IsSharedTransaction.Contains(transaction.Id))
-                        {
-                            <form method="POST">
-                                <input type="hidden" asp-for="@transaction.Id" name="transactionId"/>
-                                <input type="submit" value="Remove" class="btn btn-secondary" />
-                            </form>
-                        }
-                    </td>
-                </tr>
-
-                @foreach (var change in restChanges)
+                @if (Model.IsFirstTransfer.Contains( (transaction.Id, from?.Id, to.Id) )
+                    && Model.IsSharedTransaction.Contains(transaction.Id))
                 {
-                    <tr>
-                        <td> @change.Card.Name </td>
-                        <td> @(change.To == box ? "--" : change.To.Name) </td>
-                        <td> @(change.From == box ? "--" : change.From?.Name ?? "") </td>
-                        <td> @change.Amount </td>
-                    </tr>
+                    <td rowspan="@transaction.Changes.Count">
+                        <form method="POST">
+                            <input type="hidden" asp-for="@transaction.Id" name="transactionId"/>
+                            <input type="submit" value="Remove" class="btn btn-secondary" />
+                        </form>
+                    </td>
                 }
+            </tr>
+
+            @foreach (var change in changes.Skip(1))
+            {
+                <tr>
+                    <td> @change.Card.Name </td>
+                    <td> @change.Amount </td>
+                </tr>
             }
         }
     </tbody>

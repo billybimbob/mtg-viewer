@@ -25,8 +25,8 @@
             <th>
                 Deck @Html.DisplayNameForInnerType((Deck d) => d.Name)
             </th>
-            <th>Number of Cards</th>
             <th>Colors</th>
+            <th>Number of Cards</th>
             <th>State</th>
             <th></th>
         </tr>
@@ -52,13 +52,15 @@
                     }
                 </td>
 
-                <td> @deck.Cards.Sum(ca => ca.Amount) </td>
                 <td>
                     @foreach (var color in deck.GetColorSymbols())
                     {
                         <span class="m-1 ms ms-@color ms-cost"></span>
                     }
                 </td>
+
+                <td> @deck.Cards.Sum(ca => ca.Amount) </td>
+
                 <td>
                     @if (state is State.Requesting)
                     {
@@ -79,6 +81,7 @@
                         @state.ToString()
                     }
                 </td>
+                
                 <td>
                     <a asp-page="History"
                         asp-route-deckid="@deck.Id"

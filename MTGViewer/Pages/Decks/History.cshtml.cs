@@ -41,67 +41,75 @@ namespace MTGViewer.Pages.Decks
         [BindProperty]
         public Deck? Deck { get; set; }
 
-        public IReadOnlyList<Transaction>? Transactions { get; private set; }
+        public IReadOnlyList<Transfer>? Transfers { get; private set; }
+
+        public IReadOnlySet<(int, int?, int)>? IsFirstTransfer { get; private set; }
 
 
         public async Task<IActionResult> OnGetAsync(int deckId)
         {
-            Deck = await DeckForHistory(deckId).SingleOrDefaultAsync();
+            var userId = _userManager.GetUserId(User);
 
-            if (Deck == default)
+            var deck = await _dbContext.Decks
+                .AsNoTracking()
+                .SingleOrDefaultAsync(d => d.Id == deckId && d.OwnerId == userId);
+
+            if (deck == default)
             {
                 return NotFound();
             }
 
-            var toTransactions = Deck.ChangesTo.Select(c => c.Transaction);
-            var fromTransactions = Deck.ChangesFrom.Select(c => c.Transaction);
+            var changes = await ChangesForHistory(deckId).ToListAsync();
 
-            Transactions = toTransactions
-                .Union(fromTransactions)
-                .OrderByDescending(t => t.Applied)
+
+            Deck = DeckFromChanges(deckId, changes) ?? deck;
+
+            Transfers = changes
+                .GroupBy(c => (c.Transaction, c.From, c.To),
+                    (tof, changes) => 
+                        new Transfer(tof.Transaction, tof.From, tof.To, changes.ToList()))
                 .ToList();
 
-            // db sort not working
-            foreach (var transaction in Transactions)
-            {
-                transaction.Changes.Sort(
-                    (c1, c2) => c1.Card.Name.CompareTo(c2.Card.Name));
-            }
+            IsFirstTransfer = changes
+                .Select(c => (c.TransactionId, c.FromId, c.ToId))
+                .ToHashSet();
+
 
             return Page();
         }
 
 
-        private IQueryable<Deck> DeckForHistory(int deckId)
+        private IQueryable<Change> ChangesForHistory(int deckId)
         {
-            var userId = _userManager.GetUserId(User);
+            return _dbContext.Changes
+                .Where(c => c.ToId == deckId || c.FromId == deckId)
+                
+                .Include(c => c.Transaction)
+                .Include(c => c.From)
+                .Include(c => c.To)
+                .Include(c => c.Card)
 
-            return _dbContext.Decks
-                .Where(d => d.Id == deckId && d.OwnerId == userId)
-
-                .Include(d => d.ChangesTo)
-                    .ThenInclude(c => c.Transaction)
-                .Include(d => d.ChangesTo)
-                    .ThenInclude(c => c.From)
-                .Include(d => d.ChangesTo)
-                    .ThenInclude(c => c.Card)
-
-                .Include(d => d.ChangesTo
-                    .OrderBy(c => c.Card.Name))
-
-                .Include(d => d.ChangesFrom)
-                    .ThenInclude(c => c.Transaction)
-                .Include(d => d.ChangesFrom)
-                    .ThenInclude(c => c.To)
-                .Include(d => d.ChangesFrom)
-                    .ThenInclude(c => c.Card)
-
-                .Include(d => d.ChangesFrom
-                    .OrderBy(c => c.Card.Name))
+                .OrderByDescending(c => c.Transaction.Applied)
+                    .ThenBy(c => c.From!.Name)
+                    .ThenBy(c => c.To.Name)
+                        .ThenBy(c => c.Card.Name)
+                        .ThenBy(c => c.Amount)
                         
-                .OrderBy(b => b.Id)
-                .AsSplitQuery()
                 .AsNoTrackingWithIdentityResolution();
+        }
+
+
+        private Deck? DeckFromChanges(int deckId, IReadOnlyList<Change> changes)
+        {
+            var deckFromChanges = changes
+                .Select(c => c.To)
+                .FirstOrDefault(l => l.Id == deckId);
+
+            deckFromChanges ??= changes
+                .Select(c => c.From)
+                .FirstOrDefault(l => l?.Id == deckId);
+
+            return deckFromChanges as Deck;
         }
 
 

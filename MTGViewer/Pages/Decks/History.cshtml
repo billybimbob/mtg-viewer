@@ -19,43 +19,46 @@
     <thead>
         <tr>
             <th> @Html.DisplayNameForInnerType((Transaction t) => t.Applied) </th>
-            <th> @Html.DisplayNameForInnerType((Change c) => c.Card) </th>
-            <th> @Html.DisplayNameForInnerType((Change c) => c.To) </th>
             <th> @Html.DisplayNameForInnerType((Change c) => c.From) </th>
+            <th> @Html.DisplayNameForInnerType((Change c) => c.To) </th>
+            <th> @Html.DisplayNameForInnerType((Change c) => c.Card) </th>
             <th> @Html.DisplayNameForInnerType((Change c) => c.Amount) </th>
             <th></th>
         </tr>
     </thead>
     <tbody>
-        @foreach (var transaction in Model.Transactions)
+        @foreach (var (transaction, from, to, changes) in Model.Transfers)
         {
-            var changes = transaction.Changes;
             var firstChange = changes.First(); // guranteed >= 1 changes
-            var restChanges = changes.Skip(1);
 
             <tr>
-                <td rowspan="@changes.Count"> @transaction.Applied </td>
+                @if (Model.IsFirstTransfer.Contains( (transaction.Id, from?.Id, to.Id) ))
+                {
+                    <td rowspan="@transaction.Changes.Count"> @transaction.Applied </td>
+                }
+
+                <td rowspan="@changes.Count"> @(firstChange.From?.Name ?? "Added") </td>
+                <td rowspan="@changes.Count"> @firstChange.To.Name </td>
 
                 <td> @firstChange.Card.Name </td>
-                <td> @(firstChange.To == Model.Deck ? "--" : firstChange.To.Name) </td>
-                <td> @(firstChange.From == Model.Deck ? "--" : firstChange.From?.Name ?? "") </td>
                 <td> @firstChange.Amount </td>
 
-                <td rowspan="@changes.Count">
-                    <form method="POST">
-                        <input type="hidden" asp-for="Deck.Id" />
-                        <input type="hidden" asp-for="@transaction.Id" name="transactionId"/>
-                        <input type="submit" value="Remove" class="btn btn-secondary" />
-                    </form>
-                </td>
+                @if (Model.IsFirstTransfer.Contains( (transaction.Id, from?.Id, to.Id) ))
+                {
+                    <td rowspan="@transaction.Changes.Count">
+                        <form method="POST">
+                            <input type="hidden" asp-for="Deck.Id" />
+                            <input type="hidden" asp-for="@transaction.Id" name="transactionId"/>
+                            <input type="submit" value="Remove" class="btn btn-secondary" />
+                        </form>
+                    </td>
+                }
             </tr>
 
-            @foreach (var change in restChanges)
+            @foreach (var change in changes.Skip(1))
             {
                 <tr>
                     <td> @change.Card.Name </td>
-                    <td> @(change.To == Model.Deck ? "--" : change.To.Name) </td>
-                    <td> @(change.From == Model.Deck ? "--" : change.From?.Name ?? "") </td>
                     <td> @change.Amount </td>
                 </tr>
             }

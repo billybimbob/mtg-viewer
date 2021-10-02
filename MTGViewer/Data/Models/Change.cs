@@ -26,13 +26,13 @@ namespace MTGViewer.Data
 
 
         [JsonIgnore]
-        public Location To { get; init; } = null!;
-        public int ToId { get; init; }
+        public Location? From { get; init; } = null!;
+        public int? FromId { get; init; }
 
 
         [JsonIgnore]
-        public Location? From { get; init; } = null!;
-        public int? FromId { get; init; }
+        public Location To { get; init; } = null!;
+        public int ToId { get; init; }
 
 
         [Range(1, int.MaxValue)]

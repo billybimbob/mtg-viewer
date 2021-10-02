@@ -38,8 +38,6 @@ namespace MTGViewer.Pages.Transfers
 
         public UserRef? Receiver { get; private set; }
 
-        public IReadOnlyList<Trade>? Trades { get; private set; }
-
 
         public async Task<IActionResult> OnGetAsync(int deckId)
         {
@@ -48,8 +46,7 @@ namespace MTGViewer.Pages.Transfers
                 return NotFound();
             }
 
-            var deck = await DeckForReview(deckId)
-                .SingleOrDefaultAsync();
+            var deck = await DeckForReview(deckId).SingleOrDefaultAsync();
 
             if (deck == default)
             {
@@ -61,9 +58,10 @@ namespace MTGViewer.Pages.Transfers
                 return RedirectToPage("./Index");
             }
 
+            CapFromTrades(deck);
+
             Source = deck;
             Receiver = deck.Owner;
-            Trades = CappedFromTrades(deck).ToList();
 
             return Page();
         }
@@ -78,6 +76,10 @@ namespace MTGViewer.Pages.Transfers
 
                 .Include(d => d.Owner)
                 .Include(d => d.Cards)
+                    .ThenInclude(ca => ca.Card)
+
+                .Include(d => d.Cards
+                    .OrderBy(ca => ca.Card.Name))
 
                 .Include(d => d.TradesFrom)
                     .ThenInclude(t => t.Card)
@@ -85,17 +87,26 @@ namespace MTGViewer.Pages.Transfers
                 .Include(d => d.TradesFrom)
                     .ThenInclude(t => t.To.Owner)
 
+                .Include(d => d.TradesFrom)
+                    .ThenInclude(t => t.To.Cards)
+                        .ThenInclude(ca => ca.Card)
+
+                .Include(d => d.TradesFrom)
+                    .ThenInclude(t => t.To.Requests)
+                        .ThenInclude(ca => ca.Card)
+
                 .Include(d => d.TradesFrom
-                    .OrderBy(t => t.Card.Name))
+                    .OrderBy(t => t.To.Owner.Name)
+                        .ThenBy(t => t.Card.Name))
 
                 .AsSplitQuery()
                 .AsNoTrackingWithIdentityResolution();
         }
 
 
-        private IEnumerable<Trade> CappedFromTrades(Deck deck)
+        private void CapFromTrades(Deck deck)
         {
-            var tradesWithAmountCap = deck.TradesFrom
+            var tradesWithCapAmount = deck.TradesFrom
                 .GroupJoin( deck.Cards,
                     t => t.CardId,
                     ca => ca.CardId,
@@ -104,15 +115,13 @@ namespace MTGViewer.Pages.Transfers
                     ta => ta.actuals.DefaultIfEmpty(),
                     (ta, actual) => (ta.trade, actual?.Amount ?? 0));
 
-            foreach (var (trade, cap) in tradesWithAmountCap)
+            foreach (var (trade, cap) in tradesWithCapAmount)
             {
                 // modifications are not saved
                 trade.Amount = Math.Min(trade.Amount, cap);
             }
 
-            return deck.TradesFrom
-                .Where(t => t.Amount > 0)
-                .OrderBy(t => t.Card.Name);
+            deck.TradesFrom.RemoveAll(t => t.Amount == 0);
         }
 
 
@@ -192,25 +201,21 @@ namespace MTGViewer.Pages.Transfers
             return _dbContext.Trades
                 .Where(t => t.Id == tradeId && t.From.OwnerId == userId)
 
-                .Include(t => t.To)
-                    .ThenInclude(d => d.Cards
-                        .Where(ca => ca.CardId == tradeCard.Id))
-                        .ThenInclude(ca => ca.Card)
+                .Include(t => t.To.Cards
+                    .Where(ca => ca.CardId == tradeCard.Id))
+                    .ThenInclude(ca => ca.Card)
 
-                .Include(t => t.To)
-                    .ThenInclude(d => d.Requests
-                        .Where(cr => !cr.IsReturn && cr.Card.Name == tradeCard.Name))
-                        .ThenInclude(cr => cr.Card)
+                .Include(t => t.To.Requests
+                    .Where(cr => !cr.IsReturn && cr.Card.Name == tradeCard.Name))
+                    .ThenInclude(cr => cr.Card)
 
-                .Include(t => t.From)
-                    .ThenInclude(d => d.Cards
-                        .Where(ca => ca.CardId == tradeCard.Id))
-                        .ThenInclude(ca => ca.Card)
+                .Include(t => t.From.Cards
+                    .Where(ca => ca.CardId == tradeCard.Id))
+                    .ThenInclude(ca => ca.Card)
 
-                .Include(t => t.From)
-                    .ThenInclude(d => d.Requests
-                        .Where(cr => !cr.IsReturn && cr.CardId == tradeCard.Id))
-                        .ThenInclude(cr => cr.Card)
+                .Include(t => t.From.Requests
+                    .Where(cr => !cr.IsReturn && cr.CardId == tradeCard.Id))
+                    .ThenInclude(cr => cr.Card)
 
                 .AsSplitQuery();
         }
@@ -237,24 +242,26 @@ namespace MTGViewer.Pages.Transfers
                 ToTakes: toTakes.Any()
                     ? new RequestNameGroup(toTakes) : default,
 
-                FromAmount: trade.From!.Cards
+                FromAmount: trade.From.Cards
                     .Single(ca => ca.CardId == trade.CardId));
         }
 
 
         private void ApplyAccept(AcceptRequest acceptRequest, int amount)
         {
-            var (trade, toRequests, fromAmount) = acceptRequest;
+            var acceptAmount = Math.Max(amount, 1);
 
-            ModifyAmountsAndRequests(acceptRequest, amount);
+            ModifyAmountsAndRequests(acceptRequest, acceptAmount);
+
+            var (trade, toTakes, fromAmount) = acceptRequest;
 
             if (fromAmount.Amount == 0)
             {
                 _dbContext.Amounts.Remove(fromAmount);
             }
 
-            var finishedRequests = toRequests
-                ?.Where(ex  => ex.Amount == 0)
+            var finishedRequests = toTakes
+                ?.Where(cr  => cr.Amount == 0)
                 ?? Enumerable.Empty<CardRequest>();
 
             _dbContext.Requests.RemoveRange(finishedRequests);
@@ -262,47 +269,49 @@ namespace MTGViewer.Pages.Transfers
         }
 
 
-        private void ModifyAmountsAndRequests(AcceptRequest acceptRequest, int requestAmount)
+        private void ModifyAmountsAndRequests(AcceptRequest acceptRequest, int acceptAmount)
         {
-            var (trade, toRequests, fromAmount) = acceptRequest;
+            var (trade, toTakes, fromAmount) = acceptRequest;
 
-            if (toRequests == default)
+            if (toTakes == default)
             {
                 return;
             }
 
-            var (toAmount, fromRequest) = GetAcceptTargets(acceptRequest);
+            var (toAmount, fromTake) = GetAcceptTargets(acceptRequest);
 
-            var exactRequest = toRequests
-                .SingleOrDefault(ex => ex.CardId == trade.CardId);
+            var exactTake = toTakes
+                .SingleOrDefault(cr => cr.CardId == trade.CardId);
 
             int change = new [] {
-                requestAmount, trade.Amount,
-                toRequests.Amount, fromAmount.Amount }.Min();
+                acceptAmount, trade.Amount,
+                toTakes.Amount, fromAmount.Amount }.Min();
 
-            if (exactRequest != default)
+            if (exactTake != default)
             {
-                int exactChange = Math.Min(change, exactRequest.Amount);
+                int exactChange = Math.Min(change, exactTake.Amount);
                 int nonExactChange = change - exactChange;
 
                 // exactRequest mod is also reflected in toRequests
-                exactRequest.Amount = exactChange;
-                toRequests.Amount -= nonExactChange;
+                exactTake.Amount -= exactChange;
+                toTakes.Amount -= nonExactChange;
             }
             else
             {
-                toRequests.Amount -= change;
+                toTakes.Amount -= change;
             }
 
             toAmount.Amount += change;
+
             fromAmount.Amount -= change;
-            fromRequest.Amount += change;
+            fromTake.Amount += change;
 
             var newChange = new Change
             {
                 Card = trade.Card,
                 To = toAmount.Location,
                 From = fromAmount.Location,
+                Amount = change,
                 Transaction = new()
             };
 
@@ -314,7 +323,7 @@ namespace MTGViewer.Pages.Transfers
         {
             var trade = request.Trade;
 
-            var toAmount = request.Trade.To!.Cards
+            var toAmount = request.Trade.To.Cards
                 .SingleOrDefault(ca => ca.CardId == trade.CardId);
 
             if (toAmount is null)
@@ -322,7 +331,7 @@ namespace MTGViewer.Pages.Transfers
                 toAmount = new()
                 {
                     Card = trade.Card,
-                    Location = trade.To!,
+                    Location = trade.To,
                     Amount = 0
                 };
 
@@ -352,9 +361,9 @@ namespace MTGViewer.Pages.Transfers
 
         private async Task UpdateRemainingTrades(AcceptRequest acceptRequest)
         {
-            var (trade, toRequests, _) = acceptRequest;
+            var (trade, toTakes, _) = acceptRequest;
 
-            if (toRequests == default)
+            if (toTakes == default)
             {
                 return;
             }
@@ -375,7 +384,7 @@ namespace MTGViewer.Pages.Transfers
                 return;
             }
 
-            if (toRequests.Amount == 0)
+            if (toTakes.Amount == 0)
             {
                 _dbContext.Trades.RemoveRange(remainingTrades);
                 return;
@@ -383,7 +392,7 @@ namespace MTGViewer.Pages.Transfers
 
             foreach (var remaining in remainingTrades)
             {
-                remaining.Amount = toRequests.Amount;
+                remaining.Amount = toTakes.Amount;
             }
         }
 

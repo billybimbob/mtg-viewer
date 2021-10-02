@@ -36,7 +36,6 @@ namespace MTGViewer.Pages.Transfers
         public Deck? Destination { get; private set; }
         public UserRef? Proposer { get; private set; }
 
-        public IReadOnlyList<Trade>? Trades { get; private set; }
         public IReadOnlyList<AmountRequestNameGroup>? CardGroups { get; private set; }
 
 
@@ -47,8 +46,7 @@ namespace MTGViewer.Pages.Transfers
                 return NotFound();
             }
 
-            var deck = await DeckForStatus(deckId)
-                .SingleOrDefaultAsync();
+            var deck = await DeckForStatus(deckId).SingleOrDefaultAsync();
 
             if (deck == default)
             {
@@ -58,22 +56,20 @@ namespace MTGViewer.Pages.Transfers
             if (deck.Requests.All(cr => cr.IsReturn))
             {
                 PostMessage = $"There are no requests for {deck.Name}";
-                return RedirectToPage("./Index");
+                return RedirectToPage("Index");
             }
 
             if (!deck.TradesTo.Any())
             {
-                return RedirectToPage("./Request", new { deckId });
+                return RedirectToPage("Request", new { deckId });
             }
 
+            CapToTrades(deck);
 
             Destination = deck;
-
             Proposer = deck.Owner;
+            CardGroups = CardNameGroups(deck).ToList();
 
-            Trades = CappedToTrades(deck).ToList();
-
-            CardGroups = DeckNameGroups(deck).ToList();
 
             return Page();
         }
@@ -95,14 +91,18 @@ namespace MTGViewer.Pages.Transfers
                     .ThenInclude(t => t.Card)
 
                 .Include(d => d.TradesTo)
-                    .ThenInclude(t => t.Card)
-
-                .Include(d => d.TradesTo)
                     .ThenInclude(t => t.From.Owner)
 
                 .Include(d => d.TradesTo)
-                    .ThenInclude(t => t.From)
-                        .ThenInclude(d => d.Cards)
+                    .ThenInclude(t => t.From.Cards)
+                        .ThenInclude(ca => ca.Card)
+
+                .Include(d => d.TradesTo)
+                    .ThenInclude(t => t.From.Requests)
+                        .ThenInclude(ca => ca.Card)
+
+                .Include(d => d.TradesTo)
+                    .ThenInclude(t => t.Card)
 
                 .Include(d => d.TradesTo
                     .OrderBy(t => t.From.Owner.Name)
@@ -113,7 +113,7 @@ namespace MTGViewer.Pages.Transfers
         }
 
 
-        private IEnumerable<Trade> CappedToTrades(Deck deck)
+        private void CapToTrades(Deck deck)
         {
             var fromTargets = deck.TradesTo
                 .SelectMany(t => t.From.Cards)
@@ -128,24 +128,25 @@ namespace MTGViewer.Pages.Transfers
                     tts => tts.targets.DefaultIfEmpty(),
                     (tts, target) => (tts.trade, target?.Amount ?? 0));
 
+            // modifications are not saved
+
             foreach (var (trade, cap) in tradesWithAmountCap)
             {
-                // modifications are not saved
                 trade.Amount = Math.Min(trade.Amount, cap);
             }
 
-            return deck.TradesTo.Where(t => t.Amount > 0);
+            deck.TradesTo.RemoveAll(t => t.Amount == 0);
         }
 
 
-        private IEnumerable<AmountRequestNameGroup> DeckNameGroups(Deck deck)
+        private IEnumerable<AmountRequestNameGroup> CardNameGroups(Deck deck)
         {
             var amountsByName = deck.Cards
                 .ToLookup(ca => ca.Card.Name);
 
             var takesByName = deck.Requests
                 .Where(cr => !cr.IsReturn)
-                .ToLookup(ex => ex.Card.Name);
+                .ToLookup(cr => cr.Card.Name);
 
             var cardNames = amountsByName
                 .Select(g => g.Key)
@@ -164,7 +165,7 @@ namespace MTGViewer.Pages.Transfers
             if (deckId == default)
             {
                 PostMessage = "Deck is not valid";
-                return RedirectToPage("./Index");
+                return RedirectToPage("Index");
             }
 
             var userId = _userManager.GetUserId(User);
@@ -179,13 +180,13 @@ namespace MTGViewer.Pages.Transfers
             if (deck == default)
             {
                 PostMessage = "Deck is not valid";
-                return RedirectToPage("./Index");
+                return RedirectToPage("Index");
             }
 
             if (!deck.TradesTo.Any())
             {
                 PostMessage = "No trades were found";
-                return RedirectToPage("./Index");
+                return RedirectToPage("Index");
             }
 
             _dbContext.Trades.RemoveRange(deck.TradesTo);
@@ -200,7 +201,7 @@ namespace MTGViewer.Pages.Transfers
                 PostMessage = "Ran into error while cancelling";
             }
 
-            return RedirectToPage("./Index");
+            return RedirectToPage("Index");
         }
     }
 }

@@ -87,6 +87,10 @@ namespace MTGViewer.Pages.Transfers
             return _dbContext.Decks
                 .Where(d => d.Id == deckId && d.OwnerId == userId)
 
+                .Include(d => d.Cards
+                    .OrderBy(ca => ca.Card.Name))
+                    .ThenInclude(ca => ca.Card)
+
                 .Include(d => d.Requests
                     .Where(cr => !cr.IsReturn)
                     .OrderBy(cr => cr.Card.Name))
@@ -100,7 +104,7 @@ namespace MTGViewer.Pages.Transfers
         private IQueryable<CardAmount> TakeTargets(Deck deck)
         {
             var takeNames = deck.Requests
-                .Where(ex => !ex.IsReturn)
+                .Where(cr => !cr.IsReturn)
                 .Select(ca => ca.Card.Name)
                 .Distinct()
                 .ToArray();
@@ -188,17 +192,6 @@ namespace MTGViewer.Pages.Transfers
                     take => take.Card.Name,
                     (target, takeMatches) =>
                         (target, amount: takeMatches.Sum(cr => cr.Amount)));
-
-            // var requestGroups = deck.ExchangesTo
-            //     .Where(ex => !ex.IsTrade)
-            //     .GroupBy(ex => ex.Card.Name,
-            //         (_, requests) => new ExchangeNameGroup(requests));
-
-            // var requestMatches = requestGroups
-            //     .Join( targets,
-            //         group => group.Name,
-            //         target => target.Card.Name,
-            //         (group, Target) => (Target, group.Amount));
 
             var newTrades = requestMatches
                 .Select(ta => new Trade

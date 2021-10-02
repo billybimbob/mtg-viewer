@@ -32,6 +32,7 @@ else
     </div>
 }
 
+
 <h2>Cards to Request</h2>
 
 <table class="table">
@@ -63,3 +64,43 @@ else
         } 
     </tbody>
 </table>
+
+
+@if (Model.Deck.Cards.Any())
+{
+    <h2>Current Cards</h2>
+
+    <table class="table">
+        <thead>
+            <tr>
+                <th>@Html.DisplayNameForInnerType((Card c) => c.Name)</th>
+                <th>@Html.DisplayNameForInnerType((Card c) => c.ManaCost)</th>
+                <th>@Html.DisplayNameForInnerType((Card c) => c.SetName)</th>
+                <th>@Html.DisplayNameForInnerType((CardAmount ca) => ca.Amount)</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var amount in Model.Deck.Cards)
+            {
+                var card = amount.Card;
+                <tr>
+                    <td>
+                        <a asp-page="/Cards/Details"
+                            asp-route-id="@card.Id"
+                            class="fw-bold">
+                            @card.Name </a>
+                    </td>
+                    <td>
+                        @foreach (var cost in card.GetManaSymbols())
+                        {
+                            <span class="m-1 ms ms-@cost ms-cost"></span>
+                        }
+                    </td>
+
+                    <td>@card.SetName</td>
+                    <td>@amount.Amount</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
