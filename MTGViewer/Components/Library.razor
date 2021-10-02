@@ -54,7 +54,7 @@
             <tr>
                 <td>
                     <a title="Details @card.Name"
-                       href="Cards/Details?id=@card.Id"
+                       href="/Cards/Details/@card.Id"
                        class="fw-bold">
                        @card.Name
                     </a>
@@ -73,7 +73,7 @@
                     @if (IsSignedIn)
                     {
                         <a title="Suggest @card.Name"
-                           href="Transfers/Suggest/@card.Id"
+                           href="/Transfers/Suggest/@card.Id"
                            class="btn btn-secondary">
                            Suggest </a>
                     }

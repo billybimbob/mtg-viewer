@@ -1,4 +1,4 @@
-@page
+@page "{id:int}"
 @using MTGViewer.Data
 @model MTGViewer.Pages.Decks.ViewerModel
 
@@ -21,7 +21,7 @@
         }
 
         <a asp-page="History"
-            asp-route-deckid="@Model.Deck.Id"
+            asp-route-id="@Model.Deck.Id"
             class="btn btn-secondary" >
             History </a>
     </div>

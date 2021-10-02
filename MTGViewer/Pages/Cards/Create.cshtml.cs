@@ -61,8 +61,7 @@ namespace MTGViewer.Pages.Cards
 
 
         public void OnGet()
-        {
-        }
+        { }
 
 
         // To protect from overposting attacks, see https://aka.ms/RazorPagesCRUD

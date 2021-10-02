@@ -46,23 +46,16 @@ namespace MTGViewer.Pages.Decks
         public IReadOnlySet<(int, int?, int)>? IsFirstTransfer { get; private set; }
 
 
-        public async Task<IActionResult> OnGetAsync(int deckId)
+        public async Task<IActionResult> OnGetAsync(int id)
         {
-            var userId = _userManager.GetUserId(User);
+            Deck = await DeckForHistory(id).SingleOrDefaultAsync();
 
-            var deck = await _dbContext.Decks
-                .AsNoTracking()
-                .SingleOrDefaultAsync(d => d.Id == deckId && d.OwnerId == userId);
-
-            if (deck == default)
+            if (Deck == default)
             {
                 return NotFound();
             }
 
-            var changes = await ChangesForHistory(deckId).ToListAsync();
-
-
-            Deck = DeckFromChanges(deckId, changes) ?? deck;
+            var changes = await ChangesForHistory(id).ToListAsync();
 
             Transfers = changes
                 .GroupBy(c => (c.Transaction, c.From, c.To),
@@ -72,10 +65,22 @@ namespace MTGViewer.Pages.Decks
 
             IsFirstTransfer = changes
                 .Select(c => (c.TransactionId, c.FromId, c.ToId))
+                .GroupBy(tof => tof.TransactionId,
+                    (_, tofs) => tofs.First())
                 .ToHashSet();
 
 
             return Page();
+        }
+
+
+        private IQueryable<Deck> DeckForHistory(int deckId)
+        {
+            var userId = _userManager.GetUserId(User);
+
+            return _dbContext.Decks
+                .Where(d => d.Id == deckId && d.OwnerId == userId)
+                .AsNoTracking();
         }
 
 
@@ -99,47 +104,17 @@ namespace MTGViewer.Pages.Decks
         }
 
 
-        private Deck? DeckFromChanges(int deckId, IReadOnlyList<Change> changes)
-        {
-            var deckFromChanges = changes
-                .Select(c => c.To)
-                .FirstOrDefault(l => l.Id == deckId);
 
-            deckFromChanges ??= changes
-                .Select(c => c.From)
-                .FirstOrDefault(l => l?.Id == deckId);
-
-            return deckFromChanges as Deck;
-        }
-
-
-        // public async Task<IActionResult> OnPostRemoveAsync(int transactionId)
         public async Task<IActionResult> OnPostAsync(int transactionId)
         {
             var transaction = await _dbContext.Transactions
                 .Include(t => t.Changes)
-                    .ThenInclude(c => c.To)
-                .Include(t => t.Changes)
                     .ThenInclude(c => c.From)
+                .Include(t => t.Changes)
+                    .ThenInclude(c => c.To)
                 .SingleOrDefaultAsync(t => t.Id == transactionId);
 
-            if (transaction == default)
-            {
-                return NotFound();
-            }
-
-            var userId = _userManager.GetUserId(User);
-
-            bool IsValidLocation(Location? loc)
-            {
-                return loc is Box or null
-                    || loc is Deck deck && deck.OwnerId == userId;
-            }
-
-            var isValidUser = transaction.Changes.All(c => 
-                IsValidLocation(c.To) && IsValidLocation(c.From));
-
-            if (!isValidUser)
+            if (transaction == default || IsNotUserTransaction(transaction))
             {
                 return NotFound();
             }
@@ -158,6 +133,23 @@ namespace MTGViewer.Pages.Decks
 
             return RedirectToPage("History", new { deckId = Deck?.Id });
         }
+
+
+        private bool IsNotUserTransaction(Transaction transaction)
+        {
+            var userId = _userManager.GetUserId(User);
+
+            bool IsInvalidLocation(Location? loc)
+            {
+                return loc is Deck deck && deck.OwnerId != userId;
+            }
+
+            return transaction.Changes.Any(c => 
+                IsInvalidLocation(c.To) || IsInvalidLocation(c.From));
+        }
+
+
+        // public async Task<IActionResult> OnPostRemoveAsync(int transactionId)
 
 
         // public async Task<IActionResult> OnPostUndoAsync(int transactionId)

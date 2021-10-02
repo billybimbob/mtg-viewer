@@ -1,4 +1,4 @@
-@page
+@page "{deckId:int}"
 @model MTGViewer.Pages.Transfers.ReviewModel
 
 @using MTGViewer.Data
@@ -47,7 +47,7 @@
                 <td> @trade.To.Owner.Name </td>
                 <td>
                     <a asp-page="/Decks/Viewer"
-                       asp-route-deckid="@trade.ToId">
+                       asp-route-id="@trade.ToId">
                        @trade.To.Name </a>
                 </td>
 

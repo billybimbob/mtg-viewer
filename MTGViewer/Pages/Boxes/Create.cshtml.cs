@@ -41,20 +41,23 @@ namespace MTGViewer.Pages.Boxes
         {
             Bins = await _dbContext.Bins
                 .OrderBy(b => b.Name)
+                .AsNoTrackingWithIdentityResolution()
                 .ToListAsync();
         }
 
 
         public async Task<IActionResult> OnPostAsync()
         {
-            if (!ModelState.IsValid)
-            {
-                return Page();
-            }
-
             if (Box.BinId != default)
             {
                 Box.Bin = await _dbContext.Bins.FindAsync(Box.BinId);
+            }
+
+            ModelState.ClearValidationState(nameof(Box));
+
+            if (!TryValidateModel(Box, nameof(Box)))
+            {
+                return Page();
             }
 
             _dbContext.Boxes.Attach(Box);

@@ -13,9 +13,6 @@ using MTGViewer.Data;
 
 namespace MTGViewer.Pages.Boxes
 {
-    public record BoxAndTransactions(Box Box, IReadOnlyList<Transaction> Transactions) { }
-
-
     public class HistoryModel : PageModel
     {
         private readonly CardDbContext _dbContext;
@@ -34,6 +31,7 @@ namespace MTGViewer.Pages.Boxes
         public IReadOnlyList<Transfer>? Transfers { get; private set; }
 
         public IReadOnlySet<(int, int?, int)>? IsFirstTransfer { get; private set; }
+
         public IReadOnlySet<int>? IsSharedTransaction { get; private set; }
 
 
@@ -52,6 +50,8 @@ namespace MTGViewer.Pages.Boxes
 
             IsFirstTransfer = changes
                 .Select(c => (c.TransactionId, c.FromId, c.ToId))
+                .GroupBy(tof => tof.TransactionId,
+                    (_, tofs) => tofs.First())
                 .ToHashSet();
 
             IsSharedTransaction = changes
@@ -81,41 +81,21 @@ namespace MTGViewer.Pages.Boxes
         }
 
 
-        private BoxAndTransactions WithTransactions(Box box)
-        {
-            var toTransactions = box.ChangesTo.Select(c => c.Transaction);
-            var fromTransactions = box.ChangesFrom.Select(c => c.Transaction);
-
-            var transactions = toTransactions
-                .Union(fromTransactions)
-                .OrderByDescending(t => t.Applied)
-                .ToList();
-
-            // db sort not working
-            foreach (var transaction in transactions)
-            {
-                transaction.Changes.Sort(
-                    (c1, c2) => c1.Card.Name.CompareTo(c2.Card.Name));
-            }
-
-            return new BoxAndTransactions(box, transactions);
-        }
-
-
         private bool IsShared(Change change) => 
             change.To is Box && change.From is Box or null;
+
 
 
         public async Task<IActionResult> OnPostAsync(int transactionId)
         {
             var transaction = await _dbContext.Transactions
                 .Include(t => t.Changes)
-                    .ThenInclude(c => c.To)
-                .Include(t => t.Changes)
                     .ThenInclude(c => c.From)
+                .Include(t => t.Changes)
+                    .ThenInclude(c => c.To)
                 .SingleOrDefaultAsync(t => t.Id == transactionId);
 
-            if (transaction.Changes.Any(c => !IsShared(c)))
+            if (transaction == default || transaction.Changes.Any(c => !IsShared(c)))
             {
                 return NotFound();
             }

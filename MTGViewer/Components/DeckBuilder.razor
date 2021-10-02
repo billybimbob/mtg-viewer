@@ -11,13 +11,32 @@
 
 <h1>@_deck.Name Builder</h1>
 
-<button title="Save Deck"
-        type="button"
-        class="btn btn-secondary mb-3"
-        disabled="@HasNoChanges()"
-        @onclick="CommitChangesAsync">
-    Save Changes
-</button>
+<div class="mb-3">
+    <button title="Save Deck"
+            type="button"
+            class="btn btn-secondary"
+            disabled="@HasNoChanges()"
+            @onclick="CommitChangesAsync">
+        Save Changes
+    </button>
+
+    @if (_result is SaveResult.Success)
+    {
+        <a href="/Decks/Checkout/@_deck.Id"
+            role="button"
+            class="btn btn-secondary ml-2">
+            Checkout </a>
+    }
+    else
+    {
+        <a href="/Decks/Checkout/@_deck.Id"
+            role="button"
+            class="btn btn-secondary ml-2 disabled"
+            tabindex="-1"
+            aria-disabled="true">
+            Checkout </a>
+    }
+</div>
 
 <SavePrompt @bind-Result="_result">
     <SuccessMessage>

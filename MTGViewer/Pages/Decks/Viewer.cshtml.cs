@@ -30,9 +30,9 @@ namespace MTGViewer.Pages.Decks
         public Deck Deck { get; private set; }
         public IEnumerable<AmountRequestGroup> Cards { get; private set; }
 
-        public async Task<IActionResult> OnGetAsync(int deckId)
+        public async Task<IActionResult> OnGetAsync(int id)
         {
-            var deck = await DeckForViewer(deckId).SingleOrDefaultAsync();
+            var deck = await DeckForViewer(id).SingleOrDefaultAsync();
 
             if (deck == default)
             {

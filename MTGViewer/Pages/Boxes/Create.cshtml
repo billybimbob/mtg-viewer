@@ -22,11 +22,13 @@
             <div class="form-group">
                 <label asp-for="Box.Bin" class="control-label"></label>
 
-                <select asp-for="Box.BinId" class="form-control mb-3">
-                    <option selected>Select Existing</option>
+                <select asp-for="Box.BinId" class="form-control mb-3"
+                    onchange=" newName.value = !!this.value ? '--' : ''; newName.disabled = !!this.value; ">
+
+                    <option selected value=""> Select Existing </option>
                     @foreach (var bin in Model.Bins)
                     {
-                        <option value="@bin.Id">@bin.Name</option>
+                        <option value="@bin.Id"> @bin.Name </option>
                     }
                 </select>
 
@@ -34,16 +36,21 @@
                     <div class="input-group-prepend">
                         <span class="input-group-text">Create New</span>
                     </div>
-                    <input asp-for="Box.Bin.Name" class="form-control" />
+                    <input id="newName" asp-for="Box.Bin.Name" class="form-control" />
                 </div>
+            </div>
 
-                <span asp-validation-for="Box.Bin" class="text-danger"></span>
-            </div>
             <div class="form-group">
+                <label asp-for="Box.Color" class="control-label"></label>
+                <input asp-for="Box.Color" class="form-control" />
+                <span asp-validation-for="Box.Color" class="text-danger"></span>
             </div>
+            
             <div class="form-group">
-            </div>
-            <div class="form-group">
+                <a asp-page="Index"
+                    class="btn btn-secondary">
+                    Back </a>
+
                 <input type="submit"
                     class="btn btn-secondary"
                     value="Create" />
@@ -52,9 +59,6 @@
     </div>
 </div>
 
-<div>
-    <a asp-page="Index">Back to List</a>
-</div>
 
 @section Scripts {
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}

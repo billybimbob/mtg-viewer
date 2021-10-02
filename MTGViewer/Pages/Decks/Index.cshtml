@@ -39,7 +39,7 @@
                     @if (state is State.Requesting)
                     {
                         <a asp-page="Viewer"
-                           asp-route-deckid="@deck.Id"
+                           asp-route-id="@deck.Id"
                            class="fw-bold">
                            @deck.Name </a>
                     }
@@ -84,7 +84,7 @@
                 
                 <td>
                     <a asp-page="History"
-                        asp-route-deckid="@deck.Id"
+                        asp-route-id="@deck.Id"
                         class="btn btn-secondary">
                         History </a>
 
