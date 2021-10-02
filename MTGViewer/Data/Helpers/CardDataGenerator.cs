@@ -36,6 +36,16 @@ namespace MTGViewer.Data.Seed
         }
 
 
+
+        public Task<bool> AddFromJsonAsync(string path = default, CancellationToken cancel = default) =>
+            Storage.AddFromJsonAsync(_dbContext, _userManager, path, cancel);
+
+
+        public Task WriteToJsonAsync(string path = default, CancellationToken cancel = default) =>
+            Storage.WriteToJsonAsync(_dbContext, _userManager, path, cancel);
+
+
+
         public async Task GenerateAsync(CancellationToken cancel = default)
         {
             var users = GetUsers();
@@ -48,33 +58,28 @@ namespace MTGViewer.Data.Seed
             var boxAmounts = GetBoxAmounts(cards);
             var deckAmounts = GetDeckAmounts(cards, decks);
 
-            var transfers = GetTransfers(userRefs, cards, decks, deckAmounts);
+            var trades = GetTrades(userRefs, cards, decks, deckAmounts);
+            var suggestions = GetSuggestions(userRefs, cards, decks, deckAmounts);
 
             _dbContext.Users.AddRange(userRefs);
-
             _dbContext.Cards.AddRange(cards);
+
             _dbContext.Decks.AddRange(decks);
             _dbContext.Boxes.AddRange(boxes);
 
             _dbContext.Amounts.AddRange(deckAmounts);
-            _dbContext.Transfers.AddRange(transfers);
+
+            _dbContext.Suggestions.AddRange(suggestions);
+            _dbContext.Trades.AddRange(trades);
 
             await _dbContext.SaveChangesAsync(cancel);
 
             await _sharedStorage.ReturnAsync(boxAmounts);
 
-            // TODO: figure out why passwords are not correct
+            // TODO: fix created accounts not being verified
             await Task.WhenAll(
                 users.Select(u => _userManager.CreateAsync(u, Storage.USER_PASSWORD)));
         }
-
-
-        public Task WriteToJsonAsync(string path = default, CancellationToken cancel = default) =>
-            Storage.WriteToJsonAsync(_dbContext, _userManager, path, cancel);
-
-
-        public Task<bool> AddFromJsonAsync(string path = default, CancellationToken cancel = default) =>
-            Storage.AddFromJsonAsync(_dbContext, _userManager, path, cancel);
 
 
         private IReadOnlyList<CardUser> GetUsers() => new List<CardUser>()
@@ -111,11 +116,12 @@ namespace MTGViewer.Data.Seed
         private IReadOnlyList<Box> GetBoxes()
         {
             // just use same bin for now
-            var bin = new Bin("Bin #1");
+            var bin = new Bin { Name = "Bin #1" };
 
             return Enumerable.Range(0, 3)
-                .Select(i => new Box($"Box #{i+1}")
+                .Select(i => new Box
                 {
+                    Name = $"Box #{i+1}",
                     Bin = bin
                 })
                 .ToList();
@@ -128,8 +134,9 @@ namespace MTGViewer.Data.Seed
                 .Where((_, i) => i % 2 == 0)
                 .SelectMany(u => Enumerable
                     .Range(0, _random.Next(2, 4))
-                    .Select(i => new Deck($"Deck #{i+1}")
+                    .Select(i => new Deck
                     {
+                        Name = $"Deck #{i+1}",
                         Owner = u
                     }))
                 .ToList();
@@ -152,49 +159,57 @@ namespace MTGViewer.Data.Seed
         }
 
 
-        private IReadOnlyList<(Card, int)> GetBoxAmounts(IEnumerable<Card> cards)
+        private IReadOnlyList<CardReturn> GetBoxAmounts(IEnumerable<Card> cards)
         {
             return cards
-                .Select(c => (c, _random.Next(6)))
+                .Select(card => new CardReturn(card, _random.Next(1, 6)))
                 .ToList();
         }
 
 
-        private IReadOnlyList<Transfer> GetTransfers(
+        private IReadOnlyList<Trade> GetTrades(
             IEnumerable<UserRef> users,
             IEnumerable<Card> cards,
             IEnumerable<Deck> decks,
             IEnumerable<CardAmount> amounts)
         {
-            var source = amounts.First(ca => ca.Location is Deck);
-
-            // TODO: do not use id comparisons
+            var source = amounts.First();
             var tradeFrom = (Deck)source.Location;
             var tradeTo = decks.First(l => l != source.Location);
 
-            var suggestCard = cards.First();
-            var suggester = users.First(u => 
-                u != tradeFrom.Owner && u != tradeTo.Owner);
-
-            return new List<Transfer>()
+            return new List<Trade>()
             {
                 new Trade
                 {
                     Card = source.Card,
-                    Proposer = tradeTo.Owner,
-                    Receiver = tradeFrom.Owner,
                     To = tradeTo,
                     From = tradeFrom,
                     Amount = _random.Next(5)
-                },
+                }
+            };
+        }
+
+
+        private IReadOnlyList<Suggestion> GetSuggestions(
+            IEnumerable<UserRef> users,
+            IEnumerable<Card> cards,
+            IEnumerable<Deck> decks,
+            IEnumerable<CardAmount> amounts)
+        {
+            var source = amounts.First();
+            var suggestCard = cards.First();
+            var tradeTo = decks.First(l => l != source.Location);
+
+            return new List<Suggestion>()
+            {
                 new Suggestion
                 {
                     Card = suggestCard,
-                    Proposer = suggester,
                     Receiver = tradeTo.Owner,
                     To = tradeTo
                 }
             };
         }
+
     }
 }

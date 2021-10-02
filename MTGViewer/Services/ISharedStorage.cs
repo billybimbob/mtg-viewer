@@ -3,30 +3,39 @@ using System.Linq;
 using System.Threading.Tasks;
 using MTGViewer.Data;
 
+#nullable enable
 
 namespace MTGViewer.Services
 {
     public interface ISharedStorage
     {
-        IQueryable<Box> Shares { get; }
+        IQueryable<Box> Boxes { get; }
 
-        Task ReturnAsync(IEnumerable<(Card, int numCopies)> returns);
+        IQueryable<CardAmount> Cards { get; }
 
-        Task OptimizeAsync();
+        Task<Transaction> ReturnAsync(IEnumerable<CardReturn> returns);
+
+        Task<Transaction?> OptimizeAsync();
     }
+
+
+    public record CardReturn(Card Card, int NumCopies, Deck? Deck = null) { }
 
 
     public static class SharedStorageExtensions
     {
-        public static Task ReturnAsync(
-            this ISharedStorage storage, params (Card, int numCopies)[] returns)
+        public static Task<Transaction> ReturnAsync(
+            this ISharedStorage storage,
+            CardReturn first, params CardReturn[] extra)
         {
-            return storage.ReturnAsync(returns.AsEnumerable());
+            return storage.ReturnAsync(extra.Prepend(first));
         }
 
-        public static Task ReturnAsync(this ISharedStorage storage, Card card, int numCopies)
+        public static Task<Transaction> ReturnAsync(
+            this ISharedStorage storage, 
+            Card card, int numCopies, Deck? deck = null)
         {
-            return storage.ReturnAsync( (card, numCopies) );
+            return storage.ReturnAsync(new CardReturn(card, numCopies, deck));
         }
     }
 }

@@ -49,7 +49,7 @@ namespace MTGViewer.Pages.Cards
                 return Page();
             }
 
-            _context.Attach(Card).State = EntityState.Modified;
+            _context.Cards.Attach(Card).State = EntityState.Modified;
 
             try
             {

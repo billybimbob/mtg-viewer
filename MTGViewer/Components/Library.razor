@@ -7,14 +7,13 @@
 
 
 <h1>Card Collection</h1>
-<hr />
 
 <div>
     <a class="btn btn-secondary" href="Cards/Create">Add Card</a>
     <a class="btn btn-secondary" href="Boxes/">Shared Collection</a>
 </div>
 
-<div>
+<div class="my-3">
     @* <div class="input-group my-3">
         <span class="input-group-text">Name:</span> *@
     <input class="formcontrol" placeholder="Name" @onchange="SearchName" />
@@ -55,7 +54,7 @@
             <tr>
                 <td>
                     <a title="Details @card.Name"
-                       href="Cards/Details?id=@card.Id"
+                       href="/Cards/Details/@card.Id"
                        class="fw-bold">
                        @card.Name
                     </a>
@@ -74,7 +73,7 @@
                     @if (IsSignedIn)
                     {
                         <a title="Suggest @card.Name"
-                           href="Transfers/Suggest/@card.Id"
+                           href="/Transfers/Suggest/@card.Id"
                            class="btn btn-secondary">
                            Suggest </a>
                     }
@@ -116,7 +115,7 @@
 
         _dbCards = await context.Cards
             .Include(c => c.Colors)
-            .Include(c => c.Amounts.Where(ca => !ca.IsRequest))
+            .Include(c => c.Amounts)
             // .ThenInclude(a => a.Location)
             .OrderBy(c => c.Name)
                 .ThenBy(c => c.SetName)

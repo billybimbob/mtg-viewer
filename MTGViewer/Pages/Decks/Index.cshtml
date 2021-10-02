@@ -15,8 +15,7 @@
 }
 
  
-<h2>@Model.CardUser.Name's Decks</h2>
-<hr/>
+<h1>@Model.CardUser.Name's Decks</h1>
 
 <a class="btn btn-secondary mb-3" asp-page="./Builder">New Deck</a>
 
@@ -26,8 +25,8 @@
             <th>
                 Deck @Html.DisplayNameForInnerType((Deck d) => d.Name)
             </th>
-            <th>Number of Cards</th>
             <th>Colors</th>
+            <th>Number of Cards</th>
             <th>State</th>
             <th></th>
         </tr>
@@ -39,27 +38,29 @@
                 <td>
                     @if (state is State.Requesting)
                     {
-                        <a asp-page="./Viewer"
-                           asp-route-deckid="@deck.Id"
+                        <a asp-page="Viewer"
+                           asp-route-id="@deck.Id"
                            class="fw-bold">
                            @deck.Name </a>
                     }
                     else
                     {
-                        <a asp-page="./Builder"
+                        <a asp-page="Builder"
                            asp-route-id="@deck.Id"
                            class="fw-bold">
                            @deck.Name </a>
                     }
                 </td>
 
-                <td> @deck.Cards.Sum(ca => ca.Amount) </td>
                 <td>
                     @foreach (var color in deck.GetColorSymbols())
                     {
                         <span class="m-1 ms ms-@color ms-cost"></span>
                     }
                 </td>
+
+                <td> @deck.Cards.Sum(ca => ca.Amount) </td>
+
                 <td>
                     @if (state is State.Requesting)
                     {
@@ -68,10 +69,10 @@
                            class="fw-bold">
                            @state.ToString() </a>
                     }
-                    else if (state is State.Invalid)
+                    else if (state is State.Theorycraft)
                     {
-                        <a asp-page="/Transfers/Request"
-                           asp-route-deckid="@deck.Id"
+                        <a asp-page="Checkout"
+                           asp-route-id="@deck.Id"
                            class="fw-bold">
                            @state.ToString() </a>
                     }
@@ -80,10 +81,16 @@
                         @state.ToString()
                     }
                 </td>
+                
                 <td>
-                    <a asp-page="./Delete"
+                    <a asp-page="History"
                         asp-route-id="@deck.Id"
-                        class="btn btn-danger mb-3">
+                        class="btn btn-secondary">
+                        History </a>
+
+                    <a asp-page="Delete"
+                        asp-route-id="@deck.Id"
+                        class="btn btn-danger">
                         Delete </a>
                 </td>
             </tr>

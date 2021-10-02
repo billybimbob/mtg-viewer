@@ -46,13 +46,13 @@ namespace MTGViewer.Pages.Transfers
             }
 
             Card = card;
-            Users = await GetPossibleUsersAsync(card);
+            Users = await NotSuggestedUsers(card).ToListAsync();
 
             return Page();
         }
 
 
-        public async Task<IReadOnlyList<UserRef>> GetPossibleUsersAsync(Card card)
+        public IQueryable<UserRef> NotSuggestedUsers(Card card)
         {
             var proposerId = _userManager.GetUserId(User);
 
@@ -62,7 +62,7 @@ namespace MTGViewer.Pages.Transfers
             var cardSuggests = _dbContext.Suggestions
                 .Where(s => s.Card.Name == card.Name && s.ToId == default);
 
-            var notSuggested = nonProposers
+            return nonProposers
                 .GroupJoin( cardSuggests,
                     user => user.Id,
                     suggest => suggest.ReceiverId,
@@ -72,17 +72,14 @@ namespace MTGViewer.Pages.Transfers
                     uss => uss.suggests.DefaultIfEmpty(),
                     (uss, suggest) =>
                         new { uss.user, suggest })
-                .Where(us => us.suggest == default)
-                .Select(us => us.user);
 
-            return await notSuggested
-                .AsNoTracking()
-                .ToListAsync();
+                .Where(us => us.suggest == default)
+                .Select(us => us.user)
+                .AsNoTracking();
         }
 
 
 
-        public UserRef Proposer { get; private set; }
         public UserRef Receiver { get; private set; }
         public IReadOnlyList<Deck> Decks { get; private set; }
 
@@ -96,7 +93,13 @@ namespace MTGViewer.Pages.Transfers
                 return NotFound();
             }
 
-            var proposer = await _dbContext.Users.FindAsync( _userManager.GetUserId(User) );
+            var currentUserId = _userManager.GetUserId(User);
+            
+            if (currentUserId == userId)
+            {
+                return NotFound();
+            }
+
             var receiver = await _dbContext.Users.FindAsync(userId);
 
             if (receiver is null)
@@ -104,9 +107,8 @@ namespace MTGViewer.Pages.Transfers
                 return NotFound();
             }
 
-            var decks = await GetValidDecksAsync(card, receiver);
+            var decks = await DecksWithoutCard(card, receiver).ToListAsync();
 
-            Proposer = proposer;
             Receiver = receiver;
 
             Card = card;
@@ -116,19 +118,18 @@ namespace MTGViewer.Pages.Transfers
         }
 
 
-        private async Task<IReadOnlyList<Deck>> GetValidDecksAsync(Card card, UserRef user)
+        private IQueryable<Deck> DecksWithoutCard(Card card, UserRef user)
         {
             var userDecks = _dbContext.Decks
-                .Where(l => l.OwnerId == user.Id)
-                .Include(d => d.Cards)
-                    .ThenInclude(ca => ca.Card);
+                .Where(l => l.OwnerId == user.Id);
 
             var userCardAmounts = _dbContext.Amounts
                 .Where(ca => ca.Card.Name == card.Name
                     && ca.Location is Deck
                     && (ca.Location as Deck).OwnerId == user.Id);
 
-            var decksWithoutCard = userDecks
+
+            var withoutAmounts = userDecks 
                 .GroupJoin( userCardAmounts,
                     deck => deck.Id,
                     amount => amount.LocationId,
@@ -136,29 +137,49 @@ namespace MTGViewer.Pages.Transfers
                 .SelectMany(
                     das => das.amounts.DefaultIfEmpty(),
                     (das, amount) => new { das.deck, amount })
+
                 .Where(da => da.amount == default)
                 .Select(da => da.deck);
 
 
-            var transfersWithCard = _dbContext.Transfers
-                .Where(t => t.Card.Name == card.Name
-                    && (t.ProposerId == user.Id || t.ReceiverId == user.Id));
+            var suggestsWithCard = _dbContext.Suggestions
+                .Where(s => s.Card.Name == card.Name 
+                    && s.ReceiverId == user.Id);
 
-            var validDecks = decksWithoutCard
-                .GroupJoin( transfersWithCard,
+            var withoutSuggests = withoutAmounts
+                .GroupJoin( suggestsWithCard,
                     deck => deck.Id,
-                    transfer => transfer.ToId,
-                    (deck, transfers) => new { deck, transfers })
+                    suggest => suggest.ToId,
+                    (deck, suggests) => new { deck, suggests })
                 .SelectMany(
-                    dts => dts.transfers.DefaultIfEmpty(),
-                    (dts, transfer) => new { dts.deck, transfer })
-                .Where(dt => dt.transfer == default)
+                    dts => dts.suggests.DefaultIfEmpty(),
+                    (dts, suggest) => new { dts.deck, suggest })
+
+                .Where(dt => dt.suggest == default)
                 .Select(dt => dt.deck);
 
 
-            return await validDecks
-                .AsNoTrackingWithIdentityResolution()
-                .ToListAsync();
+            var tradesWithCard = _dbContext.Trades
+                .Where(t => t.Card.Name == card.Name && t.To.OwnerId == user.Id);
+
+            var withoutTrades = withoutSuggests
+                .GroupJoin( tradesWithCard,
+                    deck => deck.Id,
+                    transfer => transfer.ToId,
+                    (deck, trades) => new { deck, trades })
+                .SelectMany(
+                    dts => dts.trades.DefaultIfEmpty(),
+                    (dts, trade) => new { dts.deck, trade })
+
+                .Where(dt => dt.trade == default)
+                .Select(dt => dt.deck);
+
+
+            return withoutTrades
+                .Include(d => d.Cards)
+                    .ThenInclude(ca => ca.Card)
+                .AsSplitQuery()
+                .AsNoTrackingWithIdentityResolution();
         }
 
 
@@ -169,7 +190,7 @@ namespace MTGViewer.Pages.Transfers
 
         public async Task<IActionResult> OnPostSuggestAsync()
         {
-            _dbContext.Attach(Suggestion);
+            _dbContext.Suggestions.Attach(Suggestion);
 
             if (!await IsValidSuggestionAsync(Suggestion))
             {

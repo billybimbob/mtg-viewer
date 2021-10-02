@@ -9,6 +9,7 @@
 *.db-wal
 *Migrations
 cards.json
+todo.md
 
 # User-specific files
 *.rsuser

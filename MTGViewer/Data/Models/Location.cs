@@ -11,59 +11,87 @@ namespace MTGViewer.Data
 {
     public class Location : Concurrent
     {
-        protected Location(string name)
-        {
-            Name = name;
-        }
+        protected Location()
+        { }
 
         [JsonRequired]
         public int Id { get; private set; }
 
-        public string Name { get; set; }
+        public string Name { get; set; } = null!;
 
         [JsonIgnore]
         internal Discriminator Type { get; private set; }
 
         [JsonIgnore]
-        public ICollection<CardAmount> Cards { get; } = new List<CardAmount>();
+        public List<CardAmount> Cards { get; } = new();
+
+        [JsonIgnore]
+        public List<Change> ChangesTo { get; } = new();
+
+        [JsonIgnore]
+        public List<Change> ChangesFrom { get; } = new();
 
 
-        public IOrderedEnumerable<Color> GetColors() => Cards
-            .SelectMany(ca => ca.Card.Colors)
-            .Distinct(new EntityComparer<Color>(c => c.Name))
-            .OrderBy(c => c.Name);
+        public IEnumerable<Change> GetChanges() => ChangesTo.Concat(ChangesFrom);
 
-        public IOrderedEnumerable<string> GetColorSymbols() => Cards
-            .SelectMany(ca => ca.Card.GetManaSymbols())
-            .Distinct()
-            .Intersect(Color.COLORS.Values)
-            .OrderBy(s => s);
+
+        public virtual IOrderedEnumerable<string> GetColorSymbols()
+        {
+            return Cards
+                .SelectMany(ca => ca.Card.GetManaSymbols())
+                .Distinct()
+                .Intersect(Data.Color.COLORS.Values)
+                .OrderBy(s => s);
+        }
+
+        // public IOrderedEnumerable<Color> GetColors()
+        // {
+        //     return Cards
+        //         .SelectMany(ca => ca.Card.Colors)
+        //         .Distinct(new EntityComparer<Color>(c => c.Name))
+        //         .OrderBy(c => c.Name);
+        // }
     }
 
 
     public class Deck : Location
     {
-        public Deck(string name) : base(name)
-        { }
-
         [JsonIgnore]
         public UserRef Owner { get; init; } = null!;
         public string OwnerId { get; init; } = null!;
 
 
         [JsonIgnore]
-        public ICollection<Transfer> ToRequests { get; } = new List<Transfer>();
+        public List<CardRequest> Requests { get; } = new();
 
         [JsonIgnore]
-        public ICollection<Trade> FromRequests { get; } = new List<Trade>();
+        public List<Trade> TradesTo { get; } = new();
+
+        [JsonIgnore]
+        public List<Trade> TradesFrom { get; } = new();
+
+
+        public IEnumerable<Trade> GetTrades() => TradesTo.Concat(TradesFrom);
+
+        
+        public override IOrderedEnumerable<string> GetColorSymbols()
+        {
+            var cardSymbols = Cards
+                .SelectMany(ca => ca.Card.GetManaSymbols());
+
+            var requestSymbols = Requests
+                .SelectMany(cr => cr.Card.GetManaSymbols());
+
+            return cardSymbols
+                .Union(requestSymbols)
+                .Intersect(Data.Color.COLORS.Values)
+                .OrderBy(s => s);
+        }
     }
 
 
     public class Box : Location
     {
-        public Box(string name) : base(name)
-        { }
-
         [JsonIgnore]
         public Bin Bin { get; set; } = null!;
         public int BinId { get; init; }
@@ -74,18 +102,13 @@ namespace MTGViewer.Data
 
     public class Bin
     {
-        public Bin(string name)
-        {
-            Name = name;
-        }
-
         [JsonRequired]
         public int Id { get; private set; }
 
         [JsonRequired]
-        public string Name { get; private set; }
+        public string Name { get; init; } = null!;
 
         [JsonIgnore]
-        public ICollection<Box> Boxes = new List<Box>();
+        public List<Box> Boxes { get; } = new();
     }
 }

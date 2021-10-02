@@ -1,4 +1,4 @@
-@page
+@page "{deckId:int}"
 @model MTGViewer.Pages.Transfers.StatusModel
 @using MTGViewer.Data
     
@@ -7,7 +7,7 @@
     ViewData["Title"] = $"{Model.Proposer.Name}'s Trades";
 }
 
-<h1>Requests To @Model.Destination.Name</h1>
+<h1>Trades To @Model.Destination.Name</h1>
 <hr />
 
 
@@ -20,38 +20,33 @@
 
 <div class="alert alert-secondary" role="alert">
     <p>Do you want cancel the requests listed below?</p>
-    <p>
-        Even if the requests will not be fullfilled, cancelling will
-        allow to edit the deck @Model.Destination.Name
-    </p>
+    <p>Cancelling will allow for edits to @Model.Destination.Name</p>
 
     <form method="POST">
-        <input type="hidden" 
-            asp-for="Destination.Id"
-            value="deckId" />
+        <input type="hidden" asp-for="Destination.Id" />
 
         <input type="submit"
-            class="btn btn-danger mb-3"
+            class="btn btn-danger"
             value="Confirm Cancel" />
     </form>
 </div>
 
 
-<h2>Current Trade Requests</h2>
+<h2>Sent Trades</h2>
 
 <table class="table">
     <thead>
         <tr>
             <th> @Html.DisplayNameForInnerType((Trade t) => t.Card) </th>
-            <th> @Html.DisplayNameForInnerType((Card c) => c.ManaCost) </th>
             <th> @Html.DisplayNameForInnerType((Card c) => c.SetName) </th>
-            <th> Request With </th>
+            <th> Trade With </th>
             <th> @Html.DisplayNameForInnerType((Trade t) => t.From) </th>
+            <th> Deck Color </th>
             <th> @Html.DisplayNameForInnerType((Trade t) => t.Amount) </th>
         </tr>
     </thead>
     <tbody>
-        @foreach (var trade in Model.Trades)
+        @foreach (var trade in Model.Destination.TradesTo)
         {
             <tr>
                 <td>
@@ -59,19 +54,22 @@
                        asp-route-id="@trade.CardId">
                        @trade.Card.Name </a>
                 </td>
-                <td>
-                    @foreach (var cost in trade.Card.GetManaSymbols())
-                    {
-                        <span class="m-1 ms ms-@cost ms-cost"></span>
-                    }
-                </td>
+
                 <td> @trade.Card.SetName </td>
                 <td> @trade.From.Owner.Name </td>
+
                 <td>
                     <a asp-page="/Decks/Viewer"
-                       asp-route-deckid="@trade.FromId">
+                       asp-route-id="@trade.FromId">
                        @trade.From.Name </a>
                 </td>
+                <td>
+                    @foreach (var color in trade.From.GetColorSymbols())
+                    {
+                        <span class="m-1 ms ms-@color ms-cost"></span>
+                    }
+                </td>
+
                 <td> @trade.Amount </td>
             </tr>
         }
@@ -79,27 +77,27 @@
 </table>
 
 
-<h2>@Model.Destination.Name Amounts</h2>
+<h2>Current Cards</h2>
 
 <table class="table">
     <thead>
         <tr>
             <th> @Html.DisplayNameForInnerType((CardAmount ca) => ca.Card) </th>
             <th> @Html.DisplayNameForInnerType((Card c) => c.ManaCost) </th>
+            <th> Cards In Deck </th>
             <th> Requests </th>
-            <th> Current Amount </th>
         </tr>
     </thead>
     <tbody>
-        @foreach (var pair in Model.Amounts)
+        @foreach (var group in Model.CardGroups)
         {
-            var card = pair.Cards.First();
+            var card = group.Cards.First();
             <tr>
                 <td>
                     <a asp-page="/Cards/Details"
                        asp-route-id="@card.Id"
                        class="fw-bold">
-                       @pair.Name </a>
+                       @group.Name </a>
                 </td>
                 <td>
                     @foreach (var cost in card.GetManaSymbols())
@@ -107,8 +105,8 @@
                         <span class="m-1 ms ms-@cost ms-cost"></span>
                     }
                 </td>
-                <td> @(pair.Requests?.Amount ?? 0) </td>
-                <td> @(pair.Actuals?.Amount ?? 0) </td>
+                <td> @group.InDeck </td>
+                <td> @group.Requests </td>
             </tr>
         }
     </tbody>

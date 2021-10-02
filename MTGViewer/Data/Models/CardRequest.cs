@@ -10,9 +10,10 @@ using MTGViewer.Data.Concurrency;
 namespace MTGViewer.Data
 {
     [Index(
-        nameof(LocationId),
-        nameof(CardId), IsUnique = true)]
-    public class CardAmount : Concurrent
+        nameof(CardId),
+        nameof(TargetId),
+        nameof(IsReturn), IsUnique = true)]
+    public class CardRequest : Concurrent
     {
         [JsonRequired]
         public int Id { get; private set; }
@@ -24,11 +25,14 @@ namespace MTGViewer.Data
 
 
         [JsonIgnore]
-        public Location Location { get; init; } = null!;
-        public int LocationId { get; init; }
+        public Deck Target { get; init; } = null!;
+        public int TargetId { get; init; }
 
 
-        [Range(0, int.MaxValue)]
+        public bool IsReturn { get; init; }
+
+
+        [Range(1, int.MaxValue)]
         public int Amount { get; set; }
     }
 }

@@ -1,4 +1,4 @@
-@page
+@page "{id:int}"
 @model MTGViewer.Pages.Decks.DeleteModel
 @using MTGViewer.Data
 
@@ -22,15 +22,15 @@
     </thead>
 
     <tbody>
-        @foreach (var pair in Model.Cards)
+        @foreach (var nameGroup in Model.NameGroups)
         {
-            var card = pair.Cards.First();
+            var card = nameGroup.Cards.First();
             <tr>
                 <td>
                     <a asp-page="/Cards/Details"
                        asp-route-id="@card.Id"
                        class="fw-bold">
-                       @pair.Name </a>
+                       @nameGroup.Name </a>
                 </td>
                 <td>
                     @foreach (var cost in card.GetManaSymbols())
@@ -40,8 +40,8 @@
                 </td>
 
                 <td>@card.SetName</td>
-                <td>@(pair.Actuals?.Amount ?? 0)</td>
-                <td>@(pair.Requests?.Amount ?? 0)</td>
+                <td>@nameGroup.InDeck</td>
+                <td>@nameGroup.Requests</td>
             </tr>
         }
     </tbody>
@@ -55,8 +55,6 @@
         <table class="table">
             <thead>
                 <tr>
-                    <th> @Html.DisplayNameForInnerType((Trade t) => t.Proposer) </th>
-                    <th> @Html.DisplayNameForInnerType((Trade t) => t.Receiver) </th>
                     <th> @Html.DisplayNameForInnerType((Trade t) => t.To) </th>
                     <th> @Html.DisplayNameForInnerType((Trade t) => t.From) </th>
                     <th> @Html.DisplayNameForInnerType((Trade t) => t.Card) </th>
@@ -67,8 +65,6 @@
                 @foreach(var trade in Model.Trades)
                 {
                     <tr>
-                        <td> @trade.Proposer.Name </td>
-                        <td> @trade.Receiver.Name </td>
                         <td> @trade.To.Name </td>
                         <td> @trade.From.Name </td>
                         <td> @trade.Card.Name </td>
@@ -84,7 +80,6 @@
         </table>
     </div>
 }
-
 
 <form method="POST">
     <!-- js hack -->

@@ -1,0 +1,167 @@
+@page "{id:int}"
+@model MTGViewer.Pages.Decks.CheckoutModel
+@using MTGViewer.Data
+
+@{
+    ViewData["Title"] = $"Checkout {Model.Deck.Name}";
+}
+
+<h1>Checkout @Model.Deck.Name</h1>
+
+@if (Model.HasPendings)
+{
+    <div class="alert alert-secondary" role="alert">
+        <p>Do you want to exchange card requests with the shared collection?</p>
+        <p>Alternatively, requests can be made to other players</p>
+
+        <form method="POST">
+            <input type="hidden" asp-for="Deck.Id" />
+            <input type="submit" class="btn btn-secondary" value="Exchange" />
+
+            <a asp-page="/Transfers/Request"
+                asp-route-deckid="@Model.Deck.Id"
+                class="btn btn-secondary">
+                Player Request </a>
+        </form>
+    </div>
+}
+else if (!Model.Deck.Requests.Any())
+{
+    <div class="alert alert-warning" role="alert">
+        There are no pending changes for the deck
+    </div>
+}
+else
+{
+    <div class="alert alert-secondary" role="alert">
+        <p>There are no possibles cards requested in the shared pool.</p>
+        <p>Requests can be made to other players get the cards.</p>
+
+        <a asp-page="/Transfers/Request"
+            asp-route-deckid="@Model.Deck.Id"
+            class="btn btn-secondary">
+            Player Request </a>
+    </div>
+}
+
+
+<div class="container">
+    @if (Model.Deck.Cards.Any())
+    {
+        <div class="row">
+            <h2>Current Cards</h2>
+
+            <table class="table mt-2">
+                <thead>
+                    <tr>
+                        <th>@Html.DisplayNameForInnerType((Card c) => c.Name)</th>
+                        <th>@Html.DisplayNameForInnerType((Card c) => c.ManaCost)</th>
+                        <th>@Html.DisplayNameForInnerType((Card c) => c.SetName)</th>
+                        <th>@Html.DisplayNameForInnerType((CardAmount ca) => ca.Amount)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var amount in Model.Deck.Cards)
+                    {
+                        var card = amount.Card;
+                        <tr>
+                            <td>
+                                <a asp-page="/Cards/Details"
+                                asp-route-id="@card.Id"
+                                class="fw-bold">
+                                @card.Name </a>
+                            </td>
+                            <td>
+                                @foreach (var cost in card.GetManaSymbols())
+                                {
+                                    <span class="m-1 ms ms-@cost ms-cost"></span>
+                                }
+                            </td>
+
+                            <td>@card.SetName</td>
+                            <td>@amount.Amount</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+
+    <div class="row">
+        <div class="col">
+            <h2>Card Requests</h2>
+
+            <table class="table mt-2">
+                <thead>
+                    <tr>
+                        <th>@Html.DisplayNameForInnerType((Card c) => c.Name)</th>
+                        <th>@Html.DisplayNameForInnerType((Card c) => c.ManaCost)</th>
+                        <th>@Html.DisplayNameForInnerType((Card c) => c.SetName)</th>
+                        <th>@Html.DisplayNameForInnerType((CardRequest cr) => cr.Amount)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var request in Model.Deck.Requests.Where(cr => !cr.IsReturn))
+                    {
+                        var card = request.Card;
+                        <tr>
+                            <td>
+                                <a asp-page="/Cards/Details"
+                                asp-route-id="@card.Id"
+                                class="fw-bold">
+                                @card.Name </a>
+                            </td>
+                            <td>
+                                @foreach (var cost in card.GetManaSymbols())
+                                {
+                                    <span class="m-1 ms ms-@cost ms-cost"></span>
+                                }
+                            </td>
+
+                            <td>@card.SetName</td>
+                            <td>@request.Amount</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <div class="col">
+            <h2>Returning Cards</h2>
+            <table class="table mt-2">
+                <thead>
+                    <tr>
+                        <th>@Html.DisplayNameForInnerType((Card c) => c.Name)</th>
+                        <th>@Html.DisplayNameForInnerType((Card c) => c.ManaCost)</th>
+                        <th>@Html.DisplayNameForInnerType((Card c) => c.SetName)</th>
+                        <th>@Html.DisplayNameForInnerType((CardRequest cr) => cr.Amount)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var request in Model.Deck.Requests.Where(cr => cr.IsReturn))
+                    {
+                        var card = request.Card;
+                        <tr>
+                            <td>
+                                <a asp-page="/Cards/Details"
+                                asp-route-id="@card.Id"
+                                class="fw-bold">
+                                @card.Name </a>
+                            </td>
+                            <td>
+                                @foreach (var cost in card.GetManaSymbols())
+                                {
+                                    <span class="m-1 ms ms-@cost ms-cost"></span>
+                                }
+                            </td>
+
+                            <td>@card.SetName</td>
+                            <td>@request.Amount</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+    </div>
+</div>

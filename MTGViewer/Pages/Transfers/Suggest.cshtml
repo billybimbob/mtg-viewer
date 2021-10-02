@@ -1,4 +1,4 @@
-@page "/Transfers/Suggest/{cardId}"
+@page "{cardId}"
 @model MTGViewer.Pages.Transfers.SuggestModel
 
 @{
@@ -82,10 +82,6 @@ else
         <input type="hidden"
             asp-for="Suggestion.CardId"
             value="@Model.Card.Id" />
-
-        <input type="hidden"
-            asp-for="Suggestion.ProposerId"
-            value="@Model.Proposer.Id" />
 
         <input type="hidden"
             asp-for="Suggestion.ReceiverId"

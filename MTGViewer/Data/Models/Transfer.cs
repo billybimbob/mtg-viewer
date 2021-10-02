@@ -1,36 +1,23 @@
 using System;
-using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-using Newtonsoft.Json;
 
+using Microsoft.EntityFrameworkCore;
+using Newtonsoft.Json;
 using MTGViewer.Data.Concurrency;
-using MTGViewer.Data.Internal;
 
 #nullable enable
 
 namespace MTGViewer.Data
 {
-    public class Transfer : Concurrent
+    public class Suggestion
     {
-        protected Transfer()
-        { }
-
         [JsonRequired]
         public int Id { get; private set; }
-
-        [JsonIgnore]
-        internal Discriminator Type { get; private set; }
 
 
         [JsonIgnore]
         public Card Card { get; init; } = null!;
         public string CardId { get; init; } = null!;
-
-
-        [Display(Name = "Offered By")]
-        [JsonIgnore]
-        public UserRef Proposer { get; init; } = null!;
-        public string ProposerId { get; init; } = null!;
 
 
         [Display(Name = "Sent To")]
@@ -41,45 +28,29 @@ namespace MTGViewer.Data
 
         [Display(Name = "To Deck")]
         [JsonIgnore]
-        public Deck? To { get; set; } // TODO: make init prop
-        public int? ToId { get; set; }
+        public Deck? To { get; init; }
+        public int? ToId { get; init; }
 
 
-        public bool IsInvolved(string userId) =>
-            ReceiverId == userId || ProposerId == userId;
-
-
-        public UserRef? GetOtherUser(string userId) => this switch
-        {
-            _ when userId == ProposerId => Receiver,
-            _ when userId == ReceiverId => Proposer,
-            _ => null
-        };
-    }
-
-
-    public class Suggestion : Transfer
-    {
         [MaxLength(80)]
         public string? Comment { get; set; }
     }
+    
 
 
-    public class Trade : Transfer
+    [Index(
+        nameof(ToId),
+        nameof(FromId),
+        nameof(CardId), IsUnique = true)]
+    public class Trade : Concurrent
     {
+        [JsonRequired]
+        public int Id { get; private set; }
 
-        [Display(Name = "To Deck")]
+
         [JsonIgnore]
-        public new Deck To
-        {
-            get => base.To ?? null!;
-            set => base.To = value;
-        }
-        public new int ToId
-        {
-            get => base.ToId ?? default;
-            set => base.ToId = value;
-        }
+        public Card Card { get; init; } = null!;
+        public string CardId { get; init; } = null!;
 
 
         [Display(Name = "From Deck")]
@@ -88,24 +59,13 @@ namespace MTGViewer.Data
         public int FromId { get; init; }
 
 
-        [Range(0, int.MaxValue)]
-        public int Amount { get; set; }
-
-
-        private Deck? _target;
-
+        [Display(Name = "To Deck")]
         [JsonIgnore]
-        public Deck? TargetDeck 
-        {
-            get => _target switch
-            {
-                not null => _target,
-                _ when ReceiverId == To?.OwnerId => To,
-                _ when ReceiverId == From?.OwnerId => From,
-                _ => null
-            };
-            private set =>
-                _target = value;
-        }
+        public Deck To { get; init; } = null!;
+        public int ToId { get; init; }
+
+
+        [Range(1, int.MaxValue)]
+        public int Amount { get; set; }
     }
 }

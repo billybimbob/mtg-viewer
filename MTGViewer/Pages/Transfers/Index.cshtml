@@ -14,91 +14,88 @@
         @Model.PostMessage
     </div>
 }
-@* 
-<a asp-page="./Propose" 
-    class="btn btn-secondary mb-3">
-    New Trade
-</a> *@
 
 
 <h2>Received Trades</h2>
 
-<table class="table">
+<table class="table mb-3">
     <thead>
         <tr>
             <th>Target Deck</th>
+            <th>Colors</th>
             <th>Number of Requests</th>
-            <th></th>
         </tr>
     </thead>
     <tbody>
-        @foreach (var (deck, numRequests) in Model.ReceivedTrades)
+        @foreach (var deck in Model.ReceivedTrades)
         {
             <tr>
-                <td>@deck.Name</td>
-                <td>@numRequests</td>
                 <td>
-                    <a asp-page="./Review" 
-                       asp-route-deckid="@deck.Id"
-                       class="btn btn-secondary mb-3">
-                       View </a>
+                    <a asp-page="Review" 
+                       asp-route-deckid="@deck.Id">
+                       @deck.Name </a>
                 </td>
+                <td>
+                    @foreach (var color in deck.GetColorSymbols())
+                    {
+                        <span class="m-1 ms ms-@color ms-cost"></span>
+                    }
+                </td>
+                <td>@deck.TradesFrom.Count</td>
             </tr>
         }
     </tbody>
 </table>
 
 
-<h2>Pending Trades</h2>
+<h2>@Model.SelfUser.Name's Requests</h2>
 
-<table class="table">
+<table class="table mb-3">
     <thead>
         <tr>
-            <th>Target Deck</th>
+            <th>Deck</th>
+            <th>Colors</th>
             <th>Number of Requests</th>
-            <th></th>
+            <th>Trade State</th>
         </tr>
     </thead>
     <tbody>
-        @foreach (var (deck, numRequests) in Model.PendingTrades)
+        @foreach (var deck in Model.RequestDecks)
         {
             <tr>
-                <td>@deck.Name</td>
-                <td>@numRequests</td>
                 <td>
-                    <a asp-page="./Status" 
-                        asp-route-deckid="@deck.Id"
-                        class="btn btn-secondary mb-3" >
-                        Status </a>
+                    <a asp-page="/Decks/Viewer"
+                        asp-route-id="@deck.Id"
+                        class="fw-bold">
+                        @deck.Name </a>
                 </td>
-            </tr>
-        }
-    </tbody>
-</table>
-
-
-<h2>Possible Requests</h2>
-
-<table class="table">
-    <thead>
-        <tr>
-            <th> Deck Name </th>
-            <th> Number of Requests </th>
-            <th></th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var deck in Model.PossibleRequests)
-        {
-            <tr>
-                <td> @deck.Name </td>
-                <td> @deck.Cards.Count() </td>
                 <td>
-                    <a asp-page="./Request" 
-                       asp-route-deckid="@deck.Id"
-                       class="btn btn-secondary mb-3">
-                       Request </a>
+                    @foreach (var color in deck.GetColorSymbols())
+                    {
+                        <span class="m-1 ms ms-@color ms-cost"></span>
+                    }
                 </td>
+
+                @if (deck.TradesTo.Any())
+                {
+                    <td>@deck.TradesTo.Count</td>
+                    <td>
+                        <a asp-page="Status" 
+                            asp-route-deckid="@deck.Id"
+                            class="fw-bold">
+                            Sent </a>
+                    </td>
+                }
+                else
+                {
+                    <td> @deck.Requests.Count(cr => !cr.IsReturn) </td>
+                    <td>
+                        <a asp-page="Request" 
+                            asp-route-deckid="@deck.Id"
+                            class="fw-bold">
+                            Possible </a>
+                    </td>
+                }
             </tr>
         }
     </tbody>
@@ -107,11 +104,10 @@
 
 <h2>Suggestions</h2>
 
-<table class="table">
+<table class="table mb-3">
     <thead>
         <tr>
             <th> @Html.DisplayNameForInnerType((Suggestion t) => t.Card) </th>
-            <th> Suggestion From </th>
             <th> @Html.DisplayNameForInnerType((Suggestion t) => t.To) </th>
             <th> @Html.DisplayNameForInnerType((Suggestion t) => t.Comment) </th>
             <th></th>
@@ -123,17 +119,17 @@
             <tr>
                 <td>
                     <a asp-page="/Cards/Details"
-                        asp-route-id="@suggestion.CardId">
+                        asp-route-id="@suggestion.CardId"
+                        class="fw-bold">
                         @suggestion.Card.Name </a>
                 </td>
-                <td>@suggestion.Proposer.Name</td>
                 <td>@(suggestion.To?.Name ?? "")</td>
                 <td>@suggestion.Comment</td>
                 <td>
                     <form method="POST">
                         <input type="submit"
                             asp-route-suggestid="@suggestion.Id"
-                            class="btn btn-secondary mb-3"
+                            class="btn btn-secondary"
                             value="Acknowledge" />
                     </form>
                 </td>

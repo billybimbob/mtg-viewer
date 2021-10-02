@@ -34,7 +34,7 @@ namespace MTGViewer.Tests.Pages.Transfers
             _dbContext = TestFactory.CardDbContext(_services);
             _userManager = TestFactory.CardUserManager(_services);
 
-            _requestModel = new RequestModel(
+            _requestModel = new(
                 _dbContext, _userManager, Mock.Of<ILogger<RequestModel>>());
         }
 
@@ -54,24 +54,29 @@ namespace MTGViewer.Tests.Pages.Transfers
         }
 
 
+        private IQueryable<Trade> AllTrades =>
+            _dbContext.Trades
+                .AsNoTracking()
+                .OrderBy(t => t.Id);
+
+
         [Fact]
         public async Task OnPost_WrongUser_NoChange()
         {
             // Arrange
-            var wrongUser = await _dbContext.Users.FirstAsync(u => u.Id != _requestDeck.Owner.Id);
+            var wrongUser = await _dbContext.Users.FirstAsync(u => u.Id != _requestDeck.OwnerId);
             await _requestModel.SetModelContextAsync(_userManager, wrongUser.Id);
 
-            var tradesQuery = _dbContext.Trades.AsNoTracking();
+            var allTradeIds = AllTrades.Select(t => t.Id);
 
             // Act
-            var tradesBefore = await tradesQuery.ToListAsync();
+            var tradesBefore = await allTradeIds.ToListAsync();
             var result = await _requestModel.OnPostAsync(_requestDeck.Id);
-            var tradesAfter = await tradesQuery.ToListAsync();
+            var tradesAfter = await allTradeIds.ToListAsync();
 
             // // Assert
             Assert.IsType<NotFoundResult>(result);
-            Assert.Equal(tradesBefore.Select(t => t.Id), tradesAfter.Select(t => t.Id));
-            Assert.DoesNotContain(_requestDeck.Id, tradesAfter.Select(t => t.ToId));
+            Assert.Equal(tradesBefore, tradesAfter);
         }
 
 
@@ -79,22 +84,21 @@ namespace MTGViewer.Tests.Pages.Transfers
         public async Task OnPost_InvalidDeck_NoChange()
         {
             // Arrange
-            await _requestModel.SetModelContextAsync(_userManager, _requestDeck.Owner.Id);
+            await _requestModel.SetModelContextAsync(_userManager, _requestDeck.OwnerId);
 
-            var tradesQuery = _dbContext.Trades.AsNoTracking();
-            var wrongDeck = _dbContext.Decks
+            var allTradeIds = AllTrades.Select(t => t.Id);
+            var wrongDeck = await _dbContext.Decks
                 .AsNoTracking()
-                .FirstAsync(t => t.Id != _requestDeck.Id);
+                .FirstAsync(d => d.OwnerId != _requestDeck.OwnerId);
 
             // Act
-            var tradesBefore = await tradesQuery.ToListAsync();
+            var tradesBefore = await allTradeIds.ToListAsync();
             var result = await _requestModel.OnPostAsync(wrongDeck.Id);
-            var tradesAfter = await tradesQuery.ToListAsync();
+            var tradesAfter = await allTradeIds.ToListAsync();
 
             // // Assert
             Assert.IsType<NotFoundResult>(result);
-            Assert.Equal(tradesBefore.Select(t => t.Id), tradesAfter.Select(t => t.Id));
-            Assert.DoesNotContain(_requestDeck.Id, tradesAfter.Select(t => t.ToId));
+            Assert.Equal(tradesBefore, tradesAfter);
         }
 
 
@@ -102,22 +106,24 @@ namespace MTGViewer.Tests.Pages.Transfers
         public async Task OnPost_ValidDeck_Requests()
         {
             // Arrange
-            await _requestModel.SetModelContextAsync(_userManager, _requestDeck.Owner.Id);
-
-            var tradesQuery = _dbContext.Trades.AsNoTracking();
+            await _requestModel.SetModelContextAsync(_userManager, _requestDeck.OwnerId);
 
             // Act
-            var tradesBefore = await tradesQuery.ToListAsync();
+            var tradesBefore = await AllTrades.ToListAsync();
             var result = await _requestModel.OnPostAsync(_requestDeck.Id);
-            var tradesAfter = await tradesQuery.ToListAsync();
+            var tradesAfter = await AllTrades.ToListAsync();
 
-            var addedTrades = tradesAfter.Except(
-                tradesBefore,
-                new EntityComparer<Trade>(t => t.Id));
+            var addedTrades = tradesAfter
+                .GroupJoin( tradesBefore,
+                    ta => ta.Id, tb => tb.Id,
+                    (trade, tbs) => (trade, isNew: !tbs.Any()))
+                .Where(tn => tn.isNew)
+                .Select(tn => tn.trade);
 
             // // Assert
             Assert.IsType<RedirectToPageResult>(result);
-            Assert.NotEqual(tradesBefore, tradesAfter);
+
+            Assert.NotEmpty(addedTrades);
             Assert.All(addedTrades, t => Assert.Equal(_requestDeck.Id, t.ToId));
         }
 
@@ -126,11 +132,11 @@ namespace MTGViewer.Tests.Pages.Transfers
         public async Task OnPost_MultipleSources_RequestsAll()
         {
             // Arrange
-            await _requestModel.SetModelContextAsync(_userManager, _requestDeck.Owner.Id);
+            await _requestModel.SetModelContextAsync(_userManager, _requestDeck.OwnerId);
 
-            var requestCard = await _dbContext.Amounts
-                .Where(ca => ca.LocationId == _requestDeck.Id && ca.IsRequest)
-                .Select(ca => ca.Card)
+            var requestCard = await _dbContext.Requests
+                .Where(cr => cr.TargetId == _requestDeck.Id)
+                .Select(cr => cr.Card)
                 .AsNoTracking()
                 .FirstAsync();
 
@@ -139,8 +145,9 @@ namespace MTGViewer.Tests.Pages.Transfers
 
             var extraLocations = Enumerable
                 .Range(0, 3)
-                .Select(i => new Deck($"Extra Deck #{i}")
+                .Select(i => new Deck
                 {
+                    Name = $"Extra Deck #{i}",
                     Owner = nonOwner
                 })
                 .ToList();
@@ -160,22 +167,22 @@ namespace MTGViewer.Tests.Pages.Transfers
             await _dbContext.SaveChangesAsync();
             _dbContext.ChangeTracker.Clear();
             
-            var tradesQuery = _dbContext.Trades.AsNoTracking();
-
             // Act
-            var tradesBefore = await tradesQuery.ToListAsync();
+            var tradesBefore = await AllTrades.ToListAsync();
             var result = await _requestModel.OnPostAsync(_requestDeck.Id);
-            var tradesAfter = await tradesQuery.ToListAsync();
+            var tradesAfter = await AllTrades.ToListAsync();
 
-            var addedTrades = tradesAfter.Except(
-                tradesBefore,
-                new EntityComparer<Trade>(t => t.Id));
+            var addedTrades = tradesAfter
+                .GroupJoin( tradesBefore,
+                    ta => ta.Id, tb => tb.Id,
+                    (trade, tbs) => (trade, isNew: !tbs.Any()))
+                .Where(tn => tn.isNew)
+                .Select(tn => tn.trade);
 
             var addedTargets = addedTrades.Select(t => t.FromId);
 
             // // Assert
             Assert.IsType<RedirectToPageResult>(result);
-            Assert.NotEqual(tradesBefore, tradesAfter);
 
             Assert.All(addedTrades, t => Assert.Equal(_requestDeck.Id, t.ToId));
             Assert.All(extraLocations, l => Assert.Contains(l.Id, addedTargets));

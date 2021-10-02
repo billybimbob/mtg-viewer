@@ -21,15 +21,19 @@ namespace MTGViewer.Data.Seed
         public IReadOnlyList<UserRef> Refs { get; set; }
 
         public IReadOnlyList<Card> Cards { get; set; }
-        public IReadOnlyList<CardAmount> Amounts { get; set; }
 
         public IReadOnlyList<Deck> Decks { get; set; }
         public IReadOnlyList<Box> Boxes { get; set; }
         public IReadOnlyList<Bin> Bins { get; set; }
 
-        public IReadOnlyList<Suggestion> Suggestions { get; set; }
-        public IReadOnlyList<Trade> Trades { get; set; }
+        public IReadOnlyList<CardAmount> Amounts { get; set; }
+        public IReadOnlyList<CardRequest> Requests { get; set; }
 
+        public IReadOnlyList<Change> Changes { get; set; }
+        public IReadOnlyList<Transaction> Transactions { get; set; }
+
+        public IReadOnlyList<Trade> Trades { get; set; }
+        public IReadOnlyList<Suggestion> Suggestions { get; set; }
 
         public static async Task<CardData> CreateAsync(
             CardDbContext dbContext,
@@ -61,6 +65,10 @@ namespace MTGViewer.Data.Seed
                     .AsNoTrackingWithIdentityResolution()
                     .ToListAsync(cancel),
 
+                Decks = await dbContext.Decks
+                    .AsNoTrackingWithIdentityResolution()
+                    .ToListAsync(cancel),
+
                 Boxes = await dbContext.Boxes
                     .AsNoTrackingWithIdentityResolution()
                     .ToListAsync(cancel),
@@ -69,15 +77,23 @@ namespace MTGViewer.Data.Seed
                     .AsNoTrackingWithIdentityResolution()
                     .ToListAsync(cancel),
 
-                Decks = await dbContext.Decks
+                Requests = await dbContext.Requests
                     .AsNoTrackingWithIdentityResolution()
                     .ToListAsync(cancel),
 
-                Suggestions = await dbContext.Suggestions
+                Changes = await dbContext.Changes
+                    .AsNoTrackingWithIdentityResolution()
+                    .ToListAsync(cancel),
+
+                Transactions = await dbContext.Transactions
                     .AsNoTrackingWithIdentityResolution()
                     .ToListAsync(cancel),
 
                 Trades = await dbContext.Trades
+                    .AsNoTrackingWithIdentityResolution()
+                    .ToListAsync(cancel),
+
+                Suggestions = await dbContext.Suggestions
                     .AsNoTrackingWithIdentityResolution()
                     .ToListAsync(cancel)
             };
@@ -134,16 +150,20 @@ namespace MTGViewer.Data.Seed
                 }
 
                 dbContext.Users.AddRange(data.Refs);
-
                 dbContext.Cards.AddRange(data.Cards);
-                dbContext.Amounts.AddRange(data.Amounts);
 
                 dbContext.Bins.AddRange(data.Bins);
                 dbContext.Boxes.AddRange(data.Boxes);
                 dbContext.Decks.AddRange(data.Decks);
 
-                dbContext.Suggestions.AddRange(data.Suggestions);
+                dbContext.Amounts.AddRange(data.Amounts);
+                dbContext.Requests.AddRange(data.Requests);
+
+                dbContext.Changes.AddRange(data.Changes);
+                dbContext.Transactions.AddRange(data.Transactions);
+
                 dbContext.Trades.AddRange(data.Trades);
+                dbContext.Suggestions.AddRange(data.Suggestions);
 
                 await dbContext.SaveChangesAsync(cancel);
 

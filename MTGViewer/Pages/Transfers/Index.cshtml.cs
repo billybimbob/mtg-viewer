@@ -15,9 +15,6 @@ using MTGViewer.Data;
 
 namespace MTGViewer.Pages.Transfers
 {
-    public record DeckTrade(Deck Deck, int NumberOrTrades) { }
-
-
     [Authorize]
     public class IndexModel : PageModel
     {
@@ -36,10 +33,9 @@ namespace MTGViewer.Pages.Transfers
 
         public UserRef SelfUser { get; set; }
 
-        public IReadOnlyList<DeckTrade> ReceivedTrades { get; private set; }
-        public IReadOnlyList<DeckTrade> PendingTrades { get; private set; }
+        public IReadOnlyList<Deck> ReceivedTrades { get; private set; }
+        public IReadOnlyList<Deck> RequestDecks { get; private set; }
 
-        public IReadOnlyList<Deck> PossibleRequests { get; private set; }
         public IReadOnlyList<Suggestion> Suggestions { get; private set; }
 
 
@@ -48,46 +44,45 @@ namespace MTGViewer.Pages.Transfers
         {
             var userId = _userManager.GetUserId(User);
 
-            var userTrades = await _dbContext.Trades
-                .Where(t => t.ProposerId == userId || t.ReceiverId == userId)
-                .Include(t => t.To)
-                .Include(t => t.From)
-                .ToListAsync();
+            var userDecks = await DeckForTransfers(userId).ToListAsync();
 
-            var requestDecks = await _dbContext.Decks
-                .Where(d => d.OwnerId == userId && d.Cards.Any(ca => ca.IsRequest))
-                .Include(d => d.Cards.Where(ca => ca.IsRequest))
-                .Include(d => d.Owner)
-                .ToListAsync();
+            SelfUser = await _dbContext.Users.FindAsync(userId);
 
-
-            SelfUser = requestDecks.FirstOrDefault()?.Owner
-                ?? await _dbContext.Users.FindAsync(userId);
-
-            ReceivedTrades = userTrades
-                .Where(t => t.ReceiverId == userId)
-                .GroupBy(t => t.From,
-                    (from, trades) => new DeckTrade(from, trades.Count()) )
-                .OrderBy(t => t.Deck.Name)
+            ReceivedTrades = userDecks
+                .Where(d => d.TradesFrom.Any())
                 .ToList();
 
-            PendingTrades = userTrades
-                .Where(t => t.ProposerId == userId)
-                .GroupBy(t => t.To,
-                    (to, trades) => new DeckTrade(to, trades.Count()) )
-                .OrderBy(t => t.Deck.Name)
-                .ToList();
-
-            PossibleRequests = requestDecks
-                .Except(PendingTrades.Select(dt => dt.Deck))
+            RequestDecks = userDecks
+                .Where(d => d.TradesTo.Any() || d.Requests.Any(cr => !cr.IsReturn))
                 .ToList();
 
             Suggestions = await _dbContext.Suggestions
                 .Where(s => s.ReceiverId == userId)
                 .Include(s => s.Card)
-                .Include(s => s.Proposer)
                 .Include(s => s.To)
+                .OrderBy(s => s.Card.Name)
                 .ToListAsync();
+        }
+
+
+        public IQueryable<Deck> DeckForTransfers(string userId)
+        {
+            return _dbContext.Decks
+                .Where(d => d.OwnerId == userId)
+
+                .Include(d => d.TradesFrom)
+                .Include(d => d.TradesTo)
+
+                .Include(d => d.Requests
+                    .Where(cr => !cr.IsReturn))
+                    .ThenInclude(cr => cr.Card)
+
+                .Include(d => d.Cards)
+                    .ThenInclude(ca => ca.Card)
+
+                .OrderBy(d => d.Name)
+                .AsSplitQuery()
+                .AsNoTrackingWithIdentityResolution();
         }
 
 

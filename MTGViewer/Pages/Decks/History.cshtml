@@ -1,0 +1,67 @@
+@page "{id:int}"
+@model MTGViewer.Pages.Decks.HistoryModel
+@using MTGViewer.Data
+
+@{
+    ViewData["Title"] = $"{Model.Deck.Name} Change History";
+}
+
+<h1>Changes To @Model.Deck.Name</h1>
+
+@if (!string.IsNullOrEmpty(Model.PostMessage))
+{
+    <div class="alert alert-secondary" role="alert">
+        @Model.PostMessage
+    </div>
+}
+
+<table class="table">
+    <thead>
+        <tr>
+            <th> @Html.DisplayNameForInnerType((Transaction t) => t.Applied) </th>
+            <th> @Html.DisplayNameForInnerType((Change c) => c.From) </th>
+            <th> @Html.DisplayNameForInnerType((Change c) => c.To) </th>
+            <th> @Html.DisplayNameForInnerType((Change c) => c.Card) </th>
+            <th> @Html.DisplayNameForInnerType((Change c) => c.Amount) </th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var (transaction, from, to, changes) in Model.Transfers)
+        {
+            var firstChange = changes.First(); // guranteed >= 1 changes
+
+            <tr>
+                @if (Model.IsFirstTransfer.Contains( (transaction.Id, from?.Id, to.Id) ))
+                {
+                    <td rowspan="@transaction.Changes.Count"> @transaction.Applied </td>
+                }
+
+                <td rowspan="@changes.Count"> @(firstChange.From?.Name ?? "Added") </td>
+                <td rowspan="@changes.Count"> @firstChange.To.Name </td>
+
+                <td> @firstChange.Card.Name </td>
+                <td> @firstChange.Amount </td>
+
+                @if (Model.IsFirstTransfer.Contains( (transaction.Id, from?.Id, to.Id) ))
+                {
+                    <td rowspan="@transaction.Changes.Count">
+                        <form method="POST">
+                            <input type="hidden" asp-for="Deck.Id" />
+                            <input type="hidden" asp-for="@transaction.Id" name="transactionId"/>
+                            <input type="submit" value="Remove" class="btn btn-secondary" />
+                        </form>
+                    </td>
+                }
+            </tr>
+
+            @foreach (var change in changes.Skip(1))
+            {
+                <tr>
+                    <td> @change.Card.Name </td>
+                    <td> @change.Amount </td>
+                </tr>
+            }
+        }
+    </tbody>
+</table>

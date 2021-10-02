@@ -12,11 +12,7 @@ namespace MTGViewer.Data.Internal
     internal enum Discriminator
     {
         Invalid,
-
-        Suggestion,
-        Trade,
-
         Box,
-        Deck
+        Deck,
     }
 }

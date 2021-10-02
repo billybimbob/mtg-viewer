@@ -30,13 +30,13 @@ namespace MTGViewer.Tests.Pages.Transfers
             _dbContext = TestFactory.CardDbContext(_services);
             _userManager = TestFactory.CardUserManager(_services);
 
-            _indexModel = new IndexModel(_userManager, _dbContext);
+            _indexModel = new(_userManager, _dbContext);
         }
 
 
-        public async Task InitializeAsync()
+        public Task InitializeAsync()
         {
-            await _dbContext.SeedAsync(_userManager);
+            return _dbContext.SeedAsync(_userManager);
         }
 
 
@@ -48,18 +48,23 @@ namespace MTGViewer.Tests.Pages.Transfers
         }
 
 
+        private IQueryable<Suggestion> AllSuggestions =>
+            _dbContext.Suggestions
+                .AsNoTracking()
+                .OrderBy(s => s.Id);
+
+
         [Fact]
         public async Task OnPost_ValidSuggestion_RemovesSuggestion()
         {
             // Arrange
-            var suggestQuery = _dbContext.Suggestions.AsNoTracking();
-            var suggestion = await suggestQuery.FirstAsync();
+            var suggestion = await AllSuggestions.FirstAsync();
 
             await _indexModel.SetModelContextAsync(_userManager, suggestion.ReceiverId);
 
             // Act
             var result = await _indexModel.OnPostAsync(suggestion.Id);
-            var suggestions = await suggestQuery.Select(t => t.Id).ToListAsync();
+            var suggestions = await AllSuggestions.Select(t => t.Id).ToListAsync();
 
             // Assert
             Assert.IsType<RedirectToPageResult>(result);
@@ -71,14 +76,17 @@ namespace MTGViewer.Tests.Pages.Transfers
         public async Task OnPost_WrongUser_NoRemove()
         {
             // Arrange
-            var suggestQuery = _dbContext.Suggestions.AsNoTracking();
-            var suggestion = await suggestQuery.FirstAsync();
+            var suggestion = await AllSuggestions.FirstAsync();
 
-            await _indexModel.SetModelContextAsync(_userManager, suggestion.ProposerId);
+            var wrongUser = await _dbContext.Users
+                .Select(u => u.Id)
+                .FirstAsync(uid => uid != suggestion.ReceiverId);
+
+            await _indexModel.SetModelContextAsync(_userManager, wrongUser);
 
             // Act
             var result = await _indexModel.OnPostAsync(suggestion.Id);
-            var suggestions = await suggestQuery.Select(t => t.Id).ToListAsync();
+            var suggestions = await AllSuggestions.Select(t => t.Id).ToListAsync();
 
             // Assert
             Assert.IsType<RedirectToPageResult>(result);
@@ -90,18 +98,19 @@ namespace MTGViewer.Tests.Pages.Transfers
         public async Task OnPost_InvalidSuggestion_NoRemove()
         {
             // Arrange
-            var tradeQuery = _dbContext.Trades.AsNoTracking();
-            var nonSuggestion = await tradeQuery.FirstAsync();
+            var suggestion = await AllSuggestions.FirstAsync();
+            var invalidSuggestId = 0;
 
-            await _indexModel.SetModelContextAsync(_userManager, nonSuggestion.ReceiverId);
+            await _indexModel.SetModelContextAsync(_userManager, suggestion.ReceiverId);
 
             // Act
-            var result = await _indexModel.OnPostAsync(nonSuggestion.Id);
-            var trades = await tradeQuery.Select(t => t.Id).ToListAsync();
+            var suggestsBefore = await AllSuggestions.Select(t => t.Id).ToListAsync();
+            var result = await _indexModel.OnPostAsync(invalidSuggestId);
+            var suggestsAFter = await AllSuggestions.Select(t => t.Id).ToListAsync();
 
             // Assert
             Assert.IsType<RedirectToPageResult>(result);
-            Assert.Contains(nonSuggestion.Id, trades);
+            Assert.Equal(suggestsBefore, suggestsAFter);
         }
    }
 }

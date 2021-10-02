@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -35,8 +36,7 @@ namespace MTGViewer.Pages.Transfers
         public Deck? Destination { get; private set; }
         public UserRef? Proposer { get; private set; }
 
-        public IReadOnlyList<Trade>? Trades { get; private set; }
-        public IReadOnlyList<SameNamePair>? Amounts { get; private set; }
+        public IReadOnlyList<AmountRequestNameGroup>? CardGroups { get; private set; }
 
 
         public async Task<IActionResult> OnGetAsync(int deckId)
@@ -46,51 +46,116 @@ namespace MTGViewer.Pages.Transfers
                 return NotFound();
             }
 
-            var userId = _userManager.GetUserId(User);
-            
-            var deck = await _dbContext.Decks
-                .Include(d => d.Owner)
-                .Include(d => d.Cards
-                    .OrderBy(ca => ca.Card.Name))
-                    .ThenInclude(ca => ca.Card)
-                .SingleOrDefaultAsync(d =>
-                    d.Id == deckId && d.OwnerId == userId);
+            var deck = await DeckForStatus(deckId).SingleOrDefaultAsync();
 
             if (deck == default)
             {
                 return NotFound();
             }
 
-            if (!deck.Cards.Any(ca => ca.IsRequest))
+            if (deck.Requests.All(cr => cr.IsReturn))
             {
                 PostMessage = $"There are no requests for {deck.Name}";
-                return RedirectToPage("./Index");
+                return RedirectToPage("Index");
             }
 
-            var deckTrades = await _dbContext.Trades
-                .Where(t => t.ProposerId == userId && t.ToId == deckId)
-                .Include(t => t.Card)
-                .Include(t => t.From)
-                    .ThenInclude(d => d.Owner)
-                .OrderBy(t => t.From.Owner.Name)
-                    .ThenBy(t => t.Card.Name)
-                .ToListAsync();
-
-            if (!deckTrades.Any())
+            if (!deck.TradesTo.Any())
             {
-                return RedirectToPage("./Request", new { deckId });
+                return RedirectToPage("Request", new { deckId });
             }
+
+            CapToTrades(deck);
 
             Destination = deck;
             Proposer = deck.Owner;
+            CardGroups = CardNameGroups(deck).ToList();
 
-            Trades = deckTrades;
-            Amounts = deck.Cards
-                .GroupBy(ca => ca.Card.Name,
-                    (_, amounts) => new SameNamePair(amounts))
-                .ToList();
 
             return Page();
+        }
+
+
+        private IQueryable<Deck> DeckForStatus(int deckId)
+        {
+            var userId = _userManager.GetUserId(User);
+            
+            return _dbContext.Decks
+                .Where(d => d.Id == deckId && d.OwnerId == userId)
+
+                .Include(d => d.Owner)
+                .Include(d => d.Cards)
+                    .ThenInclude(ca => ca.Card)
+
+                .Include(d => d.Requests
+                    .Where(cr => !cr.IsReturn))
+                    .ThenInclude(t => t.Card)
+
+                .Include(d => d.TradesTo)
+                    .ThenInclude(t => t.From.Owner)
+
+                .Include(d => d.TradesTo)
+                    .ThenInclude(t => t.From.Cards)
+                        .ThenInclude(ca => ca.Card)
+
+                .Include(d => d.TradesTo)
+                    .ThenInclude(t => t.From.Requests)
+                        .ThenInclude(ca => ca.Card)
+
+                .Include(d => d.TradesTo)
+                    .ThenInclude(t => t.Card)
+
+                .Include(d => d.TradesTo
+                    .OrderBy(t => t.From.Owner.Name)
+                        .ThenBy(t => t.Card.Name))
+
+                .AsSplitQuery()
+                .AsNoTrackingWithIdentityResolution();
+        }
+
+
+        private void CapToTrades(Deck deck)
+        {
+            var fromTargets = deck.TradesTo
+                .SelectMany(t => t.From.Cards)
+                .Distinct();
+
+            var tradesWithAmountCap = deck.TradesTo
+                .GroupJoin( fromTargets,
+                    t => (t.CardId, t.FromId),
+                    ca => (ca.CardId, ca.LocationId),
+                    (trade, targets) => (trade, targets))
+                .SelectMany(
+                    tts => tts.targets.DefaultIfEmpty(),
+                    (tts, target) => (tts.trade, target?.Amount ?? 0));
+
+            // modifications are not saved
+
+            foreach (var (trade, cap) in tradesWithAmountCap)
+            {
+                trade.Amount = Math.Min(trade.Amount, cap);
+            }
+
+            deck.TradesTo.RemoveAll(t => t.Amount == 0);
+        }
+
+
+        private IEnumerable<AmountRequestNameGroup> CardNameGroups(Deck deck)
+        {
+            var amountsByName = deck.Cards
+                .ToLookup(ca => ca.Card.Name);
+
+            var takesByName = deck.Requests
+                .Where(cr => !cr.IsReturn)
+                .ToLookup(cr => cr.Card.Name);
+
+            var cardNames = amountsByName
+                .Select(g => g.Key)
+                .Union(takesByName
+                    .Select(g => g.Key))
+                .OrderBy(name => name);
+
+            return cardNames.Select(cn => 
+                new AmountRequestNameGroup(amountsByName[cn], takesByName[cn]));
         }
 
 
@@ -100,30 +165,31 @@ namespace MTGViewer.Pages.Transfers
             if (deckId == default)
             {
                 PostMessage = "Deck is not valid";
-                return RedirectToPage("./Index");
+                return RedirectToPage("Index");
             }
 
             var userId = _userManager.GetUserId(User);
 
+            // keep eye on, could possibly remove trades not started by the user
+            // makes the assumption that trades are always started by the owner of the To deck
             var deck = await _dbContext.Decks
-                .Include(d => d.ToRequests
-                    .Where(t => t is Trade && t.ProposerId == userId))
-                .SingleOrDefaultAsync(d => d.Id == deckId && d.OwnerId == userId);
+                .Include(d => d.TradesTo)
+                .SingleOrDefaultAsync(d =>
+                    d.Id == deckId && d.OwnerId == userId);
 
             if (deck == default)
             {
                 PostMessage = "Deck is not valid";
-                return RedirectToPage("./Index");
+                return RedirectToPage("Index");
             }
 
-            if (!deck.ToRequests.Any())
+            if (!deck.TradesTo.Any())
             {
                 PostMessage = "No trades were found";
-                return RedirectToPage("./Index");
+                return RedirectToPage("Index");
             }
 
-
-            _dbContext.Trades.RemoveRange(deck.ToRequests.Cast<Trade>());
+            _dbContext.Trades.RemoveRange(deck.TradesTo);
 
             try
             {
@@ -135,7 +201,7 @@ namespace MTGViewer.Pages.Transfers
                 PostMessage = "Ran into error while cancelling";
             }
 
-            return RedirectToPage("./Index");
+            return RedirectToPage("Index");
         }
     }
 }

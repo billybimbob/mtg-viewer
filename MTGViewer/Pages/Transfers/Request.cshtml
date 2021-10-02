@@ -1,4 +1,4 @@
-@page
+@page "{deckId:int}"
 @model MTGViewer.Pages.Transfers.RequestModel
 @using MTGViewer.Data
 
@@ -7,7 +7,7 @@
 }
 
 
-<h1>Request for @Model.Deck.Name</h1>
+<h1>Requests for @Model.Deck.Name</h1>
 <hr />
 
 @if (Model.TargetsExist)
@@ -17,10 +17,10 @@
         <p>While a request is active, you cannot edit the deck @Model.Deck.Name</p>
 
         <form method="POST">
-            <input type="hidden" asp-for="Deck.Id" name="deckId" />
+            <input type="hidden" asp-for="Deck.Id"/>
 
             <input type="submit" 
-                class="btn btn-secondary mb-3"
+                class="btn btn-secondary"
                 value="Confirm"/>
         </form>
     </div>
@@ -31,6 +31,7 @@ else
         There are no possible decks to requests to
     </div>
 }
+
 
 <h2>Cards to Request</h2>
 
@@ -43,9 +44,9 @@ else
         </tr>
     </thead>
     <tbody>
-        @foreach (var requestGroup in Model.Requests)
+        @foreach (var cardGroup in Model.Requests)
         {
-            var card = requestGroup.Cards.First();
+            var card = cardGroup.Cards.First();
             <tr>
                 <td>
                     <a asp-page="/Cards/Details"
@@ -58,8 +59,48 @@ else
                         <span class="m-1 ms ms-@cost ms-cost"></span>
                     }
                 </td>
-                <td> @requestGroup.Amount </td>
+                <td> @cardGroup.Amount </td>
             </tr>
         } 
     </tbody>
 </table>
+
+
+@if (Model.Deck.Cards.Any())
+{
+    <h2>Current Cards</h2>
+
+    <table class="table">
+        <thead>
+            <tr>
+                <th>@Html.DisplayNameForInnerType((Card c) => c.Name)</th>
+                <th>@Html.DisplayNameForInnerType((Card c) => c.ManaCost)</th>
+                <th>@Html.DisplayNameForInnerType((Card c) => c.SetName)</th>
+                <th>@Html.DisplayNameForInnerType((CardAmount ca) => ca.Amount)</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var amount in Model.Deck.Cards)
+            {
+                var card = amount.Card;
+                <tr>
+                    <td>
+                        <a asp-page="/Cards/Details"
+                            asp-route-id="@card.Id"
+                            class="fw-bold">
+                            @card.Name </a>
+                    </td>
+                    <td>
+                        @foreach (var cost in card.GetManaSymbols())
+                        {
+                            <span class="m-1 ms ms-@cost ms-cost"></span>
+                        }
+                    </td>
+
+                    <td>@card.SetName</td>
+                    <td>@amount.Amount</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}

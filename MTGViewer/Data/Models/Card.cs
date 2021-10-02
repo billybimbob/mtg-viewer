@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Text.RegularExpressions;
+
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using MtgApiManager.Lib.Service;
@@ -26,7 +27,7 @@ namespace MTGViewer.Data
         [Required]
         public string Name { get; init; } = null!;
 
-        public ICollection<Name> Names { get; init; } = new List<Name>();
+        public List<Name> Names { get; init; } = new();
 
         [Required]
         public string Layout { get; init; } = null!;
@@ -38,13 +39,13 @@ namespace MTGViewer.Data
         [Display(Name = "Converted Mana")]
         public int? Cmc { get; init; }
 
-        public ICollection<Color> Colors { get; init; } = new List<Color>();
+        public List<Color> Colors { get; init; } = new();
 
-        public ICollection<SuperType> SuperTypes { get; init; } = new List<SuperType>();
+        public List<SuperType> SuperTypes { get; init; } = new();
 
-        public ICollection<Type> Types { get; init; } = new List<Type>();
+        public List<Type> Types { get; init; } = new();
 
-        public ICollection<SubType> SubTypes { get; init; } = new List<SubType>();
+        public List<SubType> SubTypes { get; init; } = new();
 
         [Required]
         public string Rarity { get; init; } = null!;
@@ -71,7 +72,7 @@ namespace MTGViewer.Data
         public string? ImageUrl { get; init; }
 
         [JsonIgnore]
-        public ICollection<CardAmount> Amounts { get; } = new List<CardAmount>();
+        public List<CardAmount> Amounts { get; } = new();
 
 
         public IReadOnlyList<string> GetManaSymbols()

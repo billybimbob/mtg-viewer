@@ -9,7 +9,7 @@ using Microsoft.Extensions.Logging;
 
 namespace MTGViewer.Data.Triggers
 {
-    public class TradeValidate : IBeforeSaveTrigger<Trade>, IAfterSaveTrigger<Trade>
+    public class TradeValidate : IBeforeSaveTrigger<Trade>
     {
         private readonly CardDbContext _dbContext;
         private readonly ILogger<TradeValidate> _logger;
@@ -21,64 +21,22 @@ namespace MTGViewer.Data.Triggers
         }
 
 
-        public async Task BeforeSave(ITriggerContext<Trade> trigContext, CancellationToken cancel)
+        public Task BeforeSave(ITriggerContext<Trade> trigContext, CancellationToken cancel)
         {
             if (trigContext.ChangeType == ChangeType.Deleted)
             {
-                return;
+                return Task.CompletedTask;
             }
 
-            var trade = trigContext.Entity;
-            var transfer = trade as Transfer;
+            var exchange = trigContext.Entity;
 
-            if (transfer.ToId is null && transfer.To is null)
+            if (exchange.ToId == exchange.FromId && exchange.To == exchange.From)
             {
-                throw new DbUpdateException("Trade cannot have 'To' property missing");
+                throw new DbUpdateException
+                    ("Trade cannot have the same location for both 'To' and 'From'");
             }
 
-            var fromAmount = await _dbContext.Amounts
-                .AsNoTracking()
-                .SingleOrDefaultAsync(ca =>
-                    !ca.IsRequest
-                        && ca.CardId == trade.CardId
-                        && (ca.LocationId == trade.FromId || ca.Location == trade.From));
-
-            if (fromAmount != default)
-            {
-                trade.Amount = Math.Min(fromAmount.Amount, trade.Amount);
-            }
-        }
-
-
-        public async Task AfterSave(ITriggerContext<Trade> trigContext, CancellationToken cancel)
-        {
-            if (trigContext.ChangeType == ChangeType.Deleted)
-            {
-                return;
-            }
-
-            var trade = trigContext.Entity;
-
-            if (_dbContext.Entry(trade).State == EntityState.Detached)
-            {
-                _dbContext.Attach(trade);
-            }
-
-            if (trade.Amount > 0)
-            {
-                return;
-            }
-
-            _dbContext.Entry(trade).State = EntityState.Deleted;
-
-            try
-            {
-                await _dbContext.SaveChangesAsync();
-            }
-            catch (DbUpdateException e)
-            {
-                _logger.LogError(e.ToString());
-            }
+            return Task.CompletedTask;
         }
     }
 }

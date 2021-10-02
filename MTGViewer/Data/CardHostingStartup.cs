@@ -31,10 +31,11 @@ namespace MTGViewer.Data
                 {
                     case "SqlServer":
                         services.AddTriggeredDbContextFactory<CardDbContext>(options => options
-                            .UseSqlServer(config.GetConnectionString("MTGCardContext"))
                                 // TODO: change connection string name
+                            .UseSqlServer(config.GetConnectionString("MTGCardContext"))
                             .UseTriggers(triggers => triggers
                                 .AddTrigger<Triggers.AmountValidate>()
+                                .AddTrigger<Triggers.RequestValidate>()
                                 .AddTrigger<Triggers.TradeValidate>() ));
                         break;
 
@@ -45,6 +46,7 @@ namespace MTGViewer.Data
                             .UseTriggers(triggers => triggers
                                 .AddTrigger<Triggers.AmountValidate>()
                                 .AddTrigger<Triggers.LiteTokenUpdate>()
+                                .AddTrigger<Triggers.RequestValidate>()
                                 .AddTrigger<Triggers.TradeValidate>() ));
                         break;
                 }
@@ -99,13 +101,12 @@ namespace MTGViewer.Data
             var cardGen = new CardDataGenerator(dbContext, sharedStorage, userManager, fetchService);
             var jsonSuccess = await cardGen.AddFromJsonAsync(cancel: cancel);
 
-            if (jsonSuccess)
+            if (!jsonSuccess)
             {
-                return;
+                await cardGen.GenerateAsync(cancel);
+                await cardGen.WriteToJsonAsync(cancel: cancel);
             }
-
-            await cardGen.GenerateAsync(cancel);
-            await cardGen.WriteToJsonAsync(cancel: cancel);
+            
             await sharedStorage.OptimizeAsync();
         }
 

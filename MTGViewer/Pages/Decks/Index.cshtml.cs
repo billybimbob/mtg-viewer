@@ -1,4 +1,3 @@
-using System;
 using System.Linq;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -18,27 +17,26 @@ namespace MTGViewer.Pages.Decks
 {
     public enum State
     {
-        Invalid,
-        Valid,
+        Theorycraft,
+        Built,
         Requesting
     }
 
     public record DeckState(Deck Deck, State State)
     {
-        public DeckState(Deck deck, bool isRequest)
-            : this(deck, State.Invalid)
+        public DeckState(Deck deck) : this(deck, State.Theorycraft)
         {
-            if (isRequest)
+            if (deck.TradesTo.Any())
             {
                 State = State.Requesting;
             }
-            else if (deck.Cards.Any(ca => ca.IsRequest))
+            else if (deck.Requests.Any())
             {
-                State = State.Invalid;
+                State = State.Theorycraft;
             }
             else
             {
-                State = State.Valid;
+                State = State.Built;
             }
         }
     }
@@ -68,43 +66,31 @@ namespace MTGViewer.Pages.Decks
         {
             var userId = _userManager.GetUserId(User);
 
-            Decks = await GetDeckStatesAsync(userId);
+            Decks = await DeckStates(userId).ToListAsync();
 
             CardUser = Decks.FirstOrDefault()?.Deck.Owner
                 ?? await _dbContext.Users.FindAsync(userId);
         }
 
 
-        private async Task<IReadOnlyList<DeckState>> GetDeckStatesAsync(string userId)
+        private IQueryable<DeckState> DeckStates(string userId)
         {
-            var userDecks = _dbContext.Decks
+            return _dbContext.Decks
                 .Where(d => d.OwnerId == userId)
                 .Include(d => d.Owner)
+
                 .Include(d => d.Cards)
-                    .ThenInclude(ca => ca.Card);
+                    .ThenInclude(ca => ca.Card)
 
-            var userTrades = _dbContext.Trades
-                .Where(t => t.ProposerId == userId);
+                .Include(d => d.Requests)
+                    .ThenInclude(cr => cr.Card)
 
+                .Include(d => d.TradesTo)
+                    .ThenInclude(t => t.Card)
 
-            var deckRequestInfos = await userDecks
-                .GroupJoin( userTrades,
-                    deck => deck.Id,
-                    trade => trade.ToId,
-                    (deck, trades) =>
-                        new { deck, trades })
-                .SelectMany(
-                    dts => dts.trades.DefaultIfEmpty(),
-                    (dts, trade) => 
-                        new { dts.deck, isRequest = trade != default})
-                .ToListAsync();
-
-
-            return deckRequestInfos
-                .Distinct()
-                .OrderBy(db => db.deck.Name)
-                .Select(db => new DeckState(db.deck, db.isRequest))
-                .ToList();
+                .OrderBy(d => d.Name)
+                .Select(deck => new DeckState(deck))
+                .AsSplitQuery();
         }
     }
 }

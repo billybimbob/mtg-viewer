@@ -4,13 +4,11 @@ using System.Threading.Tasks;
 
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
-using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
 
 
@@ -43,20 +41,23 @@ namespace MTGViewer.Pages.Boxes
         {
             Bins = await _dbContext.Bins
                 .OrderBy(b => b.Name)
+                .AsNoTrackingWithIdentityResolution()
                 .ToListAsync();
         }
 
 
         public async Task<IActionResult> OnPostAsync()
         {
-            if (!ModelState.IsValid)
-            {
-                return Page();
-            }
-
             if (Box.BinId != default)
             {
                 Box.Bin = await _dbContext.Bins.FindAsync(Box.BinId);
+            }
+
+            ModelState.ClearValidationState(nameof(Box));
+
+            if (!TryValidateModel(Box, nameof(Box)))
+            {
+                return Page();
             }
 
             _dbContext.Boxes.Attach(Box);
