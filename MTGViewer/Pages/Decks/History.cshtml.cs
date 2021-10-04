@@ -59,14 +59,14 @@ namespace MTGViewer.Pages.Decks
 
             Transfers = changes
                 .GroupBy(c => (c.Transaction, c.From, c.To),
-                    (tof, changes) => 
-                        new Transfer(tof.Transaction, tof.From, tof.To, changes.ToList()))
+                    (tft, changes) => 
+                        new Transfer(tft.Transaction, tft.From, tft.To, changes.ToList()))
                 .ToList();
 
             IsFirstTransfer = changes
                 .Select(c => (c.TransactionId, c.FromId, c.ToId))
-                .GroupBy(tof => tof.TransactionId,
-                    (_, tofs) => tofs.First())
+                .GroupBy(tft => tft.TransactionId,
+                    (_, tfts) => tfts.First())
                 .ToHashSet();
 
 

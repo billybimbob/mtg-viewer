@@ -37,16 +37,17 @@ namespace MTGViewer.Data
         {
             base.OnModelCreating(modelBuilder);
 
-            modelBuilder.SelectConcurrencyToken(Database);
+            modelBuilder
+                .SelectConcurrencyToken(Database)
 
-            // modelBuilder.ApplyConfiguration(new CardConfiguration());
-            modelBuilder.ApplyConfiguration(new LocationConfiguration());
+                // .ApplyConfiguration(new CardConfiguration())
+                .ApplyConfiguration(new LocationConfiguration())
 
-            modelBuilder.ApplyConfiguration(new DeckConfiguration());
-            modelBuilder.ApplyConfiguration(new BoxConfiguration());
+                .ApplyConfiguration(new DeckConfiguration())
+                .ApplyConfiguration(new BoxConfiguration())
 
-            modelBuilder.ApplyConfiguration(new TransactionConfiguration(Database));
-            modelBuilder.ApplyConfiguration(new SuggestionConfiguration());
+                .ApplyConfiguration(new TransactionConfiguration(Database))
+                .ApplyConfiguration(new SuggestionConfiguration());
         }
     }
 

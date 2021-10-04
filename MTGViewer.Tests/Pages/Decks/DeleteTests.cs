@@ -3,10 +3,8 @@ using System.Threading.Tasks;
 
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
 
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 using Moq;
@@ -14,6 +12,7 @@ using Xunit;
 
 using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
+
 using MTGViewer.Services;
 using MTGViewer.Pages.Decks;
 using MTGViewer.Tests.Utils;
@@ -23,43 +22,32 @@ namespace MTGViewer.Tests.Pages.Decks
 {
     public class DeleteTests : IAsyncLifetime
     {
-        private readonly ServiceProvider _services;
         private readonly CardDbContext _dbContext;
         private readonly UserManager<CardUser> _userManager;
+        private readonly TestDataGenerator _testGen;
 
         private readonly DeleteModel _deleteModel;
 
 
-        public DeleteTests()
+        public DeleteTests(
+            CardDbContext dbContext,
+            UserManager<CardUser> userManager,
+            TestDataGenerator testGen,
+            ISharedStorage sharedStorage)
         {
-            _services = TestFactory.ServiceProvider();
-            _dbContext = TestFactory.CardDbContext(_services);
-            _userManager = TestFactory.CardUserManager(_services);
+            _dbContext = dbContext;
+            _userManager = userManager;
+            _testGen = testGen;
 
-            var sharedStorage = new ExpandableSharedService(
-                Mock.Of<IConfiguration>(),
-                _dbContext);
+            var logger = Mock.Of<ILogger<DeleteModel>>();
 
-            _deleteModel = new(
-                _userManager,
-                _dbContext, 
-                sharedStorage,
-                Mock.Of<ILogger<DeleteModel>>());
+            _deleteModel = new(_userManager, _dbContext, sharedStorage, logger);
         }
 
 
-        public Task InitializeAsync()
-        {
-            return _dbContext.SeedAsync(_userManager);
-        }
+        public Task InitializeAsync() => _testGen.SeedAsync();
 
-
-        public async Task DisposeAsync()
-        {
-            await _services.DisposeAsync();
-            await _dbContext.DisposeAsync();
-            _userManager.Dispose();
-        }
+        public Task DisposeAsync() => Task.CompletedTask;
 
 
         private IQueryable<Deck> Deck(Deck deck) =>
@@ -74,11 +62,12 @@ namespace MTGViewer.Tests.Pages.Decks
                 .AsNoTracking();
 
 
+
         [Fact]
         public async Task OnPost_WrongUser_NoChange()
         {
             // Arrange
-            var deck = await _dbContext.CreateDeckAsync();
+            var deck = await _testGen.CreateDeckAsync();
             var wrongUser = await _dbContext.Users.FirstAsync(u => u.Id != deck.OwnerId);
 
             await _deleteModel.SetModelContextAsync(_userManager, wrongUser.Id);
@@ -97,7 +86,8 @@ namespace MTGViewer.Tests.Pages.Decks
         public async Task OnPost_InvalidDeck_NoChange()
         {
             // Arrange
-            var deck = await _dbContext.CreateDeckAsync();
+            var deck = await _testGen.CreateDeckAsync();
+
             await _deleteModel.SetModelContextAsync(_userManager, deck.OwnerId);
 
             var wrongDeck = -1;
@@ -119,7 +109,7 @@ namespace MTGViewer.Tests.Pages.Decks
         public async Task OnPost_ValidDeck_ReturnsCards(int numCopies)
         {
             // Arrange
-            var deck = await _dbContext.CreateDeckAsync(numCopies);
+            var deck = await _testGen.CreateDeckAsync(numCopies);
 
             await _deleteModel.SetModelContextAsync(_userManager, deck.OwnerId);
 

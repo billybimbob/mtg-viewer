@@ -31,9 +31,10 @@ namespace MTGViewer.Pages.Transfers
         [TempData]
         public string PostMessage { get; set; }
 
-        public UserRef SelfUser { get; set; }
+        public UserRef SelfUser { get; private set; }
 
         public IReadOnlyList<Deck> ReceivedTrades { get; private set; }
+
         public IReadOnlyList<Deck> RequestDecks { get; private set; }
 
         public IReadOnlyList<Suggestion> Suggestions { get; private set; }

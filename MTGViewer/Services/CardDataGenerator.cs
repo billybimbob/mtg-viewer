@@ -5,45 +5,39 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Configuration;
 using MTGViewer.Areas.Identity.Data;
-using MTGViewer.Services;
+using MTGViewer.Data;
 
 
-namespace MTGViewer.Data.Seed
+namespace MTGViewer.Services
 {
     public class CardDataGenerator
     {
+        private readonly Random _random;
+        private readonly string _seedPassword;
+
+        private readonly MTGFetchService _fetch;
         private readonly CardDbContext _dbContext;
         private readonly ISharedStorage _sharedStorage;
         private readonly UserManager<CardUser> _userManager;
 
-        private readonly MTGFetchService _fetch;
-        private readonly Random _random;
-
-
         public CardDataGenerator(
+            IConfiguration config,
+            MTGFetchService fetchService,
             CardDbContext dbContext,
             ISharedStorage sharedStorage,
-            UserManager<CardUser> userManager,
-            MTGFetchService fetchService)
+            UserManager<CardUser> userManager)
         {
+            _random = new(config.GetValue("Seed", 100));
+            _seedPassword = config.GetValue("SeedPassword", "");
+
+            _fetch = fetchService;
+
             _dbContext = dbContext;
             _sharedStorage = sharedStorage;
             _userManager = userManager;
-
-            _fetch = fetchService;
-            _random = new(100);
         }
-
-
-
-        public Task<bool> AddFromJsonAsync(string path = default, CancellationToken cancel = default) =>
-            Storage.AddFromJsonAsync(_dbContext, _userManager, path, cancel);
-
-
-        public Task WriteToJsonAsync(string path = default, CancellationToken cancel = default) =>
-            Storage.WriteToJsonAsync(_dbContext, _userManager, path, cancel);
-
 
 
         public async Task GenerateAsync(CancellationToken cancel = default)
@@ -78,7 +72,7 @@ namespace MTGViewer.Data.Seed
 
             // TODO: fix created accounts not being verified
             await Task.WhenAll(
-                users.Select(u => _userManager.CreateAsync(u, Storage.USER_PASSWORD)));
+                users.Select(_userManager.CreateAsync));
         }
 
 
@@ -88,19 +82,22 @@ namespace MTGViewer.Data.Seed
             {
                 Name = "Test Name",
                 UserName = "testingname",
-                Email = "test@gmail.com"
+                Email = "test@gmail.com",
+                EmailConfirmed = true
             },
             new CardUser
             {
                 Name = "Bob Billy",
                 UserName = "bobbilly213",
-                Email = "bob@gmail.com"
+                Email = "bob@gmail.com",
+                EmailConfirmed = true
             },
             new CardUser
             {
                 Name = "Steve Phil",
                 UserName = "stephenthegreat",
-                Email = "steve@gmail.com"
+                Email = "steve@gmail.com",
+                EmailConfirmed = true
             }
         };
 
@@ -149,10 +146,10 @@ namespace MTGViewer.Data.Seed
         {
             return cards.Zip(decks,
                 (card, deck) => (card, deck))
-                .Select(cl => new CardAmount
+                .Select(cd => new CardAmount
                 {
-                    Card = cl.card,
-                    Location = cl.deck,
+                    Card = cd.card,
+                    Location = cd.deck,
                     Amount = _random.Next(6)
                 })
                 .ToList();
@@ -175,7 +172,7 @@ namespace MTGViewer.Data.Seed
         {
             var source = amounts.First();
             var tradeFrom = (Deck)source.Location;
-            var tradeTo = decks.First(l => l != source.Location);
+            var tradeTo = decks.First(d => d != source.Location);
 
             return new List<Trade>()
             {
@@ -198,7 +195,7 @@ namespace MTGViewer.Data.Seed
         {
             var source = amounts.First();
             var suggestCard = cards.First();
-            var tradeTo = decks.First(l => l != source.Location);
+            var tradeTo = decks.First(d => d != source.Location);
 
             return new List<Suggestion>()
             {

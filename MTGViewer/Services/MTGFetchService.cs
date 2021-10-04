@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
-using System.Reflection;
 using System.Threading.Tasks;
 
 using Microsoft.Extensions.Logging;
@@ -20,10 +19,10 @@ namespace MTGViewer.Services
 {
     public class MTGFetchService : IMtgQueryable<MTGFetchService, Card>
     {
-        private bool _empty;
         private readonly ICardService _service;
         private readonly DataCacheService _cache;
         private readonly ILogger<MTGFetchService> _logger;
+        private bool _empty;
 
 
         public MTGFetchService(
@@ -31,10 +30,10 @@ namespace MTGViewer.Services
             DataCacheService cache, 
             ILogger<MTGFetchService> logger)
         {
-            _empty = true;
             _service = provider.GetCardService();
             _cache = cache;
             _logger = logger;
+            _empty = true;
         }
 
 

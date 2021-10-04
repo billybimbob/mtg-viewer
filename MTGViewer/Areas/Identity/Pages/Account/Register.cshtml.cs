@@ -94,14 +94,15 @@ namespace MTGViewer.Areas.Identity.Pages.Account
                     Email = Input.Email
                 };
 
-                var userRef = new UserRef(user);
-                _cardContext.Users.Add(userRef);
-
                 var result = await _userManager.CreateAsync(user, Input.Password);
-                await _cardContext.SaveChangesAsync();
 
                 if (result.Succeeded)
                 {
+                    var userRef = new UserRef(user);
+                    _cardContext.Users.Add(userRef);
+
+                    await _cardContext.SaveChangesAsync();
+
                     _logger.LogInformation("User created a new account with password.");
 
                     var code = await _userManager.GenerateEmailConfirmationTokenAsync(user);
@@ -125,6 +126,7 @@ namespace MTGViewer.Areas.Identity.Pages.Account
                         return LocalRedirect(returnUrl);
                     }
                 }
+
                 foreach (var error in result.Errors)
                 {
                     ModelState.AddModelError(string.Empty, error.Description);

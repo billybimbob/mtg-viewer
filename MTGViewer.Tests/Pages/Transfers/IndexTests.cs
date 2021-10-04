@@ -3,9 +3,8 @@ using System.Threading.Tasks;
 
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Identity;
-
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
+
 using Xunit;
 
 using MTGViewer.Areas.Identity.Data;
@@ -18,40 +17,35 @@ namespace MTGViewer.Tests.Pages.Transfers
 {
     public class IndexTests : IAsyncLifetime
     {
-        private readonly ServiceProvider _services;
-        private readonly CardDbContext _dbContext;
+        private readonly  CardDbContext _dbContext;
         private readonly UserManager<CardUser> _userManager;
+        private readonly TestDataGenerator _testGen;
 
         private readonly IndexModel _indexModel;
 
-        public IndexTests()
+        public IndexTests(
+            CardDbContext dbContext,
+            UserManager<CardUser> userManager,
+            TestDataGenerator testGen)
         {
-            _services = TestFactory.ServiceProvider();
-            _dbContext = TestFactory.CardDbContext(_services);
-            _userManager = TestFactory.CardUserManager(_services);
+            _dbContext = dbContext;
+            _userManager = userManager;
+            _testGen = testGen;
 
             _indexModel = new(_userManager, _dbContext);
         }
 
 
-        public Task InitializeAsync()
-        {
-            return _dbContext.SeedAsync(_userManager);
-        }
+        public Task InitializeAsync() => _testGen.SeedAsync();
 
-
-        public async Task DisposeAsync()
-        {
-            await _services.DisposeAsync();
-            await _dbContext.DisposeAsync();
-            _userManager.Dispose();
-        }
+        public Task DisposeAsync() => Task.CompletedTask;
 
 
         private IQueryable<Suggestion> AllSuggestions =>
             _dbContext.Suggestions
                 .AsNoTracking()
                 .OrderBy(s => s.Id);
+
 
 
         [Fact]

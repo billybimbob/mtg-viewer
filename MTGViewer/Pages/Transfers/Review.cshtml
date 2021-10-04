@@ -4,11 +4,11 @@
 @using MTGViewer.Data
 
 @{
-    ViewData["Title"] = $"{Model.Receiver.Name}'s Trades";
+    ViewData["Title"] = $"{Model.Deck.Owner.Name}'s Trades";
 }
 
 
-<h1>Trades From @Model.Source.Name</h1>
+<h1>Trades From @Model.Deck.Name</h1>
 <hr />
 
 @if (!string.IsNullOrEmpty(Model.PostMessage))
@@ -34,7 +34,7 @@
         </tr>
     </thead>
     <tbody>
-        @foreach (var trade in Model.Source.TradesFrom)
+        @foreach (var trade in Model.Deck.TradesFrom)
         {
             <tr>
                 <td>
@@ -69,7 +69,7 @@
                         </select>
                     </td>
                     <td>
-                        <input type="hidden" asp-for="Source.Id" />
+                        <input type="hidden" asp-for="Deck.Id" />
                         <input type="hidden" asp-for="@trade.Id" name="tradeId" />
 
                         <input type="submit"
@@ -89,7 +89,7 @@
 </table>
 
 
-@if (Model.Source.Cards.Any())
+@if (Model.Deck.Cards.Any())
 {
     <h2>Current Cards</h2>
 
@@ -103,7 +103,7 @@
             </tr>
         </thead>
         <tbody>
-            @foreach (var amount in Model.Source.Cards)
+            @foreach (var amount in Model.Deck.Cards)
             {
                 var card = amount.Card;
                 <tr>

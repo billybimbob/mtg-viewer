@@ -28,7 +28,9 @@ namespace MTGViewer.Pages.Decks
         public bool IsOwner { get; private set; }
 
         public Deck Deck { get; private set; }
+
         public IEnumerable<AmountRequestGroup> Cards { get; private set; }
+
 
         public async Task<IActionResult> OnGetAsync(int id)
         {

@@ -4,10 +4,10 @@
     
 
 @{
-    ViewData["Title"] = $"{Model.Proposer.Name}'s Trades";
+    ViewData["Title"] = $"{Model.Deck.Owner.Name}'s Trades";
 }
 
-<h1>Trades To @Model.Destination.Name</h1>
+<h1>Trades To @Model.Deck.Name</h1>
 <hr />
 
 
@@ -20,10 +20,10 @@
 
 <div class="alert alert-secondary" role="alert">
     <p>Do you want cancel the requests listed below?</p>
-    <p>Cancelling will allow for edits to @Model.Destination.Name</p>
+    <p>Cancelling will allow for edits to @Model.Deck.Name</p>
 
     <form method="POST">
-        <input type="hidden" asp-for="Destination.Id" />
+        <input type="hidden" asp-for="Deck.Id" />
 
         <input type="submit"
             class="btn btn-danger"
@@ -46,7 +46,7 @@
         </tr>
     </thead>
     <tbody>
-        @foreach (var trade in Model.Destination.TradesTo)
+        @foreach (var trade in Model.Deck.TradesTo)
         {
             <tr>
                 <td>

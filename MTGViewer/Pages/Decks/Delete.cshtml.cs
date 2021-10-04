@@ -50,7 +50,7 @@ namespace MTGViewer.Pages.Decks
 
         public async Task<IActionResult> OnGetAsync(int id)
         {
-            var deck = await DeckForDelete(id).FirstOrDefaultAsync();
+            var deck = await DeckForDelete(id).SingleOrDefaultAsync();
 
             if (deck == default)
             {

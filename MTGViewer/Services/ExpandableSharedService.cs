@@ -12,7 +12,7 @@ using MTGViewer.Data;
 
 namespace MTGViewer.Services
 {
-    public class ExpandableSharedService : ISharedStorage, IDisposable
+    public sealed class ExpandableSharedService : ISharedStorage, IDisposable
     {
         private readonly int _boxSize;
         private readonly CardDbContext _dbContext;
@@ -21,20 +21,14 @@ namespace MTGViewer.Services
 
         public ExpandableSharedService(IConfiguration config, CardDbContext dbContext)
         {
+            _boxSize = config.GetValue("BoxSize", 80);
             _dbContext = dbContext;
-
-            if (!int.TryParse(config["boxSize"], out _boxSize))
-            {
-                _boxSize = 80;
-            }
-
             _lock = new(1, 1);
         }
 
 
         public void Dispose()
         {
-            _dbContext.Dispose();
             _lock.Dispose();
         }
 

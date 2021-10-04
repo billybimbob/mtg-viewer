@@ -3,8 +3,6 @@ using System.Linq;
 using System.Threading.Tasks;
 
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
 
 using Xunit;
 using Moq;
@@ -19,32 +17,25 @@ namespace MTGViewer.Tests.Services
 {
     public class SharedStorageTests : IAsyncLifetime
     {
-        private readonly ServiceProvider _services;
         private readonly CardDbContext _dbContext;
-        private readonly ExpandableSharedService _sharedStorage;
+        private readonly ISharedStorage _sharedStorage;
+        private readonly TestDataGenerator _testGen;
 
 
-        public SharedStorageTests()
+        public SharedStorageTests(
+            CardDbContext dbContext, 
+            ISharedStorage sharedStorage, 
+            TestDataGenerator testGen)
         {
-            _services = TestFactory.ServiceProvider();
-            _dbContext = TestFactory.CardDbContext(_services);
-
-            _sharedStorage = new(Mock.Of<IConfiguration>(), _dbContext);
+            _dbContext = dbContext;
+            _sharedStorage = sharedStorage;
+            _testGen = testGen;
         }
 
 
-        public Task InitializeAsync()
-        {
-            return _dbContext.SeedAsync();
-        }
+        public Task InitializeAsync() => _testGen.SeedAsync();
 
-
-        public async Task DisposeAsync()
-        {
-            await _services.DisposeAsync();
-            await _dbContext.DisposeAsync();
-            _sharedStorage.Dispose();
-        }
+        public Task DisposeAsync() => Task.CompletedTask;
 
 
         public IQueryable<Card> Cards =>

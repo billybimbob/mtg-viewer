@@ -10,7 +10,6 @@ using Microsoft.Extensions.Logging;
 using MtgApiManager.Lib.Service;
 using MTGViewer.Data;
 using MTGViewer.Services;
-using MTGViewer.Tests.Utils;
 
 
 namespace MTGViewer.Tests.Services
@@ -22,9 +21,9 @@ namespace MTGViewer.Tests.Services
 
         private readonly MTGFetchService _fetch;
 
-        public MTGFetchTests()
+        public MTGFetchTests(MTGFetchService fetch)
         {
-            _fetch = TestFactory.NoCacheFetchService();
+            _fetch = fetch;
         }
 
 
@@ -73,10 +72,11 @@ namespace MTGViewer.Tests.Services
         public async Task Find_Cache_ReturnsCard()
         {
             var testCard = await _fetch.FindAsync(TEST_ID);
+
             var provider = new MtgServiceProvider();
             var cache = new DataCacheService(Mock.Of<IConfiguration>(), Mock.Of<ILogger<DataCacheService>>());
-
             var cacheFetch = new MTGFetchService(provider, cache, Mock.Of<ILogger<MTGFetchService>>());
+
             cache[testCard.MultiverseId] = testCard;
 
             var card = await cacheFetch.FindAsync(TEST_ID);

@@ -2,12 +2,9 @@ using System.Linq;
 using System.Threading.Tasks;
 
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
 
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 using Moq;
@@ -15,6 +12,7 @@ using Xunit;
 
 using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
+
 using MTGViewer.Services;
 using MTGViewer.Pages.Decks;
 using MTGViewer.Tests.Utils;
@@ -24,41 +22,33 @@ namespace MTGViewer.Tests.Pages.Decks
 {
     public class CheckoutTests : IAsyncLifetime
     {
-        private readonly ServiceProvider _services;
         private readonly CardDbContext _dbContext;
         private readonly UserManager<CardUser> _userManager;
+        private readonly TestDataGenerator _testGen;
 
         private readonly CheckoutModel _checkoutModel;
 
 
-        public CheckoutTests()
+        public CheckoutTests(
+            CardDbContext dbContext,
+            ISharedStorage sharedStorage,
+            UserManager<CardUser> userManager,
+            TestDataGenerator testGen)
         {
-            _services = TestFactory.ServiceProvider();
-            _dbContext = TestFactory.CardDbContext(_services);
-            _userManager = TestFactory.CardUserManager(_services);
+            _dbContext = dbContext;
+            _userManager = userManager;
+            _testGen = testGen;
 
-            var sharedStorage = new ExpandableSharedService(
-                Mock.Of<IConfiguration>(),
-                _dbContext);
+            var logger = Mock.Of<ILogger<CheckoutModel>>();
 
             _checkoutModel = new(
-                _dbContext, sharedStorage, _userManager,
-                Mock.Of<ILogger<CheckoutModel>>());
+                _dbContext, sharedStorage, _userManager, logger);
         }
 
 
-        public Task InitializeAsync()
-        {
-            return _dbContext.SeedAsync(_userManager);
-        }
+        public Task InitializeAsync() => _testGen.SeedAsync();
 
-
-        public async Task DisposeAsync()
-        {
-            await _services.DisposeAsync();
-            await _dbContext.DisposeAsync();
-            _userManager.Dispose();
-        }
+        public Task DisposeAsync() => Task.CompletedTask;
 
 
         private IQueryable<string> RequestOwnerId(CardRequest request) =>
@@ -129,7 +119,7 @@ namespace MTGViewer.Tests.Pages.Decks
         public async Task OnPost_ValidTake_AppliesTake()
         {
             // Arrange
-            var request = await _dbContext.GetTakeRequestAsync();
+            var request = await _testGen.GetTakeRequestAsync();
             var targetAmount = request.Amount;
             var deckOwnerId = await RequestOwnerId(request).SingleAsync();
 
@@ -166,7 +156,7 @@ namespace MTGViewer.Tests.Pages.Decks
         {
             // Arrange
             var targetMod = 2;
-            var request = await _dbContext.GetTakeRequestAsync(targetMod);
+            var request = await _testGen.GetTakeRequestAsync(targetMod);
 
             var targetLimit = request.Amount - targetMod;
             var deckOwnerId = await RequestOwnerId(request).SingleAsync();
@@ -205,7 +195,7 @@ namespace MTGViewer.Tests.Pages.Decks
         public async Task OnPost_ValidReturn_AppliesReturn(int targetMod)
         {
             // Arrange
-            var request = await _dbContext.GetReturnRequestAsync(targetMod);
+            var request = await _testGen.GetReturnRequestAsync(targetMod);
             var returnAmount = request.Amount;
             var deckOwnerId = await RequestOwnerId(request).SingleAsync();
 
@@ -241,7 +231,7 @@ namespace MTGViewer.Tests.Pages.Decks
         public async Task OnPost_InsufficientReturn_NoChange()
         {
             // Arrange
-            var request = await _dbContext.GetReturnRequestAsync(2);
+            var request = await _testGen.GetReturnRequestAsync(2);
             var deckOwnerId = await RequestOwnerId(request).SingleAsync();
 
             await _checkoutModel.SetModelContextAsync(_userManager, deckOwnerId);
@@ -274,7 +264,7 @@ namespace MTGViewer.Tests.Pages.Decks
         [Fact]
         public async Task OnPost_TradeActive_NoChange()
         {
-            var request = await _dbContext.GetReturnRequestAsync(2);
+            var request = await _testGen.GetReturnRequestAsync(2);
             var deckOwnerId = await RequestOwnerId(request).SingleAsync();
 
             var tradeTarget = await _dbContext.Amounts
@@ -314,7 +304,7 @@ namespace MTGViewer.Tests.Pages.Decks
         [Fact]
         public async Task OnPost_MixedTakeReturns_AppliesChanges()
         {
-            var (take, ret) = await _dbContext.GetMixedRequestDeckAsync();
+            var (take, ret) = await _testGen.GetMixedRequestDeckAsync();
             var deckOwnerId = await RequestOwnerId(take).SingleAsync();
 
             await _checkoutModel.SetModelContextAsync(_userManager, deckOwnerId);

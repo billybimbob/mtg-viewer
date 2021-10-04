@@ -33,8 +33,7 @@ namespace MTGViewer.Pages.Transfers
         [TempData]
         public string? PostMessage { get; set; }
 
-        public Deck? Destination { get; private set; }
-        public UserRef? Proposer { get; private set; }
+        public Deck? Deck { get; private set; }
 
         public IReadOnlyList<AmountRequestNameGroup>? CardGroups { get; private set; }
 
@@ -66,10 +65,8 @@ namespace MTGViewer.Pages.Transfers
 
             CapToTrades(deck);
 
-            Destination = deck;
-            Proposer = deck.Owner;
+            Deck = deck;
             CardGroups = CardNameGroups(deck).ToList();
-
 
             return Page();
         }

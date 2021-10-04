@@ -28,14 +28,18 @@ namespace MTGViewer
             services.AddRazorPages();
             services.AddServerSideBlazor();
 
+            services.AddCardStorage(_config);
+
             services.AddSingleton<DataCacheService>();
             services.AddSingleton<MtgServiceProvider>();
-
             services.AddScoped<MTGFetchService>();
+
             services.AddScoped<ISharedStorage, ExpandableSharedService>();
+            services.AddScoped<JsonCardStorage>();
 
             if (_env.IsDevelopment())
             {
+                services.AddScoped<CardDataGenerator>();
                 services.AddDatabaseDeveloperPageExceptionFilter();
             }
         }

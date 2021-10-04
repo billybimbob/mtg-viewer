@@ -34,9 +34,7 @@ namespace MTGViewer.Pages.Transfers
         public string? PostMessage { get; set; }
 
         [BindProperty]
-        public Deck? Source { get; set; }
-
-        public UserRef? Receiver { get; private set; }
+        public Deck? Deck { get; set; }
 
 
         public async Task<IActionResult> OnGetAsync(int deckId)
@@ -60,8 +58,7 @@ namespace MTGViewer.Pages.Transfers
 
             CapFromTrades(deck);
 
-            Source = deck;
-            Receiver = deck.Owner;
+            Deck = deck;
 
             return Page();
         }
@@ -143,7 +140,7 @@ namespace MTGViewer.Pages.Transfers
             if (trade == null)
             {
                 PostMessage = "Trade could not be found";
-                return RedirectToPage("Review", new { deckId = Source?.Id });
+                return RedirectToPage("Review", new { deckId = Deck?.Id });
             }
 
             var acceptRequest = GetAcceptRequest(trade);
@@ -151,7 +148,7 @@ namespace MTGViewer.Pages.Transfers
             if (acceptRequest == null)
             {
                 PostMessage = "Source Deck lacks the cards to complete the trade";
-                return RedirectToPage("Review", new { deckId = Source?.Id });
+                return RedirectToPage("Review", new { deckId = Deck?.Id });
             }
 
             ApplyAccept(acceptRequest, amount);
@@ -168,7 +165,7 @@ namespace MTGViewer.Pages.Transfers
                 PostMessage = "Ran into error while Accepting";
             }
 
-            return RedirectToPage("Review", new { deckId = Source?.Id });
+            return RedirectToPage("Review", new { deckId = Deck?.Id });
         }
 
 
@@ -404,7 +401,7 @@ namespace MTGViewer.Pages.Transfers
             if (tradeId == default)
             {
                 PostMessage = "Trade is not specified";
-                return RedirectToPage("Review", new { deckId = Source?.Id });
+                return RedirectToPage("Review", new { deckId = Deck?.Id });
             }
 
             var userId = _userManager.GetUserId(User);
@@ -416,7 +413,7 @@ namespace MTGViewer.Pages.Transfers
             if (deckTrade == default)
             {
                 PostMessage = "Trade could not be found";
-                return RedirectToPage("Review", new { deckId = Source?.Id });
+                return RedirectToPage("Review", new { deckId = Deck?.Id });
             }
 
             _dbContext.Trades.Remove(deckTrade);
@@ -431,7 +428,7 @@ namespace MTGViewer.Pages.Transfers
                 PostMessage = "Ran into error while rejecting";
             }
 
-            return RedirectToPage("Review", new { deckId = Source?.Id });
+            return RedirectToPage("Review", new { deckId = Deck?.Id });
         }
     }
 }

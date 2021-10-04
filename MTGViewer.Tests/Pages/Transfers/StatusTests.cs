@@ -18,18 +18,21 @@ namespace MTGViewer.Tests.Pages.Transfers
 {
     public class StatusTests : IAsyncLifetime
     {
-        private readonly ServiceProvider _services;
         private readonly CardDbContext _dbContext;
         private readonly UserManager<CardUser> _userManager;
+        private readonly TestDataGenerator _testGen;
 
         private readonly StatusModel _statusModel;
         private TradeSet _trades;
 
-        public StatusTests()
+        public StatusTests(
+            CardDbContext dbContext,
+            UserManager<CardUser> userManager,
+            TestDataGenerator testGen)
         {
-            _services = TestFactory.ServiceProvider();
-            _dbContext = TestFactory.CardDbContext(_services);
-            _userManager = TestFactory.CardUserManager(_services);
+            _dbContext = dbContext;
+            _userManager = userManager;
+            _testGen = testGen;
 
             _statusModel = new(_userManager, _dbContext);
         }
@@ -37,17 +40,11 @@ namespace MTGViewer.Tests.Pages.Transfers
 
         public async Task InitializeAsync()
         {
-            await _dbContext.SeedAsync(_userManager);
-            _trades = await _dbContext.CreateTradeSetAsync(isToSet: true);
+            await _testGen.SeedAsync();
+            _trades = await _testGen.CreateTradeSetAsync(isToSet: true);
         }
 
-
-        public async Task DisposeAsync()
-        {
-            await _services.DisposeAsync();
-            await _dbContext.DisposeAsync();
-            _userManager.Dispose();
-        }
+        public Task DisposeAsync() => Task.CompletedTask;
 
 
         private IQueryable<Trade> TradesInSet => 

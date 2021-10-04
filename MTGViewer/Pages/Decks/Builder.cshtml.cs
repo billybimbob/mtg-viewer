@@ -37,27 +37,32 @@ namespace MTGViewer.Pages.Decks
 
             if (id is int deckId)
             {
-                var deck = await _dbContext.Decks
-                    .Include(d => d.TradesTo)
-                    .AsNoTrackingWithIdentityResolution()
-                    .SingleOrDefaultAsync(l => 
-                        l.Id == deckId && l.Owner.Id == UserId);
+                var deck = await DeckForBuilder(deckId, UserId).SingleOrDefaultAsync();
 
-                if (deck == default || deck.TradesTo.Any())
+                if (deck == default)
                 {
                     return NotFound();
                 }
 
+                if (deck.TradesTo.Any())
+                {
+                    return RedirectToPage("Index");
+                }
+
                 DeckId = deckId;
-            }
-            else
-            {
-                DeckId = default;
             }
 
             // the deck cannot be used as a param because of cyclic refs
             return Page();
         }
 
+
+        private IQueryable<Deck> DeckForBuilder(int deckId, string userId)
+        {   
+            return _dbContext.Decks
+                .Where(d => d.Id == deckId && d.OwnerId == userId)
+                .Include(d => d.TradesTo)
+                .AsNoTrackingWithIdentityResolution();
+        }
     }
 }

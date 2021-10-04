@@ -14,57 +14,33 @@ using Microsoft.AspNetCore.Mvc.ViewFeatures;
 
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore;
 
-using Microsoft.Extensions.Configuration;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 using Moq;
-using MtgApiManager.Lib.Service;
 using MTGViewer.Areas.Identity.Data;
-using MTGViewer.Data;
-using MTGViewer.Data.Seed;
-using MTGViewer.Services;
 
 
 namespace MTGViewer.Tests.Utils
 {
     public static class TestFactory
     {
-        internal static ServiceProvider ServiceProvider()
+        public static void EmptyDatabase(
+            IServiceProvider provider, DbContextOptionsBuilder options)
         {
-            return new ServiceCollection()
-                .AddEntityFrameworkInMemoryDatabase()
-                .BuildServiceProvider();
+            var empty = provider.GetRequiredService<EmptyProvider>();
+
+            options.UseInMemoryDatabase(EmptyProvider.TestDB)
+                .UseInternalServiceProvider(empty.Provider);
         }
 
 
-        internal static CardDbContext CardDbContext(IServiceProvider services = null)
+        public static UserManager<CardUser> CardUserManager(IServiceProvider services)
         {
-            services ??= ServiceProvider();
-            return new CardDbContext( DbContextOptions<CardDbContext>(services) );
-        }
-
-
-        private static DbContextOptions<D> DbContextOptions<D>(IServiceProvider services)
-            where D : DbContext
-        {
-            var dbBuilder = new DbContextOptionsBuilder<D>()
-                .UseInMemoryDatabase("Test Database")
-                .UseInternalServiceProvider(services);
-                // .UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking);
-
-            return dbBuilder.Options;
-        }
-
-
-        internal static UserManager<CardUser> CardUserManager(IServiceProvider services = null)
-        {
-            services ??= ServiceProvider();
-
-            var userDb = new UserDbContext( DbContextOptions<UserDbContext>(services) );
+            var userDb = services.GetRequiredService<UserDbContext>();
             var store = new UserStore<CardUser>(userDb);
 
             var options = new Mock<IOptions<IdentityOptions>>();
@@ -106,7 +82,7 @@ namespace MTGViewer.Tests.Utils
 
 
 
-        internal static IUserClaimsPrincipalFactory<CardUser> CardClaimsFactory(UserManager<CardUser> userManager)
+        private static IUserClaimsPrincipalFactory<CardUser> CardClaimsFactory(UserManager<CardUser> userManager)
         {
             var options = new Mock<IOptions<IdentityOptions>>();
             var idOptions = new IdentityOptions();
@@ -121,7 +97,7 @@ namespace MTGViewer.Tests.Utils
 
 
 
-        internal static void SetModelContext(this PageModel model, ClaimsPrincipal user = null)
+        public static void SetModelContext(this PageModel model, ClaimsPrincipal user = null)
         {
             var httpContext = new DefaultHttpContext();
 
@@ -150,7 +126,7 @@ namespace MTGViewer.Tests.Utils
         }
 
 
-        internal static async Task SetModelContextAsync(
+        public static async Task SetModelContextAsync(
             this PageModel model, 
             UserManager<CardUser> userManager,
             CardUser user)
@@ -162,7 +138,7 @@ namespace MTGViewer.Tests.Utils
         }
 
 
-        internal static async Task SetModelContextAsync(
+        public static async Task SetModelContextAsync(
             this PageModel model, 
             UserManager<CardUser> userManager,
             string userId)
@@ -172,27 +148,6 @@ namespace MTGViewer.Tests.Utils
             var userClaim = await claimsFactory.CreateAsync(user);
 
             model.SetModelContext(userClaim);
-        }
-
-
-
-        internal static MTGFetchService NoCacheFetchService()
-        {
-            var provider = new MtgServiceProvider();
-            var cache = new DataCacheService(Mock.Of<IConfiguration>(), Mock.Of<ILogger<DataCacheService>>());
-
-            return new MTGFetchService(provider, cache, Mock.Of<ILogger<MTGFetchService>>());
-        }
-
-
-        internal static CardDataGenerator CardDataGenerator(
-            CardDbContext dbContext,
-            UserManager<CardUser> userManager)
-        {
-            var sharedStorage = new ExpandableSharedService(Mock.Of<IConfiguration>(), dbContext);
-            var fetch = NoCacheFetchService();
-
-            return new CardDataGenerator(dbContext, sharedStorage, userManager, fetch);
         }
     }
 }

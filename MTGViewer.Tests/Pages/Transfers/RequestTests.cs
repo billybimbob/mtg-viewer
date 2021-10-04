@@ -5,7 +5,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Identity;
 
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 using Moq;
@@ -21,18 +20,21 @@ namespace MTGViewer.Tests.Pages.Transfers
 {
     public class RequestTests : IAsyncLifetime
     {
-        private readonly ServiceProvider _services;
         private readonly CardDbContext _dbContext;
         private readonly UserManager<CardUser> _userManager;
+        private readonly TestDataGenerator _testGen;
 
         private readonly RequestModel _requestModel;
         private Deck _requestDeck;
 
-        public RequestTests()
+        public RequestTests(
+            CardDbContext dbContext,
+            UserManager<CardUser> userManager,
+            TestDataGenerator testGen)
         {
-            _services = TestFactory.ServiceProvider();
-            _dbContext = TestFactory.CardDbContext(_services);
-            _userManager = TestFactory.CardUserManager(_services);
+            _dbContext = dbContext;
+            _userManager = userManager;
+            _testGen = testGen;
 
             _requestModel = new(
                 _dbContext, _userManager, Mock.Of<ILogger<RequestModel>>());
@@ -41,17 +43,11 @@ namespace MTGViewer.Tests.Pages.Transfers
 
         public async Task InitializeAsync()
         {
-            await _dbContext.SeedAsync(_userManager);
-            _requestDeck = await _dbContext.CreateRequestDeckAsync();
+            await _testGen.SeedAsync();
+            _requestDeck = await _testGen.CreateRequestDeckAsync();
         }
 
-
-        public async Task DisposeAsync()
-        {
-            await _services.DisposeAsync();
-            await _dbContext.DisposeAsync();
-            _userManager.Dispose();
-        }
+        public Task DisposeAsync() => Task.CompletedTask;
 
 
         private IQueryable<Trade> AllTrades =>

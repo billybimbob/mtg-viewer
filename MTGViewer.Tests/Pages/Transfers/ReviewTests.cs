@@ -3,9 +3,8 @@ using System.Threading.Tasks;
 
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Identity;
-
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
+
 using Xunit;
 
 using MTGViewer.Areas.Identity.Data;
@@ -18,18 +17,21 @@ namespace MTGViewer.Tests.Pages.Transfers
 {
     public class ReviewTests : IAsyncLifetime
     {
-        private readonly ServiceProvider _services;
         private readonly CardDbContext _dbContext;
         private readonly UserManager<CardUser> _userManager;
+        private readonly TestDataGenerator _testGen;
 
         private readonly ReviewModel _reviewModel;
         private TradeSet _trades;
 
-        public ReviewTests()
+        public ReviewTests(
+            CardDbContext dbContext,
+            UserManager<CardUser> userManager,
+            TestDataGenerator testGen)
         {
-            _services = TestFactory.ServiceProvider();
-            _dbContext = TestFactory.CardDbContext(_services);
-            _userManager = TestFactory.CardUserManager(_services);
+            _dbContext = dbContext;
+            _userManager = userManager;
+            _testGen = testGen;
 
             _reviewModel = new(_dbContext, _userManager);
         }
@@ -37,17 +39,11 @@ namespace MTGViewer.Tests.Pages.Transfers
 
         public async Task InitializeAsync()
         {
-            await _dbContext.SeedAsync(_userManager);
-            _trades = await _dbContext.CreateTradeSetAsync(isToSet: false);
+            await _testGen.SeedAsync();
+            _trades = await _testGen.CreateTradeSetAsync(isToSet: false);
         }
 
-
-        public async Task DisposeAsync()
-        {
-            await _services.DisposeAsync();
-            await _dbContext.DisposeAsync();
-            _userManager.Dispose();
-        }
+        public Task DisposeAsync() => Task.CompletedTask;
 
 
         private IQueryable<Trade> TradesInSet => 
