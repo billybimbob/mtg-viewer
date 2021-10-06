@@ -28,6 +28,7 @@ namespace MTGViewer.Data
         public string Id { get; private set; }
 
         [JsonRequired]
+        [StringLength(256)]
         public string Name { get; private set; }
     }
 }

@@ -1,8 +1,9 @@
+@using System
 @using System.Linq
+@using System.Linq.Expressions
 @using MTGViewer.Data
 
 @namespace MTGViewer.Components
-
 @inject IDbContextFactory<CardDbContext> DbFactory
 
 
@@ -14,47 +15,71 @@
 </div>
 
 <div class="my-3">
-    @* <div class="input-group my-3">
-        <span class="input-group-text">Name:</span> *@
-    <input class="formcontrol" placeholder="Name" @onchange="SearchName" />
-    @* </div> *@
+    <input class="formcontrol" placeholder="Name" @onchange="SearchNameAsync" />
 
     <div class="btn-group" role="group" aria-label="Color Buttons">
         @foreach (var color in Data.Color.COLORS)
         {
             var active = _colorFilter.Contains(color.Key) ? "active" : "";
 
-            <button title="@color.Key Filter"
+            <button title="@color.Key filter"
                     type="button"
                     class="btn btn-outline-secondary border-0 rounded @active"
-                    @onclick="() => FilterColor(color.Key)">
+                    @onclick="() => FilterColorAsync(color.Key)">
                 <span class="ms ms-@color.Value ms-cost"> </span>
             </button>
         }
     </div>
 
-    <button class="btn btn-secondary" @onclick="FetchCardsAsync">Refresh</button>
+    <button @onclick="() => FetchCardsAsync(Cards.Pages.Current)"
+        class="btn btn-secondary" >
+        Refresh</button>
 </div>
 
 <table class="table">
     <thead>
         <tr>
-            <th>Card Name</th>
-            <th>Mana Cost</th>
-            <th>Set</th>
-            <th>Rarity</th>
-            <th>Total Amount</th>
+            <th>
+                <button @onclick="() => ReorderCardsAsync(c => c.Name)"
+                    class="btn btn-link text-left pl-0 @BoldIfActive(c => c.Name)" >
+                    Card Name
+                </button>
+            </th>
+            <th>
+                <button @onclick="() => ReorderCardsAsync(c => c.ManaCost)"
+                    class="btn btn-link text-left pl-0 @BoldIfActive(c => c.ManaCost)">
+                    Mana Cost
+                </button>
+            </th>
+            <th>
+                <button @onclick="() => ReorderCardsAsync(c => c.SetName)"
+                    class="btn btn-link text-left pl-0 @BoldIfActive(c => c.SetName)" >
+                    Set
+                </button>
+            </th>
+            <th>
+                <button @onclick="() => ReorderCardsAsync(c => c.Rarity)"
+                    class="btn btn-link text-left pl-0 @BoldIfActive(c => c.Rarity)" >
+                    Rarity
+                </button>
+            </th>
+            <th>
+                <button @onclick="() => ReorderCardsAsync(c => c.Amounts)"
+                    class="btn btn-link text-left pl-0 @BoldIfActive(c => c.Amounts)" >
+                    Total Amount
+                </button>
+            </th>
             <th></th>
         </tr>
     </thead>
 
     <tbody>
-        @foreach (var card in _viewCards)
+        @foreach (var card in Cards)
         {
             <tr>
                 <td>
                     <a title="Details @card.Name"
-                       href="/Cards/Details/@card.Id"
+                       href="/Cards/Details/?id=@card.Id"
                        class="fw-bold">
                        @card.Name
                     </a>
@@ -83,75 +108,194 @@
     </tbody>
 </table>
 
+@{
+    var prevDisabled = Cards.Pages.HasPrevious ? "" : "disabled";
+    var nextDisabled = Cards.Pages.HasNext ? "" : "disabled";
+}
+
+@if (Cards.Pages.HasMultiple)
+{
+    <nav aria-label="Card Result Pages">
+        <ul class="pagination justify-content-center">
+
+            <li class="page-item @prevDisabled">
+                <button class="page-link" disabled="@(!Cards.Pages.HasPrevious)"
+                    @onclick="() => FetchCardsAsync(Cards.Pages.Current - 1)">
+                    Previous
+                </button>
+            </li>
+
+            @for (int i = 0; i < Cards.Pages.Total; ++i)
+            {
+                var pageIndex = i;
+                var activePage = pageIndex == Cards.Pages.Current ? "active" : "";
+
+                <li class="page-item @activePage">
+                    <button class="page-link" @onclick="() => FetchCardsAsync(pageIndex)">
+                        @(pageIndex + 1)
+                        @* <span class="sr-only">(current)</span> *@
+                    </button>
+                </li>
+            }
+
+            <li class="page-item @nextDisabled">
+                <button class="page-link" disabled="@(!Cards.Pages.HasNext)"
+                    @onclick="() => FetchCardsAsync(Cards.Pages.Current + 1)">
+                    Next
+                </button>
+            </li>
+
+        </ul>
+    </nav>
+}
+
 
 @code {
 
     [Parameter]
     public bool IsSignedIn { get; set; } = false;
 
-    private bool _busy;
-    private IEnumerable<Card> _dbCards;
-    private IEnumerable<Card> _viewCards;
+    [Parameter]
+    public int PageSize { get; set; }
 
+    private PagedList<Card> Cards { get; set; }
+
+
+    private bool _isBusy;
+
+    private readonly HashSet<string> _colorFilter = new();
     private string _searchName;
-    private readonly ISet<string> _colorFilter = new HashSet<string>();
+
+    private string _orderProperty;
+    private bool _isReversed;
 
 
-    protected override async Task OnInitializedAsync()
+    protected override void OnInitialized()
     {
-        if (_busy)
+        _colorFilter.Clear();
+        _orderProperty = null;
+        _searchName = string.Empty;
+
+        base.OnInitialized();
+    }
+
+    
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await FetchCardsAsync();
+        await base.OnParametersSetAsync();
+    }
+
+
+    private async Task FetchCardsAsync(int pageIndex = 0)
+    {
+        if (_isBusy)
         {
-            return;    
+            return;
         }
 
-        await FetchCardsAsync();
+        var totalPages = Cards?.Pages.Total;
+
+        if (pageIndex < 0 || totalPages > 0 && pageIndex >= totalPages)
+        {
+            return;
+        }
+
+        _isBusy = true;
+        try
+        {
+            await using var dbContext = DbFactory.CreateDbContext();
+
+            Cards = await FilteredCards(dbContext)
+                .ToPagedListAsync(PageSize, pageIndex);
+        }
+        finally
+        {
+            _isBusy = false;
+        }
     }
 
-    private async Task FetchCardsAsync()
-    {
-        _busy = true;
-        
-        using var context = DbFactory.CreateDbContext();
 
-        _dbCards = await context.Cards
+    private IQueryable<Card> FilteredCards(CardDbContext dbContext)
+    {
+        var cards = dbContext.Cards
             .Include(c => c.Colors)
             .Include(c => c.Amounts)
-            // .ThenInclude(a => a.Location)
-            .OrderBy(c => c.Name)
-                .ThenBy(c => c.SetName)
+                // unbounded: keep eye on
             .AsSplitQuery()
-            .AsNoTracking()
-            .ToListAsync();
+            .AsNoTrackingWithIdentityResolution();
 
-        _viewCards = _dbCards;
-
-        _busy = false;
-    }
-
-
-    private void ApplyFilters()
-    {
-        var query = _dbCards;
 
         if (!string.IsNullOrWhiteSpace(_searchName))
         {
-            query = query
-                .Where(c => c.Name.ToLower().Contains(_searchName));
+            cards = cards.Where(c => 
+                c.Name.ToLower().Contains(_searchName));
         }
 
         if (_colorFilter.Any())
         {
-            query = query
-                .Where(card => {
-                    var colors = card.Colors.Select(color => color.Name.ToLower());
-                    return _colorFilter.Overlaps(colors);
-                });
+            cards = cards.Where(c =>
+                c.Colors.Any(clr => _colorFilter.Contains(clr.Name.ToLower())) );
         }
 
-        _viewCards = query.ToList();
+        return OrderedQuery(cards);
     }
 
-    private void FilterColor(string color)
+
+    private IOrderedQueryable<Card> OrderedQuery(IQueryable<Card> cards)
+    {
+        var isAscending = _orderProperty switch
+        {
+            nameof(Card.ManaCost) => true,
+            nameof(Card.SetName) => true,
+            nameof(Card.Rarity) => false,
+            nameof(Card.Amounts) => false,
+            _ => true
+        };
+
+        IOrderedQueryable<Card> PrimaryOrder<T>(Expression<Func<Card, T>> property) =>
+            isAscending ^ _isReversed
+                ? cards.OrderBy(property)
+                : cards.OrderByDescending(property);
+
+        return _orderProperty switch
+        {
+            nameof(Card.ManaCost) => 
+                PrimaryOrder(c => c.Cmc)
+                    .ThenBy(c => c.Name)
+                    .ThenBy(c => c.SetName),
+
+            nameof(Card.SetName) =>
+                PrimaryOrder(c => c.SetName)
+                    .ThenBy(c => c.Name),
+
+            nameof(Card.Rarity) => 
+                PrimaryOrder(c => c.Rarity)
+                    .ThenBy(c => c.Name)
+                    .ThenBy(c => c.SetName),
+
+            nameof(Card.Amounts) => 
+                PrimaryOrder(c => c.Amounts.Sum(ca => ca.Amount))
+                    .ThenBy(c => c.Name)
+                    .ThenBy(c => c.SetName),
+
+            _ => PrimaryOrder(c => c.Name)
+                    .ThenBy(c => c.SetName)
+        };
+    }
+
+
+    private string MemberName<T>(Expression<Func<Card, T>> property) =>
+        (property.Body as MemberExpression)?.Member.Name;
+
+    private string BoldIfActive<T>(Expression<Func<Card, T>> property) =>
+        _orderProperty == null || MemberName(property) != _orderProperty
+            ? ""
+            : "font-weight-bold";
+
+
+    private Task FilterColorAsync(string color)
     {
         if (_colorFilter.Contains(color))
         {
@@ -162,12 +306,31 @@
             _colorFilter.Add(color);
         }
 
-        ApplyFilters();
+        return FetchCardsAsync();
     }
 
-    private void SearchName(ChangeEventArgs eventArgs)
+
+    private Task SearchNameAsync(ChangeEventArgs eventArgs)
     {
         _searchName = eventArgs.Value?.ToString();
-        ApplyFilters();
+        
+        return FetchCardsAsync();
+    }
+
+
+    private Task ReorderCardsAsync<T>(Expression<Func<Card, T>> property)
+    {
+        var newOrder = MemberName(property);
+        var oldOrder = _orderProperty;
+
+        if (newOrder is null)
+        {
+            return Task.CompletedTask;
+        }
+
+        _isReversed = newOrder == oldOrder && !_isReversed;
+        _orderProperty = newOrder;
+
+        return FetchCardsAsync();
     }
 }

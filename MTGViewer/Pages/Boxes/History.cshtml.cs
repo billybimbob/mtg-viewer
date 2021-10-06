@@ -37,6 +37,7 @@ namespace MTGViewer.Pages.Boxes
 
         public async Task OnGetAsync()
         {
+            // unbounded: limit
             var changes = await ChangesForHistory().ToListAsync();
 
             Transfers = changes
@@ -71,7 +72,7 @@ namespace MTGViewer.Pages.Boxes
                 .Include(c => c.To)
                 .Include(c => c.Card)
 
-                .OrderByDescending(c => c.Transaction.Applied)
+                .OrderByDescending(c => c.Transaction.AppliedAt)
                     .ThenBy(c => c.From!.Name)
                     .ThenBy(c => c.To.Name)
                         .ThenBy(c => c.Card.Name)

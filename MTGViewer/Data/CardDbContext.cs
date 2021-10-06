@@ -47,7 +47,7 @@ namespace MTGViewer.Data
                 .ApplyConfiguration(new BoxConfiguration())
 
                 .ApplyConfiguration(new TransactionConfiguration(Database))
-                .ApplyConfiguration(new SuggestionConfiguration());
+                .ApplyConfiguration(new SuggestionConfiguration(Database));
         }
     }
 
@@ -98,7 +98,7 @@ namespace MTGViewer.Data
         public void Configure(EntityTypeBuilder<Deck> builder)
         {
             builder
-                .HasMany(d => d.Requests)
+                .HasMany(d => d.Wants)
                 .WithOne(cr => cr.Target)
                 .OnDelete(DeleteBehavior.Cascade);
 
@@ -142,7 +142,7 @@ namespace MTGViewer.Data
             var dateFunc = _database.IsSqlite() ? "datetime('now', 'localtime')" : "getdate()";
 
             builder
-                .Property(t => t.Applied)
+                .Property(t => t.AppliedAt)
                 .HasDefaultValueSql(dateFunc);
 
             builder
@@ -155,8 +155,22 @@ namespace MTGViewer.Data
 
     internal class SuggestionConfiguration : IEntityTypeConfiguration<Suggestion>
     {
+        private readonly DatabaseFacade _database;
+
+        public SuggestionConfiguration(DatabaseFacade database)
+        {
+            _database = database;
+        }
+
+        
         public void Configure(EntityTypeBuilder<Suggestion> builder)
         {
+            var dateFunc = _database.IsSqlite() ? "datetime('now', 'localtime')" : "getdate()";
+
+            builder
+                .Property(s => s.SentAt)
+                .HasDefaultValueSql(dateFunc);
+
             builder
                 .HasOne(s => s.To)
                 .WithMany()

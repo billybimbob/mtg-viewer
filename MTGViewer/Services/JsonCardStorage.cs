@@ -15,11 +15,21 @@ using MTGViewer.Data;
 
 namespace MTGViewer.Services
 {
+    public readonly struct JsonWriteOptions
+    {
+        public string Path { get; init; }
+
+        public bool IncludeUsers { get; init; }
+    }
+
+
     public class JsonCardStorage
     {
         private readonly string _defaultFilename;
         private readonly CardDbContext _dbContext;
         private readonly UserManager<CardUser> _userManager;
+
+        private readonly string _tempPassword; // TODO: change, see below for impl
 
         public JsonCardStorage(
             IConfiguration config, 
@@ -32,25 +42,32 @@ namespace MTGViewer.Services
 
             _dbContext = dbContext;
             _userManager = userManager;
+
+            _tempPassword = config
+                .GetSection(SeedOptions.Seed)
+                .Get<SeedOptions>()
+                .Password;
         }
 
 
         public async Task WriteToJsonAsync(string path = null, CancellationToken cancel = default)
         {
-            var data = await CardData.CreateAsync(_dbContext, _userManager, cancel);
-
             path ??= Path.Combine(Directory.GetCurrentDirectory(), _defaultFilename);
 
             await using var writer = File.CreateText(path);
 
+            var data = await CardData.CreateAsync(_dbContext, _userManager, cancel);
             var dataStr = JsonConvert.SerializeObject(data, Formatting.Indented);
+
             await writer.WriteAsync(dataStr);
         }
 
 
-        public async Task<bool> AddFromJsonAsync(string path = null, CancellationToken cancel = default)
+        public async Task<bool> AddFromJsonAsync(
+            JsonWriteOptions options = default, CancellationToken cancel = default)
         {
-            path ??= Path.Combine(Directory.GetCurrentDirectory(), _defaultFilename);
+            var path = options.Path 
+                ?? Path.Combine(Directory.GetCurrentDirectory(), _defaultFilename);
 
             try
             {
@@ -87,8 +104,12 @@ namespace MTGViewer.Services
 
                 await _dbContext.SaveChangesAsync(cancel);
 
-                await Task.WhenAll(
-                    data.Users.Select(_userManager.CreateAsync));
+                if (options.IncludeUsers)
+                {
+                    // TODO: generate secure temp passwords, and send emails to users
+                    await Task.WhenAll(
+                        data.Users.Select(u => _userManager.CreateAsync(u, _tempPassword)));
+                }
 
                 return true;
             }

@@ -32,8 +32,10 @@ namespace MTGViewer.Data
         public int? ToId { get; init; }
 
 
-        [MaxLength(80)]
+        [StringLength(80)]
         public string? Comment { get; set; }
+
+        public DateTime SentAt { get; private set; }
     }
     
 

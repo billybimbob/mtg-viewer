@@ -177,6 +177,7 @@ namespace MTGViewer.Pages.Transfers
 
             return withoutTrades
                 .Include(d => d.Cards)
+                    // unbounded: keep eye on
                     .ThenInclude(ca => ca.Card)
                 .AsSplitQuery()
                 .AsNoTrackingWithIdentityResolution();

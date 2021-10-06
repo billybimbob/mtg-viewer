@@ -54,14 +54,16 @@ namespace MTGViewer.Pages.Transfers
                 .ToList();
 
             RequestDecks = userDecks
-                .Where(d => d.TradesTo.Any() || d.Requests.Any(cr => !cr.IsReturn))
+                .Where(d => d.TradesTo.Any() || d.Wants.Any(cr => !cr.IsReturn))
                 .ToList();
 
             Suggestions = await _dbContext.Suggestions
                 .Where(s => s.ReceiverId == userId)
                 .Include(s => s.Card)
                 .Include(s => s.To)
-                .OrderBy(s => s.Card.Name)
+                .OrderBy(s => s.SentAt)
+                    .ThenBy(s => s.Card.Name)
+                // unbounded: keep eye on, limit
                 .ToListAsync();
         }
 
@@ -71,15 +73,20 @@ namespace MTGViewer.Pages.Transfers
             return _dbContext.Decks
                 .Where(d => d.OwnerId == userId)
 
-                .Include(d => d.TradesFrom)
-                .Include(d => d.TradesTo)
+                .Include(d => d.Cards)
+                    // unbounded: keep eye on
+                    .ThenInclude(ca => ca.Card)
 
-                .Include(d => d.Requests
+                .Include(d => d.Wants
+                    // unbounded: keep eye on
                     .Where(cr => !cr.IsReturn))
                     .ThenInclude(cr => cr.Card)
 
-                .Include(d => d.Cards)
-                    .ThenInclude(ca => ca.Card)
+                .Include(d => d.TradesFrom)
+                    // unbounded: keep eye on
+
+                .Include(d => d.TradesTo)
+                    // unbounded: keep eye on
 
                 .OrderBy(d => d.Name)
                 .AsSplitQuery()
@@ -99,7 +106,7 @@ namespace MTGViewer.Pages.Transfers
             if (suggestion is null)
             {
                 PostMessage = "Specified suggestion cannot be acknowledged";
-                return RedirectToPage("./Index");
+                return RedirectToPage("Index");
             }
 
             _dbContext.Entry(suggestion).State = EntityState.Deleted;

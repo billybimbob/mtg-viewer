@@ -1,5 +1,6 @@
-@page "{id}"
+@page
 @model MTGViewer.Pages.Cards.DetailsModel
+@using Microsoft.AspNetCore.Mvc.Rendering
 
 @{
     ViewData["Title"] = "Details";
@@ -8,20 +9,25 @@
 <h1>@Model.Card.Name</h1>
 <hr />
 
+@{
+    var cardAlts = Model.CardAlts
+        .Select(c => new SelectListItem
+        {
+            Value = c.Id,
+            Selected = c.Id == Model.Card.Id,
+            Text = $"{c.Name} ({c.SetName})"
+        });
+}
+
 <div>
-    <label for="cardPick">Alternate Versions</label>
+    <label asp-for="Card.Id">Alternate Versions</label>
     <form method="GET">
         <select title="Pick Card"
+            name="id"
+            asp-for="Card.Id"
+            asp-items="@cardAlts"
             onchange="this.form.submit()"
-            id="cardPick"
-            name="id" 
             class="form-control">
-            @foreach (var cardAlt in Model.CardAlts)
-            {
-                <option value="@cardAlt.Id" selected="@(cardAlt.Id == Model.Card.Id)" >
-                    @cardAlt.Name (@cardAlt.SetName)
-                </option>
-            }
         </select>
     </form>
 </div>

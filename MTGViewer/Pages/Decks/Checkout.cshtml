@@ -25,7 +25,7 @@
         </form>
     </div>
 }
-else if (!Model.Deck.Requests.Any())
+else if (!Model.Deck.Wants.Any())
 {
     <div class="alert alert-warning" role="alert">
         There are no pending changes for the deck
@@ -101,7 +101,7 @@ else
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach (var request in Model.Deck.Requests.Where(cr => !cr.IsReturn))
+                    @foreach (var request in Model.Deck.Wants.Where(cr => !cr.IsReturn))
                     {
                         var card = request.Card;
                         <tr>
@@ -138,7 +138,7 @@ else
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach (var request in Model.Deck.Requests.Where(cr => cr.IsReturn))
+                    @foreach (var request in Model.Deck.Wants.Where(cr => cr.IsReturn))
                     {
                         var card = request.Card;
                         <tr>

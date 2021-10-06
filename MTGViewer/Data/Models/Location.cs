@@ -1,5 +1,6 @@
 using System.Linq;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using Newtonsoft.Json;
 
 using MTGViewer.Data.Concurrency;
@@ -14,9 +15,12 @@ namespace MTGViewer.Data
         protected Location()
         { }
 
+
         [JsonRequired]
         public int Id { get; private set; }
 
+        [Required]
+        [StringLength(20)]
         public string Name { get; set; } = null!;
 
         [JsonIgnore]
@@ -62,7 +66,7 @@ namespace MTGViewer.Data
 
 
         [JsonIgnore]
-        public List<CardRequest> Requests { get; } = new();
+        public List<CardRequest> Wants { get; } = new();
 
         [JsonIgnore]
         public List<Trade> TradesTo { get; } = new();
@@ -79,7 +83,7 @@ namespace MTGViewer.Data
             var cardSymbols = Cards
                 .SelectMany(ca => ca.Card.GetManaSymbols());
 
-            var requestSymbols = Requests
+            var requestSymbols = Wants
                 .SelectMany(cr => cr.Card.GetManaSymbols());
 
             return cardSymbols
@@ -96,6 +100,8 @@ namespace MTGViewer.Data
         public Bin Bin { get; set; } = null!;
         public int BinId { get; init; }
 
+
+        [StringLength(10)]
         public string? Color { get; init; }
     }
 
@@ -106,6 +112,7 @@ namespace MTGViewer.Data
         public int Id { get; private set; }
 
         [JsonRequired]
+        [StringLength(10)]
         public string Name { get; init; } = null!;
 
         [JsonIgnore]

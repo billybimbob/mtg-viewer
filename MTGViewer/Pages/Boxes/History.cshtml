@@ -18,7 +18,7 @@
 <table class="table">
     <thead>
         <tr>
-            <th> @Html.DisplayNameForInnerType((Transaction t) => t.Applied) </th>
+            <th> @Html.DisplayNameForInnerType((Transaction t) => t.AppliedAt) </th>
             <th> @Html.DisplayNameForInnerType((Change c) => c.From) </th>
             <th> @Html.DisplayNameForInnerType((Change c) => c.To) </th>
             <th> @Html.DisplayNameForInnerType((Change c) => c.Card) </th>
@@ -34,7 +34,7 @@
             <tr>
                 @if (Model.IsFirstTransfer.Contains( (transaction.Id, from?.Id, to.Id) ))
                 {
-                    <td rowspan="@transaction.Changes.Count"> @transaction.Applied </td>
+                    <td rowspan="@transaction.Changes.Count"> @transaction.AppliedAt </td>
                 }
 
                 <td rowspan="@changes.Count"> @(firstChange.From?.Name ?? "Added") </td>

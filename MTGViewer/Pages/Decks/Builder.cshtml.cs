@@ -62,6 +62,7 @@ namespace MTGViewer.Pages.Decks
             return _dbContext.Decks
                 .Where(d => d.Id == deckId && d.OwnerId == userId)
                 .Include(d => d.TradesTo)
+                    // unbounded: limit
                 .AsNoTrackingWithIdentityResolution();
         }
     }

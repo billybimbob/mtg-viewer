@@ -50,49 +50,12 @@
 </SavePrompt>
 
 
-<h2>Available Cards</h2>
+<EditForm EditContext="@_deckEdit">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
 
-<table class="table">
-    <thead>
-        <tr>
-            <th>Card Name</th>
-            <th>Mana Cost</th>
-            <th>Set</th>
-            <th>Rarity</th>
-            <th></th>
-        </tr>
-    </thead>
-
-    <tbody>
-        @foreach (var card in SortedCards)
-        {
-            <tr>
-                <td class="fw-bold">@card.Name</td>
-
-                <td>
-                    @foreach (var cost in card.GetManaSymbols())
-                    {
-                        <span class="m-1 ms ms-@cost ms-cost"></span>
-                    }
-                </td>
-
-                <td>@card.SetName</td>
-                <td>@card.Rarity</td>
-                <td>
-                    <button title="Add @card.Name"
-                            type="button"
-                            class="btn btn-outline-secondary border-0 rounded"
-                            @onclick="() => AddCardToDeck(card)">
-                        Add Card
-                    </button>
-                </td>
-            </tr>
-        }
-    </tbody>
-</table>
-
-
-<input @bind="_deck.Name" class="form-control form-control-lg border-0"/>
+    <InputText @bind-Value="_deck.Name" class="form-control form-control-lg border-0"/>
+</EditForm>
 
 <table class="table mt-2">
     <thead>
@@ -139,6 +102,56 @@
 </table>
 
 
+<h2>Available Cards</h2>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>Card Name</th>
+            <th>Mana Cost</th>
+            <th>Set</th>
+            <th>Rarity</th>
+            <th>Amount Shared</th>
+            <th></th>
+        </tr>
+    </thead>
+
+    <tbody>
+        @foreach (var card in AllCards)
+        {
+            <tr>
+                <td class="fw-bold">@card.Name</td>
+
+                <td>
+                    @foreach (var cost in card.GetManaSymbols())
+                    {
+                        <span class="m-1 ms ms-@cost ms-cost"></span>
+                    }
+                </td>
+
+                <td>@card.SetName</td>
+                <td>@card.Rarity</td>
+
+                <td>
+                    @(card.Amounts
+                        .Where(ca => ca.Location is Box)
+                        .Sum(ca => ca.Amount))
+                </td>
+
+                <td>
+                    <button title="Add @card.Name"
+                            type="button"
+                            class="btn btn-outline-secondary border-0 rounded"
+                            @onclick="() => AddCardToDeck(card)">
+                        Add Card
+                    </button>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+
 @code {
 
     [Parameter]
@@ -152,29 +165,31 @@
     private SaveResult _result;
     private CardDbContext _dbContext;
 
-    private UserRef _user;
     private Deck _deck;
-    private SortedList<string, List<Card>> _dbCards;
+    private EditContext _deckEdit;
     private IDictionary<string, AmountRequestGroup> _deckCards;
+
 
 
     private bool HasNoChanges() =>
         !_dbContext.ChangeTracker.HasChanges();
 
 
-    private IEnumerable<Card> SortedCards => 
-        _dbCards.Values.SelectMany(cg => cg);
+    private IReadOnlyList<Card> AllCards { get; set; }
 
     private IEnumerable<Card> DeckCards =>
-        SortedCards.Where(c => _deckCards != null
+        AllCards.Where(c => _deckCards != null
             && _deckCards.TryGetValue(c.Id, out var cardGroup)
             && cardGroup.Amount > 0);
 
     private IQueryable<Deck> DeckForBuilder =>
         _dbContext.Decks
             .Where(d => d.Id == DeckId)
+            .Include(d => d.Owner)
             .Include(d => d.Cards)
-            .Include(d => d.Requests)
+                // unbounded: keep eye on
+            .Include(d => d.Wants)
+                // unbounded: keep eye on
             .AsSplitQuery();
 
 
@@ -191,13 +206,13 @@
         {
             _dbContext = DbFactory.CreateDbContext();
 
-            var cards = await _dbContext.Cards.ToListAsync();
-
-            var nameGroups = cards
-                .GroupBy(c => c.Name)
-                .ToDictionary(g => g.Key, g => g.ToList());
-
-            _dbCards = new(nameGroups);
+            AllCards = await _dbContext.Cards
+                .Include(c => c.Amounts
+                    .Where(ca => ca.Location is Box))
+                    .ThenInclude(ca => ca.Location)
+                .OrderBy(c => c.Name)
+                    .ThenBy(c => c.SetName)
+                .ToListAsync();
         }
         finally
         {
@@ -218,9 +233,8 @@
         _busy = true;
         try
         {
-            _user = await _dbContext.Users.FindAsync(UserId);
-
             _deck = await GetOrCreateDeckAsync();
+            _deckEdit = new(_deck);
 
             _deckCards = GetDeckCardGroups(_deck)
                 .ToDictionary(cg => cg.CardId);
@@ -241,14 +255,16 @@
             return await DeckForBuilder.SingleAsync();
         }
 
+        var user = await _dbContext.Users.FindAsync(UserId);
+
         var userDeckCount = await _dbContext.Decks
-            .Where(l => l.Owner.Id == _user.Id)
+            .Where(d => d.Owner.Id == UserId)
             .CountAsync();
 
         var newLoc = new Deck
         {
             Name = $"Deck #{userDeckCount + 1}",
-            Owner = _user
+            Owner = user
         };
 
         _dbContext.Decks.Attach(newLoc);
@@ -262,13 +278,13 @@
         var amountsById = deck.Cards
             .ToDictionary(ca => ca.CardId);
 
-        var requestsById = deck.Requests
+        var requestsById = deck.Wants
             .ToLookup(cr => cr.CardId);
 
         var cardIds = amountsById
             .Select(g => g.Key)
             .Union(requestsById
-                . Select(g => g.Key));
+                .Select(g => g.Key));
 
         return cardIds.Select(cid =>
         {
@@ -391,6 +407,11 @@
             return;
         }
 
+        if (!_deckEdit.Validate())
+        {
+            return;
+        }
+
         _busy = true;
         PrepareChanges();
 
@@ -415,7 +436,7 @@
 
     private void PrepareChanges()
     {
-        foreach (var request in _deck.Requests)
+        foreach (var request in _deck.Wants)
         {
             if (request.Amount == 0)
             {
@@ -499,8 +520,8 @@
         }
 
 
-        var removedRequests = _deck.Requests
-            .GroupJoin( dbDeck.Requests,
+        var removedRequests = _deck.Wants
+            .GroupJoin( dbDeck.Wants,
                 rq => (rq.CardId, rq.TargetId, rq.IsReturn),
                 db => (db.CardId, db.TargetId, db.IsReturn),
                 (local, dbs) =>
@@ -543,7 +564,7 @@
             _dbContext.MatchToken(localCard, dbCard);
         }
 
-        var dbTakes = dbDeck.Requests.Where(cr => !cr.IsReturn);
+        var dbTakes = dbDeck.Wants.Where(cr => !cr.IsReturn);
 
         foreach (var dbTake in dbTakes)
         {
@@ -563,7 +584,7 @@
             _dbContext.MatchToken(localTake, dbTake);
         }
 
-        var dbReturns = dbDeck.Requests.Where(cr => cr.IsReturn);
+        var dbReturns = dbDeck.Wants.Where(cr => cr.IsReturn);
 
         foreach (var dbReturn in dbReturns)
         {
@@ -609,7 +630,7 @@
             _dbContext.Amounts.Attach(dbCard);
         }
 
-        var dbTakes = dbDeck.Requests.Where(cr => !cr.IsReturn);
+        var dbTakes = dbDeck.Wants.Where(cr => !cr.IsReturn);
 
         foreach (var dbTake in dbTakes)
         {
@@ -633,7 +654,7 @@
             _dbContext.Requests.Attach(dbTake);
         }
 
-        var dbReturns = dbDeck.Requests.Where(cr => cr.IsReturn);
+        var dbReturns = dbDeck.Wants.Where(cr => cr.IsReturn);
 
         foreach (var dbReturn in dbReturns)
         {

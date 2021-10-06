@@ -48,15 +48,15 @@
 </table>
 
 
-<h2>@Model.SelfUser.Name's Requests</h2>
+<h2>@Model.SelfUser.Name's Deck Trades</h2>
 
 <table class="table mb-3">
     <thead>
         <tr>
             <th>Deck</th>
             <th>Colors</th>
+            <th>Wanted Cards</th>
             <th>Number of Requests</th>
-            <th>Trade State</th>
         </tr>
     </thead>
     <tbody>
@@ -78,23 +78,28 @@
 
                 @if (deck.TradesTo.Any())
                 {
-                    <td>@deck.TradesTo.Count</td>
                     <td>
                         <a asp-page="Status" 
                             asp-route-deckid="@deck.Id"
                             class="fw-bold">
                             Sent </a>
                     </td>
+                    <td>@deck.TradesTo.Count</td>
                 }
-                else
+                else if (!deck.Wants.Any(cr => !cr.IsReturn))
                 {
-                    <td> @deck.Requests.Count(cr => !cr.IsReturn) </td>
                     <td>
                         <a asp-page="Request" 
                             asp-route-deckid="@deck.Id"
                             class="fw-bold">
                             Possible </a>
                     </td>
+                    <td> @deck.Wants.Count(cr => !cr.IsReturn) </td>
+                }
+                else
+                {
+                    <td> None </td>
+                    <td> 0 </td>
                 }
             </tr>
         }

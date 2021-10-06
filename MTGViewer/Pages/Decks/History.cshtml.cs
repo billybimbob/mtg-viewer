@@ -12,6 +12,7 @@ using Microsoft.Extensions.Logging;
 
 using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
+using MTGViewer.Services;
 
 #nullable enable
 
@@ -20,15 +21,18 @@ namespace MTGViewer.Pages.Decks
     [Authorize]
     public class HistoryModel : PageModel
     {
+        private readonly int _pageSize;
         private readonly CardDbContext _dbContext;
         private readonly UserManager<CardUser> _userManager;
         private readonly ILogger<HistoryModel> _logger;
 
         public HistoryModel(
+            PageSizes pageSizes,
             CardDbContext dbContext, 
             UserManager<CardUser> userManager,
             ILogger<HistoryModel> logger)
         {
+            _pageSize = pageSizes.GetSize(this);
             _dbContext = dbContext;
             _userManager = userManager;
             _logger = logger;
@@ -43,10 +47,12 @@ namespace MTGViewer.Pages.Decks
 
         public IReadOnlyList<Transfer>? Transfers { get; private set; }
 
+        public Data.Pages Pages { get; private set; }
+
         public IReadOnlySet<(int, int?, int)>? IsFirstTransfer { get; private set; }
 
 
-        public async Task<IActionResult> OnGetAsync(int id)
+        public async Task<IActionResult> OnGetAsync(int id, int? pageIndex)
         {
             Deck = await DeckForHistory(id).SingleOrDefaultAsync();
 
@@ -55,13 +61,17 @@ namespace MTGViewer.Pages.Decks
                 return NotFound();
             }
 
-            var changes = await ChangesForHistory(id).ToListAsync();
+            var changes = await ChangesForHistory(id)
+                .ToPagedListAsync(_pageSize, pageIndex);
 
             Transfers = changes
                 .GroupBy(c => (c.Transaction, c.From, c.To),
-                    (tft, changes) => 
-                        new Transfer(tft.Transaction, tft.From, tft.To, changes.ToList()))
+                    (tft, changeGroup) => 
+                        new Transfer(
+                            tft.Transaction, tft.From, tft.To, changeGroup.ToList()))
                 .ToList();
+
+            Pages = changes.Pages;
 
             IsFirstTransfer = changes
                 .Select(c => (c.TransactionId, c.FromId, c.ToId))
@@ -94,7 +104,7 @@ namespace MTGViewer.Pages.Decks
                 .Include(c => c.To)
                 .Include(c => c.Card)
 
-                .OrderByDescending(c => c.Transaction.Applied)
+                .OrderByDescending(c => c.Transaction.AppliedAt)
                     .ThenBy(c => c.From!.Name)
                     .ThenBy(c => c.To.Name)
                         .ThenBy(c => c.Card.Name)
@@ -112,6 +122,7 @@ namespace MTGViewer.Pages.Decks
                     .ThenInclude(c => c.From)
                 .Include(t => t.Changes)
                     .ThenInclude(c => c.To)
+                    // unbounded: keep eye on
                 .SingleOrDefaultAsync(t => t.Id == transactionId);
 
             if (transaction == default || IsNotUserTransaction(transaction))

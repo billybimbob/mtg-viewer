@@ -94,7 +94,12 @@ namespace MTGViewer.Services
             var jsonStorage = scopeProvider.GetRequiredService<JsonCardStorage>();
             var cardGen = scopeProvider.GetService<CardDataGenerator>();
 
-            var jsonSuccess = await jsonStorage.AddFromJsonAsync(cancel: cancel);
+            var jsonSuccess = await jsonStorage.AddFromJsonAsync(
+                new()
+                {
+                    IncludeUsers = true
+                },
+                cancel);
 
             if (!jsonSuccess && cardGen != null)
             {

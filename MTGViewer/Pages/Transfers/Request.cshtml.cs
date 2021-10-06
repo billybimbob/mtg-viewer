@@ -54,7 +54,7 @@ namespace MTGViewer.Pages.Transfers
                 return NotFound();
             }
 
-            if (!deck.Requests.Any(cr => !cr.IsReturn))
+            if (!deck.Wants.Any(cr => !cr.IsReturn))
             {
                 PostMessage = "There are no possible requests";
                 return RedirectToPage("./Index");
@@ -70,7 +70,7 @@ namespace MTGViewer.Pages.Transfers
 
             Deck = deck;
 
-            Requests = deck.Requests
+            Requests = deck.Wants
                 .Where(cr => !cr.IsReturn)
                 .GroupBy(ca => ca.Card.Name,
                     (_, takes) => new RequestNameGroup(takes))
@@ -88,22 +88,26 @@ namespace MTGViewer.Pages.Transfers
                 .Where(d => d.Id == deckId && d.OwnerId == userId)
 
                 .Include(d => d.Cards
+                    // unbounded: keep eye on
                     .OrderBy(ca => ca.Card.Name))
                     .ThenInclude(ca => ca.Card)
 
-                .Include(d => d.Requests
+                .Include(d => d.Wants
+                    // unbounded: keep eye on
                     .Where(cr => !cr.IsReturn)
                     .OrderBy(cr => cr.Card.Name))
                     .ThenInclude(cr => cr.Card)
 
                 .Include(d => d.TradesTo)
+                    // unbounded: keep eye on or limit
+
                 .AsSplitQuery();
         }
 
 
         private IQueryable<CardAmount> TakeTargets(Deck deck)
         {
-            var takeNames = deck.Requests
+            var takeNames = deck.Wants
                 .Where(cr => !cr.IsReturn)
                 .Select(ca => ca.Card.Name)
                 .Distinct()
@@ -163,12 +167,13 @@ namespace MTGViewer.Pages.Transfers
 
         private async Task<IEnumerable<Trade>> CreateTradesAsync(Deck deck)
         {
-            if (deck.Requests.All(cr => cr.IsReturn))
+            if (deck.Wants.All(cr => cr.IsReturn))
             {
                 return Enumerable.Empty<Trade>();
             }
 
             var requestTargets = await TakeTargets(deck).ToListAsync();
+                // unbounded: keep eye on
 
             if (!requestTargets.Any())
             {
@@ -184,7 +189,7 @@ namespace MTGViewer.Pages.Transfers
             // TODO: figure out how to query more on server
             // TODO: prioritize requesting from exact card matches
 
-            var takes = deck.Requests.Where(cr => !cr.IsReturn);
+            var takes = deck.Wants.Where(cr => !cr.IsReturn);
 
             var requestMatches = targets
                 .GroupJoin( takes,

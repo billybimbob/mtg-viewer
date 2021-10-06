@@ -42,6 +42,7 @@ namespace MTGViewer.Pages.Boxes
             Bins = await _dbContext.Bins
                 .OrderBy(b => b.Name)
                 .AsNoTrackingWithIdentityResolution()
+                    // unbounded: keep eye on
                 .ToListAsync();
         }
 

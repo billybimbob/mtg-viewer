@@ -49,7 +49,7 @@ namespace MTGViewer.Data
     {
         public int Id { get; private set; }
 
-        public DateTime Applied { get; private set; }
+        public DateTime AppliedAt { get; private set; }
 
         [JsonIgnore]
         public List<Change> Changes { get; } = new();

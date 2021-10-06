@@ -1,4 +1,4 @@
-@page
+@page "{pageIndex:int?}"
 @using MTGViewer.Data
 @model MTGViewer.Pages.Decks.IndexModel
 
@@ -97,3 +97,70 @@
         }
     </tbody>
 </table>
+
+
+@{
+    var pages = Model.Decks.Pages;
+    var prevDisabled = pages.HasPrevious ? "" : "disabled";
+    var nextDisabled = pages.HasNext ? "" : "disabled";
+}
+
+@if (pages.HasMultiple)
+{
+    <nav aria-label="Deck Pages">
+        <ul class="pagination justify-content-center">
+
+            <li class="page-item @prevDisabled">
+                @if (pages.HasPrevious)
+                {
+                    <a asp-page="Index" 
+                        asp-route-pageIndex="@(pages.Current - 1)"
+                        class="page-link">
+                        Previous </a>
+                }
+                else
+                {
+                    <span class="page-link">Previous</span>
+                }
+            </li>
+
+            @for (int i = 0; i < pages.Total; ++i)
+            {
+                var pageIndex = i;
+                var activePage = pageIndex == pages.Current ? "active" : "";
+
+                <li class="page-item @activePage">
+                    @if (pageIndex != pages.Current)
+                    {
+                        <a asp-page="Index"
+                            asp-route-pageIndex="@pageIndex"
+                            class="page-link">
+                            @(pageIndex + 1) </a>
+                    }
+                    else
+                    {
+                        <span class="page-link">
+                            @(pageIndex + 1)
+                            <span class="sr-only">(current)</span>
+                        </span>
+                    }
+                </li>
+            }
+
+            <li class="page-item @nextDisabled">
+                @if (pages.HasNext)
+                {
+                    <a asp-page="Index"
+                        asp-route-pageIndex="@(pages.Current + 1)"
+                        class="page-link">
+                        Next </a>
+                }
+                else
+                {
+                    <span class="page-link">Next</span>
+                }
+            </li>
+
+        </ul>
+    </nav>
+}

@@ -80,19 +80,23 @@ namespace MTGViewer.Pages.Decks
                 .Where(d => d.Id == deckId && d.OwnerId == userId)
 
                 .Include(d => d.Cards)
+                    // unbounded: keep eye on
                     .ThenInclude(da => da.Card)
 
-                .Include(d => d.Requests)
+                .Include(d => d.Wants)
+                    // unbounded: keep eye on
                     .ThenInclude(cr => cr.Card)
-                .Include(d => d.Requests)
+                .Include(d => d.Wants)
                     .ThenInclude(cr => cr.Target)
 
                 .Include(d => d.TradesTo)
+                    // unbounded: keep eye on
                     .ThenInclude(t => t.Card)
                 .Include(d => d.TradesTo)
                     .ThenInclude(t => t.From)
 
                 .Include(d => d.TradesFrom)
+                    // unbounded: keep eye on
                     .ThenInclude(t => t.Card)
                 .Include(d => d.TradesFrom)
                     .ThenInclude(t => t.To)
@@ -107,7 +111,7 @@ namespace MTGViewer.Pages.Decks
             var amountsByName = deck.Cards
                 .ToLookup(ca => ca.Card.Name);
 
-            var requestsByName = deck.Requests
+            var requestsByName = deck.Wants
                 .ToLookup(cr => cr.Card.Name);
 
             var cardNames = amountsByName

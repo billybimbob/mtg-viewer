@@ -5,6 +5,10 @@
     ViewData["Title"] = "Collection";
 }
 
-<component type="typeof(Library)" 
+@* <component type="typeof(Library)" 
     render-mode="ServerPrerendered" 
-    param-IsSignedIn="@Model.IsSignedIn" />
+    param-IsSignedIn="@Model.IsSignedIn" /> *@
+
+@(await Html.RenderComponentAsync<Library>(
+    RenderMode.ServerPrerendered,
+    new { Model.IsSignedIn, Model.PageSize }))

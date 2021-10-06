@@ -58,13 +58,16 @@ namespace MTGViewer.Pages.Decks
 
                 .Include(d => d.Owner)
                 .Include(d => d.Cards)
+                    // unbounded: keep eye on
                     .ThenInclude(ca => ca.Card)
 
-                .Include(d => d.TradesTo)
-                    .ThenInclude(t => t.Card)
-
-                .Include(d => d.Requests)
+                .Include(d => d.Wants)
+                    // unbounded: keep eye on
                     .ThenInclude(cr => cr.Card)
+
+                .Include(d => d.TradesTo)
+                    // unbounded: keep eye on, or limit
+                    .ThenInclude(t => t.Card)
 
                 .AsSplitQuery()
                 .AsNoTrackingWithIdentityResolution();
@@ -76,7 +79,7 @@ namespace MTGViewer.Pages.Decks
             var amountsById = deck.Cards
                 .ToDictionary(ca => ca.CardId);
 
-            var requestsById = deck.Requests
+            var requestsById = deck.Wants
                 .ToLookup(cr => cr.CardId);
 
             var cardIds = amountsById

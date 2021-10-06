@@ -52,7 +52,7 @@ namespace MTGViewer.Pages.Transfers
                 return NotFound();
             }
 
-            if (deck.Requests.All(cr => cr.IsReturn))
+            if (deck.Wants.All(cr => cr.IsReturn))
             {
                 PostMessage = $"There are no requests for {deck.Name}";
                 return RedirectToPage("Index");
@@ -81,9 +81,11 @@ namespace MTGViewer.Pages.Transfers
 
                 .Include(d => d.Owner)
                 .Include(d => d.Cards)
+                    // unbounded: keep eye on
                     .ThenInclude(ca => ca.Card)
 
-                .Include(d => d.Requests
+                .Include(d => d.Wants
+                    // unbounded: keep eye on
                     .Where(cr => !cr.IsReturn))
                     .ThenInclude(t => t.Card)
 
@@ -92,16 +94,19 @@ namespace MTGViewer.Pages.Transfers
 
                 .Include(d => d.TradesTo)
                     .ThenInclude(t => t.From.Cards)
+                        // unbounded: keep eye on
                         .ThenInclude(ca => ca.Card)
 
                 .Include(d => d.TradesTo)
-                    .ThenInclude(t => t.From.Requests)
+                    .ThenInclude(t => t.From.Wants)
+                        // unbounded: keep eye on
                         .ThenInclude(ca => ca.Card)
 
                 .Include(d => d.TradesTo)
                     .ThenInclude(t => t.Card)
 
                 .Include(d => d.TradesTo
+                    // unbounded: keep eye on
                     .OrderBy(t => t.From.Owner.Name)
                         .ThenBy(t => t.Card.Name))
 
@@ -141,7 +146,7 @@ namespace MTGViewer.Pages.Transfers
             var amountsByName = deck.Cards
                 .ToLookup(ca => ca.Card.Name);
 
-            var takesByName = deck.Requests
+            var takesByName = deck.Wants
                 .Where(cr => !cr.IsReturn)
                 .ToLookup(cr => cr.Card.Name);
 

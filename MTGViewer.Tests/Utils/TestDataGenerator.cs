@@ -46,7 +46,8 @@ namespace MTGViewer.Tests.Utils
             await _jsonLock.WaitAsync();
             try
             {
-                var jsonSuccess = await _jsonStorage.AddFromJsonAsync();
+                var jsonSuccess = await _jsonStorage.AddFromJsonAsync(
+                    new() { IncludeUsers = true });
 
                 if (!jsonSuccess)
                 {

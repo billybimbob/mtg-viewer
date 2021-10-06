@@ -66,7 +66,7 @@ namespace MTGViewer.Pages.Decks
 
             Deck = deck;
 
-            HasPendings = deck.Requests.Any(cr => cr.IsReturn) 
+            HasPendings = deck.Wants.Any(cr => cr.IsReturn) 
                 || await TakeTargets(deck).AnyAsync();
 
             return Page();
@@ -81,23 +81,26 @@ namespace MTGViewer.Pages.Decks
                 .Where(d => d.Id == deckId && d.OwnerId == userId)
 
                 .Include(d => d.Cards
+                    // unbounded: keep eye one
                     .OrderBy(ca => ca.Card.Name)
                         .ThenBy(ca => ca.Card.SetName))
                     .ThenInclude(ca => ca.Card)
 
-                .Include(d => d.Requests
+                .Include(d => d.Wants
+                    // unbounded: keep eye one
                     .OrderBy(cr => cr.Card.Name)
                         .ThenBy(cr => cr.Card.SetName))
                     .ThenInclude(cr => cr.Card)
 
                 .Include(d => d.TradesTo)
+                    // unbounded: limit
                 .AsSplitQuery();
         }
 
 
         private IQueryable<CardAmount> TakeTargets(Deck deck)
         {
-            var takeNames = deck.Requests
+            var takeNames = deck.Wants
                 .Where(cr => !cr.IsReturn)
                 .Select(cr => cr.Card.Name)
                 .Distinct()
@@ -128,6 +131,7 @@ namespace MTGViewer.Pages.Decks
             }
 
             var availables = await TakeTargets(deck).ToListAsync();
+                // unbounded, keep eye on, or limit
 
             ApplyTakes(deck, availables);
 
@@ -159,7 +163,7 @@ namespace MTGViewer.Pages.Decks
 
         private void ApplyTakes(Deck deck, IEnumerable<CardAmount> availables)
         {
-            var takes = deck.Requests.Where(cr => !cr.IsReturn);
+            var takes = deck.Wants.Where(cr => !cr.IsReturn);
 
             if (!availables.Any() || !takes.Any())
             {
@@ -302,7 +306,7 @@ namespace MTGViewer.Pages.Decks
 
         private IReadOnlyList<CardReturn> ApplyDeckReturns(Deck deck)
         {
-            var returns = deck.Requests.Where(cr => cr.IsReturn);
+            var returns = deck.Wants.Where(cr => cr.IsReturn);
 
             var returnPairs = deck.Cards
                 .Join( returns,
@@ -338,7 +342,7 @@ namespace MTGViewer.Pages.Decks
         private void RemoveEmpty(Deck deck)
         {
             var emptyAmounts = deck.Cards.Where(ca => ca.Amount == 0);
-            var finishedRequests = deck.Requests.Where(cr => cr.Amount == 0);
+            var finishedRequests = deck.Wants.Where(cr => cr.Amount == 0);
 
             // do not remove empty availables
             _dbContext.Amounts.RemoveRange(emptyAmounts);

@@ -12,7 +12,4 @@
 
 @(await Html.RenderComponentAsync<DeckBuilder>(
     RenderMode.ServerPrerendered,
-    new {
-        UserId = Model.UserId,
-        DeckId = Model.DeckId
-    }))
+    new { Model.UserId, Model.DeckId }))

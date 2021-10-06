@@ -13,6 +13,7 @@ using Xunit;
 using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
 using MTGViewer.Pages.Decks;
+using MTGViewer.Services;
 using MTGViewer.Tests.Utils;
 
 
@@ -28,6 +29,7 @@ namespace MTGViewer.Tests.Pages.Decks
         private Transaction _transaction;
 
         public HistoryTests(
+            PageSizes pageSizes,
             CardDbContext dbContext,
             UserManager<CardUser> userManager,
             TestDataGenerator testGen)
@@ -35,8 +37,10 @@ namespace MTGViewer.Tests.Pages.Decks
             _dbContext = dbContext;
             _userManager = userManager;
             _testGen = testGen;
+
+            var logger = Mock.Of<ILogger<HistoryModel>>();
             
-            _historyModel = new(_dbContext, _userManager, Mock.Of<ILogger<HistoryModel>>());
+            _historyModel = new(pageSizes, _dbContext, _userManager, logger);
         }
 
 

@@ -39,6 +39,7 @@ namespace MTGViewer.Pages.Boxes
                     .ThenInclude(ca => ca.Card)
 
                 .OrderBy(b => b.Id)
+                    // unbounded: limit
                 .AsNoTrackingWithIdentityResolution()
                 .ToListAsync();
         }
