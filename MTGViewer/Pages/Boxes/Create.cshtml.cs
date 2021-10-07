@@ -30,7 +30,6 @@ namespace MTGViewer.Pages.Boxes
         [TempData]
         public string PostMessage { get; set; }
 
-
         [BindProperty]
         public Box Box { get; set; }
 

@@ -65,9 +65,7 @@ namespace MTGViewer.Pages.Decks
                     // unbounded: keep eye on
                     .ThenInclude(cr => cr.Card)
 
-                .Include(d => d.TradesTo)
-                    // unbounded: keep eye on, or limit
-                    .ThenInclude(t => t.Card)
+                .Include(d => d.TradesTo.Take(1))
 
                 .AsSplitQuery()
                 .AsNoTrackingWithIdentityResolution();
@@ -89,10 +87,8 @@ namespace MTGViewer.Pages.Decks
 
             return cardIds
                 .Select(cid =>
-                {
-                    amountsById.TryGetValue(cid, out var amount);
-                    return new AmountRequestGroup(amount, requestsById[cid]);
-                })
+                    new AmountRequestGroup(
+                        amountsById.GetValueOrDefault(cid), requestsById[cid]))
                 .OrderBy(rg => rg.Card.Name);
         }
     }

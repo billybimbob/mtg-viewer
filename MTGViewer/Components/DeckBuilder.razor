@@ -15,7 +15,7 @@
     <button title="Save Deck"
             type="button"
             class="btn btn-secondary"
-            disabled="@HasNoChanges()"
+            disabled="@HasNoChanges"
             @onclick="CommitChangesAsync">
         Save Changes
     </button>
@@ -171,16 +171,18 @@
 
 
 
-    private bool HasNoChanges() =>
+    private bool HasNoChanges =>
         !_dbContext.ChangeTracker.HasChanges();
 
 
     private IReadOnlyList<Card> AllCards { get; set; }
 
+
     private IEnumerable<Card> DeckCards =>
         AllCards.Where(c => _deckCards != null
             && _deckCards.TryGetValue(c.Id, out var cardGroup)
             && cardGroup.Amount > 0);
+
 
     private IQueryable<Deck> DeckForBuilder =>
         _dbContext.Decks
@@ -287,10 +289,8 @@
                 .Select(g => g.Key));
 
         return cardIds.Select(cid =>
-        {
-            amountsById.TryGetValue(cid, out var amount);
-            return new AmountRequestGroup(amount, requestsById[cid]);
-        });
+            new AmountRequestGroup(
+                amountsById.GetValueOrDefault(cid), requestsById[cid]) );
     }
 
 
@@ -455,6 +455,8 @@
         {
             deckEntry.State = EntityState.Modified;
         }
+
+        _deck.UpdateColorSymbols();
     }
 
 

@@ -46,7 +46,9 @@ namespace MTGViewer.Data
                 .ApplyConfiguration(new DeckConfiguration())
                 .ApplyConfiguration(new BoxConfiguration())
 
+                .ApplyConfiguration(new ChangeConfiguration())
                 .ApplyConfiguration(new TransactionConfiguration(Database))
+
                 .ApplyConfiguration(new SuggestionConfiguration(Database));
         }
     }
@@ -79,16 +81,6 @@ namespace MTGViewer.Data
                 .HasMany(l => l.Cards)
                 .WithOne(ca => ca.Location)
                 .OnDelete(DeleteBehavior.Restrict);
-
-            builder
-                .HasMany(l => l.ChangesTo)
-                .WithOne(c => c.To)
-                .OnDelete(DeleteBehavior.Cascade);
-
-            builder
-                .HasMany(l => l.ChangesFrom)
-                .WithOne(c => c.From)
-                .OnDelete(DeleteBehavior.SetNull);
         }
     }
 
@@ -123,6 +115,23 @@ namespace MTGViewer.Data
                 .HasOne(b => b.Bin)
                 .WithMany(b => b.Boxes)
                 .OnDelete(DeleteBehavior.Restrict);
+        }
+    }
+
+
+    internal class ChangeConfiguration : IEntityTypeConfiguration<Change>
+    {
+        public void Configure(EntityTypeBuilder<Change> builder)
+        {
+            builder
+                .HasOne(c => c.To)
+                .WithMany()
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder
+                .HasOne(c => c.From)
+                .WithMany()
+                .OnDelete(DeleteBehavior.SetNull);
         }
     }
 

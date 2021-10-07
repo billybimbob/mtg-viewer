@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -53,7 +52,7 @@ namespace MTGViewer.Pages.Transfers
 
             if (!deck.TradesFrom.Any())
             {
-                return RedirectToPage("./Index");
+                return RedirectToPage("Index");
             }
 
             CapFromTrades(deck);
@@ -76,7 +75,7 @@ namespace MTGViewer.Pages.Transfers
                     .ThenInclude(ca => ca.Card)
 
                 .Include(d => d.Cards
-                    // unbounded: limit
+                        // unbounded: keep eye on
                     .OrderBy(ca => ca.Card.Name))
 
                 .Include(d => d.TradesFrom)
@@ -85,18 +84,8 @@ namespace MTGViewer.Pages.Transfers
                 .Include(d => d.TradesFrom)
                     .ThenInclude(t => t.To.Owner)
 
-                .Include(d => d.TradesFrom)
-                    .ThenInclude(t => t.To.Cards)
-                        // unbounded: keep eye on
-                        .ThenInclude(ca => ca.Card)
-
-                .Include(d => d.TradesFrom)
-                    .ThenInclude(t => t.To.Wants)
-                        // unbounded: keep eye on
-                        .ThenInclude(ca => ca.Card)
-
                 .Include(d => d.TradesFrom
-                    // unbounded: limit
+                        // unbounded: keep eye on, possibly limit
                     .OrderBy(t => t.To.Owner.Name)
                         .ThenBy(t => t.Card.Name))
 

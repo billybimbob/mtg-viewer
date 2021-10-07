@@ -81,7 +81,8 @@
             <li class="page-item @prevDisabled">
                 @if (pages.HasPrevious)
                 {
-                    <a asp-page="Index" 
+                    <a asp-page="History" 
+                        asp-route-id="@Model.Deck.Id"
                         asp-route-pageIndex="@(pages.Current - 1)"
                         class="page-link">
                         Previous </a>
@@ -100,7 +101,8 @@
                 <li class="page-item @activePage">
                     @if (pageIndex != pages.Current)
                     {
-                        <a asp-page="Index"
+                        <a asp-page="History"
+                            asp-route-id="@Model.Deck.Id"
                             asp-route-pageIndex="@pageIndex"
                             class="page-link">
                             @(pageIndex + 1) </a>
@@ -118,7 +120,8 @@
             <li class="page-item @nextDisabled">
                 @if (pages.HasNext)
                 {
-                    <a asp-page="Index"
+                    <a asp-page="History"
+                        asp-route-id="@Model.Deck.Id"
                         asp-route-pageIndex="@(pages.Current + 1)"
                         class="page-link">
                         Next </a>

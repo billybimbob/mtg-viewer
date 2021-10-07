@@ -83,6 +83,7 @@ namespace MTGViewer.Data
             }
 
             var matches = Regex.Matches(ManaCost, @"{([^}]+)}");
+
             return matches
                 .Select(m => m.Groups[1].Value.Replace("/", "").ToLower())
                 .ToList();

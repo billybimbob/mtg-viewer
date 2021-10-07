@@ -92,8 +92,7 @@ namespace MTGViewer.Pages.Decks
                         .ThenBy(cr => cr.Card.SetName))
                     .ThenInclude(cr => cr.Card)
 
-                .Include(d => d.TradesTo)
-                    // unbounded: limit
+                .Include(d => d.TradesTo.Take(1))
                 .AsSplitQuery();
         }
 
@@ -139,6 +138,8 @@ namespace MTGViewer.Pages.Decks
 
             RemoveEmpty(deck);
 
+            deck.UpdateColorSymbols();
+
             try
             {
                 if (boxReturns.Any())
@@ -156,7 +157,7 @@ namespace MTGViewer.Pages.Decks
                 PostMessage = "Ran into issue while trying to checkout";
             }
 
-            return RedirectToPage("History", new { deckId = id });
+            return RedirectToPage("History", new { id });
         }
 
 

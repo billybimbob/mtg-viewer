@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -11,6 +10,7 @@ using Microsoft.EntityFrameworkCore;
 
 using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
+using MTGViewer.Services;
 
 
 namespace MTGViewer.Pages.Transfers
@@ -18,11 +18,16 @@ namespace MTGViewer.Pages.Transfers
     [Authorize]
     public class IndexModel : PageModel
     {
+        private readonly int _pageSize;
         private readonly UserManager<CardUser> _userManager;
         private readonly CardDbContext _dbContext;
 
-        public IndexModel(UserManager<CardUser> userManager, CardDbContext dbContext)
+        public IndexModel(
+            PageSizes pageSizes, 
+            UserManager<CardUser> userManager, 
+            CardDbContext dbContext)
         {
+            _pageSize = pageSizes.GetSize(this);
             _userManager = userManager;
             _dbContext = dbContext;
         }
@@ -31,13 +36,18 @@ namespace MTGViewer.Pages.Transfers
         [TempData]
         public string PostMessage { get; set; }
 
+        [BindProperty(SupportsGet = true)]
+        public int? DeckIndex { get; set; }
+
+        [BindProperty(SupportsGet = true)]
+        public int? SuggestIndex { get; set; }
+
+
         public UserRef SelfUser { get; private set; }
 
-        public IReadOnlyList<Deck> ReceivedTrades { get; private set; }
+        public PagedList<Deck> TradeDecks { get; private set; }
 
-        public IReadOnlyList<Deck> RequestDecks { get; private set; }
-
-        public IReadOnlyList<Suggestion> Suggestions { get; private set; }
+        public PagedList<Suggestion> Suggestions { get; private set; }
 
 
 
@@ -45,17 +55,10 @@ namespace MTGViewer.Pages.Transfers
         {
             var userId = _userManager.GetUserId(User);
 
-            var userDecks = await DeckForTransfers(userId).ToListAsync();
+            TradeDecks = await DecksForTransfer(userId)
+                .ToPagedListAsync(_pageSize, DeckIndex);
 
             SelfUser = await _dbContext.Users.FindAsync(userId);
-
-            ReceivedTrades = userDecks
-                .Where(d => d.TradesFrom.Any())
-                .ToList();
-
-            RequestDecks = userDecks
-                .Where(d => d.TradesTo.Any() || d.Wants.Any(cr => !cr.IsReturn))
-                .ToList();
 
             Suggestions = await _dbContext.Suggestions
                 .Where(s => s.ReceiverId == userId)
@@ -63,30 +66,27 @@ namespace MTGViewer.Pages.Transfers
                 .Include(s => s.To)
                 .OrderBy(s => s.SentAt)
                     .ThenBy(s => s.Card.Name)
-                // unbounded: keep eye on, limit
-                .ToListAsync();
+                .ToPagedListAsync(_pageSize, SuggestIndex);
         }
 
 
-        public IQueryable<Deck> DeckForTransfers(string userId)
+        public IQueryable<Deck> DecksForTransfer(string userId)
         {
             return _dbContext.Decks
                 .Where(d => d.OwnerId == userId)
 
-                .Include(d => d.Cards)
-                    // unbounded: keep eye on
-                    .ThenInclude(ca => ca.Card)
+                .Where(d => d.TradesFrom.Any()
+                    || d.TradesTo.Any()
+                    || d.Wants.Any(cr => !cr.IsReturn))
+
+                .Include(d => d.TradesFrom.Take(1))
+                .Include(d => d.TradesTo.Take(1))
 
                 .Include(d => d.Wants
-                    // unbounded: keep eye on
                     .Where(cr => !cr.IsReturn))
+                    // .Take(1))
+                    // take does not work in sqlite
                     .ThenInclude(cr => cr.Card)
-
-                .Include(d => d.TradesFrom)
-                    // unbounded: keep eye on
-
-                .Include(d => d.TradesTo)
-                    // unbounded: keep eye on
 
                 .OrderBy(d => d.Name)
                 .AsSplitQuery()
@@ -121,7 +121,7 @@ namespace MTGViewer.Pages.Transfers
                 PostMessage = "Ran into issue while trying to Acknowledge";
             }
 
-            return RedirectToPage("./Index");
+            return RedirectToPage("Index", new { DeckIndex, SuggestIndex });
         }
     }
 }

@@ -28,33 +28,6 @@ namespace MTGViewer.Data
 
         [JsonIgnore]
         public List<CardAmount> Cards { get; } = new();
-
-        [JsonIgnore]
-        public List<Change> ChangesTo { get; } = new();
-
-        [JsonIgnore]
-        public List<Change> ChangesFrom { get; } = new();
-
-
-        public IEnumerable<Change> GetChanges() => ChangesTo.Concat(ChangesFrom);
-
-
-        public virtual IOrderedEnumerable<string> GetColorSymbols()
-        {
-            return Cards
-                .SelectMany(ca => ca.Card.GetManaSymbols())
-                .Distinct()
-                .Intersect(Data.Color.COLORS.Values)
-                .OrderBy(s => s);
-        }
-
-        // public IOrderedEnumerable<Color> GetColors()
-        // {
-        //     return Cards
-        //         .SelectMany(ca => ca.Card.Colors)
-        //         .Distinct(new EntityComparer<Color>(c => c.Name))
-        //         .OrderBy(c => c.Name);
-        // }
     }
 
 
@@ -64,6 +37,7 @@ namespace MTGViewer.Data
         public UserRef Owner { get; init; } = null!;
         public string OwnerId { get; init; } = null!;
 
+        public string AllColorSymbols { get; private set; } = null!;
 
         [JsonIgnore]
         public List<CardRequest> Wants { get; } = new();
@@ -75,10 +49,9 @@ namespace MTGViewer.Data
         public List<Trade> TradesFrom { get; } = new();
 
 
-        public IEnumerable<Trade> GetTrades() => TradesTo.Concat(TradesFrom);
+        public IEnumerable<string> GetColorSymbols() => AllColorSymbols.Split(',');
 
-        
-        public override IOrderedEnumerable<string> GetColorSymbols()
+        public void UpdateColorSymbols()
         {
             var cardSymbols = Cards
                 .SelectMany(ca => ca.Card.GetManaSymbols());
@@ -86,10 +59,10 @@ namespace MTGViewer.Data
             var requestSymbols = Wants
                 .SelectMany(cr => cr.Card.GetManaSymbols());
 
-            return cardSymbols
-                .Union(requestSymbols)
-                .Intersect(Data.Color.COLORS.Values)
-                .OrderBy(s => s);
+            var allSymbols = cardSymbols.Union(requestSymbols);
+            var colorSymbols = Color.COLORS.Values.Intersect(allSymbols);
+
+            AllColorSymbols = string.Join(',', colorSymbols);
         }
     }
 

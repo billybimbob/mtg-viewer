@@ -357,7 +357,9 @@ namespace MTGViewer.Data
     /// </summary>
     public class AmountRequestNameGroup : IEnumerable<AmountRequestGroup>
     {
-        public AmountRequestNameGroup(IEnumerable<CardAmount> amounts, IEnumerable<CardRequest> requests)
+        public AmountRequestNameGroup(
+            IEnumerable<CardAmount> amounts, 
+            IEnumerable<CardRequest> requests)
         {
             // do a full outer join
             var amountTable = amounts.ToDictionary(ca => ca.CardId ?? ca.Card.Id);
@@ -369,10 +371,8 @@ namespace MTGViewer.Data
 
             _requestGroups = allCardIds
                 .Select(cid =>
-                {
-                    amountTable.TryGetValue(cid, out var amount);
-                    return new AmountRequestGroup(amount, requestLookup[cid]);
-                })
+                    new AmountRequestGroup(
+                        amountTable.GetValueOrDefault(cid), requestLookup[cid]))
                 .ToList();
 
             CheckGroups();

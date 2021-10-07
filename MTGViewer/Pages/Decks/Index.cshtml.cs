@@ -1,5 +1,4 @@
 using System.Linq;
-using System.Collections.Generic;
 using System.Threading.Tasks;
 
 using Microsoft.AspNetCore.Mvc;
@@ -82,19 +81,14 @@ namespace MTGViewer.Pages.Decks
         {
             return _dbContext.Decks
                 .Where(d => d.OwnerId == userId)
-                .Include(d => d.Owner)
 
+                .Include(d => d.Owner)
                 .Include(d => d.Cards)
-                    // unbounded: keep eye on
+                        // unbounded: keep eye on
                     .ThenInclude(ca => ca.Card)
 
-                .Include(d => d.Wants)
-                    // unbounded: keep eye on
-                    .ThenInclude(cr => cr.Card)
-
-                .Include(d => d.TradesTo)
-                    // unbounded: keep eye on, limit
-                    .ThenInclude(t => t.Card)
+                .Include(d => d.Wants.Take(1))
+                .Include(d => d.TradesTo.Take(1))
 
                 .OrderBy(d => d.Name)
                 .Select(deck => new DeckState(deck))

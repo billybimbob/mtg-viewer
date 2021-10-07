@@ -120,6 +120,7 @@ namespace MTGViewer.Pages.Decks
             var transaction = await _dbContext.Transactions
                 .Include(t => t.Changes)
                     .ThenInclude(c => c.From)
+                    // unbounded: keep eye on
                 .Include(t => t.Changes)
                     .ThenInclude(c => c.To)
                     // unbounded: keep eye on

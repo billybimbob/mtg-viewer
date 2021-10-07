@@ -10,8 +10,8 @@ using Newtonsoft.Json;
 namespace MTGViewer.Data
 {
     [Index(
-        nameof(ToId),
         nameof(FromId),
+        nameof(ToId),
         nameof(CardId),
         nameof(TransactionId), IsUnique = true)]
     public class Change

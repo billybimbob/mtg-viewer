@@ -6,18 +6,20 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 
-using MTGViewer.Services;
 using MTGViewer.Data;
+using MTGViewer.Services;
 
 
 namespace MTGViewer.Pages.Boxes
 {
     public class IndexModel : PageModel
     {
+        private readonly int _pageSize;
         private readonly ISharedStorage _sharedStorage;
 
-        public IndexModel(ISharedStorage sharedStorage)
+        public IndexModel(PageSizes pageSizes, ISharedStorage sharedStorage)
         {
+            _pageSize = pageSizes.GetSize(this);
             _sharedStorage = sharedStorage;
         }
 
@@ -25,23 +27,23 @@ namespace MTGViewer.Pages.Boxes
         [TempData]
         public string PostMessage { get; set; }
 
-        public IReadOnlyList<Box> Boxes { get; private set; }
+        public PagedList<Box> Boxes { get; private set; }
 
 
-        public async Task OnGetAsync()
+        public async Task OnGetAsync(int? pageIndex)
         {
             Boxes = await _sharedStorage.Boxes
                 .Include(b => b.Bin)
 
                 .Include(b => b.Cards
+                        // unbounded: keep eye on
                     .Where(ca => ca.Amount > 0)
                     .OrderBy(ca => ca.Card.Name))
                     .ThenInclude(ca => ca.Card)
 
                 .OrderBy(b => b.Id)
-                    // unbounded: limit
                 .AsNoTrackingWithIdentityResolution()
-                .ToListAsync();
+                .ToPagedListAsync(_pageSize, pageIndex);
         }
 
 

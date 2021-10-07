@@ -81,12 +81,15 @@ namespace MTGViewer.Pages.Transfers
 
                 .Include(d => d.Owner)
                 .Include(d => d.Cards)
-                    // unbounded: keep eye on
+                        // unbounded: keep eye on
                     .ThenInclude(ca => ca.Card)
 
                 .Include(d => d.Wants
-                    // unbounded: keep eye on
+                        // unbounded: keep eye on
                     .Where(cr => !cr.IsReturn))
+                    .ThenInclude(t => t.Card)
+
+                .Include(d => d.TradesTo)
                     .ThenInclude(t => t.Card)
 
                 .Include(d => d.TradesTo)
@@ -97,16 +100,8 @@ namespace MTGViewer.Pages.Transfers
                         // unbounded: keep eye on
                         .ThenInclude(ca => ca.Card)
 
-                .Include(d => d.TradesTo)
-                    .ThenInclude(t => t.From.Wants)
-                        // unbounded: keep eye on
-                        .ThenInclude(ca => ca.Card)
-
-                .Include(d => d.TradesTo)
-                    .ThenInclude(t => t.Card)
-
                 .Include(d => d.TradesTo
-                    // unbounded: keep eye on
+                        // unbounded: keep eye on
                     .OrderBy(t => t.From.Owner.Name)
                         .ThenBy(t => t.Card.Name))
 

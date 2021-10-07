@@ -81,6 +81,7 @@ namespace MTGViewer.Pages.Transfers
 
 
         public UserRef Receiver { get; private set; }
+
         public IReadOnlyList<Deck> Decks { get; private set; }
 
 
@@ -176,9 +177,6 @@ namespace MTGViewer.Pages.Transfers
 
 
             return withoutTrades
-                .Include(d => d.Cards)
-                    // unbounded: keep eye on
-                    .ThenInclude(ca => ca.Card)
                 .AsSplitQuery()
                 .AsNoTrackingWithIdentityResolution();
         }

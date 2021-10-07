@@ -17,7 +17,7 @@ namespace MTGViewer.Services
         public const string Seed = "Seed";
 
         public int Value { get; set; } = 100;
-        public string Password { get; set; } = "";
+        public string Password { get; set; }
     }
 
 
@@ -39,9 +39,8 @@ namespace MTGViewer.Services
             ISharedStorage sharedStorage,
             UserManager<CardUser> userManager)
         {
-            var seed = config
-                .GetSection(SeedOptions.Seed)
-                .Get<SeedOptions>();
+            var seed = new SeedOptions();
+            config.GetSection(SeedOptions.Seed).Bind(seed);
 
             _random = new(seed.Value);
             _seedPassword = seed.Password;
@@ -85,8 +84,10 @@ namespace MTGViewer.Services
             await _sharedStorage.ReturnAsync(boxAmounts);
 
             // TODO: fix created accounts not being verified
-            await Task.WhenAll(
-                users.Select(u => _userManager.CreateAsync(u, _seedPassword)));
+            var results = await Task.WhenAll(
+                users.Select(u => _seedPassword != default
+                    ? _userManager.CreateAsync(u, _seedPassword)
+                    : _userManager.CreateAsync(u)));
         }
 
 

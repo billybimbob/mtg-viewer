@@ -28,7 +28,7 @@ namespace MTGViewer.Data
     {
         [JsonIgnore]
         public static readonly IReadOnlyDictionary<string, string> COLORS = 
-            new Dictionary<string, string>
+            new SortedList<string, string>
         {
             ["black"] = "b",
             ["blue"] = "u",

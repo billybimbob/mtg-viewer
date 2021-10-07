@@ -1,4 +1,4 @@
-@page
+@page "{pageIndex:int?}"
 @model MTGViewer.Pages.Boxes.IndexModel
 @using MTGViewer.Data
 
@@ -9,11 +9,11 @@
 <h1>Shared Collection</h1>
 
 <form method="POST" class="mb-3">
-    <a asp-page="Create" class="btn btn-secondary">Add Box</a>
+    <a asp-page="Create" class="btn btn-secondary"> Add Box </a>
 
     <input type="submit" class="btn btn-secondary" value="Optimize" />
 
-    <a asp-page="History" class="btn btn-secondary">History </a>
+    <a asp-page="History" class="btn btn-secondary"> History </a>
 </form>
 
 @if (!string.IsNullOrEmpty(Model.PostMessage))
@@ -43,7 +43,7 @@
             <tr>
                 <td rowspan="@boxSpan" class="fw-bold"> @box.Name (@box.Bin.Name) </td>
 
-                @if (firstAmount != null)
+                @if (firstAmount != default)
                 {
                     <td>
                         <a asp-page="/Cards/Details"
@@ -93,4 +93,71 @@
             }
         }
     </tbody>
-</table
+</table>
+
+
+@{
+    var pages = Model.Boxes.Pages;
+    var prevDisabled = pages.HasPrevious ? "" : "disabled";
+    var nextDisabled = pages.HasNext ? "" : "disabled";
+}
+
+@if (pages.HasMultiple)
+{
+    <nav aria-label="Box History Pages">
+        <ul class="pagination justify-content-center">
+
+            <li class="page-item @prevDisabled">
+                @if (pages.HasPrevious)
+                {
+                    <a asp-page="Create" 
+                        asp-route-pageIndex="@(pages.Current - 1)"
+                        class="page-link">
+                        Previous </a>
+                }
+                else
+                {
+                    <span class="page-link">Previous</span>
+                }
+            </li>
+
+            @for (int i = 0; i < pages.Total; ++i)
+            {
+                var pageIndex = i;
+                var activePage = pageIndex == pages.Current ? "active" : "";
+
+                <li class="page-item @activePage">
+                    @if (pageIndex != pages.Current)
+                    {
+                        <a asp-page="Create"
+                            asp-route-pageIndex="@pageIndex"
+                            class="page-link">
+                            @(pageIndex + 1) </a>
+                    }
+                    else
+                    {
+                        <span class="page-link">
+                            @(pageIndex + 1)
+                            <span class="sr-only">(current)</span>
+                        </span>
+                    }
+                </li>
+            }
+
+            <li class="page-item @nextDisabled">
+                @if (pages.HasNext)
+                {
+                    <a asp-page="Create"
+                        asp-route-pageIndex="@(pages.Current + 1)"
+                        class="page-link">
+                        Next </a>
+                }
+                else
+                {
+                    <span class="page-link">Next</span>
+                }
+            </li>
+
+        </ul>
+    </nav>
+}

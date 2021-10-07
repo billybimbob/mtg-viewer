@@ -57,8 +57,8 @@ namespace MTGViewer.Pages.Decks
                 return NotFound();
             }
 
-            var deckTrades = deck
-                .GetTrades()
+            var deckTrades = deck.TradesTo
+                .Concat(deck.TradesFrom)
                 .OrderBy(t => t.Card.Name)
                 .ToList();
 

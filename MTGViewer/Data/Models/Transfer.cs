@@ -41,8 +41,8 @@ namespace MTGViewer.Data
 
 
     [Index(
-        nameof(ToId),
         nameof(FromId),
+        nameof(ToId),
         nameof(CardId), IsUnique = true)]
     public class Trade : Concurrent
     {

@@ -43,10 +43,10 @@ namespace MTGViewer.Services
             _dbContext = dbContext;
             _userManager = userManager;
 
-            _tempPassword = config
-                .GetSection(SeedOptions.Seed)
-                .Get<SeedOptions>()
-                .Password;
+            var seedOptions = new SeedOptions();
+            config.GetSection(SeedOptions.Seed).Bind(seedOptions);
+
+            _tempPassword = seedOptions.Password;
         }
 
 
@@ -104,14 +104,18 @@ namespace MTGViewer.Services
 
                 await _dbContext.SaveChangesAsync(cancel);
 
-                if (options.IncludeUsers)
+                if (!options.IncludeUsers)
                 {
-                    // TODO: generate secure temp passwords, and send emails to users
-                    await Task.WhenAll(
-                        data.Users.Select(u => _userManager.CreateAsync(u, _tempPassword)));
+                    return true;
                 }
 
-                return true;
+                // TODO: generate secure temp passwords, and send emails to users
+                var results = await Task.WhenAll(
+                    data.Users.Select(u => _tempPassword != default
+                        ? _userManager.CreateAsync(u, _tempPassword)
+                        : _userManager.CreateAsync(u)));
+
+                return results.All(r => r.Succeeded);
             }
             catch (FileNotFoundException)
             {

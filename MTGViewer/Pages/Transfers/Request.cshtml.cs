@@ -62,7 +62,7 @@ namespace MTGViewer.Pages.Transfers
 
             if (deck.TradesTo.Any())
             {
-                return RedirectToPage("./Status", new { deckId });
+                return RedirectToPage("Status", new { deckId });
             }
 
 
@@ -88,18 +88,17 @@ namespace MTGViewer.Pages.Transfers
                 .Where(d => d.Id == deckId && d.OwnerId == userId)
 
                 .Include(d => d.Cards
-                    // unbounded: keep eye on
+                        // unbounded: keep eye on
                     .OrderBy(ca => ca.Card.Name))
                     .ThenInclude(ca => ca.Card)
 
                 .Include(d => d.Wants
-                    // unbounded: keep eye on
+                        // unbounded: keep eye on
                     .Where(cr => !cr.IsReturn)
                     .OrderBy(cr => cr.Card.Name))
                     .ThenInclude(cr => cr.Card)
 
-                .Include(d => d.TradesTo)
-                    // unbounded: keep eye on or limit
+                .Include(d => d.TradesTo.Take(1))
 
                 .AsSplitQuery();
         }
