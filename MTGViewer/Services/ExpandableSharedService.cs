@@ -92,8 +92,7 @@ namespace MTGViewer.Services
             var returnAmounts = await _dbContext.Amounts
                 .Where(ca => ca.Location is Box && returnIds.Contains(ca.CardId))
                 .Include(ca => ca.Location)
-                    // unbounded: keep eye on
-                .ToListAsync();
+                .ToListAsync(); // unbounded: keep eye on
 
             if (!returnAmounts.Any())
             {
@@ -151,8 +150,7 @@ namespace MTGViewer.Services
                 .Include(ca => ca.Card)
                 .OrderBy(ca => ca.Card.Name)
                     .ThenBy(ca => ca.Card.SetName)
-                    // unbounded: keep eye on
-                .ToListAsync();
+                .ToListAsync(); // unbounded: keep eye on
         }
 
 

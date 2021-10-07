@@ -77,16 +77,11 @@ namespace MTGViewer.Pages.Transfers
 
                 .Where(d => d.TradesFrom.Any()
                     || d.TradesTo.Any()
-                    || d.Wants.Any(cr => !cr.IsReturn))
+                    || d.Wants.Any())
 
                 .Include(d => d.TradesFrom.Take(1))
                 .Include(d => d.TradesTo.Take(1))
-
-                .Include(d => d.Wants
-                    .Where(cr => !cr.IsReturn))
-                    // .Take(1))
-                    // take does not work in sqlite
-                    .ThenInclude(cr => cr.Card)
+                .Include(d => d.Wants.Take(1))
 
                 .OrderBy(d => d.Name)
                 .AsSplitQuery()

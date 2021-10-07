@@ -54,7 +54,7 @@
                             Sent </a>
                     </td>
                 }
-                else if (deck.Wants.Any(cr => !cr.IsReturn))
+                else if (deck.Wants.Any())
                 {
                     <td>
                         <a asp-page="Request" 

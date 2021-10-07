@@ -57,8 +57,14 @@ namespace MTGViewer.Tests.Pages.Decks
                 .Select(d => d.OwnerId);
 
 
-        private IQueryable<int> RequestAmount(CardRequest request) =>
-            _dbContext.Requests
+        private IQueryable<int> RequestAmount(Want request) =>
+            _dbContext.Wants
+                .Where(cr => cr.Id == request.Id)
+                .Select(cr => cr.Amount);
+
+
+        private IQueryable<int> RequestAmount(GiveBack request) =>
+            _dbContext.GiveBacks
                 .Where(cr => cr.Id == request.Id)
                 .Select(cr => cr.Amount);
 
@@ -119,7 +125,7 @@ namespace MTGViewer.Tests.Pages.Decks
         public async Task OnPost_ValidTake_AppliesTake()
         {
             // Arrange
-            var request = await _testGen.GetTakeRequestAsync();
+            var request = await _testGen.GetWantAsync();
             var targetAmount = request.Amount;
             var deckOwnerId = await RequestOwnerId(request).SingleAsync();
 
@@ -156,7 +162,7 @@ namespace MTGViewer.Tests.Pages.Decks
         {
             // Arrange
             var targetMod = 2;
-            var request = await _testGen.GetTakeRequestAsync(targetMod);
+            var request = await _testGen.GetWantAsync(targetMod);
 
             var targetLimit = request.Amount - targetMod;
             var deckOwnerId = await RequestOwnerId(request).SingleAsync();
@@ -195,7 +201,7 @@ namespace MTGViewer.Tests.Pages.Decks
         public async Task OnPost_ValidReturn_AppliesReturn(int targetMod)
         {
             // Arrange
-            var request = await _testGen.GetReturnRequestAsync(targetMod);
+            var request = await _testGen.GetGiveBackAsync(targetMod);
             var returnAmount = request.Amount;
             var deckOwnerId = await RequestOwnerId(request).SingleAsync();
 
@@ -231,7 +237,7 @@ namespace MTGViewer.Tests.Pages.Decks
         public async Task OnPost_InsufficientReturn_NoChange()
         {
             // Arrange
-            var request = await _testGen.GetReturnRequestAsync(2);
+            var request = await _testGen.GetGiveBackAsync(2);
             var deckOwnerId = await RequestOwnerId(request).SingleAsync();
 
             await _checkoutModel.SetModelContextAsync(_userManager, deckOwnerId);
@@ -264,7 +270,7 @@ namespace MTGViewer.Tests.Pages.Decks
         [Fact]
         public async Task OnPost_TradeActive_NoChange()
         {
-            var request = await _testGen.GetReturnRequestAsync(2);
+            var request = await _testGen.GetGiveBackAsync(2);
             var deckOwnerId = await RequestOwnerId(request).SingleAsync();
 
             var tradeTarget = await _dbContext.Amounts

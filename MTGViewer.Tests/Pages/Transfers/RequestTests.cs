@@ -130,7 +130,7 @@ namespace MTGViewer.Tests.Pages.Transfers
             // Arrange
             await _requestModel.SetModelContextAsync(_userManager, _requestDeck.OwnerId);
 
-            var requestCard = await _dbContext.Requests
+            var requestCard = await _dbContext.Wants
                 .Where(cr => cr.TargetId == _requestDeck.Id)
                 .Select(cr => cr.Card)
                 .AsNoTracking()

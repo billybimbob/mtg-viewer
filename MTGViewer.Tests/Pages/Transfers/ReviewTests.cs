@@ -47,12 +47,11 @@ namespace MTGViewer.Tests.Pages.Transfers
 
 
         private IQueryable<Trade> TradesInSet => 
-            _dbContext.Requests
-                .Where(cr => !cr.IsReturn)
-                .Join(_dbContext.Trades,
-                    request => request.TargetId,
+            _dbContext.Trades
+                .Join(_dbContext.Wants,
                     trade => trade.ToId,
-                    (_, trade) => trade)
+                    request => request.TargetId,
+                    (trade, _) => trade)
                 .Distinct()
                 .Where(t => t.FromId == _trades.TargetId)
                 .AsNoTracking();

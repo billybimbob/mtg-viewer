@@ -37,16 +37,19 @@ namespace MTGViewer.Data
         public UserRef Owner { get; init; } = null!;
         public string OwnerId { get; init; } = null!;
 
-        public string AllColorSymbols { get; private set; } = null!;
+        [JsonIgnore]
+        public List<Want> Wants { get; } = new();
 
         [JsonIgnore]
-        public List<CardRequest> Wants { get; } = new();
+        public List<GiveBack> GiveBacks { get; } = new();
 
         [JsonIgnore]
         public List<Trade> TradesTo { get; } = new();
 
         [JsonIgnore]
         public List<Trade> TradesFrom { get; } = new();
+
+        public string AllColorSymbols { get; private set; } = null!;
 
 
         public IEnumerable<string> GetColorSymbols() => AllColorSymbols.Split(',');

@@ -221,8 +221,7 @@
 
             _dbCards = await dbContext.Cards
                 .Include(c => c.Colors)
-                    // unbounded, keep eye on
-                .ToListAsync();
+                .ToListAsync(); // unbounded, keep eye on
 
             _cardAmounts = await dbContext.Amounts
                 .GroupBy( ca => ca.CardId,

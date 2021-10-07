@@ -98,10 +98,8 @@ namespace MTGViewer.Pages.Boxes
         {
             var transaction = await _dbContext.Transactions
                 .Include(t => t.Changes)
-                        // unbounded, keep eye on
                     .ThenInclude(c => c.From)
-                .Include(t => t.Changes)
-                        // unbounded, keep eye on
+                .Include(t => t.Changes) // unbounded, keep eye on
                     .ThenInclude(c => c.To)
                 .SingleOrDefaultAsync(t => t.Id == transactionId);
 

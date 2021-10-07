@@ -52,7 +52,7 @@ namespace MTGViewer.Pages.Transfers
                 return NotFound();
             }
 
-            if (deck.Wants.All(cr => cr.IsReturn))
+            if (!deck.Wants.Any())
             {
                 PostMessage = $"There are no requests for {deck.Name}";
                 return RedirectToPage("Index");
@@ -80,14 +80,12 @@ namespace MTGViewer.Pages.Transfers
                 .Where(d => d.Id == deckId && d.OwnerId == userId)
 
                 .Include(d => d.Owner)
-                .Include(d => d.Cards)
-                        // unbounded: keep eye on
+
+                .Include(d => d.Cards) // unbounded: keep eye on
                     .ThenInclude(ca => ca.Card)
 
-                .Include(d => d.Wants
-                        // unbounded: keep eye on
-                    .Where(cr => !cr.IsReturn))
-                    .ThenInclude(t => t.Card)
+                .Include(d => d.Wants) // unbounded: keep eye on
+                    .ThenInclude(w => w.Card)
 
                 .Include(d => d.TradesTo)
                     .ThenInclude(t => t.Card)
@@ -96,12 +94,10 @@ namespace MTGViewer.Pages.Transfers
                     .ThenInclude(t => t.From.Owner)
 
                 .Include(d => d.TradesTo)
-                    .ThenInclude(t => t.From.Cards)
-                        // unbounded: keep eye on
+                    .ThenInclude(t => t.From.Cards) // unbounded: keep eye on
                         .ThenInclude(ca => ca.Card)
 
-                .Include(d => d.TradesTo
-                        // unbounded: keep eye on
+                .Include(d => d.TradesTo // unbounded: keep eye on
                     .OrderBy(t => t.From.Owner.Name)
                         .ThenBy(t => t.Card.Name))
 
@@ -141,18 +137,16 @@ namespace MTGViewer.Pages.Transfers
             var amountsByName = deck.Cards
                 .ToLookup(ca => ca.Card.Name);
 
-            var takesByName = deck.Wants
-                .Where(cr => !cr.IsReturn)
-                .ToLookup(cr => cr.Card.Name);
+            var wantsByName = deck.Wants
+                .ToLookup(w => w.Card.Name);
 
-            var cardNames = amountsByName
-                .Select(g => g.Key)
-                .Union(takesByName
-                    .Select(g => g.Key))
-                .OrderBy(name => name);
+            var cardNames = amountsByName.Select(an => an.Key)
+                .Union(wantsByName.Select(wn => wn.Key))
+                .OrderBy(cn => cn);
 
             return cardNames.Select(cn => 
-                new AmountRequestNameGroup(amountsByName[cn], takesByName[cn]));
+                new AmountRequestNameGroup(
+                    amountsByName[cn], wantsByName[cn] ));
         }
 
 

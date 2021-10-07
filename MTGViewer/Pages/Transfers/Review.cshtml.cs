@@ -71,11 +71,11 @@ namespace MTGViewer.Pages.Transfers
                 .Where(d => d.Id == deckId && d.OwnerId == userId)
 
                 .Include(d => d.Owner)
+
                 .Include(d => d.Cards)
                     .ThenInclude(ca => ca.Card)
 
-                .Include(d => d.Cards
-                        // unbounded: keep eye on
+                .Include(d => d.Cards // unbounded: keep eye on
                     .OrderBy(ca => ca.Card.Name))
 
                 .Include(d => d.TradesFrom)
@@ -84,8 +84,7 @@ namespace MTGViewer.Pages.Transfers
                 .Include(d => d.TradesFrom)
                     .ThenInclude(t => t.To.Owner)
 
-                .Include(d => d.TradesFrom
-                        // unbounded: keep eye on, possibly limit
+                .Include(d => d.TradesFrom // unbounded: keep eye on, possibly limit
                     .OrderBy(t => t.To.Owner.Name)
                         .ThenBy(t => t.Card.Name))
 
@@ -118,7 +117,7 @@ namespace MTGViewer.Pages.Transfers
 
         private record AcceptRequest(
             Trade Trade,
-            RequestNameGroup? ToTakes,
+            WantNameGroup? ToTakes,
             CardAmount FromAmount) { }
 
         private record AcceptTargets(
@@ -195,18 +194,17 @@ namespace MTGViewer.Pages.Transfers
                     .Where(ca => ca.CardId == tradeCard.Id))
                     .ThenInclude(ca => ca.Card)
 
-                .Include(t => t.To.Wants
-                    // unbounded: keep eye on
-                    .Where(cr => !cr.IsReturn && cr.Card.Name == tradeCard.Name))
-                    .ThenInclude(cr => cr.Card)
+                .Include(t => t.To.Wants // unbounded: keep eye on
+                    .Where(w => w.Card.Name == tradeCard.Name))
+                    .ThenInclude(w => w.Card)
 
                 .Include(t => t.From.Cards
                     .Where(ca => ca.CardId == tradeCard.Id))
                     .ThenInclude(ca => ca.Card)
 
                 .Include(t => t.From.Wants
-                    .Where(cr => !cr.IsReturn && cr.CardId == tradeCard.Id))
-                    .ThenInclude(cr => cr.Card)
+                    .Where(w => w.CardId == tradeCard.Id))
+                    .ThenInclude(w => w.Card)
 
                 .AsSplitQuery();
         }
@@ -225,13 +223,13 @@ namespace MTGViewer.Pages.Transfers
             }
 
             var toTakes = trade.To.Wants
-                .Where(cr => !cr.IsReturn && cr.Card.Name == trade.Card.Name);
+                .Where(w => w.Card.Name == trade.Card.Name);
 
             return new AcceptRequest(
                 Trade: trade,
 
                 ToTakes: toTakes.Any()
-                    ? new RequestNameGroup(toTakes) : default,
+                    ? new WantNameGroup(toTakes) : default,
 
                 FromAmount: trade.From.Cards
                     .Single(ca => ca.CardId == trade.CardId));
@@ -253,9 +251,9 @@ namespace MTGViewer.Pages.Transfers
 
             var finishedRequests = toTakes
                 ?.Where(cr  => cr.Amount == 0)
-                ?? Enumerable.Empty<CardRequest>();
+                ?? Enumerable.Empty<Want>();
 
-            _dbContext.Requests.RemoveRange(finishedRequests);
+            _dbContext.Wants.RemoveRange(finishedRequests);
             _dbContext.Trades.Remove(trade);
         }
 
@@ -330,8 +328,7 @@ namespace MTGViewer.Pages.Transfers
             }
 
             var fromTake = trade.From.Wants
-                .SingleOrDefault(cr => 
-                    !cr.IsReturn && cr.CardId == trade.CardId);
+                .SingleOrDefault(w => w.CardId == trade.CardId);
 
             if (fromTake is null)
             {
@@ -342,7 +339,7 @@ namespace MTGViewer.Pages.Transfers
                     Amount = 0
                 };
 
-                _dbContext.Requests.Attach(fromTake);
+                _dbContext.Wants.Attach(fromTake);
             }
 
             return new AcceptTargets(toAmount, fromTake);

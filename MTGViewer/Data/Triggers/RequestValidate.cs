@@ -37,7 +37,14 @@ namespace MTGViewer.Data.Triggers
 
             if (_dbContext.Entry(request).State == EntityState.Detached)
             {
-                _dbContext.Requests.Attach(request);
+                if (request is Want want)
+                {
+                    _dbContext.Wants.Attach(want);
+                }
+                else if (request is GiveBack give)
+                {
+                    _dbContext.GiveBacks.Attach(give);
+                }
             }
 
             _dbContext.Entry(request).State = EntityState.Deleted;

@@ -35,8 +35,7 @@ namespace MTGViewer.Pages.Boxes
             Boxes = await _sharedStorage.Boxes
                 .Include(b => b.Bin)
 
-                .Include(b => b.Cards
-                        // unbounded: keep eye on
+                .Include(b => b.Cards // unbounded: keep eye on
                     .Where(ca => ca.Amount > 0)
                     .OrderBy(ca => ca.Card.Name))
                     .ThenInclude(ca => ca.Card)

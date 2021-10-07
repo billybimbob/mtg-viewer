@@ -66,7 +66,7 @@ namespace MTGViewer.Pages.Decks
 
             Deck = deck;
 
-            HasPendings = deck.Wants.Any(cr => cr.IsReturn) 
+            HasPendings = deck.GiveBacks.Any() 
                 || await TakeTargets(deck).AnyAsync();
 
             return Page();
@@ -80,17 +80,20 @@ namespace MTGViewer.Pages.Decks
             return _dbContext.Decks
                 .Where(d => d.Id == deckId && d.OwnerId == userId)
 
-                .Include(d => d.Cards
-                    // unbounded: keep eye one
+                .Include(d => d.Cards // unbounded: keep eye one
                     .OrderBy(ca => ca.Card.Name)
                         .ThenBy(ca => ca.Card.SetName))
                     .ThenInclude(ca => ca.Card)
 
-                .Include(d => d.Wants
-                    // unbounded: keep eye one
-                    .OrderBy(cr => cr.Card.Name)
-                        .ThenBy(cr => cr.Card.SetName))
-                    .ThenInclude(cr => cr.Card)
+                .Include(d => d.Wants // unbounded: keep eye one
+                    .OrderBy(w => w.Card.Name)
+                        .ThenBy(w => w.Card.SetName))
+                    .ThenInclude(w => w.Card)
+
+                .Include(d => d.GiveBacks // unbounded: keep eye one
+                    .OrderBy(g => g.Card.Name)
+                        .ThenBy(g => g.Card.SetName))
+                    .ThenInclude(g => g.Card)
 
                 .Include(d => d.TradesTo.Take(1))
                 .AsSplitQuery();
@@ -100,8 +103,7 @@ namespace MTGViewer.Pages.Decks
         private IQueryable<CardAmount> TakeTargets(Deck deck)
         {
             var takeNames = deck.Wants
-                .Where(cr => !cr.IsReturn)
-                .Select(cr => cr.Card.Name)
+                .Select(w => w.Card.Name)
                 .Distinct()
                 .ToArray();
 
@@ -129,8 +131,7 @@ namespace MTGViewer.Pages.Decks
                 return RedirectToPage("Index");
             }
 
-            var availables = await TakeTargets(deck).ToListAsync();
-                // unbounded, keep eye on, or limit
+            var availables = await TakeTargets(deck).ToListAsync(); // unbounded, keep eye on, or limit
 
             ApplyTakes(deck, availables);
 
@@ -164,9 +165,7 @@ namespace MTGViewer.Pages.Decks
 
         private void ApplyTakes(Deck deck, IEnumerable<CardAmount> availables)
         {
-            var takes = deck.Wants.Where(cr => !cr.IsReturn);
-
-            if (!availables.Any() || !takes.Any())
+            if (!availables.Any() || !deck.Wants.Any())
             {
                 return;
             }
@@ -176,9 +175,9 @@ namespace MTGViewer.Pages.Decks
 
             _dbContext.Transactions.Attach(transaction);
 
-            ApplyExactTakes(transaction, takes, availables, actuals);
+            ApplyExactTakes(transaction, deck.Wants, availables, actuals);
 
-            var remainingTakes = takes.Where(cr => cr.Amount > 0);
+            var remainingTakes = deck.Wants.Where(w => w.Amount > 0);
             var remainingAvails = availables.Where(ca => ca.Amount > 0);
 
             ApplyCloseTakes(transaction, remainingTakes, remainingAvails, actuals);
@@ -215,7 +214,7 @@ namespace MTGViewer.Pages.Decks
 
         private void ApplyExactTakes(
             Transaction transaction,
-            IEnumerable<CardRequest> takes,
+            IEnumerable<Want> takes,
             IEnumerable<CardAmount> availables,
             IReadOnlyDictionary<string, CardAmount> actuals)
         {
@@ -252,13 +251,13 @@ namespace MTGViewer.Pages.Decks
 
         private void ApplyCloseTakes(
             Transaction transaction,
-            IEnumerable<CardRequest> takes,
+            IEnumerable<Want> takes,
             IEnumerable<CardAmount> availables,
             IReadOnlyDictionary<string, CardAmount> actuals)
         {
             var takesByName = takes
                 .GroupBy(cr => cr.Card.Name,
-                    (_, takes) => new RequestNameGroup(takes));
+                    (_, takes) => new WantNameGroup(takes));
 
             var availsByName = availables
                 .GroupBy(ca => ca.Card.Name,
@@ -307,16 +306,14 @@ namespace MTGViewer.Pages.Decks
 
         private IReadOnlyList<CardReturn> ApplyDeckReturns(Deck deck)
         {
-            var returns = deck.Wants.Where(cr => cr.IsReturn);
-
             var returnPairs = deck.Cards
-                .Join( returns,
+                .Join( deck.GiveBacks,
                     act => act.CardId,
                     ret => ret.CardId,
                     (Actual, Return) => (Actual, Return));
 
             // TODO: change to atomic returns, all or nothing
-            var appliedReturns = new List<CardRequest>();
+            var appliedReturns = new List<GiveBack>();
 
             foreach (var (actual, returnRequest) in returnPairs)
             {
@@ -343,11 +340,13 @@ namespace MTGViewer.Pages.Decks
         private void RemoveEmpty(Deck deck)
         {
             var emptyAmounts = deck.Cards.Where(ca => ca.Amount == 0);
-            var finishedRequests = deck.Wants.Where(cr => cr.Amount == 0);
+            var finishedWants = deck.Wants.Where(r => r.Amount == 0);
+            var finishedGives = deck.GiveBacks.Where(g => g.Amount == 0);
 
             // do not remove empty availables
             _dbContext.Amounts.RemoveRange(emptyAmounts);
-            _dbContext.Requests.RemoveRange(finishedRequests);
+            _dbContext.Wants.RemoveRange(finishedWants);
+            _dbContext.GiveBacks.RemoveRange(finishedGives);
         }
     }
 }

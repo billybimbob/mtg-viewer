@@ -30,7 +30,7 @@ namespace MTGViewer.Pages.Decks
             {
                 State = State.Requesting;
             }
-            else if (deck.Wants.Any())
+            else if (deck.Wants.Any() || deck.GiveBacks.Any())
             {
                 State = State.Theorycraft;
             }
@@ -83,11 +83,12 @@ namespace MTGViewer.Pages.Decks
                 .Where(d => d.OwnerId == userId)
 
                 .Include(d => d.Owner)
-                .Include(d => d.Cards)
-                        // unbounded: keep eye on
+
+                .Include(d => d.Cards) // unbounded: keep eye on
                     .ThenInclude(ca => ca.Card)
 
                 .Include(d => d.Wants.Take(1))
+                .Include(d => d.GiveBacks.Take(1))
                 .Include(d => d.TradesTo.Take(1))
 
                 .OrderBy(d => d.Name)

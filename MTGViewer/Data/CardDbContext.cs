@@ -24,7 +24,9 @@ namespace MTGViewer.Data
         public DbSet<Bin> Bins => Set<Bin>();
 
         public DbSet<CardAmount> Amounts => Set<CardAmount>();
-        public DbSet<CardRequest> Requests => Set<CardRequest>();
+
+        public DbSet<Want> Wants => Set<Want>();
+        public DbSet<GiveBack> GiveBacks => Set<GiveBack>();
 
         public DbSet<Change> Changes => Set<Change>();
         public DbSet<Transaction> Transactions => Set<Transaction>();
@@ -40,16 +42,16 @@ namespace MTGViewer.Data
             modelBuilder
                 .SelectConcurrencyToken(Database)
 
-                // .ApplyConfiguration(new CardConfiguration())
                 .ApplyConfiguration(new LocationConfiguration())
 
                 .ApplyConfiguration(new DeckConfiguration())
                 .ApplyConfiguration(new BoxConfiguration())
 
-                .ApplyConfiguration(new ChangeConfiguration())
-                .ApplyConfiguration(new TransactionConfiguration(Database))
+                .ApplyConfiguration(new RequestConfiguration())
+                .ApplyConfiguration(new SuggestionConfiguration(Database))
 
-                .ApplyConfiguration(new SuggestionConfiguration(Database));
+                .ApplyConfiguration(new ChangeConfiguration())
+                .ApplyConfiguration(new TransactionConfiguration(Database));
         }
     }
 
@@ -91,7 +93,12 @@ namespace MTGViewer.Data
         {
             builder
                 .HasMany(d => d.Wants)
-                .WithOne(cr => cr.Target)
+                .WithOne(w => w.Target)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder
+                .HasMany(d => d.GiveBacks)
+                .WithOne(g => g.Target)
                 .OnDelete(DeleteBehavior.Cascade);
 
             builder
@@ -115,6 +122,19 @@ namespace MTGViewer.Data
                 .HasOne(b => b.Bin)
                 .WithMany(b => b.Boxes)
                 .OnDelete(DeleteBehavior.Restrict);
+        }
+    }
+
+
+    internal class RequestConfiguration : IEntityTypeConfiguration<CardRequest>
+    {
+        public void Configure(EntityTypeBuilder<CardRequest> builder)
+        {
+            builder
+                .HasDiscriminator(cr => cr.Type)
+                .HasValue<CardRequest>(Discriminator.Invalid)
+                .HasValue<Want>(Discriminator.Want)
+                .HasValue<GiveBack>(Discriminator.GiveBack);
         }
     }
 

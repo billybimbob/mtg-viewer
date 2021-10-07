@@ -120,10 +120,8 @@ namespace MTGViewer.Pages.Decks
             var transaction = await _dbContext.Transactions
                 .Include(t => t.Changes)
                     .ThenInclude(c => c.From)
-                    // unbounded: keep eye on
-                .Include(t => t.Changes)
+                .Include(t => t.Changes) // unbounded: keep eye on
                     .ThenInclude(c => c.To)
-                    // unbounded: keep eye on
                 .SingleOrDefaultAsync(t => t.Id == transactionId);
 
             if (transaction == default || IsNotUserTransaction(transaction))

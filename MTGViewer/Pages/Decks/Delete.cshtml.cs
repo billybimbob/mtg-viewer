@@ -79,24 +79,21 @@ namespace MTGViewer.Pages.Decks
             return _dbContext.Decks
                 .Where(d => d.Id == deckId && d.OwnerId == userId)
 
-                .Include(d => d.Cards)
-                    // unbounded: keep eye on
+                .Include(d => d.Cards) // unbounded: keep eye on
                     .ThenInclude(da => da.Card)
 
-                .Include(d => d.Wants)
-                    // unbounded: keep eye on
-                    .ThenInclude(cr => cr.Card)
-                .Include(d => d.Wants)
-                    .ThenInclude(cr => cr.Target)
+                .Include(d => d.Wants) // unbounded: keep eye on
+                    .ThenInclude(w => w.Card)
 
-                .Include(d => d.TradesTo)
-                    // unbounded: keep eye on
+                .Include(d => d.GiveBacks) // unbounded: keep eye on
+                    .ThenInclude(g => g.Card)
+
+                .Include(d => d.TradesTo) // unbounded: keep eye on
                     .ThenInclude(t => t.Card)
                 .Include(d => d.TradesTo)
                     .ThenInclude(t => t.From)
 
-                .Include(d => d.TradesFrom)
-                    // unbounded: keep eye on
+                .Include(d => d.TradesFrom) // unbounded: keep eye on
                     .ThenInclude(t => t.Card)
                 .Include(d => d.TradesFrom)
                     .ThenInclude(t => t.To)
@@ -111,16 +108,20 @@ namespace MTGViewer.Pages.Decks
             var amountsByName = deck.Cards
                 .ToLookup(ca => ca.Card.Name);
 
-            var requestsByName = deck.Wants
-                .ToLookup(cr => cr.Card.Name);
+            var wantsByName = deck.Wants
+                .ToLookup(w => w.Card.Name);
 
-            var cardNames = amountsByName
-                .Select(g => g.Key)
-                .Union(requestsByName.Select(g => g.Key))
+            var givesByName = deck.GiveBacks
+                .ToLookup(g => g.Card.Name);
+
+            var cardNames = amountsByName.Select(an => an.Key)
+                .Union(wantsByName.Select(wn => wn.Key))
+                .Union(givesByName.Select(gn => gn.Key))
                 .OrderBy(cn => cn);
 
             return cardNames.Select(cn =>
-                new AmountRequestNameGroup(amountsByName[cn], requestsByName[cn]));
+                new AmountRequestNameGroup(
+                    amountsByName[cn], wantsByName[cn], givesByName[cn] ));
         }
 
 

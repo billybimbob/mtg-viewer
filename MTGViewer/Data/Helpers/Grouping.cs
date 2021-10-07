@@ -90,65 +90,58 @@ namespace MTGViewer.Data
 
 
 
-    public class RequestNameGroup : IEnumerable<CardRequest>
+    public class WantNameGroup : IEnumerable<Want>
     {
-        public RequestNameGroup(IEnumerable<CardRequest> requests)
+        public WantNameGroup(IEnumerable<Want> wants)
         {
-            _requests = new(requests);
+            _wants = new(wants);
 
-            if (!_requests.Any())
+            if (!_wants.Any())
             {
                 throw new ArgumentException("The exchanges are empty");
             }
 
-            if (_requests.Any(cr => cr.Card.Name != Name))
+            if (_wants.Any(cr => cr.Card.Name != Name))
             {
                 throw new ArgumentException("All exchanges do not match the name");
             }
 
-            if (_requests.Any(cr => cr.Card.ManaCost != ManaCost))
+            if (_wants.Any(cr => cr.Card.ManaCost != ManaCost))
             {
                 throw new ArgumentException("All exchanges do not match the mana cost");
             }
 
-            if (_requests.Any(cr => cr.IsReturn != IsReturn))
-            {
-                throw new ArgumentException("All exchanges are not matching trades");
-            }
-
-            if (_requests.Any(cr => cr.TargetId != TargetId && cr.Target != Target))
+            if (_wants.Any(cr => cr.TargetId != TargetId && cr.Target != Target))
             {
                 throw new ArgumentException("All exchanges do not have the same location");
             }
         }
 
-        public RequestNameGroup(params CardRequest[] amounts)
-            : this(amounts.AsEnumerable())
+        public WantNameGroup(params Want[] wants)
+            : this(wants.AsEnumerable())
         { }
 
 
         // guranteed >= 1 CardAmounts in linkedlist
-        private readonly LinkedList<CardRequest> _requests;
+        private readonly LinkedList<Want> _wants;
 
 
-        private CardRequest First => _requests.First!.Value;
+        private Want First => _wants.First!.Value;
 
         public string Name => First.Card.Name;
         public string ManaCost => First.Card.ManaCost;
 
-        public IEnumerable<string> CardIds => _requests.Select(ca => ca.CardId);
-        public IEnumerable<Card> Cards => _requests.Select(ca => ca.Card);
+        public IEnumerable<string> CardIds => _wants.Select(ca => ca.CardId);
+        public IEnumerable<Card> Cards => _wants.Select(ca => ca.Card);
 
 
         public int TargetId => First.TargetId;
         public Deck Target => First.Target;
 
-        public bool IsReturn => First.IsReturn;
-
 
         public int Amount
         {
-            get => _requests.Sum(ca => ca.Amount);
+            get => _wants.Sum(ca => ca.Amount);
             set
             {
                 int change = Amount - value;
@@ -162,9 +155,9 @@ namespace MTGViewer.Data
                     if (First.Amount == 0)
                     {
                         // cycle amount
-                        var firstLink = _requests.First!;
-                        _requests.Remove(firstLink);
-                        _requests.AddLast(firstLink);
+                        var firstLink = _wants.First!;
+                        _wants.Remove(firstLink);
+                        _wants.AddLast(firstLink);
                     }
                 }
             }
@@ -172,7 +165,7 @@ namespace MTGViewer.Data
 
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
-        public IEnumerator<CardRequest> GetEnumerator() => _requests.GetEnumerator();
+        public IEnumerator<Want> GetEnumerator() => _wants.GetEnumerator();
     }
 
 
@@ -180,11 +173,26 @@ namespace MTGViewer.Data
     /// <summary>Group of deck amounts with the same deck and same card</summary>
     public class AmountRequestGroup
     {
+        public AmountRequestGroup(CardAmount? amount, Want? want, GiveBack? giveBack)
+        {
+            _actual = amount;
+            _want = want;
+            _giveBack = giveBack;
+        }
+
         public AmountRequestGroup(CardAmount? amount, IEnumerable<CardRequest> requests)
         {
             _actual = amount;
-            _take = requests.FirstOrDefault(cr => !cr.IsReturn);
-            _return = requests.FirstOrDefault(cr => cr.IsReturn);
+
+            _want = requests
+                .Where(cr => cr is Want)
+                .Cast<Want>()
+                .FirstOrDefault();
+
+            _giveBack = requests
+                .Where(cr => cr is GiveBack)
+                .Cast<GiveBack>()
+                .FirstOrDefault();
 
             CheckGroup();
         }
@@ -204,8 +212,8 @@ namespace MTGViewer.Data
 
         // Guaranteed to not all be null
         private CardAmount? _actual;
-        private CardRequest? _take;
-        private CardRequest? _return;
+        private Want? _want;
+        private GiveBack? _giveBack;
 
 
         public CardAmount? Actual
@@ -224,33 +232,33 @@ namespace MTGViewer.Data
             }
         }
 
-        public CardRequest? Take
+        public Want? Want
         {
-            get => _take;
+            get => _want;
             set
             {
-                if (value is null || value.IsReturn)
+                if (value is null)
                 {
                     throw new ArgumentException("Amount is not a valid take amount");
                 }
 
-                _take = value;
+                _want = value;
 
                 CheckGroup();
             }
         }
 
-        public CardRequest? Return
+        public GiveBack? GiveBack
         {
-            get => _return;
+            get => _giveBack;
             set
             {
-                if (value is null || !value.IsReturn)
+                if (value is null)
                 {
                     throw new ArgumentException("Amount is not a valid return amount");
                 }
 
-                _return = value;
+                _giveBack = value;
 
                 CheckGroup();
             }
@@ -260,8 +268,8 @@ namespace MTGViewer.Data
         private void CheckGroup()
         {
             var nullCount = (Actual is null ? 0 : 1)
-                + (Take is null ? 0 : 1)
-                + (Return is null ? 0 : 1);
+                + (Want is null ? 0 : 1)
+                + (GiveBack is null ? 0 : 1);
 
             if (nullCount == 0)
             {
@@ -288,11 +296,11 @@ namespace MTGViewer.Data
             var sameActIds = Actual == null
                 || Actual.CardId == cardId && Actual.LocationId == locationId;
 
-            var sameTakeIds = Take == null 
-                || Take.CardId == cardId && Take.TargetId == locationId;
+            var sameTakeIds = Want == null 
+                || Want.CardId == cardId && Want.TargetId == locationId;
 
-            var sameRetIds = Return == null 
-                || Return.CardId == cardId && Return.TargetId == locationId;
+            var sameRetIds = GiveBack == null 
+                || GiveBack.CardId == cardId && GiveBack.TargetId == locationId;
 
             return sameActIds && sameTakeIds && sameRetIds;
         }
@@ -303,16 +311,13 @@ namespace MTGViewer.Data
             var location = Location;
 
             var sameActRefs = Actual == null 
-                || object.ReferenceEquals(Actual.Card, card)
-                    && object.ReferenceEquals(Actual.Location, location);
+                || Actual.Card == card && Actual.Location == location;
 
-            var sameTakeRefs = Take == null 
-                || object.ReferenceEquals(Take.Card, card)
-                    && object.ReferenceEquals(Take.Target, location);
+            var sameTakeRefs = Want == null 
+                || Want.Card == card && Want.Target == location;
 
-            var sameRetRefs = Return == null 
-                || object.ReferenceEquals(Return.Card, card)
-                    && object.ReferenceEquals(Return.Target, location);
+            var sameRetRefs = GiveBack == null 
+                || GiveBack.Card == card && GiveBack.Target == location;
 
             return sameActRefs && sameTakeRefs && sameRetRefs;
         }
@@ -320,34 +325,34 @@ namespace MTGViewer.Data
 
         public string CardId =>
             Actual?.CardId
-                ?? Take?.CardId
-                ?? Return?.CardId
+                ?? Want?.CardId
+                ?? GiveBack?.CardId
                 ?? Card.Id;
 
         public Card Card =>
             Actual?.Card
-                ?? Take?.Card
-                ?? Return?.Card
+                ?? Want?.Card
+                ?? GiveBack?.Card
                 ?? null!;
 
 
         public int LocationId =>
             Actual?.LocationId
-                ?? Take?.TargetId
-                ?? Return?.TargetId
+                ?? Want?.TargetId
+                ?? GiveBack?.TargetId
                 ?? Location.Id;
 
         public Location Location =>
             Actual?.Location
-                ?? Take?.Target
-                ?? Return?.Target
+                ?? Want?.Target
+                ?? GiveBack?.Target
                 ?? null!;
 
 
         public int Amount =>
             (Actual?.Amount ?? 0)
-                + (Take?.Amount ?? 0)
-                - (Return?.Amount ?? 0);
+                + (Want?.Amount ?? 0)
+                - (GiveBack?.Amount ?? 0);
     }
 
 
@@ -359,20 +364,24 @@ namespace MTGViewer.Data
     {
         public AmountRequestNameGroup(
             IEnumerable<CardAmount> amounts, 
-            IEnumerable<CardRequest> requests)
+            IEnumerable<Want> wants,
+            IEnumerable<GiveBack>? giveBacks = null)
         {
             // do a full outer join
             var amountTable = amounts.ToDictionary(ca => ca.CardId ?? ca.Card.Id);
-            var requestLookup = requests.ToLookup(cr => cr.CardId ?? cr.Card.Id);
+            var wantTable = wants.ToDictionary(ca => ca.CardId ?? ca.Card.Id);
+            var giveTable = giveBacks?.ToDictionary(ca => ca.CardId ?? ca.Card.Id);
 
-            var allCardIds = requestLookup
-                .Select(g => g.Key)
-                .Union(amountTable.Keys);
+            var allCardIds = amountTable.Keys
+                .Union(wantTable.Keys)
+                .Union(giveTable?.Keys ?? Enumerable.Empty<string>());
 
             _requestGroups = allCardIds
                 .Select(cid =>
                     new AmountRequestGroup(
-                        amountTable.GetValueOrDefault(cid), requestLookup[cid]))
+                        amountTable.GetValueOrDefault(cid),
+                        wantTable.GetValueOrDefault(cid),
+                        giveTable?.GetValueOrDefault(cid) ))
                 .ToList();
 
             CheckGroups();
@@ -410,13 +419,13 @@ namespace MTGViewer.Data
             this.First().LocationId;
 
         public int Amount =>
-            this.Sum(rg => rg.Amount);
+            this.Sum((Func<AmountRequestGroup, int>)(rg => (int)rg.Amount));
 
         public int InDeck =>
-            this.Sum(rg => rg.Actual?.Amount ?? 0);
+            this.Sum((Func<AmountRequestGroup, int>)(rg => (int)(rg.Actual?.Amount ?? 0)));
 
         public int Requests =>
-            this.Sum(rg => rg.Take?.Amount ?? 0) - this.Sum(rg => rg.Return?.Amount ?? 0);
+            this.Sum(rg => rg.Want?.Amount ?? 0) - this.Sum(rg => rg.GiveBack?.Amount ?? 0);
 
 
         public IEnumerable<string> CardIds =>

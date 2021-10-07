@@ -94,7 +94,9 @@ namespace MTGViewer.Services
                 _dbContext.Decks.AddRange(data.Decks);
 
                 _dbContext.Amounts.AddRange(data.Amounts);
-                _dbContext.Requests.AddRange(data.Requests);
+
+                _dbContext.Wants.AddRange(data.Wants);
+                _dbContext.GiveBacks.AddRange(data.GiveBacks);
 
                 _dbContext.Changes.AddRange(data.Changes);
                 _dbContext.Transactions.AddRange(data.Transactions);
@@ -147,7 +149,9 @@ namespace MTGViewer.Services
         public IReadOnlyList<Bin> Bins { get; set; }
 
         public IReadOnlyList<CardAmount> Amounts { get; set; }
-        public IReadOnlyList<CardRequest> Requests { get; set; }
+
+        public IReadOnlyList<Want> Wants { get; set; }
+        public IReadOnlyList<GiveBack> GiveBacks { get; set; }
 
         public IReadOnlyList<Change> Changes { get; set; }
         public IReadOnlyList<Transaction> Transactions { get; set; }
@@ -196,7 +200,11 @@ namespace MTGViewer.Services
                     .AsNoTrackingWithIdentityResolution()
                     .ToListAsync(cancel),
 
-                Requests = await dbContext.Requests
+                Wants = await dbContext.Wants
+                    .AsNoTrackingWithIdentityResolution()
+                    .ToListAsync(cancel),
+
+                GiveBacks = await dbContext.GiveBacks
                     .AsNoTrackingWithIdentityResolution()
                     .ToListAsync(cancel),
 
