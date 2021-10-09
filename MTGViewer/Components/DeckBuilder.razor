@@ -167,7 +167,7 @@
 
     private Deck _deck;
     private EditContext _deckEdit;
-    private IDictionary<string, AmountRequestGroup> _deckCards;
+    private Dictionary<string, QuantityGroup> _deckCards;
 
 
 
@@ -274,22 +274,21 @@
     }
 
 
-    private IEnumerable<AmountRequestGroup> GetDeckCardGroups(Deck deck)
+    private IEnumerable<QuantityGroup> GetDeckCardGroups(Deck deck)
     {
-        var amountsById = deck.Cards
-            .ToDictionary(ca => ca.CardId);
+        var amountsById = deck.Cards.ToDictionary(ca => ca.CardId);
+        var takesById = deck.Wants.ToDictionary(w => w.CardId);
+        var givesById = deck.GiveBacks.ToDictionary(g => g.CardId);
 
-        var requestsById = deck.Wants
-            .ToLookup(cr => cr.CardId);
-
-        var cardIds = amountsById
-            .Select(g => g.Key)
-            .Union(requestsById
-                .Select(g => g.Key));
+        var cardIds = amountsById.Keys
+            .Union(takesById.Keys)
+            .Union(givesById.Keys);
 
         return cardIds.Select(cid =>
-            new AmountRequestGroup(
-                amountsById.GetValueOrDefault(cid), requestsById[cid]) );
+            new QuantityGroup(
+                amountsById.GetValueOrDefault(cid),
+                takesById.GetValueOrDefault(cid),
+                givesById.GetValueOrDefault(cid) ));
     }
 
 
@@ -311,33 +310,33 @@
 
         _result = SaveResult.None;
 
-        bool hasGroup = _deckCards.TryGetValue(card.Id, out var deckGroup);
+        var deckGroup = _deckCards.GetValueOrDefault(card.Id);
 
-        if (hasGroup && deckGroup.GiveBack?.Amount > 0)
+        if (deckGroup?.GiveBack?.Amount > 0)
         {
             deckGroup.GiveBack.Amount -= 1;
             return;
         }
 
-        if (!hasGroup || deckGroup.Want is null)
+        if (deckGroup?.Want is null)
         {
             var wantAmount = new Want
             {
                 Card = card,
-                Target = _deck,
+                Deck = _deck,
                 Amount = 0,
             };
 
             _dbContext.Wants.Attach(wantAmount);
 
-            if (hasGroup)
-            {
-                deckGroup.Want = wantAmount;
-            }
-            else
+            if (deckGroup is null)
             {
                 deckGroup = new(wantAmount);
                 _deckCards.Add(card.Id, deckGroup);
+            }
+            else
+            {
+                deckGroup.Want = wantAmount;
             }
         }
 
@@ -380,7 +379,7 @@
             var returnAmount = new GiveBack
             {
                 Card = deckGroup.Card,
-                Target = _deck,
+                Deck = _deck,
                 Amount = 0
             };
 
@@ -534,8 +533,8 @@
 
         var removedWants = _deck.Wants
             .GroupJoin( dbDeck.Wants,
-                wt => (wt.CardId, wt.TargetId),
-                db => (db.CardId, db.TargetId),
+                wt => (wt.CardId, wt.DeckId),
+                db => (db.CardId, db.DeckId),
                 (local, dbs) =>
                     (local, noDb: !dbs.Any()))
             .Where(ln => ln.noDb)
@@ -557,8 +556,8 @@
 
         var removedGiveBacks = _deck.GiveBacks
             .GroupJoin( dbDeck.GiveBacks,
-                gb => (gb.CardId, gb.TargetId),
-                db => (db.CardId, db.TargetId),
+                gb => (gb.CardId, gb.DeckId),
+                db => (db.CardId, db.DeckId),
                 (local, dbs) =>
                     (local, noDb: !dbs.Any()))
             .Where(ln => ln.noDb)

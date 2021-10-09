@@ -48,30 +48,30 @@ namespace MTGViewer.Tests.Pages.Decks
 
         public Task InitializeAsync() => _testGen.SeedAsync();
 
-        public Task DisposeAsync() => Task.CompletedTask;
+        public Task DisposeAsync() => _testGen.ClearAsync();
 
 
         private IQueryable<string> RequestOwnerId(CardRequest request) =>
             _dbContext.Decks
-                .Where(d => d.Id == request.TargetId)
+                .Where(d => d.Id == request.DeckId)
                 .Select(d => d.OwnerId);
 
 
         private IQueryable<int> RequestAmount(Want request) =>
             _dbContext.Wants
-                .Where(cr => cr.Id == request.Id)
-                .Select(cr => cr.Amount);
+                .Where(w => w.Id == request.Id)
+                .Select(w => w.Amount);
 
 
         private IQueryable<int> RequestAmount(GiveBack request) =>
             _dbContext.GiveBacks
-                .Where(cr => cr.Id == request.Id)
-                .Select(cr => cr.Amount);
+                .Where(g => g.Id == request.Id)
+                .Select(g => g.Amount);
 
 
         private IQueryable<int> ActualAmount(CardRequest request) =>
             _dbContext.Amounts
-                .Where(ca => ca.LocationId == request.TargetId && ca.CardId == request.CardId)
+                .Where(ca => ca.LocationId == request.DeckId && ca.CardId == request.CardId)
                 .Select(ca => ca.Amount);
 
 
@@ -83,7 +83,7 @@ namespace MTGViewer.Tests.Pages.Decks
 
         private IQueryable<int> ChangeAmount(CardRequest request) =>
             _dbContext.Changes
-                .Where(c => c.ToId == request.TargetId || c.FromId == request.TargetId)
+                .Where(c => c.ToId == request.DeckId || c.FromId == request.DeckId)
                 .Select(c => c.Amount);
 
 
@@ -138,7 +138,7 @@ namespace MTGViewer.Tests.Pages.Decks
             var boxTakeBefore = await BoxAmount(request).SumAsync();
             var changeBefore = await ChangeAmount(request).SumAsync();
 
-            var result = await _checkoutModel.OnPostAsync(request.TargetId);
+            var result = await _checkoutModel.OnPostAsync(request.DeckId);
 
             var takeAmountAfter = await RequestAmount(request).SingleOrDefaultAsync();
             var actualAmountAfter = await ActualAmount(request).SingleAsync();
@@ -176,7 +176,7 @@ namespace MTGViewer.Tests.Pages.Decks
             var boxTakeBefore = await BoxAmount(request).SumAsync();
             var changeBefore = await ChangeAmount(request).SumAsync();
 
-            var result = await _checkoutModel.OnPostAsync(request.TargetId);
+            var result = await _checkoutModel.OnPostAsync(request.DeckId);
 
             var takeAmountAfter = await RequestAmount(request).SingleAsync();
             var actualAmountAfter = await ActualAmount(request).SingleAsync();
@@ -214,7 +214,7 @@ namespace MTGViewer.Tests.Pages.Decks
             var boxTakeBefore = await BoxAmount(request).SumAsync();
             var changeBefore = await ChangeAmount(request).SumAsync();
 
-            var result = await _checkoutModel.OnPostAsync(request.TargetId);
+            var result = await _checkoutModel.OnPostAsync(request.DeckId);
 
             var returnAmountAfter = await RequestAmount(request).SingleOrDefaultAsync();
             var actualAmountAfter = await ActualAmount(request).SingleOrDefaultAsync();
@@ -249,7 +249,7 @@ namespace MTGViewer.Tests.Pages.Decks
             var boxTakeBefore = await BoxAmount(request).SumAsync();
             var changeBefore = await ChangeAmount(request).SumAsync();
 
-            var result = await _checkoutModel.OnPostAsync(request.TargetId);
+            var result = await _checkoutModel.OnPostAsync(request.DeckId);
 
             var returnAmountAfter = await RequestAmount(request).SingleAsync();
             var actualAmountAfter = await ActualAmount(request).SingleAsync();
@@ -282,7 +282,7 @@ namespace MTGViewer.Tests.Pages.Decks
             var activeTrade = new Trade
             {
                 Card = request.Card,
-                To = request.Target,
+                To = request.Deck,
                 From = (Deck)tradeTarget,
                 Amount = 3
             };
@@ -296,7 +296,7 @@ namespace MTGViewer.Tests.Pages.Decks
             var boxBefore = await BoxAmount(request).SumAsync();
             var actualBefore = await ActualAmount(request).SingleAsync();
 
-            var result = await _checkoutModel.OnPostAsync(request.TargetId);
+            var result = await _checkoutModel.OnPostAsync(request.DeckId);
 
             var boxAfter = await BoxAmount(request).SumAsync();
             var actualAfter = await ActualAmount(request).SingleAsync();
@@ -321,14 +321,14 @@ namespace MTGViewer.Tests.Pages.Decks
             var actualTakeBefore = await ActualAmount(take).SingleOrDefaultAsync();
             var actualRetBefore = await ActualAmount(ret).SingleAsync();
 
-            var result = await _checkoutModel.OnPostAsync(take.TargetId);
+            var result = await _checkoutModel.OnPostAsync(take.DeckId);
 
             var actualTakeAfter = await ActualAmount(take).SingleAsync();
             var actualRetAfter = await ActualAmount(ret).SingleOrDefaultAsync();
 
             Assert.IsType<RedirectToPageResult>(result);
 
-            Assert.Equal(take.TargetId, ret.TargetId);
+            Assert.Equal(take.DeckId, ret.DeckId);
             Assert.Equal(takeTarget, actualTakeAfter - actualTakeBefore);
             Assert.Equal(retTarget, actualRetBefore - actualRetAfter);
         }

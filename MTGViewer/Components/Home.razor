@@ -1,0 +1,149 @@
+@using MTGViewer.Data
+@using MTGViewer.Services
+@using Microsoft.Extensions.Configuration
+
+@namespace MTGViewer.Components
+
+@inject IDbContextFactory<CardDbContext> DbFactory
+@inject IConfiguration Config
+
+
+<div class="text-center">
+    <h1 class="display-4">Welcome to the card database!</h1>
+</div>
+
+<div style="text-align:left">
+    <h3>Cards from our collection!</h3>
+
+    <ul class="list-group list-group-horizontal">
+        @foreach (var card in Cards)
+        {
+            <li class="list-group-item">
+                <img src="@card.ImageUrl" class="rounded">
+            </li>
+        }
+    </ul>
+</div>
+
+<h3>Recent Changes</h3>
+
+<ul class="list-group">
+    @foreach (var transaction in _recentChanges)
+    {
+        <li class="list-group-item">
+            @transaction.AppliedAt: @GetTransactionCards(transaction)
+        </li>
+        <!-- TODO: add location info -->
+    }
+</ul>
+
+
+@code {
+
+    [Parameter]
+    public int NumberOfCards { get; set; }
+
+    [Parameter]
+    public int Seed { get; set; }
+
+    private bool _busy;
+
+    private int _cardNameLength;
+    private int _limit;
+    private Random _random;
+
+    private IReadOnlyList<Card> _randomCards;
+    private IReadOnlyList<Transaction> _recentChanges;
+
+
+    private IEnumerable<Card> Cards => 
+        _randomCards?.Take(_limit) ?? Enumerable.Empty<Card>();
+
+
+    protected override void OnInitialized()
+    {
+        _cardNameLength = Config.GetValue("NameLength", 80);
+
+        base.OnInitialized();
+    }
+
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var seed = new SeedSettings();
+        Config.Bind(seed);
+
+        _limit = NumberOfCards == default
+            ? Config.GetValue("NumberOfCards", 4)
+            : NumberOfCards;
+
+        _random = new(Seed == default ? seed.Value : Seed);
+
+        if (_busy)
+        {
+            return;
+        }
+
+        _busy = true;
+
+        try
+        {
+            await using var dbContext = DbFactory.CreateDbContext();
+
+            _randomCards = await GetShuffledCardsAsync(dbContext, _random);
+            _recentChanges = await GetRecentTransactionsAsync(dbContext);
+        }
+        finally
+        {
+            _busy = false;
+        }
+
+        await base.OnParametersSetAsync();
+    }
+
+
+    private async Task<IReadOnlyList<Card>> GetShuffledCardsAsync(
+        CardDbContext dbContext, Random random)
+    {
+        var cards = await dbContext.Cards.ToListAsync(); // unbounded, keep eye on
+
+        // shuffle locally
+        for (int i = 0; i < cards.Count-1; ++i)
+        {
+            int j = random.Next(i, cards.Count);
+
+            var temp = cards[i];
+            cards[i] = cards[j];
+            cards[j] = temp;
+        }
+
+        return cards;
+    }
+
+
+    private async Task<IReadOnlyList<Transaction>> GetRecentTransactionsAsync(
+        CardDbContext dbContext)
+    {
+        return await dbContext.Transactions
+            .Include(t => t.Changes
+                .OrderBy(c => c.Card.Name))
+                .ThenInclude(c => c.Card)
+            .OrderByDescending(t => t.AppliedAt)
+            .Take(_limit)
+            .ToListAsync();
+    }
+
+
+    private string GetTransactionCards(Transaction transaction)
+    {
+        var cardNames = transaction.Changes
+            .GroupBy(c => c.Card.Name, (name, _) => name);
+
+        var cards = string.Join(", ", cardNames);
+        var cardLimit = Math.Min(cards.Length, _cardNameLength);
+
+        var elipse = cardLimit < cards.Length ? "..." : string.Empty;
+
+        return $"{cards.Substring(0, cardLimit)} {elipse}";
+    }
+}

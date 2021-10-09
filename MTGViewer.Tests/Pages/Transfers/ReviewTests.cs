@@ -43,14 +43,14 @@ namespace MTGViewer.Tests.Pages.Transfers
             _trades = await _testGen.CreateTradeSetAsync(isToSet: false);
         }
 
-        public Task DisposeAsync() => Task.CompletedTask;
+        public Task DisposeAsync() => _testGen.ClearAsync();
 
 
         private IQueryable<Trade> TradesInSet => 
             _dbContext.Trades
                 .Join(_dbContext.Wants,
                     trade => trade.ToId,
-                    request => request.TargetId,
+                    request => request.DeckId,
                     (trade, _) => trade)
                 .Distinct()
                 .Where(t => t.FromId == _trades.TargetId)

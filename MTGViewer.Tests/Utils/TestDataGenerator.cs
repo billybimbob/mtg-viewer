@@ -19,7 +19,9 @@ namespace MTGViewer.Tests.Utils
         private static readonly SemaphoreSlim _jsonLock = new(1, 1);
 
         private readonly CardDbContext _dbContext;
+        private readonly UserDbContext _userContext;
         private readonly UserManager<CardUser> _userManager;
+
         private readonly JsonCardStorage _jsonStorage;
         private readonly CardDataGenerator _cardGen;
 
@@ -28,12 +30,15 @@ namespace MTGViewer.Tests.Utils
 
         public TestDataGenerator(
             CardDbContext dbContext, 
+            UserDbContext userContext,
             UserManager<CardUser> userManager,
             JsonCardStorage jsonStorage,
             CardDataGenerator cardGen)
         {
             _dbContext = dbContext;
+            _userContext = userContext;
             _userManager = userManager;
+
             _jsonStorage = jsonStorage;
             _cardGen = cardGen;
 
@@ -46,8 +51,10 @@ namespace MTGViewer.Tests.Utils
             await _jsonLock.WaitAsync();
             try
             {
-                var jsonSuccess = await _jsonStorage.AddFromJsonAsync(
-                    new() { IncludeUsers = true });
+                await SetupAsync();
+
+                var jsonSuccess = await _jsonStorage
+                    .AddFromJsonAsync(new() { IncludeUsers = true });
 
                 if (!jsonSuccess)
                 {
@@ -61,6 +68,27 @@ namespace MTGViewer.Tests.Utils
             {
                 _jsonLock.Release();
             }
+        }
+
+
+        private async Task SetupAsync()
+        {
+            if (_dbContext.Database.IsRelational())
+            {
+                await _dbContext.Database.MigrateAsync();
+            }
+
+            if (_userContext.Database.IsRelational())
+            {
+                await _userContext.Database.MigrateAsync();
+            }
+        }
+
+
+        public async Task ClearAsync()
+        {
+            await _userContext.Database.EnsureDeletedAsync();
+            await _dbContext.Database.EnsureDeletedAsync();
         }
 
 
@@ -161,7 +189,7 @@ namespace MTGViewer.Tests.Utils
                 .Select(card => new Want
                 {
                     Card = card,
-                    Target = newDeck,
+                    Deck = newDeck,
                     Amount = _random.Next(1, 3)
                 })
                 .ToList();
@@ -346,14 +374,14 @@ namespace MTGViewer.Tests.Utils
         {
             var want = await _dbContext.Wants
                 .SingleOrDefaultAsync(w => 
-                    w.TargetId == target.Id && w.CardId == card.Id);
+                    w.DeckId == target.Id && w.CardId == card.Id);
 
             if (want == default)
             {
                 want = new()
                 {
                     Card = card,
-                    Target = target,
+                    Deck = target,
                 };
 
                 _dbContext.Wants.Attach(want);
@@ -369,14 +397,14 @@ namespace MTGViewer.Tests.Utils
         {
             var give = await _dbContext.GiveBacks
                 .SingleOrDefaultAsync(g => 
-                    g.TargetId == target.Id && g.CardId == card.Id);
+                    g.DeckId == target.Id && g.CardId == card.Id);
 
             if (give == default)
             {
                 give = new()
                 {
                     Card = card,
-                    Target = target
+                    Deck = target
                 };
 
                 _dbContext.GiveBacks.Attach(give);

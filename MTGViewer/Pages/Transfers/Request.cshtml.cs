@@ -71,7 +71,7 @@ namespace MTGViewer.Pages.Transfers
             Deck = deck;
 
             Requests = deck.Wants
-                .GroupBy(ca => ca.Card.Name,
+                .GroupBy(w => w.Card.Name,
                     (_, wants) => new WantNameGroup(wants))
                 .ToList();
 
@@ -91,8 +91,8 @@ namespace MTGViewer.Pages.Transfers
                     .ThenInclude(ca => ca.Card)
 
                 .Include(d => d.Wants // unbounded: keep eye on
-                    .OrderBy(cr => cr.Card.Name))
-                    .ThenInclude(cr => cr.Card)
+                    .OrderBy(w => w.Card.Name))
+                    .ThenInclude(w => w.Card)
 
                 .Include(d => d.TradesTo.Take(1))
 
@@ -187,7 +187,7 @@ namespace MTGViewer.Pages.Transfers
                     target => target.Card.Name,
                     want => want.Card.Name,
                     (target, wantMatches) =>
-                        (target, amount: wantMatches.Sum(cr => cr.Amount)));
+                        (target, amount: wantMatches.Sum(w => w.Amount)));
 
             var newTrades = requestMatches
                 .Select(ta => new Trade

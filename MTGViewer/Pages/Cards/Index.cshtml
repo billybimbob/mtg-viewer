@@ -1,6 +1,5 @@
 @page
-@model MTGViewer.Pages.Cards.IndexModel
-
+@model Cards.IndexModel
 @{
     ViewData["Title"] = "Collection";
 }
@@ -10,5 +9,4 @@
     param-IsSignedIn="@Model.IsSignedIn" /> *@
 
 @(await Html.RenderComponentAsync<Library>(
-    RenderMode.ServerPrerendered,
-    new { Model.IsSignedIn, Model.PageSize }))
+    RenderMode.ServerPrerendered, new { Model.IsSignedIn, Model.PageSize }))

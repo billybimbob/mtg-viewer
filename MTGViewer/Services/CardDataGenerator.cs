@@ -12,10 +12,8 @@ using MTGViewer.Data;
 
 namespace MTGViewer.Services
 {
-    internal class SeedOptions
+    internal class SeedSettings
     {
-        public const string Seed = "Seed";
-
         public int Value { get; set; } = 100;
         public string Password { get; set; }
     }
@@ -39,8 +37,8 @@ namespace MTGViewer.Services
             ISharedStorage sharedStorage,
             UserManager<CardUser> userManager)
         {
-            var seed = new SeedOptions();
-            config.GetSection(SeedOptions.Seed).Bind(seed);
+            var seed = new SeedSettings();
+            config.GetSection(nameof(SeedSettings)).Bind(seed);
 
             _random = new(seed.Value);
             _seedPassword = seed.Password;

@@ -131,15 +131,19 @@ namespace MTGViewer.Pages.Decks
                 return RedirectToPage("Index");
             }
 
-            var availables = await TakeTargets(deck).ToListAsync(); // unbounded, keep eye on, or limit
+            var availables = await TakeTargets(deck)
+                .ToListAsync(); // unbounded, keep eye on, or limit
 
-            ApplyTakes(deck, availables);
+            ApplyWants(deck, availables);
 
             var boxReturns = ApplyDeckReturns(deck);
 
             RemoveEmpty(deck);
 
             deck.UpdateColorSymbols();
+
+            var requestsRemain = deck.Wants.Sum(w => w.Amount) 
+                + deck.GiveBacks.Sum(g => g.Amount);
 
             try
             {
@@ -150,7 +154,15 @@ namespace MTGViewer.Pages.Decks
 
                 await _dbContext.SaveChangesAsync();
 
-                PostMessage = "Successfully exchanged cards";
+                if (requestsRemain == 0)
+                {
+                    PostMessage = "Successfully exchanged all card requests";
+                }
+                else
+                {
+                    PostMessage = "Successfully exchanged requests, "
+                        + "but not all could be fullfilled";
+                }
             }
             catch (DbUpdateException e)
             {
@@ -163,24 +175,23 @@ namespace MTGViewer.Pages.Decks
 
 
 
-        private void ApplyTakes(Deck deck, IEnumerable<CardAmount> availables)
+        private void ApplyWants(Deck deck, IEnumerable<CardAmount> availables)
         {
-            if (!availables.Any() || !deck.Wants.Any())
+            var activeWants = deck.Wants.Where(w => w.Amount > 0);
+            var possibleAvails = availables.Where(ca => ca.Amount > 0);
+
+            if (!possibleAvails.Any() || !activeWants.Any())
             {
                 return;
             }
 
             var transaction = new Transaction();
-            var actuals = GetAllActuals(deck, availables);
+            var allActuals = GetAllActuals(deck, availables);
 
             _dbContext.Transactions.Attach(transaction);
 
-            ApplyExactTakes(transaction, deck.Wants, availables, actuals);
-
-            var remainingTakes = deck.Wants.Where(w => w.Amount > 0);
-            var remainingAvails = availables.Where(ca => ca.Amount > 0);
-
-            ApplyCloseTakes(transaction, remainingTakes, remainingAvails, actuals);
+            ApplyExactWants(transaction, activeWants, possibleAvails, allActuals);
+            ApplyCloseWants(transaction, activeWants, possibleAvails, allActuals);
         }
 
 
@@ -193,8 +204,7 @@ namespace MTGViewer.Pages.Decks
                     actual => actual.CardId,
                     (available, actuals) => (available, actuals))
 
-                .Where(aas => 
-                    !aas.actuals.Any())
+                .Where(aas => !aas.actuals.Any())
                 .Select(aa => aa.available.Card)
                 .Distinct();
 
@@ -212,35 +222,35 @@ namespace MTGViewer.Pages.Decks
         }
 
 
-        private void ApplyExactTakes(
+        private void ApplyExactWants(
             Transaction transaction,
-            IEnumerable<Want> takes,
+            IEnumerable<Want> wants,
             IEnumerable<CardAmount> availables,
             IReadOnlyDictionary<string, CardAmount> actuals)
         {
-            var exactMatches = takes
+            var exactMatches = wants
                 .Join( availables,
-                    take => take.CardId,
+                    want => want.CardId,
                     avail => avail.CardId,
-                    (take, avail) => (take, avail));
+                    (want, avail) => (want, avail));
 
-            foreach (var (take, available) in exactMatches)
+            foreach (var (want, available) in exactMatches)
             {
-                var actual = actuals[take.CardId];
-                int amountTaken = Math.Min(take.Amount, available.Amount);
+                var actual = actuals[want.CardId];
+                int amountTaken = Math.Min(want.Amount, available.Amount);
 
                 actual.Amount += amountTaken;
                 available.Amount -= amountTaken;
-                take.Amount -= amountTaken;
+                want.Amount -= amountTaken;
 
                 var newChange = new Change
                 {
                     Card = available.Card,
 
-                    To = actual.Location,
                     From = available.Location,
-
+                    To = actual.Location,
                     Amount = amountTaken,
+
                     Transaction = transaction
                 };
 
@@ -249,51 +259,51 @@ namespace MTGViewer.Pages.Decks
         }
 
 
-        private void ApplyCloseTakes(
+        private void ApplyCloseWants(
             Transaction transaction,
-            IEnumerable<Want> takes,
+            IEnumerable<Want> wants,
             IEnumerable<CardAmount> availables,
             IReadOnlyDictionary<string, CardAmount> actuals)
         {
-            var takesByName = takes
-                .GroupBy(cr => cr.Card.Name,
-                    (_, takes) => new WantNameGroup(takes));
+            var wantsByName = wants
+                .GroupBy(w => w.Card.Name,
+                    (_, ws) => new WantNameGroup(ws));
 
             var availsByName = availables
                 .GroupBy(ca => ca.Card.Name,
-                    (_, avails) => new CardNameGroup(avails));
+                    (_, cas) => new CardNameGroup(cas));
 
-            var closeMatches = takesByName
+            var closeMatches = wantsByName
                 .Join( availsByName,
-                    takeGroup => takeGroup.Name,
+                    wantGroup => wantGroup.Name,
                     availGroup => availGroup.Name,
-                    (takeGroup, availGroup) => (takeGroup, availGroup));
+                    (wantGroup, availGroup) => (wantGroup, availGroup));
 
 
-            foreach (var (takeGroup, availGroup) in closeMatches)
+            foreach (var (wantGroup, availGroup) in closeMatches)
             {
                 using var closeAvails = availGroup.GetEnumerator();
 
-                while (takeGroup.Amount > 0 && closeAvails.MoveNext())
+                while (wantGroup.Amount > 0 && closeAvails.MoveNext())
                 {
                     var currentAvail = closeAvails.Current;
                     var actual = actuals[currentAvail.CardId];
 
-                    int amountTaken = Math.Min(takeGroup.Amount, currentAvail.Amount);
+                    int amountTaken = Math.Min(wantGroup.Amount, currentAvail.Amount);
 
                     actual.Amount += amountTaken;
 
                     currentAvail.Amount -= amountTaken;
-                    takeGroup.Amount -= amountTaken;
+                    wantGroup.Amount -= amountTaken;
 
                     var newChange = new Change
                     {
                         Card = currentAvail.Card,
 
-                        To = actual.Location,
                         From = currentAvail.Location,
-
+                        To = actual.Location,
                         Amount = amountTaken,
+
                         Transaction = transaction
                     };
 
@@ -308,24 +318,24 @@ namespace MTGViewer.Pages.Decks
         {
             var returnPairs = deck.Cards
                 .Join( deck.GiveBacks,
-                    act => act.CardId,
-                    ret => ret.CardId,
-                    (Actual, Return) => (Actual, Return));
+                    ca => ca.CardId,
+                    gb => gb.CardId,
+                    (actual, giveBack) => (actual, giveBack));
 
             // TODO: change to atomic returns, all or nothing
             var appliedReturns = new List<GiveBack>();
 
-            foreach (var (actual, returnRequest) in returnPairs)
+            foreach (var (actual, giveBack) in returnPairs)
             {
-                if (actual.Amount >= returnRequest.Amount)
+                if (actual.Amount >= giveBack.Amount)
                 {
-                    actual.Amount -= returnRequest.Amount;
-                    appliedReturns.Add(returnRequest);
+                    actual.Amount -= giveBack.Amount;
+                    appliedReturns.Add(giveBack);
                 }
             }
 
             var cardsReturning = appliedReturns
-                .Select(cr => new CardReturn(cr.Card, cr.Amount, deck))
+                .Select(g => new CardReturn(g.Card, g.Amount, deck))
                 .ToList();
 
             foreach (var ret in appliedReturns)

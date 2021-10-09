@@ -1,7 +1,5 @@
 @page "{id:int}/{pageIndex:int?}"
-@model MTGViewer.Pages.Decks.HistoryModel
-@using MTGViewer.Data
-
+@model Decks.HistoryModel
 @{
     ViewData["Title"] = $"{Model.Deck.Name} Change History";
 }

@@ -15,16 +15,15 @@ namespace MTGViewer.Data
         protected Location()
         { }
 
-
         [JsonRequired]
         public int Id { get; private set; }
+
+        [JsonIgnore]
+        internal Discriminator Type { get; private set; }
 
         [Required]
         [StringLength(20)]
         public string Name { get; set; } = null!;
-
-        [JsonIgnore]
-        internal Discriminator Type { get; private set; }
 
         [JsonIgnore]
         public List<CardAmount> Cards { get; } = new();
@@ -37,11 +36,13 @@ namespace MTGViewer.Data
         public UserRef Owner { get; init; } = null!;
         public string OwnerId { get; init; } = null!;
 
+
         [JsonIgnore]
         public List<Want> Wants { get; } = new();
 
         [JsonIgnore]
         public List<GiveBack> GiveBacks { get; } = new();
+
 
         [JsonIgnore]
         public List<Trade> TradesTo { get; } = new();
@@ -49,7 +50,7 @@ namespace MTGViewer.Data
         [JsonIgnore]
         public List<Trade> TradesFrom { get; } = new();
 
-        public string AllColorSymbols { get; private set; } = null!;
+        internal string AllColorSymbols { get; private set; } = null!;
 
 
         public IEnumerable<string> GetColorSymbols() => AllColorSymbols.Split(',');
@@ -60,7 +61,7 @@ namespace MTGViewer.Data
                 .SelectMany(ca => ca.Card.GetManaSymbols());
 
             var requestSymbols = Wants
-                .SelectMany(cr => cr.Card.GetManaSymbols());
+                .SelectMany(w => w.Card.GetManaSymbols());
 
             var allSymbols = cardSymbols.Union(requestSymbols);
             var colorSymbols = Color.COLORS.Values.Intersect(allSymbols);

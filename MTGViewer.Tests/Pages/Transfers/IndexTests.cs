@@ -40,7 +40,7 @@ namespace MTGViewer.Tests.Pages.Transfers
 
         public Task InitializeAsync() => _testGen.SeedAsync();
 
-        public Task DisposeAsync() => Task.CompletedTask;
+        public Task DisposeAsync() => _testGen.ClearAsync();
 
 
         private IQueryable<Suggestion> AllSuggestions =>

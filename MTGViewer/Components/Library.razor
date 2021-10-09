@@ -12,6 +12,10 @@
 <div>
     <a class="btn btn-secondary" href="Cards/Create">Add Card</a>
     <a class="btn btn-secondary" href="Boxes/">Shared Collection</a>
+
+    <button class="btn btn-secondary" 
+        @onclick="() => RefreshCardsAsync()" > 
+        Refresh </button>
 </div>
 
 <div class="my-3">
@@ -30,10 +34,6 @@
             </button>
         }
     </div>
-
-    <button @onclick="() => RefreshCardsAsync()"
-        class="btn btn-secondary" >
-        Refresh</button>
 </div>
 
 <table class="table">
@@ -79,7 +79,7 @@
             <tr>
                 <td>
                     <a title="Details @card.Name"
-                       href="/Cards/Details/?id=@card.Id"
+                       href="/Cards/Details/@card.Id"
                        class="fw-bold">
                        @card.Name
                     </a>

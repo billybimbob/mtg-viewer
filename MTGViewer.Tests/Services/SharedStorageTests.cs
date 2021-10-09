@@ -3,9 +3,7 @@ using System.Linq;
 using System.Threading.Tasks;
 
 using Microsoft.EntityFrameworkCore;
-
 using Xunit;
-using Moq;
 
 using MTGViewer.Data;
 using MTGViewer.Services;
@@ -35,7 +33,7 @@ namespace MTGViewer.Tests.Services
 
         public Task InitializeAsync() => _testGen.SeedAsync();
 
-        public Task DisposeAsync() => Task.CompletedTask;
+        public Task DisposeAsync() => _testGen.ClearAsync();
 
 
         public IQueryable<Card> Cards =>

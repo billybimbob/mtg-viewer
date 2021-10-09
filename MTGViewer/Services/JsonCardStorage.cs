@@ -43,8 +43,8 @@ namespace MTGViewer.Services
             _dbContext = dbContext;
             _userManager = userManager;
 
-            var seedOptions = new SeedOptions();
-            config.GetSection(SeedOptions.Seed).Bind(seedOptions);
+            var seedOptions = new SeedSettings();
+            config.GetSection(nameof(SeedSettings)).Bind(seedOptions);
 
             _tempPassword = seedOptions.Password;
         }

@@ -35,7 +35,7 @@ namespace MTGViewer.Pages.Transfers
 
         public Deck? Deck { get; private set; }
 
-        public IReadOnlyList<AmountRequestNameGroup>? CardGroups { get; private set; }
+        public IReadOnlyList<QuantityNameGroup>? CardGroups { get; private set; }
 
 
         public async Task<IActionResult> OnGetAsync(int deckId)
@@ -132,7 +132,7 @@ namespace MTGViewer.Pages.Transfers
         }
 
 
-        private IEnumerable<AmountRequestNameGroup> CardNameGroups(Deck deck)
+        private IEnumerable<QuantityNameGroup> CardNameGroups(Deck deck)
         {
             var amountsByName = deck.Cards
                 .ToLookup(ca => ca.Card.Name);
@@ -145,7 +145,7 @@ namespace MTGViewer.Pages.Transfers
                 .OrderBy(cn => cn);
 
             return cardNames.Select(cn => 
-                new AmountRequestNameGroup(
+                new QuantityNameGroup(
                     amountsByName[cn], wantsByName[cn] ));
         }
 

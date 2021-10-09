@@ -2,11 +2,13 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
+using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
 using MTGViewer.Services;
 
@@ -18,21 +20,26 @@ namespace MTGViewer.Pages.Boxes
     {
         private readonly int _pageSize;
         private readonly CardDbContext _dbContext;
+        private readonly SignInManager<CardUser> _signInManager;
         private readonly ILogger<HistoryModel> _logger;
 
         public HistoryModel(
             PageSizes pageSizes,
             CardDbContext dbContext,
+            SignInManager<CardUser> signInManager,
             ILogger<HistoryModel> logger)
         {
             _pageSize = pageSizes.GetSize(this);
             _dbContext = dbContext;
+            _signInManager = signInManager;
             _logger = logger;
         }
 
 
         [TempData]
         public string? PostMessage { get; set; }
+
+        public bool IsSignedIn => _signInManager.IsSignedIn(User);
 
         public IReadOnlyList<Transfer>? Transfers { get; private set; }
 

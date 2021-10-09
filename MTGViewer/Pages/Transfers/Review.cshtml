@@ -1,8 +1,5 @@
 @page "{deckId:int}"
-@model MTGViewer.Pages.Transfers.ReviewModel
-
-@using MTGViewer.Data
-
+@model Transfers.ReviewModel
 @{
     ViewData["Title"] = $"{Model.Deck.Owner.Name}'s Trades";
 }

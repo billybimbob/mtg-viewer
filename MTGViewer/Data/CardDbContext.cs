@@ -93,12 +93,12 @@ namespace MTGViewer.Data
         {
             builder
                 .HasMany(d => d.Wants)
-                .WithOne(w => w.Target)
+                .WithOne(w => w.Deck)
                 .OnDelete(DeleteBehavior.Cascade);
 
             builder
                 .HasMany(d => d.GiveBacks)
-                .WithOne(g => g.Target)
+                .WithOne(g => g.Deck)
                 .OnDelete(DeleteBehavior.Cascade);
 
             builder
@@ -110,6 +110,8 @@ namespace MTGViewer.Data
                 .HasMany(d => d.TradesFrom)
                 .WithOne(t => t.From)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Property(d => d.AllColorSymbols);
         }
     }
 

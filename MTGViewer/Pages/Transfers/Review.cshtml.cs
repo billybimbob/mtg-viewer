@@ -117,12 +117,12 @@ namespace MTGViewer.Pages.Transfers
 
         private record AcceptRequest(
             Trade Trade,
-            WantNameGroup? ToTakes,
+            WantNameGroup? ToWants,
             CardAmount FromAmount) { }
 
         private record AcceptTargets(
             CardAmount ToAmount,
-            CardRequest FromTake) { }
+            Want FromWant) { }
 
 
         public async Task<IActionResult> OnPostAcceptAsync(int tradeId, int amount)
@@ -222,14 +222,14 @@ namespace MTGViewer.Pages.Transfers
                 return null;
             }
 
-            var toTakes = trade.To.Wants
+            var toWants = trade.To.Wants
                 .Where(w => w.Card.Name == trade.Card.Name);
 
             return new AcceptRequest(
                 Trade: trade,
 
-                ToTakes: toTakes.Any()
-                    ? new WantNameGroup(toTakes) : default,
+                ToWants: toWants.Any()
+                    ? new WantNameGroup(toWants) : default,
 
                 FromAmount: trade.From.Cards
                     .Single(ca => ca.CardId == trade.CardId));
@@ -242,58 +242,56 @@ namespace MTGViewer.Pages.Transfers
 
             ModifyAmountsAndRequests(acceptRequest, acceptAmount);
 
-            var (trade, toTakes, fromAmount) = acceptRequest;
+            var (trade, toWants, fromAmount) = acceptRequest;
 
             if (fromAmount.Amount == 0)
             {
                 _dbContext.Amounts.Remove(fromAmount);
             }
 
-            var finishedRequests = toTakes
-                ?.Where(cr  => cr.Amount == 0)
-                ?? Enumerable.Empty<Want>();
+            var finishedWants = toWants
+                ?.Where(w => w.Amount == 0) ?? Enumerable.Empty<Want>();
 
-            _dbContext.Wants.RemoveRange(finishedRequests);
+            _dbContext.Wants.RemoveRange(finishedWants);
             _dbContext.Trades.Remove(trade);
         }
 
 
         private void ModifyAmountsAndRequests(AcceptRequest acceptRequest, int acceptAmount)
         {
-            var (trade, toTakes, fromAmount) = acceptRequest;
+            var (trade, toWants, fromAmount) = acceptRequest;
 
-            if (toTakes == default)
+            if (toWants == default)
             {
                 return;
             }
 
-            var (toAmount, fromTake) = GetAcceptTargets(acceptRequest);
+            var (toAmount, fromWant) = GetAcceptTargets(acceptRequest);
 
-            var exactTake = toTakes
-                .SingleOrDefault(cr => cr.CardId == trade.CardId);
+            var exactWant = toWants
+                .SingleOrDefault(w => w.CardId == trade.CardId);
 
             int change = new [] {
                 acceptAmount, trade.Amount,
-                toTakes.Amount, fromAmount.Amount }.Min();
+                toWants.Amount, fromAmount.Amount }.Min();
 
-            if (exactTake != default)
+            if (exactWant != default)
             {
-                int exactChange = Math.Min(change, exactTake.Amount);
+                int exactChange = Math.Min(change, exactWant.Amount);
                 int nonExactChange = change - exactChange;
 
-                // exactRequest mod is also reflected in toRequests
-                exactTake.Amount -= exactChange;
-                toTakes.Amount -= nonExactChange;
+                // exactRequest mod is also reflected in toWants
+                exactWant.Amount -= exactChange;
+                toWants.Amount -= nonExactChange;
             }
             else
             {
-                toTakes.Amount -= change;
+                toWants.Amount -= change;
             }
 
             toAmount.Amount += change;
-
             fromAmount.Amount -= change;
-            fromTake.Amount += change;
+            fromWant.Amount += change;
 
             var newChange = new Change
             {
@@ -327,22 +325,22 @@ namespace MTGViewer.Pages.Transfers
                 _dbContext.Amounts.Attach(toAmount);
             }
 
-            var fromTake = trade.From.Wants
+            var fromWant = trade.From.Wants
                 .SingleOrDefault(w => w.CardId == trade.CardId);
 
-            if (fromTake is null)
+            if (fromWant is null)
             {
-                fromTake = new()
+                fromWant = new()
                 {
                     Card = trade.Card,
-                    Target = trade.From,
+                    Deck = trade.From,
                     Amount = 0
                 };
 
-                _dbContext.Wants.Attach(fromTake);
+                _dbContext.Wants.Attach(fromWant);
             }
 
-            return new AcceptTargets(toAmount, fromTake);
+            return new AcceptTargets(toAmount, fromWant);
         }
 
 

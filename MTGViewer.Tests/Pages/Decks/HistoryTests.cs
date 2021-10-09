@@ -51,7 +51,7 @@ namespace MTGViewer.Tests.Pages.Decks
         }
 
 
-        public Task DisposeAsync() => Task.CompletedTask;
+        public Task DisposeAsync() => _testGen.ClearAsync();
 
 
         private IQueryable<Transaction> Transactions =>

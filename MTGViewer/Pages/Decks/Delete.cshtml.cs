@@ -43,7 +43,7 @@ namespace MTGViewer.Pages.Decks
         public string? PostMesssage { get; set; }
 
         public Deck? Deck { get; private set; }
-        public IReadOnlyList<AmountRequestNameGroup>? NameGroups { get; private set; }
+        public IReadOnlyList<QuantityNameGroup>? NameGroups { get; private set; }
 
         public IReadOnlyList<Trade>? Trades { get; private set; }
 
@@ -103,7 +103,7 @@ namespace MTGViewer.Pages.Decks
         }
 
 
-        private IEnumerable<AmountRequestNameGroup> DeckNameGroup(Deck deck)
+        private IEnumerable<QuantityNameGroup> DeckNameGroup(Deck deck)
         {
             var amountsByName = deck.Cards
                 .ToLookup(ca => ca.Card.Name);
@@ -120,7 +120,7 @@ namespace MTGViewer.Pages.Decks
                 .OrderBy(cn => cn);
 
             return cardNames.Select(cn =>
-                new AmountRequestNameGroup(
+                new QuantityNameGroup(
                     amountsByName[cn], wantsByName[cn], givesByName[cn] ));
         }
 

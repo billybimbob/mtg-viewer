@@ -1,7 +1,5 @@
 @page "{pageIndex:int?}"
-@model MTGViewer.Pages.Boxes.HistoryModel
-@using MTGViewer.Data
-
+@model Boxes.HistoryModel
 @{
     ViewData["Title"] = "Box Change History";
 }
@@ -43,7 +41,8 @@
                 <td> @firstChange.Card.Name </td>
                 <td> @firstChange.Amount </td>
 
-                @if (Model.IsFirstTransfer.Contains( (transaction.Id, from?.Id, to.Id) )
+                @if (Model.IsSignedIn
+                    && Model.IsFirstTransfer.Contains( (transaction.Id, from?.Id, to.Id) )
                     && Model.IsSharedTransaction.Contains(transaction.Id))
                 {
                     <td rowspan="@transaction.Changes.Count">

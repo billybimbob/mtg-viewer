@@ -12,7 +12,7 @@ namespace MTGViewer.Data
 {
     [Index(
         nameof(Type),
-        nameof(TargetId),
+        nameof(DeckId),
         nameof(CardId), IsUnique = true)]
     public class CardRequest : Concurrent
     {
@@ -23,6 +23,7 @@ namespace MTGViewer.Data
         [JsonRequired]
         public int Id { get; private set; }
 
+        [JsonIgnore]
         internal Discriminator Type { get; private set; }
 
 
@@ -32,8 +33,8 @@ namespace MTGViewer.Data
 
 
         [JsonIgnore]
-        public Deck Target { get; init; } = null!;
-        public int TargetId { get; init; }
+        public Deck Deck { get; init; } = null!;
+        public int DeckId { get; init; }
 
 
         [Range(1, int.MaxValue)]

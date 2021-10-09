@@ -29,7 +29,7 @@ namespace MTGViewer.Pages.Decks
 
         public Deck Deck { get; private set; }
 
-        public IEnumerable<AmountRequestGroup> Cards { get; private set; }
+        public IEnumerable<QuantityGroup> Cards { get; private set; }
 
 
         public async Task<IActionResult> OnGetAsync(int id)
@@ -74,7 +74,7 @@ namespace MTGViewer.Pages.Decks
         }
 
 
-        private IEnumerable<AmountRequestGroup> DeckCardGroups(Deck deck)
+        private IEnumerable<QuantityGroup> DeckCardGroups(Deck deck)
         {
             var amountsById = deck.Cards
                 .ToDictionary(ca => ca.CardId);
@@ -91,7 +91,7 @@ namespace MTGViewer.Pages.Decks
 
             return cardIds
                 .Select(cid =>
-                    new AmountRequestGroup(
+                    new QuantityGroup(
                         amountsById.GetValueOrDefault(cid),
                         wantsById.GetValueOrDefault(cid),
                         givesById.GetValueOrDefault(cid) ))
