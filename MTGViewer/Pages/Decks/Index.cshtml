@@ -4,6 +4,8 @@
     ViewData["Title"] = $"Decks - {Model.CardUser.Name}";
 }
 
+@inject Services.IconMarkup Icons
+
 
 @if (!string.IsNullOrEmpty(Model.PostMessage))
 {
@@ -50,12 +52,7 @@
                     }
                 </td>
 
-                <td>
-                    @foreach (var color in deck.GetColorSymbols())
-                    {
-                        <span class="m-1 ms ms-@color ms-cost"></span>
-                    }
-                </td>
+                <td> @Icons.InjectSymbols(deck.Colors).ToHtmlString() </td>
 
                 <td> @deck.Cards.Sum(ca => ca.Amount) </td>
 

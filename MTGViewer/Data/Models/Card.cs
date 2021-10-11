@@ -75,20 +75,6 @@ namespace MTGViewer.Data
         public List<CardAmount> Amounts { get; } = new();
 
 
-        public IReadOnlyList<string> GetManaSymbols()
-        {
-            if (string.IsNullOrEmpty(ManaCost))
-            {
-                return new List<string>();
-            }
-
-            var matches = Regex.Matches(ManaCost, @"{([^}]+)}");
-
-            return matches
-                .Select(m => m.Groups[1].Value.Replace("/", "").ToLower())
-                .ToList();
-        }
-
         public bool IsValid()
         {
             var context = new ValidationContext(this);

@@ -4,6 +4,9 @@
     ViewData["Title"] = "Create";
 }
 
+@inject Services.IconMarkup Icons
+
+
 <h1>Add New Card</h1>
 <hr />
 
@@ -51,10 +54,7 @@
                                     <input type="hidden" asp-for="Matches[i].Name"/>
                                 </td>
                                 <td>
-                                    @foreach (var cost in card.GetManaSymbols())
-                                    {
-                                        <i class="ms ms-@cost ms-cost"></i>
-                                    }
+                                    @Icons.InjectSymbols(card.ManaCost).ToHtmlString()
                                     <input type="hidden" asp-for="Matches[i].ManaCost"/>
                                 </td>
                                 <td>

@@ -6,6 +6,7 @@
 @implements IAsyncDisposable
 
 @inject IDbContextFactory<CardDbContext> DbFactory
+@inject Services.IconMarkup Icons
 @inject ILogger<DeckBuilder> Logger
 
 
@@ -74,19 +75,12 @@
         {
             var group = _deckCards[card.Id];
             <tr>
-                <td class="fw-bold">@card.Name</td>
+                <td class="fw-bold"> @card.Name </td>
+                <td> @Icons.InjectSymbols(card.ManaCost).ToMarkupString() </td>
+                <td> @card.SetName </td>
 
-                <td>
-                    @foreach (var cost in card.GetManaSymbols())
-                    {
-                        <span class="m-1 ms ms-@cost ms-cost"></span>
-                    }
-                </td>
-
-                <td>@card.SetName</td>
-
-                <td>@((group.Actual?.Amount ?? 0) - (group.GiveBack?.Amount ?? 0))</td>
-                <td>@(group.Want?.Amount ?? 0)</td>
+                <td> @((group.Actual?.Amount ?? 0) - (group.GiveBack?.Amount ?? 0)) </td>
+                <td> @(group.Want?.Amount ?? 0) </td>
 
                 <td>
                     <button title="Remove @card.Name"
@@ -120,17 +114,10 @@
         @foreach (var card in AllCards)
         {
             <tr>
-                <td class="fw-bold">@card.Name</td>
-
-                <td>
-                    @foreach (var cost in card.GetManaSymbols())
-                    {
-                        <span class="m-1 ms ms-@cost ms-cost"></span>
-                    }
-                </td>
-
-                <td>@card.SetName</td>
-                <td>@card.Rarity</td>
+                <td class="fw-bold"> @card.Name </td>
+                <td> @Icons.InjectSymbols(card.ManaCost).ToMarkupString() </td>
+                <td> @card.SetName </td>
+                <td> @card.Rarity </td>
 
                 <td>
                     @(card.Amounts
@@ -465,7 +452,7 @@
             deckEntry.State = EntityState.Modified;
         }
 
-        _deck.UpdateColorSymbols();
+        _deck.UpdateColors(Icons);
     }
 
 

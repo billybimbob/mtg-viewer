@@ -4,6 +4,9 @@
     ViewData["Title"] = "Shared Boxes";
 }
 
+@inject Services.IconMarkup Icons
+
+
 <h1>Shared Collection</h1>
 
 <form method="POST" class="mb-3">
@@ -49,12 +52,8 @@
                             class="fw-bold">
                             @firstAmount.Card.Name </a>
                     </td>
-                    <td>
-                        @foreach (var cost in firstAmount.Card.GetManaSymbols())
-                        {
-                            <span class="m-1 ms ms-@cost ms-cost"></span>
-                        }
-                    </td>
+
+                    <td> @Icons.InjectSymbols(firstAmount.Card.ManaCost).ToHtmlString() </td>
                     <td> @firstAmount.Card.SetName </td>
                     <td> @firstAmount.Card.Rarity </td>
                     <td> @firstAmount.Amount </td>
@@ -78,12 +77,7 @@
                             class="fw-bold">
                             @amount.Card.Name </a>
                     </td>
-                    <td>
-                        @foreach (var cost in amount.Card.GetManaSymbols())
-                        {
-                            <span class="m-1 ms ms-@cost ms-cost"></span>
-                        }
-                    </td>
+                    <td> @Icons.InjectSymbols(amount.Card.ManaCost).ToHtmlString() </td>
                     <td> @amount.Card.SetName </td>
                     <td> @amount.Card.Rarity </td>
                     <td> @amount.Amount </td>

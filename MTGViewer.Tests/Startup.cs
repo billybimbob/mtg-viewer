@@ -16,7 +16,9 @@ namespace MTGViewer.Tests
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddScoped<InMemoryConnection>();
+
             services.AddSingleton<PageSizes>();
+            services.AddSingleton<IconMarkup>();
 
             // services.AddDbContext<CardDbContext>(TestFactory.SqliteInMemory);
             // services.AddDbContext<UserDbContext>(TestFactory.SqliteInMemory);

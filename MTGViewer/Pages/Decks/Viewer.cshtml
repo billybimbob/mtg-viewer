@@ -4,6 +4,8 @@
     ViewData["Title"] = $"{Model.Deck.Name} Viewer";
 }
 
+@inject Services.IconMarkup Icons
+
 
 <h1>@Model.Deck.Owner.Name's @Model.Deck.Name</h1>
 
@@ -46,12 +48,7 @@
                        class="fw-bold">
                        @group.Card.Name </a>
                 </td>
-                <td>
-                    @foreach (var cost in group.Card.GetManaSymbols())
-                    {
-                        <span class="m-1 ms ms-@cost ms-cost"></span>
-                    }
-                </td>
+                <td> @Icons.InjectSymbols(group.Card.ManaCost).ToHtmlString() </td>
                 <td> @group.Card.SetName </td>
                 <td> @(group.Actual?.Amount ?? 0) </td>
                 <td> @(group.Want?.Amount ?? 0) </td>

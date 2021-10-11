@@ -4,6 +4,8 @@
     ViewData["Title"] = "Delete Deck";
 }
 
+@inject Services.IconMarkup Icons
+
 <h1>Delete @Model.Deck.Name</h1>
 
 <h3>Are you sure you want to delete this deck?</h3>
@@ -30,12 +32,7 @@
                        class="fw-bold">
                        @nameGroup.Name </a>
                 </td>
-                <td>
-                    @foreach (var cost in card.GetManaSymbols())
-                    {
-                        <span class="m-1 ms ms-@cost ms-cost"></span>
-                    }
-                </td>
+                <td> @Icons.InjectSymbols(card.ManaCost).ToHtmlString() </td>
 
                 <td>@card.SetName</td>
                 <td>@nameGroup.InDeck</td>
@@ -66,12 +63,7 @@
                         <td> @trade.To.Name </td>
                         <td> @trade.From.Name </td>
                         <td> @trade.Card.Name </td>
-                        <td>
-                            @foreach (var cost in trade.Card.GetManaSymbols())
-                            {
-                                <span class="m-1 ms ms-@cost ms-cost"></span>
-                            }
-                        </td>
+                        <td> @Icons.InjectSymbols(trade.Card.ManaCost).ToHtmlString() </td>
                     </tr>
                 }
             </tbody>

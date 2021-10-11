@@ -4,6 +4,8 @@
     ViewData["Title"] = $"{Model.SelfUser.Name}'s Trades";
 }
 
+@inject Services.IconMarkup Icons
+
 
 @if (!string.IsNullOrEmpty(Model.PostMessage))
 {
@@ -35,12 +37,7 @@
                         @deck.Name </a>
                 </td>
 
-                <td>
-                    @foreach (var color in deck.GetColorSymbols())
-                    {
-                        <span class="m-1 ms ms-@color ms-cost"></span>
-                    }
-                </td>
+                <td> @Icons.InjectSymbols(deck.Colors).ToHtmlString() </td>
 
                 @if (deck.TradesTo.Any())
                 {

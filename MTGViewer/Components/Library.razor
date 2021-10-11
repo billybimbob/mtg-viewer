@@ -2,9 +2,10 @@
 @using System.Linq
 @using System.Linq.Expressions
 @using MTGViewer.Data
-
 @namespace MTGViewer.Components
+
 @inject IDbContextFactory<CardDbContext> DbFactory
+@inject Services.IconMarkup Icons
 
 
 <h1>Card Collection</h1>
@@ -22,7 +23,7 @@
     <input class="formcontrol" placeholder="Name" @onchange="SearchName" />
 
     <div class="btn-group" role="group" aria-label="Color Buttons">
-        @foreach (var color in Data.Color.COLORS)
+        @foreach (var color in Icons.Colors)
         {
             var active = _colorFilter.Contains(color.Key) ? "active" : "";
 
@@ -84,12 +85,8 @@
                        @card.Name
                     </a>
                 </td>
-                <td>
-                    @foreach (var cost in card.GetManaSymbols())
-                    {
-                        <span class="m-1 ms ms-@cost ms-cost"></span>
-                    }
-                </td>
+
+                <td> @Icons.InjectSymbols(card.ManaCost).ToMarkupString() </td>
                 <td> @card.SetName </td>
                 <td> @card.Rarity </td>
                 <td> @CardTotal(card) </td>
@@ -239,9 +236,10 @@
 
     private void FilterCards(int pageIndex = 0)
     {
-        var totalPages = Cards?.Pages.Total;
-
-        if (pageIndex < 0 || totalPages > 0 && pageIndex >= totalPages)
+        if (pageIndex < 0 
+            || Cards?.Pages.Total is int totalPages 
+                && totalPages > 0 
+                && pageIndex >= totalPages)
         {
             return;
         }

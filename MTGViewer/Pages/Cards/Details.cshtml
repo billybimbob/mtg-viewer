@@ -5,6 +5,8 @@
     ViewData["Title"] = "Details";
 }
 
+@inject Services.IconMarkup Icons
+
 
 <h1> @Model.Card.Name
 </h1>
@@ -50,10 +52,7 @@
                     @Html.DisplayNameFor(m => m.Card.ManaCost)
                 </dt>
                 <dd class="col">
-                    @foreach (var cost in Model.Card.GetManaSymbols())
-                    {
-                        <i class="ms ms-@cost ms-cost"></i>
-                    }
+                    @Icons.InjectSymbols(Model.Card.ManaCost).ToHtmlString()
                 </dd>
 
                 <div class="w-100"></div>
@@ -116,7 +115,7 @@
                     @Html.DisplayNameFor(m => m.Card.Text)
                 </dt>
                 <dd class="col">
-                    @Html.DisplayFor(m => m.Card.Text)
+                    @Icons.InjectSymbols(Model.Card.Text).ToHtmlString()
                 </dd>
 
                 <div class="w-100"></div>

@@ -5,6 +5,7 @@ using Newtonsoft.Json;
 
 using MTGViewer.Data.Concurrency;
 using MTGViewer.Data.Internal;
+using MTGViewer.Services;
 
 #nullable enable
 
@@ -50,23 +51,18 @@ namespace MTGViewer.Data
         [JsonIgnore]
         public List<Trade> TradesFrom { get; } = new();
 
-        internal string AllColorSymbols { get; private set; } = null!;
+
+        public string Colors { get; private set; } = null!;
 
 
-        public IEnumerable<string> GetColorSymbols() => AllColorSymbols.Split(',');
-
-        public void UpdateColorSymbols()
+        public void UpdateColors(IconMarkup icons)
         {
-            var cardSymbols = Cards
-                .SelectMany(ca => ca.Card.GetManaSymbols());
+            var cardSymbols = Cards.SelectMany(ca => icons.GetColorSymbols(ca.Card.ManaCost));
+            var wantSymbols = Wants.SelectMany(w => icons.GetColorSymbols(w.Card.ManaCost));
 
-            var requestSymbols = Wants
-                .SelectMany(w => w.Card.GetManaSymbols());
+            var allSymbols = cardSymbols.Union(wantSymbols);
 
-            var allSymbols = cardSymbols.Union(requestSymbols);
-            var colorSymbols = Color.COLORS.Values.Intersect(allSymbols);
-
-            AllColorSymbols = string.Join(',', colorSymbols);
+            Colors = icons.JoinColorSymbols(allSymbols);
         }
     }
 
@@ -78,8 +74,8 @@ namespace MTGViewer.Data
         public int BinId { get; init; }
 
 
-        [StringLength(10)]
-        public string? Color { get; init; }
+        [StringLength(20)]
+        public string? Appearance { get; init; }
     }
 
 

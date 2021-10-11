@@ -4,6 +4,8 @@
     ViewData["Title"] = $"{Model.Deck.Owner.Name}'s Trades";
 }
 
+@inject Services.IconMarkup Icons
+
 
 <h1>Trades From @Model.Deck.Name</h1>
 <hr />
@@ -48,12 +50,7 @@
                        @trade.To.Name </a>
                 </td>
 
-                <td>
-                    @foreach (var cost in trade.To.GetColorSymbols())
-                    {
-                        <span class="m-1 ms ms-@cost ms-cost"></span>
-                    }
-                </td>
+                <td> @Icons.InjectSymbols(trade.To.Colors).ToHtmlString() </td>
 
                 <form method="POST">
                     <td>
@@ -110,13 +107,8 @@
                             class="fw-bold">
                             @card.Name </a>
                     </td>
-                    <td>
-                        @foreach (var cost in card.GetManaSymbols())
-                        {
-                            <span class="m-1 ms ms-@cost ms-cost"></span>
-                        }
-                    </td>
 
+                    <td> @Icons.InjectSymbols(card.ManaCost).ToHtmlString() </td>
                     <td>@card.SetName</td>
                     <td>@amount.Amount</td>
                 </tr>

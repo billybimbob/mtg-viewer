@@ -69,12 +69,7 @@ else
                                 class="fw-bold">
                                 @card.Name </a>
                             </td>
-                            <td>
-                                @foreach (var cost in card.GetManaSymbols())
-                                {
-                                    <span class="m-1 ms ms-@cost ms-cost"></span>
-                                }
-                            </td>
+                            <td> @Model.Icons.InjectSymbols(card.ManaCost).ToHtmlString() </td>
 
                             <td>@card.SetName</td>
                             <td>@amount.Amount</td>
@@ -109,12 +104,7 @@ else
                                 class="fw-bold">
                                 @card.Name </a>
                             </td>
-                            <td>
-                                @foreach (var cost in card.GetManaSymbols())
-                                {
-                                    <span class="m-1 ms ms-@cost ms-cost"></span>
-                                }
-                            </td>
+                            <td> @Model.Icons.InjectSymbols(card.ManaCost).ToHtmlString() </td>
 
                             <td>@card.SetName</td>
                             <td>@want.Amount</td>
@@ -146,12 +136,7 @@ else
                                 class="fw-bold">
                                 @card.Name </a>
                             </td>
-                            <td>
-                                @foreach (var cost in card.GetManaSymbols())
-                                {
-                                    <span class="m-1 ms ms-@cost ms-cost"></span>
-                                }
-                            </td>
+                            <td> @Model.Icons.InjectSymbols(card.ManaCost).ToHtmlString() </td>
 
                             <td>@card.SetName</td>
                             <td>@giveBack.Amount</td>

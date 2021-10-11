@@ -4,6 +4,8 @@
     ViewData["Title"] = $"{Model.Deck.Name} Requests";
 }
 
+@inject Services.IconMarkup Icons
+
 
 <h1>Requests for @Model.Deck.Name</h1>
 <hr />
@@ -51,12 +53,8 @@ else
                         asp-route-id="@card.Id">
                         @card.Name </a>
                 </td>
-                <td>
-                    @foreach (var cost in card.GetManaSymbols())
-                    {
-                        <span class="m-1 ms ms-@cost ms-cost"></span>
-                    }
-                </td>
+
+                <td> @Icons.InjectSymbols(card.ManaCost).ToHtmlString() </td>
                 <td> @cardGroup.Amount </td>
             </tr>
         } 
@@ -88,13 +86,8 @@ else
                             class="fw-bold">
                             @card.Name </a>
                     </td>
-                    <td>
-                        @foreach (var cost in card.GetManaSymbols())
-                        {
-                            <span class="m-1 ms ms-@cost ms-cost"></span>
-                        }
-                    </td>
 
+                    <td> @Icons.InjectSymbols(card.ManaCost).ToHtmlString() </td>
                     <td>@card.SetName</td>
                     <td>@amount.Amount</td>
                 </tr>

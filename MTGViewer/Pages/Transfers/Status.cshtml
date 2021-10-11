@@ -3,6 +3,7 @@
 @{
     ViewData["Title"] = $"{Model.Deck.Owner.Name}'s Trades";
 }
+@inject Services.IconMarkup Icons
 
 <h1>Trades To @Model.Deck.Name</h1>
 <hr />
@@ -60,13 +61,8 @@
                        asp-route-id="@trade.FromId">
                        @trade.From.Name </a>
                 </td>
-                <td>
-                    @foreach (var color in trade.From.GetColorSymbols())
-                    {
-                        <span class="m-1 ms ms-@color ms-cost"></span>
-                    }
-                </td>
 
+                <td> @Icons.InjectSymbols(trade.From.Colors).ToHtmlString() </td>
                 <td> @trade.Amount </td>
             </tr>
         }
@@ -96,12 +92,7 @@
                        class="fw-bold">
                        @group.Name </a>
                 </td>
-                <td>
-                    @foreach (var cost in card.GetManaSymbols())
-                    {
-                        <span class="m-1 ms ms-@cost ms-cost"></span>
-                    }
-                </td>
+                <td> @Icons.InjectSymbols(card.ManaCost).ToHtmlString() </td>
                 <td> @group.InDeck </td>
                 <td> @group.Requests </td>
             </tr>

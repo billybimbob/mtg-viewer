@@ -110,8 +110,6 @@ namespace MTGViewer.Data
                 .HasMany(d => d.TradesFrom)
                 .WithOne(t => t.From)
                 .OnDelete(DeleteBehavior.Cascade);
-
-            builder.Property(d => d.AllColorSymbols);
         }
     }
 
