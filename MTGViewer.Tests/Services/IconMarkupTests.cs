@@ -14,6 +14,17 @@ namespace MTGViewer.Tests.Services
 
 
         [Fact]
+        public void InjectSymbols_Null_EmptyString()
+        {
+            string nullText = null;
+
+            var markup = _iconMarkup.InjectSymbols(nullText);
+
+            Assert.Equal(string.Empty, markup);
+        }
+
+
+        [Fact]
         public void InjectSymbols_WhiteLetter_WhiteSymbolClass()
         {
             var whiteLetter = "{W}";

@@ -1,13 +1,7 @@
 using System.Linq;
 using System.Threading.Tasks;
-
 using Xunit;
-using Moq;
 
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
-
-using MtgApiManager.Lib.Service;
 using MTGViewer.Data;
 using MTGViewer.Services;
 
@@ -73,13 +67,7 @@ namespace MTGViewer.Tests.Services
         {
             var testCard = await _fetch.FindAsync(TEST_ID);
 
-            var provider = new MtgServiceProvider();
-            var cache = new DataCacheService(Mock.Of<IConfiguration>(), Mock.Of<ILogger<DataCacheService>>());
-            var cacheFetch = new MTGFetchService(provider, cache, Mock.Of<ILogger<MTGFetchService>>());
-
-            cache[testCard.MultiverseId] = testCard;
-
-            var card = await cacheFetch.FindAsync(TEST_ID);
+            var card = await _fetch.FindAsync(TEST_ID);
 
             Assert.Equal(TEST_ID, testCard.MultiverseId);
             Assert.Equal(TEST_NAME, card.Name);

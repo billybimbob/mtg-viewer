@@ -8,34 +8,69 @@
 @inject IConfiguration Config
 
 
-<div class="text-center">
-    <h1 class="display-4">Welcome to the card database!</h1>
-</div>
+<h1 class="text-center display-4">Welcome to the card database!</h1>
 
-<div style="text-align:left">
-    <h3>Cards from our collection!</h3>
+<div class="container pt-4">
+    <a href="/Cards">
+        <h3>Cards from our collection!</h3>
+    </a>
 
-    <ul class="list-group list-group-horizontal">
+    <div class="row">
         @foreach (var card in Cards)
         {
+            <a href="/Cards/Details/@card.Id" class="col-3" aria-label="@card.Id details">
+                <img alt="@card.Id image" class="w-100 img-fluid rounded" src="@card.ImageUrl.WithHttps()">
+            </a>
+        }
+    </div>
+</div>
+
+<div class="pt-5">
+    <a href="/Boxes/History">
+        <h3>Recent Shared Collection Changes</h3>
+    </a>
+
+    <ul class="list-group list-group-flush">
+        @foreach (var transaction in RecentChanges)
+        {
+            var changes = transaction.Changes;
+            var adds = changes.Where(c => c.To is Box);
+            var removes = changes.Where(c => c.From is Box);
+
+            var anyAdds = adds.Any();
+            var anyRemoves = removes.Any();
+            var both = anyAdds && anyRemoves;
+
             <li class="list-group-item">
-                <img src="@card.ImageUrl" class="rounded">
+                <div class="d-flex w-100 justify-content-between">
+
+                    <p class="mb-1">
+                        @if (anyAdds)
+                        {
+                            <strong> Added </strong> @AllCardNames(adds)
+
+                            <span class="ml-2 badge badge-secondary badge-pill">
+                                @adds.Sum(c => c.Amount) 
+                            </span>
+                        }
+                        @if (both) { <br> }
+                        @if (anyRemoves)
+                        {
+                            <strong> Removed </strong> @AllCardNames(removes)
+
+                            <span class="ml-2 badge badge-secondary badge-pill">
+                                @removes.Sum(c => c.Amount) 
+                            </span>
+                        }
+                    </p>
+
+                    <small class="mb-1 text-muted"> @ElapsedTime(transaction) </small>
+
+                </div>
             </li>
         }
     </ul>
 </div>
-
-<h3>Recent Changes</h3>
-
-<ul class="list-group">
-    @foreach (var transaction in _recentChanges)
-    {
-        <li class="list-group-item">
-            @transaction.AppliedAt: @GetTransactionCards(transaction)
-        </li>
-        <!-- TODO: add location info -->
-    }
-</ul>
 
 
 @code {
@@ -43,21 +78,50 @@
     [Parameter]
     public int NumberOfCards { get; set; }
 
-    [Parameter]
-    public int Seed { get; set; }
-
     private bool _busy;
 
     private int _cardNameLength;
     private int _limit;
-    private Random _random;
+    private readonly Random _random = new();
 
+    private DateTime _currentTime;
     private IReadOnlyList<Card> _randomCards;
     private IReadOnlyList<Transaction> _recentChanges;
 
 
     private IEnumerable<Card> Cards => 
         _randomCards?.Take(_limit) ?? Enumerable.Empty<Card>();
+
+    private IEnumerable<Transaction> RecentChanges =>
+        _recentChanges ?? Enumerable.Empty<Transaction>();
+
+
+    private string AllCardNames(IEnumerable<Change> changes)
+    {
+        var cardNames = changes
+            .GroupBy(c => c.Card.Name, (name, _) => name);
+
+        var cards = string.Join(", ", cardNames);
+        var cardLimit = Math.Min(cards.Length, _cardNameLength);
+        var elipsis = cardLimit < cards.Length ? "..." : string.Empty;
+
+        return $"{cards.Substring(0, cardLimit)}{elipsis}";
+    }
+
+
+    private string ElapsedTime(Transaction transaction)
+    {
+        var elapsed = _currentTime - transaction.AppliedAt;
+
+        return elapsed switch
+        {
+            { Days: >0 } => $"{elapsed.Days} days ago",
+            { Hours: >0 } => $"{elapsed.Hours} hours ago",
+            { Minutes: >0 } => $"{elapsed.Minutes} min ago",
+            _ => $"{elapsed.Seconds} sec ago"
+        };
+    }
+
 
 
     protected override void OnInitialized()
@@ -77,8 +141,6 @@
             ? Config.GetValue("NumberOfCards", 4)
             : NumberOfCards;
 
-        _random = new(Seed == default ? seed.Value : Seed);
-
         if (_busy)
         {
             return;
@@ -91,7 +153,10 @@
             await using var dbContext = DbFactory.CreateDbContext();
 
             _randomCards = await GetShuffledCardsAsync(dbContext, _random);
-            _recentChanges = await GetRecentTransactionsAsync(dbContext);
+
+            _currentTime = DateTime.Now;
+
+            _recentChanges = await GetRecentChangesAsync(dbContext);
         }
         finally
         {
@@ -121,29 +186,28 @@
     }
 
 
-    private async Task<IReadOnlyList<Transaction>> GetRecentTransactionsAsync(
+    private async Task<IReadOnlyList<Transaction>> GetRecentChangesAsync(
         CardDbContext dbContext)
     {
         return await dbContext.Transactions
-            .Include(t => t.Changes
-                .OrderBy(c => c.Card.Name))
+            .Where(t => t.Changes.Any(c => c.To is Box || c.From is Box))
+
+            .Include(t => t.Changes)
                 .ThenInclude(c => c.Card)
+
+            .Include(t => t.Changes)
+                .ThenInclude(c => c.From)
+
+            .Include(t => t.Changes)
+                .ThenInclude(c => c.To)
+
+            .Include(t => t.Changes
+                .Where(c => c.To is Box || c.From is Box)
+                .OrderBy(c => c.Card.Name))
+
             .OrderByDescending(t => t.AppliedAt)
             .Take(_limit)
+
             .ToListAsync();
-    }
-
-
-    private string GetTransactionCards(Transaction transaction)
-    {
-        var cardNames = transaction.Changes
-            .GroupBy(c => c.Card.Name, (name, _) => name);
-
-        var cards = string.Join(", ", cardNames);
-        var cardLimit = Math.Min(cards.Length, _cardNameLength);
-
-        var elipse = cardLimit < cards.Length ? "..." : string.Empty;
-
-        return $"{cards.Substring(0, cardLimit)} {elipse}";
     }
 }

@@ -49,6 +49,7 @@ namespace MTGViewer.Data
     {
         public int Id { get; private set; }
 
+        [Display(Name = "Applied At")]
         public DateTime AppliedAt { get; private set; }
 
         [JsonIgnore]

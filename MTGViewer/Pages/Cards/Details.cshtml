@@ -8,13 +8,22 @@
 @inject Services.IconMarkup Icons
 
 
-<h1> @Model.Card.Name
-</h1>
-<hr />
+<div class="d-flex align-items-center"> 
+    <h1> @Model.Card.Name </h1> 
+    <div class="h5 ml-4 my-0">
+        @Icons.InjectSymbols(Model.Card.ManaCost).ToHtmlString()
+    </div>
+</div>
+
+
+<!-- js hack -->
+<a href="javascript:history.go(-1)"
+    class="btn btn-secondary">
+    Back </a>
 
 @if (Model.CardAlts.Count > 1)
 {
-    <div class="dropdown">
+    <div class="d-inline dropdown">
 
         <button id="altButton" type="button" class="btn btn-secondary dropdown-toggle"
             data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" >
@@ -35,38 +44,38 @@
             }
         </div>
     </div>
-    <hr />
 }
 
+@if (Model.IsSignedIn)
+{
+    <a asp-page="./Delete"
+        asp-route-id="@Model.Card.Id"
+        class="btn btn-danger">
+        Delete </a>
+}
+
+
+<hr />
 <div class="container">
     <div class="row justify-content-center">
 
-        <div class="col align-self-center" >
-            <img alt="@Model.Card.Name" src="@Model.Card.ImageUrl"/>
+        <div class="p-0 pr-1 col align-self-center" >
+            <img class="img-fluid" alt="@Model.Card.Name" src="@Model.Card.ImageUrl.WithHttps()"/>
         </div>
 
-        <div class="col-8">
-            <dl class="row">
+        <div class="col-9">
+            <dl class="row m-0">
 
-                <dt class="col-3">
-                    @Html.DisplayNameFor(m => m.Card.ManaCost)
-                </dt>
-                <dd class="col">
-                    @Icons.InjectSymbols(Model.Card.ManaCost).ToHtmlString()
-                </dd>
-
-                <div class="w-100"></div>
-
-                <dt class="col-3">
+                <dt class="mb-2 col-3">
                     @Html.DisplayNameFor(m => m.Card.Cmc)
                 </dt>
                 <dd class="col">
-                    @Html.DisplayFor(m => m.Card.Cmc)
+                    @(Model.Card.Cmc?.ToString() ?? "--")
                 </dd>
                     
                 <div class="w-100"></div>
 
-                <dt class="col-3">
+                <dt class="mb-2 col-3">
                     @Html.DisplayNameFor(m => m.Card.Rarity)
                 </dt>
                 <dd class="col">
@@ -75,7 +84,7 @@
 
                 <div class="w-100"></div>
 
-                <dt class="col-3">
+                <dt class="mb-2 col-3">
                     @Html.DisplayNameFor(m => m.Card.SetName)
                 </dt>
                 <dd class="col">
@@ -84,74 +93,82 @@
 
                 <div class="w-100"></div>
 
-                <dt class="col-3">
+                <dt class="mb-2 col-3">
                     @Html.DisplayNameFor(m => m.Card.SuperTypes)
                 </dt>
                 <dd class="col">
-                    @(string.Join(" ", Model.Card.SuperTypes.Select(st => st.Name)))
+                    @(Model.Card.SuperTypes.Any()
+                        ? string.Join(" ", Model.Card.SuperTypes.Select(st => st.Name))
+                        : "--")
                 </dd>
 
                 <div class="w-100"></div>
 
-                <dt class="col-3">
+                <dt class="mb-2 col-3">
                     @Html.DisplayNameFor(m => m.Card.Types)
                 </dt>
                 <dd class="col">
-                    @(string.Join(" ", Model.Card.Types.Select(st => st.Name)))
+                    @(Model.Card.Types.Any()
+                        ? string.Join(" ", Model.Card.Types.Select(st => st.Name))
+                        : "--")
                 </dd>
 
                 <div class="w-100"></div>
             
-                <dt class="col-3">
+                <dt class="mb-2 col-3">
                     @Html.DisplayNameFor(m => m.Card.SubTypes)
                 </dt>
                 <dd class="col">
-                    @(string.Join(" ", Model.Card.SubTypes.Select(st => st.Name)))
+                    @(Model.Card.SubTypes.Any() 
+                        ? string.Join(" ", Model.Card.SubTypes.Select(st => st.Name))
+                        : "--")
                 </dd>
 
                 <div class="w-100"></div>
             
-                <dt class="col-3">
+                <dt class="mb-2 col-3">
                     @Html.DisplayNameFor(m => m.Card.Text)
                 </dt>
                 <dd class="col">
-                    @Icons.InjectSymbols(Model.Card.Text).ToHtmlString()
+                    @(Model.Card.Text == null
+                        ? "--"
+                        : Icons.InjectSymbols(Model.Card.Text).ToHtmlString())
                 </dd>
 
                 <div class="w-100"></div>
 
-                <dt class="col-3">
+                <dt class="mb-2 col-3">
                     @Html.DisplayNameFor(m => m.Card.Flavor)
                 </dt>
                 <dd class="col">
-                    @Html.DisplayFor(m => m.Card.Flavor)
+                    @(Model.Card.Flavor ?? "--")
                 </dd>
 
                 <div class="w-100"></div>
 
-                <dt class="col-3">
+                <dt class="mb-2 col-3">
                     @Html.DisplayNameFor(m => m.Card.Artist)
                 </dt>
                 <dd class="col">
-                    @Html.DisplayFor(m => m.Card.Artist)
+                    @(Model.Card.Artist ?? "--")
                 </dd>
 
                 <div class="w-100"></div>
 
-                <dt class="col-3">
+                <dt class="mb-2 col-3">
                     @Html.DisplayNameFor(m => m.Card.Power)
                 </dt>
                 <dd class="col">
-                    @Html.DisplayFor(m => m.Card.Power)
+                    @(Model.Card.Power ?? "--")
                 </dd>
 
                 <div class="w-100"></div>
 
-                <dt class="col-3">
+                <dt class="mb-2 col-3">
                     @Html.DisplayNameFor(m => m.Card.Toughness)
                 </dt>
                 <dd class="col">
-                    @Html.DisplayFor(m => m.Card.Toughness)
+                    @(Model.Card.Toughness ?? "--")
                 </dd>
 
                 <div class="w-100"></div>
@@ -160,32 +177,11 @@
                     @Html.DisplayNameFor(m => m.Card.Loyalty)
                 </dt>
                 <dd class="col">
-                    @Html.DisplayFor(m => m.Card.Loyalty)
+                    @(Model.Card.Loyalty ?? "--")
                 </dd>
 
             </dl>
         </div>
 
     </div>
-</div>
-
-<div>
-    <!-- js hack -->
-    <!--a href="javascript:history.go(-1)" -->
-    <a href="@Model.Reffer"
-       class="btn btn-secondary mb-3">
-       Back </a>
-
-    <!--a asp-page="./Edit"
-       asp-route-id="@Model.Card.Id"
-       class="btn btn-secondary mb-3">
-       Edit </a-->
-
-    @if (Model.IsSignedIn)
-    {
-        <a asp-page="./Delete"
-           asp-route-id="@Model.Card.Id"
-           class="btn btn-danger mb-3">
-           Delete </a>
-    }
 </div>

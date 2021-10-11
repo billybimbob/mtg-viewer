@@ -39,15 +39,17 @@ namespace MTGViewer.Pages.Boxes
         [TempData]
         public string? PostMessage { get; set; }
 
-        public bool IsSignedIn => _signInManager.IsSignedIn(User);
 
         public IReadOnlyList<Transfer>? Transfers { get; private set; }
-
-        public Data.Pages Pages { get; private set; }
 
         public IReadOnlySet<(int, int?, int)>? IsFirstTransfer { get; private set; }
 
         public IReadOnlySet<int>? IsSharedTransaction { get; private set; }
+
+
+        public Data.Pages Pages { get; private set; }
+
+        public bool IsSignedIn => _signInManager.IsSignedIn(User);
 
 
         public async Task OnGetAsync(int? pageIndex)
@@ -103,6 +105,11 @@ namespace MTGViewer.Pages.Boxes
 
         public async Task<IActionResult> OnPostAsync(int transactionId)
         {
+            if (!IsSignedIn)
+            {
+                return NotFound();
+            }
+
             var transaction = await _dbContext.Transactions
                 .Include(t => t.Changes)
                     .ThenInclude(c => c.From)

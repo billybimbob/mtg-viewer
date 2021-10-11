@@ -1,10 +1,10 @@
 @page "{pageIndex:int?}"
 @model Boxes.HistoryModel
 @{
-    ViewData["Title"] = "Box Change History";
+    ViewData["Title"] = "Shared Collection History";
 }
 
-<h1>Change To Boxes</h1>
+<h1>Changes To Shared Collection</h1>
 
 @if (!string.IsNullOrEmpty(Model.PostMessage))
 {
@@ -38,7 +38,10 @@
                 <td rowspan="@changes.Count"> @(firstChange.From?.Name ?? "Added") </td>
                 <td rowspan="@changes.Count"> @firstChange.To.Name </td>
 
-                <td> @firstChange.Card.Name </td>
+                <td>
+                    <a asp-page="/Cards/Details" asp-route-id="@firstChange.CardId">
+                        @firstChange.Card.Name </a>
+                </td>
                 <td> @firstChange.Amount </td>
 
                 @if (Model.IsSignedIn
@@ -57,7 +60,10 @@
             @foreach (var change in changes.Skip(1))
             {
                 <tr>
-                    <td> @change.Card.Name </td>
+                    <td> 
+                        <a asp-page="/Cards/Details" asp-route-id="@change.CardId">
+                            @change.Card.Name </a>
+                    </td>
                     <td> @change.Amount </td>
                 </tr>
             }

@@ -38,7 +38,10 @@
                 <td rowspan="@changes.Count"> @(firstChange.From?.Name ?? "Added") </td>
                 <td rowspan="@changes.Count"> @firstChange.To.Name </td>
 
-                <td> @firstChange.Card.Name </td>
+                <td> 
+                    <a asp-page="/Cards/Details" asp-route-id="@firstChange.CardId">
+                        @firstChange.Card.Name </a>
+                </td>
                 <td> @firstChange.Amount </td>
 
                 @if (Model.IsFirstTransfer.Contains( (transaction.Id, from?.Id, to.Id) ))
@@ -56,7 +59,10 @@
             @foreach (var change in changes.Skip(1))
             {
                 <tr>
-                    <td> @change.Card.Name </td>
+                    <td>
+                        <a asp-page="/Cards/Details" asp-route-id="@change.CardId">
+                            @change.Card.Name </a>
+                    </td>
                     <td> @change.Amount </td>
                 </tr>
             }

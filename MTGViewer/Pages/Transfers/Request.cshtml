@@ -3,7 +3,6 @@
 @{
     ViewData["Title"] = $"{Model.Deck.Name} Requests";
 }
-
 @inject Services.IconMarkup Icons
 
 
@@ -13,8 +12,8 @@
 @if (Model.TargetsExist)
 {
     <div class="alert alert-secondary" role="alert">
-        <p>Are you sure you send requests for the listed cards below?</p>
-        <p>While a request is active, you cannot edit the deck @Model.Deck.Name</p>
+        <h5>Are you sure you want to send requests for the cards listed below?</h5>
+        <p>While a request is active, <strong>you cannot edit @Model.Deck.Name</strong></p>
 
         <form method="POST">
             <input type="hidden" asp-for="Deck.Id"/>

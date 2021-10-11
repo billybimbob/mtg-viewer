@@ -12,7 +12,10 @@
 <form method="POST" class="mb-3">
     <a asp-page="Create" class="btn btn-secondary"> Add Box </a>
 
-    <input type="submit" class="btn btn-secondary" value="Optimize" />
+    @if (Model.IsSignedIn)
+    {
+        <input type="submit" class="btn btn-secondary" value="Optimize" />
+    }
 
     <a asp-page="History" class="btn btn-secondary"> History </a>
 </form>

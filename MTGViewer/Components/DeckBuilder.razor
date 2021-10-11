@@ -105,7 +105,7 @@
             <th>Mana Cost</th>
             <th>Set</th>
             <th>Rarity</th>
-            <th>Amount Shared</th>
+            <th>Current Shared</th>
             <th></th>
         </tr>
     </thead>
@@ -124,7 +124,6 @@
                         .Where(ca => ca.Location is Box)
                         .Sum(ca => ca.Amount))
                 </td>
-
                 <td>
                     <button title="Add @card.Name"
                             type="button"

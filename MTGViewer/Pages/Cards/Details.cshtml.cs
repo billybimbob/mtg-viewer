@@ -25,8 +25,6 @@ namespace MTGViewer.Pages.Cards
             _dbContext = dbContext;
         }
 
-        [TempData]
-        public string Reffer { get; set; }
 
         public bool IsSignedIn { get; private set; }
         public Card Card { get; private set; }
@@ -59,21 +57,6 @@ namespace MTGViewer.Pages.Cards
                 .OrderBy(c => c.SetName)
                 .ToListAsync();
 
-
-            // kind of a hack, TODO: figure out better way than tempdata
-            if (Request.Headers["Referer"] != StringValues.Empty)
-            {
-                var reffer = Request.Headers["Referer"].ToString();
-
-                if (reffer.Contains("Details"))
-                {
-                    TempData.Keep(nameof(Reffer));
-                }
-                else
-                {
-                    Reffer = reffer;
-                }
-            }
 
             return Page();
         }

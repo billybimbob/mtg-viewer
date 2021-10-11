@@ -42,13 +42,16 @@ namespace MTGViewer.Data
         public List<Want> Wants { get; } = new();
 
         [JsonIgnore]
+        [Display(Name = "Give Backs")]
         public List<GiveBack> GiveBacks { get; } = new();
 
 
         [JsonIgnore]
+        [Display(Name = "Trades To")]
         public List<Trade> TradesTo { get; } = new();
 
         [JsonIgnore]
+        [Display(Name = "Trades From")]
         public List<Trade> TradesFrom { get; } = new();
 
 
@@ -57,8 +60,11 @@ namespace MTGViewer.Data
 
         public void UpdateColors(IconMarkup icons)
         {
-            var cardSymbols = Cards.SelectMany(ca => icons.GetColorSymbols(ca.Card.ManaCost));
-            var wantSymbols = Wants.SelectMany(w => icons.GetColorSymbols(w.Card.ManaCost));
+            var cardSymbols = Cards.SelectMany(ca => 
+                icons.GetColorSymbols(ca.Card.ManaCost));
+
+            var wantSymbols = Wants.SelectMany(w => 
+                icons.GetColorSymbols(w.Card.ManaCost));
 
             var allSymbols = cardSymbols.Union(wantSymbols);
 

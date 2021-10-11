@@ -1,11 +1,12 @@
 using System.Linq;
-using System.Collections.Generic;
 using System.Threading.Tasks;
 
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
+using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
 using MTGViewer.Services;
 
@@ -15,11 +16,16 @@ namespace MTGViewer.Pages.Boxes
     public class IndexModel : PageModel
     {
         private readonly int _pageSize;
+        private readonly SignInManager<CardUser> _signInManager;
         private readonly ISharedStorage _sharedStorage;
 
-        public IndexModel(PageSizes pageSizes, ISharedStorage sharedStorage)
+        public IndexModel(
+            PageSizes pageSizes, 
+            SignInManager<CardUser> signInManager, 
+            ISharedStorage sharedStorage)
         {
             _pageSize = pageSizes.GetSize(this);
+            _signInManager = signInManager;
             _sharedStorage = sharedStorage;
         }
 
@@ -28,6 +34,8 @@ namespace MTGViewer.Pages.Boxes
         public string PostMessage { get; set; }
 
         public PagedList<Box> Boxes { get; private set; }
+
+        public bool IsSignedIn => _signInManager.IsSignedIn(User);
 
 
         public async Task OnGetAsync(int? pageIndex)
@@ -48,6 +56,11 @@ namespace MTGViewer.Pages.Boxes
 
         public async Task<IActionResult> OnPostAsync()
         {
+            if (!IsSignedIn)
+            {
+                return NotFound();
+            }
+
             try
             {
                 var transaction = await _sharedStorage.OptimizeAsync();

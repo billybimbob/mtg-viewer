@@ -1,6 +1,5 @@
 using System;
 using System.ComponentModel.DataAnnotations;
-
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using MTGViewer.Data.Concurrency;
@@ -35,6 +34,7 @@ namespace MTGViewer.Data
         [StringLength(80)]
         public string? Comment { get; set; }
 
+        [Display(Name = "Sent At")]
         public DateTime SentAt { get; private set; }
     }
     

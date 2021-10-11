@@ -70,6 +70,11 @@ namespace MTGViewer.Services
 
         public string InjectSymbols(string mtgText)
         {
+            if (string.IsNullOrEmpty(mtgText))
+            {
+                return string.Empty;
+            }
+
             var withIcons = new StringBuilder(mtgText.Length);
 
             var match = _iconFinder.Match(mtgText);
