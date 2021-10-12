@@ -21,6 +21,7 @@ namespace MTGViewer.Data
         [Display(Name = "Multiverse Id")]
         public string MultiverseId { get; init; } = null!;
 
+
         [Required]
         public string Name { get; init; } = null!;
 

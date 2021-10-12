@@ -296,8 +296,10 @@ namespace MTGViewer.Pages.Transfers
             var newChange = new Change
             {
                 Card = trade.Card,
-                To = toAmount.Location,
+
                 From = fromAmount.Location,
+                To = toAmount.Location,
+
                 Amount = change,
                 Transaction = new()
             };

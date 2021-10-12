@@ -3,7 +3,7 @@
 @{
     ViewData["Title"] = "Delete";
 }
-@inject Services.IconMarkup Icons
+@inject Services.IMTGSymbols MtgSymbols
 
 
 <h1>Delete @Model.Card.Name</h1>
@@ -104,7 +104,7 @@
                 <dd class="col">
                     @(Model.Card.Text == null
                         ? "--"
-                        : Icons.InjectSymbols(Model.Card.Text).ToHtmlString())
+                        : MtgSymbols.InjectIcons(Model.Card.Text).ToHtmlString())
                 </dd>
 
                 <div class="w-100"></div>

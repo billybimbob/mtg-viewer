@@ -33,7 +33,7 @@ namespace MTGViewer.Tests.Pages.Decks
             CardDbContext dbContext,
             ISharedStorage sharedStorage,
             UserManager<CardUser> userManager,
-            IconMarkup iconMarkup,
+            IMTGSymbols iconMarkup,
             TestDataGenerator testGen)
         {
             _dbContext = dbContext;

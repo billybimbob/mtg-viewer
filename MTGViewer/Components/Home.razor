@@ -1,11 +1,7 @@
 @using MTGViewer.Data
-@using MTGViewer.Services
-@using Microsoft.Extensions.Configuration
 
 @namespace MTGViewer.Components
-
 @inject IDbContextFactory<CardDbContext> DbFactory
-@inject IConfiguration Config
 
 
 <h1 class="text-center display-4">Welcome to the card database!</h1>
@@ -76,24 +72,26 @@
 @code {
 
     [Parameter]
-    public int NumberOfCards { get; set; }
+    public int NameLength { get; set; } = 80;
 
-    private bool _busy;
+    [Parameter]
+    public int NumberOfCards { get; set; } = 4;
 
-    private int _cardNameLength;
-    private int _limit;
     private readonly Random _random = new();
 
+    private bool _busy;
     private DateTime _currentTime;
+
     private IReadOnlyList<Card> _randomCards;
     private IReadOnlyList<Transaction> _recentChanges;
 
 
     private IEnumerable<Card> Cards => 
-        _randomCards?.Take(_limit) ?? Enumerable.Empty<Card>();
+        _randomCards?.Take(NumberOfCards) ?? Enumerable.Empty<Card>();
 
     private IEnumerable<Transaction> RecentChanges =>
         _recentChanges ?? Enumerable.Empty<Transaction>();
+
 
 
     private string AllCardNames(IEnumerable<Change> changes)
@@ -102,7 +100,8 @@
             .GroupBy(c => c.Card.Name, (name, _) => name);
 
         var cards = string.Join(", ", cardNames);
-        var cardLimit = Math.Min(cards.Length, _cardNameLength);
+        var cardLimit = Math.Min(cards.Length, NameLength);
+
         var elipsis = cardLimit < cards.Length ? "..." : string.Empty;
 
         return $"{cards.Substring(0, cardLimit)}{elipsis}";
@@ -124,23 +123,8 @@
 
 
 
-    protected override void OnInitialized()
-    {
-        _cardNameLength = Config.GetValue("NameLength", 80);
-
-        base.OnInitialized();
-    }
-
-
     protected override async Task OnParametersSetAsync()
     {
-        var seed = new SeedSettings();
-        Config.Bind(seed);
-
-        _limit = NumberOfCards == default
-            ? Config.GetValue("NumberOfCards", 4)
-            : NumberOfCards;
-
         if (_busy)
         {
             return;
@@ -152,7 +136,7 @@
         {
             await using var dbContext = DbFactory.CreateDbContext();
 
-            _randomCards = await GetShuffledCardsAsync(dbContext, _random);
+            _randomCards = await GetShuffledCardsAsync(dbContext);
 
             _currentTime = DateTime.Now;
 
@@ -168,14 +152,14 @@
 
 
     private async Task<IReadOnlyList<Card>> GetShuffledCardsAsync(
-        CardDbContext dbContext, Random random)
+        CardDbContext dbContext)
     {
         var cards = await dbContext.Cards.ToListAsync(); // unbounded, keep eye on
 
         // shuffle locally
         for (int i = 0; i < cards.Count-1; ++i)
         {
-            int j = random.Next(i, cards.Count);
+            int j = _random.Next(i, cards.Count);
 
             var temp = cards[i];
             cards[i] = cards[j];
@@ -206,7 +190,7 @@
                 .OrderBy(c => c.Card.Name))
 
             .OrderByDescending(t => t.AppliedAt)
-            .Take(_limit)
+            .Take(NumberOfCards)
 
             .ToListAsync();
     }

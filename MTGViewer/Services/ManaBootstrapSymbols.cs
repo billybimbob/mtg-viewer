@@ -8,67 +8,46 @@ using System.Text.RegularExpressions;
 
 namespace MTGViewer.Services
 {
-    public class IconMarkup
+    public class ManaBootstrapSymbols : IMTGSymbols
     {
         private const string _symbol = "symbol";
-        private const string _symbolPattern = @"{(?<symbol>[^}]+)}";
-
         private const string _direction = "direction";
         private const string _loyalty = "loyalty";
-        private const string _loyaltyPattern = @"\[(?<direction>\+|−)?(?<loyalty>\d+)\]";
-
         private const string _saga = "saga";
-        private const string _sagaPattern = @"(?<saga>[(?:I|V)+,? ]+)—";
 
-        private readonly Regex _iconFinder;
+        private const string _symbolPattern = 
+            @"{(?<" + _symbol + @">[^}]+)}";
 
-        public IReadOnlyDictionary<string, string> Colors { get; }
+        private const string _loyaltyPattern = 
+            @"\[(?<" + _direction + @">\+|−)?(?<" + _loyalty + @">\d+)\]";
+
+        private const string _sagaPattern = 
+            @"(?<" + _saga + @">[(?:I|V)+,? ]+)—";
+
+        private readonly Regex _iconFinder = new(
+            $"(?:(?<{nameof(_symbolPattern)}>{_symbolPattern})" 
+            + $"|(?<{nameof(_loyaltyPattern)}>{_loyaltyPattern})"
+            + $"|(?<{nameof(_sagaPattern)}>{_sagaPattern}))" );
 
 
-        public IconMarkup()
+        public string[] FindSymbols(string mtgText)
         {
-            _iconFinder = new(
-                $"(?:(?<{nameof(_symbolPattern)}>{_symbolPattern})" 
-                + $"|(?<{nameof(_loyaltyPattern)}>{_loyaltyPattern})"
-                + $"|(?<{nameof(_sagaPattern)}>{_sagaPattern}))" );
-
-            Colors = new SortedList<string, string>
-            {
-                ["black"] = "b",
-                ["blue"] = "u",
-                ["green"] = "g",
-                ["red"] = "r",
-                ["white"] = "w"
-            };
+            return Regex
+                .Matches(mtgText, _symbolPattern)
+                .Select(m => m.Groups[_symbol].Value)
+                .ToArray();
         }
 
 
-
-        public IReadOnlyList<string> GetColorSymbols(string mtgText)
+        public string JoinSymbols(IEnumerable<string> mtgSymbols)
         {
-            var matches = Regex.Matches(mtgText, _symbolPattern);
-
-            var textColors = matches
-                .SelectMany(m => m.Groups[1].Value
-                    .Replace("/", "")
-                    .ToLower())
-                .Select(cs => cs.ToString());
-
-            return Colors.Values.Intersect(textColors).ToList();
-        }
-
-
-        public string JoinColorSymbols(IEnumerable<string> mtgSymbols)
-        {
-            var colorSymbols = Colors.Values
-                .Intersect(mtgSymbols)
-                .Select(sym => $"{{{ sym.ToUpper() }}}");
+            var colorSymbols = mtgSymbols.Select(sym => $"{{{ sym.ToUpper() }}}");
 
             return string.Join(string.Empty, colorSymbols);
         }
 
 
-        public string InjectSymbols(string mtgText)
+        public string InjectIcons(string mtgText)
         {
             if (string.IsNullOrEmpty(mtgText))
             {
@@ -132,7 +111,6 @@ namespace MTGViewer.Services
                 _ => cost
             };
 
-            // not sure about the bootstrap class assumption
             return $"<i class=\"mr-2 ms ms-{cost} ms-cost\"></i>";
         }
 
@@ -151,7 +129,6 @@ namespace MTGViewer.Services
                 _ => throw new ArgumentException("Unexpected loyalty group")
             };
 
-            // not sure about the bootstrap class assumption
             return $"<i class=\"m-1 ms ms-loyalty-{dir} ms-loyalty-{num}\"></i>";
         }
 

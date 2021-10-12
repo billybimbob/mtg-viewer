@@ -31,13 +31,14 @@ namespace MTGViewer.Pages.Decks
             CardDbContext dbContext,
             ISharedStorage sharedStorage,
             UserManager<CardUser> userManager,
-            IconMarkup icons,
+            IMTGSymbols mtgSymbols,
             ILogger<CheckoutModel> logger)
         {
             _dbContext = dbContext;
             _sharedStorage = sharedStorage;
             _userManager = userManager;
-            Icons = icons;
+
+            MtgSymbols = mtgSymbols;
             _logger = logger;
         }
 
@@ -45,7 +46,7 @@ namespace MTGViewer.Pages.Decks
         [TempData]
         public string? PostMessage { get; set; }
 
-        public IconMarkup Icons { get; }
+        public IMTGSymbols MtgSymbols { get; }
 
         public Deck? Deck { get; private set; }
         
@@ -144,7 +145,7 @@ namespace MTGViewer.Pages.Decks
 
             RemoveEmpty(deck);
 
-            deck.UpdateColors(Icons);
+            deck.UpdateColors(MtgSymbols);
 
             var requestsRemain = deck.Wants.Sum(w => w.Amount) 
                 + deck.GiveBacks.Sum(g => g.Amount);

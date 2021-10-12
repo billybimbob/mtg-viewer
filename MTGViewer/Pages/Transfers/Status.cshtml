@@ -3,7 +3,7 @@
 @{
     ViewData["Title"] = $"{Model.Deck.Owner.Name}'s Trades";
 }
-@inject Services.IconMarkup Icons
+@inject Services.IMTGSymbols MtgSymbols
 
 <h1>Trades To @Model.Deck.Name</h1>
 <hr />
@@ -62,7 +62,7 @@
                        @trade.From.Name </a>
                 </td>
 
-                <td> @Icons.InjectSymbols(trade.From.Colors).ToHtmlString() </td>
+                <td> @MtgSymbols.InjectIcons(trade.From.Colors).ToHtmlString() </td>
                 <td> @trade.Amount </td>
             </tr>
         }
@@ -92,7 +92,7 @@
                        class="fw-bold">
                        @group.Name </a>
                 </td>
-                <td> @Icons.InjectSymbols(card.ManaCost).ToHtmlString() </td>
+                <td> @MtgSymbols.InjectIcons(card.ManaCost).ToHtmlString() </td>
                 <td> @group.InDeck </td>
                 <td> @group.Requests </td>
             </tr>

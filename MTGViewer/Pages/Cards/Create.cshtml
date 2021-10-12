@@ -4,7 +4,7 @@
     ViewData["Title"] = "Create";
 }
 
-@inject Services.IconMarkup Icons
+@inject Services.IMTGSymbols MtgSymbols
 
 
 <h1>Add New Card</h1>
@@ -54,7 +54,7 @@
                                     <input type="hidden" asp-for="Matches[i].Name"/>
                                 </td>
                                 <td>
-                                    @Icons.InjectSymbols(card.ManaCost).ToHtmlString()
+                                    @MtgSymbols.InjectIcons(card.ManaCost).ToHtmlString()
                                     <input type="hidden" asp-for="Matches[i].ManaCost"/>
                                 </td>
                                 <td>

@@ -7,7 +7,7 @@ using System.Linq;
 
 namespace MTGViewer.Data
 {
-    /// <summary>Group of card amounts with the same card name</summary>
+    /// <summary>Group of amounts with the same deck and same card name</summary>
     public class CardNameGroup : IEnumerable<CardAmount>
     {
         public CardNameGroup(IEnumerable<CardAmount> amounts)
@@ -90,6 +90,7 @@ namespace MTGViewer.Data
 
 
 
+    /// <summary>Group of wants with the same deck and same card name</summary>
     public class WantNameGroup : IEnumerable<Want>
     {
         public WantNameGroup(IEnumerable<Want> wants)
@@ -170,7 +171,10 @@ namespace MTGViewer.Data
 
 
 
-    /// <summary>Group of deck amounts with the same deck and same card</summary>
+    /// <summary>
+    /// Group of quantities (amount, want, and give back) with the same deck and 
+    /// exact same card
+    /// </summary>
     public class QuantityGroup
     {
         public QuantityGroup(CardAmount? amount, Want? want, GiveBack? giveBack)
@@ -344,7 +348,7 @@ namespace MTGViewer.Data
 
 
     /// <summary>
-    /// Group of card amounts with the same card name, and the same deck
+    /// Group of quantities with the same deck and same card name
     /// </summary>
     public class QuantityNameGroup : IEnumerable<QuantityGroup>
     {
@@ -439,7 +443,7 @@ namespace MTGViewer.Data
 
 
 
-    /// <summary>Group of trades with the same proposer and to deck</summary>
+    /// <summary>Group of trades with either the same To or From deck</summary>
     public class TradeSet : IEnumerable<Trade>
     {
         private readonly IReadOnlyCollection<Trade> _trades;

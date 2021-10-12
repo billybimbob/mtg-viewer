@@ -58,17 +58,23 @@ namespace MTGViewer.Data
         public string Colors { get; private set; } = null!;
 
 
-        public void UpdateColors(IconMarkup icons)
+        public void UpdateColors(IMTGSymbols mtgSymbols)
         {
-            var cardSymbols = Cards.SelectMany(ca => 
-                icons.GetColorSymbols(ca.Card.ManaCost));
+            var cardSymbols = Cards
+                .SelectMany(ca => mtgSymbols.FindSymbols(ca.Card.ManaCost))
+                .SelectMany(sym => sym.Split('/'));
 
-            var wantSymbols = Wants.SelectMany(w => 
-                icons.GetColorSymbols(w.Card.ManaCost));
+            var wantSymbols = Wants
+                .SelectMany(w => mtgSymbols.FindSymbols(w.Card.ManaCost))
+                .SelectMany(sym => sym.Split('/'));
 
-            var allSymbols = cardSymbols.Union(wantSymbols);
+            var allSymbols = cardSymbols
+                .Union(wantSymbols)
+                .Select(sym => sym.ToLower());
 
-            Colors = icons.JoinColorSymbols(allSymbols);
+            var colorSymbols = Color.Symbols.Values.Intersect(allSymbols);
+
+            Colors = mtgSymbols.JoinSymbols(colorSymbols);
         }
     }
 

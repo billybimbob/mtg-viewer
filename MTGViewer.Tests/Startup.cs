@@ -18,7 +18,7 @@ namespace MTGViewer.Tests
             services.AddScoped<InMemoryConnection>();
 
             services.AddSingleton<PageSizes>();
-            services.AddSingleton<IconMarkup>();
+            services.AddSingleton<IMTGSymbols, ManaBootstrapSymbols>();
 
             // services.AddDbContext<CardDbContext>(TestFactory.SqliteInMemory);
             // services.AddDbContext<UserDbContext>(TestFactory.SqliteInMemory);

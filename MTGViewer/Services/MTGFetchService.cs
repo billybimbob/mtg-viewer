@@ -237,6 +237,7 @@ namespace MTGViewer.Services
             {
                 Id = card.Id, // id should be valid
                 MultiverseId = card.MultiverseId,
+
                 Name = card.Name,
                 Names = (card.Names?.Select(s => new Name(s))
                     ?? Enumerable.Empty<Name>())

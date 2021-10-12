@@ -4,7 +4,7 @@
     ViewData["Title"] = $"{Model.Deck.Owner.Name}'s Trades";
 }
 
-@inject Services.IconMarkup Icons
+@inject Services.IMTGSymbols MtgSymbols
 
 
 <h1>Trades From @Model.Deck.Name</h1>
@@ -50,7 +50,7 @@
                        @trade.To.Name </a>
                 </td>
 
-                <td> @Icons.InjectSymbols(trade.To.Colors).ToHtmlString() </td>
+                <td> @MtgSymbols.InjectIcons(trade.To.Colors).ToHtmlString() </td>
 
                 <form method="POST">
                     <td>
@@ -108,7 +108,7 @@
                             @card.Name </a>
                     </td>
 
-                    <td> @Icons.InjectSymbols(card.ManaCost).ToHtmlString() </td>
+                    <td> @MtgSymbols.InjectIcons(card.ManaCost).ToHtmlString() </td>
                     <td>@card.SetName</td>
                     <td>@amount.Amount</td>
                 </tr>

@@ -3,13 +3,49 @@ using MTGViewer.Services;
 
 namespace MTGViewer.Tests.Services
 {
-    public class IconMarkupTests
+    public class MTGSymbolsTests
     {
-        private readonly IconMarkup _iconMarkup;
+        private readonly IMTGSymbols _mtgSymbols;
 
-        public IconMarkupTests(IconMarkup iconMarkup)
+        public MTGSymbolsTests(IMTGSymbols mtgSymbols)
         {
-            _iconMarkup = iconMarkup;
+            _mtgSymbols = mtgSymbols;
+        }
+
+
+        [Fact]
+        public void FindSymbols_ManaCost_ManaSymbolArray()
+        {
+            var manaCost = "{3}{W}{W}";
+            var symbolArray = new [] { "3", "W", "W" };
+
+            var parsedSymbols = _mtgSymbols.FindSymbols(manaCost);
+
+            Assert.Equal(symbolArray, parsedSymbols);
+        }
+
+
+        [Fact]
+        public void JoinSymbols_ManaSymbolArray_ManaCost()
+        {
+            var symbolArray = new [] { "3", "W", "W" };
+            var manaCost = "{3}{W}{W}";
+
+            var joinedSymbols = _mtgSymbols.JoinSymbols(symbolArray);
+
+            Assert.Equal(manaCost, joinedSymbols);
+        }
+
+
+        [Fact]
+        public void FindThenJoinSymbols_ManaCost_SameValue()
+        {
+            var manaCost = "{3}{W}{W}";
+
+            var parsedSymbols = _mtgSymbols.FindSymbols(manaCost);
+            var joinedSymbols = _mtgSymbols.JoinSymbols(parsedSymbols);
+
+            Assert.Equal(manaCost, joinedSymbols);
         }
 
 
@@ -18,7 +54,7 @@ namespace MTGViewer.Tests.Services
         {
             string nullText = null;
 
-            var markup = _iconMarkup.InjectSymbols(nullText);
+            var markup = _mtgSymbols.InjectIcons(nullText);
 
             Assert.Equal(string.Empty, markup);
         }
@@ -29,7 +65,7 @@ namespace MTGViewer.Tests.Services
         {
             var whiteLetter = "{W}";
 
-            var markup = _iconMarkup.InjectSymbols(whiteLetter);
+            var markup = _mtgSymbols.InjectIcons(whiteLetter);
 
             Assert.Contains("ms ms-w ms-cost", markup);
         }
@@ -40,7 +76,7 @@ namespace MTGViewer.Tests.Services
         {
             var threeRedLetter = "{3}{R}";
 
-            var markup = _iconMarkup.InjectSymbols(threeRedLetter);
+            var markup = _mtgSymbols.InjectIcons(threeRedLetter);
 
             Assert.Contains("ms ms-3 ms-cost", markup);
             Assert.Contains("ms ms-r ms-cost", markup);
@@ -52,7 +88,7 @@ namespace MTGViewer.Tests.Services
         {
             var tapLetter = "{T}";
 
-            var markup = _iconMarkup.InjectSymbols(tapLetter);
+            var markup = _mtgSymbols.InjectIcons(tapLetter);
 
             Assert.Contains("ms ms-tap ms-cost", markup);
         }
@@ -63,7 +99,7 @@ namespace MTGViewer.Tests.Services
         {
             var llanowarText = "{T}: Add {G}.";
 
-            var markup = _iconMarkup.InjectSymbols(llanowarText);
+            var markup = _mtgSymbols.InjectIcons(llanowarText);
 
             Assert.Contains("ms ms-tap ms-cost", markup);
             Assert.Contains(": Add ", markup);
@@ -76,7 +112,7 @@ namespace MTGViewer.Tests.Services
         {
             var loyaltyUp = "[+3]";
 
-            var markup = _iconMarkup.InjectSymbols(loyaltyUp);
+            var markup = _mtgSymbols.InjectIcons(loyaltyUp);
 
             Assert.Contains("ms ms-loyalty-up ms-loyalty-3", markup);
         }
@@ -87,7 +123,7 @@ namespace MTGViewer.Tests.Services
         {
             var loyaltyDown = "[−2]";
 
-            var markup = _iconMarkup.InjectSymbols(loyaltyDown);
+            var markup = _mtgSymbols.InjectIcons(loyaltyDown);
 
             Assert.Contains("ms ms-loyalty-down ms-loyalty-2", markup);
         }
@@ -98,7 +134,7 @@ namespace MTGViewer.Tests.Services
         {
             var loyaltyZero = "[0]";
 
-            var markup = _iconMarkup.InjectSymbols(loyaltyZero);
+            var markup = _mtgSymbols.InjectIcons(loyaltyZero);
 
             Assert.Contains("ms ms-loyalty-zero ms-loyalty-0", markup);
         }
@@ -112,7 +148,7 @@ namespace MTGViewer.Tests.Services
                 + "[−2]: Put a +1/+1 counter on each creature you control "
                 + "and a loyalty counter on each other planeswalker you control.";
 
-            var markup = _iconMarkup.InjectSymbols(ajaniText);
+            var markup = _mtgSymbols.InjectIcons(ajaniText);
 
             Assert.Contains("ms ms-loyalty-up ms-loyalty-1", markup);
             Assert.Contains("ms ms-loyalty-down ms-loyalty-2", markup);
@@ -124,7 +160,7 @@ namespace MTGViewer.Tests.Services
         {
             var sagaOne = "I —";
 
-            var markup = _iconMarkup.InjectSymbols(sagaOne);
+            var markup = _mtgSymbols.InjectIcons(sagaOne);
 
             Assert.Contains("ms ms-saga ms-saga-1", markup);
         }
@@ -135,7 +171,7 @@ namespace MTGViewer.Tests.Services
         {
             var sagaFour = "IV —";
 
-            var markup = _iconMarkup.InjectSymbols(sagaFour);
+            var markup = _mtgSymbols.InjectIcons(sagaFour);
 
             Assert.Contains("ms ms-saga ms-saga-4", markup);
         }
@@ -146,7 +182,7 @@ namespace MTGViewer.Tests.Services
         {
             var sagaOne = "I — II, III —";
 
-            var markup = _iconMarkup.InjectSymbols(sagaOne);
+            var markup = _mtgSymbols.InjectIcons(sagaOne);
 
             Assert.Contains("ms ms-saga ms-saga-1", markup);
             Assert.Contains("ms ms-saga ms-saga-2", markup);
@@ -162,7 +198,7 @@ namespace MTGViewer.Tests.Services
                 + "I, II — Create a 2/2 white Knight creature token with vigilance."
                 + "III — Knights you control get +2/+1 until end of turn.";
 
-            var markup = _iconMarkup.InjectSymbols(benaliaText);
+            var markup = _mtgSymbols.InjectIcons(benaliaText);
 
             Assert.Contains("ms ms-saga ms-saga-1", markup);
             Assert.Contains("ms ms-saga ms-saga-2", markup);
@@ -181,7 +217,7 @@ namespace MTGViewer.Tests.Services
                 + "IV — Create a Gold token. (It's an artifact with "
                 + "\"Sacrifice this artifact: Add one mana of any color.\")";
 
-            var markup = _iconMarkup.InjectSymbols(firstIroanText);
+            var markup = _mtgSymbols.InjectIcons(firstIroanText);
 
             Assert.Contains("ms ms-saga ms-saga-1", markup);
             Assert.Contains("ms ms-saga ms-saga-2", markup);

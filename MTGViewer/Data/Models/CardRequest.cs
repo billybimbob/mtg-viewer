@@ -19,7 +19,6 @@ namespace MTGViewer.Data
         protected CardRequest()
         { }
 
-
         [JsonRequired]
         public int Id { get; private set; }
 

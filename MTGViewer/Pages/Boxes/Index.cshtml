@@ -4,7 +4,7 @@
     ViewData["Title"] = "Shared Boxes";
 }
 
-@inject Services.IconMarkup Icons
+@inject Services.IMTGSymbols MtgSymbols
 
 
 <h1>Shared Collection</h1>
@@ -56,7 +56,7 @@
                             @firstAmount.Card.Name </a>
                     </td>
 
-                    <td> @Icons.InjectSymbols(firstAmount.Card.ManaCost).ToHtmlString() </td>
+                    <td> @MtgSymbols.InjectIcons(firstAmount.Card.ManaCost).ToHtmlString() </td>
                     <td> @firstAmount.Card.SetName </td>
                     <td> @firstAmount.Card.Rarity </td>
                     <td> @firstAmount.Amount </td>
@@ -80,7 +80,7 @@
                             class="fw-bold">
                             @amount.Card.Name </a>
                     </td>
-                    <td> @Icons.InjectSymbols(amount.Card.ManaCost).ToHtmlString() </td>
+                    <td> @MtgSymbols.InjectIcons(amount.Card.ManaCost).ToHtmlString() </td>
                     <td> @amount.Card.SetName </td>
                     <td> @amount.Card.Rarity </td>
                     <td> @amount.Amount </td>

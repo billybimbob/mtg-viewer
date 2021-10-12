@@ -40,6 +40,11 @@ namespace MTGViewer.Data
     
 
 
+    /// <remarks>
+    /// Makes the assumption that trades are always initiated 
+    /// by the owner of the To deck, and the owner of the 
+    /// From deck accepts or denies the trade
+    /// </remarks>
     [Index(
         nameof(FromId),
         nameof(ToId),

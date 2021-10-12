@@ -3,7 +3,7 @@
 @{
     ViewData["Title"] = $"{Model.Deck.Name} Requests";
 }
-@inject Services.IconMarkup Icons
+@inject Services.IMTGSymbols MtgSymbols
 
 
 <h1>Requests for @Model.Deck.Name</h1>
@@ -53,7 +53,7 @@ else
                         @card.Name </a>
                 </td>
 
-                <td> @Icons.InjectSymbols(card.ManaCost).ToHtmlString() </td>
+                <td> @MtgSymbols.InjectIcons(card.ManaCost).ToHtmlString() </td>
                 <td> @cardGroup.Amount </td>
             </tr>
         } 
@@ -86,9 +86,9 @@ else
                             @card.Name </a>
                     </td>
 
-                    <td> @Icons.InjectSymbols(card.ManaCost).ToHtmlString() </td>
-                    <td>@card.SetName</td>
-                    <td>@amount.Amount</td>
+                    <td> @MtgSymbols.InjectIcons(card.ManaCost).ToHtmlString() </td>
+                    <td> @card.SetName </td>
+                    <td> @amount.Amount </td>
                 </tr>
             }
         </tbody>

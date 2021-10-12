@@ -5,13 +5,13 @@
     ViewData["Title"] = "Details";
 }
 
-@inject Services.IconMarkup Icons
+@inject Services.IMTGSymbols MtgSymbols
 
 
 <div class="d-flex align-items-center"> 
     <h1> @Model.Card.Name </h1> 
     <div class="h5 ml-4 my-0">
-        @Icons.InjectSymbols(Model.Card.ManaCost).ToHtmlString()
+        @MtgSymbols.InjectIcons(Model.Card.ManaCost).ToHtmlString()
     </div>
 </div>
 
@@ -132,7 +132,7 @@
                 <dd class="col">
                     @(Model.Card.Text == null
                         ? "--"
-                        : Icons.InjectSymbols(Model.Card.Text).ToHtmlString())
+                        : MtgSymbols.InjectIcons(Model.Card.Text).ToHtmlString())
                 </dd>
 
                 <div class="w-100"></div>
