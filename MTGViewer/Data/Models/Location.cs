@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
@@ -58,7 +59,7 @@ namespace MTGViewer.Data
         public string Colors { get; private set; } = null!;
 
 
-        public void UpdateColors(IMTGSymbols mtgSymbols)
+        public void UpdateColors(MTGSymbols mtgSymbols)
         {
             var cardSymbols = Cards
                 .SelectMany(ca => mtgSymbols.FindSymbols(ca.Card.ManaCost))
@@ -72,9 +73,13 @@ namespace MTGViewer.Data
                 .Union(wantSymbols)
                 .Select(sym => sym.ToLower());
 
-            var colorSymbols = Color.Symbols.Values.Intersect(allSymbols);
+            var toCardText = mtgSymbols.GetTranslator<CardTextTranslator>();
 
-            Colors = mtgSymbols.JoinSymbols(colorSymbols);
+            var colorSymbols = Color.Symbols.Values
+                .Intersect(allSymbols)
+                .Select(toCardText.TranslateMana);
+
+            Colors = string.Join(string.Empty, colorSymbols);
         }
     }
 

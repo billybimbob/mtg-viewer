@@ -30,7 +30,9 @@ namespace MTGViewer
             services.AddServerSideBlazor();
 
             services.AddSingleton<PageSizes>();
-            services.AddSingleton<IMTGSymbols, ManaBootstrapSymbols>();
+
+            services.AddSymbols(options => options
+                .AddTranslator<ManaTranslator>());
 
             services.AddCardStorage(_config);
 

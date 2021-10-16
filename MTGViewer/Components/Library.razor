@@ -1,11 +1,11 @@
 @using System
 @using System.Linq
 @using System.Linq.Expressions
-@using MTGViewer.Data
+
 @namespace MTGViewer.Components
 
 @inject IDbContextFactory<CardDbContext> DbFactory
-@inject Services.IMTGSymbols MtgSymbols
+@inject MTGSymbols MtgSymbols
 
 
 <h1>Card Collection</h1>
@@ -86,7 +86,7 @@
                     </a>
                 </td>
 
-                <td> @MtgSymbols.InjectIcons(card.ManaCost).ToMarkupString() </td>
+                <td> @(MtgSymbols.Format<ManaTranslator>(card.ManaCost).ToMarkupString()) </td>
                 <td> @card.SetName </td>
                 <td> @card.Rarity </td>
                 <td> @CardTotal(card) </td>

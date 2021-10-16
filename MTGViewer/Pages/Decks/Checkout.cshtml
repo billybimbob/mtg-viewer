@@ -3,6 +3,8 @@
 @{
     ViewData["Title"] = $"Checkout {Model.Deck.Name}";
 }
+@inject MTGSymbols MtgSymbols
+
 
 <h1>Checkout @Model.Deck.Name</h1>
 
@@ -69,7 +71,7 @@ else
                                 class="fw-bold">
                                 @card.Name </a>
                             </td>
-                            <td> @Model.MtgSymbols.InjectIcons(card.ManaCost).ToHtmlString() </td>
+                            <td> @(MtgSymbols.Format<ManaTranslator>(card.ManaCost).ToHtmlString()) </td>
 
                             <td>@card.SetName</td>
                             <td>@amount.Amount</td>
@@ -104,7 +106,7 @@ else
                                 class="fw-bold">
                                 @card.Name </a>
                             </td>
-                            <td> @Model.MtgSymbols.InjectIcons(card.ManaCost).ToHtmlString() </td>
+                            <td> @(MtgSymbols.Format<ManaTranslator>(card.ManaCost).ToHtmlString()) </td>
 
                             <td>@card.SetName</td>
                             <td>@want.Amount</td>
@@ -136,7 +138,7 @@ else
                                 class="fw-bold">
                                 @card.Name </a>
                             </td>
-                            <td> @Model.MtgSymbols.InjectIcons(card.ManaCost).ToHtmlString() </td>
+                            <td> @(MtgSymbols.Format<ManaTranslator>(card.ManaCost).ToHtmlString()) </td>
 
                             <td>@card.SetName</td>
                             <td>@giveBack.Amount</td>

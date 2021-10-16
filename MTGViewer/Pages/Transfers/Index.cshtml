@@ -3,7 +3,7 @@
 @{
     ViewData["Title"] = $"{Model.SelfUser.Name}'s Trades";
 }
-@inject Services.IMTGSymbols MtgSymbols
+@inject MTGSymbols MtgSymbols
 
 
 @if (!string.IsNullOrEmpty(Model.PostMessage))
@@ -36,7 +36,7 @@
                         @deck.Name </a>
                 </td>
 
-                <td> @MtgSymbols.InjectIcons(deck.Colors).ToHtmlString() </td>
+                <td> @(MtgSymbols.Format<ManaTranslator>(deck.Colors).ToHtmlString()) </td>
 
                 @if (deck.TradesTo.Any())
                 {

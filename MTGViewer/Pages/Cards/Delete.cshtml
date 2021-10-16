@@ -3,7 +3,7 @@
 @{
     ViewData["Title"] = "Delete";
 }
-@inject Services.IMTGSymbols MtgSymbols
+@inject MTGSymbols MtgSymbols
 
 
 <h1>Delete @Model.Card.Name</h1>
@@ -104,7 +104,7 @@
                 <dd class="col">
                     @(Model.Card.Text == null
                         ? "--"
-                        : MtgSymbols.InjectIcons(Model.Card.Text).ToHtmlString())
+                        : MtgSymbols.Format<ManaTranslator>(Model.Card.Text).ToHtmlString())
                 </dd>
 
                 <div class="w-100"></div>

@@ -3,7 +3,7 @@
 @{
     ViewData["Title"] = $"Suggest {Model.Card.Name}";
 }
-@inject Services.IMTGSymbols MtgSymbols
+@inject MTGSymbols MtgSymbols
 
 
 @if (Model.Users is not null)
@@ -63,7 +63,7 @@ else
                 <span class="input-group-text">@deck.Name</span>
 
                 <div class="input-group-text">
-                    @MtgSymbols.InjectIcons(deck.Colors).ToHtmlString()
+                    @(MtgSymbols.Format<ManaTranslator>(deck.Colors).ToHtmlString())
                 </div>
             </div>
         }

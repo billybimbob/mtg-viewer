@@ -25,28 +25,28 @@ namespace MTGViewer.Pages.Decks
         private readonly CardDbContext _dbContext;
         private readonly ISharedStorage _sharedStorage;
         private readonly UserManager<CardUser> _userManager;
+
+        private readonly MTGSymbols _mtgSymbols;
         private readonly ILogger<CheckoutModel> _logger;
 
         public CheckoutModel(
             CardDbContext dbContext,
             ISharedStorage sharedStorage,
             UserManager<CardUser> userManager,
-            IMTGSymbols mtgSymbols,
+            MTGSymbols mtgSymbols,
             ILogger<CheckoutModel> logger)
         {
             _dbContext = dbContext;
             _sharedStorage = sharedStorage;
             _userManager = userManager;
 
-            MtgSymbols = mtgSymbols;
+            _mtgSymbols = mtgSymbols;
             _logger = logger;
         }
 
 
         [TempData]
         public string? PostMessage { get; set; }
-
-        public IMTGSymbols MtgSymbols { get; }
 
         public Deck? Deck { get; private set; }
         
@@ -145,7 +145,7 @@ namespace MTGViewer.Pages.Decks
 
             RemoveEmpty(deck);
 
-            deck.UpdateColors(MtgSymbols);
+            deck.UpdateColors(_mtgSymbols);
 
             var requestsRemain = deck.Wants.Sum(w => w.Amount) 
                 + deck.GiveBacks.Sum(g => g.Amount);
