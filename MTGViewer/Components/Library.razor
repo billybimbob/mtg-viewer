@@ -5,7 +5,7 @@
 @namespace MTGViewer.Components
 
 @inject IDbContextFactory<CardDbContext> DbFactory
-@inject MTGSymbols MtgSymbols
+@inject SymbolFormatter MtgSymbols
 
 
 <h1>Card Collection</h1>
@@ -31,7 +31,7 @@
                     type="button"
                     class="btn btn-outline-secondary border-0 rounded @active"
                     @onclick="() => FilterColor(color)">
-                <i class="ms ms-@symbol ms-cost"></i>
+                <i class="ms ms-@symbol.ToLower() ms-cost"></i>
             </button>
         }
     </div>
@@ -86,7 +86,7 @@
                     </a>
                 </td>
 
-                <td> @(MtgSymbols.Format<ManaTranslator>(card.ManaCost).ToMarkupString()) </td>
+                <td> @(MtgSymbols.Format(card.ManaCost).ToMarkupString()) </td>
                 <td> @card.SetName </td>
                 <td> @card.Rarity </td>
                 <td> @CardTotal(card) </td>

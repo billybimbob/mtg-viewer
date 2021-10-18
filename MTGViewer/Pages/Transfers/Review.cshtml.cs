@@ -118,11 +118,11 @@ namespace MTGViewer.Pages.Transfers
         private record AcceptRequest(
             Trade Trade,
             WantNameGroup? ToWants,
-            CardAmount FromAmount) { }
+            CardAmount FromAmount);
 
         private record AcceptTargets(
             CardAmount ToAmount,
-            Want FromWant) { }
+            Want FromWant);
 
 
         public async Task<IActionResult> OnPostAcceptAsync(int tradeId, int amount)

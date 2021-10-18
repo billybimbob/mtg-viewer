@@ -19,6 +19,7 @@ namespace MTGViewer.Tests
             services.AddSingleton<PageSizes>();
 
             services.AddSymbols(options => options
+                .AddFormatter<CardText>()
                 .AddTranslator<ManaTranslator>());
 
             // services.AddDbContext<CardDbContext>(TestFactory.SqliteInMemory);

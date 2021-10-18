@@ -1,85 +1,46 @@
-using System.Linq;
 using Xunit;
 using MTGViewer.Services;
 
 namespace MTGViewer.Tests.Services
 {
-    public class MTGSymbolsTests
+    public class ManaTextTests
     {
-        private readonly MTGSymbols _mtgSymbols;
+        private readonly SymbolFormatter _manaText;
         
-        public MTGSymbolsTests(MTGSymbols mtgSymbols)
+        public ManaTextTests(CardText cardText, ManaTranslator manaTranslator)
         {
-            _mtgSymbols = mtgSymbols;
+            _manaText = cardText.ComposeWith(manaTranslator);
         }
 
 
         [Fact]
-        public void FindSymbols_ManaCost_ManaSymbolArray()
-        {
-            var manaCost = "{3}{W}{W}";
-            var symbolArray = new [] { "3", "W", "W" };
-
-            var parsedSymbols = _mtgSymbols.FindSymbols(manaCost);
-
-            Assert.Equal(symbolArray, parsedSymbols);
-        }
-
-
-        [Fact]
-        public void EncoderTranslateMana_ManaSymbolArray_ManaCost()
-        {
-            var symbolArray = new [] { "3", "W", "W" };
-            var manaCost = "{3}{W}{W}";
-            var toCardText = _mtgSymbols.GetTranslator<CardTextTranslator>();
-
-            var translation = symbolArray.Select(toCardText.TranslateMana);
-            var joinedSymbols = string.Join(string.Empty, translation);
-
-            Assert.Equal(manaCost, joinedSymbols);
-        }
-
-
-        // [Fact]
-        // public void FindThenJoinSymbols_ManaCost_SameValue()
-        // {
-        //     var manaCost = "{3}{W}{W}";
-
-        //     var parsedSymbols = _mtgSymbols.FindSymbols(manaCost);
-        //     var joinedSymbols = _mtgSymbols.JoinSymbols(parsedSymbols);
-
-        //     Assert.Equal(manaCost, joinedSymbols);
-        // }
-
-
-        [Fact]
-        public void InjectSymbols_Null_EmptyString()
+        public void Format_Null_EmptyString()
         {
             string nullText = null;
 
-            var markup = _mtgSymbols.Format<ManaTranslator>(nullText);
+            var markup = _manaText.Format(nullText);
 
             Assert.Equal(string.Empty, markup);
         }
 
 
         [Fact]
-        public void InjectSymbols_WhiteLetter_WhiteSymbolClass()
+        public void Format_WhiteLetter_WhiteSymbolClass()
         {
             var whiteLetter = "{W}";
 
-            var markup = _mtgSymbols.Format<ManaTranslator>(whiteLetter);
+            var markup = _manaText.Format(whiteLetter);
 
             Assert.Contains("ms ms-w ms-cost", markup);
         }
 
 
         [Fact]
-        public void InjectSymbols_ThreeRedLetter_ThreeRedSymbolClass()
+        public void Format_ThreeRedLetter_ThreeRedSymbolClass()
         {
             var threeRedLetter = "{3}{R}";
 
-            var markup = _mtgSymbols.Format<ManaTranslator>(threeRedLetter);
+            var markup = _manaText.Format(threeRedLetter);
 
             Assert.Contains("ms ms-3 ms-cost", markup);
             Assert.Contains("ms ms-r ms-cost", markup);
@@ -87,22 +48,22 @@ namespace MTGViewer.Tests.Services
 
 
         [Fact]
-        public void InjectSymbols_TapLetter_TapSymbolClass()
+        public void Format_TapLetter_TapSymbolClass()
         {
             var tapLetter = "{T}";
 
-            var markup = _mtgSymbols.Format<ManaTranslator>(tapLetter);
+            var markup = _manaText.Format(tapLetter);
 
             Assert.Contains("ms ms-tap ms-cost", markup);
         }
 
 
         [Fact]
-        public void InjectSymbols_LlanowarText_TapGreenSymbolClass()
+        public void Format_LlanowarText_TapGreenSymbolClass()
         {
             var llanowarText = "{T}: Add {G}.";
 
-            var markup = _mtgSymbols.Format<ManaTranslator>(llanowarText);
+            var markup = _manaText.Format(llanowarText);
 
             Assert.Contains("ms ms-tap ms-cost", markup);
             Assert.Contains(": Add ", markup);
@@ -111,47 +72,47 @@ namespace MTGViewer.Tests.Services
 
 
         [Fact]
-        public void InjectSymbols_LoyaltyUpText_LoyaltyUpSymbolClass()
+        public void Format_LoyaltyUpText_LoyaltyUpSymbolClass()
         {
             var loyaltyUp = "[+3]";
 
-            var markup = _mtgSymbols.Format<ManaTranslator>(loyaltyUp);
+            var markup = _manaText.Format(loyaltyUp);
 
             Assert.Contains("ms ms-loyalty-up ms-loyalty-3", markup);
         }
 
 
         [Fact]
-        public void InjectSymbols_LoyaltyDownText_LoyaltyDownSymbolClass()
+        public void Format_LoyaltyDownText_LoyaltyDownSymbolClass()
         {
             var loyaltyDown = "[−2]";
 
-            var markup = _mtgSymbols.Format<ManaTranslator>(loyaltyDown);
+            var markup = _manaText.Format(loyaltyDown);
 
             Assert.Contains("ms ms-loyalty-down ms-loyalty-2", markup);
         }
 
 
         [Fact]
-        public void InjectSymbols_LoyaltyZeroText_LoyaltyZeroSymbolClass()
+        public void Format_LoyaltyZeroText_LoyaltyZeroSymbolClass()
         {
             var loyaltyZero = "[0]";
 
-            var markup = _mtgSymbols.Format<ManaTranslator>(loyaltyZero);
+            var markup = _manaText.Format(loyaltyZero);
 
             Assert.Contains("ms ms-loyalty-zero ms-loyalty-0", markup);
         }
 
 
         [Fact]
-        public void InjectSymbols_AjaniGreatheartedText_LoyaltySymbolClasses()
+        public void Format_AjaniGreatheartedText_LoyaltySymbolClasses()
         {
             var ajaniText = "Creatures you control have vigilance.\n"
                 + "[+1]: You gain 3 life.\n"
                 + "[−2]: Put a +1/+1 counter on each creature you control "
                 + "and a loyalty counter on each other planeswalker you control.";
 
-            var markup = _mtgSymbols.Format<ManaTranslator>(ajaniText);
+            var markup = _manaText.Format(ajaniText);
 
             Assert.Contains("ms ms-loyalty-up ms-loyalty-1", markup);
             Assert.Contains("ms ms-loyalty-down ms-loyalty-2", markup);
@@ -159,33 +120,33 @@ namespace MTGViewer.Tests.Services
 
 
         [Fact]
-        public void InjectSymbols_SagaOneText_SagaOneSymbolClass()
+        public void Format_SagaOneText_SagaOneSymbolClass()
         {
             var sagaOne = "I —";
 
-            var markup = _mtgSymbols.Format<ManaTranslator>(sagaOne);
+            var markup = _manaText.Format(sagaOne);
 
             Assert.Contains("ms ms-saga ms-saga-1", markup);
         }
 
 
         [Fact]
-        public void InjectSymbols_SagaFourText_SagaFourSymbolClass()
+        public void Format_SagaFourText_SagaFourSymbolClass()
         {
             var sagaFour = "IV —";
 
-            var markup = _mtgSymbols.Format<ManaTranslator>(sagaFour);
+            var markup = _manaText.Format(sagaFour);
 
             Assert.Contains("ms ms-saga ms-saga-4", markup);
         }
 
 
         [Fact]
-        public void InjectSymbols_SagaOneTwoThreeText_SagaOneTwoThreeSymbolClass()
+        public void Format_SagaOneTwoThreeText_SagaOneTwoThreeSymbolClass()
         {
             var sagaOne = "I — II, III —";
 
-            var markup = _mtgSymbols.Format<ManaTranslator>(sagaOne);
+            var markup = _manaText.Format(sagaOne);
 
             Assert.Contains("ms ms-saga ms-saga-1", markup);
             Assert.Contains("ms ms-saga ms-saga-2", markup);
@@ -194,14 +155,14 @@ namespace MTGViewer.Tests.Services
 
 
         [Fact]
-        public void InjectSymbols_HistoryBenaliaText_SagaSymbolClasses()
+        public void Format_HistoryBenaliaText_SagaSymbolClasses()
         {
             var benaliaText = "(As this Saga enters and after your draw step, "
                 + "add a lore counter. Sacrifice after III.)"
                 + "I, II — Create a 2/2 white Knight creature token with vigilance."
                 + "III — Knights you control get +2/+1 until end of turn.";
 
-            var markup = _mtgSymbols.Format<ManaTranslator>(benaliaText);
+            var markup = _manaText.Format(benaliaText);
 
             Assert.Contains("ms ms-saga ms-saga-1", markup);
             Assert.Contains("ms ms-saga ms-saga-2", markup);
@@ -210,7 +171,7 @@ namespace MTGViewer.Tests.Services
 
 
         [Fact]
-        public void InjectSymbols_FirstIroanText_SagaSymbolClasses()
+        public void Format_FirstIroanText_SagaSymbolClasses()
         {
             var firstIroanText = "(As this Saga enters and after your draw step, add a "
                 + "lore counter. Sacrifice after IV.)\n"
@@ -220,7 +181,7 @@ namespace MTGViewer.Tests.Services
                 + "IV — Create a Gold token. (It's an artifact with "
                 + "\"Sacrifice this artifact: Add one mana of any color.\")";
 
-            var markup = _mtgSymbols.Format<ManaTranslator>(firstIroanText);
+            var markup = _manaText.Format(firstIroanText);
 
             Assert.Contains("ms ms-saga ms-saga-1", markup);
             Assert.Contains("ms ms-saga ms-saga-2", markup);

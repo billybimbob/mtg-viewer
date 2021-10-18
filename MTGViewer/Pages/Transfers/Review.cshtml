@@ -3,8 +3,7 @@
 @{
     ViewData["Title"] = $"{Model.Deck.Owner.Name}'s Trades";
 }
-
-@inject MTGSymbols MtgSymbols
+@inject SymbolFormatter MtgSymbols
 
 
 <h1>Trades From @Model.Deck.Name</h1>
@@ -50,7 +49,7 @@
                        @trade.To.Name </a>
                 </td>
 
-                <td> @(MtgSymbols.Format<ManaTranslator>(trade.To.Colors).ToHtmlString()) </td>
+                <td> @(MtgSymbols.Format(trade.To.Colors).ToHtmlString()) </td>
 
                 <form method="POST">
                     <td>
@@ -108,7 +107,7 @@
                             @card.Name </a>
                     </td>
 
-                    <td> @(MtgSymbols.Format<ManaTranslator>(card.ManaCost).ToHtmlString()) </td>
+                    <td> @(MtgSymbols.Format(card.ManaCost).ToHtmlString()) </td>
                     <td> @card.SetName </td>
                     <td> @amount.Amount </td>
                 </tr>

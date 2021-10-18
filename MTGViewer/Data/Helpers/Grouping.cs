@@ -439,7 +439,7 @@ namespace MTGViewer.Data
         Transaction Transaction, 
         Location? From, 
         Location To,
-        IReadOnlyList<Change> Changes) { }
+        IReadOnlyList<Change> Changes);
 
 
 

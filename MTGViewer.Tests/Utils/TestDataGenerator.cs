@@ -232,7 +232,7 @@ namespace MTGViewer.Tests.Utils
 
 
 
-        private record TradeOptions(Deck Source, IReadOnlyList<Deck> Options) { }
+        private record TradeOptions(Deck Source, IReadOnlyList<Deck> Options);
 
 
         private async Task<IReadOnlyList<Trade>> CreateToTradesAsync(

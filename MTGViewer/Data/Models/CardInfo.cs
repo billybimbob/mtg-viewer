@@ -28,11 +28,11 @@ namespace MTGViewer.Data
         public static readonly IReadOnlyDictionary<string, string> Symbols = 
             new SortedList<string, string>
             {
-                ["black"] = "b",
-                ["blue"]  = "u",
-                ["green"] = "g",
-                ["red"]   = "r",
-                ["white"] = "w"
+                ["black"] = "B",
+                ["blue"]  = "U",
+                ["green"] = "G",
+                ["red"]   = "R",
+                ["white"] = "W"
             };
 
         public Color(string name)

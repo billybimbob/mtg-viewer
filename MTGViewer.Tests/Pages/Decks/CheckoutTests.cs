@@ -33,7 +33,7 @@ namespace MTGViewer.Tests.Pages.Decks
             CardDbContext dbContext,
             ISharedStorage sharedStorage,
             UserManager<CardUser> userManager,
-            MTGSymbols mtgSymbols,
+            CardText cardText,
             TestDataGenerator testGen)
         {
             _dbContext = dbContext;
@@ -43,7 +43,7 @@ namespace MTGViewer.Tests.Pages.Decks
             var logger = Mock.Of<ILogger<CheckoutModel>>();
 
             _checkoutModel = new(
-                _dbContext, sharedStorage, _userManager, mtgSymbols, logger);
+                _dbContext, sharedStorage, _userManager, cardText, logger);
         }
 
 

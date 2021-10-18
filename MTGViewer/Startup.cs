@@ -32,7 +32,8 @@ namespace MTGViewer
             services.AddSingleton<PageSizes>();
 
             services.AddSymbols(options => options
-                .AddTranslator<ManaTranslator>());
+                .AddFormatter<CardText>(isDefault: true)
+                .AddTranslator<ManaTranslator>(isDefault: true));
 
             services.AddCardStorage(_config);
 

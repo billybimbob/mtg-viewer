@@ -19,7 +19,7 @@ namespace MTGViewer.Services
     }
 
 
-    public record CardReturn(Card Card, int NumCopies, Deck? Deck = null) { }
+    public record CardReturn(Card Card, int NumCopies, Deck? Deck = null);
 
 
     public static class SharedStorageExtensions

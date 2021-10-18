@@ -3,8 +3,8 @@
 @{
     ViewData["Title"] = "Delete Deck";
 }
+@inject SymbolFormatter MtgSymbols
 
-@inject MTGSymbols MtgSymbols
 
 <h1>Delete @Model.Deck.Name</h1>
 <hr />
@@ -49,7 +49,7 @@
                        class="fw-bold">
                        @nameGroup.Name </a>
                 </td>
-                <td> @(MtgSymbols.Format<ManaTranslator>(card.ManaCost).ToHtmlString()) </td>
+                <td> @(MtgSymbols.Format(card.ManaCost).ToHtmlString()) </td>
 
                 <td>@card.SetName</td>
                 <td>@nameGroup.InDeck</td>
@@ -80,7 +80,7 @@
                         <td> @trade.To.Name </td>
                         <td> @trade.From.Name </td>
                         <td> @trade.Card.Name </td>
-                        <td> @(MtgSymbols.Format<ManaTranslator>(trade.Card.ManaCost).ToHtmlString()) </td>
+                        <td> @(MtgSymbols.Format(trade.Card.ManaCost).ToHtmlString()) </td>
                     </tr>
                 }
             </tbody>

@@ -7,9 +7,9 @@ namespace MTGViewer.Services
 {
     public class ManaTranslator : ISymbolTranslator
     {
-        public string TranslateMana(string mana)
+        public string ManaString(ManaSymbol symbol)
         {
-            var cost = mana.Replace("/", "").ToLower();
+            var cost = symbol.Value.Replace("/", "").ToLower();
 
             cost = cost switch
             {
@@ -21,8 +21,10 @@ namespace MTGViewer.Services
         }
 
 
-        public string TranslateLoyalty(string? direction, string loyalty)
+        public string LoyaltyString(LoyaltySymbol symbol)
         {
+            var (_, direction, loyalty) = symbol;
+
             direction = direction switch
             {
                 _ when direction is null => "zero",
@@ -35,11 +37,11 @@ namespace MTGViewer.Services
         }
 
 
-        public string TranslateSaga(string saga, bool isFinal)
+        public string SagaString(SagaSymbol symbol)
         {
-            var sagaInt = ParseRomanNumeral(saga);
+            var saga = ParseRomanNumeral(symbol.Value);
 
-            return $"<i class=\"ms ms-saga ms-saga-{sagaInt}\"></i>";
+            return $"<i class=\"ms ms-saga ms-saga-{saga}\"></i>";
         }
 
 

@@ -4,14 +4,13 @@
 @{
     ViewData["Title"] = "Details";
 }
-
-@inject MTGSymbols MtgSymbols
+@inject SymbolFormatter MtgSymbols
 
 
 <div class="d-flex align-items-center"> 
     <h1> @Model.Card.Name </h1> 
     <div class="h5 ml-4 my-0">
-        @(MtgSymbols.Format<ManaTranslator>(Model.Card.ManaCost).ToHtmlString())
+        @(MtgSymbols.Format(Model.Card.ManaCost).ToHtmlString())
     </div>
 </div>
 
@@ -132,7 +131,7 @@
                 <dd class="col">
                     @(Model.Card.Text == null
                         ? "--"
-                        : MtgSymbols.Format<ManaTranslator>(Model.Card.Text).ToHtmlString())
+                        : MtgSymbols.Format(Model.Card.Text).ToHtmlString())
                 </dd>
 
                 <div class="w-100"></div>

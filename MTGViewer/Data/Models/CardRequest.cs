@@ -14,11 +14,8 @@ namespace MTGViewer.Data
         nameof(Type),
         nameof(DeckId),
         nameof(CardId), IsUnique = true)]
-    public class CardRequest : Concurrent
+    public abstract class CardRequest : Concurrent
     {
-        protected CardRequest()
-        { }
-
         [JsonRequired]
         public int Id { get; private set; }
 

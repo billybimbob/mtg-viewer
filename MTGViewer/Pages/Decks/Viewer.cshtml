@@ -3,8 +3,7 @@
 @{
     ViewData["Title"] = $"{Model.Deck.Name} Viewer";
 }
-
-@inject MTGSymbols MtgSymbols
+@inject SymbolFormatter MtgSymbols
 
 
 <h1>@Model.Deck.Owner.Name's @Model.Deck.Name</h1>
@@ -48,7 +47,7 @@
                        class="fw-bold">
                        @group.Card.Name </a>
                 </td>
-                <td> @(MtgSymbols.Format<ManaTranslator>(group.Card.ManaCost).ToHtmlString()) </td>
+                <td> @(MtgSymbols.Format(group.Card.ManaCost).ToHtmlString()) </td>
                 <td> @group.Card.SetName </td>
                 <td> @(group.Actual?.Amount ?? 0) </td>
                 <td> @(group.Want?.Amount ?? 0) </td>

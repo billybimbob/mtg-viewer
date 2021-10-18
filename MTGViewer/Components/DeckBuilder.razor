@@ -5,7 +5,8 @@
 @implements IAsyncDisposable
 
 @inject IDbContextFactory<CardDbContext> DbFactory
-@inject MTGSymbols MtgSymbols
+@inject SymbolFormatter MtgSymbols
+@inject CardText CardText
 @inject ILogger<DeckBuilder> Logger
 
 
@@ -75,7 +76,7 @@
             var group = _deckCards[card.Id];
             <tr>
                 <td class="fw-bold"> @card.Name </td>
-                <td> @(MtgSymbols.Format<ManaTranslator>(card.ManaCost).ToMarkupString()) </td>
+                <td> @(MtgSymbols.Format(card.ManaCost).ToMarkupString()) </td>
                 <td> @card.SetName </td>
 
                 <td> @((group.Actual?.Amount ?? 0) - (group.GiveBack?.Amount ?? 0)) </td>
@@ -114,7 +115,7 @@
         {
             <tr>
                 <td class="fw-bold"> @card.Name </td>
-                <td> @(MtgSymbols.Format<ManaTranslator>(card.ManaCost).ToMarkupString()) </td>
+                <td> @(MtgSymbols.Format(card.ManaCost).ToMarkupString()) </td>
                 <td> @card.SetName </td>
                 <td> @card.Rarity </td>
 
@@ -450,7 +451,7 @@
             deckEntry.State = EntityState.Modified;
         }
 
-        _deck.UpdateColors(MtgSymbols);
+        _deck.UpdateColors(CardText);
     }
 
 

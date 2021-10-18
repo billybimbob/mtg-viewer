@@ -1,4 +1,3 @@
-using System;
 using System.Linq;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
@@ -12,11 +11,8 @@ using MTGViewer.Services;
 
 namespace MTGViewer.Data
 {
-    public class Location : Concurrent
+    public abstract class Location : Concurrent
     {
-        protected Location()
-        { }
-
         [JsonRequired]
         public int Id { get; private set; }
 
@@ -59,25 +55,21 @@ namespace MTGViewer.Data
         public string Colors { get; private set; } = null!;
 
 
-        public void UpdateColors(MTGSymbols mtgSymbols)
+        public void UpdateColors(CardText toCardText)
         {
-            var cardSymbols = Cards
-                .SelectMany(ca => mtgSymbols.FindSymbols(ca.Card.ManaCost))
-                .SelectMany(sym => sym.Split('/'));
+            var cardMana = Cards
+                .Select(ca => ca.Card.ManaCost)
+                .SelectMany( toCardText.FindMana )
+                .SelectMany(mana => mana.Value.Split('/'));
 
-            var wantSymbols = Wants
-                .SelectMany(w => mtgSymbols.FindSymbols(w.Card.ManaCost))
-                .SelectMany(sym => sym.Split('/'));
-
-            var allSymbols = cardSymbols
-                .Union(wantSymbols)
-                .Select(sym => sym.ToLower());
-
-            var toCardText = mtgSymbols.GetTranslator<CardTextTranslator>();
+            var wantMana = Wants
+                .Select(w => w.Card.ManaCost)
+                .SelectMany( toCardText.FindMana )
+                .SelectMany(mana => mana.Value.Split('/'));
 
             var colorSymbols = Color.Symbols.Values
-                .Intersect(allSymbols)
-                .Select(toCardText.TranslateMana);
+                .Intersect( cardMana.Union(wantMana) )
+                .Select( toCardText.ManaString );
 
             Colors = string.Join(string.Empty, colorSymbols);
         }

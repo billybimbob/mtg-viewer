@@ -3,8 +3,7 @@
 @{
     ViewData["Title"] = $"Decks - {Model.CardUser.Name}";
 }
-
-@inject MTGSymbols MtgSymbols
+@inject SymbolFormatter MtgSymbols
 
 
 @if (!string.IsNullOrEmpty(Model.PostMessage))
@@ -52,7 +51,7 @@
                     }
                 </td>
 
-                <td> @(MtgSymbols.Format<ManaTranslator>(deck.Colors).ToHtmlString()) </td>
+                <td> @(MtgSymbols.Format(deck.Colors).ToHtmlString()) </td>
 
                 <td> @deck.Cards.Sum(ca => ca.Amount) </td>
 
