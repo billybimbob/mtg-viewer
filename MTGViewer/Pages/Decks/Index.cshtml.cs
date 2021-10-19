@@ -1,5 +1,4 @@
 using System.Linq;
-using System.Collections.Generic;
 using System.Threading.Tasks;
 
 using Microsoft.AspNetCore.Mvc;
@@ -11,6 +10,7 @@ using Microsoft.EntityFrameworkCore;
 
 using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
+using MTGViewer.Services;
 
 
 namespace MTGViewer.Pages.Decks
@@ -30,7 +30,7 @@ namespace MTGViewer.Pages.Decks
             {
                 State = State.Requesting;
             }
-            else if (deck.Requests.Any())
+            else if (deck.Wants.Any() || deck.GiveBacks.Any())
             {
                 State = State.Theorycraft;
             }
@@ -47,11 +47,14 @@ namespace MTGViewer.Pages.Decks
     {
         private readonly UserManager<CardUser> _userManager;
         private readonly CardDbContext _dbContext;
+        private readonly int _pageSize;
 
-        public IndexModel(UserManager<CardUser> userManager, CardDbContext context)
+        public IndexModel(
+            UserManager<CardUser> userManager, CardDbContext dbContext, PageSizes pageSizes)
         {
             _userManager = userManager;
-            _dbContext = context;
+            _dbContext = dbContext;
+            _pageSize = pageSizes.GetSize(this);
         }
 
 
@@ -59,14 +62,15 @@ namespace MTGViewer.Pages.Decks
         public string PostMessage { get; set; }
 
         public UserRef CardUser { get; private set; }
-        public IReadOnlyList<DeckState> Decks { get; private set; }
+        public PagedList<DeckState> Decks { get; private set; }
 
 
-        public async Task OnGetAsync()
+        public async Task OnGetAsync(int? pageIndex)
         {
             var userId = _userManager.GetUserId(User);
 
-            Decks = await DeckStates(userId).ToListAsync();
+            Decks = await DeckStates(userId)
+                .ToPagedListAsync(_pageSize, pageIndex);
 
             CardUser = Decks.FirstOrDefault()?.Deck.Owner
                 ?? await _dbContext.Users.FindAsync(userId);
@@ -77,16 +81,15 @@ namespace MTGViewer.Pages.Decks
         {
             return _dbContext.Decks
                 .Where(d => d.OwnerId == userId)
+
                 .Include(d => d.Owner)
 
-                .Include(d => d.Cards)
+                .Include(d => d.Cards) // unbounded: keep eye on
                     .ThenInclude(ca => ca.Card)
 
-                .Include(d => d.Requests)
-                    .ThenInclude(cr => cr.Card)
-
-                .Include(d => d.TradesTo)
-                    .ThenInclude(t => t.Card)
+                .Include(d => d.Wants.Take(1))
+                .Include(d => d.GiveBacks.Take(1))
+                .Include(d => d.TradesTo.Take(1))
 
                 .OrderBy(d => d.Name)
                 .Select(deck => new DeckState(deck))

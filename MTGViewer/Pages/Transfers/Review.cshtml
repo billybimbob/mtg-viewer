@@ -1,11 +1,9 @@
 @page "{deckId:int}"
-@model MTGViewer.Pages.Transfers.ReviewModel
-
-@using MTGViewer.Data
-
+@model Transfers.ReviewModel
 @{
     ViewData["Title"] = $"{Model.Deck.Owner.Name}'s Trades";
 }
+@inject SymbolFormatter MtgSymbols
 
 
 <h1>Trades From @Model.Deck.Name</h1>
@@ -51,12 +49,7 @@
                        @trade.To.Name </a>
                 </td>
 
-                <td>
-                    @foreach (var cost in trade.To.GetColorSymbols())
-                    {
-                        <span class="m-1 ms ms-@cost ms-cost"></span>
-                    }
-                </td>
+                <td> @(MtgSymbols.Format(trade.To.Colors).ToHtmlString()) </td>
 
                 <form method="POST">
                     <td>
@@ -113,15 +106,10 @@
                             class="fw-bold">
                             @card.Name </a>
                     </td>
-                    <td>
-                        @foreach (var cost in card.GetManaSymbols())
-                        {
-                            <span class="m-1 ms ms-@cost ms-cost"></span>
-                        }
-                    </td>
 
-                    <td>@card.SetName</td>
-                    <td>@amount.Amount</td>
+                    <td> @(MtgSymbols.Format(card.ManaCost).ToHtmlString()) </td>
+                    <td> @card.SetName </td>
+                    <td> @amount.Amount </td>
                 </tr>
             }
         </tbody>

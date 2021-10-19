@@ -19,7 +19,9 @@ namespace MTGViewer.Tests.Utils
         private static readonly SemaphoreSlim _jsonLock = new(1, 1);
 
         private readonly CardDbContext _dbContext;
+        private readonly UserDbContext _userContext;
         private readonly UserManager<CardUser> _userManager;
+
         private readonly JsonCardStorage _jsonStorage;
         private readonly CardDataGenerator _cardGen;
 
@@ -28,12 +30,15 @@ namespace MTGViewer.Tests.Utils
 
         public TestDataGenerator(
             CardDbContext dbContext, 
+            UserDbContext userContext,
             UserManager<CardUser> userManager,
             JsonCardStorage jsonStorage,
             CardDataGenerator cardGen)
         {
             _dbContext = dbContext;
+            _userContext = userContext;
             _userManager = userManager;
+
             _jsonStorage = jsonStorage;
             _cardGen = cardGen;
 
@@ -46,7 +51,10 @@ namespace MTGViewer.Tests.Utils
             await _jsonLock.WaitAsync();
             try
             {
-                var jsonSuccess = await _jsonStorage.AddFromJsonAsync();
+                await SetupAsync();
+
+                var jsonSuccess = await _jsonStorage
+                    .AddFromJsonAsync(new() { IncludeUsers = true });
 
                 if (!jsonSuccess)
                 {
@@ -60,6 +68,27 @@ namespace MTGViewer.Tests.Utils
             {
                 _jsonLock.Release();
             }
+        }
+
+
+        private async Task SetupAsync()
+        {
+            if (_dbContext.Database.IsRelational())
+            {
+                await _dbContext.Database.MigrateAsync();
+            }
+
+            if (_userContext.Database.IsRelational())
+            {
+                await _userContext.Database.MigrateAsync();
+            }
+        }
+
+
+        public async Task ClearAsync()
+        {
+            await _userContext.Database.EnsureDeletedAsync();
+            await _dbContext.Database.EnsureDeletedAsync();
         }
 
 
@@ -157,17 +186,16 @@ namespace MTGViewer.Tests.Utils
             };
 
             var takeRequests = targetCards
-                .Select(card => new CardRequest
+                .Select(card => new Want
                 {
                     Card = card,
-                    Target = newDeck,
-                    IsReturn = false,
+                    Deck = newDeck,
                     Amount = _random.Next(1, 3)
                 })
                 .ToList();
 
             _dbContext.Decks.Attach(newDeck);
-            _dbContext.Requests.AttachRange(takeRequests);
+            _dbContext.Wants.AttachRange(takeRequests);
 
             await _dbContext.SaveChangesAsync();
             _dbContext.ChangeTracker.Clear();
@@ -204,7 +232,7 @@ namespace MTGViewer.Tests.Utils
 
 
 
-        private record TradeOptions(Deck Source, IReadOnlyList<Deck> Options) { }
+        private record TradeOptions(Deck Source, IReadOnlyList<Deck> Options);
 
 
         private async Task<IReadOnlyList<Trade>> CreateToTradesAsync(
@@ -225,11 +253,8 @@ namespace MTGViewer.Tests.Utils
                 int actualAmount = _random.Next(1, 3);
                 int requestAmount = _random.Next(1, actualAmount);
 
-                var fromAmount = await FindAmountAsync(
-                    tradeCard, from, actualAmount);
-
-                var toRequest = await FindRequestAsync(
-                    tradeCard, to, isReturn: false, requestAmount);
+                var fromAmount = await FindAmountAsync(tradeCard, from, actualAmount);
+                var toRequest = await FindWantAsync(tradeCard, to, requestAmount);
 
                 trades.Add(new()
                 {
@@ -305,8 +330,7 @@ namespace MTGViewer.Tests.Utils
                 int requestAmount = _random.Next(1, actualAmount);
 
                 var fromAmount = await FindAmountAsync(tradeCard, from, actualAmount);
-
-                var toRequest = await FindRequestAsync(tradeCard, to, false, requestAmount);
+                var toRequest = await FindWantAsync(tradeCard, to, requestAmount);
 
                 trades.Add(new()
                 {
@@ -346,33 +370,53 @@ namespace MTGViewer.Tests.Utils
         }
 
 
-        private async Task<CardRequest> FindRequestAsync(
-            Card card, Deck target, bool isReturn, int amount)
+        private async Task<Want> FindWantAsync(Card card, Deck target, int amount)
         {
-            var request = await _dbContext.Requests
-                .SingleOrDefaultAsync(cr => cr.IsReturn == isReturn
-                    && cr.TargetId == target.Id
-                    && cr.CardId == card.Id);
+            var want = await _dbContext.Wants
+                .SingleOrDefaultAsync(w => 
+                    w.DeckId == target.Id && w.CardId == card.Id);
 
-            if (request == default)
+            if (want == default)
             {
-                request = new()
+                want = new()
                 {
                     Card = card,
-                    Target = target,
-                    IsReturn = isReturn,
+                    Deck = target,
                 };
 
-                _dbContext.Requests.Attach(request);
+                _dbContext.Wants.Attach(want);
             }
 
-            request.Amount = amount;
+            want.Amount = amount;
 
-            return request;
+            return want;
         }
 
 
-        public async Task<CardRequest> GetTakeRequestAsync(int targetMod = 0)
+        private async Task<GiveBack> FindGiveBackAsync(Card card, Deck target, int amount)
+        {
+            var give = await _dbContext.GiveBacks
+                .SingleOrDefaultAsync(g => 
+                    g.DeckId == target.Id && g.CardId == card.Id);
+
+            if (give == default)
+            {
+                give = new()
+                {
+                    Card = card,
+                    Deck = target
+                };
+
+                _dbContext.GiveBacks.Attach(give);
+            }
+
+            give.Amount = amount;
+
+            return give;
+        }
+
+
+        public async Task<Want> GetWantAsync(int targetMod = 0)
         {
             var deckTarget = await _dbContext.Decks
                 .AsNoTracking()
@@ -391,16 +435,16 @@ namespace MTGViewer.Tests.Utils
 
             int limit = Math.Max(1, targetCap + targetMod);
 
-            var deckTake = await FindRequestAsync(takeTarget, deckTarget, false, limit);
+            var want = await FindWantAsync(takeTarget, deckTarget, limit);
 
             await _dbContext.SaveChangesAsync();
             _dbContext.ChangeTracker.Clear();
 
-            return deckTake;
+            return want;
         }
 
 
-        public async Task<CardRequest> GetReturnRequestAsync(int targetMod = 0)
+        public async Task<GiveBack> GetGiveBackAsync(int targetMod = 0)
         {
             var returnTarget = await _dbContext.Amounts
                 .Include(ca => ca.Card)
@@ -410,17 +454,17 @@ namespace MTGViewer.Tests.Utils
 
             int limit = Math.Max(1, returnTarget.Amount + targetMod);
 
-            var deckReturn = await FindRequestAsync(
-                returnTarget.Card, (Deck)returnTarget.Location, isReturn: true, limit);
+            var give = await FindGiveBackAsync(
+                returnTarget.Card, (Deck)returnTarget.Location, limit);
 
             await _dbContext.SaveChangesAsync();
             _dbContext.ChangeTracker.Clear();
 
-            return deckReturn;
+            return give;
         }
 
 
-        public async Task<(CardRequest take, CardRequest ret)> GetMixedRequestDeckAsync()
+        public async Task<(Want, GiveBack)> GetMixedRequestDeckAsync()
         {
             var returnTarget = await _dbContext.Amounts
                 .Include(ca => ca.Card)
@@ -443,16 +487,16 @@ namespace MTGViewer.Tests.Utils
                 .Select(ca => ca.Amount)
                 .SumAsync();
 
-            var deckReturn = await FindRequestAsync(
-                returnTarget.Card, deckTarget, isReturn: true, returnTarget.Amount);
+            var deckGive = await FindGiveBackAsync(
+                returnTarget.Card, deckTarget, returnTarget.Amount);
 
-            var deckTake = await FindRequestAsync(
-                takeTarget, deckTarget, isReturn: false, targetCap);
+            var deckWant = await FindWantAsync(
+                takeTarget, deckTarget, targetCap);
 
             await _dbContext.SaveChangesAsync();
             _dbContext.ChangeTracker.Clear();
 
-            return (deckTake, deckReturn);
+            return (deckWant, deckGive);
         }
 
 

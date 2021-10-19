@@ -12,12 +12,20 @@ using MTGViewer.Data;
 
 namespace MTGViewer.Services
 {
+    internal class SeedSettings
+    {
+        public int Value { get; set; } = 100;
+        public string Password { get; set; }
+    }
+
+
     public class CardDataGenerator
     {
         private readonly Random _random;
         private readonly string _seedPassword;
 
         private readonly MTGFetchService _fetch;
+
         private readonly CardDbContext _dbContext;
         private readonly ISharedStorage _sharedStorage;
         private readonly UserManager<CardUser> _userManager;
@@ -29,8 +37,11 @@ namespace MTGViewer.Services
             ISharedStorage sharedStorage,
             UserManager<CardUser> userManager)
         {
-            _random = new(config.GetValue("Seed", 100));
-            _seedPassword = config.GetValue("SeedPassword", "");
+            var seed = new SeedSettings();
+            config.GetSection(nameof(SeedSettings)).Bind(seed);
+
+            _random = new(seed.Value);
+            _seedPassword = seed.Password;
 
             _fetch = fetchService;
 
@@ -71,8 +82,10 @@ namespace MTGViewer.Services
             await _sharedStorage.ReturnAsync(boxAmounts);
 
             // TODO: fix created accounts not being verified
-            await Task.WhenAll(
-                users.Select(_userManager.CreateAsync));
+            var results = await Task.WhenAll(
+                users.Select(u => _seedPassword != default
+                    ? _userManager.CreateAsync(u, _seedPassword)
+                    : _userManager.CreateAsync(u)));
         }
 
 

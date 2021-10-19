@@ -1,6 +1,5 @@
 @page
-@model MTGViewer.Pages.Boxes.CreateModel
-
+@model Boxes.CreateModel
 @{
     ViewData["Title"] = "Create New Box";
 }
@@ -41,9 +40,9 @@
             </div>
 
             <div class="form-group">
-                <label asp-for="Box.Color" class="control-label"></label>
-                <input asp-for="Box.Color" class="form-control" />
-                <span asp-validation-for="Box.Color" class="text-danger"></span>
+                <label asp-for="Box.Appearance" class="control-label"></label>
+                <textarea asp-for="Box.Appearance" class="form-control"></textarea>
+                <span asp-validation-for="Box.Appearance" class="text-danger"></span>
             </div>
             
             <div class="form-group">

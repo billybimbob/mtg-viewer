@@ -1,7 +1,5 @@
-@page "{id:int}"
-@model MTGViewer.Pages.Decks.HistoryModel
-@using MTGViewer.Data
-
+@page "{id:int}/{pageIndex:int?}"
+@model Decks.HistoryModel
 @{
     ViewData["Title"] = $"{Model.Deck.Name} Change History";
 }
@@ -18,7 +16,7 @@
 <table class="table">
     <thead>
         <tr>
-            <th> @Html.DisplayNameForInnerType((Transaction t) => t.Applied) </th>
+            <th> @Html.DisplayNameForInnerType((Transaction t) => t.AppliedAt) </th>
             <th> @Html.DisplayNameForInnerType((Change c) => c.From) </th>
             <th> @Html.DisplayNameForInnerType((Change c) => c.To) </th>
             <th> @Html.DisplayNameForInnerType((Change c) => c.Card) </th>
@@ -34,13 +32,16 @@
             <tr>
                 @if (Model.IsFirstTransfer.Contains( (transaction.Id, from?.Id, to.Id) ))
                 {
-                    <td rowspan="@transaction.Changes.Count"> @transaction.Applied </td>
+                    <td rowspan="@transaction.Changes.Count"> @transaction.AppliedAt </td>
                 }
 
                 <td rowspan="@changes.Count"> @(firstChange.From?.Name ?? "Added") </td>
                 <td rowspan="@changes.Count"> @firstChange.To.Name </td>
 
-                <td> @firstChange.Card.Name </td>
+                <td> 
+                    <a asp-page="/Cards/Details" asp-route-id="@firstChange.CardId">
+                        @firstChange.Card.Name </a>
+                </td>
                 <td> @firstChange.Amount </td>
 
                 @if (Model.IsFirstTransfer.Contains( (transaction.Id, from?.Id, to.Id) ))
@@ -58,10 +59,83 @@
             @foreach (var change in changes.Skip(1))
             {
                 <tr>
-                    <td> @change.Card.Name </td>
+                    <td>
+                        <a asp-page="/Cards/Details" asp-route-id="@change.CardId">
+                            @change.Card.Name </a>
+                    </td>
                     <td> @change.Amount </td>
                 </tr>
             }
         }
     </tbody>
 </table>
+
+
+@{
+    var pages = Model.Pages;
+    var prevDisabled = pages.HasPrevious ? "" : "disabled";
+    var nextDisabled = pages.HasNext ? "" : "disabled";
+}
+
+@if (pages.HasMultiple)
+{
+    <nav aria-label="@Model.Deck.Name History Pages">
+        <ul class="pagination justify-content-center">
+
+            <li class="page-item @prevDisabled">
+                @if (pages.HasPrevious)
+                {
+                    <a asp-page="History" 
+                        asp-route-id="@Model.Deck.Id"
+                        asp-route-pageIndex="@(pages.Current - 1)"
+                        class="page-link">
+                        Previous </a>
+                }
+                else
+                {
+                    <span class="page-link">Previous</span>
+                }
+            </li>
+
+            @for (int i = 0; i < pages.Total; ++i)
+            {
+                var pageIndex = i;
+                var activePage = pageIndex == pages.Current ? "active" : "";
+
+                <li class="page-item @activePage">
+                    @if (pageIndex != pages.Current)
+                    {
+                        <a asp-page="History"
+                            asp-route-id="@Model.Deck.Id"
+                            asp-route-pageIndex="@pageIndex"
+                            class="page-link">
+                            @(pageIndex + 1) </a>
+                    }
+                    else
+                    {
+                        <span class="page-link">
+                            @(pageIndex + 1)
+                            <span class="sr-only">(current)</span>
+                        </span>
+                    }
+                </li>
+            }
+
+            <li class="page-item @nextDisabled">
+                @if (pages.HasNext)
+                {
+                    <a asp-page="History"
+                        asp-route-id="@Model.Deck.Id"
+                        asp-route-pageIndex="@(pages.Current + 1)"
+                        class="page-link">
+                        Next </a>
+                }
+                else
+                {
+                    <span class="page-link">Next</span>
+                }
+            </li>
+
+        </ul>
+    </nav>
+}

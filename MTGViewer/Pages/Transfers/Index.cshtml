@@ -1,11 +1,9 @@
 @page
-@model MTGViewer.Pages.Transfers.IndexModel
-
-@using MTGViewer.Data
-
+@model Transfers.IndexModel
 @{
     ViewData["Title"] = $"{Model.SelfUser.Name}'s Trades";
 }
+@inject SymbolFormatter MtgSymbols
 
 
 @if (!string.IsNullOrEmpty(Model.PostMessage))
@@ -16,51 +14,19 @@
 }
 
 
-<h2>Received Trades</h2>
-
-<table class="table mb-3">
-    <thead>
-        <tr>
-            <th>Target Deck</th>
-            <th>Colors</th>
-            <th>Number of Requests</th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var deck in Model.ReceivedTrades)
-        {
-            <tr>
-                <td>
-                    <a asp-page="Review" 
-                       asp-route-deckid="@deck.Id">
-                       @deck.Name </a>
-                </td>
-                <td>
-                    @foreach (var color in deck.GetColorSymbols())
-                    {
-                        <span class="m-1 ms ms-@color ms-cost"></span>
-                    }
-                </td>
-                <td>@deck.TradesFrom.Count</td>
-            </tr>
-        }
-    </tbody>
-</table>
-
-
-<h2>@Model.SelfUser.Name's Requests</h2>
+<h2>@Model.SelfUser.Name's Deck Trades</h2>
 
 <table class="table mb-3">
     <thead>
         <tr>
             <th>Deck</th>
             <th>Colors</th>
-            <th>Number of Requests</th>
-            <th>Trade State</th>
+            <th>Requests To Send</th>
+            <th>Requests Received</th>
         </tr>
     </thead>
     <tbody>
-        @foreach (var deck in Model.RequestDecks)
+        @foreach (var deck in Model.TradeDecks)
         {
             <tr>
                 <td>
@@ -69,16 +35,11 @@
                         class="fw-bold">
                         @deck.Name </a>
                 </td>
-                <td>
-                    @foreach (var color in deck.GetColorSymbols())
-                    {
-                        <span class="m-1 ms ms-@color ms-cost"></span>
-                    }
-                </td>
+
+                <td> @(MtgSymbols.Format(deck.Colors).ToHtmlString()) </td>
 
                 @if (deck.TradesTo.Any())
                 {
-                    <td>@deck.TradesTo.Count</td>
                     <td>
                         <a asp-page="Status" 
                             asp-route-deckid="@deck.Id"
@@ -86,9 +47,8 @@
                             Sent </a>
                     </td>
                 }
-                else
+                else if (deck.Wants.Any())
                 {
-                    <td> @deck.Requests.Count(cr => !cr.IsReturn) </td>
                     <td>
                         <a asp-page="Request" 
                             asp-route-deckid="@deck.Id"
@@ -96,10 +56,99 @@
                             Possible </a>
                     </td>
                 }
+                else
+                {
+                    <td> None </td>
+                }
+
+                @if (deck.TradesFrom.Any())
+                {
+                    <td>
+                        <a asp-page="Review" 
+                            asp-route-deckid="@deck.Id"
+                            class="fw-bold">
+                            Received </a>
+                    </td>
+                }
+                else
+                {
+                    <td> None </td>
+                }
             </tr>
         }
     </tbody>
 </table>
+
+
+@{
+    var deckPages = Model.TradeDecks.Pages;
+    var deckPrevDisabled = deckPages.HasPrevious ? "" : "disabled";
+    var deckNextDisabled = deckPages.HasNext ? "" : "disabled";
+}
+
+@if (deckPages.HasMultiple)
+{
+    <nav aria-label="Trade Pages">
+        <ul class="pagination justify-content-center">
+
+            <li class="page-item @deckPrevDisabled">
+                @if (deckPages.HasPrevious)
+                {
+                    <a asp-page="Index" 
+                        asp-route-deckIndex="@(Model.TradeDecks.Pages.Current - 1)"
+                        asp-route-suggestIndex="@Model.SuggestIndex"
+                        class="page-link">
+                        Previous </a>
+                }
+                else
+                {
+                    <span class="page-link">Previous</span>
+                }
+            </li>
+
+            @for (int i = 0; i < deckPages.Total; ++i)
+            {
+                var pageIndex = i;
+                var activePage = pageIndex == deckPages.Current ? "active" : "";
+
+                <li class="page-item @activePage">
+                    @if (pageIndex != deckPages.Current)
+                    {
+                        <a asp-page="Index"
+                            asp-route-deckIndex="@pageIndex"
+                            asp-route-suggestIndex="@Model.SuggestIndex"
+                            class="page-link">
+                            @(pageIndex + 1) </a>
+                    }
+                    else
+                    {
+                        <span class="page-link">
+                            @(pageIndex + 1)
+                            <span class="sr-only">(current)</span>
+                        </span>
+                    }
+                </li>
+            }
+
+            <li class="page-item @deckNextDisabled">
+                @if (deckPages.HasNext)
+                {
+                    <a asp-page="Index"
+                        asp-route-deckIndex="@(deckPages.Current + 1)"
+                        asp-route-suggestIndex="@Model.SuggestIndex"
+                        class="page-link">
+                        Next </a>
+                }
+                else
+                {
+                    <span class="page-link">Next</span>
+                }
+            </li>
+
+        </ul>
+    </nav>
+}
+
 
 
 <h2>Suggestions</h2>
@@ -127,6 +176,9 @@
                 <td>@suggestion.Comment</td>
                 <td>
                     <form method="POST">
+                        <input type="hidden" asp-for="DeckIndex"/>
+                        <input type="hidden" asp-for="SuggestIndex"/>
+
                         <input type="submit"
                             asp-route-suggestid="@suggestion.Id"
                             class="btn btn-secondary"
@@ -137,3 +189,73 @@
         }
     </tbody>
 </table>
+
+
+@{
+    var suggestPages = Model.Suggestions.Pages;
+    var suggestPrevDisabled = deckPages.HasPrevious ? "" : "disabled";
+    var suggestNextDisabled = deckPages.HasNext ? "" : "disabled";
+}
+
+@if (suggestPages.HasMultiple)
+{
+    <nav aria-label="Suggestion Pages">
+        <ul class="pagination justify-content-center">
+
+            <li class="page-item @suggestPrevDisabled">
+                @if (suggestPages.HasPrevious)
+                {
+                    <a asp-page="Index" 
+                        asp-route-deckIndex="@Model.DeckIndex"
+                        asp-route-suggestIndex="@(suggestPages.Current - 1)"
+                        class="page-link">
+                        Previous </a>
+                }
+                else
+                {
+                    <span class="page-link">Previous</span>
+                }
+            </li>
+
+            @for (int i = 0; i < suggestPages.Total; ++i)
+            {
+                var pageIndex = i;
+                var activePage = pageIndex == suggestPages.Current ? "active" : "";
+
+                <li class="page-item @activePage">
+                    @if (pageIndex != suggestPages.Current)
+                    {
+                        <a asp-page="Index"
+                            asp-route-deckIndex="@Model.DeckIndex"
+                            asp-route-suggestIndex="@pageIndex"
+                            class="page-link">
+                            @(pageIndex + 1) </a>
+                    }
+                    else
+                    {
+                        <span class="page-link">
+                            @(pageIndex + 1)
+                            <span class="sr-only">(current)</span>
+                        </span>
+                    }
+                </li>
+            }
+
+            <li class="page-item @suggestNextDisabled">
+                @if (suggestPages.HasNext)
+                {
+                    <a asp-page="Index"
+                        asp-route-deckIndex="@Model.DeckIndex"
+                        asp-route-suggestIndex="@(suggestPages.Current + 1)"
+                        class="page-link">
+                        Next </a>
+                }
+                else
+                {
+                    <span class="page-link">Next</span>
+                }
+            </li>
+
+        </ul>
+    </nav>
+}

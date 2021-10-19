@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
 using MtgApiManager.Lib.Service;
+using Newtonsoft.Json;
 using MTGViewer.Services;
 
 
@@ -27,6 +28,12 @@ namespace MTGViewer
         {
             services.AddRazorPages();
             services.AddServerSideBlazor();
+
+            services.AddSingleton<PageSizes>();
+
+            services.AddSymbols(options => options
+                .AddFormatter<CardText>(isDefault: true)
+                .AddTranslator<ManaTranslator>(isDefault: true));
 
             services.AddCardStorage(_config);
 

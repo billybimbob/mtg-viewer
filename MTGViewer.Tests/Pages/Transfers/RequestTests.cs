@@ -47,7 +47,7 @@ namespace MTGViewer.Tests.Pages.Transfers
             _requestDeck = await _testGen.CreateRequestDeckAsync();
         }
 
-        public Task DisposeAsync() => Task.CompletedTask;
+        public Task DisposeAsync() => _testGen.ClearAsync();
 
 
         private IQueryable<Trade> AllTrades =>
@@ -130,9 +130,9 @@ namespace MTGViewer.Tests.Pages.Transfers
             // Arrange
             await _requestModel.SetModelContextAsync(_userManager, _requestDeck.OwnerId);
 
-            var requestCard = await _dbContext.Requests
-                .Where(cr => cr.TargetId == _requestDeck.Id)
-                .Select(cr => cr.Card)
+            var requestCard = await _dbContext.Wants
+                .Where(w => w.DeckId == _requestDeck.Id)
+                .Select(w => w.Card)
                 .AsNoTracking()
                 .FirstAsync();
 

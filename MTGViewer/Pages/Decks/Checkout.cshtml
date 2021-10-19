@@ -1,17 +1,17 @@
 @page "{id:int}"
-@model MTGViewer.Pages.Decks.CheckoutModel
-@using MTGViewer.Data
-
+@model Decks.CheckoutModel
 @{
     ViewData["Title"] = $"Checkout {Model.Deck.Name}";
 }
+@inject SymbolFormatter MtgSymbols
+
 
 <h1>Checkout @Model.Deck.Name</h1>
 
 @if (Model.HasPendings)
 {
     <div class="alert alert-secondary" role="alert">
-        <p>Do you want to exchange card requests with the shared collection?</p>
+        <h5>Do you want to exchange card requests with the shared collection?</h5>
         <p>Alternatively, requests can be made to other players</p>
 
         <form method="POST">
@@ -25,7 +25,7 @@
         </form>
     </div>
 }
-else if (!Model.Deck.Requests.Any())
+else if (!Model.Deck.Wants.Any())
 {
     <div class="alert alert-warning" role="alert">
         There are no pending changes for the deck
@@ -71,12 +71,7 @@ else
                                 class="fw-bold">
                                 @card.Name </a>
                             </td>
-                            <td>
-                                @foreach (var cost in card.GetManaSymbols())
-                                {
-                                    <span class="m-1 ms ms-@cost ms-cost"></span>
-                                }
-                            </td>
+                            <td> @(MtgSymbols.Format(card.ManaCost).ToHtmlString()) </td>
 
                             <td>@card.SetName</td>
                             <td>@amount.Amount</td>
@@ -101,9 +96,9 @@ else
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach (var request in Model.Deck.Requests.Where(cr => !cr.IsReturn))
+                    @foreach (var want in Model.Deck.Wants)
                     {
-                        var card = request.Card;
+                        var card = want.Card;
                         <tr>
                             <td>
                                 <a asp-page="/Cards/Details"
@@ -111,15 +106,10 @@ else
                                 class="fw-bold">
                                 @card.Name </a>
                             </td>
-                            <td>
-                                @foreach (var cost in card.GetManaSymbols())
-                                {
-                                    <span class="m-1 ms ms-@cost ms-cost"></span>
-                                }
-                            </td>
+                            <td> @(MtgSymbols.Format(card.ManaCost).ToHtmlString()) </td>
 
                             <td>@card.SetName</td>
-                            <td>@request.Amount</td>
+                            <td>@want.Amount</td>
                         </tr>
                     }
                 </tbody>
@@ -138,9 +128,9 @@ else
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach (var request in Model.Deck.Requests.Where(cr => cr.IsReturn))
+                    @foreach (var giveBack in Model.Deck.GiveBacks)
                     {
-                        var card = request.Card;
+                        var card = giveBack.Card;
                         <tr>
                             <td>
                                 <a asp-page="/Cards/Details"
@@ -148,15 +138,10 @@ else
                                 class="fw-bold">
                                 @card.Name </a>
                             </td>
-                            <td>
-                                @foreach (var cost in card.GetManaSymbols())
-                                {
-                                    <span class="m-1 ms ms-@cost ms-cost"></span>
-                                }
-                            </td>
+                            <td> @(MtgSymbols.Format(card.ManaCost).ToHtmlString()) </td>
 
                             <td>@card.SetName</td>
-                            <td>@request.Amount</td>
+                            <td>@giveBack.Amount</td>
                         </tr>
                     }
                 </tbody>

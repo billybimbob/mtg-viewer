@@ -1,12 +1,12 @@
 @page
-@model MTGViewer.Pages.Cards.CreateModel
-@using MTGViewer.Data
-
+@model Cards.CreateModel
 @{
     ViewData["Title"] = "Create";
 }
+@inject SymbolFormatter MtgSymbols
 
-<h1>Create Card</h1>
+
+<h1>Add New Card</h1>
 <hr />
 
 @if (!string.IsNullOrEmpty(Model.ErrorMessage))
@@ -53,10 +53,7 @@
                                     <input type="hidden" asp-for="Matches[i].Name"/>
                                 </td>
                                 <td>
-                                    @foreach (var cost in card.GetManaSymbols())
-                                    {
-                                        <i class="ms ms-@cost ms-cost"></i>
-                                    }
+                                    @(MtgSymbols.Format(card.ManaCost).ToHtmlString())
                                     <input type="hidden" asp-for="Matches[i].ManaCost"/>
                                 </td>
                                 <td>

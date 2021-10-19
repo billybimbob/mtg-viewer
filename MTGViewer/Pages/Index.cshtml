@@ -5,11 +5,7 @@
     //code blocks not affected by rendering, asterisk blocks are for rendering
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome to the card database!</h1>
-</div>
-
 @* <h3>This should allow you to select an image</h3>
 <input type="file" accept="image/*"> *@
 
-@(await Html.RenderComponentAsync<Counter>(RenderMode.ServerPrerendered))
+@(await Html.RenderComponentAsync<Home>(RenderMode.ServerPrerendered))

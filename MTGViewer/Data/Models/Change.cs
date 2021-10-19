@@ -10,8 +10,8 @@ using Newtonsoft.Json;
 namespace MTGViewer.Data
 {
     [Index(
-        nameof(ToId),
         nameof(FromId),
+        nameof(ToId),
         nameof(CardId),
         nameof(TransactionId), IsUnique = true)]
     public class Change
@@ -49,7 +49,8 @@ namespace MTGViewer.Data
     {
         public int Id { get; private set; }
 
-        public DateTime Applied { get; private set; }
+        [Display(Name = "Applied At")]
+        public DateTime AppliedAt { get; private set; }
 
         [JsonIgnore]
         public List<Change> Changes { get; } = new();

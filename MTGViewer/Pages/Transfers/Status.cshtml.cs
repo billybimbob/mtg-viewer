@@ -35,7 +35,7 @@ namespace MTGViewer.Pages.Transfers
 
         public Deck? Deck { get; private set; }
 
-        public IReadOnlyList<AmountRequestNameGroup>? CardGroups { get; private set; }
+        public IReadOnlyList<QuantityNameGroup>? CardGroups { get; private set; }
 
 
         public async Task<IActionResult> OnGetAsync(int deckId)
@@ -52,7 +52,7 @@ namespace MTGViewer.Pages.Transfers
                 return NotFound();
             }
 
-            if (deck.Requests.All(cr => cr.IsReturn))
+            if (!deck.Wants.Any())
             {
                 PostMessage = $"There are no requests for {deck.Name}";
                 return RedirectToPage("Index");
@@ -80,28 +80,24 @@ namespace MTGViewer.Pages.Transfers
                 .Where(d => d.Id == deckId && d.OwnerId == userId)
 
                 .Include(d => d.Owner)
-                .Include(d => d.Cards)
+
+                .Include(d => d.Cards) // unbounded: keep eye on
                     .ThenInclude(ca => ca.Card)
 
-                .Include(d => d.Requests
-                    .Where(cr => !cr.IsReturn))
+                .Include(d => d.Wants) // unbounded: keep eye on
+                    .ThenInclude(w => w.Card)
+
+                .Include(d => d.TradesTo)
                     .ThenInclude(t => t.Card)
 
                 .Include(d => d.TradesTo)
                     .ThenInclude(t => t.From.Owner)
 
                 .Include(d => d.TradesTo)
-                    .ThenInclude(t => t.From.Cards)
+                    .ThenInclude(t => t.From.Cards) // unbounded: keep eye on
                         .ThenInclude(ca => ca.Card)
 
-                .Include(d => d.TradesTo)
-                    .ThenInclude(t => t.From.Requests)
-                        .ThenInclude(ca => ca.Card)
-
-                .Include(d => d.TradesTo)
-                    .ThenInclude(t => t.Card)
-
-                .Include(d => d.TradesTo
+                .Include(d => d.TradesTo // unbounded: keep eye on
                     .OrderBy(t => t.From.Owner.Name)
                         .ThenBy(t => t.Card.Name))
 
@@ -136,23 +132,21 @@ namespace MTGViewer.Pages.Transfers
         }
 
 
-        private IEnumerable<AmountRequestNameGroup> CardNameGroups(Deck deck)
+        private IEnumerable<QuantityNameGroup> CardNameGroups(Deck deck)
         {
             var amountsByName = deck.Cards
                 .ToLookup(ca => ca.Card.Name);
 
-            var takesByName = deck.Requests
-                .Where(cr => !cr.IsReturn)
-                .ToLookup(cr => cr.Card.Name);
+            var wantsByName = deck.Wants
+                .ToLookup(w => w.Card.Name);
 
-            var cardNames = amountsByName
-                .Select(g => g.Key)
-                .Union(takesByName
-                    .Select(g => g.Key))
-                .OrderBy(name => name);
+            var cardNames = amountsByName.Select(an => an.Key)
+                .Union(wantsByName.Select(wn => wn.Key))
+                .OrderBy(cn => cn);
 
             return cardNames.Select(cn => 
-                new AmountRequestNameGroup(amountsByName[cn], takesByName[cn]));
+                new QuantityNameGroup(
+                    amountsByName[cn], wantsByName[cn] ));
         }
 
 

@@ -15,11 +15,21 @@ using MTGViewer.Data;
 
 namespace MTGViewer.Services
 {
+    public readonly struct JsonWriteOptions
+    {
+        public string Path { get; init; }
+
+        public bool IncludeUsers { get; init; }
+    }
+
+
     public class JsonCardStorage
     {
         private readonly string _defaultFilename;
         private readonly CardDbContext _dbContext;
         private readonly UserManager<CardUser> _userManager;
+
+        private readonly string _tempPassword; // TODO: change, see below for impl
 
         public JsonCardStorage(
             IConfiguration config, 
@@ -32,25 +42,32 @@ namespace MTGViewer.Services
 
             _dbContext = dbContext;
             _userManager = userManager;
+
+            var seedOptions = new SeedSettings();
+            config.GetSection(nameof(SeedSettings)).Bind(seedOptions);
+
+            _tempPassword = seedOptions.Password;
         }
 
 
         public async Task WriteToJsonAsync(string path = null, CancellationToken cancel = default)
         {
-            var data = await CardData.CreateAsync(_dbContext, _userManager, cancel);
-
             path ??= Path.Combine(Directory.GetCurrentDirectory(), _defaultFilename);
 
             await using var writer = File.CreateText(path);
 
+            var data = await CardData.CreateAsync(_dbContext, _userManager, cancel);
             var dataStr = JsonConvert.SerializeObject(data, Formatting.Indented);
+
             await writer.WriteAsync(dataStr);
         }
 
 
-        public async Task<bool> AddFromJsonAsync(string path = null, CancellationToken cancel = default)
+        public async Task<bool> AddFromJsonAsync(
+            JsonWriteOptions options = default, CancellationToken cancel = default)
         {
-            path ??= Path.Combine(Directory.GetCurrentDirectory(), _defaultFilename);
+            var path = options.Path 
+                ?? Path.Combine(Directory.GetCurrentDirectory(), _defaultFilename);
 
             try
             {
@@ -77,7 +94,9 @@ namespace MTGViewer.Services
                 _dbContext.Decks.AddRange(data.Decks);
 
                 _dbContext.Amounts.AddRange(data.Amounts);
-                _dbContext.Requests.AddRange(data.Requests);
+
+                _dbContext.Wants.AddRange(data.Wants);
+                _dbContext.GiveBacks.AddRange(data.GiveBacks);
 
                 _dbContext.Changes.AddRange(data.Changes);
                 _dbContext.Transactions.AddRange(data.Transactions);
@@ -87,10 +106,18 @@ namespace MTGViewer.Services
 
                 await _dbContext.SaveChangesAsync(cancel);
 
-                await Task.WhenAll(
-                    data.Users.Select(_userManager.CreateAsync));
+                if (!options.IncludeUsers)
+                {
+                    return true;
+                }
 
-                return true;
+                // TODO: generate secure temp passwords, and send emails to users
+                var results = await Task.WhenAll(
+                    data.Users.Select(u => _tempPassword != default
+                        ? _userManager.CreateAsync(u, _tempPassword)
+                        : _userManager.CreateAsync(u)));
+
+                return results.All(r => r.Succeeded);
             }
             catch (FileNotFoundException)
             {
@@ -122,7 +149,9 @@ namespace MTGViewer.Services
         public IReadOnlyList<Bin> Bins { get; set; }
 
         public IReadOnlyList<CardAmount> Amounts { get; set; }
-        public IReadOnlyList<CardRequest> Requests { get; set; }
+
+        public IReadOnlyList<Want> Wants { get; set; }
+        public IReadOnlyList<GiveBack> GiveBacks { get; set; }
 
         public IReadOnlyList<Change> Changes { get; set; }
         public IReadOnlyList<Transaction> Transactions { get; set; }
@@ -171,7 +200,11 @@ namespace MTGViewer.Services
                     .AsNoTrackingWithIdentityResolution()
                     .ToListAsync(cancel),
 
-                Requests = await dbContext.Requests
+                Wants = await dbContext.Wants
+                    .AsNoTrackingWithIdentityResolution()
+                    .ToListAsync(cancel),
+
+                GiveBacks = await dbContext.GiveBacks
                     .AsNoTrackingWithIdentityResolution()
                     .ToListAsync(cancel),
 

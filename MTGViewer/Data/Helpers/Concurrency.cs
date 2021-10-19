@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace MTGViewer.Data.Concurrency
 {
-    public class Concurrent
+    public abstract class Concurrent
     {
         [ConcurrencyCheck]
         internal Guid LiteToken { get; set; } = Guid.NewGuid();
@@ -56,24 +56,14 @@ namespace MTGViewer.Data.Concurrency
 
             return concurrentType.Assembly
                 .GetExportedTypes()
-                .Where(t => 
-                    t.IsSubclassOf(concurrentType) && !t.IsAbstract);
+                .Where(t => t.IsSubclassOf(concurrentType));
         }
 
 
-        private static EntityTypeBuilder IgnoreExceptToken(
-            this EntityTypeBuilder builder, Expression<Func<Concurrent, object>> property)
+        private static EntityTypeBuilder IgnoreExceptToken<T>(
+            this EntityTypeBuilder builder, Expression<Func<Concurrent, T>> property)
         {
-            MemberExpression memberExpr;
-
-            if (property.Body is UnaryExpression unaryExpr)
-            {
-                memberExpr = unaryExpr.Operand as MemberExpression;
-            }
-            else
-            {
-                memberExpr = property.Body as MemberExpression;
-            }
+            var memberExpr = property.Body as MemberExpression;
 
             if (memberExpr is null)
             {

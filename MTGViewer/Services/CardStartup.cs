@@ -90,18 +90,26 @@ namespace MTGViewer.Services
                 return;
             }
 
-            var sharedStorage = scopeProvider.GetRequiredService<ISharedStorage>();
             var jsonStorage = scopeProvider.GetRequiredService<JsonCardStorage>();
-            var cardGen = scopeProvider.GetService<CardDataGenerator>();
+            var jsonOptions = new JsonWriteOptions { IncludeUsers = true };
 
-            var jsonSuccess = await jsonStorage.AddFromJsonAsync(cancel: cancel);
+            var jsonSuccess = await jsonStorage.AddFromJsonAsync(jsonOptions, cancel);
 
-            if (!jsonSuccess && cardGen != null)
+            if (!jsonSuccess)
             {
+                var cardGen = scopeProvider.GetService<CardDataGenerator>();
+
+                if (cardGen == null)
+                {
+                    return;
+                }
+
                 await cardGen.GenerateAsync(cancel);
                 await jsonStorage.WriteToJsonAsync(cancel: cancel);
             }
-            
+
+            var sharedStorage = scopeProvider.GetRequiredService<ISharedStorage>();
+
             await sharedStorage.OptimizeAsync();
         }
 

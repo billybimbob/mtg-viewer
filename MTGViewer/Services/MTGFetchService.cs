@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Threading.Tasks;
-
 using Microsoft.Extensions.Logging;
 
 using MtgApiManager.Lib.Core;
@@ -12,12 +11,14 @@ using MtgApiManager.Lib.Service;
 
 using MTGViewer.Data;
 
-
 # nullable enable
 
 namespace MTGViewer.Services
 {
-    public class MTGFetchService : IMtgQueryable<MTGFetchService, Card>
+    public class CardQuery : Card, IQueryParameter { }
+
+
+    public class MTGFetchService : IMtgQueryable<MTGFetchService, CardQuery>
     {
         private readonly ICardService _service;
         private readonly DataCacheService _cache;
@@ -44,7 +45,7 @@ namespace MTGViewer.Services
         }
 
 
-        public MTGFetchService Where<P>(Expression<Func<Card, P>> property, P value)
+        public MTGFetchService Where<P>(Expression<Func<CardQuery, P>> property, P value)
         {
             if (property.Body is MemberExpression expression)
             {
@@ -79,10 +80,9 @@ namespace MTGViewer.Services
 
         private static string? ToString(object? paramValue) => paramValue switch
         {
-            null => null,
             IEnumerable<object> iter when iter.Any() => string.Join(',', iter),
             IEnumerable<object> _ => null,
-            _ => paramValue.ToString()
+            _ => paramValue?.ToString()
         };
 
 
@@ -96,11 +96,11 @@ namespace MTGViewer.Services
 
 
 
-        public async Task<IReadOnlyList<Card>> SearchAsync()
+        public async Task<Card[]> SearchAsync()
         {
             if (_empty)
             {
-                return new List<Card>();
+                return Array.Empty<Card>();
             }
 
             var response = await _service
@@ -109,7 +109,7 @@ namespace MTGViewer.Services
 
             _empty = true;
 
-            IEnumerable<ICard>? matches = LoggedUnwrap(response);
+            var matches = LoggedUnwrap(response)?.AsEnumerable();
 
             matches ??= Enumerable.Empty<ICard>();
 
@@ -117,7 +117,7 @@ namespace MTGViewer.Services
                 .Select(c => c.ToCard())
                 .Where(c => TestValid(c) is not null)
                 .OrderBy(c => c.Name)
-                .ToList();
+                .ToArray();
 
             foreach (var card in cards)
             {
@@ -137,9 +137,7 @@ namespace MTGViewer.Services
                 return null;
             }
 
-            Card? card;
-
-            if (_cache.TryGetValue(id, out card))
+            if (_cache.TryGetValue(id, out Card? card))
             {
                 _logger.LogInformation($"using cached card for {id}");
                 return card;
@@ -194,20 +192,14 @@ namespace MTGViewer.Services
 
 
 
-        public async Task<IReadOnlyList<Card>> MatchAsync(Card search)
+        public async Task<Card[]> MatchAsync(Card search)
         {
-            if (search.MultiverseId != default)
+            if (search.MultiverseId is not null)
             {
-                List<Card> results = new();
-
                 var card = await FindAsync(search.MultiverseId);
 
-                if (card is not null)
-                {
-                    results.Add(card);
-                }
-
-                return results;
+                return card is null
+                    ? Array.Empty<Card>() : new []{ card };
             }
             else
             {
@@ -239,6 +231,7 @@ namespace MTGViewer.Services
             {
                 Id = card.Id, // id should be valid
                 MultiverseId = card.MultiverseId,
+
                 Name = card.Name,
                 Names = (card.Names?.Select(s => new Name(s))
                     ?? Enumerable.Empty<Name>())

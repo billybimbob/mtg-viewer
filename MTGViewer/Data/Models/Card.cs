@@ -1,11 +1,7 @@
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-using System.Linq;
-using System.Text.RegularExpressions;
-
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
-using MtgApiManager.Lib.Service;
 
 #nullable enable
 
@@ -14,7 +10,7 @@ using MtgApiManager.Lib.Service;
 namespace MTGViewer.Data
 {
     [Index(nameof(Name), nameof(ManaCost))]
-    public class Card : IQueryParameter
+    public class Card
     {
         // not sure about the sha length range
         [RegularExpression(@"^[a-fA-F0-9-]{1,40}")]
@@ -22,7 +18,9 @@ namespace MTGViewer.Data
         public string Id { get; init; } = null!;
 
         [Required]
+        [Display(Name = "Multiverse Id")]
         public string MultiverseId { get; init; } = null!;
+
 
         [Required]
         public string Name { get; init; } = null!;
@@ -32,20 +30,23 @@ namespace MTGViewer.Data
         [Required]
         public string Layout { get; init; } = null!;
 
+
         [Display(Name = "Mana")]
         [Required]
         public string ManaCost { get; init; } = null!;
 
-        [Display(Name = "Converted Mana")]
+        [Display(Name = "Converted Mana Cost")]
         public int? Cmc { get; init; }
 
         public List<Color> Colors { get; init; } = new();
+
 
         public List<SuperType> SuperTypes { get; init; } = new();
 
         public List<Type> Types { get; init; } = new();
 
         public List<SubType> SubTypes { get; init; } = new();
+
 
         [Required]
         public string Rarity { get; init; } = null!;
@@ -57,6 +58,7 @@ namespace MTGViewer.Data
         [Required]
         public string Artist { get; init; } = null!;
 
+
         public string? Text { get; init; }
 
         public string? Flavor { get; init; }
@@ -67,6 +69,7 @@ namespace MTGViewer.Data
 
         public string? Loyalty { get; init; }
 
+
         [Display(Name = "Image")]
         [Url]
         public string? ImageUrl { get; init; }
@@ -74,19 +77,6 @@ namespace MTGViewer.Data
         [JsonIgnore]
         public List<CardAmount> Amounts { get; } = new();
 
-
-        public IReadOnlyList<string> GetManaSymbols()
-        {
-            if (string.IsNullOrEmpty(ManaCost))
-            {
-                return new List<string>();
-            }
-
-            var matches = Regex.Matches(ManaCost, @"{([^}]+)}");
-            return matches
-                .Select(m => m.Groups[1].Value.Replace("/", "").ToLower())
-                .ToList();
-        }
 
         public bool IsValid()
         {

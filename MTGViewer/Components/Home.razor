@@ -1,0 +1,197 @@
+@using MTGViewer.Data
+
+@namespace MTGViewer.Components
+@inject IDbContextFactory<CardDbContext> DbFactory
+
+
+<h1 class="text-center display-4">Welcome to the card database!</h1>
+
+<div class="container pt-4">
+    <a href="/Cards">
+        <h3>Cards from our collection!</h3>
+    </a>
+
+    <div class="row">
+        @foreach (var card in Cards)
+        {
+            <a href="/Cards/Details/@card.Id" class="col-3" aria-label="@card.Id details">
+                <img alt="@card.Id image" class="w-100 img-fluid rounded" src="@card.ImageUrl.WithHttps()">
+            </a>
+        }
+    </div>
+</div>
+
+<div class="pt-5">
+    <a href="/Boxes/History">
+        <h3>Recent Shared Collection Changes</h3>
+    </a>
+
+    <ul class="list-group list-group-flush">
+        @foreach (var transaction in RecentChanges)
+        {
+            var changes = transaction.Changes;
+            var adds = changes.Where(c => c.To is Box);
+            var removes = changes.Where(c => c.From is Box);
+
+            var anyAdds = adds.Any();
+            var anyRemoves = removes.Any();
+            var both = anyAdds && anyRemoves;
+
+            <li class="list-group-item">
+                <div class="d-flex w-100 justify-content-between">
+
+                    <p class="mb-1">
+                        @if (anyAdds)
+                        {
+                            <strong> Added </strong> @AllCardNames(adds)
+
+                            <span class="ml-2 badge badge-secondary badge-pill">
+                                @adds.Sum(c => c.Amount) 
+                            </span>
+                        }
+                        @if (both) { <br> }
+                        @if (anyRemoves)
+                        {
+                            <strong> Removed </strong> @AllCardNames(removes)
+
+                            <span class="ml-2 badge badge-secondary badge-pill">
+                                @removes.Sum(c => c.Amount) 
+                            </span>
+                        }
+                    </p>
+
+                    <small class="mb-1 text-muted"> @ElapsedTime(transaction) </small>
+
+                </div>
+            </li>
+        }
+    </ul>
+</div>
+
+
+@code {
+
+    [Parameter]
+    public int NameLength { get; set; } = 80;
+
+    [Parameter]
+    public int NumberOfCards { get; set; } = 4;
+
+    private readonly Random _random = new();
+
+    private bool _busy;
+    private DateTime _currentTime;
+
+    private IReadOnlyList<Card> _randomCards;
+    private IReadOnlyList<Transaction> _recentChanges;
+
+
+    private IEnumerable<Card> Cards => 
+        _randomCards?.Take(NumberOfCards) ?? Enumerable.Empty<Card>();
+
+    private IEnumerable<Transaction> RecentChanges =>
+        _recentChanges ?? Enumerable.Empty<Transaction>();
+
+
+
+    private string AllCardNames(IEnumerable<Change> changes)
+    {
+        var cardNames = changes
+            .GroupBy(c => c.Card.Name, (name, _) => name);
+
+        var cards = string.Join(", ", cardNames);
+        var cardLimit = Math.Min(cards.Length, NameLength);
+
+        var elipsis = cardLimit < cards.Length ? "..." : string.Empty;
+
+        return $"{cards.Substring(0, cardLimit)}{elipsis}";
+    }
+
+
+    private string ElapsedTime(Transaction transaction)
+    {
+        var elapsed = _currentTime - transaction.AppliedAt;
+
+        return elapsed switch
+        {
+            { Days: >0 } => $"{elapsed.Days} days ago",
+            { Hours: >0 } => $"{elapsed.Hours} hours ago",
+            { Minutes: >0 } => $"{elapsed.Minutes} min ago",
+            _ => $"{elapsed.Seconds} sec ago"
+        };
+    }
+
+
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_busy)
+        {
+            return;
+        }
+
+        _busy = true;
+
+        try
+        {
+            await using var dbContext = DbFactory.CreateDbContext();
+
+            _randomCards = await GetShuffledCardsAsync(dbContext);
+
+            _currentTime = DateTime.Now;
+
+            _recentChanges = await GetRecentChangesAsync(dbContext);
+        }
+        finally
+        {
+            _busy = false;
+        }
+
+        await base.OnParametersSetAsync();
+    }
+
+
+    private async Task<IReadOnlyList<Card>> GetShuffledCardsAsync(
+        CardDbContext dbContext)
+    {
+        var cards = await dbContext.Cards.ToListAsync(); // unbounded, keep eye on
+
+        // shuffle locally
+        for (int i = 0; i < cards.Count-1; ++i)
+        {
+            int j = _random.Next(i, cards.Count);
+
+            var temp = cards[i];
+            cards[i] = cards[j];
+            cards[j] = temp;
+        }
+
+        return cards;
+    }
+
+
+    private async Task<IReadOnlyList<Transaction>> GetRecentChangesAsync(
+        CardDbContext dbContext)
+    {
+        return await dbContext.Transactions
+            .Where(t => t.Changes.Any(c => c.To is Box || c.From is Box))
+
+            .Include(t => t.Changes)
+                .ThenInclude(c => c.Card)
+
+            .Include(t => t.Changes)
+                .ThenInclude(c => c.From)
+
+            .Include(t => t.Changes)
+                .ThenInclude(c => c.To)
+
+            .Include(t => t.Changes
+                .Where(c => c.To is Box || c.From is Box)
+                .OrderBy(c => c.Card.Name))
+
+            .OrderByDescending(t => t.AppliedAt)
+            .Take(NumberOfCards)
+
+            .ToListAsync();
+    }
+}

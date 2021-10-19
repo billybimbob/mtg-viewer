@@ -1,4 +1,3 @@
-@using MTGViewer.Data
 @using MTGViewer.Data.Concurrency
 @using MTGViewer.Data.Internal
 
@@ -6,6 +5,8 @@
 @implements IAsyncDisposable
 
 @inject IDbContextFactory<CardDbContext> DbFactory
+@inject SymbolFormatter MtgSymbols
+@inject CardText CardText
 @inject ILogger<DeckBuilder> Logger
 
 
@@ -15,7 +16,7 @@
     <button title="Save Deck"
             type="button"
             class="btn btn-secondary"
-            disabled="@HasNoChanges()"
+            disabled="@HasNoChanges"
             @onclick="CommitChangesAsync">
         Save Changes
     </button>
@@ -50,49 +51,12 @@
 </SavePrompt>
 
 
-<h2>Available Cards</h2>
+<EditForm EditContext="@_deckEdit">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
 
-<table class="table">
-    <thead>
-        <tr>
-            <th>Card Name</th>
-            <th>Mana Cost</th>
-            <th>Set</th>
-            <th>Rarity</th>
-            <th></th>
-        </tr>
-    </thead>
-
-    <tbody>
-        @foreach (var card in SortedCards)
-        {
-            <tr>
-                <td class="fw-bold">@card.Name</td>
-
-                <td>
-                    @foreach (var cost in card.GetManaSymbols())
-                    {
-                        <span class="m-1 ms ms-@cost ms-cost"></span>
-                    }
-                </td>
-
-                <td>@card.SetName</td>
-                <td>@card.Rarity</td>
-                <td>
-                    <button title="Add @card.Name"
-                            type="button"
-                            class="btn btn-outline-secondary border-0 rounded"
-                            @onclick="() => AddCardToDeck(card)">
-                        Add Card
-                    </button>
-                </td>
-            </tr>
-        }
-    </tbody>
-</table>
-
-
-<input @bind="_deck.Name" class="form-control form-control-lg border-0"/>
+    <InputText @bind-Value="_deck.Name" class="form-control form-control-lg border-0"/>
+</EditForm>
 
 <table class="table mt-2">
     <thead>
@@ -111,19 +75,12 @@
         {
             var group = _deckCards[card.Id];
             <tr>
-                <td class="fw-bold">@card.Name</td>
+                <td class="fw-bold"> @card.Name </td>
+                <td> @(MtgSymbols.Format(card.ManaCost).ToMarkupString()) </td>
+                <td> @card.SetName </td>
 
-                <td>
-                    @foreach (var cost in card.GetManaSymbols())
-                    {
-                        <span class="m-1 ms ms-@cost ms-cost"></span>
-                    }
-                </td>
-
-                <td>@card.SetName</td>
-
-                <td>@((group.Actual?.Amount ?? 0) - (group.Return?.Amount ?? 0))</td>
-                <td>@(group.Take?.Amount ?? 0)</td>
+                <td> @((group.Actual?.Amount ?? 0) - (group.GiveBack?.Amount ?? 0)) </td>
+                <td> @(group.Want?.Amount ?? 0) </td>
 
                 <td>
                     <button title="Remove @card.Name"
@@ -131,6 +88,48 @@
                             class="btn btn-outline-secondary border-0 rounded"
                             @onclick="() => RemoveCardFromDeck(card)">
                         Remove Card
+                    </button>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+
+<h2>Available Cards</h2>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>Card Name</th>
+            <th>Mana Cost</th>
+            <th>Set</th>
+            <th>Rarity</th>
+            <th>Current Shared</th>
+            <th></th>
+        </tr>
+    </thead>
+
+    <tbody>
+        @foreach (var card in AllCards)
+        {
+            <tr>
+                <td class="fw-bold"> @card.Name </td>
+                <td> @(MtgSymbols.Format(card.ManaCost).ToMarkupString()) </td>
+                <td> @card.SetName </td>
+                <td> @card.Rarity </td>
+
+                <td>
+                    @(card.Amounts
+                        .Where(ca => ca.Location is Box)
+                        .Sum(ca => ca.Amount))
+                </td>
+                <td>
+                    <button title="Add @card.Name"
+                            type="button"
+                            class="btn btn-outline-secondary border-0 rounded"
+                            @onclick="() => AddCardToDeck(card)">
+                        Add Card
                     </button>
                 </td>
             </tr>
@@ -152,29 +151,32 @@
     private SaveResult _result;
     private CardDbContext _dbContext;
 
-    private UserRef _user;
     private Deck _deck;
-    private SortedList<string, List<Card>> _dbCards;
-    private IDictionary<string, AmountRequestGroup> _deckCards;
+    private EditContext _deckEdit;
+    private Dictionary<string, QuantityGroup> _deckCards;
 
 
-    private bool HasNoChanges() =>
+
+    private bool HasNoChanges =>
         !_dbContext.ChangeTracker.HasChanges();
 
 
-    private IEnumerable<Card> SortedCards => 
-        _dbCards.Values.SelectMany(cg => cg);
+    private IReadOnlyList<Card> AllCards { get; set; }
+
 
     private IEnumerable<Card> DeckCards =>
-        SortedCards.Where(c => _deckCards != null
+        AllCards.Where((Func<Card, bool>)(c => _deckCards != null
             && _deckCards.TryGetValue(c.Id, out var cardGroup)
-            && cardGroup.Amount > 0);
+            && cardGroup.Amount > 0));
+
 
     private IQueryable<Deck> DeckForBuilder =>
         _dbContext.Decks
             .Where(d => d.Id == DeckId)
-            .Include(d => d.Cards)
-            .Include(d => d.Requests)
+            .Include(d => d.Owner)
+            .Include(d => d.Cards) // unbounded: keep eye on
+            .Include(d => d.Wants) // unbounded: keep eye on
+            .Include(d => d.GiveBacks) // unbounded: keep eye on
             .AsSplitQuery();
 
 
@@ -191,13 +193,13 @@
         {
             _dbContext = DbFactory.CreateDbContext();
 
-            var cards = await _dbContext.Cards.ToListAsync();
-
-            var nameGroups = cards
-                .GroupBy(c => c.Name)
-                .ToDictionary(g => g.Key, g => g.ToList());
-
-            _dbCards = new(nameGroups);
+            AllCards = await _dbContext.Cards
+                .Include(c => c.Amounts
+                    .Where(ca => ca.Location is Box))
+                    .ThenInclude(ca => ca.Location)
+                .OrderBy(c => c.Name)
+                    .ThenBy(c => c.SetName)
+                .ToListAsync();
         }
         finally
         {
@@ -218,9 +220,8 @@
         _busy = true;
         try
         {
-            _user = await _dbContext.Users.FindAsync(UserId);
-
             _deck = await GetOrCreateDeckAsync();
+            _deckEdit = new(_deck);
 
             _deckCards = GetDeckCardGroups(_deck)
                 .ToDictionary(cg => cg.CardId);
@@ -241,14 +242,16 @@
             return await DeckForBuilder.SingleAsync();
         }
 
+        var user = await _dbContext.Users.FindAsync(UserId);
+
         var userDeckCount = await _dbContext.Decks
-            .Where(l => l.Owner.Id == _user.Id)
+            .Where(d => d.Owner.Id == UserId)
             .CountAsync();
 
         var newLoc = new Deck
         {
             Name = $"Deck #{userDeckCount + 1}",
-            Owner = _user
+            Owner = user
         };
 
         _dbContext.Decks.Attach(newLoc);
@@ -257,24 +260,21 @@
     }
 
 
-    private IEnumerable<AmountRequestGroup> GetDeckCardGroups(Deck deck)
+    private IEnumerable<QuantityGroup> GetDeckCardGroups(Deck deck)
     {
-        var amountsById = deck.Cards
-            .ToDictionary(ca => ca.CardId);
+        var amountsById = deck.Cards.ToDictionary(ca => ca.CardId);
+        var takesById = deck.Wants.ToDictionary(w => w.CardId);
+        var givesById = deck.GiveBacks.ToDictionary(g => g.CardId);
 
-        var requestsById = deck.Requests
-            .ToLookup(cr => cr.CardId);
-
-        var cardIds = amountsById
-            .Select(g => g.Key)
-            .Union(requestsById
-                . Select(g => g.Key));
+        var cardIds = amountsById.Keys
+            .Union(takesById.Keys)
+            .Union(givesById.Keys);
 
         return cardIds.Select(cid =>
-        {
-            amountsById.TryGetValue(cid, out var amount);
-            return new AmountRequestGroup(amount, requestsById[cid]);
-        });
+            new QuantityGroup(
+                amountsById.GetValueOrDefault(cid),
+                takesById.GetValueOrDefault(cid),
+                givesById.GetValueOrDefault(cid) ));
     }
 
 
@@ -296,37 +296,37 @@
 
         _result = SaveResult.None;
 
-        bool hasGroup = _deckCards.TryGetValue(card.Id, out var deckGroup);
+        var deckGroup = _deckCards.GetValueOrDefault(card.Id);
 
-        if (hasGroup && deckGroup.Return?.Amount > 0)
+        if (deckGroup?.GiveBack?.Amount > 0)
         {
-            deckGroup.Return.Amount -= 1;
+            deckGroup.GiveBack.Amount -= 1;
             return;
         }
 
-        if (!hasGroup || deckGroup.Take is null)
+        if (deckGroup?.Want is null)
         {
-            var takeAmount = new CardRequest
+            var wantAmount = new Want
             {
                 Card = card,
-                Target = _deck,
+                Deck = _deck,
                 Amount = 0,
             };
 
-            _dbContext.Requests.Attach(takeAmount);
+            _dbContext.Wants.Attach(wantAmount);
 
-            if (hasGroup)
+            if (deckGroup is null)
             {
-                deckGroup.Take = takeAmount;
+                deckGroup = new(wantAmount);
+                _deckCards.Add(card.Id, deckGroup);
             }
             else
             {
-                deckGroup = new(takeAmount);
-                _deckCards.Add(card.Id, deckGroup);
+                deckGroup.Want = wantAmount;
             }
         }
 
-        deckGroup.Take.Amount += 1;
+        deckGroup.Want.Amount += 1;
     }
 
 
@@ -345,14 +345,14 @@
             return;
         }
 
-        if (deckGroup.Take?.Amount > 0)
+        if (deckGroup.Want?.Amount > 0)
         {
-            deckGroup.Take.Amount -= 1;
+            deckGroup.Want.Amount -= 1;
             return;
         }
 
         var actualRemain = (deckGroup.Actual?.Amount ?? 0)
-            - (deckGroup.Return?.Amount ?? 0);
+            - (deckGroup.GiveBack?.Amount ?? 0);
 
         if (actualRemain == 0)
         {
@@ -360,21 +360,20 @@
             return;
         }
 
-        if (deckGroup.Return is null)
+        if (deckGroup.GiveBack is null)
         {
-            var returnAmount = new CardRequest
+            var returnAmount = new GiveBack
             {
                 Card = deckGroup.Card,
-                Target = _deck,
-                IsReturn = true,
+                Deck = _deck,
                 Amount = 0
             };
 
-            _dbContext.Requests.Attach(returnAmount);
-            deckGroup.Return = returnAmount;
+            _dbContext.GiveBacks.Attach(returnAmount);
+            deckGroup.GiveBack = returnAmount;
         }
 
-        deckGroup.Return.Amount += 1;
+        deckGroup.GiveBack.Amount += 1;
     }
 
 
@@ -387,6 +386,11 @@
         }
 
         if (_busy)
+        {
+            return;
+        }
+
+        if (!_deckEdit.Validate())
         {
             return;
         }
@@ -415,16 +419,28 @@
 
     private void PrepareChanges()
     {
-        foreach (var request in _deck.Requests)
+        foreach (var want in _deck.Wants)
         {
-            if (request.Amount == 0)
+            if (want.Amount == 0)
             {
-                _dbContext.Requests.Remove(request);
+                _dbContext.Wants.Remove(want);
             }
             // detaches when saved after a remove
-            else if (_dbContext.Entry(request).State == EntityState.Detached)
+            else if (_dbContext.Entry(want).State == EntityState.Detached)
             {
-                _dbContext.Requests.Add(request);
+                _dbContext.Wants.Add(want);
+            }
+        }
+
+        foreach (var giveBack in _deck.GiveBacks)
+        {
+            if (giveBack.Amount == 0)
+            {
+                _dbContext.GiveBacks.Remove(giveBack);
+            }
+            else if (_dbContext.Entry(giveBack).State == EntityState.Detached)
+            {
+                _dbContext.GiveBacks.Add(giveBack);
             }
         }
 
@@ -434,6 +450,8 @@
         {
             deckEntry.State = EntityState.Modified;
         }
+
+        _deck.UpdateColors(CardText);
     }
 
 
@@ -499,25 +517,48 @@
         }
 
 
-        var removedRequests = _deck.Requests
-            .GroupJoin( dbDeck.Requests,
-                rq => (rq.CardId, rq.TargetId, rq.IsReturn),
-                db => (db.CardId, db.TargetId, db.IsReturn),
+        var removedWants = _deck.Wants
+            .GroupJoin( dbDeck.Wants,
+                wt => (wt.CardId, wt.DeckId),
+                db => (db.CardId, db.DeckId),
                 (local, dbs) =>
                     (local, noDb: !dbs.Any()))
             .Where(ln => ln.noDb)
             .Select(ln => ln.local);
 
-        foreach (var removedRequest in removedRequests)
+        foreach (var removedWant in removedWants)
         {
-            if (_dbContext.Entry(removedRequest).State == EntityState.Unchanged)
+            if (_dbContext.Entry(removedWant).State == EntityState.Unchanged)
             {
-                removedRequest.Amount = 0;
-                _dbContext.Requests.Remove(removedRequest);
+                removedWant.Amount = 0;
+                _dbContext.Wants.Remove(removedWant);
             }
             else
             {
-                _dbContext.Requests.Add(removedRequest);
+                _dbContext.Wants.Add(removedWant);
+            }
+        }
+
+
+        var removedGiveBacks = _deck.GiveBacks
+            .GroupJoin( dbDeck.GiveBacks,
+                gb => (gb.CardId, gb.DeckId),
+                db => (db.CardId, db.DeckId),
+                (local, dbs) =>
+                    (local, noDb: !dbs.Any()))
+            .Where(ln => ln.noDb)
+            .Select(ln => ln.local);
+
+        foreach (var removedGive in removedGiveBacks)
+        {
+            if (_dbContext.Entry(removedGive).State == EntityState.Unchanged)
+            {
+                removedGive.Amount = 0;
+                _dbContext.GiveBacks.Remove(removedGive);
+            }
+            else
+            {
+                _dbContext.GiveBacks.Add(removedGive);
             }
         }
     }
@@ -543,44 +584,42 @@
             _dbContext.MatchToken(localCard, dbCard);
         }
 
-        var dbTakes = dbDeck.Requests.Where(cr => !cr.IsReturn);
 
-        foreach (var dbTake in dbTakes)
+        foreach (var dbWant in dbDeck.Wants)
         {
-            if (!_deckCards.TryGetValue(dbTake.CardId, out var localGroup)
-                || localGroup.Take is null)
+            if (!_deckCards.TryGetValue(dbWant.CardId, out var localGroup)
+                || localGroup.Want is null)
             {
                 continue;
             }
 
-            var localTake = localGroup.Take;
+            var localTake = localGroup.Want;
 
             if (_dbContext.Entry(localTake).State == EntityState.Unchanged)
             {
-                localTake.Amount = dbTake.Amount;
+                localTake.Amount = dbWant.Amount;
             }
 
-            _dbContext.MatchToken(localTake, dbTake);
+            _dbContext.MatchToken(localTake, dbWant);
         }
 
-        var dbReturns = dbDeck.Requests.Where(cr => cr.IsReturn);
 
-        foreach (var dbReturn in dbReturns)
+        foreach (var dbGiveBack in dbDeck.GiveBacks)
         {
-            if (!_deckCards.TryGetValue(dbReturn.CardId, out var localGroup)
-                || localGroup.Return is null)
+            if (!_deckCards.TryGetValue(dbGiveBack.CardId, out var localGroup)
+                || localGroup.GiveBack is null)
             {
                 continue;
             }
 
-            var localReturn = localGroup.Return;
+            var localReturn = localGroup.GiveBack;
 
             if (_dbContext.Entry(localReturn).State == EntityState.Unchanged)
             {
-                localReturn.Amount = dbReturn.Amount;
+                localReturn.Amount = dbGiveBack.Amount;
             }
 
-            _dbContext.MatchToken(localReturn, dbReturn);
+            _dbContext.MatchToken(localReturn, dbGiveBack);
         }
     }
 
@@ -609,52 +648,50 @@
             _dbContext.Amounts.Attach(dbCard);
         }
 
-        var dbTakes = dbDeck.Requests.Where(cr => !cr.IsReturn);
 
-        foreach (var dbTake in dbTakes)
+        foreach (var dbWant in dbDeck.Wants)
         {
-            var hasGroup = _deckCards.TryGetValue(dbTake.CardId, out var localGroup);
+            var hasGroup = _deckCards.TryGetValue(dbWant.CardId, out var localGroup);
 
-            if (hasGroup && localGroup.Take is not null)
+            if (hasGroup && localGroup.Want is not null)
             {
                 continue;
             }
 
             if (hasGroup)
             {
-                localGroup.Take = dbTake;
+                localGroup.Want = dbWant;
             }
             else
             {
-                localGroup = new(dbTake);
-                _deckCards.Add(dbTake.CardId, localGroup);
+                localGroup = new(dbWant);
+                _deckCards.Add(dbWant.CardId, localGroup);
             }
 
-            _dbContext.Requests.Attach(dbTake);
+            _dbContext.Wants.Attach(dbWant);
         }
 
-        var dbReturns = dbDeck.Requests.Where(cr => cr.IsReturn);
 
-        foreach (var dbReturn in dbReturns)
+        foreach (var dbGiveBack in dbDeck.GiveBacks)
         {
-            var hasGroup = _deckCards.TryGetValue(dbReturn.CardId, out var localGroup);
+            var hasGroup = _deckCards.TryGetValue(dbGiveBack.CardId, out var localGroup);
 
-            if (hasGroup && localGroup.Return is not null)
+            if (hasGroup && localGroup.GiveBack is not null)
             {
                 continue;
             }
 
             if (hasGroup)
             {
-                localGroup.Return = dbReturn;
+                localGroup.GiveBack = dbGiveBack;
             }
             else
             {
-                localGroup = new(dbReturn);
-                _deckCards.Add(dbReturn.CardId, localGroup);
+                localGroup = new(dbGiveBack);
+                _deckCards.Add(dbGiveBack.CardId, localGroup);
             }
 
-            _dbContext.Requests.Attach(dbReturn);
+            _dbContext.GiveBacks.Attach(dbGiveBack);
         }
     }
 
@@ -663,15 +700,15 @@
     {
         foreach(var cardGroup in _deckCards.Values)
         {
-            if (cardGroup.Return is null)
+            if (cardGroup.GiveBack is null)
             {
                 continue;
             }
 
-            var currentReturn = cardGroup.Return.Amount;
+            var currentReturn = cardGroup.GiveBack.Amount;
             var capAmount = cardGroup.Actual?.Amount ?? currentReturn;
 
-            cardGroup.Return.Amount = Math.Min(currentReturn, capAmount);
+            cardGroup.GiveBack.Amount = Math.Min(currentReturn, capAmount);
         }
     }
 }

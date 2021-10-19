@@ -1,56 +1,30 @@
 using System.Linq;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using Newtonsoft.Json;
 
 using MTGViewer.Data.Concurrency;
 using MTGViewer.Data.Internal;
+using MTGViewer.Services;
 
 #nullable enable
 
 namespace MTGViewer.Data
 {
-    public class Location : Concurrent
+    public abstract class Location : Concurrent
     {
-        protected Location()
-        { }
-
         [JsonRequired]
         public int Id { get; private set; }
-
-        public string Name { get; set; } = null!;
 
         [JsonIgnore]
         internal Discriminator Type { get; private set; }
 
+        [Required]
+        [StringLength(20)]
+        public string Name { get; set; } = null!;
+
         [JsonIgnore]
         public List<CardAmount> Cards { get; } = new();
-
-        [JsonIgnore]
-        public List<Change> ChangesTo { get; } = new();
-
-        [JsonIgnore]
-        public List<Change> ChangesFrom { get; } = new();
-
-
-        public IEnumerable<Change> GetChanges() => ChangesTo.Concat(ChangesFrom);
-
-
-        public virtual IOrderedEnumerable<string> GetColorSymbols()
-        {
-            return Cards
-                .SelectMany(ca => ca.Card.GetManaSymbols())
-                .Distinct()
-                .Intersect(Data.Color.COLORS.Values)
-                .OrderBy(s => s);
-        }
-
-        // public IOrderedEnumerable<Color> GetColors()
-        // {
-        //     return Cards
-        //         .SelectMany(ca => ca.Card.Colors)
-        //         .Distinct(new EntityComparer<Color>(c => c.Name))
-        //         .OrderBy(c => c.Name);
-        // }
     }
 
 
@@ -62,30 +36,42 @@ namespace MTGViewer.Data
 
 
         [JsonIgnore]
-        public List<CardRequest> Requests { get; } = new();
+        public List<Want> Wants { get; } = new();
 
         [JsonIgnore]
+        [Display(Name = "Give Backs")]
+        public List<GiveBack> GiveBacks { get; } = new();
+
+
+        [JsonIgnore]
+        [Display(Name = "Trades To")]
         public List<Trade> TradesTo { get; } = new();
 
         [JsonIgnore]
+        [Display(Name = "Trades From")]
         public List<Trade> TradesFrom { get; } = new();
 
 
-        public IEnumerable<Trade> GetTrades() => TradesTo.Concat(TradesFrom);
+        public string Colors { get; private set; } = null!;
 
-        
-        public override IOrderedEnumerable<string> GetColorSymbols()
+
+        public void UpdateColors(CardText toCardText)
         {
-            var cardSymbols = Cards
-                .SelectMany(ca => ca.Card.GetManaSymbols());
+            var cardMana = Cards
+                .Select(ca => ca.Card.ManaCost)
+                .SelectMany( toCardText.FindMana )
+                .SelectMany(mana => mana.Value.Split('/'));
 
-            var requestSymbols = Requests
-                .SelectMany(cr => cr.Card.GetManaSymbols());
+            var wantMana = Wants
+                .Select(w => w.Card.ManaCost)
+                .SelectMany( toCardText.FindMana )
+                .SelectMany(mana => mana.Value.Split('/'));
 
-            return cardSymbols
-                .Union(requestSymbols)
-                .Intersect(Data.Color.COLORS.Values)
-                .OrderBy(s => s);
+            var colorSymbols = Color.Symbols.Values
+                .Intersect( cardMana.Union(wantMana) )
+                .Select( toCardText.ManaString );
+
+            Colors = string.Join(string.Empty, colorSymbols);
         }
     }
 
@@ -96,7 +82,9 @@ namespace MTGViewer.Data
         public Bin Bin { get; set; } = null!;
         public int BinId { get; init; }
 
-        public string? Color { get; init; }
+
+        [StringLength(20)]
+        public string? Appearance { get; init; }
     }
 
 
@@ -106,6 +94,7 @@ namespace MTGViewer.Data
         public int Id { get; private set; }
 
         [JsonRequired]
+        [StringLength(10)]
         public string Name { get; init; } = null!;
 
         [JsonIgnore]

@@ -29,7 +29,7 @@ namespace MTGViewer.Pages.Decks
 
         public Deck Deck { get; private set; }
 
-        public IEnumerable<AmountRequestGroup> Cards { get; private set; }
+        public IEnumerable<QuantityGroup> Cards { get; private set; }
 
 
         public async Task<IActionResult> OnGetAsync(int id)
@@ -57,39 +57,45 @@ namespace MTGViewer.Pages.Decks
                 .Where(d => d.Id == deckId)
 
                 .Include(d => d.Owner)
-                .Include(d => d.Cards)
+
+                .Include(d => d.Cards) // unbounded: keep eye on
                     .ThenInclude(ca => ca.Card)
 
-                .Include(d => d.TradesTo)
-                    .ThenInclude(t => t.Card)
+                .Include(d => d.Wants) // unbounded: keep eye on
+                    .ThenInclude(w => w.Card)
 
-                .Include(d => d.Requests)
-                    .ThenInclude(cr => cr.Card)
+                .Include(d => d.GiveBacks) // unbounded: keep eye on
+                    .ThenInclude(g => g.Card)
+
+                .Include(d => d.TradesTo.Take(1))
 
                 .AsSplitQuery()
                 .AsNoTrackingWithIdentityResolution();
         }
 
 
-        private IEnumerable<AmountRequestGroup> DeckCardGroups(Deck deck)
+        private IEnumerable<QuantityGroup> DeckCardGroups(Deck deck)
         {
             var amountsById = deck.Cards
                 .ToDictionary(ca => ca.CardId);
 
-            var requestsById = deck.Requests
-                .ToLookup(cr => cr.CardId);
+            var wantsById = deck.Wants
+                .ToDictionary(w => w.CardId);
 
-            var cardIds = amountsById
-                .Select(g => g.Key)
-                .Union(requestsById
-                    . Select(g => g.Key));
+            var givesById = deck.GiveBacks
+                .ToDictionary(g => g.CardId);
+
+            var cardIds = amountsById.Select(cai => cai.Key)
+                .Union(wantsById.Select(wi => wi.Key))
+                .Union(givesById.Select(gi => gi.Key));
 
             return cardIds
                 .Select(cid =>
-                {
-                    amountsById.TryGetValue(cid, out var amount);
-                    return new AmountRequestGroup(amount, requestsById[cid]);
-                })
+                    new QuantityGroup(
+                        amountsById.GetValueOrDefault(cid),
+                        wantsById.GetValueOrDefault(cid),
+                        givesById.GetValueOrDefault(cid) ))
+
                 .OrderBy(rg => rg.Card.Name);
         }
     }

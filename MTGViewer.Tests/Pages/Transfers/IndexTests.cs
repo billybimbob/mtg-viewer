@@ -9,6 +9,7 @@ using Xunit;
 
 using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
+using MTGViewer.Services;
 using MTGViewer.Pages.Transfers;
 using MTGViewer.Tests.Utils;
 
@@ -24,6 +25,7 @@ namespace MTGViewer.Tests.Pages.Transfers
         private readonly IndexModel _indexModel;
 
         public IndexTests(
+            PageSizes pageSizes,
             CardDbContext dbContext,
             UserManager<CardUser> userManager,
             TestDataGenerator testGen)
@@ -32,13 +34,13 @@ namespace MTGViewer.Tests.Pages.Transfers
             _userManager = userManager;
             _testGen = testGen;
 
-            _indexModel = new(_userManager, _dbContext);
+            _indexModel = new(pageSizes, _userManager, _dbContext);
         }
 
 
         public Task InitializeAsync() => _testGen.SeedAsync();
 
-        public Task DisposeAsync() => Task.CompletedTask;
+        public Task DisposeAsync() => _testGen.ClearAsync();
 
 
         private IQueryable<Suggestion> AllSuggestions =>

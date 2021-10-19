@@ -1,6 +1,5 @@
 @page "{id:int?}"
-@model MTGViewer.Pages.Decks.BuilderModel
-
+@model Decks.BuilderModel
 @{
     ViewData["Title"] = "Deck Builder";
 }
@@ -12,7 +11,4 @@
 
 @(await Html.RenderComponentAsync<DeckBuilder>(
     RenderMode.ServerPrerendered,
-    new {
-        UserId = Model.UserId,
-        DeckId = Model.DeckId
-    }))
+    new { Model.UserId, Model.DeckId }))

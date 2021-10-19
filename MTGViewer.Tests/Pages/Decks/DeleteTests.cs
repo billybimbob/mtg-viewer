@@ -47,7 +47,7 @@ namespace MTGViewer.Tests.Pages.Decks
 
         public Task InitializeAsync() => _testGen.SeedAsync();
 
-        public Task DisposeAsync() => Task.CompletedTask;
+        public Task DisposeAsync() => _testGen.ClearAsync();
 
 
         private IQueryable<Deck> Deck(Deck deck) =>

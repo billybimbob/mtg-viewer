@@ -16,6 +16,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -28,13 +29,19 @@ namespace MTGViewer.Tests.Utils
 {
     public static class TestFactory
     {
-        public static void EmptyDatabase(
-            IServiceProvider provider, DbContextOptionsBuilder options)
+        public static void InMemoryDatabase(IServiceProvider provider, DbContextOptionsBuilder options)
         {
-            var empty = provider.GetRequiredService<EmptyProvider>();
+            var inMemory = provider.GetRequiredService<InMemoryConnection>();
 
-            options.UseInMemoryDatabase(EmptyProvider.TestDB)
-                .UseInternalServiceProvider(empty.Provider);
+            options.UseInMemoryDatabase(inMemory.Database);
+        }
+
+
+        public static void SqliteInMemory(IServiceProvider provider, DbContextOptionsBuilder options)
+        {
+            var inMemory = provider.GetRequiredService<InMemoryConnection>();
+
+            options.UseSqlite(inMemory.Connection);
         }
 
 

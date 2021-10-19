@@ -1,9 +1,10 @@
 @page "{cardId}"
-@model MTGViewer.Pages.Transfers.SuggestModel
-
+@model Transfers.SuggestModel
 @{
     ViewData["Title"] = $"Suggest {Model.Card.Name}";
 }
+@inject SymbolFormatter MtgSymbols
+
 
 @if (Model.Users is not null)
 {
@@ -29,9 +30,9 @@
         </div>
     }
 
-        <a asp-page="/Cards/Index"
-            class="btn btn-secondary mb-3">
-            Back </a>
+    <a asp-page="/Cards/Index"
+        class="btn btn-secondary mb-3">
+        Back </a>
 
     @if (Model.Users.Any())
     {
@@ -60,21 +61,19 @@ else
                 </div>
 
                 <span class="input-group-text">@deck.Name</span>
+
                 <div class="input-group-text">
-                    @foreach(var color in deck.GetColorSymbols())
-                    {
-                        <span class="m-1 ms ms-@color ms-cost"></span>
-                    }
+                    @(MtgSymbols.Format(deck.Colors).ToHtmlString())
                 </div>
             </div>
         }
 
         <div class="form-group">
             <label asp-for="Suggestion.Comment" class="control-label"></label>
-            <input asp-for="Suggestion.Comment" class="form-control" type="text" />
+            <textarea asp-for="Suggestion.Comment" class="form-control"></textarea>
         </div>
 
-        <a asp-page="./Suggest"
+        <a asp-page="Suggest"
             asp-route-cardid="@Model.Card.Id"
             class="btn btn-secondary mb-3">
             Back </a>

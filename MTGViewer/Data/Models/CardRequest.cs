@@ -4,19 +4,23 @@ using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 
 using MTGViewer.Data.Concurrency;
+using MTGViewer.Data.Internal;
 
 #nullable enable
 
 namespace MTGViewer.Data
 {
     [Index(
-        nameof(CardId),
-        nameof(TargetId),
-        nameof(IsReturn), IsUnique = true)]
-    public class CardRequest : Concurrent
+        nameof(Type),
+        nameof(DeckId),
+        nameof(CardId), IsUnique = true)]
+    public abstract class CardRequest : Concurrent
     {
         [JsonRequired]
         public int Id { get; private set; }
+
+        [JsonIgnore]
+        internal Discriminator Type { get; private set; }
 
 
         [JsonIgnore]
@@ -25,14 +29,19 @@ namespace MTGViewer.Data
 
 
         [JsonIgnore]
-        public Deck Target { get; init; } = null!;
-        public int TargetId { get; init; }
-
-
-        public bool IsReturn { get; init; }
+        public Deck Deck { get; init; } = null!;
+        public int DeckId { get; init; }
 
 
         [Range(1, int.MaxValue)]
         public int Amount { get; set; }
     }
+
+
+    public class Want : CardRequest
+    { }
+
+
+    public class GiveBack : CardRequest
+    { }
 }

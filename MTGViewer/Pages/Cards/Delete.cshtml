@@ -1,118 +1,171 @@
 @page "{id}"
-@model MTGViewer.Pages.Cards.DeleteModel
-
+@model Cards.DeleteModel
 @{
     ViewData["Title"] = "Delete";
 }
+@inject SymbolFormatter MtgSymbols
+
 
 <h1>Delete @Model.Card.Name</h1>
 
-<h3>Are you sure you want to delete this card?</h3>
-<div>
-    <hr />
-    <dl class="row">
-        <dt class="col-sm-2">
-            @Html.DisplayNameFor(m => m.Card.ManaCost)
-        </dt>
-        <dd class="col-sm-10">
-            @foreach (var cost in Model.Card.GetManaSymbols())
-            {
-                <i class="ms ms-@cost ms-cost"></i>
-            }
-        </dd>
+<hr />
+<div class="alert alert-warning" role="alert">
+    <h5>Are you sure you want to delete this card?</h5>
+    <p>
+        Deleting this card will also affect locations that 
+        are currently holding the card
+    </p>
+    <form method="POST">
+        <!-- js hack -->
+        <a href="javascript:history.go(-1)"
+            class="btn btn-secondary">
+            Back </a>
 
-        <dt class="col-sm-2">
-            @Html.DisplayNameFor(m => m.Card.Cmc)
-        </dt>
-        <dd class="col-sm-10">
-            @Html.DisplayFor(m => m.Card.Cmc)
-        </dd>
-
-        <dt class="col-sm-2">
-            @Html.DisplayNameFor(m => m.Card.Rarity)
-        </dt>
-        <dd class="col-sm-10">
-            @Html.DisplayFor(m => m.Card.Rarity)
-        </dd>
-
-        <dt class="col-sm-2">
-            @Html.DisplayNameFor(m => m.Card.SetName)
-        </dt>
-        <dd class="col-sm-10">
-            @Html.DisplayFor(m => m.Card.SetName)
-        </dd>
-
-        <dt class="col-sm-2">
-            @Html.DisplayNameFor(m => m.Card.SuperTypes)
-        </dt>
-        <dd class="col-sm-10">
-            @(string.Join(" ", Model.Card.SuperTypes.Select(st => st.Name)))
-        </dd>
-
-        <dt class="col-sm-2">
-            @Html.DisplayNameFor(m => m.Card.Types)
-        </dt>
-        <dd class="col-sm-10">
-            @(string.Join(" ", Model.Card.Types.Select(st => st.Name)))
-        </dd>
-
-        <dt class="col-sm-2">
-            @Html.DisplayNameFor(m => m.Card.SubTypes)
-        </dt>
-        <dd class="col-sm-10">
-            @(string.Join(" ", Model.Card.SubTypes.Select(st => st.Name)))
-        </dd>
-
-        <dt class="col-sm-2">
-            @Html.DisplayNameFor(m => m.Card.Text)
-        </dt>
-        <dd class="col-sm-10">
-            @Html.DisplayFor(m => m.Card.Text)
-        </dd>
-
-        <dt class="col-sm-2">
-            @Html.DisplayNameFor(m => m.Card.Flavor)
-        </dt>
-        <dd class="col-sm-10">
-            @Html.DisplayFor(m => m.Card.Flavor)
-        </dd>
-
-        <dt class="col-sm-2">
-            @Html.DisplayNameFor(m => m.Card.Artist)
-        </dt>
-        <dd class="col-sm-10">
-            @Html.DisplayFor(m => m.Card.Artist)
-        </dd>
-
-        <dt class="col-sm-2">
-            @Html.DisplayNameFor(m => m.Card.Power)
-        </dt>
-        <dd class="col-sm-10">
-            @Html.DisplayFor(m => m.Card.Power)
-        </dd>
-
-        <dt class="col-sm-2">
-            @Html.DisplayNameFor(m => m.Card.Toughness)
-        </dt>
-        <dd class="col-sm-10">
-            @Html.DisplayFor(m => m.Card.Toughness)
-        </dd>
-
-        <dt class="col-sm-2">
-            @Html.DisplayNameFor(m => m.Card.Loyalty)
-        </dt>
-        <dd class="col-sm-10">
-            @Html.DisplayFor(m => m.Card.Loyalty)
-        </dd>
-
-        <dt class="col-sm-2">
-            @Html.DisplayNameFor(m => m.Card.ImageUrl)
-        </dt>
-        <dd class="col-sm-10">
-            <img alt="@Model.Card.Name" src="@Model.Card.ImageUrl"/>
-        </dd>
-    </dl>
+        <input type="hidden" asp-for="Card.Id" />
+        <input type="submit" value="Delete" class="btn btn-danger" />
+    </form>
 </div>
+
+
+<hr />
+<div class="container">
+    <div class="row justify-content-center">
+
+        <div class="p-0 pr-1 col align-self-center" >
+            <img class="img-fluid" alt="@Model.Card.Name" src="@Model.Card.ImageUrl.WithHttps()"/>
+        </div>
+
+        <div class="col-9">
+            <dl class="row m-0">
+                <dt class="mb-2 col-3">
+                    @Html.DisplayNameFor(m => m.Card.ManaCost)
+                </dt>
+                <dd class="col">
+                    @MtgSymbols.Format(Model.Card.ManaCost).ToHtmlString()
+                </dd>
+
+                <div class="w-100"></div>
+
+                <dt class="mb-2 col-3">
+                    @Html.DisplayNameFor(m => m.Card.Cmc)
+                </dt>
+                <dd class="col">
+                    @(Model.Card.Cmc?.ToString() ?? "--")
+                </dd>
+                    
+                <div class="w-100"></div>
+
+                <dt class="mb-2 col-3">
+                    @Html.DisplayNameFor(m => m.Card.Rarity)
+                </dt>
+                <dd class="col">
+                    @Html.DisplayFor(m => m.Card.Rarity)
+                </dd>
+
+                <div class="w-100"></div>
+
+                <dt class="mb-2 col-3">
+                    @Html.DisplayNameFor(m => m.Card.SetName)
+                </dt>
+                <dd class="col">
+                    @Html.DisplayFor(m => m.Card.SetName)
+                </dd>
+
+                <div class="w-100"></div>
+
+                <dt class="mb-2 col-3">
+                    @Html.DisplayNameFor(m => m.Card.SuperTypes)
+                </dt>
+                <dd class="col">
+                    @(Model.Card.SuperTypes.Any()
+                        ? string.Join(" ", Model.Card.SuperTypes.Select(st => st.Name))
+                        : "--")
+                </dd>
+
+                <div class="w-100"></div>
+
+                <dt class="mb-2 col-3">
+                    @Html.DisplayNameFor(m => m.Card.Types)
+                </dt>
+                <dd class="col">
+                    @(Model.Card.Types.Any()
+                        ? string.Join(" ", Model.Card.Types.Select(st => st.Name))
+                        : "--")
+                </dd>
+
+                <div class="w-100"></div>
+            
+                <dt class="mb-2 col-3">
+                    @Html.DisplayNameFor(m => m.Card.SubTypes)
+                </dt>
+                <dd class="col">
+                    @(Model.Card.SubTypes.Any() 
+                        ? string.Join(" ", Model.Card.SubTypes.Select(st => st.Name))
+                        : "--")
+                </dd>
+
+                <div class="w-100"></div>
+            
+                <dt class="mb-2 col-3">
+                    @Html.DisplayNameFor(m => m.Card.Text)
+                </dt>
+                <dd class="col">
+                    @(Model.Card.Text == null
+                        ? "--"
+                        : MtgSymbols.Format(Model.Card.Text).ToHtmlString())
+                </dd>
+
+                <div class="w-100"></div>
+
+                <dt class="mb-2 col-3">
+                    @Html.DisplayNameFor(m => m.Card.Flavor)
+                </dt>
+                <dd class="col">
+                    @(Model.Card.Flavor ?? "--")
+                </dd>
+
+                <div class="w-100"></div>
+
+                <dt class="mb-2 col-3">
+                    @Html.DisplayNameFor(m => m.Card.Artist)
+                </dt>
+                <dd class="col">
+                    @(Model.Card.Artist ?? "--")
+                </dd>
+
+                <div class="w-100"></div>
+
+                <dt class="mb-2 col-3">
+                    @Html.DisplayNameFor(m => m.Card.Power)
+                </dt>
+                <dd class="col">
+                    @(Model.Card.Power ?? "--")
+                </dd>
+
+                <div class="w-100"></div>
+
+                <dt class="mb-2 col-3">
+                    @Html.DisplayNameFor(m => m.Card.Toughness)
+                </dt>
+                <dd class="col">
+                    @(Model.Card.Toughness ?? "--")
+                </dd>
+
+                <div class="w-100"></div>
+
+                <dt class="col-3">
+                    @Html.DisplayNameFor(m => m.Card.Loyalty)
+                </dt>
+                <dd class="col">
+                    @(Model.Card.Loyalty ?? "--")
+                </dd>
+
+            </dl>
+        </div>
+
+    </div>
+</div>
+
 
 @if (Model.Locations.Any())
 {
@@ -126,13 +179,3 @@
         </ul>
     </div>
 }
-
-<form method="POST">
-    <!-- js hack -->
-    <a href="javascript:history.go(-1)"
-        class="btn btn-secondary">
-        Back </a>
-
-    <input type="hidden" asp-for="Card.Id" />
-    <input type="submit" value="Delete" class="btn btn-danger" />
-</form>

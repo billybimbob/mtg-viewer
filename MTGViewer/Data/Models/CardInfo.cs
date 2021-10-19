@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
 using Newtonsoft.Json;
 
 #nullable enable
@@ -25,17 +24,16 @@ namespace MTGViewer.Data
 
 
     public class Color
-    {
-        [JsonIgnore]
-        public static readonly IReadOnlyDictionary<string, string> COLORS = 
-            new Dictionary<string, string>
-        {
-            ["black"] = "b",
-            ["blue"] = "u",
-            ["green"] = "g",
-            ["red"] = "r",
-            ["white"] = "w"
-        };
+    { 
+        public static readonly IReadOnlyDictionary<string, string> Symbols = 
+            new SortedList<string, string>
+            {
+                ["black"] = "B",
+                ["blue"]  = "U",
+                ["green"] = "G",
+                ["red"]   = "R",
+                ["white"] = "W"
+            };
 
         public Color(string name)
         {

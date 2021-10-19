@@ -9,7 +9,6 @@
 *.db-wal
 *Migrations
 cards.json
-todo.md
 
 # User-specific files
 *.rsuser
@@ -456,7 +455,8 @@ $RECYCLE.BIN/
 ## Visual Studio Code
 ##
 .vscode/*
-!.vscode/settings.json
 !.vscode/tasks.json
 !.vscode/launch.json
 !.vscode/extensions.json
+
+todo.md

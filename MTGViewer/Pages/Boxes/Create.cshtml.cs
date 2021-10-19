@@ -30,7 +30,6 @@ namespace MTGViewer.Pages.Boxes
         [TempData]
         public string PostMessage { get; set; }
 
-
         [BindProperty]
         public Box Box { get; set; }
 
@@ -42,7 +41,7 @@ namespace MTGViewer.Pages.Boxes
             Bins = await _dbContext.Bins
                 .OrderBy(b => b.Name)
                 .AsNoTrackingWithIdentityResolution()
-                .ToListAsync();
+                .ToListAsync(); // unbounded: keep eye on
         }
 
 

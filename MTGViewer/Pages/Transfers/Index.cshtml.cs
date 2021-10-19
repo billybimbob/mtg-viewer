@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -11,6 +10,7 @@ using Microsoft.EntityFrameworkCore;
 
 using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
+using MTGViewer.Services;
 
 
 namespace MTGViewer.Pages.Transfers
@@ -18,11 +18,16 @@ namespace MTGViewer.Pages.Transfers
     [Authorize]
     public class IndexModel : PageModel
     {
+        private readonly int _pageSize;
         private readonly UserManager<CardUser> _userManager;
         private readonly CardDbContext _dbContext;
 
-        public IndexModel(UserManager<CardUser> userManager, CardDbContext dbContext)
+        public IndexModel(
+            PageSizes pageSizes, 
+            UserManager<CardUser> userManager, 
+            CardDbContext dbContext)
         {
+            _pageSize = pageSizes.GetSize(this);
             _userManager = userManager;
             _dbContext = dbContext;
         }
@@ -31,13 +36,18 @@ namespace MTGViewer.Pages.Transfers
         [TempData]
         public string PostMessage { get; set; }
 
+        [BindProperty(SupportsGet = true)]
+        public int? DeckIndex { get; set; }
+
+        [BindProperty(SupportsGet = true)]
+        public int? SuggestIndex { get; set; }
+
+
         public UserRef SelfUser { get; private set; }
 
-        public IReadOnlyList<Deck> ReceivedTrades { get; private set; }
+        public PagedList<Deck> TradeDecks { get; private set; }
 
-        public IReadOnlyList<Deck> RequestDecks { get; private set; }
-
-        public IReadOnlyList<Suggestion> Suggestions { get; private set; }
+        public PagedList<Suggestion> Suggestions { get; private set; }
 
 
 
@@ -45,41 +55,33 @@ namespace MTGViewer.Pages.Transfers
         {
             var userId = _userManager.GetUserId(User);
 
-            var userDecks = await DeckForTransfers(userId).ToListAsync();
+            TradeDecks = await DecksForTransfer(userId)
+                .ToPagedListAsync(_pageSize, DeckIndex);
 
             SelfUser = await _dbContext.Users.FindAsync(userId);
-
-            ReceivedTrades = userDecks
-                .Where(d => d.TradesFrom.Any())
-                .ToList();
-
-            RequestDecks = userDecks
-                .Where(d => d.TradesTo.Any() || d.Requests.Any(cr => !cr.IsReturn))
-                .ToList();
 
             Suggestions = await _dbContext.Suggestions
                 .Where(s => s.ReceiverId == userId)
                 .Include(s => s.Card)
                 .Include(s => s.To)
-                .OrderBy(s => s.Card.Name)
-                .ToListAsync();
+                .OrderBy(s => s.SentAt)
+                    .ThenBy(s => s.Card.Name)
+                .ToPagedListAsync(_pageSize, SuggestIndex);
         }
 
 
-        public IQueryable<Deck> DeckForTransfers(string userId)
+        public IQueryable<Deck> DecksForTransfer(string userId)
         {
             return _dbContext.Decks
                 .Where(d => d.OwnerId == userId)
 
-                .Include(d => d.TradesFrom)
-                .Include(d => d.TradesTo)
+                .Where(d => d.TradesFrom.Any()
+                    || d.TradesTo.Any()
+                    || d.Wants.Any())
 
-                .Include(d => d.Requests
-                    .Where(cr => !cr.IsReturn))
-                    .ThenInclude(cr => cr.Card)
-
-                .Include(d => d.Cards)
-                    .ThenInclude(ca => ca.Card)
+                .Include(d => d.TradesFrom.Take(1))
+                .Include(d => d.TradesTo.Take(1))
+                .Include(d => d.Wants.Take(1))
 
                 .OrderBy(d => d.Name)
                 .AsSplitQuery()
@@ -99,7 +101,7 @@ namespace MTGViewer.Pages.Transfers
             if (suggestion is null)
             {
                 PostMessage = "Specified suggestion cannot be acknowledged";
-                return RedirectToPage("./Index");
+                return RedirectToPage("Index");
             }
 
             _dbContext.Entry(suggestion).State = EntityState.Deleted;
@@ -114,7 +116,7 @@ namespace MTGViewer.Pages.Transfers
                 PostMessage = "Ran into issue while trying to Acknowledge";
             }
 
-            return RedirectToPage("./Index");
+            return RedirectToPage("Index", new { DeckIndex, SuggestIndex });
         }
     }
 }

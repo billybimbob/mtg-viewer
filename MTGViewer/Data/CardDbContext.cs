@@ -24,7 +24,9 @@ namespace MTGViewer.Data
         public DbSet<Bin> Bins => Set<Bin>();
 
         public DbSet<CardAmount> Amounts => Set<CardAmount>();
-        public DbSet<CardRequest> Requests => Set<CardRequest>();
+
+        public DbSet<Want> Wants => Set<Want>();
+        public DbSet<GiveBack> GiveBacks => Set<GiveBack>();
 
         public DbSet<Change> Changes => Set<Change>();
         public DbSet<Transaction> Transactions => Set<Transaction>();
@@ -40,14 +42,16 @@ namespace MTGViewer.Data
             modelBuilder
                 .SelectConcurrencyToken(Database)
 
-                // .ApplyConfiguration(new CardConfiguration())
                 .ApplyConfiguration(new LocationConfiguration())
 
                 .ApplyConfiguration(new DeckConfiguration())
                 .ApplyConfiguration(new BoxConfiguration())
 
-                .ApplyConfiguration(new TransactionConfiguration(Database))
-                .ApplyConfiguration(new SuggestionConfiguration());
+                .ApplyConfiguration(new RequestConfiguration())
+                .ApplyConfiguration(new SuggestionConfiguration(Database))
+
+                .ApplyConfiguration(new ChangeConfiguration())
+                .ApplyConfiguration(new TransactionConfiguration(Database));
         }
     }
 
@@ -79,16 +83,6 @@ namespace MTGViewer.Data
                 .HasMany(l => l.Cards)
                 .WithOne(ca => ca.Location)
                 .OnDelete(DeleteBehavior.Restrict);
-
-            builder
-                .HasMany(l => l.ChangesTo)
-                .WithOne(c => c.To)
-                .OnDelete(DeleteBehavior.Cascade);
-
-            builder
-                .HasMany(l => l.ChangesFrom)
-                .WithOne(c => c.From)
-                .OnDelete(DeleteBehavior.SetNull);
         }
     }
 
@@ -98,8 +92,13 @@ namespace MTGViewer.Data
         public void Configure(EntityTypeBuilder<Deck> builder)
         {
             builder
-                .HasMany(d => d.Requests)
-                .WithOne(cr => cr.Target)
+                .HasMany(d => d.Wants)
+                .WithOne(w => w.Deck)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder
+                .HasMany(d => d.GiveBacks)
+                .WithOne(g => g.Deck)
                 .OnDelete(DeleteBehavior.Cascade);
 
             builder
@@ -127,6 +126,36 @@ namespace MTGViewer.Data
     }
 
 
+    internal class RequestConfiguration : IEntityTypeConfiguration<CardRequest>
+    {
+        public void Configure(EntityTypeBuilder<CardRequest> builder)
+        {
+            builder
+                .HasDiscriminator(cr => cr.Type)
+                .HasValue<CardRequest>(Discriminator.Invalid)
+                .HasValue<Want>(Discriminator.Want)
+                .HasValue<GiveBack>(Discriminator.GiveBack);
+        }
+    }
+
+
+    internal class ChangeConfiguration : IEntityTypeConfiguration<Change>
+    {
+        public void Configure(EntityTypeBuilder<Change> builder)
+        {
+            builder
+                .HasOne(c => c.To)
+                .WithMany()
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder
+                .HasOne(c => c.From)
+                .WithMany()
+                .OnDelete(DeleteBehavior.SetNull);
+        }
+    }
+
+
     internal class TransactionConfiguration : IEntityTypeConfiguration<Transaction>
     {
         private readonly DatabaseFacade _database;
@@ -142,7 +171,7 @@ namespace MTGViewer.Data
             var dateFunc = _database.IsSqlite() ? "datetime('now', 'localtime')" : "getdate()";
 
             builder
-                .Property(t => t.Applied)
+                .Property(t => t.AppliedAt)
                 .HasDefaultValueSql(dateFunc);
 
             builder
@@ -155,8 +184,22 @@ namespace MTGViewer.Data
 
     internal class SuggestionConfiguration : IEntityTypeConfiguration<Suggestion>
     {
+        private readonly DatabaseFacade _database;
+
+        public SuggestionConfiguration(DatabaseFacade database)
+        {
+            _database = database;
+        }
+
+        
         public void Configure(EntityTypeBuilder<Suggestion> builder)
         {
+            var dateFunc = _database.IsSqlite() ? "datetime('now', 'localtime')" : "getdate()";
+
+            builder
+                .Property(s => s.SentAt)
+                .HasDefaultValueSql(dateFunc);
+
             builder
                 .HasOne(s => s.To)
                 .WithMany()

@@ -1,10 +1,9 @@
 @page "{deckId:int}"
-@model MTGViewer.Pages.Transfers.RequestModel
-@using MTGViewer.Data
-
+@model Transfers.RequestModel
 @{
     ViewData["Title"] = $"{Model.Deck.Name} Requests";
 }
+@inject SymbolFormatter MtgSymbols
 
 
 <h1>Requests for @Model.Deck.Name</h1>
@@ -13,8 +12,8 @@
 @if (Model.TargetsExist)
 {
     <div class="alert alert-secondary" role="alert">
-        <p>Are you sure you send requests for the listed cards below?</p>
-        <p>While a request is active, you cannot edit the deck @Model.Deck.Name</p>
+        <h5>Are you sure you want to send requests for the cards listed below?</h5>
+        <p>While a request is active, <strong>you cannot edit @Model.Deck.Name</strong></p>
 
         <form method="POST">
             <input type="hidden" asp-for="Deck.Id"/>
@@ -53,12 +52,8 @@ else
                         asp-route-id="@card.Id">
                         @card.Name </a>
                 </td>
-                <td>
-                    @foreach (var cost in card.GetManaSymbols())
-                    {
-                        <span class="m-1 ms ms-@cost ms-cost"></span>
-                    }
-                </td>
+
+                <td> @(MtgSymbols.Format(card.ManaCost).ToHtmlString()) </td>
                 <td> @cardGroup.Amount </td>
             </tr>
         } 
@@ -90,15 +85,10 @@ else
                             class="fw-bold">
                             @card.Name </a>
                     </td>
-                    <td>
-                        @foreach (var cost in card.GetManaSymbols())
-                        {
-                            <span class="m-1 ms ms-@cost ms-cost"></span>
-                        }
-                    </td>
 
-                    <td>@card.SetName</td>
-                    <td>@amount.Amount</td>
+                    <td> @(MtgSymbols.Format(card.ManaCost).ToHtmlString()) </td>
+                    <td> @card.SetName </td>
+                    <td> @amount.Amount </td>
                 </tr>
             }
         </tbody>

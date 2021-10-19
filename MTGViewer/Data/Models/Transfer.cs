@@ -1,6 +1,5 @@
 using System;
 using System.ComponentModel.DataAnnotations;
-
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using MTGViewer.Data.Concurrency;
@@ -32,15 +31,23 @@ namespace MTGViewer.Data
         public int? ToId { get; init; }
 
 
-        [MaxLength(80)]
+        [StringLength(80)]
         public string? Comment { get; set; }
+
+        [Display(Name = "Sent At")]
+        public DateTime SentAt { get; private set; }
     }
     
 
 
+    /// <remarks>
+    /// Makes the assumption that trades are always initiated 
+    /// by the owner of the To deck, and the owner of the 
+    /// From deck accepts or denies the trade
+    /// </remarks>
     [Index(
-        nameof(ToId),
         nameof(FromId),
+        nameof(ToId),
         nameof(CardId), IsUnique = true)]
     public class Trade : Concurrent
     {

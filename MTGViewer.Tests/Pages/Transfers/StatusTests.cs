@@ -3,9 +3,8 @@ using System.Threading.Tasks;
 
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Identity;
-
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
+
 using Xunit;
 
 using MTGViewer.Areas.Identity.Data;
@@ -44,16 +43,15 @@ namespace MTGViewer.Tests.Pages.Transfers
             _trades = await _testGen.CreateTradeSetAsync(isToSet: true);
         }
 
-        public Task DisposeAsync() => Task.CompletedTask;
+        public Task DisposeAsync() => _testGen.ClearAsync();
 
 
         private IQueryable<Trade> TradesInSet => 
-            _dbContext.Requests
-                .Where(cr => !cr.IsReturn)
-                .Join(_dbContext.Trades,
-                    request => request.TargetId,
+            _dbContext.Trades
+                .Join(_dbContext.Wants,
                     trade => trade.ToId,
-                    (_, trade) => trade)
+                    request => request.DeckId,
+                    (trade, _) => trade)
                 .Distinct()
                 .Where(t => t.ToId == _trades.TargetId)
                 .AsNoTracking();
