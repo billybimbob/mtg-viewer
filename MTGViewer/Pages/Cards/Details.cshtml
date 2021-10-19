@@ -9,8 +9,8 @@
 
 <div class="d-flex align-items-center"> 
     <h1> @Model.Card.Name </h1> 
-    <div class="h5 ml-4 my-0">
-        @(MtgSymbols.Format(Model.Card.ManaCost).ToHtmlString())
+    <div class="h5 ml-3 my-0">
+        @MtgSymbols.Format(Model.Card.ManaCost).ToHtmlString()
     </div>
 </div>
 

@@ -17,7 +17,7 @@ namespace MTGViewer.Services
                 _ => cost
             };
 
-            return $"<i class=\"mr-2 ms ms-{cost} ms-cost\"></i>";
+            return $@"<i class=""m-1 ml-0 ms ms-{cost} ms-cost""></i>";
         }
 
 
@@ -33,7 +33,7 @@ namespace MTGViewer.Services
                 _ => throw new ArgumentException("Unexpected loyalty group")
             };
 
-            return $"<i class=\"m-1 ms ms-loyalty-{direction} ms-loyalty-{loyalty}\"></i>";
+            return $@"<i class=""m-1 ms ms-loyalty-{direction} ms-loyalty-{loyalty}""></i>";
         }
 
 
@@ -41,7 +41,7 @@ namespace MTGViewer.Services
         {
             var saga = ParseRomanNumeral(symbol.Value);
 
-            return $"<i class=\"ms ms-saga ms-saga-{saga}\"></i>";
+            return $@"<i class=""ml-1 ms ms-saga ms-saga-{saga}""></i>";
         }
 
 

@@ -37,6 +37,14 @@
 
         <div class="col-9">
             <dl class="row m-0">
+                <dt class="mb-2 col-3">
+                    @Html.DisplayNameFor(m => m.Card.ManaCost)
+                </dt>
+                <dd class="col">
+                    @MtgSymbols.Format(Model.Card.ManaCost).ToHtmlString()
+                </dd>
+
+                <div class="w-100"></div>
 
                 <dt class="mb-2 col-3">
                     @Html.DisplayNameFor(m => m.Card.Cmc)

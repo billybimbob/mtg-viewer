@@ -69,7 +69,6 @@ namespace MTGViewer.Services
                 {
                     var symbol = ss.GetEnumerator();
                     symbol.MoveNext();
-
                     return symbol;
                 })
                 .ToHashSet();
@@ -89,14 +88,14 @@ namespace MTGViewer.Services
 
             IEnumerator<Symbol> FirstSymbol()
             {
-                IEnumerator<Symbol> first = null!;
+                IEnumerator<Symbol> first = currentSymbols.First();
 
                 foreach (var iter in currentSymbols)
                 {
                     var iterPosition = iter.Current.Position.Start.Value;
                     var minPosition = first?.Current.Position.Start.Value;
 
-                    if (first is null || iterPosition < minPosition)
+                    if (iterPosition < minPosition)
                     {
                         first = iter;
                     }

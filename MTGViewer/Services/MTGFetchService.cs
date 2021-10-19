@@ -96,11 +96,11 @@ namespace MTGViewer.Services
 
 
 
-        public async Task<IReadOnlyList<Card>> SearchAsync()
+        public async Task<Card[]> SearchAsync()
         {
             if (_empty)
             {
-                return new List<Card>();
+                return Array.Empty<Card>();
             }
 
             var response = await _service
@@ -117,7 +117,7 @@ namespace MTGViewer.Services
                 .Select(c => c.ToCard())
                 .Where(c => TestValid(c) is not null)
                 .OrderBy(c => c.Name)
-                .ToList();
+                .ToArray();
 
             foreach (var card in cards)
             {
@@ -192,20 +192,14 @@ namespace MTGViewer.Services
 
 
 
-        public async Task<IReadOnlyList<Card>> MatchAsync(Card search)
+        public async Task<Card[]> MatchAsync(Card search)
         {
-            if (search.MultiverseId != default)
+            if (search.MultiverseId is not null)
             {
-                List<Card> results = new();
-
                 var card = await FindAsync(search.MultiverseId);
 
-                if (card is not null)
-                {
-                    results.Add(card);
-                }
-
-                return results;
+                return card is null
+                    ? Array.Empty<Card>() : new []{ card };
             }
             else
             {

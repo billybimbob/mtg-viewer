@@ -20,12 +20,13 @@ namespace MTGViewer.Tests.Services
         [InlineData("{B}", "B")]
         [InlineData("{G}", "G")]
         [InlineData("{10}", "10")]
-        public void FindMana_SingleMana_SingleSymbol(string cost, string symbol)
+        public void FindMana_SingleMana_SingleSymbol(string cost, string mana)
         {
             var parsedSymbols = _cardText.FindMana(cost);
+            var parsedMana = parsedSymbols[0];
 
             Assert.Single(parsedSymbols);
-            Assert.Equal(symbol, parsedSymbols[0].Value);
+            Assert.Equal(mana, parsedMana.Value);
         }
 
 
@@ -79,8 +80,9 @@ namespace MTGViewer.Tests.Services
             var symbol = parsedSymbols[0];
 
             Assert.Single(parsedSymbols);
+
             Assert.Equal(direction, symbol.Direction);
-            Assert.Equal(symbol.Value, value);
+            Assert.Equal(value, symbol.Value);
         }
 
 
@@ -94,6 +96,7 @@ namespace MTGViewer.Tests.Services
             var symbol = parsedSymbols[0];
 
             Assert.Single(parsedSymbols);
+
             Assert.Equal(value, symbol.Value);
             Assert.False(symbol.HasNext);
         }
@@ -115,6 +118,23 @@ namespace MTGViewer.Tests.Services
 
             Assert.Equal("II", second.Value);
             Assert.False(second.HasNext);
+        }
+
+
+        [Fact]
+        public void SagaString_MultipleSymbols_MultipleSagas()
+        {
+            var symbols = new SagaSymbol[] 
+            { 
+                new(default, "I", true), new(default, "II", false)
+            };
+
+            var sagas = "I, II —";
+
+            var sagaStrings = symbols.Select(_cardText.SagaString);
+            var parsedSagas = string.Join(string.Empty, sagaStrings);
+
+            Assert.Equal(sagas, parsedSagas);
         }
     }
 }

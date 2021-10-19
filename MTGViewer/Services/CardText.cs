@@ -80,8 +80,8 @@ namespace MTGViewer.Services
 
                             var start = si.index; 
                             var end = hasNext
-                                ? si.index + si.saga.Length
-                                : m.Index + m.Length - si.index;
+                                ? si.index + si.saga.Length + separator.Length
+                                : m.Index + m.Length;
 
                             return new SagaSymbol(start..end, si.saga, hasNext);
                         });
@@ -94,7 +94,7 @@ namespace MTGViewer.Services
         {
             var indices = new List<int> { start };
 
-            foreach (var saga in sagas.Skip(1))
+            foreach (var saga in sagas.SkipLast(1))
             {
                 indices.Add( indices[^1] + saga.Length + separator.Length );
             }
@@ -119,9 +119,9 @@ namespace MTGViewer.Services
 
         public string SagaString(SagaSymbol symbol)
         {
-            var (_, saga, isFinal) = symbol;
+            var (_, saga, hasNext) = symbol;
 
-            return !isFinal ? $"{saga}, " : $"{saga} —";
+            return hasNext ? $"{saga}, " : $"{saga} —";
         }
     }
 }

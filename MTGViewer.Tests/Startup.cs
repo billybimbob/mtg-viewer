@@ -16,11 +16,6 @@ namespace MTGViewer.Tests
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddScoped<InMemoryConnection>();
-            services.AddSingleton<PageSizes>();
-
-            services.AddSymbols(options => options
-                .AddFormatter<CardText>()
-                .AddTranslator<ManaTranslator>());
 
             // services.AddDbContext<CardDbContext>(TestFactory.SqliteInMemory);
             // services.AddDbContext<UserDbContext>(TestFactory.SqliteInMemory);
@@ -28,13 +23,19 @@ namespace MTGViewer.Tests
             services.AddDbContext<CardDbContext>(TestFactory.InMemoryDatabase);
             services.AddDbContext<UserDbContext>(TestFactory.InMemoryDatabase);
 
+            services.AddScoped<ISharedStorage, ExpandableSharedService>();
             services.AddScoped<UserManager<CardUser>>(TestFactory.CardUserManager);
+
+            services.AddSingleton<PageSizes>();
+
+            services.AddSymbols(options => options
+                .AddFormatter<CardText>()
+                .AddTranslator<ManaTranslator>());
 
             services.AddSingleton<DataCacheService>();
             services.AddSingleton<MtgServiceProvider>();
             services.AddScoped<MTGFetchService>();
 
-            services.AddScoped<ISharedStorage, ExpandableSharedService>();
             services.AddScoped<JsonCardStorage>();
 
             services.AddScoped<CardDataGenerator>();

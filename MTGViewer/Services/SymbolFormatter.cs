@@ -40,6 +40,13 @@ namespace MTGViewer.Services
                 lastSymbol = symbol.Position.End.Value;
             }
 
+            int remaining = mtgText.Length - lastSymbol;
+
+            if (remaining > 0)
+            {
+                translation.Append(mtgText, lastSymbol, remaining);
+            }
+
             return translation.ToString();
         }
 
