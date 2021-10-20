@@ -38,7 +38,12 @@ namespace MTGViewer
             services.AddCardStorage(_config);
 
             services.AddSingleton<DataCacheService>();
-            services.AddSingleton<MtgServiceProvider>();
+            services.AddSingleton<IMtgServiceProvider, MtgServiceProvider>();
+
+            services.AddScoped<ICardService>(provider => provider
+                .GetRequiredService<IMtgServiceProvider>()
+                .GetCardService());
+
             services.AddScoped<MTGFetchService>();
 
             services.AddScoped<ISharedStorage, ExpandableSharedService>();

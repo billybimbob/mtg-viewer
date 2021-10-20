@@ -33,7 +33,12 @@ namespace MTGViewer.Tests
                 .AddTranslator<ManaTranslator>());
 
             services.AddSingleton<DataCacheService>();
-            services.AddSingleton<MtgServiceProvider>();
+            services.AddSingleton<IMtgServiceProvider, MtgServiceProvider>();
+
+            services.AddScoped<ICardService>(provider => provider
+                .GetRequiredService<IMtgServiceProvider>()
+                .GetCardService());
+
             services.AddScoped<MTGFetchService>();
 
             services.AddScoped<JsonCardStorage>();

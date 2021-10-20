@@ -22,18 +22,25 @@ namespace MTGViewer.Services
     {
         private readonly ICardService _service;
         private readonly DataCacheService _cache;
+
+        private readonly int _pageSize;
         private readonly ILogger<MTGFetchService> _logger;
+
         private bool _empty;
 
 
         public MTGFetchService(
-            MtgServiceProvider provider,
+            ICardService service,
             DataCacheService cache, 
+            PageSizes pageSizes,
             ILogger<MTGFetchService> logger)
         {
-            _service = provider.GetCardService();
+            _service = service;
             _cache = cache;
+
+            _pageSize = pageSizes.Default;
             _logger = logger;
+
             _empty = true;
         }
 
@@ -96,35 +103,46 @@ namespace MTGViewer.Services
 
 
 
-        public async Task<Card[]> SearchAsync()
+        public async Task<PagedList<Card>> SearchAsync(int page = 0)
         {
             if (_empty)
             {
-                return Array.Empty<Card>();
+                return PagedList<Card>.Empty;
             }
 
+            page = Math.Max(page, 0);
+
             var response = await _service
-                .Where(c => c.PageSize, 10) // TODO: make size param
+                .Where(c => c.PageSize, _pageSize)
+                .Where(c => c.Page, page + 1)
+                // .Where(c => c.OrderBy, "name") get error code 500 with this
                 .AllAsync();
 
             _empty = true;
 
-            var matches = LoggedUnwrap(response)?.AsEnumerable();
+            var matches = LoggedUnwrap(response) ?? Enumerable.Empty<ICard>();
 
-            matches ??= Enumerable.Empty<ICard>();
+            if (!matches.Any())
+            {
+                return PagedList<Card>.Empty;
+            }
+
+            var pages = new Data.Pages(page, response.PagingInfo.TotalPages);
 
             var cards = matches
                 .Select(c => c.ToCard())
                 .Where(c => TestValid(c) is not null)
-                .OrderBy(c => c.Name)
-                .ToArray();
+                .GroupBy(c => c.MultiverseId, (_, cards) => cards.First())
+                .ToList();
+
+            // adventure cards have multiple entries with the same multiId
 
             foreach (var card in cards)
             {
                 _cache[card.MultiverseId] = card;
             }
 
-            return cards;
+            return new PagedList<Card>(pages, cards);
         }
 
 
@@ -192,18 +210,21 @@ namespace MTGViewer.Services
 
 
 
-        public async Task<Card[]> MatchAsync(Card search)
+        public async Task<PagedList<Card>> MatchAsync(Card search, int page = 0)
         {
             if (search.MultiverseId is not null)
             {
                 var card = await FindAsync(search.MultiverseId);
 
                 return card is null
-                    ? Array.Empty<Card>() : new []{ card };
+                    ? PagedList<Card>.Empty
+
+                    : new PagedList<Card>(
+                        new Data.Pages(0, 1), new List<Card>{ card });
             }
             else
             {
-                foreach (var info in search.GetType().GetProperties())
+                foreach (var info in typeof(Card).GetProperties())
                 {
                     if (info?.GetGetMethod() is not null
                         && info?.GetSetMethod() is not null)
@@ -212,7 +233,7 @@ namespace MTGViewer.Services
                     }
                 }
 
-                return await SearchAsync();
+                return await SearchAsync(page);
             }
         }
 
@@ -225,52 +246,49 @@ namespace MTGViewer.Services
             result.IsSuccess ? result.Value : null;
 
     
-        internal static Card ToCard(this ICard card)
+        internal static Card ToCard(this ICard card) => new Card
         {
-            return new Card
-            {
-                Id = card.Id, // id should be valid
-                MultiverseId = card.MultiverseId,
+            Id = card.Id, // id should be valid
+            MultiverseId = card.MultiverseId,
 
-                Name = card.Name,
-                Names = (card.Names?.Select(s => new Name(s))
-                    ?? Enumerable.Empty<Name>())
-                    .ToList(),
+            Name = card.Name,
+            Names = (card.Names?.Select(s => new Name(s))
+                ?? Enumerable.Empty<Name>())
+                .ToList(),
 
-                Layout = card.Layout,
+            Layout = card.Layout,
 
-                Colors = (card.Colors?.Select(s => new Color(s))
-                    ?? Enumerable.Empty<Color>())
-                    .ToList(),
+            Colors = (card.Colors?.Select(s => new Color(s))
+                ?? Enumerable.Empty<Color>())
+                .ToList(),
 
-                Types = (card.Types?.Select(s => new Data.Type(s))
-                    ?? Enumerable.Empty<Data.Type>())
-                    .ToList(),
+            Types = (card.Types?.Select(s => new Data.Type(s))
+                ?? Enumerable.Empty<Data.Type>())
+                .ToList(),
 
-                SubTypes = (card.SubTypes?.Select(s => new SubType(s))
-                    ?? Enumerable.Empty<SubType>())
-                    .ToList(),
+            Subtypes = (card.SubTypes?.Select(s => new Subtype(s))
+                ?? Enumerable.Empty<Subtype>())
+                .ToList(),
 
-                SuperTypes = (card.SuperTypes?.Select(s => new SuperType(s))
-                    ?? Enumerable.Empty<SuperType>())
-                    .ToList(),
+            Supertypes = (card.SuperTypes?.Select(s => new Supertype(s))
+                ?? Enumerable.Empty<Supertype>())
+                .ToList(),
 
-                ManaCost = card.ManaCost,
-                Cmc = (int?)card.Cmc ?? default,
+            ManaCost = card.ManaCost,
+            Cmc = (int?)card.Cmc ?? default,
 
-                Rarity = card.Rarity,
-                SetName = card.SetName,
-                Artist = card.Artist,
+            Rarity = card.Rarity,
+            SetName = card.SetName,
+            Artist = card.Artist,
 
-                Text = card.Text,
-                Flavor = card.Flavor,
+            Text = card.Text,
+            Flavor = card.Flavor,
 
-                Power = card.Power,
-                Toughness = card.Toughness,
-                Loyalty = card.Loyalty,
-                ImageUrl = card.ImageUrl?.ToString()
-            };
-        }
+            Power = card.Power,
+            Toughness = card.Toughness,
+            Loyalty = card.Loyalty,
+            ImageUrl = card.ImageUrl?.ToString()
+        };
     }
 
 }

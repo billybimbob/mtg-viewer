@@ -12,8 +12,6 @@ namespace MTGViewer.Data
     [Index(nameof(Name), nameof(ManaCost))]
     public class Card
     {
-        // not sure about the sha length range
-        [RegularExpression(@"^[a-fA-F0-9-]{1,40}")]
         [Required]
         public string Id { get; init; } = null!;
 
@@ -41,11 +39,11 @@ namespace MTGViewer.Data
         public List<Color> Colors { get; init; } = new();
 
 
-        public List<SuperType> SuperTypes { get; init; } = new();
+        public List<Supertype> Supertypes { get; init; } = new();
 
         public List<Type> Types { get; init; } = new();
 
-        public List<SubType> SubTypes { get; init; } = new();
+        public List<Subtype> Subtypes { get; init; } = new();
 
 
         [Required]

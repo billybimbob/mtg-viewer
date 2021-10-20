@@ -41,9 +41,9 @@ namespace MTGViewer.Pages.Cards
             IsSignedIn = _signInManager.IsSignedIn(User);
 
             Card = await _dbContext.Cards
-                .Include(c => c.SuperTypes)
+                .Include(c => c.Supertypes)
                 .Include(c => c.Types)
-                .Include(c => c.SubTypes)
+                .Include(c => c.Subtypes)
                 .AsSplitQuery()
                 .SingleOrDefaultAsync(c => c.Id == id);
 

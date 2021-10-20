@@ -24,7 +24,7 @@ namespace MTGViewer.Services
         }
 
 
-        private int Default { get; }
+        public int Default { get; }
         public int Limit { get; }
 
 

@@ -39,9 +39,9 @@ namespace MTGViewer.Pages.Cards
             }
 
             Card = await _dbContext.Cards
-                .Include(c => c.SuperTypes)
+                .Include(c => c.Supertypes)
                 .Include(c => c.Types)
-                .Include(c => c.SubTypes)
+                .Include(c => c.Subtypes)
                 .Include(c => c.Amounts
                     .OrderBy(ca => ca.Location.Name))
                     .ThenInclude(ca => ca.Location)

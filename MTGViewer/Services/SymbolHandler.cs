@@ -90,6 +90,7 @@ namespace MTGViewer.Services
             {
                 IEnumerator<Symbol> first = currentSymbols.First();
 
+                // not skipping since hashset iter order is not defined
                 foreach (var iter in currentSymbols)
                 {
                     var iterPosition = iter.Current.Position.Start.Value;

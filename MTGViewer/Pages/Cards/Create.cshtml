@@ -7,7 +7,6 @@
 
 
 <h1>Add New Card</h1>
-<hr />
 
 @if (!string.IsNullOrEmpty(Model.ErrorMessage))
 {
@@ -16,80 +15,106 @@
     </div>
 }
 
-<div class="row">
-    <div class="col-md-4">
-        <form method="POST">
+<form method="POST">
+    @if(Model.Matches?.Any() ?? false)
+    {
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>
+                        @Html.DisplayNameForInnerType((Card c) => c.Name)
+                    </th>
+                    <th>
+                        @Html.DisplayNameForInnerType((Card c) => c.ManaCost)
+                    </th>
+                    <th>
+                        @Html.DisplayNameForInnerType((Card c) => c.Rarity)
+                    </th>
+                    <th>
+                        @Html.DisplayNameForInnerType((Card c) => c.SetName)
+                    </th>
+                    <th>
+                        @Html.DisplayNameForInnerType(
+                            (CreateModel.AmountModel a) => a.Amount)
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+                @for(int i = 0; i < Model.Matches.Count; ++i)
+                {
+                    var card = Model.Matches[i];
+                    <tr>
+                        <td> 
+                            <input type="hidden" asp-for="Matches[i].Name" />
+                            <input type="hidden" asp-for="Matches[i].MultiverseId"/>
+                            @Html.DisplayFor(_ => card.Name) 
+                        </td>
 
-            @if(Model.Matches is not null && Model.Matches.Any())
+                        <td> 
+                            <input type="hidden" asp-for="Matches[i].ManaCost" />
+                            @MtgSymbols.Format(card.ManaCost).ToHtmlString() 
+                        </td>
+
+                        <td> 
+                            <input type="hidden" asp-for="Matches[i].Rarity" />
+                            @Html.DisplayFor(_ => card.Rarity) 
+                        </td>
+                        <td> 
+                            <input type="hidden" asp-for="Matches[i].SetName" />
+                            @Html.DisplayFor(_ => card.SetName) 
+                        </td>
+
+                        <td>
+                            <input asp-for="Amounts[i].Id"/>
+                            <input asp-for="Amounts[i].Amount" class="form-control w-50" />
+                            <span asp-validation-for="Amounts[i].Amount" class="text-danger"></span>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        <div class="form-group">
+            @if (Model.HasMore)
             {
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>
-                                @Html.DisplayNameForInnerType((Card c) => c.Name)
-                            </th>
-                            <th>
-                                @Html.DisplayNameForInnerType((Card c) => c.ManaCost)
-                            </th>
-                            <th>
-                                @Html.DisplayNameForInnerType((Card c) => c.Rarity)
-                            </th>
-                            <th>
-                                @Html.DisplayNameForInnerType((Card c) => c.SetName)
-                            </th>
-                            <th>
-                                @Html.DisplayNameForInnerType(
-                                    (CreateModel.AmountModel a) => a.Amount)
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @for(int i = 0; i < Model.Matches.Count; ++i)
-                        {
-                            var card = Model.Matches[i];
-                            <tr>
-                                <td>
-                                    @Html.DisplayFor(_ => card.Name)
-                                    <input type="hidden" asp-for="Matches[i].Name"/>
-                                </td>
-                                <td>
-                                    @(MtgSymbols.Format(card.ManaCost).ToHtmlString())
-                                    <input type="hidden" asp-for="Matches[i].ManaCost"/>
-                                </td>
-                                <td>
-                                    @Html.DisplayFor(_ => card.Rarity)
-                                    <input type="hidden" asp-for="Matches[i].Rarity"/>
-                                </td>
-                                <td>
-                                    @Html.DisplayFor(_ => card.SetName)
-                                    <input type="hidden" asp-for="Matches[i].SetName"/>
-                                </td>
-                                <td>
-                                    <input type="hidden" asp-for="Matches[i].MultiverseId"/>
+                <input asp-for="MatchPages.Current" />
+                <input asp-for="MatchPages.Total" />
 
-                                    <input asp-for="Amounts[i].Id"/>
-                                    <input asp-for="Amounts[i].Amount"/>
-                                    <span asp-validation-for="Amounts[i].Amount" class="text-danger"></span>
-                                </td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
+                <input type="hidden" asp-for="Card.Name" />
+                <input type="hidden" asp-for="Card.ManaCost" />
+                <input type="hidden" asp-for="Card.Cmc" />
+                <input type="hidden" asp-for="Card.Rarity" />
+                <input type="hidden" asp-for="Card.SetName" />
+                <input type="hidden" asp-for="Card.Artist" />
+                <input type="hidden" asp-for="Card.Power" />
+                <input type="hidden" asp-for="Card.Toughness" />
+                <input type="hidden" asp-for="Card.Loyalty" />
 
-                <div class="form-group">
-                    <input type="submit"
-                           asp-page-handler="Amounts"
-                           class="btn btn-secondary"
-                           value="Add" />
-
-                    <a asp-page="Create"
-                       class="btn btn-secondary">
-                       Reset
-                    </a>
-                </div>
+                <input type="submit"
+                    asp-page-handler="Card"
+                    asp-route-pageIndex="@(Model.MatchPages.Current + 1)"
+                    class="btn btn-secondary"
+                    value="Load More" />
             }
-            else
-            {
+        </div>
+
+        <div class="form-group">
+            <input type="submit"
+                asp-page-handler="Amounts"
+                class="btn btn-secondary"
+                value="Add" />
+
+            <a asp-page="Create"
+                class="btn btn-secondary">
+                Reset </a>
+        </div>
+    }
+    else
+    {
+        <hr />
+        <div class="row">
+            <div class="col-md-4">
+
                 <div class="form-group">
                     <label asp-for="Card.Name" class="control-label"></label>
                     <input asp-for="Card.Name" class="form-control" />
@@ -129,14 +154,14 @@
 
                 <div class="form-group">
                     <input type="submit"
-                           asp-page-handler="Card"
-                           class="btn btn-secondary"
-                           value="Search" />
+                        asp-page-handler="Card"
+                        class="btn btn-secondary"
+                        value="Search" />
                 </div>
-            }
-        </form>
-    </div>
-</div>
+            </div>
+        </div>
+    }
+</form>
 
 @* @section Scripts {
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}

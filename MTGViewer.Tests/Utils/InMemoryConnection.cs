@@ -8,43 +8,37 @@ namespace MTGViewer.Tests.Utils
 {
     public sealed class InMemoryConnection : IAsyncDisposable, IDisposable
     {
-        private SqliteConnection _connection;
-        private string _database;
-
-        public DbConnection Connection
+        private readonly Lazy<SqliteConnection> _connection = new(() =>
         {
-            get
-            {
-                if (_connection is null)
-                {
-                    _connection = new("Filename=:memory:");
-                    _connection.Open();
-                }
+            var conn = new SqliteConnection("Filename=:memory:");
+            conn.Open();
+            return conn;
+        });
 
-                return _connection;
-            }
-        }
+        private readonly Lazy<string> _database = new(() => 
+            "Test-Database-" + Guid.NewGuid());
 
-        public string Database
-        {
-            get
-            {
-                _database ??= "Test-Database-" + Guid.NewGuid();
 
-                return _database;
-            }
-        }
+        public DbConnection Connection => _connection.Value;
+
+        public string Database => _database.Value;
 
 
         public async ValueTask DisposeAsync()
         {
-            if (_connection is not null)
+            if (_connection.IsValueCreated)
             {
-                await _connection.DisposeAsync();
+                await _connection.Value.DisposeAsync();
             }
         }
 
 
-        public void Dispose() => _connection?.Dispose();
+        public void Dispose()
+        {
+            if (_connection.IsValueCreated)
+            {
+                _connection.Value.Dispose();
+            }
+        }
     }
 }

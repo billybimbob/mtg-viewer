@@ -51,9 +51,9 @@ namespace MTGViewer.Data
     }
 
 
-    public class SuperType
+    public class Supertype
     {
-        public SuperType(string name)
+        public Supertype(string name)
         {
             Name = name;
         }
@@ -87,9 +87,9 @@ namespace MTGViewer.Data
     }
 
 
-    public class SubType
+    public class Subtype
     {
-        public SubType(string name)
+        public Subtype(string name)
         {
             Name = name;
         }

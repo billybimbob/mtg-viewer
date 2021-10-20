@@ -12,7 +12,6 @@ using Newtonsoft.Json;
 using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
 
-
 namespace MTGViewer.Services
 {
     public readonly struct JsonWriteOptions
@@ -178,8 +177,8 @@ namespace MTGViewer.Services
                 Cards = await dbContext.Cards
                     .Include(c => c.Colors)
                     .Include(c => c.Types)
-                    .Include(c => c.SubTypes)
-                    .Include(c => c.SuperTypes)
+                    .Include(c => c.Subtypes)
+                    .Include(c => c.Supertypes)
                     .AsSplitQuery()
                     .AsNoTrackingWithIdentityResolution()
                     .ToListAsync(cancel),

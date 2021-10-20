@@ -39,10 +39,15 @@ namespace MTGViewer.Pages.Cards
         }
 
 
-        public string ErrorMessage { get; private set; }
+        public class PagesModel
+        {
+            [HiddenInput]
+            public int Current { get; set; }
 
-        [BindProperty]
-        public Card Card { get; set; }
+            [HiddenInput]
+            public int Total { get; set; }
+        }
+
 
         public class AmountModel
         {
@@ -53,11 +58,23 @@ namespace MTGViewer.Pages.Cards
             public int Amount { get; set; }
         }
 
-        [BindProperty]
-        public IReadOnlyList<Card> Matches { get; set; }
+
+        public string ErrorMessage { get; private set; }
+
 
         [BindProperty]
-        public IReadOnlyList<AmountModel> Amounts { get; set; }
+        public Card Card { get; set; }
+
+        [BindProperty]
+        public List<Card> Matches { get; set; }
+
+        [BindProperty]
+        public PagesModel MatchPages { get; set; }
+
+        [BindProperty]
+        public List<AmountModel> Amounts { get; set; }
+
+        public bool HasMore { get; set; }
 
 
         public void OnGet()
@@ -65,22 +82,28 @@ namespace MTGViewer.Pages.Cards
 
 
         // To protect from overposting attacks, see https://aka.ms/RazorPagesCRUD
-        public async Task OnPostCardAsync()
+        public async Task OnPostCardAsync(int pageIndex)
         {
-            Matches = await _mtgFetch.MatchAsync(Card);
+            var matches = await _mtgFetch.MatchAsync(Card, pageIndex);
+
+            if (matches.Any())
+            {
+                MatchPages.Current = matches.Pages.Current;
+                MatchPages.Total = matches.Pages.Total;
+
+                HasMore = true;
+            }
+
+            var newAmounts = matches.Select(m => new AmountModel{ Id = m.MultiverseId });
+
+            Matches.AddRange(matches);
+            Amounts.AddRange(newAmounts);
 
             if (!Matches.Any())
             {
                 ErrorMessage = "No Matches were found";
             }
-            else
-            {
-                Amounts = Matches
-                    .Select(m => new AmountModel{ Id = m.MultiverseId })
-                    .ToList();
-            }
         }
-
 
 
         public async Task<IActionResult> OnPostAmountsAsync()
