@@ -77,7 +77,7 @@ namespace MTGViewer.Services
         private bool InvalidReturns(IEnumerable<CardReturn> returns)
         {
             return !returns.Any() 
-                || returns.Any(cn => cn.Card == null || cn.NumCopies <= 0);
+                || returns.Any(cr => cr.Card == null || cr.NumCopies <= 0);
         }
 
 
@@ -87,6 +87,7 @@ namespace MTGViewer.Services
         {
             var returnIds = returning
                 .Select(cr => cr.Card.Id)
+                .Distinct()
                 .ToArray();
 
             var returnAmounts = await _dbContext.Amounts
@@ -96,6 +97,7 @@ namespace MTGViewer.Services
 
             if (!returnAmounts.Any())
             {
+                // intentionally make new copy
                 return returning.ToList();
             }
 
@@ -158,8 +160,7 @@ namespace MTGViewer.Services
         {
             return await _dbContext.Boxes
                 .OrderBy(s => s.Id)
-                    // unbounded: keep eye on
-                .ToListAsync();
+                .ToListAsync(); // unbounded: keep eye on
         }
 
 
@@ -186,8 +187,8 @@ namespace MTGViewer.Services
             {
                 var amountIndex = FindAmountIndex(sortedSharedAmounts, card);
                 var cardIndex = cardIndices.ElementAtOrDefault(amountIndex);
-                var boxIndex = Math.Min(cardIndex / _boxSize, sortedBoxes.Count - 1);
 
+                var boxIndex = Math.Min(cardIndex / _boxSize, sortedBoxes.Count - 1);
                 var box = sortedBoxes[boxIndex];
 
                 var newSpot = new CardAmount

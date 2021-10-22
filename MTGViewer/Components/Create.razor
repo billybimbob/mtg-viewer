@@ -1,0 +1,451 @@
+@using System.Text.RegularExpressions
+@using Microsoft.Extensions.DependencyInjection
+@namespace MTGViewer.Components
+
+@inherits OwningComponentBase
+@implements IDisposable
+
+@inject SymbolFormatter MtgSymbols
+@inject NavigationManager Nav
+
+
+<h1>Add New Card</h1>
+
+@if (!_matches.Any())
+{
+    <hr />
+    <div class="row">
+        <div class="col-md-4">
+            <EditForm EditContext="@_searchEdit" OnSubmit="@SearchForCardAsync">
+                <ValidationSummary />
+
+                <div class="form-group">
+                    @foreach (var (color, symbol) in Color.Symbols)
+                    {
+                        var toggleId = $"{color}Toggle";
+                        var active = _pickedColors.Contains(color) ? "active" : string.Empty;
+
+                        <button title="@toggleId"
+                            type="button"
+                            class="btn btn-outline-secondary border-0 rounded @active"
+                            @onclick="() => ColorToggle(color)">
+                            <i class="ms ms-@symbol.ToLower() ms-cost"></i>
+                        </button>
+
+                        @* <div class="form-check form-check-inline">
+
+                            <input id="@toggleId"
+                                type="checkbox" 
+                                checked="@_search.Colors.Contains(color)"
+                                @onchange="() => ColorToggle(color)"
+                                class="form-check-input" />
+
+                            <label class="form-check-label" for="@toggleId">
+                                <i class="ms ms-@symbol ms-cost"></i>
+                            </label>
+                        </div> *@
+                    }
+                </div>
+
+                <div class="form-group">
+                    <InputText @bind-Value="_search.Name" 
+                        placeholder="@_search.DisplayName(c => c.Name)" 
+                        class="form-control" />
+                </div>
+
+                <div class="form-group">
+                    <InputNumber @bind-Value="_search.Cmc" min="0"
+                        placeholder="@_search.DisplayName(c => c.Cmc)" 
+                        class="form-control" />
+                </div>
+
+                <div class="form-group">
+                    <InputText @bind-Value="_search.Rarity" 
+                        placeholder="@_search.DisplayName(c => c.Rarity)" 
+                        class="form-control" />
+                </div>
+
+                <div class="form-group">
+                    <InputText @bind-Value="_search.SetName" 
+                        placeholder="@_search.DisplayName(c => c.SetName)" 
+                        class="form-control" />
+                </div>
+
+                <div class="form-group">
+                    <input value="@_supertypes" 
+                        @onchange="e => UpdateTypeString(e, ref _supertypes)"
+                        placeholder="@_search.DisplayName(c => c.Supertypes)"
+                        class="form-control" />
+                </div>
+
+                <div class="form-group">
+                    <input value="@_types" 
+                        @onchange="e => UpdateTypeString(e, ref _types)"
+                        placeholder="@_search.DisplayName(c => c.Types)"
+                        class="form-control" />
+                </div>
+
+                <div class="form-group">
+                    <input value="@_subtypes"
+                        @onchange="e => UpdateTypeString(e, ref _subtypes)"
+                        placeholder="@_search.DisplayName(c => c.Subtypes)"
+                        class="form-control" />
+                </div>
+
+                <div class="form-group">
+                    <InputText @bind-Value="_search.Artist" 
+                        placeholder="@_search.DisplayName(c => c.Artist)" 
+                        class="form-control" />
+                </div>
+
+                <div class="form-group">
+                    <InputText @bind-Value="_search.Power" 
+                        placeholder="@_search.DisplayName(c => c.Power)" 
+                        class="form-control" />
+                </div>
+
+                <div class="form-group">
+                    <InputText @bind-Value="_search.Toughness" 
+                        placeholder="@_search.DisplayName(c => c.Toughness)" 
+                        class="form-control" />
+                </div>
+
+                <div class="form-group">
+                    <InputText @bind-Value="_search.Loyalty" 
+                        placeholder="@_search.DisplayName(c => c.Loyalty)" 
+                        class="form-control" />
+                </div>
+
+                <div class="form-group">
+                    <button type="submit" class="btn btn-secondary"> Search </button>
+
+                    <button type="button" class="btn btn-secondary" title="Reset" 
+                        @onclick="Reset"> Reset </button>
+                </div>
+            </EditForm>
+        </div>
+    </div>
+}
+else
+{
+    <div class="form-group">
+        <button title="Add Button" type="button"
+            @onclick="AddNewCardsAsync" 
+            disabled="@CannotAdd" class="btn btn-secondary">
+            Add Cards/Amounts </button>
+
+        <button title="Reset Button" type="button"
+            @onclick="Reset" class="btn btn-secondary">
+            Reset </button>
+    </div>
+
+    <table class="table">
+        <thead>
+            <th> @_search.DisplayName(c => c.Name) </th>
+            <th> @_search.DisplayName(c => c.ManaCost) </th>
+            <th> @_search.DisplayName(c => c.Rarity) </th>
+            <th> @_search.DisplayName(c => c.SetName) </th>
+            <th> Amount </th>
+        </thead>
+        <tbody>
+            @foreach (var (match, amount) in _matches)
+            {
+                <tr>
+                    <td> @match.Name </td>
+                    <td> @MtgSymbols.Format(match.ManaCost).ToMarkupString() </td>
+                    <td> @match.Rarity </td>
+                    <td> @match.SetName </td>
+                    <td>
+                        <input title="@match.Name Amount" 
+                            type="number" min="0" value="@amount" 
+                            @onchange="e => UpdateAmount(e, match)"
+                            class="form-control w-50" />
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <div class="form-group">
+        <button title="More Results" type="button"
+            @onclick="SearchForCardAsync" 
+            disabled="@(!HasMore)" class="btn btn-secondary">
+            Load More</button>
+    </div>
+}
+
+
+@code {
+    private bool HasMore => _nextPage >= 0;
+
+    private bool CannotAdd => _matches.All(kv => kv.Value <= 0);
+
+
+    private bool _isBusy;
+    private readonly HashSet<string> _pickedColors = new();
+
+    private string _types;
+    private string _subtypes;
+    private string _supertypes;
+
+    private readonly Card _search = new();
+    private EditContext _searchEdit;
+    private ValidationMessageStore _resultErrors;
+
+    private readonly Dictionary<Card, int> _matches = new();
+    private int _nextPage;
+
+
+    protected override void OnInitialized()
+    {
+        Reset();
+
+        _searchEdit = new(_search);
+        _resultErrors = new(_searchEdit);
+
+        _searchEdit.OnFieldChanged += ClearErrors;
+    }
+
+
+    public void Dispose()
+    {
+        _searchEdit.OnFieldChanged -= ClearErrors;
+    }
+
+
+    private void ClearErrors(object sender, EventArgs args)
+    {
+        _resultErrors.Clear();
+        _searchEdit.NotifyValidationStateChanged();
+    }
+
+
+    private void ColorToggle(string color)
+    {
+        var isChecked = _pickedColors.Contains(color);
+
+        if (_pickedColors.Contains(color))
+        {
+            _pickedColors.Remove(color);
+        }
+        else
+        {
+            _pickedColors.Add(color);
+        }
+    }
+
+
+    private void UpdateTypeString(ChangeEventArgs args, ref string typeString)
+    {
+        ClearErrors(null, args);
+        typeString = args.Value.ToString();
+    }
+
+
+    private async Task SearchForCardAsync()
+    {
+        if (!HasMore)
+        {
+            return;
+        }
+
+        if (_isBusy)
+        {
+            return;
+        }
+
+        var fetch = ScopedServices.GetRequiredService<MTGFetchService>();
+
+        _isBusy = true;
+
+        try
+        {
+            PrepareCardSearch();
+
+            var result = await fetch.MatchAsync(_search, _nextPage);
+
+            foreach (var match in result)
+            {
+                _matches.Add(match, 0);
+            }
+
+            if (!_matches.Any())
+            {
+                var idField = _searchEdit.Field(nameof(Card.Id));
+                var noMatch = new []{ "No matches were found" };
+
+                _resultErrors.Add(idField, noMatch);
+                _searchEdit.NotifyValidationStateChanged();
+            }
+            else if (result.Any())
+            {
+                _nextPage++;
+            }
+            else
+            {
+                _nextPage = -1;
+            }
+        }
+        finally
+        {
+            _isBusy = false;
+        }
+    }
+
+
+    private void PrepareCardSearch()
+    {
+        _search.Colors.Clear();
+
+        _search.Types.Clear();
+        _search.Subtypes.Clear();
+        _search.Supertypes.Clear();
+
+        _search.Colors.AddRange(
+            _pickedColors.Select(c => new Color(c)) );
+
+        _search.Types.AddRange( 
+            ParseTypeString(_types, ty => new Data.Type(ty)) );
+
+        _search.Subtypes.AddRange( 
+            ParseTypeString(_subtypes, sb => new Subtype(sb)) );
+
+        _search.Supertypes.AddRange( 
+            ParseTypeString(_supertypes, sp => new Supertype(sp)) );
+    }
+
+
+    private IEnumerable<T> ParseTypeString<T>(string typeString, Func<string, T> typeFactory)
+    {
+        const StringSplitOptions orOptions = StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries;
+        const char or = '|';
+        const string and = @"[\s,]+";
+
+        var orSplits = typeString.Split(or, orOptions);
+
+        if (orSplits.Length == 1)
+        {
+            return Regex
+                .Split(typeString, and)
+                .Select(typeFactory);
+        }
+
+        var filterOutAnds = orSplits.Where(s => !Regex.IsMatch(s, and));
+        var orValues = string.Join(or, filterOutAnds);
+
+        return new []{ typeFactory(orValues) };
+    }
+
+
+    private void UpdateAmount(ChangeEventArgs args, Card card)
+    {
+        if (int.TryParse(args.Value.ToString(), out int newAmount)
+            && newAmount >= 0)
+        {
+            _matches[card] = newAmount;
+        }
+    }
+
+
+    private void Reset()
+    {
+        _pickedColors.Clear();
+
+        _types = string.Empty;
+        _subtypes = string.Empty;
+        _supertypes = string.Empty;
+
+        _matches.Clear();
+        _nextPage = 0;
+
+        _search.Reset();
+
+        @* _search.Name = default;
+        _search.Cmc = default;
+        _search.Rarity = default;
+        _search.SetName = default;
+        _search.Artist = default;
+        _search.Power = default;
+        _search.Toughness = default;
+        _search.Loyalty = default; *@
+    }
+
+
+    private async Task AddNewCardsAsync()
+    {
+        var addedAmounts = _matches
+            .Where(kv => kv.Value > 0)
+            .Select(kv => (card: kv.Key, amount: kv.Value))
+            .ToList();
+
+        if (!addedAmounts.Any())
+        {
+            return;
+        }
+
+        if (_isBusy)
+        {
+            return;
+        }
+
+        var logger = ScopedServices.GetRequiredService<ILogger<Create>>();
+
+        _isBusy = true;
+
+        try
+        {
+            await SaveNewCardsAsync(addedAmounts.Select(ca => ca.card));
+
+            await AddAmountsAsync(addedAmounts);
+
+            Nav.NavigateTo("/Cards", true);
+        }
+        catch (DbUpdateException e)
+        {
+            logger.LogError($"failed to add new cards {e}");
+        }
+        finally
+        {
+            _isBusy = false;
+        }
+    }
+
+
+    private async Task SaveNewCardsAsync(IEnumerable<Card> cards)
+    {
+        var dbContext = ScopedServices.GetRequiredService<CardDbContext>();
+
+        var cardIds = cards.Select(c => c.Id).ToArray();
+
+        var existingIds = (await dbContext.Cards
+            .Select(c => c.Id)
+            .Where(cid => cardIds.Contains(cid))
+            .ToListAsync())
+            .AsEnumerable();
+
+        if (!existingIds.Any())
+        {
+            return;
+        }
+
+        existingIds = existingIds.ToHashSet();
+
+        var newCards = cards.Where(c => !existingIds.Contains(c.Id));
+
+        dbContext.Cards.AddRange(newCards);
+
+        await dbContext.SaveChangesAsync();
+    }
+
+
+    private async Task AddAmountsAsync(IEnumerable<(Card card, int amount)> newAmounts)
+    {
+        var sharedStorage = ScopedServices.GetRequiredService<ISharedStorage>();
+
+        var returns = newAmounts
+            .Select(ca => new CardReturn(ca.card, ca.amount))
+            .ToList();
+
+        await sharedStorage.ReturnAsync(returns);
+    }
+}

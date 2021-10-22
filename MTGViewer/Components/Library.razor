@@ -3,6 +3,7 @@
 @using System.Linq.Expressions
 
 @namespace MTGViewer.Components
+@implements IDisposable
 
 @inject IDbContextFactory<CardDbContext> DbFactory
 @inject SymbolFormatter MtgSymbols
@@ -14,15 +15,16 @@
     <a class="btn btn-secondary" href="Cards/Create">Add Card</a>
     <a class="btn btn-secondary" href="Boxes/">Shared Collection</a>
 
-    <button class="btn btn-secondary" 
-        @onclick="() => RefreshCardsAsync()" > 
+    <button class="btn btn-secondary" @onclick="RefreshCardsAsync"> 
         Refresh </button>
 </div>
 
-<div class="my-3">
-    <input class="formcontrol" placeholder="Name" @onchange="SearchName" />
+<div class="form-row align-items-center my-3">
+    <div class="col-3">
+        <input class="form-control" placeholder="Name" @oninput="SearchName" />
+    </div>
 
-    <div class="btn-group" role="group" aria-label="Color Buttons">
+    <div class="col-auto btn-group" role="group" aria-label="Color Buttons">
         @foreach (var (color, symbol) in Color.Symbols)
         {
             var active = _colorFilter.Contains(color) ? "active" : "";
@@ -160,6 +162,8 @@
 
 
     private bool _isBusy;
+    private readonly CancellationTokenSource _cancel = new();
+
     private IReadOnlyList<Card> _dbCards;
     private IReadOnlyDictionary<string, int> _cardAmounts;
 
@@ -188,6 +192,12 @@
     protected override async Task OnInitializedAsync()
     {
         await FetchCardsAsync();
+
+        if (_cancel.IsCancellationRequested)
+        {
+            return;
+        }
+
         await base.OnInitializedAsync();
     }
 
@@ -204,6 +214,12 @@
     }
 
 
+    public void Dispose()
+    {
+        _cancel.Cancel();
+    }
+
+
     private async Task FetchCardsAsync()
     {
         if (_isBusy)
@@ -212,20 +228,26 @@
         }
 
         _isBusy = true;
+
         try
         {
             await using var dbContext = DbFactory.CreateDbContext();
 
             _dbCards = await dbContext.Cards
                 .Include(c => c.Colors)
-                .ToListAsync(); // unbounded, keep eye on
+                .ToListAsync(_cancel.Token); // unbounded, keep eye on
+
+            if (_cancel.IsCancellationRequested)
+            {
+                return;
+            }
 
             _cardAmounts = await dbContext.Amounts
                 .GroupBy( ca => ca.CardId,
                     (CardId, cas) =>
                         new { CardId, Total = cas.Sum(ca => ca.Amount) })
-
-                .ToDictionaryAsync(ct => ct.CardId, ct => ct.Total);
+                .ToDictionaryAsync(
+                    ct => ct.CardId, ct => ct.Total, _cancel.Token);
         }
         finally
         {
@@ -358,7 +380,11 @@
     {
         await FetchCardsAsync();
 
-        // keep current filters
-        FilterCards();
+        if (_cancel.IsCancellationRequested)
+        {
+            return;
+        }
+
+        FilterCards(); // keep current filters
     }
 }

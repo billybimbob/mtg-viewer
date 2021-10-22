@@ -37,7 +37,8 @@ namespace MTGViewer.Pages.Decks
 
             if (id is int deckId)
             {
-                var deck = await DeckForBuilder(deckId, UserId).SingleOrDefaultAsync();
+                var deck = await DeckForBuilder(deckId, UserId)
+                    .SingleOrDefaultAsync();
 
                 if (deck == default)
                 {

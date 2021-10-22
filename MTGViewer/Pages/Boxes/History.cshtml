@@ -28,9 +28,10 @@
         @foreach (var (transaction, from, to, changes) in Model.Transfers)
         {
             var firstChange = changes.First(); // guranteed >= 1 changes
+            var isFirstTransfer = Model.IsFirstTransfer.Contains( (transaction.Id, from?.Id, to.Id) );
 
             <tr>
-                @if (Model.IsFirstTransfer.Contains( (transaction.Id, from?.Id, to.Id) ))
+                @if (isFirstTransfer)
                 {
                     <td rowspan="@transaction.Changes.Count"> @transaction.AppliedAt </td>
                 }
@@ -44,9 +45,7 @@
                 </td>
                 <td> @firstChange.Amount </td>
 
-                @if (Model.IsSignedIn
-                    && Model.IsFirstTransfer.Contains( (transaction.Id, from?.Id, to.Id) )
-                    && Model.IsSharedTransaction.Contains(transaction.Id))
+                @if (Model.IsSignedIn && isFirstTransfer && Model.IsSharedTransaction.Contains(transaction.Id))
                 {
                     <td rowspan="@transaction.Changes.Count">
                         <form method="POST">

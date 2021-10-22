@@ -42,6 +42,7 @@ namespace MTGViewer.Data
             modelBuilder
                 .SelectConcurrencyToken(Database)
 
+                .ApplyConfiguration(new CardConfiguration())
                 .ApplyConfiguration(new LocationConfiguration())
 
                 .ApplyConfiguration(new DeckConfiguration())
@@ -57,17 +58,32 @@ namespace MTGViewer.Data
 
 
 
-    // internal class CardConfiguration : IEntityTypeConfiguration<Card>
-    // {
-    //     public void Configure(EntityTypeBuilder<Card> builder)
-    //     {
-    //         builder.OwnsMany(c => c.Names);
-    //         builder.OwnsMany(c => c.Colors);
-    //         builder.OwnsMany(c => c.SuperTypes);
-    //         builder.OwnsMany(c => c.Types);
-    //         builder.OwnsMany(c => c.SubTypes);
-    //     }
-    // }
+    internal class CardConfiguration : IEntityTypeConfiguration<Card>
+    {
+        public void Configure(EntityTypeBuilder<Card> builder)
+        {
+            builder
+                .OwnsMany(c => c.Names)
+                .HasKey(n => new { n.Value, n.CardId });
+
+            builder
+                .OwnsMany(c => c.Colors)
+                .HasKey(cl => new { cl.Name, cl.CardId });
+
+            builder
+                .OwnsMany(c => c.Supertypes)
+                .HasKey(sp => new { sp.Name, sp.CardId });
+
+            builder
+                .OwnsMany(c => c.Types)
+                .HasKey(ty => new { ty.Name, ty.CardId });
+
+            builder
+                .OwnsMany(c => c.Subtypes)
+                .HasKey(sb => new { sb.Name, sb.CardId });
+        }
+    }
+
 
     internal class LocationConfiguration : IEntityTypeConfiguration<Location>
     {

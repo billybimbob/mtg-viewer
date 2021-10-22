@@ -1,6 +1,7 @@
 @using MTGViewer.Data
 
 @namespace MTGViewer.Components
+@implements IDisposable
 @inject IDbContextFactory<CardDbContext> DbFactory
 
 
@@ -78,8 +79,9 @@
     public int NumberOfCards { get; set; } = 4;
 
     private readonly Random _random = new();
+    private readonly CancellationTokenSource _cancel = new();
 
-    private bool _busy;
+    private bool _isBusy;
     private DateTime _currentTime;
 
     private IReadOnlyList<Card> _randomCards;
@@ -125,12 +127,12 @@
 
     protected override async Task OnParametersSetAsync()
     {
-        if (_busy)
+        if (_isBusy)
         {
             return;
         }
 
-        _busy = true;
+        _isBusy = true;
 
         try
         {
@@ -138,23 +140,34 @@
 
             _randomCards = await GetShuffledCardsAsync(dbContext);
 
+            if (_cancel.IsCancellationRequested)
+            {
+                return;
+            }
+
             _currentTime = DateTime.Now;
 
             _recentChanges = await GetRecentChangesAsync(dbContext);
         }
         finally
         {
-            _busy = false;
+            _isBusy = false;
         }
 
         await base.OnParametersSetAsync();
     }
 
 
-    private async Task<IReadOnlyList<Card>> GetShuffledCardsAsync(
-        CardDbContext dbContext)
+    public void Dispose()
     {
-        var cards = await dbContext.Cards.ToListAsync(); // unbounded, keep eye on
+        _cancel.Cancel();
+    }
+
+
+    private async Task<IReadOnlyList<Card>> GetShuffledCardsAsync(CardDbContext dbContext)
+    {
+        // unbounded, keep eye on
+        var cards = await dbContext.Cards.ToListAsync(_cancel.Token);
 
         // shuffle locally
         for (int i = 0; i < cards.Count-1; ++i)
@@ -170,8 +183,7 @@
     }
 
 
-    private async Task<IReadOnlyList<Transaction>> GetRecentChangesAsync(
-        CardDbContext dbContext)
+    private async Task<IReadOnlyList<Transaction>> GetRecentChangesAsync(CardDbContext dbContext)
     {
         return await dbContext.Transactions
             .Where(t => t.Changes.Any(c => c.To is Box || c.From is Box))
@@ -192,6 +204,6 @@
             .OrderByDescending(t => t.AppliedAt)
             .Take(NumberOfCards)
 
-            .ToListAsync();
+            .ToListAsync(_cancel.Token);
     }
 }

@@ -21,7 +21,7 @@ namespace MTGViewer.Data
 
 
         [Required]
-        public string Name { get; init; } = null!;
+        public string Name { get; set; } = null!;
 
         public List<Name> Names { get; init; } = new();
 
@@ -31,10 +31,11 @@ namespace MTGViewer.Data
 
         [Display(Name = "Mana")]
         [Required]
-        public string ManaCost { get; init; } = null!;
+        public string ManaCost { get; set; } = null!;
 
         [Display(Name = "Converted Mana Cost")]
-        public int? Cmc { get; init; }
+        [Range(0f, 1_000_000f)]
+        public float? Cmc { get; set; }
 
         public List<Color> Colors { get; init; } = new();
 
@@ -47,25 +48,25 @@ namespace MTGViewer.Data
 
 
         [Required]
-        public string Rarity { get; init; } = null!;
+        public string Rarity { get; set; } = null!;
 
-        [Display(Name = "Set")]
+        [Display(Name = "Set Name")]
         [Required]
-        public string SetName { get; init; } = null!;
+        public string SetName { get; set; } = null!;
 
         [Required]
-        public string Artist { get; init; } = null!;
+        public string Artist { get; set; } = null!;
 
 
         public string? Text { get; init; }
 
         public string? Flavor { get; init; }
 
-        public string? Power { get; init; }
+        public string? Power { get; set; }
 
-        public string? Toughness { get; init; }
+        public string? Toughness { get; set; }
 
-        public string? Loyalty { get; init; }
+        public string? Loyalty { get; set; }
 
 
         [Display(Name = "Image")]

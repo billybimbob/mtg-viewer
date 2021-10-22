@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 
@@ -68,12 +69,14 @@ namespace MTGViewer.Services
         {
             var propertyValue = ToString(objValue);
 
-            if (string.IsNullOrEmpty(propertyValue))
+            if (string.IsNullOrWhiteSpace(propertyValue))
             {
                 return;
             }
 
-            if (typeof(CardQueryParameter).GetProperty(propertyName) == null)
+            const BindingFlags bindings = BindingFlags.IgnoreCase | BindingFlags.Instance | BindingFlags.Public;
+
+            if (typeof(CardQueryParameter).GetProperty(propertyName, bindings) == null)
             {
                 return;
             }
@@ -85,12 +88,21 @@ namespace MTGViewer.Services
         }
 
 
-        private static string? ToString(object? paramValue) => paramValue switch
+        private static string ToString(object? paramValue)
         {
-            IEnumerable<object> iter when iter.Any() => string.Join(',', iter),
-            IEnumerable<object> _ => null,
-            _ => paramValue?.ToString()
-        };
+            const StringSplitOptions orOptions = StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries;
+            const char or = '|';
+
+            var strValue = paramValue switch
+            {
+                IEnumerable<object> iter => string.Join(',', iter),
+                _ => paramValue?.ToString()
+            };
+
+            return string.IsNullOrEmpty(strValue)
+                ? string.Empty 
+                : string.Join(or, strValue.Split(or, orOptions));
+        }
 
 
         private static Expression<Func<Q, R>> PropertyExpression<Q, R>(string propName)
@@ -148,8 +160,6 @@ namespace MTGViewer.Services
 
         public async Task<Card?> FindAsync(string id)
         {
-            Reset();
-
             if (string.IsNullOrWhiteSpace(id))
             {
                 return null;
@@ -163,7 +173,8 @@ namespace MTGViewer.Services
 
             _logger.LogInformation($"refetching {id}");
 
-            var match = LoggedUnwrap(await _service.FindAsync(id));
+            var result = await _service.FindAsync(id);
+            var match = LoggedUnwrap(result);
 
             if (match is null)
             {
@@ -216,6 +227,8 @@ namespace MTGViewer.Services
             {
                 var card = await FindAsync(search.MultiverseId);
 
+                Reset();
+
                 return card is null
                     ? PagedList<Card>.Empty
 
@@ -237,6 +250,38 @@ namespace MTGViewer.Services
             }
         }
 
+
+        public async Task<Data.Type[]> AllTypesAsync()
+        {
+            var result = await _service.GetCardTypesAsync();
+            var types = LoggedUnwrap(result) ?? Enumerable.Empty<string>();
+
+            return types
+                .Select(ty => new Data.Type(ty))
+                .ToArray();
+        }
+
+
+        public async Task<Subtype[]> AllSubtypesAsync()
+        {
+            var result = await _service.GetCardTypesAsync();
+            var subtypes = LoggedUnwrap(result) ?? Enumerable.Empty<string>();
+
+            return subtypes
+                .Select(sb => new Subtype(sb))
+                .ToArray();
+        }
+
+
+        public async Task<Supertype[]> AllSupertypesAsync()
+        {
+            var result = await _service.GetCardTypesAsync();
+            var supertypes = LoggedUnwrap(result) ?? Enumerable.Empty<string>();
+
+            return supertypes
+                .Select(sp => new Supertype(sp))
+                .ToArray();
+        }
     }
 
 
@@ -275,7 +320,7 @@ namespace MTGViewer.Services
                 .ToList(),
 
             ManaCost = card.ManaCost,
-            Cmc = (int?)card.Cmc ?? default,
+            Cmc = card.Cmc,
 
             Rarity = card.Rarity,
             SetName = card.SetName,

@@ -13,13 +13,14 @@ namespace MTGViewer.Data
         }
 
         [JsonRequired]
-        public int Id { get; private set; }
-
-        [JsonRequired]
         public string Value { get; private set; }
 
         [JsonIgnore]
         public Card Card { get; private set; } = null!;
+        public string CardId { get; private set; } = null!;
+
+
+        public override string ToString() => Value;
     }
 
 
@@ -41,13 +42,14 @@ namespace MTGViewer.Data
         }
 
         [JsonRequired]
-        public int Id { get; private set; }
-
-        [JsonRequired]
         public string Name { get; private set; }
 
         [JsonIgnore]
         public Card Card { get; private set; } = null!;
+        public string CardId { get; private set; } = null!;
+
+
+        public override string ToString() => Name;
     }
 
 
@@ -59,13 +61,14 @@ namespace MTGViewer.Data
         }
 
         [JsonRequired]
-        public int Id { get; private set; }
-
-        [JsonRequired]
         public string Name { get; private set; }
 
         [JsonIgnore]
         public Card Card { get; private set; } = null!;
+        public string CardId { get; private set; } = null!;
+
+
+        public override string ToString() => Name;
     }
 
 
@@ -77,13 +80,14 @@ namespace MTGViewer.Data
         }
 
         [JsonRequired]
-        public int Id { get; private set; }
-
-        [JsonRequired]
         public string Name { get; private set; }
 
         [JsonIgnore]
         public Card Card { get; private set; } = null!;
+        public string CardId { get; private set; } = null!;
+
+
+        public override string ToString() => Name;
     }
 
 
@@ -95,12 +99,13 @@ namespace MTGViewer.Data
         }
 
         [JsonRequired]
-        public int Id { get; private set; }
-
-        [JsonRequired]
         public string Name { get; private set; }
 
         [JsonIgnore]
         public Card Card { get; private set; } = null!;
+        public string CardId { get; private set; } = null!;
+
+
+        public override string ToString() => Name;
     }
 }

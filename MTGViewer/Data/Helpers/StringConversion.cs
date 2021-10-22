@@ -2,6 +2,8 @@ using System;
 using Microsoft.AspNetCore.Html;
 using Microsoft.AspNetCore.Components;
 
+#nullable enable
+
 namespace MTGViewer.Data
 {
     public static class StringConversionExtension

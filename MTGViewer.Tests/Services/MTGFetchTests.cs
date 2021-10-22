@@ -5,8 +5,6 @@ using Xunit;
 using MTGViewer.Data;
 using MTGViewer.Services;
 
-using MtgApiManager.Lib.Service;
-
 
 namespace MTGViewer.Tests.Services
 {
@@ -120,16 +118,19 @@ namespace MTGViewer.Tests.Services
         // [Fact]
         // public async Task All_PagedQuery_EqualPageSize()
         // {
-        //     const int pageSize = 50;
+        //     const string id = "f2eb06047a3a8e515bff62b55f29468fcde6332a";
+        //     // const int pageSize = 50;
         //     var serviceProvider = new MtgServiceProvider();
         //     var service = serviceProvider.GetCardService();
 
-        //     var result = await service
-        //         .Where(x => x.Page, 1)
-        //         .Where(x => x.PageSize, pageSize)
-        //         .AllAsync();
+        //     var result = await service.FindAsync(id);
+        //         // .Where(x => x.Page, 1)
+        //         // .Where(x => x.PageSize, pageSize)
+        //         // .AllAsync();
 
-        //     Assert.Equal(pageSize, result.PagingInfo.PageSize);
+        //     // Assert.Equal(pageSize, result.PagingInfo.PageSize);
+        //     Assert.True(result.IsSuccess);
+        //     Assert.Equal(id, result.Value.Id);
         // }
     }
 }

@@ -7,37 +7,20 @@
 @inject IDbContextFactory<CardDbContext> DbFactory
 @inject SymbolFormatter MtgSymbols
 @inject CardText CardText
+
+@inject NavigationManager Nav
 @inject ILogger<DeckBuilder> Logger
 
 
 <h1>@_deck.Name Builder</h1>
 
-<div class="mb-3">
-    <button title="Save Deck"
-            type="button"
-            class="btn btn-secondary"
-            disabled="@HasNoChanges"
-            @onclick="CommitChangesAsync">
-        Save Changes
-    </button>
-
-    @if (_result is SaveResult.Success)
-    {
-        <a href="/Decks/Checkout/@_deck.Id"
-            role="button"
-            class="btn btn-secondary ml-2">
-            Checkout </a>
-    }
-    else
-    {
-        <a href="/Decks/Checkout/@_deck.Id"
-            role="button"
-            class="btn btn-secondary ml-2 disabled"
-            tabindex="-1"
-            aria-disabled="true">
-            Checkout </a>
-    }
-</div>
+<button title="Save Deck"
+        type="button"
+        class="btn btn-secondary mb-3"
+        disabled="@HasNoChanges"
+        @onclick="CommitChangesAsync">
+    Save Changes
+</button>
 
 <SavePrompt @bind-Result="_result">
     <SuccessMessage>
@@ -147,7 +130,9 @@
     public int DeckId { get; set; } = default;
 
 
-    private bool _busy;
+    private bool _isBusy;
+    private readonly CancellationTokenSource _cancel = new();
+
     private SaveResult _result;
     private CardDbContext _dbContext;
 
@@ -183,12 +168,13 @@
 
     protected override async Task OnInitializedAsync()
     {
-        if (_busy)
+        if (_isBusy)
         {
             return;
         }
 
-        _busy = true;
+        _isBusy = true;
+
         try
         {
             _dbContext = DbFactory.CreateDbContext();
@@ -199,11 +185,16 @@
                     .ThenInclude(ca => ca.Location)
                 .OrderBy(c => c.Name)
                     .ThenBy(c => c.SetName)
-                .ToListAsync();
+                .ToListAsync(_cancel.Token);
+
+            if (_cancel.IsCancellationRequested)
+            {
+                return;
+            }
         }
         finally
         {
-            _busy = false;
+            _isBusy = false;
         }
 
         await base.OnInitializedAsync();
@@ -212,23 +203,29 @@
 
     protected override async Task OnParametersSetAsync()
     {
-        if (_busy)
+        if (_isBusy)
         {
             return;
         }
 
-        _busy = true;
+        _isBusy = true;
+
         try
         {
             _deck = await GetOrCreateDeckAsync();
-            _deckEdit = new(_deck);
 
+            if (_cancel.IsCancellationRequested)
+            {
+                return;
+            }
+
+            _deckEdit = new(_deck);
             _deckCards = GetDeckCardGroups(_deck)
                 .ToDictionary(cg => cg.CardId);
         }
         finally
         {
-            _busy = false;
+            _isBusy = false;
         }
 
         await base.OnParametersSetAsync();
@@ -239,14 +236,24 @@
     {
         if (DeckId != default)
         {
-            return await DeckForBuilder.SingleAsync();
+            return await DeckForBuilder.SingleAsync(_cancel.Token);
         }
 
-        var user = await _dbContext.Users.FindAsync(UserId);
+        var user = await _dbContext.Users.FindAsync(UserId, _cancel.Token);
+
+        if (_cancel.IsCancellationRequested)
+        {
+            return null;
+        }
 
         var userDeckCount = await _dbContext.Decks
             .Where(d => d.Owner.Id == UserId)
-            .CountAsync();
+            .CountAsync(_cancel.Token);
+
+        if (_cancel.IsCancellationRequested)
+        {
+            return null;
+        }
 
         var newLoc = new Deck
         {
@@ -280,6 +287,8 @@
 
     public async ValueTask DisposeAsync()
     {
+        _cancel.Cancel();
+
         if (_dbContext is not null)
         {
             await _dbContext.DisposeAsync();
@@ -306,6 +315,8 @@
 
         if (deckGroup?.Want is null)
         {
+            // todo: add want limit
+
             var wantAmount = new Want
             {
                 Card = card,
@@ -385,34 +396,53 @@
             return;
         }
 
-        if (_busy)
-        {
-            return;
-        }
-
         if (!_deckEdit.Validate())
         {
             return;
         }
 
-        _busy = true;
-        PrepareChanges();
+        if (_isBusy)
+        {
+            return;
+        }
+
+        _isBusy = true;
 
         try
         {
-            await _dbContext.SaveChangesAsync();
-            _result = SaveResult.Success;
+            PrepareChanges();
+
+            await _dbContext.SaveChangesAsync(_cancel.Token);
+
+            if (_cancel.IsCancellationRequested)
+            {
+                return;
+            }
 
             Logger.LogInformation($"successfully updated");
+
+            if (_deck.GiveBacks.Any() || _deck.Wants.Any())
+            {
+                Nav.NavigateTo($"/Decks/Checkout/{_deck.Id}", true);
+            }
+
+            _result = SaveResult.Success;
+
         }
         catch (DbUpdateConcurrencyException ex)
         {
+            if (_cancel.IsCancellationRequested)
+            {
+                return;
+            }
+
             _result = SaveResult.Error;
+
             await UpdateDeckAsync(ex);
         }
         finally
         {
-            _busy = false;
+            _isBusy = false;
         }
     }
 
@@ -464,7 +494,12 @@
 
         var dbDeck = await DeckForBuilder
             .AsNoTracking()
-            .SingleOrDefaultAsync();
+            .SingleOrDefaultAsync(_cancel.Token);
+
+        if (_cancel.IsCancellationRequested)
+        {
+            return;
+        }
 
         if (dbDeck == default)
         {
