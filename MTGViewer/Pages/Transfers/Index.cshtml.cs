@@ -79,9 +79,17 @@ namespace MTGViewer.Pages.Transfers
                     || d.TradesTo.Any()
                     || d.Wants.Any())
 
-                .Include(d => d.TradesFrom.Take(1))
-                .Include(d => d.TradesTo.Take(1))
-                .Include(d => d.Wants.Take(1))
+                .Include(d => d.TradesFrom
+                    .OrderBy(t => t.Id)
+                    .Take(1))
+
+                .Include(d => d.TradesTo
+                    .OrderBy(t => t.Id)
+                    .Take(1))
+
+                .Include(d => d.Wants
+                    .OrderBy(w => w.Id)
+                    .Take(1))
 
                 .OrderBy(d => d.Name)
                 .AsSplitQuery()

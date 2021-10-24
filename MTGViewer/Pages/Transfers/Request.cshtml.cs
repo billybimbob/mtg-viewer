@@ -94,7 +94,9 @@ namespace MTGViewer.Pages.Transfers
                     .OrderBy(w => w.Card.Name))
                     .ThenInclude(w => w.Card)
 
-                .Include(d => d.TradesTo.Take(1))
+                .Include(d => d.TradesTo
+                    .OrderBy(t => t.Id)
+                    .Take(1))
 
                 .AsSplitQuery();
         }

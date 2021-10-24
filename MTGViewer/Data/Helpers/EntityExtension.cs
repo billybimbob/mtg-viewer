@@ -8,15 +8,22 @@ using System.Reflection;
 
 namespace MTGViewer.Data
 {
-    public static class EntityExtension
+    public static class Entities
     {
-        public static string DisplayName<TEntity, TProperty>(
-            this TEntity entity, Expression<Func<TEntity, TProperty>> property)
+        public static string DisplayName<TEntity, TProperty>(Expression<Func<TEntity, TProperty>> property)
             where TEntity : class
         {
             var memberExpr = property.Body as MemberExpression;
 
             return DisplayName(memberExpr?.Member);
+        }
+
+
+        public static string DisplayName<TEntity, TProperty>(
+            this TEntity entity, Expression<Func<TEntity, TProperty>> property)
+            where TEntity : class
+        {
+            return DisplayName(property);
         }
 
 

@@ -87,9 +87,17 @@ namespace MTGViewer.Pages.Decks
                 .Include(d => d.Cards) // unbounded: keep eye on
                     .ThenInclude(ca => ca.Card)
 
-                .Include(d => d.Wants.Take(1))
-                .Include(d => d.GiveBacks.Take(1))
-                .Include(d => d.TradesTo.Take(1))
+                .Include(d => d.Wants
+                    .OrderBy(w => w.Id)
+                    .Take(1))
+
+                .Include(d => d.GiveBacks
+                    .OrderBy(gb => gb.Id)
+                    .Take(1))
+
+                .Include(d => d.TradesTo
+                    .OrderBy(t => t.Id)
+                    .Take(1))
 
                 .OrderBy(d => d.Name)
                 .Select(deck => new DeckState(deck))

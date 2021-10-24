@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+
 using Microsoft.Extensions.Logging;
 
 using MtgApiManager.Lib.Core;
@@ -16,11 +18,21 @@ using MTGViewer.Data;
 
 namespace MTGViewer.Services
 {
-    public class CardQuery : Card, IQueryParameter { }
-
-
-    public class MTGFetchService : IMtgQueryable<MTGFetchService, CardQuery>
+    public class MTGFetchService : IMtgQueryable<MTGFetchService, CardSearch>
     {
+        private static readonly IReadOnlySet<string> _multipleValues = 
+            new HashSet<string>(new []
+            {
+                nameof(CardSearch.Colors),
+                nameof(CardSearch.Supertypes),
+                nameof(CardSearch.Types),
+                nameof(CardSearch.Subtypes)
+            });
+
+        public const char Or = '|';
+        public const char And = ',';
+
+
         private readonly ICardService _service;
         private readonly DataCacheService _cache;
 
@@ -28,7 +40,6 @@ namespace MTGViewer.Services
         private readonly ILogger<MTGFetchService> _logger;
 
         private bool _empty;
-
 
         public MTGFetchService(
             ICardService service,
@@ -53,7 +64,8 @@ namespace MTGViewer.Services
         }
 
 
-        public MTGFetchService Where<P>(Expression<Func<CardQuery, P>> property, P value)
+        public MTGFetchService Where<TProperty>(
+            Expression<Func<CardSearch, TProperty>> property, TProperty value)
         {
             if (property.Body is MemberExpression expression)
             {
@@ -67,50 +79,56 @@ namespace MTGViewer.Services
 
         private void QueryProperty(string propertyName, object? objValue)
         {
-            var propertyValue = ToString(objValue);
+            var multipleValues = _multipleValues.Contains(propertyName);
+            var paramValue = ToString(objValue, multipleValues);
 
-            if (string.IsNullOrWhiteSpace(propertyValue))
+            if (string.IsNullOrWhiteSpace(paramValue))
             {
                 return;
             }
 
-            const BindingFlags bindings = BindingFlags.IgnoreCase | BindingFlags.Instance | BindingFlags.Public;
+            const BindingFlags binds = BindingFlags.IgnoreCase | BindingFlags.Instance | BindingFlags.Public;
 
-            if (typeof(CardQueryParameter).GetProperty(propertyName, bindings) == null)
+            if (typeof(CardQueryParameter).GetProperty(propertyName, binds) == null)
             {
                 return;
             }
 
-            var property = PropertyExpression<CardQueryParameter, string>(propertyName);
+            var parameter = QueryParameter(propertyName);
 
-            _service.Where(property, propertyValue);
+            _service.Where(parameter, paramValue);
             _empty = false;
         }
 
 
-        private static string ToString(object? paramValue)
+        private static string ToString(object? paramValue, bool multipleValues)
         {
-            const StringSplitOptions orOptions = StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries;
-            const char or = '|';
+            const StringSplitOptions noWhitespace = StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries;
 
-            var strValue = paramValue switch
+            var strValue = paramValue?.ToString();
+
+            if (string.IsNullOrWhiteSpace(strValue))
             {
-                IEnumerable<object> iter => string.Join(',', iter),
-                _ => paramValue?.ToString()
-            };
+                return string.Empty;
+            }
 
-            return string.IsNullOrEmpty(strValue)
-                ? string.Empty 
-                : string.Join(or, strValue.Split(or, orOptions));
+            strValue = string.Join(Or, strValue.Split(Or, noWhitespace));
+
+            if (multipleValues)
+            {
+                strValue = string.Join(And, Regex.Split(strValue, $@"(?:\s*{And}\s*)|\s+"));
+            }
+
+            return strValue;
         }
 
 
-        private static Expression<Func<Q, R>> PropertyExpression<Q, R>(string propName)
+        private static Expression<Func<CardQueryParameter, string>> QueryParameter(string propName)
         {
-            var xParam = Expression.Parameter(typeof(Q), "x");
+            var xParam = Expression.Parameter(typeof(CardQueryParameter), "x");
             var propExpr = Expression.Property(xParam, propName);
 
-            return Expression.Lambda<Func<Q, R>>(propExpr, xParam);
+            return Expression.Lambda<Func<CardQueryParameter, string>>(propExpr, xParam);
         }
 
 
@@ -155,6 +173,23 @@ namespace MTGViewer.Services
             }
 
             return new PagedList<Card>(pages, cards);
+        }
+
+
+        public Task<PagedList<Card>> MatchAsync(CardSearch search, int page = 0)
+        {
+            const BindingFlags binds = BindingFlags.Instance | BindingFlags.Public;
+
+            foreach (var info in typeof(CardSearch).GetProperties(binds))
+            {
+                if (info?.GetGetMethod() is not null
+                    && info?.GetSetMethod() is not null)
+                {
+                    QueryProperty(info.Name, info.GetValue(search));
+                }
+            }
+
+            return SearchAsync(page);
         }
 
 
@@ -220,68 +255,37 @@ namespace MTGViewer.Services
         }
 
 
+        // public async Task<Data.Type[]> AllTypesAsync()
+        // {
+        //     var result = await _service.GetCardTypesAsync();
+        //     var types = LoggedUnwrap(result) ?? Enumerable.Empty<string>();
 
-        public async Task<PagedList<Card>> MatchAsync(Card search, int page = 0)
-        {
-            if (search.MultiverseId is not null)
-            {
-                var card = await FindAsync(search.MultiverseId);
-
-                Reset();
-
-                return card is null
-                    ? PagedList<Card>.Empty
-
-                    : new PagedList<Card>(
-                        new Data.Pages(0, 1), new List<Card>{ card });
-            }
-            else
-            {
-                foreach (var info in typeof(Card).GetProperties())
-                {
-                    if (info?.GetGetMethod() is not null
-                        && info?.GetSetMethod() is not null)
-                    {
-                        QueryProperty(info.Name, info.GetValue(search));
-                    }
-                }
-
-                return await SearchAsync(page);
-            }
-        }
+        //     return types
+        //         .Select(ty => new Data.Type(ty))
+        //         .ToArray();
+        // }
 
 
-        public async Task<Data.Type[]> AllTypesAsync()
-        {
-            var result = await _service.GetCardTypesAsync();
-            var types = LoggedUnwrap(result) ?? Enumerable.Empty<string>();
+        // public async Task<Subtype[]> AllSubtypesAsync()
+        // {
+        //     var result = await _service.GetCardTypesAsync();
+        //     var subtypes = LoggedUnwrap(result) ?? Enumerable.Empty<string>();
 
-            return types
-                .Select(ty => new Data.Type(ty))
-                .ToArray();
-        }
-
-
-        public async Task<Subtype[]> AllSubtypesAsync()
-        {
-            var result = await _service.GetCardTypesAsync();
-            var subtypes = LoggedUnwrap(result) ?? Enumerable.Empty<string>();
-
-            return subtypes
-                .Select(sb => new Subtype(sb))
-                .ToArray();
-        }
+        //     return subtypes
+        //         .Select(sb => new Subtype(sb))
+        //         .ToArray();
+        // }
 
 
-        public async Task<Supertype[]> AllSupertypesAsync()
-        {
-            var result = await _service.GetCardTypesAsync();
-            var supertypes = LoggedUnwrap(result) ?? Enumerable.Empty<string>();
+        // public async Task<Supertype[]> AllSupertypesAsync()
+        // {
+        //     var result = await _service.GetCardTypesAsync();
+        //     var supertypes = LoggedUnwrap(result) ?? Enumerable.Empty<string>();
 
-            return supertypes
-                .Select(sp => new Supertype(sp))
-                .ToArray();
-        }
+        //     return supertypes
+        //         .Select(sp => new Supertype(sp))
+        //         .ToArray();
+        // }
     }
 
 

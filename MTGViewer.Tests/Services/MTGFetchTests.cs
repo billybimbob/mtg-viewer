@@ -74,25 +74,25 @@ namespace MTGViewer.Tests.Services
         }
 
 
-        [Fact(Skip = "Calls external api")]
-        public async Task Match_Id_ReturnsCard()
-        {
-            var search = new Card
-            {
-                MultiverseId = TEST_ID
-            };
+        // [Fact(Skip = "Calls external api")]
+        // public async Task Match_Id_ReturnsCard()
+        // {
+        //     var search = new CardSearch
+        //     {
+        //         MultiverseId = TEST_ID
+        //     };
 
-            var cards = await _fetch.MatchAsync(search);
-            var cardNames = cards.Select(c => c.Name);
+        //     var cards = await _fetch.MatchAsync(search);
+        //     var cardNames = cards.Select(c => c.Name);
 
-            Assert.Contains(TEST_NAME, cardNames);
-        }
+        //     Assert.Contains(TEST_NAME, cardNames);
+        // }
 
 
         [Fact(Skip = "Calls external api")]
         public async Task Match_Empty_ReturnsEmpty()
         {
-            var search = new Card();
+            var search = new CardSearch();
 
             var cards = await _fetch.MatchAsync(search);
 
@@ -103,7 +103,7 @@ namespace MTGViewer.Tests.Services
         [Fact(Skip = "Calls external api")]
         public async Task Match_OnlyName_ReturnsCard()
         {
-            var search = new Card
+            var search = new CardSearch
             {
                 Name = TEST_NAME
             };

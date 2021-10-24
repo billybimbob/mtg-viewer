@@ -102,11 +102,16 @@
                 <td> @card.SetName </td>
                 <td> @card.Rarity </td>
 
-                <td>
-                    @(card.Amounts
+                @{
+                    var boxAmounts = card.Amounts
                         .Where(ca => ca.Location is Box)
-                        .Sum(ca => ca.Amount))
-                </td>
+                        .Sum(ca => ca.Amount);
+
+                    var wantAmounts = Math.Min(
+                        card.Wants.Sum(w => w.Amount), boxAmounts);
+                }
+                <td> @(boxAmounts - wantAmounts) </td>
+
                 <td>
                     <button title="Add @card.Name"
                             type="button"
@@ -223,6 +228,10 @@
             _deckCards = GetDeckCardGroups(_deck)
                 .ToDictionary(cg => cg.CardId);
         }
+        catch (DbUpdateException ex)
+        {
+            Logger.LogError(ex.ToString());
+        }
         finally
         {
             _isBusy = false;
@@ -239,7 +248,8 @@
             return await DeckForBuilder.SingleAsync(_cancel.Token);
         }
 
-        var user = await _dbContext.Users.FindAsync(UserId, _cancel.Token);
+        var userValues = new []{ UserId };
+        var user = await _dbContext.Users.FindAsync(userValues, _cancel.Token);
 
         if (_cancel.IsCancellationRequested)
         {
@@ -440,6 +450,10 @@
 
             await UpdateDeckAsync(ex);
         }
+        catch (DbUpdateException ex)
+        {
+            Logger.LogError(ex.ToString());
+        }
         finally
         {
             _isBusy = false;
@@ -628,14 +642,14 @@
                 continue;
             }
 
-            var localTake = localGroup.Want;
+            var localWant = localGroup.Want;
 
-            if (_dbContext.Entry(localTake).State == EntityState.Unchanged)
+            if (_dbContext.Entry(localWant).State == EntityState.Unchanged)
             {
-                localTake.Amount = dbWant.Amount;
+                localWant.Amount = dbWant.Amount;
             }
 
-            _dbContext.MatchToken(localTake, dbWant);
+            _dbContext.MatchToken(localWant, dbWant);
         }
 
 

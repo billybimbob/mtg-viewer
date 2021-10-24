@@ -67,7 +67,9 @@ namespace MTGViewer.Pages.Decks
                 .Include(d => d.GiveBacks) // unbounded: keep eye on
                     .ThenInclude(g => g.Card)
 
-                .Include(d => d.TradesTo.Take(1))
+                .Include(d => d.TradesTo
+                    .OrderBy(t => t.Id)
+                    .Take(1))
 
                 .AsSplitQuery()
                 .AsNoTrackingWithIdentityResolution();

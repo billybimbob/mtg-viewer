@@ -32,7 +32,9 @@
             "args": [
                 "watch",
                 "run",
-                "${workspaceFolder}/MTGViewer/MTGViewer.csproj",
+                "${workspaceFolder}/MTGViewer.csproj",
+                "--project",
+                "MTGViewer",
                 "/property:GenerateFullPaths=true",
                 "/consoleloggerparameters:NoSummary"
             ],

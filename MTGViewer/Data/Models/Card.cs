@@ -76,6 +76,9 @@ namespace MTGViewer.Data
         [JsonIgnore]
         public List<CardAmount> Amounts { get; } = new();
 
+        [JsonIgnore]
+        public List<Want> Wants { get; } = new();
+
 
         public bool IsValid()
         {

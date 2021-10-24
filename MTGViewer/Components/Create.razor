@@ -1,4 +1,3 @@
-@using System.Text.RegularExpressions
 @using Microsoft.Extensions.DependencyInjection
 @namespace MTGViewer.Components
 
@@ -14,10 +13,34 @@
 @if (!_matches.Any())
 {
     <hr />
-    <div class="row">
-        <div class="col-md-4">
-            <EditForm EditContext="@_searchEdit" OnSubmit="@SearchForCardAsync">
-                <ValidationSummary />
+    <EditForm EditContext="@_searchEdit" OnValidSubmit="@SearchForCardAsync">
+        <div class="row">
+
+            <div class="col order-last">
+                <DataAnnotationsValidator />
+                <ValidationSummary role="alert"/>
+
+                <h5> Or Operator </h5>
+                <p> 
+                    All of the parameters (except Converted Mana Cost and Color) can search with multiple values 
+                    specified by adding the pipe character between each value. These multiple values act as a 
+                    logical <strong>or</strong> for the search.
+                </p>
+
+                <p> Example for Name: <code>jace|ajani|nissa, worldwaker</code> </p>
+
+                <h5> And Operator </h5>
+                <p>
+                    Parameters that can have multiple values (Types, Supertypes, and Subtypes) can also have 
+                    multiple values specified by adding a comma or space between each value. These multiple
+                    values act as a logical <strong>and</strong> for the search.
+                </p>
+
+                <p> Example for Subtype(s): <code>bear,bird</code> or <code>bear bird</code> </p>
+            </div>
+
+            <div class="col-md-4">
+                <p> Enter the card search parameters below </p>
 
                 <div class="form-group">
                     @foreach (var (color, symbol) in Color.Symbols)
@@ -28,22 +51,9 @@
                         <button title="@toggleId"
                             type="button"
                             class="btn btn-outline-secondary border-0 rounded @active"
-                            @onclick="() => ColorToggle(color)">
+                            @onclick="() => SearchColorToggle(color)">
                             <i class="ms ms-@symbol.ToLower() ms-cost"></i>
                         </button>
-
-                        @* <div class="form-check form-check-inline">
-
-                            <input id="@toggleId"
-                                type="checkbox" 
-                                checked="@_search.Colors.Contains(color)"
-                                @onchange="() => ColorToggle(color)"
-                                class="form-check-input" />
-
-                            <label class="form-check-label" for="@toggleId">
-                                <i class="ms ms-@symbol ms-cost"></i>
-                            </label>
-                        </div> *@
                     }
                 </div>
 
@@ -72,22 +82,19 @@
                 </div>
 
                 <div class="form-group">
-                    <input value="@_supertypes" 
-                        @onchange="e => UpdateTypeString(e, ref _supertypes)"
+                    <InputText @bind-Value="_search.Supertypes"
                         placeholder="@_search.DisplayName(c => c.Supertypes)"
                         class="form-control" />
                 </div>
 
                 <div class="form-group">
-                    <input value="@_types" 
-                        @onchange="e => UpdateTypeString(e, ref _types)"
+                    <InputText @bind-Value="_search.Types"
                         placeholder="@_search.DisplayName(c => c.Types)"
                         class="form-control" />
                 </div>
 
                 <div class="form-group">
-                    <input value="@_subtypes"
-                        @onchange="e => UpdateTypeString(e, ref _subtypes)"
+                    <InputText @bind-Value="_search.Subtypes"
                         placeholder="@_search.DisplayName(c => c.Subtypes)"
                         class="form-control" />
                 </div>
@@ -122,9 +129,9 @@
                     <button type="button" class="btn btn-secondary" title="Reset" 
                         @onclick="Reset"> Reset </button>
                 </div>
-            </EditForm>
+            </div>
         </div>
-    </div>
+    </EditForm>
 }
 else
 {
@@ -139,29 +146,52 @@ else
             Reset </button>
     </div>
 
+    <div class="form-row align-items-center my-3">
+        <div class="col-3">
+            <input class="form-control" placeholder="Name" @bind="_matchName" />
+        </div>
+
+        <div class="col-auto btn-group" role="group" aria-label="Color Buttons">
+            @foreach (var (color, symbol) in Color.Symbols)
+            {
+                var active = _pickedColors.Contains(color) ? "active" : "";
+
+                <button title="@color filter"
+                        type="button"
+                        class="btn btn-outline-secondary border-0 rounded @active"
+                        @onclick="() => MatchColorToggle(color)">
+                    <i class="ms ms-@symbol.ToLower() ms-cost"></i>
+                </button>
+            }
+        </div>
+    </div>
+
     <table class="table">
         <thead>
-            <th> @_search.DisplayName(c => c.Name) </th>
-            <th> @_search.DisplayName(c => c.ManaCost) </th>
-            <th> @_search.DisplayName(c => c.Rarity) </th>
-            <th> @_search.DisplayName(c => c.SetName) </th>
+            <th> @Entities.DisplayName((Card c) => c.Name) </th>
+            <th> @Entities.DisplayName((Card c) => c.ManaCost) </th>
+            <th> @Entities.DisplayName((Card c) => c.Rarity) </th>
+            <th> @Entities.DisplayName((Card c) => c.SetName) </th>
             <th> Amount </th>
         </thead>
         <tbody>
             @foreach (var (match, amount) in _matches)
             {
-                <tr>
-                    <td> @match.Name </td>
-                    <td> @MtgSymbols.Format(match.ManaCost).ToMarkupString() </td>
-                    <td> @match.Rarity </td>
-                    <td> @match.SetName </td>
-                    <td>
-                        <input title="@match.Name Amount" 
-                            type="number" min="0" value="@amount" 
-                            @onchange="e => UpdateAmount(e, match)"
-                            class="form-control w-50" />
-                    </td>
-                </tr>
+                @if (MatchPassesFilters(match))
+                {
+                    <tr>
+                        <td> @match.Name </td>
+                        <td> @MtgSymbols.Format(match.ManaCost).ToMarkupString() </td>
+                        <td> @match.Rarity </td>
+                        <td> @match.SetName </td>
+                        <td>
+                            <input title="@match.Name Amount" 
+                                type="number" min="0" value="@amount" 
+                                @onchange="e => UpdateAmount(e, match)"
+                                class="form-control w-50" />
+                        </td>
+                    </tr>
+                }
             }
         </tbody>
     </table>
@@ -182,48 +212,67 @@ else
 
 
     private bool _isBusy;
-    private readonly HashSet<string> _pickedColors = new();
 
-    private string _types;
-    private string _subtypes;
-    private string _supertypes;
+    private readonly HashSet<string> _pickedColors = new(StringComparer.OrdinalIgnoreCase);
+    private readonly CardSearch _search = new();
 
-    private readonly Card _search = new();
     private EditContext _searchEdit;
     private ValidationMessageStore _resultErrors;
 
     private readonly Dictionary<Card, int> _matches = new();
+    private string _matchName;
     private int _nextPage;
 
 
     protected override void OnInitialized()
     {
-        Reset();
-
         _searchEdit = new(_search);
         _resultErrors = new(_searchEdit);
 
+        Reset();
+
+        _searchEdit.OnValidationRequested += ClearErrors;
         _searchEdit.OnFieldChanged += ClearErrors;
     }
 
 
     public void Dispose()
     {
+        _searchEdit.OnValidationRequested -= ClearErrors;
         _searchEdit.OnFieldChanged -= ClearErrors;
     }
 
 
-    private void ClearErrors(object sender, EventArgs args)
+    private void ClearErrors(object sender, ValidationRequestedEventArgs args)
     {
         _resultErrors.Clear();
         _searchEdit.NotifyValidationStateChanged();
     }
 
 
-    private void ColorToggle(string color)
+    private void ClearErrors(object sender, FieldChangedEventArgs args)
     {
-        var isChecked = _pickedColors.Contains(color);
+        var idField = _searchEdit.Field(nameof(CardSearch.Id));
 
+        _resultErrors.Clear(idField);
+        _resultErrors.Clear(args.FieldIdentifier);
+
+        _searchEdit.NotifyValidationStateChanged();
+    }
+
+
+    private void NoMatchError()
+    {
+        var idField = _searchEdit.Field(nameof(CardSearch.Id));
+        var noMatch = new []{ "No matches were found" };
+
+        _resultErrors.Add(idField, noMatch);
+        _searchEdit.NotifyValidationStateChanged();
+    }
+
+
+    private void SearchColorToggle(string color)
+    {
         if (_pickedColors.Contains(color))
         {
             _pickedColors.Remove(color);
@@ -232,14 +281,14 @@ else
         {
             _pickedColors.Add(color);
         }
+
+        var colorField = _searchEdit.Field(nameof(CardSearch.Colors));
+
+        _search.Colors = string.Join(MTGFetchService.Or, _pickedColors);
+
+        _searchEdit.NotifyFieldChanged(colorField);
     }
 
-
-    private void UpdateTypeString(ChangeEventArgs args, ref string typeString)
-    {
-        ClearErrors(null, args);
-        typeString = args.Value.ToString();
-    }
 
 
     private async Task SearchForCardAsync()
@@ -260,8 +309,6 @@ else
 
         try
         {
-            PrepareCardSearch();
-
             var result = await fetch.MatchAsync(_search, _nextPage);
 
             foreach (var match in result)
@@ -271,11 +318,7 @@ else
 
             if (!_matches.Any())
             {
-                var idField = _searchEdit.Field(nameof(Card.Id));
-                var noMatch = new []{ "No matches were found" };
-
-                _resultErrors.Add(idField, noMatch);
-                _searchEdit.NotifyValidationStateChanged();
+                NoMatchError();
             }
             else if (result.Any())
             {
@@ -293,50 +336,6 @@ else
     }
 
 
-    private void PrepareCardSearch()
-    {
-        _search.Colors.Clear();
-
-        _search.Types.Clear();
-        _search.Subtypes.Clear();
-        _search.Supertypes.Clear();
-
-        _search.Colors.AddRange(
-            _pickedColors.Select(c => new Color(c)) );
-
-        _search.Types.AddRange( 
-            ParseTypeString(_types, ty => new Data.Type(ty)) );
-
-        _search.Subtypes.AddRange( 
-            ParseTypeString(_subtypes, sb => new Subtype(sb)) );
-
-        _search.Supertypes.AddRange( 
-            ParseTypeString(_supertypes, sp => new Supertype(sp)) );
-    }
-
-
-    private IEnumerable<T> ParseTypeString<T>(string typeString, Func<string, T> typeFactory)
-    {
-        const StringSplitOptions orOptions = StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries;
-        const char or = '|';
-        const string and = @"[\s,]+";
-
-        var orSplits = typeString.Split(or, orOptions);
-
-        if (orSplits.Length == 1)
-        {
-            return Regex
-                .Split(typeString, and)
-                .Select(typeFactory);
-        }
-
-        var filterOutAnds = orSplits.Where(s => !Regex.IsMatch(s, and));
-        var orValues = string.Join(or, filterOutAnds);
-
-        return new []{ typeFactory(orValues) };
-    }
-
-
     private void UpdateAmount(ChangeEventArgs args, Card card)
     {
         if (int.TryParse(args.Value.ToString(), out int newAmount)
@@ -347,27 +346,59 @@ else
     }
 
 
+    private void MatchColorToggle(string color)
+    {
+        if (_pickedColors.Contains(color))
+        {
+            _pickedColors.Remove(color);
+        }
+        else
+        {
+            _pickedColors.Add(color);
+        }
+    }
+
+
+    private bool MatchPassesFilters(Card match)
+    {
+        const StringComparison ignoreCase = StringComparison.CurrentCultureIgnoreCase;
+
+        var matchColors = match.Colors.Select(c => c.Name);
+
+        bool nameMatches = string.IsNullOrWhiteSpace(_matchName) 
+            || match.Name.Contains(_matchName, ignoreCase);
+
+        bool colorMatches = _pickedColors.Count == 0 
+            || _pickedColors.Overlaps(matchColors);
+
+        return nameMatches && colorMatches;
+    }
+
+
     private void Reset()
     {
         _pickedColors.Clear();
 
-        _types = string.Empty;
-        _subtypes = string.Empty;
-        _supertypes = string.Empty;
-
         _matches.Clear();
         _nextPage = 0;
 
-        _search.Reset();
-
-        @* _search.Name = default;
+        _search.Name = default;
         _search.Cmc = default;
+        _search.Colors = default;
         _search.Rarity = default;
         _search.SetName = default;
+
+        _search.Supertypes = default;
+        _search.Types = default;
+        _search.Subtypes = default;
+
         _search.Artist = default;
         _search.Power = default;
         _search.Toughness = default;
-        _search.Loyalty = default; *@
+        _search.Loyalty = default;
+
+        // force data validation, might be inefficient
+        _searchEdit.Validate();
     }
 
 
@@ -421,16 +452,16 @@ else
             .Select(c => c.Id)
             .Where(cid => cardIds.Contains(cid))
             .ToListAsync())
-            .AsEnumerable();
+            .ToHashSet();
 
-        if (!existingIds.Any())
+        var newCards = cards
+            .Where(c => !existingIds.Contains(c.Id))
+            .ToList();
+
+        if (!newCards.Any())
         {
             return;
         }
-
-        existingIds = existingIds.ToHashSet();
-
-        var newCards = cards.Where(c => !existingIds.Contains(c.Id));
 
         dbContext.Cards.AddRange(newCards);
 

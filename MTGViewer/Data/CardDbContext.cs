@@ -67,20 +67,40 @@ namespace MTGViewer.Data
                 .HasKey(n => new { n.Value, n.CardId });
 
             builder
+                .Navigation(c => c.Names)
+                .AutoInclude(false);
+
+            builder
                 .OwnsMany(c => c.Colors)
                 .HasKey(cl => new { cl.Name, cl.CardId });
+
+            builder
+                .Navigation(c => c.Colors)
+                .AutoInclude(false);
 
             builder
                 .OwnsMany(c => c.Supertypes)
                 .HasKey(sp => new { sp.Name, sp.CardId });
 
             builder
+                .Navigation(c => c.Supertypes)
+                .AutoInclude(false);
+
+            builder
                 .OwnsMany(c => c.Types)
                 .HasKey(ty => new { ty.Name, ty.CardId });
 
             builder
+                .Navigation(c => c.Types)
+                .AutoInclude(false);
+
+            builder
                 .OwnsMany(c => c.Subtypes)
                 .HasKey(sb => new { sb.Name, sb.CardId });
+
+            builder
+                .Navigation(c => c.Subtypes)
+                .AutoInclude(false);
         }
     }
 

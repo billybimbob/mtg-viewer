@@ -100,7 +100,10 @@ namespace MTGViewer.Pages.Decks
                         .ThenBy(g => g.Card.SetName))
                     .ThenInclude(g => g.Card)
 
-                .Include(d => d.TradesTo.Take(1))
+                .Include(d => d.TradesTo
+                    .OrderBy(t => t.Id)
+                    .Take(1))
+
                 .AsSplitQuery();
         }
 
