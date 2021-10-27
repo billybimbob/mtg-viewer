@@ -8,7 +8,7 @@ namespace MTGViewer.Data
     {
         public string Id { get; }
 
-        [StringLength(40)]
+        [StringLength(50)]
         public string Name { get; set; }
 
         [Display(Name = "Converted Mana Cost")]
@@ -17,11 +17,11 @@ namespace MTGViewer.Data
 
         public string Colors { get; set; }
 
-        [StringLength(10)]
+        [StringLength(40)]
         public string Rarity { get; set; }
 
         [Display(Name = "Set Name")]
-        [StringLength(20)]
+        [StringLength(30)]
         public string SetName { get; set; }
 
         [Display(Name = "Supertype(s)")]

@@ -44,7 +44,11 @@ namespace MTGViewer.Pages.Cards
                 .Include(c => c.Supertypes)
                 .Include(c => c.Types)
                 .Include(c => c.Subtypes)
+                .Include(c => c.Amounts
+                    .OrderBy(ca => ca.Location.Name))
+                    .ThenInclude(ca => ca.Location)
                 .AsSplitQuery()
+                .AsNoTrackingWithIdentityResolution()
                 .SingleOrDefaultAsync(c => c.Id == id);
 
             if (Card == default)
@@ -53,10 +57,10 @@ namespace MTGViewer.Pages.Cards
             }
 
             CardAlts = await _dbContext.Cards
-                .Where(c => c.Name == Card.Name)
+                .Where(c => c.Id != id && c.Name == Card.Name)
                 .OrderBy(c => c.SetName)
+                .AsNoTrackingWithIdentityResolution()
                 .ToListAsync();
-
 
             return Page();
         }

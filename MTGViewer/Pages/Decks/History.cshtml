@@ -13,6 +13,13 @@
     </div>
 }
 
+<div class="mb-3">
+    <a asp-page="Viewer"
+        asp-route-id="@Model.Deck.Id"
+        class="btn btn-secondary" >
+        View </a>
+</div>
+
 <table class="table">
     <thead>
         <tr>
@@ -27,23 +34,27 @@
     <tbody>
         @foreach (var (transaction, from, to, changes) in Model.Transfers)
         {
-            var firstChange = changes.First(); // guranteed >= 1 changes
-            var isFirstTransfer = Model.IsFirstTransfer.Contains( (transaction.Id, from?.Id, to.Id) );
-
             <tr>
+                @{
+                    var transferKey = (transaction.Id, from?.Id, to.Id);
+                    var isFirstTransfer = Model.IsFirstTransfer.Contains(transferKey);
+                }
+
                 @if (isFirstTransfer)
                 {
                     <td rowspan="@transaction.Changes.Count"> @transaction.AppliedAt </td>
                 }
 
-                <td rowspan="@changes.Count"> @(firstChange.From?.Name ?? "Added") </td>
-                <td rowspan="@changes.Count"> @firstChange.To.Name </td>
+                <td rowspan="@changes.Count"> @(from?.Name ?? "Added") </td>
+                <td rowspan="@changes.Count"> @to.Name </td>
+
+                @{ var first = changes.First(); }
 
                 <td> 
-                    <a asp-page="/Cards/Details" asp-route-id="@firstChange.CardId">
-                        @firstChange.Card.Name </a>
+                    <a asp-page="/Cards/Details" asp-route-id="@first.CardId"> @first.Card.Name </a> 
                 </td>
-                <td> @firstChange.Amount </td>
+
+                <td> @first.Amount </td>
 
                 @if (isFirstTransfer)
                 {

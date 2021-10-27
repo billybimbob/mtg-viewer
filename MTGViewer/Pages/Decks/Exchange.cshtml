@@ -1,46 +1,41 @@
 @page "{id:int}"
-@model Decks.CheckoutModel
+@model Decks.ExchangeModel
 @{
-    ViewData["Title"] = $"Checkout {Model.Deck.Name}";
+    ViewData["Title"] = $"Exchange {Model.Deck.Name}";
 }
 @inject SymbolFormatter MtgSymbols
 
 
-<h1>Checkout @Model.Deck.Name</h1>
+<h1>@Model.Deck.Name Treasury Exchange</h1>
 
 @if (Model.HasPendings)
 {
     <div class="alert alert-secondary" role="alert">
-        <h5>Do you want to exchange card requests with the shared collection?</h5>
-        <p>Alternatively, requests can be made to other players</p>
-
-        <form method="POST">
-            <input type="hidden" asp-for="Deck.Id" />
-            <input type="submit" class="btn btn-secondary" value="Exchange" />
-
-            <a asp-page="/Transfers/Request"
-                asp-route-deckid="@Model.Deck.Id"
-                class="btn btn-secondary">
-                Player Request </a>
-        </form>
-    </div>
-}
-else if (!Model.Deck.Wants.Any())
-{
-    <div class="alert alert-warning" role="alert">
-        There are no pending changes for the deck
-    </div>
-}
-else
-{
-    <div class="alert alert-secondary" role="alert">
-        <p>There are no possibles cards requested in the shared pool.</p>
-        <p>Requests can be made to other players get the cards.</p>
+        <h5 class="alert-heading">Proceed Below to Exchange with the Treasury</h5>
+        <p>Alternatively, wanted cards can be obtained from other players</p>
 
         <a asp-page="/Transfers/Request"
             asp-route-deckid="@Model.Deck.Id"
             class="btn btn-secondary">
             Player Request </a>
+    </div>
+}
+else if (Model.Deck.Wants.Any())
+{
+    <div class="alert alert-secondary" role="alert">
+        <h5 class="alert-heading">The Treasury Lacks Wanted Cards</h5>
+        <p>Wanted cards can also be obtained by requesting from other players.</p>
+
+        <a asp-page="/Transfers/Request"
+            asp-route-deckid="@Model.Deck.Id"
+            class="btn btn-secondary">
+            Player Request </a>
+    </div>
+}
+else
+{
+    <div class="alert alert-warning" role="alert">
+        <h5 class="alert-heading">There are no pending changes for the deck</h5>
     </div>
 }
 
@@ -49,7 +44,7 @@ else
     @if (Model.Deck.Cards.Any())
     {
         <div class="row">
-            <h2>Current Cards</h2>
+            <h3>Current Cards</h3>
 
             <table class="table mt-2">
                 <thead>
@@ -84,7 +79,7 @@ else
 
     <div class="row">
         <div class="col">
-            <h2>Card Requests</h2>
+            <h3>Wanted From Treasury</h3>
 
             <table class="table mt-2">
                 <thead>
@@ -102,9 +97,9 @@ else
                         <tr>
                             <td>
                                 <a asp-page="/Cards/Details"
-                                asp-route-id="@card.Id"
-                                class="fw-bold">
-                                @card.Name </a>
+                                    asp-route-id="@card.Id"
+                                    class="fw-bold">
+                                    @card.Name </a>
                             </td>
                             <td> @(MtgSymbols.Format(card.ManaCost).ToHtmlString()) </td>
 
@@ -117,7 +112,7 @@ else
         </div>
 
         <div class="col">
-            <h2>Returning Cards</h2>
+            <h3>Returning To Treasury</h3>
             <table class="table mt-2">
                 <thead>
                     <tr>
@@ -134,9 +129,9 @@ else
                         <tr>
                             <td>
                                 <a asp-page="/Cards/Details"
-                                asp-route-id="@card.Id"
-                                class="fw-bold">
-                                @card.Name </a>
+                                    asp-route-id="@card.Id"
+                                    class="fw-bold">
+                                    @card.Name </a>
                             </td>
                             <td> @(MtgSymbols.Format(card.ManaCost).ToHtmlString()) </td>
 
@@ -147,6 +142,23 @@ else
                 </tbody>
             </table>
         </div>
-
     </div>
 </div>
+
+@if (Model.HasPendings)
+{
+    <div class="mt-2 alert alert-danger" role="alert">
+        <h5 class="alert-heading">Treasury Confirmation</h5>
+        <p> 
+            Make sure that any exchanges with the Treasury are done <i>only</i> when the changes 
+            can also be reflected with the physical colleciton. More specifically, modifications 
+            to the Treasury represent current state of the physical collection, and therefore 
+            both must be kept syncronized.
+        </p>
+
+        <form method="POST">
+            <input type="hidden" asp-for="Deck.Id" />
+            <input type="submit" class="btn btn-danger" value="Commit" />
+        </form>
+    </div>
+}

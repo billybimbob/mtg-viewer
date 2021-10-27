@@ -12,7 +12,7 @@ using Microsoft.Extensions.Logging;
 using MTGViewer.Data;
 
 
-namespace MTGViewer.Pages.Boxes
+namespace MTGViewer.Pages.Treasury
 {
     [Authorize]
     public class CreateModel : PageModel

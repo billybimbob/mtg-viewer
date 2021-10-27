@@ -2,7 +2,9 @@
 
 @namespace MTGViewer.Components
 @implements IDisposable
+
 @inject IDbContextFactory<CardDbContext> DbFactory
+@inject ILogger<Home> Logger;
 
 
 <h1 class="text-center display-4">Welcome to the card database!</h1>
@@ -140,27 +142,25 @@
 
             _randomCards = await GetShuffledCardsAsync(dbContext);
 
-            if (_cancel.IsCancellationRequested)
-            {
-                return;
-            }
-
             _currentTime = DateTime.Now;
 
             _recentChanges = await GetRecentChangesAsync(dbContext);
+        }
+        catch (OperationCanceledException ex)
+        {
+            Logger.LogError(ex.ToString());
         }
         finally
         {
             _isBusy = false;
         }
-
-        await base.OnParametersSetAsync();
     }
 
 
     public void Dispose()
     {
         _cancel.Cancel();
+        _cancel.Dispose();
     }
 
 
@@ -168,6 +168,8 @@
     {
         // unbounded, keep eye on
         var cards = await dbContext.Cards.ToListAsync(_cancel.Token);
+
+        _cancel.Token.ThrowIfCancellationRequested();
 
         // shuffle locally
         for (int i = 0; i < cards.Count-1; ++i)
@@ -185,7 +187,7 @@
 
     private async Task<IReadOnlyList<Transaction>> GetRecentChangesAsync(CardDbContext dbContext)
     {
-        return await dbContext.Transactions
+        var changes = await dbContext.Transactions
             .Where(t => t.Changes.Any(c => c.To is Box || c.From is Box))
 
             .Include(t => t.Changes)
@@ -205,5 +207,9 @@
             .Take(NumberOfCards)
 
             .ToListAsync(_cancel.Token);
+
+        _cancel.Token.ThrowIfCancellationRequested();
+        
+        return changes;
     }
 }

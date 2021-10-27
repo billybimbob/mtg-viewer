@@ -11,22 +11,22 @@ using MTGViewer.Data;
 using MTGViewer.Services;
 
 
-namespace MTGViewer.Pages.Boxes
+namespace MTGViewer.Pages.Treasury
 {
     public class IndexModel : PageModel
     {
         private readonly int _pageSize;
         private readonly SignInManager<CardUser> _signInManager;
-        private readonly ISharedStorage _sharedStorage;
+        private readonly ITreasury _treasury;
 
         public IndexModel(
             PageSizes pageSizes, 
             SignInManager<CardUser> signInManager, 
-            ISharedStorage sharedStorage)
+            ITreasury treasury)
         {
             _pageSize = pageSizes.GetSize(this);
             _signInManager = signInManager;
-            _sharedStorage = sharedStorage;
+            _treasury = treasury;
         }
 
 
@@ -40,7 +40,7 @@ namespace MTGViewer.Pages.Boxes
 
         public async Task OnGetAsync(int? pageIndex)
         {
-            Boxes = await _sharedStorage.Boxes
+            Boxes = await _treasury.Boxes
                 .Include(b => b.Bin)
 
                 .Include(b => b.Cards // unbounded: keep eye on
@@ -63,7 +63,7 @@ namespace MTGViewer.Pages.Boxes
 
             try
             {
-                var transaction = await _sharedStorage.OptimizeAsync();
+                var transaction = await _treasury.OptimizeAsync();
 
                 if (transaction is null)
                 {

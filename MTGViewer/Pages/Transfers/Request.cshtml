@@ -12,7 +12,7 @@
 @if (Model.TargetsExist)
 {
     <div class="alert alert-secondary" role="alert">
-        <h5>Are you sure you want to send requests for the cards listed below?</h5>
+        <h5 class="alert-heading">Are you sure you want to send requests for the cards listed below?</h5>
         <p>While a request is active, <strong>you cannot edit @Model.Deck.Name</strong></p>
 
         <form method="POST">

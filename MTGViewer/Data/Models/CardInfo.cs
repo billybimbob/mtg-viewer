@@ -16,7 +16,6 @@ namespace MTGViewer.Data
         public string Value { get; private set; }
 
         [JsonIgnore]
-        public Card Card { get; private set; } = null!;
         public string CardId { get; private set; } = null!;
 
 
@@ -45,7 +44,6 @@ namespace MTGViewer.Data
         public string Name { get; private set; }
 
         [JsonIgnore]
-        public Card Card { get; private set; } = null!;
         public string CardId { get; private set; } = null!;
 
 
@@ -64,7 +62,6 @@ namespace MTGViewer.Data
         public string Name { get; private set; }
 
         [JsonIgnore]
-        public Card Card { get; private set; } = null!;
         public string CardId { get; private set; } = null!;
 
 
@@ -83,7 +80,6 @@ namespace MTGViewer.Data
         public string Name { get; private set; }
 
         [JsonIgnore]
-        public Card Card { get; private set; } = null!;
         public string CardId { get; private set; } = null!;
 
 
@@ -102,10 +98,23 @@ namespace MTGViewer.Data
         public string Name { get; private set; }
 
         [JsonIgnore]
-        public Card Card { get; private set; } = null!;
         public string CardId { get; private set; } = null!;
 
 
         public override string ToString() => Name;
+    }
+
+
+    public static class Rarity
+    {
+        public static readonly IReadOnlyList<string> Values =
+            new List<string>()
+            {
+                "Common",
+                "Uncommon",
+                "Rare",
+                "Mythic",
+                "Special"
+            };
     }
 }

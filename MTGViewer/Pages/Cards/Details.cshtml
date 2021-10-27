@@ -20,7 +20,7 @@
     class="btn btn-secondary">
     Back </a>
 
-@if (Model.CardAlts.Count > 1)
+@if (Model.CardAlts.Any())
 {
     <div class="d-inline dropdown">
 
@@ -32,11 +32,6 @@
         <div class="dropdown-menu" aria-labelledby="altButton">
             @foreach (var card in Model.CardAlts)
             {
-                @if (card.Id == Model.Card.Id)
-                {
-                    continue;
-                }
-
                 <a class="dropdown-item" asp-page="Details" asp-route-id="@card.Id" >
                     @card.Name (@card.SetName)
                 </a>
@@ -52,7 +47,6 @@
         class="btn btn-danger">
         Delete </a>
 }
-
 
 <hr />
 <div class="container">

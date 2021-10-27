@@ -27,14 +27,14 @@ namespace MTGViewer.Services
         private readonly MTGFetchService _fetch;
 
         private readonly CardDbContext _dbContext;
-        private readonly ISharedStorage _sharedStorage;
+        private readonly ITreasury _treasury;
         private readonly UserManager<CardUser> _userManager;
 
         public CardDataGenerator(
             IConfiguration config,
             MTGFetchService fetchService,
             CardDbContext dbContext,
-            ISharedStorage sharedStorage,
+            ITreasury treasury,
             UserManager<CardUser> userManager)
         {
             var seed = new SeedSettings();
@@ -46,7 +46,7 @@ namespace MTGViewer.Services
             _fetch = fetchService;
 
             _dbContext = dbContext;
-            _sharedStorage = sharedStorage;
+            _treasury = treasury;
             _userManager = userManager;
         }
 
@@ -79,7 +79,7 @@ namespace MTGViewer.Services
 
             await _dbContext.SaveChangesAsync(cancel);
 
-            await _sharedStorage.ReturnAsync(boxAmounts);
+            await _treasury.ReturnAsync(boxAmounts);
 
             // TODO: fix created accounts not being verified
             var results = await Task.WhenAll(

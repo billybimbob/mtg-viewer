@@ -23,18 +23,18 @@ namespace MTGViewer.Pages.Decks
     {
         private readonly UserManager<CardUser> _userManager;
         private readonly CardDbContext _dbContext;
-        private readonly ISharedStorage _sharedStorage;
+        private readonly ITreasury _treasury;
         private readonly ILogger<DeleteModel> _logger;
 
         public DeleteModel(
             UserManager<CardUser> userManager,
             CardDbContext dbContext,
-            ISharedStorage sharedStorage,
+            ITreasury treasury,
             ILogger<DeleteModel> logger)
         {
             _userManager = userManager;
             _dbContext = dbContext;
-            _sharedStorage = sharedStorage;
+            _treasury = treasury;
             _logger = logger;
         }
 
@@ -153,7 +153,7 @@ namespace MTGViewer.Pages.Decks
             {
                 if (returningCards.Any())
                 {
-                    await _sharedStorage.ReturnAsync(returningCards);
+                    await _treasury.ReturnAsync(returningCards);
                 }
 
                 await _dbContext.SaveChangesAsync();

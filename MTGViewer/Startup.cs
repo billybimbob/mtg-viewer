@@ -46,7 +46,7 @@ namespace MTGViewer
 
             services.AddScoped<MTGFetchService>();
 
-            services.AddScoped<ISharedStorage, ExpandableSharedService>();
+            services.AddScoped<ITreasury, FlatSortedCards>();
             services.AddScoped<JsonCardStorage>();
 
             if (_env.IsDevelopment())

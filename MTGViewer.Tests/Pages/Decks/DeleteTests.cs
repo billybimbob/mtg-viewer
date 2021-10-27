@@ -33,7 +33,7 @@ namespace MTGViewer.Tests.Pages.Decks
             CardDbContext dbContext,
             UserManager<CardUser> userManager,
             TestDataGenerator testGen,
-            ISharedStorage sharedStorage)
+            ITreasury treasury)
         {
             _dbContext = dbContext;
             _userManager = userManager;
@@ -41,7 +41,7 @@ namespace MTGViewer.Tests.Pages.Decks
 
             var logger = Mock.Of<ILogger<DeleteModel>>();
 
-            _deleteModel = new(_userManager, _dbContext, sharedStorage, logger);
+            _deleteModel = new(_userManager, _dbContext, treasury, logger);
         }
 
 
@@ -113,29 +113,24 @@ namespace MTGViewer.Tests.Pages.Decks
 
             await _deleteModel.SetModelContextAsync(_userManager, deck.OwnerId);
 
-            var deckCards = await DeckCards(deck)
-                .Select(ca => ca.CardId)
-                .ToListAsync();
+            var deckCardTotal = await DeckCards(deck).SumAsync(ca => ca.Amount);
 
-            var boxQuery = _dbContext.Amounts
-                .Where(ca => deckCards.Contains(ca.CardId))
+            var boxTotal = _dbContext.Amounts
+                .Where(ca => ca.Location is Box)
                 .Select(ca => ca.Amount);
 
             // Act
-            var boxBefore = await boxQuery.ToListAsync();
+            var boxBefore = await boxTotal.SumAsync();
             var result = await _deleteModel.OnPostAsync(deck.Id);
 
-            var boxAfter = await boxQuery.ToListAsync();
+            var boxAfter = await boxTotal.SumAsync();
             var deckAfter = await Deck(deck).SingleOrDefaultAsync();
-
-            var boxChange = boxBefore.Zip(boxAfter, (before, after) => (before, after));
 
             // Assert
             Assert.IsType<RedirectToPageResult>(result);
 
             Assert.Null(deckAfter);
-            Assert.NotEqual(boxBefore, boxAfter);
-            Assert.All(boxChange, ba => Assert.True(ba.before <= ba.after));
+            Assert.Equal(deckCardTotal, boxAfter - boxBefore);
         }
     }
 }

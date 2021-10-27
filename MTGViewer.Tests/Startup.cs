@@ -23,7 +23,7 @@ namespace MTGViewer.Tests
             services.AddDbContext<CardDbContext>(TestFactory.InMemoryDatabase);
             services.AddDbContext<UserDbContext>(TestFactory.InMemoryDatabase);
 
-            services.AddScoped<ISharedStorage, ExpandableSharedService>();
+            services.AddScoped<ITreasury, FlatSortedCards>();
             services.AddScoped<UserManager<CardUser>>(TestFactory.CardUserManager);
 
             services.AddSingleton<PageSizes>();
@@ -42,7 +42,6 @@ namespace MTGViewer.Tests
             services.AddScoped<MTGFetchService>();
 
             services.AddScoped<JsonCardStorage>();
-
             services.AddScoped<CardDataGenerator>();
             services.AddScoped<TestDataGenerator>();
         }

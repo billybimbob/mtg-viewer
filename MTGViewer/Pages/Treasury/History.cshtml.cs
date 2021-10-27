@@ -14,7 +14,7 @@ using MTGViewer.Services;
 
 #nullable enable
 
-namespace MTGViewer.Pages.Boxes
+namespace MTGViewer.Pages.Treasury
 {
     public class HistoryModel : PageModel
     {

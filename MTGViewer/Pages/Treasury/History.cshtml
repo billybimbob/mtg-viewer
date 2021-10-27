@@ -1,10 +1,10 @@
 @page "{pageIndex:int?}"
-@model Boxes.HistoryModel
+@model Treasury.HistoryModel
 @{
-    ViewData["Title"] = "Shared Collection History";
+    ViewData["Title"] = "Treasury History";
 }
 
-<h1>Changes To Shared Collection</h1>
+<h1>Changes To Treasury</h1>
 
 @if (!string.IsNullOrEmpty(Model.PostMessage))
 {
@@ -27,25 +27,50 @@
     <tbody>
         @foreach (var (transaction, from, to, changes) in Model.Transfers)
         {
-            var firstChange = changes.First(); // guranteed >= 1 changes
-            var isFirstTransfer = Model.IsFirstTransfer.Contains( (transaction.Id, from?.Id, to.Id) );
-
             <tr>
+                @{
+                    var transferKey = (transaction.Id, from?.Id, to.Id);
+                    var isFirstTransfer = Model.IsFirstTransfer.Contains(transferKey);
+                }
+
                 @if (isFirstTransfer)
                 {
                     <td rowspan="@transaction.Changes.Count"> @transaction.AppliedAt </td>
                 }
 
-                <td rowspan="@changes.Count"> @(firstChange.From?.Name ?? "Added") </td>
-                <td rowspan="@changes.Count"> @firstChange.To.Name </td>
+                <td rowspan="@changes.Count">
+                    @if (from is Deck fromDeck)
+                    {
+                        <a asp-page="/Decks/Viewer" asp-route-id="@fromDeck.Id"> @fromDeck.Name </a>
+                    }
+                    else
+                    {
+                        @(from?.Name ?? "Added")
+                    }
+                </td>
+                
+                <td rowspan="@changes.Count">
+                    @if (to is Deck toDeck)
+                    {
+                        <a asp-page="/Decks/Viewer" asp-route-id="@toDeck.Id"> @toDeck.Name </a>
+                    }
+                    else
+                    {
+                        @to.Name 
+                    }
+                </td>
+
+                @{ var first = changes.First(); }
 
                 <td>
-                    <a asp-page="/Cards/Details" asp-route-id="@firstChange.CardId">
-                        @firstChange.Card.Name </a>
+                    <a asp-page="/Cards/Details" asp-route-id="@first.CardId">
+                        @first.Card.Name </a>
                 </td>
-                <td> @firstChange.Amount </td>
+                <td> @first.Amount </td>
 
-                @if (Model.IsSignedIn && isFirstTransfer && Model.IsSharedTransaction.Contains(transaction.Id))
+                @if ( Model.IsSignedIn 
+                    && isFirstTransfer 
+                    && Model.IsSharedTransaction.Contains(transaction.Id))
                 {
                     <td rowspan="@transaction.Changes.Count">
                         <form method="POST">

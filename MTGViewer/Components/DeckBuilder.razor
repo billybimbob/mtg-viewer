@@ -44,9 +44,9 @@
 <table class="table mt-2">
     <thead>
         <tr>
-            <th>Card Name</th>
-            <th>Mana Cost</th>
-            <th>Set</th>
+            <th> @Entities.DisplayName((Card c) => c.Name) </th>
+            <th> @Entities.DisplayName((Card c) => c.ManaCost) </th>
+            <th> @Entities.DisplayName((Card c) => c.SetName) </th>
             <th>Deck Amount</th>
             <th>Requests</th>
             <th></th>
@@ -79,38 +79,32 @@
 </table>
 
 
-<h2>Available Cards</h2>
+<h2>Treasury</h2>
 
 <table class="table">
     <thead>
         <tr>
-            <th>Card Name</th>
-            <th>Mana Cost</th>
-            <th>Set</th>
-            <th>Rarity</th>
-            <th>Current Shared</th>
+            <th> @Entities.DisplayName((Card c) => c.Name) </th>
+            <th> @Entities.DisplayName((Card c) => c.ManaCost) </th>
+            <th> @Entities.DisplayName((Card c) => c.SetName) </th>
+            <th>Amount</th>
             <th></th>
         </tr>
     </thead>
 
     <tbody>
-        @foreach (var card in AllCards)
+        @foreach (var (card, available) in Availables)
         {
             <tr>
                 <td class="fw-bold"> @card.Name </td>
                 <td> @(MtgSymbols.Format(card.ManaCost).ToMarkupString()) </td>
                 <td> @card.SetName </td>
-                <td> @card.Rarity </td>
 
                 @{
-                    var boxAmounts = card.Amounts
-                        .Where(ca => ca.Location is Box)
-                        .Sum(ca => ca.Amount);
-
                     var wantAmounts = Math.Min(
-                        card.Wants.Sum(w => w.Amount), boxAmounts);
+                        card.Wants.Sum(w => w.Amount), available);
                 }
-                <td> @(boxAmounts - wantAmounts) </td>
+                <td> @(available - wantAmounts) </td>
 
                 <td>
                     <button title="Add @card.Name"
@@ -141,6 +135,9 @@
     private SaveResult _result;
     private CardDbContext _dbContext;
 
+    private IReadOnlyList<Card> _cards;
+    private IReadOnlyDictionary<string, int> _boxAmounts;
+
     private Deck _deck;
     private EditContext _deckEdit;
     private Dictionary<string, QuantityGroup> _deckCards;
@@ -151,19 +148,19 @@
         !_dbContext.ChangeTracker.HasChanges();
 
 
-    private IReadOnlyList<Card> AllCards { get; set; }
-
+    private IEnumerable<(Card, int amount)> Availables =>
+        _cards.Select(card => 
+            (card, _boxAmounts.GetValueOrDefault(card.Id)));
 
     private IEnumerable<Card> DeckCards =>
-        AllCards.Where((Func<Card, bool>)(c => _deckCards != null
+        _cards.Where(c => _deckCards != null
             && _deckCards.TryGetValue(c.Id, out var cardGroup)
-            && cardGroup.Amount > 0));
+            && cardGroup.Amount > 0);
 
 
     private IQueryable<Deck> DeckForBuilder =>
         _dbContext.Decks
             .Where(d => d.Id == DeckId)
-            .Include(d => d.Owner)
             .Include(d => d.Cards) // unbounded: keep eye on
             .Include(d => d.Wants) // unbounded: keep eye on
             .Include(d => d.GiveBacks) // unbounded: keep eye on
@@ -184,25 +181,31 @@
         {
             _dbContext = DbFactory.CreateDbContext();
 
-            AllCards = await _dbContext.Cards
-                .Include(c => c.Amounts
-                    .Where(ca => ca.Location is Box))
-                    .ThenInclude(ca => ca.Location)
+            _cards = await _dbContext.Cards
                 .OrderBy(c => c.Name)
                     .ThenBy(c => c.SetName)
-                .ToListAsync(_cancel.Token);
+                .ToListAsync(_cancel.Token); // unbounded, keep eye on
 
-            if (_cancel.IsCancellationRequested)
-            {
-                return;
-            }
+            _cancel.Token.ThrowIfCancellationRequested();
+
+            _boxAmounts = await _dbContext.Amounts
+                .Where(ca => ca.Location is Box)
+                .GroupBy(ca => ca.CardId,
+                    (CardId, cas) => 
+                        new { CardId, Total = cas.Sum(ca => ca.Amount) })
+                .ToDictionaryAsync(
+                    ct => ct.CardId, ct => ct.Total, _cancel.Token);
+
+            _cancel.Token.ThrowIfCancellationRequested();
+        }
+        catch (OperationCanceledException ex)
+        {
+            Logger.LogError(ex.ToString());
         }
         finally
         {
             _isBusy = false;
         }
-
-        await base.OnInitializedAsync();
     }
 
 
@@ -219,16 +222,17 @@
         {
             _deck = await GetOrCreateDeckAsync();
 
-            if (_cancel.IsCancellationRequested)
-            {
-                return;
-            }
-
             _deckEdit = new(_deck);
+
             _deckCards = GetDeckCardGroups(_deck)
                 .ToDictionary(cg => cg.CardId);
         }
+
         catch (DbUpdateException ex)
+        {
+            Logger.LogError(ex.ToString());
+        }
+        catch (OperationCanceledException ex)
         {
             Logger.LogError(ex.ToString());
         }
@@ -236,8 +240,6 @@
         {
             _isBusy = false;
         }
-
-        await base.OnParametersSetAsync();
     }
 
 
@@ -245,25 +247,28 @@
     {
         if (DeckId != default)
         {
-            return await DeckForBuilder.SingleAsync(_cancel.Token);
+            var deck = await DeckForBuilder.SingleAsync(_cancel.Token);
+
+            _cancel.Token.ThrowIfCancellationRequested();
+
+            return deck;
         }
 
-        var userValues = new []{ UserId };
-        var user = await _dbContext.Users.FindAsync(userValues, _cancel.Token);
+        var userValue = new []{ UserId };
+        var user = await _dbContext.Users.FindAsync(userValue, _cancel.Token);
 
-        if (_cancel.IsCancellationRequested)
+        _cancel.Token.ThrowIfCancellationRequested();
+
+        if (user == null)
         {
-            return null;
+            throw new ArgumentException(nameof(UserId));
         }
 
         var userDeckCount = await _dbContext.Decks
-            .Where(d => d.Owner.Id == UserId)
+            .Where(d => d.OwnerId == UserId)
             .CountAsync(_cancel.Token);
 
-        if (_cancel.IsCancellationRequested)
-        {
-            return null;
-        }
+        _cancel.Token.ThrowIfCancellationRequested();
 
         var newLoc = new Deck
         {
@@ -298,6 +303,7 @@
     public async ValueTask DisposeAsync()
     {
         _cancel.Cancel();
+        _cancel.Dispose();
 
         if (_dbContext is not null)
         {
@@ -424,36 +430,31 @@
 
             await _dbContext.SaveChangesAsync(_cancel.Token);
 
-            if (_cancel.IsCancellationRequested)
-            {
-                return;
-            }
-
-            Logger.LogInformation($"successfully updated");
+            _cancel.Token.ThrowIfCancellationRequested();
 
             if (_deck.GiveBacks.Any() || _deck.Wants.Any())
             {
-                Nav.NavigateTo($"/Decks/Checkout/{_deck.Id}", true);
+                Nav.NavigateTo($"/Decks/Exchange/{_deck.Id}", true);
             }
-
-            _result = SaveResult.Success;
-
+            else
+            {
+                _result = SaveResult.Success;
+            }
         }
         catch (DbUpdateConcurrencyException ex)
         {
-            if (_cancel.IsCancellationRequested)
-            {
-                return;
-            }
-
             _result = SaveResult.Error;
-
             await UpdateDeckAsync(ex);
         }
         catch (DbUpdateException ex)
         {
             Logger.LogError(ex.ToString());
         }
+        catch (OperationCanceledException ex)
+        {
+            Logger.LogError(ex.ToString());
+        }
+
         finally
         {
             _isBusy = false;
@@ -506,9 +507,20 @@
             return;
         }
 
-        var dbDeck = await DeckForBuilder
-            .AsNoTracking()
-            .SingleOrDefaultAsync(_cancel.Token);
+        if (_cancel.IsCancellationRequested)
+        {
+            return;
+        }
+
+        Deck dbDeck = default;
+        try
+        {
+            dbDeck = await DeckForBuilder
+                .AsNoTracking()
+                .SingleOrDefaultAsync(_cancel.Token);
+        }
+        catch (OperationCanceledException)
+        { }
 
         if (_cancel.IsCancellationRequested)
         {
@@ -533,8 +545,7 @@
 
     private bool HasNoDeckConflicts(DbUpdateConcurrencyException ex)
     {
-        var deckConflict = ex.Entries<Location>()
-            .SingleOrDefault();
+        var deckConflict = ex.Entries<Location>().SingleOrDefault();
 
         if (deckConflict is not null && deckConflict.Entity.Id == _deck.Id)
         {

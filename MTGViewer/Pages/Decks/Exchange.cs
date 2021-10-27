@@ -20,24 +20,24 @@ using MTGViewer.Services;
 namespace MTGViewer.Pages.Decks
 {
     [Authorize]
-    public class CheckoutModel : PageModel
+    public class ExchangeModel : PageModel
     {
         private readonly CardDbContext _dbContext;
-        private readonly ISharedStorage _sharedStorage;
+        private readonly ITreasury _treasury;
         private readonly UserManager<CardUser> _userManager;
 
         private readonly CardText _cardText;
-        private readonly ILogger<CheckoutModel> _logger;
+        private readonly ILogger<ExchangeModel> _logger;
 
-        public CheckoutModel(
+        public ExchangeModel(
             CardDbContext dbContext,
-            ISharedStorage sharedStorage,
+            ITreasury treasury,
             UserManager<CardUser> userManager,
             CardText cardText,
-            ILogger<CheckoutModel> logger)
+            ILogger<ExchangeModel> logger)
         {
             _dbContext = dbContext;
-            _sharedStorage = sharedStorage;
+            _treasury = treasury;
             _userManager = userManager;
 
             _cardText = cardText;
@@ -55,7 +55,7 @@ namespace MTGViewer.Pages.Decks
 
         public async Task<IActionResult> OnGetAsync(int id)
         {
-            var deck = await DeckForCheckout(id)
+            var deck = await DeckForExchange(id)
                 .AsNoTrackingWithIdentityResolution()
                 .SingleOrDefaultAsync();
 
@@ -78,7 +78,7 @@ namespace MTGViewer.Pages.Decks
         }
 
 
-        private IQueryable<Deck> DeckForCheckout(int deckId)
+        private IQueryable<Deck> DeckForExchange(int deckId)
         {
             var userId = _userManager.GetUserId(User);
 
@@ -127,7 +127,7 @@ namespace MTGViewer.Pages.Decks
 
         public async Task<IActionResult> OnPostAsync(int id)
         {
-            var deck = await DeckForCheckout(id).SingleOrDefaultAsync();
+            var deck = await DeckForExchange(id).SingleOrDefaultAsync();
 
             if (deck == default)
             {
@@ -157,7 +157,7 @@ namespace MTGViewer.Pages.Decks
             {
                 if (boxReturns.Any())
                 {
-                    await _sharedStorage.ReturnAsync(boxReturns);
+                    await _treasury.ReturnAsync(boxReturns);
                 }
 
                 await _dbContext.SaveChangesAsync();

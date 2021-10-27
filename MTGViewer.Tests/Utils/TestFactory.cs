@@ -16,7 +16,6 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -45,9 +44,9 @@ namespace MTGViewer.Tests.Utils
         }
 
 
-        public static UserManager<CardUser> CardUserManager(IServiceProvider services)
+        public static UserManager<CardUser> CardUserManager(IServiceProvider provider)
         {
-            var userDb = services.GetRequiredService<UserDbContext>();
+            var userDb = provider.GetRequiredService<UserDbContext>();
             var store = new UserStore<CardUser>(userDb);
 
             var options = new Mock<IOptions<IdentityOptions>>();
@@ -75,7 +74,7 @@ namespace MTGViewer.Tests.Utils
                 pwdValidators,
                 new UpperInvariantLookupNormalizer(),
                 new IdentityErrorDescriber(), 
-                services,
+                provider,
                 Mock.Of<ILogger<UserManager<CardUser>>>());
 
             validator

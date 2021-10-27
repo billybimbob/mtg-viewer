@@ -7,13 +7,14 @@
 
 @inject IDbContextFactory<CardDbContext> DbFactory
 @inject SymbolFormatter MtgSymbols
+@inject ILogger<Library> Logger
 
 
 <h1>Card Collection</h1>
 
 <div>
     <a class="btn btn-secondary" href="Cards/Create">Add Card</a>
-    <a class="btn btn-secondary" href="Boxes/">Shared Collection</a>
+    <a class="btn btn-secondary" href="Treasury/">Treasury</a>
 
     <button class="btn btn-secondary" @onclick="RefreshCardsAsync"> 
         Refresh </button>
@@ -45,25 +46,25 @@
             <th>
                 <button @onclick="() => ReorderCards(c => c.Name)"
                     class="btn btn-link text-left pl-0 @BoldIfActive(c => c.Name)">
-                    Card Name
+                    @Entities.DisplayName((Card c) => c.Name)
                 </button>
             </th>
             <th>
                 <button @onclick="() => ReorderCards(c => c.ManaCost)"
                     class="btn btn-link text-left pl-0 @BoldIfActive(c => c.ManaCost)">
-                    Mana Cost
+                    @Entities.DisplayName((Card c) => c.ManaCost)
                 </button>
             </th>
             <th>
                 <button @onclick="() => ReorderCards(c => c.SetName)"
                     class="btn btn-link text-left pl-0 @BoldIfActive(c => c.SetName)">
-                    Set
+                    @Entities.DisplayName((Card c) => c.SetName)
                 </button>
             </th>
             <th>
                 <button @onclick="() => ReorderCards(c => c.Rarity)"
                     class="btn btn-link text-left pl-0 @BoldIfActive(c => c.Rarity)">
-                    Rarity
+                    @Entities.DisplayName((Card c) => c.Rarity)
                 </button>
             </th>
             <th>
@@ -80,13 +81,7 @@
         @foreach (var card in Cards)
         {
             <tr>
-                <td>
-                    <a title="Details @card.Name"
-                       href="/Cards/Details/@card.Id"
-                       class="fw-bold">
-                       @card.Name
-                    </a>
-                </td>
+                <td> <HoverCard Card="@((CardPreview)card)"/> </td>
 
                 <td> @(MtgSymbols.Format(card.ManaCost).ToMarkupString()) </td>
                 <td> @card.SetName </td>
@@ -189,16 +184,9 @@
 
 
 
-    protected override async Task OnInitializedAsync()
+    protected override Task OnInitializedAsync()
     {
-        await FetchCardsAsync();
-
-        if (_cancel.IsCancellationRequested)
-        {
-            return;
-        }
-
-        await base.OnInitializedAsync();
+        return FetchCardsAsync();
     }
 
 
@@ -209,14 +197,13 @@
         _searchName = string.Empty;
 
         FilterCards();
-
-        base.OnParametersSet();
     }
 
 
     public void Dispose()
     {
         _cancel.Cancel();
+        _cancel.Dispose();
     }
 
 
@@ -237,10 +224,7 @@
                 .Include(c => c.Colors)
                 .ToListAsync(_cancel.Token); // unbounded, keep eye on
 
-            if (_cancel.IsCancellationRequested)
-            {
-                return;
-            }
+            _cancel.Token.ThrowIfCancellationRequested();
 
             _cardAmounts = await dbContext.Amounts
                 .GroupBy( ca => ca.CardId,
@@ -248,6 +232,13 @@
                         new { CardId, Total = cas.Sum(ca => ca.Amount) })
                 .ToDictionaryAsync(
                     ct => ct.CardId, ct => ct.Total, _cancel.Token);
+
+            _cancel.Token.ThrowIfCancellationRequested();
+        }
+
+        catch (OperationCanceledException ex)
+        {
+            Logger.LogError(ex.ToString());
         }
         finally
         {
@@ -380,11 +371,9 @@
     {
         await FetchCardsAsync();
 
-        if (_cancel.IsCancellationRequested)
+        if (!_cancel.IsCancellationRequested)
         {
-            return;
+            FilterCards(); // keep current filters
         }
-
-        FilterCards(); // keep current filters
     }
 }

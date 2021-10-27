@@ -29,7 +29,7 @@ namespace MTGViewer.Data
         public string Layout { get; init; } = null!;
 
 
-        [Display(Name = "Mana")]
+        [Display(Name = "Mana Cost")]
         [Required]
         public string ManaCost { get; set; } = null!;
 

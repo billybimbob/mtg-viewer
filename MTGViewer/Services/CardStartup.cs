@@ -108,9 +108,9 @@ namespace MTGViewer.Services
                 await jsonStorage.WriteToJsonAsync(cancel: cancel);
             }
 
-            var sharedStorage = scopeProvider.GetRequiredService<ISharedStorage>();
+            var treasury = scopeProvider.GetRequiredService<ITreasury>();
 
-            await sharedStorage.OptimizeAsync();
+            await treasury.OptimizeAsync();
         }
 
 

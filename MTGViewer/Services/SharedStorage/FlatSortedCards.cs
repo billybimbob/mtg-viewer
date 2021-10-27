@@ -12,14 +12,13 @@ using MTGViewer.Data;
 
 namespace MTGViewer.Services
 {
-    public sealed class ExpandableSharedService : ISharedStorage, IDisposable
+    public sealed class FlatSortedCards : ITreasury, IDisposable
     {
         private readonly int _boxSize;
         private readonly CardDbContext _dbContext;
-        // needed since CardDbContext is not thread safe
-        private readonly SemaphoreSlim _lock;
+        private readonly SemaphoreSlim _lock; // needed since CardDbContext is not thread safe
 
-        public ExpandableSharedService(IConfiguration config, CardDbContext dbContext)
+        public FlatSortedCards(IConfiguration config, CardDbContext dbContext)
         {
             _boxSize = config.GetValue("BoxSize", 80);
             _dbContext = dbContext;
@@ -41,29 +40,39 @@ namespace MTGViewer.Services
             .AsNoTrackingWithIdentityResolution();
 
 
-        public async Task<Transaction> ReturnAsync(IEnumerable<CardReturn> returns)
+        public async Task<Transaction> ReturnAsync(
+            IEnumerable<CardReturn> returns, CancellationToken cancel = default)
         {
             if (InvalidReturns(returns))
             {
                 throw new ArgumentException("Given returns are invalid");
             }
 
+            await _lock.WaitAsync(cancel);
 
-            await _lock.WaitAsync();
             try
             {
+                cancel.ThrowIfCancellationRequested();
+
                 var newTransaction = new Transaction();
+
                 _dbContext.Transactions.Add(newTransaction);
 
-                var newReturns = await ReturnExistingAsync(newTransaction, returns);
+                var newReturns = await ReturnExistingAsync(newTransaction, returns, cancel);
+
+                cancel.ThrowIfCancellationRequested();
 
                 if (newReturns.Any())
                 {
-                    await ReturnNewAsync(newTransaction, newReturns);
+                    await ReturnNewAsync(newTransaction, newReturns, cancel);
+
+                    cancel.ThrowIfCancellationRequested();
                 }
 
                 // intentionally leave db exception unhandled
-                await _dbContext.SaveChangesAsync();
+                await _dbContext.SaveChangesAsync(cancel);
+
+                cancel.ThrowIfCancellationRequested();
 
                 return newTransaction;
             }
@@ -82,8 +91,8 @@ namespace MTGViewer.Services
 
 
         private async Task<IReadOnlyList<CardReturn>> ReturnExistingAsync(
-            Transaction transaction,
-            IEnumerable<CardReturn> returning)
+            Transaction transaction, IEnumerable<CardReturn> returning,
+            CancellationToken cancel)
         {
             var returnIds = returning
                 .Select(cr => cr.Card.Id)
@@ -93,7 +102,9 @@ namespace MTGViewer.Services
             var returnAmounts = await _dbContext.Amounts
                 .Where(ca => ca.Location is Box && returnIds.Contains(ca.CardId))
                 .Include(ca => ca.Location)
-                .ToListAsync(); // unbounded: keep eye on
+                .ToListAsync(cancel); // unbounded: keep eye on
+
+            cancel.ThrowIfCancellationRequested();
 
             if (!returnAmounts.Any())
             {
@@ -142,7 +153,8 @@ namespace MTGViewer.Services
         }
 
 
-        private async Task<IReadOnlyList<CardAmount>> GetSortedAmountsAsync()
+        private async Task<IReadOnlyList<CardAmount>> GetSortedAmountsAsync(
+            CancellationToken cancel)
         {
             // loading all shared cards, could be memory inefficient
             // TODO: find more efficient way to determining card position
@@ -152,22 +164,26 @@ namespace MTGViewer.Services
                 .Include(ca => ca.Card)
                 .OrderBy(ca => ca.Card.Name)
                     .ThenBy(ca => ca.Card.SetName)
-                .ToListAsync(); // unbounded: keep eye on
+                .ToListAsync(cancel); // unbounded: keep eye on
         }
 
 
-        private async Task<IReadOnlyList<Box>> GetSortedBoxesAsync()
+        private async Task<IReadOnlyList<Box>> GetSortedBoxesAsync(
+            CancellationToken cancel)
         {
             return await _dbContext.Boxes
                 .OrderBy(s => s.Id)
-                .ToListAsync(); // unbounded: keep eye on
+                .ToListAsync(cancel); // unbounded: keep eye on
         }
 
 
         private async Task ReturnNewAsync(
-            Transaction transaction, IEnumerable<CardReturn> newReturns)
+            Transaction transaction, IEnumerable<CardReturn> newReturns, 
+            CancellationToken cancel)
         {
-            var sortedBoxes = await GetSortedBoxesAsync();
+            var sortedBoxes = await GetSortedBoxesAsync(cancel);
+
+            cancel.ThrowIfCancellationRequested();
 
             if (!sortedBoxes.Any())
             {
@@ -175,13 +191,16 @@ namespace MTGViewer.Services
                     "There are no possible boxes to return the cards to");
             }
 
-            var sortedSharedAmounts = await GetSortedAmountsAsync();
+            var sortedSharedAmounts = await GetSortedAmountsAsync(cancel);
+
+            cancel.ThrowIfCancellationRequested();
+
             var cardIndices = GetCardIndices(sortedSharedAmounts);
 
             var combinedReturns = newReturns
-                .GroupBy(
-                    cr => (cr.Card, cr.Deck),
-                    (cd, crs) => (cd.Card, crs.Sum(cr => cr.NumCopies), cd.Deck));
+                .GroupBy(cr => (cr.Card, cr.Deck),
+                    (cd, crs) => 
+                        (cd.Card, crs.Sum(cr => cr.NumCopies), cd.Deck));
 
             foreach (var (card, numCopies, source) in combinedReturns)
             {
@@ -272,13 +291,32 @@ namespace MTGViewer.Services
 
 
 
-        public async Task<Transaction?> OptimizeAsync()
+        public async Task<Transaction?> OptimizeAsync(CancellationToken cancel = default)
         {
-            await _lock.WaitAsync();
             try
             {
-                var sortedBoxAmounts = await GetSortedAmountsAsync();
-                var sortedBoxes = await GetSortedBoxesAsync();
+                await _lock.WaitAsync(cancel);
+            }
+            catch (OperationCanceledException)
+            {
+                return null;
+            }
+
+            try
+            {
+                var sortedBoxAmounts = await GetSortedAmountsAsync(cancel);
+
+                if (cancel.IsCancellationRequested)
+                {
+                    return null;
+                }
+
+                var sortedBoxes = await GetSortedBoxesAsync(cancel);
+
+                if (cancel.IsCancellationRequested)
+                {
+                    return null;
+                }
 
                 var newTransaction = AddUpdatedBoxAmounts(sortedBoxAmounts, sortedBoxes);
 
@@ -288,9 +326,18 @@ namespace MTGViewer.Services
                 }
 
                 // intentionally throw db exception
-                await _dbContext.SaveChangesAsync();
+                await _dbContext.SaveChangesAsync(cancel);
+
+                if (cancel.IsCancellationRequested)
+                {
+                    return null;
+                }
 
                 return newTransaction;
+            }
+            catch (OperationCanceledException)
+            {
+                return null;
             }
             finally
             {

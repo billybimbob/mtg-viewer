@@ -13,20 +13,20 @@ using MTGViewer.Tests.Utils;
 
 namespace MTGViewer.Tests.Services
 {
-    public class SharedStorageTests : IAsyncLifetime
+    public class TreasuryTests : IAsyncLifetime
     {
         private readonly CardDbContext _dbContext;
-        private readonly ISharedStorage _sharedStorage;
+        private readonly ITreasury _treasury;
         private readonly TestDataGenerator _testGen;
 
 
-        public SharedStorageTests(
+        public TreasuryTests(
             CardDbContext dbContext, 
-            ISharedStorage sharedStorage, 
+            ITreasury treasury, 
             TestDataGenerator testGen)
         {
             _dbContext = dbContext;
-            _sharedStorage = sharedStorage;
+            _treasury = treasury;
             _testGen = testGen;
         }
 
@@ -36,12 +36,11 @@ namespace MTGViewer.Tests.Services
         public Task DisposeAsync() => _testGen.ClearAsync();
 
 
-        public IQueryable<Card> Cards =>
+        public IQueryable<Card> AllCards =>
             _dbContext.Cards.AsNoTracking();
 
         public IQueryable<CardAmount> BoxAmounts => 
-            _dbContext.Amounts
-                .Where(ca => ca.Location is Box)
+            _treasury.Cards
                 .Include(ca => ca.Location)
                 .AsNoTracking();
 
@@ -53,12 +52,12 @@ namespace MTGViewer.Tests.Services
         public async Task Return_ValidCard_Success(int cardIndex)
         {
             var copies = 4;
-            var card = await Cards.Skip(cardIndex).FirstAsync();
+            var card = await AllCards.Skip(cardIndex).FirstAsync();
 
             var cardBoxes = BoxAmounts.Where(ca => ca.CardId == card.Id);
 
             var boxesBefore = await cardBoxes.ToListAsync();
-            await _sharedStorage.ReturnAsync(card, copies);
+            await _treasury.ReturnAsync(card, copies);
             var boxesAfter = await cardBoxes.ToListAsync();
 
             var boxesAfterIds = boxesAfter.Select(ca => ca.CardId);
@@ -77,7 +76,7 @@ namespace MTGViewer.Tests.Services
             var copies = 4;
             Card? card = null;
 
-            Task SharedReturn() => _sharedStorage.ReturnAsync(card!, copies);
+            Task SharedReturn() => _treasury.ReturnAsync(card!, copies);
 
             await Assert.ThrowsAsync<ArgumentException>(SharedReturn);
         }
@@ -91,7 +90,7 @@ namespace MTGViewer.Tests.Services
         {
             var card = await _dbContext.Cards.FirstAsync();
 
-            Task SharedReturn() => _sharedStorage.ReturnAsync(card, copies);
+            Task SharedReturn() => _treasury.ReturnAsync(card, copies);
 
             await Assert.ThrowsAsync<ArgumentException>(SharedReturn);
         }
@@ -102,7 +101,7 @@ namespace MTGViewer.Tests.Services
         {
             var emptyReturns = Enumerable.Empty<CardReturn>();
 
-            Task SharedReturn() => _sharedStorage.ReturnAsync(emptyReturns);
+            Task SharedReturn() => _treasury.ReturnAsync(emptyReturns);
 
             await Assert.ThrowsAsync<ArgumentException>(SharedReturn);
         }
@@ -128,8 +127,9 @@ namespace MTGViewer.Tests.Services
 
             var boxesBefore = await cardBoxes.ToListAsync();
 
-            await _sharedStorage.ReturnAsync(
-                new CardReturn(card1, copy1), new CardReturn(card2, copy2));
+            var returns = new [] { new CardReturn(card1, copy1), new CardReturn(card2, copy2) };
+
+            await _treasury.ReturnAsync(returns);
 
             var boxesAfter = await cardBoxes.ToListAsync();
             var boxesAfterIds = boxesAfter.Select(ca => ca.CardId);
@@ -170,7 +170,6 @@ namespace MTGViewer.Tests.Services
         {
             var boxesTracked = await _dbContext.Boxes
                 .Include(b => b.Cards)
-                .AsTracking()
                 .ToListAsync();
 
             _dbContext.Amounts.RemoveRange(boxesTracked.SelectMany(b => b.Cards));
@@ -180,9 +179,9 @@ namespace MTGViewer.Tests.Services
             _dbContext.ChangeTracker.Clear();
 
             var copies = 4;
-            var card = await Cards.FirstAsync();
+            var card = await AllCards.FirstAsync();
 
-            Task SharedReturn() => _sharedStorage.ReturnAsync(card, copies);
+            Task SharedReturn() => _treasury.ReturnAsync(card, copies);
 
             await Assert.ThrowsAsync<InvalidOperationException>(SharedReturn);
         }
@@ -204,7 +203,7 @@ namespace MTGViewer.Tests.Services
             _dbContext.ChangeTracker.Clear();
 
             var boxesBefore = await cardBoxes.ToListAsync();
-            var transaction = await _sharedStorage.ReturnAsync(card, copies);
+            var transaction = await _treasury.ReturnAsync(card, copies);
 
             var boxesAfter = await cardBoxes.ToListAsync();
             var boxesChange = boxesAfter.Sum(ca => ca.Amount) - boxesBefore.Sum(ca => ca.Amount);
@@ -222,14 +221,14 @@ namespace MTGViewer.Tests.Services
         public async Task Optimize_SmallAmount_NoChange()
         {
             var copies = 6;
-            var card = await Cards.FirstAsync();
+            var card = await AllCards.FirstAsync();
 
             var boxAmounts = BoxAmounts.Select(ca => ca.Amount);
 
-            await _sharedStorage.ReturnAsync(card, copies);
+            await _treasury.ReturnAsync(card, copies);
 
             var boxesBefore = await boxAmounts.SumAsync();
-            var transaction = await _sharedStorage.OptimizeAsync();
+            var transaction = await _treasury.OptimizeAsync();
             var boxesAfter = await boxAmounts.SumAsync();
 
             Assert.Null(transaction);
@@ -241,16 +240,16 @@ namespace MTGViewer.Tests.Services
         public async Task Optimize_LargeAmount_SplitMultiple()
         {
             var copies = 120;
-            var card = await Cards.FirstAsync();
+            var card = await AllCards.FirstAsync();
 
             var cardBoxes = BoxAmounts.Where(ca => ca.CardId == card.Id);
 
-            await _sharedStorage.ReturnAsync(card, copies);
+            await _treasury.ReturnAsync(card, copies);
 
             var oldSpots = await cardBoxes.ToListAsync();
             var totalBefore = oldSpots.Sum(ca => ca.Amount);
 
-            var transaction = await _sharedStorage.OptimizeAsync();
+            var transaction = await _treasury.OptimizeAsync();
 
             var newSpots = await cardBoxes.ToListAsync();
             var totalAfter = newSpots.Sum(ca => ca.Amount);

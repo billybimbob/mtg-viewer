@@ -2,60 +2,80 @@
 @namespace MTGViewer.Components
 
 @inherits OwningComponentBase
-@implements IDisposable
 
 @inject SymbolFormatter MtgSymbols
 @inject NavigationManager Nav
 
 
-<h1>Add New Card</h1>
+<h1>Add New Card(s)</h1>
 
 @if (!_matches.Any())
 {
     <hr />
     <EditForm EditContext="@_searchEdit" OnValidSubmit="@SearchForCardAsync">
+        <DataAnnotationsValidator />
         <div class="row">
 
             <div class="col order-last">
-                <DataAnnotationsValidator />
                 <ValidationSummary role="alert"/>
 
                 <h5> Or Operator </h5>
                 <p> 
-                    All of the parameters (except Converted Mana Cost and Color) can search with multiple values 
-                    specified by adding the pipe character between each value. These multiple values act as a 
-                    logical <strong>or</strong> for the search.
+                    All of the parameters (except Converted Mana Cost) can search with multiple values 
+                    specified by adding the pipe character between each value. These multiple values act 
+                    as a logical <strong>or</strong> for the search.
                 </p>
 
-                <p> Example for Name: <code>jace|ajani|nissa, worldwaker</code> </p>
+                <p> Example or for Name: <code>jace|ajani|nissa, worldwaker</code> </p>
 
                 <h5> And Operator </h5>
                 <p>
-                    Parameters that can have multiple values (Types, Supertypes, and Subtypes) can also have 
-                    multiple values specified by adding a comma or space between each value. These multiple
-                    values act as a logical <strong>and</strong> for the search.
+                    Parameters that can have more than one value per card (Types, Supertypes, and Subtypes) 
+                    can also have multiple values specified by adding a comma or space between each value. 
+                    These multiple values act as a logical <strong>and</strong> for the search.
                 </p>
 
-                <p> Example for Subtype(s): <code>bear,bird</code> or <code>bear bird</code> </p>
+                <p> Example and for Subtype(s): <code>bear,bird</code> or <code>bear bird</code> </p>
+                <p> 
+                    Note that <strong>either</strong> the <i>and</i> or the <i>or</i> operator can be
+                    applied on a given parameter value, not both.
+                </p>
+
+                <hr/>
+                <h5> Type Parameters </h5>
+
+                <p>
+                    All of the type parameters are specified on the type line of the card (the center description),
+                    which is broken down into three different categories:
+                </p>
+
+                <dl class="row">
+                    <dt class="col-2"> Supertypes </dt>
+                    <dd class="col">
+                        <p> Type information that is the most left of the type line </p>
+                        <p> Examples: Basic, Legendary, Snow </p>
+                    </dd>
+
+                    <div class="w-100"></div>
+
+                    <dt class="col-2"> Types </dt>
+                    <dd class="col">
+                        <p> Type information that follows immediately to the left of the dash. </p>
+                        <p> Examples: Instant, Creature, Land, Planeswalker </p>
+                    </dd>
+
+                    <div class="w-100"></div>
+
+                    <dt class="col-2"> Subtypes </dt>
+                    <dd class="col">
+                        <p> Type information that appears to the right of the dash. </p>
+                        <p> Examples: Equipment, Aura, Human, Vampire </p>
+                    </dd>
+                </dl>
             </div>
 
-            <div class="col-md-4">
+            <div class="col-4">
                 <p> Enter the card search parameters below </p>
-
-                <div class="form-group">
-                    @foreach (var (color, symbol) in Color.Symbols)
-                    {
-                        var toggleId = $"{color}Toggle";
-                        var active = _pickedColors.Contains(color) ? "active" : string.Empty;
-
-                        <button title="@toggleId"
-                            type="button"
-                            class="btn btn-outline-secondary border-0 rounded @active"
-                            @onclick="() => SearchColorToggle(color)">
-                            <i class="ms ms-@symbol.ToLower() ms-cost"></i>
-                        </button>
-                    }
-                </div>
 
                 <div class="form-group">
                     <InputText @bind-Value="_search.Name" 
@@ -70,15 +90,29 @@
                 </div>
 
                 <div class="form-group">
-                    <InputText @bind-Value="_search.Rarity" 
-                        placeholder="@_search.DisplayName(c => c.Rarity)" 
-                        class="form-control" />
-                </div>
+                    @foreach (var (color, symbol) in Color.Symbols)
+                    {
+                        var toggleId = $"{color}Toggle";
+                        var active = _pickedColors.Contains(color) ? "active" : string.Empty;
 
-                <div class="form-group">
-                    <InputText @bind-Value="_search.SetName" 
-                        placeholder="@_search.DisplayName(c => c.SetName)" 
-                        class="form-control" />
+                        <button title="@toggleId"
+                            type="button"
+                            class="btn btn-outline-secondary border-0 rounded @active"
+                            @onclick="() => ColorToggle(color)">
+                            <i class="ms ms-@symbol.ToLower() ms-cost"></i>
+                        </button>
+                    }
+
+                    <div class="form-check mt-2 ml-2">
+                        <input class="form-check-input" id="@nameof(_multiColored)" 
+                            type="checkbox" 
+                            checked="@_multiColored"
+                            @onchange="MultiColorSwitch" />
+
+                        <label class="form-check-label" for="@nameof(_multiColored)">
+                            Multicolored Only
+                        </label>
+                    </div>
                 </div>
 
                 <div class="form-group">
@@ -97,6 +131,36 @@
                     <InputText @bind-Value="_search.Subtypes"
                         placeholder="@_search.DisplayName(c => c.Subtypes)"
                         class="form-control" />
+                </div>
+
+                <div class="form-group">
+                    <InputText @bind-Value="_search.SetName" 
+                        placeholder="@_search.DisplayName(c => c.SetName)" 
+                        class="form-control" />
+                </div>
+
+                <div class="form-row mb-3">
+                    @for (int i = 0; i < Rarity.Values.Count; ++i)
+                    {
+                        var rarity = Rarity.Values[i];
+                        var toggleId = $"{rarity}Toggle";
+                        var picked = _pickedRarities.Contains(rarity);
+
+                        <div class="col form-check form-check-inline ml-2">
+
+                            <input class="form-check-input" id="@toggleId"
+                                type="checkbox" checked="@picked" 
+                                @onclick="() => RarityToggle(rarity)"
+                                value="@rarity" />
+
+                            <label class="form-check-label" for="@toggleId"> @rarity </label>
+                        </div>
+
+                        @if (i % 2 == 1)
+                        {
+                            <div class="w-100"></div>
+                        }
+                    }
                 </div>
 
                 <div class="form-group">
@@ -126,8 +190,9 @@
                 <div class="form-group">
                     <button type="submit" class="btn btn-secondary"> Search </button>
 
-                    <button type="button" class="btn btn-secondary" title="Reset" 
-                        @onclick="Reset"> Reset </button>
+                    <button type="button" class="btn btn-secondary" 
+                        @onclick="Reset" title="Reset"> 
+                        Reset </button>
                 </div>
             </div>
         </div>
@@ -137,16 +202,18 @@ else
 {
     <div class="form-group">
         <button title="Add Button" type="button"
-            @onclick="AddNewCardsAsync" 
-            disabled="@CannotAdd" class="btn btn-secondary">
+            @onclick="AddNewCardsAsync" disabled="@CannotAdd" 
+            class="btn btn-secondary">
             Add Cards/Amounts </button>
 
         <button title="Reset Button" type="button"
-            @onclick="Reset" class="btn btn-secondary">
+            @onclick="Reset" 
+            class="btn btn-secondary">
             Reset </button>
     </div>
 
     <div class="form-row align-items-center my-3">
+
         <div class="col-3">
             <input class="form-control" placeholder="Name" @bind="_matchName" />
         </div>
@@ -159,7 +226,7 @@ else
                 <button title="@color filter"
                         type="button"
                         class="btn btn-outline-secondary border-0 rounded @active"
-                        @onclick="() => MatchColorToggle(color)">
+                        @onclick="() => ColorToggle(color)">
                     <i class="ms ms-@symbol.ToLower() ms-cost"></i>
                 </button>
             }
@@ -170,8 +237,8 @@ else
         <thead>
             <th> @Entities.DisplayName((Card c) => c.Name) </th>
             <th> @Entities.DisplayName((Card c) => c.ManaCost) </th>
-            <th> @Entities.DisplayName((Card c) => c.Rarity) </th>
             <th> @Entities.DisplayName((Card c) => c.SetName) </th>
+            <th> @Entities.DisplayName((Card c) => c.Rarity) </th>
             <th> Amount </th>
         </thead>
         <tbody>
@@ -180,10 +247,12 @@ else
                 @if (MatchPassesFilters(match))
                 {
                     <tr>
-                        <td> @match.Name </td>
+                        <td> 
+                            <HoverCard Card="@((CardPreview)match)"> @match.Name </HoverCard> 
+                        </td>
                         <td> @MtgSymbols.Format(match.ManaCost).ToMarkupString() </td>
-                        <td> @match.Rarity </td>
                         <td> @match.SetName </td>
+                        <td> @match.Rarity </td>
                         <td>
                             <input title="@match.Name Amount" 
                                 type="number" min="0" value="@amount" 
@@ -211,9 +280,12 @@ else
     private bool CannotAdd => _matches.All(kv => kv.Value <= 0);
 
 
+    private readonly CancellationTokenSource _cancel = new();
     private bool _isBusy;
 
     private readonly HashSet<string> _pickedColors = new(StringComparer.OrdinalIgnoreCase);
+    private bool _multiColored;
+    private readonly HashSet<string> _pickedRarities = new(StringComparer.OrdinalIgnoreCase);
     private readonly CardSearch _search = new();
 
     private EditContext _searchEdit;
@@ -236,10 +308,13 @@ else
     }
 
 
-    public void Dispose()
+    protected override void Dispose(bool disposing)
     {
         _searchEdit.OnValidationRequested -= ClearErrors;
         _searchEdit.OnFieldChanged -= ClearErrors;
+
+        _cancel.Cancel();
+        _cancel.Dispose();
     }
 
 
@@ -271,7 +346,22 @@ else
     }
 
 
-    private void SearchColorToggle(string color)
+    private void MultiColorSwitch(ChangeEventArgs args)
+    {
+        if (!bool.TryParse(args.Value?.ToString(), out bool value))
+        {
+            return;
+        }
+
+        _multiColored = value;
+
+        var colorField = _searchEdit.Field(nameof(CardSearch.Colors));
+
+        _searchEdit.NotifyFieldChanged(colorField);
+    }
+
+
+    private void ColorToggle(string color)
     {
         if (_pickedColors.Contains(color))
         {
@@ -284,11 +374,25 @@ else
 
         var colorField = _searchEdit.Field(nameof(CardSearch.Colors));
 
-        _search.Colors = string.Join(MTGFetchService.Or, _pickedColors);
-
         _searchEdit.NotifyFieldChanged(colorField);
     }
 
+
+    private void RarityToggle(string rarity)
+    {
+        if (_pickedRarities.Contains(rarity))
+        {
+            _pickedRarities.Remove(rarity);
+        }
+        else
+        {
+            _pickedRarities.Add(rarity);
+        }
+
+        var rarityField = _searchEdit.Field(nameof(CardSearch.Rarity));
+
+        _searchEdit.NotifyFieldChanged(rarityField);
+    }
 
 
     private async Task SearchForCardAsync()
@@ -303,13 +407,18 @@ else
             return;
         }
 
+        var logger = ScopedServices.GetRequiredService<ILogger<Create>>();
         var fetch = ScopedServices.GetRequiredService<MTGFetchService>();
 
         _isBusy = true;
 
         try
         {
+            PrepareSearch();
+
             var result = await fetch.MatchAsync(_search, _nextPage);
+
+            _cancel.Token.ThrowIfCancellationRequested();
 
             foreach (var match in result)
             {
@@ -329,6 +438,10 @@ else
                 _nextPage = -1;
             }
         }
+        catch (OperationCanceledException ex)
+        {
+            logger.LogError(ex.ToString());
+        }
         finally
         {
             _isBusy = false;
@@ -336,25 +449,22 @@ else
     }
 
 
-    private void UpdateAmount(ChangeEventArgs args, Card card)
+    private void PrepareSearch()
     {
-        if (int.TryParse(args.Value.ToString(), out int newAmount)
-            && newAmount >= 0)
-        {
-            _matches[card] = newAmount;
-        }
+        var colorJoin = _multiColored ? MTGFetchService.And : MTGFetchService.Or;
+
+        _search.Colors = string.Join(colorJoin, _pickedColors);
+
+        _search.Rarity = string.Join(MTGFetchService.Or, _pickedRarities);
     }
 
 
-    private void MatchColorToggle(string color)
+    private void UpdateAmount(ChangeEventArgs args, Card card)
     {
-        if (_pickedColors.Contains(color))
+        if (int.TryParse(args.Value?.ToString(), out int newAmount)
+            && newAmount >= 0)
         {
-            _pickedColors.Remove(color);
-        }
-        else
-        {
-            _pickedColors.Add(color);
+            _matches[card] = newAmount;
         }
     }
 
@@ -431,9 +541,14 @@ else
 
             Nav.NavigateTo("/Cards", true);
         }
+
         catch (DbUpdateException e)
         {
             logger.LogError($"failed to add new cards {e}");
+        }
+        catch (OperationCanceledException e)
+        {
+            logger.LogError($"cancel error: {e}");
         }
         finally
         {
@@ -448,14 +563,19 @@ else
 
         var cardIds = cards.Select(c => c.Id).ToArray();
 
-        var existingIds = (await dbContext.Cards
+        var existingIds = await dbContext.Cards
             .Select(c => c.Id)
             .Where(cid => cardIds.Contains(cid))
-            .ToListAsync())
-            .ToHashSet();
+            .ToListAsync(_cancel.Token);
+
+        _cancel.Token.ThrowIfCancellationRequested();
 
         var newCards = cards
-            .Where(c => !existingIds.Contains(c.Id))
+            .GroupJoin(existingIds,
+                card => card.Id, id => id,
+                (card, ids) => (card, empty: !ids.Any()) )
+            .Where(ce => ce.empty)
+            .Select(ce => ce.card)
             .ToList();
 
         if (!newCards.Any())
@@ -465,18 +585,22 @@ else
 
         dbContext.Cards.AddRange(newCards);
 
-        await dbContext.SaveChangesAsync();
+        await dbContext.SaveChangesAsync(_cancel.Token);
+
+        _cancel.Token.ThrowIfCancellationRequested();
     }
 
 
     private async Task AddAmountsAsync(IEnumerable<(Card card, int amount)> newAmounts)
     {
-        var sharedStorage = ScopedServices.GetRequiredService<ISharedStorage>();
+        var treasury = ScopedServices.GetRequiredService<ITreasury>();
 
         var returns = newAmounts
             .Select(ca => new CardReturn(ca.card, ca.amount))
             .ToList();
 
-        await sharedStorage.ReturnAsync(returns);
+        await treasury.ReturnAsync(returns, _cancel.Token);
+
+        _cancel.Token.ThrowIfCancellationRequested();
     }
 }

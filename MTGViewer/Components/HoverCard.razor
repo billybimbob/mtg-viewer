@@ -1,0 +1,26 @@
+@namespace MTGViewer.Components
+
+<div class="preview">
+    @if (ChildContent != null)
+    {
+        @ChildContent
+    }
+    else
+    {
+        <a href="/Cards/Details/@Card.Id"> @Card.Name </a>
+    }
+
+    <div class="preview-item">
+        <img alt="@Card.Name image" src="@Card.Image.WithHttps()" class="img-fluid rounded" />
+    </div>
+
+</div>
+
+@code
+{
+    [Parameter]
+    public CardPreview Card { get; set; }
+
+    [Parameter]
+    public RenderFragment ChildContent { get; set; }
+}

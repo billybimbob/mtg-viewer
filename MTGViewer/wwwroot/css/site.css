@@ -88,3 +88,27 @@ body {
 .validation-message {
   margin-left: 1rem;
 }
+
+.preview {
+  display: flex;
+  justify-content: flex-start;
+  /* align-items: center; */
+}
+
+.preview-item {
+  position: relative;
+  align-items: center;
+  left: 2rem;
+  top: -5rem;
+}
+
+.preview-item img {
+  display: none;
+  position: absolute;
+  z-index: 1;
+  max-width: 200px;
+}
+
+.preview:hover img {
+  display: inherit;
+}

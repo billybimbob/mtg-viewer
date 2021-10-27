@@ -12,6 +12,7 @@ namespace MTGViewer.Tests.Utils
         {
             var conn = new SqliteConnection("Filename=:memory:");
             conn.Open();
+
             return conn;
         });
 
