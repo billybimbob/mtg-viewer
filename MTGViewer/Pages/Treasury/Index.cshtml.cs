@@ -24,7 +24,7 @@ namespace MTGViewer.Pages.Treasury
             SignInManager<CardUser> signInManager, 
             ITreasury treasury)
         {
-            _pageSize = pageSizes.GetSize(this);
+            _pageSize = pageSizes.GetSize<IndexModel>();
             _signInManager = signInManager;
             _treasury = treasury;
         }

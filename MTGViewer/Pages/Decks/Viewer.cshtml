@@ -29,12 +29,12 @@
 <table class="table">
     <thead>
         <tr>
-            <th> @Html.DisplayNameForInnerType((CardAmount ca) => ca.Card) </th>
-            <th> @Html.DisplayNameForInnerType((Card c) => c.ManaCost) </th>
-            <th> @Html.DisplayNameForInnerType((Card c) => c.SetName) </th>
-            <th> Cards In Deck </th>
-            <th> Take Requests </th>
-            <th> Return Requests </th>
+            <th scope="col"> @Html.DisplayNameForInnerType((CardAmount ca) => ca.Card) </th>
+            <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.ManaCost) </th>
+            <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.SetName) </th>
+            <th scope="col"> Cards In Deck </th>
+            <th scope="col"> Take Requests </th>
+            <th scope="col"> Return Requests </th>
         </tr>
     </thead>
     <tbody>
@@ -42,10 +42,8 @@
         {
             <tr>
                 <td>
-                    <a asp-page="/Cards/Details"
-                       asp-route-id="@group.CardId"
-                       class="fw-bold">
-                       @group.Card.Name </a>
+                    <a asp-page="/Cards/Details" asp-route-id="@group.CardId">
+                        @group.Card.Name </a>
                 </td>
                 <td> @(MtgSymbols.Format(group.Card.ManaCost).ToHtmlString()) </td>
                 <td> @group.Card.SetName </td>

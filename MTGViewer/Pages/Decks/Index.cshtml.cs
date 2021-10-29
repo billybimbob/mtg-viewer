@@ -54,7 +54,7 @@ namespace MTGViewer.Pages.Decks
         {
             _userManager = userManager;
             _dbContext = dbContext;
-            _pageSize = pageSizes.GetSize(this);
+            _pageSize = pageSizes.GetSize<IndexModel>();
         }
 
 

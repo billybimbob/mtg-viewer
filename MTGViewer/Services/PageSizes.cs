@@ -28,9 +28,9 @@ namespace MTGViewer.Services
         public int Limit { get; }
 
 
-        public int GetSize(PageModel page)
+        public int GetSize<TPage>() where TPage : PageModel
         {
-            var route = page.GetType().FullName
+            var route = typeof(TPage).FullName
                 .Split('.')
                 .Except(PagesNamespace)
                 .ToArray();

@@ -40,108 +40,106 @@ else
 }
 
 
-<div class="container">
-    @if (Model.Deck.Cards.Any())
-    {
-        <div class="row">
-            <h3>Current Cards</h3>
+@if (Model.Deck.Cards.Any())
+{
+    <div class="row">
+        <h3>Current Cards</h3>
 
-            <table class="table mt-2">
-                <thead>
+        <table class="table mt-2">
+            <thead>
+                <tr>
+                    <th>@Html.DisplayNameForInnerType((Card c) => c.Name)</th>
+                    <th>@Html.DisplayNameForInnerType((Card c) => c.ManaCost)</th>
+                    <th>@Html.DisplayNameForInnerType((Card c) => c.SetName)</th>
+                    <th>@Html.DisplayNameForInnerType((CardAmount ca) => ca.Amount)</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var amount in Model.Deck.Cards)
+                {
+                    var card = amount.Card;
                     <tr>
-                        <th>@Html.DisplayNameForInnerType((Card c) => c.Name)</th>
-                        <th>@Html.DisplayNameForInnerType((Card c) => c.ManaCost)</th>
-                        <th>@Html.DisplayNameForInnerType((Card c) => c.SetName)</th>
-                        <th>@Html.DisplayNameForInnerType((CardAmount ca) => ca.Amount)</th>
+                        <td>
+                            <a asp-page="/Cards/Details"
+                            asp-route-id="@card.Id"
+                            class="fw-bold">
+                            @card.Name </a>
+                        </td>
+                        <td> @(MtgSymbols.Format(card.ManaCost).ToHtmlString()) </td>
+
+                        <td>@card.SetName</td>
+                        <td>@amount.Amount</td>
                     </tr>
-                </thead>
-                <tbody>
-                    @foreach (var amount in Model.Deck.Cards)
-                    {
-                        var card = amount.Card;
-                        <tr>
-                            <td>
-                                <a asp-page="/Cards/Details"
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+<div class="row">
+    <div class="col">
+        <h3>Wanted From Treasury</h3>
+
+        <table class="table mt-2">
+            <thead>
+                <tr>
+                    <th>@Html.DisplayNameForInnerType((Card c) => c.Name)</th>
+                    <th>@Html.DisplayNameForInnerType((Card c) => c.ManaCost)</th>
+                    <th>@Html.DisplayNameForInnerType((Card c) => c.SetName)</th>
+                    <th>@Html.DisplayNameForInnerType((CardRequest cr) => cr.Amount)</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var want in Model.Deck.Wants)
+                {
+                    var card = want.Card;
+                    <tr>
+                        <td>
+                            <a asp-page="/Cards/Details"
                                 asp-route-id="@card.Id"
                                 class="fw-bold">
                                 @card.Name </a>
-                            </td>
-                            <td> @(MtgSymbols.Format(card.ManaCost).ToHtmlString()) </td>
+                        </td>
+                        <td> @(MtgSymbols.Format(card.ManaCost).ToHtmlString()) </td>
 
-                            <td>@card.SetName</td>
-                            <td>@amount.Amount</td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        </div>
-    }
-
-    <div class="row">
-        <div class="col">
-            <h3>Wanted From Treasury</h3>
-
-            <table class="table mt-2">
-                <thead>
-                    <tr>
-                        <th>@Html.DisplayNameForInnerType((Card c) => c.Name)</th>
-                        <th>@Html.DisplayNameForInnerType((Card c) => c.ManaCost)</th>
-                        <th>@Html.DisplayNameForInnerType((Card c) => c.SetName)</th>
-                        <th>@Html.DisplayNameForInnerType((CardRequest cr) => cr.Amount)</th>
+                        <td>@card.SetName</td>
+                        <td>@want.Amount</td>
                     </tr>
-                </thead>
-                <tbody>
-                    @foreach (var want in Model.Deck.Wants)
-                    {
-                        var card = want.Card;
-                        <tr>
-                            <td>
-                                <a asp-page="/Cards/Details"
-                                    asp-route-id="@card.Id"
-                                    class="fw-bold">
-                                    @card.Name </a>
-                            </td>
-                            <td> @(MtgSymbols.Format(card.ManaCost).ToHtmlString()) </td>
+                }
+            </tbody>
+        </table>
+    </div>
 
-                            <td>@card.SetName</td>
-                            <td>@want.Amount</td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        </div>
-
-        <div class="col">
-            <h3>Returning To Treasury</h3>
-            <table class="table mt-2">
-                <thead>
+    <div class="col">
+        <h3>Returning To Treasury</h3>
+        <table class="table mt-2">
+            <thead>
+                <tr>
+                    <th>@Html.DisplayNameForInnerType((Card c) => c.Name)</th>
+                    <th>@Html.DisplayNameForInnerType((Card c) => c.ManaCost)</th>
+                    <th>@Html.DisplayNameForInnerType((Card c) => c.SetName)</th>
+                    <th>@Html.DisplayNameForInnerType((CardRequest cr) => cr.Amount)</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var giveBack in Model.Deck.GiveBacks)
+                {
+                    var card = giveBack.Card;
                     <tr>
-                        <th>@Html.DisplayNameForInnerType((Card c) => c.Name)</th>
-                        <th>@Html.DisplayNameForInnerType((Card c) => c.ManaCost)</th>
-                        <th>@Html.DisplayNameForInnerType((Card c) => c.SetName)</th>
-                        <th>@Html.DisplayNameForInnerType((CardRequest cr) => cr.Amount)</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var giveBack in Model.Deck.GiveBacks)
-                    {
-                        var card = giveBack.Card;
-                        <tr>
-                            <td>
-                                <a asp-page="/Cards/Details"
-                                    asp-route-id="@card.Id"
-                                    class="fw-bold">
-                                    @card.Name </a>
-                            </td>
-                            <td> @(MtgSymbols.Format(card.ManaCost).ToHtmlString()) </td>
+                        <td>
+                            <a asp-page="/Cards/Details"
+                                asp-route-id="@card.Id"
+                                class="fw-bold">
+                                @card.Name </a>
+                        </td>
+                        <td> @(MtgSymbols.Format(card.ManaCost).ToHtmlString()) </td>
 
-                            <td>@card.SetName</td>
-                            <td>@giveBack.Amount</td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        </div>
+                        <td>@card.SetName</td>
+                        <td>@giveBack.Amount</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
     </div>
 </div>
 

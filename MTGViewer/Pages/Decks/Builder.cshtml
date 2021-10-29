@@ -11,4 +11,4 @@
 
 @(await Html.RenderComponentAsync<DeckBuilder>(
     RenderMode.ServerPrerendered,
-    new { Model.UserId, Model.DeckId }))
+    new { Model.UserId, Model.DeckId, Model.PageSize }))

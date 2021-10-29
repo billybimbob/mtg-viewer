@@ -19,10 +19,10 @@
 <table class="table mb-3">
     <thead>
         <tr>
-            <th>Deck</th>
-            <th>Colors</th>
-            <th>Requests To Send</th>
-            <th>Requests Received</th>
+            <th scope="col">Deck</th>
+            <th scope="col">Colors</th>
+            <th scope="col">Requests To Send</th>
+            <th scope="col">Requests Received</th>
         </tr>
     </thead>
     <tbody>
@@ -30,9 +30,7 @@
         {
             <tr>
                 <td>
-                    <a asp-page="/Decks/Viewer"
-                        asp-route-id="@deck.Id"
-                        class="fw-bold">
+                    <a asp-page="/Decks/Viewer" asp-route-id="@deck.Id">
                         @deck.Name </a>
                 </td>
 
@@ -80,14 +78,12 @@
 </table>
 
 
-@{
+@if (Model.TradeDecks.Pages.HasMultiple)
+{
     var deckPages = Model.TradeDecks.Pages;
     var deckPrevDisabled = deckPages.HasPrevious ? "" : "disabled";
     var deckNextDisabled = deckPages.HasNext ? "" : "disabled";
-}
 
-@if (deckPages.HasMultiple)
-{
     <nav aria-label="Trade Pages">
         <ul class="pagination justify-content-center">
 
@@ -98,11 +94,11 @@
                         asp-route-deckIndex="@(Model.TradeDecks.Pages.Current - 1)"
                         asp-route-suggestIndex="@Model.SuggestIndex"
                         class="page-link">
-                        Previous </a>
+                        &laquo; </a>
                 }
                 else
                 {
-                    <span class="page-link">Previous</span>
+                    <span class="page-link">&laquo;</span>
                 }
             </li>
 
@@ -137,11 +133,11 @@
                         asp-route-deckIndex="@(deckPages.Current + 1)"
                         asp-route-suggestIndex="@Model.SuggestIndex"
                         class="page-link">
-                        Next </a>
+                        &raquo; </a>
                 }
                 else
                 {
-                    <span class="page-link">Next</span>
+                    <span class="page-link">&raquo;</span>
                 }
             </li>
 
@@ -156,10 +152,10 @@
 <table class="table mb-3">
     <thead>
         <tr>
-            <th> @Html.DisplayNameForInnerType((Suggestion t) => t.Card) </th>
-            <th> @Html.DisplayNameForInnerType((Suggestion t) => t.To) </th>
-            <th> @Html.DisplayNameForInnerType((Suggestion t) => t.Comment) </th>
-            <th></th>
+            <th scope="col"> @Html.DisplayNameForInnerType((Suggestion t) => t.Card) </th>
+            <th scope="col"> @Html.DisplayNameForInnerType((Suggestion t) => t.To) </th>
+            <th scope="col"> @Html.DisplayNameForInnerType((Suggestion t) => t.Comment) </th>
+            <th scope="col"></th>
         </tr>
     </thead>
     <tbody>
@@ -167,11 +163,10 @@
         {
             <tr>
                 <td>
-                    <a asp-page="/Cards/Details"
-                        asp-route-id="@suggestion.CardId"
-                        class="fw-bold">
+                    <a asp-page="/Cards/Details" asp-route-id="@suggestion.CardId">
                         @suggestion.Card.Name </a>
                 </td>
+
                 <td>@(suggestion.To?.Name ?? "")</td>
                 <td>@suggestion.Comment</td>
                 <td>
@@ -191,14 +186,12 @@
 </table>
 
 
-@{
-    var suggestPages = Model.Suggestions.Pages;
-    var suggestPrevDisabled = deckPages.HasPrevious ? "" : "disabled";
-    var suggestNextDisabled = deckPages.HasNext ? "" : "disabled";
-}
-
-@if (suggestPages.HasMultiple)
+@if (Model.Suggestions.Pages.HasMultiple)
 {
+    var suggestPages = Model.Suggestions.Pages;
+    var suggestPrevDisabled = suggestPages.HasPrevious ? "" : "disabled";
+    var suggestNextDisabled = suggestPages.HasNext ? "" : "disabled";
+
     <nav aria-label="Suggestion Pages">
         <ul class="pagination justify-content-center">
 
@@ -209,11 +202,11 @@
                         asp-route-deckIndex="@Model.DeckIndex"
                         asp-route-suggestIndex="@(suggestPages.Current - 1)"
                         class="page-link">
-                        Previous </a>
+                        &laquo; </a>
                 }
                 else
                 {
-                    <span class="page-link">Previous</span>
+                    <span class="page-link"> &laquo; </span>
                 }
             </li>
 
@@ -248,11 +241,11 @@
                         asp-route-deckIndex="@Model.DeckIndex"
                         asp-route-suggestIndex="@(suggestPages.Current + 1)"
                         class="page-link">
-                        Next </a>
+                        &raquo; </a>
                 }
                 else
                 {
-                    <span class="page-link">Next</span>
+                    <span class="page-link"> &raquo; </span>
                 }
             </li>
 

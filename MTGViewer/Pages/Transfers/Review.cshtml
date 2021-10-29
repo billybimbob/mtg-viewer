@@ -22,13 +22,13 @@
 <table class="table">
     <thead>
         <tr>
-            <th> @Html.DisplayNameForInnerType((Trade t) => t.Card) </th>
-            <th> @Html.DisplayNameForInnerType((Card c) => c.SetName) </th>
-            <th> Requested By </th>
-            <th> @Html.DisplayNameForInnerType((Trade t) => t.To) </th>
-            <th> Deck Color </th>
-            <th> @Html.DisplayNameForInnerType((Trade t) => t.Amount) </th>
-            <th></th>
+            <th scope="col"> @Html.DisplayNameForInnerType((Trade t) => t.Card) </th>
+            <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.SetName) </th>
+            <th scope="col"> Requested By </th>
+            <th scope="col"> @Html.DisplayNameForInnerType((Trade t) => t.To) </th>
+            <th scope="col"> Deck Color </th>
+            <th scope="col"> @Html.DisplayNameForInnerType((Trade t) => t.Amount) </th>
+            <th scope="col"></th>
         </tr>
     </thead>
     <tbody>
@@ -36,8 +36,7 @@
         {
             <tr>
                 <td>
-                    <a asp-page="/Cards/Details"
-                        asp-route-id="@trade.CardId">
+                    <a asp-page="/Cards/Details" asp-route-id="@trade.CardId">
                         @trade.Card.Name </a>
                 </td>
 
@@ -89,10 +88,10 @@
     <table class="table">
         <thead>
             <tr>
-                <th>@Html.DisplayNameForInnerType((Card c) => c.Name)</th>
-                <th>@Html.DisplayNameForInnerType((Card c) => c.ManaCost)</th>
-                <th>@Html.DisplayNameForInnerType((Card c) => c.SetName)</th>
-                <th>@Html.DisplayNameForInnerType((CardAmount ca) => ca.Amount)</th>
+                <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.Name) </th>
+                <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.ManaCost) </th>
+                <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.SetName) </th>
+                <th scope="col"> @Html.DisplayNameForInnerType((CardAmount ca) => ca.Amount) </th>
             </tr>
         </thead>
         <tbody>
@@ -101,9 +100,7 @@
                 var card = amount.Card;
                 <tr>
                     <td>
-                        <a asp-page="/Cards/Details"
-                            asp-route-id="@card.Id"
-                            class="fw-bold">
+                        <a asp-page="/Cards/Details" asp-route-id="@card.Id">
                             @card.Name </a>
                     </td>
 

@@ -32,7 +32,7 @@ namespace MTGViewer.Pages.Decks
             UserManager<CardUser> userManager,
             ILogger<HistoryModel> logger)
         {
-            _pageSize = pageSizes.GetSize(this);
+            _pageSize = pageSizes.GetSize<HistoryModel>();
             _dbContext = dbContext;
             _userManager = userManager;
             _logger = logger;

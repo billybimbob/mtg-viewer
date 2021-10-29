@@ -9,7 +9,7 @@
 
 <h1 class="text-center display-4">Welcome to the card database!</h1>
 
-<div class="container pt-4">
+<div class="pt-4">
     <a href="/Cards">
         <h3>Cards from our collection!</h3>
     </a>
@@ -18,7 +18,9 @@
         @foreach (var card in Cards)
         {
             <a href="/Cards/Details/@card.Id" class="col-3" aria-label="@card.Id details">
-                <img alt="@card.Id image" class="w-100 img-fluid rounded" src="@card.ImageUrl.WithHttps()">
+                <img alt="@card.Id image" 
+                    class="w-100 img-fluid rounded" 
+                    src="@card.ImageUrl.WithHttps()">
             </a>
         }
     </div>
@@ -40,32 +42,28 @@
             var anyRemoves = removes.Any();
             var both = anyAdds && anyRemoves;
 
-            <li class="list-group-item">
-                <div class="d-flex w-100 justify-content-between">
+            <li class="list-group-item d-flex justify-content-between">
+                <p class="mb-1">
+                    @if (anyAdds)
+                    {
+                        <strong> Added </strong> @AllCardNames(adds)
 
-                    <p class="mb-1">
-                        @if (anyAdds)
-                        {
-                            <strong> Added </strong> @AllCardNames(adds)
+                        <span class="ml-2 badge badge-secondary badge-pill">
+                            @adds.Sum(c => c.Amount) 
+                        </span>
+                    }
+                    @if (both) { <br> }
+                    @if (anyRemoves)
+                    {
+                        <strong> Removed </strong> @AllCardNames(removes)
 
-                            <span class="ml-2 badge badge-secondary badge-pill">
-                                @adds.Sum(c => c.Amount) 
-                            </span>
-                        }
-                        @if (both) { <br> }
-                        @if (anyRemoves)
-                        {
-                            <strong> Removed </strong> @AllCardNames(removes)
+                        <span class="ml-2 badge badge-secondary badge-pill">
+                            @removes.Sum(c => c.Amount) 
+                        </span>
+                    }
+                </p>
 
-                            <span class="ml-2 badge badge-secondary badge-pill">
-                                @removes.Sum(c => c.Amount) 
-                            </span>
-                        }
-                    </p>
-
-                    <small class="mb-1 text-muted"> @ElapsedTime(transaction) </small>
-
-                </div>
+                <small class="mb-1 text-muted"> @ElapsedTime(transaction) </small>
             </li>
         }
     </ul>

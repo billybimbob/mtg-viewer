@@ -29,7 +29,7 @@ namespace MTGViewer.Pages.Treasury
             SignInManager<CardUser> signInManager,
             ILogger<HistoryModel> logger)
         {
-            _pageSize = pageSizes.GetSize(this);
+            _pageSize = pageSizes.GetSize<HistoryModel>();
             _dbContext = dbContext;
             _signInManager = signInManager;
             _logger = logger;

@@ -15,7 +15,7 @@ namespace MTGViewer.Pages.Cards
         public IndexModel(SignInManager<CardUser> signInManager, PageSizes pageSizes)
         {
             _signInManager = signInManager;
-            _pageSize = pageSizes.GetSize(this);
+            _pageSize = pageSizes.GetSize<IndexModel>();
         }
 
         public bool IsSignedIn { get; private set; }

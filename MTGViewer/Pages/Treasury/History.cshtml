@@ -16,23 +16,22 @@
 <table class="table">
     <thead>
         <tr>
-            <th> @Html.DisplayNameForInnerType((Transaction t) => t.AppliedAt) </th>
-            <th> @Html.DisplayNameForInnerType((Change c) => c.From) </th>
-            <th> @Html.DisplayNameForInnerType((Change c) => c.To) </th>
-            <th> @Html.DisplayNameForInnerType((Change c) => c.Card) </th>
-            <th> @Html.DisplayNameForInnerType((Change c) => c.Amount) </th>
-            <th></th>
+            <th scope="col"> @Html.DisplayNameForInnerType((Transaction t) => t.AppliedAt) </th>
+            <th scope="col"> @Html.DisplayNameForInnerType((Change c) => c.From) </th>
+            <th scope="col"> @Html.DisplayNameForInnerType((Change c) => c.To) </th>
+            <th scope="col"> @Html.DisplayNameForInnerType((Change c) => c.Card) </th>
+            <th scope="col"> @Html.DisplayNameForInnerType((Change c) => c.Amount) </th>
+            <th scope="col"></th>
         </tr>
     </thead>
     <tbody>
         @foreach (var (transaction, from, to, changes) in Model.Transfers)
         {
-            <tr>
-                @{
-                    var transferKey = (transaction.Id, from?.Id, to.Id);
-                    var isFirstTransfer = Model.IsFirstTransfer.Contains(transferKey);
-                }
+            var transferKey = (transaction.Id, from?.Id, to.Id);
+            var isFirstTransfer = Model.IsFirstTransfer.Contains(transferKey);
+            var first = changes.First();
 
+            <tr>
                 @if (isFirstTransfer)
                 {
                     <td rowspan="@transaction.Changes.Count"> @transaction.AppliedAt </td>
@@ -60,11 +59,8 @@
                     }
                 </td>
 
-                @{ var first = changes.First(); }
-
                 <td>
-                    <a asp-page="/Cards/Details" asp-route-id="@first.CardId">
-                        @first.Card.Name </a>
+                    <a asp-page="/Cards/Details" asp-route-id="@first.CardId"> @first.Card.Name </a>
                 </td>
                 <td> @first.Amount </td>
 
@@ -96,14 +92,12 @@
 </table>
 
 
-@{
+@if (Model.Pages.HasMultiple)
+{
     var pages = Model.Pages;
     var prevDisabled = pages.HasPrevious ? "" : "disabled";
     var nextDisabled = pages.HasNext ? "" : "disabled";
-}
 
-@if (pages.HasMultiple)
-{
     <nav aria-label="Box History Pages">
         <ul class="pagination justify-content-center">
 
@@ -113,11 +107,11 @@
                     <a asp-page="History" 
                         asp-route-pageIndex="@(pages.Current - 1)"
                         class="page-link">
-                        Previous </a>
+                        &laquo; </a>
                 }
                 else
                 {
-                    <span class="page-link">Previous</span>
+                    <span class="page-link"> &laquo; </span>
                 }
             </li>
 
@@ -150,11 +144,11 @@
                     <a asp-page="History"
                         asp-route-pageIndex="@(pages.Current + 1)"
                         class="page-link">
-                        Next </a>
+                        &raquo; </a>
                 }
                 else
                 {
-                    <span class="page-link">Next</span>
+                    <span class="page-link"> &raquo; </span>
                 }
             </li>
 

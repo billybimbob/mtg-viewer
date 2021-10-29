@@ -343,6 +343,11 @@ namespace MTGViewer.Data
             (Actual?.Amount ?? 0)
                 + (Want?.Amount ?? 0)
                 - (GiveBack?.Amount ?? 0);
+
+        public int Total =>
+            (Actual?.Amount ?? 0)
+                + (Want?.Amount ?? 0)
+                + (GiveBack?.Amount ?? 0);
     }
 
 

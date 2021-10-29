@@ -30,11 +30,11 @@
 <table class="table mt-2">
     <thead>
         <tr>
-            <th>Card Name</th>
-            <th>Mana Cost</th>
-            <th>Set</th>
-            <th>Deck Amount</th>
-            <th>Requests</th>
+            <th scope="col"> Card Name </th>
+            <th scope="col"> Mana Cost </th>
+            <th scope="col"> Set </th>
+            <th scope="col"> Deck Amount </th>
+            <th scope="col"> Requests </th>
         </tr>
     </thead>
 
@@ -67,10 +67,10 @@
         <table class="table">
             <thead>
                 <tr>
-                    <th> @Html.DisplayNameForInnerType((Trade t) => t.To) </th>
-                    <th> @Html.DisplayNameForInnerType((Trade t) => t.From) </th>
-                    <th> @Html.DisplayNameForInnerType((Trade t) => t.Card) </th>
-                    <th> @Html.DisplayNameForInnerType((Card c) => c.ManaCost) </th>
+                    <th scope="col"> @Html.DisplayNameForInnerType((Trade t) => t.To) </th>
+                    <th scope="col"> @Html.DisplayNameForInnerType((Trade t) => t.From) </th>
+                    <th scope="col"> @Html.DisplayNameForInnerType((Trade t) => t.Card) </th>
+                    <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.ManaCost) </th>
                 </tr>
             </thead>
             <tbody>

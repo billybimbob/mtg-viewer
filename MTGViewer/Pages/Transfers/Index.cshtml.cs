@@ -27,7 +27,7 @@ namespace MTGViewer.Pages.Transfers
             UserManager<CardUser> userManager, 
             CardDbContext dbContext)
         {
-            _pageSize = pageSizes.GetSize(this);
+            _pageSize = pageSizes.GetSize<IndexModel>();
             _userManager = userManager;
             _dbContext = dbContext;
         }

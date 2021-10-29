@@ -35,12 +35,12 @@
 <table class="table">
     <thead>
         <tr>
-            <th> @Html.DisplayNameForInnerType((Trade t) => t.Card) </th>
-            <th> @Html.DisplayNameForInnerType((Card c) => c.SetName) </th>
-            <th> Trade With </th>
-            <th> @Html.DisplayNameForInnerType((Trade t) => t.From) </th>
-            <th> Deck Color </th>
-            <th> @Html.DisplayNameForInnerType((Trade t) => t.Amount) </th>
+            <th scope="col"> @Html.DisplayNameForInnerType((Trade t) => t.Card) </th>
+            <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.SetName) </th>
+            <th scope="col"> Trade With </th>
+            <th scope="col"> @Html.DisplayNameForInnerType((Trade t) => t.From) </th>
+            <th scope="col"> Deck Color </th>
+            <th scope="col"> @Html.DisplayNameForInnerType((Trade t) => t.Amount) </th>
         </tr>
     </thead>
     <tbody>
@@ -48,9 +48,8 @@
         {
             <tr>
                 <td>
-                    <a asp-page="/Cards/Details"
-                       asp-route-id="@trade.CardId">
-                       @trade.Card.Name </a>
+                    <a asp-page="/Cards/Details" asp-route-id="@trade.CardId">
+                        @trade.Card.Name </a>
                 </td>
 
                 <td> @trade.Card.SetName </td>
@@ -75,10 +74,10 @@
 <table class="table">
     <thead>
         <tr>
-            <th> @Html.DisplayNameForInnerType((CardAmount ca) => ca.Card) </th>
-            <th> @Html.DisplayNameForInnerType((Card c) => c.ManaCost) </th>
-            <th> Cards In Deck </th>
-            <th> Requests </th>
+            <th scope="col"> @Html.DisplayNameForInnerType((CardAmount ca) => ca.Card) </th>
+            <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.ManaCost) </th>
+            <th scope="col"> Cards In Deck </th>
+            <th scope="col"> Requests </th>
         </tr>
     </thead>
     <tbody>
@@ -87,11 +86,10 @@
             var card = group.Cards.First();
             <tr>
                 <td>
-                    <a asp-page="/Cards/Details"
-                       asp-route-id="@card.Id"
-                       class="fw-bold">
-                       @group.Name </a>
+                    <a asp-page="/Cards/Details" asp-route-id="@card.Id">
+                        @group.Name </a>
                 </td>
+
                 <td> @(MtgSymbols.Format(card.ManaCost).ToHtmlString()) </td>
                 <td> @group.InDeck </td>
                 <td> @group.Requests </td>

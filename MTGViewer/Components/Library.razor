@@ -43,37 +43,37 @@
 <table class="table">
     <thead>
         <tr>
-            <th>
-                <button @onclick="() => ReorderCards(c => c.Name)"
-                    class="btn btn-link text-left pl-0 @BoldIfActive(c => c.Name)">
-                    @Entities.DisplayName((Card c) => c.Name)
-                </button>
+            <th scope="col"
+                @onclick="() => ReorderCards(c => c.Name)" 
+                class="clickable btn-link @BoldIfActive(c => c.Name)">
+                @Entities.DisplayName((Card c) => c.Name)
             </th>
-            <th>
-                <button @onclick="() => ReorderCards(c => c.ManaCost)"
-                    class="btn btn-link text-left pl-0 @BoldIfActive(c => c.ManaCost)">
-                    @Entities.DisplayName((Card c) => c.ManaCost)
-                </button>
+
+            <th scope="col" 
+                @onclick="() => ReorderCards(c => c.ManaCost)" 
+                class="clickable btn-link @BoldIfActive(c => c.ManaCost)">
+                @Entities.DisplayName((Card c) => c.ManaCost)
             </th>
-            <th>
-                <button @onclick="() => ReorderCards(c => c.SetName)"
-                    class="btn btn-link text-left pl-0 @BoldIfActive(c => c.SetName)">
-                    @Entities.DisplayName((Card c) => c.SetName)
-                </button>
+
+            <th scope="col"
+                @onclick="() => ReorderCards(c => c.SetName)" 
+                class="clickable btn-link @BoldIfActive(c => c.SetName)">
+                @Entities.DisplayName((Card c) => c.SetName)
             </th>
-            <th>
-                <button @onclick="() => ReorderCards(c => c.Rarity)"
-                    class="btn btn-link text-left pl-0 @BoldIfActive(c => c.Rarity)">
-                    @Entities.DisplayName((Card c) => c.Rarity)
-                </button>
+
+            <th scope="col"
+                @onclick="() => ReorderCards(c => c.Rarity)" 
+                class="clickable btn-link @BoldIfActive(c => c.Rarity)">
+                @Entities.DisplayName((Card c) => c.Rarity)
             </th>
-            <th>
-                <button @onclick="() => ReorderCards(c => c.Amounts)"
-                    class="btn btn-link text-left pl-0 @BoldIfActive(c => c.Amounts)">
-                    Total Amount
-                </button>
+
+            <th scope="col" 
+                @onclick="() => ReorderCards(c => c.Amounts)" 
+                class="clickable btn-link @BoldIfActive(c => c.Amounts)">
+                Total Amount
             </th>
-            <th></th>
+
+            <th scope="col"></th>
         </tr>
     </thead>
 
@@ -81,13 +81,12 @@
         @foreach (var card in Cards)
         {
             <tr>
-                <td> <HoverCard Card="@((CardPreview)card)"/> </td>
+                <td> <HoverCard Card="@((CardPreview) card)"/> </td>
 
                 <td> @(MtgSymbols.Format(card.ManaCost).ToMarkupString()) </td>
                 <td> @card.SetName </td>
                 <td> @card.Rarity </td>
                 <td> @CardTotal(card) </td>
-                @* <td>@card.Amounts.Sum(ca => ca.Amount)</td> *@
 
                 <td>
                     @if (IsSignedIn)
@@ -103,20 +102,19 @@
     </tbody>
 </table>
 
-@{
-    var prevDisabled = Cards.Pages.HasPrevious ? "" : "disabled";
-    var nextDisabled = Cards.Pages.HasNext ? "" : "disabled";
-}
 
 @if (Cards.Pages.HasMultiple)
 {
+    var prevDisabled = Cards.Pages.HasPrevious ? "" : "disabled";
+    var nextDisabled = Cards.Pages.HasNext ? "" : "disabled";
+
     <nav aria-label="Card Result Pages">
         <ul class="pagination justify-content-center">
 
             <li class="page-item @prevDisabled">
                 <button class="page-link" disabled="@(!Cards.Pages.HasPrevious)"
-                    @onclick="() => FilterCards(Cards.Pages.Current - 1)">
-                    Previous
+                    @onclick="() => ApplyFilters(Cards.Pages.Current - 1)">
+                    &laquo;
                 </button>
             </li>
 
@@ -126,17 +124,17 @@
                 var activePage = pageIndex == Cards.Pages.Current ? "active" : "";
 
                 <li class="page-item @activePage">
-                    <button class="page-link" @onclick="() => FilterCards(pageIndex)">
+                    <button class="page-link" @onclick="() => ApplyFilters(pageIndex)">
                         @(pageIndex + 1)
-                        @* <span class="sr-only">(current)</span> *@
+                        <span class="sr-only">(current)</span>
                     </button>
                 </li>
             }
 
             <li class="page-item @nextDisabled">
                 <button class="page-link" disabled="@(!Cards.Pages.HasNext)"
-                    @onclick="() => FilterCards(Cards.Pages.Current + 1)">
-                    Next
+                    @onclick="() => ApplyFilters(Cards.Pages.Current + 1)">
+                    &raquo;
                 </button>
             </li>
 
@@ -196,7 +194,7 @@
         _orderProperty = null;
         _searchName = string.Empty;
 
-        FilterCards();
+        ApplyFilters();
     }
 
 
@@ -247,7 +245,7 @@
     }
 
 
-    private void FilterCards(int pageIndex = 0)
+    private void ApplyFilters(int pageIndex = 0)
     {
         if (pageIndex < 0 
             || Cards?.Pages.Total is int totalPages 
@@ -256,6 +254,8 @@
         {
             return;
         }
+
+        _orderProperty ??= nameof(Card.Name);
 
         Cards = CardsFiltered().ToPagedList(PageSize, pageIndex);
     }
@@ -315,7 +315,6 @@
                     .ThenBy(c => c.SetName),
 
             nameof(Card.Amounts) => 
-                // PrimaryOrder(c => c.Amounts.Sum(ca => ca.Amount))
                 PrimaryOrder(c => _cardAmounts.GetValueOrDefault(c.Id))
                     .ThenBy(c => c.Name)
                     .ThenBy(c => c.SetName),
@@ -338,7 +337,7 @@
             _colorFilter.Add(color);
         }
 
-        FilterCards();
+        ApplyFilters();
     }
 
 
@@ -346,7 +345,7 @@
     {
         _searchName = eventArgs.Value?.ToString();
         
-        FilterCards();
+        ApplyFilters();
     }
 
 
@@ -363,7 +362,7 @@
         _isReversed = newOrder == oldOrder && !_isReversed;
         _orderProperty = newOrder;
 
-        FilterCards();
+        ApplyFilters();
     }
 
 
@@ -373,7 +372,7 @@
 
         if (!_cancel.IsCancellationRequested)
         {
-            FilterCards(); // keep current filters
+            ApplyFilters(); // keep current filters
         }
     }
 }

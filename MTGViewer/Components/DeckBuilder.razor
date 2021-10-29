@@ -14,13 +14,34 @@
 
 <h1>@_deck.Name Builder</h1>
 
-<button title="Save Deck"
-        type="button"
-        class="btn btn-secondary mb-3"
+<div class="mb-3">
+    <button title="Save Deck" type="button"
+        class="btn btn-secondary" 
         disabled="@HasNoChanges"
         @onclick="CommitChangesAsync">
-    Save Changes
-</button>
+        Save Changes
+    </button>
+</div>
+
+<div class="form-row align-items-center my-3">
+    <div class="col-3">
+        <input class="form-control" placeholder="Name" @onchange="SearchName" />
+    </div>
+
+    <div class="col-auto btn-group" role="group" aria-label="Color Buttons">
+        @foreach (var (color, symbol) in Color.Symbols)
+        {
+            var active = _colorFilter.Contains(color) ? "active" : "";
+
+            <button title="@color filter"
+                    type="button"
+                    class="btn btn-outline-secondary border-0 rounded @active"
+                    @onclick="() => FilterColor(color)">
+                <i class="ms ms-@symbol.ToLower() ms-cost"></i>
+            </button>
+        }
+    </div>
+</div>
 
 <SavePrompt @bind-Result="_result">
     <SuccessMessage>
@@ -33,91 +54,114 @@
     </ErrorMessage>
 </SavePrompt>
 
+<div class="row">
+    <div class="col">
+        <h3>Treasury</h3>
 
-<EditForm EditContext="@_deckEdit">
-    <DataAnnotationsValidator />
-    <ValidationSummary />
+        <div class="list-group list-group-flush">
+            @foreach (var (card, available) in Treasury)
+            {
+                var wantTotal = card.Wants.Sum(w => w.Amount);
+                var previewId = $"{card.Id}-preview";
 
-    <InputText @bind-Value="_deck.Name" class="form-control form-control-lg border-0"/>
-</EditForm>
+                <button type="button" title="Add @card.Name"
+                    aria-expanded="false" aria-controls="@previewId"
+                    class="list-group-item list-group-item-action"
+                    @oncontextmenu:preventDefault
+                    @oncontextmenu="() => PreviewCard(card)"
+                    @onclick="() => AddCardToDeck(card)">
 
-<table class="table mt-2">
-    <thead>
-        <tr>
-            <th> @Entities.DisplayName((Card c) => c.Name) </th>
-            <th> @Entities.DisplayName((Card c) => c.ManaCost) </th>
-            <th> @Entities.DisplayName((Card c) => c.SetName) </th>
-            <th>Deck Amount</th>
-            <th>Requests</th>
-            <th></th>
-        </tr>
-    </thead>
+                    <span class="row">
+                        <span class="col-5"> @card.Name </span>
+                        <span class="col-5"> @(MtgSymbols.Format(card.ManaCost).ToMarkupString()) </span>
+                        <span class="col-2"> @(available - Math.Min(wantTotal, available)) </span>
+                    </span>
+                </button>
 
-    <tbody>
-        @foreach (var card in DeckCards)
-        {
-            var group = _deckCards[card.Id];
-            <tr>
-                <td class="fw-bold"> @card.Name </td>
-                <td> @(MtgSymbols.Format(card.ManaCost).ToMarkupString()) </td>
-                <td> @card.SetName </td>
-
-                <td> @((group.Actual?.Amount ?? 0) - (group.GiveBack?.Amount ?? 0)) </td>
-                <td> @(group.Want?.Amount ?? 0) </td>
-
-                <td>
-                    <button title="Remove @card.Name"
-                            type="button"
-                            class="btn btn-outline-secondary border-0 rounded"
-                            @onclick="() => RemoveCardFromDeck(card)">
-                        Remove Card
-                    </button>
-                </td>
-            </tr>
-        }
-    </tbody>
-</table>
-
-
-<h2>Treasury</h2>
-
-<table class="table">
-    <thead>
-        <tr>
-            <th> @Entities.DisplayName((Card c) => c.Name) </th>
-            <th> @Entities.DisplayName((Card c) => c.ManaCost) </th>
-            <th> @Entities.DisplayName((Card c) => c.SetName) </th>
-            <th>Amount</th>
-            <th></th>
-        </tr>
-    </thead>
-
-    <tbody>
-        @foreach (var (card, available) in Availables)
-        {
-            <tr>
-                <td class="fw-bold"> @card.Name </td>
-                <td> @(MtgSymbols.Format(card.ManaCost).ToMarkupString()) </td>
-                <td> @card.SetName </td>
-
-                @{
-                    var wantAmounts = Math.Min(
-                        card.Wants.Sum(w => w.Amount), available);
+                @if (_preview == card.Id)
+                {
+                    <div id="@previewId" class="card card-body">
+                        <img alt="@card.Name Image"
+                            src="@card.ImageUrl.WithHttps()"
+                            class=" img-fluid rounded" width="250px"/>
+                    </div>
                 }
-                <td> @(available - wantAmounts) </td>
+            }
+        </div>
 
-                <td>
-                    <button title="Add @card.Name"
-                            type="button"
-                            class="btn btn-outline-secondary border-0 rounded"
-                            @onclick="() => AddCardToDeck(card)">
-                        Add Card
-                    </button>
-                </td>
-            </tr>
+        @if (Pages.HasMultiple)
+        {
+            var prevDisabled = Pages.HasPrevious ? "" : "disabled";
+            var nextDisabled = Pages.HasNext ? "" : "disabled";
+
+            <nav aria-label="Card Result Pages">
+                <ul class="pagination justify-content-center pt-4">
+
+                    <li class="page-item @prevDisabled">
+                        <button class="page-link" disabled="@(!Pages.HasPrevious)"
+                            @onclick="() => ApplyFilters(Pages.Current - 1)">
+                            &laquo;
+                        </button>
+                    </li>
+
+                    @for (int i = 0; i < Pages.Total; ++i)
+                    {
+                        var pageIndex = i;
+                        var activePage = pageIndex == Pages.Current ? "active" : "";
+
+                        <li class="page-item @activePage">
+                            <button class="page-link" @onclick="() => ApplyFilters(pageIndex)">
+                                @(pageIndex + 1)
+                                <span class="sr-only">(current)</span>
+                            </button>
+                        </li>
+                    }
+
+                    <li class="page-item @nextDisabled">
+                        <button class="page-link" disabled="@(!Pages.HasNext)"
+                            @onclick="() => ApplyFilters(Pages.Current + 1)">
+                            &raquo;
+                        </button>
+                    </li>
+
+                </ul>
+            </nav>
         }
-    </tbody>
-</table>
+    </div>
+
+    <div class="col">
+        <div id="deck-builder">
+            <EditForm EditContext="@_deckEdit">
+                <DataAnnotationsValidator />
+                <ValidationSummary />
+
+                <InputText @bind-Value="_deck.Name"/>
+            </EditForm>
+
+            <div id="deck-builder-cards" class="list-group list-group-flush">
+                @foreach (var (card, group) in DeckCards)
+                {
+                    <button type="button" title="Remove @card.Name"
+                        class="list-group-item list-group-item-action"
+                        disabled="@(group.Amount <= 0)"
+                        @onclick="() => RemoveCardFromDeck(card)">
+
+                        <span class="row">
+                            <span class="col-5"> @card.Name </span>
+                            <span class="col-4"> @(MtgSymbols.Format(card.ManaCost).ToMarkupString()) </span>
+
+                            <span class="col-3">
+                                <span class="badge badge-pill badge-primary"> @(group.Actual?.Amount ?? 0) </span>
+                                <span class="badge badge-pill badge-danger"> @(group.GiveBack?.Amount ?? 0) </span>
+                                <span class="badge badge-pill badge-secondary"> @(group.Want?.Amount ?? 0) </span>
+                            </span>
+                        </span>
+                    </button>
+                }
+            </div>
+        </div>
+    </div>
+</div>
 
 
 @code {
@@ -128,6 +172,9 @@
     [Parameter]
     public int DeckId { get; set; } = default;
 
+    [Parameter]
+    public int PageSize { get; set; }
+
 
     private bool _isBusy;
     private readonly CancellationTokenSource _cancel = new();
@@ -137,6 +184,11 @@
 
     private IReadOnlyList<Card> _cards;
     private IReadOnlyDictionary<string, int> _boxAmounts;
+    private string _preview;
+
+    private PagedList<Card> _filteredCards;
+    private readonly HashSet<string> _colorFilter = new(StringComparer.CurrentCultureIgnoreCase);
+    private string _searchName;
 
     private Deck _deck;
     private EditContext _deckEdit;
@@ -148,14 +200,16 @@
         !_dbContext.ChangeTracker.HasChanges();
 
 
-    private IEnumerable<(Card, int amount)> Availables =>
-        _cards.Select(card => 
-            (card, _boxAmounts.GetValueOrDefault(card.Id)));
+    private IEnumerable<(Card, int amount)> Treasury =>
+        _filteredCards
+            .Select(c => (c, _boxAmounts.GetValueOrDefault(c.Id)));
 
-    private IEnumerable<Card> DeckCards =>
-        _cards.Where(c => _deckCards != null
-            && _deckCards.TryGetValue(c.Id, out var cardGroup)
-            && cardGroup.Amount > 0);
+    private Data.Pages Pages => _filteredCards.Pages;
+
+    private IEnumerable<(Card, QuantityGroup)> DeckCards =>
+        _cards
+            .Where(c => _deckCards.TryGetValue(c.Id, out var cardGroup) && cardGroup.Total > 0)
+            .Select(c => (c, _deckCards[c.Id]));
 
 
     private IQueryable<Deck> DeckForBuilder =>
@@ -182,6 +236,7 @@
             _dbContext = DbFactory.CreateDbContext();
 
             _cards = await _dbContext.Cards
+                .Include(c => c.Colors)
                 .OrderBy(c => c.Name)
                     .ThenBy(c => c.SetName)
                 .ToListAsync(_cancel.Token); // unbounded, keep eye on
@@ -226,6 +281,8 @@
 
             _deckCards = GetDeckCardGroups(_deck)
                 .ToDictionary(cg => cg.CardId);
+
+            ApplyFilters();
         }
 
         catch (DbUpdateException ex)
@@ -312,6 +369,67 @@
     }
 
 
+    private void PreviewCard(Card card)
+    {
+        if (_preview == card.Id)
+        {
+            _preview = null;
+        }
+        else
+        {
+            _preview = card.Id;
+        }
+    }
+
+
+    private void FilterColor(string color)
+    {
+        if (_colorFilter.Contains(color))
+        {
+            _colorFilter.Remove(color);
+        }
+        else
+        {
+            _colorFilter.Add(color);
+        }
+
+        ApplyFilters();
+    }
+
+
+    private void SearchName(ChangeEventArgs eventArgs)
+    {
+        _searchName = eventArgs.Value?.ToString();
+        
+        ApplyFilters();
+    }
+
+
+    private void ApplyFilters(int pageIndex = 0)
+    {
+        const StringComparison ignoreCase = StringComparison.CurrentCultureIgnoreCase;
+
+        var filter = _cards.AsEnumerable();
+
+        if (!string.IsNullOrWhiteSpace(_searchName))
+        {
+            filter = filter
+                .Where(c => c.Name
+                    .Contains(_searchName, ignoreCase));
+        }
+
+        if (_colorFilter.Any())
+        {
+            filter = filter
+                .Where(c => c.Colors
+                    .Any(cl => _colorFilter.Contains(cl.Name) ));
+        }
+
+        _preview = null;
+        _filteredCards = filter.ToPagedList(PageSize, pageIndex);
+    }
+
+
     private void AddCardToDeck(Card card)
     {
         if (_deck == null || _deckCards == null)
@@ -383,7 +501,7 @@
 
         if (actualRemain == 0)
         {
-            Logger.LogError($"there are no more of {card.Id} to remove");
+            // Logger.LogError($"there are no more of {card.Id} to remove");
             return;
         }
 
@@ -412,12 +530,12 @@
             return;
         }
 
-        if (!_deckEdit.Validate())
+        if (_isBusy)
         {
             return;
         }
 
-        if (_isBusy)
+        if (!_deckEdit.Validate())
         {
             return;
         }
@@ -513,6 +631,7 @@
         }
 
         Deck dbDeck = default;
+
         try
         {
             dbDeck = await DeckForBuilder

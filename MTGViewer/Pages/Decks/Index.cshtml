@@ -21,13 +21,11 @@
 <table class="table">
     <thead>
         <tr>
-            <th>
-                Deck @Html.DisplayNameForInnerType((Deck d) => d.Name)
-            </th>
-            <th>Colors</th>
-            <th>Number of Cards</th>
-            <th>State</th>
-            <th></th>
+            <th scope="col"> @Html.DisplayNameForInnerType((Deck d) => d.Name) </th>
+            <th scope="col"> Colors </th>
+            <th scope="col"> Number of Cards </th>
+            <th scope="col"> State </th>
+            <th scope="col"></th>
         </tr>
     </thead>
     <tbody>
@@ -37,22 +35,17 @@
                 <td>
                     @if (state is State.Requesting)
                     {
-                        <a asp-page="Viewer"
-                           asp-route-id="@deck.Id"
-                           class="fw-bold">
-                           @deck.Name </a>
+                        <a asp-page="Viewer" asp-route-id="@deck.Id">
+                            @deck.Name </a>
                     }
                     else
                     {
-                        <a asp-page="Builder"
-                           asp-route-id="@deck.Id"
-                           class="fw-bold">
-                           @deck.Name </a>
+                        <a asp-page="Builder" asp-route-id="@deck.Id">
+                            @deck.Name </a>
                     }
                 </td>
 
                 <td> @(MtgSymbols.Format(deck.Colors).ToHtmlString()) </td>
-
                 <td> @deck.Cards.Sum(ca => ca.Amount) </td>
 
                 <td>
@@ -93,14 +86,12 @@
 </table>
 
 
-@{
+@if (Model.Decks.Pages.HasMultiple)
+{
     var pages = Model.Decks.Pages;
     var prevDisabled = pages.HasPrevious ? "" : "disabled";
     var nextDisabled = pages.HasNext ? "" : "disabled";
-}
 
-@if (pages.HasMultiple)
-{
     <nav aria-label="Deck Pages">
         <ul class="pagination justify-content-center">
 
@@ -110,11 +101,11 @@
                     <a asp-page="Index" 
                         asp-route-pageIndex="@(pages.Current - 1)"
                         class="page-link">
-                        Previous </a>
+                        &laquo; </a>
                 }
                 else
                 {
-                    <span class="page-link">Previous</span>
+                    <span class="page-link">&laquo;</span>
                 }
             </li>
 
@@ -147,11 +138,11 @@
                     <a asp-page="Index"
                         asp-route-pageIndex="@(pages.Current + 1)"
                         class="page-link">
-                        Next </a>
+                        &raquo; </a>
                 }
                 else
                 {
-                    <span class="page-link">Next</span>
+                    <span class="page-link">&raquo;</span>
                 }
             </li>
 

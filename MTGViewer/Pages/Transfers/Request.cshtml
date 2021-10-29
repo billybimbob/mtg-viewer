@@ -37,9 +37,9 @@ else
 <table class="table">
     <thead>
         <tr>
-            <th> @Html.DisplayNameForInnerType((CardAmount ca) => ca.Card) </th>
-            <th> @Html.DisplayNameForInnerType((Card c) => c.ManaCost) </th>
-            <th> @Html.DisplayNameForInnerType((CardAmount ca) => ca.Amount) </th>
+            <th scope="col"> @Html.DisplayNameForInnerType((CardAmount ca) => ca.Card) </th>
+            <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.ManaCost) </th>
+            <th scope="col"> @Html.DisplayNameForInnerType((CardAmount ca) => ca.Amount) </th>
         </tr>
     </thead>
     <tbody>
@@ -48,8 +48,7 @@ else
             var card = cardGroup.Cards.First();
             <tr>
                 <td>
-                    <a asp-page="/Cards/Details"
-                        asp-route-id="@card.Id">
+                    <a asp-page="/Cards/Details" asp-route-id="@card.Id">
                         @card.Name </a>
                 </td>
 
@@ -68,10 +67,10 @@ else
     <table class="table">
         <thead>
             <tr>
-                <th>@Html.DisplayNameForInnerType((Card c) => c.Name)</th>
-                <th>@Html.DisplayNameForInnerType((Card c) => c.ManaCost)</th>
-                <th>@Html.DisplayNameForInnerType((Card c) => c.SetName)</th>
-                <th>@Html.DisplayNameForInnerType((CardAmount ca) => ca.Amount)</th>
+                <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.Name) </th>
+                <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.ManaCost) </th>
+                <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.SetName) </th>
+                <th scope="col"> @Html.DisplayNameForInnerType((CardAmount ca) => ca.Amount) </th>
             </tr>
         </thead>
         <tbody>
@@ -80,9 +79,7 @@ else
                 var card = amount.Card;
                 <tr>
                     <td>
-                        <a asp-page="/Cards/Details"
-                            asp-route-id="@card.Id"
-                            class="fw-bold">
+                        <a asp-page="/Cards/Details" asp-route-id="@card.Id">
                             @card.Name </a>
                     </td>
 

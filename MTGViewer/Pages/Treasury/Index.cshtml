@@ -29,12 +29,12 @@
 <table class="table">
     <thead>
         <tr>
-            <th> Box </th>
-            <th> @Html.DisplayNameForInnerType((CardAmount ca) => ca.Card) </th>
-            <th> @Html.DisplayNameForInnerType((Card c) => c.ManaCost) </th>
-            <th> @Html.DisplayNameForInnerType((Card c) => c.SetName) </th>
-            <th> @Html.DisplayNameForInnerType((Card c) => c.Rarity) </th>
-            <th> Current Amount </th>
+            <th scope="col"> Box </th>
+            <th scope="col"> @Html.DisplayNameForInnerType((CardAmount ca) => ca.Card) </th>
+            <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.ManaCost) </th>
+            <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.SetName) </th>
+            <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.Rarity) </th>
+            <th scope="col"> Current Amount </th>
         </tr>
     </thead>
     <tbody>
@@ -44,14 +44,12 @@
             var boxSpan = Math.Max(1, box.Cards.Count);
 
             <tr>
-                <td rowspan="@boxSpan" class="fw-bold"> @box.Name (@box.Bin.Name) </td>
+                <td rowspan="@boxSpan"> @box.Name (@box.Bin.Name) </td>
 
                 @if (firstAmount != default)
                 {
                     <td>
-                        <a asp-page="/Cards/Details"
-                            asp-route-id="@firstAmount.CardId"
-                            class="fw-bold">
+                        <a asp-page="/Cards/Details" asp-route-id="@firstAmount.CardId">
                             @firstAmount.Card.Name </a>
                     </td>
 
@@ -74,9 +72,7 @@
             {
                 <tr>
                     <td>
-                        <a asp-page="/Cards/Details"
-                            asp-route-id="@amount.CardId"
-                            class="fw-bold">
+                        <a asp-page="/Cards/Details" asp-route-id="@amount.CardId">
                             @amount.Card.Name </a>
                     </td>
                     <td> @(MtgSymbols.Format(amount.Card.ManaCost).ToHtmlString()) </td>
@@ -90,14 +86,12 @@
 </table>
 
 
-@{
+@if (Model.Boxes.Pages.HasMultiple)
+{
     var pages = Model.Boxes.Pages;
     var prevDisabled = pages.HasPrevious ? "" : "disabled";
     var nextDisabled = pages.HasNext ? "" : "disabled";
-}
 
-@if (pages.HasMultiple)
-{
     <nav aria-label="Box History Pages">
         <ul class="pagination justify-content-center">
 
@@ -107,11 +101,11 @@
                     <a asp-page="Create" 
                         asp-route-pageIndex="@(pages.Current - 1)"
                         class="page-link">
-                        Previous </a>
+                        &laquo; </a>
                 }
                 else
                 {
-                    <span class="page-link">Previous</span>
+                    <span class="page-link"> &laquo; </span>
                 }
             </li>
 
@@ -144,11 +138,11 @@
                     <a asp-page="Create"
                         asp-route-pageIndex="@(pages.Current + 1)"
                         class="page-link">
-                        Next </a>
+                        &raquo; </a>
                 }
                 else
                 {
-                    <span class="page-link">Next</span>
+                    <span class="page-link"> &raquo; </span>
                 }
             </li>
 

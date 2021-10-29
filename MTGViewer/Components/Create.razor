@@ -235,11 +235,11 @@ else
 
     <table class="table">
         <thead>
-            <th> @Entities.DisplayName((Card c) => c.Name) </th>
-            <th> @Entities.DisplayName((Card c) => c.ManaCost) </th>
-            <th> @Entities.DisplayName((Card c) => c.SetName) </th>
-            <th> @Entities.DisplayName((Card c) => c.Rarity) </th>
-            <th> Amount </th>
+            <th scope="col"> @Entities.DisplayName((Card c) => c.Name) </th>
+            <th scope="col"> @Entities.DisplayName((Card c) => c.ManaCost) </th>
+            <th scope="col"> @Entities.DisplayName((Card c) => c.SetName) </th>
+            <th scope="col"> @Entities.DisplayName((Card c) => c.Rarity) </th>
+            <th scope="col"> Amount </th>
         </thead>
         <tbody>
             @foreach (var (match, amount) in _matches)
@@ -248,7 +248,9 @@ else
                 {
                     <tr>
                         <td> 
-                            <HoverCard Card="@((CardPreview)match)"> @match.Name </HoverCard> 
+                            <HoverCard Card="@((CardPreview)match)">
+                                <span class="btn-link">@match.Name</span> 
+                            </HoverCard> 
                         </td>
                         <td> @MtgSymbols.Format(match.ManaCost).ToMarkupString() </td>
                         <td> @match.SetName </td>
@@ -283,11 +285,11 @@ else
     private readonly CancellationTokenSource _cancel = new();
     private bool _isBusy;
 
-    private readonly HashSet<string> _pickedColors = new(StringComparer.OrdinalIgnoreCase);
     private bool _multiColored;
+    private readonly HashSet<string> _pickedColors = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> _pickedRarities = new(StringComparer.OrdinalIgnoreCase);
-    private readonly CardSearch _search = new();
 
+    private readonly CardSearch _search = new();
     private EditContext _searchEdit;
     private ValidationMessageStore _resultErrors;
 
@@ -397,20 +399,20 @@ else
 
     private async Task SearchForCardAsync()
     {
-        if (!HasMore)
-        {
-            return;
-        }
-
         if (_isBusy)
         {
             return;
         }
 
-        var logger = ScopedServices.GetRequiredService<ILogger<Create>>();
-        var fetch = ScopedServices.GetRequiredService<MTGFetchService>();
+        if (!HasMore)
+        {
+            return;
+        }
 
         _isBusy = true;
+
+        var logger = ScopedServices.GetRequiredService<ILogger<Create>>();
+        var fetch = ScopedServices.GetRequiredService<MTGFetchService>();
 
         try
         {
@@ -514,17 +516,17 @@ else
 
     private async Task AddNewCardsAsync()
     {
+        if (_isBusy)
+        {
+            return;
+        }
+
         var addedAmounts = _matches
             .Where(kv => kv.Value > 0)
             .Select(kv => (card: kv.Key, amount: kv.Value))
             .ToList();
 
         if (!addedAmounts.Any())
-        {
-            return;
-        }
-
-        if (_isBusy)
         {
             return;
         }

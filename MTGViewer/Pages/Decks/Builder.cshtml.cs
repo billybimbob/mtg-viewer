@@ -10,6 +10,7 @@ using Microsoft.EntityFrameworkCore;
 
 using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
+using MTGViewer.Services;
 
 
 namespace MTGViewer.Pages.Decks
@@ -20,15 +21,18 @@ namespace MTGViewer.Pages.Decks
         private readonly UserManager<CardUser> _userManager;
         private readonly CardDbContext _dbContext;
 
-        public BuilderModel(UserManager<CardUser> userManager, CardDbContext dbContext)
+        public BuilderModel(UserManager<CardUser> userManager, CardDbContext dbContext, PageSizes pageSizes)
         {
             _userManager = userManager;
             _dbContext = dbContext;
+
+            PageSize = pageSizes.GetSize<BuilderModel>();
         }
 
 
         public string UserId { get; private set; }
         public int DeckId { get; private set; }
+        public int PageSize { get; }
 
 
         public async Task<IActionResult> OnGetAsync(int? id)
