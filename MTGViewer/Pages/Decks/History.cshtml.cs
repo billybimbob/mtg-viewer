@@ -66,7 +66,7 @@ namespace MTGViewer.Pages.Decks
 
             Transfers = changes
                 .GroupBy(c => (c.Transaction, c.From, c.To),
-                    (tft, changeGroup) => 
+                    (tft, changeGroup) =>
                         new Transfer(
                             tft.Transaction, tft.From, tft.To, changeGroup.ToList()))
                 .ToList();
@@ -78,7 +78,6 @@ namespace MTGViewer.Pages.Decks
                 .GroupBy(tft => tft.TransactionId,
                     (_, tfts) => tfts.First())
                 .ToHashSet();
-
 
             return Page();
         }

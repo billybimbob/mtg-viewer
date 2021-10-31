@@ -9,7 +9,7 @@ using Newtonsoft.Json;
 
 namespace MTGViewer.Data
 {
-    [Index(nameof(Name), nameof(ManaCost))]
+    [Index(nameof(Name))]
     public class Card
     {
         [Required]

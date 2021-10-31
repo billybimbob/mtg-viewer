@@ -26,10 +26,8 @@ namespace MTGViewer.Pages.Cards
             _logger = logger;
         }
 
-
         public Card Card { get; private set; }
 
-        public IReadOnlyList<Location> Locations { get; private set; }
 
         public async Task<IActionResult> OnGetAsync(string id)
         {
@@ -53,12 +51,6 @@ namespace MTGViewer.Pages.Cards
             {
                 return NotFound();
             }
-
-            Locations = Card.Amounts
-                // group by to keep sorted order
-                .GroupBy(ca => ca.Location,
-                    (location, _) => location)
-                .ToList();
 
             return Page();
         }

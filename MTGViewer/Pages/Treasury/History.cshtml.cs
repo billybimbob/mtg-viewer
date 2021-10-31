@@ -60,7 +60,8 @@ namespace MTGViewer.Pages.Treasury
             Transfers = changes
                 .GroupBy(c => (c.Transaction, c.From, c.To),
                     (tft, changes) =>
-                        new Transfer(tft.Transaction, tft.From, tft.To, changes.ToList()) )
+                        new Transfer(
+                            tft.Transaction, tft.From, tft.To, changes.ToList()) )
                 .ToList();
 
             Pages = changes.Pages;

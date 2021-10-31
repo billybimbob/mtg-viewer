@@ -44,7 +44,7 @@
             var boxSpan = Math.Max(1, box.Cards.Count);
 
             <tr>
-                <td rowspan="@boxSpan"> @box.Name (@box.Bin.Name) </td>
+                <th scope="rowgroup" rowspan="@boxSpan"> @box.Name (@box.Bin.Name) </th>
 
                 @if (firstAmount != default)
                 {

@@ -10,14 +10,17 @@
 <h1 class="text-center display-4">Welcome to the card database!</h1>
 
 <div class="pt-4">
-    <a href="/Cards">
+    <a href="/Cards" title="Card Collection">
         <h3>Cards from our collection!</h3>
     </a>
 
     <div class="row">
         @foreach (var card in Cards)
         {
-            <a href="/Cards/Details/@card.Id" class="col-3" aria-label="@card.Id details">
+            <a href="/Cards/Details/@card.Id" class="col-md-3 col-6"
+                title="@card.Name Details"
+                aria-label="@card.Id details">
+
                 <img alt="@card.Id image" 
                     class="w-100 img-fluid rounded" 
                     src="@card.ImageUrl.WithHttps()">
@@ -27,7 +30,7 @@
 </div>
 
 <div class="pt-5">
-    <a href="/Boxes/History">
+    <a href="/Treasury/History" title="Treasury History">
         <h3>Recent Shared Collection Changes</h3>
     </a>
 
@@ -43,7 +46,7 @@
             var both = anyAdds && anyRemoves;
 
             <li class="list-group-item d-flex justify-content-between">
-                <p class="mb-1">
+                <p class="m-0">
                     @if (anyAdds)
                     {
                         <strong> Added </strong> @AllCardNames(adds)
@@ -63,7 +66,7 @@
                     }
                 </p>
 
-                <small class="mb-1 text-muted"> @ElapsedTime(transaction) </small>
+                <small class="text-muted"> @ElapsedTime(transaction) </small>
             </li>
         }
     </ul>

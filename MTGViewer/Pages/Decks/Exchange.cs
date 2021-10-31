@@ -175,7 +175,7 @@ namespace MTGViewer.Pages.Decks
             catch (DbUpdateException e)
             {
                 _logger.LogError($"ran into db error {e}");
-                PostMessage = "Ran into issue while trying to checkout";
+                PostMessage = "Ran into issue while trying to exchange";
             }
 
             return RedirectToPage("History", new { id });
@@ -244,8 +244,14 @@ namespace MTGViewer.Pages.Decks
 
             foreach (var (want, available) in exactMatches)
             {
-                var actual = actuals[want.CardId];
                 int amountTaken = Math.Min(want.Amount, available.Amount);
+
+                if (amountTaken == 0)
+                {
+                    continue;
+                }
+
+                var actual = actuals[want.CardId];
 
                 actual.Amount += amountTaken;
                 available.Amount -= amountTaken;

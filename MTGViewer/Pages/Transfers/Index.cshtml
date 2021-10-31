@@ -39,18 +39,16 @@
                 @if (deck.TradesTo.Any())
                 {
                     <td>
-                        <a asp-page="Status" 
-                            asp-route-deckid="@deck.Id"
-                            class="fw-bold">
+                        <a asp-page="Status" asp-route-deckid="@deck.Id"
+                            title="@deck.Name Trade Status">
                             Sent </a>
                     </td>
                 }
                 else if (deck.Wants.Any())
                 {
                     <td>
-                        <a asp-page="Request" 
-                            asp-route-deckid="@deck.Id"
-                            class="fw-bold">
+                        <a asp-page="Request" asp-route-deckid="@deck.Id"
+                            title="@deck.Name Card Requests">
                             Possible </a>
                     </td>
                 }
@@ -62,9 +60,8 @@
                 @if (deck.TradesFrom.Any())
                 {
                     <td>
-                        <a asp-page="Review" 
-                            asp-route-deckid="@deck.Id"
-                            class="fw-bold">
+                        <a asp-page="Review" asp-route-deckid="@deck.Id"
+                            title="@deck.Name Trade Review">
                             Received </a>
                     </td>
                 }

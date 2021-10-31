@@ -20,7 +20,7 @@ namespace MTGViewer.Services
 
         public string Format(string mtgText)
         {
-            if (string.IsNullOrEmpty(mtgText))
+            if (string.IsNullOrWhiteSpace(mtgText))
             {
                 return string.Empty;
             }

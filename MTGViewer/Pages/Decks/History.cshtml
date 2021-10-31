@@ -14,8 +14,7 @@
 }
 
 <div class="mb-3">
-    <a asp-page="Viewer"
-        asp-route-id="@Model.Deck.Id"
+    <a asp-page="Viewer" asp-route-id="@Model.Deck.Id"
         class="btn btn-secondary" >
         View </a>
 </div>
@@ -48,9 +47,9 @@
                 <td rowspan="@changes.Count"> @to.Name </td>
 
                 <td> 
-                    <a asp-page="/Cards/Details" asp-route-id="@first.CardId"> @first.Card.Name </a> 
+                    @(await Html.RenderComponentAsync<HoverCard>(
+                        RenderMode.Static, new { Card = (CardPreview) first.Card }))
                 </td>
-
                 <td> @first.Amount </td>
 
                 @if (isFirstTransfer)
@@ -69,8 +68,8 @@
             {
                 <tr>
                     <td>
-                        <a asp-page="/Cards/Details" asp-route-id="@change.CardId">
-                            @change.Card.Name </a>
+                        @(await Html.RenderComponentAsync<HoverCard>(
+                            RenderMode.Static, new { Card = (CardPreview) change.Card }))
                     </td>
                     <td> @change.Amount </td>
                 </tr>

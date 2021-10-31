@@ -96,8 +96,8 @@ body {
 }
 
 .preview {
-  display: flex;
   display: -ms-flexbox;
+  display: flex;
   justify-content: flex-start;
 }
 
@@ -111,8 +111,8 @@ body {
 
 .preview-item img {
   position: absolute;
-  z-index: 1;
-  max-width: 200px;
+  z-index: 2;
+  max-width: 220px;
 }
 
 .preview-watch:hover ~ .preview-item {
@@ -124,14 +124,19 @@ body {
   pointer-events: auto;
 }
 
+.multiline
+{
+   white-space: pre-line;
+}
+
 .table tbody th, .table td {
   vertical-align: middle;
 }
 
 
 #deck-builder {
-  position: sticky;
   position: -webkit-sticky;
+  position: sticky;
   top: 5%;
 }
 

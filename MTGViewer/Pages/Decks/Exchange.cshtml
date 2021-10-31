@@ -43,36 +43,37 @@ else
 @if (Model.Deck.Cards.Any())
 {
     <div class="row">
-        <h3>Current Cards</h3>
+        <div class="col">
+            <h3>Current Cards</h3>
 
-        <table class="table mt-2">
-            <thead>
-                <tr>
-                    <th>@Html.DisplayNameForInnerType((Card c) => c.Name)</th>
-                    <th>@Html.DisplayNameForInnerType((Card c) => c.ManaCost)</th>
-                    <th>@Html.DisplayNameForInnerType((Card c) => c.SetName)</th>
-                    <th>@Html.DisplayNameForInnerType((CardAmount ca) => ca.Amount)</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var amount in Model.Deck.Cards)
-                {
-                    var card = amount.Card;
+            <table class="table mt-2">
+                <thead>
                     <tr>
-                        <td>
-                            <a asp-page="/Cards/Details"
-                            asp-route-id="@card.Id"
-                            class="fw-bold">
-                            @card.Name </a>
-                        </td>
-                        <td> @(MtgSymbols.Format(card.ManaCost).ToHtmlString()) </td>
-
-                        <td>@card.SetName</td>
-                        <td>@amount.Amount</td>
+                        <th>@Html.DisplayNameForInnerType((Card c) => c.Name)</th>
+                        <th>@Html.DisplayNameForInnerType((Card c) => c.ManaCost)</th>
+                        <th>@Html.DisplayNameForInnerType((Card c) => c.SetName)</th>
+                        <th>@Html.DisplayNameForInnerType((CardAmount ca) => ca.Amount)</th>
                     </tr>
-                }
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                    @foreach (var amount in Model.Deck.Cards)
+                    {
+                        var card = amount.Card;
+                        <tr>
+                            <td>
+                                <a asp-page="/Cards/Details" asp-route-id="@card.Id"
+                                    title="@card.Name Details">
+                                    @card.Name </a>
+                            </td>
+                            <td> @(MtgSymbols.Format(card.ManaCost).ToHtmlString()) </td>
+
+                            <td>@card.SetName</td>
+                            <td>@amount.Amount</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
     </div>
 }
 
@@ -95,9 +96,8 @@ else
                     var card = want.Card;
                     <tr>
                         <td>
-                            <a asp-page="/Cards/Details"
-                                asp-route-id="@card.Id"
-                                class="fw-bold">
+                            <a asp-page="/Cards/Details" asp-route-id="@card.Id"
+                                title="@card.Name Details">
                                 @card.Name </a>
                         </td>
                         <td> @(MtgSymbols.Format(card.ManaCost).ToHtmlString()) </td>
@@ -127,9 +127,7 @@ else
                     var card = giveBack.Card;
                     <tr>
                         <td>
-                            <a asp-page="/Cards/Details"
-                                asp-route-id="@card.Id"
-                                class="fw-bold">
+                            <a asp-page="/Cards/Details" asp-route-id="@card.Id">
                                 @card.Name </a>
                         </td>
                         <td> @(MtgSymbols.Format(card.ManaCost).ToHtmlString()) </td>

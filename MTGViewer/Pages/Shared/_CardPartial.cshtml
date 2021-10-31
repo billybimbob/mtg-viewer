@@ -1,0 +1,136 @@
+@model Card
+@inject SymbolFormatter MtgSymbols
+
+<hr />
+<div class="row">
+
+    <div class="col-md col-12 pb-4 d-flex justify-content-center justify-content-md-start align-items-center">
+        <img class="img-fluid" alt="@Model.Name" src="@Model.ImageUrl.WithHttps()"/>
+    </div>
+
+    <div class="col-md-9">
+        <dl class="row m-0">
+
+            <dt class="mb-2 col-3">
+                @Html.DisplayNameFor(m => m.Cmc)
+            </dt>
+            <dd class="col-9">
+                @(Model.Cmc?.ToString() ?? "--")
+            </dd>
+                
+            <dt class="mb-2 col-3">
+                @Html.DisplayNameFor(m => m.Rarity)
+            </dt>
+            <dd class="col-9">
+                @Html.DisplayFor(m => m.Rarity)
+            </dd>
+
+            <dt class="mb-2 col-3">
+                @Html.DisplayNameFor(m => m.SetName)
+            </dt>
+            <dd class="col-9">
+                @Html.DisplayFor(m => m.SetName)
+            </dd>
+
+            <dt class="mb-2 col-3">
+                @Html.DisplayNameFor(m => m.Supertypes)
+            </dt>
+            <dd class="col-9">
+                @(Model.Supertypes.Any()
+                    ? string.Join(" ", Model.Supertypes.Select(st => st.Name))
+                    : "--")
+            </dd>
+
+            <dt class="mb-2 col-3">
+                @Html.DisplayNameFor(m => m.Types)
+            </dt>
+            <dd class="col-9">
+                @(Model.Types.Any()
+                    ? string.Join(" ", Model.Types.Select(st => st.Name))
+                    : "--")
+            </dd>
+
+            <dt class="mb-2 col-3">
+                @Html.DisplayNameFor(m => m.Subtypes)
+            </dt>
+            <dd class="col-9">
+                @(Model.Subtypes.Any() 
+                    ? string.Join(" ", Model.Subtypes.Select(st => st.Name))
+                    : "--")
+            </dd>
+
+            <dt class="mb-2 col-3">
+                @Html.DisplayNameFor(m => m.Text)
+            </dt>
+            <dd class="col-9">
+                <span class="multiline">@(Model.Text == null
+                    ? "--"
+                    : MtgSymbols.Format(Model.Text).ToHtmlString())</span>
+            </dd>
+
+            <dt class="mb-2 col-3">
+                @Html.DisplayNameFor(m => m.Flavor)
+            </dt>
+            <dd class="col-9">
+                <span class="multiline">@(Model.Flavor ?? "--")</span>
+            </dd>
+
+            <dt class="mb-2 col-3">
+                @Html.DisplayNameFor(m => m.Artist)
+            </dt>
+            <dd class="col-9">
+                @(Model.Artist ?? "--")
+            </dd>
+
+            <dt class="mb-2 col-3">
+                @Html.DisplayNameFor(m => m.Power)
+            </dt>
+            <dd class="col-9">
+                @(Model.Power ?? "--")
+            </dd>
+
+            <dt class="mb-2 col-3">
+                @Html.DisplayNameFor(m => m.Toughness)
+            </dt>
+            <dd class="col-9">
+                @(Model.Toughness ?? "--")
+            </dd>
+
+            <dt class="col-3">
+                @Html.DisplayNameFor(m => m.Loyalty)
+            </dt>
+            <dd class="col-9">
+                @(Model.Loyalty ?? "--")
+            </dd>
+
+            <dt class="col-3">
+                Location of Copies
+            </dt>
+            <dd class="col-md-9 col-12">
+                <ul class="list-group list-group-horizontal-md row p-2">
+                    @foreach(var cardAmount in Model.Amounts)
+                    {
+                        <li class="list-group-item col-md-4 d-flex justify-content-between align-items-center">
+                            @if (cardAmount.Location is Deck deck)
+                            {
+                                <a asp-page="/Decks/Viewer" asp-route-id="@deck.Id">
+                                    @deck.Name
+                                </a>
+                            }
+                            else
+                            {
+                                @cardAmount.Location.Name
+                            }
+
+                            <span class="ml-1 badge badge-secondary badge-pill">
+                                @cardAmount.Amount
+                            </span>
+                        </li>
+                    }
+                </ul>
+            </dd>
+
+        </dl>
+    </div>
+
+</div>

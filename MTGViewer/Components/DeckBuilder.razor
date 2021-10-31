@@ -55,7 +55,7 @@
 </SavePrompt>
 
 <div class="row">
-    <div class="col">
+    <div class="col-7">
         <h3>Treasury</h3>
 
         <div class="list-group list-group-flush">
@@ -65,15 +65,15 @@
                 var previewId = $"{card.Id}-preview";
 
                 <button type="button" title="Add @card.Name"
-                    aria-expanded="false" aria-controls="@previewId"
+                    aria-controls="@previewId"
                     class="list-group-item list-group-item-action"
                     @oncontextmenu:preventDefault
                     @oncontextmenu="() => PreviewCard(card)"
                     @onclick="() => AddCardToDeck(card)">
 
                     <span class="row">
-                        <span class="col-5"> @card.Name </span>
-                        <span class="col-5"> @(MtgSymbols.Format(card.ManaCost).ToMarkupString()) </span>
+                        <span class="col-6"> @card.Name </span>
+                        <span class="col-4"> @(MtgSymbols.Format(card.ManaCost).ToMarkupString()) </span>
                         <span class="col-2"> @(available - Math.Min(wantTotal, available)) </span>
                     </span>
                 </button>

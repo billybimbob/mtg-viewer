@@ -48,7 +48,8 @@ else
             var card = cardGroup.Cards.First();
             <tr>
                 <td>
-                    <a asp-page="/Cards/Details" asp-route-id="@card.Id">
+                    <a asp-page="/Cards/Details" asp-route-id="@card.Id"
+                        title="@card.Name Details">
                         @card.Name </a>
                 </td>
 
@@ -79,7 +80,8 @@ else
                 var card = amount.Card;
                 <tr>
                     <td>
-                        <a asp-page="/Cards/Details" asp-route-id="@card.Id">
+                        <a asp-page="/Cards/Details" asp-route-id="@card.Id"
+                            title="@card.Name Details">
                             @card.Name </a>
                     </td>
 
