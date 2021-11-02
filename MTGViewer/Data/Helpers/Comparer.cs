@@ -4,7 +4,7 @@ using System.Linq;
 
 #nullable enable
 
-namespace MTGViewer.Data.Internal
+namespace MTGViewer.Data
 {
     internal class PropertyComparer<E> : IEqualityComparer<E>
     {
@@ -50,22 +50,18 @@ namespace MTGViewer.Data.Internal
 
     public class CardNameComparer : IComparer<Card>
     {
+        private const StringComparison _currentCompare = StringComparison.CurrentCulture;
+
         public int Compare(Card? cardA, Card? cardB)
         {
-            var nameCompare = string.Compare(
-                cardA?.Name, 
-                cardB?.Name, 
-                StringComparison.InvariantCulture);
+            var nameCompare = string.Compare(cardA?.Name, cardB?.Name, _currentCompare);
 
             if (nameCompare != 0)
             {
                 return nameCompare;
             }
 
-            return string.Compare(
-                cardA?.SetName,
-                cardB?.SetName,
-                StringComparison.InvariantCulture);
+            return string.Compare(cardA?.SetName, cardB?.SetName, _currentCompare);
         }
     }
 }

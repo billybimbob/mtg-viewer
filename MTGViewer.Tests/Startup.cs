@@ -23,7 +23,7 @@ namespace MTGViewer.Tests
             services.AddDbContext<CardDbContext>(TestFactory.InMemoryDatabase);
             services.AddDbContext<UserDbContext>(TestFactory.InMemoryDatabase);
 
-            services.AddScoped<ITreasury, FlatSortedCards>();
+            services.AddScoped<ITreasury, FlatVariableStorage>();
             services.AddScoped<UserManager<CardUser>>(TestFactory.CardUserManager);
 
             services.AddSingleton<PageSizes>();

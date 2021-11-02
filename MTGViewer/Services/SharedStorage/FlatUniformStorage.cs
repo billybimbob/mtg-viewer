@@ -12,13 +12,13 @@ using MTGViewer.Data;
 
 namespace MTGViewer.Services
 {
-    public sealed class FlatSortedCards : ITreasury, IDisposable
+    public sealed class FlatUniformStorage : ITreasury, IDisposable
     {
         private readonly int _boxSize;
         private readonly CardDbContext _dbContext;
         private readonly SemaphoreSlim _lock; // needed since CardDbContext is not thread safe
 
-        public FlatSortedCards(IConfiguration config, CardDbContext dbContext)
+        public FlatUniformStorage(IConfiguration config, CardDbContext dbContext)
         {
             _boxSize = config.GetValue("BoxSize", 80);
             _dbContext = dbContext;
@@ -249,15 +249,15 @@ namespace MTGViewer.Services
 
         private int FindAmountIndex(IReadOnlyList<CardAmount> sortedAmounts, Card card)
         {
-            var amountIndex = 0;
+            int amountIndex = 0;
 
             if (!sortedAmounts.Any())
             {
                 return amountIndex;
             }
 
-            var low = 0;
-            var high = sortedAmounts.Count - 1;
+            int low = 0;
+            int high = sortedAmounts.Count - 1;
 
             while (low <= high)
             {
@@ -265,10 +265,10 @@ namespace MTGViewer.Services
 
                 var boxCard = sortedAmounts[amountIndex].Card;
 
-                var nameCompare = string.Compare(
+                int nameCompare = string.Compare(
                     card.Name, boxCard.Name, StringComparison.InvariantCulture);
 
-                var setCompare = string.Compare(
+                int setCompare = string.Compare(
                     card.SetName, boxCard.SetName, StringComparison.InvariantCulture);
 
                 if (nameCompare == 0 && setCompare == 0)

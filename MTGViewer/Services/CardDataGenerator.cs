@@ -132,7 +132,8 @@ namespace MTGViewer.Services
                 .Select(i => new Box
                 {
                     Name = $"Box #{i+1}",
-                    Bin = bin
+                    Bin = bin,
+                    Capacity = _random.Next(10, 50)
                 })
                 .ToList();
         }

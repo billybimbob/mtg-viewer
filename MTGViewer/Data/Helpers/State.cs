@@ -14,6 +14,7 @@ namespace MTGViewer.Data.Internal
         Invalid,
 
         Box,
+        Unclaimed,
         Deck,
 
         Want,

@@ -112,8 +112,9 @@ namespace MTGViewer.Data
             builder
                 .HasDiscriminator(l => l.Type)
                     .HasValue<Location>(Discriminator.Invalid)
-                    .HasValue<Box>(Discriminator.Box)
-                    .HasValue<Deck>(Discriminator.Deck);
+                    .HasValue<Unclaimed>(Discriminator.Unclaimed)
+                    .HasValue<Deck>(Discriminator.Deck)
+                    .HasValue<Box>(Discriminator.Box);
 
             builder
                 .HasMany(l => l.Cards)

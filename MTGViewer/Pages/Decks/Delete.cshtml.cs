@@ -138,7 +138,7 @@ namespace MTGViewer.Pages.Decks
 
             if (deck == default)
             {
-                return RedirectToPage("./Index");
+                return RedirectToPage("Index");
             }
 
             var returningCards = deck.Cards
@@ -147,6 +147,9 @@ namespace MTGViewer.Pages.Decks
                 .ToList();
 
             _dbContext.Amounts.RemoveRange(deck.Cards);
+            _dbContext.Wants.RemoveRange(deck.Wants);
+            _dbContext.GiveBacks.RemoveRange(deck.GiveBacks);
+
             _dbContext.Decks.Remove(deck);
 
             try

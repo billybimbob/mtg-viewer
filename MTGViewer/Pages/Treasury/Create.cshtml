@@ -44,6 +44,12 @@
                 <textarea asp-for="Box.Appearance" class="form-control"></textarea>
                 <span asp-validation-for="Box.Appearance" class="text-danger"></span>
             </div>
+
+            <div class="form-group">
+                <label asp-for="Box.Capacity" class="control-label"></label>
+                <input asp-for="Box.Capacity" class="form-control"/>
+                <span asp-validation-for="Box.Capacity" class="text-danger"></span>
+            </div>
             
             <div class="form-group">
                 <a asp-page="Index"
