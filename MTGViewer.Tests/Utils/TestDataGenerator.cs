@@ -54,7 +54,7 @@ namespace MTGViewer.Tests.Utils
                 await SetupAsync();
 
                 var jsonSuccess = await _jsonStorage
-                    .AddFromJsonAsync(new() { IncludeUsers = true });
+                    .AddFromJsonAsync(new() { Seeding = true });
 
                 if (!jsonSuccess)
                 {

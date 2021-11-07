@@ -91,7 +91,7 @@ namespace MTGViewer.Services
             }
 
             var jsonStorage = scopeProvider.GetRequiredService<JsonCardStorage>();
-            var jsonOptions = new JsonWriteOptions { IncludeUsers = true };
+            var jsonOptions = new JsonWriteOptions { Seeding = true };
 
             var jsonSuccess = await jsonStorage.AddFromJsonAsync(jsonOptions, cancel);
 

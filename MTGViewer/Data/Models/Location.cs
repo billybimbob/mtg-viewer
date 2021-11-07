@@ -1,7 +1,7 @@
 using System.Linq;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-using Newtonsoft.Json;
+using System.Text.Json.Serialization;
 
 using MTGViewer.Data.Concurrency;
 using MTGViewer.Data.Internal;
@@ -13,7 +13,7 @@ namespace MTGViewer.Data
 {
     public abstract class Location : Concurrent
     {
-        [JsonRequired]
+        [JsonInclude]
         public int Id { get; protected set; }
 
         [JsonIgnore]
@@ -32,11 +32,7 @@ namespace MTGViewer.Data
     {
         public static explicit operator Unclaimed(Deck deck)
         {
-            var unclaimed = new Unclaimed
-            {
-                Id = deck.Id,
-                Name = deck.Name
-            };
+            var unclaimed = new Unclaimed { Name = deck.Name };
 
             unclaimed.Cards.AddRange(deck.Cards);
 
@@ -121,10 +117,9 @@ namespace MTGViewer.Data
 
     public class Bin
     {
-        [JsonRequired]
+        [JsonInclude]
         public int Id { get; private set; }
 
-        [JsonRequired]
         [StringLength(10)]
         public string Name { get; init; } = string.Empty;
 

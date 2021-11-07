@@ -16,7 +16,7 @@
  
 <h1>@Model.CardUser.Name's Decks</h1>
 
-<a class="btn btn-secondary mb-3" asp-page="./Builder">New Deck</a>
+<a asp-page="Builder" class="btn btn-secondary mb-3" role="button">New Deck</a>
 
 <table class="table">
     <thead>
@@ -51,17 +51,13 @@
                 <td>
                     @if (state is State.Requesting)
                     {
-                        <a asp-page="/Transfers/Status"
-                           asp-route-deckid="@deck.Id"
-                           class="fw-bold">
-                           @state.ToString() </a>
+                        <a asp-page="/Transfers/Status" asp-route-deckid="@deck.Id">
+                            @state.ToString() </a>
                     }
                     else if (state is State.Theorycraft)
                     {
-                        <a asp-page="Exchange"
-                           asp-route-id="@deck.Id"
-                           class="fw-bold">
-                           @state.ToString() </a>
+                        <a asp-page="Exchange" asp-route-id="@deck.Id">
+                            @state.ToString() </a>
                     }
                     else
                     {
@@ -70,14 +66,12 @@
                 </td>
                 
                 <td>
-                    <a asp-page="History"
-                        asp-route-id="@deck.Id"
-                        class="btn btn-secondary">
+                    <a asp-page="History" asp-route-id="@deck.Id"
+                        class="btn btn-secondary" role="button">
                         History </a>
 
-                    <a asp-page="Delete"
-                        asp-route-id="@deck.Id"
-                        class="btn btn-danger">
+                    <a asp-page="Delete" asp-route-id="@deck.Id"
+                        class="btn btn-danger" role="button">
                         Delete </a>
                 </td>
             </tr>

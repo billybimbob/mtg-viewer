@@ -6,7 +6,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
 using MtgApiManager.Lib.Service;
-using Newtonsoft.Json;
 using MTGViewer.Services;
 
 

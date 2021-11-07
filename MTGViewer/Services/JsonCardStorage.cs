@@ -1,6 +1,7 @@
 using System.Linq;
 using System.Collections.Generic;
 using System.IO;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -8,7 +9,6 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 
-using Newtonsoft.Json;
 using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
 
@@ -18,7 +18,7 @@ namespace MTGViewer.Services
     {
         public string Path { get; init; }
 
-        public bool IncludeUsers { get; init; }
+        public bool Seeding { get; init; }
     }
 
 
@@ -53,12 +53,15 @@ namespace MTGViewer.Services
         {
             path ??= Path.Combine(Directory.GetCurrentDirectory(), _defaultFilename);
 
-            await using var writer = File.CreateText(path);
+            await using var writer = File.Create(path);
 
             var data = await CardData.CreateAsync(_dbContext, _userManager, cancel);
-            var dataStr = JsonConvert.SerializeObject(data, Formatting.Indented);
 
-            await writer.WriteAsync(dataStr);
+            await JsonSerializer.SerializeAsync(
+                writer,
+                data,
+                new JsonSerializerOptions { WriteIndented = true },
+                cancel);
         }
 
 
@@ -70,42 +73,37 @@ namespace MTGViewer.Services
 
             try
             {
-                using var reader = File.OpenText(path);
+                await using var reader = File.OpenRead(path);
 
-                var dataStr = await reader.ReadToEndAsync();
-                var data = JsonConvert.DeserializeObject<CardData>(
-                    dataStr,
-                    new JsonSerializerSettings
-                    {
-                        MissingMemberHandling = MissingMemberHandling.Error
-                    });
+                var data = await JsonSerializer.DeserializeAsync<CardData>(
+                    reader,
+                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true }, 
+                    cancel);
+
+                // var data = JsonConvert.DeserializeObject<CardData>(
+                //     dataStr,
+                //     new JsonSerializerSettings
+                //     {
+                //         MissingMemberHandling = MissingMemberHandling.Error
+                //     });
 
                 if (data is null)
                 {
                     return false;
                 }
-
-                _dbContext.Users.AddRange(data.Refs);
-                _dbContext.Cards.AddRange(data.Cards);
-
-                _dbContext.Bins.AddRange(data.Bins);
-                _dbContext.Boxes.AddRange(data.Boxes);
-                _dbContext.Decks.AddRange(data.Decks);
-
-                _dbContext.Amounts.AddRange(data.Amounts);
-
-                _dbContext.Wants.AddRange(data.Wants);
-                _dbContext.GiveBacks.AddRange(data.GiveBacks);
-
-                _dbContext.Changes.AddRange(data.Changes);
-                _dbContext.Transactions.AddRange(data.Transactions);
-
-                _dbContext.Trades.AddRange(data.Trades);
-                _dbContext.Suggestions.AddRange(data.Suggestions);
+                
+                if (options.Seeding)
+                {
+                    Seed(data);
+                }
+                else
+                {
+                    await Merge(data);
+                }
 
                 await _dbContext.SaveChangesAsync(cancel);
 
-                if (!options.IncludeUsers)
+                if (!options.Seeding)
                 {
                     return true;
                 }
@@ -122,7 +120,7 @@ namespace MTGViewer.Services
             {
                 return false;
             }
-            catch (JsonSerializationException)
+            catch (JsonException)
             {
                 return false;
             }
@@ -132,6 +130,99 @@ namespace MTGViewer.Services
             }
         }
 
+
+        private void Seed(CardData data)
+        {
+            _dbContext.Cards.AddRange(data.Cards);
+            _dbContext.Users.AddRange(data.Refs);
+
+            _dbContext.Bins.AddRange(data.Bins);
+            _dbContext.Boxes.AddRange(data.Boxes);
+
+            _dbContext.Decks.AddRange(data.Decks);
+            _dbContext.Unclaimed.AddRange(data.Unclaimed ?? Enumerable.Empty<Unclaimed>());
+
+            _dbContext.Amounts.AddRange(data.Amounts);
+
+            _dbContext.Wants.AddRange(data.Wants);
+            _dbContext.GiveBacks.AddRange(data.GiveBacks);
+
+            _dbContext.Changes.AddRange(data.Changes);
+            _dbContext.Transactions.AddRange(data.Transactions);
+
+            _dbContext.Trades.AddRange(data.Trades);
+            _dbContext.Suggestions.AddRange(data.Suggestions);
+        }
+
+
+        private async Task Merge(CardData data)
+        {
+            var cards = await NewCardsAsync(data);
+            var unclaimed = UnclaimedMerged(data);
+
+            _dbContext.Cards.AddRange(cards);
+
+            _dbContext.Bins.AddRange(data.Bins);
+            _dbContext.Boxes.AddRange(data.Boxes);
+
+            _dbContext.Unclaimed.AddRange(unclaimed);
+        }
+
+
+        private async Task<IEnumerable<Card>> NewCardsAsync(CardData data)
+        {
+            var cardIds = data.Cards
+                .Select(c => c.Id)
+                .ToArray();
+
+            var dbCardIds = await _dbContext.Cards
+                .Select(c => c.Id)
+                .Where(cid => cardIds.Contains(cid))
+                .ToListAsync();
+
+            return data.Cards
+                .GroupJoin(dbCardIds,
+                    c => c.Id,
+                    cid => cid,
+                    (card, ids) => (card, any: ids.Any()) )
+                .Where(ca => !ca.any)
+                .Select(ca => ca.card)
+                .ToList();
+        }
+
+
+        private IEnumerable<Unclaimed> UnclaimedMerged(CardData data)
+        {
+            var unclaimedData = data.Unclaimed ?? Enumerable.Empty<Unclaimed>();
+
+            foreach (var unclaimed in unclaimedData)
+            {
+                yield return unclaimed;
+            }
+
+            var deckAmounts = data.Decks
+                .GroupJoin(data.Amounts,
+                    d => d.Id,
+                    ca => ca.LocationId,
+                    (deck, amounts) => (deck, amounts));
+
+            foreach (var (deck, amounts) in deckAmounts)
+            {
+                var unclaimed = (Unclaimed) deck;
+
+                var unclaimedCards = amounts
+                    .Select(ca => new CardAmount
+                    {
+                        CardId = ca.CardId,
+                        Location = unclaimed,
+                        Amount = ca.Amount
+                    });
+
+                unclaimed.Cards.AddRange(unclaimedCards);
+
+                yield return unclaimed;
+            }
+        }
     }
 
 
@@ -144,6 +235,8 @@ namespace MTGViewer.Services
         public IReadOnlyList<Card> Cards { get; set; }
 
         public IReadOnlyList<Deck> Decks { get; set; }
+        public IReadOnlyList<Unclaimed> Unclaimed { get; set; }
+
         public IReadOnlyList<Box> Boxes { get; set; }
         public IReadOnlyList<Bin> Bins { get; set; }
 

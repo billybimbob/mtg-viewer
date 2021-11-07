@@ -1,9 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-
+using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
-using Newtonsoft.Json;
 
 #nullable enable
 
@@ -16,7 +15,7 @@ namespace MTGViewer.Data
         nameof(TransactionId), IsUnique = true)]
     public class Change
     {
-        [JsonRequired]
+        [JsonInclude]
         public int Id { get; private set; }
 
 
@@ -47,6 +46,7 @@ namespace MTGViewer.Data
 
     public class Transaction
     {
+        [JsonInclude]
         public int Id { get; private set; }
 
         [Display(Name = "Applied At")]

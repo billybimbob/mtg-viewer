@@ -14,12 +14,12 @@
         @if (!Model.Deck.TradesTo.Any())
         {
             <a asp-page="Builder" asp-route-id="@Model.Deck.Id"
-                class="btn btn-secondary" >
+                class="btn btn-secondary" role="button">
                 Edit</a>
         }
 
         <a asp-page="History" asp-route-id="@Model.Deck.Id"
-            class="btn btn-secondary" >
+            class="btn btn-secondary" role="button">
             History </a>
     </div>
 }

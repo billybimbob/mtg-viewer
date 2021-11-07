@@ -31,7 +31,8 @@
     }
 
     <a asp-page="/Cards/Index"
-        class="btn btn-secondary mb-3">
+        class="btn btn-secondary mb-3"
+        role="button">
         Back </a>
 
     @if (Model.Users.Any())
@@ -75,7 +76,8 @@ else
 
         <a asp-page="Suggest"
             asp-route-cardid="@Model.Card.Id"
-            class="btn btn-secondary mb-3">
+            class="btn btn-secondary mb-3"
+            role="button">
             Back </a>
 
         <input type="hidden"

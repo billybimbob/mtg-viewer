@@ -1,6 +1,4 @@
-using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-using Newtonsoft.Json;
 
 using MTGViewer.Areas.Identity.Data;
 
@@ -10,8 +8,7 @@ namespace MTGViewer.Data
 {
     public class UserRef
     {
-        [JsonConstructor]
-        private UserRef() // should not be used
+        public UserRef()
         {
             Id = null!;
             Name = null!;
@@ -24,11 +21,9 @@ namespace MTGViewer.Data
         }
 
         [Key]
-        [JsonRequired]
-        public string Id { get; private set; }
+        public string Id { get; init; }
 
-        [JsonRequired]
         [StringLength(256)]
-        public string Name { get; private set; }
+        public string Name { get; init; }
     }
 }

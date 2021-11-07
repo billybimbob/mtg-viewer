@@ -17,7 +17,8 @@
 
 <!-- js hack -->
 <a href="javascript:history.go(-1)"
-    class="btn btn-secondary">
+    class="btn btn-secondary"
+    role="button">
     Back </a>
 
 @if (Model.CardAlts.Any())
@@ -43,7 +44,7 @@
 @if (Model.IsSignedIn)
 {
     <a asp-page="./Delete" asp-route-id="@Model.Card.Id"
-        class="btn btn-danger">
+        class="btn btn-danger" role="alert">
         Delete </a>
 }
 

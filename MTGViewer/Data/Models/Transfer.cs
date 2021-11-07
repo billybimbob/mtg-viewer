@@ -1,7 +1,7 @@
 using System;
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
-using Newtonsoft.Json;
 using MTGViewer.Data.Concurrency;
 
 #nullable enable
@@ -10,7 +10,7 @@ namespace MTGViewer.Data
 {
     public class Suggestion
     {
-        [JsonRequired]
+        [JsonInclude]
         public int Id { get; private set; }
 
 
@@ -35,6 +35,7 @@ namespace MTGViewer.Data
         public string? Comment { get; set; }
 
         [Display(Name = "Sent At")]
+        [JsonInclude]
         public DateTime SentAt { get; private set; }
     }
     
@@ -51,7 +52,7 @@ namespace MTGViewer.Data
         nameof(CardId), IsUnique = true)]
     public class Trade : Concurrent
     {
-        [JsonRequired]
+        [JsonInclude]
         public int Id { get; private set; }
 
 

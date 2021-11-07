@@ -20,6 +20,8 @@ namespace MTGViewer.Data
         public DbSet<Card> Cards => Set<Card>();
 
         public DbSet<Deck> Decks => Set<Deck>();
+        public DbSet<Unclaimed> Unclaimed => Set<Unclaimed>();
+
         public DbSet<Box> Boxes => Set<Box>();
         public DbSet<Bin> Bins => Set<Bin>();
 

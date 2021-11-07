@@ -6,7 +6,7 @@ using System.Linq;
 
 namespace MTGViewer.Data
 {
-    internal class PropertyComparer<E> : IEqualityComparer<E>
+    internal class PropertyComparer<E> : EqualityComparer<E>
     {
         private IEnumerable<Func<E, object>> _properties;
 
@@ -17,7 +17,7 @@ namespace MTGViewer.Data
                 .ToList();
         }
 
-        public bool Equals(E? a, E? b)
+        public override bool Equals(E? a, E? b)
         {
             if (object.ReferenceEquals(a, b))
             {
@@ -38,7 +38,7 @@ namespace MTGViewer.Data
             });
         }
 
-        public int GetHashCode(E entity)
+        public override int GetHashCode(E entity)
         {
             return entity is null 
                 ? 0 
@@ -48,11 +48,11 @@ namespace MTGViewer.Data
     }
 
 
-    public class CardNameComparer : IComparer<Card>
+    public class CardNameComparer : Comparer<Card>
     {
         private const StringComparison _currentCompare = StringComparison.CurrentCulture;
 
-        public int Compare(Card? cardA, Card? cardB)
+        public override int Compare(Card? cardA, Card? cardB)
         {
             var nameCompare = string.Compare(cardA?.Name, cardB?.Name, _currentCompare);
 

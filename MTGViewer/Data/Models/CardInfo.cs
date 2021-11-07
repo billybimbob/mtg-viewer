@@ -1,5 +1,5 @@
 using System.Collections.Generic;
-using Newtonsoft.Json;
+using System.Text.Json.Serialization;
 
 #nullable enable
 
@@ -12,7 +12,7 @@ namespace MTGViewer.Data
             Value = value;
         }
 
-        [JsonRequired]
+        [JsonInclude]
         public string Value { get; private set; }
 
         [JsonIgnore]
@@ -40,7 +40,7 @@ namespace MTGViewer.Data
             Name = name;
         }
 
-        [JsonRequired]
+        [JsonInclude]
         public string Name { get; private set; }
 
         [JsonIgnore]
@@ -58,7 +58,7 @@ namespace MTGViewer.Data
             Name = name;
         }
 
-        [JsonRequired]
+        [JsonInclude]
         public string Name { get; private set; }
 
         [JsonIgnore]
@@ -76,7 +76,7 @@ namespace MTGViewer.Data
             Name = name;
         }
 
-        [JsonRequired]
+        [JsonInclude]
         public string Name { get; private set; }
 
         [JsonIgnore]
@@ -94,7 +94,7 @@ namespace MTGViewer.Data
             Name = name;
         }
 
-        [JsonRequired]
+        [JsonInclude]
         public string Name { get; private set; }
 
         [JsonIgnore]

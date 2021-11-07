@@ -14,238 +14,248 @@
 }
 
 
-<h2>@Model.SelfUser.Name's Deck Trades</h2>
+<div class="row">
+    <div class="col">
+        <h2>@Model.SelfUser.Name's Deck Trades</h2>
 
-<table class="table mb-3">
-    <thead>
-        <tr>
-            <th scope="col">Deck</th>
-            <th scope="col">Colors</th>
-            <th scope="col">Requests To Send</th>
-            <th scope="col">Requests Received</th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var deck in Model.TradeDecks)
+        <table class="table mb-3">
+            <thead>
+                <tr>
+                    <th scope="col">Deck</th>
+                    <th scope="col">Colors</th>
+                    <th scope="col">Requests To Send</th>
+                    <th scope="col">Requests Received</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var deck in Model.TradeDecks)
+                {
+                    <tr>
+                        <td>
+                            <a asp-page="/Decks/Viewer" asp-route-id="@deck.Id">
+                                @deck.Name </a>
+                        </td>
+
+                        <td> @(MtgSymbols.Format(deck.Colors).ToHtmlString()) </td>
+
+                        @if (deck.TradesTo.Any())
+                        {
+                            <td>
+                                <a asp-page="Status" asp-route-deckid="@deck.Id"
+                                    title="@deck.Name Trade Status">
+                                    Sent </a>
+                            </td>
+                        }
+                        else if (deck.Wants.Any())
+                        {
+                            <td>
+                                <a asp-page="Request" asp-route-deckid="@deck.Id"
+                                    title="@deck.Name Card Requests">
+                                    Possible </a>
+                            </td>
+                        }
+                        else
+                        {
+                            <td> None </td>
+                        }
+
+                        @if (deck.TradesFrom.Any())
+                        {
+                            <td>
+                                <a asp-page="Review" asp-route-deckid="@deck.Id"
+                                    title="@deck.Name Trade Review">
+                                    Received </a>
+                            </td>
+                        }
+                        else
+                        {
+                            <td> None </td>
+                        }
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+
+        @if (Model.TradeDecks.Pages.HasMultiple)
         {
-            <tr>
-                <td>
-                    <a asp-page="/Decks/Viewer" asp-route-id="@deck.Id">
-                        @deck.Name </a>
-                </td>
+            var deckPages = Model.TradeDecks.Pages;
+            var deckPrevDisabled = deckPages.HasPrevious ? "" : "disabled";
+            var deckNextDisabled = deckPages.HasNext ? "" : "disabled";
 
-                <td> @(MtgSymbols.Format(deck.Colors).ToHtmlString()) </td>
+            <nav aria-label="Trade Pages">
+                <ul class="pagination justify-content-center">
 
-                @if (deck.TradesTo.Any())
-                {
-                    <td>
-                        <a asp-page="Status" asp-route-deckid="@deck.Id"
-                            title="@deck.Name Trade Status">
-                            Sent </a>
-                    </td>
-                }
-                else if (deck.Wants.Any())
-                {
-                    <td>
-                        <a asp-page="Request" asp-route-deckid="@deck.Id"
-                            title="@deck.Name Card Requests">
-                            Possible </a>
-                    </td>
-                }
-                else
-                {
-                    <td> None </td>
-                }
+                    <li class="page-item @deckPrevDisabled">
+                        @if (deckPages.HasPrevious)
+                        {
+                            <a asp-page="Index" 
+                                asp-route-deckIndex="@(Model.TradeDecks.Pages.Current - 1)"
+                                asp-route-suggestIndex="@Model.SuggestIndex"
+                                class="page-link">
+                                &laquo; </a>
+                        }
+                        else
+                        {
+                            <span class="page-link">&laquo;</span>
+                        }
+                    </li>
 
-                @if (deck.TradesFrom.Any())
-                {
-                    <td>
-                        <a asp-page="Review" asp-route-deckid="@deck.Id"
-                            title="@deck.Name Trade Review">
-                            Received </a>
-                    </td>
-                }
-                else
-                {
-                    <td> None </td>
-                }
-            </tr>
+                    @for (int i = 0; i < deckPages.Total; ++i)
+                    {
+                        var pageIndex = i;
+                        var activePage = pageIndex == deckPages.Current ? "active" : "";
+
+                        <li class="page-item @activePage">
+                            @if (pageIndex != deckPages.Current)
+                            {
+                                <a asp-page="Index"
+                                    asp-route-deckIndex="@pageIndex"
+                                    asp-route-suggestIndex="@Model.SuggestIndex"
+                                    class="page-link">
+                                    @(pageIndex + 1) </a>
+                            }
+                            else
+                            {
+                                <span class="page-link">
+                                    @(pageIndex + 1)
+                                    <span class="sr-only">(current)</span>
+                                </span>
+                            }
+                        </li>
+                    }
+
+                    <li class="page-item @deckNextDisabled">
+                        @if (deckPages.HasNext)
+                        {
+                            <a asp-page="Index"
+                                asp-route-deckIndex="@(deckPages.Current + 1)"
+                                asp-route-suggestIndex="@Model.SuggestIndex"
+                                class="page-link">
+                                &raquo; </a>
+                        }
+                        else
+                        {
+                            <span class="page-link">&raquo;</span>
+                        }
+                    </li>
+
+                </ul>
+            </nav>
         }
-    </tbody>
-</table>
+    </div>
+</div>
 
 
-@if (Model.TradeDecks.Pages.HasMultiple)
+@if (Model.Suggestions.Any())
 {
-    var deckPages = Model.TradeDecks.Pages;
-    var deckPrevDisabled = deckPages.HasPrevious ? "" : "disabled";
-    var deckNextDisabled = deckPages.HasNext ? "" : "disabled";
+    <div class="row">
+        <div class="col">
+            <h2>Suggestions</h2>
 
-    <nav aria-label="Trade Pages">
-        <ul class="pagination justify-content-center">
+            <table class="table mb-3">
+                <thead>
+                    <tr>
+                        <th scope="col"> @Html.DisplayNameForInnerType((Suggestion t) => t.Card) </th>
+                        <th scope="col"> @Html.DisplayNameForInnerType((Suggestion t) => t.To) </th>
+                        <th scope="col"> @Html.DisplayNameForInnerType((Suggestion t) => t.Comment) </th>
+                        <th scope="col"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var suggestion in Model.Suggestions)
+                    {
+                        <tr>
+                            <td>
+                                <a asp-page="/Cards/Details" asp-route-id="@suggestion.CardId">
+                                    @suggestion.Card.Name </a>
+                            </td>
 
-            <li class="page-item @deckPrevDisabled">
-                @if (deckPages.HasPrevious)
-                {
-                    <a asp-page="Index" 
-                        asp-route-deckIndex="@(Model.TradeDecks.Pages.Current - 1)"
-                        asp-route-suggestIndex="@Model.SuggestIndex"
-                        class="page-link">
-                        &laquo; </a>
-                }
-                else
-                {
-                    <span class="page-link">&laquo;</span>
-                }
-            </li>
+                            <td>@(suggestion.To?.Name ?? "")</td>
+                            <td>@suggestion.Comment</td>
+                            <td>
+                                <form method="POST">
+                                    <input type="hidden" asp-for="DeckIndex"/>
+                                    <input type="hidden" asp-for="SuggestIndex"/>
 
-            @for (int i = 0; i < deckPages.Total; ++i)
+                                    <input type="submit"
+                                        asp-route-suggestid="@suggestion.Id"
+                                        class="btn btn-secondary"
+                                        value="Acknowledge" />
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+
+
+            @if (Model.Suggestions.Pages.HasMultiple)
             {
-                var pageIndex = i;
-                var activePage = pageIndex == deckPages.Current ? "active" : "";
+                var suggestPages = Model.Suggestions.Pages;
+                var suggestPrevDisabled = suggestPages.HasPrevious ? "" : "disabled";
+                var suggestNextDisabled = suggestPages.HasNext ? "" : "disabled";
 
-                <li class="page-item @activePage">
-                    @if (pageIndex != deckPages.Current)
-                    {
-                        <a asp-page="Index"
-                            asp-route-deckIndex="@pageIndex"
-                            asp-route-suggestIndex="@Model.SuggestIndex"
-                            class="page-link">
-                            @(pageIndex + 1) </a>
-                    }
-                    else
-                    {
-                        <span class="page-link">
-                            @(pageIndex + 1)
-                            <span class="sr-only">(current)</span>
-                        </span>
-                    }
-                </li>
+                <nav aria-label="Suggestion Pages">
+                    <ul class="pagination justify-content-center">
+
+                        <li class="page-item @suggestPrevDisabled">
+                            @if (suggestPages.HasPrevious)
+                            {
+                                <a asp-page="Index" 
+                                    asp-route-deckIndex="@Model.DeckIndex"
+                                    asp-route-suggestIndex="@(suggestPages.Current - 1)"
+                                    class="page-link">
+                                    &laquo; </a>
+                            }
+                            else
+                            {
+                                <span class="page-link"> &laquo; </span>
+                            }
+                        </li>
+
+                        @for (int i = 0; i < suggestPages.Total; ++i)
+                        {
+                            var pageIndex = i;
+                            var activePage = pageIndex == suggestPages.Current ? "active" : "";
+
+                            <li class="page-item @activePage">
+                                @if (pageIndex != suggestPages.Current)
+                                {
+                                    <a asp-page="Index"
+                                        asp-route-deckIndex="@Model.DeckIndex"
+                                        asp-route-suggestIndex="@pageIndex"
+                                        class="page-link">
+                                        @(pageIndex + 1) </a>
+                                }
+                                else
+                                {
+                                    <span class="page-link">
+                                        @(pageIndex + 1)
+                                        <span class="sr-only">(current)</span>
+                                    </span>
+                                }
+                            </li>
+                        }
+
+                        <li class="page-item @suggestNextDisabled">
+                            @if (suggestPages.HasNext)
+                            {
+                                <a asp-page="Index"
+                                    asp-route-deckIndex="@Model.DeckIndex"
+                                    asp-route-suggestIndex="@(suggestPages.Current + 1)"
+                                    class="page-link">
+                                    &raquo; </a>
+                            }
+                            else
+                            {
+                                <span class="page-link"> &raquo; </span>
+                            }
+                        </li>
+
+                    </ul>
+                </nav>
             }
-
-            <li class="page-item @deckNextDisabled">
-                @if (deckPages.HasNext)
-                {
-                    <a asp-page="Index"
-                        asp-route-deckIndex="@(deckPages.Current + 1)"
-                        asp-route-suggestIndex="@Model.SuggestIndex"
-                        class="page-link">
-                        &raquo; </a>
-                }
-                else
-                {
-                    <span class="page-link">&raquo;</span>
-                }
-            </li>
-
-        </ul>
-    </nav>
-}
-
-
-
-<h2>Suggestions</h2>
-
-<table class="table mb-3">
-    <thead>
-        <tr>
-            <th scope="col"> @Html.DisplayNameForInnerType((Suggestion t) => t.Card) </th>
-            <th scope="col"> @Html.DisplayNameForInnerType((Suggestion t) => t.To) </th>
-            <th scope="col"> @Html.DisplayNameForInnerType((Suggestion t) => t.Comment) </th>
-            <th scope="col"></th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var suggestion in Model.Suggestions)
-        {
-            <tr>
-                <td>
-                    <a asp-page="/Cards/Details" asp-route-id="@suggestion.CardId">
-                        @suggestion.Card.Name </a>
-                </td>
-
-                <td>@(suggestion.To?.Name ?? "")</td>
-                <td>@suggestion.Comment</td>
-                <td>
-                    <form method="POST">
-                        <input type="hidden" asp-for="DeckIndex"/>
-                        <input type="hidden" asp-for="SuggestIndex"/>
-
-                        <input type="submit"
-                            asp-route-suggestid="@suggestion.Id"
-                            class="btn btn-secondary"
-                            value="Acknowledge" />
-                    </form>
-                </td>
-            </tr>
-        }
-    </tbody>
-</table>
-
-
-@if (Model.Suggestions.Pages.HasMultiple)
-{
-    var suggestPages = Model.Suggestions.Pages;
-    var suggestPrevDisabled = suggestPages.HasPrevious ? "" : "disabled";
-    var suggestNextDisabled = suggestPages.HasNext ? "" : "disabled";
-
-    <nav aria-label="Suggestion Pages">
-        <ul class="pagination justify-content-center">
-
-            <li class="page-item @suggestPrevDisabled">
-                @if (suggestPages.HasPrevious)
-                {
-                    <a asp-page="Index" 
-                        asp-route-deckIndex="@Model.DeckIndex"
-                        asp-route-suggestIndex="@(suggestPages.Current - 1)"
-                        class="page-link">
-                        &laquo; </a>
-                }
-                else
-                {
-                    <span class="page-link"> &laquo; </span>
-                }
-            </li>
-
-            @for (int i = 0; i < suggestPages.Total; ++i)
-            {
-                var pageIndex = i;
-                var activePage = pageIndex == suggestPages.Current ? "active" : "";
-
-                <li class="page-item @activePage">
-                    @if (pageIndex != suggestPages.Current)
-                    {
-                        <a asp-page="Index"
-                            asp-route-deckIndex="@Model.DeckIndex"
-                            asp-route-suggestIndex="@pageIndex"
-                            class="page-link">
-                            @(pageIndex + 1) </a>
-                    }
-                    else
-                    {
-                        <span class="page-link">
-                            @(pageIndex + 1)
-                            <span class="sr-only">(current)</span>
-                        </span>
-                    }
-                </li>
-            }
-
-            <li class="page-item @suggestNextDisabled">
-                @if (suggestPages.HasNext)
-                {
-                    <a asp-page="Index"
-                        asp-route-deckIndex="@Model.DeckIndex"
-                        asp-route-suggestIndex="@(suggestPages.Current + 1)"
-                        class="page-link">
-                        &raquo; </a>
-                }
-                else
-                {
-                    <span class="page-link"> &raquo; </span>
-                }
-            </li>
-
-        </ul>
-    </nav>
+        </div>
+    </div>
 }

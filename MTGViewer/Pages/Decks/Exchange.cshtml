@@ -16,7 +16,7 @@
 
         <a asp-page="/Transfers/Request"
             asp-route-deckid="@Model.Deck.Id"
-            class="btn btn-secondary">
+            class="btn btn-secondary" role="button">
             Player Request </a>
     </div>
 }
@@ -28,7 +28,7 @@ else if (Model.Deck.Wants.Any())
 
         <a asp-page="/Transfers/Request"
             asp-route-deckid="@Model.Deck.Id"
-            class="btn btn-secondary">
+            class="btn btn-secondary" role="button">
             Player Request </a>
     </div>
 }
@@ -146,13 +146,16 @@ else
     <div class="mt-2 alert alert-danger" role="alert">
         <h5 class="alert-heading">Treasury Confirmation</h5>
         <p> 
-            Make sure that any exchanges with the Treasury are done <i>only</i> when the changes 
-            can also be reflected with the physical colleciton. More specifically, modifications 
-            to the Treasury represent current state of the physical collection, and therefore 
-            both must be kept syncronized.
+            Make sure that any exchanges with the Treasury are done <i>only</i> when the
+            changes can also be reflected with the physical collection.
         </p>
+        <hr class="mb-1">
+        <small class="my-1"> 
+            Modifications to the Treasury represent current state of the physical collection, 
+            and therefore both must be kept synchronized.
+        </small>
 
-        <form method="POST">
+        <form method="POST" class="mt-3">
             <input type="hidden" asp-for="Deck.Id" />
             <input type="submit" class="btn btn-danger" value="Commit" />
         </form>
