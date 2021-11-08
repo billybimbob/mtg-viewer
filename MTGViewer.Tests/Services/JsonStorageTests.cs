@@ -10,24 +10,31 @@ using MTGViewer.Tests.Utils;
 namespace MTGViewer.Tests.Services
 {
     [TestCaseOrderer("MTGViewer.Tests.Utils." + nameof(PriorityOrderer), "MTGViewer.Tests")]
-    public class JsonStorageTests : IClassFixture<TempFileName>
+    public class JsonStorageTests : IClassFixture<TempFileName>, IAsyncLifetime
     {
         private readonly CardDbContext _dbContext;
         private readonly CardDataGenerator _cardGen;
+        private readonly TestDataGenerator _testGen;
         private readonly JsonCardStorage _jsonStorage;
         private readonly string _tempFileName;
 
         public JsonStorageTests(
             CardDbContext dbContext,
             CardDataGenerator cardGen,
+            TestDataGenerator testGen,
             JsonCardStorage jsonStorage, 
             TempFileName tempFile)
         {
             _dbContext = dbContext;
             _cardGen = cardGen;
+            _testGen = testGen;
             _jsonStorage = jsonStorage;
             _tempFileName = tempFile.Value;
         }
+
+        public Task InitializeAsync() => _testGen.SetupAsync();
+
+        public Task DisposeAsync() => Task.CompletedTask;
 
 
         [Fact]
@@ -37,7 +44,7 @@ namespace MTGViewer.Tests.Services
             var anyBefore = await _dbContext.Cards.AnyAsync();
 
             await _cardGen.GenerateAsync();
-            await _jsonStorage.WriteToJsonAsync(_tempFileName);
+            await _jsonStorage.WriteToJsonAsync(new() { Path = _tempFileName });
 
             var tempInfo = new FileInfo(_tempFileName);
             var anyAfter = await _dbContext.Cards.AnyAsync();

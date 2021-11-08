@@ -17,6 +17,7 @@ namespace MTGViewer.Data.Internal
         Unclaimed,
         Deck,
 
+        Amount,
         Want,
         GiveBack,
     }

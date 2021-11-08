@@ -102,7 +102,7 @@ namespace MTGViewer.Pages.Transfers
                     (trade, actuals) => (trade, actuals))
                 .SelectMany(
                     ta => ta.actuals.DefaultIfEmpty(),
-                    (ta, actual) => (ta.trade, actual?.Amount ?? 0));
+                    (ta, actual) => (ta.trade, actual?.NumCopies ?? 0));
 
             foreach (var (trade, cap) in tradesWithCapAmount)
             {
@@ -118,10 +118,10 @@ namespace MTGViewer.Pages.Transfers
         private record AcceptRequest(
             Trade Trade,
             WantNameGroup? ToWants,
-            CardAmount FromAmount);
+            Amount FromAmount);
 
         private record AcceptTargets(
-            CardAmount ToAmount,
+            Amount ToAmount,
             Want FromWant);
 
 
@@ -244,13 +244,13 @@ namespace MTGViewer.Pages.Transfers
 
             var (trade, toWants, fromAmount) = acceptRequest;
 
-            if (fromAmount.Amount == 0)
+            if (fromAmount.NumCopies == 0)
             {
                 _dbContext.Amounts.Remove(fromAmount);
             }
 
             var finishedWants = toWants
-                ?.Where(w => w.Amount == 0) ?? Enumerable.Empty<Want>();
+                ?.Where(w => w.NumCopies == 0) ?? Enumerable.Empty<Want>();
 
             _dbContext.Wants.RemoveRange(finishedWants);
             _dbContext.Trades.Remove(trade);
@@ -273,15 +273,15 @@ namespace MTGViewer.Pages.Transfers
 
             int change = new [] {
                 acceptAmount, trade.Amount,
-                toWants.Amount, fromAmount.Amount }.Min();
+                toWants.Amount, fromAmount.NumCopies }.Min();
 
             if (exactWant != default)
             {
-                int exactChange = Math.Min(change, exactWant.Amount);
+                int exactChange = Math.Min(change, exactWant.NumCopies);
                 int nonExactChange = change - exactChange;
 
                 // exactRequest mod is also reflected in toWants
-                exactWant.Amount -= exactChange;
+                exactWant.NumCopies -= exactChange;
                 toWants.Amount -= nonExactChange;
             }
             else
@@ -289,9 +289,9 @@ namespace MTGViewer.Pages.Transfers
                 toWants.Amount -= change;
             }
 
-            toAmount.Amount += change;
-            fromAmount.Amount -= change;
-            fromWant.Amount += change;
+            toAmount.NumCopies += change;
+            fromAmount.NumCopies -= change;
+            fromWant.NumCopies += change;
 
             var newChange = new Change
             {
@@ -321,7 +321,7 @@ namespace MTGViewer.Pages.Transfers
                 {
                     Card = trade.Card,
                     Location = trade.To,
-                    Amount = 0
+                    NumCopies = 0
                 };
 
                 _dbContext.Amounts.Attach(toAmount);
@@ -335,8 +335,8 @@ namespace MTGViewer.Pages.Transfers
                 fromWant = new()
                 {
                     Card = trade.Card,
-                    Deck = trade.From,
-                    Amount = 0
+                    Location = trade.From,
+                    NumCopies = 0
                 };
 
                 _dbContext.Wants.Attach(fromWant);

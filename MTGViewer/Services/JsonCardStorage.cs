@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using System.Collections.Generic;
 using System.IO;
@@ -14,7 +15,7 @@ using MTGViewer.Data;
 
 namespace MTGViewer.Services
 {
-    public readonly struct JsonWriteOptions
+    public readonly struct JsonStorageOptions
     {
         public string Path { get; init; }
 
@@ -49,24 +50,26 @@ namespace MTGViewer.Services
         }
 
 
-        public async Task WriteToJsonAsync(string path = null, CancellationToken cancel = default)
+        public async Task WriteToJsonAsync(
+            JsonStorageOptions options = default, CancellationToken cancel = default)
         {
-            path ??= Path.Combine(Directory.GetCurrentDirectory(), _defaultFilename);
+            var fullData = !options.Seeding;
+
+            var path = options.Path
+                ?? Path.Combine(Directory.GetCurrentDirectory(), _defaultFilename);
 
             await using var writer = File.Create(path);
 
-            var data = await CardData.CreateAsync(_dbContext, _userManager, cancel);
+            var data = await CardData.CreateAsync(_dbContext, _userManager, fullData, cancel);
 
-            await JsonSerializer.SerializeAsync(
-                writer,
-                data,
-                new JsonSerializerOptions { WriteIndented = true },
-                cancel);
+            var serialOptions = new JsonSerializerOptions { WriteIndented = true };
+
+            await JsonSerializer.SerializeAsync(writer, data, serialOptions, cancel);
         }
 
 
         public async Task<bool> AddFromJsonAsync(
-            JsonWriteOptions options = default, CancellationToken cancel = default)
+            JsonStorageOptions options = default, CancellationToken cancel = default)
         {
             var path = options.Path 
                 ?? Path.Combine(Directory.GetCurrentDirectory(), _defaultFilename);
@@ -75,30 +78,22 @@ namespace MTGViewer.Services
             {
                 await using var reader = File.OpenRead(path);
 
-                var data = await JsonSerializer.DeserializeAsync<CardData>(
-                    reader,
-                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true }, 
-                    cancel);
+                var serialOptions = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
 
-                // var data = JsonConvert.DeserializeObject<CardData>(
-                //     dataStr,
-                //     new JsonSerializerSettings
-                //     {
-                //         MissingMemberHandling = MissingMemberHandling.Error
-                //     });
+                var data = await JsonSerializer.DeserializeAsync<CardData>(reader, serialOptions, cancel);
 
                 if (data is null)
                 {
                     return false;
                 }
-                
+
                 if (options.Seeding)
                 {
                     Seed(data);
                 }
                 else
                 {
-                    await Merge(data);
+                    await MergeAsync(data, cancel);
                 }
 
                 await _dbContext.SaveChangesAsync(cancel);
@@ -140,7 +135,7 @@ namespace MTGViewer.Services
             _dbContext.Boxes.AddRange(data.Boxes);
 
             _dbContext.Decks.AddRange(data.Decks);
-            _dbContext.Unclaimed.AddRange(data.Unclaimed ?? Enumerable.Empty<Unclaimed>());
+            _dbContext.Unclaimed.AddRange(data.Unclaimed);
 
             _dbContext.Amounts.AddRange(data.Amounts);
 
@@ -155,21 +150,20 @@ namespace MTGViewer.Services
         }
 
 
-        private async Task Merge(CardData data)
+        private async Task MergeAsync(CardData data, CancellationToken cancel)
         {
-            var cards = await NewCardsAsync(data);
-            var unclaimed = UnclaimedMerged(data);
+            var cards = await NewCardsAsync(data, cancel);
+
+            var bins = BinWithBoxAmounts(data).ToList();
+            var unclaimed = MergedUnclaimed(data).ToList();
 
             _dbContext.Cards.AddRange(cards);
-
-            _dbContext.Bins.AddRange(data.Bins);
-            _dbContext.Boxes.AddRange(data.Boxes);
-
+            _dbContext.Bins.AddRange(bins);
             _dbContext.Unclaimed.AddRange(unclaimed);
         }
 
 
-        private async Task<IEnumerable<Card>> NewCardsAsync(CardData data)
+        private async Task<IReadOnlyList<Card>> NewCardsAsync(CardData data, CancellationToken cancel)
         {
             var cardIds = data.Cards
                 .Select(c => c.Id)
@@ -178,12 +172,11 @@ namespace MTGViewer.Services
             var dbCardIds = await _dbContext.Cards
                 .Select(c => c.Id)
                 .Where(cid => cardIds.Contains(cid))
-                .ToListAsync();
+                .ToListAsync(cancel);
 
             return data.Cards
                 .GroupJoin(dbCardIds,
-                    c => c.Id,
-                    cid => cid,
+                    c => c.Id, cid => cid,
                     (card, ids) => (card, any: ids.Any()) )
                 .Where(ca => !ca.any)
                 .Select(ca => ca.card)
@@ -191,34 +184,71 @@ namespace MTGViewer.Services
         }
 
 
-        private IEnumerable<Unclaimed> UnclaimedMerged(CardData data)
+        private IEnumerable<Bin> BinWithBoxAmounts(CardData data)
         {
-            var unclaimedData = data.Unclaimed ?? Enumerable.Empty<Unclaimed>();
+            var boxTable = data.Boxes
+                .ToLookup(b => b.BinId);
 
-            foreach (var unclaimed in unclaimedData)
+            var amountTable = data.Amounts
+                .ToLookup(ca => ca.LocationId);
+
+            foreach (var bin in data.Bins)
+            {
+                var boxes = boxTable[bin.Id];
+
+                foreach (var box in boxes)
+                {
+                    var amounts = amountTable[box.Id];
+
+                    foreach (var amount in amounts)
+                    {
+                        amount.Id = default;
+                    }
+
+                    box.Id = default;
+                    box.Cards.AddRange(amounts);
+                }
+
+                bin.Id = default;
+                bin.Boxes.AddRange(boxes);
+
+                yield return bin;
+            }
+        }
+
+
+        private IEnumerable<Unclaimed> MergedUnclaimed(CardData data)
+        {
+            foreach (var unclaimed in data.Unclaimed)
             {
                 yield return unclaimed;
             }
 
-            var deckAmounts = data.Decks
-                .GroupJoin(data.Amounts,
-                    d => d.Id,
-                    ca => ca.LocationId,
-                    (deck, amounts) => (deck, amounts));
+            var amountTable = data.Amounts
+                .ToLookup(ca => ca.LocationId);
 
-            foreach (var (deck, amounts) in deckAmounts)
+            var wantTable = data.Wants
+                .ToLookup(w => w.LocationId);
+
+            foreach (var deck in data.Decks)
             {
                 var unclaimed = (Unclaimed) deck;
 
-                var unclaimedCards = amounts
-                    .Select(ca => new CardAmount
-                    {
-                        CardId = ca.CardId,
-                        Location = unclaimed,
-                        Amount = ca.Amount
-                    });
+                var unclaimedCards = amountTable[deck.Id];
+                var unclaimedWants = wantTable[deck.Id];
+
+                foreach (var amount in unclaimedCards)
+                {
+                    amount.Id = default;
+                }
+
+                foreach (var want in unclaimedWants)
+                {
+                    want.Id = default;
+                }
 
                 unclaimed.Cards.AddRange(unclaimedCards);
+                unclaimed.Wants.AddRange(unclaimedWants);
 
                 yield return unclaimed;
             }
@@ -240,8 +270,7 @@ namespace MTGViewer.Services
         public IReadOnlyList<Box> Boxes { get; set; }
         public IReadOnlyList<Bin> Bins { get; set; }
 
-        public IReadOnlyList<CardAmount> Amounts { get; set; }
-
+        public IReadOnlyList<Amount> Amounts { get; set; }
         public IReadOnlyList<Want> Wants { get; set; }
         public IReadOnlyList<GiveBack> GiveBacks { get; set; }
 
@@ -254,18 +283,69 @@ namespace MTGViewer.Services
 
         public static async Task<CardData> CreateAsync(
             CardDbContext dbContext,
-            UserManager<CardUser> userManager = default,
+            UserManager<CardUser> userManager,
+            bool fullData,
             CancellationToken cancel = default)
         {
+            CardUser[] users;
+            UserRef[] refs;
+
+            GiveBack[] giveBacks;
+
+            Change[] changes;
+            Transaction[] transactions;
+
+            Trade[] trades;
+            Suggestion[] suggestions;
+
+            if (fullData)
+            {
+                users = await userManager.Users
+                    .AsNoTrackingWithIdentityResolution()
+                    .ToArrayAsync(cancel);
+
+                refs = await dbContext.Users
+                    .AsNoTrackingWithIdentityResolution()
+                    .ToArrayAsync(cancel);
+
+                giveBacks = await dbContext.GiveBacks
+                    .AsNoTrackingWithIdentityResolution()
+                    .ToArrayAsync(cancel);
+
+                changes = await dbContext.Changes
+                    .AsNoTrackingWithIdentityResolution()
+                    .ToArrayAsync(cancel);
+
+                transactions = await dbContext.Transactions
+                    .AsNoTrackingWithIdentityResolution()
+                    .ToArrayAsync(cancel);
+
+                trades = await dbContext.Trades
+                    .AsNoTrackingWithIdentityResolution()
+                    .ToArrayAsync(cancel);
+
+                suggestions = await dbContext.Suggestions
+                    .AsNoTrackingWithIdentityResolution()
+                    .ToArrayAsync(cancel);
+            }
+            else
+            {
+                users = Array.Empty<CardUser>();
+                refs = Array.Empty<UserRef>();
+
+                giveBacks = Array.Empty<GiveBack>();
+
+                changes = Array.Empty<Change>();
+                transactions = Array.Empty<Transaction>();
+
+                trades = Array.Empty<Trade>();
+                suggestions = Array.Empty<Suggestion>();
+            }
+
             return new CardData
             {
-                Users = await userManager.Users
-                    .AsNoTrackingWithIdentityResolution()
-                    .ToListAsync(cancel),
-
-                Refs = await dbContext.Users
-                    .AsNoTrackingWithIdentityResolution()
-                    .ToListAsync(cancel),
+                Users = users,
+                Refs = refs,
 
                 Cards = await dbContext.Cards
                     .Include(c => c.Colors)
@@ -284,6 +364,10 @@ namespace MTGViewer.Services
                     .AsNoTrackingWithIdentityResolution()
                     .ToListAsync(cancel),
 
+                Unclaimed = await dbContext.Unclaimed
+                    .AsNoTrackingWithIdentityResolution()
+                    .ToListAsync(cancel),
+
                 Boxes = await dbContext.Boxes
                     .AsNoTrackingWithIdentityResolution()
                     .ToListAsync(cancel),
@@ -296,25 +380,13 @@ namespace MTGViewer.Services
                     .AsNoTrackingWithIdentityResolution()
                     .ToListAsync(cancel),
 
-                GiveBacks = await dbContext.GiveBacks
-                    .AsNoTrackingWithIdentityResolution()
-                    .ToListAsync(cancel),
+                GiveBacks = giveBacks,
 
-                Changes = await dbContext.Changes
-                    .AsNoTrackingWithIdentityResolution()
-                    .ToListAsync(cancel),
+                Changes = changes,
+                Transactions = transactions,
 
-                Transactions = await dbContext.Transactions
-                    .AsNoTrackingWithIdentityResolution()
-                    .ToListAsync(cancel),
-
-                Trades = await dbContext.Trades
-                    .AsNoTrackingWithIdentityResolution()
-                    .ToListAsync(cancel),
-
-                Suggestions = await dbContext.Suggestions
-                    .AsNoTrackingWithIdentityResolution()
-                    .ToListAsync(cancel)
+                Trades = trades,
+                Suggestions = suggestions
             };
         }
     }

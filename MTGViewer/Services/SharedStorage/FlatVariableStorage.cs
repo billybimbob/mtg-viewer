@@ -36,7 +36,7 @@ namespace MTGViewer.Services
             _dbContext.Boxes
                 .AsNoTrackingWithIdentityResolution();
 
-        public IQueryable<CardAmount> Cards => 
+        public IQueryable<Amount> Cards => 
             _dbContext.Amounts
                 .Where(ca => ca.Location is Box)
                 .AsNoTrackingWithIdentityResolution();
@@ -45,7 +45,7 @@ namespace MTGViewer.Services
         private IQueryable<Box> SortedBoxes =>
             _dbContext.Boxes.OrderBy(s => s.Id);
 
-        private IQueryable<CardAmount> SortedAmounts =>
+        private IQueryable<Amount> SortedAmounts =>
             // loading all shared cards, could be memory inefficient
             // TODO: find more efficient way to determining card position
 
@@ -115,7 +115,7 @@ namespace MTGViewer.Services
         private Task<Dictionary<int, int>> GetBoxSpaceAsync(CancellationToken cancel)
         {
             return _dbContext.Boxes
-                .Select(b => new { b.Id, Space = b.Cards.Sum(ca => ca.Amount) })
+                .Select(b => new { b.Id, Space = b.Cards.Sum(ca => ca.NumCopies) })
                 .ToDictionaryAsync(
                     ba => ba.Id, ba => ba.Space, cancel);
         }
@@ -193,7 +193,7 @@ namespace MTGViewer.Services
         }
 
 
-        private IQueryable<CardAmount> ExistingAmounts(IEnumerable<CardReturn> returns)
+        private IQueryable<Amount> ExistingAmounts(IEnumerable<CardReturn> returns)
         {
             var returnIds = returns
                 .Select(cr => cr.Card.Id)
@@ -210,7 +210,7 @@ namespace MTGViewer.Services
 
         private int ApplyReturnMatches(
             Deck? source,
-            IEnumerable<(CardAmount, int)> matches,
+            IEnumerable<(Amount, int)> matches,
             IDictionary<int, int> boxSpace,
             IList<Change> changes)
         {
@@ -226,7 +226,7 @@ namespace MTGViewer.Services
                     Amount = splitAmount
                 };
 
-                target.Amount += splitAmount;
+                target.NumCopies += splitAmount;
                 boxSpace[target.LocationId] += splitAmount;
 
                 changes.Add(newChange);
@@ -262,11 +262,11 @@ namespace MTGViewer.Services
 
             foreach (var (card, numCopies, source, box) in returnPairs)
             {
-                var newSpot = new CardAmount
+                var newSpot = new Amount
                 {
                     Card = card,
                     Location = box,
-                    Amount = numCopies
+                    NumCopies = numCopies
                 };
 
                 _dbContext.Amounts.Attach(newSpot);
@@ -288,7 +288,7 @@ namespace MTGViewer.Services
 
         private IEnumerable<(Card, int, Deck?, Box)> FindNewReturnPairs(
             IReadOnlyList<CardReturn> newReturns,
-            IReadOnlyList<CardAmount> sortedAmounts,
+            IReadOnlyList<Amount> sortedAmounts,
             IReadOnlyList<Box> sortedBoxes,
             IReadOnlyDictionary<int, int> boxSpace)
         {
@@ -332,7 +332,7 @@ namespace MTGViewer.Services
         }
 
 
-        private IEnumerable<int> GetAddPositions(IEnumerable<CardAmount> boxAmounts)
+        private IEnumerable<int> GetAddPositions(IEnumerable<Amount> boxAmounts)
         {
             int amountSum = 0;
 
@@ -340,7 +340,7 @@ namespace MTGViewer.Services
             {
                 yield return amountSum;
 
-                amountSum += shared.Amount;
+                amountSum += shared.NumCopies;
             }
         }
 
@@ -414,7 +414,7 @@ namespace MTGViewer.Services
 
 
         private Transaction? GetOptimizeChanges(
-            IReadOnlyList<CardAmount> sharedAmounts, 
+            IReadOnlyList<Amount> sharedAmounts, 
             IReadOnlyList<Box> sortedBoxes)
         {
             if (!sharedAmounts.Any() || !sortedBoxes.Any())
@@ -430,7 +430,7 @@ namespace MTGViewer.Services
             }
 
             var addedAmounts = updatedAmounts.Except(sharedAmounts);
-            var emptyAmounts = updatedAmounts.Where(ca => ca.Amount == 0);
+            var emptyAmounts = updatedAmounts.Where(ca => ca.NumCopies == 0);
 
             _dbContext.Transactions.Add(transaction);
             _dbContext.Changes.AddRange(transaction.Changes); // just for clarity
@@ -442,8 +442,8 @@ namespace MTGViewer.Services
         }
 
 
-        private (Transaction, IReadOnlyCollection<CardAmount>) AddUpdatedBoxAmounts(
-            IReadOnlyList<CardAmount> sortedAmounts, 
+        private (Transaction, IReadOnlyCollection<Amount>) AddUpdatedBoxAmounts(
+            IReadOnlyList<Amount> sortedAmounts, 
             IReadOnlyList<Box> sortedBoxes)
         {
             var newTransaction = new Transaction();
@@ -452,12 +452,12 @@ namespace MTGViewer.Services
                 .ToDictionary(ca => (ca.CardId, ca.LocationId));
 
             var oldAmounts = sortedAmounts
-                .Select(ca => (ca.Card, ca.Location, ca.Amount))
+                .Select(ca => (ca.Card, ca.Location, ca.NumCopies))
                 .ToList();
 
             foreach (var shared in sortedAmounts)
             {
-                shared.Amount = 0;
+                shared.NumCopies = 0;
             }
 
             var boxSpace = sortedBoxes // faster than summing every time
@@ -480,7 +480,7 @@ namespace MTGViewer.Services
                 {
                     var boxAmount = GetOrAddBoxAmount(boxAmounts, card, newBox);
 
-                    boxAmount.Amount += newNumCopies;
+                    boxAmount.NumCopies += newNumCopies;
                     boxSpace[newBox.Id] += newNumCopies;
 
                     if (!multipleBoxes)
@@ -563,8 +563,8 @@ namespace MTGViewer.Services
         }
 
 
-        private CardAmount GetOrAddBoxAmount(
-            IDictionary<(string, int), CardAmount> boxAmounts, Card card, Box box)
+        private Amount GetOrAddBoxAmount(
+            IDictionary<(string, int), Amount> boxAmounts, Card card, Box box)
         {
             var cardBox = (card.Id, box.Id);
 

@@ -52,7 +52,7 @@ else
                         <th>@Html.DisplayNameForInnerType((Card c) => c.Name)</th>
                         <th>@Html.DisplayNameForInnerType((Card c) => c.ManaCost)</th>
                         <th>@Html.DisplayNameForInnerType((Card c) => c.SetName)</th>
-                        <th>@Html.DisplayNameForInnerType((CardAmount ca) => ca.Amount)</th>
+                        <th>@Html.DisplayNameForInnerType((Amount ca) => ca.NumCopies)</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -68,7 +68,7 @@ else
                             <td> @(MtgSymbols.Format(card.ManaCost).ToHtmlString()) </td>
 
                             <td>@card.SetName</td>
-                            <td>@amount.Amount</td>
+                            <td>@amount.NumCopies</td>
                         </tr>
                     }
                 </tbody>
@@ -87,7 +87,7 @@ else
                     <th>@Html.DisplayNameForInnerType((Card c) => c.Name)</th>
                     <th>@Html.DisplayNameForInnerType((Card c) => c.ManaCost)</th>
                     <th>@Html.DisplayNameForInnerType((Card c) => c.SetName)</th>
-                    <th>@Html.DisplayNameForInnerType((CardRequest cr) => cr.Amount)</th>
+                    <th>@Html.DisplayNameForInnerType((Quantity q) => q.NumCopies)</th>
                 </tr>
             </thead>
             <tbody>
@@ -103,7 +103,7 @@ else
                         <td> @(MtgSymbols.Format(card.ManaCost).ToHtmlString()) </td>
 
                         <td>@card.SetName</td>
-                        <td>@want.Amount</td>
+                        <td>@want.NumCopies</td>
                     </tr>
                 }
             </tbody>
@@ -118,7 +118,7 @@ else
                     <th>@Html.DisplayNameForInnerType((Card c) => c.Name)</th>
                     <th>@Html.DisplayNameForInnerType((Card c) => c.ManaCost)</th>
                     <th>@Html.DisplayNameForInnerType((Card c) => c.SetName)</th>
-                    <th>@Html.DisplayNameForInnerType((CardRequest cr) => cr.Amount)</th>
+                    <th>@Html.DisplayNameForInnerType((Quantity q) => q.NumCopies)</th>
                 </tr>
             </thead>
             <tbody>
@@ -133,7 +133,7 @@ else
                         <td> @(MtgSymbols.Format(card.ManaCost).ToHtmlString()) </td>
 
                         <td>@card.SetName</td>
-                        <td>@giveBack.Amount</td>
+                        <td>@giveBack.NumCopies</td>
                     </tr>
                 }
             </tbody>

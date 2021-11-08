@@ -56,7 +56,7 @@ namespace MTGViewer.Tests.Pages.Decks
                 .AsNoTracking();
 
 
-        private IQueryable<CardAmount> DeckCards(Deck deck) =>
+        private IQueryable<Amount> DeckCards(Deck deck) =>
             _dbContext.Amounts
                 .Where(ca => ca.LocationId == deck.Id)
                 .AsNoTracking();
@@ -113,11 +113,11 @@ namespace MTGViewer.Tests.Pages.Decks
 
             await _deleteModel.SetModelContextAsync(_userManager, deck.OwnerId);
 
-            var deckCardTotal = await DeckCards(deck).SumAsync(ca => ca.Amount);
+            var deckCardTotal = await DeckCards(deck).SumAsync(ca => ca.NumCopies);
 
             var boxTotal = _dbContext.Amounts
                 .Where(ca => ca.Location is Box)
-                .Select(ca => ca.Amount);
+                .Select(ca => ca.NumCopies);
 
             // Act
             var boxBefore = await boxTotal.SumAsync();

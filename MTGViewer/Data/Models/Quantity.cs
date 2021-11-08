@@ -1,23 +1,25 @@
 using System;
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
+
 using Microsoft.EntityFrameworkCore;
 
-using MTGViewer.Data.Concurrency;
 using MTGViewer.Data.Internal;
+using MTGViewer.Data.Concurrency;
 
 #nullable enable
 
 namespace MTGViewer.Data
 {
+
     [Index(
         nameof(Type),
-        nameof(DeckId),
+        nameof(LocationId),
         nameof(CardId), IsUnique = true)]
-    public abstract class CardRequest : Concurrent
+    public abstract class Quantity : Concurrent
     {
         [JsonInclude]
-        public int Id { get; private set; }
+        public int Id { get; set; }
 
         [JsonIgnore]
         internal Discriminator Type { get; private set; }
@@ -29,19 +31,24 @@ namespace MTGViewer.Data
 
 
         [JsonIgnore]
-        public Deck Deck { get; init; } = null!;
-        public int DeckId { get; init; }
+        public Location Location { get; init; } = null!;
+        public int LocationId { get; init; }
 
 
+        [Display(Name = "Number of Copies")]
         [Range(1, int.MaxValue)]
-        public int Amount { get; set; }
+        public int NumCopies { get; set; }
     }
 
 
-    public class Want : CardRequest
+    public class Amount : Quantity
     { }
 
 
-    public class GiveBack : CardRequest
+    public class Want : Quantity
+    { }
+
+
+    public class GiveBack : Quantity
     { }
 }

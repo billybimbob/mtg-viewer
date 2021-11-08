@@ -71,7 +71,7 @@ namespace MTGViewer.Tests.Utils
         }
 
 
-        private async Task SetupAsync()
+        public async Task SetupAsync()
         {
             if (_dbContext.Database.IsRelational())
             {
@@ -118,11 +118,11 @@ namespace MTGViewer.Tests.Utils
             };
 
             var deckAmounts = deckCards
-                .Select(c => new CardAmount
+                .Select(c => new Amount
                 {
                     Card = c,
                     Location = newDeck,
-                    Amount = _random.Next(1, 3)
+                    NumCopies = _random.Next(1, 3)
                 });
 
             _dbContext.Decks.Attach(newDeck);
@@ -161,7 +161,7 @@ namespace MTGViewer.Tests.Utils
                 };
 
                 var amounts = decks
-                    .Select(deck => new CardAmount
+                    .Select(deck => new Amount
                     {
                         Card = card,
                         Location = deck
@@ -189,8 +189,8 @@ namespace MTGViewer.Tests.Utils
                 .Select(card => new Want
                 {
                     Card = card,
-                    Deck = newDeck,
-                    Amount = _random.Next(1, 3)
+                    Location = newDeck,
+                    NumCopies = _random.Next(1, 3)
                 })
                 .ToList();
 
@@ -261,7 +261,7 @@ namespace MTGViewer.Tests.Utils
                     Card = tradeCard,
                     To = to,
                     From = from,
-                    Amount = toRequest.Amount
+                    Amount = toRequest.NumCopies
                 });
             }
 
@@ -337,7 +337,7 @@ namespace MTGViewer.Tests.Utils
                     Card = tradeCard,
                     To = to,
                     From = from,
-                    Amount = toRequest.Amount
+                    Amount = toRequest.NumCopies
                 });
             }
 
@@ -347,7 +347,7 @@ namespace MTGViewer.Tests.Utils
         }
 
 
-        private async Task<CardAmount> FindAmountAsync(Card card, Location location, int amount)
+        private async Task<Amount> FindAmountAsync(Card card, Location location, int amount)
         {
             var cardAmount = await _dbContext.Amounts
                 .SingleOrDefaultAsync(ca =>
@@ -364,7 +364,7 @@ namespace MTGViewer.Tests.Utils
                 _dbContext.Amounts.Attach(cardAmount);
             }
 
-            cardAmount.Amount = amount;
+            cardAmount.NumCopies = amount;
 
             return cardAmount;
         }
@@ -374,20 +374,20 @@ namespace MTGViewer.Tests.Utils
         {
             var want = await _dbContext.Wants
                 .SingleOrDefaultAsync(w => 
-                    w.DeckId == target.Id && w.CardId == card.Id);
+                    w.LocationId == target.Id && w.CardId == card.Id);
 
             if (want == default)
             {
                 want = new()
                 {
                     Card = card,
-                    Deck = target,
+                    Location = target,
                 };
 
                 _dbContext.Wants.Attach(want);
             }
 
-            want.Amount = amount;
+            want.NumCopies = amount;
 
             return want;
         }
@@ -397,20 +397,20 @@ namespace MTGViewer.Tests.Utils
         {
             var give = await _dbContext.GiveBacks
                 .SingleOrDefaultAsync(g => 
-                    g.DeckId == target.Id && g.CardId == card.Id);
+                    g.LocationId == target.Id && g.CardId == card.Id);
 
             if (give == default)
             {
                 give = new()
                 {
                     Card = card,
-                    Deck = target
+                    Location = target
                 };
 
                 _dbContext.GiveBacks.Attach(give);
             }
 
-            give.Amount = amount;
+            give.NumCopies = amount;
 
             return give;
         }
@@ -423,14 +423,14 @@ namespace MTGViewer.Tests.Utils
                 .FirstAsync();
 
             var takeTarget = await _dbContext.Amounts
-                .Where(ca => ca.Location is Box && ca.Amount > 0)
+                .Where(ca => ca.Location is Box && ca.NumCopies > 0)
                 .Select(ca => ca.Card)
                 .AsNoTracking()
                 .FirstAsync();
 
             var targetCap = await _dbContext.Amounts
                 .Where(ca => ca.Location is Box && ca.CardId == takeTarget.Id)
-                .Select(ca => ca.Amount)
+                .Select(ca => ca.NumCopies)
                 .SumAsync();
 
             int limit = Math.Max(1, targetCap + targetMod);
@@ -450,9 +450,9 @@ namespace MTGViewer.Tests.Utils
                 .Include(ca => ca.Card)
                 .Include(ca => ca.Location)
                 .AsNoTracking()
-                .FirstAsync(ca => ca.Location is Deck && ca.Amount > 0);
+                .FirstAsync(ca => ca.Location is Deck && ca.NumCopies > 0);
 
-            int limit = Math.Max(1, returnTarget.Amount + targetMod);
+            int limit = Math.Max(1, returnTarget.NumCopies + targetMod);
 
             var give = await FindGiveBackAsync(
                 returnTarget.Card, (Deck)returnTarget.Location, limit);
@@ -470,13 +470,13 @@ namespace MTGViewer.Tests.Utils
                 .Include(ca => ca.Card)
                 .Include(ca => ca.Location)
                 .AsNoTracking()
-                .FirstAsync(ca => ca.Location is Deck && ca.Amount > 0);
+                .FirstAsync(ca => ca.Location is Deck && ca.NumCopies > 0);
 
             var deckTarget = (Deck)returnTarget.Location;
 
             var takeTarget = await _dbContext.Amounts
                 .Where(ca => ca.Location is Box 
-                    && ca.Amount > 0
+                    && ca.NumCopies > 0
                     && ca.CardId != returnTarget.CardId)
                 .Select(ca => ca.Card)
                 .AsNoTracking()
@@ -484,11 +484,11 @@ namespace MTGViewer.Tests.Utils
 
             var targetCap = await _dbContext.Amounts
                 .Where(ca => ca.Location is Box && ca.CardId == takeTarget.Id)
-                .Select(ca => ca.Amount)
+                .Select(ca => ca.NumCopies)
                 .SumAsync();
 
             var deckGive = await FindGiveBackAsync(
-                returnTarget.Card, deckTarget, returnTarget.Amount);
+                returnTarget.Card, deckTarget, returnTarget.NumCopies);
 
             var deckWant = await FindWantAsync(
                 takeTarget, deckTarget, targetCap);

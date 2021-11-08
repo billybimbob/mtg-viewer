@@ -25,8 +25,7 @@ namespace MTGViewer.Data
         public DbSet<Box> Boxes => Set<Box>();
         public DbSet<Bin> Bins => Set<Bin>();
 
-        public DbSet<CardAmount> Amounts => Set<CardAmount>();
-
+        public DbSet<Amount> Amounts => Set<Amount>();
         public DbSet<Want> Wants => Set<Want>();
         public DbSet<GiveBack> GiveBacks => Set<GiveBack>();
 
@@ -47,10 +46,11 @@ namespace MTGViewer.Data
                 .ApplyConfiguration(new CardConfiguration())
                 .ApplyConfiguration(new LocationConfiguration())
 
+                .ApplyConfiguration(new OwnedConfiguration())
                 .ApplyConfiguration(new DeckConfiguration())
                 .ApplyConfiguration(new BoxConfiguration())
 
-                .ApplyConfiguration(new RequestConfiguration())
+                .ApplyConfiguration(new QuantityConfiguration())
                 .ApplyConfiguration(new SuggestionConfiguration(Database))
 
                 .ApplyConfiguration(new ChangeConfiguration())
@@ -114,6 +114,7 @@ namespace MTGViewer.Data
             builder
                 .HasDiscriminator(l => l.Type)
                     .HasValue<Location>(Discriminator.Invalid)
+                    .HasValue<Owned>(Discriminator.Invalid)
                     .HasValue<Unclaimed>(Discriminator.Unclaimed)
                     .HasValue<Deck>(Discriminator.Deck)
                     .HasValue<Box>(Discriminator.Box);
@@ -126,18 +127,25 @@ namespace MTGViewer.Data
     }
 
 
+    internal class OwnedConfiguration : IEntityTypeConfiguration<Owned>
+    {
+        public void Configure(EntityTypeBuilder<Owned> builder)
+        {
+            builder
+                .HasMany(o => o.Wants)
+                .WithOne(w => (Owned)w.Location)
+                .OnDelete(DeleteBehavior.Cascade);
+        }
+    }
+
+
     internal class DeckConfiguration : IEntityTypeConfiguration<Deck>
     {
         public void Configure(EntityTypeBuilder<Deck> builder)
         {
             builder
-                .HasMany(d => d.Wants)
-                .WithOne(w => w.Deck)
-                .OnDelete(DeleteBehavior.Cascade);
-
-            builder
                 .HasMany(d => d.GiveBacks)
-                .WithOne(g => g.Deck)
+                .WithOne(g => (Deck)g.Location)
                 .OnDelete(DeleteBehavior.Cascade);
 
             builder
@@ -165,13 +173,14 @@ namespace MTGViewer.Data
     }
 
 
-    internal class RequestConfiguration : IEntityTypeConfiguration<CardRequest>
+    internal class QuantityConfiguration : IEntityTypeConfiguration<Quantity>
     {
-        public void Configure(EntityTypeBuilder<CardRequest> builder)
+        public void Configure(EntityTypeBuilder<Quantity> builder)
         {
             builder
-                .HasDiscriminator(cr => cr.Type)
-                .HasValue<CardRequest>(Discriminator.Invalid)
+                .HasDiscriminator(cq => cq.Type)
+                .HasValue<Quantity>(Discriminator.Invalid)
+                .HasValue<Amount>(Discriminator.Amount)
                 .HasValue<Want>(Discriminator.Want)
                 .HasValue<GiveBack>(Discriminator.GiveBack);
         }

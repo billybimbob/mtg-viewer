@@ -21,7 +21,7 @@ namespace MTGViewer.Data
 
 
         [Required]
-        public string Name { get; set; } = null!;
+        public string Name { get; init; } = null!;
 
         public List<Name> Names { get; init; } = new();
 
@@ -31,11 +31,11 @@ namespace MTGViewer.Data
 
         [Display(Name = "Mana Cost")]
         [Required]
-        public string ManaCost { get; set; } = null!;
+        public string ManaCost { get; init; } = null!;
 
         [Display(Name = "Converted Mana Cost")]
         [Range(0f, 1_000_000f)]
-        public float? Cmc { get; set; }
+        public float? Cmc { get; init; }
 
         public List<Color> Colors { get; init; } = new();
 
@@ -48,25 +48,25 @@ namespace MTGViewer.Data
 
 
         [Required]
-        public string Rarity { get; set; } = null!;
+        public string Rarity { get; init; } = null!;
 
         [Display(Name = "Set Name")]
         [Required]
-        public string SetName { get; set; } = null!;
+        public string SetName { get; init; } = null!;
 
         [Required]
-        public string Artist { get; set; } = null!;
+        public string Artist { get; init; } = null!;
 
 
         public string? Text { get; init; }
 
         public string? Flavor { get; init; }
 
-        public string? Power { get; set; }
+        public string? Power { get; init; }
 
-        public string? Toughness { get; set; }
+        public string? Toughness { get; init; }
 
-        public string? Loyalty { get; set; }
+        public string? Loyalty { get; init; }
 
 
         [Display(Name = "Image")]
@@ -74,7 +74,7 @@ namespace MTGViewer.Data
         public string? ImageUrl { get; init; }
 
         [JsonIgnore]
-        public List<CardAmount> Amounts { get; } = new();
+        public List<Amount> Amounts { get; } = new();
 
         [JsonIgnore]
         public List<Want> Wants { get; } = new();

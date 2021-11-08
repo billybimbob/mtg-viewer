@@ -39,7 +39,7 @@ namespace MTGViewer.Tests.Services
         public IQueryable<Card> AllCards =>
             _dbContext.Cards.AsNoTracking();
 
-        public IQueryable<CardAmount> BoxAmounts => 
+        public IQueryable<Amount> BoxAmounts => 
             _treasury.Cards
                 .Include(ca => ca.Location)
                 .AsNoTracking();
@@ -61,7 +61,7 @@ namespace MTGViewer.Tests.Services
             var boxesAfter = await cardBoxes.ToListAsync();
 
             var boxesAfterIds = boxesAfter.Select(ca => ca.CardId);
-            var boxesChange = boxesAfter.Sum(ca => ca.Amount) - boxesBefore.Sum(ca => ca.Amount);
+            var boxesChange = boxesAfter.Sum(ca => ca.NumCopies) - boxesBefore.Sum(ca => ca.NumCopies);
 
             Assert.All(boxesAfter, ca => Assert.IsType<Box>(ca.Location));
 
@@ -136,21 +136,21 @@ namespace MTGViewer.Tests.Services
 
             var box1BeforeAmount = boxesBefore
                 .Where(ca => ca.CardId == card1.Id)
-                .Sum(ca => ca.Amount);
+                .Sum(ca => ca.NumCopies);
 
             var box1AfterAmount = boxesAfter
                 .Where(ca => ca.CardId == card1.Id)
-                .Sum(ca => ca.Amount);
+                .Sum(ca => ca.NumCopies);
 
             var box2BeforeAmount = boxesBefore
                 .Where(ca => ca.CardId == card2.Id)
-                .Sum(ca => ca.Amount);
+                .Sum(ca => ca.NumCopies);
 
             var box2AfterAmount = boxesAfter
                 .Where(ca => ca.CardId == card2.Id)
-                .Sum(ca => ca.Amount);
+                .Sum(ca => ca.NumCopies);
 
-            var boxesChange = boxesAfter.Sum(ca => ca.Amount) - boxesBefore.Sum(ca => ca.Amount);
+            var boxesChange = boxesAfter.Sum(ca => ca.NumCopies) - boxesBefore.Sum(ca => ca.NumCopies);
             var box1Change = box1AfterAmount - box1BeforeAmount;
             var box2Change = box2AfterAmount - box2BeforeAmount;
 
@@ -206,7 +206,7 @@ namespace MTGViewer.Tests.Services
             var transaction = await _treasury.ReturnAsync(card, copies);
 
             var boxesAfter = await cardBoxes.ToListAsync();
-            var boxesChange = boxesAfter.Sum(ca => ca.Amount) - boxesBefore.Sum(ca => ca.Amount);
+            var boxesChange = boxesAfter.Sum(ca => ca.NumCopies) - boxesBefore.Sum(ca => ca.NumCopies);
 
             Assert.NotNull(transaction);
 
@@ -223,7 +223,7 @@ namespace MTGViewer.Tests.Services
             var copies = 6;
             var card = await AllCards.FirstAsync();
 
-            var boxAmounts = BoxAmounts.Select(ca => ca.Amount);
+            var boxAmounts = BoxAmounts.Select(ca => ca.NumCopies);
 
             await _treasury.ReturnAsync(card, copies);
 
@@ -247,17 +247,17 @@ namespace MTGViewer.Tests.Services
             await _treasury.ReturnAsync(card, copies);
 
             var oldSpots = await cardBoxes.ToListAsync();
-            var totalBefore = oldSpots.Sum(ca => ca.Amount);
+            var totalBefore = oldSpots.Sum(ca => ca.NumCopies);
 
             var transaction = await _treasury.OptimizeAsync();
 
             var newSpots = await cardBoxes.ToListAsync();
-            var totalAfter = newSpots.Sum(ca => ca.Amount);
+            var totalAfter = newSpots.Sum(ca => ca.NumCopies);
 
             Assert.NotNull(transaction);
 
             Assert.All(newSpots, ca => Assert.IsType<Box>(ca.Location));
-            Assert.All(newSpots, ca => Assert.True(ca.Amount < copies));
+            Assert.All(newSpots, ca => Assert.True(ca.NumCopies < copies));
 
             Assert.Equal(totalBefore, totalAfter);
         }

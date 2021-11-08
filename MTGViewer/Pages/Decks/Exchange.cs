@@ -108,7 +108,7 @@ namespace MTGViewer.Pages.Decks
         }
 
 
-        private IQueryable<CardAmount> TakeTargets(Deck deck)
+        private IQueryable<Amount> TakeTargets(Deck deck)
         {
             var takeNames = deck.Wants
                 .Select(w => w.Card.Name)
@@ -117,7 +117,7 @@ namespace MTGViewer.Pages.Decks
 
             return _dbContext.Amounts
                 .Where(ca => ca.Location is Box
-                    && ca.Amount > 0
+                    && ca.NumCopies > 0
                     && takeNames.Contains(ca.Card.Name))
                 .Include(ca => ca.Card)
                 .Include(ca => ca.Location);
@@ -150,8 +150,8 @@ namespace MTGViewer.Pages.Decks
 
             deck.UpdateColors(_cardText);
 
-            var requestsRemain = deck.Wants.Sum(w => w.Amount) 
-                + deck.GiveBacks.Sum(g => g.Amount);
+            var requestsRemain = deck.Wants.Sum(w => w.NumCopies) 
+                + deck.GiveBacks.Sum(g => g.NumCopies);
 
             try
             {
@@ -183,10 +183,10 @@ namespace MTGViewer.Pages.Decks
 
 
 
-        private void ApplyWants(Deck deck, IEnumerable<CardAmount> availables)
+        private void ApplyWants(Deck deck, IEnumerable<Amount> availables)
         {
-            var activeWants = deck.Wants.Where(w => w.Amount > 0);
-            var possibleAvails = availables.Where(ca => ca.Amount > 0);
+            var activeWants = deck.Wants.Where(w => w.NumCopies > 0);
+            var possibleAvails = availables.Where(ca => ca.NumCopies > 0);
 
             if (!possibleAvails.Any() || !activeWants.Any())
             {
@@ -203,8 +203,8 @@ namespace MTGViewer.Pages.Decks
         }
 
 
-        private IReadOnlyDictionary<string, CardAmount> GetAllActuals(
-            Deck deck, IEnumerable<CardAmount> availables)
+        private IReadOnlyDictionary<string, Amount> GetAllActuals(
+            Deck deck, IEnumerable<Amount> availables)
         {
             var missingActualCards = availables
                 .GroupJoin( deck.Cards,
@@ -217,11 +217,11 @@ namespace MTGViewer.Pages.Decks
                 .Distinct();
 
             var newActuals = missingActualCards
-                .Select(card => new CardAmount
+                .Select(card => new Amount
                 {
                     Card = card,
                     Location = deck,
-                    Amount = 0
+                    NumCopies = 0
                 });
 
             _dbContext.Amounts.AddRange(newActuals);
@@ -233,8 +233,8 @@ namespace MTGViewer.Pages.Decks
         private void ApplyExactWants(
             Transaction transaction,
             IEnumerable<Want> wants,
-            IEnumerable<CardAmount> availables,
-            IReadOnlyDictionary<string, CardAmount> actuals)
+            IEnumerable<Amount> availables,
+            IReadOnlyDictionary<string, Amount> actuals)
         {
             var exactMatches = wants
                 .Join( availables,
@@ -244,7 +244,7 @@ namespace MTGViewer.Pages.Decks
 
             foreach (var (want, available) in exactMatches)
             {
-                int amountTaken = Math.Min(want.Amount, available.Amount);
+                int amountTaken = Math.Min(want.NumCopies, available.NumCopies);
 
                 if (amountTaken == 0)
                 {
@@ -253,9 +253,9 @@ namespace MTGViewer.Pages.Decks
 
                 var actual = actuals[want.CardId];
 
-                actual.Amount += amountTaken;
-                available.Amount -= amountTaken;
-                want.Amount -= amountTaken;
+                actual.NumCopies += amountTaken;
+                available.NumCopies -= amountTaken;
+                want.NumCopies -= amountTaken;
 
                 var newChange = new Change
                 {
@@ -276,8 +276,8 @@ namespace MTGViewer.Pages.Decks
         private void ApplyCloseWants(
             Transaction transaction,
             IEnumerable<Want> wants,
-            IEnumerable<CardAmount> availables,
-            IReadOnlyDictionary<string, CardAmount> actuals)
+            IEnumerable<Amount> availables,
+            IReadOnlyDictionary<string, Amount> actuals)
         {
             var wantsByName = wants
                 .GroupBy(w => w.Card.Name,
@@ -303,11 +303,11 @@ namespace MTGViewer.Pages.Decks
                     var currentAvail = closeAvails.Current;
                     var actual = actuals[currentAvail.CardId];
 
-                    int amountTaken = Math.Min(wantGroup.Amount, currentAvail.Amount);
+                    int amountTaken = Math.Min(wantGroup.Amount, currentAvail.NumCopies);
 
-                    actual.Amount += amountTaken;
+                    actual.NumCopies += amountTaken;
 
-                    currentAvail.Amount -= amountTaken;
+                    currentAvail.NumCopies -= amountTaken;
                     wantGroup.Amount -= amountTaken;
 
                     var newChange = new Change
@@ -341,20 +341,20 @@ namespace MTGViewer.Pages.Decks
 
             foreach (var (actual, giveBack) in returnPairs)
             {
-                if (actual.Amount >= giveBack.Amount)
+                if (actual.NumCopies >= giveBack.NumCopies)
                 {
-                    actual.Amount -= giveBack.Amount;
+                    actual.NumCopies -= giveBack.NumCopies;
                     appliedReturns.Add(giveBack);
                 }
             }
 
             var cardsReturning = appliedReturns
-                .Select(g => new CardReturn(g.Card, g.Amount, deck))
+                .Select(g => new CardReturn(g.Card, g.NumCopies, deck))
                 .ToList();
 
             foreach (var ret in appliedReturns)
             {
-                ret.Amount = 0;
+                ret.NumCopies = 0;
             }
 
             return cardsReturning;
@@ -363,9 +363,9 @@ namespace MTGViewer.Pages.Decks
 
         private void RemoveEmpty(Deck deck)
         {
-            var emptyAmounts = deck.Cards.Where(ca => ca.Amount == 0);
-            var finishedWants = deck.Wants.Where(r => r.Amount == 0);
-            var finishedGives = deck.GiveBacks.Where(g => g.Amount == 0);
+            var emptyAmounts = deck.Cards.Where(ca => ca.NumCopies == 0);
+            var finishedWants = deck.Wants.Where(r => r.NumCopies == 0);
+            var finishedGives = deck.GiveBacks.Where(g => g.NumCopies == 0);
 
             // do not remove empty availables
             _dbContext.Amounts.RemoveRange(emptyAmounts);

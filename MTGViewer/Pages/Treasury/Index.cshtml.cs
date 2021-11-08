@@ -44,7 +44,7 @@ namespace MTGViewer.Pages.Treasury
                 .Include(b => b.Bin)
 
                 .Include(b => b.Cards // unbounded: keep eye on
-                    .Where(ca => ca.Amount > 0)
+                    .Where(ca => ca.NumCopies > 0)
                     .OrderBy(ca => ca.Card.Name))
                     .ThenInclude(ca => ca.Card)
 

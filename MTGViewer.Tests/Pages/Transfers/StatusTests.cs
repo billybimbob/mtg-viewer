@@ -50,7 +50,7 @@ namespace MTGViewer.Tests.Pages.Transfers
             _dbContext.Trades
                 .Join(_dbContext.Wants,
                     trade => trade.ToId,
-                    request => request.DeckId,
+                    request => request.LocationId,
                     (trade, _) => trade)
                 .Distinct()
                 .Where(t => t.ToId == _trades.TargetId)

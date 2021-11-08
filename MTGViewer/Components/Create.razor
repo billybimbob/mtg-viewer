@@ -143,7 +143,7 @@
                     @for (int i = 0; i < Rarity.Values.Count; ++i)
                     {
                         var rarity = Rarity.Values[i];
-                        var toggleId = $"{rarity}Toggle";
+                        var toggleId = $"{rarity}-toggle";
                         var picked = _pickedRarities.Contains(rarity);
 
                         <div class="col form-check form-check-inline ml-2">
@@ -248,7 +248,7 @@ else
                 {
                     <tr>
                         <td> 
-                            <HoverCard Card="@((CardPreview)match)">
+                            <HoverCard Card="(CardPreview)match">
                                 <span class="btn-link">@match.Name</span> 
                             </HoverCard> 
                         </td>

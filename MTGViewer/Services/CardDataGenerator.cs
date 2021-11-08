@@ -154,17 +154,17 @@ namespace MTGViewer.Services
         }
 
 
-        private IReadOnlyList<CardAmount> GetDeckAmounts(
+        private IReadOnlyList<Amount> GetDeckAmounts(
             IEnumerable<Card> cards,
             IEnumerable<Deck> decks)
         {
             return cards.Zip(decks,
                 (card, deck) => (card, deck))
-                .Select(cd => new CardAmount
+                .Select(cd => new Amount
                 {
                     Card = cd.card,
                     Location = cd.deck,
-                    Amount = _random.Next(6)
+                    NumCopies = _random.Next(6)
                 })
                 .ToList();
         }
@@ -182,7 +182,7 @@ namespace MTGViewer.Services
             IEnumerable<UserRef> users,
             IEnumerable<Card> cards,
             IEnumerable<Deck> decks,
-            IEnumerable<CardAmount> amounts)
+            IEnumerable<Amount> amounts)
         {
             var source = amounts.First();
             var tradeFrom = (Deck)source.Location;
@@ -205,7 +205,7 @@ namespace MTGViewer.Services
             IEnumerable<UserRef> users,
             IEnumerable<Card> cards,
             IEnumerable<Deck> decks,
-            IEnumerable<CardAmount> amounts)
+            IEnumerable<Amount> amounts)
         {
             var source = amounts.First();
             var suggestCard = cards.First();

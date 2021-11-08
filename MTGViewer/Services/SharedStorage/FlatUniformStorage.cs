@@ -35,7 +35,7 @@ namespace MTGViewer.Services
         public IQueryable<Box> Boxes => _dbContext.Boxes
             .AsNoTrackingWithIdentityResolution();
 
-        public IQueryable<CardAmount> Cards => _dbContext.Amounts
+        public IQueryable<Amount> Cards => _dbContext.Amounts
             .Where(ca => ca.Location is Box)
             .AsNoTrackingWithIdentityResolution();
 
@@ -141,7 +141,7 @@ namespace MTGViewer.Services
                     changes.Add(changeKey, change);
                 }
 
-                target.Amount += numCopies;
+                target.NumCopies += numCopies;
                 change.Amount += numCopies;
             }
 
@@ -153,7 +153,7 @@ namespace MTGViewer.Services
         }
 
 
-        private async Task<IReadOnlyList<CardAmount>> GetSortedAmountsAsync(
+        private async Task<IReadOnlyList<Amount>> GetSortedAmountsAsync(
             CancellationToken cancel)
         {
             // loading all shared cards, could be memory inefficient
@@ -210,11 +210,11 @@ namespace MTGViewer.Services
                 var boxIndex = Math.Min(cardIndex / _boxSize, sortedBoxes.Count - 1);
                 var box = sortedBoxes[boxIndex];
 
-                var newSpot = new CardAmount
+                var newSpot = new Amount
                 {
                     Card = card,
                     Location = box,
-                    Amount = numCopies
+                    NumCopies = numCopies
                 };
 
                 var newChange = new Change
@@ -232,7 +232,7 @@ namespace MTGViewer.Services
         }
 
 
-        private IReadOnlyList<int> GetCardIndices(IEnumerable<CardAmount> boxAmounts)
+        private IReadOnlyList<int> GetCardIndices(IEnumerable<Amount> boxAmounts)
         {
             var cardIndices = new List<int>(boxAmounts.Count());
             var cardCount = 0;
@@ -240,14 +240,14 @@ namespace MTGViewer.Services
             foreach (var shared in boxAmounts)
             {
                 cardIndices.Add( cardCount );
-                cardCount += shared.Amount;
+                cardCount += shared.NumCopies;
             }
 
             return cardIndices;
         }
 
 
-        private int FindAmountIndex(IReadOnlyList<CardAmount> sortedAmounts, Card card)
+        private int FindAmountIndex(IReadOnlyList<Amount> sortedAmounts, Card card)
         {
             int amountIndex = 0;
 
@@ -347,17 +347,17 @@ namespace MTGViewer.Services
 
 
         private Transaction AddUpdatedBoxAmounts(
-            IReadOnlyList<CardAmount> sharedAmounts, IReadOnlyList<Box> boxes)
+            IReadOnlyList<Amount> sharedAmounts, IReadOnlyList<Box> boxes)
         {
             var newTransaction = new Transaction();
 
             var oldAmounts = sharedAmounts
-                .Select(ca => (ca.Card, ca.Location, ca.Amount))
+                .Select(ca => (ca.Card, ca.Location, ca.NumCopies))
                 .ToList();
 
             foreach (var shared in sharedAmounts)
             {
-                shared.Amount = 0;
+                shared.NumCopies = 0;
             }
 
             // faster than summing every time
@@ -378,7 +378,7 @@ namespace MTGViewer.Services
                 {
                     var boxAmount = FindOrAddBoxAmount(amountMap, card, newBox);
 
-                    boxAmount.Amount += newNumCopies;
+                    boxAmount.NumCopies += newNumCopies;
                     boxSpace[newBox.Id] += newNumCopies;
 
                     if (oldBox == newBox)
@@ -431,8 +431,8 @@ namespace MTGViewer.Services
         }
 
 
-        private CardAmount FindOrAddBoxAmount(
-            IDictionary<(string, int), CardAmount> boxAmounts, Card card, Box box)
+        private Amount FindOrAddBoxAmount(
+            IDictionary<(string, int), Amount> boxAmounts, Card card, Box box)
         {
             var cardBox = (card.Id, box.Id);
 
@@ -453,14 +453,14 @@ namespace MTGViewer.Services
 
 
         private bool ValidateChanges(
-            Transaction optimizeChanges, IReadOnlyList<CardAmount> boxAmounts)
+            Transaction optimizeChanges, IReadOnlyList<Amount> boxAmounts)
         {
             if (!optimizeChanges.Changes.Any())
             {
                 return false;
             }
 
-            var emptyAmounts = boxAmounts.Where(ca => ca.Amount == 0);
+            var emptyAmounts = boxAmounts.Where(ca => ca.NumCopies == 0);
 
             _dbContext.Amounts.RemoveRange(emptyAmounts);
             _dbContext.Transactions.Add(optimizeChanges);

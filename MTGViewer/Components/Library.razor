@@ -231,7 +231,7 @@
             _cardAmounts = await dbContext.Amounts
                 .GroupBy( ca => ca.CardId,
                     (CardId, cas) =>
-                        new { CardId, Total = cas.Sum(ca => ca.Amount) })
+                        new { CardId, Total = cas.Sum(ca => ca.NumCopies) })
                 .ToDictionaryAsync(
                     ct => ct.CardId, ct => ct.Total, _cancel.Token);
 
@@ -297,10 +297,11 @@
             _ => true
         };
 
-        IOrderedEnumerable<Card> PrimaryOrder<T>(Func<Card, T> property) =>
+        IOrderedEnumerable<Card> PrimaryOrder<T>(
+            Func<Card, T> property, IComparer<T> comparer = null) =>
             isAscending ^ _isReversed
-                ? cards.OrderBy(property)
-                : cards.OrderByDescending(property);
+                ? cards.OrderBy(property, comparer)
+                : cards.OrderByDescending(property, comparer);
 
         return _orderProperty switch
         {
@@ -314,7 +315,7 @@
                     .ThenBy(c => c.Name),
 
             nameof(Card.Rarity) => 
-                PrimaryOrder(c => c.Rarity)
+                PrimaryOrder(c => c.Rarity, new RarityComparer())
                     .ThenBy(c => c.Name)
                     .ThenBy(c => c.SetName),
 

@@ -131,7 +131,7 @@ namespace MTGViewer.Tests.Pages.Transfers
             await _requestModel.SetModelContextAsync(_userManager, _requestDeck.OwnerId);
 
             var requestCard = await _dbContext.Wants
-                .Where(w => w.DeckId == _requestDeck.Id)
+                .Where(w => w.LocationId == _requestDeck.Id)
                 .Select(w => w.Card)
                 .AsNoTracking()
                 .FirstAsync();
@@ -149,11 +149,11 @@ namespace MTGViewer.Tests.Pages.Transfers
                 .ToList();
 
             var amounts = extraLocations
-                .Select(loc => new CardAmount
+                .Select(loc => new Amount
                 {
                     Card = requestCard,
                     Location = loc,
-                    Amount = 2
+                    NumCopies = 2
                 })
                 .ToList();
 

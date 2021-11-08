@@ -90,7 +90,7 @@
                 <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.Name) </th>
                 <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.ManaCost) </th>
                 <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.SetName) </th>
-                <th scope="col"> @Html.DisplayNameForInnerType((CardAmount ca) => ca.Amount) </th>
+                <th scope="col"> @Html.DisplayNameForInnerType((Amount ca) => ca.NumCopies) </th>
             </tr>
         </thead>
         <tbody>
@@ -105,7 +105,7 @@
 
                     <td> @(MtgSymbols.Format(card.ManaCost).ToHtmlString()) </td>
                     <td> @card.SetName </td>
-                    <td> @amount.Amount </td>
+                    <td> @amount.NumCopies </td>
                 </tr>
             }
         </tbody>

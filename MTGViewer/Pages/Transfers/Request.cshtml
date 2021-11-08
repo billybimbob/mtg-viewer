@@ -14,6 +14,11 @@
     <div class="alert alert-secondary" role="alert">
         <h5 class="alert-heading">Are you sure you want to send requests for the cards listed below?</h5>
         <p>While a request is active, <strong>you cannot edit @Model.Deck.Name</strong></p>
+        <hr>
+        <p>
+            Requests will only be made to other players that currently hold the cards listed below. This means
+            that <strong>some cards below may not create a request</strong>.
+        </p>
 
         <form method="POST">
             <input type="hidden" asp-for="Deck.Id"/>
@@ -37,9 +42,9 @@ else
 <table class="table">
     <thead>
         <tr>
-            <th scope="col"> @Html.DisplayNameForInnerType((CardAmount ca) => ca.Card) </th>
+            <th scope="col"> @Html.DisplayNameForInnerType((Amount ca) => ca.Card) </th>
             <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.ManaCost) </th>
-            <th scope="col"> @Html.DisplayNameForInnerType((CardAmount ca) => ca.Amount) </th>
+            <th scope="col"> @Html.DisplayNameForInnerType((Amount ca) => ca.NumCopies) </th>
         </tr>
     </thead>
     <tbody>
@@ -71,7 +76,7 @@ else
                 <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.Name) </th>
                 <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.ManaCost) </th>
                 <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.SetName) </th>
-                <th scope="col"> @Html.DisplayNameForInnerType((CardAmount ca) => ca.Amount) </th>
+                <th scope="col"> @Html.DisplayNameForInnerType((Amount ca) => ca.NumCopies) </th>
             </tr>
         </thead>
         <tbody>
@@ -87,7 +92,7 @@ else
 
                     <td> @(MtgSymbols.Format(card.ManaCost).ToHtmlString()) </td>
                     <td> @card.SetName </td>
-                    <td> @amount.Amount </td>
+                    <td> @amount.NumCopies </td>
                 </tr>
             }
         </tbody>

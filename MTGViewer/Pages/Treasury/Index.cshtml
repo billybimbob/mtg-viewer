@@ -29,7 +29,7 @@
     <thead>
         <tr>
             <th scope="col"> Box </th>
-            <th scope="col"> @Html.DisplayNameForInnerType((CardAmount ca) => ca.Card) </th>
+            <th scope="col"> @Html.DisplayNameForInnerType((Amount ca) => ca.Card) </th>
             <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.ManaCost) </th>
             <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.SetName) </th>
             <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.Rarity) </th>
@@ -55,7 +55,7 @@
                     <td> @(MtgSymbols.Format(firstAmount.Card.ManaCost).ToHtmlString()) </td>
                     <td> @firstAmount.Card.SetName </td>
                     <td> @firstAmount.Card.Rarity </td>
-                    <td> @firstAmount.Amount </td>
+                    <td> @firstAmount.NumCopies </td>
                 }
                 else
                 {
@@ -77,7 +77,7 @@
                     <td> @(MtgSymbols.Format(amount.Card.ManaCost).ToHtmlString()) </td>
                     <td> @amount.Card.SetName </td>
                     <td> @amount.Card.Rarity </td>
-                    <td> @amount.Amount </td>
+                    <td> @amount.NumCopies </td>
                 </tr>
             }
         }

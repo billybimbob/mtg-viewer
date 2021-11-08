@@ -143,7 +143,7 @@ namespace MTGViewer.Pages.Decks
 
             var returningCards = deck.Cards
                 // no source, since deck is being deleted
-                .Select(da => new CardReturn(da.Card, da.Amount))
+                .Select(da => new CardReturn(da.Card, da.NumCopies))
                 .ToList();
 
             _dbContext.Amounts.RemoveRange(deck.Cards);

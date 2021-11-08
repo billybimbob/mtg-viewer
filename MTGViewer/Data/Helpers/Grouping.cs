@@ -8,9 +8,9 @@ using System.Linq;
 namespace MTGViewer.Data
 {
     /// <summary>Group of amounts with the same deck and same card name</summary>
-    public class CardNameGroup : IEnumerable<CardAmount>
+    public class CardNameGroup : IEnumerable<Amount>
     {
-        public CardNameGroup(IEnumerable<CardAmount> amounts)
+        public CardNameGroup(IEnumerable<Amount> amounts)
         {
             _amounts = new(amounts);
 
@@ -35,16 +35,16 @@ namespace MTGViewer.Data
             }
         }
 
-        public CardNameGroup(params CardAmount[] amounts)
+        public CardNameGroup(params Amount[] amounts)
             : this(amounts.AsEnumerable())
         { }
 
 
         // guranteed >= 1 CardAmounts in linkedlist
-        private readonly LinkedList<CardAmount> _amounts;
+        private readonly LinkedList<Amount> _amounts;
 
 
-        private CardAmount First => _amounts.First!.Value;
+        private Amount First => _amounts.First!.Value;
 
         public string Name => First.Card.Name;
         public string ManaCost => First.Card.ManaCost;
@@ -57,22 +57,22 @@ namespace MTGViewer.Data
         public Location Location => First.Location;
 
 
-        public int Amount
+        public int NumCopies
         {
-            get => _amounts.Sum(ca => ca.Amount);
+            get => _amounts.Sum(ca => ca.NumCopies);
             set
             {
                 var lastCycle = _amounts.Last!.Value;
-                int change = Amount - value;
+                int change = NumCopies - value;
 
-                while (change < 0 || change > 0 && lastCycle.Amount > 0)
+                while (change < 0 || change > 0 && lastCycle.NumCopies > 0)
                 {
-                    int mod = Math.Min(change, First.Amount);
+                    int mod = Math.Min(change, First.NumCopies);
 
-                    First.Amount -= mod;
+                    First.NumCopies -= mod;
                     change -= mod;
 
-                    if (First.Amount == 0)
+                    if (First.NumCopies == 0)
                     {
                         // cycle amount
                         var firstLink = _amounts.First!;
@@ -85,7 +85,7 @@ namespace MTGViewer.Data
 
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
-        public IEnumerator<CardAmount> GetEnumerator() => _amounts.GetEnumerator();
+        public IEnumerator<Amount> GetEnumerator() => _amounts.GetEnumerator();
     }
 
 
@@ -112,7 +112,7 @@ namespace MTGViewer.Data
                 throw new ArgumentException("All exchanges do not match the mana cost");
             }
 
-            if (_wants.Any(w => w.DeckId != DeckId && w.Deck != Deck))
+            if (_wants.Any(w => w.LocationId != LocationId && w.Location != Location))
             {
                 throw new ArgumentException("All exchanges do not have the same location");
             }
@@ -136,24 +136,24 @@ namespace MTGViewer.Data
         public IEnumerable<Card> Cards => _wants.Select(ca => ca.Card);
 
 
-        public int DeckId => First.DeckId;
-        public Deck Deck => First.Deck;
+        public int LocationId => First.LocationId;
+        public Location Location => First.Location;
 
 
         public int Amount
         {
-            get => _wants.Sum(ca => ca.Amount);
+            get => _wants.Sum(ca => ca.NumCopies);
             set
             {
                 int change = Amount - value;
-                while (change < 0 || change > 0 && First.Amount > 0)
+                while (change < 0 || change > 0 && First.NumCopies > 0)
                 {
-                    int mod = Math.Min(change, First.Amount);
+                    int mod = Math.Min(change, First.NumCopies);
 
-                    First.Amount -= mod;
+                    First.NumCopies -= mod;
                     change -= mod;
 
-                    if (First.Amount == 0)
+                    if (First.NumCopies == 0)
                     {
                         // cycle amount
                         var firstLink = _wants.First!;
@@ -175,18 +175,18 @@ namespace MTGViewer.Data
     /// Group of quantities (amount, want, and give back) with the same deck and 
     /// exact same card
     /// </summary>
-    public class QuantityGroup
+    public class QuantityGroup : IEnumerable<Quantity>
     {
-        public QuantityGroup(CardAmount? amount, Want? want, GiveBack? giveBack)
+        public QuantityGroup(Amount? amount, Want? want, GiveBack? giveBack)
         {
-            _actual = amount;
+            _amount = amount;
             _want = want;
             _giveBack = giveBack;
 
             CheckGroup();
         }
 
-        public QuantityGroup(CardAmount amount)
+        public QuantityGroup(Amount amount)
             : this(amount, null, null)
         { }
 
@@ -198,17 +198,36 @@ namespace MTGViewer.Data
             : this(null, null, giveBack)
         { }
 
+        public QuantityGroup(Quantity quantity)
+        {
+            switch(quantity)
+            {
+                case Amount amount:
+                    _amount = amount;
+                    break;
+
+                case Want want:
+                    _want = want;
+                    break;
+
+                case GiveBack giveBack:
+                    _giveBack = giveBack;
+                    break;
+            }
+
+            CheckGroup();
+        }
 
 
         // Guaranteed to not all be null
-        private CardAmount? _actual;
+        private Amount? _amount;
         private Want? _want;
         private GiveBack? _giveBack;
 
 
-        public CardAmount? Actual
+        public Amount? Amount
         {
-            get => _actual;
+            get => _amount;
             set
             {
                 if (value is null)
@@ -216,7 +235,7 @@ namespace MTGViewer.Data
                     throw new ArgumentException("Amount is not a valid actual amount");
                 }
 
-                _actual = value;
+                _amount = value;
 
                 CheckGroup();
             }
@@ -257,7 +276,7 @@ namespace MTGViewer.Data
 
         private void CheckGroup()
         {
-            var nullCount = (Actual is null ? 0 : 1)
+            var nullCount = (Amount is null ? 0 : 1)
                 + (Want is null ? 0 : 1)
                 + (GiveBack is null ? 0 : 1);
 
@@ -283,14 +302,14 @@ namespace MTGViewer.Data
             var cardId = CardId;
             var locationId = LocationId;
 
-            var sameActIds = Actual == null
-                || Actual.CardId == cardId && Actual.LocationId == locationId;
+            var sameActIds = Amount == null
+                || Amount.CardId == cardId && Amount.LocationId == locationId;
 
             var sameTakeIds = Want == null 
-                || Want.CardId == cardId && Want.DeckId == locationId;
+                || Want.CardId == cardId && Want.LocationId == locationId;
 
             var sameRetIds = GiveBack == null 
-                || GiveBack.CardId == cardId && GiveBack.DeckId == locationId;
+                || GiveBack.CardId == cardId && GiveBack.LocationId == locationId;
 
             return sameActIds && sameTakeIds && sameRetIds;
         }
@@ -300,54 +319,75 @@ namespace MTGViewer.Data
             var card = Card;
             var location = Location;
 
-            var sameActRefs = Actual == null 
-                || Actual.Card == card && Actual.Location == location;
+            var sameActRefs = Amount == null 
+                || Amount.Card == card && Amount.Location == location;
 
             var sameTakeRefs = Want == null 
-                || Want.Card == card && Want.Deck == location;
+                || Want.Card == card && Want.Location == location;
 
             var sameRetRefs = GiveBack == null 
-                || GiveBack.Card == card && GiveBack.Deck == location;
+                || GiveBack.Card == card && GiveBack.Location == location;
 
             return sameActRefs && sameTakeRefs && sameRetRefs;
         }
 
 
+        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+
+        public IEnumerator<Quantity> GetEnumerator()
+        {
+            if (Amount is not null)
+            {
+                yield return Amount;
+            }
+
+            if (Want is not null)
+            {
+                yield return Want;
+            }
+
+            if (GiveBack is not null)
+            {
+                yield return GiveBack;
+            }
+        }
+
+
         public string CardId =>
-            Actual?.CardId
+            Amount?.CardId
                 ?? Want?.CardId
                 ?? GiveBack?.CardId
                 ?? Card.Id;
 
         public Card Card =>
-            Actual?.Card
+            Amount?.Card
                 ?? Want?.Card
                 ?? GiveBack?.Card
                 ?? null!;
 
 
         public int LocationId =>
-            Actual?.LocationId
-                ?? Want?.DeckId
-                ?? GiveBack?.DeckId
+            Amount?.LocationId
+                ?? Want?.LocationId
+                ?? GiveBack?.LocationId
                 ?? Location.Id;
 
         public Location Location =>
-            Actual?.Location
-                ?? Want?.Deck
-                ?? GiveBack?.Deck
+            Amount?.Location
+                ?? Want?.Location
+                ?? GiveBack?.Location
                 ?? null!;
 
 
-        public int Amount =>
-            (Actual?.Amount ?? 0)
-                + (Want?.Amount ?? 0)
-                - (GiveBack?.Amount ?? 0);
+        public int NumCopies =>
+            (Amount?.NumCopies ?? 0)
+                + (Want?.NumCopies ?? 0)
+                - (GiveBack?.NumCopies ?? 0);
 
         public int Total =>
-            (Actual?.Amount ?? 0)
-                + (Want?.Amount ?? 0)
-                + (GiveBack?.Amount ?? 0);
+            (Amount?.NumCopies ?? 0)
+                + (Want?.NumCopies ?? 0)
+                + (GiveBack?.NumCopies ?? 0);
     }
 
 
@@ -358,7 +398,7 @@ namespace MTGViewer.Data
     public class QuantityNameGroup : IEnumerable<QuantityGroup>
     {
         public QuantityNameGroup(
-            IEnumerable<CardAmount> amounts, 
+            IEnumerable<Amount> amounts, 
             IEnumerable<Want> wants,
             IEnumerable<GiveBack>? giveBacks = null)
         {
@@ -414,14 +454,14 @@ namespace MTGViewer.Data
         public int LocationId =>
             this.First().LocationId;
 
-        public int Amount =>
-            this.Sum(rg => rg.Amount);
+        public int NumCopies =>
+            this.Sum(rg => rg.NumCopies);
 
         public int InDeck =>
-            this.Sum(rg => rg.Actual?.Amount ?? 0);
+            this.Sum(rg => rg.Amount?.NumCopies ?? 0);
 
         public int Requests =>
-            this.Sum(rg => rg.Want?.Amount ?? 0) - this.Sum(rg => rg.GiveBack?.Amount ?? 0);
+            this.Sum(rg => rg.Want?.NumCopies ?? 0) - this.Sum(rg => rg.GiveBack?.NumCopies ?? 0);
 
 
         public IEnumerable<string> CardIds =>

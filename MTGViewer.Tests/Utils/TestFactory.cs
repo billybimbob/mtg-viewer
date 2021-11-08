@@ -32,7 +32,9 @@ namespace MTGViewer.Tests.Utils
         {
             var inMemory = provider.GetRequiredService<InMemoryConnection>();
 
-            options.UseInMemoryDatabase(inMemory.Database);
+            options
+                .EnableSensitiveDataLogging()
+                .UseInMemoryDatabase(inMemory.Database);
         }
 
 
@@ -40,7 +42,9 @@ namespace MTGViewer.Tests.Utils
         {
             var inMemory = provider.GetRequiredService<InMemoryConnection>();
 
-            options.UseSqlite(inMemory.Connection);
+            options
+                .EnableSensitiveDataLogging()
+                .UseSqlite(inMemory.Connection);
         }
 
 

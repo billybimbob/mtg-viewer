@@ -14,7 +14,7 @@ namespace MTGViewer.Services
     {
         IQueryable<Box> Boxes { get; }
 
-        IQueryable<CardAmount> Cards { get; }
+        IQueryable<Amount> Cards { get; }
 
         /// <summary> 
         /// Adding cards to the Treasury that prioritizes the least amount of Changes

@@ -14,7 +14,7 @@ namespace MTGViewer.Data
     public abstract class Location : Concurrent
     {
         [JsonInclude]
-        public int Id { get; protected set; }
+        public int Id { get; set; }
 
         [JsonIgnore]
         internal Discriminator Type { get; private set; }
@@ -24,24 +24,32 @@ namespace MTGViewer.Data
         public string Name { get; set; } = string.Empty;
 
         [JsonIgnore]
-        public List<CardAmount> Cards { get; } = new();
+        public List<Amount> Cards { get; } = new();
+    }
+    
+
+    public abstract class Owned : Location
+    {
+        [JsonIgnore]
+        public List<Want> Wants { get; } = new();
     }
 
 
-    public class Unclaimed : Location
+    public class Unclaimed : Owned
     {
         public static explicit operator Unclaimed(Deck deck)
         {
             var unclaimed = new Unclaimed { Name = deck.Name };
 
             unclaimed.Cards.AddRange(deck.Cards);
+            unclaimed.Wants.AddRange(deck.Wants);
 
             return unclaimed;
         }
     }
 
 
-    public class Deck : Location
+    public class Deck : Owned
     {
         public Deck()
         { }
@@ -53,6 +61,7 @@ namespace MTGViewer.Data
             Owner = owner;
 
             Cards.AddRange(unclaimed.Cards);
+            Wants.AddRange(unclaimed.Wants);
         }
 
 
@@ -60,9 +69,6 @@ namespace MTGViewer.Data
         public UserRef Owner { get; init; } = null!;
         public string OwnerId { get; init; } = null!;
 
-
-        [JsonIgnore]
-        public List<Want> Wants { get; } = new();
 
         [JsonIgnore]
         [Display(Name = "Give Backs")]
@@ -118,7 +124,7 @@ namespace MTGViewer.Data
     public class Bin
     {
         [JsonInclude]
-        public int Id { get; private set; }
+        public int Id { get; set; }
 
         [StringLength(10)]
         public string Name { get; init; } = string.Empty;

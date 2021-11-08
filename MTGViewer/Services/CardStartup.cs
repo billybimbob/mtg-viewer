@@ -29,8 +29,7 @@ namespace MTGViewer.Services
                             // TODO: change connection string name
                         .UseSqlServer(config.GetConnectionString("MTGCardContext"))
                         .UseTriggers(triggers => triggers
-                            .AddTrigger<AmountValidate>()
-                            .AddTrigger<RequestValidate>()
+                            .AddTrigger<QuantityValidate>()
                             .AddTrigger<TradeValidate>() ));
                     break;
 
@@ -39,9 +38,8 @@ namespace MTGViewer.Services
                     services.AddTriggeredDbContextFactory<CardDbContext>(options => options
                         .UseSqlite(config.GetConnectionString("MTGCardContext"))
                         .UseTriggers(triggers => triggers
-                            .AddTrigger<AmountValidate>()
+                            .AddTrigger<QuantityValidate>()
                             .AddTrigger<LiteTokenUpdate>()
-                            .AddTrigger<RequestValidate>()
                             .AddTrigger<TradeValidate>() ));
                     break;
             }
@@ -91,7 +89,7 @@ namespace MTGViewer.Services
             }
 
             var jsonStorage = scopeProvider.GetRequiredService<JsonCardStorage>();
-            var jsonOptions = new JsonWriteOptions { Seeding = true };
+            var jsonOptions = new JsonStorageOptions { Seeding = true };
 
             var jsonSuccess = await jsonStorage.AddFromJsonAsync(jsonOptions, cancel);
 

@@ -50,20 +50,20 @@ namespace MTGViewer.Tests.Pages.Transfers
             _dbContext.Trades
                 .Join(_dbContext.Wants,
                     trade => trade.ToId,
-                    request => request.DeckId,
+                    request => request.LocationId,
                     (trade, _) => trade)
                 .Distinct()
                 .Where(t => t.FromId == _trades.TargetId)
                 .AsNoTracking();
 
 
-        private IQueryable<CardAmount> ToTarget(Trade trade) =>
+        private IQueryable<Amount> ToTarget(Trade trade) =>
             _dbContext.Amounts
                 .Where(ca => ca.CardId == trade.CardId && ca.LocationId == trade.ToId)
                 .AsNoTracking();
 
 
-        private IQueryable<CardAmount> FromTarget(Trade trade) =>
+        private IQueryable<Amount> FromTarget(Trade trade) =>
             _dbContext.Amounts
                 .Where(ca => ca.CardId == trade.CardId && ca.LocationId == _trades.TargetId)
                 .AsNoTracking();
@@ -86,7 +86,7 @@ namespace MTGViewer.Tests.Pages.Transfers
 
             // Assert
             Assert.IsType<RedirectToPageResult>(result);
-            Assert.Equal(fromBefore.Amount, fromAfter.Amount);
+            Assert.Equal(fromBefore.NumCopies, fromAfter.NumCopies);
             Assert.Contains(trade.Id, tradeAfter);
         }
 
@@ -109,7 +109,7 @@ namespace MTGViewer.Tests.Pages.Transfers
 
             // Assert
             Assert.IsType<RedirectToPageResult>(result);
-            Assert.Equal(fromBefore.Amount, fromAfter.Amount);
+            Assert.Equal(fromBefore.NumCopies, fromAfter.NumCopies);
             Assert.Contains(trade.Id, tradesAfter);
         }
 
@@ -130,8 +130,8 @@ namespace MTGViewer.Tests.Pages.Transfers
                 amount = trade.Amount;
             }
 
-            var toAmount = ToTarget(trade).Select(ca => ca.Amount);
-            var fromAmount = FromTarget(trade).Select(ca => ca.Amount);
+            var toAmount = ToTarget(trade).Select(ca => ca.NumCopies);
+            var fromAmount = FromTarget(trade).Select(ca => ca.NumCopies);
 
             // Act
             var toBefore = await toAmount.SingleOrDefaultAsync();
@@ -163,13 +163,13 @@ namespace MTGViewer.Tests.Pages.Transfers
             var trade = await TradesInSet.FirstAsync();
 
             var fromAmountTracked = await FromTarget(trade).AsTracking().SingleAsync();
-            fromAmountTracked.Amount = 0;
+            fromAmountTracked.NumCopies = 0;
 
             await _dbContext.SaveChangesAsync();
             _dbContext.ChangeTracker.Clear();
 
-            var toAmount = ToTarget(trade).Select(ca => ca.Amount);
-            var fromAmount = FromTarget(trade).Select(ca => ca.Amount);
+            var toAmount = ToTarget(trade).Select(ca => ca.NumCopies);
+            var fromAmount = FromTarget(trade).Select(ca => ca.NumCopies);
             var tradeSet = TradesInSet.Select(t => t.Id);
 
             // Act
@@ -204,7 +204,7 @@ namespace MTGViewer.Tests.Pages.Transfers
 
             await _reviewModel.SetModelContextAsync(_userManager, trade.To.OwnerId);
 
-            var fromAmount = FromTarget(trade).Select(ca => ca.Amount);
+            var fromAmount = FromTarget(trade).Select(ca => ca.NumCopies);
 
             // Act
             var fromBefore = await fromAmount.SingleAsync();
@@ -230,7 +230,7 @@ namespace MTGViewer.Tests.Pages.Transfers
             var trade = await TradesInSet.AsNoTracking().FirstAsync();
             var wrongTradeId = 0;
 
-            var fromAmount = FromTarget(trade).Select(ca => ca.Amount);
+            var fromAmount = FromTarget(trade).Select(ca => ca.NumCopies);
 
             // Act
             var fromBefore = await fromAmount.SingleAsync();
@@ -255,7 +255,7 @@ namespace MTGViewer.Tests.Pages.Transfers
 
             var trade = await TradesInSet.AsNoTracking().FirstAsync();
 
-            var fromAmount = FromTarget(trade).Select(ca => ca.Amount);
+            var fromAmount = FromTarget(trade).Select(ca => ca.NumCopies);
 
             // Act
             var fromBefore = await fromAmount.SingleAsync();

@@ -119,7 +119,7 @@ namespace MTGViewer.Pages.Transfers
                     (trade, targets) => (trade, targets))
                 .SelectMany(
                     tts => tts.targets.DefaultIfEmpty(),
-                    (tts, target) => (tts.trade, target?.Amount ?? 0));
+                    (tts, target) => (tts.trade, target?.NumCopies ?? 0));
 
             // modifications are not saved
 

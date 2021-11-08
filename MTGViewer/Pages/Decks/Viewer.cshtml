@@ -27,7 +27,7 @@
 <table class="table">
     <thead>
         <tr>
-            <th scope="col"> @Html.DisplayNameForInnerType((CardAmount ca) => ca.Card) </th>
+            <th scope="col"> @Html.DisplayNameForInnerType((Amount ca) => ca.Card) </th>
             <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.ManaCost) </th>
             <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.SetName) </th>
             <th scope="col"> Cards In Deck </th>
@@ -46,9 +46,9 @@
                 <td> @(MtgSymbols.Format(group.Card.ManaCost).ToHtmlString()) </td>
                 <td> @group.Card.SetName </td>
 
-                <td> @(group.Actual?.Amount ?? 0) </td>
-                <td> @(group.Want?.Amount ?? 0) </td>
-                <td> @(group.GiveBack?.Amount ?? 0) </td>
+                <td> @(group.Amount?.NumCopies ?? 0) </td>
+                <td> @(group.Want?.NumCopies ?? 0) </td>
+                <td> @(group.GiveBack?.NumCopies ?? 0) </td>
             </tr>
         }
     </tbody>

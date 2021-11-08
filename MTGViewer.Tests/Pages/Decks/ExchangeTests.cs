@@ -52,39 +52,40 @@ namespace MTGViewer.Tests.Pages.Decks
         public Task DisposeAsync() => _testGen.ClearAsync();
 
 
-        private IQueryable<string> RequestOwnerId(CardRequest request) =>
+        private IQueryable<string> OwnerId(Quantity quantity) =>
             _dbContext.Decks
-                .Where(d => d.Id == request.DeckId)
+                .Where(d => d.Id == quantity.LocationId)
                 .Select(d => d.OwnerId);
 
 
-        private IQueryable<int> RequestAmount(Want request) =>
+        private IQueryable<int> NumCopies(Want request) =>
             _dbContext.Wants
                 .Where(w => w.Id == request.Id)
-                .Select(w => w.Amount);
+                .Select(w => w.NumCopies);
 
 
-        private IQueryable<int> RequestAmount(GiveBack request) =>
+        private IQueryable<int> NumCopies(GiveBack request) =>
             _dbContext.GiveBacks
                 .Where(g => g.Id == request.Id)
-                .Select(g => g.Amount);
+                .Select(g => g.NumCopies);
 
 
-        private IQueryable<int> ActualAmount(CardRequest request) =>
+        private IQueryable<int> ActualNumCopies(Quantity quantity) =>
             _dbContext.Amounts
-                .Where(ca => ca.LocationId == request.DeckId && ca.CardId == request.CardId)
-                .Select(ca => ca.Amount);
+                .Where(ca => ca.LocationId == quantity.LocationId
+                    && ca.CardId == quantity.CardId)
+                .Select(ca => ca.NumCopies);
 
 
-        private IQueryable<int> BoxAmount(CardRequest request) =>
+        private IQueryable<int> BoxNumCopies(Quantity quantity) =>
             _dbContext.Amounts
-                .Where(ca => ca.Location is Box && ca.CardId == request.CardId)
-                .Select(ca => ca.Amount);
+                .Where(ca => ca.Location is Box && ca.CardId == quantity.CardId)
+                .Select(ca => ca.NumCopies);
 
 
-        private IQueryable<int> ChangeAmount(CardRequest request) =>
+        private IQueryable<int> ChangeAmount(Quantity quantity) =>
             _dbContext.Changes
-                .Where(c => c.ToId == request.DeckId || c.FromId == request.DeckId)
+                .Where(c => c.ToId == quantity.LocationId || c.FromId == quantity.LocationId)
                 .Select(c => c.Amount);
 
 
@@ -126,26 +127,26 @@ namespace MTGViewer.Tests.Pages.Decks
         public async Task OnPost_ValidTake_AppliesTake()
         {
             // Arrange
-            var request = await _testGen.GetWantAsync();
-            var targetAmount = request.Amount;
-            var deckOwnerId = await RequestOwnerId(request).SingleAsync();
+            var want = await _testGen.GetWantAsync();
+            var targetAmount = want.NumCopies;
+            var deckOwnerId = await OwnerId(want).SingleAsync();
 
             await _exchangeModel.SetModelContextAsync(_userManager, deckOwnerId);
 
             // Act
-            var takeAmountBefore = await RequestAmount(request).SingleAsync();
-            var actualAmountBefore = await ActualAmount(request).SingleOrDefaultAsync();
+            var takeAmountBefore = await NumCopies(want).SingleAsync();
+            var actualAmountBefore = await ActualNumCopies(want).SingleOrDefaultAsync();
 
-            var boxTakeBefore = await BoxAmount(request).SumAsync();
-            var changeBefore = await ChangeAmount(request).SumAsync();
+            var boxTakeBefore = await BoxNumCopies(want).SumAsync();
+            var changeBefore = await ChangeAmount(want).SumAsync();
 
-            var result = await _exchangeModel.OnPostAsync(request.DeckId);
+            var result = await _exchangeModel.OnPostAsync(want.LocationId);
 
-            var takeAmountAfter = await RequestAmount(request).SingleOrDefaultAsync();
-            var actualAmountAfter = await ActualAmount(request).SingleAsync();
+            var takeAmountAfter = await NumCopies(want).SingleOrDefaultAsync();
+            var actualAmountAfter = await ActualNumCopies(want).SingleAsync();
 
-            var boxTakeAfter = await BoxAmount(request).SumAsync();
-            var changeAfter = await ChangeAmount(request).SumAsync();
+            var boxTakeAfter = await BoxNumCopies(want).SumAsync();
+            var changeAfter = await ChangeAmount(want).SumAsync();
 
             // Assert
             Assert.IsType<RedirectToPageResult>(result);
@@ -165,24 +166,24 @@ namespace MTGViewer.Tests.Pages.Decks
             var targetMod = 2;
             var request = await _testGen.GetWantAsync(targetMod);
 
-            var targetLimit = request.Amount - targetMod;
-            var deckOwnerId = await RequestOwnerId(request).SingleAsync();
+            var targetLimit = request.NumCopies - targetMod;
+            var deckOwnerId = await OwnerId(request).SingleAsync();
 
             await _exchangeModel.SetModelContextAsync(_userManager, deckOwnerId);
 
             // Act
-            var takeAmountBefore = await RequestAmount(request).SingleAsync();
-            var actualAmountBefore = await ActualAmount(request).SingleOrDefaultAsync();
+            var takeAmountBefore = await NumCopies(request).SingleAsync();
+            var actualAmountBefore = await ActualNumCopies((Quantity)request).SingleOrDefaultAsync();
 
-            var boxTakeBefore = await BoxAmount(request).SumAsync();
+            var boxTakeBefore = await BoxNumCopies(request).SumAsync();
             var changeBefore = await ChangeAmount(request).SumAsync();
 
-            var result = await _exchangeModel.OnPostAsync(request.DeckId);
+            var result = await _exchangeModel.OnPostAsync(request.LocationId);
 
-            var takeAmountAfter = await RequestAmount(request).SingleAsync();
-            var actualAmountAfter = await ActualAmount(request).SingleAsync();
+            var takeAmountAfter = await NumCopies(request).SingleAsync();
+            var actualAmountAfter = await ActualNumCopies((Quantity)request).SingleAsync();
 
-            var boxTakeAfter = await BoxAmount(request).SumAsync();
+            var boxTakeAfter = await BoxNumCopies(request).SumAsync();
             var changeAfter = await ChangeAmount(request).SumAsync();
 
             // Assert
@@ -203,24 +204,24 @@ namespace MTGViewer.Tests.Pages.Decks
         {
             // Arrange
             var request = await _testGen.GetGiveBackAsync(targetMod);
-            var returnAmount = request.Amount;
-            var deckOwnerId = await RequestOwnerId(request).SingleAsync();
+            var returnAmount = request.NumCopies;
+            var deckOwnerId = await OwnerId(request).SingleAsync();
 
             await _exchangeModel.SetModelContextAsync(_userManager, deckOwnerId);
 
             // Act
-            var returnAmountBefore = await RequestAmount(request).SingleAsync();
-            var actualAmountBefore = await ActualAmount(request).SingleAsync();
+            var returnAmountBefore = await NumCopies(request).SingleAsync();
+            var actualAmountBefore = await ActualNumCopies((Quantity)request).SingleAsync();
 
-            var boxTakeBefore = await BoxAmount(request).SumAsync();
+            var boxTakeBefore = await BoxNumCopies(request).SumAsync();
             var changeBefore = await ChangeAmount(request).SumAsync();
 
-            var result = await _exchangeModel.OnPostAsync(request.DeckId);
+            var result = await _exchangeModel.OnPostAsync(request.LocationId);
 
-            var returnAmountAfter = await RequestAmount(request).SingleOrDefaultAsync();
-            var actualAmountAfter = await ActualAmount(request).SingleOrDefaultAsync();
+            var returnAmountAfter = await NumCopies(request).SingleOrDefaultAsync();
+            var actualAmountAfter = await ActualNumCopies((Quantity)request).SingleOrDefaultAsync();
 
-            var boxTakeAfter = await BoxAmount(request).SumAsync();
+            var boxTakeAfter = await BoxNumCopies(request).SumAsync();
             var changeAfter = await ChangeAmount(request).SumAsync();
 
             // Assert
@@ -239,23 +240,23 @@ namespace MTGViewer.Tests.Pages.Decks
         {
             // Arrange
             var request = await _testGen.GetGiveBackAsync(2);
-            var deckOwnerId = await RequestOwnerId(request).SingleAsync();
+            var deckOwnerId = await OwnerId(request).SingleAsync();
 
             await _exchangeModel.SetModelContextAsync(_userManager, deckOwnerId);
 
             // Act
-            var returnAmountBefore = await RequestAmount(request).SingleAsync();
-            var actualAmountBefore = await ActualAmount(request).SingleAsync();
+            var returnAmountBefore = await NumCopies(request).SingleAsync();
+            var actualAmountBefore = await ActualNumCopies((Quantity)request).SingleAsync();
 
-            var boxTakeBefore = await BoxAmount(request).SumAsync();
+            var boxTakeBefore = await BoxNumCopies(request).SumAsync();
             var changeBefore = await ChangeAmount(request).SumAsync();
 
-            var result = await _exchangeModel.OnPostAsync(request.DeckId);
+            var result = await _exchangeModel.OnPostAsync(request.LocationId);
 
-            var returnAmountAfter = await RequestAmount(request).SingleAsync();
-            var actualAmountAfter = await ActualAmount(request).SingleAsync();
+            var returnAmountAfter = await NumCopies(request).SingleAsync();
+            var actualAmountAfter = await ActualNumCopies((Quantity)request).SingleAsync();
 
-            var boxTakeAfter = await BoxAmount(request).SumAsync();
+            var boxTakeAfter = await BoxNumCopies(request).SumAsync();
             var changeAfter = await ChangeAmount(request).SumAsync();
 
             // Assert
@@ -272,7 +273,7 @@ namespace MTGViewer.Tests.Pages.Decks
         public async Task OnPost_TradeActive_NoChange()
         {
             var request = await _testGen.GetGiveBackAsync(2);
-            var deckOwnerId = await RequestOwnerId(request).SingleAsync();
+            var deckOwnerId = await OwnerId(request).SingleAsync();
 
             var tradeTarget = await _dbContext.Amounts
                 .Where(ca => ca.Location is Deck
@@ -283,7 +284,7 @@ namespace MTGViewer.Tests.Pages.Decks
             var activeTrade = new Trade
             {
                 Card = request.Card,
-                To = request.Deck,
+                To = (Deck)request.Location,
                 From = (Deck)tradeTarget,
                 Amount = 3
             };
@@ -294,13 +295,13 @@ namespace MTGViewer.Tests.Pages.Decks
 
             await _exchangeModel.SetModelContextAsync(_userManager, deckOwnerId);
 
-            var boxBefore = await BoxAmount(request).SumAsync();
-            var actualBefore = await ActualAmount(request).SingleAsync();
+            var boxBefore = await BoxNumCopies(request).SumAsync();
+            var actualBefore = await ActualNumCopies((Quantity)request).SingleAsync();
 
-            var result = await _exchangeModel.OnPostAsync(request.DeckId);
+            var result = await _exchangeModel.OnPostAsync(request.LocationId);
 
-            var boxAfter = await BoxAmount(request).SumAsync();
-            var actualAfter = await ActualAmount(request).SingleAsync();
+            var boxAfter = await BoxNumCopies(request).SumAsync();
+            var actualAfter = await ActualNumCopies((Quantity)request).SingleAsync();
 
             Assert.IsType<RedirectToPageResult>(result);
             Assert.Equal(boxBefore, boxAfter);
@@ -312,24 +313,24 @@ namespace MTGViewer.Tests.Pages.Decks
         public async Task OnPost_MixedTakeReturns_AppliesChanges()
         {
             var (take, ret) = await _testGen.GetMixedRequestDeckAsync();
-            var deckOwnerId = await RequestOwnerId(take).SingleAsync();
+            var deckOwnerId = await OwnerId(take).SingleAsync();
 
             await _exchangeModel.SetModelContextAsync(_userManager, deckOwnerId);
 
-            var takeTarget = take.Amount;
-            var retTarget = ret.Amount;
+            var takeTarget = take.NumCopies;
+            var retTarget = ret.NumCopies;
 
-            var actualTakeBefore = await ActualAmount(take).SingleOrDefaultAsync();
-            var actualRetBefore = await ActualAmount(ret).SingleAsync();
+            var actualTakeBefore = await ActualNumCopies((Quantity)take).SingleOrDefaultAsync();
+            var actualRetBefore = await ActualNumCopies((Quantity)ret).SingleAsync();
 
-            var result = await _exchangeModel.OnPostAsync(take.DeckId);
+            var result = await _exchangeModel.OnPostAsync(take.LocationId);
 
-            var actualTakeAfter = await ActualAmount(take).SingleAsync();
-            var actualRetAfter = await ActualAmount(ret).SingleOrDefaultAsync();
+            var actualTakeAfter = await ActualNumCopies((Quantity)take).SingleAsync();
+            var actualRetAfter = await ActualNumCopies((Quantity)ret).SingleOrDefaultAsync();
 
             Assert.IsType<RedirectToPageResult>(result);
 
-            Assert.Equal(take.DeckId, ret.DeckId);
+            Assert.Equal(take.LocationId, ret.LocationId);
             Assert.Equal(takeTarget, actualTakeAfter - actualTakeBefore);
             Assert.Equal(retTarget, actualRetBefore - actualRetAfter);
         }

@@ -102,7 +102,7 @@ namespace MTGViewer.Pages.Transfers
         }
 
 
-        private IQueryable<CardAmount> TakeTargets(Deck deck)
+        private IQueryable<Amount> TakeTargets(Deck deck)
         {
             var takeNames = deck.Wants
                 .Select(ca => ca.Card.Name)
@@ -179,7 +179,7 @@ namespace MTGViewer.Pages.Transfers
         }
 
 
-        private IReadOnlyList<Trade> FindTradeMatches(Deck deck, IEnumerable<CardAmount> targets)
+        private IReadOnlyList<Trade> FindTradeMatches(Deck deck, IEnumerable<Amount> targets)
         {
             // TODO: figure out how to query more on server
             // TODO: prioritize requesting from exact card matches
@@ -189,7 +189,7 @@ namespace MTGViewer.Pages.Transfers
                     target => target.Card.Name,
                     want => want.Card.Name,
                     (target, wantMatches) =>
-                        (target, amount: wantMatches.Sum(w => w.Amount)));
+                        (target, amount: wantMatches.Sum(w => w.NumCopies)));
 
             var newTrades = requestMatches
                 .Select(ta => new Trade
