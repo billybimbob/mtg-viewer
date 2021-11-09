@@ -12,64 +12,64 @@ using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
 using MTGViewer.Services;
 
+#nullable enable
+namespace MTGViewer.Pages.Decks;
 
-namespace MTGViewer.Pages.Decks
+
+[Authorize]
+public class BuilderModel : PageModel
 {
-    [Authorize]
-    public class BuilderModel : PageModel
+    private readonly UserManager<CardUser> _userManager;
+    private readonly CardDbContext _dbContext;
+
+    public BuilderModel(UserManager<CardUser> userManager, CardDbContext dbContext, PageSizes pageSizes)
     {
-        private readonly UserManager<CardUser> _userManager;
-        private readonly CardDbContext _dbContext;
+        _userManager = userManager;
+        _dbContext = dbContext;
 
-        public BuilderModel(UserManager<CardUser> userManager, CardDbContext dbContext, PageSizes pageSizes)
+        PageSize = pageSizes.GetSize<BuilderModel>();
+    }
+
+
+    public string? UserId { get; private set; }
+    public int DeckId { get; private set; }
+    public int PageSize { get; }
+
+
+    public async Task<IActionResult> OnGetAsync(int? id)
+    {
+        UserId = _userManager.GetUserId(User);
+
+        if (id is int deckId)
         {
-            _userManager = userManager;
-            _dbContext = dbContext;
+            var deck = await DeckForBuilder(deckId, UserId)
+                .SingleOrDefaultAsync();
 
-            PageSize = pageSizes.GetSize<BuilderModel>();
-        }
-
-
-        public string UserId { get; private set; }
-        public int DeckId { get; private set; }
-        public int PageSize { get; }
-
-
-        public async Task<IActionResult> OnGetAsync(int? id)
-        {
-            UserId = _userManager.GetUserId(User);
-
-            if (id is int deckId)
+            if (deck == default)
             {
-                var deck = await DeckForBuilder(deckId, UserId)
-                    .SingleOrDefaultAsync();
-
-                if (deck == default)
-                {
-                    return NotFound();
-                }
-
-                if (deck.TradesTo.Any())
-                {
-                    return RedirectToPage("Index");
-                }
-
-                DeckId = deckId;
+                return NotFound();
             }
 
-            // the deck cannot be used as a param because of cyclic refs
-            return Page();
+            if (deck.TradesTo.Any())
+            {
+                return RedirectToPage("Viewer", new { id = deckId });
+            }
+
+            DeckId = deckId;
         }
 
+        // the deck cannot be used as a param because of cyclic refs
+        return Page();
+    }
 
-        private IQueryable<Deck> DeckForBuilder(int deckId, string userId)
-        {   
-            return _dbContext.Decks
-                .Where(d => d.Id == deckId && d.OwnerId == userId)
-                .Include(d => d.TradesTo
-                    .OrderBy(t => t.Id)
-                    .Take(1))
-                .AsNoTrackingWithIdentityResolution();
-        }
+
+    private IQueryable<Deck> DeckForBuilder(int deckId, string userId)
+    {   
+        return _dbContext.Decks
+            .Where(d => d.Id == deckId && d.OwnerId == userId)
+            .Include(d => d.TradesTo
+                .OrderBy(t => t.Id)
+                .Take(1))
+            .AsNoTrackingWithIdentityResolution();
     }
 }

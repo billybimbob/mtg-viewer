@@ -105,16 +105,12 @@ namespace MTGViewer.Tests.Pages.Transfers
             await _requestModel.SetModelContextAsync(_userManager, _requestDeck.OwnerId);
 
             // Act
-            var tradesBefore = await AllTrades.ToListAsync();
+            var tradesBefore = await AllTrades.Select(t => t.Id).ToListAsync();
+
             var result = await _requestModel.OnPostAsync(_requestDeck.Id);
             var tradesAfter = await AllTrades.ToListAsync();
 
-            var addedTrades = tradesAfter
-                .GroupJoin( tradesBefore,
-                    ta => ta.Id, tb => tb.Id,
-                    (trade, tbs) => (trade, isNew: !tbs.Any()))
-                .Where(tn => tn.isNew)
-                .Select(tn => tn.trade);
+            var addedTrades = tradesAfter.ExceptBy(tradesBefore, t => t.Id);
 
             // // Assert
             Assert.IsType<RedirectToPageResult>(result);
@@ -164,17 +160,12 @@ namespace MTGViewer.Tests.Pages.Transfers
             _dbContext.ChangeTracker.Clear();
             
             // Act
-            var tradesBefore = await AllTrades.ToListAsync();
+            var tradesBefore = await AllTrades.Select(t => t.Id).ToListAsync();
+
             var result = await _requestModel.OnPostAsync(_requestDeck.Id);
             var tradesAfter = await AllTrades.ToListAsync();
 
-            var addedTrades = tradesAfter
-                .GroupJoin( tradesBefore,
-                    ta => ta.Id, tb => tb.Id,
-                    (trade, tbs) => (trade, isNew: !tbs.Any()))
-                .Where(tn => tn.isNew)
-                .Select(tn => tn.trade);
-
+            var addedTrades = tradesAfter.ExceptBy(tradesBefore, t => t.Id);
             var addedTargets = addedTrades.Select(t => t.FromId);
 
             // // Assert

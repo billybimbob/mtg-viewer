@@ -34,10 +34,10 @@
         {
             var active = _colorFilter.Contains(color) ? "active" : "";
 
-            <button title="@color filter"
-                    type="button"
-                    class="btn btn-outline-secondary border-0 rounded @active"
-                    @onclick="() => FilterColor(color)">
+            <button title="@color filter" type="button"
+                class="btn btn-outline-secondary border-0 rounded @active"
+                @onclick="() => FilterColor(color)">
+
                 <i class="ms ms-@symbol.ToLower() ms-cost"></i>
             </button>
         }
@@ -150,9 +150,14 @@
                             <span class="col-4"> @(MtgSymbols.Format(card.ManaCost).ToMarkupString()) </span>
 
                             <span class="col-3">
-                                <span title="@card.Name Held" class="badge badge-pill badge-primary"> @(group.Amount?.NumCopies ?? 0) </span>
-                                <span title="@card.Name Returning" class="badge badge-pill badge-danger"> @(group.GiveBack?.NumCopies ?? 0) </span>
-                                <span title="@card.Name Wanted" class="badge badge-pill badge-secondary"> @(group.Want?.NumCopies ?? 0) </span>
+                                <span title="@card.Name Held" class="badge badge-pill badge-primary"> 
+                                    @(group.Amount?.NumCopies ?? 0) </span>
+
+                                <span title="@card.Name Returning" class="badge badge-pill badge-danger"> 
+                                    @(group.GiveBack?.NumCopies ?? 0) </span>
+
+                                <span title="@card.Name Wanted" class="badge badge-pill badge-secondary">
+                                    @(group.Want?.NumCopies ?? 0) </span>
                             </span>
                         </span>
                     </button>

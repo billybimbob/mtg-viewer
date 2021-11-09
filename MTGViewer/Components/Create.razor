@@ -573,11 +573,7 @@ else
         _cancel.Token.ThrowIfCancellationRequested();
 
         var newCards = cards
-            .GroupJoin(existingIds,
-                card => card.Id, id => id,
-                (card, ids) => (card, empty: !ids.Any()) )
-            .Where(ce => ce.empty)
-            .Select(ce => ce.card)
+            .ExceptBy(existingIds, c => c.Id)
             .ToList();
 
         if (!newCards.Any())

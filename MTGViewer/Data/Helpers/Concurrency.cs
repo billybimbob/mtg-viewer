@@ -134,12 +134,13 @@ namespace MTGViewer.Data.Concurrency
 
 
 
-        public static IEnumerable<EntityEntry<E>> Entries<E>(this DbUpdateConcurrencyException exception)
-            where E : class
+        public static IEnumerable<EntityEntry<TEntity>> Entries<TEntity>(
+            this DbUpdateConcurrencyException exception)
+            where TEntity : class
         {
             return exception.Entries
-                .Where(en => en.Entity is E)
-                .Select(en => en.Context.Entry((E)en.Entity));
+                .Where(en => en.Entity is TEntity)
+                .Select(en => en.Context.Entry((TEntity)en.Entity));
         }
 
     }

@@ -1,54 +1,50 @@
 using System;
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
-
 using Microsoft.EntityFrameworkCore;
 
 using MTGViewer.Data.Internal;
 using MTGViewer.Data.Concurrency;
 
 #nullable enable
+namespace MTGViewer.Data;
 
-namespace MTGViewer.Data
+[Index(
+    nameof(Type),
+    nameof(LocationId),
+    nameof(CardId), IsUnique = true)]
+public abstract class Quantity : Concurrent
 {
+    [JsonInclude]
+    public int Id { get; set; }
 
-    [Index(
-        nameof(Type),
-        nameof(LocationId),
-        nameof(CardId), IsUnique = true)]
-    public abstract class Quantity : Concurrent
-    {
-        [JsonInclude]
-        public int Id { get; set; }
-
-        [JsonIgnore]
-        internal Discriminator Type { get; private set; }
+    [JsonIgnore]
+    internal Discriminator Type { get; private set; }
 
 
-        [JsonIgnore]
-        public Card Card { get; init; } = null!;
-        public string CardId { get; init; } = null!;
+    [JsonIgnore]
+    public Card Card { get; init; } = null!;
+    public string CardId { get; init; } = null!;
 
 
-        [JsonIgnore]
-        public Location Location { get; init; } = null!;
-        public int LocationId { get; init; }
+    [JsonIgnore]
+    public Location Location { get; init; } = null!;
+    public int LocationId { get; init; }
 
 
-        [Display(Name = "Number of Copies")]
-        [Range(1, int.MaxValue)]
-        public int NumCopies { get; set; }
-    }
-
-
-    public class Amount : Quantity
-    { }
-
-
-    public class Want : Quantity
-    { }
-
-
-    public class GiveBack : Quantity
-    { }
+    [Display(Name = "Number of Copies")]
+    [Range(1, int.MaxValue)]
+    public int NumCopies { get; set; }
 }
+
+
+public class Amount : Quantity
+{ }
+
+
+public class Want : Quantity
+{ }
+
+
+public class GiveBack : Quantity
+{ }

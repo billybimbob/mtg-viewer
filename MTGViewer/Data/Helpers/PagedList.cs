@@ -6,110 +6,108 @@ using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 
 #nullable enable
+namespace MTGViewer.Data;
 
-namespace MTGViewer.Data
+public readonly struct Pages
 {
-    public readonly struct Pages
+    public int Current { get; }
+    public int Total { get; }
+
+    public bool HasPrevious => Current > 0;
+    public bool HasNext => Current < Total - 1;
+    public bool HasMultiple => Total > 1;
+
+
+    public Pages(int currentPage, int totalPages)
     {
-        public int Current { get; }
-        public int Total { get; }
+        Current = Math.Max(currentPage, 0);
+        Total = Math.Max(totalPages, 0);
+    }
 
-        public bool HasPrevious => Current > 0;
-        public bool HasNext => Current < Total - 1;
-        public bool HasMultiple => Total > 1;
+    public Pages(int currentPage, int totalItems, int pageSize)
+    {
+        totalItems = Math.Max(totalItems, 0);
+        pageSize = Math.Max(pageSize, 1);
+
+        Current = Math.Max(currentPage, 0);
+        Total = (int) Math.Ceiling((double) totalItems / pageSize);
+    }
+}
 
 
-        public Pages(int currentPage, int totalPages)
+
+public class PagedList<T> : IReadOnlyList<T>
+{
+    private static readonly Lazy<PagedList<T>> _empty = new(() => 
+        new PagedList<T>(default, new List<T>()) );
+
+    private readonly List<T> _items;
+
+    public PagedList(Pages page, List<T> items)
+    {
+        if (items is null)
         {
-            Current = Math.Max(currentPage, 0);
-            Total = Math.Max(totalPages, 0);
+            throw new ArgumentNullException("Items is null");
         }
 
-        public Pages(int currentPage, int totalItems, int pageSize)
-        {
-            totalItems = Math.Max(totalItems, 0);
-            pageSize = Math.Max(pageSize, 1);
+        Pages = page;
+        _items = items;
+    }
 
-            Current = Math.Max(currentPage, 0);
-            Total = (int) Math.Ceiling((double) totalItems / pageSize);
-        }
+    public static PagedList<T> Empty => _empty.Value;
+
+    public Pages Pages { get; }
+
+    public int Count => _items.Count;
+
+    public T this[int index] => _items[index];
+
+
+    IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+
+    public IEnumerator<T> GetEnumerator() => _items.GetEnumerator();
+}
+
+
+
+public static class PagingLinqExtensions
+{
+    public static PagedList<T> ToPagedList<T>(
+        this IEnumerable<T> source,
+        int pageSize, int? pageIndex = null)
+    {
+        pageSize = Math.Max(pageSize, 0);
+
+        int page = pageIndex ?? 0;
+        int totalItems = source.Count();
+
+        var pages = new Pages(page, totalItems, pageSize);
+
+        var items = source
+            .Skip(pages.Current * pageSize)
+            .Take(pageSize)
+            .ToList();
+
+        return new(pages, items);
     }
 
 
-
-    public class PagedList<T> : IReadOnlyList<T>
+    public async static Task<PagedList<T>> ToPagedListAsync<T>(
+        this IQueryable<T> source,
+        int pageSize, int? pageIndex = null)
     {
-        private static readonly Lazy<PagedList<T>> _empty = new(() => 
-            new PagedList<T>(default, new List<T>()) );
+        pageSize = Math.Max(pageSize, 0);
 
-        private readonly List<T> _items;
+        int page = pageIndex ?? 0;
+        int totalItems = await source.CountAsync();
 
-        public PagedList(Pages page, List<T> items)
-        {
-            if (items is null)
-            {
-                throw new ArgumentNullException("Items is null");
-            }
+        var pages = new Pages(page, totalItems, pageSize);
 
-            Pages = page;
-            _items = items;
-        }
+        var items = await source
+            .Skip(pages.Current * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
 
-        public static PagedList<T> Empty => _empty.Value;
-
-        public Pages Pages { get; }
-
-        public int Count => _items.Count;
-
-        public T this[int index] => _items[index];
-
-
-        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
-
-        public IEnumerator<T> GetEnumerator() => _items.GetEnumerator();
-    }
-
-
-
-    public static class PagingLinqExtensions
-    {
-        public static PagedList<T> ToPagedList<T>(
-            this IEnumerable<T> source,
-            int pageSize, int? pageIndex = null)
-        {
-            pageSize = Math.Max(pageSize, 0);
-
-            int page = pageIndex ?? 0;
-            int totalItems = source.Count();
-
-            var pages = new Pages(page, totalItems, pageSize);
-
-            var items = source
-                .Skip(pages.Current * pageSize)
-                .Take(pageSize)
-                .ToList();
-
-            return new(pages, items);
-        }
-
-
-        public async static Task<PagedList<T>> ToPagedListAsync<T>(
-            this IQueryable<T> source,
-            int pageSize, int? pageIndex = null)
-        {
-            pageSize = Math.Max(pageSize, 0);
-
-            int page = pageIndex ?? 0;
-            int totalItems = await source.CountAsync();
-
-            var pages = new Pages(page, totalItems, pageSize);
-
-            var items = await source
-                .Skip(pages.Current * pageSize)
-                .Take(pageSize)
-                .ToListAsync();
-
-            return new(pages, items);
-        }
+        return new(pages, items);
     }
 }

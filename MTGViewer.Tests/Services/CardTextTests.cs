@@ -3,138 +3,137 @@ using Xunit;
 using MTGViewer.Services;
 
 #nullable enable
+namespace MTGViewer.Tests.Services;
 
-namespace MTGViewer.Tests.Services
+
+public class CardTextTests
 {
-    public class CardTextTests
+    private readonly CardText _cardText;
+
+    public CardTextTests(CardText cardText)
     {
-        private readonly CardText _cardText;
-
-        public CardTextTests(CardText cardText)
-        {
-            _cardText = cardText;
-        }
+        _cardText = cardText;
+    }
 
 
-        [Theory]
-        [InlineData("{B}", "B")]
-        [InlineData("{G}", "G")]
-        [InlineData("{10}", "10")]
-        public void FindMana_SingleMana_SingleSymbol(string cost, string mana)
-        {
-            var parsedSymbols = _cardText.FindMana(cost);
-            var parsedMana = parsedSymbols[0];
+    [Theory]
+    [InlineData("{B}", "B")]
+    [InlineData("{G}", "G")]
+    [InlineData("{10}", "10")]
+    public void FindMana_SingleMana_SingleSymbol(string cost, string mana)
+    {
+        var parsedSymbols = _cardText.FindMana(cost);
+        var parsedMana = parsedSymbols[0];
 
-            Assert.Single(parsedSymbols);
-            Assert.Equal(mana, parsedMana.Value);
-        }
-
-
-        [Fact]
-        public void FindMana_ManaCost_ManaSymbolArray()
-        {
-            var manaCost = "{3}{W}{W}";
-            var manaSymbols = new [] { "3", "W", "W" };
-
-            var parsedMana = _cardText.FindMana(manaCost).Select(m => m.Value);
-
-            Assert.Equal(manaSymbols, parsedMana);
-        }
+        Assert.Single(parsedSymbols);
+        Assert.Equal(mana, parsedMana.Value);
+    }
 
 
-        [Fact]
-        public void ManaString_ManaSymbolArray_ManaCost()
-        {
-            var symbolArray = new [] { "3", "W", "W" };
-            var manaCost = "{3}{W}{W}";
+    [Fact]
+    public void FindMana_ManaCost_ManaSymbolArray()
+    {
+        var manaCost = "{3}{W}{W}";
+        var manaSymbols = new [] { "3", "W", "W" };
 
-            var translation = symbolArray.Select(_cardText.ManaString);
-            var parsedCost = string.Join(string.Empty, translation);
+        var parsedMana = _cardText.FindMana(manaCost).Select(m => m.Value);
 
-            Assert.Equal(manaCost, parsedCost);
-        }
-
-
-        [Fact]
-        public void FindThenString_ManaCost_SameValue()
-        {
-            var manaCost = "{3}{W}{W}";
-
-            var parsedMana = _cardText.FindMana(manaCost).Select(m => m.Value);
-            var translation = parsedMana.Select(_cardText.ManaString);
-
-            var parsedCost = string.Join(string.Empty, translation);
-
-            Assert.Equal(manaCost, parsedCost);
-        }
+        Assert.Equal(manaSymbols, parsedMana);
+    }
 
 
-        [Theory]
-        [InlineData("[+2]", "+", "2")]
-        [InlineData("[−1]", "−", "1")]
-        [InlineData("[0]", null, "0")]
-        [InlineData("[+10]", "+", "10")]
-        public void FindLoyalties_SingleLoyalty_SingleSymbol(string loyalty, string direction, string value)
-        {
-            var parsedSymbols = _cardText.FindLoyalties(loyalty);
-            var symbol = parsedSymbols[0];
+    [Fact]
+    public void ManaString_ManaSymbolArray_ManaCost()
+    {
+        var symbolArray = new [] { "3", "W", "W" };
+        var manaCost = "{3}{W}{W}";
 
-            Assert.Single(parsedSymbols);
+        var translation = symbolArray.Select(_cardText.ManaString);
+        var parsedCost = string.Join(string.Empty, translation);
 
-            Assert.Equal(direction, symbol.Direction);
-            Assert.Equal(value, symbol.Value);
-        }
+        Assert.Equal(manaCost, parsedCost);
+    }
 
 
-        [Theory]
-        [InlineData("I —", "I")]
-        [InlineData("III —", "III")]
-        [InlineData("IV —", "IV")]
-        public void FindSagas_SingleSaga_SingleSymbol(string saga, string value)
-        {
-            var parsedSymbols = _cardText.FindSagas(saga);
-            var symbol = parsedSymbols[0];
+    [Fact]
+    public void FindThenString_ManaCost_SameValue()
+    {
+        var manaCost = "{3}{W}{W}";
 
-            Assert.Single(parsedSymbols);
+        var parsedMana = _cardText.FindMana(manaCost).Select(m => m.Value);
+        var translation = parsedMana.Select(_cardText.ManaString);
 
-            Assert.Equal(value, symbol.Value);
-            Assert.False(symbol.HasNext);
-        }
+        var parsedCost = string.Join(string.Empty, translation);
+
+        Assert.Equal(manaCost, parsedCost);
+    }
 
 
-        [Fact]
-        public void FindSagas_MultipleSagas_MultipleSymbols()
-        {
-            var sagas = "I, II —";
-            var parsedSymbols = _cardText.FindSagas(sagas);
+    [Theory]
+    [InlineData("[+2]", "+", "2")]
+    [InlineData("[−1]", "−", "1")]
+    [InlineData("[0]", null, "0")]
+    [InlineData("[+10]", "+", "10")]
+    public void FindLoyalties_SingleLoyalty_SingleSymbol(string loyalty, string direction, string value)
+    {
+        var parsedSymbols = _cardText.FindLoyalties(loyalty);
+        var symbol = parsedSymbols[0];
 
-            var first = parsedSymbols[0];
-            var second = parsedSymbols[1];
+        Assert.Single(parsedSymbols);
 
-            Assert.Equal(2, parsedSymbols.Count);
-
-            Assert.Equal("I", first.Value);
-            Assert.True(first.HasNext);
-
-            Assert.Equal("II", second.Value);
-            Assert.False(second.HasNext);
-        }
+        Assert.Equal(direction, symbol.Direction);
+        Assert.Equal(value, symbol.Value);
+    }
 
 
-        [Fact]
-        public void SagaString_MultipleSymbols_MultipleSagas()
-        {
-            var symbols = new SagaSymbol[] 
-            { 
-                new(default, "I", true), new(default, "II", false)
-            };
+    [Theory]
+    [InlineData("I —", "I")]
+    [InlineData("III —", "III")]
+    [InlineData("IV —", "IV")]
+    public void FindSagas_SingleSaga_SingleSymbol(string saga, string value)
+    {
+        var parsedSymbols = _cardText.FindSagas(saga);
+        var symbol = parsedSymbols[0];
 
-            var sagas = "I, II —";
+        Assert.Single(parsedSymbols);
 
-            var sagaStrings = symbols.Select(_cardText.SagaString);
-            var parsedSagas = string.Join(string.Empty, sagaStrings);
+        Assert.Equal(value, symbol.Value);
+        Assert.False(symbol.HasNext);
+    }
 
-            Assert.Equal(sagas, parsedSagas);
-        }
+
+    [Fact]
+    public void FindSagas_MultipleSagas_MultipleSymbols()
+    {
+        var sagas = "I, II —";
+        var parsedSymbols = _cardText.FindSagas(sagas);
+
+        var first = parsedSymbols[0];
+        var second = parsedSymbols[1];
+
+        Assert.Equal(2, parsedSymbols.Count);
+
+        Assert.Equal("I", first.Value);
+        Assert.True(first.HasNext);
+
+        Assert.Equal("II", second.Value);
+        Assert.False(second.HasNext);
+    }
+
+
+    [Fact]
+    public void SagaString_MultipleSymbols_MultipleSagas()
+    {
+        var symbols = new SagaSymbol[] 
+        { 
+            new(default, "I", true), new(default, "II", false)
+        };
+
+        var sagas = "I, II —";
+
+        var sagaStrings = symbols.Select(_cardText.SagaString);
+        var parsedSagas = string.Join(string.Empty, sagaStrings);
+
+        Assert.Equal(sagas, parsedSagas);
     }
 }

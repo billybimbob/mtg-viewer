@@ -277,9 +277,9 @@
 
         if (_colorFilter.Any())
         {
-            cards = cards.Where(c =>
-                c.Colors.Any(color => 
-                    _colorFilter.Contains(color.Name.ToLower()) ));
+            cards = cards.Where(c => c.Colors
+                .IntersectBy(_colorFilter, color => color.Name.ToLower())
+                .Any());
         }
 
         return CardsOrdered(cards);

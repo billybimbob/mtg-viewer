@@ -12,107 +12,104 @@ using Microsoft.Extensions.Hosting;
 using MTGViewer.Data;
 using MTGViewer.Data.Triggers;
 
+namespace MTGViewer.Services;
 
-namespace MTGViewer.Services
+public static class CardStorageExtension
 {
-    public static class CardStorageExtension
+    public static IServiceCollection AddCardStorage(
+        this IServiceCollection services, IConfiguration config)
     {
-        public static IServiceCollection AddCardStorage(
-            this IServiceCollection services, IConfiguration config)
+        var provider = config.GetValue("Provider", "Sqlite");
+
+        switch (provider)
         {
-            var provider = config.GetValue("Provider", "Sqlite");
+            case "SqlServer":
+                services.AddTriggeredDbContextFactory<CardDbContext>(options => options
+                        // TODO: change connection string name
+                    .UseSqlServer(config.GetConnectionString("MTGCardContext"))
+                    .UseTriggers(triggers => triggers
+                        .AddTrigger<QuantityValidate>()
+                        .AddTrigger<TradeValidate>() ));
+                break;
 
-            switch (provider)
-            {
-                case "SqlServer":
-                    services.AddTriggeredDbContextFactory<CardDbContext>(options => options
-                            // TODO: change connection string name
-                        .UseSqlServer(config.GetConnectionString("MTGCardContext"))
-                        .UseTriggers(triggers => triggers
-                            .AddTrigger<QuantityValidate>()
-                            .AddTrigger<TradeValidate>() ));
-                    break;
-
-                case "Sqlite":
-                default:
-                    services.AddTriggeredDbContextFactory<CardDbContext>(options => options
-                        .UseSqlite(config.GetConnectionString("MTGCardContext"))
-                        .UseTriggers(triggers => triggers
-                            .AddTrigger<QuantityValidate>()
-                            .AddTrigger<LiteTokenUpdate>()
-                            .AddTrigger<TradeValidate>() ));
-                    break;
-            }
-
-            services.AddScoped<CardDbContext>(provider => provider
-                .GetRequiredService<IDbContextFactory<CardDbContext>>()
-                .CreateDbContext());
-
-            services.AddHostedService<CardSetup>();
-
-            return services;
+            case "Sqlite":
+            default:
+                services.AddTriggeredDbContextFactory<CardDbContext>(options => options
+                    .UseSqlite(config.GetConnectionString("MTGCardContext"))
+                    .UseTriggers(triggers => triggers
+                        .AddTrigger<QuantityValidate>()
+                        .AddTrigger<LiteTokenUpdate>()
+                        .AddTrigger<TradeValidate>() ));
+                break;
         }
+
+        services.AddScoped<CardDbContext>(provider => provider
+            .GetRequiredService<IDbContextFactory<CardDbContext>>()
+            .CreateDbContext());
+
+        services.AddHostedService<CardSetup>();
+
+        return services;
+    }
+}
+
+
+public class CardSetup : IHostedService
+{
+    private readonly IServiceProvider _serviceProvider;
+    private readonly IWebHostEnvironment _env;
+
+    public CardSetup(IServiceProvider serviceProvider, IWebHostEnvironment env)
+    {
+        _serviceProvider = serviceProvider;
+        _env = env;
     }
 
 
-
-    public class CardSetup : IHostedService
+    public async Task StartAsync(CancellationToken cancel)
     {
-        private readonly IServiceProvider _serviceProvider;
-        private readonly IWebHostEnvironment _env;
+        using var scope = _serviceProvider.CreateScope();
+        var scopeProvider = scope.ServiceProvider;
 
-        public CardSetup(IServiceProvider serviceProvider, IWebHostEnvironment env)
+        var dbContext = scopeProvider.GetRequiredService<CardDbContext>();
+        await dbContext.Database.MigrateAsync(cancel);
+
+        if (!_env.IsDevelopment())
         {
-            _serviceProvider = serviceProvider;
-            _env = env;
+            return;
         }
 
+        var anyCards = await dbContext.Cards.AnyAsync(cancel);
 
-        public async Task StartAsync(CancellationToken cancel)
+        if (anyCards)
         {
-            using var scope = _serviceProvider.CreateScope();
-            var scopeProvider = scope.ServiceProvider;
+            return;
+        }
 
-            var dbContext = scopeProvider.GetRequiredService<CardDbContext>();
-            await dbContext.Database.MigrateAsync(cancel);
+        var jsonStorage = scopeProvider.GetRequiredService<JsonCardStorage>();
+        var jsonOptions = new JsonStorageOptions { Seeding = true };
 
-            if (!_env.IsDevelopment())
+        var jsonSuccess = await jsonStorage.AddFromJsonAsync(jsonOptions, cancel);
+
+        if (!jsonSuccess)
+        {
+            var cardGen = scopeProvider.GetService<CardDataGenerator>();
+
+            if (cardGen == null)
             {
                 return;
             }
 
-            var anyCards = await dbContext.Cards.AnyAsync(cancel);
-
-            if (anyCards)
-            {
-                return;
-            }
-
-            var jsonStorage = scopeProvider.GetRequiredService<JsonCardStorage>();
-            var jsonOptions = new JsonStorageOptions { Seeding = true };
-
-            var jsonSuccess = await jsonStorage.AddFromJsonAsync(jsonOptions, cancel);
-
-            if (!jsonSuccess)
-            {
-                var cardGen = scopeProvider.GetService<CardDataGenerator>();
-
-                if (cardGen == null)
-                {
-                    return;
-                }
-
-                await cardGen.GenerateAsync(cancel);
-                await jsonStorage.WriteToJsonAsync(cancel: cancel);
-            }
-
-            var treasury = scopeProvider.GetRequiredService<ITreasury>();
-
-            await treasury.OptimizeAsync();
+            await cardGen.GenerateAsync(cancel);
+            await jsonStorage.WriteToJsonAsync(cancel: cancel);
         }
 
+        var treasury = scopeProvider.GetRequiredService<ITreasury>();
 
-        public Task StopAsync(CancellationToken cancel) => Task.CompletedTask;
+        await treasury.OptimizeAsync();
     }
+
+
+    public Task StopAsync(CancellationToken cancel) => Task.CompletedTask;
 
 }

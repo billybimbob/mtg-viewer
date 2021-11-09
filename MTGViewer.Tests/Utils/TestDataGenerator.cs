@@ -11,532 +11,531 @@ using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
 using MTGViewer.Services;
 
+namespace MTGViewer.Tests.Utils;
 
-namespace MTGViewer.Tests.Utils
+
+public class TestDataGenerator
 {
-    public class TestDataGenerator
+    private static readonly SemaphoreSlim _jsonLock = new(1, 1);
+
+    private readonly CardDbContext _dbContext;
+    private readonly UserDbContext _userContext;
+    private readonly UserManager<CardUser> _userManager;
+
+    private readonly JsonCardStorage _jsonStorage;
+    private readonly CardDataGenerator _cardGen;
+
+    private readonly Random _random;
+
+
+    public TestDataGenerator(
+        CardDbContext dbContext, 
+        UserDbContext userContext,
+        UserManager<CardUser> userManager,
+        JsonCardStorage jsonStorage,
+        CardDataGenerator cardGen)
     {
-        private static readonly SemaphoreSlim _jsonLock = new(1, 1);
+        _dbContext = dbContext;
+        _userContext = userContext;
+        _userManager = userManager;
 
-        private readonly CardDbContext _dbContext;
-        private readonly UserDbContext _userContext;
-        private readonly UserManager<CardUser> _userManager;
+        _jsonStorage = jsonStorage;
+        _cardGen = cardGen;
 
-        private readonly JsonCardStorage _jsonStorage;
-        private readonly CardDataGenerator _cardGen;
-
-        private readonly Random _random;
+        _random = new(100);
+    }
 
 
-        public TestDataGenerator(
-            CardDbContext dbContext, 
-            UserDbContext userContext,
-            UserManager<CardUser> userManager,
-            JsonCardStorage jsonStorage,
-            CardDataGenerator cardGen)
+    public async Task SeedAsync()
+    {
+        await _jsonLock.WaitAsync();
+        try
         {
-            _dbContext = dbContext;
-            _userContext = userContext;
-            _userManager = userManager;
+            await SetupAsync();
 
-            _jsonStorage = jsonStorage;
-            _cardGen = cardGen;
+            var jsonSuccess = await _jsonStorage
+                .AddFromJsonAsync(new() { Seeding = true });
 
-            _random = new(100);
+            if (!jsonSuccess)
+            {
+                await _cardGen.GenerateAsync();
+                await _jsonStorage.WriteToJsonAsync();
+            }
+
+            _dbContext.ChangeTracker.Clear();
+        }
+        finally
+        {
+            _jsonLock.Release();
+        }
+    }
+
+
+    public async Task SetupAsync()
+    {
+        if (_dbContext.Database.IsRelational())
+        {
+            await _dbContext.Database.MigrateAsync();
         }
 
-
-        public async Task SeedAsync()
+        if (_userContext.Database.IsRelational())
         {
-            await _jsonLock.WaitAsync();
-            try
-            {
-                await SetupAsync();
+            await _userContext.Database.MigrateAsync();
+        }
+    }
 
-                var jsonSuccess = await _jsonStorage
-                    .AddFromJsonAsync(new() { Seeding = true });
 
-                if (!jsonSuccess)
-                {
-                    await _cardGen.GenerateAsync();
-                    await _jsonStorage.WriteToJsonAsync();
-                }
+    public async Task ClearAsync()
+    {
+        await _userContext.Database.EnsureDeletedAsync();
+        await _dbContext.Database.EnsureDeletedAsync();
+    }
 
-                _dbContext.ChangeTracker.Clear();
-            }
-            finally
-            {
-                _jsonLock.Release();
-            }
+
+
+    public async Task<Deck> CreateDeckAsync(int numCards = 0)
+    {
+        var users = await _dbContext.Users.ToListAsync();
+        var owner = users[_random.Next(users.Count)];
+        var cards = await _dbContext.Cards.ToListAsync();
+
+        if (numCards <= 0)
+        {
+            numCards = _random.Next(1, cards.Count / 2);
         }
 
+        var deckCards = cards
+            .Select(card => (card, key: _random.Next(cards.Count)))
+            .OrderBy(ck => ck.key)
+            .Take(numCards)
+            .Select(ck => ck.card)
+            .ToList();
 
-        public async Task SetupAsync()
+        var newDeck = new Deck
         {
-            if (_dbContext.Database.IsRelational())
+            Name = "Test Deck",
+            Owner = owner
+        };
+
+        var deckAmounts = deckCards
+            .Select(c => new Amount
             {
-                await _dbContext.Database.MigrateAsync();
-            }
+                Card = c,
+                Location = newDeck,
+                NumCopies = _random.Next(1, 3)
+            });
 
-            if (_userContext.Database.IsRelational())
-            {
-                await _userContext.Database.MigrateAsync();
-            }
-        }
+        _dbContext.Decks.Attach(newDeck);
+        _dbContext.Amounts.AttachRange(deckAmounts);
+
+        await _dbContext.SaveChangesAsync();
+        _dbContext.ChangeTracker.Clear();
+
+        return newDeck;
+    }
 
 
-        public async Task ClearAsync()
+    public async Task<Deck> CreateRequestDeckAsync()
+    {
+        var users = await _dbContext.Users.ToListAsync();
+        var owner = users[_random.Next(users.Count)];
+
+        var cardOptions = await _dbContext.Decks
+            .Where(d => d.OwnerId != owner.Id)
+            .SelectMany(ca => ca.Cards)
+            .Select(ca => ca.Card)
+            .Distinct()
+            .ToListAsync();
+
+        if (cardOptions.Count < 2)
         {
-            await _userContext.Database.EnsureDeletedAsync();
-            await _dbContext.Database.EnsureDeletedAsync();
-        }
+            var optionIds = cardOptions.Select(c => c.Id).ToArray();
+            var nonOwner = users.First(u => u.Id != owner.Id);
+            var card = await _dbContext.Cards
+                .FirstAsync(c => !optionIds.Contains(c.Id));
 
-
-
-        public async Task<Deck> CreateDeckAsync(int numCards = 0)
-        {
-            var users = await _dbContext.Users.ToListAsync();
-            var owner = users[_random.Next(users.Count)];
-            var cards = await _dbContext.Cards.ToListAsync();
-
-            if (numCards <= 0)
+            var decks = new List<Deck>()
             {
-                numCards = _random.Next(1, cards.Count / 2);
-            }
-
-            var deckCards = cards
-                .Select(card => (card, key: _random.Next(cards.Count)))
-                .OrderBy(ck => ck.key)
-                .Take(numCards)
-                .Select(ck => ck.card)
-                .ToList();
-
-            var newDeck = new Deck
-            {
-                Name = "Test Deck",
-                Owner = owner
+                new Deck { Name = "Source #1" },
+                new Deck { Name = "Source #2" }
             };
 
-            var deckAmounts = deckCards
-                .Select(c => new Amount
+            var amounts = decks
+                .Select(deck => new Amount
                 {
-                    Card = c,
-                    Location = newDeck,
-                    NumCopies = _random.Next(1, 3)
+                    Card = card,
+                    Location = deck
                 });
 
-            _dbContext.Decks.Attach(newDeck);
-            _dbContext.Amounts.AttachRange(deckAmounts);
-
-            await _dbContext.SaveChangesAsync();
-            _dbContext.ChangeTracker.Clear();
-
-            return newDeck;
+            _dbContext.Amounts.AddRange(amounts);
+            cardOptions.Add(card);
         }
 
+        var numRequests = _random.Next(1, cardOptions.Count / 2);
 
-        public async Task<Deck> CreateRequestDeckAsync()
+        var targetCards = cardOptions
+            .Select(card => (card, key: _random.Next(cardOptions.Count)))
+            .OrderBy(ck => ck.key)
+            .Take(numRequests)
+            .Select(ck => ck.card);
+
+        var newDeck = new Deck
         {
-            var users = await _dbContext.Users.ToListAsync();
-            var owner = users[_random.Next(users.Count)];
+            Name = "Request Deck",
+            Owner = owner
+        };
 
-            var cardOptions = await _dbContext.Decks
-                .Where(d => d.OwnerId != owner.Id)
-                .SelectMany(ca => ca.Cards)
-                .Select(ca => ca.Card)
-                .Distinct()
-                .ToListAsync();
-
-            if (cardOptions.Count < 2)
+        var takeRequests = targetCards
+            .Select(card => new Want
             {
-                var optionIds = cardOptions.Select(c => c.Id).ToArray();
-                var nonOwner = users.First(u => u.Id != owner.Id);
-                var card = await _dbContext.Cards
-                    .FirstAsync(c => !optionIds.Contains(c.Id));
+                Card = card,
+                Location = newDeck,
+                NumCopies = _random.Next(1, 3)
+            })
+            .ToList();
 
-                var decks = new List<Deck>()
-                {
-                    new Deck { Name = "Source #1" },
-                    new Deck { Name = "Source #2" }
-                };
+        _dbContext.Decks.Attach(newDeck);
+        _dbContext.Wants.AttachRange(takeRequests);
 
-                var amounts = decks
-                    .Select(deck => new Amount
-                    {
-                        Card = card,
-                        Location = deck
-                    });
+        await _dbContext.SaveChangesAsync();
+        _dbContext.ChangeTracker.Clear();
 
-                _dbContext.Amounts.AddRange(amounts);
-                cardOptions.Add(card);
-            }
+        return newDeck;
+    }
 
-            var numRequests = _random.Next(1, cardOptions.Count / 2);
 
-            var targetCards = cardOptions
-                .Select(card => (card, key: _random.Next(cardOptions.Count)))
-                .OrderBy(ck => ck.key)
-                .Take(numRequests)
-                .Select(ck => ck.card);
 
-            var newDeck = new Deck
+    public async Task<TradeSet> CreateTradeSetAsync(bool isToSet)
+    {
+        var users = await _dbContext.Users
+            .ToListAsync();
+        
+        var partipants = users
+            .Select(user => (user, key: _random.Next(users.Count)))
+            .OrderBy(uk => uk.key)
+            .Take(2)
+            .Select(uk => uk.user)
+            .ToList();
+
+        var proposer = partipants[0];
+        var receiver = partipants[1];
+
+        var trades = isToSet
+            ? await CreateToTradesAsync(proposer, receiver)
+            : await CreateFromTradesAsync(proposer, receiver);
+
+        await _dbContext.SaveChangesAsync();
+        _dbContext.ChangeTracker.Clear();
+
+        return new TradeSet(trades, isToSet);
+    }
+
+
+
+    private record TradeOptions(Deck Source, IReadOnlyList<Deck> Options);
+
+
+    private async Task<IReadOnlyList<Trade>> CreateToTradesAsync(
+        UserRef proposer, 
+        UserRef receiver)
+    {
+        var (to, froms) = await GetTradeOptionsAsync(proposer, receiver);
+
+        var cards = await _dbContext.Cards.ToListAsync();
+        var amountTrades = _random.Next(1, cards.Count / 2);
+
+        var trades = new List<Trade>();
+
+        foreach(var tradeCard in cards.Take(amountTrades))
+        {
+            var from = froms[_random.Next(froms.Count)];
+
+            int actualAmount = _random.Next(1, 3);
+            int requestAmount = _random.Next(1, actualAmount);
+
+            var fromAmount = await FindAmountAsync(tradeCard, from, actualAmount);
+            var toRequest = await FindWantAsync(tradeCard, to, requestAmount);
+
+            trades.Add(new()
             {
-                Name = "Request Deck",
-                Owner = owner
+                Card = tradeCard,
+                To = to,
+                From = from,
+                Amount = toRequest.NumCopies
+            });
+        }
+
+        _dbContext.Trades.AddRange(trades);
+
+        return trades;
+    }
+
+
+    private async Task<TradeOptions> GetTradeOptionsAsync(
+        UserRef sourceUser, 
+        UserRef optionsUser)
+    {
+        var source = await _dbContext.Decks
+            .Include(l => l.Cards)
+                .ThenInclude(ca => ca.Card)
+            .FirstOrDefaultAsync(l => l.OwnerId == sourceUser.Id);
+
+        if (source == default)
+        {
+            source = new()
+            {
+                Name = "Trade deck",
+                Owner = sourceUser
             };
 
-            var takeRequests = targetCards
-                .Select(card => new Want
-                {
-                    Card = card,
-                    Location = newDeck,
-                    NumCopies = _random.Next(1, 3)
-                })
-                .ToList();
-
-            _dbContext.Decks.Attach(newDeck);
-            _dbContext.Wants.AttachRange(takeRequests);
-
-            await _dbContext.SaveChangesAsync();
-            _dbContext.ChangeTracker.Clear();
-
-            return newDeck;
+            _dbContext.Attach(source);
         }
 
+        var options = await _dbContext.Decks
+            .Where(l => l.OwnerId == optionsUser.Id)
+            .ToListAsync();
 
-
-        public async Task<TradeSet> CreateTradeSetAsync(bool isToSet)
+        if (!options.Any())
         {
-            var users = await _dbContext.Users
-                .ToListAsync();
-            
-            var partipants = users
-                .Select(user => (user, key: _random.Next(users.Count)))
-                .OrderBy(uk => uk.key)
-                .Take(2)
-                .Select(uk => uk.user)
-                .ToList();
-
-            var proposer = partipants[0];
-            var receiver = partipants[1];
-
-            var trades = isToSet
-                ? await CreateToTradesAsync(proposer, receiver)
-                : await CreateFromTradesAsync(proposer, receiver);
-
-            await _dbContext.SaveChangesAsync();
-            _dbContext.ChangeTracker.Clear();
-
-            return new TradeSet(trades, isToSet);
-        }
-
-
-
-        private record TradeOptions(Deck Source, IReadOnlyList<Deck> Options);
-
-
-        private async Task<IReadOnlyList<Trade>> CreateToTradesAsync(
-            UserRef proposer, 
-            UserRef receiver)
-        {
-            var (to, froms) = await GetTradeOptionsAsync(proposer, receiver);
-
-            var cards = await _dbContext.Cards.ToListAsync();
-            var amountTrades = _random.Next(1, cards.Count / 2);
-
-            var trades = new List<Trade>();
-
-            foreach(var tradeCard in cards.Take(amountTrades))
+            var option = new Deck
             {
-                var from = froms[_random.Next(froms.Count)];
+                Name = "Trade deck",
+                Owner = optionsUser
+            };
 
-                int actualAmount = _random.Next(1, 3);
-                int requestAmount = _random.Next(1, actualAmount);
-
-                var fromAmount = await FindAmountAsync(tradeCard, from, actualAmount);
-                var toRequest = await FindWantAsync(tradeCard, to, requestAmount);
-
-                trades.Add(new()
-                {
-                    Card = tradeCard,
-                    To = to,
-                    From = from,
-                    Amount = toRequest.NumCopies
-                });
-            }
-
-            _dbContext.Trades.AddRange(trades);
-
-            return trades;
+            _dbContext.Decks.Attach(option);
+            options.Add(option);
         }
 
+        return new TradeOptions(source, options);
+    }
 
-        private async Task<TradeOptions> GetTradeOptionsAsync(
-            UserRef sourceUser, 
-            UserRef optionsUser)
+
+    private async Task<IReadOnlyList<Trade>> CreateFromTradesAsync(
+        UserRef proposer, 
+        UserRef receiver)
+    {
+        var (from, tos) = await GetTradeOptionsAsync(receiver, proposer);
+
+        var cards = await _dbContext.Cards.ToListAsync();
+        var amountTrades = _random.Next(1, cards.Count / 2);
+
+        var trades = new List<Trade>();
+
+        foreach(var tradeCard in cards.Take(amountTrades))
         {
-            var source = await _dbContext.Decks
-                .Include(l => l.Cards)
-                    .ThenInclude(ca => ca.Card)
-                .FirstOrDefaultAsync(l => l.OwnerId == sourceUser.Id);
+            var to = tos[_random.Next(tos.Count)];
 
-            if (source == default)
+            int actualAmount = _random.Next(1, 3);
+            int requestAmount = _random.Next(1, actualAmount);
+
+            var fromAmount = await FindAmountAsync(tradeCard, from, actualAmount);
+            var toRequest = await FindWantAsync(tradeCard, to, requestAmount);
+
+            trades.Add(new()
             {
-                source = new()
-                {
-                    Name = "Trade deck",
-                    Owner = sourceUser
-                };
+                Card = tradeCard,
+                To = to,
+                From = from,
+                Amount = toRequest.NumCopies
+            });
+        }
 
-                _dbContext.Attach(source);
-            }
+        _dbContext.Trades.AddRange(trades);
 
-            var options = await _dbContext.Decks
-                .Where(l => l.OwnerId == optionsUser.Id)
-                .ToListAsync();
+        return trades;
+    }
 
-            if (!options.Any())
+
+    private async Task<Amount> FindAmountAsync(Card card, Location location, int amount)
+    {
+        var cardAmount = await _dbContext.Amounts
+            .SingleOrDefaultAsync(ca =>
+                ca.LocationId == location.Id && ca.CardId == card.Id);
+
+        if (cardAmount == default)
+        {
+            cardAmount = new()
             {
-                var option = new Deck
-                {
-                    Name = "Trade deck",
-                    Owner = optionsUser
-                };
+                Card = card,
+                Location = location
+            };
 
-                _dbContext.Decks.Attach(option);
-                options.Add(option);
-            }
-
-            return new TradeOptions(source, options);
+            _dbContext.Amounts.Attach(cardAmount);
         }
 
+        cardAmount.NumCopies = amount;
 
-        private async Task<IReadOnlyList<Trade>> CreateFromTradesAsync(
-            UserRef proposer, 
-            UserRef receiver)
+        return cardAmount;
+    }
+
+
+    private async Task<Want> FindWantAsync(Card card, Deck target, int amount)
+    {
+        var want = await _dbContext.Wants
+            .SingleOrDefaultAsync(w => 
+                w.LocationId == target.Id && w.CardId == card.Id);
+
+        if (want == default)
         {
-            var (from, tos) = await GetTradeOptionsAsync(receiver, proposer);
-
-            var cards = await _dbContext.Cards.ToListAsync();
-            var amountTrades = _random.Next(1, cards.Count / 2);
-
-            var trades = new List<Trade>();
-
-            foreach(var tradeCard in cards.Take(amountTrades))
+            want = new()
             {
-                var to = tos[_random.Next(tos.Count)];
+                Card = card,
+                Location = target,
+            };
 
-                int actualAmount = _random.Next(1, 3);
-                int requestAmount = _random.Next(1, actualAmount);
-
-                var fromAmount = await FindAmountAsync(tradeCard, from, actualAmount);
-                var toRequest = await FindWantAsync(tradeCard, to, requestAmount);
-
-                trades.Add(new()
-                {
-                    Card = tradeCard,
-                    To = to,
-                    From = from,
-                    Amount = toRequest.NumCopies
-                });
-            }
-
-            _dbContext.Trades.AddRange(trades);
-
-            return trades;
+            _dbContext.Wants.Attach(want);
         }
 
+        want.NumCopies = amount;
 
-        private async Task<Amount> FindAmountAsync(Card card, Location location, int amount)
+        return want;
+    }
+
+
+    private async Task<GiveBack> FindGiveBackAsync(Card card, Deck target, int amount)
+    {
+        var give = await _dbContext.GiveBacks
+            .SingleOrDefaultAsync(g => 
+                g.LocationId == target.Id && g.CardId == card.Id);
+
+        if (give == default)
         {
-            var cardAmount = await _dbContext.Amounts
-                .SingleOrDefaultAsync(ca =>
-                    ca.LocationId == location.Id && ca.CardId == card.Id);
-
-            if (cardAmount == default)
+            give = new()
             {
-                cardAmount = new()
-                {
-                    Card = card,
-                    Location = location
-                };
+                Card = card,
+                Location = target
+            };
 
-                _dbContext.Amounts.Attach(cardAmount);
-            }
-
-            cardAmount.NumCopies = amount;
-
-            return cardAmount;
+            _dbContext.GiveBacks.Attach(give);
         }
 
+        give.NumCopies = amount;
 
-        private async Task<Want> FindWantAsync(Card card, Deck target, int amount)
+        return give;
+    }
+
+
+    public async Task<Want> GetWantAsync(int targetMod = 0)
+    {
+        var deckTarget = await _dbContext.Decks
+            .AsNoTracking()
+            .FirstAsync();
+
+        var takeTarget = await _dbContext.Amounts
+            .Where(ca => ca.Location is Box && ca.NumCopies > 0)
+            .Select(ca => ca.Card)
+            .AsNoTracking()
+            .FirstAsync();
+
+        var targetCap = await _dbContext.Amounts
+            .Where(ca => ca.Location is Box && ca.CardId == takeTarget.Id)
+            .Select(ca => ca.NumCopies)
+            .SumAsync();
+
+        int limit = Math.Max(1, targetCap + targetMod);
+
+        var want = await FindWantAsync(takeTarget, deckTarget, limit);
+
+        await _dbContext.SaveChangesAsync();
+        _dbContext.ChangeTracker.Clear();
+
+        return want;
+    }
+
+
+    public async Task<GiveBack> GetGiveBackAsync(int targetMod = 0)
+    {
+        var returnTarget = await _dbContext.Amounts
+            .Include(ca => ca.Card)
+            .Include(ca => ca.Location)
+            .AsNoTracking()
+            .FirstAsync(ca => ca.Location is Deck && ca.NumCopies > 0);
+
+        int limit = Math.Max(1, returnTarget.NumCopies + targetMod);
+
+        var give = await FindGiveBackAsync(
+            returnTarget.Card, (Deck)returnTarget.Location, limit);
+
+        await _dbContext.SaveChangesAsync();
+        _dbContext.ChangeTracker.Clear();
+
+        return give;
+    }
+
+
+    public async Task<(Want, GiveBack)> GetMixedRequestDeckAsync()
+    {
+        var returnTarget = await _dbContext.Amounts
+            .Include(ca => ca.Card)
+            .Include(ca => ca.Location)
+            .AsNoTracking()
+            .FirstAsync(ca => ca.Location is Deck && ca.NumCopies > 0);
+
+        var deckTarget = (Deck)returnTarget.Location;
+
+        var takeTarget = await _dbContext.Amounts
+            .Where(ca => ca.Location is Box 
+                && ca.NumCopies > 0
+                && ca.CardId != returnTarget.CardId)
+            .Select(ca => ca.Card)
+            .AsNoTracking()
+            .FirstAsync();
+
+        var targetCap = await _dbContext.Amounts
+            .Where(ca => ca.Location is Box && ca.CardId == takeTarget.Id)
+            .Select(ca => ca.NumCopies)
+            .SumAsync();
+
+        var deckGive = await FindGiveBackAsync(
+            returnTarget.Card, deckTarget, returnTarget.NumCopies);
+
+        var deckWant = await FindWantAsync(
+            takeTarget, deckTarget, targetCap);
+
+        await _dbContext.SaveChangesAsync();
+        _dbContext.ChangeTracker.Clear();
+
+        return (deckWant, deckGive);
+    }
+
+
+    public async Task<Transaction> CreateTransactionAsync(int numCards = 0)
+    {
+        var transaction = new Transaction();
+
+        var boxes = await _dbContext.Boxes.ToListAsync();
+        var cards = await _dbContext.Cards.ToListAsync();
+        var deck = await _dbContext.Decks.FirstAsync();
+
+        if (numCards <= 0)
         {
-            var want = await _dbContext.Wants
-                .SingleOrDefaultAsync(w => 
-                    w.LocationId == target.Id && w.CardId == card.Id);
+            numCards = _random.Next(1, cards.Count / 2);
+        }
 
-            if (want == default)
+        var changeCards = cards
+            .Select(card => (card, key: _random.Next(cards.Count)))
+            .OrderBy(ck => ck.key)
+            .Take(numCards)
+            .Select(ck => ck.card)
+            .ToList();
+
+        var changes = changeCards
+            .Select(card => new Change
             {
-                want = new()
-                {
-                    Card = card,
-                    Location = target,
-                };
+                Card = card,
+                To = deck,
+                From = boxes[_random.Next(boxes.Count)],
+                Amount = _random.Next(1, 3),
+                Transaction = transaction
+            });
 
-                _dbContext.Wants.Attach(want);
-            }
+        _dbContext.Transactions.Attach(transaction);
+        _dbContext.Changes.AttachRange(changes);
 
-            want.NumCopies = amount;
+        await _dbContext.SaveChangesAsync();
+        _dbContext.ChangeTracker.Clear();
 
-            return want;
-        }
-
-
-        private async Task<GiveBack> FindGiveBackAsync(Card card, Deck target, int amount)
-        {
-            var give = await _dbContext.GiveBacks
-                .SingleOrDefaultAsync(g => 
-                    g.LocationId == target.Id && g.CardId == card.Id);
-
-            if (give == default)
-            {
-                give = new()
-                {
-                    Card = card,
-                    Location = target
-                };
-
-                _dbContext.GiveBacks.Attach(give);
-            }
-
-            give.NumCopies = amount;
-
-            return give;
-        }
-
-
-        public async Task<Want> GetWantAsync(int targetMod = 0)
-        {
-            var deckTarget = await _dbContext.Decks
-                .AsNoTracking()
-                .FirstAsync();
-
-            var takeTarget = await _dbContext.Amounts
-                .Where(ca => ca.Location is Box && ca.NumCopies > 0)
-                .Select(ca => ca.Card)
-                .AsNoTracking()
-                .FirstAsync();
-
-            var targetCap = await _dbContext.Amounts
-                .Where(ca => ca.Location is Box && ca.CardId == takeTarget.Id)
-                .Select(ca => ca.NumCopies)
-                .SumAsync();
-
-            int limit = Math.Max(1, targetCap + targetMod);
-
-            var want = await FindWantAsync(takeTarget, deckTarget, limit);
-
-            await _dbContext.SaveChangesAsync();
-            _dbContext.ChangeTracker.Clear();
-
-            return want;
-        }
-
-
-        public async Task<GiveBack> GetGiveBackAsync(int targetMod = 0)
-        {
-            var returnTarget = await _dbContext.Amounts
-                .Include(ca => ca.Card)
-                .Include(ca => ca.Location)
-                .AsNoTracking()
-                .FirstAsync(ca => ca.Location is Deck && ca.NumCopies > 0);
-
-            int limit = Math.Max(1, returnTarget.NumCopies + targetMod);
-
-            var give = await FindGiveBackAsync(
-                returnTarget.Card, (Deck)returnTarget.Location, limit);
-
-            await _dbContext.SaveChangesAsync();
-            _dbContext.ChangeTracker.Clear();
-
-            return give;
-        }
-
-
-        public async Task<(Want, GiveBack)> GetMixedRequestDeckAsync()
-        {
-            var returnTarget = await _dbContext.Amounts
-                .Include(ca => ca.Card)
-                .Include(ca => ca.Location)
-                .AsNoTracking()
-                .FirstAsync(ca => ca.Location is Deck && ca.NumCopies > 0);
-
-            var deckTarget = (Deck)returnTarget.Location;
-
-            var takeTarget = await _dbContext.Amounts
-                .Where(ca => ca.Location is Box 
-                    && ca.NumCopies > 0
-                    && ca.CardId != returnTarget.CardId)
-                .Select(ca => ca.Card)
-                .AsNoTracking()
-                .FirstAsync();
-
-            var targetCap = await _dbContext.Amounts
-                .Where(ca => ca.Location is Box && ca.CardId == takeTarget.Id)
-                .Select(ca => ca.NumCopies)
-                .SumAsync();
-
-            var deckGive = await FindGiveBackAsync(
-                returnTarget.Card, deckTarget, returnTarget.NumCopies);
-
-            var deckWant = await FindWantAsync(
-                takeTarget, deckTarget, targetCap);
-
-            await _dbContext.SaveChangesAsync();
-            _dbContext.ChangeTracker.Clear();
-
-            return (deckWant, deckGive);
-        }
-
-
-        public async Task<Transaction> CreateTransactionAsync(int numCards = 0)
-        {
-            var transaction = new Transaction();
-
-            var boxes = await _dbContext.Boxes.ToListAsync();
-            var cards = await _dbContext.Cards.ToListAsync();
-            var deck = await _dbContext.Decks.FirstAsync();
-
-            if (numCards <= 0)
-            {
-                numCards = _random.Next(1, cards.Count / 2);
-            }
-
-            var changeCards = cards
-                .Select(card => (card, key: _random.Next(cards.Count)))
-                .OrderBy(ck => ck.key)
-                .Take(numCards)
-                .Select(ck => ck.card)
-                .ToList();
-
-            var changes = changeCards
-                .Select(card => new Change
-                {
-                    Card = card,
-                    To = deck,
-                    From = boxes[_random.Next(boxes.Count)],
-                    Amount = _random.Next(1, 3),
-                    Transaction = transaction
-                });
-
-            _dbContext.Transactions.Attach(transaction);
-            _dbContext.Changes.AttachRange(changes);
-
-            await _dbContext.SaveChangesAsync();
-            _dbContext.ChangeTracker.Clear();
-
-            return transaction;
-        }
+        return transaction;
     }
 }

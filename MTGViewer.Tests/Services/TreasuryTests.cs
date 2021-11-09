@@ -10,256 +10,255 @@ using MTGViewer.Services;
 using MTGViewer.Tests.Utils;
 
 #nullable enable
+namespace MTGViewer.Tests.Services;
 
-namespace MTGViewer.Tests.Services
+
+public class TreasuryTests : IAsyncLifetime
 {
-    public class TreasuryTests : IAsyncLifetime
+    private readonly CardDbContext _dbContext;
+    private readonly ITreasury _treasury;
+    private readonly TestDataGenerator _testGen;
+
+
+    public TreasuryTests(
+        CardDbContext dbContext, 
+        ITreasury treasury, 
+        TestDataGenerator testGen)
     {
-        private readonly CardDbContext _dbContext;
-        private readonly ITreasury _treasury;
-        private readonly TestDataGenerator _testGen;
+        _dbContext = dbContext;
+        _treasury = treasury;
+        _testGen = testGen;
+    }
 
 
-        public TreasuryTests(
-            CardDbContext dbContext, 
-            ITreasury treasury, 
-            TestDataGenerator testGen)
-        {
-            _dbContext = dbContext;
-            _treasury = treasury;
-            _testGen = testGen;
-        }
+    public Task InitializeAsync() => _testGen.SeedAsync();
 
+    public Task DisposeAsync() => _testGen.ClearAsync();
 
-        public Task InitializeAsync() => _testGen.SeedAsync();
 
-        public Task DisposeAsync() => _testGen.ClearAsync();
+    public IQueryable<Card> AllCards =>
+        _dbContext.Cards.AsNoTracking();
 
+    public IQueryable<Amount> BoxAmounts => 
+        _treasury.Cards
+            .Include(ca => ca.Location)
+            .AsNoTracking();
 
-        public IQueryable<Card> AllCards =>
-            _dbContext.Cards.AsNoTracking();
 
-        public IQueryable<Amount> BoxAmounts => 
-            _treasury.Cards
-                .Include(ca => ca.Location)
-                .AsNoTracking();
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    public async Task Return_ValidCard_Success(int cardIndex)
+    {
+        var copies = 4;
+        var card = await AllCards.Skip(cardIndex).FirstAsync();
 
+        var cardBoxes = BoxAmounts.Where(ca => ca.CardId == card.Id);
 
-        [Theory]
-        [InlineData(0)]
-        [InlineData(1)]
-        [InlineData(2)]
-        public async Task Return_ValidCard_Success(int cardIndex)
-        {
-            var copies = 4;
-            var card = await AllCards.Skip(cardIndex).FirstAsync();
+        var boxesBefore = await cardBoxes.ToListAsync();
+        await _treasury.ReturnAsync(card, copies);
+        var boxesAfter = await cardBoxes.ToListAsync();
 
-            var cardBoxes = BoxAmounts.Where(ca => ca.CardId == card.Id);
+        var boxesAfterIds = boxesAfter.Select(ca => ca.CardId);
+        var boxesChange = boxesAfter.Sum(ca => ca.NumCopies) - boxesBefore.Sum(ca => ca.NumCopies);
 
-            var boxesBefore = await cardBoxes.ToListAsync();
-            await _treasury.ReturnAsync(card, copies);
-            var boxesAfter = await cardBoxes.ToListAsync();
+        Assert.All(boxesAfter, ca => Assert.IsType<Box>(ca.Location));
 
-            var boxesAfterIds = boxesAfter.Select(ca => ca.CardId);
-            var boxesChange = boxesAfter.Sum(ca => ca.NumCopies) - boxesBefore.Sum(ca => ca.NumCopies);
+        Assert.Contains(card.Id, boxesAfterIds);
+        Assert.Equal(copies, boxesChange);
+    }
 
-            Assert.All(boxesAfter, ca => Assert.IsType<Box>(ca.Location));
 
-            Assert.Contains(card.Id, boxesAfterIds);
-            Assert.Equal(copies, boxesChange);
-        }
+    [Fact]
+    public async Task Return_NullCard_ThrowException()
+    {
+        var copies = 4;
+        Card? card = null;
 
+        Task SharedReturn() => _treasury.ReturnAsync(card!, copies);
 
-        [Fact]
-        public async Task Return_NullCard_ThrowException()
-        {
-            var copies = 4;
-            Card? card = null;
+        await Assert.ThrowsAsync<ArgumentException>(SharedReturn);
+    }
 
-            Task SharedReturn() => _treasury.ReturnAsync(card!, copies);
 
-            await Assert.ThrowsAsync<ArgumentException>(SharedReturn);
-        }
+    [Theory]
+    [InlineData(-3)]
+    [InlineData(0)]
+    [InlineData(-10)]
+    public async Task Return_InvalidCopies_ThrowsException(int copies)
+    {
+        var card = await _dbContext.Cards.FirstAsync();
 
+        Task SharedReturn() => _treasury.ReturnAsync(card, copies);
 
-        [Theory]
-        [InlineData(-3)]
-        [InlineData(0)]
-        [InlineData(-10)]
-        public async Task Return_InvalidCopies_ThrowsException(int copies)
-        {
-            var card = await _dbContext.Cards.FirstAsync();
+        await Assert.ThrowsAsync<ArgumentException>(SharedReturn);
+    }
 
-            Task SharedReturn() => _treasury.ReturnAsync(card, copies);
 
-            await Assert.ThrowsAsync<ArgumentException>(SharedReturn);
-        }
+    [Fact]
+    public async Task Return_EmptyReturns_ThrowsException()
+    {
+        var emptyReturns = Enumerable.Empty<CardReturn>();
 
+        Task SharedReturn() => _treasury.ReturnAsync(emptyReturns);
 
-        [Fact]
-        public async Task Return_EmptyReturns_ThrowsException()
-        {
-            var emptyReturns = Enumerable.Empty<CardReturn>();
+        await Assert.ThrowsAsync<ArgumentException>(SharedReturn);
+    }
 
-            Task SharedReturn() => _treasury.ReturnAsync(emptyReturns);
 
-            await Assert.ThrowsAsync<ArgumentException>(SharedReturn);
-        }
+    [Theory]
+    [InlineData(1, 2, 0.5f)]
+    [InlineData(2, 3, 0.25f)]
+    public async Task Return_MultipleCards_Success(int cardIdx1, int cardIdx2, float split)
+    {
+        var copies = 12;
 
+        var card1 = await _dbContext.Cards.Skip(cardIdx1).FirstAsync();
+        var card2 = await _dbContext.Cards.Skip(cardIdx2).FirstAsync();
 
-        [Theory]
-        [InlineData(1, 2, 0.5f)]
-        [InlineData(2, 3, 0.25f)]
-        public async Task Return_MultipleCards_Success(int cardIdx1, int cardIdx2, float split)
-        {
-            var copies = 12;
+        int copy1 = (int)(copies * split);
+        int copy2 = (int)(copies * (1 - split));
 
-            var card1 = await _dbContext.Cards.Skip(cardIdx1).FirstAsync();
-            var card2 = await _dbContext.Cards.Skip(cardIdx2).FirstAsync();
+        copies = copy1 + copy2;
 
-            int copy1 = (int)(copies * split);
-            int copy2 = (int)(copies * (1 - split));
+        var cardBoxes = BoxAmounts.Where(ca => 
+            ca.CardId == card1.Id || ca.CardId == card2.Id);
 
-            copies = copy1 + copy2;
+        var boxesBefore = await cardBoxes.ToListAsync();
 
-            var cardBoxes = BoxAmounts.Where(ca => 
-                ca.CardId == card1.Id || ca.CardId == card2.Id);
+        var returns = new [] { new CardReturn(card1, copy1), new CardReturn(card2, copy2) };
 
-            var boxesBefore = await cardBoxes.ToListAsync();
+        await _treasury.ReturnAsync(returns);
 
-            var returns = new [] { new CardReturn(card1, copy1), new CardReturn(card2, copy2) };
+        var boxesAfter = await cardBoxes.ToListAsync();
+        var boxesAfterIds = boxesAfter.Select(ca => ca.CardId);
 
-            await _treasury.ReturnAsync(returns);
+        var box1BeforeAmount = boxesBefore
+            .Where(ca => ca.CardId == card1.Id)
+            .Sum(ca => ca.NumCopies);
 
-            var boxesAfter = await cardBoxes.ToListAsync();
-            var boxesAfterIds = boxesAfter.Select(ca => ca.CardId);
+        var box1AfterAmount = boxesAfter
+            .Where(ca => ca.CardId == card1.Id)
+            .Sum(ca => ca.NumCopies);
 
-            var box1BeforeAmount = boxesBefore
-                .Where(ca => ca.CardId == card1.Id)
-                .Sum(ca => ca.NumCopies);
+        var box2BeforeAmount = boxesBefore
+            .Where(ca => ca.CardId == card2.Id)
+            .Sum(ca => ca.NumCopies);
 
-            var box1AfterAmount = boxesAfter
-                .Where(ca => ca.CardId == card1.Id)
-                .Sum(ca => ca.NumCopies);
+        var box2AfterAmount = boxesAfter
+            .Where(ca => ca.CardId == card2.Id)
+            .Sum(ca => ca.NumCopies);
 
-            var box2BeforeAmount = boxesBefore
-                .Where(ca => ca.CardId == card2.Id)
-                .Sum(ca => ca.NumCopies);
+        var boxesChange = boxesAfter.Sum(ca => ca.NumCopies) - boxesBefore.Sum(ca => ca.NumCopies);
+        var box1Change = box1AfterAmount - box1BeforeAmount;
+        var box2Change = box2AfterAmount - box2BeforeAmount;
 
-            var box2AfterAmount = boxesAfter
-                .Where(ca => ca.CardId == card2.Id)
-                .Sum(ca => ca.NumCopies);
+        Assert.All(boxesAfter, ca => Assert.IsType<Box>(ca.Location));
 
-            var boxesChange = boxesAfter.Sum(ca => ca.NumCopies) - boxesBefore.Sum(ca => ca.NumCopies);
-            var box1Change = box1AfterAmount - box1BeforeAmount;
-            var box2Change = box2AfterAmount - box2BeforeAmount;
+        Assert.Contains(card1.Id, boxesAfterIds);
+        Assert.Contains(card2.Id, boxesAfterIds);
 
-            Assert.All(boxesAfter, ca => Assert.IsType<Box>(ca.Location));
+        Assert.Equal(copies, boxesChange);
+        Assert.Equal(copy1, box1Change);
+        Assert.Equal(copy2, box2Change);
+    }
 
-            Assert.Contains(card1.Id, boxesAfterIds);
-            Assert.Contains(card2.Id, boxesAfterIds);
 
-            Assert.Equal(copies, boxesChange);
-            Assert.Equal(copy1, box1Change);
-            Assert.Equal(copy2, box2Change);
-        }
+    [Fact]
+    public async Task Return_NoBoxes_ThrowsException()
+    {
+        var boxesTracked = await _dbContext.Boxes
+            .Include(b => b.Cards)
+            .ToListAsync();
 
+        _dbContext.Amounts.RemoveRange(boxesTracked.SelectMany(b => b.Cards));
+        _dbContext.Boxes.RemoveRange(boxesTracked);
 
-        [Fact]
-        public async Task Return_NoBoxes_ThrowsException()
-        {
-            var boxesTracked = await _dbContext.Boxes
-                .Include(b => b.Cards)
-                .ToListAsync();
+        await _dbContext.SaveChangesAsync();
+        _dbContext.ChangeTracker.Clear();
 
-            _dbContext.Amounts.RemoveRange(boxesTracked.SelectMany(b => b.Cards));
-            _dbContext.Boxes.RemoveRange(boxesTracked);
+        var copies = 4;
+        var card = await AllCards.FirstAsync();
 
-            await _dbContext.SaveChangesAsync();
-            _dbContext.ChangeTracker.Clear();
+        Task SharedReturn() => _treasury.ReturnAsync(card, copies);
 
-            var copies = 4;
-            var card = await AllCards.FirstAsync();
+        await Assert.ThrowsAsync<InvalidOperationException>(SharedReturn);
+    }
 
-            Task SharedReturn() => _treasury.ReturnAsync(card, copies);
 
-            await Assert.ThrowsAsync<InvalidOperationException>(SharedReturn);
-        }
+    [Fact]
+    public async Task Return_NewCard_Success()
+    {
+        var copies = 4;
+        var card = await _dbContext.Cards.FirstAsync();
 
+        var cardBoxes = BoxAmounts.Where(ca => ca.CardId == card.Id);
+        var cardBoxesTracked = cardBoxes.AsTracking();
 
-        [Fact]
-        public async Task Return_NewCard_Success()
-        {
-            var copies = 4;
-            var card = await _dbContext.Cards.FirstAsync();
+        var boxAmounts = await cardBoxesTracked.ToListAsync();
+        _dbContext.Amounts.RemoveRange(boxAmounts);
 
-            var cardBoxes = BoxAmounts.Where(ca => ca.CardId == card.Id);
-            var cardBoxesTracked = cardBoxes.AsTracking();
+        await _dbContext.SaveChangesAsync();
+        _dbContext.ChangeTracker.Clear();
 
-            var boxAmounts = await cardBoxesTracked.ToListAsync();
-            _dbContext.Amounts.RemoveRange(boxAmounts);
+        var boxesBefore = await cardBoxes.ToListAsync();
+        var transaction = await _treasury.ReturnAsync(card, copies);
 
-            await _dbContext.SaveChangesAsync();
-            _dbContext.ChangeTracker.Clear();
+        var boxesAfter = await cardBoxes.ToListAsync();
+        var boxesChange = boxesAfter.Sum(ca => ca.NumCopies) - boxesBefore.Sum(ca => ca.NumCopies);
 
-            var boxesBefore = await cardBoxes.ToListAsync();
-            var transaction = await _treasury.ReturnAsync(card, copies);
+        Assert.NotNull(transaction);
 
-            var boxesAfter = await cardBoxes.ToListAsync();
-            var boxesChange = boxesAfter.Sum(ca => ca.NumCopies) - boxesBefore.Sum(ca => ca.NumCopies);
+        Assert.All(boxesAfter, ca => Assert.IsType<Box>(ca.Location));
+        Assert.All(boxesAfter, ca => Assert.Equal(card.Id, ca.CardId));
 
-            Assert.NotNull(transaction);
+        Assert.Equal(copies, boxesChange);
+    }
 
-            Assert.All(boxesAfter, ca => Assert.IsType<Box>(ca.Location));
-            Assert.All(boxesAfter, ca => Assert.Equal(card.Id, ca.CardId));
 
-            Assert.Equal(copies, boxesChange);
-        }
+    [Fact]
+    public async Task Optimize_SmallAmount_NoChange()
+    {
+        var copies = 6;
+        var card = await AllCards.FirstAsync();
 
+        var boxAmounts = BoxAmounts.Select(ca => ca.NumCopies);
 
-        [Fact]
-        public async Task Optimize_SmallAmount_NoChange()
-        {
-            var copies = 6;
-            var card = await AllCards.FirstAsync();
+        await _treasury.ReturnAsync(card, copies);
 
-            var boxAmounts = BoxAmounts.Select(ca => ca.NumCopies);
+        var boxesBefore = await boxAmounts.SumAsync();
+        var transaction = await _treasury.OptimizeAsync();
+        var boxesAfter = await boxAmounts.SumAsync();
 
-            await _treasury.ReturnAsync(card, copies);
+        Assert.Null(transaction);
+        Assert.Equal(boxesBefore, boxesAfter);
+    }
 
-            var boxesBefore = await boxAmounts.SumAsync();
-            var transaction = await _treasury.OptimizeAsync();
-            var boxesAfter = await boxAmounts.SumAsync();
 
-            Assert.Null(transaction);
-            Assert.Equal(boxesBefore, boxesAfter);
-        }
+    [Fact]
+    public async Task Optimize_LargeAmount_SplitMultiple()
+    {
+        var copies = 120;
+        var card = await AllCards.FirstAsync();
 
+        var cardBoxes = BoxAmounts.Where(ca => ca.CardId == card.Id);
 
-        [Fact]
-        public async Task Optimize_LargeAmount_SplitMultiple()
-        {
-            var copies = 120;
-            var card = await AllCards.FirstAsync();
+        await _treasury.ReturnAsync(card, copies);
 
-            var cardBoxes = BoxAmounts.Where(ca => ca.CardId == card.Id);
+        var oldSpots = await cardBoxes.ToListAsync();
+        var totalBefore = oldSpots.Sum(ca => ca.NumCopies);
 
-            await _treasury.ReturnAsync(card, copies);
+        var transaction = await _treasury.OptimizeAsync();
 
-            var oldSpots = await cardBoxes.ToListAsync();
-            var totalBefore = oldSpots.Sum(ca => ca.NumCopies);
+        var newSpots = await cardBoxes.ToListAsync();
+        var totalAfter = newSpots.Sum(ca => ca.NumCopies);
 
-            var transaction = await _treasury.OptimizeAsync();
+        Assert.NotNull(transaction);
 
-            var newSpots = await cardBoxes.ToListAsync();
-            var totalAfter = newSpots.Sum(ca => ca.NumCopies);
+        Assert.All(newSpots, ca => Assert.IsType<Box>(ca.Location));
+        Assert.All(newSpots, ca => Assert.True(ca.NumCopies < copies));
 
-            Assert.NotNull(transaction);
-
-            Assert.All(newSpots, ca => Assert.IsType<Box>(ca.Location));
-            Assert.All(newSpots, ca => Assert.True(ca.NumCopies < copies));
-
-            Assert.Equal(totalBefore, totalAfter);
-        }
+        Assert.Equal(totalBefore, totalAfter);
     }
 }

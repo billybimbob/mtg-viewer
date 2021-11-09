@@ -11,7 +11,11 @@
 @if (Model.IsOwner)
 {
     <div class="mb-3">
-        @if (!Model.Deck.TradesTo.Any())
+        @if (Model.Deck.TradesTo.Any())
+        {
+            <button class="btn btn-secondary" type="button" disabled> Edit </button>
+        }
+        else
         {
             <a asp-page="Builder" asp-route-id="@Model.Deck.Id"
                 class="btn btn-secondary" role="button">

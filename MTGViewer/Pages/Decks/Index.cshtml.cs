@@ -12,96 +12,95 @@ using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
 using MTGViewer.Services;
 
+namespace MTGViewer.Pages.Decks;
 
-namespace MTGViewer.Pages.Decks
+
+public enum State
 {
-    public enum State
-    {
-        Theorycraft,
-        Built,
-        Requesting
-    }
+    Theorycraft,
+    Built,
+    Requesting
+}
 
-    public record DeckState(Deck Deck, State State)
+public record DeckState(Deck Deck, State State)
+{
+    public DeckState(Deck deck) : this(deck, State.Theorycraft)
     {
-        public DeckState(Deck deck) : this(deck, State.Theorycraft)
+        if (deck.TradesTo.Any())
         {
-            if (deck.TradesTo.Any())
-            {
-                State = State.Requesting;
-            }
-            else if (deck.Wants.Any() || deck.GiveBacks.Any())
-            {
-                State = State.Theorycraft;
-            }
-            else
-            {
-                State = State.Built;
-            }
+            State = State.Requesting;
+        }
+        else if (deck.Wants.Any() || deck.GiveBacks.Any())
+        {
+            State = State.Theorycraft;
+        }
+        else
+        {
+            State = State.Built;
         }
     }
+}
 
 
-    [Authorize]
-    public class IndexModel : PageModel
+[Authorize]
+public class IndexModel : PageModel
+{
+    private readonly UserManager<CardUser> _userManager;
+    private readonly CardDbContext _dbContext;
+    private readonly int _pageSize;
+
+    public IndexModel(
+        UserManager<CardUser> userManager, CardDbContext dbContext, PageSizes pageSizes)
     {
-        private readonly UserManager<CardUser> _userManager;
-        private readonly CardDbContext _dbContext;
-        private readonly int _pageSize;
-
-        public IndexModel(
-            UserManager<CardUser> userManager, CardDbContext dbContext, PageSizes pageSizes)
-        {
-            _userManager = userManager;
-            _dbContext = dbContext;
-            _pageSize = pageSizes.GetSize<IndexModel>();
-        }
+        _userManager = userManager;
+        _dbContext = dbContext;
+        _pageSize = pageSizes.GetSize<IndexModel>();
+    }
 
 
-        [TempData]
-        public string PostMessage { get; set; }
+    [TempData]
+    public string PostMessage { get; set; }
 
-        public UserRef CardUser { get; private set; }
-        public PagedList<DeckState> Decks { get; private set; }
-
-
-        public async Task OnGetAsync(int? pageIndex)
-        {
-            var userId = _userManager.GetUserId(User);
-
-            Decks = await DeckStates(userId)
-                .ToPagedListAsync(_pageSize, pageIndex);
-
-            CardUser = Decks.FirstOrDefault()?.Deck.Owner
-                ?? await _dbContext.Users.FindAsync(userId);
-        }
+    public UserRef CardUser { get; private set; }
+    public PagedList<DeckState> Decks { get; private set; }
 
 
-        private IQueryable<DeckState> DeckStates(string userId)
-        {
-            return _dbContext.Decks
-                .Where(d => d.OwnerId == userId)
+    public async Task OnGetAsync(int? pageIndex)
+    {
+        var userId = _userManager.GetUserId(User);
 
-                .Include(d => d.Owner)
+        Decks = await DeckStates(userId)
+            .ToPagedListAsync(_pageSize, pageIndex);
 
-                .Include(d => d.Cards) // unbounded: keep eye on
-                    .ThenInclude(ca => ca.Card)
+        CardUser = Decks.FirstOrDefault()?.Deck.Owner
+            ?? await _dbContext.Users.FindAsync(userId);
+    }
 
-                .Include(d => d.Wants
-                    .OrderBy(w => w.Id)
-                    .Take(1))
 
-                .Include(d => d.GiveBacks
-                    .OrderBy(gb => gb.Id)
-                    .Take(1))
+    private IQueryable<DeckState> DeckStates(string userId)
+    {
+        return _dbContext.Decks
+            .Where(d => d.OwnerId == userId)
 
-                .Include(d => d.TradesTo
-                    .OrderBy(t => t.Id)
-                    .Take(1))
+            .Include(d => d.Owner)
 
-                .OrderBy(d => d.Name)
-                .Select(deck => new DeckState(deck))
-                .AsSplitQuery();
-        }
+            .Include(d => d.Cards) // unbounded: keep eye on
+                .ThenInclude(ca => ca.Card)
+
+            .Include(d => d.Wants
+                .OrderBy(w => w.Id)
+                .Take(1))
+
+            .Include(d => d.GiveBacks
+                .OrderBy(gb => gb.Id)
+                .Take(1))
+
+            .Include(d => d.TradesTo
+                .OrderBy(t => t.Id)
+                .Take(1))
+
+            .OrderBy(d => d.Name)
+            .Select(deck => new DeckState(deck))
+            .AsSplitQuery();
     }
 }

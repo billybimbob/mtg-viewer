@@ -13,7 +13,7 @@
     </div>
 }
 
-<table class="table">
+<table class="table table-bordered">
     <thead>
         <tr>
             <th scope="col"> @Html.DisplayNameForInnerType((Transaction t) => t.AppliedAt) </th>
@@ -34,7 +34,7 @@
             <tr>
                 @if (isFirstTransfer)
                 {
-                    <td rowspan="@transaction.Changes.Count"> @transaction.AppliedAt </td>
+                    <th scope="rowgroup" rowspan="@transaction.Changes.Count"> @transaction.AppliedAt </th>
                 }
 
                 <td rowspan="@changes.Count">

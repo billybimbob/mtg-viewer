@@ -13,100 +13,99 @@ using MTGViewer.Services;
 using MTGViewer.Pages.Transfers;
 using MTGViewer.Tests.Utils;
 
+namespace MTGViewer.Tests.Pages.Transfers;
 
-namespace MTGViewer.Tests.Pages.Transfers
+
+public class IndexTests : IAsyncLifetime
 {
-    public class IndexTests : IAsyncLifetime
+    private readonly  CardDbContext _dbContext;
+    private readonly UserManager<CardUser> _userManager;
+    private readonly TestDataGenerator _testGen;
+
+    private readonly IndexModel _indexModel;
+
+    public IndexTests(
+        PageSizes pageSizes,
+        CardDbContext dbContext,
+        UserManager<CardUser> userManager,
+        TestDataGenerator testGen)
     {
-        private readonly  CardDbContext _dbContext;
-        private readonly UserManager<CardUser> _userManager;
-        private readonly TestDataGenerator _testGen;
+        _dbContext = dbContext;
+        _userManager = userManager;
+        _testGen = testGen;
 
-        private readonly IndexModel _indexModel;
-
-        public IndexTests(
-            PageSizes pageSizes,
-            CardDbContext dbContext,
-            UserManager<CardUser> userManager,
-            TestDataGenerator testGen)
-        {
-            _dbContext = dbContext;
-            _userManager = userManager;
-            _testGen = testGen;
-
-            _indexModel = new(pageSizes, _userManager, _dbContext);
-        }
+        _indexModel = new(pageSizes, _userManager, _dbContext);
+    }
 
 
-        public Task InitializeAsync() => _testGen.SeedAsync();
+    public Task InitializeAsync() => _testGen.SeedAsync();
 
-        public Task DisposeAsync() => _testGen.ClearAsync();
+    public Task DisposeAsync() => _testGen.ClearAsync();
 
 
-        private IQueryable<Suggestion> AllSuggestions =>
-            _dbContext.Suggestions
-                .AsNoTracking()
-                .OrderBy(s => s.Id);
+    private IQueryable<Suggestion> AllSuggestions =>
+        _dbContext.Suggestions
+            .AsNoTracking()
+            .OrderBy(s => s.Id);
 
 
 
-        [Fact]
-        public async Task OnPost_ValidSuggestion_RemovesSuggestion()
-        {
-            // Arrange
-            var suggestion = await AllSuggestions.FirstAsync();
+    [Fact]
+    public async Task OnPost_ValidSuggestion_RemovesSuggestion()
+    {
+        // Arrange
+        var suggestion = await AllSuggestions.FirstAsync();
 
-            await _indexModel.SetModelContextAsync(_userManager, suggestion.ReceiverId);
+        await _indexModel.SetModelContextAsync(_userManager, suggestion.ReceiverId);
 
-            // Act
-            var result = await _indexModel.OnPostAsync(suggestion.Id);
-            var suggestions = await AllSuggestions.Select(t => t.Id).ToListAsync();
+        // Act
+        var result = await _indexModel.OnPostAsync(suggestion.Id);
+        var suggestions = await AllSuggestions.Select(t => t.Id).ToListAsync();
 
-            // Assert
-            Assert.IsType<RedirectToPageResult>(result);
-            Assert.DoesNotContain(suggestion.Id, suggestions);
-        }
-
-
-        [Fact]
-        public async Task OnPost_WrongUser_NoRemove()
-        {
-            // Arrange
-            var suggestion = await AllSuggestions.FirstAsync();
-
-            var wrongUser = await _dbContext.Users
-                .Select(u => u.Id)
-                .FirstAsync(uid => uid != suggestion.ReceiverId);
-
-            await _indexModel.SetModelContextAsync(_userManager, wrongUser);
-
-            // Act
-            var result = await _indexModel.OnPostAsync(suggestion.Id);
-            var suggestions = await AllSuggestions.Select(t => t.Id).ToListAsync();
-
-            // Assert
-            Assert.IsType<RedirectToPageResult>(result);
-            Assert.Contains(suggestion.Id, suggestions);
-        }
+        // Assert
+        Assert.IsType<RedirectToPageResult>(result);
+        Assert.DoesNotContain(suggestion.Id, suggestions);
+    }
 
 
-        [Fact]
-        public async Task OnPost_InvalidSuggestion_NoRemove()
-        {
-            // Arrange
-            var suggestion = await AllSuggestions.FirstAsync();
-            var invalidSuggestId = 0;
+    [Fact]
+    public async Task OnPost_WrongUser_NoRemove()
+    {
+        // Arrange
+        var suggestion = await AllSuggestions.FirstAsync();
 
-            await _indexModel.SetModelContextAsync(_userManager, suggestion.ReceiverId);
+        var wrongUser = await _dbContext.Users
+            .Select(u => u.Id)
+            .FirstAsync(uid => uid != suggestion.ReceiverId);
 
-            // Act
-            var suggestsBefore = await AllSuggestions.Select(t => t.Id).ToListAsync();
-            var result = await _indexModel.OnPostAsync(invalidSuggestId);
-            var suggestsAFter = await AllSuggestions.Select(t => t.Id).ToListAsync();
+        await _indexModel.SetModelContextAsync(_userManager, wrongUser);
 
-            // Assert
-            Assert.IsType<RedirectToPageResult>(result);
-            Assert.Equal(suggestsBefore, suggestsAFter);
-        }
-   }
+        // Act
+        var result = await _indexModel.OnPostAsync(suggestion.Id);
+        var suggestions = await AllSuggestions.Select(t => t.Id).ToListAsync();
+
+        // Assert
+        Assert.IsType<RedirectToPageResult>(result);
+        Assert.Contains(suggestion.Id, suggestions);
+    }
+
+
+    [Fact]
+    public async Task OnPost_InvalidSuggestion_NoRemove()
+    {
+        // Arrange
+        var suggestion = await AllSuggestions.FirstAsync();
+        var invalidSuggestId = 0;
+
+        await _indexModel.SetModelContextAsync(_userManager, suggestion.ReceiverId);
+
+        // Act
+        var suggestsBefore = await AllSuggestions.Select(t => t.Id).ToListAsync();
+        var result = await _indexModel.OnPostAsync(invalidSuggestId);
+        var suggestsAFter = await AllSuggestions.Select(t => t.Id).ToListAsync();
+
+        // Assert
+        Assert.IsType<RedirectToPageResult>(result);
+        Assert.Equal(suggestsBefore, suggestsAFter);
+    }
 }

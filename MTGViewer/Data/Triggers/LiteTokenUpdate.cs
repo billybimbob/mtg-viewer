@@ -1,31 +1,30 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+
 using EntityFrameworkCore.Triggered;
 using Microsoft.Extensions.Logging;
 using MTGViewer.Data.Concurrency;
 
+namespace MTGViewer.Data.Triggers;
 
-namespace MTGViewer.Data.Triggers
+public class LiteTokenUpdate : IBeforeSaveTrigger<Concurrent> 
 {
-    public class LiteTokenUpdate : IBeforeSaveTrigger<Concurrent> 
+    private readonly ILogger<LiteTokenUpdate> _logger;
+
+    public LiteTokenUpdate(ILogger<LiteTokenUpdate> logger)
     {
-        private readonly ILogger<LiteTokenUpdate> _logger;
+        _logger = logger;
+    }
 
-        public LiteTokenUpdate(ILogger<LiteTokenUpdate> logger)
+
+    public Task BeforeSave(ITriggerContext<Concurrent> trigContext, CancellationToken cancel)
+    {
+        if (trigContext.ChangeType == ChangeType.Modified)
         {
-            _logger = logger;
+            trigContext.Entity.LiteToken = Guid.NewGuid();
         }
 
-
-        public Task BeforeSave(ITriggerContext<Concurrent> trigContext, CancellationToken cancel)
-        {
-            if (trigContext.ChangeType == ChangeType.Modified)
-            {
-                trigContext.Entity.LiteToken = Guid.NewGuid();
-            }
-
-            return Task.CompletedTask;
-        }
+        return Task.CompletedTask;
     }
 }

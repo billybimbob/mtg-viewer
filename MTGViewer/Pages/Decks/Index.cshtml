@@ -33,16 +33,8 @@
         {
             <tr>
                 <td>
-                    @if (state is State.Requesting)
-                    {
-                        <a asp-page="Viewer" asp-route-id="@deck.Id">
-                            @deck.Name </a>
-                    }
-                    else
-                    {
-                        <a asp-page="Builder" asp-route-id="@deck.Id">
-                            @deck.Name </a>
-                    }
+                    <a asp-page="Viewer" asp-route-id="@deck.Id">
+                        @deck.Name </a>
                 </td>
 
                 <td> @(MtgSymbols.Format(deck.Colors).ToHtmlString()) </td>
@@ -65,7 +57,18 @@
                     }
                 </td>
                 
-                <td>
+                <td class="btn-group" role="group">
+                    @if (state is State.Requesting)
+                    {
+                        <button class="btn btn-secondary" type="button" disabled> Edit </button>
+                    }
+                    else
+                    {
+                        <a asp-page="Builder" asp-route-id="@deck.Id"
+                            class="btn btn-secondary" role="button">
+                            Edit </a>
+                    }
+
                     <a asp-page="History" asp-route-id="@deck.Id"
                         class="btn btn-secondary" role="button">
                         History </a>
