@@ -273,7 +273,7 @@ public class ReviewModel : PageModel
 
         int change = new [] {
             acceptAmount, trade.Amount,
-            toWants.Amount, fromAmount.NumCopies }.Min();
+            toWants.NumCopies, fromAmount.NumCopies }.Min();
 
         if (exactWant != default)
         {
@@ -282,11 +282,11 @@ public class ReviewModel : PageModel
 
             // exactRequest mod is also reflected in toWants
             exactWant.NumCopies -= exactChange;
-            toWants.Amount -= nonExactChange;
+            toWants.NumCopies -= nonExactChange;
         }
         else
         {
-            toWants.Amount -= change;
+            toWants.NumCopies -= change;
         }
 
         toAmount.NumCopies += change;
@@ -372,7 +372,7 @@ public class ReviewModel : PageModel
             return;
         }
 
-        if (toTakes.Amount == 0)
+        if (toTakes.NumCopies == 0)
         {
             _dbContext.Trades.RemoveRange(remainingTrades);
             return;
@@ -380,7 +380,7 @@ public class ReviewModel : PageModel
 
         foreach (var remaining in remainingTrades)
         {
-            remaining.Amount = toTakes.Amount;
+            remaining.Amount = toTakes.NumCopies;
         }
     }
 

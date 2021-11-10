@@ -88,11 +88,13 @@ public class Deck : Owned
     public void UpdateColors(CardText toCardText)
     {
         var cardMana = Cards
+            .Where(a => a.NumCopies > 0)
             .Select(ca => ca.Card.ManaCost)
             .SelectMany( toCardText.FindMana )
             .SelectMany(mana => mana.Value.Split('/'));
 
         var wantMana = Wants
+            .Where(w => w.NumCopies > 0)
             .Select(w => w.Card.ManaCost)
             .SelectMany( toCardText.FindMana )
             .SelectMany(mana => mana.Value.Split('/'));

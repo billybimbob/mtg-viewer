@@ -1,4 +1,3 @@
-using System;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -71,14 +70,14 @@ public class TreasuryTests : IAsyncLifetime
 
 
     [Fact]
-    public async Task Return_NullCard_ThrowException()
+    public async Task Return_NullCard_ReturnsNull()
     {
         var copies = 4;
         Card? card = null;
 
-        Task SharedReturn() => _treasury.ReturnAsync(card!, copies);
+        var transaction = await _treasury.ReturnAsync(card!, copies);
 
-        await Assert.ThrowsAsync<ArgumentException>(SharedReturn);
+        Assert.Null(transaction);
     }
 
 
@@ -86,24 +85,24 @@ public class TreasuryTests : IAsyncLifetime
     [InlineData(-3)]
     [InlineData(0)]
     [InlineData(-10)]
-    public async Task Return_InvalidCopies_ThrowsException(int copies)
+    public async Task Return_InvalidCopies_ReturnsNull(int copies)
     {
         var card = await _dbContext.Cards.FirstAsync();
 
-        Task SharedReturn() => _treasury.ReturnAsync(card, copies);
+        var transaction = await _treasury.ReturnAsync(card, copies);
 
-        await Assert.ThrowsAsync<ArgumentException>(SharedReturn);
+        Assert.Null(transaction);
     }
 
 
     [Fact]
-    public async Task Return_EmptyReturns_ThrowsException()
+    public async Task Return_EmptyReturns_ReturnsNull()
     {
         var emptyReturns = Enumerable.Empty<CardReturn>();
 
-        Task SharedReturn() => _treasury.ReturnAsync(emptyReturns);
+        var transaction = await _treasury.ReturnAsync(emptyReturns);
 
-        await Assert.ThrowsAsync<ArgumentException>(SharedReturn);
+        Assert.Null(transaction);
     }
 
 
@@ -166,7 +165,7 @@ public class TreasuryTests : IAsyncLifetime
 
 
     [Fact]
-    public async Task Return_NoBoxes_ThrowsException()
+    public async Task Return_NoBoxes_ReturnsNull()
     {
         var boxesTracked = await _dbContext.Boxes
             .Include(b => b.Cards)
@@ -181,9 +180,9 @@ public class TreasuryTests : IAsyncLifetime
         var copies = 4;
         var card = await AllCards.FirstAsync();
 
-        Task SharedReturn() => _treasury.ReturnAsync(card, copies);
+        var transaction = await _treasury.ReturnAsync(card, copies);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(SharedReturn);
+        Assert.Null(transaction);
     }
 
 
@@ -202,11 +201,11 @@ public class TreasuryTests : IAsyncLifetime
         await _dbContext.SaveChangesAsync();
         _dbContext.ChangeTracker.Clear();
 
-        var boxesBefore = await cardBoxes.ToListAsync();
+        var boxesBefore = await cardBoxes.Select(a => a.NumCopies).SumAsync();
         var transaction = await _treasury.ReturnAsync(card, copies);
 
         var boxesAfter = await cardBoxes.ToListAsync();
-        var boxesChange = boxesAfter.Sum(ca => ca.NumCopies) - boxesBefore.Sum(ca => ca.NumCopies);
+        var boxesChange = boxesAfter.Sum(ca => ca.NumCopies) - boxesBefore;
 
         Assert.NotNull(transaction);
 

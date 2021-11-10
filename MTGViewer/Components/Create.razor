@@ -570,8 +570,6 @@ else
             .Where(cid => cardIds.Contains(cid))
             .ToListAsync(_cancel.Token);
 
-        _cancel.Token.ThrowIfCancellationRequested();
-
         var newCards = cards
             .ExceptBy(existingIds, c => c.Id)
             .ToList();
@@ -584,8 +582,6 @@ else
         dbContext.Cards.AddRange(newCards);
 
         await dbContext.SaveChangesAsync(_cancel.Token);
-
-        _cancel.Token.ThrowIfCancellationRequested();
     }
 
 
@@ -598,7 +594,5 @@ else
             .ToList();
 
         await treasury.ReturnAsync(returns, _cancel.Token);
-
-        _cancel.Token.ThrowIfCancellationRequested();
     }
 }

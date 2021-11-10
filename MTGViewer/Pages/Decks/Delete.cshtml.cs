@@ -142,7 +142,7 @@ public class DeleteModel : PageModel
 
         var returningCards = deck.Cards
             // no source, since deck is being deleted
-            .Select(da => new CardReturn(da.Card, da.NumCopies))
+            .Select(a => new CardReturn(a.Card, a.NumCopies))
             .ToList();
 
         _dbContext.Amounts.RemoveRange(deck.Cards);

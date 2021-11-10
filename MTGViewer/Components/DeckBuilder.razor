@@ -244,8 +244,6 @@
                     .ThenBy(c => c.SetName)
                 .ToListAsync(_cancel.Token); // unbounded, keep eye on
 
-            _cancel.Token.ThrowIfCancellationRequested();
-
             _boxAmounts = await _dbContext.Amounts
                 .Where(ca => ca.Location is Box)
                 .GroupBy(ca => ca.CardId,
@@ -253,8 +251,6 @@
                         new { CardId, Total = cas.Sum(ca => ca.NumCopies) })
                 .ToDictionaryAsync(
                     ct => ct.CardId, ct => ct.Total, _cancel.Token);
-
-            _cancel.Token.ThrowIfCancellationRequested();
         }
         catch (OperationCanceledException ex)
         {
@@ -309,15 +305,11 @@
         {
             var deck = await DeckForBuilder.SingleAsync(_cancel.Token);
 
-            _cancel.Token.ThrowIfCancellationRequested();
-
             return deck;
         }
 
         var userValue = new []{ UserId };
         var user = await _dbContext.Users.FindAsync(userValue, _cancel.Token);
-
-        _cancel.Token.ThrowIfCancellationRequested();
 
         if (user == null)
         {
@@ -327,8 +319,6 @@
         var userDeckCount = await _dbContext.Decks
             .Where(d => d.OwnerId == UserId)
             .CountAsync(_cancel.Token);
-
-        _cancel.Token.ThrowIfCancellationRequested();
 
         var newLoc = new Deck
         {
@@ -536,8 +526,6 @@
             PrepareChanges();
 
             await _dbContext.SaveChangesAsync(_cancel.Token);
-
-            _cancel.Token.ThrowIfCancellationRequested();
 
             if (_deck.GiveBacks.Any() || _deck.Wants.Any())
             {

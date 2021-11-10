@@ -4,7 +4,7 @@ Magic: The Gathering Card Manager and Deck Builder, using [ASP.net](https://dotn
 
 ## Requirements
 
-* [.NET 5.0 SDK](https://dotnet.microsoft.com/download)
+* [.NET 6.0 SDK](https://dotnet.microsoft.com/download)
 * Entity Framework Core
 
 ### Instal EF Core

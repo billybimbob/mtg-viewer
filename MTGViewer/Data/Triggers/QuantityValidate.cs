@@ -54,11 +54,6 @@ public class QuantityValidate : IAfterSaveTrigger<Quantity>
             .Reference(q => q.Location)
             .LoadAsync();
 
-        if (quantity.Location is not Deck)
-        {
-            return;
-        }
-
         _dbContext.Entry(quantity).State = EntityState.Deleted;
 
         try

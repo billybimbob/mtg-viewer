@@ -226,16 +226,12 @@
                 .Include(c => c.Colors)
                 .ToListAsync(_cancel.Token); // unbounded, keep eye on
 
-            _cancel.Token.ThrowIfCancellationRequested();
-
             _cardAmounts = await dbContext.Amounts
                 .GroupBy( ca => ca.CardId,
                     (CardId, cas) =>
                         new { CardId, Total = cas.Sum(ca => ca.NumCopies) })
                 .ToDictionaryAsync(
                     ct => ct.CardId, ct => ct.Total, _cancel.Token);
-
-            _cancel.Token.ThrowIfCancellationRequested();
         }
 
         catch (OperationCanceledException ex)

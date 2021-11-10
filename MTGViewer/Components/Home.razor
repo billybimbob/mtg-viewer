@@ -92,7 +92,7 @@
 
 
     private IEnumerable<Card> Cards => 
-        _randomCards?.Take(NumberOfCards) ?? Enumerable.Empty<Card>();
+        _randomCards ?? Enumerable.Empty<Card>();
 
     private IEnumerable<Transaction> RecentChanges =>
         _recentChanges ?? Enumerable.Empty<Transaction>();
@@ -141,11 +141,13 @@
         {
             await using var dbContext = DbFactory.CreateDbContext();
 
-            _randomCards = await GetShuffledCardsAsync(dbContext);
+            _randomCards = await ShuffledCards(dbContext)
+                .ToListAsync(_cancel.Token);
+
+            _recentChanges = await RecentTransactions(dbContext)
+                .ToListAsync(_cancel.Token);
 
             _currentTime = DateTime.Now;
-
-            _recentChanges = await GetRecentChangesAsync(dbContext);
         }
         catch (OperationCanceledException ex)
         {
@@ -165,30 +167,17 @@
     }
 
 
-    private async Task<IReadOnlyList<Card>> GetShuffledCardsAsync(CardDbContext dbContext)
+    private IQueryable<Card> ShuffledCards(CardDbContext dbContext)
     {
-        // unbounded, keep eye on
-        var cards = await dbContext.Cards.ToListAsync(_cancel.Token);
-
-        _cancel.Token.ThrowIfCancellationRequested();
-
-        // shuffle locally
-        for (int i = 0; i < cards.Count-1; ++i)
-        {
-            int j = _random.Next(i, cards.Count);
-
-            var temp = cards[i];
-            cards[i] = cards[j];
-            cards[j] = temp;
-        }
-
-        return cards;
+        return dbContext.Cards
+            .OrderBy(_ => EF.Functions.Random())
+            .Take(NumberOfCards);
     }
 
 
-    private async Task<IReadOnlyList<Transaction>> GetRecentChangesAsync(CardDbContext dbContext)
+    private IQueryable<Transaction> RecentTransactions(CardDbContext dbContext)
     {
-        var changes = await dbContext.Transactions
+        return dbContext.Transactions
             .Where(t => t.Changes.Any(c => c.To is Box || c.From is Box))
 
             .Include(t => t.Changes)
@@ -205,12 +194,6 @@
                 .OrderBy(c => c.Card.Name))
 
             .OrderByDescending(t => t.AppliedAt)
-            .Take(NumberOfCards)
-
-            .ToListAsync(_cancel.Token);
-
-        _cancel.Token.ThrowIfCancellationRequested();
-        
-        return changes;
+            .Take(NumberOfCards);
     }
 }

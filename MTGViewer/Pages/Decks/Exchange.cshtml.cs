@@ -72,7 +72,7 @@ public class ExchangeModel : PageModel
         Deck = deck;
 
         HasPendings = deck.GiveBacks.Any() 
-            || await TakeTargets(deck).AnyAsync();
+            || await _treasury.AnyWantsAsync(deck.Wants);
 
         return Page();
     }
@@ -108,22 +108,6 @@ public class ExchangeModel : PageModel
     }
 
 
-    private IQueryable<Amount> TakeTargets(Deck deck)
-    {
-        var takeNames = deck.Wants
-            .Select(w => w.Card.Name)
-            .Distinct()
-            .ToArray();
-
-        return _dbContext.Amounts
-            .Where(ca => ca.Location is Box
-                && ca.NumCopies > 0
-                && takeNames.Contains(ca.Card.Name))
-            .Include(ca => ca.Card)
-            .Include(ca => ca.Location);
-    }
-
-
 
     public async Task<IActionResult> OnPostAsync(int id)
     {
@@ -139,42 +123,29 @@ public class ExchangeModel : PageModel
             return RedirectToPage("Index");
         }
 
-        var availables = await TakeTargets(deck)
-            .ToListAsync(); // unbounded, keep eye on, or limit
-
-        ApplyWants(deck, availables);
-
-        var boxReturns = ApplyDeckReturns(deck);
-
-        RemoveEmpty(deck);
-
-        deck.UpdateColors(_cardText);
-
-        var requestsRemain = deck.Wants.Sum(w => w.NumCopies) 
-            + deck.GiveBacks.Sum(g => g.NumCopies);
-
         try
         {
-            if (boxReturns.Any())
-            {
-                await _treasury.ReturnAsync(boxReturns);
-            }
+            var transaction = await _treasury.ExchangeAsync(deck);
 
-            await _dbContext.SaveChangesAsync();
-
-            if (requestsRemain == 0)
+            if (transaction is null)
             {
-                PostMessage = "Successfully exchanged all card requests";
+                PostMessage = "Ran into issue while trying to exchange";
             }
             else
             {
-                PostMessage = "Successfully exchanged requests, "
-                    + "but not all could be fullfilled";
+                ApplyChangesToDeck(transaction, deck);
+                
+                await _dbContext.SaveChangesAsync();
+
+                PostMessage = deck.Wants.Any() || deck.GiveBacks.Any()
+                    ? "Successfully exchanged requests, but not all could be fullfilled"
+                    : "Successfully exchanged all card requests";
             }
         }
         catch (DbUpdateException e)
         {
             _logger.LogError($"ran into db error {e}");
+
             PostMessage = "Ran into issue while trying to exchange";
         }
 
@@ -182,35 +153,35 @@ public class ExchangeModel : PageModel
     }
 
 
-
-    private void ApplyWants(Deck deck, IEnumerable<Amount> availables)
+    private void ApplyChangesToDeck(Transaction transaction, Deck deck)
     {
-        var activeWants = deck.Wants.Where(w => w.NumCopies > 0);
-        var possibleAvails = availables.Where(ca => ca.NumCopies > 0);
+        var removeChanges = transaction.Changes
+            .Where(c => c.FromId == deck.Id);
 
-        if (!possibleAvails.Any() || !activeWants.Any())
-        {
-            return;
-        }
+        var addChanges = transaction.Changes
+            .Where(c => c.ToId == deck.Id)
+            .ToHashSet();
 
-        var transaction = new Transaction();
-        var allActuals = GetAllActuals(deck, availables);
+        var allAmounts = GetAllActuals(deck, addChanges);
 
-        _dbContext.Transactions.Attach(transaction);
+        ApplyGiveBacks(removeChanges, deck.GiveBacks, allAmounts);
 
-        ApplyExactWants(transaction, activeWants, possibleAvails, allActuals);
-        ApplyCloseWants(transaction, activeWants, possibleAvails, allActuals);
+        ApplyExactWants(addChanges, deck.Wants, allAmounts);
+        ApplyApproxWants(addChanges, deck.Wants, allAmounts);
+
+        RemoveEmpty(deck);
+
+        deck.UpdateColors(_cardText);
     }
 
 
-    private IReadOnlyDictionary<string, Amount> GetAllActuals(
-        Deck deck, IEnumerable<Amount> availables)
+    private IReadOnlyDictionary<string, Amount> GetAllActuals(Deck deck, IEnumerable<Change> addChanges)
     {
-        var missingActualCards = availables
+        var missingActualCards = addChanges
             .ExceptBy(
                 deck.Cards.Select(a => a.CardId),
-                a => a.CardId)
-            .Select(a => a.Card)
+                c => c.CardId)
+            .Select(c => c.Card)
             .DistinctBy(c => c.Id);
 
         var newActuals = missingActualCards
@@ -227,141 +198,107 @@ public class ExchangeModel : PageModel
     }
 
 
+    private void ApplyGiveBacks(
+        IEnumerable<Change> removeChanges,
+        IEnumerable<GiveBack> giveBacks, 
+        IReadOnlyDictionary<string, Amount> amounts)
+    {
+        var returnPairs = giveBacks
+            .GroupJoin( removeChanges,
+                gb => gb.CardId,
+                rc => rc.CardId,
+                (giveBack, removes) => (giveBack, removes.Sum(c => c.Amount)));
+
+        foreach (var (giveBack, totalReturned) in returnPairs)
+        {
+            var amount = amounts[giveBack.CardId];
+
+            giveBack.NumCopies -= totalReturned;
+            amount.NumCopies -= totalReturned;
+        }
+    }
+
+
     private void ApplyExactWants(
-        Transaction transaction,
+        ICollection<Change> addChanges,
         IEnumerable<Want> wants,
-        IEnumerable<Amount> availables,
-        IReadOnlyDictionary<string, Amount> actuals)
+        IReadOnlyDictionary<string, Amount> amounts)
     {
         var exactMatches = wants
-            .Join( availables,
+            .Join( addChanges,
                 want => want.CardId,
-                avail => avail.CardId,
-                (want, avail) => (want, avail));
+                change => change.CardId,
+                (want, change) => (want, change))
+            .ToList();
 
-        foreach (var (want, available) in exactMatches)
+        foreach (var (want, change) in exactMatches)
         {
-            int amountTaken = Math.Min(want.NumCopies, available.NumCopies);
+            if (!addChanges.Contains(change))
+            {
+                continue;
+            }
+
+            int amountTaken = Math.Min(want.NumCopies, change.Amount);
+
+            if (amountTaken == change.Amount)
+            {
+                addChanges.Remove(change);
+            }
 
             if (amountTaken == 0)
             {
                 continue;
             }
 
-            var actual = actuals[want.CardId];
+            var actual = amounts[want.CardId];
 
             actual.NumCopies += amountTaken;
-            available.NumCopies -= amountTaken;
             want.NumCopies -= amountTaken;
-
-            var newChange = new Change
-            {
-                Card = available.Card,
-
-                From = available.Location,
-                To = actual.Location,
-                Amount = amountTaken,
-
-                Transaction = transaction
-            };
-
-            _dbContext.Changes.Attach(newChange);
         }
     }
 
 
-    private void ApplyCloseWants(
-        Transaction transaction,
+    private void ApplyApproxWants(
+        IEnumerable<Change> addChanges,
         IEnumerable<Want> wants,
-        IEnumerable<Amount> availables,
-        IReadOnlyDictionary<string, Amount> actuals)
+        IReadOnlyDictionary<string, Amount> amounts)
     {
         var wantsByName = wants
             .GroupBy(w => w.Card.Name,
                 (_, ws) => new WantNameGroup(ws));
 
-        var availsByName = availables
-            .GroupBy(ca => ca.Card.Name,
-                (_, cas) => new CardNameGroup(cas));
+        var addsByName = addChanges
+            .GroupBy(c => c.Card.Name,
+                (name, cs) => (name, cards: cs.Select(c => (c.CardId, c.Amount))) );
 
         var closeMatches = wantsByName
-            .Join( availsByName,
+            .Join( addsByName,
                 wantGroup => wantGroup.Name,
-                availGroup => availGroup.Name,
-                (wantGroup, availGroup) => (wantGroup, availGroup));
+                nameGroup => nameGroup.name,
+                (wantGroup, nameGroup) => (wantGroup, nameGroup.cards));
 
-
-        foreach (var (wantGroup, availGroup) in closeMatches)
+        foreach (var (wantGroup, cards) in closeMatches)
         {
-            using var closeAvails = availGroup.GetEnumerator();
+            using var matches = cards.GetEnumerator();
 
-            while (wantGroup.Amount > 0 && closeAvails.MoveNext())
+            while (wantGroup.NumCopies > 0 && matches.MoveNext())
             {
-                var currentAvail = closeAvails.Current;
-                var actual = actuals[currentAvail.CardId];
+                var match = matches.Current;
+                var actual = amounts[match.CardId];
 
-                int amountTaken = Math.Min(wantGroup.Amount, currentAvail.NumCopies);
+                int amountTaken = Math.Min(wantGroup.NumCopies, match.Amount);
 
+                wantGroup.NumCopies -= amountTaken;
                 actual.NumCopies += amountTaken;
-
-                currentAvail.NumCopies -= amountTaken;
-                wantGroup.Amount -= amountTaken;
-
-                var newChange = new Change
-                {
-                    Card = currentAvail.Card,
-
-                    From = currentAvail.Location,
-                    To = actual.Location,
-                    Amount = amountTaken,
-
-                    Transaction = transaction
-                };
-
-                _dbContext.Changes.Attach(newChange);
             }
         }
-    }
-
-
-
-    private IReadOnlyList<CardReturn> ApplyDeckReturns(Deck deck)
-    {
-        var returnPairs = deck.Cards
-            .Join( deck.GiveBacks,
-                ca => ca.CardId,
-                gb => gb.CardId,
-                (actual, giveBack) => (actual, giveBack));
-
-        // TODO: change to atomic returns, all or nothing
-        var appliedReturns = new List<GiveBack>();
-
-        foreach (var (actual, giveBack) in returnPairs)
-        {
-            if (actual.NumCopies >= giveBack.NumCopies)
-            {
-                actual.NumCopies -= giveBack.NumCopies;
-                appliedReturns.Add(giveBack);
-            }
-        }
-
-        var cardsReturning = appliedReturns
-            .Select(g => new CardReturn(g.Card, g.NumCopies, deck))
-            .ToList();
-
-        foreach (var ret in appliedReturns)
-        {
-            ret.NumCopies = 0;
-        }
-
-        return cardsReturning;
     }
 
 
     private void RemoveEmpty(Deck deck)
     {
-        var emptyAmounts = deck.Cards.Where(ca => ca.NumCopies == 0);
-        var finishedWants = deck.Wants.Where(r => r.NumCopies == 0);
+        var emptyAmounts = deck.Cards.Where(a => a.NumCopies == 0);
+        var finishedWants = deck.Wants.Where(w => w.NumCopies == 0);
         var finishedGives = deck.GiveBacks.Where(g => g.NumCopies == 0);
 
         // do not remove empty availables

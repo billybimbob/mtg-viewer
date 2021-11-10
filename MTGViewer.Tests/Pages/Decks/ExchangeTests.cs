@@ -171,7 +171,7 @@ public class ExchangeTests : IAsyncLifetime
 
         // Act
         var takeAmountBefore = await NumCopies(request).SingleAsync();
-        var actualAmountBefore = await ActualNumCopies((Quantity)request).SingleOrDefaultAsync();
+        var actualAmountBefore = await ActualNumCopies(request).SingleOrDefaultAsync();
 
         var boxTakeBefore = await BoxNumCopies(request).SumAsync();
         var changeBefore = await ChangeAmount(request).SumAsync();
@@ -179,7 +179,7 @@ public class ExchangeTests : IAsyncLifetime
         var result = await _exchangeModel.OnPostAsync(request.LocationId);
 
         var takeAmountAfter = await NumCopies(request).SingleAsync();
-        var actualAmountAfter = await ActualNumCopies((Quantity)request).SingleAsync();
+        var actualAmountAfter = await ActualNumCopies(request).SingleAsync();
 
         var boxTakeAfter = await BoxNumCopies(request).SumAsync();
         var changeAfter = await ChangeAmount(request).SumAsync();
@@ -209,7 +209,7 @@ public class ExchangeTests : IAsyncLifetime
 
         // Act
         var returnAmountBefore = await NumCopies(request).SingleAsync();
-        var actualAmountBefore = await ActualNumCopies((Quantity)request).SingleAsync();
+        var actualAmountBefore = await ActualNumCopies(request).SingleAsync();
 
         var boxTakeBefore = await BoxNumCopies(request).SumAsync();
         var changeBefore = await ChangeAmount(request).SumAsync();
@@ -217,7 +217,7 @@ public class ExchangeTests : IAsyncLifetime
         var result = await _exchangeModel.OnPostAsync(request.LocationId);
 
         var returnAmountAfter = await NumCopies(request).SingleOrDefaultAsync();
-        var actualAmountAfter = await ActualNumCopies((Quantity)request).SingleOrDefaultAsync();
+        var actualAmountAfter = await ActualNumCopies(request).SingleOrDefaultAsync();
 
         var boxTakeAfter = await BoxNumCopies(request).SumAsync();
         var changeAfter = await ChangeAmount(request).SumAsync();
@@ -244,7 +244,7 @@ public class ExchangeTests : IAsyncLifetime
 
         // Act
         var returnAmountBefore = await NumCopies(request).SingleAsync();
-        var actualAmountBefore = await ActualNumCopies((Quantity)request).SingleAsync();
+        var actualAmountBefore = await ActualNumCopies(request).SingleAsync();
 
         var boxTakeBefore = await BoxNumCopies(request).SumAsync();
         var changeBefore = await ChangeAmount(request).SumAsync();
@@ -252,7 +252,7 @@ public class ExchangeTests : IAsyncLifetime
         var result = await _exchangeModel.OnPostAsync(request.LocationId);
 
         var returnAmountAfter = await NumCopies(request).SingleAsync();
-        var actualAmountAfter = await ActualNumCopies((Quantity)request).SingleAsync();
+        var actualAmountAfter = await ActualNumCopies(request).SingleAsync();
 
         var boxTakeAfter = await BoxNumCopies(request).SumAsync();
         var changeAfter = await ChangeAmount(request).SumAsync();
@@ -294,12 +294,12 @@ public class ExchangeTests : IAsyncLifetime
         await _exchangeModel.SetModelContextAsync(_userManager, deckOwnerId);
 
         var boxBefore = await BoxNumCopies(request).SumAsync();
-        var actualBefore = await ActualNumCopies((Quantity)request).SingleAsync();
+        var actualBefore = await ActualNumCopies(request).SingleAsync();
 
         var result = await _exchangeModel.OnPostAsync(request.LocationId);
 
         var boxAfter = await BoxNumCopies(request).SumAsync();
-        var actualAfter = await ActualNumCopies((Quantity)request).SingleAsync();
+        var actualAfter = await ActualNumCopies(request).SingleAsync();
 
         Assert.IsType<RedirectToPageResult>(result);
         Assert.Equal(boxBefore, boxAfter);
@@ -318,13 +318,13 @@ public class ExchangeTests : IAsyncLifetime
         var takeTarget = take.NumCopies;
         var retTarget = ret.NumCopies;
 
-        var actualTakeBefore = await ActualNumCopies((Quantity)take).SingleOrDefaultAsync();
-        var actualRetBefore = await ActualNumCopies((Quantity)ret).SingleAsync();
+        var actualTakeBefore = await ActualNumCopies(take).SingleOrDefaultAsync();
+        var actualRetBefore = await ActualNumCopies(ret).SingleAsync();
 
         var result = await _exchangeModel.OnPostAsync(take.LocationId);
 
-        var actualTakeAfter = await ActualNumCopies((Quantity)take).SingleAsync();
-        var actualRetAfter = await ActualNumCopies((Quantity)ret).SingleOrDefaultAsync();
+        var actualTakeAfter = await ActualNumCopies(take).SingleAsync();
+        var actualRetAfter = await ActualNumCopies(ret).SingleOrDefaultAsync();
 
         Assert.IsType<RedirectToPageResult>(result);
 

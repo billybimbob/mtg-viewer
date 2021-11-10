@@ -139,12 +139,12 @@ public class WantNameGroup : IEnumerable<Want>
     public Location Location => First.Location;
 
 
-    public int Amount
+    public int NumCopies
     {
         get => _wants.Sum(ca => ca.NumCopies);
         set
         {
-            int change = Amount - value;
+            int change = NumCopies - value;
             while (change < 0 || change > 0 && First.NumCopies > 0)
             {
                 int mod = Math.Min(change, First.NumCopies);

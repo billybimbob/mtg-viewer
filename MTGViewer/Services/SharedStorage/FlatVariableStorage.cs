@@ -42,10 +42,10 @@ public sealed class FlatVariableStorage : ITreasury, IDisposable
             .AsNoTrackingWithIdentityResolution();
 
 
-    private IQueryable<Box> SortedBoxes =>
+    private IOrderedQueryable<Box> SortedBoxes =>
         _dbContext.Boxes.OrderBy(s => s.Id);
 
-    private IQueryable<Amount> SortedAmounts =>
+    private IOrderedQueryable<Amount> SortedAmounts =>
         // loading all shared cards, could be memory inefficient
         // TODO: find more efficient way to determining card position
 
@@ -57,44 +57,293 @@ public sealed class FlatVariableStorage : ITreasury, IDisposable
 
 
 
-    public async Task<Transaction> ReturnAsync(
-        IEnumerable<CardReturn> returns, CancellationToken cancel = default)
+    public Task<bool> AnyWantsAsync(
+        IEnumerable<Want> wants, CancellationToken cancel = default)
     {
-        if (InvalidReturns(returns))
+        if (wants is null || !wants.Any())
         {
-            throw new ArgumentException("Given returns are invalid");
+            return Task.FromResult(false);
+        }
+
+        var wantNames = wants
+            .Where(w => w.NumCopies > 0)
+            .Select(w => w.Card.Name)
+            .Distinct()
+            .ToArray();
+
+        return Cards
+            .Where(a => a.NumCopies > 0 && wantNames.Contains(a.Card.Name))
+            .AnyAsync(cancel);
+    }
+
+
+
+    #region Exchange
+
+    public async Task<Transaction?> ExchangeAsync(Deck deck, CancellationToken cancel = default)
+    {
+        if (InvalidDeck(deck))
+        {
+            return null;
         }
 
         await _lock.WaitAsync(cancel);
 
         try
         {
-            cancel.ThrowIfCancellationRequested();
+            var sortedBoxes = await SortedBoxes.ToArrayAsync(cancel); // unbounded: keep eye on
 
-            var boxSpace = await GetBoxSpaceAsync(cancel);
-
-            cancel.ThrowIfCancellationRequested();
-
-            var newTransaction = new Transaction();
-            var mergedReturns = MergedReturns(returns).ToList();
-
-            await ReturnExistingAsync(newTransaction, boxSpace, mergedReturns, cancel);
-
-            cancel.ThrowIfCancellationRequested();
-
-            if (mergedReturns.Any())
+            if (!sortedBoxes.Any())
             {
-                await ReturnNewAsync(newTransaction, boxSpace, mergedReturns, cancel);
-
-                cancel.ThrowIfCancellationRequested();
+                return null;
             }
 
-            _dbContext.Transactions.Attach(newTransaction);
+            var sortedAmounts = await SortedAmounts
+                .ThenByDescending(a => (a.Location as Box)!.Capacity)
+                .ToArrayAsync(cancel); // unbounded: keep eye on
 
-            // intentionally leave db exception unhandled
-            await _dbContext.SaveChangesAsync(cancel);
+            if (!sortedAmounts.Any())
+            {
+                return null;
+            }
 
-            cancel.ThrowIfCancellationRequested();
+            Transaction? newTransaction = null;
+
+            var boxReturns = GetDeckReturns(deck);
+
+            newTransaction = ApplyBoxReturns(sortedBoxes, sortedAmounts, boxReturns);
+            newTransaction = ApplyWants(newTransaction, deck, sortedAmounts);
+
+            if (newTransaction is not null)
+            {
+                // intentionally leave db exception unhandled
+                await _dbContext.SaveChangesAsync(cancel);
+            }
+
+            return newTransaction;
+        }
+        finally
+        {
+            _lock.Release();
+        }
+    }
+
+
+    private bool InvalidDeck(Deck deck)
+    {
+        bool InvalidQuantity(Quantity quantity) => 
+            quantity.Id == default || quantity.NumCopies < 0;
+
+        bool InvalidGiveBack((GiveBack, IEnumerable<Amount>) pair)
+        {
+            var (giveBack, amounts) = pair;
+
+            if (amounts.Count() > 1)
+            {
+                return true;
+            }
+
+            var amount = amounts.FirstOrDefault();
+            return amount == default 
+                || amount.NumCopies < giveBack.NumCopies;
+        }
+
+        return deck is null 
+            || deck.Id == default
+
+            || !deck.Wants.Any() && !deck.Cards.Any() && !deck.GiveBacks.Any()
+
+            || deck.Wants.Any( InvalidQuantity )
+            || deck.Cards.Any( InvalidQuantity )
+            || deck.GiveBacks.Any( InvalidQuantity )
+
+            || deck.GiveBacks
+                .GroupJoin( deck.Cards,
+                    g => g.CardId,
+                    a => a.CardId,
+                    (giveBack, amounts) => (giveBack, amounts))
+                .Any( InvalidGiveBack );
+    }
+
+
+    private Transaction? ApplyWants(Transaction? transaction, Deck deck, IReadOnlyList<Amount> boxAmounts)
+    {
+        var activeWants = deck.Wants
+            .Where(w => w.NumCopies > 0)
+            .ToHashSet();
+
+        var validAmounts = boxAmounts.Where(ca => ca.NumCopies > 0);
+
+        if (!activeWants.Any() || !validAmounts.Any())
+        {
+            return transaction;
+        }
+
+        transaction ??= new();
+        var changes = transaction.Changes;
+
+        ApplyExactWants(changes, activeWants, validAmounts, deck);
+        ApplyApproxWants(changes, activeWants, validAmounts, deck);
+
+        var emptyAvails = boxAmounts.Except(validAmounts);
+
+        _dbContext.Amounts.RemoveRange(emptyAvails);
+        _dbContext.Transactions.Add(transaction);
+
+        return transaction;
+    }
+
+
+    private void ApplyExactWants(
+        ICollection<Change> changes,
+        ICollection<Want> wants,
+        IEnumerable<Amount> availables,
+        Deck deck)
+    {
+        var exactMatches = wants
+            .Join( availables,
+                want => want.CardId,
+                avail => avail.CardId,
+                (want, avails) => (want, avails))
+            .ToList();
+
+        foreach (var (want, available) in exactMatches)
+        {
+            if (!wants.Contains(want))
+            {
+                continue;
+            }
+
+            int amountTaken = Math.Min(want.NumCopies, available.NumCopies);
+
+            if (amountTaken == want.NumCopies)
+            {
+                wants.Remove(want);
+            }
+
+            if (amountTaken == 0)
+            {
+                continue;
+            }
+
+            available.NumCopies -= amountTaken;
+
+            var newChange = new Change
+            {
+                Card = available.Card,
+                From = available.Location,
+                To = deck,
+                Amount = amountTaken
+            };
+
+            changes.Add(newChange);
+        }
+    }
+
+
+    private void ApplyApproxWants(
+        ICollection<Change> changes,
+        IEnumerable<Want> wants,
+        IEnumerable<Amount> availables,
+        Deck deck)
+    {
+        var wantsByName = wants
+            .GroupBy(w => w.Card.Name,
+                (_, ws) => new WantNameGroup(ws));
+
+        var availsByName = availables
+            .GroupBy(ca => ca.Card.Name,
+                (_, cas) => new CardNameGroup(cas));
+
+        var closeMatches = wantsByName
+            .Join( availsByName,
+                wantGroup => wantGroup.Name,
+                availGroup => availGroup.Name,
+                (wantGroup, availGroup) => (wantGroup, availGroup));
+
+        foreach (var (want, availGroup) in closeMatches)
+        {
+            using var closeAvails = availGroup.GetEnumerator();
+            int wantAmount = want.NumCopies;
+
+            while (wantAmount > 0 && closeAvails.MoveNext())
+            {
+                var currentAvail = closeAvails.Current;
+                int amountTaken = Math.Min(wantAmount, currentAvail.NumCopies);
+
+                currentAvail.NumCopies -= amountTaken;
+                wantAmount -= amountTaken;
+
+                var newChange = new Change
+                {
+                    Card = currentAvail.Card,
+                    From = currentAvail.Location,
+                    To = deck,
+                    Amount = amountTaken
+                };
+
+                changes.Add(newChange);
+            }
+        }
+    }
+
+
+    private IReadOnlyList<CardReturn> GetDeckReturns(Deck deck)
+    {
+        return deck.Cards
+            .Join( deck.GiveBacks,
+                ca => ca.CardId,
+                gb => gb.CardId,
+                (actual, giveBack) => (actual, giveBack))
+
+                // TODO: change to atomic returns, all or nothing
+            .Where(ag => ag.actual.NumCopies >= ag.giveBack.NumCopies)
+            .Select(ag => 
+                new CardReturn(ag.giveBack.Card, ag.giveBack.NumCopies, deck))
+            .ToList();
+    }
+
+    #endregion
+
+
+
+    #region Return
+
+    public async Task<Transaction?> ReturnAsync(
+        IEnumerable<CardReturn> returns, CancellationToken cancel = default)
+    {
+        if (InvalidReturns(returns))
+        {
+            return null;
+        }
+
+        await _lock.WaitAsync(cancel);
+
+        try
+        {
+            var sortedBoxes = await SortedBoxes.ToArrayAsync(cancel); // unbounded: keep eye on
+
+            if (!sortedBoxes.Any())
+            {
+                return null;
+            }
+
+            var sortedAmounts = await SortedAmounts
+                .ThenByDescending(a => (a.Location as Box)!.Capacity)
+                .ToArrayAsync(cancel); // unbounded: keep eye on
+
+            if (!sortedAmounts.Any())
+            {
+                return null;
+            }
+
+            var newTransaction = ApplyBoxReturns(sortedBoxes, sortedAmounts, returns);
+
+            if (newTransaction is not null)
+            {
+                // intentionally leave db exception unhandled
+                await _dbContext.SaveChangesAsync(cancel);
+            }
 
             return newTransaction;
         }
@@ -107,17 +356,53 @@ public sealed class FlatVariableStorage : ITreasury, IDisposable
 
     private bool InvalidReturns(IEnumerable<CardReturn> returns)
     {
-        return !returns.Any() 
+        return !(returns?.Any() ?? false)
             || returns.Any(cr => cr.Card == null || cr.NumCopies <= 0);
     }
 
 
-    private Task<Dictionary<int, int>> GetBoxSpaceAsync(CancellationToken cancel)
+    private Transaction? ApplyBoxReturns(
+        IReadOnlyList<Box> sortedBoxes, 
+        IReadOnlyList<Amount> sortedAmounts, 
+        IEnumerable<CardReturn> returns)
     {
-        return _dbContext.Boxes
-            .Select(b => new { b.Id, Space = b.Cards.Sum(ca => ca.NumCopies) })
-            .ToDictionaryAsync(
-                ba => ba.Id, ba => ba.Space, cancel);
+        var newTransaction = new Transaction();
+        var changes = newTransaction.Changes;
+
+        var mergedReturns = MergedReturns(returns).ToList();
+
+        var boxSpace = sortedBoxes
+            .ToDictionary(b => b.Id, b => b.Cards.Sum(a => a.NumCopies));
+
+        var unfinished = new List<CardReturn>();
+        var newAmounts = new List<Amount>();
+
+        var splitAmounts = ExistingBoxAdds(sortedAmounts, mergedReturns, boxSpace);
+
+        ApplyExistingReturns(splitAmounts, unfinished, changes, boxSpace);
+
+        if (unfinished.Any())
+        {
+            var returnPairs = NewBoxAdds(unfinished, sortedAmounts, sortedBoxes, boxSpace);
+
+            ApplyNewReturns(returnPairs, newAmounts, changes, boxSpace);
+        }
+
+        if (!changes.Any())
+        {
+            return null;
+        }
+        
+        var emptyAmounts = sortedAmounts
+            .Concat(newAmounts)
+            .Where(a => a.NumCopies == 0);
+
+        _dbContext.Amounts.AttachRange(newAmounts);
+        _dbContext.Amounts.RemoveRange(emptyAmounts);
+
+        _dbContext.Transactions.Attach(newTransaction);
+
+        return newTransaction;
     }
 
 
@@ -138,36 +423,23 @@ public sealed class FlatVariableStorage : ITreasury, IDisposable
     }
 
 
-    private async Task ReturnExistingAsync(
-        Transaction transaction,
-        Dictionary<int, int> boxSpace,
-        List<CardReturn> returning,
-        CancellationToken cancel)
+    private IEnumerable<(CardReturn, IReadOnlyList<(Amount, int)>)> ExistingBoxAdds(
+        IReadOnlyList<Amount> amounts,
+        IReadOnlyList<CardReturn> returning,
+        IReadOnlyDictionary<int, int> boxSpace)
     {
-        var returnAmounts = await ExistingAmounts(returning)
-            .ToListAsync(cancel); // unbounded: keep eye on
-
-        cancel.ThrowIfCancellationRequested();
-
-        if (!returnAmounts.Any())
-        {
-            return;
-        }
-
-        var allReturns = returning.ToArray();
-
-        var returnBoxes = returnAmounts
+        var returnBoxes = amounts
             .ToLookup(ca => ca.CardId, ca => (Box)ca.Location);
 
-        returning.Clear();
-
-        foreach (var cardReturn in allReturns)
+        foreach (var cardReturn in returning)
         {
-            var (card, numCopies, deck) = cardReturn;
+            var (card, numCopies, _) = cardReturn;
 
-            if (!returnBoxes.Contains(card.Id))
+            if (!returnBoxes.Contains(cardReturn.Card.Id))
             {
-                returning.Add(cardReturn);
+                var empty = Array.Empty<(Amount, int)>();
+
+                yield return (cardReturn, empty);
                 continue;
             }
 
@@ -175,118 +447,66 @@ public sealed class FlatVariableStorage : ITreasury, IDisposable
 
             var splitBoxAmounts = FitToBoxes(boxOptions, boxSpace, numCopies);
 
-            var targets = returnAmounts
+            var splitReturns = amounts
                 .Join( splitBoxAmounts,
                     amt => (amt.CardId, amt.LocationId),
                     boxAmt => (card.Id, boxAmt.Box.Id),
-                    (amt, boxAmt) => (amt, boxAmt.Amount));
+                    (amt, boxAmt) => (amt, boxAmt.Amount))
+                .ToList();
 
-            int totalReturn = ApplyReturnMatches(deck, targets, boxSpace, transaction.Changes);
+            yield return (cardReturn, splitReturns);
+        }
+    }
+
+
+    private void ApplyExistingReturns(
+        IEnumerable<(CardReturn, IReadOnlyList<(Amount, int)>)> splitReturns,
+        IList<CardReturn> unfinished,
+        IList<Change> changes,
+        IDictionary<int, int> boxSpace)
+    {
+        foreach (var (cardReturn, splits) in splitReturns)
+        {
+            var (card, numCopies, source) = cardReturn;
+
+            if (splits.Count == 0)
+            {
+                unfinished.Add(cardReturn);
+                continue;
+            }
+            
+            int totalReturn = 0;
+
+            foreach (var (target, splitAmount) in splits)
+            {
+                var newChange = new Change
+                {
+                    Card = target.Card,
+                    To = target.Location,
+                    From = source,
+                    Amount = splitAmount
+                };
+
+                changes.Add(newChange);
+
+                target.NumCopies += splitAmount;
+                boxSpace[target.LocationId] += splitAmount;
+
+                totalReturn += splitAmount;
+            }
 
             int notReturned = numCopies - totalReturn;
 
             if (notReturned != 0)
             {
-                returning.Add(cardReturn with { NumCopies = notReturned });
+                unfinished.Add(cardReturn with { NumCopies = notReturned });
             }
         }
     }
 
 
-    private IQueryable<Amount> ExistingAmounts(IEnumerable<CardReturn> returns)
-    {
-        var returnIds = returns
-            .Select(cr => cr.Card.Id)
-            .Distinct()
-            .ToArray();
 
-        return _dbContext.Amounts
-            .Where(ca => ca.Location is Box && returnIds.Contains(ca.CardId))
-            .Include(ca => ca.Card)
-            .Include(ca => ca.Location)
-            .OrderBy(ca => (ca.Location as Box)!.Capacity);
-    }
-
-
-    private int ApplyReturnMatches(
-        Deck? source,
-        IEnumerable<(Amount, int)> matches,
-        IDictionary<int, int> boxSpace,
-        IList<Change> changes)
-    {
-        int totalReturn = 0;
-
-        foreach (var (target, splitAmount) in matches)
-        {
-            var newChange = new Change
-            {
-                Card = target.Card,
-                To = target.Location,
-                From = source,
-                Amount = splitAmount
-            };
-
-            target.NumCopies += splitAmount;
-            boxSpace[target.LocationId] += splitAmount;
-
-            changes.Add(newChange);
-
-            totalReturn += splitAmount;
-        }
-        
-        return totalReturn;
-    }
-
-
-    private async Task ReturnNewAsync(
-        Transaction transaction,
-        Dictionary<int, int> boxSpace,
-        IReadOnlyList<CardReturn> newReturns,
-        CancellationToken cancel)
-    {
-        var sortedBoxes = await SortedBoxes.ToListAsync(cancel); // unbounded: keep eye on
-
-        cancel.ThrowIfCancellationRequested();
-
-        if (!sortedBoxes.Any())
-        {
-            throw new InvalidOperationException(
-                "There are no possible boxes to return the cards to");
-        }
-
-        var sortedAmounts = await SortedAmounts.ToListAsync(cancel); // unbounded: keep eye on
-
-        cancel.ThrowIfCancellationRequested();
-
-        var returnPairs = FindNewReturnPairs(newReturns, sortedAmounts, sortedBoxes, boxSpace);
-
-        foreach (var (card, numCopies, source, box) in returnPairs)
-        {
-            var newSpot = new Amount
-            {
-                Card = card,
-                Location = box,
-                NumCopies = numCopies
-            };
-
-            _dbContext.Amounts.Attach(newSpot);
-
-            var newChange = new Change
-            {
-                Card = card,
-                To = box,
-                From = source,
-                Amount = numCopies,
-                Transaction = transaction
-            };
-
-            transaction.Changes.Add(newChange);
-            boxSpace[box.Id] += numCopies;
-        }
-    }
-
-
-    private IEnumerable<(Card, int, Deck?, Box)> FindNewReturnPairs(
+    private IEnumerable<(Card, int, Deck?, Box)> NewBoxAdds(
         IReadOnlyList<CardReturn> newReturns,
         IReadOnlyList<Amount> sortedAmounts,
         IReadOnlyList<Box> sortedBoxes,
@@ -358,157 +578,38 @@ public sealed class FlatVariableStorage : ITreasury, IDisposable
     }
 
 
-    public async Task<Transaction?> OptimizeAsync(CancellationToken cancel = default)
+    private void ApplyNewReturns(
+        IEnumerable<(Card, int, Deck?, Box)> returnPairs,
+        IList<Amount> newAmounts,
+        IList<Change> changes,
+        IDictionary<int, int> boxSpace)
     {
-        try
+        foreach (var (card, numCopies, source, box) in returnPairs)
         {
-            await _lock.WaitAsync(cancel);
-        }
-        catch (OperationCanceledException)
-        {
-            return null;
-        }
-
-        try
-        {
-            var sortedAmounts = await SortedAmounts.ToListAsync(cancel); // unbounded: keep eye on
-
-            if (cancel.IsCancellationRequested)
+            var newSpot = new Amount
             {
-                return null;
-            }
+                Card = card,
+                Location = box,
+                NumCopies = numCopies
+            };
 
-            var sortedBoxes = await SortedBoxes.ToListAsync(cancel); // unbounded: keep eye on
-
-            if (cancel.IsCancellationRequested)
+            var newChange = new Change
             {
-                return null;
-            }
+                Card = card,
+                To = box,
+                From = source,
+                Amount = numCopies
+            };
 
-            var optimizeChanges = GetOptimizeChanges(sortedAmounts, sortedBoxes);
+            newAmounts.Add(newSpot);
+            changes.Add(newChange);
 
-            if (optimizeChanges == null)
-            {
-                return null;
-            }
-
-            // intentionally throw db exception
-            await _dbContext.SaveChangesAsync(cancel);
-
-            if (cancel.IsCancellationRequested)
-            {
-                return null;
-            }
-
-            return optimizeChanges;
-        }
-        catch (OperationCanceledException)
-        {
-            return null;
-        }
-        finally
-        {
-            _lock.Release();
+            boxSpace[box.Id] += numCopies;
         }
     }
 
+    #endregion
 
-    private Transaction? GetOptimizeChanges(
-        IReadOnlyList<Amount> sharedAmounts, 
-        IReadOnlyList<Box> sortedBoxes)
-    {
-        if (!sharedAmounts.Any() || !sortedBoxes.Any())
-        {
-            return null;
-        }
-
-        var (transaction, updatedAmounts) = AddUpdatedBoxAmounts(sharedAmounts, sortedBoxes);
-
-        if (!transaction.Changes.Any())
-        {
-            return null;
-        }
-
-        var addedAmounts = updatedAmounts.Except(sharedAmounts);
-        var emptyAmounts = updatedAmounts.Where(ca => ca.NumCopies == 0);
-
-        _dbContext.Transactions.Add(transaction);
-        _dbContext.Changes.AddRange(transaction.Changes); // just for clarity
-
-        _dbContext.Amounts.AttachRange(addedAmounts);
-        _dbContext.Amounts.RemoveRange(emptyAmounts);
-
-        return transaction;
-    }
-
-
-    private (Transaction, IReadOnlyCollection<Amount>) AddUpdatedBoxAmounts(
-        IReadOnlyList<Amount> sortedAmounts, 
-        IReadOnlyList<Box> sortedBoxes)
-    {
-        var newTransaction = new Transaction();
-
-        var boxAmounts = sortedAmounts
-            .ToDictionary(ca => (ca.CardId, ca.LocationId));
-
-        var oldAmounts = sortedAmounts
-            .Select(ca => (ca.Card, ca.Location, ca.NumCopies))
-            .ToList();
-
-        foreach (var shared in sortedAmounts)
-        {
-            shared.NumCopies = 0;
-        }
-
-        var boxSpace = sortedBoxes // faster than summing every time
-            .ToDictionary(b => b.Id, _ => 0);
-
-        int boxStart = 0;
-
-        foreach (var (card, oldBox, oldNumCopies) in oldAmounts)
-        {
-            var boxOptions = sortedBoxes
-                .Concat(sortedBoxes)
-                .Skip(boxStart)
-                .Take(sortedBoxes.Count);
-
-            var newBoxAmounts = DivideToBoxes(boxOptions, boxSpace, oldNumCopies);
-
-            bool multipleBoxes = false;
-
-            foreach (var (newBox, newNumCopies) in newBoxAmounts)
-            {
-                var boxAmount = GetOrAddBoxAmount(boxAmounts, card, newBox);
-
-                boxAmount.NumCopies += newNumCopies;
-                boxSpace[newBox.Id] += newNumCopies;
-
-                if (!multipleBoxes)
-                {
-                    multipleBoxes = true;
-                }
-                else
-                {
-                    boxStart++;
-                }
-
-                if (oldBox == newBox)
-                {
-                    continue;
-                }
-
-                newTransaction.Changes.Add(new()
-                {
-                    Card = card,
-                    From = oldBox,
-                    To = newBox,
-                    Amount = newNumCopies
-                });
-            }
-        }
-
-        return (newTransaction, boxAmounts.Values);
-    }
 
 
     private IEnumerable<(Box Box, int Amount)> FitToBoxes(
@@ -563,6 +664,138 @@ public sealed class FlatVariableStorage : ITreasury, IDisposable
     }
 
 
+
+    #region Optimize
+
+    public async Task<Transaction?> OptimizeAsync(CancellationToken cancel = default)
+    {
+        await _lock.WaitAsync(cancel);
+
+        try
+        {
+            var sortedBoxes = await SortedBoxes.ToArrayAsync(cancel); // unbounded: keep eye on
+
+            if (!sortedBoxes.Any())
+            {
+                return null;
+            }
+
+            var sortedAmounts = await SortedAmounts.ToArrayAsync(cancel); // unbounded: keep eye on
+
+            if (!sortedAmounts.Any())
+            {
+                return null;
+            }
+
+            var optimizeChanges = ApplyOptimizeChanges(sortedAmounts, sortedBoxes);
+
+            if (optimizeChanges is not null)
+            {
+                // intentionally throw db exception
+                await _dbContext.SaveChangesAsync(cancel);
+            }
+
+            return optimizeChanges;
+        }
+        finally
+        {
+            _lock.Release();
+        }
+    }
+
+
+    private Transaction? ApplyOptimizeChanges(
+        IReadOnlyList<Amount> sharedAmounts, 
+        IReadOnlyList<Box> sortedBoxes)
+    {
+        var (transaction, updatedAmounts) = AddUpdatedBoxAmounts(sharedAmounts, sortedBoxes);
+
+        if (!transaction.Changes.Any())
+        {
+            return null;
+        }
+
+        var addedAmounts = updatedAmounts.Except(sharedAmounts);
+        var emptyAmounts = sharedAmounts.Where(ca => ca.NumCopies == 0);
+
+        _dbContext.Transactions.Attach(transaction);
+
+        _dbContext.Amounts.AttachRange(addedAmounts);
+        _dbContext.Amounts.RemoveRange(emptyAmounts);
+
+        return transaction;
+    }
+
+
+    private (Transaction, IReadOnlyCollection<Amount>) AddUpdatedBoxAmounts(
+        IReadOnlyList<Amount> sortedAmounts, 
+        IReadOnlyList<Box> sortedBoxes)
+    {
+        var newTransaction = new Transaction();
+        var changes = newTransaction.Changes;
+
+        var boxAmounts = sortedAmounts
+            .ToDictionary(a => (a.CardId, a.LocationId));
+
+        var oldAmounts = sortedAmounts
+            .Where(a => a.NumCopies > 0)
+            .Select(a => (a.Card, a.Location, a.NumCopies))
+            .ToList();
+
+        foreach (var shared in sortedAmounts)
+        {
+            shared.NumCopies = 0;
+        }
+
+        var boxSpace = sortedBoxes // faster than summing every time
+            .ToDictionary(b => b.Id, _ => 0);
+
+        int boxStart = 0;
+
+        foreach (var (card, oldBox, oldNumCopies) in oldAmounts)
+        {
+            var boxOptions = sortedBoxes
+                .Concat(sortedBoxes)
+                .Skip(boxStart)
+                .Take(sortedBoxes.Count);
+
+            var newBoxAmounts = DivideToBoxes(boxOptions, boxSpace, oldNumCopies);
+
+            bool multipleBoxes = false;
+
+            foreach (var (newBox, newNumCopies) in newBoxAmounts)
+            {
+                var boxAmount = GetOrAddBoxAmount(boxAmounts, card, newBox);
+
+                boxAmount.NumCopies += newNumCopies;
+                boxSpace[newBox.Id] += newNumCopies;
+
+                if (!multipleBoxes)
+                {
+                    multipleBoxes = true;
+                }
+                else
+                {
+                    boxStart++;
+                }
+
+                if (oldBox != newBox)
+                {
+                    changes.Add(new()
+                    {
+                        Card = card,
+                        From = oldBox,
+                        To = newBox,
+                        Amount = newNumCopies
+                    });
+                }
+            }
+        }
+
+        return (newTransaction, boxAmounts.Values);
+    }
+
+
     private Amount GetOrAddBoxAmount(
         IDictionary<(string, int), Amount> boxAmounts, Card card, Box box)
     {
@@ -581,4 +814,6 @@ public sealed class FlatVariableStorage : ITreasury, IDisposable
 
         return boxAmount;
     }
+
+    #endregion
 }
