@@ -39,11 +39,11 @@ public readonly struct Pages
 public class PagedList<T> : IReadOnlyList<T>
 {
     private static readonly Lazy<PagedList<T>> _empty = new(() => 
-        new PagedList<T>(default, new List<T>()) );
+        new PagedList<T>(default, Array.Empty<T>()) );
 
-    private readonly List<T> _items;
+    private readonly IList<T> _items;
 
-    public PagedList(Pages page, List<T> items)
+    public PagedList(Pages page, IList<T> items)
     {
         if (items is null)
         {

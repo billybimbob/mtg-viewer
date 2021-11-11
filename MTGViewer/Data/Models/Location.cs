@@ -89,7 +89,7 @@ public class Deck : Owned
     {
         var cardMana = Cards
             .Where(a => a.NumCopies > 0)
-            .Select(ca => ca.Card.ManaCost)
+            .Select(a => a.Card.ManaCost)
             .SelectMany( toCardText.FindMana )
             .SelectMany(mana => mana.Value.Split('/'));
 
@@ -99,7 +99,7 @@ public class Deck : Owned
             .SelectMany( toCardText.FindMana )
             .SelectMany(mana => mana.Value.Split('/'));
 
-        var colorSymbols = Color.Symbols.Values
+        var colorSymbols = Color.Symbols.Keys
             .Intersect( cardMana.Union(wantMana) )
             .Select( toCardText.ManaString );
 

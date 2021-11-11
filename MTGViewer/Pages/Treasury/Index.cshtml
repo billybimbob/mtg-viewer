@@ -32,8 +32,8 @@
             <th scope="col"> @Html.DisplayNameForInnerType((Amount ca) => ca.Card) </th>
             <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.ManaCost) </th>
             <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.SetName) </th>
-            <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.Rarity) </th>
-            <th scope="col"> Current Amount </th>
+            <th scope="col"> @Html.DisplayNameForInnerType((Amount a) => a.NumCopies) </th>
+            <th scope="col"> @Html.DisplayNameForInnerType((Box b) => b.Capacity) </th>
         </tr>
     </thead>
     <tbody>
@@ -54,7 +54,6 @@
 
                     <td> @(MtgSymbols.Format(firstAmount.Card.ManaCost).ToHtmlString()) </td>
                     <td> @firstAmount.Card.SetName </td>
-                    <td> @firstAmount.Card.Rarity </td>
                     <td> @firstAmount.NumCopies </td>
                 }
                 else
@@ -63,8 +62,9 @@
                     <td></td>
                     <td></td>
                     <td></td>
-                    <td></td>
                 }
+
+                <td rowspan="@boxSpan"> @box.Cards.Sum(a => a.NumCopies) / @box.Capacity </td>
             </tr>
 
             @foreach (var amount in box.Cards.Skip(1))
@@ -76,7 +76,6 @@
                     </td>
                     <td> @(MtgSymbols.Format(amount.Card.ManaCost).ToHtmlString()) </td>
                     <td> @amount.Card.SetName </td>
-                    <td> @amount.Card.Rarity </td>
                     <td> @amount.NumCopies </td>
                 </tr>
             }

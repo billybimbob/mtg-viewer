@@ -310,8 +310,11 @@ internal static class MtgApiExtension
 
         Layout = card.Layout,
 
-        Colors = (card.Colors?.Select(s => new Color(s))
-            ?? Enumerable.Empty<Color>())
+        Colors = (card.ColorIdentity ?? Enumerable.Empty<string>())
+            .Select(id => Color.Symbols[id.ToUpper()]) 
+
+            .Union(card.Colors ?? Enumerable.Empty<string>())
+            .Select(s => new Color(s))
             .ToList(),
 
         Types = (card.Types?.Select(s => new Data.Type(s))

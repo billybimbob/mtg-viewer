@@ -10,7 +10,7 @@
             "request": "launch",
             "preLaunchTask": "build",
             // If you have changed target frameworks, make sure to update the program path.
-            "program": "${workspaceFolder}/MTGViewer/bin/Debug/net5.0/MTGViewer.dll",
+            "program": "${workspaceFolder}/MTGViewer/bin/Debug/net6.0/MTGViewer.dll",
             "args": [],
             "cwd": "${workspaceFolder}/MTGViewer",
             "stopAtEntry": false,

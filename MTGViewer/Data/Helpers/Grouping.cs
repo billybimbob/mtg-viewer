@@ -46,7 +46,7 @@ public class CardNameGroup : IEnumerable<Amount>
     private Amount First => _amounts.First!.Value;
 
     public string Name => First.Card.Name;
-    public string ManaCost => First.Card.ManaCost;
+    public string? ManaCost => First.Card.ManaCost;
 
     public IEnumerable<string> CardIds => _amounts.Select(ca => ca.CardId);
     public IEnumerable<Card> Cards => _amounts.Select(ca => ca.Card);
@@ -129,7 +129,7 @@ public class WantNameGroup : IEnumerable<Want>
     private Want First => _wants.First!.Value;
 
     public string Name => First.Card.Name;
-    public string ManaCost => First.Card.ManaCost;
+    public string? ManaCost => First.Card.ManaCost;
 
     public IEnumerable<string> CardIds => _wants.Select(ca => ca.CardId);
     public IEnumerable<Card> Cards => _wants.Select(ca => ca.Card);

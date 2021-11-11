@@ -90,7 +90,7 @@
                 </div>
 
                 <div class="form-group">
-                    @foreach (var (color, symbol) in Color.Symbols)
+                    @foreach (var (symbol, color) in Color.Symbols)
                     {
                         var toggleId = $"{color}Toggle";
                         var active = _pickedColors.Contains(color) ? "active" : string.Empty;
@@ -219,7 +219,7 @@ else
         </div>
 
         <div class="col-auto btn-group" role="group" aria-label="Color Buttons">
-            @foreach (var (color, symbol) in Color.Symbols)
+            @foreach (var (symbol, color) in Color.Symbols)
             {
                 var active = _pickedColors.Contains(color) ? "active" : "";
 

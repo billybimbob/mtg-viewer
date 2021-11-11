@@ -1,4 +1,4 @@
-@page "{cardId}"
+@page "{cardId}/{pageIndex:int?}"
 @model Transfers.SuggestModel
 @{
     ViewData["Title"] = $"Suggest {Model.Card.Name}";
@@ -6,91 +6,207 @@
 @inject SymbolFormatter MtgSymbols
 
 
-@if (Model.Users is not null)
+@if (Model.Users is null)
 {
-    <h2>Pick which user to suggest @Model.Card.Name to</h2>
-    <hr />
-
-    @if (!Model.Users.Any())
-    {
-        <div class="alert alert-danger" role="alert">
-            There are no users to suggest to
-        </div>
-    }
-
-    @foreach(var user in Model.Users)
-    {
-        <div class="input-group">
-            <div class="input-group-prepend">
-                <div class="input-group-text">
-                    <input type="radio" name="userId" value="@user.Id" />
-                </div>
-            </div>
-            <span class="input-group-text">@user.Name</span>
-        </div>
-    }
-
-    <a asp-page="/Cards/Index"
-        class="btn btn-secondary mb-3"
-        role="button">
-        Back </a>
-
-    @if (Model.Users.Any())
-    {
-        <form method="POST">
-            <input type="submit"
-                asp-page-handler="User"
-                asp-route-cardid="@Model.Card.Id"
-                class="btn btn-secondary mb-3"
-                value="Suggest To" />
-        </form>
-    }
+    <h2>Suggest @Model.Card.Name to @Model.Receiver.Name</h2>
 }
 else
 {
-    <h2>Pick the deck to suggest @Model.Card.Name (Optional)</h2>
-    <hr />
+    <h2>Suggest <a asp-page="/Cards/Details" asp-route-id="@Model.Card.Id">@Model.Card.Name</a></h2>
+}
 
-    <form method="POST">
-        @foreach(var deck in Model.Decks)
+<hr />
+<div class="row">
+    <div class="col-sm">
+        @if (Model.Users is null)
         {
-            <div class="input-group">
-                <div class="input-group-prepend">
-                    <div class="input-group-text">
-                        <input type="radio" asp-for="Suggestion.ToId" value="@deck.Id" />
+            <form method="POST">
+                @if (Model.Decks.Any())
+                {
+                    <fieldset class="form-group">
+                        <div class="row">
+                            <legend class="col-form-label col-sm-3 pt-0">
+                                Specific Deck
+                            </legend>
+
+                            <div class="col-sm-8"> 
+                                @foreach(var deck in Model.Decks)
+                                {
+                                    var deckId = $"option-{deck.Id}";
+
+                                    <div class="form-check">
+                                        <input class="form-check-input" id="@deckId"
+                                            type="radio" asp-for="Suggestion.ToId" 
+                                            value="@deck.Id" />
+
+                                        <label class="form-check-label row" for="@deckId">
+                                            <span class="col-sm-5"> @deck.Name </span>
+                                            <span class="col-sm-6">
+                                                @(MtgSymbols.Format(deck.Colors).ToHtmlString())
+                                            </span>
+                                        </label>
+                                    </div>
+                                }
+
+                                <div class="form-check">
+                                    <input class="form-check-input" id="defaultTo" 
+                                        asp-for="Suggestion.ToId" value="@null"
+                                        type="radio" checked />
+
+                                    <label class="form-check-label" for="defaultTo"> No Deck </label>
+                                </div>
+                            </div>
+
+                        </div>
+                    </fieldset>
+                }
+
+                <div class="form-group row">
+                    <label asp-for="Suggestion.Comment" 
+                        class="col-form-label col-sm-3"></label>
+
+                    <div class="col-sm-8">
+                        <textarea asp-for="Suggestion.Comment" class="form-control"
+                            placeholder="Add Comment for Suggestion">
+                        </textarea>
                     </div>
                 </div>
 
-                <span class="input-group-text">@deck.Name</span>
+                <input type="hidden"
+                    asp-for="Suggestion.CardId"
+                    value="@Model.Card.Id" />
 
-                <div class="input-group-text">
-                    @(MtgSymbols.Format(deck.Colors).ToHtmlString())
+                <input type="hidden"
+                    asp-for="Suggestion.ReceiverId"
+                    value="@Model.Receiver.Id" />
+
+                <div class="form-group row">
+                    <div class="col-sm-10">
+                        <a asp-page="Suggest"
+                            asp-route-cardId="@Model.Card.Id"
+                            class="btn btn-secondary"
+                            role="button">
+                            Back </a>
+
+                        <input type="submit"
+                            asp-page-handler="Suggest"
+                            class="btn btn-secondary"
+                            value="Suggest" />
+                    </div>
                 </div>
+            </form>
+        }
+        else if (!Model.Users.Any())
+        {
+            <div class="alert alert-danger" role="alert">
+                There are no users to suggest to
             </div>
         }
+        else
+        {
+            <form method="POST">
+                <fieldset class="form-group mb-4">
+                    <div class="row">
+                        <legend class="col-form-label col-sm-3 pt-0"> Users </legend>
 
-        <div class="form-group">
-            <label asp-for="Suggestion.Comment" class="control-label"></label>
-            <textarea asp-for="Suggestion.Comment" class="form-control"></textarea>
-        </div>
+                        <div class="col-sm">
+                            @{
+                                var first = Model.Users.First();
+                                var firstId = $"options-{first.Id}";
+                            }
 
-        <a asp-page="Suggest"
-            asp-route-cardid="@Model.Card.Id"
-            class="btn btn-secondary mb-3"
-            role="button">
-            Back </a>
+                            <div class="form-check">
+                                <input class="form-check-input" id="@firstId" type="radio" 
+                                    name="userId" value="@first.Id" checked/>
 
-        <input type="hidden"
-            asp-for="Suggestion.CardId"
-            value="@Model.Card.Id" />
+                                <label class="form-check-label" for="@firstId">
+                                    @first.Name
+                                </label>
+                            </div>
 
-        <input type="hidden"
-            asp-for="Suggestion.ReceiverId"
-            value="@Model.Receiver.Id" />
+                            @foreach(var user in Model.Users.Skip(1))
+                            {
+                                var userId = $"option-{user.Id}";
 
-        <input type="submit"
-            asp-page-handler="Suggest"
-            class="btn btn-secondary mb-3"
-            value="Suggest" />
-    </form>
+                                <div class="form-check">
+                                    <input class="form-check-input" id="@userId"
+                                        type="radio" name="userId"
+                                        value="@user.Id" />
+
+                                    <label class="form-check-label" for="@userId">
+                                        @user.Name
+                                    </label>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </fieldset>
+
+                <input type="hidden" asp-for="Card.Id" />
+                <input type="hidden" asp-for="Card.Name" />
+                <input type="hidden" asp-for="Card.ManaCost" />
+                <input type="hidden" asp-for="Card.SetName" />
+                <input type="hidden" asp-for="Card.ImageUrl" />
+
+                @if (Model.Users.Pages.HasMultiple)
+                {
+                    var pages = Model.Users.Pages;
+
+                    <div class="form-group row">
+                        <div class="col-sm">
+
+                            @if (pages.HasPrevious)
+                            {
+                                <a asp-page="Suggest" 
+                                    asp-route-cardId="@Model.Card.Id"
+                                    asp-route-pageIndex="@(pages.Current - 1)"
+                                    class="btn btn-secondary" role="button">
+                                    &laquo; </a>
+                            }
+                            else
+                            {
+                                <button class="btn btn-secondary" type="button" disabled> &laquo; </button>
+                            }
+
+                            @if (pages.HasNext)
+                            {
+                                <a asp-page="Suggest"
+                                    asp-route-cardId="@Model.Card.Id"
+                                    asp-route-pageIndex="@(pages.Current + 1)"
+                                    class="btn btn-secondary" role="button">
+                                    &raquo; </a>
+                            }
+                            else
+                            {
+                                <button class="btn btn-secondary" type="button" disabled> &raquo; </button>
+                            }
+                        </div>
+                    </div>
+                }
+
+                <div class="form-group row">
+                    <div class="col-sm">
+                        <a asp-page="/Cards/Index"
+                            class="btn btn-secondary"
+                            role="button">
+                            Back </a>
+
+                        <input type="submit"
+                            asp-page-handler="User"
+                            class="btn btn-secondary"
+                            value="Suggest To" />
+                    </div>
+                </div>
+            </form>
+        }
+    </div>
+
+    <div class="col-sm">
+        <img class="img-fluid" alt="@Model.Card.Name" src="@Model.Card.ImageUrl.WithHttps()"/>
+    </div>
+</div>
+
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
 }

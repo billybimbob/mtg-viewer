@@ -25,11 +25,11 @@
 
 <div class="form-row align-items-center my-3">
     <div class="col-3">
-        <input class="form-control" placeholder="Name" @onchange="SearchName" />
+        <input class="form-control" placeholder="Card Name" @onchange="SearchName" />
     </div>
 
     <div class="col-auto btn-group" role="group" aria-label="Color Buttons">
-        @foreach (var (color, symbol) in Color.Symbols)
+        @foreach (var (symbol, color) in Color.Symbols)
         {
             var active = _colorFilter.Contains(color) ? "active" : "";
 

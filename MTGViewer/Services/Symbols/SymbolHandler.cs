@@ -8,11 +8,11 @@ namespace MTGViewer.Services;
 
 public interface ISymbolFinder
 {
-    IReadOnlyList<ManaSymbol> FindMana(string mtgText);
+    IReadOnlyList<ManaSymbol> FindMana(string? mtgText);
 
-    IReadOnlyList<LoyaltySymbol> FindLoyalties(string mtgText);
+    IReadOnlyList<LoyaltySymbol> FindLoyalties(string? mtgText);
 
-    IReadOnlyList<SagaSymbol> FindSagas(string mtgText);
+    IReadOnlyList<SagaSymbol> FindSagas(string? mtgText);
 }
 
 
@@ -41,7 +41,7 @@ public record SagaSymbol(Range Position, string Value, bool HasNext)
 
 public static class FinderExtensions
 {
-    public static IEnumerable<Symbol> FindSymbols(this ISymbolFinder finder, string mtgText)
+    public static IEnumerable<Symbol> FindSymbols(this ISymbolFinder finder, string? mtgText)
     {
         // return Enumerable.Empty<Symbol>()
         //     .Concat(finder.FindMana(mtgText))
@@ -123,6 +123,11 @@ public static class TranslatorExtensions
             throw new ArgumentNullException("Translator is null");
         }
 
+        if (mana is null)
+        {
+            throw new ArgumentNullException("mana is null");
+        }
+
         return translator.ManaString(new ManaSymbol(default, mana));
     }
 
@@ -135,18 +140,28 @@ public static class TranslatorExtensions
             throw new ArgumentNullException("Translator is null");
         }
 
+        if (value is null)
+        {
+            throw new ArgumentNullException("value is null");
+        }
+
         return translator.LoyaltyString(new LoyaltySymbol(default, direction, value));
     }
 
 
     public static string SagaString(
-        this ISymbolTranslator translator, string saga)
+        this ISymbolTranslator translator, string saga, bool hasNext = default)
     {
         if (translator is null)
         {
             throw new ArgumentNullException("Translator is null");
         }
 
-        return translator.SagaString(new SagaSymbol(default, saga, default));
+        if (saga is null)
+        {
+            throw new ArgumentNullException("saga is null");
+        }
+
+        return translator.SagaString(new SagaSymbol(default, saga, hasNext));
     }
 }

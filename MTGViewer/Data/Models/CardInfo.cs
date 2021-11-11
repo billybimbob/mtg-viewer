@@ -27,11 +27,11 @@ public class Color
     public static readonly IReadOnlyDictionary<string, string> Symbols = 
         new SortedList<string, string>
         {
-            ["black"] = "B",
-            ["blue"]  = "U",
-            ["green"] = "G",
-            ["red"]   = "R",
-            ["white"] = "W"
+            ["B"] = "Black",
+            ["G"] = "Green",
+            ["R"] = "Red",
+            ["U"] = "Blue",
+            ["W"] = "White"
         };
 
     public Color(string name)

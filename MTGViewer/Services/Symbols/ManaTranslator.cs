@@ -45,7 +45,7 @@ public class ManaTranslator : ISymbolTranslator
     }
 
 
-    private int ParseRomanNumeral(string romanNumeral)
+    private static int ParseRomanNumeral(string romanNumeral)
     {
         var result = romanNumeral
             .ToUpper()
@@ -71,7 +71,7 @@ public class ManaTranslator : ISymbolTranslator
     }
 
 
-    private int RomanLetterValue(char romanLetter) => romanLetter switch
+    private static int RomanLetterValue(char romanLetter) => romanLetter switch
     {
         'I' => 1,
         'V' => 5,

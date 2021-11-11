@@ -29,8 +29,7 @@ public class Card
 
 
     [Display(Name = "Mana Cost")]
-    [Required]
-    public string ManaCost { get; init; } = null!;
+    public string? ManaCost { get; init; } = null!;
 
     [Display(Name = "Converted Mana Cost")]
     [Range(0f, 1_000_000f)]

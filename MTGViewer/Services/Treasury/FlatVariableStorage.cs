@@ -129,7 +129,7 @@ public sealed class FlatVariableStorage : ITreasury, IDisposable
     }
 
 
-    private bool InvalidDeck(Deck deck)
+    private static bool InvalidDeck(Deck deck)
     {
         bool InvalidQuantity(Quantity quantity) => 
             quantity.Id == default || quantity.NumCopies < 0;
@@ -166,7 +166,8 @@ public sealed class FlatVariableStorage : ITreasury, IDisposable
     }
 
 
-    private Transaction? ApplyWants(Transaction? transaction, Deck deck, IReadOnlyList<Amount> boxAmounts)
+    private Transaction? ApplyWants(
+        Transaction? transaction, Deck deck, IReadOnlyList<Amount> boxAmounts)
     {
         var activeWants = deck.Wants
             .Where(w => w.NumCopies > 0)
@@ -194,7 +195,7 @@ public sealed class FlatVariableStorage : ITreasury, IDisposable
     }
 
 
-    private void ApplyExactWants(
+    private static void ApplyExactWants(
         ICollection<Change> changes,
         ICollection<Want> wants,
         IEnumerable<Amount> availables,
@@ -241,7 +242,7 @@ public sealed class FlatVariableStorage : ITreasury, IDisposable
     }
 
 
-    private void ApplyApproxWants(
+    private static void ApplyApproxWants(
         ICollection<Change> changes,
         IEnumerable<Want> wants,
         IEnumerable<Amount> availables,
@@ -288,7 +289,7 @@ public sealed class FlatVariableStorage : ITreasury, IDisposable
     }
 
 
-    private IReadOnlyList<CardReturn> GetDeckReturns(Deck deck)
+    private static IReadOnlyList<CardReturn> GetDeckReturns(Deck deck)
     {
         return deck.Cards
             .Join( deck.GiveBacks,
@@ -354,7 +355,7 @@ public sealed class FlatVariableStorage : ITreasury, IDisposable
     }
 
 
-    private bool InvalidReturns(IEnumerable<CardReturn> returns)
+    private static bool InvalidReturns(IEnumerable<CardReturn> returns)
     {
         return !(returns?.Any() ?? false)
             || returns.Any(cr => cr.Card == null || cr.NumCopies <= 0);
@@ -400,13 +401,13 @@ public sealed class FlatVariableStorage : ITreasury, IDisposable
         _dbContext.Amounts.AttachRange(newAmounts);
         _dbContext.Amounts.RemoveRange(emptyAmounts);
 
-        _dbContext.Transactions.Attach(newTransaction);
+        _dbContext.Transactions.Add(newTransaction);
 
         return newTransaction;
     }
 
 
-    private IEnumerable<CardReturn> MergedReturns(IEnumerable<CardReturn> returns)
+    private static IEnumerable<CardReturn> MergedReturns(IEnumerable<CardReturn> returns)
     {
         return returns
             .GroupBy( cr => (cr.Card, cr.Deck),
@@ -423,7 +424,7 @@ public sealed class FlatVariableStorage : ITreasury, IDisposable
     }
 
 
-    private IEnumerable<(CardReturn, IReadOnlyList<(Amount, int)>)> ExistingBoxAdds(
+    private static IEnumerable<(CardReturn, IReadOnlyList<(Amount, int)>)> ExistingBoxAdds(
         IReadOnlyList<Amount> amounts,
         IReadOnlyList<CardReturn> returning,
         IReadOnlyDictionary<int, int> boxSpace)
@@ -454,12 +455,16 @@ public sealed class FlatVariableStorage : ITreasury, IDisposable
                     (amt, boxAmt) => (amt, boxAmt.Amount))
                 .ToList();
 
-            yield return (cardReturn, splitReturns);
+            var sharedCard = splitReturns.Any()
+                ? splitReturns.First().amt.Card
+                : card;
+
+            yield return (cardReturn with { Card = sharedCard }, splitReturns);
         }
     }
 
 
-    private void ApplyExistingReturns(
+    private static void ApplyExistingReturns(
         IEnumerable<(CardReturn, IReadOnlyList<(Amount, int)>)> splitReturns,
         IList<CardReturn> unfinished,
         IList<Change> changes,
@@ -467,7 +472,7 @@ public sealed class FlatVariableStorage : ITreasury, IDisposable
     {
         foreach (var (cardReturn, splits) in splitReturns)
         {
-            var (card, numCopies, source) = cardReturn;
+            var (_, numCopies, source) = cardReturn;
 
             if (splits.Count == 0)
             {
@@ -506,7 +511,7 @@ public sealed class FlatVariableStorage : ITreasury, IDisposable
 
 
 
-    private IEnumerable<(Card, int, Deck?, Box)> NewBoxAdds(
+    private static IEnumerable<(Card, int, Deck?, Box)> NewBoxAdds(
         IReadOnlyList<CardReturn> newReturns,
         IReadOnlyList<Amount> sortedAmounts,
         IReadOnlyList<Box> sortedBoxes,
@@ -552,7 +557,7 @@ public sealed class FlatVariableStorage : ITreasury, IDisposable
     }
 
 
-    private IEnumerable<int> GetAddPositions(IEnumerable<Amount> boxAmounts)
+    private static IEnumerable<int> GetAddPositions(IEnumerable<Amount> boxAmounts)
     {
         int amountSum = 0;
 
@@ -565,7 +570,7 @@ public sealed class FlatVariableStorage : ITreasury, IDisposable
     }
 
 
-    private IEnumerable<int> GetBoxBoundaries(IEnumerable<Box> boxes)
+    private static IEnumerable<int> GetBoxBoundaries(IEnumerable<Box> boxes)
     {
         int capacitySum = 0;
 
@@ -578,7 +583,7 @@ public sealed class FlatVariableStorage : ITreasury, IDisposable
     }
 
 
-    private void ApplyNewReturns(
+    private static void ApplyNewReturns(
         IEnumerable<(Card, int, Deck?, Box)> returnPairs,
         IList<Amount> newAmounts,
         IList<Change> changes,
@@ -612,7 +617,7 @@ public sealed class FlatVariableStorage : ITreasury, IDisposable
 
 
 
-    private IEnumerable<(Box Box, int Amount)> FitToBoxes(
+    private static IEnumerable<(Box Box, int Amount)> FitToBoxes(
         IEnumerable<Box> boxes,
         IReadOnlyDictionary<int, int> boxSpace,
         int cardsToAssign)
@@ -641,7 +646,7 @@ public sealed class FlatVariableStorage : ITreasury, IDisposable
     }
 
 
-    private IEnumerable<(Box, int)> DivideToBoxes(
+    private static IEnumerable<(Box, int)> DivideToBoxes(
         IEnumerable<Box> boxes,
         IReadOnlyDictionary<int, int> boxSpace,
         int cardsToAssign)
@@ -727,7 +732,7 @@ public sealed class FlatVariableStorage : ITreasury, IDisposable
     }
 
 
-    private (Transaction, IReadOnlyCollection<Amount>) AddUpdatedBoxAmounts(
+    private static (Transaction, IReadOnlyCollection<Amount>) AddUpdatedBoxAmounts(
         IReadOnlyList<Amount> sortedAmounts, 
         IReadOnlyList<Box> sortedBoxes)
     {
@@ -796,7 +801,7 @@ public sealed class FlatVariableStorage : ITreasury, IDisposable
     }
 
 
-    private Amount GetOrAddBoxAmount(
+    private static Amount GetOrAddBoxAmount(
         IDictionary<(string, int), Amount> boxAmounts, Card card, Box box)
     {
         var cardBox = (card.Id, box.Id);

@@ -59,12 +59,7 @@ public class IndexModel : PageModel
 
         SelfUser = await _dbContext.Users.FindAsync(userId);
 
-        Suggestions = await _dbContext.Suggestions
-            .Where(s => s.ReceiverId == userId)
-            .Include(s => s.Card)
-            .Include(s => s.To)
-            .OrderBy(s => s.SentAt)
-                .ThenBy(s => s.Card.Name)
+        Suggestions = await SuggestionsForIndex(userId)
             .ToPagedListAsync(_pageSize, SuggestIndex);
     }
 
@@ -95,6 +90,17 @@ public class IndexModel : PageModel
             .AsNoTrackingWithIdentityResolution();
     }
 
+
+    private IQueryable<Suggestion> SuggestionsForIndex(string userId)
+    {
+        return _dbContext.Suggestions
+            .Where(s => s.ReceiverId == userId)
+            .Include(s => s.Card)
+            .Include(s => s.To)
+            .OrderBy(s => s.SentAt)
+                .ThenBy(s => s.Card.Name)
+            .AsNoTrackingWithIdentityResolution();
+    }
 
 
     public async Task<IActionResult> OnPostAsync(int suggestId)

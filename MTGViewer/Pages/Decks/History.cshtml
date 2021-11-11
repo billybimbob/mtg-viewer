@@ -74,11 +74,11 @@
 
                         @if (isFirstTransfer)
                         {
-                            <td rowspan="@transaction.Changes.Count">
+                            <td rowspan="@transaction.Changes.Count" class="text-center">
                                 <form method="POST">
                                     <input type="hidden" asp-for="Deck.Id" />
-                                    <input type="hidden" asp-for="@transaction.Id" name="transactionId"/>
-                                    <input type="submit" value="Remove" class="btn btn-secondary" />
+                                    <input type="hidden" name="transactionId" value="@transaction.Id"/>
+                                    <button title="Remove Record" type="submit" class="btn btn-danger"> &times; </button>
                                 </form>
                             </td>
                         }

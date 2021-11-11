@@ -42,9 +42,13 @@
                     {
                         <a asp-page="/Decks/Viewer" asp-route-id="@fromDeck.Id"> @fromDeck.Name </a>
                     }
+                    else if (from is null)
+                    {
+                        <i>Added</i>
+                    }
                     else
                     {
-                        @(from?.Name ?? "Added")
+                        @from.Name
                     }
                 </td>
                 
@@ -70,10 +74,10 @@
                     && isFirstTransfer 
                     && Model.IsSharedTransaction.Contains(transaction.Id))
                 {
-                    <td rowspan="@transaction.Changes.Count">
+                    <td rowspan="@transaction.Changes.Count" class="text-center">
                         <form method="POST">
-                            <input type="hidden" asp-for="@transaction.Id" name="transactionId"/>
-                            <input type="submit" class="btn btn-secondary" value="Remove" />
+                            <input type="hidden" name="transactionId" value="@transaction.Id"/>
+                            <button title="Remove Record" type="submit" class="btn btn-danger"> &times; </button>
                         </form>
                     </td>
                 }

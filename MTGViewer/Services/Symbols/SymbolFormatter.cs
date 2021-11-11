@@ -18,7 +18,7 @@ public class SymbolFormatter : ISymbolFinder, ISymbolTranslator
     }
 
 
-    public string Format(string mtgText)
+    public string Format(string? mtgText)
     {
         if (string.IsNullOrWhiteSpace(mtgText))
         {
@@ -51,13 +51,13 @@ public class SymbolFormatter : ISymbolFinder, ISymbolTranslator
     }
 
 
-    public IReadOnlyList<ManaSymbol> FindMana(string mtgText) => 
+    public IReadOnlyList<ManaSymbol> FindMana(string? mtgText) => 
         _finder.FindMana(mtgText);
 
-    public IReadOnlyList<LoyaltySymbol> FindLoyalties(string mtgText) => 
+    public IReadOnlyList<LoyaltySymbol> FindLoyalties(string? mtgText) => 
         _finder.FindLoyalties(mtgText);
 
-    public IReadOnlyList<SagaSymbol> FindSagas(string mtgText) => 
+    public IReadOnlyList<SagaSymbol> FindSagas(string? mtgText) => 
         _finder.FindSagas(mtgText);
 
 

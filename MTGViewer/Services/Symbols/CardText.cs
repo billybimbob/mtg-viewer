@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -16,8 +17,13 @@ public class CardText : ISymbolFinder, ISymbolTranslator
     private const string _saga = $@"(?<{ nameof(_saga) }>(?:[IV]+(?:, )?)+) —";
 
 
-    public IReadOnlyList<ManaSymbol> FindMana(string mtgText)
+    public IReadOnlyList<ManaSymbol> FindMana(string? mtgText)
     {
+        if (mtgText is null)
+        {
+            return Array.Empty<ManaSymbol>();
+        }
+
         return Regex
             .Matches(mtgText, _mana)
             .Select(m =>
@@ -33,8 +39,13 @@ public class CardText : ISymbolFinder, ISymbolTranslator
     }
 
 
-    public IReadOnlyList<LoyaltySymbol> FindLoyalties(string mtgText)
+    public IReadOnlyList<LoyaltySymbol> FindLoyalties(string? mtgText)
     {
+        if (mtgText is null)
+        {
+            return Array.Empty<LoyaltySymbol>();
+        }
+
         return Regex
             .Matches(mtgText, _loyalty)
             .Select(m =>
@@ -57,8 +68,13 @@ public class CardText : ISymbolFinder, ISymbolTranslator
     }
 
 
-    public IReadOnlyList<SagaSymbol> FindSagas(string mtgText)
+    public IReadOnlyList<SagaSymbol> FindSagas(string? mtgText)
     {
+        if (mtgText is null)
+        {
+            return Array.Empty<SagaSymbol>();
+        }
+
         return Regex
             .Matches(mtgText, _saga)
             .SelectMany(m =>
