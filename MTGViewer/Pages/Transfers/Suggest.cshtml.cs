@@ -96,7 +96,7 @@ public class SuggestModel : PageModel
     {
         if (userId == null)
         {
-            return RedirectToPage("Suggest", new { cardId = Card.Id });
+            return RedirectToPage(new { cardId = Card.Id });
         }
 
         Card = await _dbContext.Cards.FindAsync(Card.Id);

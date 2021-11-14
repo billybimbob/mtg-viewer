@@ -20,7 +20,7 @@
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="6.0.0" />
-    <PackageReference Include="MtgApiManager.Lib" Version="2.3.1" />
+    <PackageReference Include="MtgApiManager.Lib" Version="2.3.2" />
   </ItemGroup>
 
 </Project>

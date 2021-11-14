@@ -49,9 +49,13 @@
                             {
                                 <a asp-page="Viewer" asp-route-id="@fromDeck.Id"> @fromDeck.Name </a>
                             }
+                            else if (from is null)
+                            {
+                                <i>Added</i>
+                            }
                             else
                             {
-                                @(from?.Name)
+                                @from.Name
                             }
                         </td>
 

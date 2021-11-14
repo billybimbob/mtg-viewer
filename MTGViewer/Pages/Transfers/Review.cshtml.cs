@@ -132,7 +132,7 @@ public class ReviewModel : PageModel
         if (trade == null)
         {
             PostMessage = "Trade could not be found";
-            return RedirectToPage("Review", new { deckId = Deck?.Id });
+            return RedirectToPage(new { deckId = Deck?.Id });
         }
 
         var acceptRequest = GetAcceptRequest(trade);
@@ -140,7 +140,7 @@ public class ReviewModel : PageModel
         if (acceptRequest == null)
         {
             PostMessage = "Source Deck lacks the cards to complete the trade";
-            return RedirectToPage("Review", new { deckId = Deck?.Id });
+            return RedirectToPage(new { deckId = Deck?.Id });
         }
 
         ApplyAccept(acceptRequest, amount);
@@ -157,7 +157,7 @@ public class ReviewModel : PageModel
             PostMessage = "Ran into error while Accepting";
         }
 
-        return RedirectToPage("Review", new { deckId = Deck?.Id });
+        return RedirectToPage(new { deckId = Deck?.Id });
     }
 
 
@@ -392,7 +392,7 @@ public class ReviewModel : PageModel
         if (tradeId == default)
         {
             PostMessage = "Trade is not specified";
-            return RedirectToPage("Review", new { deckId = Deck?.Id });
+            return RedirectToPage(new { deckId = Deck?.Id });
         }
 
         var userId = _userManager.GetUserId(User);
@@ -404,7 +404,7 @@ public class ReviewModel : PageModel
         if (deckTrade == default)
         {
             PostMessage = "Trade could not be found";
-            return RedirectToPage("Review", new { deckId = Deck?.Id });
+            return RedirectToPage(new { deckId = Deck?.Id });
         }
 
         _dbContext.Trades.Remove(deckTrade);
@@ -419,6 +419,6 @@ public class ReviewModel : PageModel
             PostMessage = "Ran into error while rejecting";
         }
 
-        return RedirectToPage("Review", new { deckId = Deck?.Id });
+        return RedirectToPage(new { deckId = Deck?.Id });
     }
 }

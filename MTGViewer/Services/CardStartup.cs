@@ -87,9 +87,7 @@ public class CardSetup : IHostedService
         }
 
         var jsonStorage = scopeProvider.GetRequiredService<JsonCardStorage>();
-        var jsonOptions = new JsonStorageOptions { Seeding = true };
-
-        var jsonSuccess = await jsonStorage.AddFromJsonAsync(jsonOptions, cancel);
+        var jsonSuccess = await jsonStorage.SeedFromJsonAsync(cancel: cancel);
 
         if (!jsonSuccess)
         {

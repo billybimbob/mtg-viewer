@@ -1,5 +1,6 @@
 using System.IO;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 
@@ -45,7 +46,7 @@ public class JsonStorageTests : IClassFixture<TempFileName>, IAsyncLifetime
         var anyBefore = await _dbContext.Cards.AnyAsync();
 
         await _cardGen.GenerateAsync();
-        await _jsonStorage.WriteToJsonAsync(new() { Path = _tempFileName });
+        await _jsonStorage.WriteToJsonAsync(_tempFileName);
 
         var tempInfo = new FileInfo(_tempFileName);
         var anyAfter = await _dbContext.Cards.AnyAsync();
@@ -59,20 +60,35 @@ public class JsonStorageTests : IClassFixture<TempFileName>, IAsyncLifetime
     }
 
 
-    [Theory]
-    [InlineData(true)]
-    [InlineData(false)]
+    [Fact]
     [TestPriority(2)]
-    public async Task Add_Temp_Success(bool seeding)
+    public async Task Seed_Temp_Success()
     {
         var anyBefore = await _dbContext.Cards.AnyAsync();
 
-        var success = await _jsonStorage.AddFromJsonAsync(
-            new()
-            {
-                Path = _tempFileName,
-                Seeding = seeding
-            });
+        var success = await _jsonStorage.SeedFromJsonAsync(_tempFileName);
+
+        var anyAfter = await _dbContext.Cards.AnyAsync();
+
+        Assert.False(anyBefore, "Card Db should be empty");
+        Assert.True(success, "Json Seed Failed");
+        Assert.True(anyAfter, "Card Db should be filled");
+    }
+
+
+    [Fact]
+    [TestPriority(2)]
+    public async Task Add_Temp_Success()
+    {
+        const string fileName = "tempFile.json";
+
+        var anyBefore = await _dbContext.Cards.AnyAsync();
+        var tempInfo = new FileInfo(_tempFileName);
+
+        await using var tempStream = File.OpenRead(_tempFileName);
+
+        var formFile = new FormFile(tempStream, 0L, tempInfo.Length, fileName, fileName);
+        var success = await _jsonStorage.AddFromJsonAsync(formFile);
 
         var anyAfter = await _dbContext.Cards.AnyAsync();
 

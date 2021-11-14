@@ -8,15 +8,21 @@
 
 <h1>Treasury</h1>
 
-<form method="POST" class="mb-3">
+<div class="btn-toolbar mb-3" role="toolbar" aria-label="Treasury Main Actions">
     @if (Model.IsSignedIn)
     {
-        <a asp-page="Create" class="btn btn-secondary" role="button"> Add Box </a>
-        <input type="submit" class="btn btn-secondary" value="Optimize" />
+        <a asp-page="Create" class="btn btn-secondary mr-2" role="button"> Add Box </a>
+
+        <form method="POST">
+            <input asp-page-handler="Optimize" type="submit" class="btn btn-secondary mr-2" value="Optimize" />
+        </form>
+
+        <a asp-page="Backup" class="btn btn-secondary mr-2" role="button"> Backup </a>
     }
 
     <a asp-page="History" class="btn btn-secondary" role="button"> History </a>
-</form>
+</div>
+
 
 @if (!string.IsNullOrEmpty(Model.PostMessage))
 {

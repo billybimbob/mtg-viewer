@@ -277,7 +277,7 @@ else
 
 
 @code {
-    private bool HasMore => _nextPage >= 0;
+    private bool HasMore => _pages.HasNext;
 
     private bool CannotAdd => _matches.All(kv => kv.Value <= 0);
 
@@ -295,7 +295,7 @@ else
 
     private readonly Dictionary<Card, int> _matches = new();
     private string _matchName;
-    private int _nextPage;
+    private Pages _pages;
 
 
     protected override void OnInitialized()
@@ -404,7 +404,9 @@ else
             return;
         }
 
-        if (!HasMore)
+        var priorSearch = _pages.Total > 0;
+
+        if (priorSearch && !_pages.HasNext)
         {
             return;
         }
@@ -418,9 +420,12 @@ else
         {
             PrepareSearch();
 
-            var result = await fetch.MatchAsync(_search, _nextPage);
+            var nextPage = priorSearch ? _pages.Current + 1 : 0;
+            var result = await fetch.MatchAsync(_search, nextPage);
 
             _cancel.Token.ThrowIfCancellationRequested();
+
+            _pages = result.Pages;
 
             foreach (var match in result)
             {
@@ -430,14 +435,6 @@ else
             if (!_matches.Any())
             {
                 NoMatchError();
-            }
-            else if (result.Any())
-            {
-                _nextPage++;
-            }
-            else
-            {
-                _nextPage = -1;
             }
         }
         catch (OperationCanceledException ex)
@@ -492,7 +489,7 @@ else
         _pickedColors.Clear();
 
         _matches.Clear();
-        _nextPage = 0;
+        _pages = default;
 
         _search.Name = default;
         _search.Cmc = default;

@@ -54,7 +54,7 @@ public class IndexModel : PageModel
     }
 
 
-    public async Task<IActionResult> OnPostAsync()
+    public async Task<IActionResult> OnPostOptimizeAsync()
     {
         if (!IsSignedIn)
         {
@@ -79,6 +79,6 @@ public class IndexModel : PageModel
             PostMessage = "Ran into issue while trying to optimize the storage";
         }
 
-        return RedirectToPage("Index");
+        return RedirectToPage();
     }
 }

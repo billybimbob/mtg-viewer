@@ -114,7 +114,7 @@ public class IndexModel : PageModel
         if (suggestion is null)
         {
             PostMessage = "Specified suggestion cannot be acknowledged";
-            return RedirectToPage("Index");
+            return RedirectToPage(new { DeckIndex, SuggestIndex});
         }
 
         _dbContext.Entry(suggestion).State = EntityState.Deleted;
@@ -129,6 +129,6 @@ public class IndexModel : PageModel
             PostMessage = "Ran into issue while trying to Acknowledge";
         }
 
-        return RedirectToPage("Index", new { DeckIndex, SuggestIndex });
+        return RedirectToPage(new { DeckIndex, SuggestIndex });
     }
 }

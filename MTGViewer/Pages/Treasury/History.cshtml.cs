@@ -137,6 +137,6 @@ public class HistoryModel : PageModel
             PostMessage = "Ran into issue while removing transaction";
         }
 
-        return RedirectToPage("History");
+        return RedirectToPage();
     }
 }

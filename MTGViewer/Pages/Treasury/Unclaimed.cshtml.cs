@@ -100,6 +100,6 @@ public class UnclaimedModel : PageModel
             _logger.LogError($"ran into issue {e}");
         }
 
-        return RedirectToPage("Unclaimed");
+        return RedirectToPage();
     }
 }

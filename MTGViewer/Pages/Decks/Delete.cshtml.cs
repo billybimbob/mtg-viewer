@@ -167,6 +167,6 @@ public class DeleteModel : PageModel
             PostMesssage = $"Ran into issue while trying to delete {deck.Name}";
         }
 
-        return RedirectToPage("./Index");
+        return RedirectToPage("Index");
     }
 }

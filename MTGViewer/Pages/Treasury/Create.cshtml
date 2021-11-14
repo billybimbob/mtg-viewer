@@ -25,6 +25,7 @@
                     onchange=" newName.value = !!this.value ? '--' : ''; newName.disabled = !!this.value; ">
 
                     <option selected value=""> Select Existing </option>
+
                     @foreach (var bin in Model.Bins)
                     {
                         <option value="@bin.Id"> @bin.Name </option>

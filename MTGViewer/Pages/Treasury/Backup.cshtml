@@ -1,0 +1,53 @@
+@page
+@model Treasury.BackupModel
+@{
+    ViewData["Title"] = "Treasury Backup";
+}
+
+<h1>Data Backup</h1>
+<hr />
+
+<div class="row">
+    <div class="col-md-8">
+        <p>
+            Bulk fetch and add operations can be done via files. Currently, only .json files with
+            the same format as the exported .json format are supported.
+        </p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-5">
+        <h3>Import New Data</h3>
+        <form method="POST" enctype="multipart/form-data">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+            <div class="form-group">
+                <label asp-for="Import.File" class="sr-only"></label>
+                <input asp-for="Import.File" class="form-control-file" accept=".json,application/json" />
+                <span asp-validation-for="Import.File" class="text-danger"></span>
+            </div>
+
+            <input asp-page-handler="Upload" type="submit" class="btn btn-secondary" value="Upload" />
+        </form>
+    </div>
+
+    <div class="col-md-5">
+        <h3>Export Current Data</h3>
+        <form method="POST">
+            <div class="form-row">
+                <div class="form-group col-md-8">
+                    <label asp-for="Export.Page" class="control-label"></label>
+                    <input asp-for="Export.Page" class="form-control" min="0" />
+                    <span asp-validation-for="Export.Page" class="text-danger"></span>
+                </div>
+            </div>
+
+            <input asp-page-handler="Download" type="submit" class="btn btn-secondary" value="Download" />
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}

@@ -53,8 +53,7 @@ public class TestDataGenerator
         {
             await SetupAsync();
 
-            var jsonSuccess = await _jsonStorage
-                .AddFromJsonAsync(new() { Seeding = true });
+            var jsonSuccess = await _jsonStorage.SeedFromJsonAsync();
 
             if (!jsonSuccess)
             {

@@ -6,6 +6,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -13,19 +14,15 @@ using Microsoft.Extensions.Configuration;
 using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
 
+#nullable enable
 namespace MTGViewer.Services;
-
-public readonly struct JsonStorageOptions
-{
-    public string Path { get; init; }
-
-    public bool Seeding { get; init; }
-}
 
 
 public class JsonCardStorage
 {
     private readonly string _defaultFilename;
+    private readonly int _pageSize;
+
     private readonly CardDbContext _dbContext;
     private readonly UserManager<CardUser> _userManager;
 
@@ -33,12 +30,14 @@ public class JsonCardStorage
 
     public JsonCardStorage(
         IConfiguration config, 
+        PageSizes pageSizes,
         CardDbContext dbContext, 
         UserManager<CardUser> userManager)
     {
         var filename = config.GetValue("JsonPath", "cards");
 
         _defaultFilename = Path.ChangeExtension(filename, ".json");
+        _pageSize = pageSizes.Limit;
 
         _dbContext = dbContext;
         _userManager = userManager;
@@ -51,28 +50,33 @@ public class JsonCardStorage
 
 
     public async Task WriteToJsonAsync(
-        JsonStorageOptions options = default, CancellationToken cancel = default)
+        string? path = default, CancellationToken cancel = default)
     {
-        var fullData = !options.Seeding;
-
-        var path = options.Path
-            ?? Path.Combine(Directory.GetCurrentDirectory(), _defaultFilename);
+        path ??= Path.Combine(Directory.GetCurrentDirectory(), _defaultFilename);
 
         await using var writer = File.Create(path);
 
-        var data = await CardData.CreateAsync(_dbContext, _userManager, fullData, cancel);
-
+        var data = await CardData.CreateAsync(_dbContext, _userManager, cancel);
         var serialOptions = new JsonSerializerOptions { WriteIndented = true };
 
         await JsonSerializer.SerializeAsync(writer, data, serialOptions, cancel);
     }
 
 
-    public async Task<bool> AddFromJsonAsync(
-        JsonStorageOptions options = default, CancellationToken cancel = default)
+    public async Task<byte[]> GetFileDataAsync(int? page = null, CancellationToken cancel = default)
     {
-        var path = options.Path 
-            ?? Path.Combine(Directory.GetCurrentDirectory(), _defaultFilename);
+        // TODO: use paging
+        var data = await CardData.CreateAsync(_dbContext, _pageSize, page, cancel);
+
+        return JsonSerializer.SerializeToUtf8Bytes(data);
+    }
+
+
+
+    public async Task<bool> SeedFromJsonAsync(
+        string? path = default, CancellationToken cancel = default)
+    {
+        path ??= Path.Combine(Directory.GetCurrentDirectory(), _defaultFilename);
 
         try
         {
@@ -87,21 +91,9 @@ public class JsonCardStorage
                 return false;
             }
 
-            if (options.Seeding)
-            {
-                Seed(data);
-            }
-            else
-            {
-                await MergeAsync(data, cancel);
-            }
+            Seed(data);
 
             await _dbContext.SaveChangesAsync(cancel);
-
-            if (!options.Seeding)
-            {
-                return true;
-            }
 
             // TODO: generate secure temp passwords, and send emails to users
             var results = await Task.WhenAll(
@@ -110,6 +102,7 @@ public class JsonCardStorage
                     : _userManager.CreateAsync(u)));
 
             return results.All(r => r.Succeeded);
+
         }
         catch (FileNotFoundException)
         {
@@ -150,16 +143,61 @@ public class JsonCardStorage
     }
 
 
+    public async Task<bool> AddFromJsonAsync(IFormFile jsonFile, CancellationToken cancel = default)
+    {
+        var ext = Path.GetExtension(jsonFile.FileName).ToLower();
+
+        if (ext != ".json")
+        {
+            return false;
+        }
+
+        try
+        {
+            await using var fileStream = jsonFile.OpenReadStream();
+
+            var serialOptions = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+
+            var data = await JsonSerializer.DeserializeAsync<CardData>(fileStream, serialOptions, cancel);
+
+            if (data is null)
+            {
+                return false;
+            }
+            
+            // TODO: add card validation
+            await MergeAsync(data, cancel);
+
+            await _dbContext.SaveChangesAsync(cancel);
+
+            return true;
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
+        catch (DbUpdateException)
+        {
+            return false;
+        }
+    }
+
+
     private async Task MergeAsync(CardData data, CancellationToken cancel)
     {
         var cards = await NewCardsAsync(data, cancel);
 
-        var bins = BinWithBoxAmounts(data).ToList();
-        var unclaimed = MergedUnclaimed(data).ToList();
+        var bins = GetBinWithBoxAmounts(data);
+        var unclaimed = GetDecksAsUnclaimed(data);
+        var changes = GetAddChanges(data);
+
+        // TODO: merge to existing bins, boxes, and decks
+        // merging may have issue with card amount/want conflicts
 
         _dbContext.Cards.AddRange(cards);
         _dbContext.Bins.AddRange(bins);
         _dbContext.Unclaimed.AddRange(unclaimed);
+        _dbContext.Changes.AddRange(changes);
     }
 
 
@@ -180,8 +218,10 @@ public class JsonCardStorage
     }
 
 
-    private IEnumerable<Bin> BinWithBoxAmounts(CardData data)
+    private IReadOnlyList<Bin> GetBinWithBoxAmounts(CardData data)
     {
+        var bins = new List<Bin>();
+
         var boxTable = data.Boxes
             .ToLookup(b => b.BinId);
 
@@ -202,29 +242,46 @@ public class JsonCardStorage
                 }
 
                 box.Id = default;
+                box.Cards.Clear();
                 box.Cards.AddRange(amounts);
             }
 
             bin.Id = default;
+            bin.Boxes.Clear();
             bin.Boxes.AddRange(boxes);
 
-            yield return bin;
+            bins.Add(bin);
         }
+
+        return bins;
     }
 
 
-    private IEnumerable<Unclaimed> MergedUnclaimed(CardData data)
+    private IReadOnlyList<Unclaimed> GetDecksAsUnclaimed(CardData data)
     {
-        foreach (var unclaimed in data.Unclaimed)
-        {
-            yield return unclaimed;
-        }
+        var allUnclaimed = new List<Unclaimed>();
 
         var amountTable = data.Amounts
             .ToLookup(ca => ca.LocationId);
 
         var wantTable = data.Wants
             .ToLookup(w => w.LocationId);
+
+        foreach (var unclaimed in data.Unclaimed)
+        {
+            var unclaimedCards = amountTable[unclaimed.Id];
+
+            foreach (var amount in unclaimedCards)
+            {
+                amount.Id = default;
+            }
+
+            unclaimed.Id = default;
+            unclaimed.Cards.Clear();
+            unclaimed.Cards.AddRange(unclaimedCards);
+
+            allUnclaimed.Add(unclaimed);
+        }
 
         foreach (var deck in data.Decks)
         {
@@ -243,11 +300,41 @@ public class JsonCardStorage
                 want.Id = default;
             }
 
+            unclaimed.Cards.Clear();
+            unclaimed.Wants.Clear();
+
             unclaimed.Cards.AddRange(unclaimedCards);
             unclaimed.Wants.AddRange(unclaimedWants);
 
-            yield return unclaimed;
+            allUnclaimed.Add(unclaimed);
         }
+
+        return allUnclaimed;
+    }
+
+
+    private IReadOnlyList<Change> GetAddChanges(CardData data)
+    {
+        var boxChanges = data.Bins
+            .SelectMany(b => b.Boxes)
+            .SelectMany( b => b.Cards,
+                (box, a) => new Change
+                {
+                    CardId = a.CardId,
+                    To = box,
+                    Amount = a.NumCopies
+                });
+
+        var deckChanges = data.Decks
+            .SelectMany(d => d.Cards,
+                (deck, a) => new Change
+                {
+                    CardId = a.CardId,
+                    To = deck,
+                    Amount = a.NumCopies
+                });
+
+        return boxChanges.Concat(deckChanges).ToList();
     }
 }
 
@@ -255,93 +342,95 @@ public class JsonCardStorage
 // TODO: make reading use less memory
 internal class CardData
 {
-    public IReadOnlyList<CardUser> Users { get; set; }
-    public IReadOnlyList<UserRef> Refs { get; set; }
+    public IReadOnlyList<CardUser> Users { get; set; } = Array.Empty<CardUser>();
+    public IReadOnlyList<UserRef> Refs { get; set; } = Array.Empty<UserRef>();
 
-    public IReadOnlyList<Card> Cards { get; set; }
+    public IReadOnlyList<Card> Cards { get; set; } = Array.Empty<Card>();
 
-    public IReadOnlyList<Deck> Decks { get; set; }
-    public IReadOnlyList<Unclaimed> Unclaimed { get; set; }
+    public IReadOnlyList<Deck> Decks { get; set; } = Array.Empty<Deck>();
+    public IReadOnlyList<Unclaimed> Unclaimed { get; set; } = Array.Empty<Unclaimed>();
 
-    public IReadOnlyList<Box> Boxes { get; set; }
-    public IReadOnlyList<Bin> Bins { get; set; }
+    public IReadOnlyList<Box> Boxes { get; set; } = Array.Empty<Box>();
+    public IReadOnlyList<Bin> Bins { get; set; } = Array.Empty<Bin>();
 
-    public IReadOnlyList<Amount> Amounts { get; set; }
-    public IReadOnlyList<Want> Wants { get; set; }
-    public IReadOnlyList<GiveBack> GiveBacks { get; set; }
+    public IReadOnlyList<Amount> Amounts { get; set; } = Array.Empty<Amount>();
+    public IReadOnlyList<Want> Wants { get; set; } = Array.Empty<Want>();
+    public IReadOnlyList<GiveBack> GiveBacks { get; set; } = Array.Empty<GiveBack>();
 
-    public IReadOnlyList<Change> Changes { get; set; }
-    public IReadOnlyList<Transaction> Transactions { get; set; }
+    public IReadOnlyList<Change> Changes { get; set; } = Array.Empty<Change>();
+    public IReadOnlyList<Transaction> Transactions { get; set; } = Array.Empty<Transaction>();
 
-    public IReadOnlyList<Trade> Trades { get; set; }
-    public IReadOnlyList<Suggestion> Suggestions { get; set; }
+    public IReadOnlyList<Trade> Trades { get; set; } = Array.Empty<Trade>();
+    public IReadOnlyList<Suggestion> Suggestions { get; set; } = Array.Empty<Suggestion>();
+
+
+    public static async Task<CardData> CreateAsync(
+        CardDbContext dbContext,
+        int pageSize,
+        int? page = default,
+        CancellationToken cancel = default)
+    {
+        return new CardData
+        {
+            Cards = await dbContext.Cards
+                .Include(c => c.Colors)
+                .Include(c => c.Types)
+                .Include(c => c.Subtypes)
+                .Include(c => c.Supertypes)
+                .AsSplitQuery()
+                .AsNoTrackingWithIdentityResolution()
+                .OrderBy(c => c.Id)
+                .ToPagedListAsync(pageSize, page, cancel),
+
+            Amounts = await dbContext.Amounts
+                .AsNoTrackingWithIdentityResolution()
+                .OrderBy(a => a.Id)
+                .ToPagedListAsync(pageSize, page, cancel),
+
+            Decks = await dbContext.Decks
+                .AsNoTrackingWithIdentityResolution()
+                .OrderBy(d => d.Id)
+                .ToPagedListAsync(pageSize, page, cancel),
+
+            Unclaimed = await dbContext.Unclaimed
+                .AsNoTrackingWithIdentityResolution()
+                .OrderBy(u => u.Id)
+                .ToPagedListAsync(pageSize, page, cancel),
+
+            Boxes = await dbContext.Boxes
+                .AsNoTrackingWithIdentityResolution()
+                .OrderBy(b => b.Id)
+                .ToPagedListAsync(pageSize, page, cancel),
+            
+            Bins = await dbContext.Bins
+                .AsNoTrackingWithIdentityResolution()
+                .OrderBy(b => b.Id)
+                .ToPagedListAsync(pageSize, page, cancel),
+
+            Wants = await dbContext.Wants
+                .AsNoTrackingWithIdentityResolution()
+                .OrderBy(w => w.Id)
+                .ToPagedListAsync(pageSize, page, cancel)
+        };
+    }
 
 
     public static async Task<CardData> CreateAsync(
         CardDbContext dbContext,
         UserManager<CardUser> userManager,
-        bool fullData,
         CancellationToken cancel = default)
-    {
-        CardUser[] users;
-        UserRef[] refs;
-
-        GiveBack[] giveBacks;
-
-        Change[] changes;
-        Transaction[] transactions;
-
-        Trade[] trades;
-        Suggestion[] suggestions;
-
-        if (fullData)
-        {
-            users = await userManager.Users
-                .AsNoTrackingWithIdentityResolution()
-                .ToArrayAsync(cancel);
-
-            refs = await dbContext.Users
-                .AsNoTrackingWithIdentityResolution()
-                .ToArrayAsync(cancel);
-
-            giveBacks = await dbContext.GiveBacks
-                .AsNoTrackingWithIdentityResolution()
-                .ToArrayAsync(cancel);
-
-            changes = await dbContext.Changes
-                .AsNoTrackingWithIdentityResolution()
-                .ToArrayAsync(cancel);
-
-            transactions = await dbContext.Transactions
-                .AsNoTrackingWithIdentityResolution()
-                .ToArrayAsync(cancel);
-
-            trades = await dbContext.Trades
-                .AsNoTrackingWithIdentityResolution()
-                .ToArrayAsync(cancel);
-
-            suggestions = await dbContext.Suggestions
-                .AsNoTrackingWithIdentityResolution()
-                .ToArrayAsync(cancel);
-        }
-        else
-        {
-            users = Array.Empty<CardUser>();
-            refs = Array.Empty<UserRef>();
-
-            giveBacks = Array.Empty<GiveBack>();
-
-            changes = Array.Empty<Change>();
-            transactions = Array.Empty<Transaction>();
-
-            trades = Array.Empty<Trade>();
-            suggestions = Array.Empty<Suggestion>();
-        }
-
+    { 
         return new CardData
         {
-            Users = users,
-            Refs = refs,
+            Users = await userManager.Users
+                .AsNoTrackingWithIdentityResolution()
+                .OrderBy(u => u.Id)
+                .ToListAsync(cancel),
+
+            Refs = await dbContext.Users
+                .AsNoTrackingWithIdentityResolution()
+                .OrderBy(u => u.Id)
+                .ToListAsync(cancel),
 
             Cards = await dbContext.Cards
                 .Include(c => c.Colors)
@@ -350,39 +439,63 @@ internal class CardData
                 .Include(c => c.Supertypes)
                 .AsSplitQuery()
                 .AsNoTrackingWithIdentityResolution()
+                .OrderBy(c => c.Id)
                 .ToListAsync(cancel),
 
             Amounts = await dbContext.Amounts
                 .AsNoTrackingWithIdentityResolution()
+                .OrderBy(a => a.Id)
                 .ToListAsync(cancel),
 
             Decks = await dbContext.Decks
                 .AsNoTrackingWithIdentityResolution()
+                .OrderBy(d => d.Id)
                 .ToListAsync(cancel),
 
             Unclaimed = await dbContext.Unclaimed
                 .AsNoTrackingWithIdentityResolution()
+                .OrderBy(u => u.Id)
                 .ToListAsync(cancel),
 
             Boxes = await dbContext.Boxes
                 .AsNoTrackingWithIdentityResolution()
+                .OrderBy(b => b.Id)
                 .ToListAsync(cancel),
             
             Bins = await dbContext.Bins
                 .AsNoTrackingWithIdentityResolution()
+                .OrderBy(b => b.Id)
                 .ToListAsync(cancel),
 
             Wants = await dbContext.Wants
                 .AsNoTrackingWithIdentityResolution()
+                .OrderBy(w => w.Id)
                 .ToListAsync(cancel),
 
-            GiveBacks = giveBacks,
+            GiveBacks = await dbContext.GiveBacks
+                .AsNoTrackingWithIdentityResolution()
+                .OrderBy(g => g.Id)
+                .ToListAsync(cancel),
 
-            Changes = changes,
-            Transactions = transactions,
+            Changes = await dbContext.Changes
+                .AsNoTrackingWithIdentityResolution()
+                .OrderBy(c => c.Id)
+                .ToListAsync(cancel),
 
-            Trades = trades,
-            Suggestions = suggestions
+            Transactions = await dbContext.Transactions
+                .AsNoTrackingWithIdentityResolution()
+                .OrderBy(t => t.Id)
+                .ToListAsync(cancel),
+
+            Trades = await dbContext.Trades
+                .AsNoTrackingWithIdentityResolution()
+                .OrderBy(t => t.Id)
+                .ToListAsync(cancel),
+
+            Suggestions = await dbContext.Suggestions
+                .AsNoTrackingWithIdentityResolution()
+                .OrderBy(s => s.Id)
+                .ToListAsync(cancel)
         };
     }
 }

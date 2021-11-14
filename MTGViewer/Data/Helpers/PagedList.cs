@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 
@@ -94,19 +95,21 @@ public static class PagingLinqExtensions
 
     public async static Task<PagedList<T>> ToPagedListAsync<T>(
         this IQueryable<T> source,
-        int pageSize, int? pageIndex = null)
+        int pageSize, 
+        int? pageIndex = null,
+        CancellationToken cancel = default)
     {
         pageSize = Math.Max(pageSize, 0);
 
         int page = pageIndex ?? 0;
-        int totalItems = await source.CountAsync();
+        int totalItems = await source.CountAsync(cancel);
 
         var pages = new Pages(page, totalItems, pageSize);
 
         var items = await source
             .Skip(pages.Current * pageSize)
             .Take(pageSize)
-            .ToListAsync();
+            .ToListAsync(cancel);
 
         return new(pages, items);
     }

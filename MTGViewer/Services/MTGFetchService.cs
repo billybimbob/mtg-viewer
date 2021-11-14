@@ -300,12 +300,12 @@ internal static class MtgApiExtension
 
     internal static Card ToCard(this ICard card) => new Card
     {
-        Id = card.Id, // id should be valid
+        Id = card.Id,
         MultiverseId = card.MultiverseId,
 
         Name = card.Name,
-        Names = (card.Names?.Select(s => new Name(s))
-            ?? Enumerable.Empty<Name>())
+        Names = (card.Names ?? Enumerable.Empty<string>())
+            .Select(s => new Name(s))
             .ToList(),
 
         Layout = card.Layout,
@@ -317,16 +317,16 @@ internal static class MtgApiExtension
             .Select(s => new Color(s))
             .ToList(),
 
-        Types = (card.Types?.Select(s => new Data.Type(s))
-            ?? Enumerable.Empty<Data.Type>())
+        Types = (card.Types ?? Enumerable.Empty<string>())
+            .Select(s => new Data.Type(s))
             .ToList(),
 
-        Subtypes = (card.SubTypes?.Select(s => new Subtype(s))
-            ?? Enumerable.Empty<Subtype>())
+        Subtypes = (card.SubTypes ?? Enumerable.Empty<string>())
+            .Select(s => new Subtype(s))
             .ToList(),
 
-        Supertypes = (card.SuperTypes?.Select(s => new Supertype(s))
-            ?? Enumerable.Empty<Supertype>())
+        Supertypes = (card.SuperTypes ?? Enumerable.Empty<string>())
+            .Select(s => new Supertype(s))
             .ToList(),
 
         ManaCost = card.ManaCost,

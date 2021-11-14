@@ -65,7 +65,7 @@ public class DeleteModel : PageModel
 
         if (card is null)
         {
-            return RedirectToPage("./Index");
+            return RedirectToPage("Index");
         }
 
         _dbContext.Cards.Remove(card);
@@ -79,6 +79,6 @@ public class DeleteModel : PageModel
             _logger.LogError(e.ToString());
         }
 
-        return RedirectToPage("./Index");
+        return RedirectToPage("Index");
     }
 }

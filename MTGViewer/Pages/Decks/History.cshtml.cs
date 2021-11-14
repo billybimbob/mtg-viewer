@@ -140,7 +140,7 @@ public class HistoryModel : PageModel
             _logger.LogError($"issue removing changes {e}");
         }
 
-        return RedirectToPage("History", new { deckId = Deck?.Id });
+        return RedirectToPage(new { deckId = Deck?.Id });
     }
 
 

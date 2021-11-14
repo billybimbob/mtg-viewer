@@ -4,61 +4,65 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
+using Microsoft.EntityFrameworkCore;
 using MTGViewer.Data;
 
 #nullable enable
 namespace MTGViewer.Services;
 
-/// <summary> Handles changes cards to Boxes (shared storage). </summary>
+/// <summary>
+///  Manages modifications to the <see cref="Card"/> collection that is stored in any <see cref="Box"/>.
+/// </summary>
 public interface ITreasury
 {
-    /// <summary> Queries for Box information in the Treasury </summary>
-    /// <see cref="Box"/>
+    /// <summary>
+    /// Queries for <see cref="Box"/> information in the Treasury
+    /// </summary>
     IQueryable<Box> Boxes { get; }
 
 
-    /// <summary> Queries for Card Amount information in the Treasury </summary>
-    /// <see cref="Amount"/>
+    /// <summary>
+    /// Queries for Card <see cref="Amount"/> information in the Treasury 
+    /// </summary>
     IQueryable<Amount> Cards { get; }
 
 
     /// <summary>
-    /// Determines if the Treasury currently can fulfill any of the wanted Cards
+    /// Determines if the Treasury currently can fulfill any of the given <see cref="Want"/>
     /// </summary>
     /// <exception cref="OperationCanceledException"></exception>
-    /// <see cref="Want"/>
+    /// <exception cref="DbUpdateException"></exception>
     Task<bool> AnyWantsAsync(IEnumerable<Want> wants, CancellationToken cancel = default);
 
 
-    /// <summary> Applies pending Deck Wants and GiveBacks to the Treasury </summary>
+    /// <summary>
+    /// Applies pending <see cref="Want"/> and <see cref="GiveBack"/> to the Treasury 
+    /// </summary>
+    /// <remarks>
+    /// All changes applied only affect the Treasury no modifications are done to the 
+    /// given <see cref="Deck"/>.
+    /// </remarks>
     /// <returns> 
-    /// A Transaction containing all of the actual card amount changes or null if no 
-    /// changes could be made. 
+    /// A <see cref="Transaction"/> containing all of the card changes, or <see langword="null"/> 
+    /// if no changes could be made. 
     /// </returns>
     /// <exception cref="OperationCanceledException"></exception>
-    /// <remarks>
-    /// All changes applied only affect the Treasury amounts and boxes, no modifications
-    /// are done to the given Deck.
-    /// </remarks>
-    /// <see cref="Deck"/>
-    /// <see cref="Want"/>
-    /// <see cref="GiveBack"/>
-    /// <see cref="Transaction"/>
+    /// <exception cref="DbUpdateException"></exception>
     Task<Transaction?> ExchangeAsync(Deck deck, CancellationToken cancel = default);
 
 
     /// <summary> 
-    /// Adding cards to the Treasury that prioritizes the least amount of Changes
+    /// Adding cards to the Treasury that prioritizes the least amount of <see cref="Change"/> values
     /// </summary>
+    /// <remarks> 
+    /// The priority of minimal changes may result in poor space utilization over time. 
+    /// </remarks>
     /// <returns>
-    /// A Transaction that contains all of the card Changes, or null if no changes could be made
+    /// A <see cref="Transaction"/> that contains all of the card changes, or <see langword="null" /> 
+    /// if no changes could be made
     /// </returns>
     /// <exception cref="OperationCanceledException"></exception>
-    /// <remarks> 
-    /// The priority of minimal Changes may result in poor space utilization over time. 
-    /// </remarks>
-    /// <see cref="Transaction"/>
-    /// <see cref="Change"/>
+    /// <exception cref="DbUpdateException"></exception>
     /// <seealso cref="OptimizeAsync"/>
     Task<Transaction?> ReturnAsync(IEnumerable<CardReturn> returns, CancellationToken cancel = default);
 
@@ -66,14 +70,16 @@ public interface ITreasury
     /// <summary>
     /// Increases space utilization of the Treasury storage, if possible
     /// </summary>
+    /// <remarks>
+    /// This operation may potentially generate massive bulk of <see cref="Change"/> values to 
+    /// the Treasury.
+    /// </remarks>
     /// <returns> 
-    /// A Transaction containing all of the Treasury changes, or null if no
-    /// changes could be made
+    /// A <see cref="Transaction"/> containing all of the Treasury changes, or <see langword="null" /> 
+    /// if no changes could be made
     /// </returns>
     /// <exception cref="OperationCanceledException"></exception>
-    /// <remarks>
-    /// This operation may potentially generate massive bulk Changes to the Treasury
-    /// </remarks>
+    /// <exception cref="DbUpdateException"></exception>
     Task<Transaction?> OptimizeAsync(CancellationToken cancel = default);
 
 

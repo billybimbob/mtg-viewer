@@ -69,6 +69,6 @@ public class CreateModel : PageModel
             PostMessage = "Ran into issue while creating new box";
         }
 
-        return RedirectToPage("./Index");
+        return RedirectToPage("Index");
     }
 }

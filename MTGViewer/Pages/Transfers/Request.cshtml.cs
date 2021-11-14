@@ -57,7 +57,7 @@ public class RequestModel : PageModel
         if (!deck.Wants.Any())
         {
             PostMessage = "There are no possible requests";
-            return RedirectToPage("./Index");
+            return RedirectToPage("Index");
         }
 
         if (deck.TradesTo.Any())
@@ -141,7 +141,7 @@ public class RequestModel : PageModel
         if (!trades.Any())
         {
             PostMessage = "There are no possible decks to trade with";
-            return RedirectToPage("./Index");
+            return RedirectToPage("Index");
         }
 
         _dbContext.Trades.AttachRange(trades);
@@ -151,12 +151,12 @@ public class RequestModel : PageModel
             await _dbContext.SaveChangesAsync();
 
             PostMessage = "Request was successfully sent";
-            return RedirectToPage("./Status", new { deckId });
+            return RedirectToPage("Status", new { deckId });
         }
         catch (DbUpdateException)
         {
             PostMessage = "Ran into issue while trying to send request";
-            return RedirectToPage("./Index");
+            return RedirectToPage("Index");
         }
     }
 
