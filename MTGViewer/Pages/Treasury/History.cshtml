@@ -38,24 +38,30 @@
                 }
 
                 <td rowspan="@changes.Count">
-                    @if (from is Deck fromDeck)
+                    @switch (from)
                     {
-                        <a asp-page="/Decks/Viewer" asp-route-id="@fromDeck.Id"> @fromDeck.Name </a>
-                    }
-                    else if (from is null)
-                    {
-                        <i>Added</i>
-                    }
-                    else
-                    {
-                        @from.Name
+                        case Deck:
+                            <a asp-page="/Decks/Viewer" asp-route-id="@from.Id"> @from.Name </a>
+                            break;
+
+                        case Unclaimed:
+                            <a asp-page="Unclaimed" asp-route-id="@from.Id"> @from.Name </a>
+                            break;
+
+                        case null:
+                            <i>Added</i>
+                            break;
+
+                        default:
+                            @from.Name
+                            break;
                     }
                 </td>
                 
                 <td rowspan="@changes.Count">
-                    @if (to is Deck toDeck)
+                    @if (to is Deck)
                     {
-                        <a asp-page="/Decks/Viewer" asp-route-id="@toDeck.Id"> @toDeck.Name </a>
+                        <a asp-page="/Decks/Viewer" asp-route-id="@to.Id"> @to.Name </a>
                     }
                     else
                     {
@@ -97,67 +103,4 @@
     </tbody>
 </table>
 
-
-@if (Model.Pages.HasMultiple)
-{
-    var pages = Model.Pages;
-    var prevDisabled = pages.HasPrevious ? "" : "disabled";
-    var nextDisabled = pages.HasNext ? "" : "disabled";
-
-    <nav aria-label="Box History Pages">
-        <ul class="pagination justify-content-center">
-
-            <li class="page-item @prevDisabled">
-                @if (pages.HasPrevious)
-                {
-                    <a asp-page="History" 
-                        asp-route-pageIndex="@(pages.Current - 1)"
-                        class="page-link">
-                        &laquo; </a>
-                }
-                else
-                {
-                    <span class="page-link"> &laquo; </span>
-                }
-            </li>
-
-            @for (int i = 0; i < pages.Total; ++i)
-            {
-                var pageIndex = i;
-                var activePage = pageIndex == pages.Current ? "active" : "";
-
-                <li class="page-item @activePage">
-                    @if (pageIndex != pages.Current)
-                    {
-                        <a asp-page="History"
-                            asp-route-pageIndex="@pageIndex"
-                            class="page-link">
-                            @(pageIndex + 1) </a>
-                    }
-                    else
-                    {
-                        <span class="page-link">
-                            @(pageIndex + 1)
-                            <span class="sr-only">(current)</span>
-                        </span>
-                    }
-                </li>
-            }
-
-            <li class="page-item @nextDisabled">
-                @if (pages.HasNext)
-                {
-                    <a asp-page="History"
-                        asp-route-pageIndex="@(pages.Current + 1)"
-                        class="page-link">
-                        &raquo; </a>
-                }
-                else
-                {
-                    <span class="page-link"> &raquo; </span>
-                }
-            </li>
-
-        </ul>
-    </nav>
-}
+@await Html.PartialAsync("_PaginationPartial", Model.Pages)

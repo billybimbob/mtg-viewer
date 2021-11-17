@@ -25,6 +25,7 @@ public class JsonCardStorage
 
     private readonly CardDbContext _dbContext;
     private readonly UserManager<CardUser> _userManager;
+    private readonly MTGFetchService _fetch;
 
     private readonly string _tempPassword; // TODO: change, see below for impl
 
@@ -32,7 +33,8 @@ public class JsonCardStorage
         IConfiguration config, 
         PageSizes pageSizes,
         CardDbContext dbContext, 
-        UserManager<CardUser> userManager)
+        UserManager<CardUser> userManager,
+        MTGFetchService fetch)
     {
         var filename = config.GetValue("JsonPath", "cards");
 
@@ -41,6 +43,7 @@ public class JsonCardStorage
 
         _dbContext = dbContext;
         _userManager = userManager;
+        _fetch = fetch;
 
         var seedOptions = new SeedSettings();
         config.GetSection(nameof(SeedSettings)).Bind(seedOptions);
@@ -57,6 +60,7 @@ public class JsonCardStorage
         await using var writer = File.Create(path);
 
         var data = await CardData.CreateAsync(_dbContext, _userManager, cancel);
+
         var serialOptions = new JsonSerializerOptions { WriteIndented = true };
 
         await JsonSerializer.SerializeAsync(writer, data, serialOptions, cancel);
@@ -65,7 +69,6 @@ public class JsonCardStorage
 
     public async Task<byte[]> GetFileDataAsync(int? page = null, CancellationToken cancel = default)
     {
-        // TODO: use paging
         var data = await CardData.CreateAsync(_dbContext, _pageSize, page, cancel);
 
         return JsonSerializer.SerializeToUtf8Bytes(data);
@@ -165,7 +168,6 @@ public class JsonCardStorage
                 return false;
             }
             
-            // TODO: add card validation
             await MergeAsync(data, cancel);
 
             await _dbContext.SaveChangesAsync(cancel);
@@ -189,15 +191,18 @@ public class JsonCardStorage
 
         var bins = GetBinWithBoxAmounts(data);
         var unclaimed = GetDecksAsUnclaimed(data);
-        var changes = GetAddChanges(data);
+
+        var transaction = GetAddTranscation(data);
 
         // TODO: merge to existing bins, boxes, and decks
         // merging may have issue with card amount/want conflicts
 
         _dbContext.Cards.AddRange(cards);
+
         _dbContext.Bins.AddRange(bins);
         _dbContext.Unclaimed.AddRange(unclaimed);
-        _dbContext.Changes.AddRange(changes);
+
+        _dbContext.Transactions.Add(transaction);
     }
 
 
@@ -212,9 +217,34 @@ public class JsonCardStorage
             .Where(cid => cardIds.Contains(cid))
             .ToListAsync(cancel);
 
-        return data.Cards
+        var multiIds = data.Cards
             .ExceptBy(dbCardIds, c => c.Id)
-            .ToList();
+            .Where(c => c.IsValid())
+            .Select(c => c.MultiverseId);
+
+        return await ValidatedCardsAsync(multiIds);
+    }
+
+
+    private async Task<IReadOnlyList<Card>> ValidatedCardsAsync(IEnumerable<string> multiIds)
+    {
+        const int limit = MTGFetchService.Limit;
+        var cards = new List<Card>();
+
+        foreach (var multiChunk in multiIds.Chunk(limit))
+        {
+            var multiArg = string.Join(MTGFetchService.Or, multiChunk);
+
+            // go one by one since fetch is not thread safe
+            var validated = await _fetch
+                .Where(c => c.MultiverseId, multiArg)
+                .Where(c => c.PageSize, limit)
+                .SearchAsync();
+
+            cards.AddRange(validated);
+        }
+
+        return cards;
     }
 
 
@@ -313,8 +343,10 @@ public class JsonCardStorage
     }
 
 
-    private IReadOnlyList<Change> GetAddChanges(CardData data)
+    private Transaction GetAddTranscation(CardData data)
     {
+        var transaction = new Transaction();
+
         var boxChanges = data.Bins
             .SelectMany(b => b.Boxes)
             .SelectMany( b => b.Cards,
@@ -325,6 +357,8 @@ public class JsonCardStorage
                     Amount = a.NumCopies
                 });
 
+        transaction.Changes.AddRange(boxChanges);
+
         var deckChanges = data.Decks
             .SelectMany(d => d.Cards,
                 (deck, a) => new Change
@@ -334,7 +368,9 @@ public class JsonCardStorage
                     Amount = a.NumCopies
                 });
 
-        return boxChanges.Concat(deckChanges).ToList();
+        transaction.Changes.AddRange(deckChanges);
+
+        return transaction;
     }
 }
 

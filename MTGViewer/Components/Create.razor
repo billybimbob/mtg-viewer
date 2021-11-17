@@ -404,9 +404,7 @@ else
             return;
         }
 
-        var priorSearch = _pages.Total > 0;
-
-        if (priorSearch && !_pages.HasNext)
+        if (_pages != default && !_pages.HasNext)
         {
             return;
         }
@@ -420,8 +418,7 @@ else
         {
             PrepareSearch();
 
-            var nextPage = priorSearch ? _pages.Current + 1 : 0;
-            var result = await fetch.MatchAsync(_search, nextPage);
+            var result = await fetch.Where(_search).SearchAsync();
 
             _cancel.Token.ThrowIfCancellationRequested();
 
@@ -455,6 +452,8 @@ else
         _search.Colors = string.Join(colorJoin, _pickedColors);
 
         _search.Rarity = string.Join(MTGFetchService.Or, _pickedRarities);
+
+        _search.Page = _pages == default ? 0 : _pages.Current + 1;
     }
 
 

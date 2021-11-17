@@ -9,29 +9,26 @@ using Microsoft.EntityFrameworkCore;
 #nullable enable
 namespace MTGViewer.Data;
 
-public readonly struct Pages
+
+public readonly record struct Pages(int currentPage, int totalPages)
 {
-    public int Current { get; }
-    public int Total { get; }
+    public int Current { get; } = Math.Max(currentPage, 0);
+    public int Total { get; } = Math.Max(totalPages, 0);
 
     public bool HasPrevious => Current > 0;
     public bool HasNext => Current < Total - 1;
     public bool HasMultiple => Total > 1;
 
+    public Pages(int currentPage, int totalItems, int pageSize) 
+        : this(currentPage, TotalPages(totalItems, pageSize))
+    { }
 
-    public Pages(int currentPage, int totalPages)
-    {
-        Current = Math.Max(currentPage, 0);
-        Total = Math.Max(totalPages, 0);
-    }
-
-    public Pages(int currentPage, int totalItems, int pageSize)
+    private static int TotalPages(int totalItems, int pageSize)
     {
         totalItems = Math.Max(totalItems, 0);
         pageSize = Math.Max(pageSize, 1);
 
-        Current = Math.Max(currentPage, 0);
-        Total = (int) Math.Ceiling((double) totalItems / pageSize);
+        return (int) Math.Ceiling((double) totalItems / pageSize);
     }
 }
 
@@ -93,8 +90,8 @@ public static class PagingLinqExtensions
     }
 
 
-    public async static Task<PagedList<T>> ToPagedListAsync<T>(
-        this IQueryable<T> source,
+    public async static Task<PagedList<TEntity>> ToPagedListAsync<TEntity>(
+        this IQueryable<TEntity> source,
         int pageSize, 
         int? pageIndex = null,
         CancellationToken cancel = default)

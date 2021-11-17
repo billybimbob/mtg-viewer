@@ -1,12 +1,16 @@
 using System;
 using System.ComponentModel.DataAnnotations;
 using MtgApiManager.Lib.Service;
+using MTGViewer.Services;
 
 namespace MTGViewer.Data;
 
 public class CardSearch : IQueryParameter
 {
-    public string Id { get; }
+    public string Id { get; set; }
+
+    [Display(Name = "Multiverse Id")]
+    public string MultiverseId { get; set; }
 
     [StringLength(50)]
     public string Name { get; set; }
@@ -47,4 +51,10 @@ public class CardSearch : IQueryParameter
 
     [StringLength(5)]
     public string Loyalty { get; set; }
+
+    [Range(0, int.MaxValue)]
+    public int Page { get; set; }
+    
+    [Range(1, MTGFetchService.Limit)]
+    public int? PageSize { get; set; }
 }

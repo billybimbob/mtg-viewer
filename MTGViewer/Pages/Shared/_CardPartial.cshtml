@@ -111,15 +111,23 @@
                     @foreach(var cardAmount in Model.Amounts)
                     {
                         <li class="list-group-item col-md-4 d-flex justify-content-between align-items-center">
-                            @if (cardAmount.Location is Deck deck)
+                            @switch (cardAmount.Location)
                             {
-                                <a asp-page="/Decks/Viewer" asp-route-id="@deck.Id">
-                                    @deck.Name
-                                </a>
-                            }
-                            else
-                            {
-                                @cardAmount.Location.Name
+                                case Deck deck:
+                                    <a asp-page="/Decks/Viewer" asp-route-id="@deck.Id"> @deck.Name </a>
+                                    break;
+
+                                case Box box:
+                                    <a asp-page="/Treasury/Index" asp-route-id="@box.Id"> @box.Name </a>
+                                    break;
+
+                                case Unclaimed unclaimed:
+                                    <a asp-page="/Unowned/Index" asp-route-id="@unclaimed.Id"> @unclaimed.Name </a>
+                                    break;
+
+                                default:
+                                    @cardAmount.Location.Name
+                                    break;
                             }
 
                             <span class="ml-1 badge badge-secondary badge-pill">

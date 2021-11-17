@@ -38,9 +38,46 @@ public class IndexModel : PageModel
     public bool IsSignedIn => _signInManager.IsSignedIn(User);
 
 
-    public async Task OnGetAsync(int? pageIndex)
+    public async Task<IActionResult> OnGetAsync(int? id, int? pageIndex)
     {
-        Boxes = await _treasury.Boxes
+        if (await GetBoxPageAsync(id) is int boxPage)
+        {
+            return RedirectToPage(new { pageIndex = boxPage });
+        }
+
+        Boxes = await BoxesForViewing()
+            .ToPagedListAsync(_pageSize, pageIndex);
+
+        return Page();
+    }
+
+
+    private async Task<int?> GetBoxPageAsync(int? id)
+    {
+        if (id is not int boxId)
+        {
+            return null;
+        }
+
+        bool exists = await _treasury.Boxes
+            .AnyAsync(b => b.Id == boxId);
+
+        if (!exists)
+        {
+            return null;
+        }
+
+        int position = await _treasury.Boxes
+            .Where(b => b.Id < boxId)
+            .CountAsync();
+
+        return position / _pageSize;
+    }
+
+
+    private IQueryable<Box> BoxesForViewing()
+    {
+        return _treasury.Boxes
             .Include(b => b.Bin)
 
             .Include(b => b.Cards // unbounded: keep eye on
@@ -49,8 +86,7 @@ public class IndexModel : PageModel
                 .ThenInclude(ca => ca.Card)
 
             .OrderBy(b => b.Id)
-            .AsNoTrackingWithIdentityResolution()
-            .ToPagedListAsync(_pageSize, pageIndex);
+            .AsNoTrackingWithIdentityResolution();
     }
 
 

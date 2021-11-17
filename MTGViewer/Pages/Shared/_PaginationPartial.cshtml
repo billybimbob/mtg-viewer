@@ -1,0 +1,61 @@
+@model Data.Pages
+
+@if (Model.HasMultiple)
+{
+    var prevDisabled = Model.HasPrevious ? "" : "disabled";
+    var nextDisabled = Model.HasNext ? "" : "disabled";
+
+    <nav>
+        <ul class="pagination justify-content-center">
+
+            <li class="page-item @prevDisabled">
+                @if (Model.HasPrevious)
+                {
+                    <a asp-route-pageIndex="@(Model.Current - 1)"
+                        class="page-link">
+                        &laquo; </a>
+                }
+                else
+                {
+                    <span class="page-link"> &laquo; </span>
+                }
+            </li>
+
+            @for (int i = 0; i < Model.Total; ++i)
+            {
+                var pageIndex = i;
+                var activePage = pageIndex == Model.Current ? "active" : "";
+
+                <li class="page-item @activePage">
+                    @if (pageIndex != Model.Current)
+                    {
+                        <a asp-route-pageIndex="@pageIndex"
+                            class="page-link">
+                            @(pageIndex + 1) </a>
+                    }
+                    else
+                    {
+                        <span class="page-link">
+                            @(pageIndex + 1)
+                            <span class="sr-only">(current)</span>
+                        </span>
+                    }
+                </li>
+            }
+
+            <li class="page-item @nextDisabled">
+                @if (Model.HasNext)
+                {
+                    <a asp-route-pageIndex="@(Model.Current + 1)"
+                        class="page-link">
+                        &raquo; </a>
+                }
+                else
+                {
+                    <span class="page-link"> &raquo; </span>
+                }
+            </li>
+
+        </ul>
+    </nav>
+}

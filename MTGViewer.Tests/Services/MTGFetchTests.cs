@@ -21,7 +21,7 @@ public class MTGFetchTests
     }
 
 
-    [Fact(Skip = "Calls external api")]
+    [Fact]
     public async Task Search_NoParams_ReturnsEmpty()
     {
         _fetch.Reset();
@@ -74,62 +74,67 @@ public class MTGFetchTests
     }
 
 
-    // [Fact(Skip = "Calls external api")]
-    // public async Task Match_Id_ReturnsCard()
-    // {
-    //     var search = new CardSearch
-    //     {
-    //         MultiverseId = TEST_ID
-    //     };
-
-    //     var cards = await _fetch.MatchAsync(search);
-    //     var cardNames = cards.Select(c => c.Name);
-
-    //     Assert.Contains(TEST_NAME, cardNames);
-    // }
-
-
     [Fact(Skip = "Calls external api")]
-    public async Task Match_Empty_ReturnsEmpty()
+    public async Task Where_MultiId_ReturnsSingleCard()
+    {
+        var search = new CardSearch
+        {
+            MultiverseId = TEST_ID
+        };
+
+        var cards = await _fetch
+            .Where(search)
+            .SearchAsync();
+
+        var cardName = cards.Single();
+
+        Assert.Contains(TEST_NAME, cardName.Name);
+    }
+
+
+    [Fact]
+    public async Task Where_Empty_ReturnsEmpty()
     {
         var search = new CardSearch();
 
-        var cards = await _fetch.MatchAsync(search);
+        var cards = await _fetch
+            .Where(search)
+            .SearchAsync();
 
         Assert.Empty(cards);
     }
 
 
     [Fact(Skip = "Calls external api")]
-    public async Task Match_OnlyName_ReturnsCard()
+    public async Task Where_OnlyName_ReturnsCard()
     {
         var search = new CardSearch
         {
             Name = TEST_NAME
         };
 
-        var cards = await _fetch.MatchAsync(search);
+        var cards = await _fetch
+            .Where(search)
+            .SearchAsync();
+
         var cardNames = cards.Select(c => c.Name);
 
         Assert.Contains(TEST_NAME, cardNames);
     }
 
 
-    // [Fact]
-    // public async Task All_PagedQuery_EqualPageSize()
-    // {
-    //     const string id = "f2eb06047a3a8e515bff62b55f29468fcde6332a";
-    //     // const int pageSize = 50;
-    //     var serviceProvider = new MtgServiceProvider();
-    //     var service = serviceProvider.GetCardService();
+    [Fact(Skip = "Calls external api")]
+    public async Task All_PagedQuery_EqualPageSize()
+    {
+        const int pageSize = 10;
+        const int page = 1;
 
-    //     var result = await service.FindAsync(id);
-    //         // .Where(x => x.Page, 1)
-    //         // .Where(x => x.PageSize, pageSize)
-    //         // .AllAsync();
+        var result = await _fetch
+            .Where(x => x.Page, page)
+            .Where(x => x.PageSize, pageSize)
+            .SearchAsync();
 
-    //     // Assert.Equal(pageSize, result.PagingInfo.PageSize);
-    //     Assert.True(result.IsSuccess);
-    //     Assert.Equal(id, result.Value.Id);
-    // }
+        Assert.True(pageSize >= result.Count);
+        Assert.Equal(page, result.Pages.Current);
+    }
 }

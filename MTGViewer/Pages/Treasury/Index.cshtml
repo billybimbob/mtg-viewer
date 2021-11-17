@@ -18,6 +18,8 @@
         </form>
 
         <a asp-page="Backup" class="btn btn-secondary mr-2" role="button"> Backup </a>
+
+        <a asp-page="/Unowned/Index" class="btn btn-secondary mr-2" role="button"> Unclaimed Decks </a>
     }
 
     <a asp-page="History" class="btn btn-secondary" role="button"> History </a>
@@ -90,66 +92,4 @@
 </table>
 
 
-@if (Model.Boxes.Pages.HasMultiple)
-{
-    var pages = Model.Boxes.Pages;
-    var prevDisabled = pages.HasPrevious ? "" : "disabled";
-    var nextDisabled = pages.HasNext ? "" : "disabled";
-
-    <nav aria-label="Box History Pages">
-        <ul class="pagination justify-content-center">
-
-            <li class="page-item @prevDisabled">
-                @if (pages.HasPrevious)
-                {
-                    <a asp-page="Create" 
-                        asp-route-pageIndex="@(pages.Current - 1)"
-                        class="page-link">
-                        &laquo; </a>
-                }
-                else
-                {
-                    <span class="page-link"> &laquo; </span>
-                }
-            </li>
-
-            @for (int i = 0; i < pages.Total; ++i)
-            {
-                var pageIndex = i;
-                var activePage = pageIndex == pages.Current ? "active" : "";
-
-                <li class="page-item @activePage">
-                    @if (pageIndex != pages.Current)
-                    {
-                        <a asp-page="Create"
-                            asp-route-pageIndex="@pageIndex"
-                            class="page-link">
-                            @(pageIndex + 1) </a>
-                    }
-                    else
-                    {
-                        <span class="page-link">
-                            @(pageIndex + 1)
-                            <span class="sr-only">(current)</span>
-                        </span>
-                    }
-                </li>
-            }
-
-            <li class="page-item @nextDisabled">
-                @if (pages.HasNext)
-                {
-                    <a asp-page="Create"
-                        asp-route-pageIndex="@(pages.Current + 1)"
-                        class="page-link">
-                        &raquo; </a>
-                }
-                else
-                {
-                    <span class="page-link"> &raquo; </span>
-                }
-            </li>
-
-        </ul>
-    </nav>
-}
+@(await Html.PartialAsync("_PaginationPartial", Model.Boxes.Pages))

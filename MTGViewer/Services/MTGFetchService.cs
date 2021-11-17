@@ -31,6 +31,7 @@ public class MTGFetchService : IMtgQueryable<MTGFetchService, CardSearch>
 
     public const char Or = '|';
     public const char And = ',';
+    public const int Limit = 100;
 
 
     private readonly ICardService _service;
@@ -40,6 +41,7 @@ public class MTGFetchService : IMtgQueryable<MTGFetchService, CardSearch>
     private readonly ILogger<MTGFetchService> _logger;
 
     private bool _empty;
+    private int _page;
 
     public MTGFetchService(
         ICardService service,
@@ -54,18 +56,21 @@ public class MTGFetchService : IMtgQueryable<MTGFetchService, CardSearch>
         _logger = logger;
 
         _empty = true;
+        _page = 0;
     }
 
 
     public void Reset()
     {
         _service.Reset();
+
         _empty = true;
+        _page = 0;
     }
 
 
-    public MTGFetchService Where<TProperty>(
-        Expression<Func<CardSearch, TProperty>> property, TProperty value)
+    public MTGFetchService Where<TParameter>(
+        Expression<Func<CardSearch, TParameter>> property, TParameter value)
     {
         if (property.Body is MemberExpression expression)
         {
@@ -76,17 +81,30 @@ public class MTGFetchService : IMtgQueryable<MTGFetchService, CardSearch>
     }
 
 
-
-    private void QueryProperty(string propertyName, object? objValue)
+    public MTGFetchService Where(CardSearch search)
     {
-        var multipleValues = _multipleValues.Contains(propertyName);
-        var paramValue = ToString(objValue, multipleValues);
-
-        if (string.IsNullOrWhiteSpace(paramValue))
+        if (search is null)
         {
-            return;
+            return this;
         }
 
+        const BindingFlags binds = BindingFlags.Instance | BindingFlags.Public;
+
+        foreach (var info in typeof(CardSearch).GetProperties(binds))
+        {
+            if (info.GetGetMethod() is not null
+                && info.GetSetMethod() is not null)
+            {
+                QueryProperty(info.Name, info.GetValue(search));
+            }
+        }
+
+        return this;
+    }
+
+
+    private void QueryProperty<TParameter>(string propertyName, TParameter parameter)
+    {
         const BindingFlags binds = BindingFlags.IgnoreCase | BindingFlags.Instance | BindingFlags.Public;
 
         if (typeof(CardQueryParameter).GetProperty(propertyName, binds) == null)
@@ -94,61 +112,95 @@ public class MTGFetchService : IMtgQueryable<MTGFetchService, CardSearch>
             return;
         }
 
-        var parameter = QueryParameter(propertyName);
+        const string pageName = nameof(CardQueryParameter.Page);
+        const string pageSizeName = nameof(CardQueryParameter.PageSize);
 
-        _service.Where(parameter, paramValue);
+        bool TryString(out string? stringValue) =>
+            TryToString(parameter, _multipleValues.Contains(propertyName), out stringValue);
+
+        switch ((propertyName, parameter))
+        {
+            case (pageName, int page) when page != default:
+                // translate zero-based page index to one-based page from the api
+                AddParameter(propertyName, page + 1);
+                _page = page;
+                break;
+
+            case (pageSizeName, int pageSize):
+                AddParameter(propertyName, pageSize);
+                break;
+
+            case (pageName, _):
+            case (pageSizeName, _):
+                break;
+
+            case (_, _) when TryString(out var stringValue):
+                AddParameter(propertyName, stringValue);
+                break;
+
+            default:
+                break;
+        }
+    }
+
+
+    private bool TryToString(object? paramValue, bool multipleValues, out string? stringValue)
+    {
+        const StringSplitOptions noWhitespace = StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries;
+
+        stringValue = paramValue?.ToString();
+
+        if (string.IsNullOrWhiteSpace(stringValue))
+        {
+            return false;
+        }
+
+        stringValue = string.Join(Or, stringValue.Split(Or, noWhitespace));
+
+        if (multipleValues)
+        {
+            stringValue = string.Join(And, Regex.Split(stringValue, $@"(?:\s*{And}\s*)|\s+"));
+        }
+
+        return true;
+    }
+
+
+    private void AddParameter<TParameter>(string name, TParameter value)
+    {
+        var xParam = Expression.Parameter(typeof(CardQueryParameter), "x");
+        var propExpr = Expression.Property(xParam, name);
+
+        var expression = Expression.Lambda<Func<CardQueryParameter,TParameter>>(propExpr, xParam);
+
+        _service.Where(expression, value);
         _empty = false;
     }
 
 
-    private static string ToString(object? paramValue, bool multipleValues)
-    {
-        const StringSplitOptions noWhitespace = StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries;
-
-        var strValue = paramValue?.ToString();
-
-        if (string.IsNullOrWhiteSpace(strValue))
-        {
-            return string.Empty;
-        }
-
-        strValue = string.Join(Or, strValue.Split(Or, noWhitespace));
-
-        if (multipleValues)
-        {
-            strValue = string.Join(And, Regex.Split(strValue, $@"(?:\s*{And}\s*)|\s+"));
-        }
-
-        return strValue;
-    }
-
-
-    private static Expression<Func<CardQueryParameter, string>> QueryParameter(string propName)
-    {
-        var xParam = Expression.Parameter(typeof(CardQueryParameter), "x");
-        var propExpr = Expression.Property(xParam, propName);
-
-        return Expression.Lambda<Func<CardQueryParameter, string>>(propExpr, xParam);
-    }
-
-
-
-    public async Task<PagedList<Card>> SearchAsync(int page = 0)
+    /// <remarks> 
+    /// This method is not thread safe, so multiple calls of this method cannot 
+    /// be active at the same time. Be sure to <see langword="await"/> before 
+    /// executing another search.
+    /// </remarks>
+    public async Task<PagedList<Card>> SearchAsync()
     {
         if (_empty)
         {
             return PagedList<Card>.Empty;
         }
 
-        page = Math.Max(page, 0);
-
         var response = await _service
-            .Where(c => c.PageSize, _pageSize)
-            .Where(c => c.Page, page + 1)
+            .Where(c => c.PageSize, _pageSize) // if pageSize set before, this is ignored
             // .Where(c => c.OrderBy, "name") get error code 500 with this
             .AllAsync();
 
+        var totalPages = response.PagingInfo.TotalPages;
+
+        var pages = new Data.Pages(_page, totalPages);
+
         _empty = true;
+        _page = 0;
 
         var matches = LoggedUnwrap(response) ?? Enumerable.Empty<ICard>();
 
@@ -157,13 +209,10 @@ public class MTGFetchService : IMtgQueryable<MTGFetchService, CardSearch>
             return PagedList<Card>.Empty;
         }
 
-        var pages = new Data.Pages(page, response.PagingInfo.TotalPages);
-
         var cards = matches
             .Select(c => c.ToCard())
             .Where(c => TestValid(c) is not null)
-            .GroupBy(c => c.MultiverseId, (_, cards) => cards.First())
-            .ToList();
+            .ToArray();
 
         // adventure cards have multiple entries with the same multiId
 
@@ -175,22 +224,6 @@ public class MTGFetchService : IMtgQueryable<MTGFetchService, CardSearch>
         return new PagedList<Card>(pages, cards);
     }
 
-
-    public Task<PagedList<Card>> MatchAsync(CardSearch search, int page = 0)
-    {
-        const BindingFlags binds = BindingFlags.Instance | BindingFlags.Public;
-
-        foreach (var info in typeof(CardSearch).GetProperties(binds))
-        {
-            if (info?.GetGetMethod() is not null
-                && info?.GetSetMethod() is not null)
-            {
-                QueryProperty(info.Name, info.GetValue(search));
-            }
-        }
-
-        return SearchAsync(page);
-    }
 
 
     public async Task<Card?> FindAsync(string id)

@@ -47,18 +47,25 @@ public class BackupModel : PageModel
     [TempData]
     public string PostMessage { get; set; }
 
+
     [BindProperty]
     public Import Import { get; set; }
 
-    [BindProperty]
+    [BindProperty(SupportsGet = true)]
     public Export Export { get; set; }
+
 
     public void OnGet()
     { }
 
 
-    public async Task<IActionResult> OnPostDownloadAsync()
+    public async Task<IActionResult> OnGetDownloadAsync()
     {
+        if (Export is null || Export.Page < 0)
+        {
+            return NotFound();
+        }
+
         var pageIndex = Export.Page switch
         {
             int page and >0 => page - 1,

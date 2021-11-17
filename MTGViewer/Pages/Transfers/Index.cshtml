@@ -76,73 +76,7 @@
             </tbody>
         </table>
 
-
-        @if (Model.TradeDecks.Pages.HasMultiple)
-        {
-            var deckPages = Model.TradeDecks.Pages;
-            var deckPrevDisabled = deckPages.HasPrevious ? "" : "disabled";
-            var deckNextDisabled = deckPages.HasNext ? "" : "disabled";
-
-            <nav aria-label="Trade Pages">
-                <ul class="pagination justify-content-center">
-
-                    <li class="page-item @deckPrevDisabled">
-                        @if (deckPages.HasPrevious)
-                        {
-                            <a asp-page="Index" 
-                                asp-route-deckIndex="@(Model.TradeDecks.Pages.Current - 1)"
-                                asp-route-suggestIndex="@Model.SuggestIndex"
-                                class="page-link">
-                                &laquo; </a>
-                        }
-                        else
-                        {
-                            <span class="page-link">&laquo;</span>
-                        }
-                    </li>
-
-                    @for (int i = 0; i < deckPages.Total; ++i)
-                    {
-                        var pageIndex = i;
-                        var activePage = pageIndex == deckPages.Current ? "active" : "";
-
-                        <li class="page-item @activePage">
-                            @if (pageIndex != deckPages.Current)
-                            {
-                                <a asp-page="Index"
-                                    asp-route-deckIndex="@pageIndex"
-                                    asp-route-suggestIndex="@Model.SuggestIndex"
-                                    class="page-link">
-                                    @(pageIndex + 1) </a>
-                            }
-                            else
-                            {
-                                <span class="page-link">
-                                    @(pageIndex + 1)
-                                    <span class="sr-only">(current)</span>
-                                </span>
-                            }
-                        </li>
-                    }
-
-                    <li class="page-item @deckNextDisabled">
-                        @if (deckPages.HasNext)
-                        {
-                            <a asp-page="Index"
-                                asp-route-deckIndex="@(deckPages.Current + 1)"
-                                asp-route-suggestIndex="@Model.SuggestIndex"
-                                class="page-link">
-                                &raquo; </a>
-                        }
-                        else
-                        {
-                            <span class="page-link">&raquo;</span>
-                        }
-                    </li>
-
-                </ul>
-            </nav>
-        }
+        @await Html.PartialAsync("_PaginationPartial", Model.TradeDecks.Pages)
     </div>
 </div>
 
@@ -189,73 +123,7 @@
                 </tbody>
             </table>
 
-
-            @if (Model.Suggestions.Pages.HasMultiple)
-            {
-                var suggestPages = Model.Suggestions.Pages;
-                var suggestPrevDisabled = suggestPages.HasPrevious ? "" : "disabled";
-                var suggestNextDisabled = suggestPages.HasNext ? "" : "disabled";
-
-                <nav aria-label="Suggestion Pages">
-                    <ul class="pagination justify-content-center">
-
-                        <li class="page-item @suggestPrevDisabled">
-                            @if (suggestPages.HasPrevious)
-                            {
-                                <a asp-page="Index" 
-                                    asp-route-deckIndex="@Model.DeckIndex"
-                                    asp-route-suggestIndex="@(suggestPages.Current - 1)"
-                                    class="page-link">
-                                    &laquo; </a>
-                            }
-                            else
-                            {
-                                <span class="page-link"> &laquo; </span>
-                            }
-                        </li>
-
-                        @for (int i = 0; i < suggestPages.Total; ++i)
-                        {
-                            var pageIndex = i;
-                            var activePage = pageIndex == suggestPages.Current ? "active" : "";
-
-                            <li class="page-item @activePage">
-                                @if (pageIndex != suggestPages.Current)
-                                {
-                                    <a asp-page="Index"
-                                        asp-route-deckIndex="@Model.DeckIndex"
-                                        asp-route-suggestIndex="@pageIndex"
-                                        class="page-link">
-                                        @(pageIndex + 1) </a>
-                                }
-                                else
-                                {
-                                    <span class="page-link">
-                                        @(pageIndex + 1)
-                                        <span class="sr-only">(current)</span>
-                                    </span>
-                                }
-                            </li>
-                        }
-
-                        <li class="page-item @suggestNextDisabled">
-                            @if (suggestPages.HasNext)
-                            {
-                                <a asp-page="Index"
-                                    asp-route-deckIndex="@Model.DeckIndex"
-                                    asp-route-suggestIndex="@(suggestPages.Current + 1)"
-                                    class="page-link">
-                                    &raquo; </a>
-                            }
-                            else
-                            {
-                                <span class="page-link"> &raquo; </span>
-                            }
-                        </li>
-
-                    </ul>
-                </nav>
-            }
-        </div>
+            @await Html.PartialAsync("_PaginationPartial", Model.Suggestions.Pages)
+       </div>
     </div>
 }

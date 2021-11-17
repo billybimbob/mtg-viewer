@@ -45,24 +45,30 @@
                         }
 
                         <td rowspan="@changes.Count">
-                            @if (from is Deck fromDeck && from.Id != Model.Deck.Id)
+                            @switch (from)
                             {
-                                <a asp-page="Viewer" asp-route-id="@fromDeck.Id"> @fromDeck.Name </a>
-                            }
-                            else if (from is null)
-                            {
-                                <i>Added</i>
-                            }
-                            else
-                            {
-                                @from.Name
+                                case Deck when from.Id != Model.Deck.Id:
+                                    <a asp-page="Viewer" asp-route-id="@from.Id"> @from.Name </a>
+                                    break;
+
+                                case Box:
+                                    <a asp-page="/Treasury" asp-route-id="@from.Id"> @from.Name </a>
+                                    break;
+
+                                case null:
+                                    <i> Added </i>
+                                    break;
+                                
+                                default:
+                                    @from.Name
+                                    break;
                             }
                         </td>
 
                         <td rowspan="@changes.Count">
-                            @if (to is Deck toDeck && to.Id != Model.Deck.Id)
+                            @if (to is Deck && to.Id != Model.Deck.Id)
                             {
-                                <a asp-page="Viewer" asp-route-id="@toDeck.Id"> @toDeck.Name </a>
+                                <a asp-page="Viewer" asp-route-id="@to.Id"> @to.Name </a>
                             }
                             else
                             {
@@ -93,7 +99,7 @@
                         <tr>
                             <td>
                                 @(await Html.RenderComponentAsync<HoverCard>(
-                                    RenderMode.Static, new { Card = (CardPreview) change.Card }))
+                                    RenderMode.Static, new { Card = (CardPreview)change.Card }))
                             </td>
                             <td> @change.Amount </td>
                         </tr>
@@ -102,72 +108,6 @@
             </tbody>
         </table>
 
-
-        @if (Model.Pages.HasMultiple)
-        {
-            var pages = Model.Pages;
-            var prevDisabled = pages.HasPrevious ? "" : "disabled";
-            var nextDisabled = pages.HasNext ? "" : "disabled";
-
-            <nav aria-label="@Model.Deck.Name History Pages">
-                <ul class="pagination justify-content-center">
-
-                    <li class="page-item @prevDisabled">
-                        @if (pages.HasPrevious)
-                        {
-                            <a asp-page="History" 
-                                asp-route-id="@Model.Deck.Id"
-                                asp-route-pageIndex="@(pages.Current - 1)"
-                                class="page-link">
-                                &laquo; </a>
-                        }
-                        else
-                        {
-                            <span class="page-link">&laquo;</span>
-                        }
-                    </li>
-
-                    @for (int i = 0; i < pages.Total; ++i)
-                    {
-                        var pageIndex = i;
-                        var activePage = pageIndex == pages.Current ? "active" : "";
-
-                        <li class="page-item @activePage">
-                            @if (pageIndex != pages.Current)
-                            {
-                                <a asp-page="History"
-                                    asp-route-id="@Model.Deck.Id"
-                                    asp-route-pageIndex="@pageIndex"
-                                    class="page-link">
-                                    @(pageIndex + 1) </a>
-                            }
-                            else
-                            {
-                                <span class="page-link">
-                                    @(pageIndex + 1)
-                                    <span class="sr-only">(current)</span>
-                                </span>
-                            }
-                        </li>
-                    }
-
-                    <li class="page-item @nextDisabled">
-                        @if (pages.HasNext)
-                        {
-                            <a asp-page="History"
-                                asp-route-id="@Model.Deck.Id"
-                                asp-route-pageIndex="@(pages.Current + 1)"
-                                class="page-link">
-                                &raquo; </a>
-                        }
-                        else
-                        {
-                            <span class="page-link">&raquo;</span>
-                        }
-                    </li>
-
-                </ul>
-            </nav>
-        }
+        @(Html.PartialAsync("PatinationPartial", Model.Pages))
     </div>
 </div>

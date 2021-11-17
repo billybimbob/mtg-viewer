@@ -1,0 +1,89 @@
+@page "{pageIndex:int?}"
+@model Unowned.IndexModel
+@{
+    ViewData["Title"] = "Unclaimed Decks";
+}
+@inject SymbolFormatter MtgSymbols
+
+
+<h1>Unclaimed Decks</h1>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th scope="col"> @Html.DisplayNameForInnerType((Unclaimed u) => u.Name)</th>
+            <th scope="col"> Card @Html.DisplayNameForInnerType((Card c) => c.Name) </th>
+            <th scope="col"> Card @Html.DisplayNameForInnerType((Card c) => c.ManaCost) </th>
+            <th scope="col"> Owned Copies </th>
+            <th scope="col"> Want Copies </th>
+            <th scope="col"></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var unclaimed in Model.Unclaimed)
+        {
+            var groups = Model.Cards[unclaimed.Id];
+            var groupSpan = Math.Max(1, groups.Count);
+
+            <tr>
+                <th scope="row" rowspan="@groupSpan"> @unclaimed.Name </th>
+
+                @if (groups.Any())
+                {
+                    var first = groups.First();
+                    var card = first.Cards.First();
+
+                    <td> 
+                        @(await Html.RenderComponentAsync<HoverCard>(
+                            RenderMode.Static, new { Card = (CardPreview)card }))
+                    </td>
+                    <td> @MtgSymbols.Format(card.ManaCost).ToHtmlString() </td>
+                    <td> @first.InDeck </td>
+                    <td> @first.Requests </td>
+                }
+                else
+                {
+                    <td> -- </td>
+                    <td> -- </td>
+                    <td> -- </td>
+                    <td> -- </td>
+                }
+
+                <td rowspan="@groupSpan">
+                    <form method="POST">
+                        <input type="hidden" name="id" value="@unclaimed.Id"/>
+
+                        <div class="btn-group" role="group">
+                            <input title="Claim @unclaimed.Name" 
+                                asp-page-handler="Claim"
+                                type="submit" class="btn btn-secondary"
+                                value="Claim" />
+
+                            <input title="Remove @unclaimed.Name" 
+                                asp-page-handler="Remove"
+                                type="submit" class="btn btn-danger"
+                                value="Remove" />
+                        </div>
+                    </form>
+                </td>
+            </tr>
+
+            @foreach (var group in groups.Skip(1))
+            {
+                var card = group.Cards.First();
+
+                <tr>
+                    <td> 
+                        @(await Html.RenderComponentAsync<HoverCard>(
+                            RenderMode.Static, new { Card = (CardPreview)card }))
+                    </td>
+                    <td> @MtgSymbols.Format(card.ManaCost).ToHtmlString() </td>
+                    <td> @group.InDeck </td>
+                    <td> @group.Requests </td>
+                </tr>
+            }
+        }
+    </tbody>
+</table>
+
+@(await Html.PartialAsync("_PaginationPartial", Model.Unclaimed.Pages))

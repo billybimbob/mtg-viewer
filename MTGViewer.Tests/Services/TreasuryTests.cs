@@ -55,12 +55,12 @@ public class TreasuryTests : IAsyncLifetime
 
         var cardBoxes = BoxAmounts.Where(ca => ca.CardId == card.Id);
 
-        var boxesBefore = await cardBoxes.ToListAsync();
+        var boxesBefore = await cardBoxes.Select(ca => ca.NumCopies).SumAsync();
         await _treasury.ReturnAsync(card, copies);
         var boxesAfter = await cardBoxes.ToListAsync();
 
         var boxesAfterIds = boxesAfter.Select(ca => ca.CardId);
-        var boxesChange = boxesAfter.Sum(ca => ca.NumCopies) - boxesBefore.Sum(ca => ca.NumCopies);
+        var boxesChange = boxesAfter.Sum(ca => ca.NumCopies) - boxesBefore;
 
         Assert.All(boxesAfter, ca => Assert.IsType<Box>(ca.Location));
 
