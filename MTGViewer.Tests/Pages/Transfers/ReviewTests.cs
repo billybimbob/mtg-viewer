@@ -22,7 +22,7 @@ public class ReviewTests : IAsyncLifetime
     private readonly TestDataGenerator _testGen;
 
     private readonly ReviewModel _reviewModel;
-    private TradeSet _trades;
+    private TradeSet _trades = null!;
 
     public ReviewTests(
         CardDbContext dbContext,

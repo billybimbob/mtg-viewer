@@ -3,7 +3,6 @@ using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
 
-#nullable enable
 namespace MTGViewer.Data;
 
 // adding annotations for validator
@@ -67,9 +66,10 @@ public class Card
     public string? Loyalty { get; init; }
 
 
+    [Required]
     [Display(Name = "Image")]
     [Url]
-    public string? ImageUrl { get; init; }
+    public string ImageUrl { get; init; } = null!;
 
     [JsonIgnore]
     public List<Amount> Amounts { get; } = new();

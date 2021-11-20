@@ -35,7 +35,7 @@
 
                     <td> 
                         @(await Html.RenderComponentAsync<HoverCard>(
-                            RenderMode.Static, new { Card = (CardPreview)card }))
+                            RenderMode.Static, new { Card = card }))
                     </td>
                     <td> @MtgSymbols.Format(card.ManaCost).ToHtmlString() </td>
                     <td> @first.InDeck </td>
@@ -75,7 +75,7 @@
                 <tr>
                     <td> 
                         @(await Html.RenderComponentAsync<HoverCard>(
-                            RenderMode.Static, new { Card = (CardPreview)card }))
+                            RenderMode.Static, new { Card = card }))
                     </td>
                     <td> @MtgSymbols.Format(card.ManaCost).ToHtmlString() </td>
                     <td> @group.InDeck </td>

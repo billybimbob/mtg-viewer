@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -43,9 +44,10 @@ public class IndexModel : PageModel
     }
 
 
-    public PagedList<Unclaimed> Unclaimed { get; private set; }
+    public PagedList<Unclaimed> Unclaimed { get; private set; } = PagedList<Unclaimed>.Empty;
 
-    public IReadOnlyDictionary<int, IReadOnlyList<QuantityNameGroup>> Cards { get; private set; }
+    public IReadOnlyDictionary<int, IReadOnlyList<QuantityNameGroup>> Cards { get; private set; } =
+        ImmutableDictionary<int, IReadOnlyList<QuantityNameGroup>>.Empty;
 
 
     public async Task<IActionResult> OnGetAsync(int? id, int? pageIndex)

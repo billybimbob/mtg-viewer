@@ -4,7 +4,6 @@ using System.Linq;
 using Xunit.Abstractions;
 using Xunit.Sdk;
 
-#nullable enable
 namespace MTGViewer.Tests.Utils;
 
 

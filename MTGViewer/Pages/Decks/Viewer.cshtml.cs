@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -27,9 +28,9 @@ public class ViewerModel : PageModel
 
     public bool IsOwner { get; private set; }
 
-    public Deck Deck { get; private set; }
+    public Deck Deck { get; private set; } = null!;
 
-    public IEnumerable<QuantityGroup> Cards { get; private set; }
+    public IReadOnlyList<QuantityGroup> Cards { get; private set; } = Array.Empty<QuantityGroup>();
 
 
     public async Task<IActionResult> OnGetAsync(int id)

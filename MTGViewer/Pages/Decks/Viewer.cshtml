@@ -10,7 +10,7 @@
 
 @if (Model.IsOwner)
 {
-    <div class="mb-3">
+    <div class="btn-group mb-3" role="group">
         @if (Model.Deck.TradesTo.Any())
         {
             <button class="btn btn-secondary" type="button" disabled> Edit </button>
@@ -45,7 +45,7 @@
             <tr>
                 <td>
                     @(await Html.RenderComponentAsync<HoverCard>(
-                        RenderMode.Static, new { Card = (CardPreview) group.Card }))
+                        RenderMode.Static, new { group.Card }))
                 </td>
                 <td> @(MtgSymbols.Format(group.Card.ManaCost).ToHtmlString()) </td>
                 <td> @group.Card.SetName </td>

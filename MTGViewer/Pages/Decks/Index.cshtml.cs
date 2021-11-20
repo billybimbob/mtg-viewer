@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -59,21 +60,32 @@ public class IndexModel : PageModel
 
 
     [TempData]
-    public string PostMessage { get; set; }
+    public string? PostMessage { get; set; }
 
-    public UserRef CardUser { get; private set; }
-    public PagedList<DeckState> Decks { get; private set; }
+    public UserRef CardUser { get; private set; } = null!;
+
+    public PagedList<DeckState> Decks { get; private set; } = PagedList<DeckState>.Empty;
 
 
-    public async Task OnGetAsync(int? pageIndex)
+    public async Task<IActionResult> OnGetAsync(int? pageIndex)
     {
         var userId = _userManager.GetUserId(User);
 
-        Decks = await DeckStates(userId)
+        var decks = await DeckStates(userId)
             .ToPagedListAsync(_pageSize, pageIndex);
 
-        CardUser = Decks.FirstOrDefault()?.Deck.Owner
+        var user = decks.FirstOrDefault()?.Deck.Owner
             ?? await _dbContext.Users.FindAsync(userId);
+
+        if (user is null)
+        {
+            return NotFound();
+        }
+
+        Decks = decks;
+        CardUser = user;
+
+        return Page();
     }
 
 

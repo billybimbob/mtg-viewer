@@ -2,7 +2,6 @@ using System.Linq;
 using Xunit;
 using MTGViewer.Services;
 
-#nullable enable
 namespace MTGViewer.Tests.Services;
 
 

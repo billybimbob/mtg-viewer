@@ -7,7 +7,6 @@ using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using MTGViewer.Data;
 
-#nullable enable
 namespace MTGViewer.Services;
 
 /// <summary>
@@ -25,14 +24,6 @@ public interface ITreasury
     /// Queries for Card <see cref="Amount"/> information in the Treasury 
     /// </summary>
     IQueryable<Amount> Cards { get; }
-
-
-    /// <summary>
-    /// Determines if the Treasury currently can fulfill any of the given <see cref="Want"/>
-    /// </summary>
-    /// <exception cref="OperationCanceledException"></exception>
-    /// <exception cref="DbUpdateException"></exception>
-    Task<bool> AnyWantsAsync(IEnumerable<Want> wants, CancellationToken cancel = default);
 
 
     /// <summary>

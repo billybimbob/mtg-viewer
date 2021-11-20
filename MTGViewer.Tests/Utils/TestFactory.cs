@@ -107,7 +107,7 @@ public static class TestFactory
 
 
 
-    public static void SetModelContext(this PageModel model, ClaimsPrincipal user = null)
+    public static void SetModelContext(this PageModel model, ClaimsPrincipal? user = null)
     {
         var httpContext = new DefaultHttpContext();
 

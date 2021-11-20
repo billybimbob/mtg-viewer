@@ -14,7 +14,7 @@ namespace MTGViewer.Services;
 internal class SeedSettings
 {
     public int Value { get; set; } = 100;
-    public string Password { get; set; }
+    public string Password { get; set; } = string.Empty;
 }
 
 

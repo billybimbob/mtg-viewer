@@ -5,14 +5,6 @@
 }
 @inject SymbolFormatter MtgSymbols
 
-
-@if (!string.IsNullOrEmpty(Model.PostMessage))
-{
-    <div class="alert alert-secondary" role="alert">
-        @Model.PostMessage
-    </div>
-}
-
  
 <h1>@Model.CardUser.Name's Decks</h1>
 

@@ -22,7 +22,7 @@ public class StatusTests : IAsyncLifetime
     private readonly TestDataGenerator _testGen;
 
     private readonly StatusModel _statusModel;
-    private TradeSet _trades;
+    private TradeSet _trades = null!;
 
     public StatusTests(
         CardDbContext dbContext,

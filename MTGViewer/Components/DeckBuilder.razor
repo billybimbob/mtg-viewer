@@ -13,7 +13,7 @@
 @inject ILogger<DeckBuilder> Logger
 
 
-<h1>@_deck.Name Builder</h1>
+<h1>@_deck?.Name Builder</h1>
 
 <div class="mb-3">
     <button title="Save Deck" type="button"
@@ -59,7 +59,7 @@
     <div class="col-7">
         <h3>Treasury</h3>
 
-        <div class="list-group list-group-flush">
+        <div class="list-group list-group-flush mb-4">
             @foreach (var (card, available) in Treasury)
             {
                 var wantTotal = card.Wants.Sum(w => w.NumCopies);
@@ -72,7 +72,7 @@
 
                     <span class="row">
                         <span class="col-6"> 
-                            <HoverCard Card="(CardPreview) card"> 
+                            <HoverCard Card="card"> 
                                 <span class="btn-link">@card.Name</span>
                             </HoverCard>
                         </span>
@@ -84,44 +84,7 @@
             }
         </div>
 
-        @if (Pages.HasMultiple)
-        {
-            var prevDisabled = Pages.HasPrevious ? "" : "disabled";
-            var nextDisabled = Pages.HasNext ? "" : "disabled";
-
-            <nav aria-label="Card Result Pages">
-                <ul class="pagination justify-content-center pt-4">
-
-                    <li class="page-item @prevDisabled">
-                        <button class="page-link" disabled="@(!Pages.HasPrevious)"
-                            @onclick="() => ApplyFilters(Pages.Current - 1)">
-                            &laquo;
-                        </button>
-                    </li>
-
-                    @for (int i = 0; i < Pages.Total; ++i)
-                    {
-                        var pageIndex = i;
-                        var activePage = pageIndex == Pages.Current ? "active" : "";
-
-                        <li class="page-item @activePage">
-                            <button class="page-link" @onclick="() => ApplyFilters(pageIndex)">
-                                @(pageIndex + 1)
-                                <span class="sr-only">(current)</span>
-                            </button>
-                        </li>
-                    }
-
-                    <li class="page-item @nextDisabled">
-                        <button class="page-link" disabled="@(!Pages.HasNext)"
-                            @onclick="() => ApplyFilters(Pages.Current + 1)">
-                            &raquo;
-                        </button>
-                    </li>
-
-                </ul>
-            </nav>
-        }
+        <Pagination Pages="Pages" PageSelected="ApplyFilters" />
     </div>
 
     <div class="col">
@@ -130,7 +93,7 @@
                 <DataAnnotationsValidator />
                 <ValidationSummary />
 
-                <InputText @bind-Value="_deck.Name"/>
+                <InputText @bind-Value="_deck!.Name"/>
             </EditForm>
 
             <div id="deck-builder-cards" class="list-group list-group-flush">
@@ -143,7 +106,7 @@
 
                         <span class="row">
                             <span class="col-5">
-                                <HoverCard Card="(CardPreview) card"> 
+                                <HoverCard Card="@card"> 
                                     <span class="btn-link">@card.Name</span>
                                 </HoverCard>
                             </span>
@@ -171,7 +134,7 @@
 @code {
 
     [Parameter]
-    public string UserId { get; set; }
+    public string UserId { get; set; } = string.Empty;
 
     [Parameter]
     public int DeckId { get; set; } = default;
@@ -184,39 +147,42 @@
     private readonly CancellationTokenSource _cancel = new();
 
     private SaveResult _result;
-    private CardDbContext _dbContext;
+    private CardDbContext? _dbContext;
 
-    private IReadOnlyList<Card> _cards;
-    private IReadOnlyDictionary<string, int> _boxAmounts;
+    private IReadOnlyList<Card> _cards = Array.Empty<Card>();
+    private IReadOnlyDictionary<string, int>? _boxAmounts;
 
-    private PagedList<Card> _filteredCards;
+    private PagedList<Card> _filteredCards = PagedList<Card>.Empty;
     private readonly HashSet<string> _colorFilter = new(StringComparer.CurrentCultureIgnoreCase);
-    private string _searchName;
+    private string? _searchName;
 
-    private Deck _deck;
-    private EditContext _deckEdit;
-    private Dictionary<string, QuantityGroup> _deckCards;
+    private Deck? _deck;
+    private EditContext? _deckEdit;
+    private Dictionary<string, QuantityGroup>? _deckCards;
 
 
 
     private bool HasNoChanges =>
-        !_dbContext.ChangeTracker.HasChanges();
+        !_dbContext?.ChangeTracker.HasChanges() ?? true;
 
 
     private IEnumerable<(Card, int amount)> Treasury =>
         _filteredCards
-            .Select(c => (c, _boxAmounts.GetValueOrDefault(c.Id)));
+            .Select(c => (c, _boxAmounts?.GetValueOrDefault(c.Id) ?? 0));
 
     private Data.Pages Pages => _filteredCards.Pages;
 
     private IEnumerable<(Card, QuantityGroup)> DeckCards =>
-        _cards
-            .Where(c => _deckCards.TryGetValue(c.Id, out var cardGroup) && cardGroup.Total > 0)
-            .Select(c => (c, _deckCards[c.Id]));
+        _deckCards is not null
+            ? _cards
+                .Where(c => _deckCards.TryGetValue(c.Id, out var cardGroup) && cardGroup.Total > 0)
+                .Select(c => (c, _deckCards[c.Id]))
+
+            : Enumerable.Empty<(Card, QuantityGroup)>();
 
 
-    private IQueryable<Deck> DeckForBuilder =>
-        _dbContext.Decks
+    private IQueryable<Deck> DeckForBuilder(CardDbContext dbContext) =>
+        dbContext.Decks
             .Where(d => d.Id == DeckId)
             .Include(d => d.Cards) // unbounded: keep eye on
             .Include(d => d.Wants) // unbounded: keep eye on
@@ -301,9 +267,15 @@
 
     private async Task<Deck> GetOrCreateDeckAsync()
     {
+        if (_dbContext is null)
+        {
+            throw new NullReferenceException(nameof(_dbContext));
+        }
+
         if (DeckId != default)
         {
-            var deck = await DeckForBuilder.SingleAsync(_cancel.Token);
+            var deck = await DeckForBuilder(_dbContext)
+                .SingleAsync(_cancel.Token);
 
             return deck;
         }
@@ -411,7 +383,7 @@
 
     private void AddCardToDeck(Card card)
     {
-        if (_deck == null || _deckCards == null)
+        if (_dbContext == null || _deck == null || _deckCards == null)
         {
             return;
         }
@@ -450,13 +422,13 @@
             }
         }
 
-        deckGroup.Want.NumCopies += 1;
+        deckGroup.Want!.NumCopies += 1;
     }
 
 
     private void RemoveCardFromDeck(Card card)
     {
-        if (_deck == null || _deckCards == null)
+        if (_dbContext == null || _deck == null || _deckCards == null)
         {
             return;
         }
@@ -504,7 +476,7 @@
 
     private async Task CommitChangesAsync()
     {
-        if (_deck == null || _deckCards == null)
+        if (_dbContext == null || _deck == null || _deckCards == null)
         {
             return;
         }
@@ -514,7 +486,7 @@
             return;
         }
 
-        if (!_deckEdit.Validate())
+        if (_deckEdit is null || !_deckEdit.Validate())
         {
             return;
         }
@@ -523,7 +495,7 @@
 
         try
         {
-            PrepareChanges();
+            PrepareChanges(_dbContext, _deck);
 
             await _dbContext.SaveChangesAsync(_cancel.Token);
 
@@ -539,7 +511,8 @@
         catch (DbUpdateConcurrencyException ex)
         {
             _result = SaveResult.Error;
-            await UpdateDeckAsync(ex);
+
+            await UpdateDeckAsync(_dbContext, _deck, _deckCards, ex, _cancel.Token);
         }
         catch (DbUpdateException ex)
         {
@@ -557,149 +530,158 @@
     }
 
 
-    private void PrepareChanges()
+    private void PrepareChanges(CardDbContext dbContext, Deck deck)
     {
-        foreach (var want in _deck.Wants)
+        foreach (var want in deck.Wants)
         {
             if (want.NumCopies == 0)
             {
-                _dbContext.Wants.Remove(want);
+                dbContext.Wants.Remove(want);
             }
             // detaches when saved after a remove
-            else if (_dbContext.Entry(want).State == EntityState.Detached)
+            else if (dbContext.Entry(want).State == EntityState.Detached)
             {
-                _dbContext.Wants.Add(want);
+                dbContext.Wants.Add(want);
             }
         }
 
-        foreach (var giveBack in _deck.GiveBacks)
+        foreach (var giveBack in deck.GiveBacks)
         {
             if (giveBack.NumCopies == 0)
             {
-                _dbContext.GiveBacks.Remove(giveBack);
+                dbContext.GiveBacks.Remove(giveBack);
             }
-            else if (_dbContext.Entry(giveBack).State == EntityState.Detached)
+            else if (dbContext.Entry(giveBack).State == EntityState.Detached)
             {
-                _dbContext.GiveBacks.Add(giveBack);
+                dbContext.GiveBacks.Add(giveBack);
             }
         }
 
-        var deckEntry = _dbContext.Entry(_deck);
+        var deckEntry = dbContext.Entry(deck);
 
         if (deckEntry.State == EntityState.Unchanged)
         {
             deckEntry.State = EntityState.Modified;
         }
 
-        _deck.UpdateColors(CardText);
+        deck.UpdateColors(CardText);
     }
 
 
-    private async Task UpdateDeckAsync(DbUpdateConcurrencyException ex)
+    private async Task UpdateDeckAsync(
+        CardDbContext dbContext,
+        Deck localDeck,
+        Dictionary<string, QuantityGroup> deckCards,
+        DbUpdateConcurrencyException ex,
+        CancellationToken cancel)
     {
-        if (HasNoDeckConflicts(ex))
+        if (HasNoDeckConflicts(localDeck, deckCards.Keys, ex))
         {
             return;
         }
 
-        if (_cancel.IsCancellationRequested)
+        if (cancel.IsCancellationRequested)
         {
             return;
         }
 
-        Deck dbDeck = default;
+        Deck? dbDeck = default;
 
         try
         {
-            dbDeck = await DeckForBuilder
+            dbDeck = await DeckForBuilder(dbContext)
                 .AsNoTracking()
-                .SingleOrDefaultAsync(_cancel.Token);
+                .SingleOrDefaultAsync(cancel);
         }
         catch (OperationCanceledException)
         { }
 
-        if (_cancel.IsCancellationRequested)
+        if (cancel.IsCancellationRequested)
         {
             return;
         }
 
         if (dbDeck == default)
         {
-            _dbContext.Decks.Add(_deck);
+            dbContext.Decks.Add(localDeck);
             return;
         }
 
-        MergeDeckRemoves(dbDeck);
-        TrackNewDeckCards(dbDeck);
+        MergeDeckRemoves(dbContext, localDeck, dbDeck);
+        TrackNewDeckCards(dbContext, deckCards, dbDeck);
+        MergeDeckCardConflicts(dbContext, deckCards, dbDeck);
 
-        MergeDeckCardConflicts(dbDeck);
-        CapDeletes();
-
-        _dbContext.MatchToken(_deck, dbDeck);
+        CapDeletes(deckCards.Values);
+        dbContext.MatchToken(localDeck, dbDeck);
     }
 
 
-    private bool HasNoDeckConflicts(DbUpdateConcurrencyException ex)
+    private static bool HasNoDeckConflicts(
+        Deck deck, 
+        IEnumerable<string> deckIds,
+        DbUpdateConcurrencyException ex)
     {
         var deckConflict = ex.Entries<Location>().SingleOrDefault();
 
-        if (deckConflict is not null && deckConflict.Entity.Id == _deck.Id)
+        if (deckConflict is not null && deckConflict.Entity.Id == deck.Id)
         {
             return false;
         }
 
         var conflictsInDeck = ex.Entries<Amount>()
             .Select(ca => ca.Entity.CardId)
-            .Intersect(_deckCards.Keys);
+            .Intersect(deckIds);
 
         return !conflictsInDeck.Any();
     }
 
 
-    private void MergeDeckRemoves(Deck dbDeck)
+    private static void MergeDeckRemoves(
+        CardDbContext dbContext, Deck localDeck, Deck dbDeck)
     {
-        var removedCards = RemovedFromDb(_deck.Cards, dbDeck.Cards);
+        var removedCards = RemovedFromDb(localDeck.Cards, dbDeck.Cards);
 
         foreach(var removedCard in removedCards)
         {
             removedCard.NumCopies = 0;
-            _dbContext.Amounts.Remove(removedCard);
+            dbContext.Amounts.Remove(removedCard);
         }
 
-        var removedWants = RemovedFromDb(_deck.Wants, dbDeck.Wants);
+        var removedWants = RemovedFromDb(localDeck.Wants, dbDeck.Wants);
 
         foreach (var removedWant in removedWants)
         {
-            if (_dbContext.Entry(removedWant).State == EntityState.Unchanged)
+            if (dbContext.Entry(removedWant).State == EntityState.Unchanged)
             {
                 removedWant.NumCopies = 0;
-                _dbContext.Wants.Remove(removedWant);
+                dbContext.Wants.Remove(removedWant);
             }
             else
             {
-                _dbContext.Wants.Add(removedWant);
+                dbContext.Wants.Add(removedWant);
             }
         }
 
-        var removedGiveBacks = RemovedFromDb(_deck.GiveBacks, dbDeck.GiveBacks);
+        var removedGiveBacks = RemovedFromDb(localDeck.GiveBacks, dbDeck.GiveBacks);
 
         foreach (var removedGive in removedGiveBacks)
         {
-            if (_dbContext.Entry(removedGive).State == EntityState.Unchanged)
+            if (dbContext.Entry(removedGive).State == EntityState.Unchanged)
             {
                 removedGive.NumCopies = 0;
-                _dbContext.GiveBacks.Remove(removedGive);
+                dbContext.GiveBacks.Remove(removedGive);
             }
             else
             {
-                _dbContext.GiveBacks.Add(removedGive);
+                dbContext.GiveBacks.Add(removedGive);
             }
         }
     }
 
 
-    private IEnumerable<TQuantity> RemovedFromDb<TQuantity>(
-        IEnumerable<TQuantity> localQuantity, IEnumerable<TQuantity> dbQuantity)
+    private static IEnumerable<TQuantity> RemovedFromDb<TQuantity>(
+        IEnumerable<TQuantity> localQuantity, 
+        IEnumerable<TQuantity> dbQuantity)
         where TQuantity : Quantity
     {
         return localQuantity
@@ -713,60 +695,85 @@
     }
 
 
-    private void MergeDeckCardConflicts(Deck dbDeck)
+    private void MergeDeckCardConflicts(
+        CardDbContext dbContext,
+        IReadOnlyDictionary<string, QuantityGroup> deckCards,
+        Deck dbDeck)
     {
-        MergeQuantityConflicts(dbDeck.Cards, group => group.Amount);
+        MergeQuantityConflicts(dbContext, deckCards, dbDeck.Cards, group => group.Amount);
 
-        MergeQuantityConflicts(dbDeck.Wants, group => group.Want);
+        MergeQuantityConflicts(dbContext, deckCards, dbDeck.Wants, group => group.Want);
 
-        MergeQuantityConflicts(dbDeck.GiveBacks, group => group.GiveBack);
+        MergeQuantityConflicts(dbContext, deckCards, dbDeck.GiveBacks, group => group.GiveBack);
     }
 
 
     private void MergeQuantityConflicts<TQuantity>(
-        IEnumerable<TQuantity> dbQuantities, Func<QuantityGroup, TQuantity> quantity)
+        CardDbContext dbContext, 
+        IReadOnlyDictionary<string, QuantityGroup> deckCards,
+        IEnumerable<TQuantity> dbQuantities, 
+        Func<QuantityGroup, TQuantity?> quantity)
         where TQuantity : Quantity
     {
         foreach (var dbQuantity in dbQuantities)
         {
-            if (!_deckCards.TryGetValue(dbQuantity.CardId, out var localGroup)
-                || quantity(localGroup) is null)
+            if (!deckCards.TryGetValue(dbQuantity.CardId, out var localGroup))
             {
                 continue;
             }
 
             var localQuantity = quantity(localGroup);
 
-            if (_dbContext.Entry(localQuantity).State == EntityState.Unchanged)
+            if (localQuantity is null)
+            {
+                continue;
+            }
+
+            if (dbContext.Entry(localQuantity).State == EntityState.Unchanged)
             {
                 localQuantity.NumCopies = dbQuantity.NumCopies;
             }
 
-            _dbContext.MatchToken(localQuantity, dbQuantity);
+            dbContext.MatchToken(localQuantity, dbQuantity);
         }
     }
 
 
-    private void TrackNewDeckCards(Deck dbDeck)
+    private void TrackNewDeckCards(
+        CardDbContext dbContext, IDictionary<string, QuantityGroup> deckCards, Deck dbDeck)
     {
-        TrackNewQuantity(dbDeck.Cards, group => group.Amount);
+        TrackNewQuantity(dbContext, deckCards, dbDeck.Cards, group => group.Amount);
 
-        TrackNewQuantity(dbDeck.Wants, group => group.Want);
+        TrackNewQuantity(dbContext, deckCards, dbDeck.Wants, group => group.Want);
 
-        TrackNewQuantity(dbDeck.GiveBacks, group => group.GiveBack);
+        TrackNewQuantity(dbContext, deckCards, dbDeck.GiveBacks, group => group.GiveBack);
     }
 
 
     private void TrackNewQuantity<TQuantity>(
-        IEnumerable<TQuantity> dbQuantities, Expression<Func<QuantityGroup, TQuantity>> quantity)
+        CardDbContext dbContext, 
+        IDictionary<string, QuantityGroup> deckCards,
+        IEnumerable<TQuantity> dbQuantities,
+        Expression<Func<QuantityGroup, TQuantity?>> quantity)
         where TQuantity : Quantity
     {
-        var quantityName = (quantity as MemberExpression).Member.Name;
+        var quantityName = (quantity as MemberExpression)?.Member.Name;
+        
+        if (quantityName is null)
+        {
+            return;
+        }
+
         var localQuantity = typeof(QuantityGroup).GetProperty(quantityName);
+
+        if (localQuantity is null)
+        {
+            return;
+        }
 
         foreach (var dbQuantity in dbQuantities)
         {
-            var hasGroup = _deckCards.TryGetValue(dbQuantity.CardId, out var localGroup);
+            var hasGroup = deckCards.TryGetValue(dbQuantity.CardId, out var localGroup);
 
             if (hasGroup && localQuantity.GetValue(localGroup) is not null)
             {
@@ -780,17 +787,17 @@
             else
             {
                 localGroup = new(dbQuantity);
-                _deckCards.Add(dbQuantity.CardId, localGroup);
+                deckCards.Add(dbQuantity.CardId, localGroup);
             }
 
-            _dbContext.Attach(dbQuantity);
+            dbContext.Attach(dbQuantity);
         }
     }
 
 
-    private void CapDeletes()
+    private void CapDeletes(IEnumerable<QuantityGroup> deckCards)
     {
-        foreach(var cardGroup in _deckCards.Values)
+        foreach(var cardGroup in deckCards)
         {
             if (cardGroup.GiveBack is null)
             {

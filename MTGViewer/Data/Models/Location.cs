@@ -7,7 +7,6 @@ using MTGViewer.Data.Concurrency;
 using MTGViewer.Data.Internal;
 using MTGViewer.Services;
 
-#nullable enable
 namespace MTGViewer.Data;
 
 public abstract class Location : Concurrent

@@ -5,7 +5,6 @@ using EntityFrameworkCore.Triggered;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
-#nullable enable
 namespace MTGViewer.Data.Triggers;
 
 public class QuantityValidate : IAfterSaveTrigger<Quantity>

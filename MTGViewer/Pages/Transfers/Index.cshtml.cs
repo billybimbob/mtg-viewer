@@ -33,7 +33,7 @@ public class IndexModel : PageModel
 
 
     [TempData]
-    public string PostMessage { get; set; }
+    public string? PostMessage { get; set; }
 
     [BindProperty(SupportsGet = true)]
     public int? DeckIndex { get; set; }
@@ -42,25 +42,33 @@ public class IndexModel : PageModel
     public int? SuggestIndex { get; set; }
 
 
-    public UserRef SelfUser { get; private set; }
+    public UserRef SelfUser { get; private set; } = null!;
 
-    public PagedList<Deck> TradeDecks { get; private set; }
+    public PagedList<Deck> TradeDecks { get; private set; } = PagedList<Deck>.Empty;
 
-    public PagedList<Suggestion> Suggestions { get; private set; }
+    public PagedList<Suggestion> Suggestions { get; private set; } = PagedList<Suggestion>.Empty;
 
 
 
-    public async Task OnGetAsync()
+    public async Task<IActionResult> OnGetAsync()
     {
         var userId = _userManager.GetUserId(User);
+        var user = await _dbContext.Users.FindAsync(userId);
+
+        if (user is null)
+        {
+            return NotFound();
+        }
 
         TradeDecks = await DecksForTransfer(userId)
             .ToPagedListAsync(_pageSize, DeckIndex);
 
-        SelfUser = await _dbContext.Users.FindAsync(userId);
+        SelfUser = user;
 
         Suggestions = await SuggestionsForIndex(userId)
             .ToPagedListAsync(_pageSize, SuggestIndex);
+
+        return Page();
     }
 
 

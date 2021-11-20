@@ -12,16 +12,17 @@
         }
     </div>
 
-    <div class="preview-item">
-        <img alt="@Card.Name image" src="@Card.Image.WithHttps()" class="img-fluid rounded" />
-    </div>
+    <aside class="preview-item">
+        <img alt="@Card.Name image" src="@Card.ImageUrl.WithHttps()" class="img-fluid rounded" />
+    </aside>
 </div>
+
 
 @code
 {
     [Parameter]
-    public CardPreview Card { get; set; }
+    public Card Card { get; set; } = null!;
 
     [Parameter]
-    public RenderFragment ChildContent { get; set; }
+    public RenderFragment? ChildContent { get; set; }
 }

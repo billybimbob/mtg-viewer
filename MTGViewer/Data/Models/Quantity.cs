@@ -6,7 +6,6 @@ using Microsoft.EntityFrameworkCore;
 using MTGViewer.Data.Internal;
 using MTGViewer.Data.Concurrency;
 
-#nullable enable
 namespace MTGViewer.Data;
 
 [Index(

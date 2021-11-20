@@ -4,7 +4,6 @@ using System.ComponentModel.DataAnnotations;
 using System.Linq.Expressions;
 using System.Reflection;
 
-#nullable enable
 namespace MTGViewer.Data;
 
 public static class Entities

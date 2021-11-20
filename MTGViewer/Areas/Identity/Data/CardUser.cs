@@ -13,6 +13,6 @@ namespace MTGViewer.Areas.Identity.Data
     public class CardUser : IdentityUser
     {
         [PersonalData]
-        public string Name { get; set; }
+        public string? Name { get; set; }
     }
 }

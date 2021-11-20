@@ -12,12 +12,12 @@
 @if (Model.TargetsExist)
 {
     <div class="alert alert-secondary" role="alert">
-        <h5 class="alert-heading">Are you sure you want to send requests for the cards listed below?</h5>
+        <h5 class="alert-heading">Are you sure you want to send requests for the cards below?</h5>
         <p>While a request is active, <strong>you cannot edit @Model.Deck.Name</strong></p>
         <hr>
         <p>
-            Requests will only be made to other players that currently hold the cards listed below. This means
-            that <strong>some cards below may not create a request</strong>.
+            Requests target cards currently held by other players, meaning
+            that <strong>some cards below may not create a trade request</strong>.
         </p>
 
         <form method="POST">

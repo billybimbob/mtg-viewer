@@ -12,7 +12,6 @@ using Microsoft.EntityFrameworkCore;
 using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
 
-#nullable enable
 namespace MTGViewer.Pages.Transfers;
 
 
@@ -32,7 +31,7 @@ public class ReviewModel : PageModel
     [TempData]
     public string? PostMessage { get; set; }
 
-    public Deck? Deck { get; set; }
+    public Deck Deck { get; private set; } = null!;
 
 
     public async Task<IActionResult> OnGetAsync(int deckId)

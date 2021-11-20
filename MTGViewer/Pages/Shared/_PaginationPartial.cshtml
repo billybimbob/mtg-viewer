@@ -1,27 +1,29 @@
 @model Data.Pages
+@inject PageSizes PageSizes
 
 @if (Model.HasMultiple)
 {
-    var prevDisabled = Model.HasPrevious ? "" : "disabled";
-    var nextDisabled = Model.HasNext ? "" : "disabled";
+    var start = Model.Current / PageSizes.Default * PageSizes.Default;
+    var end = Math.Min(Model.Total, start + PageSizes.Default + 1);
+
+    if (start > 0)
+    {
+        start -= 1;
+    }
 
     <nav>
         <ul class="pagination justify-content-center">
+            @if (start > 0)
+            {
+                <li class="page-item">
+                    <a asp-route-pageIndex="0" class="page-link"> 1 </a>
+                </li>
+                <li class="page-item disabled">
+                    <span class="page-link"> ... </span>
+                </li>
+            }
 
-            <li class="page-item @prevDisabled">
-                @if (Model.HasPrevious)
-                {
-                    <a asp-route-pageIndex="@(Model.Current - 1)"
-                        class="page-link">
-                        &laquo; </a>
-                }
-                else
-                {
-                    <span class="page-link"> &laquo; </span>
-                }
-            </li>
-
-            @for (int i = 0; i < Model.Total; ++i)
+            @for (int i = start; i < end; ++i)
             {
                 var pageIndex = i;
                 var activePage = pageIndex == Model.Current ? "active" : "";
@@ -43,19 +45,19 @@
                 </li>
             }
 
-            <li class="page-item @nextDisabled">
-                @if (Model.HasNext)
-                {
-                    <a asp-route-pageIndex="@(Model.Current + 1)"
-                        class="page-link">
-                        &raquo; </a>
-                }
-                else
-                {
-                    <span class="page-link"> &raquo; </span>
-                }
-            </li>
+            @if (end < Model.Total - 1)
+            {
+                <li class="page-item disabled">
+                    <span class="page-link"> ... </span>
+                </li>
+            }
 
+            @if (end < Model.Total)
+            {
+                <li class="page-item">
+                    <a asp-route-pageIndex="@(Model.Total - 1)" class="page-link"> @Model.Total </a>
+                </li>
+            }
         </ul>
     </nav>
 }

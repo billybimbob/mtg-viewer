@@ -8,7 +8,8 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - Cards</title>
+    <title> @ViewData["Title"]</title>
+
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" />
     <link href="//cdn.jsdelivr.net/npm/mana-font@latest/css/mana.min.css" rel="stylesheet" type="text/css" />
@@ -48,6 +49,15 @@
         </nav>
     </header>
     <div class="container">
+        @if (TempData.TryGetValue("PostMessage", out var postMessage))
+        {
+            <div class="alert alert-secondary alert-dismissible fade show" role="alert">
+                @postMessage
+                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+        }
         <main role="main" class="pb-3">
             @RenderBody()
         </main>

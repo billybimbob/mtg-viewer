@@ -29,7 +29,7 @@ public class PageSizes
 
     public int GetSize<TPage>() where TPage : PageModel
     {
-        var route = typeof(TPage).FullName
+        var route = (typeof(TPage).FullName ?? string.Empty)
             .Split('.')
             .Except(PagesNamespace)
             .ToArray();

@@ -26,7 +26,7 @@ public class HistoryTests : IAsyncLifetime
     private readonly TestDataGenerator _testGen;
 
     private readonly HistoryModel _historyModel;
-    private Transaction _transaction;
+    private Transaction _transaction = null!;
 
     public HistoryTests(
         PageSizes pageSizes,
@@ -62,7 +62,7 @@ public class HistoryTests : IAsyncLifetime
     public async Task OnPost_InvalidTransaction_NoChange()
     {
         var change = _transaction.Changes.First();
-        var ownedId = (change.To as Deck)?.OwnerId ?? (change.From as Deck)?.OwnerId;
+        var ownedId = (change.To as Deck)?.OwnerId ?? (change.From as Deck)!.OwnerId;
 
         var invalidTransactionId = 0;
 
@@ -101,7 +101,7 @@ public class HistoryTests : IAsyncLifetime
     public async Task OnPost_ValidTransaction_RemovesTransaction()
     {
         var change = _transaction.Changes.First();
-        var ownedId = (change.To as Deck)?.OwnerId ?? (change.From as Deck)?.OwnerId;
+        var ownedId = (change.To as Deck)?.OwnerId ?? (change.From as Deck)!.OwnerId;
 
         await _historyModel.SetModelContextAsync(_userManager, ownedId);
 

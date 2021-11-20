@@ -13,15 +13,15 @@
             <div asp-validation-summary="ModelOnly" class="text-danger"></div>
 
             <div class="form-group">
-                <label asp-for="Box.Name" class="control-label"></label>
-                <input asp-for="Box.Name" class="form-control" />
-                <span asp-validation-for="Box.Name" class="text-danger"></span>
+                <label asp-for="Box!.Name" class="control-label"></label>
+                <input asp-for="Box!.Name" class="form-control" />
+                <span asp-validation-for="Box!.Name" class="text-danger"></span>
             </div>
 
             <div class="form-group">
-                <label asp-for="Box.Bin" class="control-label"></label>
+                <label asp-for="Box!.Bin" class="control-label"></label>
 
-                <select asp-for="Box.BinId" class="form-control mb-3"
+                <select asp-for="Box!.BinId" class="form-control mb-3"
                     onchange=" newName.value = !!this.value ? '--' : ''; newName.disabled = !!this.value; ">
 
                     <option selected value=""> Select Existing </option>
@@ -36,20 +36,20 @@
                     <div class="input-group-prepend">
                         <span class="input-group-text">Create New</span>
                     </div>
-                    <input id="newName" asp-for="Box.Bin.Name" class="form-control" />
+                    <input id="newName" asp-for="Box!.Bin.Name" class="form-control" />
                 </div>
             </div>
 
             <div class="form-group">
-                <label asp-for="Box.Appearance" class="control-label"></label>
-                <textarea asp-for="Box.Appearance" class="form-control"></textarea>
-                <span asp-validation-for="Box.Appearance" class="text-danger"></span>
+                <label asp-for="Box!.Appearance" class="control-label"></label>
+                <textarea asp-for="Box!.Appearance" class="form-control"></textarea>
+                <span asp-validation-for="Box!.Appearance" class="text-danger"></span>
             </div>
 
             <div class="form-group">
-                <label asp-for="Box.Capacity" class="control-label"></label>
-                <input asp-for="Box.Capacity" class="form-control"/>
-                <span asp-validation-for="Box.Capacity" class="text-danger"></span>
+                <label asp-for="Box!.Capacity" class="control-label"></label>
+                <input asp-for="Box!.Capacity" class="form-control"/>
+                <span asp-validation-for="Box!.Capacity" class="text-danger"></span>
             </div>
             
             <div class="form-group">

@@ -4,7 +4,6 @@ using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
 using MTGViewer.Data.Concurrency;
 
-#nullable enable
 namespace MTGViewer.Data;
 
 public class Suggestion

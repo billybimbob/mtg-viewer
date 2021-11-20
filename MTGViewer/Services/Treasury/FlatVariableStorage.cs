@@ -8,7 +8,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using MTGViewer.Data;
 
-#nullable enable
 namespace MTGViewer.Services;
 
 
@@ -54,27 +53,6 @@ public sealed class FlatVariableStorage : ITreasury, IDisposable
             .Include(ca => ca.Card)
             .OrderBy(ca => ca.Card.Name)
                 .ThenBy(ca => ca.Card.SetName); 
-
-
-
-    public Task<bool> AnyWantsAsync(
-        IEnumerable<Want> wants, CancellationToken cancel = default)
-    {
-        if (wants is null || !wants.Any())
-        {
-            return Task.FromResult(false);
-        }
-
-        var wantNames = wants
-            .Where(w => w.NumCopies > 0)
-            .Select(w => w.Card.Name)
-            .Distinct()
-            .ToArray();
-
-        return Cards
-            .Where(a => a.NumCopies > 0 && wantNames.Contains(a.Card.Name))
-            .AnyAsync(cancel);
-    }
 
 
 
@@ -144,6 +122,7 @@ public sealed class FlatVariableStorage : ITreasury, IDisposable
             }
 
             var amount = amounts.FirstOrDefault();
+
             return amount == default 
                 || amount.NumCopies < giveBack.NumCopies;
         }
@@ -163,6 +142,18 @@ public sealed class FlatVariableStorage : ITreasury, IDisposable
                     a => a.CardId,
                     (giveBack, amounts) => (giveBack, amounts))
                 .Any( InvalidGiveBack );
+    }
+
+
+    private static IReadOnlyList<CardReturn> GetDeckReturns(Deck deck)
+    {
+        return deck.Cards
+            .Join( deck.GiveBacks,
+                ca => ca.CardId,
+                gb => gb.CardId,
+                (actual, giveBack) => new CardReturn(
+                    actual.Card ?? giveBack.Card, giveBack.NumCopies, deck))
+            .ToList();
     }
 
 
@@ -286,22 +277,6 @@ public sealed class FlatVariableStorage : ITreasury, IDisposable
                 changes.Add(newChange);
             }
         }
-    }
-
-
-    private static IReadOnlyList<CardReturn> GetDeckReturns(Deck deck)
-    {
-        return deck.Cards
-            .Join( deck.GiveBacks,
-                ca => ca.CardId,
-                gb => gb.CardId,
-                (actual, giveBack) => (actual, giveBack))
-
-                // TODO: change to atomic returns, all or nothing
-            .Where(ag => ag.actual.NumCopies >= ag.giveBack.NumCopies)
-            .Select(ag => 
-                new CardReturn(ag.giveBack.Card, ag.giveBack.NumCopies, deck))
-            .ToList();
     }
 
     #endregion

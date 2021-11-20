@@ -68,7 +68,7 @@ public class CardSetup : IHostedService
 
     public async Task StartAsync(CancellationToken cancel)
     {
-        using var scope = _serviceProvider.CreateScope();
+        await using var scope = _serviceProvider.CreateAsyncScope();
         var scopeProvider = scope.ServiceProvider;
 
         var dbContext = scopeProvider.GetRequiredService<CardDbContext>();

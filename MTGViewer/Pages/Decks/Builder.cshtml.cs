@@ -12,7 +12,6 @@ using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
 using MTGViewer.Services;
 
-#nullable enable
 namespace MTGViewer.Pages.Decks;
 
 

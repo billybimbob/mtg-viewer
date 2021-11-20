@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -14,7 +15,6 @@ using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
 using MTGViewer.Services;
 
-#nullable enable
 namespace MTGViewer.Pages.Decks;
 
 [Authorize]
@@ -41,10 +41,11 @@ public class DeleteModel : PageModel
     [TempData]
     public string? PostMesssage { get; set; }
 
-    public Deck? Deck { get; private set; }
-    public IReadOnlyList<QuantityNameGroup>? NameGroups { get; private set; }
+    public Deck Deck { get; private set; } = null!;
 
-    public IReadOnlyList<Trade>? Trades { get; private set; }
+    public IReadOnlyList<QuantityNameGroup> NameGroups { get; private set; } = Array.Empty<QuantityNameGroup>();
+
+    public IReadOnlyList<Trade> Trades { get; private set; } = Array.Empty<Trade>();
 
 
     public async Task<IActionResult> OnGetAsync(int id)

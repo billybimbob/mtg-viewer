@@ -17,13 +17,15 @@
     </p>
 
     <form method="POST">
-        <!-- js hack -->
-        <a href="javascript:history.go(-1)"
-            class="btn btn-secondary" role="button">
-            Back </a>
+        <div class="btn-group" role="group">
+            <!-- js hack -->
+            <a href="javascript:history.go(-1)"
+                class="btn btn-secondary" role="button">
+                Back </a>
 
-        <input type="hidden" asp-for="Deck.Id" />
-        <input type="submit" value="Delete" class="btn btn-danger" />
+            <input type="hidden" asp-for="Deck.Id" class="sr-only"/>
+            <input type="submit" value="Delete" class="btn btn-danger" />
+        </div>
     </form>
 </div>
 

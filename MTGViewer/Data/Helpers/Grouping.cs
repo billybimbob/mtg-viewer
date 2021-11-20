@@ -3,7 +3,6 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 
-#nullable enable
 namespace MTGViewer.Data;
 
 /// <summary>Group of amounts with the same deck and same card name</summary>
@@ -27,11 +26,6 @@ public class CardNameGroup : IEnumerable<Amount>
         {
             throw new ArgumentException("All cards do not match the mana cost");
         }
-
-        if (_amounts.Any(ca => ca.LocationId != LocationId && ca.Location != Location))
-        {
-            throw new ArgumentException("All cards do not have the same location");
-        }
     }
 
     public CardNameGroup(params Amount[] amounts)
@@ -50,10 +44,6 @@ public class CardNameGroup : IEnumerable<Amount>
 
     public IEnumerable<string> CardIds => _amounts.Select(ca => ca.CardId);
     public IEnumerable<Card> Cards => _amounts.Select(ca => ca.Card);
-
-
-    public int LocationId => First.LocationId;
-    public Location Location => First.Location;
 
 
     public int NumCopies
@@ -110,11 +100,6 @@ public class WantNameGroup : IEnumerable<Want>
         {
             throw new ArgumentException("All exchanges do not match the mana cost");
         }
-
-        if (_wants.Any(w => w.LocationId != LocationId && w.Location != Location))
-        {
-            throw new ArgumentException("All exchanges do not have the same location");
-        }
     }
 
     public WantNameGroup(params Want[] wants)
@@ -133,10 +118,6 @@ public class WantNameGroup : IEnumerable<Want>
 
     public IEnumerable<string> CardIds => _wants.Select(ca => ca.CardId);
     public IEnumerable<Card> Cards => _wants.Select(ca => ca.Card);
-
-
-    public int LocationId => First.LocationId;
-    public Location Location => First.Location;
 
 
     public int NumCopies

@@ -25,7 +25,7 @@ namespace MTGViewer.Tests.Pages.Transfers
         private readonly TestDataGenerator _testGen;
 
         private readonly RequestModel _requestModel;
-        private Deck _requestDeck;
+        private Deck _requestDeck = null!;
 
         public RequestTests(
             CardDbContext dbContext,

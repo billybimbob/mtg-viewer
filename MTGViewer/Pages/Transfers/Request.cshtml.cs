@@ -34,13 +34,13 @@ public class RequestModel : PageModel
 
 
     [TempData]
-    public string PostMessage { get; set; }
+    public string? PostMessage { get; set; }
 
     public bool TargetsExist { get; private set; }
 
-    public Deck Deck { get; private set; }
+    public Deck Deck { get; private set; } = null!;
 
-    public IReadOnlyList<WantNameGroup> Requests { get; private set; }
+    public IReadOnlyList<WantNameGroup> Requests { get; private set; } = Array.Empty<WantNameGroup>();
 
 
     public async Task<IActionResult> OnGetAsync(int deckId)
@@ -111,7 +111,7 @@ public class RequestModel : PageModel
 
         return _dbContext.Amounts
             .Where(ca => ca.Location is Deck
-                && (ca.Location as Deck).OwnerId != deck.OwnerId
+                && (ca.Location as Deck)!.OwnerId != deck.OwnerId
                 && takeNames.Contains(ca.Card.Name))
 
             .Include(ca => ca.Card)

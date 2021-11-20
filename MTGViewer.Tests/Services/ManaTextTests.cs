@@ -17,7 +17,7 @@ public class ManaTextTests
     [Fact]
     public void Format_Null_EmptyString()
     {
-        string nullText = null;
+        string? nullText = null;
 
         var markup = _manaText.Format(nullText);
 

@@ -1,6 +1,7 @@
 @using System
 @using System.Linq
 @using System.Linq.Expressions
+@using System.Collections.Immutable
 
 @namespace MTGViewer.Components
 @implements IDisposable
@@ -12,15 +13,15 @@
 
 <h1>Card Collection</h1>
 
-<div class="d-flex">
+<div class="btn-group" role="group">
     @if (IsSignedIn)
     {
-        <a class="btn btn-secondary mr-1" href="Cards/Create" role="button">Add Card</a>
+        <a class="btn btn-secondary" href="Cards/Create" role="button">Add Card</a>
     }
 
-    <a class="btn btn-secondary mr-1" href="Treasury/" role="button">Treasury</a>
+    <a class="btn btn-secondary" href="Treasury/" role="button">Treasury</a>
 
-    <button class="btn btn-secondary mr-1" type="button" @onclick="RefreshCardsAsync">Refresh </button>
+    <button class="btn btn-secondary" type="button" @onclick="RefreshCardsAsync">Refresh </button>
 </div>
 
 <div class="form-row align-items-center my-3">
@@ -47,33 +48,38 @@
     <thead>
         <tr>
             <th scope="col"
+                title="Order By Name"
                 @onclick="() => ReorderCards(c => c.Name)" 
                 class="clickable btn-link @BoldIfActive(c => c.Name)">
                 @Entities.DisplayName((Card c) => c.Name)
             </th>
 
             <th scope="col" 
+                title="Order By Cmc"
                 @onclick="() => ReorderCards(c => c.ManaCost)" 
                 class="clickable btn-link @BoldIfActive(c => c.ManaCost)">
                 @Entities.DisplayName((Card c) => c.ManaCost)
             </th>
 
             <th scope="col"
+                title="Order By Set Name"
                 @onclick="() => ReorderCards(c => c.SetName)" 
                 class="clickable btn-link @BoldIfActive(c => c.SetName)">
                 @Entities.DisplayName((Card c) => c.SetName)
             </th>
 
             <th scope="col"
+                title="Order By Rarity"
                 @onclick="() => ReorderCards(c => c.Rarity)" 
                 class="clickable btn-link @BoldIfActive(c => c.Rarity)">
                 @Entities.DisplayName((Card c) => c.Rarity)
             </th>
 
             <th scope="col" 
+                title="Order By Number of Copies"
                 @onclick="() => ReorderCards(c => c.Amounts)" 
                 class="clickable btn-link @BoldIfActive(c => c.Amounts)">
-                Total Amount
+                Total Copies
             </th>
 
             <th scope="col"></th>
@@ -84,7 +90,7 @@
         @foreach (var card in Cards)
         {
             <tr>
-                <td> <HoverCard Card="@((CardPreview) card)"/> </td>
+                <td> <HoverCard Card="@card"/> </td>
 
                 <td> @(MtgSymbols.Format(card.ManaCost).ToMarkupString()) </td>
                 <td> @card.SetName </td>
@@ -106,45 +112,7 @@
     </tbody>
 </table>
 
-
-@if (Cards.Pages.HasMultiple)
-{
-    var prevDisabled = Cards.Pages.HasPrevious ? "" : "disabled";
-    var nextDisabled = Cards.Pages.HasNext ? "" : "disabled";
-
-    <nav aria-label="Card Result Pages">
-        <ul class="pagination justify-content-center">
-
-            <li class="page-item @prevDisabled">
-                <button class="page-link" disabled="@(!Cards.Pages.HasPrevious)"
-                    @onclick="() => ApplyFilters(Cards.Pages.Current - 1)">
-                    &laquo;
-                </button>
-            </li>
-
-            @for (int i = 0; i < Cards.Pages.Total; ++i)
-            {
-                var pageIndex = i;
-                var activePage = pageIndex == Cards.Pages.Current ? "active" : "";
-
-                <li class="page-item @activePage">
-                    <button class="page-link" @onclick="() => ApplyFilters(pageIndex)">
-                        @(pageIndex + 1)
-                        <span class="sr-only">(current)</span>
-                    </button>
-                </li>
-            }
-
-            <li class="page-item @nextDisabled">
-                <button class="page-link" disabled="@(!Cards.Pages.HasNext)"
-                    @onclick="() => ApplyFilters(Cards.Pages.Current + 1)">
-                    &raquo;
-                </button>
-            </li>
-
-        </ul>
-    </nav>
-}
+<Pagination Pages="Cards.Pages" PageSelected="ApplyFilters"></Pagination>
 
 
 @code {
@@ -155,19 +123,19 @@
     [Parameter]
     public int PageSize { get; set; }
 
-    private PagedList<Card> Cards { get; set; }
+    private PagedList<Card> Cards { get; set; } = PagedList<Card>.Empty;
 
 
     private bool _isBusy;
     private readonly CancellationTokenSource _cancel = new();
 
-    private IReadOnlyList<Card> _dbCards;
-    private IReadOnlyDictionary<string, int> _cardAmounts;
+    private IReadOnlyList<Card> _dbCards = Array.Empty<Card>();
+    private IReadOnlyDictionary<string, int> _cardAmounts = ImmutableDictionary<string, int>.Empty;
 
     private readonly HashSet<string> _colorFilter = new();
-    private string _searchName;
+    private string? _searchName;
 
-    private string _orderProperty;
+    private string? _orderProperty;
     private bool _isReversed;
 
 
@@ -181,7 +149,7 @@
             : "font-weight-bold";
 
 
-    private string MemberName<T>(Expression<Func<Card, T>> property) =>
+    private string? MemberName<T>(Expression<Func<Card, T>> property) =>
         (property.Body as MemberExpression)?.Member.Name;
 
 
@@ -294,7 +262,7 @@
         };
 
         IOrderedEnumerable<Card> PrimaryOrder<T>(
-            Func<Card, T> property, IComparer<T> comparer = null) =>
+            Func<Card, T> property, IComparer<T>? comparer = null) =>
             isAscending ^ _isReversed
                 ? cards.OrderBy(property, comparer)
                 : cards.OrderByDescending(property, comparer);

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -26,8 +27,10 @@ public class DetailsModel : PageModel
 
 
     public bool IsSignedIn { get; private set; }
-    public Card Card { get; private set; }
-    public IReadOnlyList<Card> CardAlts { get; private set; }
+
+    public Card Card { get; private set; } = null!;
+
+    public IReadOnlyList<Card> CardAlts { get; private set; } = Array.Empty<Card>();
 
 
     public async Task<IActionResult> OnGetAsync(string id)
@@ -39,7 +42,7 @@ public class DetailsModel : PageModel
 
         IsSignedIn = _signInManager.IsSignedIn(User);
 
-        Card = await _dbContext.Cards
+        var card = await _dbContext.Cards
             .Include(c => c.Supertypes)
             .Include(c => c.Types)
             .Include(c => c.Subtypes)
@@ -50,10 +53,12 @@ public class DetailsModel : PageModel
             .AsNoTrackingWithIdentityResolution()
             .SingleOrDefaultAsync(c => c.Id == id);
 
-        if (Card == default)
+        if (card == default)
         {
             return NotFound();
         }
+
+        Card = card;
 
         CardAlts = await _dbContext.Cards
             .Where(c => c.Id != id && c.Name == Card.Name)

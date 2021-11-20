@@ -5,19 +5,12 @@
 }
 @inject SymbolFormatter MtgSymbols
 
+
 <h1>Trades To @Model.Deck.Name</h1>
 <hr />
 
-
-@if (!string.IsNullOrEmpty(Model.PostMessage))
-{
-    <div class="alert alert-secondary" role="alert">
-        @Model.PostMessage
-    </div>
-}
-
 <div class="alert alert-secondary" role="alert">
-    <p>Do you want cancel the requests listed below?</p>
+    <h5 class="alert-heading">Do you want cancel the requests listed below?</h5>
     <p>Cancelling will allow for edits to @Model.Deck.Name</p>
 
     <form method="POST">

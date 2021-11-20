@@ -187,11 +187,11 @@
                         class="form-control" />
                 </div>
 
-                <div class="form-group">
-                    <button type="submit" class="btn btn-secondary"> Search </button>
+                <div class="btn-group" role="group">
+                    <button type="submit" class="btn btn-secondary" title="Search For Card"> Search </button>
 
                     <button type="button" class="btn btn-secondary" 
-                        @onclick="Reset" title="Reset"> 
+                        @onclick="Reset" title="Reset All Fields"> 
                         Reset </button>
                 </div>
             </div>
@@ -200,7 +200,7 @@
 }
 else
 {
-    <div class="form-group">
+    <div class="btn-group" role="group">
         <button title="Add Button" type="button"
             @onclick="AddNewCardsAsync" disabled="@CannotAdd" 
             class="btn btn-secondary">
@@ -248,7 +248,7 @@ else
                 {
                     <tr>
                         <td> 
-                            <HoverCard Card="(CardPreview)match">
+                            <HoverCard Card="@match">
                                 <span class="btn-link">@match.Name</span> 
                             </HoverCard> 
                         </td>
@@ -290,11 +290,11 @@ else
     private readonly HashSet<string> _pickedRarities = new(StringComparer.OrdinalIgnoreCase);
 
     private readonly CardSearch _search = new();
-    private EditContext _searchEdit;
-    private ValidationMessageStore _resultErrors;
+    private EditContext? _searchEdit;
+    private ValidationMessageStore? _resultErrors;
 
     private readonly Dictionary<Card, int> _matches = new();
-    private string _matchName;
+    private string? _matchName;
     private Pages _pages;
 
 
@@ -312,23 +312,36 @@ else
 
     protected override void Dispose(bool disposing)
     {
-        _searchEdit.OnValidationRequested -= ClearErrors;
-        _searchEdit.OnFieldChanged -= ClearErrors;
+        if (_searchEdit is not null)
+        {
+            _searchEdit.OnValidationRequested -= ClearErrors;
+            _searchEdit.OnFieldChanged -= ClearErrors;
+        }
 
         _cancel.Cancel();
         _cancel.Dispose();
     }
 
 
-    private void ClearErrors(object sender, ValidationRequestedEventArgs args)
+    private void ClearErrors(object? sender, ValidationRequestedEventArgs args)
     {
+        if (_searchEdit is null || _resultErrors is null)
+        {
+            return;
+        }
+
         _resultErrors.Clear();
         _searchEdit.NotifyValidationStateChanged();
     }
 
 
-    private void ClearErrors(object sender, FieldChangedEventArgs args)
+    private void ClearErrors(object? sender, FieldChangedEventArgs args)
     {
+        if (_searchEdit is null || _resultErrors is null)
+        {
+            return;
+        }
+
         var idField = _searchEdit.Field(nameof(CardSearch.Id));
 
         _resultErrors.Clear(idField);
@@ -340,6 +353,11 @@ else
 
     private void NoMatchError()
     {
+        if (_searchEdit is null || _resultErrors is null)
+        {
+            return;
+        }
+
         var idField = _searchEdit.Field(nameof(CardSearch.Id));
         var noMatch = new []{ "No matches were found" };
 
@@ -350,6 +368,11 @@ else
 
     private void MultiColorSwitch(ChangeEventArgs args)
     {
+        if (_searchEdit is null)
+        {
+            return;
+        }
+
         if (!bool.TryParse(args.Value?.ToString(), out bool value))
         {
             return;
@@ -365,6 +388,11 @@ else
 
     private void ColorToggle(string color)
     {
+        if (_searchEdit is null)
+        {
+            return;
+        }
+
         if (_pickedColors.Contains(color))
         {
             _pickedColors.Remove(color);
@@ -382,6 +410,11 @@ else
 
     private void RarityToggle(string rarity)
     {
+        if (_searchEdit is null)
+        {
+            return;
+        }
+
         if (_pickedRarities.Contains(rarity))
         {
             _pickedRarities.Remove(rarity);
@@ -485,6 +518,11 @@ else
 
     private void Reset()
     {
+        if (_searchEdit is null)
+        {
+            return;
+        }
+
         _pickedColors.Clear();
 
         _matches.Clear();

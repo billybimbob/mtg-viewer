@@ -1,4 +1,6 @@
+using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -14,7 +16,6 @@ using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
 using MTGViewer.Services;
 
-#nullable enable
 namespace MTGViewer.Pages.Decks;
 
 
@@ -43,26 +44,30 @@ public class HistoryModel : PageModel
     public string? PostMessage { get; set; }
 
     [BindProperty]
-    public Deck? Deck { get; set; }
+    public Deck Deck { get; set; } = null!;
 
-    public IReadOnlyList<Transfer>? Transfers { get; private set; }
+    public IReadOnlyList<Transfer> Transfers { get; private set; } =
+        Array.Empty<Transfer>();
 
     public Data.Pages Pages { get; private set; }
 
-    public IReadOnlySet<(int, int?, int)>? IsFirstTransfer { get; private set; }
+    public IReadOnlySet<(int, int?, int)> IsFirstTransfer { get; private set; } =
+        ImmutableHashSet<(int, int?, int)>.Empty;
 
 
     public async Task<IActionResult> OnGetAsync(int id, int? pageIndex)
     {
-        Deck = await DeckForHistory(id).SingleOrDefaultAsync();
+        var deck = await DeckForHistory(id).SingleOrDefaultAsync();
 
-        if (Deck == default)
+        if (deck == default)
         {
             return NotFound();
         }
 
         var changes = await ChangesForHistory(id)
             .ToPagedListAsync(_pageSize, pageIndex);
+
+        Deck = deck;
 
         Transfers = changes
             .GroupBy(c => (c.Transaction, c.From, c.To),

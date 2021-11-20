@@ -8,30 +8,21 @@
 
 <h1>Treasury</h1>
 
-<div class="btn-toolbar mb-3" role="toolbar" aria-label="Treasury Main Actions">
+<div class="btn-group mb-3" role="group" aria-label="Treasury Main Actions">
     @if (Model.IsSignedIn)
     {
-        <a asp-page="Create" class="btn btn-secondary mr-2" role="button"> Add Box </a>
+        <a asp-page="Create" class="btn btn-secondary" role="button"> Add Box </a>
+        <a asp-page="/Unowned/Index" class="btn btn-secondary" role="button"> Unclaimed Decks </a>
 
-        <form method="POST">
-            <input asp-page-handler="Optimize" type="submit" class="btn btn-secondary mr-2" value="Optimize" />
-        </form>
+        <a asp-page="Backup" class="btn btn-secondary" role="button"> Backup </a>
 
-        <a asp-page="Backup" class="btn btn-secondary mr-2" role="button"> Backup </a>
-
-        <a asp-page="/Unowned/Index" class="btn btn-secondary mr-2" role="button"> Unclaimed Decks </a>
+        <input asp-page-handler="Optimize" type="submit" form="optimize-form" class="btn btn-secondary" value="Optimize" />
+        <form method="POST" class="sr-only" id="optimize-form"></form>
     }
 
     <a asp-page="History" class="btn btn-secondary" role="button"> History </a>
 </div>
 
-
-@if (!string.IsNullOrEmpty(Model.PostMessage))
-{
-    <div class="alert alert-secondary" role="alert">
-        @Model.PostMessage
-    </div>
-}
 
 <table class="table table-bordered">
     <thead>
@@ -91,5 +82,4 @@
     </tbody>
 </table>
 
-
-@(await Html.PartialAsync("_PaginationPartial", Model.Boxes.Pages))
+@await Html.PartialAsync("_PaginationPartial", Model.Boxes.Pages)

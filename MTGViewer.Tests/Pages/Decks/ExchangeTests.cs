@@ -275,7 +275,7 @@ public class ExchangeTests : IAsyncLifetime
 
         var tradeTarget = await _dbContext.Amounts
             .Where(ca => ca.Location is Deck
-                && (ca.Location as Deck).OwnerId != deckOwnerId)
+                && (ca.Location as Deck)!.OwnerId != deckOwnerId)
             .Select(ca => ca.Location)
             .FirstAsync();
 

@@ -31,9 +31,9 @@ public class IndexModel : PageModel
 
 
     [TempData]
-    public string PostMessage { get; set; }
+    public string? PostMessage { get; set; }
 
-    public PagedList<Box> Boxes { get; private set; }
+    public PagedList<Box> Boxes { get; private set; } = PagedList<Box>.Empty;
 
     public bool IsSignedIn => _signInManager.IsSignedIn(User);
 

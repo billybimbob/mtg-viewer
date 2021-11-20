@@ -15,7 +15,7 @@
     </a>
 
     <div class="row">
-        @foreach (var card in Cards)
+        @foreach (var card in _randomCards)
         {
             <a href="/Cards/Details/@card.Id" class="col-md-3 col-6"
                 title="@card.Name Details"
@@ -35,7 +35,7 @@
     </a>
 
     <ul class="list-group list-group-flush">
-        @foreach (var transaction in RecentChanges)
+        @foreach (var transaction in _recentChanges)
         {
             var changes = transaction.Changes;
             var adds = changes.Where(c => c.To is Box);
@@ -87,16 +87,8 @@
     private bool _isBusy;
     private DateTime _currentTime;
 
-    private IReadOnlyList<Card> _randomCards;
-    private IReadOnlyList<Transaction> _recentChanges;
-
-
-    private IEnumerable<Card> Cards => 
-        _randomCards ?? Enumerable.Empty<Card>();
-
-    private IEnumerable<Transaction> RecentChanges =>
-        _recentChanges ?? Enumerable.Empty<Transaction>();
-
+    private IReadOnlyList<Card> _randomCards = Array.Empty<Card>();
+    private IReadOnlyList<Transaction> _recentChanges = Array.Empty<Transaction>();
 
 
     private string AllCardNames(IEnumerable<Change> changes)

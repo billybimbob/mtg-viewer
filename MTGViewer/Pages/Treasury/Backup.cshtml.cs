@@ -17,15 +17,15 @@ public class Import
 {
     [Required]
     [Display(Name = "Card Data File")]
-    public IFormFile File { get; set; }
+    public IFormFile File { get; set; } = null!;
 }
 
 
 public class Export
 {
-    [Display(Name = "Page To Download")]
+    [Display(Name = "Section To Download")]
     [Range(0, int.MaxValue)]
-    public int? Page { get; set; }
+    public int? Section { get; set; }
 }
 
 
@@ -45,44 +45,51 @@ public class BackupModel : PageModel
     }
 
     [TempData]
-    public string PostMessage { get; set; }
+    public string? PostMessage { get; set; }
+
+    public int NumberOfSections { get; private set; }
+
+
+    [BindProperty(SupportsGet = true)]
+    public Export? Export { get; set; }
 
 
     [BindProperty]
-    public Import Import { get; set; }
-
-    [BindProperty(SupportsGet = true)]
-    public Export Export { get; set; }
+    public Import? Import { get; set; }
 
 
-    public void OnGet()
-    { }
+    public async Task OnGetAsync()
+    {
+        // might be expensive
+        NumberOfSections = await _jsonStorage.GetTotalPagesAsync();
+    }
 
 
     public async Task<IActionResult> OnGetDownloadAsync()
     {
-        if (Export is null || Export.Page < 0)
+        if (Export is null || Export.Section < 0)
         {
             return NotFound();
         }
 
-        var pageIndex = Export.Page switch
+        NumberOfSections = await _jsonStorage.GetTotalPagesAsync();
+
+        var section = Export.Section switch
         {
-            int page and >0 => page - 1,
-            _ => 0
+            int page and >0 when page > NumberOfSections => NumberOfSections,
+            int page and >0 => page,
+            _ => 1
         };
 
-        var cardData = await _jsonStorage.GetFileDataAsync(pageIndex);
+        var cardData = await _jsonStorage.GetFileDataAsync(section - 1);
 
-        return File(cardData, "application/json", "cards.json");
+        return File(cardData, "application/json", $"cardsSection{section}.json");
     }
 
 
     public async Task<IActionResult> OnPostUploadAsync()
     {
-        ModelState.Remove(nameof(Export.Page));
-
-        if (!ModelState.IsValid)
+        if (!ModelState.IsValid || Import is null)
         {
             return Page();
         }

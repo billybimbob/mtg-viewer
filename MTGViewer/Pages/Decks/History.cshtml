@@ -10,13 +10,6 @@
         @Model.Deck.Name </a>
 </h1>
 
-@if (!string.IsNullOrEmpty(Model.PostMessage))
-{
-    <div class="alert alert-secondary" role="alert">
-        @Model.PostMessage
-    </div>
-}
-
 <div class="row">
     <div class="col">
 
@@ -78,7 +71,7 @@
 
                         <td> 
                             @(await Html.RenderComponentAsync<HoverCard>(
-                                RenderMode.Static, new { Card = (CardPreview) first.Card }))
+                                RenderMode.Static, new { first.Card }))
                         </td>
                         <td> @first.Amount </td>
 
@@ -99,7 +92,7 @@
                         <tr>
                             <td>
                                 @(await Html.RenderComponentAsync<HoverCard>(
-                                    RenderMode.Static, new { Card = (CardPreview)change.Card }))
+                                    RenderMode.Static, new { change.Card }))
                             </td>
                             <td> @change.Amount </td>
                         </tr>
@@ -108,6 +101,6 @@
             </tbody>
         </table>
 
-        @(Html.PartialAsync("PatinationPartial", Model.Pages))
+        @await Html.PartialAsync("_PaginationPartial", Model.Pages)
     </div>
 </div>

@@ -23,9 +23,9 @@
             <div asp-validation-summary="ModelOnly" class="text-danger"></div>
 
             <div class="form-group my-4">
-                <label asp-for="Import.File" class="sr-only"></label>
-                <input asp-for="Import.File" class="form-control-file" accept=".json,application/json" />
-                <span asp-validation-for="Import.File" class="text-danger"></span>
+                <label asp-for="Import!.File" class="sr-only"></label>
+                <input asp-for="Import!.File" class="form-control-file" accept=".json,application/json" />
+                <span asp-validation-for="Import!.File" class="text-danger"></span>
             </div>
 
             <input asp-page-handler="Upload" 
@@ -38,18 +38,19 @@
     <div class="col-md-5">
         <h3>Export Current Data</h3>
 
-        <form method="GET">
+        <form method="GET" asp-page-handler="Download">
             <div class="form-row">
                 <div class="form-group col-md-8">
-                    <label asp-for="Export.Page" class="control-label"></label>
-                    <input asp-for="Export.Page" class="form-control" min="0" />
-                    <span asp-validation-for="Export.Page" class="text-danger"></span>
+                    <label asp-for="Export!.Section" class="control-label"></label>
+                    <input asp-for="Export!.Section" class="form-control" min="1" max="@Model.NumberOfSections" />
+
+                    <p> There are @Model.NumberOfSections possible sections </p>
+                    <span asp-validation-for="Export!.Section" class="text-danger"></span>
                 </div>
             </div>
 
-            <input asp-page-handler="Download" 
+            <input type="submit" class="btn btn-secondary"
                 title="Download Card Data"
-                type="submit" class="btn btn-secondary"
                 value="Download" />
         </form>
     </div>

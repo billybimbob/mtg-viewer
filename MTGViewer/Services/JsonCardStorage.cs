@@ -14,7 +14,6 @@ using Microsoft.Extensions.Configuration;
 using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
 
-#nullable enable
 namespace MTGViewer.Services;
 
 
@@ -49,6 +48,12 @@ public class JsonCardStorage
         config.GetSection(nameof(SeedSettings)).Bind(seedOptions);
 
         _tempPassword = seedOptions.Password;
+    }
+
+
+    public Task<int> GetTotalPagesAsync(CancellationToken cancel = default)
+    {
+        return CardData.TotalPagesAsync(_dbContext, _pageSize, cancel);
     }
 
 
@@ -97,6 +102,8 @@ public class JsonCardStorage
             Seed(data);
 
             await _dbContext.SaveChangesAsync(cancel);
+
+            _dbContext.ChangeTracker.Clear();
 
             // TODO: generate secure temp passwords, and send emails to users
             var results = await Task.WhenAll(
@@ -418,11 +425,6 @@ internal class CardData
                 .OrderBy(c => c.Id)
                 .ToPagedListAsync(pageSize, page, cancel),
 
-            Amounts = await dbContext.Amounts
-                .AsNoTrackingWithIdentityResolution()
-                .OrderBy(a => a.Id)
-                .ToPagedListAsync(pageSize, page, cancel),
-
             Decks = await dbContext.Decks
                 .AsNoTrackingWithIdentityResolution()
                 .OrderBy(d => d.Id)
@@ -441,6 +443,11 @@ internal class CardData
             Bins = await dbContext.Bins
                 .AsNoTrackingWithIdentityResolution()
                 .OrderBy(b => b.Id)
+                .ToPagedListAsync(pageSize, page, cancel),
+
+            Amounts = await dbContext.Amounts
+                .AsNoTrackingWithIdentityResolution()
+                .OrderBy(a => a.Id)
                 .ToPagedListAsync(pageSize, page, cancel),
 
             Wants = await dbContext.Wants
@@ -478,11 +485,6 @@ internal class CardData
                 .OrderBy(c => c.Id)
                 .ToListAsync(cancel),
 
-            Amounts = await dbContext.Amounts
-                .AsNoTrackingWithIdentityResolution()
-                .OrderBy(a => a.Id)
-                .ToListAsync(cancel),
-
             Decks = await dbContext.Decks
                 .AsNoTrackingWithIdentityResolution()
                 .OrderBy(d => d.Id)
@@ -501,6 +503,11 @@ internal class CardData
             Bins = await dbContext.Bins
                 .AsNoTrackingWithIdentityResolution()
                 .OrderBy(b => b.Id)
+                .ToListAsync(cancel),
+
+            Amounts = await dbContext.Amounts
+                .AsNoTrackingWithIdentityResolution()
+                .OrderBy(a => a.Id)
                 .ToListAsync(cancel),
 
             Wants = await dbContext.Wants
@@ -533,5 +540,43 @@ internal class CardData
                 .OrderBy(s => s.Id)
                 .ToListAsync(cancel)
         };
+    }
+
+
+    public static async Task<int> TotalPagesAsync(
+        CardDbContext dbContext,
+        int pageSize, 
+        CancellationToken cancel = default)
+    {
+        var maxPage = 1;
+        var dbCounts = DbSetCountsAsync(dbContext).WithCancellation(cancel);
+
+        await foreach(var count in dbCounts)
+        {
+            maxPage = Math.Max(maxPage, count / pageSize);
+        }
+
+        return maxPage;
+    }
+
+
+    private static async IAsyncEnumerable<int> DbSetCountsAsync(
+        CardDbContext dbContext,
+        [System.Runtime.CompilerServices.EnumeratorCancellation]
+        CancellationToken cancel = default)
+    {
+        yield return await dbContext.Cards.CountAsync(cancel);
+
+        yield return await dbContext.Decks.CountAsync(cancel);
+
+        yield return await dbContext.Unclaimed.CountAsync(cancel);
+
+        yield return await dbContext.Boxes.CountAsync(cancel);
+
+        yield return await dbContext.Bins.CountAsync(cancel);
+
+        yield return await dbContext.Amounts.CountAsync(cancel);
+
+        yield return await dbContext.Wants.CountAsync(cancel);
     }
 }

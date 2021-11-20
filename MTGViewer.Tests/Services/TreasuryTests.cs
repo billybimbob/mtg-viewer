@@ -8,7 +8,6 @@ using MTGViewer.Data;
 using MTGViewer.Services;
 using MTGViewer.Tests.Utils;
 
-#nullable enable
 namespace MTGViewer.Tests.Services;
 
 

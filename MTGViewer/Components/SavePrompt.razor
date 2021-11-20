@@ -55,10 +55,10 @@ else if (Result is SaveResult.Error)
 @code {
 
     [Parameter]
-    public RenderFragment SuccessMessage { get; set; }
+    public RenderFragment? SuccessMessage { get; set; }
 
     [Parameter]
-    public RenderFragment ErrorMessage { get; set;}
+    public RenderFragment? ErrorMessage { get; set;}
 
     [Parameter]
     public SaveResult Result { get; set; }

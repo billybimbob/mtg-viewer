@@ -49,14 +49,15 @@ public class MTGFetchTests
     {
         var card = await _fetch.FindAsync(TEST_ID);
 
-        Assert.Equal(TEST_NAME, card.Name);
+        Assert.NotNull(card);
+        Assert.Equal(TEST_NAME, card!.Name);
     }
 
 
     [Fact(Skip = "Calls external api")]
     public async Task Find_NoId_ReturnsNull()
     {
-        var card = await _fetch.FindAsync(null);
+        var card = await _fetch.FindAsync(null!);
 
         Assert.Null(card);
     }
@@ -69,8 +70,11 @@ public class MTGFetchTests
 
         var card = await _fetch.FindAsync(TEST_ID);
 
-        Assert.Equal(TEST_ID, testCard.MultiverseId);
-        Assert.Equal(TEST_NAME, card.Name);
+        Assert.NotNull(testCard);
+        Assert.NotNull(card);
+
+        Assert.Equal(TEST_ID, testCard!.MultiverseId);
+        Assert.Equal(TEST_NAME, card!.Name);
     }
 
 

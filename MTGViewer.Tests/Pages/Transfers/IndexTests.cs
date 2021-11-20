@@ -18,7 +18,7 @@ namespace MTGViewer.Tests.Pages.Transfers;
 
 public class IndexTests : IAsyncLifetime
 {
-    private readonly  CardDbContext _dbContext;
+    private readonly CardDbContext _dbContext;
     private readonly UserManager<CardUser> _userManager;
     private readonly TestDataGenerator _testGen;
 

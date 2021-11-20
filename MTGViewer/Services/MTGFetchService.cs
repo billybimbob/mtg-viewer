@@ -375,6 +375,6 @@ internal static class MtgApiExtension
         Power = card.Power,
         Toughness = card.Toughness,
         Loyalty = card.Loyalty,
-        ImageUrl = card.ImageUrl?.ToString()
+        ImageUrl = card.ImageUrl?.ToString()!
     };
 }

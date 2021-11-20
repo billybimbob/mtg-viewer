@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -34,31 +35,45 @@ public class SuggestModel : PageModel
 
 
     [TempData]
-    public string PostMessage { get; set; }
+    public string? PostMessage { get; set; }
+
+    [BindProperty(SupportsGet = true)]
+    public string CardId { get; set; } = string.Empty;
+
+    public Card Card { get; private set; } = null!;
+
+    public PagedList<UserRef> Users { get; private set; } = PagedList<UserRef>.Empty;
+
+
+    public UserRef? Receiver { get; private set; }
+
+    public IReadOnlyList<Deck>? Decks { get; private set; }
+
 
     [BindProperty]
-    public Card Card { get; set; }
-
-    public PagedList<UserRef> Users { get; private set; }
+    public Suggestion? Suggestion { get; set; }
 
 
-    public async Task<IActionResult> OnGetAsync(string cardId, int? pageIndex)
+
+    public async Task<IActionResult> OnGetAsync(int? pageIndex)
     {
-        Card = await _dbContext.Cards.FindAsync(cardId);
+        var card = await _dbContext.Cards.FindAsync(CardId);
 
-        if (Card is null)
+        if (card is null)
         {
             return NotFound();
         }
 
-        Users = await UsersForSuggest()
+        Card = card;
+
+        Users = await UsersForSuggest(card)
             .ToPagedListAsync(_pageSize, pageIndex);
 
         return Page();
     }
 
 
-    public IQueryable<UserRef> UsersForSuggest()
+    public IQueryable<UserRef> UsersForSuggest(Card card)
     {
         var proposerId = _userManager.GetUserId(User);
 
@@ -66,7 +81,7 @@ public class SuggestModel : PageModel
             .Where(u => u.Id != proposerId);
 
         var cardSuggests = _dbContext.Suggestions
-            .Where(s => s.Card.Name == Card.Name && s.ToId == default);
+            .Where(s => s.Card.Name == card.Name && s.ToId == default);
 
         return nonProposers
             .GroupJoin( cardSuggests,
@@ -87,21 +102,16 @@ public class SuggestModel : PageModel
 
 
 
-    public UserRef Receiver { get; private set; }
-
-    public IReadOnlyList<Deck> Decks { get; private set; }
-
-
-    public async Task<IActionResult> OnPostUserAsync(string userId)
+    public async Task<IActionResult> OnGetUserAsync(string userId)
     {
         if (userId == null)
         {
-            return RedirectToPage(new { cardId = Card.Id });
+            return RedirectToPage();
         }
 
-        Card = await _dbContext.Cards.FindAsync(Card.Id);
+        var card = await _dbContext.Cards.FindAsync(CardId);
 
-        if (Card is null)
+        if (card is null)
         {
             return NotFound();
         }
@@ -113,32 +123,33 @@ public class SuggestModel : PageModel
             return NotFound();
         }
 
-        Receiver = await _dbContext.Users.FindAsync(userId);
+        var receiver = await _dbContext.Users.FindAsync(userId);
 
-        if (Receiver is null)
+        if (receiver is null)
         {
             return NotFound();
         }
 
-        Decks = await DecksForSuggest().ToListAsync();
+        Decks = await DecksForSuggest(card, receiver).ToListAsync();
+        Card = card;
+        Receiver = receiver;
 
         return Page();
     }
 
 
-    private IQueryable<Deck> DecksForSuggest()
+    private IQueryable<Deck> DecksForSuggest(Card card, UserRef receiver)
     {
         var userDecks = _dbContext.Decks
-            .Where(l => l.OwnerId == Receiver.Id);
+            .Where(l => l.OwnerId == receiver.Id);
 
-        var withoutAmounts = DecksWithoutAmounts(userDecks);
+        var withoutAmounts = DecksWithoutAmounts(userDecks, card, receiver);
+        var withoutWants = DecksWithoutWants(withoutAmounts, card, receiver);
 
-        var withoutWants = DecksWithoutWants(withoutAmounts);
+        var withoutSuggests = DecksWithoutSuggests(withoutWants, card, receiver);
+        var withoutTrades = DecksWithoutTrades(withoutSuggests, card, receiver);
 
-        var withoutSuggests = DecksWithoutSuggests(withoutWants);
-
-        var withoutTrades = DecksWithoutTrades(withoutSuggests);
-
+        // unbounded, keep eye on
         return withoutTrades
             .OrderBy(d => d.Name)
             .AsSplitQuery()
@@ -146,12 +157,13 @@ public class SuggestModel : PageModel
     }
 
 
-    private IQueryable<Deck> DecksWithoutAmounts(IQueryable<Deck> decks)
+    private IQueryable<Deck> DecksWithoutAmounts(
+        IQueryable<Deck> decks, Card card, UserRef receiver)
     {
         var userCardAmounts = _dbContext.Amounts
-            .Where(ca => ca.Card.Name == Card.Name
+            .Where(ca => ca.Card.Name == card.Name
                 && ca.Location is Deck
-                && (ca.Location as Deck).OwnerId == Receiver.Id);
+                && (ca.Location as Deck)!.OwnerId == receiver.Id);
 
         return decks 
             .GroupJoin( userCardAmounts,
@@ -167,12 +179,13 @@ public class SuggestModel : PageModel
     }
 
 
-    private IQueryable<Deck> DecksWithoutWants(IQueryable<Deck> decks)
+    private IQueryable<Deck> DecksWithoutWants(
+        IQueryable<Deck> decks, Card card, UserRef receiver)
     {
         var wantsWithCard = _dbContext.Wants
-            .Where(w => w.Card.Name == Card.Name
+            .Where(w => w.Card.Name == card.Name
                 && w.Location is Deck
-                && (w.Location as Deck).OwnerId == Receiver.Id);
+                && (w.Location as Deck)!.OwnerId == receiver.Id);
 
         return decks
             .GroupJoin( wantsWithCard,
@@ -188,11 +201,12 @@ public class SuggestModel : PageModel
     }
 
 
-    private IQueryable<Deck> DecksWithoutSuggests(IQueryable<Deck> decks)
+    private IQueryable<Deck> DecksWithoutSuggests(
+        IQueryable<Deck> decks, Card card, UserRef receiver)
     {
         var suggestsWithCard = _dbContext.Suggestions
-            .Where(s => s.Card.Name == Card.Name 
-                && s.ReceiverId == Receiver.Id);
+            .Where(s => s.Card.Name == card.Name 
+                && s.ReceiverId == receiver.Id);
 
         return decks
             .GroupJoin( suggestsWithCard,
@@ -208,10 +222,11 @@ public class SuggestModel : PageModel
     }
 
 
-    private IQueryable<Deck> DecksWithoutTrades(IQueryable<Deck> decks)
+    private IQueryable<Deck> DecksWithoutTrades(
+        IQueryable<Deck> decks, Card card, UserRef receiver)
     {
         var tradesWithCard = _dbContext.Trades
-            .Where(t => t.Card.Name == Card.Name && t.To.OwnerId == Receiver.Id);
+            .Where(t => t.Card.Name == card.Name && t.To.OwnerId == receiver.Id);
 
         return decks
             .GroupJoin( tradesWithCard,
@@ -228,17 +243,16 @@ public class SuggestModel : PageModel
 
 
 
-    [BindProperty]
-    public Suggestion Suggestion { get; set; }
-
-
     public async Task<IActionResult> OnPostSuggestAsync()
     {
-        var validSuggest = await IsValidSuggestionAsync(Suggestion);
+        var userId = _userManager.GetUserId(User);
+        var validSuggest = await IsValidSuggestionAsync(Suggestion, userId);
 
         if (!validSuggest)
         {
-            return await OnPostUserAsync(Suggestion.ReceiverId);
+            return RedirectToPage(
+                "Suggest", "User", 
+                new { CardId, userId = Suggestion?.ReceiverId });
         }
 
         try
@@ -255,25 +269,52 @@ public class SuggestModel : PageModel
     }
 
 
-    private async Task<bool> IsValidSuggestionAsync(Suggestion suggestion)
+    private async Task<bool> IsValidSuggestionAsync(Suggestion? suggestion, string userId)
     {
-        if (!ModelState.IsValid)
+        if (suggestion is null)
         {
             return false;
         }
 
-        _dbContext.Suggestions.Attach(Suggestion);
+        if (suggestion.ReceiverId == userId)
+        {
+            PostMessage = "Suggestion cannot be sent to yourself";
+            return false;
+        }
 
-        // include both suggestions and trades
         var suggestPrior = await _dbContext.Suggestions
-            .AnyAsync(t =>
-                t.ReceiverId == suggestion.ReceiverId
-                    && t.CardId == suggestion.CardId
-                    && t.ToId == suggestion.ToId);
+            .AnyAsync(t => t.ReceiverId == suggestion.ReceiverId
+                && t.CardId == suggestion.CardId
+                && t.ToId == suggestion.ToId);
 
         if (suggestPrior)
         {
             PostMessage = "Suggestion is redundant";
+            return false;
+        }
+
+        var entry = _dbContext.Suggestions.Attach(suggestion);
+
+        await entry
+            .Reference(s => s.Card)
+            .LoadAsync();
+
+        await entry
+            .Reference(s => s.Receiver)
+            .LoadAsync();
+
+        if (suggestion.ToId is not null)
+        {
+            await entry
+                .Reference(s => s.To)
+                .LoadAsync();
+        }
+
+        ModelState.ClearValidationState(nameof(Suggestion)); 
+
+        if (!TryValidateModel(suggestion, nameof(Suggestion)))
+        {
+            PostMessage = "Suggestion is not valid";
             return false;
         }
 
@@ -282,21 +323,11 @@ public class SuggestModel : PageModel
             return true;
         }
 
-        await _dbContext.Entry(suggestion)
-            .Reference(s => s.To)
-            .LoadAsync();
-
-        if (suggestion.ReceiverId != suggestion.To?.OwnerId)
-        {
-            PostMessage = "Suggestion target is not valid";
-            return false;
-        }
-
-        await _dbContext.Entry(suggestion.To)
+        await _dbContext.Entry(suggestion.To!)
             .Collection(t => t.Cards)
             .LoadAsync();
 
-        var suggestInDeck = suggestion.To.Cards
+        var suggestInDeck = suggestion.To!.Cards
             .Select(c => c.CardId)
             .Contains(suggestion.CardId);
 

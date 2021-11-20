@@ -1,7 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using MTGViewer.Areas.Identity.Data;
 
-#nullable enable
 namespace MTGViewer.Data;
 
 public class UserRef
@@ -15,7 +14,7 @@ public class UserRef
     public UserRef(CardUser user)
     {
         Id = user.Id;
-        Name = user.Name;
+        Name = user.Name ?? string.Empty;
     }
 
     [Key]

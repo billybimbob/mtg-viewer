@@ -12,7 +12,6 @@ using Microsoft.EntityFrameworkCore;
 using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
 
-#nullable enable
 namespace MTGViewer.Pages.Transfers;
 
 
@@ -32,9 +31,10 @@ public class StatusModel : PageModel
     [TempData]
     public string? PostMessage { get; set; }
 
-    public Deck? Deck { get; private set; }
+    public Deck Deck { get; private set; } = null!;
 
-    public IReadOnlyList<QuantityNameGroup>? CardGroups { get; private set; }
+    public IReadOnlyList<QuantityNameGroup> CardGroups { get; private set; } = 
+        Array.Empty<QuantityNameGroup>();
 
 
     public async Task<IActionResult> OnGetAsync(int deckId)

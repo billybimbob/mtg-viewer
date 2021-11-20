@@ -6,13 +6,6 @@
 
 <h1>Changes To Treasury</h1>
 
-@if (!string.IsNullOrEmpty(Model.PostMessage))
-{
-    <div class="alert alert-secondary" role="alert">
-        @Model.PostMessage
-    </div>
-}
-
 <table class="table table-bordered">
     <thead>
         <tr>
@@ -71,7 +64,7 @@
 
                 <td>
                     @(await Html.RenderComponentAsync<HoverCard>(
-                        RenderMode.Static, new { Card = (CardPreview) first.Card }))
+                        RenderMode.Static, new { first.Card }))
                 </td>
 
                 <td> @first.Amount </td>
@@ -94,7 +87,7 @@
                 <tr>
                     <td> 
                         @(await Html.RenderComponentAsync<HoverCard>(
-                            RenderMode.Static, new { Card = (CardPreview) change.Card }))
+                            RenderMode.Static, new { change.Card }))
                     </td>
                     <td> @change.Amount </td>
                 </tr>

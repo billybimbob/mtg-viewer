@@ -1,4 +1,6 @@
+using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -12,7 +14,6 @@ using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
 using MTGViewer.Services;
 
-#nullable enable
 namespace MTGViewer.Pages.Treasury;
 
 
@@ -40,11 +41,11 @@ public class HistoryModel : PageModel
     public string? PostMessage { get; set; }
 
 
-    public IReadOnlyList<Transfer>? Transfers { get; private set; }
+    public IReadOnlyList<Transfer> Transfers { get; private set; } = Array.Empty<Transfer>();
 
-    public IReadOnlySet<(int, int?, int)>? IsFirstTransfer { get; private set; }
+    public IReadOnlySet<(int, int?, int)> IsFirstTransfer { get; private set; } = ImmutableHashSet<(int, int?, int)>.Empty;
 
-    public IReadOnlySet<int>? IsSharedTransaction { get; private set; }
+    public IReadOnlySet<int> IsSharedTransaction { get; private set; } = ImmutableHashSet<int>.Empty;
 
 
     public Data.Pages Pages { get; private set; }
@@ -129,11 +130,13 @@ public class HistoryModel : PageModel
         try
         {
             await _dbContext.SaveChangesAsync();
+
             PostMessage = "Successfully removed the transaction";
         }
         catch (DbUpdateException e)
         {
             _logger.LogError($"ran into error while removing the transaction {e}");
+
             PostMessage = "Ran into issue while removing transaction";
         }
 

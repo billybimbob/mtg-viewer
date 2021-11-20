@@ -1,7 +1,6 @@
 using System;
 using System.Linq;
 
-#nullable enable
 namespace MTGViewer.Services;
 
 

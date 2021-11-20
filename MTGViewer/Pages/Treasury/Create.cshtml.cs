@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -27,12 +28,12 @@ public class CreateModel : PageModel
 
 
     [TempData]
-    public string PostMessage { get; set; }
+    public string? PostMessage { get; set; }
 
     [BindProperty]
-    public Box Box { get; set; }
+    public Box? Box { get; set; }
 
-    public IReadOnlyList<Bin> Bins { get; private set; }
+    public IReadOnlyList<Bin> Bins { get; private set; } = Array.Empty<Bin>();
 
 
     public async Task OnGetAsync()
@@ -46,9 +47,25 @@ public class CreateModel : PageModel
 
     public async Task<IActionResult> OnPostAsync()
     {
+        if (Box is null)
+        {
+            ModelState.AddModelError(string.Empty, "Box model is not valid");
+            return Page();
+        }
+
         if (Box.BinId != default)
         {
-            Box.Bin = await _dbContext.Bins.FindAsync(Box.BinId);
+            var bin = await _dbContext.Bins.FindAsync(Box.BinId);
+
+            if (bin is null)
+            {
+                var binIdKey = $"{nameof(Box)}.{nameof(Box.BinId)}";
+                ModelState.AddModelError(binIdKey, "Bin specified is not valid");
+
+                return Page();
+            }
+
+            Box.Bin = bin;
         }
 
         ModelState.ClearValidationState(nameof(Box));

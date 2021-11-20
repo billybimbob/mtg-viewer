@@ -1,0 +1,86 @@
+@namespace MTGViewer.Components
+@inject PageSizes PageSizes
+
+@if (Pages.HasMultiple)
+{
+    var start = Pages.Current / PageSizes.Default * PageSizes.Default;
+    var end = Math.Min(Pages.Total, start + PageSizes.Default + 1);
+
+    if (start > 0)
+    {
+        start -= 1;
+    }
+
+    <nav>
+        <ul class="pagination justify-content-center">
+
+            @if (start > 0)
+            {
+                <li class="page-item">
+                    <button title="To First Page"
+                        @onclick="() => ChangePageAsync(0)" 
+                        class="page-link"> 
+                        1 </button>
+                </li>
+                <li class="page-item disabled">
+                    <span class="page-link"> ... </span>
+                </li>
+            }
+
+            @for (int i = start; i < end; ++i)
+            {
+                var pageIndex = i;
+                var activePage = pageIndex == Pages.Current ? "active" : "";
+
+                <li class="page-item @activePage">
+                    @if (pageIndex != Pages.Current)
+                    {
+                        <button title="To Page @(pageIndex + 1)"
+                            @onclick="() => ChangePageAsync(pageIndex)"
+                            class="page-link">
+                            @(pageIndex + 1) </button>
+                    }
+                    else
+                    {
+                        <span class="page-link">
+                            @(pageIndex + 1)
+                            <span class="sr-only">(current)</span>
+                        </span>
+                    }
+                </li>
+            }
+
+            @if (end < Pages.Total - 1)
+            {
+                <li class="page-item disabled">
+                    <span class="page-link"> ... </span>
+                </li>
+            }
+
+            @if (end < Pages.Total)
+            {
+                <li class="page-item">
+                    <button title="To Last Page"
+                        @onclick="() => ChangePageAsync(Pages.Total - 1)" 
+                        class="page-link"> 
+                        @Pages.Total </button>
+                </li>
+            }
+
+        </ul>
+    </nav>
+}
+
+@code {
+
+    [Parameter]
+    public Data.Pages Pages { get; set; }
+
+    [Parameter]
+    public EventCallback<int> PageSelected { get; set; }
+
+    private Task ChangePageAsync(int page)
+    {
+        return PageSelected.InvokeAsync(page);
+    }
+}

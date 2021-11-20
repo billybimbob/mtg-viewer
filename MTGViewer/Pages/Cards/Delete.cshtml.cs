@@ -24,7 +24,7 @@ public class DeleteModel : PageModel
         _logger = logger;
     }
 
-    public Card Card { get; private set; }
+    public Card Card { get; private set; } = null!;
 
 
     public async Task<IActionResult> OnGetAsync(string id)
@@ -34,7 +34,7 @@ public class DeleteModel : PageModel
             return NotFound();
         }
 
-        Card = await _dbContext.Cards
+        var card = await _dbContext.Cards
             .Include(c => c.Supertypes)
             .Include(c => c.Types)
             .Include(c => c.Subtypes)
@@ -45,10 +45,12 @@ public class DeleteModel : PageModel
             .AsNoTrackingWithIdentityResolution()
             .SingleOrDefaultAsync(c => c.Id == id);
 
-        if (Card == default)
+        if (card == default)
         {
             return NotFound();
         }
+
+        Card = card;
 
         return Page();
     }

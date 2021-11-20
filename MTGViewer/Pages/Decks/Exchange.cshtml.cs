@@ -15,7 +15,6 @@ using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
 using MTGViewer.Services;
 
-#nullable enable
 namespace MTGViewer.Pages.Decks;
 
 
@@ -48,7 +47,7 @@ public class ExchangeModel : PageModel
     [TempData]
     public string? PostMessage { get; set; }
 
-    public Deck? Deck { get; private set; }
+    public Deck Deck { get; private set; } = null!;
     
     public bool HasPendings { get; private set; }
 
@@ -71,8 +70,7 @@ public class ExchangeModel : PageModel
 
         Deck = deck;
 
-        HasPendings = deck.GiveBacks.Any() 
-            || await _treasury.AnyWantsAsync(deck.Wants);
+        HasPendings = deck.GiveBacks.Any() || await AnyWantsAsync(deck);
 
         return Page();
     }
@@ -105,6 +103,25 @@ public class ExchangeModel : PageModel
                 .Take(1))
 
             .AsSplitQuery();
+    }
+
+
+    private Task<bool> AnyWantsAsync(Deck deck)
+    {
+        if (!deck.Wants.Any())
+        {
+            return Task.FromResult(false);
+        }
+
+        var wantNames = deck.Wants
+            .Select(w => w.Card.Name)
+            .Distinct()
+            .ToArray();
+
+        return _treasury.Cards
+            .Where(a => a.NumCopies > 0 
+                && wantNames.Contains(a.Card.Name))
+            .AnyAsync();
     }
 
 
