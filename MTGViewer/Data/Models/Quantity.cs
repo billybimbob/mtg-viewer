@@ -31,7 +31,7 @@ public abstract class Quantity : Concurrent
     public int LocationId { get; init; }
 
 
-    [Display(Name = "Number of Copies")]
+    [Display(Name = "Copies")]
     [Range(1, int.MaxValue)]
     public int NumCopies { get; set; }
 }

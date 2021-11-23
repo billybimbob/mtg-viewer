@@ -61,7 +61,8 @@ public class TreasuryTests : IAsyncLifetime
         var boxesAfterIds = boxesAfter.Select(ca => ca.CardId);
         var boxesChange = boxesAfter.Sum(ca => ca.NumCopies) - boxesBefore;
 
-        Assert.All(boxesAfter, ca => Assert.IsType<Box>(ca.Location));
+        Assert.All(boxesAfter, ca =>
+            Assert.IsType<Box>(ca.Location));
 
         Assert.Contains(card.Id, boxesAfterIds);
         Assert.Equal(copies, boxesChange);
@@ -152,7 +153,8 @@ public class TreasuryTests : IAsyncLifetime
         var box1Change = box1AfterAmount - box1BeforeAmount;
         var box2Change = box2AfterAmount - box2BeforeAmount;
 
-        Assert.All(boxesAfter, ca => Assert.IsType<Box>(ca.Location));
+        Assert.All(boxesAfter, ca =>
+            Assert.IsType<Box>(ca.Location));
 
         Assert.Contains(card1.Id, boxesAfterIds);
         Assert.Contains(card2.Id, boxesAfterIds);
@@ -207,11 +209,13 @@ public class TreasuryTests : IAsyncLifetime
         var boxesChange = boxesAfter.Sum(ca => ca.NumCopies) - boxesBefore;
 
         Assert.NotNull(transaction);
-
-        Assert.All(boxesAfter, ca => Assert.IsType<Box>(ca.Location));
-        Assert.All(boxesAfter, ca => Assert.Equal(card.Id, ca.CardId));
-
         Assert.Equal(copies, boxesChange);
+
+        Assert.All(boxesAfter, ca =>
+            Assert.IsType<Box>(ca.Location));
+
+        Assert.All(boxesAfter, ca =>
+            Assert.Equal(card.Id, ca.CardId));
     }
 
 
@@ -253,10 +257,12 @@ public class TreasuryTests : IAsyncLifetime
         var totalAfter = newSpots.Sum(ca => ca.NumCopies);
 
         Assert.NotNull(transaction);
-
-        Assert.All(newSpots, ca => Assert.IsType<Box>(ca.Location));
-        Assert.All(newSpots, ca => Assert.True(ca.NumCopies < copies));
-
         Assert.Equal(totalBefore, totalAfter);
+
+        Assert.All(newSpots, ca =>
+            Assert.IsType<Box>(ca.Location));
+
+        Assert.All(newSpots, ca =>
+            Assert.True(ca.NumCopies < copies));
     }
 }

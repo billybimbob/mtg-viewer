@@ -189,6 +189,8 @@ public class RequestModel : PageModel
                 target => target.Card.Name,
                 want => want.Card.Name,
                 (target, wantMatches) =>
+                    // intentionally leave wants unbounded by target since
+                    // that cap will be handled later
                     (target, amount: wantMatches.Sum(w => w.NumCopies)));
 
         var newTrades = requestMatches

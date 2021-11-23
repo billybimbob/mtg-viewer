@@ -128,7 +128,9 @@ public class ExchangeModel : PageModel
 
     public async Task<IActionResult> OnPostAsync(int id)
     {
-        var deck = await DeckForExchange(id).SingleOrDefaultAsync();
+        var deck = await DeckForExchange(id)
+            .Include(d => d.TradesFrom) // unbounded, keep eye on
+            .SingleOrDefaultAsync();
 
         if (deck == default)
         {
@@ -142,21 +144,21 @@ public class ExchangeModel : PageModel
 
         try
         {
-            var transaction = await _treasury.ExchangeAsync(deck);
+            var exchange = await _treasury.ExchangeAsync(deck);
 
-            if (transaction is null)
+            if (exchange is not null)
             {
-                PostMessage = "Ran into issue while trying to exchange";
-            }
-            else
-            {
-                ApplyChangesToDeck(transaction, deck);
+                ApplyChangesToDeck(exchange, deck);
                 
                 await _dbContext.SaveChangesAsync();
 
                 PostMessage = deck.Wants.Any() || deck.GiveBacks.Any()
                     ? "Successfully exchanged requests, but not all could be fullfilled"
                     : "Successfully exchanged all card requests";
+            }
+            else
+            { 
+                PostMessage = "Ran into issue while trying to exchange";
             }
         }
         catch (DbUpdateException e)
@@ -314,13 +316,22 @@ public class ExchangeModel : PageModel
 
     private void RemoveEmpty(Deck deck)
     {
-        var emptyAmounts = deck.Cards.Where(a => a.NumCopies == 0);
+        var emptyAmounts = deck.Cards
+            .Where(a => a.NumCopies == 0)
+            .ToList();
+
         var finishedWants = deck.Wants.Where(w => w.NumCopies == 0);
         var finishedGives = deck.GiveBacks.Where(g => g.NumCopies == 0);
 
-        // do not remove empty availables
+        var emptyTrades = emptyAmounts
+            .Join(deck.TradesFrom,
+                a => a.CardId, t => t.CardId,
+                (_, trade) => trade);
+
         _dbContext.Amounts.RemoveRange(emptyAmounts);
         _dbContext.Wants.RemoveRange(finishedWants);
         _dbContext.GiveBacks.RemoveRange(finishedGives);
+
+        _dbContext.Trades.RemoveRange(emptyTrades);
     }
 }

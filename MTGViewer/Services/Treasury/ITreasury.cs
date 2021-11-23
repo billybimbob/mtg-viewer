@@ -12,6 +12,7 @@ namespace MTGViewer.Services;
 /// <summary>
 ///  Manages modifications to the <see cref="Card"/> collection that is stored in any <see cref="Box"/>.
 /// </summary>
+[Obsolete("Use the ITreasuryQuery interface")]
 public interface ITreasury
 {
     /// <summary>
@@ -30,7 +31,7 @@ public interface ITreasury
     /// Applies pending <see cref="Want"/> and <see cref="GiveBack"/> to the Treasury 
     /// </summary>
     /// <remarks>
-    /// All changes applied only affect the Treasury no modifications are done to the 
+    /// All changes applied only affect the Treasury, no modifications are done to the 
     /// given <see cref="Deck"/>.
     /// </remarks>
     /// <returns> 

@@ -114,9 +114,10 @@ namespace MTGViewer.Tests.Pages.Transfers
 
             // // Assert
             Assert.IsType<RedirectToPageResult>(result);
-
             Assert.NotEmpty(addedTrades);
-            Assert.All(addedTrades, t => Assert.Equal(_requestDeck.Id, t.ToId));
+
+            Assert.All(addedTrades, t =>
+                Assert.Equal(_requestDeck.Id, t.ToId));
         }
 
 
@@ -171,8 +172,11 @@ namespace MTGViewer.Tests.Pages.Transfers
             // // Assert
             Assert.IsType<RedirectToPageResult>(result);
 
-            Assert.All(addedTrades, t => Assert.Equal(_requestDeck.Id, t.ToId));
-            Assert.All(extraLocations, l => Assert.Contains(l.Id, addedTargets));
+            Assert.All(addedTrades, t =>
+                Assert.Equal(_requestDeck.Id, t.ToId));
+
+            Assert.All(extraLocations, l => 
+                Assert.Contains(l.Id, addedTargets));
         }
     }
 }

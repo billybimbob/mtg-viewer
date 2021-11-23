@@ -16,7 +16,7 @@
         <DataAnnotationsValidator />
         <div class="row">
 
-            <div class="col order-last">
+            <div class="col-sm order-sm-last">
                 <ValidationSummary role="alert"/>
 
                 <h5> Or Operator </h5>
@@ -74,7 +74,7 @@
                 </dl>
             </div>
 
-            <div class="col-4">
+            <div class="col-sm-4">
                 <p> Enter the card search parameters below </p>
 
                 <div class="form-group">
@@ -146,20 +146,17 @@
                         var toggleId = $"{rarity}-toggle";
                         var picked = _pickedRarities.Contains(rarity);
 
-                        <div class="col form-check form-check-inline ml-2">
+                        <div class="col-6">
+                            <div class="form-check form-check-inline ml-2">
 
-                            <input class="form-check-input" id="@toggleId"
-                                type="checkbox" checked="@picked" 
-                                @onclick="() => RarityToggle(rarity)"
-                                value="@rarity" />
+                                <input class="form-check-input" id="@toggleId"
+                                    type="checkbox" checked="@picked" 
+                                    @onclick="() => RarityToggle(rarity)"
+                                    value="@rarity" />
 
-                            <label class="form-check-label" for="@toggleId"> @rarity </label>
+                                <label class="form-check-label" for="@toggleId"> @rarity </label>
+                            </div>
                         </div>
-
-                        @if (i % 2 == 1)
-                        {
-                            <div class="w-100"></div>
-                        }
                     }
                 </div>
 

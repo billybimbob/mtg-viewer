@@ -46,6 +46,7 @@ public class Startup
         }
 
         services.AddScoped<ITreasury, FlatVariableStorage>();
+        services.AddScoped<ITreasuryQuery, SortedPartitionTreasury>();
         services.AddScoped<UserManager<CardUser>>(TestFactory.CardUserManager);
 
         services.AddSingleton<PageSizes>();

@@ -9,10 +9,22 @@ using Microsoft.EntityFrameworkCore;
 namespace MTGViewer.Data;
 
 
-public readonly record struct Pages(int currentPage, int totalPages)
+public readonly record struct Pages(int Current, int Total)
 {
-    public int Current { get; } = Math.Max(currentPage, 0);
-    public int Total { get; } = Math.Max(totalPages, 0);
+    private readonly int _current = Math.Max(Current, 0);
+    private readonly int _total = Math.Max(Total, 0);
+
+    public int Current
+    {
+        get => _current; 
+        init => _current = Math.Max(value, 0);
+    }
+
+    public int Total
+    {
+        get => _total;
+        init => _total = Math.Max(value, 0);
+    }
 
     public bool HasPrevious => Current > 0;
     public bool HasNext => Current < Total - 1;
@@ -40,14 +52,14 @@ public class PagedList<T> : IReadOnlyList<T>
 
     private readonly IList<T> _items;
 
-    public PagedList(Pages page, IList<T> items)
+    public PagedList(Pages pages, IList<T> items)
     {
         if (items is null)
         {
             throw new ArgumentNullException("Items is null");
         }
 
-        Pages = page;
+        Pages = pages;
         _items = items;
     }
 

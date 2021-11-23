@@ -411,7 +411,7 @@ public sealed class FlatVariableStorage : ITreasury, IDisposable
         {
             var (card, numCopies, _) = cardReturn;
 
-            if (!returnBoxes.Contains(cardReturn.Card.Id))
+            if (!returnBoxes.Contains(card.Id))
             {
                 var empty = Array.Empty<(Amount, int)>();
 

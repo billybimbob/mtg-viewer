@@ -116,6 +116,8 @@ public class StatusTests : IAsyncLifetime
         Assert.IsType<RedirectToPageResult>(result);
 
         Assert.NotEqual(tradesBefore, tradesAfter);
-        Assert.All(tradesBefore, tId => Assert.DoesNotContain(tId, tradesAfter));
+
+        Assert.All(tradesBefore, tId => 
+            Assert.DoesNotContain(tId, tradesAfter));
     }
 }
