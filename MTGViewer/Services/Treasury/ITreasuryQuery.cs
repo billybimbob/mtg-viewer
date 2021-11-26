@@ -27,52 +27,49 @@ public interface ITreasuryQuery
 
 
     /// <summary>
-    /// Finds possible <see cref="Amount"/> from all <see cref="Box"/> that can be withdrawn 
+    /// Finds possible changes to <see cref="Amount"/> from all <see cref="Box"/> that can be withdrawn 
     /// for the given <see cref="Card"/> requests.
     /// </summary>
     /// <remarks> 
-    /// No actual modifications are applied to the Treasury, the returned <see cref="Withdrawl"/> values 
-    /// are instructions on how the Treasury should be modified.
-    /// The result will also include Treasury Cards with the same name if exact matches are insufficient
+    /// No actual modifications are applied to the Treasury.
+    /// The result will also include Treasury Cards with the same name if exact matches 
+    /// are insufficient.
     /// </remarks>
     /// <returns>
-    /// Instructions on how the Treasury is allowed to be modified to accommodate for 
-    /// the requested <see cref="Card"/> checkout.
+    /// Modified <see cref="Amount"/> values specifying how the Treasury is allowed to be modified 
+    /// to accommodate for the requested <see cref="Card"/> checkout.
     /// </returns>
     /// <exception cref="ArgumentNullException"></exception>
     /// <exception cref="OperationCanceledException"></exception>
-    Task<IReadOnlyList<Withdrawl>> FindCheckoutAsync(
-        IEnumerable<CardRequest> requests, 
-        IEnumerable<Alteration>? extraChanges = null,
+    Task<IReadOnlyList<Amount>> FindCheckoutAsync(
+        IEnumerable<CardRequest> requests,
         CancellationToken cancel = default);
 
 
     /// <summary>
-    /// Finds all available <see cref="Box"/> that can fit the returning <see cref="Card"/> copies.
+    /// Finds possible changes to the Treasury to fit the returning <see cref="Card"/> copies.
     /// </summary>
     /// <remarks> 
-    /// No actual modifications are applied to the Treasury, the returned <see cref="Alteration"/> values 
-    /// are instructions on how the Treasury should be modified.
+    /// No actual modifications are applied to the Treasury,
     /// </remarks>
     /// <returns>
-    /// Instructions on how the Treasury is allowed to be modified to accommodate for 
-    /// the requested <see cref="Card"/> returns.
+    /// Modified <see cref="Amount"/> values specifying how the Treasury is allowed to be modified 
+    /// to accommodate for the requested <see cref="Card"/> returns.
     /// </returns>
     /// <exception cref="ArgumentNullException"></exception>
     /// <exception cref="OperationCanceledException"></exception>
-    Task<IReadOnlyList<Deposit>> FindReturnAsync(
+    Task<IReadOnlyList<Amount>> FindReturnAsync(
         IEnumerable<CardRequest> requests, 
-        IEnumerable<Alteration>? extraChanges = null,
         CancellationToken cancel = default);
 }
 
 
 public static class TreasuryQueryExtensions
 {
-    /// <seealso cref="ITreasuryQuery.FindCheckoutAsync(IEnumerable{CardRequest}, CancellationToken)"/>
-    public static Task<IReadOnlyList<Withdrawl>> FindCheckoutAsync(
+    public static Task<IReadOnlyList<Amount>> FindCheckoutAsync(
         this ITreasuryQuery treasury, 
-        Card card, int numCopies, CancellationToken cancel = default)
+        Card card, int numCopies, 
+        CancellationToken cancel = default)
     {
         if (treasury is null)
         {
@@ -81,12 +78,11 @@ public static class TreasuryQueryExtensions
 
         var request = new []{ new CardRequest(card, numCopies) };
 
-        return treasury.FindCheckoutAsync(request, null, cancel);
+        return treasury.FindCheckoutAsync(request, cancel);
     }
 
 
-    /// <seealso cref="ITreasuryQuery.FindReturnAsync(IEnumerable{CardRequest}, CancellationToken)"/>
-    public static Task<IReadOnlyList<Deposit>> FindReturnAsync(
+    public static Task<IReadOnlyList<Amount>> FindReturnAsync(
         this ITreasuryQuery treasury,
         Card card, int numCopies, CancellationToken cancel = default)
     {
@@ -97,15 +93,18 @@ public static class TreasuryQueryExtensions
 
         var request = new []{ new CardRequest(card, numCopies) };
 
-        return treasury.FindReturnAsync(request, null, cancel);
+        return treasury.FindReturnAsync(request, cancel);
     }
 }
 
 
+/// <summary>
+/// Requests to either take or return  a <see cref="Data.Card"/> to the Treasury
+/// </summary>
 public record CardRequest(Card Card, int NumCopies)
 {
     private Card _card = CardOrThrow(Card);
-    private int _numCopies = PositiveOrThrow(NumCopies);
+    private int _numCopies = NotNegativeOrThrow(NumCopies);
 
     public Card Card 
     {
@@ -116,12 +115,12 @@ public record CardRequest(Card Card, int NumCopies)
     public int NumCopies
     {
         get => _numCopies;
-        init => _numCopies = PositiveOrThrow(value);
+        set => _numCopies = NotNegativeOrThrow(value);
     }
-        
+
     private static Card CardOrThrow(Card card) =>
         card ?? throw new ArgumentNullException(nameof(Card));
 
-    private static int PositiveOrThrow(int copies) =>
-        copies > 0 ? copies : throw new ArgumentException(nameof(NumCopies));
+    private static int NotNegativeOrThrow(int copies) =>
+        copies >= 0 ? copies : throw new ArgumentException(nameof(NumCopies));
 }

@@ -140,17 +140,19 @@ public class SuggestModel : PageModel
 
     private IQueryable<Deck> DecksForSuggest(Card card, UserRef receiver)
     {
-        var userDecks = _dbContext.Decks
+        IQueryable<Deck> userDecks;
+
+        userDecks = _dbContext.Decks
             .Where(l => l.OwnerId == receiver.Id);
 
-        var withoutAmounts = DecksWithoutAmounts(userDecks, card, receiver);
-        var withoutWants = DecksWithoutWants(withoutAmounts, card, receiver);
+        userDecks = DecksWithoutAmounts(userDecks, card, receiver);
+        userDecks = DecksWithoutWants(userDecks, card, receiver);
 
-        var withoutSuggests = DecksWithoutSuggests(withoutWants, card, receiver);
-        var withoutTrades = DecksWithoutTrades(withoutSuggests, card, receiver);
+        userDecks = DecksWithoutSuggests(userDecks, card, receiver);
+        userDecks = DecksWithoutTrades(userDecks, card, receiver);
 
         // unbounded, keep eye on
-        return withoutTrades
+        return userDecks
             .OrderBy(d => d.Name)
             .AsSplitQuery()
             .AsNoTrackingWithIdentityResolution();

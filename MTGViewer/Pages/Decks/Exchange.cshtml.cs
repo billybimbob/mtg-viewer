@@ -23,6 +23,7 @@ public class ExchangeModel : PageModel
 {
     private readonly CardDbContext _dbContext;
     private readonly ITreasury _treasury;
+    private readonly ITreasuryQuery _treasuryQuery;
     private readonly UserManager<CardUser> _userManager;
 
     private readonly CardText _cardText;

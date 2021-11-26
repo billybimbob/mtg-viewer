@@ -32,6 +32,51 @@ public class TreasuryQueryTests : IAsyncLifetime
     public Task DisposeAsync() => _testGen.ClearAsync();
 
 
+    private Task<int> GetTotalCopiesAsync() =>
+        _dbContext.Amounts.SumAsync(amt => amt.NumCopies);
+
+    private Task<int[]> GetAmountIdsAsync() =>
+        _dbContext.Amounts.Select(ca => ca.Id).ToArrayAsync();
+
+
+    private async Task RemoveCardCopiesAsync(Card card)
+    {
+        var boxCards = await _dbContext.Amounts
+            .Where(ca => ca.Location is Box && ca.Card.Name == card.Name)
+            .ToListAsync();
+
+        _dbContext.RemoveRange(boxCards);
+
+        await _dbContext.SaveChangesAsync();
+
+        _dbContext.ChangeTracker.Clear();
+    }
+
+
+    private async Task ApplyChangesAsync(IEnumerable<Amount> changes)
+    {
+        try
+        {
+            _dbContext.Amounts.UpdateRange(changes);
+
+            await _dbContext.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException e)
+        {
+            // issue with InMemory db saving added amounts as existing
+
+            var added = e.Entries
+                .Where(e => e.Entity is Amount)
+                .Select(e => e.Entity)
+                .Cast<Amount>();
+
+            _dbContext.Amounts.AddRange(added);
+
+            await _dbContext.SaveChangesAsync();
+        }
+    }
+
+
     [Fact]
     public async Task FindCheckout_NullRequests_Throws()
     {
@@ -75,19 +120,11 @@ public class TreasuryQueryTests : IAsyncLifetime
             .Select(ca => ca.Card)
             .FirstAsync();
 
-        var boxCards = await _dbContext.Amounts
-            .Where(ca => ca.Location is Box && ca.Card.Name == card.Name)
-            .ToListAsync();
+        await RemoveCardCopiesAsync(card);
 
-        _dbContext.RemoveRange(boxCards);
+        var checkouts = await _treasuryQuery.FindCheckoutAsync(card, amount);
 
-        await _dbContext.SaveChangesAsync();
-
-        _dbContext.ChangeTracker.Clear();
-
-        var results = await _treasuryQuery.FindCheckoutAsync(card, amount);
-
-        Assert.Empty(results);
+        Assert.Empty(checkouts);
     }
 
 
@@ -119,23 +156,27 @@ public class TreasuryQueryTests : IAsyncLifetime
             .Where(ca => ca.Location is Box && ca.Card.Name == card.Name)
             .SumAsync(ca => ca.NumCopies);
 
-        var incompleteCopies = totalAmount + unfulfilled;
+        int incompleteCopies = totalAmount + unfulfilled;
+        int totalBefore = await GetTotalCopiesAsync();
 
-        var results = await _treasuryQuery.FindCheckoutAsync(card, incompleteCopies);
+        var checkouts = await _treasuryQuery.FindCheckoutAsync(card, incompleteCopies);
 
-        var boxIds = results
-            .Select(ex => ex.AmountId)
+        var amountIds = checkouts
+            .Select(amt => amt.Id)
             .ToArray();
 
         var cardNames = await _dbContext.Amounts
-            .Where(ca => boxIds.Contains(ca.Id))
+            .Where(ca => amountIds.Contains(ca.Id))
             .Select(ca => ca.Card.Name)
             .ToListAsync();
+
+        await ApplyChangesAsync(checkouts);
+        int totalAfter = await GetTotalCopiesAsync();
 
         Assert.All(cardNames, name => 
             Assert.Equal(card.Name, name));
 
-        Assert.Equal(totalAmount, results.Sum(rr => rr.NumCopies));
+        Assert.Equal(totalAmount, totalBefore - totalAfter);
     }
 
 
@@ -148,25 +189,20 @@ public class TreasuryQueryTests : IAsyncLifetime
             .AsNoTracking()
             .FirstAsync();
 
-        var totalAmount = await _dbContext.Amounts
+        int totalAmount = await _dbContext.Amounts
             .Where(ca => ca.Location is Box && ca.CardId == card.Id)
             .SumAsync(ca => ca.NumCopies);
 
-        var results = await _treasuryQuery.FindCheckoutAsync(card, totalAmount);
+        int totalBefore = await GetTotalCopiesAsync();
+        var checkouts = await _treasuryQuery.FindCheckoutAsync(card, totalAmount);
 
-        var boxIds = results
-            .Select(ex => ex.AmountId)
-            .ToArray();
+        await ApplyChangesAsync(checkouts);
+        int totalAfter = await GetTotalCopiesAsync();
 
-        var cardIds = await _dbContext.Amounts
-            .Where(ca => boxIds.Contains(ca.Id))
-            .Select(ca => ca.CardId)
-            .ToListAsync();
+        Assert.All(checkouts, amt =>
+            Assert.Equal(card.Id, amt.CardId));
 
-        Assert.All(cardIds, id =>
-            Assert.Equal(card.Id, id));
-
-        Assert.Equal(totalAmount, results.Sum(ex => ex.NumCopies));
+        Assert.Equal(totalAmount, totalBefore - totalAfter);
     }
 
 
@@ -204,7 +240,7 @@ public class TreasuryQueryTests : IAsyncLifetime
 
 
     [Fact]
-    public async Task FindReturn_NewCard_OnlyExtension()
+    public async Task FindReturn_NewCard_OnlyNew()
     {
         const int amount = 2;
 
@@ -213,34 +249,31 @@ public class TreasuryQueryTests : IAsyncLifetime
             .Select(ca => ca.Card)
             .FirstAsync();
 
-        var boxCards = await _dbContext.Amounts
-            .Where(ca => ca.Location is Box && ca.Card.Name == card.Name)
-            .ToListAsync();
+        await RemoveCardCopiesAsync(card);
 
-        _dbContext.RemoveRange(boxCards);
+        var additions = await _treasuryQuery.FindReturnAsync(card, amount);
 
-        await _dbContext.SaveChangesAsync();
+        var addIds = additions
+            .Select(add => add.Id)
+            .ToArray();
 
-        _dbContext.ChangeTracker.Clear();
+        bool anyExist = await _dbContext.Amounts
+            .AnyAsync(ca => addIds.Contains(ca.Id));
 
-        var results = await _treasuryQuery.FindReturnAsync(card, amount);
+        int newTotal = additions.Sum(amt => amt.NumCopies);
 
-        var additions = results
-            .OfType<Extension>()
-            .ToList();
-
-        Assert.All(results, result =>
-            Assert.IsType<Extension>(result));
-
-        Assert.Equal(amount, additions.Sum(add => add.NumCopies));
+        Assert.NotEmpty(additions);
+        Assert.False(anyExist);
 
         Assert.All(additions, add =>
             Assert.Equal(card.Id, add.CardId));
+
+        Assert.Equal(amount, newTotal);
     }
 
 
     [Fact]
-    public async Task FindReturn_ExistingWithCapcity_OnlyAddition()
+    public async Task FindReturn_ExistingWithCapcity_OnlyExisting()
     {
         var card = await _dbContext.Amounts
             .Where(ca => ca.Location is Box)
@@ -253,28 +286,26 @@ public class TreasuryQueryTests : IAsyncLifetime
             .Select(b => b.Capacity - b.Cards.Sum(amt => amt.NumCopies))
             .SumAsync();
 
-        var results = await _treasuryQuery.FindReturnAsync(card, remainingSpace);
+        int totalBefore = await GetTotalCopiesAsync();
+        var dbIds = await GetAmountIdsAsync();
 
-        var addition = results
-            .OfType<Addition>()
-            .ToList();
+        var additions = await _treasuryQuery.FindReturnAsync(card, remainingSpace);
 
-        var addAmtIds = addition
-            .Select(ext => ext.AmountId)
-            .ToArray();
+        bool anyNew = additions
+            .ExceptBy(dbIds, add => add.Id)
+            .Any();
 
-        var addCardIds = await _dbContext.Amounts
-            .Where(ca => addAmtIds.Contains(ca.Id))
-            .Select(ca => ca.CardId)
-            .ToListAsync();
+        await ApplyChangesAsync(additions);
 
-        Assert.All(results, result =>
-            Assert.IsType<Addition>(result));
+        int totalAfter = await GetTotalCopiesAsync();
 
-        Assert.Equal(remainingSpace, addition.Sum(ext => ext.NumCopies));
+        Assert.NotEmpty(additions);
+        Assert.False(anyNew);
 
-        Assert.All(addCardIds, cardId =>
-            Assert.Equal(card.Id, cardId));
+        Assert.All(additions, amt =>
+            Assert.Equal(card.Id, amt.CardId));
+
+        Assert.Equal(remainingSpace, totalAfter - totalBefore);
     }
 
 
@@ -296,32 +327,23 @@ public class TreasuryQueryTests : IAsyncLifetime
 
         int requestAmount = remainingSpace + modAmount;
 
-        var results = await _treasuryQuery.FindReturnAsync(card, requestAmount);
+        int totalBefore = await GetTotalCopiesAsync();
+        var dbIds = await GetAmountIdsAsync();
 
-        var extension = results
-            .OfType<Extension>()
-            .ToList();
+        var additions = await _treasuryQuery.FindReturnAsync(card, requestAmount);
 
-        var addition = results
-            .OfType<Addition>()
-            .ToList();
+        int newTotal = additions
+            .ExceptBy(dbIds, add => add.Id)
+            .Sum(amt => amt.NumCopies);
 
-        var addAmtIds = addition
-            .Select(ext => ext.AmountId)
-            .ToArray();
+        await ApplyChangesAsync(additions);
 
-        var addCardIds = await _dbContext.Amounts
-            .Where(ca => addAmtIds.Contains(ca.Id))
-            .Select(ca => ca.CardId)
-            .ToListAsync();
+        int totalAfter = await GetTotalCopiesAsync();
 
-        Assert.All(addCardIds, cardId =>
-            Assert.Equal(card.Id, cardId));
+        Assert.All(additions, amt =>
+            Assert.Equal(card.Id, amt.CardId));
 
-        Assert.All(extension, ext =>
-            Assert.Equal(card.Id, ext.CardId));
-
-        Assert.Equal(remainingSpace, addition.Sum(add => add.NumCopies));
-        Assert.Equal(modAmount, extension.Sum(ext => ext.NumCopies));
+        Assert.Equal(modAmount, newTotal);
+        Assert.Equal(requestAmount, totalAfter - totalBefore);
     }
 }
