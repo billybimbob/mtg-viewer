@@ -17,12 +17,12 @@ public class IndexModel : PageModel
 {
     private readonly int _pageSize;
     private readonly SignInManager<CardUser> _signInManager;
-    private readonly ITreasury _treasury;
+    private readonly ITreasuryQuery _treasury;
 
     public IndexModel(
         PageSizes pageSizes, 
         SignInManager<CardUser> signInManager, 
-        ITreasury treasury)
+        ITreasuryQuery treasury)
     {
         _pageSize = pageSizes.GetSize<IndexModel>();
         _signInManager = signInManager;
@@ -90,31 +90,31 @@ public class IndexModel : PageModel
     }
 
 
-    public async Task<IActionResult> OnPostOptimizeAsync()
-    {
-        if (!IsSignedIn)
-        {
-            return NotFound();
-        }
+    // public async Task<IActionResult> OnPostOptimizeAsync()
+    // {
+    //     if (!IsSignedIn)
+    //     {
+    //         return NotFound();
+    //     }
 
-        try
-        {
-            var transaction = await _treasury.OptimizeAsync();
+    //     try
+    //     {
+    //         var transaction = await _treasury.OptimizeAsync();
 
-            if (transaction is null)
-            {
-                PostMessage = "No optimizations could be made";
-            }
-            else
-            {
-                PostMessage = "Successfully applied optimizations to storage";
-            }
-        }
-        catch (DbUpdateException)
-        {
-            PostMessage = "Ran into issue while trying to optimize the storage";
-        }
+    //         if (transaction is null)
+    //         {
+    //             PostMessage = "No optimizations could be made";
+    //         }
+    //         else
+    //         {
+    //             PostMessage = "Successfully applied optimizations to storage";
+    //         }
+    //     }
+    //     catch (DbUpdateException)
+    //     {
+    //         PostMessage = "Ran into issue while trying to optimize the storage";
+    //     }
 
-        return RedirectToPage();
-    }
+    //     return RedirectToPage();
+    // }
 }

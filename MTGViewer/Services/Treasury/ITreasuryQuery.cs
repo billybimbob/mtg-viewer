@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -10,7 +11,7 @@ namespace MTGViewer.Services;
 
 
 /// <summary>
-/// Searches the Treasury to finds positions where to add or remove cards
+/// Searches the Treasury to find positions where to add or remove cards
 /// </summary>
 public interface ITreasuryQuery
 {
@@ -41,7 +42,7 @@ public interface ITreasuryQuery
     /// </returns>
     /// <exception cref="ArgumentNullException"></exception>
     /// <exception cref="OperationCanceledException"></exception>
-    Task<IReadOnlyList<Amount>> FindCheckoutAsync(
+    Task<RequestResult> FindCheckoutAsync(
         IEnumerable<CardRequest> requests,
         CancellationToken cancel = default);
 
@@ -58,7 +59,7 @@ public interface ITreasuryQuery
     /// </returns>
     /// <exception cref="ArgumentNullException"></exception>
     /// <exception cref="OperationCanceledException"></exception>
-    Task<IReadOnlyList<Amount>> FindReturnAsync(
+    Task<RequestResult> FindReturnAsync(
         IEnumerable<CardRequest> requests, 
         CancellationToken cancel = default);
 }
@@ -66,7 +67,7 @@ public interface ITreasuryQuery
 
 public static class TreasuryQueryExtensions
 {
-    public static Task<IReadOnlyList<Amount>> FindCheckoutAsync(
+    public static Task<RequestResult> FindCheckoutAsync(
         this ITreasuryQuery treasury, 
         Card card, int numCopies, 
         CancellationToken cancel = default)
@@ -82,7 +83,7 @@ public static class TreasuryQueryExtensions
     }
 
 
-    public static Task<IReadOnlyList<Amount>> FindReturnAsync(
+    public static Task<RequestResult> FindReturnAsync(
         this ITreasuryQuery treasury,
         Card card, int numCopies, CancellationToken cancel = default)
     {
@@ -103,14 +104,7 @@ public static class TreasuryQueryExtensions
 /// </summary>
 public record CardRequest(Card Card, int NumCopies)
 {
-    private Card _card = CardOrThrow(Card);
-    private int _numCopies = NotNegativeOrThrow(NumCopies);
-
-    public Card Card 
-    {
-        get => _card; 
-        init => _card = CardOrThrow(value);
-    }
+    public Card Card { get; } = CardOrThrow(Card);
 
     public int NumCopies
     {
@@ -118,9 +112,51 @@ public record CardRequest(Card Card, int NumCopies)
         set => _numCopies = NotNegativeOrThrow(value);
     }
 
+    private int _numCopies = NotNegativeOrThrow(NumCopies);
+
     private static Card CardOrThrow(Card card) =>
         card ?? throw new ArgumentNullException(nameof(Card));
 
     private static int NotNegativeOrThrow(int copies) =>
         copies >= 0 ? copies : throw new ArgumentException(nameof(NumCopies));
+}
+
+
+/// <summary>
+/// The modified Treasury amounts including the original copy values
+/// </summary>
+public record RequestResult(IReadOnlyList<Amount> Changes, IReadOnlyDictionary<int, int> OriginalCopies)
+{
+    private static readonly Lazy<RequestResult> _empty = new(() => 
+        new RequestResult(
+            Array.Empty<Amount>(), ImmutableDictionary<int,int>.Empty));
+
+    public static RequestResult Empty => _empty.Value;
+
+    public IReadOnlyList<Amount> Changes { get; } = Changes;
+    public IReadOnlyDictionary<int,int> OriginalCopies { get; } = OriginalCopies;
+}
+
+
+
+public static class DbTrackingExtensions
+{
+    public static void AttachResult(this CardDbContext dbContext, RequestResult result)
+    {
+        var (changes, originals) = result;
+
+        dbContext.Amounts.AttachRange(changes);
+
+        foreach (Amount change in changes)
+        {
+            if (originals.TryGetValue(change.Id, out int oldCopies))
+            {
+                var copyProperty = dbContext
+                    .Entry(change)
+                    .Property(a => a.NumCopies);
+
+                copyProperty.OriginalValue = oldCopies;
+            }
+        }
+    }
 }

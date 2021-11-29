@@ -11,6 +11,7 @@ using MTGViewer.Data;
 
 namespace MTGViewer.Services;
 
+
 internal class SeedSettings
 {
     public int Value { get; set; } = 100;
@@ -26,14 +27,12 @@ public class CardDataGenerator
     private readonly MTGFetchService _fetch;
 
     private readonly CardDbContext _dbContext;
-    private readonly ITreasury _treasury;
     private readonly UserManager<CardUser> _userManager;
 
     public CardDataGenerator(
         IConfiguration config,
         MTGFetchService fetchService,
         CardDbContext dbContext,
-        ITreasury treasury,
         UserManager<CardUser> userManager)
     {
         var seed = new SeedSettings();
@@ -45,7 +44,6 @@ public class CardDataGenerator
         _fetch = fetchService;
 
         _dbContext = dbContext;
-        _treasury = treasury;
         _userManager = userManager;
     }
 
@@ -59,7 +57,7 @@ public class CardDataGenerator
         var decks = GetDecks(userRefs);
         var boxes = GetBoxes();
 
-        var boxAmounts = GetBoxAmounts(cards);
+        var boxAmounts = GetBoxAmounts(cards, boxes);
         var deckAmounts = GetDeckAmounts(cards, decks);
 
         var trades = GetTrades(userRefs, cards, decks, deckAmounts);
@@ -72,13 +70,12 @@ public class CardDataGenerator
         _dbContext.Boxes.AddRange(boxes);
 
         _dbContext.Amounts.AddRange(deckAmounts);
+        _dbContext.Amounts.AddRange(boxAmounts);
 
         _dbContext.Suggestions.AddRange(suggestions);
         _dbContext.Trades.AddRange(trades);
 
         await _dbContext.SaveChangesAsync(cancel);
-
-        await _treasury.ReturnAsync(boxAmounts);
 
         // TODO: fix created accounts not being verified
         var results = await Task.WhenAll(
@@ -169,10 +166,17 @@ public class CardDataGenerator
     }
 
 
-    private IReadOnlyList<CardReturn> GetBoxAmounts(IEnumerable<Card> cards)
+    private IReadOnlyList<Amount> GetBoxAmounts(
+        IEnumerable<Card> cards,
+        IReadOnlyList<Box> boxes)
     {
         return cards
-            .Select(card => new CardReturn(card, _random.Next(1, 6)))
+            .Select(card => new Amount
+            {
+                Card = card, 
+                Location = boxes[_random.Next(boxes.Count)],
+                NumCopies = _random.Next(1, 6)
+            })
             .ToList();
     }
 

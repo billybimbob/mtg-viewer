@@ -45,7 +45,7 @@ public class Startup
                 break;
         }
 
-        services.AddScoped<ITreasury, FlatVariableStorage>();
+        // services.AddScoped<ITreasury, FlatVariableStorage>();
         services.AddScoped<ITreasuryQuery, SortedPartitionTreasury>();
         services.AddScoped<UserManager<CardUser>>(TestFactory.CardUserManager);
 

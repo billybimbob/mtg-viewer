@@ -44,7 +44,7 @@ public class SortedPartitionTreasury : ITreasuryQuery, IDisposable
 
     #region Checkout
 
-    public async Task<IReadOnlyList<Amount>> FindCheckoutAsync(
+    public async Task<RequestResult> FindCheckoutAsync(
         IEnumerable<CardRequest> requests, 
         CancellationToken cancel = default)
     {
@@ -52,7 +52,7 @@ public class SortedPartitionTreasury : ITreasuryQuery, IDisposable
 
         if (!requests.Any())
         {
-            return Array.Empty<Amount>();
+            return RequestResult.Empty;
         }
 
         await _lock.WaitAsync(cancel);
@@ -104,7 +104,13 @@ public class SortedPartitionTreasury : ITreasuryQuery, IDisposable
             .Distinct()
             .ToArray();
 
+        var requestCards = requests
+            .Select(cr => cr.Card);
+
+        _dbContext.Cards.AttachRange(requestCards);
+
         // track requests for modifications
+        // and to keep original Card since it should not be modified
 
         return _dbContext.Amounts
             .Where(ca => ca.Location is Box
@@ -119,45 +125,41 @@ public class SortedPartitionTreasury : ITreasuryQuery, IDisposable
     }
 
 
-    private IReadOnlyList<Amount> GetCheckouts(
+    private RequestResult GetCheckouts(
         IReadOnlyList<Amount> targets, IEnumerable<CardRequest> checkouts)
     {
         if (!targets.Any())
         {
-            return Array.Empty<Amount>();
+            return RequestResult.Empty;
         }
 
         ApplyExactCheckouts(targets, checkouts);
         ApplyApproxCheckouts(targets, checkouts);
 
-        return GetUpdatedAmounts();
+        var updated = UpdatedAmounts().ToList();
+
+        return AsResult(updated);
     }
 
 
-    private static IReadOnlyList<CardRequest> ApplyExactCheckouts(
-        IEnumerable<Amount> targets,
-        IEnumerable<CardRequest> checkouts)
+    private static void ApplyExactCheckouts(
+        IEnumerable<Amount> targets, IEnumerable<CardRequest> checkouts)
     {
-        var unfinished = new List<CardRequest>();
-
         var exactMatches = checkouts
             .GroupJoin( targets,
                 req => req.Card.Id,
                 tar => tar.CardId,
                 (request, matches) => (request, matches));
 
-        foreach ((CardRequest request, IEnumerable<Amount> matches) in exactMatches)
+        foreach (var (request, matches) in exactMatches)
         {
             ApplyTargetRequests(request, matches);
         }
-
-        return unfinished;
     }
 
 
     private static void ApplyApproxCheckouts(
-        IEnumerable<Amount> targets,
-        IEnumerable<CardRequest> checkouts)
+        IEnumerable<Amount> targets, IEnumerable<CardRequest> checkouts)
     {
         var checkoutsByName = checkouts
             .Where(req => req.NumCopies > 0)
@@ -181,14 +183,15 @@ public class SortedPartitionTreasury : ITreasuryQuery, IDisposable
                 matches => matches.Name,
                 (check, matches) => (check, matches));
 
-        foreach ((CardRequest request, CardNameGroup matches) in approxMatches)
+        foreach (var (request, matches) in approxMatches)
         {
             ApplyTargetRequests(request, matches);
         }
     }
 
 
-    private static void ApplyTargetRequests(CardRequest request, IEnumerable<Amount> targets)
+    private static void ApplyTargetRequests(
+        CardRequest request, IEnumerable<Amount> targets)
     {
         using var targetIter = targets.GetEnumerator();
 
@@ -210,24 +213,40 @@ public class SortedPartitionTreasury : ITreasuryQuery, IDisposable
     #endregion
 
 
-    public IReadOnlyList<Amount> GetUpdatedAmounts()
-    {
-        var tracker = _dbContext.ChangeTracker;
-
-        var amounts = tracker.Entries<Amount>()
+    private IEnumerable<Amount> UpdatedAmounts() =>
+        _dbContext.ChangeTracker
+            .Entries<Amount>()
             .Where(e => e.State != EntityState.Unchanged)
             .Select(e => e.Entity)
-            .ToList();
+            .Where(a => a.Location is Box);
 
-        tracker.Clear();
 
-        return amounts;
+    private RequestResult AsResult(IReadOnlyList<Amount> amounts)
+    {
+        if (!amounts.Any())
+        {
+            _dbContext.ChangeTracker.Clear();
+
+            return RequestResult.Empty;
+        }
+
+        var originalCopies = amounts
+            .Select(a => _dbContext.Entry(a))
+            .Where(e => e.State == EntityState.Modified)
+            .Select(e => 
+                (e.Entity.Id, e.Property(a => a.NumCopies).OriginalValue))
+            .ToDictionary(
+                io => io.Id, io => io.OriginalValue);
+
+        _dbContext.ChangeTracker.Clear();
+
+        return new RequestResult(amounts, originalCopies);
     }
 
 
     #region Return
 
-    public async Task<IReadOnlyList<Amount>> FindReturnAsync(
+    public async Task<RequestResult> FindReturnAsync(
         IEnumerable<CardRequest> requests, 
         CancellationToken cancel = default)
     {
@@ -235,14 +254,14 @@ public class SortedPartitionTreasury : ITreasuryQuery, IDisposable
 
         if (!requests.Any())
         {
-            return Array.Empty<Amount>();
+            return RequestResult.Empty;
         }
 
         await _lock.WaitAsync(cancel);
 
         try
         {
-            var sortedBoxes = await SortedBoxesAsync(cancel); 
+            var sortedBoxes = await SortedBoxesAsync(requests, cancel); 
 
             return GetReturns(sortedBoxes, requests);
         }
@@ -286,25 +305,32 @@ public class SortedPartitionTreasury : ITreasuryQuery, IDisposable
     }
 
 
-    private Task<List<Box>> SortedBoxesAsync(CancellationToken cancel) =>
+    private Task<List<Box>> SortedBoxesAsync(
+        IEnumerable<CardRequest> requests, CancellationToken cancel)
+    {
+        var requestCards = requests
+            .Select(cr => cr.Card);
+
+        _dbContext.AttachRange(requestCards);
+
         // loading all shared cards, could be memory inefficient
         // TODO: find more efficient way to determining card position
         // unbounded: keep eye on
 
-        _dbContext.Boxes
+        return _dbContext.Boxes
             .Include(b => b.Cards)
                 .ThenInclude(ca => ca.Card)
             .OrderBy(s => s.Id)
             .ToListAsync(cancel);
+    }
 
 
-    private IReadOnlyList<Amount> GetReturns(
-        IReadOnlyList<Box> sortedBoxes,
-        IEnumerable<CardRequest> returns)
+    private RequestResult GetReturns(
+        IReadOnlyList<Box> sortedBoxes, IEnumerable<CardRequest> returns)
     {
         if (!sortedBoxes.Any())
         {
-            return Array.Empty<Amount>();
+            return RequestResult.Empty;
         }
 
         var state = new ReturnState(sortedBoxes);
@@ -312,7 +338,11 @@ public class SortedPartitionTreasury : ITreasuryQuery, IDisposable
         ApplyExistingReturns(state, returns);
         ApplyNewReturns(state, returns);
 
-        return GetUpdatedAmounts();
+        var allReturns = UpdatedAmounts()
+            .Concat(state.AddedAmounts)
+            .ToList();
+
+        return AsResult(allReturns);
     }
 
 
@@ -335,8 +365,14 @@ public class SortedPartitionTreasury : ITreasuryQuery, IDisposable
         }
 
         public IReadOnlyList<Box> SortedBoxes { get; }
+
         public IReadOnlyList<Amount> SortedAmounts { get; }
+
         public IReadOnlyDictionary<int, int> BoxSpace => _boxSpace;
+
+
+        public IEnumerable<Amount> AddedAmounts =>
+            _amountMap.Values.Except( SortedAmounts );
 
 
         private static List<Amount> GetSortedAmounts(IEnumerable<Box> boxes) =>
@@ -359,17 +395,62 @@ public class SortedPartitionTreasury : ITreasuryQuery, IDisposable
         }
 
 
-        public Amount GetAmount(string cardId, int boxId) => 
-            _amountMap[(cardId, boxId)];
+        public void Update(Card card, Box box, int addedCopies)
+        {
+            int boxId = box.Id;
+            var index = new QuantityIndex(card.Id, boxId);
 
-        public void AddToBox(int boxId, int numCopies) =>
+            if (!_amountMap.ContainsKey(index))
+            {
+                throw new ArgumentException($"{nameof(card)} and {nameof(box)}");
+            }
+
+            if (!_boxSpace.ContainsKey(boxId))
+            {
+                throw new ArgumentException(nameof(box));
+            }
+
+            _amountMap[index].NumCopies += addedCopies;
+            _boxSpace[boxId] += addedCopies;
+        }
+
+
+        public void Add(Card card, Box box, int numCopies)
+        {
+            string cardId = card.Id;
+            int boxId = box.Id;
+            var index = new QuantityIndex(cardId, boxId);
+
+            if (_amountMap.ContainsKey(index))
+            {
+                throw new ArgumentException($"{nameof(card)} and {nameof(box)}");
+            }
+
+            if (!_boxSpace.ContainsKey(boxId))
+            {
+                throw new ArgumentException(nameof(box));
+            }
+
+            // avoid tracking the added amount so that the
+            // primary key will not be set
+            // there is also no prop fixup, so all props fully specified
+
+            _amountMap[index] = new Amount
+            {
+                CardId = cardId,
+                Card = card,
+                LocationId = boxId,
+                Location = box,
+                NumCopies = numCopies
+            };
+
             _boxSpace[boxId] += numCopies;
+        }
     }
 
 
     private static void ApplyExistingReturns(
-        ReturnState state,
-        IEnumerable<CardRequest> requests)
+        ReturnState state, IEnumerable<CardRequest> requests)
     {
         var (_, sortedAmounts, boxSpace) = state;
 
@@ -379,31 +460,28 @@ public class SortedPartitionTreasury : ITreasuryQuery, IDisposable
 
         foreach (CardRequest request in requests)
         {
-            string cardId = request.Card.Id;
+            (Card card, int numCopies) = request;
+            var possibleBoxes = existingSpots[card.Id];
 
-            if (!existingSpots.Contains(cardId))
+            if (!possibleBoxes.Any())
             {
                 continue;
             }
 
-            var possibleBoxes = existingSpots[cardId];
-            var splitToBoxes = FitToBoxes(possibleBoxes, boxSpace, request.NumCopies);
+            var splitToBoxes = FitToBoxes(possibleBoxes, boxSpace, numCopies);
 
-            foreach ((int boxId, int splitCopies) in splitToBoxes)
+            foreach ((Box box, int splitCopies) in splitToBoxes)
             {
-                var amount = state.GetAmount(cardId, boxId);
-
+                state.Update(card, box, splitCopies);
                 // changes will cascade to the split iter via boxSpace
-                state.AddToBox(boxId, splitCopies);
 
-                amount.NumCopies += splitCopies;
                 request.NumCopies -= splitCopies;
             }
         }
     }
 
 
-    private static IEnumerable<(int BoxId, int NumCopies)> FitToBoxes(
+    private static IEnumerable<(Box, int)> FitToBoxes(
         IEnumerable<Box> boxes,
         IReadOnlyDictionary<int, int> boxSpace,
         int cardsToAssign)
@@ -420,7 +498,7 @@ public class SortedPartitionTreasury : ITreasuryQuery, IDisposable
                 continue;
             }
 
-            yield return (box.Id, newNumCopies);
+            yield return (box, newNumCopies);
 
             cardsToAssign -= newNumCopies;
 
@@ -433,37 +511,25 @@ public class SortedPartitionTreasury : ITreasuryQuery, IDisposable
 
 
     private void ApplyNewReturns(
-        ReturnState returnState,
-        IEnumerable<CardRequest> returns)
+        ReturnState returnState, IEnumerable<CardRequest> returns)
     {
         var boxSearch = new BoxSearcher(returnState);
         var boxSpace = returnState.BoxSpace;
 
-        foreach ((Card returning, int numCopies) in returns)
+        foreach ((Card card, int numCopies) in returns)
         {
             if (numCopies == 0)
             {
                 continue;
             }
 
-            string cardId = returning.Id;
-
-            var boxOptions = boxSearch.FindBestBoxes(returning);
+            var boxOptions = boxSearch.FindBestBoxes(card);
             var splitToBoxes = FitAllToBoxes(boxOptions, boxSpace, numCopies);
 
-            foreach ((int boxId, int splitCopies) in splitToBoxes)
+            foreach ((Box box, int splitCopies) in splitToBoxes)
             {
                 // returnState changes will cascade to the split iter via boxSpace
-                returnState.AddToBox(boxId, splitCopies);
-
-                var newAmount = new Amount
-                {
-                    CardId = cardId,
-                    LocationId = boxId,
-                    NumCopies = splitCopies
-                };
-
-                _dbContext.Amounts.Attach(newAmount);
+                returnState.Add(card, box, splitCopies);
             }
         }
     }
@@ -544,7 +610,7 @@ public class SortedPartitionTreasury : ITreasuryQuery, IDisposable
     }
 
 
-    private static IEnumerable<(int BoxId, int NumCopies)> FitAllToBoxes(
+    private static IEnumerable<(Box, int)> FitAllToBoxes(
         IEnumerable<Box> boxes,
         IReadOnlyDictionary<int, int> boxSpace,
         int cardsToAssign)
@@ -553,9 +619,11 @@ public class SortedPartitionTreasury : ITreasuryQuery, IDisposable
 
         foreach (var fit in fitInBoxes)
         {
-            cardsToAssign -= fit.NumCopies;
-
             yield return fit;
+
+            (_, int numCopies) = fit;
+
+            cardsToAssign -= numCopies;
 
             if (cardsToAssign == 0)
             {
@@ -565,7 +633,7 @@ public class SortedPartitionTreasury : ITreasuryQuery, IDisposable
 
         var last = boxes.Last();
 
-        yield return (last.Id, cardsToAssign);
+        yield return (last, cardsToAssign);
     }
 
 

@@ -22,18 +22,19 @@ public class DeleteModel : PageModel
 {
     private readonly UserManager<CardUser> _userManager;
     private readonly CardDbContext _dbContext;
-    private readonly ITreasury _treasury;
+    private readonly ITreasuryQuery _treasuryQuery;
+
     private readonly ILogger<DeleteModel> _logger;
 
     public DeleteModel(
         UserManager<CardUser> userManager,
         CardDbContext dbContext,
-        ITreasury treasury,
+        ITreasuryQuery treasuryQuery,
         ILogger<DeleteModel> logger)
     {
         _userManager = userManager;
         _dbContext = dbContext;
-        _treasury = treasury;
+        _treasuryQuery = treasuryQuery;
         _logger = logger;
     }
 
@@ -50,7 +51,9 @@ public class DeleteModel : PageModel
 
     public async Task<IActionResult> OnGetAsync(int id)
     {
-        var deck = await DeckForDelete(id).SingleOrDefaultAsync();
+        var deck = await DeckForDelete(id)
+            .AsNoTrackingWithIdentityResolution()
+            .SingleOrDefaultAsync();
 
         if (deck == default)
         {
@@ -98,8 +101,7 @@ public class DeleteModel : PageModel
             .Include(d => d.TradesFrom)
                 .ThenInclude(t => t.To)
 
-            .AsSplitQuery()
-            .AsNoTrackingWithIdentityResolution();
+            .AsSplitQuery();
     }
 
 
@@ -128,37 +130,18 @@ public class DeleteModel : PageModel
 
     public async Task<IActionResult> OnPostAsync(int id)
     {
-        var userId = _userManager.GetUserId(User);
-
-        var deck = await _dbContext.Decks
-            .Include(d => d.Cards)
-                .ThenInclude(da => da.Card)
-            .FirstOrDefaultAsync(d =>
-                d.Id == id && d.OwnerId == userId);
+        var deck = await DeckForDelete(id)
+            .SingleOrDefaultAsync();
 
         if (deck == default)
         {
             return RedirectToPage("Index");
         }
 
-        var returningCards = deck.Cards
-            // no source, since deck is being deleted
-            .Select(a => new CardReturn(a.Card, a.NumCopies))
-            .ToList();
-
-        _dbContext.Amounts.RemoveRange(deck.Cards);
-        _dbContext.Wants.RemoveRange(deck.Wants);
-        _dbContext.GiveBacks.RemoveRange(deck.GiveBacks);
-
-        _dbContext.Decks.Remove(deck);
+        await ReturnCardsAsync(deck);
 
         try
         {
-            if (returningCards.Any())
-            {
-                await _treasury.ReturnAsync(returningCards);
-            }
-
             await _dbContext.SaveChangesAsync();
 
             PostMesssage = $"Successfully deleted {deck.Name}";
@@ -169,5 +152,40 @@ public class DeleteModel : PageModel
         }
 
         return RedirectToPage("Index");
+    }
+
+
+    private async Task ReturnCardsAsync(Deck deck)
+    {
+        if (!deck.Cards.Any())
+        {
+            return;
+        }
+
+        var returningCards = deck.Cards
+            .Select(a => new CardRequest(a.Card, a.NumCopies));
+
+        var returns = await _treasuryQuery.FindReturnAsync(returningCards);
+        var newTransaction = new Transaction();
+
+        _dbContext.AttachResult(returns);
+        _dbContext.Transactions.Add(newTransaction);
+
+        var (returnTargets, targetCopies) = returns;
+
+        var returnChanges = returnTargets
+            .Select(a => new Change
+            {
+                Card = a.Card,
+                To = a.Location,
+                // no From since deck is being deleted
+                Amount = a.NumCopies - targetCopies.GetValueOrDefault(a.Id),
+                Transaction = newTransaction
+            });
+
+        _dbContext.Changes.AddRange(returnChanges);
+
+        _dbContext.Amounts.RemoveRange(deck.Cards);
+        _dbContext.Decks.Remove(deck);
     }
 }

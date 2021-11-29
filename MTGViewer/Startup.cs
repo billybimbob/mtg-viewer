@@ -45,7 +45,7 @@ public class Startup
 
         services.AddScoped<MTGFetchService>();
 
-        services.AddScoped<ITreasury, FlatVariableStorage>();
+        // services.AddScoped<ITreasury, FlatVariableStorage>();
         services.AddScoped<ITreasuryQuery, SortedPartitionTreasury>();
         services.AddScoped<JsonCardStorage>();
 

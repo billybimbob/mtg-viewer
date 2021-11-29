@@ -554,7 +554,7 @@ else
 
         var addedAmounts = _matches
             .Where(kv => kv.Value > 0)
-            .Select(kv => (card: kv.Key, amount: kv.Value))
+            .Select(kv => new CardRequest(kv.Key, kv.Value))
             .ToList();
 
         if (!addedAmounts.Any())
@@ -562,15 +562,18 @@ else
             return;
         }
 
+        var dbContext = ScopedServices.GetRequiredService<CardDbContext>();
         var logger = ScopedServices.GetRequiredService<ILogger<Create>>();
 
         _isBusy = true;
 
         try
         {
-            await SaveNewCardsAsync(addedAmounts.Select(ca => ca.card));
+            await AddNewCardsAsync(dbContext, addedAmounts, _cancel.Token);
 
-            await AddAmountsAsync(addedAmounts);
+            await AddAmountsAsync(dbContext, addedAmounts, _cancel.Token);
+
+            await dbContext.SaveChangesAsync(_cancel.Token);
 
             Nav.NavigateTo("/Cards", true);
         }
@@ -590,40 +593,54 @@ else
     }
 
 
-    private async Task SaveNewCardsAsync(IEnumerable<Card> cards)
+    private async Task AddNewCardsAsync(
+        CardDbContext dbContext,
+        IEnumerable<CardRequest> requests,
+        CancellationToken cancel)
     {
-        var dbContext = ScopedServices.GetRequiredService<CardDbContext>();
-
-        var cardIds = cards.Select(c => c.Id).ToArray();
+        var cardIds = requests
+            .Select(req => req.Card.Id)
+            .ToArray();
 
         var existingIds = await dbContext.Cards
             .Select(c => c.Id)
             .Where(cid => cardIds.Contains(cid))
-            .ToListAsync(_cancel.Token);
+            .ToListAsync(cancel);
 
-        var newCards = cards
-            .ExceptBy(existingIds, c => c.Id)
-            .ToList();
-
-        if (!newCards.Any())
-        {
-            return;
-        }
+        var newCards = requests
+            .Select(req => req.Card)
+            .ExceptBy(existingIds, c => c.Id);
 
         dbContext.Cards.AddRange(newCards);
-
-        await dbContext.SaveChangesAsync(_cancel.Token);
     }
 
 
-    private async Task AddAmountsAsync(IEnumerable<(Card card, int amount)> newAmounts)
+    private async Task AddAmountsAsync(
+        CardDbContext dbContext,
+        IEnumerable<CardRequest> newAmounts,
+        CancellationToken cancel)
     {
-        var treasury = ScopedServices.GetRequiredService<ITreasury>();
+        var treasury = ScopedServices.GetRequiredService<ITreasuryQuery>();
 
-        var returns = newAmounts
-            .Select(ca => new CardReturn(ca.card, ca.amount))
-            .ToList();
+        var result = await treasury.FindReturnAsync(newAmounts, cancel);
+        var newTransaction = new Transaction();
 
-        await treasury.ReturnAsync(returns, _cancel.Token);
+        dbContext.AttachResult(result);
+        dbContext.Transactions.Add(newTransaction);
+
+        var (addTargets, targetCopies) = result;
+
+        var addChanges = addTargets
+            .IntersectBy(targetCopies.Keys, a => a.Id)
+            .Select(a => new Change
+            {
+                Card = a.Card,
+                To = a.Location,
+                // no from since deck is being deleted
+                Amount = a.NumCopies - targetCopies[a.Id],
+                Transaction = newTransaction
+            });
+
+        dbContext.Changes.AddRange(addChanges);
     }
 }

@@ -102,9 +102,9 @@ public class CardSetup : IHostedService
             await jsonStorage.WriteToJsonAsync(cancel: cancel);
         }
 
-        var treasury = scopeProvider.GetRequiredService<ITreasury>();
+        // var treasury = scopeProvider.GetRequiredService<ITreasury>();
 
-        await treasury.OptimizeAsync();
+        // await treasury.OptimizeAsync();
     }
 
 
