@@ -169,9 +169,9 @@ public class DeleteModel : PageModel
         var newTransaction = new Transaction();
 
         _dbContext.AttachResult(returns);
-        _dbContext.Transactions.Add(newTransaction);
+        _dbContext.Transactions.Attach(newTransaction);
 
-        var (returnTargets, targetCopies) = returns;
+        var (returnTargets, dbCopies) = returns;
 
         var returnChanges = returnTargets
             .Select(a => new Change
@@ -179,11 +179,11 @@ public class DeleteModel : PageModel
                 Card = a.Card,
                 To = a.Location,
                 // no From since deck is being deleted
-                Amount = a.NumCopies - targetCopies.GetValueOrDefault(a.Id),
+                Amount = a.NumCopies - dbCopies.GetValueOrDefault(a.Id),
                 Transaction = newTransaction
             });
 
-        _dbContext.Changes.AddRange(returnChanges);
+        _dbContext.Changes.AttachRange(returnChanges);
 
         _dbContext.Amounts.RemoveRange(deck.Cards);
         _dbContext.Decks.Remove(deck);

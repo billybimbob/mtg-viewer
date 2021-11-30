@@ -43,6 +43,8 @@ public class IndexModel : PageModel
         _logger = logger;
     }
 
+    [TempData]
+    public string? PostMessage { get; set; }
 
     public PagedList<Unclaimed> Unclaimed { get; private set; } = PagedList<Unclaimed>.Empty;
 
@@ -152,7 +154,9 @@ public class IndexModel : PageModel
         // replaced/updated
 
         var unclaimed = await _dbContext.Unclaimed
-            .AsNoTracking()
+            .Include(u => u.Cards)
+            .Include(u => u.Wants)
+            .AsSplitQuery()
             .SingleOrDefaultAsync(u => u.Id == id);
 
         if (unclaimed == default)
@@ -160,19 +164,29 @@ public class IndexModel : PageModel
             return NotFound();
         }
 
-        // should replace unclaimed since id remains the same
+        var claimed = new Deck
+        {
+            Name = unclaimed.Name,
+            Owner = user
+        };
 
-        var claimed = new Deck(unclaimed, user);
+        claimed.Cards.AddRange(unclaimed.Cards);
+        claimed.Wants.AddRange(unclaimed.Wants);
 
         _dbContext.Decks.Update(claimed);
+        _dbContext.Unclaimed.Remove(unclaimed);
 
         try
         {
             await _dbContext.SaveChangesAsync();
+
+            PostMessage = "Successfully claimed Deck";
         }
         catch (DbUpdateException e)
         {
             _logger.LogError($"ran into issue {e}");
+
+            PostMessage = "Ran into issue claiming Unclaimed Deck";
         }
 
         return RedirectToPage();
@@ -181,6 +195,11 @@ public class IndexModel : PageModel
 
     public async Task<IActionResult> OnPostRemoveAsync(int id)
     {
+        if (!_signInManager.IsSignedIn(User))
+        {
+            return NotFound();
+        }
+
         var unclaimed = await _dbContext.Unclaimed
             .Include(u => u.Cards)
             .Include(u => u.Wants)
@@ -191,17 +210,20 @@ public class IndexModel : PageModel
             return NotFound();
         }
 
-        _dbContext.Unclaimed.Remove(unclaimed);
         _dbContext.Amounts.RemoveRange(unclaimed.Cards);
-        _dbContext.Wants.RemoveRange(unclaimed.Wants);
+        _dbContext.Unclaimed.Remove(unclaimed);
 
         try
         {
             await _dbContext.SaveChangesAsync();
+
+            PostMessage = "Successfully removed Unclaimed Deck";
         }
         catch (DbUpdateException e)
         {
             _logger.LogError($"ran into error {e}");
+
+            PostMessage = "Ran into issue removing Unclaimed Deck";
         }
 
         return RedirectToPage();

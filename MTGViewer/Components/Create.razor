@@ -626,21 +626,21 @@ else
         var newTransaction = new Transaction();
 
         dbContext.AttachResult(result);
-        dbContext.Transactions.Add(newTransaction);
+        dbContext.Transactions.Attach(newTransaction);
 
-        var (addTargets, targetCopies) = result;
+        var (addTargets, oldCopies) = result;
 
         var addChanges = addTargets
-            .IntersectBy(targetCopies.Keys, a => a.Id)
+            .IntersectBy(oldCopies.Keys, a => a.Id)
             .Select(a => new Change
             {
                 Card = a.Card,
                 To = a.Location,
                 // no from since deck is being deleted
-                Amount = a.NumCopies - targetCopies[a.Id],
+                Amount = a.NumCopies - oldCopies[a.Id],
                 Transaction = newTransaction
             });
 
-        dbContext.Changes.AddRange(addChanges);
+        dbContext.Changes.AttachRange(addChanges);
     }
 }

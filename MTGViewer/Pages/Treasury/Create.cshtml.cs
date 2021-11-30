@@ -38,11 +38,15 @@ public class CreateModel : PageModel
 
     public async Task OnGetAsync()
     {
-        Bins = await _dbContext.Bins
+        Bins = await OrderedBinsAsync();
+    }
+
+
+    private Task<List<Bin>> OrderedBinsAsync() =>
+        _dbContext.Bins
             .OrderBy(b => b.Name)
             .AsNoTrackingWithIdentityResolution()
             .ToListAsync(); // unbounded: keep eye on
-    }
 
 
     public async Task<IActionResult> OnPostAsync()
@@ -50,42 +54,44 @@ public class CreateModel : PageModel
         if (Box is null)
         {
             ModelState.AddModelError(string.Empty, "Box model is not valid");
-            return Page();
+
+            return await PageWithBinsAsync();
         }
+
+        _dbContext.Boxes.Attach(Box);
 
         if (Box.BinId != default)
         {
-            var bin = await _dbContext.Bins.FindAsync(Box.BinId);
-
-            if (bin is null)
-            {
-                var binIdKey = $"{nameof(Box)}.{nameof(Box.BinId)}";
-                ModelState.AddModelError(binIdKey, "Bin specified is not valid");
-
-                return Page();
-            }
-
-            Box.Bin = bin;
+            await _dbContext.Entry(Box)
+                .Reference(b => b.Bin)
+                .LoadAsync();
         }
 
         ModelState.ClearValidationState(nameof(Box));
 
         if (!TryValidateModel(Box, nameof(Box)))
         {
-            return Page();
+            return await PageWithBinsAsync();
         }
-
-        _dbContext.Boxes.Attach(Box);
 
         try
         {
             await _dbContext.SaveChangesAsync();
+            return RedirectToPage("Index");
         }
         catch (DbUpdateException)
         {
-            PostMessage = "Ran into issue while creating new box";
-        }
+            ModelState.AddModelError(string.Empty, "Ran into issue while creating new box");
 
-        return RedirectToPage("Index");
+            return await PageWithBinsAsync();
+        }
+    }
+
+
+    private async Task<PageResult> PageWithBinsAsync()
+    {
+        Bins = await OrderedBinsAsync();
+
+        return Page();
     }
 }

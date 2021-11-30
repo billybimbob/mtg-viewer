@@ -166,7 +166,7 @@ public class TestDataGenerator
                     Location = deck
                 });
 
-            _dbContext.Amounts.AddRange(amounts);
+            _dbContext.Amounts.AttachRange(amounts);
             cardOptions.Add(card);
         }
 
@@ -264,7 +264,7 @@ public class TestDataGenerator
             });
         }
 
-        _dbContext.Trades.AddRange(trades);
+        _dbContext.Trades.AttachRange(trades);
 
         return trades;
     }
@@ -340,7 +340,7 @@ public class TestDataGenerator
             });
         }
 
-        _dbContext.Trades.AddRange(trades);
+        _dbContext.Trades.AttachRange(trades);
 
         return trades;
     }
@@ -536,5 +536,52 @@ public class TestDataGenerator
         _dbContext.ChangeTracker.Clear();
 
         return transaction;
+    }
+
+
+    public async Task<Unclaimed> CreateUnclaimedAsync(int numCards = 0)
+    {
+        var cards = await _dbContext.Cards.ToListAsync();
+
+        if (numCards <= 0)
+        {
+            numCards = _random.Next(1, cards.Count / 2);
+        }
+
+        var targetCards = cards
+            .Select(card => (card, key: _random.Next(cards.Count)))
+            .OrderBy(ck => ck.key)
+            .Take(numCards)
+            .Select(ck => ck.card)
+            .ToList();
+
+        var unclaimed = new Unclaimed();
+
+        var amounts = targetCards
+            .Take(_random.Next(1, targetCards.Count))
+            .Select(card => new Amount
+            {
+                Card = card,
+                Location = unclaimed,
+                NumCopies = _random.Next(1, 5)
+            });
+
+        var wants = targetCards
+            .Take(_random.Next(1, targetCards.Count))
+            .Select(card => new Want
+            {
+                Card = card,
+                Location = unclaimed,
+                NumCopies = _random.Next(1, 5)
+            });
+
+        _dbContext.Unclaimed.Attach(unclaimed);
+        _dbContext.Amounts.AttachRange(amounts);
+        _dbContext.Wants.AttachRange(wants);
+
+        await _dbContext.SaveChangesAsync();
+        _dbContext.ChangeTracker.Clear();
+
+        return unclaimed;
     }
 }

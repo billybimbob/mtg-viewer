@@ -114,7 +114,9 @@ else
                     <div class="row">
                         <legend class="col-form-label col-sm-3 pt-0"> Users </legend>
                         @{
-                            var split = Model.Users.Count / 2;
+                            var split = Model.Users.Count % 2 == 0
+                                ? Model.Users.Count / 2
+                                : Model.Users.Count / 2 + 1;
                         }
 
                         <div class="col-sm">

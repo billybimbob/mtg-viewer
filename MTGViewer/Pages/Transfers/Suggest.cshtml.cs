@@ -278,20 +278,14 @@ public class SuggestModel : PageModel
             return false;
         }
 
-        if (suggestion.ReceiverId == userId)
+        if (suggestion.ReceiverId is null || suggestion.CardId is null)
         {
-            PostMessage = "Suggestion cannot be sent to yourself";
             return false;
         }
 
-        var suggestPrior = await _dbContext.Suggestions
-            .AnyAsync(t => t.ReceiverId == suggestion.ReceiverId
-                && t.CardId == suggestion.CardId
-                && t.ToId == suggestion.ToId);
-
-        if (suggestPrior)
+        if (suggestion.ReceiverId == userId)
         {
-            PostMessage = "Suggestion is redundant";
+            PostMessage = "Suggestion cannot be sent to yourself";
             return false;
         }
 
@@ -317,6 +311,17 @@ public class SuggestModel : PageModel
         if (!TryValidateModel(suggestion, nameof(Suggestion)))
         {
             PostMessage = "Suggestion is not valid";
+            return false;
+        }
+
+        var suggestPrior = await _dbContext.Suggestions
+            .AnyAsync(t => t.ReceiverId == suggestion.ReceiverId
+                && t.CardId == suggestion.CardId
+                && t.ToId == suggestion.ToId);
+
+        if (suggestPrior)
+        {
+            PostMessage = "Suggestion is redundant";
             return false;
         }
 

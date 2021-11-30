@@ -49,20 +49,6 @@ public class Unclaimed : Owned
 
 public class Deck : Owned
 {
-    public Deck()
-    { }
-
-    public Deck(Unclaimed unclaimed, UserRef owner)
-    {
-        Id = unclaimed.Id;
-        Name = unclaimed.Name;
-        Owner = owner;
-
-        Cards.AddRange(unclaimed.Cards);
-        Wants.AddRange(unclaimed.Wants);
-    }
-
-
     [JsonIgnore]
     public UserRef Owner { get; init; } = null!;
     public string OwnerId { get; init; } = null!;
@@ -110,7 +96,7 @@ public class Deck : Owned
 public class Box : Location
 {
     [JsonIgnore]
-    public Bin Bin { get; set; } = null!;
+    public Bin Bin { get; init; } = null!;
     public int BinId { get; init; }
 
     [Range(10, 1000)]

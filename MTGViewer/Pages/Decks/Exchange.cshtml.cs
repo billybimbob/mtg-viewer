@@ -329,7 +329,7 @@ public class ExchangeModel : PageModel
                 NumCopies = 0
             });
 
-        _dbContext.Amounts.AddRange(newActuals);
+        _dbContext.Amounts.AttachRange(newActuals);
     }
 
 
@@ -427,14 +427,14 @@ public class ExchangeModel : PageModel
                 Transaction = transaction
             });
 
-        _dbContext.Changes.AddRange(checkoutChanges);
+        _dbContext.Changes.AttachRange(checkoutChanges);
     }
 
 
 
     private void ApplyReturns(Deck deck, Transaction transaction, RequestResult result)
     {
-        var (returns, oldCopies) = result;
+        var (returns, dbCopies) = result;
 
         if (!returns.Any())
         {
@@ -446,7 +446,7 @@ public class ExchangeModel : PageModel
         var amountChanges = returns
             .ToDictionary(
                 a => a.Id, 
-                a => a.NumCopies - oldCopies.GetValueOrDefault(a.Id));
+                a => a.NumCopies - dbCopies.GetValueOrDefault(a.Id));
 
         AddReturnChanges(deck, transaction, returns, amountChanges);
 
@@ -518,7 +518,7 @@ public class ExchangeModel : PageModel
                 Transaction = transaction
             });
 
-        _dbContext.Changes.AddRange(returnChanges);
+        _dbContext.Changes.AttachRange(returnChanges);
     }
 
 

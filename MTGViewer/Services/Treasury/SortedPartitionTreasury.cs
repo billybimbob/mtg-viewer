@@ -11,23 +11,20 @@ using MTGViewer.Data;
 
 namespace MTGViewer.Services;
 
-public class SortedPartitionTreasury : ITreasuryQuery, IDisposable
+public class SortedPartitionTreasury : ITreasuryQuery
 {
     private readonly CardDbContext _dbContext;
-    private readonly SemaphoreSlim _lock; // needed since CardDbContext is not thread safe
+    private readonly IDbContextFactory<CardDbContext> _dbFactory;
     private readonly ILogger<SortedPartitionTreasury> _logger;
 
-    public SortedPartitionTreasury(CardDbContext dbContext, ILogger<SortedPartitionTreasury> logger)
+    public SortedPartitionTreasury(
+        CardDbContext dbContext, 
+        IDbContextFactory<CardDbContext> dbFactory, 
+        ILogger<SortedPartitionTreasury> logger)
     {
         _dbContext = dbContext;
-        _lock = new(1, 1);
+        _dbFactory = dbFactory;
         _logger = logger;
-    }
-
-
-    public void Dispose()
-    {
-        _lock.Dispose();
     }
 
 
@@ -48,29 +45,22 @@ public class SortedPartitionTreasury : ITreasuryQuery, IDisposable
         IEnumerable<CardRequest> requests, 
         CancellationToken cancel = default)
     {
-        requests = CheckedRequests(requests);
+        requests = AsCheckoutRequests(requests);
 
         if (!requests.Any())
         {
             return RequestResult.Empty;
         }
 
-        await _lock.WaitAsync(cancel);
+        await using var dbContext = await _dbFactory.CreateDbContextAsync(cancel);
 
-        try
-        {
-            var targets = await CheckoutTargetsAsync(requests, cancel);
+        var targets = await CheckoutTargetsAsync(dbContext, requests, cancel);
 
-            return GetCheckouts(targets, requests);
-        }
-        finally
-        {
-            _lock.Release();
-        }
+        return GetCheckouts(dbContext, targets, requests);
     }
 
 
-    private static IEnumerable<CardRequest> CheckedRequests(IEnumerable<CardRequest?>? requests)
+    private static IReadOnlyList<CardRequest> AsCheckoutRequests(IEnumerable<CardRequest?>? requests)
     {
         if (requests is null)
         {
@@ -96,23 +86,24 @@ public class SortedPartitionTreasury : ITreasuryQuery, IDisposable
     }
 
 
-    private Task<List<Amount>> CheckoutTargetsAsync(
-        IEnumerable<CardRequest> requests, CancellationToken cancel)
+    private static Task<List<Amount>> CheckoutTargetsAsync(
+        CardDbContext dbContext,
+        IEnumerable<CardRequest> requests, 
+        CancellationToken cancel)
     {
         var requestIds = requests
             .Select(cr => cr.Card.Id)
-            .Distinct()
             .ToArray();
 
         var requestCards = requests
             .Select(cr => cr.Card);
 
-        _dbContext.Cards.AttachRange(requestCards);
+        dbContext.Cards.AttachRange(requestCards);
 
         // track requests for modifications
-        // and to keep original Card since it should not be modified
+        // also to keep original Card since it should not be modified
 
-        return _dbContext.Amounts
+        return dbContext.Amounts
             .Where(ca => ca.Location is Box
                 && ca.NumCopies > 0
                 && requestIds.Contains(ca.CardId))
@@ -125,8 +116,10 @@ public class SortedPartitionTreasury : ITreasuryQuery, IDisposable
     }
 
 
-    private RequestResult GetCheckouts(
-        IReadOnlyList<Amount> targets, IEnumerable<CardRequest> checkouts)
+    private static RequestResult GetCheckouts(
+        CardDbContext dbContext,
+        IReadOnlyList<Amount> targets,
+        IEnumerable<CardRequest> checkouts)
     {
         if (!targets.Any())
         {
@@ -136,9 +129,9 @@ public class SortedPartitionTreasury : ITreasuryQuery, IDisposable
         ApplyExactCheckouts(targets, checkouts);
         ApplyApproxCheckouts(targets, checkouts);
 
-        var updated = UpdatedAmounts().ToList();
+        var updated = ModifiedAmounts(dbContext).ToList();
 
-        return AsResult(updated);
+        return AsResult(dbContext, updated);
     }
 
 
@@ -213,32 +206,28 @@ public class SortedPartitionTreasury : ITreasuryQuery, IDisposable
     #endregion
 
 
-    private IEnumerable<Amount> UpdatedAmounts() =>
-        _dbContext.ChangeTracker
+    private static IEnumerable<Amount> ModifiedAmounts(CardDbContext dbContext) =>
+        dbContext.ChangeTracker
             .Entries<Amount>()
-            .Where(e => e.State != EntityState.Unchanged)
+            .Where(e => e.State is EntityState.Modified)
             .Select(e => e.Entity)
             .Where(a => a.Location is Box);
 
 
-    private RequestResult AsResult(IReadOnlyList<Amount> amounts)
+    private static RequestResult AsResult(CardDbContext dbContext, IReadOnlyList<Amount> amounts)
     {
         if (!amounts.Any())
         {
-            _dbContext.ChangeTracker.Clear();
-
             return RequestResult.Empty;
         }
 
-        var originalCopies = amounts
-            .Select(a => _dbContext.Entry(a))
-            .Where(e => e.State == EntityState.Modified)
+        var originalCopies = dbContext.ChangeTracker
+            .Entries<Amount>()
+            .IntersectBy(amounts, e => e.Entity)
             .Select(e => 
                 (e.Entity.Id, e.Property(a => a.NumCopies).OriginalValue))
             .ToDictionary(
                 io => io.Id, io => io.OriginalValue);
-
-        _dbContext.ChangeTracker.Clear();
 
         return new RequestResult(amounts, originalCopies);
     }
@@ -250,29 +239,22 @@ public class SortedPartitionTreasury : ITreasuryQuery, IDisposable
         IEnumerable<CardRequest> requests, 
         CancellationToken cancel = default)
     {
-        requests = MergedRequests(requests); 
+        requests = AsReturnRequests(requests); 
 
         if (!requests.Any())
         {
             return RequestResult.Empty;
         }
 
-        await _lock.WaitAsync(cancel);
+        await using var dbContext = await _dbFactory.CreateDbContextAsync(cancel);
 
-        try
-        {
-            var sortedBoxes = await SortedBoxesAsync(requests, cancel); 
+        var sortedBoxes = await SortedBoxesAsync(dbContext, requests, cancel); 
 
-            return GetReturns(sortedBoxes, requests);
-        }
-        finally
-        {
-            _lock.Release();
-        }
+        return GetReturns(dbContext, sortedBoxes, requests);
     }
 
 
-    private static IReadOnlyList<CardRequest> MergedRequests(IEnumerable<CardRequest?>? requests)
+    private static IReadOnlyList<CardRequest> AsReturnRequests(IEnumerable<CardRequest?>? requests)
     {
         if (requests is null)
         {
@@ -306,18 +288,20 @@ public class SortedPartitionTreasury : ITreasuryQuery, IDisposable
 
 
     private Task<List<Box>> SortedBoxesAsync(
-        IEnumerable<CardRequest> requests, CancellationToken cancel)
+        CardDbContext dbContext,
+        IEnumerable<CardRequest> requests,
+        CancellationToken cancel)
     {
         var requestCards = requests
             .Select(cr => cr.Card);
 
-        _dbContext.AttachRange(requestCards);
+        dbContext.AttachRange(requestCards);
 
         // loading all shared cards, could be memory inefficient
         // TODO: find more efficient way to determining card position
         // unbounded: keep eye on
 
-        return _dbContext.Boxes
+        return dbContext.Boxes
             .Include(b => b.Cards)
                 .ThenInclude(ca => ca.Card)
             .OrderBy(s => s.Id)
@@ -325,8 +309,10 @@ public class SortedPartitionTreasury : ITreasuryQuery, IDisposable
     }
 
 
-    private RequestResult GetReturns(
-        IReadOnlyList<Box> sortedBoxes, IEnumerable<CardRequest> returns)
+    private static RequestResult GetReturns(
+        CardDbContext dbContext,
+        IReadOnlyList<Box> sortedBoxes,
+        IEnumerable<CardRequest> returns)
     {
         if (!sortedBoxes.Any())
         {
@@ -338,11 +324,11 @@ public class SortedPartitionTreasury : ITreasuryQuery, IDisposable
         ApplyExistingReturns(state, returns);
         ApplyNewReturns(state, returns);
 
-        var allReturns = UpdatedAmounts()
+        var allReturns = ModifiedAmounts(dbContext)
             .Concat(state.AddedAmounts)
             .ToList();
 
-        return AsResult(allReturns);
+        return AsResult(dbContext, allReturns);
     }
 
 
@@ -369,7 +355,6 @@ public class SortedPartitionTreasury : ITreasuryQuery, IDisposable
         public IReadOnlyList<Amount> SortedAmounts { get; }
 
         public IReadOnlyDictionary<int, int> BoxSpace => _boxSpace;
-
 
         public IEnumerable<Amount> AddedAmounts =>
             _amountMap.Values.Except( SortedAmounts );
@@ -491,16 +476,16 @@ public class SortedPartitionTreasury : ITreasuryQuery, IDisposable
             int spaceUsed = boxSpace.GetValueOrDefault(box.Id);
             int remainingSpace = Math.Max(0, box.Capacity - spaceUsed);
 
-            var newNumCopies = Math.Min(cardsToAssign, remainingSpace);
+            var newCopies = Math.Min(cardsToAssign, remainingSpace);
 
-            if (newNumCopies == 0)
+            if (newCopies == 0)
             {
                 continue;
             }
 
-            yield return (box, newNumCopies);
+            yield return (box, newCopies);
 
-            cardsToAssign -= newNumCopies;
+            cardsToAssign -= newCopies;
 
             if (cardsToAssign == 0)
             {
@@ -510,9 +495,14 @@ public class SortedPartitionTreasury : ITreasuryQuery, IDisposable
     }
 
 
-    private void ApplyNewReturns(
+    private static void ApplyNewReturns(
         ReturnState returnState, IEnumerable<CardRequest> returns)
     {
+        if (returns.All(cr => cr.NumCopies == 0))
+        {
+            return;
+        }
+
         var boxSearch = new BoxSearcher(returnState);
         var boxSpace = returnState.BoxSpace;
 
@@ -621,9 +611,9 @@ public class SortedPartitionTreasury : ITreasuryQuery, IDisposable
         {
             yield return fit;
 
-            (_, int numCopies) = fit;
+            (_, int newCopies) = fit;
 
-            cardsToAssign -= numCopies;
+            cardsToAssign -= newCopies;
 
             if (cardsToAssign == 0)
             {

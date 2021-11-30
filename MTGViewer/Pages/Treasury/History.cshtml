@@ -37,6 +37,10 @@
                             <a asp-page="/Decks/Viewer" asp-route-id="@from.Id"> @from.Name </a>
                             break;
 
+                        case Box:
+                            <a asp-page="/Treasury/Index" asp-route-id="@from.Id"> @from.Name </a>
+                            break;
+
                         case Unclaimed:
                             <a asp-page="Unclaimed" asp-route-id="@from.Id"> @from.Name </a>
                             break;
@@ -52,13 +56,27 @@
                 </td>
                 
                 <td rowspan="@changes.Count">
-                    @if (to is Deck)
+                    @switch (to)
                     {
-                        <a asp-page="/Decks/Viewer" asp-route-id="@to.Id"> @to.Name </a>
-                    }
-                    else
-                    {
-                        @to.Name 
+                        case Deck:
+                            <a asp-page="Viewer" asp-route-id="@to.Id"> @to.Name </a>
+                            break;
+
+                        case Box:
+                            <a asp-page="/Treasury/Index" asp-route-id="@to.Id"> @to.Name </a>
+                            break;
+
+                        case Unclaimed:
+                            <a asp-page="/Unowned/Index" asp-route-id="@to.Id"> @to.Name </a>
+                            break;
+
+                        case null:
+                            <i> Added </i>
+                            break;
+                        
+                        default:
+                            @to.Name
+                            break;
                     }
                 </td>
 

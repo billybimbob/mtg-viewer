@@ -45,9 +45,14 @@ public class Startup
                 break;
         }
 
-        // services.AddScoped<ITreasury, FlatVariableStorage>();
+        services.AddDbContextFactory<CardDbContext>((provider, options) => 
+            // used scoped so that the db referenced is the locally scoped one
+            provider.GetRequiredService<CardDbContext>(), ServiceLifetime.Scoped);
+
         services.AddScoped<ITreasuryQuery, SortedPartitionTreasury>();
+
         services.AddScoped<UserManager<CardUser>>(TestFactory.CardUserManager);
+        services.AddScoped<SignInManager<CardUser>>(TestFactory.CardSignInManager);
 
         services.AddSingleton<PageSizes>();
 

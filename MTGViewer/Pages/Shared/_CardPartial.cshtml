@@ -110,23 +110,25 @@
                 <ul class="list-group list-group-horizontal-md row p-2">
                     @foreach(var cardAmount in Model.Amounts)
                     {
+                        var location = cardAmount.Location;
+
                         <li class="list-group-item col-md-4 d-flex justify-content-between align-items-center">
-                            @switch (cardAmount.Location)
+                            @switch (location)
                             {
-                                case Deck deck:
-                                    <a asp-page="/Decks/Viewer" asp-route-id="@deck.Id"> @deck.Name </a>
+                                case Deck:
+                                    <a asp-page="/Decks/Viewer" asp-route-id="@location.Id"> @location.Name </a>
                                     break;
 
-                                case Box box:
-                                    <a asp-page="/Treasury/Index" asp-route-id="@box.Id"> @box.Name </a>
+                                case Box:
+                                    <a asp-page="/Treasury/Index" asp-route-id="@location.Id"> @location.Name </a>
                                     break;
 
-                                case Unclaimed unclaimed:
-                                    <a asp-page="/Unowned/Index" asp-route-id="@unclaimed.Id"> @unclaimed.Name </a>
+                                case Unclaimed:
+                                    <a asp-page="/Unowned/Index" asp-route-id="@location.Id"> @location.Name </a>
                                     break;
 
                                 default:
-                                    @cardAmount.Location.Name
+                                    @location.Name
                                     break;
                             }
 

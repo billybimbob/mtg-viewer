@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Routing;
 
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
@@ -91,6 +92,24 @@ public static class TestFactory
     }
 
 
+    public static SignInManager<CardUser> CardSignInManager(IServiceProvider provider)
+    {
+        var userDb = provider.GetRequiredService<UserDbContext>();
+        var store = new UserStore<CardUser>(userDb);
+
+        var userManager = provider.GetRequiredService<UserManager<CardUser>>();
+
+        return new SignInManager<CardUser>(
+            userManager,
+            Mock.Of<IHttpContextAccessor>(),
+            CardClaimsFactory(userManager),
+            null,
+            null,
+            null,
+            null);
+    }
+
+
 
     private static IUserClaimsPrincipalFactory<CardUser> CardClaimsFactory(UserManager<CardUser> userManager)
     {
@@ -109,7 +128,25 @@ public static class TestFactory
 
     public static void SetModelContext(this PageModel model, ClaimsPrincipal? user = null)
     {
-        var httpContext = new DefaultHttpContext();
+        var objectValidate = new Mock<IObjectModelValidator>();
+        var requestServices = new Mock<IServiceProvider>();
+
+        objectValidate
+            .Setup(o => o.Validate(
+                It.IsAny<ActionContext>(),
+                It.IsAny<ValidationStateDictionary>(),
+                It.IsAny<string>(),
+                It.IsAny<object>() ));
+
+        requestServices
+            .Setup(p => p.GetService(
+                It.Is<Type>(t => t == typeof(IObjectModelValidator)) ))
+            .Returns(objectValidate.Object);
+
+        var httpContext = new DefaultHttpContext
+        {
+            RequestServices = requestServices.Object
+        };
 
         if (user is not null)
         {
@@ -117,6 +154,7 @@ public static class TestFactory
         }
 
         var modelState = new ModelStateDictionary();
+
         var actionContext = new ActionContext(
             httpContext, 
             new RouteData(), 

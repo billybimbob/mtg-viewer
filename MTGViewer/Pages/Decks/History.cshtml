@@ -45,7 +45,11 @@
                                     break;
 
                                 case Box:
-                                    <a asp-page="/Treasury" asp-route-id="@from.Id"> @from.Name </a>
+                                    <a asp-page="/Treasury/Index" asp-route-id="@from.Id"> @from.Name </a>
+                                    break;
+
+                                case Unclaimed:
+                                    <a asp-page="/Unowned/Index" asp-route-id="@from.Id"> @from.Name </a>
                                     break;
 
                                 case null:
@@ -59,13 +63,27 @@
                         </td>
 
                         <td rowspan="@changes.Count">
-                            @if (to is Deck && to.Id != Model.Deck.Id)
+                            @switch (to)
                             {
-                                <a asp-page="Viewer" asp-route-id="@to.Id"> @to.Name </a>
-                            }
-                            else
-                            {
-                                @to.Name
+                                case Deck when to.Id != Model.Deck.Id:
+                                    <a asp-page="Viewer" asp-route-id="@to.Id"> @to.Name </a>
+                                    break;
+
+                                case Box:
+                                    <a asp-page="/Treasury/Index" asp-route-id="@to.Id"> @to.Name </a>
+                                    break;
+
+                                case Unclaimed:
+                                    <a asp-page="/Unowned/Index" asp-route-id="@to.Id"> @to.Name </a>
+                                    break;
+
+                                case null:
+                                    <i> Added </i>
+                                    break;
+                                
+                                default:
+                                    @to.Name
+                                    break;
                             }
                         </td>
 

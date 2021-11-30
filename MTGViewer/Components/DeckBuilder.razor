@@ -13,7 +13,14 @@
 @inject ILogger<DeckBuilder> Logger
 
 
-<h1>@_deck?.Name Builder</h1>
+<EditForm EditContext="@_deckEdit">
+    <h1 id="builder-title">
+        <InputText @bind-Value="_deck!.Name" DisplayName="Deck Name"/>
+    </h1>
+
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+</EditForm>
 
 <div class="mb-3">
     <button title="Save Deck" type="button"
@@ -89,12 +96,7 @@
 
     <div class="col">
         <div id="deck-builder">
-            <EditForm EditContext="@_deckEdit">
-                <DataAnnotationsValidator />
-                <ValidationSummary />
-
-                <InputText @bind-Value="_deck!.Name"/>
-            </EditForm>
+            <h3>@DeckName</h3>
 
             <div id="deck-builder-cards" class="list-group list-group-flush">
                 @foreach (var (card, group) in DeckCards)
@@ -180,6 +182,9 @@
 
             : Enumerable.Empty<(Card, QuantityGroup)>();
 
+    private string DeckName =>
+        string.IsNullOrWhiteSpace(_deck?.Name) ? "--" : _deck.Name;
+
 
     private IQueryable<Deck> DeckForBuilder(CardDbContext dbContext) =>
         dbContext.Decks
@@ -202,7 +207,7 @@
 
         try
         {
-            _dbContext = DbFactory.CreateDbContext();
+            _dbContext = await DbFactory.CreateDbContextAsync(_cancel.Token);
 
             _cards = await _dbContext.Cards
                 .Include(c => c.Colors)
@@ -541,7 +546,7 @@
             // detaches when saved after a remove
             else if (dbContext.Entry(want).State == EntityState.Detached)
             {
-                dbContext.Wants.Add(want);
+                dbContext.Wants.Attach(want);
             }
         }
 
@@ -553,7 +558,7 @@
             }
             else if (dbContext.Entry(giveBack).State == EntityState.Detached)
             {
-                dbContext.GiveBacks.Add(giveBack);
+                dbContext.GiveBacks.Attach(giveBack);
             }
         }
 
@@ -603,7 +608,7 @@
 
         if (dbDeck == default)
         {
-            dbContext.Decks.Add(localDeck);
+            dbContext.Decks.Attach(localDeck);
             return;
         }
 
@@ -658,7 +663,7 @@
             }
             else
             {
-                dbContext.Wants.Add(removedWant);
+                dbContext.Wants.Attach(removedWant);
             }
         }
 
@@ -673,7 +678,7 @@
             }
             else
             {
-                dbContext.GiveBacks.Add(removedGive);
+                dbContext.GiveBacks.Attach(removedGive);
             }
         }
     }
