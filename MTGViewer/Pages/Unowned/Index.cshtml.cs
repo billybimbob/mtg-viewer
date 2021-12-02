@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 using Microsoft.AspNetCore.Authorization;
@@ -52,15 +53,15 @@ public class IndexModel : PageModel
         ImmutableDictionary<int, IReadOnlyList<QuantityNameGroup>>.Empty;
 
 
-    public async Task<IActionResult> OnGetAsync(int? id, int? pageIndex)
+    public async Task<IActionResult> OnGetAsync(int? id, int? pageIndex, CancellationToken cancel)
     {
-        if (await GetUnclaimedPageAsync(id) is int unclaimedPage)
+        if (await GetUnclaimedPageAsync(id, cancel) is int unclaimedPage)
         {
             return RedirectToPage(new { pageIndex = unclaimedPage });
         }
 
         Unclaimed = await UnclaimedForViewing()
-            .ToPagedListAsync(_pageSize, pageIndex);
+            .ToPagedListAsync(_pageSize, pageIndex, cancel);
 
         Cards = Unclaimed
             .ToDictionary(u => u.Id, UnclaimedNameGroup);
@@ -69,7 +70,7 @@ public class IndexModel : PageModel
     }
 
 
-    private async Task<int?> GetUnclaimedPageAsync(int? id)
+    private async Task<int?> GetUnclaimedPageAsync(int? id, CancellationToken cancel)
     {
         if (id is not int unclaimedId)
         {
@@ -79,7 +80,7 @@ public class IndexModel : PageModel
         var name = await _dbContext.Unclaimed
             .Where(u => u.Id == unclaimedId)
             .Select(u => u.Name)
-            .SingleOrDefaultAsync();
+            .SingleOrDefaultAsync(cancel);
 
         if (name == default)
         {
@@ -88,7 +89,7 @@ public class IndexModel : PageModel
 
         var position = await _dbContext.Unclaimed
             .Where(u => u.Name.CompareTo(name) < 0)
-            .CountAsync();
+            .CountAsync(cancel);
 
         return position / _pageSize;
     }
@@ -128,7 +129,7 @@ public class IndexModel : PageModel
     }
 
     
-    public async Task<IActionResult> OnPostClaimAsync(int id)
+    public async Task<IActionResult> OnPostClaimAsync(int id, CancellationToken cancel)
     {
         if (!_signInManager.IsSignedIn(User))
         {
@@ -143,7 +144,7 @@ public class IndexModel : PageModel
         }
 
         var user = await _dbContext.Users
-            .SingleOrDefaultAsync(u => u.Id == userId);
+            .SingleOrDefaultAsync(u => u.Id == userId, cancel);
         
         if (user == default)
         {
@@ -157,7 +158,7 @@ public class IndexModel : PageModel
             .Include(u => u.Cards)
             .Include(u => u.Wants)
             .AsSplitQuery()
-            .SingleOrDefaultAsync(u => u.Id == id);
+            .SingleOrDefaultAsync(u => u.Id == id, cancel);
 
         if (unclaimed == default)
         {
@@ -178,7 +179,7 @@ public class IndexModel : PageModel
 
         try
         {
-            await _dbContext.SaveChangesAsync();
+            await _dbContext.SaveChangesAsync(cancel);
 
             PostMessage = "Successfully claimed Deck";
         }
@@ -193,7 +194,7 @@ public class IndexModel : PageModel
     }
 
 
-    public async Task<IActionResult> OnPostRemoveAsync(int id)
+    public async Task<IActionResult> OnPostRemoveAsync(int id, CancellationToken cancel)
     {
         if (!_signInManager.IsSignedIn(User))
         {
@@ -203,7 +204,7 @@ public class IndexModel : PageModel
         var unclaimed = await _dbContext.Unclaimed
             .Include(u => u.Cards)
             .Include(u => u.Wants)
-            .SingleOrDefaultAsync(u => u.Id == id);
+            .SingleOrDefaultAsync(u => u.Id == id, cancel);
 
         if (unclaimed == default)
         {
@@ -215,7 +216,7 @@ public class IndexModel : PageModel
 
         try
         {
-            await _dbContext.SaveChangesAsync();
+            await _dbContext.SaveChangesAsync(cancel);
 
             PostMessage = "Successfully removed Unclaimed Deck";
         }

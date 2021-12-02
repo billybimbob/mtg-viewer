@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
 
 using Microsoft.AspNetCore.Authorization;
@@ -34,13 +35,13 @@ public class BackupModel : PageModel
 {
     private const long _2_MB = 2_097_152;
 
-    private readonly JsonCardStorage _jsonStorage;
+    private readonly FileCardStorage _fileStorage;
     private readonly long _fileLimit;
 
 
-    public BackupModel(JsonCardStorage jsonStorage, IConfiguration config)
+    public BackupModel(FileCardStorage fileStorage, IConfiguration config)
     {
-        _jsonStorage = jsonStorage;
+        _fileStorage = fileStorage;
         _fileLimit = config.GetValue("FileLimit", _2_MB);
     }
 
@@ -58,21 +59,21 @@ public class BackupModel : PageModel
     public Import? Import { get; set; }
 
 
-    public async Task OnGetAsync()
+    public async Task OnGetAsync(CancellationToken cancel)
     {
         // might be expensive
-        NumberOfSections = await _jsonStorage.GetTotalPagesAsync();
+        NumberOfSections = await _fileStorage.GetTotalPagesAsync(cancel);
     }
 
 
-    public async Task<IActionResult> OnGetDownloadAsync()
+    public async Task<IActionResult> OnGetDownloadAsync(CancellationToken cancel)
     {
         if (Export is null || Export.Section < 0)
         {
             return NotFound();
         }
 
-        NumberOfSections = await _jsonStorage.GetTotalPagesAsync();
+        NumberOfSections = await _fileStorage.GetTotalPagesAsync(cancel);
 
         var section = Export.Section switch
         {
@@ -81,37 +82,47 @@ public class BackupModel : PageModel
             _ => 1
         };
 
-        var cardData = await _jsonStorage.GetFileDataAsync(section - 1);
+        var cardData = await _fileStorage.GetFileDataAsync(section - 1, cancel);
 
         return File(cardData, "application/json", $"cardsSection{section}.json");
     }
 
 
-    public async Task<IActionResult> OnPostUploadAsync()
+    public async Task<IActionResult> OnPostUploadAsync(CancellationToken cancel)
     {
         if (!ModelState.IsValid || Import is null)
         {
-            return Page();
+            return await PageWithTotalPageAsync(cancel);
         }
 
+        const string fileKey = $"{nameof(Import)}.{nameof(Import.File)}";
+
         var file = Import.File;
-        var fileKey = $"{nameof(Import)}.{nameof(Import.File)}";
 
         if (file.Length > _fileLimit)
         {
             ModelState.AddModelError(fileKey, "File is too large to upload");
-            return Page();
+
+            return await PageWithTotalPageAsync(cancel);
         }
 
-        var ext = Path.GetExtension(file.FileName).ToLower();
+        string ext = Path.GetExtension(file.FileName).ToLower();
 
-        if (ext != ".json")
+        if (ext != ".json" && ext != ".csv")
         {
-            ModelState.AddModelError(fileKey, "File is not a .json file");
-            return Page();
+            ModelState.AddModelError(fileKey, "File is not a .json or .csv file");
+
+            return await PageWithTotalPageAsync(cancel);
         }
 
-        var success = await _jsonStorage.AddFromJsonAsync(file);
+        // TODO: fix bug where existing card additions always fail to add
+
+        bool success = ext switch
+        {
+            ".json" => await _fileStorage.TryJsonAddAsync(file, cancel),
+            ".csv" => await _fileStorage.TryCsvAddAsync(file, cancel),
+            _ => false
+        };
 
         if (success)
         {
@@ -123,5 +134,13 @@ public class BackupModel : PageModel
         }
 
         return RedirectToPage("Index");
+    }
+
+
+    private async Task<PageResult> PageWithTotalPageAsync(CancellationToken cancel)
+    {
+        NumberOfSections = await _fileStorage.GetTotalPagesAsync(cancel);
+
+        return Page();
     }
 }

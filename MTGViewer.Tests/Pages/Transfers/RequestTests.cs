@@ -67,7 +67,7 @@ namespace MTGViewer.Tests.Pages.Transfers
 
             // Act
             var tradesBefore = await allTradeIds.ToListAsync();
-            var result = await _requestModel.OnPostAsync(_requestDeck.Id);
+            var result = await _requestModel.OnPostAsync(_requestDeck.Id, default);
             var tradesAfter = await allTradeIds.ToListAsync();
 
             // // Assert
@@ -89,7 +89,7 @@ namespace MTGViewer.Tests.Pages.Transfers
 
             // Act
             var tradesBefore = await allTradeIds.ToListAsync();
-            var result = await _requestModel.OnPostAsync(wrongDeck.Id);
+            var result = await _requestModel.OnPostAsync(wrongDeck.Id, default);
             var tradesAfter = await allTradeIds.ToListAsync();
 
             // // Assert
@@ -107,7 +107,7 @@ namespace MTGViewer.Tests.Pages.Transfers
             // Act
             var tradesBefore = await AllTrades.Select(t => t.Id).ToListAsync();
 
-            var result = await _requestModel.OnPostAsync(_requestDeck.Id);
+            var result = await _requestModel.OnPostAsync(_requestDeck.Id, default);
             var tradesAfter = await AllTrades.ToListAsync();
 
             var addedTrades = tradesAfter.ExceptBy(tradesBefore, t => t.Id);
@@ -163,7 +163,7 @@ namespace MTGViewer.Tests.Pages.Transfers
             // Act
             var tradesBefore = await AllTrades.Select(t => t.Id).ToListAsync();
 
-            var result = await _requestModel.OnPostAsync(_requestDeck.Id);
+            var result = await _requestModel.OnPostAsync(_requestDeck.Id, default);
             var tradesAfter = await AllTrades.ToListAsync();
 
             var addedTrades = tradesAfter.ExceptBy(tradesBefore, t => t.Id);

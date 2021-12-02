@@ -184,20 +184,22 @@
 
         _isBusy = true;
 
+        var cancelToken = _cancel.Token;
+
         try
         {
-            await using var dbContext = DbFactory.CreateDbContext();
+            await using var dbContext = await DbFactory.CreateDbContextAsync(cancelToken);
 
             _dbCards = await dbContext.Cards
                 .Include(c => c.Colors)
-                .ToListAsync(_cancel.Token); // unbounded, keep eye on
+                .ToListAsync(cancelToken); // unbounded, keep eye on
 
             _cardAmounts = await dbContext.Amounts
                 .GroupBy( ca => ca.CardId,
                     (CardId, cas) =>
                         new { CardId, Total = cas.Sum(ca => ca.NumCopies) })
                 .ToDictionaryAsync(
-                    ct => ct.CardId, ct => ct.Total, _cancel.Token);
+                    ct => ct.CardId, ct => ct.Total, cancelToken);
         }
 
         catch (OperationCanceledException ex)

@@ -68,7 +68,7 @@ public class StatusTests : IAsyncLifetime
 
         // Act
         var tradesBefore = await tradeSet.ToListAsync();
-        var result = await _statusModel.OnPostAsync(_trades.TargetId);
+        var result = await _statusModel.OnPostAsync(_trades.TargetId, default);
         var tradesAfter = await tradeSet.ToListAsync();
 
         // Assert
@@ -89,7 +89,7 @@ public class StatusTests : IAsyncLifetime
 
         // Act
         var tradesBefore = await tradeSet.ToListAsync();
-        var result = await _statusModel.OnPostAsync(trade.FromId);
+        var result = await _statusModel.OnPostAsync(trade.FromId, default);
         var tradesAfter = await tradeSet.ToListAsync();
 
         // Assert
@@ -109,7 +109,7 @@ public class StatusTests : IAsyncLifetime
 
         // Act
         var tradesBefore = await tradeSet.ToListAsync();
-        var result = await _statusModel.OnPostAsync(_trades.TargetId);
+        var result = await _statusModel.OnPostAsync(_trades.TargetId, default);
         var tradesAfter = await tradeSet.ToListAsync();
 
         // Assert

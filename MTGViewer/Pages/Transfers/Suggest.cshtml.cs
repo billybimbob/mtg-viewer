@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 using Microsoft.AspNetCore.Authorization;
@@ -55,9 +56,9 @@ public class SuggestModel : PageModel
 
 
 
-    public async Task<IActionResult> OnGetAsync(int? pageIndex)
+    public async Task<IActionResult> OnGetAsync(int? pageIndex, CancellationToken cancel)
     {
-        var card = await _dbContext.Cards.FindAsync(CardId);
+        var card = await _dbContext.Cards.FindAsync(new []{ CardId }, cancel);
 
         if (card is null)
         {
@@ -67,7 +68,7 @@ public class SuggestModel : PageModel
         Card = card;
 
         Users = await UsersForSuggest(card)
-            .ToPagedListAsync(_pageSize, pageIndex);
+            .ToPagedListAsync(_pageSize, pageIndex, cancel);
 
         return Page();
     }
@@ -102,14 +103,14 @@ public class SuggestModel : PageModel
 
 
 
-    public async Task<IActionResult> OnGetUserAsync(string userId)
+    public async Task<IActionResult> OnGetUserAsync(string userId, CancellationToken cancel)
     {
         if (userId == null)
         {
             return RedirectToPage();
         }
 
-        var card = await _dbContext.Cards.FindAsync(CardId);
+        var card = await _dbContext.Cards.FindAsync(new []{ CardId }, cancel);
 
         if (card is null)
         {
@@ -123,14 +124,16 @@ public class SuggestModel : PageModel
             return NotFound();
         }
 
-        var receiver = await _dbContext.Users.FindAsync(userId);
+        var receiver = await _dbContext.Users.FindAsync(new []{ userId }, cancel);
 
         if (receiver is null)
         {
             return NotFound();
         }
 
-        Decks = await DecksForSuggest(card, receiver).ToListAsync();
+        Decks = await DecksForSuggest(card, receiver)
+            .ToListAsync(cancel);
+
         Card = card;
         Receiver = receiver;
 
@@ -245,10 +248,10 @@ public class SuggestModel : PageModel
 
 
 
-    public async Task<IActionResult> OnPostSuggestAsync()
+    public async Task<IActionResult> OnPostSuggestAsync(CancellationToken cancel)
     {
         var userId = _userManager.GetUserId(User);
-        var validSuggest = await IsValidSuggestionAsync(Suggestion, userId);
+        var validSuggest = await IsValidSuggestionAsync(Suggestion, userId, cancel);
 
         if (!validSuggest)
         {
@@ -259,7 +262,7 @@ public class SuggestModel : PageModel
 
         try
         {
-            await _dbContext.SaveChangesAsync();
+            await _dbContext.SaveChangesAsync(cancel);
             PostMessage = "Suggestion Successfully Created";
         }
         catch (DbUpdateException)
@@ -271,7 +274,8 @@ public class SuggestModel : PageModel
     }
 
 
-    private async Task<bool> IsValidSuggestionAsync(Suggestion? suggestion, string userId)
+    private async Task<bool> IsValidSuggestionAsync(
+        Suggestion? suggestion, string userId, CancellationToken cancel)
     {
         if (suggestion is null)
         {
@@ -293,17 +297,17 @@ public class SuggestModel : PageModel
 
         await entry
             .Reference(s => s.Card)
-            .LoadAsync();
+            .LoadAsync(cancel);
 
         await entry
             .Reference(s => s.Receiver)
-            .LoadAsync();
+            .LoadAsync(cancel);
 
         if (suggestion.ToId is not null)
         {
             await entry
                 .Reference(s => s.To)
-                .LoadAsync();
+                .LoadAsync(cancel);
         }
 
         ModelState.ClearValidationState(nameof(Suggestion)); 
@@ -314,10 +318,10 @@ public class SuggestModel : PageModel
             return false;
         }
 
-        var suggestPrior = await _dbContext.Suggestions
+        bool suggestPrior = await _dbContext.Suggestions
             .AnyAsync(t => t.ReceiverId == suggestion.ReceiverId
                 && t.CardId == suggestion.CardId
-                && t.ToId == suggestion.ToId);
+                && t.ToId == suggestion.ToId, cancel);
 
         if (suggestPrior)
         {
@@ -332,7 +336,7 @@ public class SuggestModel : PageModel
 
         await _dbContext.Entry(suggestion.To!)
             .Collection(t => t.Cards)
-            .LoadAsync();
+            .LoadAsync(cancel);
 
         var suggestInDeck = suggestion.To!.Cards
             .Select(c => c.CardId)

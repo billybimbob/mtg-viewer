@@ -7,6 +7,7 @@ using Microsoft.Extensions.Hosting;
 
 using MtgApiManager.Lib.Service;
 using MTGViewer.Services;
+using MTGViewer.Filters;
 
 namespace MTGViewer;
 
@@ -25,7 +26,10 @@ public class Startup
     // This method gets called by the runtime. Use this method to add services to the container.
     public void ConfigureServices(IServiceCollection services)
     {
-        services.AddRazorPages();
+        services.AddRazorPages()
+            .AddMvcOptions(options =>
+                options.Filters.Add<OperationCancelledFilter>());
+
         services.AddServerSideBlazor();
 
         services.AddSingleton<PageSizes>();
@@ -46,7 +50,7 @@ public class Startup
         services.AddScoped<MTGFetchService>();
 
         services.AddScoped<ITreasuryQuery, SortedPartitionTreasury>();
-        services.AddScoped<JsonCardStorage>();
+        services.AddScoped<FileCardStorage>();
 
         if (_env.IsDevelopment())
         {

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 using Microsoft.AspNetCore.Mvc;
@@ -52,11 +53,11 @@ public class ExchangeModel : PageModel
     public bool HasPendings { get; private set; }
 
 
-    public async Task<IActionResult> OnGetAsync(int id)
+    public async Task<IActionResult> OnGetAsync(int id, CancellationToken cancel)
     {
         var deck = await DeckForExchange(id)
             .AsNoTrackingWithIdentityResolution()
-            .SingleOrDefaultAsync();
+            .SingleOrDefaultAsync(cancel);
 
         if (deck == default)
         {
@@ -70,7 +71,7 @@ public class ExchangeModel : PageModel
 
         Deck = deck;
 
-        HasPendings = deck.GiveBacks.Any() || await AnyWantsAsync(deck);
+        HasPendings = deck.GiveBacks.Any() || await AnyWantsAsync(deck, cancel);
 
         return Page();
     }
@@ -106,7 +107,7 @@ public class ExchangeModel : PageModel
     }
 
 
-    private Task<bool> AnyWantsAsync(Deck deck)
+    private Task<bool> AnyWantsAsync(Deck deck, CancellationToken cancel)
     {
         if (!deck.Wants.Any())
         {
@@ -121,16 +122,16 @@ public class ExchangeModel : PageModel
         return _treasuryQuery.Cards
             .Where(a => a.NumCopies > 0 
                 && wantNames.Contains(a.Card.Name))
-            .AnyAsync();
+            .AnyAsync(cancel);
     }
 
 
 
-    public async Task<IActionResult> OnPostAsync(int id)
+    public async Task<IActionResult> OnPostAsync(int id, CancellationToken cancel)
     {
         var deck = await DeckForExchange(id)
             .Include(d => d.TradesFrom) // unbounded, keep eye on
-            .SingleOrDefaultAsync();
+            .SingleOrDefaultAsync(cancel);
 
         if (deck == default)
         {
@@ -142,11 +143,11 @@ public class ExchangeModel : PageModel
             return RedirectToPage("Index");
         }
 
-        await ApplyChangesAsync(deck);
+        await ApplyChangesAsync(deck, cancel);
 
         try
         {
-            await _dbContext.SaveChangesAsync();
+            await _dbContext.SaveChangesAsync(cancel);
 
             if  (deck.Wants.Any() || deck.GiveBacks.Any())
             {
@@ -182,7 +183,7 @@ public class ExchangeModel : PageModel
     }
 
 
-    private async Task ApplyChangesAsync(Deck deck)
+    private async Task ApplyChangesAsync(Deck deck, CancellationToken cancel)
     {
         // TODO: add better fix for possible overlap of returning a card 
         // with the same name as a wanted card
@@ -194,8 +195,8 @@ public class ExchangeModel : PageModel
             return;
         }
 
-        var checkoutResult = await GetCheckoutsAsync(deck);
-        var returnResult = await GetReturnsAsync(deck);
+        var checkoutResult = await GetCheckoutsAsync(deck, cancel);
+        var returnResult = await GetReturnsAsync(deck, cancel);
 
         if (!checkoutResult.Changes.Any() && !returnResult.Changes.Any())
         {
@@ -224,7 +225,7 @@ public class ExchangeModel : PageModel
     }
 
 
-    private Task<RequestResult> GetCheckoutsAsync(Deck deck)
+    private Task<RequestResult> GetCheckoutsAsync(Deck deck, CancellationToken cancel)
     {
         if (!deck.Wants.Any())
         {
@@ -234,11 +235,11 @@ public class ExchangeModel : PageModel
         var wantRequests = deck.Wants
             .Select(w => new CardRequest(w.Card, w.NumCopies));
 
-        return _treasuryQuery.FindCheckoutAsync(wantRequests);
+        return _treasuryQuery.FindCheckoutAsync(wantRequests, cancel);
     }
 
 
-    private Task<RequestResult> GetReturnsAsync(Deck deck)
+    private Task<RequestResult> GetReturnsAsync(Deck deck, CancellationToken cancel)
     {
         if (!deck.GiveBacks.Any())
         {
@@ -261,7 +262,7 @@ public class ExchangeModel : PageModel
         var returnRequests = deck.GiveBacks
             .Select(g => new CardRequest(g.Card, g.NumCopies));
 
-        return _treasuryQuery.FindReturnAsync(returnRequests);
+        return _treasuryQuery.FindReturnAsync(returnRequests, cancel);
     }
 
 
@@ -318,7 +319,6 @@ public class ExchangeModel : PageModel
 
         var missingActualCards = checkouts
             .Select(a => a.Card)
-            .DistinctBy(c => c.Id)
             .ExceptBy(deckCards, c => c.Id);
 
         var newActuals = missingActualCards
@@ -330,6 +330,29 @@ public class ExchangeModel : PageModel
             });
 
         _dbContext.Amounts.AttachRange(newActuals);
+    }
+
+
+    private void AddCheckoutChanges(
+        Deck deck,
+        Transaction transaction,
+        IEnumerable<Amount> checkouts, 
+        IReadOnlyDictionary<int, int> changeAmount)
+    {
+        var checkoutChanges = checkouts
+            .Join( changeAmount,
+                amt => amt.Id, 
+                kva => kva.Key,
+                (amt, kva) => new Change
+                {
+                    Card = amt.Card,
+                    From = amt.Location,
+                    To = deck,
+                    Amount = kva.Value,
+                    Transaction = transaction
+                });
+
+        _dbContext.Changes.AttachRange(checkoutChanges);
     }
 
 
@@ -410,27 +433,6 @@ public class ExchangeModel : PageModel
     }
 
 
-    private void AddCheckoutChanges(
-        Deck deck,
-        Transaction transaction,
-        IEnumerable<Amount> checkouts, 
-        IReadOnlyDictionary<int, int> changeAmount)
-    {
-        var checkoutChanges = checkouts
-            .IntersectBy(changeAmount.Keys, a => a.Id)
-            .Select(a => new Change
-            {
-                Card = a.Card,
-                To = deck,
-                From = a.Location,
-                Amount = changeAmount[a.Id],
-                Transaction = transaction
-            });
-
-        _dbContext.Changes.AttachRange(checkoutChanges);
-    }
-
-
 
     private void ApplyReturns(Deck deck, Transaction transaction, RequestResult result)
     {
@@ -459,6 +461,29 @@ public class ExchangeModel : PageModel
                 (deckAmt, ret) => new ExchangePair(deckAmt, ret.Id));
 
         ApplyReturns(amountChanges, giveBacks, exchangePairs);
+    }
+
+
+    private void AddReturnChanges(
+        Deck deck,
+        Transaction transaction,
+        IEnumerable<Amount> returns,
+        IReadOnlyDictionary<int, int> changeAmount)
+    {
+        var returnChanges = returns
+            .Join( changeAmount,
+                amt => amt.Id,
+                kva => kva.Key,
+                (amt, kva) => new Change
+                {
+                    Card = amt.Card,
+                    From = deck,
+                    To = amt.Location,
+                    Amount = kva.Value,
+                    Transaction = transaction
+                });
+
+        _dbContext.Changes.AttachRange(returnChanges);
     }
 
 
@@ -498,27 +523,6 @@ public class ExchangeModel : PageModel
 
             amountChanges[matchId] = matchAmt - returnApplied;
         }
-    }
-
-
-    private void AddReturnChanges(
-        Deck deck,
-        Transaction transaction,
-        IEnumerable<Amount> returns,
-        IReadOnlyDictionary<int, int> changeAmount)
-    {
-        var returnChanges = returns
-            .IntersectBy(changeAmount.Keys, a => a.Id)
-            .Select(a => new Change
-            {
-                Card = a.Card,
-                To = a.Location,
-                From = deck,
-                Amount = changeAmount[a.Id],
-                Transaction = transaction
-            });
-
-        _dbContext.Changes.AttachRange(returnChanges);
     }
 
 

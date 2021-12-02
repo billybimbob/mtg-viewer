@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 using Microsoft.AspNetCore.Authorization;
@@ -37,14 +38,15 @@ public class StatusModel : PageModel
         Array.Empty<QuantityNameGroup>();
 
 
-    public async Task<IActionResult> OnGetAsync(int deckId)
+    public async Task<IActionResult> OnGetAsync(int deckId, CancellationToken cancel)
     {
         if (deckId == default)
         {
             return NotFound();
         }
 
-        var deck = await DeckForStatus(deckId).SingleOrDefaultAsync();
+        var deck = await DeckForStatus(deckId)
+            .SingleOrDefaultAsync(cancel);
 
         if (deck == default)
         {
@@ -150,7 +152,7 @@ public class StatusModel : PageModel
 
 
 
-    public async Task<IActionResult> OnPostAsync(int deckId)
+    public async Task<IActionResult> OnPostAsync(int deckId, CancellationToken cancel)
     {
         if (deckId == default)
         {
@@ -165,7 +167,7 @@ public class StatusModel : PageModel
         var deck = await _dbContext.Decks
             .Include(d => d.TradesTo)
             .SingleOrDefaultAsync(d =>
-                d.Id == deckId && d.OwnerId == userId);
+                d.Id == deckId && d.OwnerId == userId, cancel);
 
         if (deck == default)
         {
@@ -183,7 +185,7 @@ public class StatusModel : PageModel
 
         try
         {
-            await _dbContext.SaveChangesAsync();
+            await _dbContext.SaveChangesAsync(cancel);
             PostMessage = "Successfully cancelled requests";
         }
         catch (DbUpdateException)

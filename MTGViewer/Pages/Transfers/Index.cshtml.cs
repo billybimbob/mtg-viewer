@@ -1,4 +1,5 @@
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 using Microsoft.AspNetCore.Authorization;
@@ -50,10 +51,10 @@ public class IndexModel : PageModel
 
 
 
-    public async Task<IActionResult> OnGetAsync()
+    public async Task<IActionResult> OnGetAsync(CancellationToken cancel)
     {
         var userId = _userManager.GetUserId(User);
-        var user = await _dbContext.Users.FindAsync(userId);
+        var user = await _dbContext.Users.FindAsync(new []{ userId }, cancel);
 
         if (user is null)
         {
@@ -61,12 +62,12 @@ public class IndexModel : PageModel
         }
 
         TradeDecks = await DecksForTransfer(userId)
-            .ToPagedListAsync(_pageSize, DeckIndex);
+            .ToPagedListAsync(_pageSize, DeckIndex, cancel);
 
         SelfUser = user;
 
         Suggestions = await SuggestionsForIndex(userId)
-            .ToPagedListAsync(_pageSize, SuggestIndex);
+            .ToPagedListAsync(_pageSize, SuggestIndex, cancel);
 
         return Page();
     }
@@ -111,13 +112,13 @@ public class IndexModel : PageModel
     }
 
 
-    public async Task<IActionResult> OnPostAsync(int suggestId)
+    public async Task<IActionResult> OnPostAsync(int suggestId, CancellationToken cancel)
     {
         var userId = _userManager.GetUserId(User);
 
         var suggestion = await _dbContext.Suggestions
             .SingleOrDefaultAsync(s =>
-                s.Id == suggestId && s.ReceiverId == userId);
+                s.Id == suggestId && s.ReceiverId == userId, cancel);
 
         if (suggestion is null)
         {
@@ -125,11 +126,11 @@ public class IndexModel : PageModel
             return RedirectToPage(new { DeckIndex, SuggestIndex});
         }
 
-        _dbContext.Entry(suggestion).State = EntityState.Deleted;
+        _dbContext.Suggestions.Remove(suggestion);
 
         try
         {
-            await _dbContext.SaveChangesAsync();
+            await _dbContext.SaveChangesAsync(cancel);
             PostMessage = "Suggestion Acknowledged";
         }
         catch (DbUpdateException)

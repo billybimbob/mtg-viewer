@@ -81,7 +81,7 @@ public class MTGFetchTests
     [Fact(Skip = "Calls external api")]
     public async Task Where_MultiId_ReturnsSingleCard()
     {
-        var search = new CardSearch
+        var search = new CardQuery
         {
             MultiverseId = TEST_ID
         };
@@ -99,7 +99,7 @@ public class MTGFetchTests
     [Fact]
     public async Task Where_Empty_ReturnsEmpty()
     {
-        var search = new CardSearch();
+        var search = new CardQuery();
 
         var cards = await _fetch
             .Where(search)
@@ -112,7 +112,7 @@ public class MTGFetchTests
     [Fact(Skip = "Calls external api")]
     public async Task Where_OnlyName_ReturnsCard()
     {
-        var search = new CardSearch
+        var search = new CardQuery
         {
             Name = TEST_NAME
         };

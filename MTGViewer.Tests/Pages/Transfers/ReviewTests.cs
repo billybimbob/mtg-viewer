@@ -79,7 +79,7 @@ public class ReviewTests : IAsyncLifetime
 
         // Act
         var fromBefore = await FromTarget(trade).SingleAsync();
-        var result = await _reviewModel.OnPostAcceptAsync(trade.Id, trade.Amount);
+        var result = await _reviewModel.OnPostAcceptAsync(trade.Id, trade.Amount, default);
 
         var fromAfter = await FromTarget(trade).SingleAsync();
         var tradeAfter = await TradesInSet.Select(t => t.Id).ToListAsync();
@@ -102,7 +102,7 @@ public class ReviewTests : IAsyncLifetime
 
         // Act
         var fromBefore = await FromTarget(trade).SingleAsync();
-        var result = await _reviewModel.OnPostAcceptAsync(wrongTradeId, trade.Amount);
+        var result = await _reviewModel.OnPostAcceptAsync(wrongTradeId, trade.Amount, default);
 
         var fromAfter = await FromTarget(trade).SingleAsync();
         var tradesAfter = await TradesInSet.Select(t => t.Id).ToListAsync();
@@ -137,7 +137,7 @@ public class ReviewTests : IAsyncLifetime
         var toBefore = await toAmount.SingleOrDefaultAsync();
         var fromBefore = await fromAmount.SingleAsync();
 
-        var result = await _reviewModel.OnPostAcceptAsync(trade.Id, amount);
+        var result = await _reviewModel.OnPostAcceptAsync(trade.Id, amount, default);
 
         var toAfter = await toAmount.SingleAsync();
         var fromAfter = await fromAmount.SingleOrDefaultAsync();
@@ -177,7 +177,7 @@ public class ReviewTests : IAsyncLifetime
         var fromBefore = await fromAmount.SingleAsync();
         var tradesBefore = await tradeSet.ToListAsync();
 
-        var result = await _reviewModel.OnPostAcceptAsync(trade.Id, trade.Amount);
+        var result = await _reviewModel.OnPostAcceptAsync(trade.Id, trade.Amount, default);
 
         var toAfter = await toAmount.SingleAsync();
         var fromAfter = await fromAmount.SingleOrDefaultAsync();
@@ -208,7 +208,7 @@ public class ReviewTests : IAsyncLifetime
 
         // Act
         var fromBefore = await fromAmount.SingleAsync();
-        var result = await _reviewModel.OnPostRejectAsync(trade.Id);
+        var result = await _reviewModel.OnPostRejectAsync(trade.Id, default);
 
         var fromAfter = await fromAmount.SingleOrDefaultAsync();
         var tradesAfter = await TradesInSet.Select(t => t.Id).ToListAsync();
@@ -234,7 +234,7 @@ public class ReviewTests : IAsyncLifetime
 
         // Act
         var fromBefore = await fromAmount.SingleAsync();
-        var result = await _reviewModel.OnPostRejectAsync(wrongTradeId);
+        var result = await _reviewModel.OnPostRejectAsync(wrongTradeId, default);
 
         var fromAfter = await fromAmount.SingleOrDefaultAsync();
         var tradesAfter = await TradesInSet.Select(t => t.Id).ToListAsync();
@@ -259,7 +259,7 @@ public class ReviewTests : IAsyncLifetime
 
         // Act
         var fromBefore = await fromAmount.SingleAsync();
-        var result = await _reviewModel.OnPostRejectAsync(trade.Id);
+        var result = await _reviewModel.OnPostRejectAsync(trade.Id, default);
 
         var fromAfter = await fromAmount.SingleAsync();
         var tradesAfter = await TradesInSet.Select(t => t.Id).ToListAsync();

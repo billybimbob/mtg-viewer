@@ -59,7 +59,7 @@ public class IndexTests : IAsyncLifetime
         await _indexModel.SetModelContextAsync(_userManager, suggestion.ReceiverId);
 
         // Act
-        var result = await _indexModel.OnPostAsync(suggestion.Id);
+        var result = await _indexModel.OnPostAsync(suggestion.Id, default);
         var suggestions = await AllSuggestions.Select(t => t.Id).ToListAsync();
 
         // Assert
@@ -81,7 +81,7 @@ public class IndexTests : IAsyncLifetime
         await _indexModel.SetModelContextAsync(_userManager, wrongUser);
 
         // Act
-        var result = await _indexModel.OnPostAsync(suggestion.Id);
+        var result = await _indexModel.OnPostAsync(suggestion.Id, default);
         var suggestions = await AllSuggestions.Select(t => t.Id).ToListAsync();
 
         // Assert
@@ -101,7 +101,7 @@ public class IndexTests : IAsyncLifetime
 
         // Act
         var suggestsBefore = await AllSuggestions.Select(t => t.Id).ToListAsync();
-        var result = await _indexModel.OnPostAsync(invalidSuggestId);
+        var result = await _indexModel.OnPostAsync(invalidSuggestId, default);
         var suggestsAFter = await AllSuggestions.Select(t => t.Id).ToListAsync();
 
         // Assert

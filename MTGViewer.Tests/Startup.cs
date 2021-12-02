@@ -50,11 +50,10 @@ public class Startup
             provider.GetRequiredService<CardDbContext>(), ServiceLifetime.Scoped);
 
         services.AddScoped<ITreasuryQuery, SortedPartitionTreasury>();
+        services.AddSingleton<PageSizes>();
 
         services.AddScoped<UserManager<CardUser>>(TestFactory.CardUserManager);
         services.AddScoped<SignInManager<CardUser>>(TestFactory.CardSignInManager);
-
-        services.AddSingleton<PageSizes>();
 
         services.AddSymbols(options => options
             .AddFormatter<CardText>()
@@ -69,7 +68,7 @@ public class Startup
 
         services.AddScoped<MTGFetchService>();
 
-        services.AddScoped<JsonCardStorage>();
+        services.AddScoped<FileCardStorage>();
         services.AddScoped<CardDataGenerator>();
         services.AddScoped<TestDataGenerator>();
     }

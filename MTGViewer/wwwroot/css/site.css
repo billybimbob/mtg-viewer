@@ -161,14 +161,3 @@ body {
   outline: 0;
   box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
 }
-
-#deck-builder {
-  position: -webkit-sticky;
-  position: sticky;
-  top: 5%;
-}
-
-#deck-builder-cards {
-  height: 90vh;
-  overflow-y: auto;
-}

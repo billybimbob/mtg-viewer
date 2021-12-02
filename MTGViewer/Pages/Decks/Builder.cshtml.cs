@@ -1,4 +1,5 @@
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 using Microsoft.AspNetCore.Mvc;
@@ -21,7 +22,8 @@ public class BuilderModel : PageModel
     private readonly UserManager<CardUser> _userManager;
     private readonly CardDbContext _dbContext;
 
-    public BuilderModel(UserManager<CardUser> userManager, CardDbContext dbContext, PageSizes pageSizes)
+    public BuilderModel(
+        UserManager<CardUser> userManager, CardDbContext dbContext, PageSizes pageSizes)
     {
         _userManager = userManager;
         _dbContext = dbContext;
@@ -35,14 +37,14 @@ public class BuilderModel : PageModel
     public int PageSize { get; }
 
 
-    public async Task<IActionResult> OnGetAsync(int? id)
+    public async Task<IActionResult> OnGetAsync(int? id, CancellationToken cancel)
     {
         UserId = _userManager.GetUserId(User);
 
         if (id is int deckId)
         {
             var deck = await DeckForBuilder(deckId, UserId)
-                .SingleOrDefaultAsync();
+                .SingleOrDefaultAsync(cancel);
 
             if (deck == default)
             {

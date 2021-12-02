@@ -68,7 +68,7 @@ public class SuggestTests : IAsyncLifetime
         };
 
         int suggestsBefore = await _dbContext.Suggestions.CountAsync();
-        var result = await _suggestModel.OnPostSuggestAsync();
+        var result = await _suggestModel.OnPostSuggestAsync(default);
         int suggestsAfter = await _dbContext.Suggestions.CountAsync();
 
         Assert.IsType<RedirectToPageResult>(result);
@@ -95,7 +95,7 @@ public class SuggestTests : IAsyncLifetime
         };
 
         int suggestsBefore = await _dbContext.Suggestions.CountAsync();
-        var result = await _suggestModel.OnPostSuggestAsync();
+        var result = await _suggestModel.OnPostSuggestAsync(default);
         int suggestsAfter = await _dbContext.Suggestions.CountAsync();
 
         Assert.IsType<RedirectToPageResult>(result);
@@ -132,7 +132,7 @@ public class SuggestTests : IAsyncLifetime
         };
 
         int suggestsBefore = await _dbContext.Suggestions.CountAsync();
-        var result = await _suggestModel.OnPostSuggestAsync();
+        var result = await _suggestModel.OnPostSuggestAsync(default);
         int suggestsAfter = await _dbContext.Suggestions.CountAsync();
 
         Assert.IsType<RedirectToPageResult>(result);
@@ -164,7 +164,7 @@ public class SuggestTests : IAsyncLifetime
         };
 
         int suggestsBefore = await _dbContext.Suggestions.CountAsync();
-        var result = await _suggestModel.OnPostSuggestAsync();
+        var result = await _suggestModel.OnPostSuggestAsync(default);
         int suggestsAfter = await _dbContext.Suggestions.CountAsync();
 
         Assert.IsType<RedirectToPageResult>(result);
@@ -205,7 +205,7 @@ public class SuggestTests : IAsyncLifetime
         };
 
         int suggestsBefore = await _dbContext.Suggestions.CountAsync();
-        var result = await _suggestModel.OnPostSuggestAsync();
+        var result = await _suggestModel.OnPostSuggestAsync(default);
         int suggestsAfter = await _dbContext.Suggestions.CountAsync();
 
         Assert.IsType<RedirectToPageResult>(result);
@@ -229,7 +229,7 @@ public class SuggestTests : IAsyncLifetime
         _suggestModel.Suggestion = suggest;
 
         int suggestsBefore = await _dbContext.Suggestions.CountAsync();
-        var result = await _suggestModel.OnPostSuggestAsync();
+        var result = await _suggestModel.OnPostSuggestAsync(default);
         int suggestsAfter = await _dbContext.Suggestions.CountAsync();
 
         Assert.IsType<RedirectToPageResult>(result);
@@ -267,7 +267,7 @@ public class SuggestTests : IAsyncLifetime
         };
 
         int suggestsBefore = await _dbContext.Suggestions.CountAsync();
-        var result = await _suggestModel.OnPostSuggestAsync();
+        var result = await _suggestModel.OnPostSuggestAsync(default);
         int suggestsAfter = await _dbContext.Suggestions.CountAsync();
 
         Assert.IsType<RedirectToPageResult>(result);
@@ -308,7 +308,7 @@ public class SuggestTests : IAsyncLifetime
         };
 
         int suggestsBefore = await _dbContext.Suggestions.CountAsync();
-        var result = await _suggestModel.OnPostSuggestAsync();
+        var result = await _suggestModel.OnPostSuggestAsync(default);
         int suggestsAfter = await _dbContext.Suggestions.CountAsync();
 
         Assert.IsType<RedirectToPageResult>(result);
@@ -350,7 +350,7 @@ public class SuggestTests : IAsyncLifetime
         };
 
         int suggestsBefore = await _dbContext.Suggestions.CountAsync();
-        var result = await _suggestModel.OnPostSuggestAsync();
+        var result = await _suggestModel.OnPostSuggestAsync(default);
         int suggestsAfter = await _dbContext.Suggestions.CountAsync();
 
         Assert.IsType<RedirectToPageResult>(result);

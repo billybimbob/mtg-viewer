@@ -7,11 +7,15 @@
 <h1>Data Backup</h1>
 <hr />
 
-<div class="row">
-    <div class="col-md">
+<div class="row mb-3">
+    <div class="col">
+        <h3>Overview</h3>
         <p>
             Bulk fetch and add operations can be done via files. Currently, only .json files with
-            the same format as the exported .json format are supported.
+            the same format as the exported .json format and .csv files are supported.
+        </p>
+        <p>
+            The .csv file format expects for a header with the format: <code>Name,MultiverseID,Quantity</code>.
         </p>
     </div>
 </div>
@@ -24,7 +28,7 @@
 
             <div class="form-group my-4">
                 <label asp-for="Import!.File" class="sr-only"></label>
-                <input asp-for="Import!.File" class="form-control-file" accept=".json,application/json" />
+                <input asp-for="Import!.File" class="form-control-file" accept=".json,application/json,text/csv" />
                 <span asp-validation-for="Import!.File" class="text-danger"></span>
             </div>
 

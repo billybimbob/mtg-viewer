@@ -71,7 +71,7 @@ public class DeleteTests : IAsyncLifetime
         await _deleteModel.SetModelContextAsync(_userManager, wrongUser.Id);
 
         // Act
-        var result = await _deleteModel.OnPostAsync(deck.Id);
+        var result = await _deleteModel.OnPostAsync(deck.Id, default);
         var deckAfter = await Deck(deck).SingleOrDefaultAsync();
 
         // Assert
@@ -91,7 +91,7 @@ public class DeleteTests : IAsyncLifetime
         var wrongDeck = -1;
 
         // Act
-        var result = await _deleteModel.OnPostAsync(wrongDeck);
+        var result = await _deleteModel.OnPostAsync(wrongDeck, default);
         var deckAfter = await Deck(deck).SingleOrDefaultAsync();
 
         // // Assert
@@ -119,7 +119,7 @@ public class DeleteTests : IAsyncLifetime
 
         // Act
         var boxBefore = await boxTotal.SumAsync();
-        var result = await _deleteModel.OnPostAsync(deck.Id);
+        var result = await _deleteModel.OnPostAsync(deck.Id, default);
 
         var boxAfter = await boxTotal.SumAsync();
         var deckAfter = await Deck(deck).SingleOrDefaultAsync();

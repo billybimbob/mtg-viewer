@@ -1,7 +1,7 @@
 using System;
-using System.Linq;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using CsvHelper;
 
 using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
@@ -17,23 +18,25 @@ using MTGViewer.Data;
 namespace MTGViewer.Services;
 
 
-public class JsonCardStorage
+public class FileCardStorage
 {
     private readonly string _defaultFilename;
     private readonly int _pageSize;
 
     private readonly CardDbContext _dbContext;
-    private readonly UserManager<CardUser> _userManager;
+    private readonly ITreasuryQuery _treasuryQuery;
     private readonly MTGFetchService _fetch;
 
+    private readonly UserManager<CardUser> _userManager;
     private readonly string _tempPassword; // TODO: change, see below for impl
 
-    public JsonCardStorage(
+    public FileCardStorage(
         IConfiguration config, 
         PageSizes pageSizes,
         CardDbContext dbContext, 
-        UserManager<CardUser> userManager,
-        MTGFetchService fetch)
+        ITreasuryQuery treasuryQuery,
+        MTGFetchService fetch,
+        UserManager<CardUser> userManager)
     {
         var filename = config.GetValue("JsonPath", "cards");
 
@@ -41,13 +44,14 @@ public class JsonCardStorage
         _pageSize = pageSizes.Limit;
 
         _dbContext = dbContext;
-        _userManager = userManager;
+        _treasuryQuery = treasuryQuery;
         _fetch = fetch;
 
         var seedOptions = new SeedSettings();
         config.GetSection(nameof(SeedSettings)).Bind(seedOptions);
 
         _tempPassword = seedOptions.Password;
+        _userManager = userManager;
     }
 
 
@@ -57,7 +61,7 @@ public class JsonCardStorage
     }
 
 
-    public async Task WriteToJsonAsync(
+    public async Task WriteJsonAsync(
         string? path = default, CancellationToken cancel = default)
     {
         path ??= Path.Combine(Directory.GetCurrentDirectory(), _defaultFilename);
@@ -81,7 +85,7 @@ public class JsonCardStorage
 
 
 
-    public async Task<bool> SeedFromJsonAsync(
+    public async Task<bool> TryJsonSeedAsync(
         string? path = default, CancellationToken cancel = default)
     {
         path ??= Path.Combine(Directory.GetCurrentDirectory(), _defaultFilename);
@@ -153,9 +157,9 @@ public class JsonCardStorage
     }
 
 
-    public async Task<bool> AddFromJsonAsync(IFormFile jsonFile, CancellationToken cancel = default)
+    public async Task<bool> TryJsonAddAsync(IFormFile jsonFile, CancellationToken cancel = default)
     {
-        var ext = Path.GetExtension(jsonFile.FileName).ToLower();
+        string ext = Path.GetExtension(jsonFile.FileName).ToLower();
 
         if (ext != ".json")
         {
@@ -194,12 +198,18 @@ public class JsonCardStorage
 
     private async Task MergeAsync(CardData data, CancellationToken cancel)
     {
-        var cards = await NewCardsAsync(data, cancel);
+        var allCardIds = await _dbContext.Cards
+            .Select(c => c.Id)
+            .ToListAsync(cancel);
 
-        var bins = GetBinWithBoxAmounts(data);
-        var unclaimed = GetDecksAsUnclaimed(data);
+        var cards = await NewCardsAsync(data, allCardIds, cancel);
 
-        var transaction = GetAddTranscation(data);
+        allCardIds.AddRange(cards.Select(c => c.Id));
+
+        var bins = GetBinWithBoxAmounts(data, allCardIds);
+        var unclaimed = GetDecksAsUnclaimed(data, allCardIds);
+
+        var transaction = GetAddTranscation(bins, unclaimed);
 
         // TODO: merge to existing bins, boxes, and decks
         // merging may have issue with card amount/want conflicts
@@ -213,40 +223,40 @@ public class JsonCardStorage
     }
 
 
-    private async Task<IReadOnlyList<Card>> NewCardsAsync(CardData data, CancellationToken cancel)
+    private async Task<IReadOnlyList<Card>> NewCardsAsync(
+        CardData data, IReadOnlyList<string> dbCardIds, CancellationToken cancel)
     {
-        var cardIds = data.Cards
-            .Select(c => c.Id)
-            .ToArray();
-
-        var dbCardIds = await _dbContext.Cards
-            .Select(c => c.Id)
-            .Where(cid => cardIds.Contains(cid))
-            .ToListAsync(cancel);
-
         var multiIds = data.Cards
             .ExceptBy(dbCardIds, c => c.Id)
-            .Where(c => c.IsValid())
+            .Where(c => c.MultiverseId is not null)
             .Select(c => c.MultiverseId);
 
-        return await ValidatedCardsAsync(multiIds);
+        return await ValidatedCardsAsync(multiIds, cancel);
     }
 
 
-    private async Task<IReadOnlyList<Card>> ValidatedCardsAsync(IEnumerable<string> multiIds)
+    private async Task<IReadOnlyList<Card>> ValidatedCardsAsync(
+        IEnumerable<string> multiIds, 
+        CancellationToken cancel)
     {
         const int limit = MTGFetchService.Limit;
         var cards = new List<Card>();
 
         foreach (var multiChunk in multiIds.Chunk(limit))
         {
+            if (!multiChunk.Any())
+            {
+                continue;
+            }
+
             var multiArg = string.Join(MTGFetchService.Or, multiChunk);
 
-            // go one by one since fetch is not thread safe
             var validated = await _fetch
                 .Where(c => c.MultiverseId, multiArg)
                 .Where(c => c.PageSize, limit)
                 .SearchAsync();
+
+            cancel.ThrowIfCancellationRequested();
 
             cards.AddRange(validated);
         }
@@ -255,15 +265,23 @@ public class JsonCardStorage
     }
 
 
-    private IReadOnlyList<Bin> GetBinWithBoxAmounts(CardData data)
+    private IReadOnlyList<Bin> GetBinWithBoxAmounts(CardData data, IReadOnlyCollection<string> cardIds)
     {
+        if (!data.Boxes.Any())
+        {
+            return Array.Empty<Bin>();
+        }
+
         var bins = new List<Bin>();
 
         var boxTable = data.Boxes
             .ToLookup(b => b.BinId);
 
         var amountTable = data.Amounts
-            .ToLookup(ca => ca.LocationId);
+            .Join(cardIds,
+                amt => amt.CardId, cid => cid,
+                (amount, _) => amount)
+            .ToLookup(a => a.LocationId);
 
         foreach (var bin in data.Bins)
         {
@@ -294,14 +312,25 @@ public class JsonCardStorage
     }
 
 
-    private IReadOnlyList<Unclaimed> GetDecksAsUnclaimed(CardData data)
+    private IReadOnlyList<Unclaimed> GetDecksAsUnclaimed(CardData data, IReadOnlyList<string> cardIds)
     {
+        if (!data.Decks.Any() && !data.Unclaimed.Any())
+        {
+            return Array.Empty<Unclaimed>();
+        }
+
         var allUnclaimed = new List<Unclaimed>();
 
         var amountTable = data.Amounts
+            .Join(cardIds,
+                amt => amt.CardId, cid => cid,
+                (amount, _) => amount)
             .ToLookup(ca => ca.LocationId);
 
         var wantTable = data.Wants
+            .Join(cardIds,
+                want => want.CardId, cid => cid,
+                (want, _) => want)
             .ToLookup(w => w.LocationId);
 
         foreach (var unclaimed in data.Unclaimed)
@@ -350,34 +379,157 @@ public class JsonCardStorage
     }
 
 
-    private Transaction GetAddTranscation(CardData data)
+    private Transaction GetAddTranscation(
+        IReadOnlyList<Bin> bins, 
+        IReadOnlyList<Unclaimed> unclaimed)
     {
         var transaction = new Transaction();
 
-        var boxChanges = data.Bins
+        var boxChanges = bins
             .SelectMany(b => b.Boxes)
-            .SelectMany( b => b.Cards,
+            .SelectMany(b => b.Cards,
                 (box, a) => new Change
                 {
-                    CardId = a.CardId,
+                    CardId = a.CardId, // cardId should be known
                     To = box,
                     Amount = a.NumCopies
                 });
 
         transaction.Changes.AddRange(boxChanges);
 
-        var deckChanges = data.Decks
-            .SelectMany(d => d.Cards,
-                (deck, a) => new Change
+        var deckChanges = unclaimed
+            .SelectMany(u => u.Cards,
+                (unclaimed, a) => new Change
                 {
-                    CardId = a.CardId,
-                    To = deck,
+                    CardId = a.CardId, // cardId should be known
+                    To = unclaimed,
                     Amount = a.NumCopies
                 });
 
         transaction.Changes.AddRange(deckChanges);
 
         return transaction;
+    }
+
+
+    private sealed class CsvCard
+    {
+        public string Name { get; set; } = string.Empty;
+        public string MultiverseID { get; set; } = string.Empty;
+        public int Quantity { get; set; }
+    }
+
+
+    public async Task<bool> TryCsvAddAsync(IFormFile csvFile, CancellationToken cancel = default)
+    {
+        string ext = Path.GetExtension(csvFile.FileName).ToLower();
+
+        if (ext != ".csv")
+        {
+            return false;
+        }
+
+        try
+        {
+            await using var fileStream = csvFile.OpenReadStream();
+
+            using var readStream = new StreamReader(fileStream);
+            var culture = System.Globalization.CultureInfo.InvariantCulture;
+
+            using var csv = new CsvReader(readStream, culture);
+
+            await MergeAsync(csv, cancel);
+
+            await _dbContext.SaveChangesAsync(cancel);
+
+            return true;
+        }
+        catch (CsvHelperException)
+        {
+            return false;
+        }
+        catch (DbUpdateException)
+        {
+            return false;
+        }
+    }
+
+
+    private async Task MergeAsync(CsvReader csv, CancellationToken cancel)
+    {
+        var cardMultis = await csv.GetRecordsAsync<CsvCard>(cancel)
+            .Where(cc => cc.Quantity > 0)
+
+            .GroupByAwaitWithCancellation(
+                (cc, _) => ValueTask.FromResult(cc.MultiverseID),
+                async (multiverseId, ccs, can) => 
+                    (multiverseId, quantity: await ccs.SumAsync(cc => cc.Quantity, can)))
+
+            .ToDictionaryAsync(
+                cc => cc.multiverseId, cc => cc.quantity, cancel);
+
+        var allCards = await MergeCardsAsync(cardMultis.Keys, cancel);
+
+        await AddAmountsAsync(allCards, cardMultis, cancel);
+    }
+
+
+    private async Task<IReadOnlyList<Card>> MergeCardsAsync(
+        IReadOnlyCollection<string> multiIds, 
+        CancellationToken cancel)
+    {
+        if (!multiIds.Any())
+        {
+            return Array.Empty<Card>();
+        }
+
+        var allCards = await _dbContext.Cards
+            .Where(c => multiIds.Contains(c.MultiverseId))
+            .ToListAsync(cancel);
+
+        var newMultiIds = multiIds
+            .Except(allCards.Select(c => c.MultiverseId));
+
+        var newCards = await ValidatedCardsAsync(newMultiIds, cancel);
+
+        _dbContext.Cards.AddRange(newCards);
+        allCards.AddRange(newCards);
+
+        return allCards;
+    }
+
+
+    private async Task AddAmountsAsync(
+        IReadOnlyList<Card> cards,
+        IReadOnlyDictionary<string, int> cardMultis,
+        CancellationToken cancel)
+    {
+        if (!cards.Any())
+        {
+            return;
+        }
+
+        var requests = cards
+            .IntersectBy(cardMultis.Keys, c => c.MultiverseId)
+            .Select(card => 
+                new CardRequest(card, cardMultis[card.MultiverseId]));
+
+        var result = await _treasuryQuery.FindReturnAsync(requests, cancel);
+
+        var (addTargets, oldCopies) = result;
+        var newTransaction = new Transaction();
+
+        var addChanges = addTargets
+            .Select(a => new Change
+            {
+                Card = a.Card,
+                To = a.Location,
+                Amount = a.NumCopies - oldCopies.GetValueOrDefault(a.Id),
+                Transaction = newTransaction
+            });
+
+        _dbContext.AttachResult(result);
+        _dbContext.Changes.AttachRange(addChanges);
     }
 }
 
@@ -543,20 +695,16 @@ internal class CardData
     }
 
 
-    public static async Task<int> TotalPagesAsync(
+    public static Task<int> TotalPagesAsync(
         CardDbContext dbContext,
         int pageSize, 
         CancellationToken cancel = default)
     {
-        var maxPage = 1;
-        var dbCounts = DbSetCountsAsync(dbContext).WithCancellation(cancel);
-
-        await foreach(var count in dbCounts)
-        {
-            maxPage = Math.Max(maxPage, count / pageSize);
-        }
-
-        return maxPage;
+        return DbSetCountsAsync(dbContext, cancel)
+            .Select(count => count / pageSize)
+            .Prepend(1)
+            .MaxAsync(cancel)
+            .AsTask();
     }
 
 

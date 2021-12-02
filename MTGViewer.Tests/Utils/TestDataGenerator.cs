@@ -22,7 +22,7 @@ public class TestDataGenerator
     private readonly UserDbContext _userContext;
     private readonly UserManager<CardUser> _userManager;
 
-    private readonly JsonCardStorage _jsonStorage;
+    private readonly FileCardStorage _fileStorage;
     private readonly CardDataGenerator _cardGen;
 
     private readonly Random _random;
@@ -32,14 +32,14 @@ public class TestDataGenerator
         CardDbContext dbContext, 
         UserDbContext userContext,
         UserManager<CardUser> userManager,
-        JsonCardStorage jsonStorage,
+        FileCardStorage jsonStorage,
         CardDataGenerator cardGen)
     {
         _dbContext = dbContext;
         _userContext = userContext;
         _userManager = userManager;
 
-        _jsonStorage = jsonStorage;
+        _fileStorage = jsonStorage;
         _cardGen = cardGen;
 
         _random = new(100);
@@ -53,12 +53,12 @@ public class TestDataGenerator
         {
             await SetupAsync();
 
-            var jsonSuccess = await _jsonStorage.SeedFromJsonAsync();
+            bool jsonSuccess = await _fileStorage.TryJsonSeedAsync();
 
             if (!jsonSuccess)
             {
                 await _cardGen.GenerateAsync();
-                await _jsonStorage.WriteToJsonAsync();
+                await _fileStorage.WriteJsonAsync();
             }
 
             _dbContext.ChangeTracker.Clear();

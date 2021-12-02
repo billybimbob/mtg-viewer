@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 using Microsoft.AspNetCore.Authorization;
@@ -43,11 +44,11 @@ public class RequestModel : PageModel
     public IReadOnlyList<WantNameGroup> Requests { get; private set; } = Array.Empty<WantNameGroup>();
 
 
-    public async Task<IActionResult> OnGetAsync(int deckId)
+    public async Task<IActionResult> OnGetAsync(int deckId, CancellationToken cancel)
     {
         var deck = await DeckForRequest(deckId)
             .AsNoTrackingWithIdentityResolution()
-            .SingleOrDefaultAsync();
+            .SingleOrDefaultAsync(cancel);
 
         if (deck == default)
         {
@@ -66,7 +67,7 @@ public class RequestModel : PageModel
         }
 
 
-        TargetsExist = await TakeTargets(deck).AnyAsync();
+        TargetsExist = await TakeTargets(deck).AnyAsync(cancel);
 
         Deck = deck;
 
@@ -120,10 +121,10 @@ public class RequestModel : PageModel
 
 
 
-    public async Task<IActionResult> OnPostAsync(int deckId)
+    public async Task<IActionResult> OnPostAsync(int deckId, CancellationToken cancel)
     {
         var deck = await DeckForRequest(deckId)
-            .SingleOrDefaultAsync();
+            .SingleOrDefaultAsync(cancel);
 
         if (deck == default)
         {
@@ -136,7 +137,7 @@ public class RequestModel : PageModel
             return RedirectToPage("Index");
         }
 
-        var trades = await CreateTradesAsync(deck);
+        var trades = await CreateTradesAsync(deck, cancel);
 
         if (!trades.Any())
         {
@@ -148,7 +149,7 @@ public class RequestModel : PageModel
 
         try
         {
-            await _dbContext.SaveChangesAsync();
+            await _dbContext.SaveChangesAsync(cancel);
 
             PostMessage = "Request was successfully sent";
             return RedirectToPage("Status", new { deckId });
@@ -161,14 +162,15 @@ public class RequestModel : PageModel
     }
 
 
-    private async Task<IEnumerable<Trade>> CreateTradesAsync(Deck deck)
+    private async Task<IEnumerable<Trade>> CreateTradesAsync(Deck deck, CancellationToken cancel)
     {
         if (!deck.Wants.Any())
         {
             return Enumerable.Empty<Trade>();
         }
 
-        var requestTargets = await TakeTargets(deck).ToListAsync(); // unbounded: keep eye on
+        var requestTargets = await TakeTargets(deck)
+            .ToListAsync(cancel); // unbounded: keep eye on
 
         if (!requestTargets.Any())
         {

@@ -1,11 +1,10 @@
 using System;
 using System.ComponentModel.DataAnnotations;
 using MtgApiManager.Lib.Service;
-using MTGViewer.Services;
 
-namespace MTGViewer.Data;
+namespace MTGViewer.Services;
 
-public class CardSearch : IQueryParameter
+public class CardQuery : IQueryParameter
 {
     public string? Id { get; set; }
 

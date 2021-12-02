@@ -38,7 +38,6 @@ public class SortedPartitionTreasury : ITreasuryQuery
             .AsNoTrackingWithIdentityResolution();
 
 
-
     #region Checkout
 
     public async Task<RequestResult> FindCheckoutAsync(
@@ -221,6 +220,8 @@ public class SortedPartitionTreasury : ITreasuryQuery
             return RequestResult.Empty;
         }
 
+        dbContext.ChangeTracker.AutoDetectChangesEnabled = false;
+
         var originalCopies = dbContext.ChangeTracker
             .Entries<Amount>()
             .IntersectBy(amounts, e => e.Entity)
@@ -332,7 +333,7 @@ public class SortedPartitionTreasury : ITreasuryQuery
     }
 
 
-    private class ReturnState
+    private sealed class ReturnState
     {
         private readonly Dictionary<int, int> _boxSpace;
         private readonly Dictionary<QuantityIndex, Amount> _amountMap;
@@ -525,7 +526,7 @@ public class SortedPartitionTreasury : ITreasuryQuery
     }
 
 
-    private class BoxSearcher
+    private sealed class BoxSearcher
     {
         private readonly IReadOnlyList<Box> _sortedBoxes;
 
@@ -625,7 +626,6 @@ public class SortedPartitionTreasury : ITreasuryQuery
 
         yield return (last, cardsToAssign);
     }
-
 
     #endregion
 }

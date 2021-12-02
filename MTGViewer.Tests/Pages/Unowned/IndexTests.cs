@@ -61,7 +61,7 @@ public class IndexTests : IAsyncLifetime
             .Select(u => u.Id)
             .ContainsAsync(_unclaimed.Id);
 
-        var result = await _indexModel.OnPostClaimAsync(_unclaimed.Id);
+        var result = await _indexModel.OnPostClaimAsync(_unclaimed.Id, default);
 
         bool unclaimedAfter = await _dbContext.Unclaimed
             .Select(u => u.Id)
@@ -91,7 +91,7 @@ public class IndexTests : IAsyncLifetime
             .Where(d => d.OwnerId == userId)
             .CountAsync();
 
-        var result = await _indexModel.OnPostClaimAsync(_unclaimed.Id);
+        var result = await _indexModel.OnPostClaimAsync(_unclaimed.Id, default);
 
         bool unclaimedAfter = await _dbContext.Unclaimed
             .Select(u => u.Id)
@@ -119,7 +119,7 @@ public class IndexTests : IAsyncLifetime
             .Select(u => u.Id)
             .ContainsAsync(_unclaimed.Id);
 
-        var result = await _indexModel.OnPostRemoveAsync(_unclaimed.Id);
+        var result = await _indexModel.OnPostRemoveAsync(_unclaimed.Id, default);
 
         bool unclaimedAfter = await _dbContext.Unclaimed
             .Select(u => u.Id)
@@ -145,7 +145,7 @@ public class IndexTests : IAsyncLifetime
             .Select(u => u.Id)
             .ContainsAsync(_unclaimed.Id);
 
-        var result = await _indexModel.OnPostRemoveAsync(_unclaimed.Id);
+        var result = await _indexModel.OnPostRemoveAsync(_unclaimed.Id, default);
 
         bool unclaimedAfter = await _dbContext.Unclaimed
             .Select(u => u.Id)

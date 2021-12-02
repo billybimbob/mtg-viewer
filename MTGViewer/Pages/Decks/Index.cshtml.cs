@@ -1,5 +1,5 @@
-using System;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 using Microsoft.AspNetCore.Mvc;
@@ -67,15 +67,15 @@ public class IndexModel : PageModel
     public PagedList<DeckState> Decks { get; private set; } = PagedList<DeckState>.Empty;
 
 
-    public async Task<IActionResult> OnGetAsync(int? pageIndex)
+    public async Task<IActionResult> OnGetAsync(int? pageIndex, CancellationToken cancel)
     {
         var userId = _userManager.GetUserId(User);
 
         var decks = await DeckStates(userId)
-            .ToPagedListAsync(_pageSize, pageIndex);
+            .ToPagedListAsync(_pageSize, pageIndex, cancel);
 
         var user = decks.FirstOrDefault()?.Deck.Owner
-            ?? await _dbContext.Users.FindAsync(userId);
+            ?? await _dbContext.Users.FindAsync(new [] { userId }, cancel);
 
         if (user is null)
         {

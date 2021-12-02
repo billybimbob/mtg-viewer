@@ -54,7 +54,7 @@ public static class CardStorageExtension
 }
 
 
-public class CardSetup : IHostedService
+internal class CardSetup : IHostedService
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly IWebHostEnvironment _env;
@@ -86,8 +86,8 @@ public class CardSetup : IHostedService
             return;
         }
 
-        var jsonStorage = scopeProvider.GetRequiredService<JsonCardStorage>();
-        var jsonSuccess = await jsonStorage.SeedFromJsonAsync(cancel: cancel);
+        var fileStorage = scopeProvider.GetRequiredService<FileCardStorage>();
+        bool jsonSuccess = await fileStorage.TryJsonSeedAsync(cancel: cancel);
 
         if (!jsonSuccess)
         {
@@ -99,12 +99,8 @@ public class CardSetup : IHostedService
             }
 
             await cardGen.GenerateAsync(cancel);
-            await jsonStorage.WriteToJsonAsync(cancel: cancel);
+            await fileStorage.WriteJsonAsync(cancel: cancel);
         }
-
-        // var treasury = scopeProvider.GetRequiredService<ITreasury>();
-
-        // await treasury.OptimizeAsync();
     }
 
 

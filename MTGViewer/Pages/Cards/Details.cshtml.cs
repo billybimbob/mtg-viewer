@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 using Microsoft.AspNetCore.Mvc;
@@ -33,7 +34,7 @@ public class DetailsModel : PageModel
     public IReadOnlyList<Card> CardAlts { get; private set; } = Array.Empty<Card>();
 
 
-    public async Task<IActionResult> OnGetAsync(string id)
+    public async Task<IActionResult> OnGetAsync(string id, CancellationToken cancel)
     {
         if (id is null)
         {
@@ -51,7 +52,7 @@ public class DetailsModel : PageModel
                 .ThenInclude(ca => ca.Location)
             .AsSplitQuery()
             .AsNoTrackingWithIdentityResolution()
-            .SingleOrDefaultAsync(c => c.Id == id);
+            .SingleOrDefaultAsync(c => c.Id == id, cancel);
 
         if (card == default)
         {
@@ -64,7 +65,7 @@ public class DetailsModel : PageModel
             .Where(c => c.Id != id && c.Name == Card.Name)
             .OrderBy(c => c.SetName)
             .AsNoTrackingWithIdentityResolution()
-            .ToListAsync();
+            .ToListAsync(cancel);
 
         return Page();
     }

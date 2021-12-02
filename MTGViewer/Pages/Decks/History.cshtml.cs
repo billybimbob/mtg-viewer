@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 using Microsoft.AspNetCore.Mvc;
@@ -55,9 +56,10 @@ public class HistoryModel : PageModel
         ImmutableHashSet<(int, int?, int)>.Empty;
 
 
-    public async Task<IActionResult> OnGetAsync(int id, int? pageIndex)
+    public async Task<IActionResult> OnGetAsync(
+        int id, int? pageIndex, CancellationToken cancel)
     {
-        var deck = await DeckForHistory(id).SingleOrDefaultAsync();
+        var deck = await DeckForHistory(id).SingleOrDefaultAsync(cancel);
 
         if (deck == default)
         {
@@ -65,7 +67,7 @@ public class HistoryModel : PageModel
         }
 
         var changes = await ChangesForHistory(id)
-            .ToPagedListAsync(_pageSize, pageIndex);
+            .ToPagedListAsync(_pageSize, pageIndex, cancel);
 
         Deck = deck;
 
@@ -119,14 +121,14 @@ public class HistoryModel : PageModel
 
 
 
-    public async Task<IActionResult> OnPostAsync(int transactionId)
+    public async Task<IActionResult> OnPostAsync(int transactionId, CancellationToken cancel)
     {
         var transaction = await _dbContext.Transactions
             .Include(t => t.Changes)
                 .ThenInclude(c => c.From)
             .Include(t => t.Changes) // unbounded: keep eye on
                 .ThenInclude(c => c.To)
-            .SingleOrDefaultAsync(t => t.Id == transactionId);
+            .SingleOrDefaultAsync(t => t.Id == transactionId, cancel);
 
         if (transaction == default || IsNotUserTransaction(transaction))
         {
@@ -138,7 +140,7 @@ public class HistoryModel : PageModel
 
         try
         {
-            await _dbContext.SaveChangesAsync();
+            await _dbContext.SaveChangesAsync(cancel);
         }
         catch (DbUpdateException e)
         {

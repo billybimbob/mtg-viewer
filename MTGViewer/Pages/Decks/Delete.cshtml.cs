@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 using Microsoft.AspNetCore.Mvc;
@@ -49,11 +50,11 @@ public class DeleteModel : PageModel
     public IReadOnlyList<Trade> Trades { get; private set; } = Array.Empty<Trade>();
 
 
-    public async Task<IActionResult> OnGetAsync(int id)
+    public async Task<IActionResult> OnGetAsync(int id, CancellationToken cancel)
     {
         var deck = await DeckForDelete(id)
             .AsNoTrackingWithIdentityResolution()
-            .SingleOrDefaultAsync();
+            .SingleOrDefaultAsync(cancel);
 
         if (deck == default)
         {
@@ -128,21 +129,21 @@ public class DeleteModel : PageModel
 
 
 
-    public async Task<IActionResult> OnPostAsync(int id)
+    public async Task<IActionResult> OnPostAsync(int id, CancellationToken cancel)
     {
         var deck = await DeckForDelete(id)
-            .SingleOrDefaultAsync();
+            .SingleOrDefaultAsync(cancel);
 
         if (deck == default)
         {
             return RedirectToPage("Index");
         }
 
-        await ReturnCardsAsync(deck);
+        await ReturnCardsAsync(deck, cancel);
 
         try
         {
-            await _dbContext.SaveChangesAsync();
+            await _dbContext.SaveChangesAsync(cancel);
 
             PostMesssage = $"Successfully deleted {deck.Name}";
         }
@@ -155,7 +156,7 @@ public class DeleteModel : PageModel
     }
 
 
-    private async Task ReturnCardsAsync(Deck deck)
+    private async Task ReturnCardsAsync(Deck deck, CancellationToken cancel)
     {
         if (!deck.Cards.Any())
         {
@@ -165,12 +166,9 @@ public class DeleteModel : PageModel
         var returningCards = deck.Cards
             .Select(a => new CardRequest(a.Card, a.NumCopies));
 
-        var returns = await _treasuryQuery.FindReturnAsync(returningCards);
+        var returns = await _treasuryQuery.FindReturnAsync(returningCards, cancel);
+
         var newTransaction = new Transaction();
-
-        _dbContext.AttachResult(returns);
-        _dbContext.Transactions.Attach(newTransaction);
-
         var (returnTargets, dbCopies) = returns;
 
         var returnChanges = returnTargets
@@ -183,6 +181,7 @@ public class DeleteModel : PageModel
                 Transaction = newTransaction
             });
 
+        _dbContext.AttachResult(returns);
         _dbContext.Changes.AttachRange(returnChanges);
 
         _dbContext.Amounts.RemoveRange(deck.Cards);

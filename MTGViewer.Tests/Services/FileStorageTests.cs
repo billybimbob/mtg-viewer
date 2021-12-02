@@ -12,25 +12,25 @@ namespace MTGViewer.Tests.Services;
 
 
 [TestCaseOrderer("MTGViewer.Tests.Utils." + nameof(PriorityOrderer), "MTGViewer.Tests")]
-public class JsonStorageTests : IClassFixture<TempFileName>, IAsyncLifetime
+public class FileStorageTests : IClassFixture<TempFileName>, IAsyncLifetime
 {
     private readonly CardDbContext _dbContext;
     private readonly CardDataGenerator _cardGen;
     private readonly TestDataGenerator _testGen;
-    private readonly JsonCardStorage _jsonStorage;
+    private readonly FileCardStorage _fileStorage;
     private readonly string _tempFileName;
 
-    public JsonStorageTests(
+    public FileStorageTests(
         CardDbContext dbContext,
         CardDataGenerator cardGen,
         TestDataGenerator testGen,
-        JsonCardStorage jsonStorage, 
+        FileCardStorage fileStorage, 
         TempFileName tempFile)
     {
         _dbContext = dbContext;
         _cardGen = cardGen;
         _testGen = testGen;
-        _jsonStorage = jsonStorage;
+        _fileStorage = fileStorage;
         _tempFileName = tempFile.Value;
     }
 
@@ -46,7 +46,7 @@ public class JsonStorageTests : IClassFixture<TempFileName>, IAsyncLifetime
         var anyBefore = await _dbContext.Cards.AnyAsync();
 
         await _cardGen.GenerateAsync();
-        await _jsonStorage.WriteToJsonAsync(_tempFileName);
+        await _fileStorage.WriteJsonAsync(_tempFileName);
 
         var tempInfo = new FileInfo(_tempFileName);
         var anyAfter = await _dbContext.Cards.AnyAsync();
@@ -66,7 +66,7 @@ public class JsonStorageTests : IClassFixture<TempFileName>, IAsyncLifetime
     {
         var anyBefore = await _dbContext.Cards.AnyAsync();
 
-        var success = await _jsonStorage.SeedFromJsonAsync(_tempFileName);
+        var success = await _fileStorage.TryJsonSeedAsync(_tempFileName);
 
         var anyAfter = await _dbContext.Cards.AnyAsync();
 
@@ -88,7 +88,7 @@ public class JsonStorageTests : IClassFixture<TempFileName>, IAsyncLifetime
         await using var tempStream = File.OpenRead(_tempFileName);
 
         var formFile = new FormFile(tempStream, 0L, tempInfo.Length, fileName, fileName);
-        var success = await _jsonStorage.AddFromJsonAsync(formFile);
+        var success = await _fileStorage.TryJsonAddAsync(formFile);
 
         var anyAfter = await _dbContext.Cards.AnyAsync();
 

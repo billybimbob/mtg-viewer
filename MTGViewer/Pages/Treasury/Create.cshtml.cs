@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 
 using Microsoft.AspNetCore.Mvc;
@@ -36,26 +37,26 @@ public class CreateModel : PageModel
     public IReadOnlyList<Bin> Bins { get; private set; } = Array.Empty<Bin>();
 
 
-    public async Task OnGetAsync()
+    public async Task OnGetAsync(CancellationToken cancel)
     {
-        Bins = await OrderedBinsAsync();
+        Bins = await OrderedBinsAsync(cancel);
     }
 
 
-    private Task<List<Bin>> OrderedBinsAsync() =>
+    private Task<List<Bin>> OrderedBinsAsync(CancellationToken cancel) =>
         _dbContext.Bins
             .OrderBy(b => b.Name)
             .AsNoTrackingWithIdentityResolution()
-            .ToListAsync(); // unbounded: keep eye on
+            .ToListAsync(cancel); // unbounded: keep eye on
 
 
-    public async Task<IActionResult> OnPostAsync()
+    public async Task<IActionResult> OnPostAsync(CancellationToken cancel)
     {
         if (Box is null)
         {
             ModelState.AddModelError(string.Empty, "Box model is not valid");
 
-            return await PageWithBinsAsync();
+            return await PageWithBinsAsync(cancel);
         }
 
         _dbContext.Boxes.Attach(Box);
@@ -64,33 +65,33 @@ public class CreateModel : PageModel
         {
             await _dbContext.Entry(Box)
                 .Reference(b => b.Bin)
-                .LoadAsync();
+                .LoadAsync(cancel);
         }
 
         ModelState.ClearValidationState(nameof(Box));
 
         if (!TryValidateModel(Box, nameof(Box)))
         {
-            return await PageWithBinsAsync();
+            return await PageWithBinsAsync(cancel);
         }
 
         try
         {
-            await _dbContext.SaveChangesAsync();
+            await _dbContext.SaveChangesAsync(cancel);
             return RedirectToPage("Index");
         }
         catch (DbUpdateException)
         {
             ModelState.AddModelError(string.Empty, "Ran into issue while creating new box");
 
-            return await PageWithBinsAsync();
+            return await PageWithBinsAsync(cancel);
         }
     }
 
 
-    private async Task<PageResult> PageWithBinsAsync()
+    private async Task<PageResult> PageWithBinsAsync(CancellationToken cancel)
     {
-        Bins = await OrderedBinsAsync();
+        Bins = await OrderedBinsAsync(cancel);
 
         return Page();
     }

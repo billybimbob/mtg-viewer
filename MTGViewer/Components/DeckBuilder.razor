@@ -8,6 +8,7 @@
 @inject IDbContextFactory<CardDbContext> DbFactory
 @inject SymbolFormatter MtgSymbols
 @inject CardText CardText
+@inject PageSizes PageSizes
 
 @inject NavigationManager Nav
 @inject ILogger<DeckBuilder> Logger
@@ -91,44 +92,44 @@
             }
         </div>
 
-        <Pagination Pages="Pages" PageSelected="ApplyFilters" />
+        <Pagination Pages="TreasuryPages" PageSelected="ApplyFilters" />
     </div>
 
     <div class="col">
-        <div id="deck-builder">
-            <h3>@DeckName</h3>
+        <h3>@DeckName</h3>
 
-            <div id="deck-builder-cards" class="list-group list-group-flush">
-                @foreach (var (card, group) in DeckCards)
-                {
-                    <button type="button" title="Remove @card.Name"
-                        class="list-group-item list-group-item-action"
-                        disabled="@(group.NumCopies <= 0)"
-                        @onclick="() => RemoveCardFromDeck(card)">
+        <div class="list-group list-group-flush mb-4">
+            @foreach (var (card, group) in DeckCards)
+            {
+                <button type="button" title="Remove @card.Name"
+                    class="list-group-item list-group-item-action"
+                    disabled="@(group.NumCopies <= 0)"
+                    @onclick="() => RemoveCardFromDeck(card)">
 
-                        <span class="row">
-                            <span class="col-5">
-                                <HoverCard Card="@card"> 
-                                    <span class="btn-link">@card.Name</span>
-                                </HoverCard>
-                            </span>
-                            <span class="col-4"> @(MtgSymbols.Format(card.ManaCost).ToMarkupString()) </span>
-
-                            <span class="col-3">
-                                <span title="@card.Name Held" class="badge badge-pill badge-primary"> 
-                                    @(group.Amount?.NumCopies ?? 0) </span>
-
-                                <span title="@card.Name Returning" class="badge badge-pill badge-danger"> 
-                                    @(group.GiveBack?.NumCopies ?? 0) </span>
-
-                                <span title="@card.Name Wanted" class="badge badge-pill badge-secondary">
-                                    @(group.Want?.NumCopies ?? 0) </span>
-                            </span>
+                    <span class="row">
+                        <span class="col-5">
+                            <HoverCard Card="@card"> 
+                                <span class="btn-link">@card.Name</span>
+                            </HoverCard>
                         </span>
-                    </button>
-                }
-            </div>
+                        <span class="col-4"> @(MtgSymbols.Format(card.ManaCost).ToMarkupString()) </span>
+
+                        <span class="col-3">
+                            <span title="@card.Name Held" class="badge badge-pill badge-primary"> 
+                                @(group.Amount?.NumCopies ?? 0) </span>
+
+                            <span title="@card.Name Returning" class="badge badge-pill badge-danger"> 
+                                @(group.GiveBack?.NumCopies ?? 0) </span>
+
+                            <span title="@card.Name Wanted" class="badge badge-pill badge-secondary">
+                                @(group.Want?.NumCopies ?? 0) </span>
+                        </span>
+                    </span>
+                </button>
+            }
         </div>
+
+        <Pagination Pages="DeckPages" PageSelected="ChangeDeckPage" />
     </div>
 </div>
 
@@ -158,6 +159,7 @@
     private readonly HashSet<string> _colorFilter = new(StringComparer.CurrentCultureIgnoreCase);
     private string? _searchName;
 
+    private int _deckPage;
     private Deck? _deck;
     private EditContext? _deckEdit;
     private Dictionary<string, QuantityGroup>? _deckCards;
@@ -172,15 +174,28 @@
         _filteredCards
             .Select(c => (c, _boxAmounts?.GetValueOrDefault(c.Id) ?? 0));
 
-    private Data.Pages Pages => _filteredCards.Pages;
+
+    private Data.Pages TreasuryPages => _filteredCards.Pages;
+
+
+    private Data.Pages DeckPages =>
+        new Data.Pages(
+            _deckPage, 
+            _deckCards?.Count(kv => kv.Value.Total > 0) ?? 0,
+            PageSize);
+
 
     private IEnumerable<(Card, QuantityGroup)> DeckCards =>
         _deckCards is not null
             ? _cards
-                .Where(c => _deckCards.TryGetValue(c.Id, out var cardGroup) && cardGroup.Total > 0)
-                .Select(c => (c, _deckCards[c.Id]))
+                .Join(_deckCards.Where(kv => kv.Value.Total > 0),
+                    c => c.Id, kv => kv.Key,
+                    (card, kv) => (card, group: kv.Value))
+                .Skip(DeckPages.Current * PageSize)
+                .Take(PageSize)
 
             : Enumerable.Empty<(Card, QuantityGroup)>();
+
 
     private string DeckName =>
         string.IsNullOrWhiteSpace(_deck?.Name) ? "--" : _deck.Name;
@@ -205,15 +220,17 @@
 
         _isBusy = true;
 
+        var cancelToken = _cancel.Token;
+
         try
         {
-            _dbContext = await DbFactory.CreateDbContextAsync(_cancel.Token);
+            _dbContext = await DbFactory.CreateDbContextAsync(cancelToken);
 
             _cards = await _dbContext.Cards
                 .Include(c => c.Colors)
                 .OrderBy(c => c.Name)
                     .ThenBy(c => c.SetName)
-                .ToListAsync(_cancel.Token); // unbounded, keep eye on
+                .ToListAsync(cancelToken); // unbounded, keep eye on
 
             _boxAmounts = await _dbContext.Amounts
                 .Where(ca => ca.Location is Box)
@@ -221,7 +238,7 @@
                     (CardId, cas) => 
                         new { CardId, Total = cas.Sum(ca => ca.NumCopies) })
                 .ToDictionaryAsync(
-                    ct => ct.CardId, ct => ct.Total, _cancel.Token);
+                    ct => ct.CardId, ct => ct.Total, cancelToken);
         }
         catch (OperationCanceledException ex)
         {
@@ -241,11 +258,18 @@
             return;
         }
 
+        if (_dbContext is null)
+        {
+            return;
+        }
+
         _isBusy = true;
+
+        var cancelToken = _cancel.Token;
 
         try
         {
-            _deck = await GetOrCreateDeckAsync();
+            _deck = await GetOrCreateDeckAsync(_dbContext, cancelToken);
 
             _deckEdit = new(_deck);
 
@@ -270,32 +294,33 @@
     }
 
 
-    private async Task<Deck> GetOrCreateDeckAsync()
+    private async Task<Deck> GetOrCreateDeckAsync(
+        CardDbContext dbContext, CancellationToken cancel)
     {
-        if (_dbContext is null)
-        {
-            throw new NullReferenceException(nameof(_dbContext));
-        }
-
         if (DeckId != default)
         {
-            var deck = await DeckForBuilder(_dbContext)
-                .SingleAsync(_cancel.Token);
+            var deck = await DeckForBuilder(dbContext)
+                .SingleAsync(cancel);
 
             return deck;
         }
 
+        if (UserId == null)
+        {
+            throw new ArgumentException(nameof(UserId));
+        }
+
         var userValue = new []{ UserId };
-        var user = await _dbContext.Users.FindAsync(userValue, _cancel.Token);
+        var user = await dbContext.Users.FindAsync(userValue, cancel);
 
         if (user == null)
         {
             throw new ArgumentException(nameof(UserId));
         }
 
-        var userDeckCount = await _dbContext.Decks
+        var userDeckCount = await dbContext.Decks
             .Where(d => d.OwnerId == UserId)
-            .CountAsync(_cancel.Token);
+            .CountAsync(cancel);
 
         var newLoc = new Deck
         {
@@ -303,7 +328,7 @@
             Owner = user
         };
 
-        _dbContext.Decks.Attach(newLoc);
+        dbContext.Decks.Attach(newLoc);
 
         return newLoc;
     }
@@ -386,6 +411,17 @@
     }
 
 
+    private void ChangeDeckPage(int pageIndex = 0)
+    {
+        if (pageIndex == _deckPage)
+        {
+            return;
+        }
+
+        _deckPage = pageIndex;
+    }
+
+
     private void AddCardToDeck(Card card)
     {
         if (_dbContext == null || _deck == null || _deckCards == null)
@@ -400,6 +436,11 @@
         if (deckGroup?.GiveBack?.NumCopies > 0)
         {
             deckGroup.GiveBack.NumCopies -= 1;
+            return;
+        }
+
+        if (deckGroup is null && _deckCards.Count >= PageSizes.Limit)
+        {
             return;
         }
 
@@ -418,7 +459,7 @@
 
             if (deckGroup is null)
             {
-                deckGroup = new(wantAmount);
+                deckGroup = new QuantityGroup(wantAmount);
                 _deckCards.Add(card.Id, deckGroup);
             }
             else
@@ -498,11 +539,13 @@
 
         _isBusy = true;
 
+        var cancelToken = _cancel.Token;
+
         try
         {
             PrepareChanges(_dbContext, _deck);
 
-            await _dbContext.SaveChangesAsync(_cancel.Token);
+            await _dbContext.SaveChangesAsync(cancelToken);
 
             if (_deck.GiveBacks.Any() || _deck.Wants.Any())
             {
@@ -517,7 +560,7 @@
         {
             _result = SaveResult.Error;
 
-            await UpdateDeckAsync(_dbContext, _deck, _deckCards, ex, _cancel.Token);
+            await UpdateDeckAsync(_dbContext, _deck, _deckCards, ex, cancelToken);
         }
         catch (DbUpdateException ex)
         {
@@ -633,11 +676,18 @@
             return false;
         }
 
-        var conflictsInDeck = ex.Entries<Amount>()
-            .Select(ca => ca.Entity.CardId)
-            .Intersect(deckIds);
+        var amountConflicts = ex.Entries<Amount>()
+            .IntersectBy(deckIds, e => e.Entity.CardId);
 
-        return !conflictsInDeck.Any();
+        var wantConflicts = ex.Entries<Want>()
+            .IntersectBy(deckIds, e => e.Entity.CardId);
+
+        var giveConflicts = ex.Entries<GiveBack>()
+            .IntersectBy(deckIds, e => e.Entity.CardId);
+
+        return !amountConflicts.Any()
+            && !wantConflicts.Any()
+            && !giveConflicts.Any();
     }
 
 

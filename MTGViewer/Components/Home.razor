@@ -4,7 +4,7 @@
 @implements IDisposable
 
 @inject IDbContextFactory<CardDbContext> DbFactory
-@inject ILogger<Home> Logger;
+@inject ILogger<Home> Logger
 
 
 <h1 class="text-center display-4">Welcome to the card database!</h1>
@@ -129,15 +129,17 @@
 
         _isBusy = true;
 
+        var cancelToken = _cancel.Token;
+
         try
         {
-            await using var dbContext = DbFactory.CreateDbContext();
+            await using var dbContext = await DbFactory.CreateDbContextAsync(cancelToken);
 
             _randomCards = await ShuffledCards(dbContext)
-                .ToListAsync(_cancel.Token);
+                .ToListAsync(cancelToken);
 
             _recentChanges = await RecentTransactions(dbContext)
-                .ToListAsync(_cancel.Token);
+                .ToListAsync(cancelToken);
 
             _currentTime = DateTime.Now;
         }

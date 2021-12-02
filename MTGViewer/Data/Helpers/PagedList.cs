@@ -14,6 +14,7 @@ public readonly record struct Pages(int Current, int Total)
     private readonly int _current = Math.Max(Current, 0);
     private readonly int _total = Math.Max(Total, 0);
 
+
     public int Current
     {
         get => _current; 
@@ -29,6 +30,7 @@ public readonly record struct Pages(int Current, int Total)
     public bool HasPrevious => Current > 0;
     public bool HasNext => Current < Total - 1;
     public bool HasMultiple => Total > 1;
+
 
     public Pages(int currentPage, int totalItems, int pageSize) 
         : this(currentPage, TotalPages(totalItems, pageSize))

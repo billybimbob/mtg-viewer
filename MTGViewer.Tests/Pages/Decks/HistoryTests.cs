@@ -68,7 +68,7 @@ public class HistoryTests : IAsyncLifetime
 
         await _historyModel.SetModelContextAsync(_userManager, ownedId);
 
-        var result = await _historyModel.OnPostAsync(invalidTransactionId);
+        var result = await _historyModel.OnPostAsync(invalidTransactionId, default);
         var transactions = await Transactions.Select(t => t.Id).ToListAsync();
 
         Assert.IsType<NotFoundResult>(result);
@@ -89,7 +89,7 @@ public class HistoryTests : IAsyncLifetime
 
         await _historyModel.SetModelContextAsync(_userManager, wrongUser);
 
-        var result = await _historyModel.OnPostAsync(_transaction.Id);
+        var result = await _historyModel.OnPostAsync(_transaction.Id, default);
         var transactions = await Transactions.Select(t => t.Id).ToListAsync();
 
         Assert.IsType<NotFoundResult>(result);
@@ -105,7 +105,7 @@ public class HistoryTests : IAsyncLifetime
 
         await _historyModel.SetModelContextAsync(_userManager, ownedId);
 
-        var result = await _historyModel.OnPostAsync(_transaction.Id);
+        var result = await _historyModel.OnPostAsync(_transaction.Id, default);
         var transactions = await Transactions.Select(t => t.Id).ToListAsync();
 
         Assert.IsType<RedirectToPageResult>(result);

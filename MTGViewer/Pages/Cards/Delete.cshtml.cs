@@ -1,4 +1,5 @@
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 using Microsoft.AspNetCore.Mvc;
@@ -24,10 +25,13 @@ public class DeleteModel : PageModel
         _logger = logger;
     }
 
+    [TempData]
+    public string? PostMessage { get; set; }
+
     public Card Card { get; private set; } = null!;
 
 
-    public async Task<IActionResult> OnGetAsync(string id)
+    public async Task<IActionResult> OnGetAsync(string id, CancellationToken cancel)
     {
         if (id is null)
         {
@@ -43,7 +47,7 @@ public class DeleteModel : PageModel
                 .ThenInclude(ca => ca.Location)
             .AsSplitQuery()
             .AsNoTrackingWithIdentityResolution()
-            .SingleOrDefaultAsync(c => c.Id == id);
+            .SingleOrDefaultAsync(c => c.Id == id, cancel);
 
         if (card == default)
         {
@@ -56,14 +60,14 @@ public class DeleteModel : PageModel
     }
 
 
-    public async Task<IActionResult> OnPostAsync(string id)
+    public async Task<IActionResult> OnPostAsync(string id, CancellationToken cancel)
     {
         if (id is null)
         {
             return NotFound();
         }
 
-        var card = await _dbContext.Cards.FindAsync(id);
+        var card = await _dbContext.Cards.FindAsync(new [] { id }, cancel);
 
         if (card is null)
         {
@@ -74,11 +78,15 @@ public class DeleteModel : PageModel
 
         try
         {
-            await _dbContext.SaveChangesAsync();
+            await _dbContext.SaveChangesAsync(cancel);
+
+            PostMessage = $"Successfully deleted {card.Name}";
         }
         catch (DbUpdateException e)
         {
             _logger.LogError(e.ToString());
+
+            PostMessage = $"Ran into issue deleting {card.Name}";
         }
 
         return RedirectToPage("Index");

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using Microsoft.EntityFrameworkCore;
 using MTGViewer.Data;
 
 namespace MTGViewer.Services;
@@ -11,15 +12,20 @@ namespace MTGViewer.Services;
 /// </summary>
 public record CardRequest(Card Card, int NumCopies)
 {
-    public Card Card { get; } = CardOrThrow(Card);
+    private Card _card = CardOrThrow(Card);
+    private int _numCopies = NotNegativeOrThrow(NumCopies);
+
+    public Card Card
+    {
+        get => _card;
+        init => _card = CardOrThrow(value);
+    }
 
     public int NumCopies
     {
         get => _numCopies;
         set => _numCopies = NotNegativeOrThrow(value);
     }
-
-    private int _numCopies = NotNegativeOrThrow(NumCopies);
 
     private static Card CardOrThrow(Card card) =>
         card ?? throw new ArgumentNullException(nameof(Card));
@@ -40,8 +46,8 @@ public record RequestResult(IReadOnlyList<Amount> Changes, IReadOnlyDictionary<i
 
     public static RequestResult Empty => _empty.Value;
 
-    public IReadOnlyList<Amount> Changes { get; } = Changes;
-    public IReadOnlyDictionary<int,int> OriginalCopies { get; } = OriginalCopies;
+    public IReadOnlyList<Amount> Changes { get; init; } = Changes;
+    public IReadOnlyDictionary<int,int> OriginalCopies { get; init; } = OriginalCopies;
 }
 
 
@@ -50,19 +56,19 @@ public static class DbTrackingExtensions
 {
     public static void AttachResult(this CardDbContext dbContext, RequestResult result)
     {
-        var (changes, originals) = result;
+        var (modifies, originals) = result;
 
-        dbContext.Amounts.AttachRange(changes);
+        dbContext.Amounts.AttachRange(modifies);
 
-        foreach (Amount change in changes)
+        foreach (Amount modify in modifies)
         {
-            if (originals.TryGetValue(change.Id, out int oldCopies))
+            if (originals.TryGetValue(modify.Id, out int oldCopies))
             {
-                var copyProperty = dbContext
-                    .Entry(change)
+                var copyProp = dbContext
+                    .Entry(modify)
                     .Property(a => a.NumCopies);
-
-                copyProperty.OriginalValue = oldCopies;
+                    
+                copyProp.OriginalValue = oldCopies;
             }
         }
     }

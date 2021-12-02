@@ -96,7 +96,7 @@ public class ExchangeTests : IAsyncLifetime
 
         await _exchangeModel.SetModelContextAsync(_userManager, validUserId);
 
-        var result = await _exchangeModel.OnPostAsync(invalidDeckId);
+        var result = await _exchangeModel.OnPostAsync(invalidDeckId, default);
 
         Assert.IsType<NotFoundResult>(result);
     }
@@ -115,7 +115,7 @@ public class ExchangeTests : IAsyncLifetime
 
         await _exchangeModel.SetModelContextAsync(_userManager, invalidUserId);
 
-        var result = await _exchangeModel.OnPostAsync(deck.Id);
+        var result = await _exchangeModel.OnPostAsync(deck.Id, default);
 
         Assert.IsType<NotFoundResult>(result);
     }
@@ -138,7 +138,7 @@ public class ExchangeTests : IAsyncLifetime
         var boxBefore = await BoxNumCopies(want).SumAsync();
         var changeBefore = await ChangeAmount(want).SumAsync();
 
-        var result = await _exchangeModel.OnPostAsync(want.LocationId);
+        var result = await _exchangeModel.OnPostAsync(want.LocationId, default);
 
         var wantAfter = await NumCopies(want).SingleOrDefaultAsync();
         var actualAfter = await ActualNumCopies(want).SingleAsync();
@@ -176,7 +176,7 @@ public class ExchangeTests : IAsyncLifetime
         var boxBefore = await BoxNumCopies(request).SumAsync();
         var changeBefore = await ChangeAmount(request).SumAsync();
 
-        var result = await _exchangeModel.OnPostAsync(request.LocationId);
+        var result = await _exchangeModel.OnPostAsync(request.LocationId, default);
 
         var wantAFter = await NumCopies(request).SingleAsync();
         var actualAfter = await ActualNumCopies(request).SingleAsync();
@@ -214,7 +214,7 @@ public class ExchangeTests : IAsyncLifetime
         var boxBefore = await BoxNumCopies(request).SumAsync();
         var changeBefore = await ChangeAmount(request).SumAsync();
 
-        var result = await _exchangeModel.OnPostAsync(request.LocationId);
+        var result = await _exchangeModel.OnPostAsync(request.LocationId, default);
 
         var giveAfter = await NumCopies(request).SingleOrDefaultAsync();
         var actualAfter = await ActualNumCopies(request).SingleOrDefaultAsync();
@@ -249,7 +249,7 @@ public class ExchangeTests : IAsyncLifetime
         var boxBefore = await BoxNumCopies(request).SumAsync();
         var changeBefore = await ChangeAmount(request).SumAsync();
 
-        var result = await _exchangeModel.OnPostAsync(request.LocationId);
+        var result = await _exchangeModel.OnPostAsync(request.LocationId, default);
 
         var giveAfter = await NumCopies(request).SingleAsync();
         var actualAfter = await ActualNumCopies(request).SingleAsync();
@@ -296,7 +296,7 @@ public class ExchangeTests : IAsyncLifetime
         var boxBefore = await BoxNumCopies(request).SumAsync();
         var actualBefore = await ActualNumCopies(request).SingleAsync();
 
-        var result = await _exchangeModel.OnPostAsync(request.LocationId);
+        var result = await _exchangeModel.OnPostAsync(request.LocationId, default);
 
         var boxAfter = await BoxNumCopies(request).SumAsync();
         var actualAfter = await ActualNumCopies(request).SingleAsync();
@@ -321,7 +321,7 @@ public class ExchangeTests : IAsyncLifetime
         var actualWantBefore = await ActualNumCopies(want).SingleOrDefaultAsync();
         var actualGiveBefore = await ActualNumCopies(give).SingleAsync();
 
-        var result = await _exchangeModel.OnPostAsync(want.LocationId);
+        var result = await _exchangeModel.OnPostAsync(want.LocationId, default);
 
         var actualWantAfter = await ActualNumCopies(want).SingleAsync();
         var actualGiveAfter = await ActualNumCopies(give).SingleOrDefaultAsync();

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 using Microsoft.AspNetCore.Identity;
@@ -41,22 +42,24 @@ public class HistoryModel : PageModel
     public string? PostMessage { get; set; }
 
 
-    public IReadOnlyList<Transfer> Transfers { get; private set; } = Array.Empty<Transfer>();
+    public IReadOnlyList<Transfer> Transfers { get; private set; } =
+        Array.Empty<Transfer>();
 
-    public IReadOnlySet<(int, int?, int)> IsFirstTransfer { get; private set; } = ImmutableHashSet<(int, int?, int)>.Empty;
+    public IReadOnlySet<(int, int?, int)> IsFirstTransfer { get; private set; } =
+        ImmutableHashSet<(int, int?, int)>.Empty;
 
-    public IReadOnlySet<int> IsSharedTransaction { get; private set; } = ImmutableHashSet<int>.Empty;
-
+    public IReadOnlySet<int> IsSharedTransaction { get; private set; } =
+        ImmutableHashSet<int>.Empty;
 
     public Data.Pages Pages { get; private set; }
 
     public bool IsSignedIn => _signInManager.IsSignedIn(User);
 
 
-    public async Task OnGetAsync(int? pageIndex)
+    public async Task OnGetAsync(int? pageIndex, CancellationToken cancel)
     {
         var changes = await ChangesForHistory()
-            .ToPagedListAsync(_pageSize, pageIndex);
+            .ToPagedListAsync(_pageSize, pageIndex, cancel);
 
         Transfers = changes
             .GroupBy(c => (c.Transaction, c.From, c.To),
@@ -105,7 +108,7 @@ public class HistoryModel : PageModel
 
 
 
-    public async Task<IActionResult> OnPostAsync(int transactionId)
+    public async Task<IActionResult> OnPostAsync(int transactionId, CancellationToken cancel)
     {
         if (!IsSignedIn)
         {
@@ -117,7 +120,7 @@ public class HistoryModel : PageModel
                 .ThenInclude(c => c.From)
             .Include(t => t.Changes) // unbounded, keep eye on
                 .ThenInclude(c => c.To)
-            .SingleOrDefaultAsync(t => t.Id == transactionId);
+            .SingleOrDefaultAsync(t => t.Id == transactionId, cancel);
 
         if (transaction == default || transaction.Changes.Any(c => !IsShared(c)))
         {
@@ -129,7 +132,7 @@ public class HistoryModel : PageModel
 
         try
         {
-            await _dbContext.SaveChangesAsync();
+            await _dbContext.SaveChangesAsync(cancel);
 
             PostMessage = "Successfully removed the transaction";
         }

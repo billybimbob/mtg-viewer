@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 using Microsoft.AspNetCore.Authorization;
@@ -34,14 +35,15 @@ public class ReviewModel : PageModel
     public Deck Deck { get; private set; } = null!;
 
 
-    public async Task<IActionResult> OnGetAsync(int deckId)
+    public async Task<IActionResult> OnGetAsync(int deckId, CancellationToken cancel)
     {
         if (deckId == default)
         {
             return NotFound();
         }
 
-        var deck = await DeckForReview(deckId).SingleOrDefaultAsync();
+        var deck = await DeckForReview(deckId)
+            .SingleOrDefaultAsync(cancel);
 
         if (deck == default)
         {
@@ -123,9 +125,9 @@ public class ReviewModel : PageModel
         Want FromWant);
 
 
-    public async Task<IActionResult> OnPostAcceptAsync(int tradeId, int amount)
+    public async Task<IActionResult> OnPostAcceptAsync(int tradeId, int amount, CancellationToken cancel)
     {
-        var trade = await GetTradeAsync(tradeId);
+        var trade = await GetTradeAsync(tradeId, cancel);
 
         if (trade == null)
         {
@@ -143,11 +145,11 @@ public class ReviewModel : PageModel
 
         ApplyAccept(acceptRequest, amount);
 
-        await UpdateRemainingTrades(acceptRequest);
+        await UpdateOtherTradesAsync(acceptRequest, cancel);
 
         try
         {
-            await _dbContext.SaveChangesAsync();
+            await _dbContext.SaveChangesAsync(cancel);
             PostMessage = "Trade successfully Applied";
         }
         catch (DbUpdateException)
@@ -159,7 +161,7 @@ public class ReviewModel : PageModel
     }
 
 
-    private async Task<Trade?> GetTradeAsync(int tradeId)
+    private async Task<Trade?> GetTradeAsync(int tradeId, CancellationToken cancel)
     {
         if (tradeId == default)
         {
@@ -169,7 +171,7 @@ public class ReviewModel : PageModel
         var tradeCard = await _dbContext.Trades
             .Where(t => t.Id == tradeId)
             .Select(t => t.Card)
-            .SingleOrDefaultAsync();
+            .SingleOrDefaultAsync(cancel);
 
         if (tradeCard == default)
         {
@@ -177,7 +179,7 @@ public class ReviewModel : PageModel
         }
 
         return await TradeForReview(tradeId, tradeCard)
-            .SingleOrDefaultAsync();
+            .SingleOrDefaultAsync(cancel);
     }
 
 
@@ -345,7 +347,7 @@ public class ReviewModel : PageModel
 
 
 
-    private async Task UpdateRemainingTrades(AcceptRequest acceptRequest)
+    private async Task UpdateOtherTradesAsync(AcceptRequest acceptRequest, CancellationToken cancel)
     {
         var (trade, toTakes, _) = acceptRequest;
 
@@ -363,7 +365,7 @@ public class ReviewModel : PageModel
             .Where(t => t.Id != trade.Id
                 && t.ToId == trade.ToId
                 && t.Card.Name == trade.Card.Name)
-            .ToListAsync();
+            .ToListAsync(cancel);
 
         if (!remainingTrades.Any())
         {
@@ -385,7 +387,7 @@ public class ReviewModel : PageModel
 
 
 
-    public async Task<IActionResult> OnPostRejectAsync(int tradeId)
+    public async Task<IActionResult> OnPostRejectAsync(int tradeId, CancellationToken cancel)
     {
         if (tradeId == default)
         {
@@ -397,7 +399,7 @@ public class ReviewModel : PageModel
 
         var deckTrade = await _dbContext.Trades
             .SingleOrDefaultAsync(t => 
-                t.Id == tradeId && t.From.OwnerId == userId);
+                t.Id == tradeId && t.From.OwnerId == userId, cancel);
 
         if (deckTrade == default)
         {
@@ -409,7 +411,7 @@ public class ReviewModel : PageModel
 
         try
         {
-            await _dbContext.SaveChangesAsync();
+            await _dbContext.SaveChangesAsync(cancel);
             PostMessage = "Successfully rejected Trade";
         }
         catch (DbUpdateException)

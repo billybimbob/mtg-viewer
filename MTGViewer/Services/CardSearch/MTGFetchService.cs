@@ -14,19 +14,17 @@ using MtgApiManager.Lib.Service;
 
 using MTGViewer.Data;
 
-# nullable enable
-
 namespace MTGViewer.Services;
 
-public class MTGFetchService : IMtgQueryable<MTGFetchService, CardSearch>
+public class MTGFetchService : IMtgQueryable<MTGFetchService, CardQuery>
 {
     private static readonly IReadOnlySet<string> _multipleValues = 
         new HashSet<string>(new []
         {
-            nameof(CardSearch.Colors),
-            nameof(CardSearch.Supertypes),
-            nameof(CardSearch.Types),
-            nameof(CardSearch.Subtypes)
+            nameof(CardQuery.Colors),
+            nameof(CardQuery.Supertypes),
+            nameof(CardQuery.Types),
+            nameof(CardQuery.Subtypes)
         });
 
     public const char Or = '|';
@@ -70,7 +68,7 @@ public class MTGFetchService : IMtgQueryable<MTGFetchService, CardSearch>
 
 
     public MTGFetchService Where<TParameter>(
-        Expression<Func<CardSearch, TParameter>> property, TParameter value)
+        Expression<Func<CardQuery, TParameter>> property, TParameter value)
     {
         if (property.Body is MemberExpression expression)
         {
@@ -81,7 +79,7 @@ public class MTGFetchService : IMtgQueryable<MTGFetchService, CardSearch>
     }
 
 
-    public MTGFetchService Where(CardSearch search)
+    public MTGFetchService Where(CardQuery search)
     {
         if (search is null)
         {
@@ -90,7 +88,7 @@ public class MTGFetchService : IMtgQueryable<MTGFetchService, CardSearch>
 
         const BindingFlags binds = BindingFlags.Instance | BindingFlags.Public;
 
-        foreach (var info in typeof(CardSearch).GetProperties(binds))
+        foreach (var info in typeof(CardQuery).GetProperties(binds))
         {
             if (info.GetGetMethod() is not null
                 && info.GetSetMethod() is not null)
@@ -338,7 +336,7 @@ internal static class MtgApiExtension
 
         Name = card.Name,
         Names = (card.Names ?? Enumerable.Empty<string>())
-            .Select(s => new Name(s))
+            .Select(s => new Name(s, card.Id))
             .ToList(),
 
         Layout = card.Layout,
@@ -347,19 +345,19 @@ internal static class MtgApiExtension
             .Select(id => Color.Symbols[id.ToUpper()]) 
 
             .Union(card.Colors ?? Enumerable.Empty<string>())
-            .Select(s => new Color(s))
+            .Select(s => new Color(s, card.Id))
             .ToList(),
 
         Types = (card.Types ?? Enumerable.Empty<string>())
-            .Select(s => new Data.Type(s))
+            .Select(s => new Data.Type(s, card.Id))
             .ToList(),
 
         Subtypes = (card.SubTypes ?? Enumerable.Empty<string>())
-            .Select(s => new Subtype(s))
+            .Select(s => new Subtype(s, card.Id))
             .ToList(),
 
         Supertypes = (card.SuperTypes ?? Enumerable.Empty<string>())
-            .Select(s => new Supertype(s))
+            .Select(s => new Supertype(s, card.Id))
             .ToList(),
 
         ManaCost = card.ManaCost,

@@ -1,4 +1,5 @@
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 using Microsoft.AspNetCore.Mvc;
@@ -38,21 +39,21 @@ public class IndexModel : PageModel
     public bool IsSignedIn => _signInManager.IsSignedIn(User);
 
 
-    public async Task<IActionResult> OnGetAsync(int? id, int? pageIndex)
+    public async Task<IActionResult> OnGetAsync(int? id, int? pageIndex, CancellationToken cancel)
     {
-        if (await GetBoxPageAsync(id) is int boxPage)
+        if (await GetBoxPageAsync(id, cancel) is int boxPage)
         {
             return RedirectToPage(new { pageIndex = boxPage });
         }
 
         Boxes = await BoxesForViewing()
-            .ToPagedListAsync(_pageSize, pageIndex);
+            .ToPagedListAsync(_pageSize, pageIndex, cancel);
 
         return Page();
     }
 
 
-    private async Task<int?> GetBoxPageAsync(int? id)
+    private async Task<int?> GetBoxPageAsync(int? id, CancellationToken cancel)
     {
         if (id is not int boxId)
         {
@@ -60,7 +61,7 @@ public class IndexModel : PageModel
         }
 
         bool exists = await _treasury.Boxes
-            .AnyAsync(b => b.Id == boxId);
+            .AnyAsync(b => b.Id == boxId, cancel);
 
         if (!exists)
         {
@@ -69,7 +70,7 @@ public class IndexModel : PageModel
 
         int position = await _treasury.Boxes
             .Where(b => b.Id < boxId)
-            .CountAsync();
+            .CountAsync(cancel);
 
         return position / _pageSize;
     }

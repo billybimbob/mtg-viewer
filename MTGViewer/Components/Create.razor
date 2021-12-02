@@ -1,13 +1,21 @@
 @using Microsoft.Extensions.DependencyInjection
+@using MTGViewer.Data.Internal
 @namespace MTGViewer.Components
 
 @inherits OwningComponentBase
-
 @inject SymbolFormatter MtgSymbols
-@inject NavigationManager Nav
 
 
 <h1>Add New Card(s)</h1>
+
+<SavePrompt @bind-Result="_result">
+    <SuccessMessage>
+        New cards were successfully added.
+    </SuccessMessage>
+    <ErrorMessage>
+        Ran into issues while try to add the new cards.
+    </ErrorMessage>
+</SavePrompt>
 
 @if (!_matches.Any())
 {
@@ -185,10 +193,14 @@
                 </div>
 
                 <div class="btn-group" role="group">
-                    <button type="submit" class="btn btn-secondary" title="Search For Card"> Search </button>
+                    <button type="submit" class="btn btn-secondary" 
+                        title="Search For Card"
+                        disabled="@IsBusy">
+                        Search </button>
 
                     <button type="button" class="btn btn-secondary" 
-                        @onclick="Reset" title="Reset All Fields"> 
+                        @onclick="Reset" title="Reset All Fields"
+                        disabled="@IsBusy">
                         Reset </button>
                 </div>
             </div>
@@ -199,12 +211,14 @@ else
 {
     <div class="btn-group" role="group">
         <button title="Add Button" type="button"
-            @onclick="AddNewCardsAsync" disabled="@CannotAdd" 
+            @onclick="AddNewCardsAsync" 
+            disabled="@(CannotAdd || IsBusy)" 
             class="btn btn-secondary">
             Add Cards/Amounts </button>
 
         <button title="Reset Button" type="button"
             @onclick="Reset" 
+            disabled="@IsBusy"
             class="btn btn-secondary">
             Reset </button>
     </div>
@@ -232,11 +246,13 @@ else
 
     <table class="table">
         <thead>
-            <th scope="col"> @Entities.DisplayName((Card c) => c.Name) </th>
-            <th scope="col"> @Entities.DisplayName((Card c) => c.ManaCost) </th>
-            <th scope="col"> @Entities.DisplayName((Card c) => c.SetName) </th>
-            <th scope="col"> @Entities.DisplayName((Card c) => c.Rarity) </th>
-            <th scope="col"> Amount </th>
+            <tr>
+                <th scope="col"> @Entities.DisplayName((Card c) => c.Name) </th>
+                <th scope="col"> @Entities.DisplayName((Card c) => c.ManaCost) </th>
+                <th scope="col"> @Entities.DisplayName((Card c) => c.SetName) </th>
+                <th scope="col"> @Entities.DisplayName((Card c) => c.Rarity) </th>
+                <th scope="col"> Amount </th>
+            </tr>
         </thead>
         <tbody>
             @foreach (var (match, amount) in _matches)
@@ -267,26 +283,28 @@ else
     <div class="form-group">
         <button title="More Results" type="button"
             @onclick="SearchForCardAsync" 
-            disabled="@(!HasMore)" class="btn btn-secondary">
+            disabled="@(HasNoNext || IsBusy)"
+            class="btn btn-secondary">
             Load More</button>
     </div>
 }
 
 
 @code {
-    private bool HasMore => _pages.HasNext;
-
     private bool CannotAdd => _matches.All(kv => kv.Value <= 0);
+    private bool HasNoNext => !_pages.HasNext;
+    private bool IsBusy => _isBusy;
 
 
     private readonly CancellationTokenSource _cancel = new();
     private bool _isBusy;
+    private SaveResult _result;
 
     private bool _multiColored;
     private readonly HashSet<string> _pickedColors = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> _pickedRarities = new(StringComparer.OrdinalIgnoreCase);
 
-    private readonly CardSearch _search = new();
+    private readonly CardQuery _search = new();
     private EditContext? _searchEdit;
     private ValidationMessageStore? _resultErrors;
 
@@ -339,7 +357,7 @@ else
             return;
         }
 
-        var idField = _searchEdit.Field(nameof(CardSearch.Id));
+        var idField = _searchEdit.Field(nameof(CardQuery.Id));
 
         _resultErrors.Clear(idField);
         _resultErrors.Clear(args.FieldIdentifier);
@@ -355,7 +373,7 @@ else
             return;
         }
 
-        var idField = _searchEdit.Field(nameof(CardSearch.Id));
+        var idField = _searchEdit.Field(nameof(CardQuery.Id));
         var noMatch = new []{ "No matches were found" };
 
         _resultErrors.Add(idField, noMatch);
@@ -377,7 +395,7 @@ else
 
         _multiColored = value;
 
-        var colorField = _searchEdit.Field(nameof(CardSearch.Colors));
+        var colorField = _searchEdit.Field(nameof(CardQuery.Colors));
 
         _searchEdit.NotifyFieldChanged(colorField);
     }
@@ -399,7 +417,7 @@ else
             _pickedColors.Add(color);
         }
 
-        var colorField = _searchEdit.Field(nameof(CardSearch.Colors));
+        var colorField = _searchEdit.Field(nameof(CardQuery.Colors));
 
         _searchEdit.NotifyFieldChanged(colorField);
     }
@@ -421,7 +439,7 @@ else
             _pickedRarities.Add(rarity);
         }
 
-        var rarityField = _searchEdit.Field(nameof(CardSearch.Rarity));
+        var rarityField = _searchEdit.Field(nameof(CardQuery.Rarity));
 
         _searchEdit.NotifyFieldChanged(rarityField);
     }
@@ -440,6 +458,9 @@ else
         }
 
         _isBusy = true;
+        _result = SaveResult.None;
+
+        var cancelToken = _cancel.Token;
 
         var logger = ScopedServices.GetRequiredService<ILogger<Create>>();
         var fetch = ScopedServices.GetRequiredService<MTGFetchService>();
@@ -450,8 +471,7 @@ else
 
             var result = await fetch.Where(_search).SearchAsync();
 
-            _cancel.Token.ThrowIfCancellationRequested();
-
+            cancelToken.ThrowIfCancellationRequested();
             _pages = result.Pages;
 
             foreach (var match in result)
@@ -520,6 +540,11 @@ else
             return;
         }
 
+        if (_isBusy)
+        {
+            return;
+        }
+
         _pickedColors.Clear();
 
         _matches.Clear();
@@ -562,32 +587,43 @@ else
             return;
         }
 
-        var dbContext = ScopedServices.GetRequiredService<CardDbContext>();
-        var logger = ScopedServices.GetRequiredService<ILogger<Create>>();
-
         _isBusy = true;
+        _result = SaveResult.None;
+
+        var cancelToken = _cancel.Token;
+
+        var dbFactory = ScopedServices.GetRequiredService<IDbContextFactory<CardDbContext>>();
+        var logger = ScopedServices.GetRequiredService<ILogger<Create>>();
 
         try
         {
-            await AddNewCardsAsync(dbContext, addedAmounts, _cancel.Token);
+            await using var dbContext = await dbFactory.CreateDbContextAsync(cancelToken);
 
-            await AddAmountsAsync(dbContext, addedAmounts, _cancel.Token);
+            await AddNewCardsAsync(dbContext, addedAmounts, cancelToken);
 
-            await dbContext.SaveChangesAsync(_cancel.Token);
+            await AddAmountsAsync(dbContext, addedAmounts, cancelToken);
 
-            Nav.NavigateTo("/Cards", true);
+            await dbContext.SaveChangesAsync(cancelToken);
+
+            // nav.NavigateTo("/Cards", true);
+            _result = SaveResult.Success;
         }
-
         catch (DbUpdateException e)
         {
             logger.LogError($"failed to add new cards {e}");
+
+            _result = SaveResult.Error;
         }
         catch (OperationCanceledException e)
         {
             logger.LogError($"cancel error: {e}");
+
+            _result = SaveResult.Error;
         }
         finally
         {
+            Reset();
+
             _isBusy = false;
         }
     }
@@ -595,11 +631,15 @@ else
 
     private async Task AddNewCardsAsync(
         CardDbContext dbContext,
-        IEnumerable<CardRequest> requests,
+        IReadOnlyList<CardRequest> requests,
         CancellationToken cancel)
     {
-        var cardIds = requests
-            .Select(req => req.Card.Id)
+        var requestCards = requests
+            .Select(req => req.Card)
+            .ToList();
+
+        var cardIds = requestCards
+            .Select(c => c.Id)
             .ToArray();
 
         var existingIds = await dbContext.Cards
@@ -607,10 +647,10 @@ else
             .Where(cid => cardIds.Contains(cid))
             .ToListAsync(cancel);
 
-        var newCards = requests
-            .Select(req => req.Card)
+        var newCards = requestCards
             .ExceptBy(existingIds, c => c.Id);
 
+        dbContext.Cards.AttachRange(requestCards);
         dbContext.Cards.AddRange(newCards);
     }
 
@@ -623,24 +663,20 @@ else
         var treasury = ScopedServices.GetRequiredService<ITreasuryQuery>();
 
         var result = await treasury.FindReturnAsync(newAmounts, cancel);
-        var newTransaction = new Transaction();
-
-        dbContext.AttachResult(result);
-        dbContext.Transactions.Attach(newTransaction);
 
         var (addTargets, oldCopies) = result;
+        var newTransaction = new Transaction();
 
         var addChanges = addTargets
-            .IntersectBy(oldCopies.Keys, a => a.Id)
             .Select(a => new Change
             {
                 Card = a.Card,
                 To = a.Location,
-                // no from since deck is being deleted
-                Amount = a.NumCopies - oldCopies[a.Id],
+                Amount = a.NumCopies - oldCopies.GetValueOrDefault(a.Id),
                 Transaction = newTransaction
             });
 
+        dbContext.AttachResult(result);
         dbContext.Changes.AttachRange(addChanges);
     }
 }

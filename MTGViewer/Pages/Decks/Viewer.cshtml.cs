@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 
 using Microsoft.AspNetCore.Mvc;
@@ -33,9 +34,9 @@ public class ViewerModel : PageModel
     public IReadOnlyList<QuantityGroup> Cards { get; private set; } = Array.Empty<QuantityGroup>();
 
 
-    public async Task<IActionResult> OnGetAsync(int id)
+    public async Task<IActionResult> OnGetAsync(int id, CancellationToken cancel)
     {
-        var deck = await DeckForViewer(id).SingleOrDefaultAsync();
+        var deck = await DeckForViewer(id).SingleOrDefaultAsync(cancel);
 
         if (deck == default)
         {
