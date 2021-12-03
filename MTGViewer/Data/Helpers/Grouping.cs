@@ -462,7 +462,7 @@ public class QuantityNameGroup : IEnumerable<QuantityGroup>
 public record Transfer(
     Transaction Transaction, 
     Location? From, 
-    Location To,
+    Location? To,
     IReadOnlyList<Change> Changes);
 
 

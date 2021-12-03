@@ -6,10 +6,7 @@ namespace MTGViewer.Data;
 public class UserRef
 {
     public UserRef()
-    {
-        Id = null!;
-        Name = null!;
-    }
+    { }
 
     public UserRef(CardUser user)
     {
@@ -18,8 +15,8 @@ public class UserRef
     }
 
     [Key]
-    public string Id { get; init; }
+    public string Id { get; init; } = null!;
 
     [StringLength(256)]
-    public string Name { get; init; }
+    public string Name { get; init; } = null!;
 }

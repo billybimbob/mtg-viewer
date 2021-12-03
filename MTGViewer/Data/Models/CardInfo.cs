@@ -5,6 +5,9 @@ namespace MTGViewer.Data;
 
 public class Name
 {
+    public Name()
+    { }
+
     public Name(string value, string cardId)
     {
         Value = value;
@@ -12,10 +15,10 @@ public class Name
     }
 
     [JsonInclude]
-    public string Value { get; init; }
+    public string Value { get; init; } = null!;
 
     [JsonIgnore]
-    public string CardId { get; init; }
+    public string CardId { get; init; } = null!;
 
 
     public override string ToString() => Value;
@@ -34,6 +37,9 @@ public class Color
             ["W"] = "White"
         };
 
+    public Color()
+    { }
+
     public Color(string name, string cardId)
     {
         Name = name;
@@ -41,10 +47,10 @@ public class Color
     }
 
     [JsonInclude]
-    public string Name { get; init; }
+    public string Name { get; init; } = null!;
 
     [JsonIgnore]
-    public string CardId { get; init; }
+    public string CardId { get; init; } = null!;
 
 
     public override string ToString() => Name;
@@ -53,6 +59,9 @@ public class Color
 
 public class Supertype
 {
+    public Supertype()
+    { }
+
     public Supertype(string name, string cardId)
     {
         Name = name;
@@ -60,10 +69,10 @@ public class Supertype
     }
 
     [JsonInclude]
-    public string Name { get; init; }
+    public string Name { get; init; } = null!;
 
     [JsonIgnore]
-    public string CardId { get; init; }
+    public string CardId { get; init; } = null!;
 
 
     public override string ToString() => Name;
@@ -72,6 +81,9 @@ public class Supertype
 
 public class Type
 {
+    public Type()
+    { }
+
     public Type(string name, string cardId)
     {
         Name = name;
@@ -79,10 +91,10 @@ public class Type
     }
 
     [JsonInclude]
-    public string Name { get; init; }
+    public string Name { get; init; } = null!;
 
     [JsonIgnore]
-    public string CardId { get; init; }
+    public string CardId { get; init; } = null!;
 
 
     public override string ToString() => Name;
@@ -91,6 +103,9 @@ public class Type
 
 public class Subtype
 {
+    public Subtype()
+    { }
+
     public Subtype(string name, string cardId)
     {
         Name = name;
@@ -98,10 +113,10 @@ public class Subtype
     }
 
     [JsonInclude]
-    public string Name { get; init; }
+    public string Name { get; init; } = null!;
 
     [JsonIgnore]
-    public string CardId { get; init; }
+    public string CardId { get; init; } = null!;
 
 
     public override string ToString() => Name;

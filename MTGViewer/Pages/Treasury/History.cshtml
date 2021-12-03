@@ -20,7 +20,7 @@
     <tbody>
         @foreach (var (transaction, from, to, changes) in Model.Transfers)
         {
-            var transferKey = (transaction.Id, from?.Id, to.Id);
+            var transferKey = (transaction.Id, from?.Id, to?.Id);
             var isFirstTransfer = Model.IsFirstTransfer.Contains(transferKey);
             var first = changes.First();
 
@@ -71,7 +71,7 @@
                             break;
 
                         case null:
-                            <i> Added </i>
+                            <i> -- </i>
                             break;
                         
                         default:
@@ -82,7 +82,7 @@
 
                 <td>
                     @(await Html.RenderComponentAsync<HoverCard>(
-                        RenderMode.Static, new { first.Card }))
+                        RenderMode.Static, new { Card = (CardPreview)first.Card }))
                 </td>
 
                 <td> @first.Amount </td>
@@ -105,7 +105,7 @@
                 <tr>
                     <td> 
                         @(await Html.RenderComponentAsync<HoverCard>(
-                            RenderMode.Static, new { change.Card }))
+                            RenderMode.Static, new { Card = (CardPreview)change.Card }))
                     </td>
                     <td> @change.Amount </td>
                 </tr>

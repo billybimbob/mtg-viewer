@@ -45,7 +45,7 @@
             <tr>
                 <td>
                     @(await Html.RenderComponentAsync<HoverCard>(
-                        RenderMode.Static, new { group.Card }))
+                        RenderMode.Static, new { Card = (CardPreview)group.Card }))
                 </td>
                 <td> @(MtgSymbols.Format(group.Card.ManaCost).ToHtmlString()) </td>
                 <td> @group.Card.SetName </td>

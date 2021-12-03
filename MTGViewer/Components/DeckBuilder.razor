@@ -80,7 +80,7 @@
 
                     <span class="row">
                         <span class="col-6"> 
-                            <HoverCard Card="card"> 
+                            <HoverCard Card="@((CardPreview)card)"> 
                                 <span class="btn-link">@card.Name</span>
                             </HoverCard>
                         </span>
@@ -108,7 +108,7 @@
 
                     <span class="row">
                         <span class="col-5">
-                            <HoverCard Card="@card"> 
+                            <HoverCard Card="@((CardPreview)card)"> 
                                 <span class="btn-link">@card.Name</span>
                             </HoverCard>
                         </span>

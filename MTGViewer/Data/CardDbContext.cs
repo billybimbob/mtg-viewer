@@ -150,12 +150,12 @@ internal class DeckConfiguration : IEntityTypeConfiguration<Deck>
         builder
             .HasMany(d => d.TradesTo)
             .WithOne(t => t.To)
-            .OnDelete(DeleteBehavior.Cascade);
+            .OnDelete(DeleteBehavior.ClientCascade);
 
         builder
             .HasMany(d => d.TradesFrom)
             .WithOne(t => t.From)
-            .OnDelete(DeleteBehavior.Cascade);
+            .OnDelete(DeleteBehavior.ClientCascade);
     }
 }
 
@@ -193,12 +193,12 @@ internal class ChangeConfiguration : IEntityTypeConfiguration<Change>
         builder
             .HasOne(c => c.To)
             .WithMany()
-            .OnDelete(DeleteBehavior.Cascade);
+            .OnDelete(DeleteBehavior.ClientSetNull);
 
         builder
             .HasOne(c => c.From)
             .WithMany()
-            .OnDelete(DeleteBehavior.SetNull);
+            .OnDelete(DeleteBehavior.ClientSetNull);
     }
 }
 
@@ -250,7 +250,7 @@ internal class SuggestionConfiguration : IEntityTypeConfiguration<Suggestion>
         builder
             .HasOne(s => s.To)
             .WithMany()
-            .OnDelete(DeleteBehavior.Cascade);
+            .OnDelete(DeleteBehavior.ClientSetNull);
 
         builder
             .HasOne(s => s.Receiver)

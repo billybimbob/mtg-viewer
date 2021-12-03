@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.UI;
+using Microsoft.AspNetCore.Identity.UI.Services;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -12,6 +13,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
 using MTGViewer.Areas.Identity.Data;
+using MTGViewer.Areas.Identity.Services;
 
 
 [assembly: HostingStartup(typeof(MTGViewer.Areas.Identity.IdentityHostingStartup))]
@@ -31,12 +33,12 @@ namespace MTGViewer.Areas.Identity
                     {
                         case "SqlServer":
                             // TODO: change connection string name
-                            options.UseSqlServer(config.GetConnectionString("MTGCardContext"));
+                            options.UseSqlServer(config.GetConnectionString("SqlServerContext"));
                             break;
 
                         case "Sqlite":
                         default:
-                            options.UseSqlite(config.GetConnectionString("MTGCardContext"));
+                            options.UseSqlite(config.GetConnectionString("SqliteContext"));
                             break;
                     }
 
@@ -44,6 +46,9 @@ namespace MTGViewer.Areas.Identity
 
                 services.AddDefaultIdentity<CardUser>(options => options.SignIn.RequireConfirmedAccount = true)
                     .AddEntityFrameworkStores<UserDbContext>();
+
+                services.AddTransient<IEmailSender, EmailSender>();
+                services.Configure<AuthMessageSenderOptions>(config);
 
                 services.AddHostedService<UserSetup>();
             });
@@ -63,12 +68,12 @@ namespace MTGViewer.Areas.Identity
 
         public async Task StartAsync(CancellationToken cancel)
         {
-            using var scope = _serviceProvider.CreateScope();
+            await using var scope = _serviceProvider.CreateAsyncScope();
             var scopeProvider = scope.ServiceProvider;
 
             var userDb = scopeProvider.GetRequiredService<UserDbContext>();
 
-            await userDb.Database.MigrateAsync();
+            await userDb.Database.MigrateAsync(cancel);
         }
 
 

@@ -13,23 +13,22 @@ namespace MTGViewer.Data;
     nameof(TransactionId), IsUnique = true)]
 public class Change
 {
-    [JsonInclude]
+    [JsonIgnore]
     public int Id { get; private set; }
 
 
     [JsonIgnore]
-    public Card Card { get; init; } = null!;
     public string CardId { get; init; } = null!;
+    public Card Card { get; init; } = null!;
 
 
     [JsonIgnore]
-    public Location? From { get; init; } = null!;
     public int? FromId { get; init; }
-
+    public Location? From { get; init; } = null!;
 
     [JsonIgnore]
-    public Location To { get; init; } = null!;
-    public int ToId { get; init; }
+    public int? ToId { get; init; }
+    public Location? To { get; init; } = null!;
 
 
     [Range(1, int.MaxValue)]
@@ -37,19 +36,18 @@ public class Change
 
 
     [JsonIgnore]
-    public Transaction Transaction { get; init; } = null!;
     public int TransactionId { get; init; }
+    public Transaction Transaction { get; init; } = null!;
 }
 
 
 public class Transaction
 {
-    [JsonInclude]
+    [JsonIgnore]
     public int Id { get; private set; }
 
     [Display(Name = "Applied At")]
     public DateTime AppliedAt { get; private set; }
 
-    [JsonIgnore]
-    public List<Change> Changes { get; } = new();
+    public List<Change> Changes { get; init; } = new();
 }

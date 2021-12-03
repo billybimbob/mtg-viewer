@@ -11,8 +11,8 @@ namespace MTGViewer.Data;
 
 public abstract class Location : Concurrent
 {
-    [JsonInclude]
-    public int Id { get; set; }
+    [JsonIgnore]
+    public int Id { get; private set; }
 
     [JsonIgnore]
     internal Discriminator Type { get; private set; }
@@ -21,15 +21,13 @@ public abstract class Location : Concurrent
     [StringLength(20)]
     public string Name { get; set; } = string.Empty;
 
-    [JsonIgnore]
-    public List<Amount> Cards { get; } = new();
+    public List<Amount> Cards { get; init; } = new();
 }
 
 
 public abstract class Owned : Location
 {
-    [JsonIgnore]
-    public List<Want> Wants { get; } = new();
+    public List<Want> Wants { get; init; } = new();
 }
 
 
@@ -50,22 +48,20 @@ public class Unclaimed : Owned
 public class Deck : Owned
 {
     [JsonIgnore]
-    public UserRef Owner { get; init; } = null!;
     public string OwnerId { get; init; } = null!;
+    public UserRef Owner { get; init; } = null!;
 
 
-    [JsonIgnore]
     [Display(Name = "Give Backs")]
-    public List<GiveBack> GiveBacks { get; } = new();
+    public List<GiveBack> GiveBacks { get; init; } = new();
 
 
-    [JsonIgnore]
     [Display(Name = "Trades To")]
-    public List<Trade> TradesTo { get; } = new();
+    public List<Trade> TradesTo { get; init; } = new();
 
-    [JsonIgnore]
+
     [Display(Name = "Trades From")]
-    public List<Trade> TradesFrom { get; } = new();
+    public List<Trade> TradesFrom { get; init; } = new();
 
 
     public string Colors { get; private set; } = string.Empty;
@@ -96,8 +92,8 @@ public class Deck : Owned
 public class Box : Location
 {
     [JsonIgnore]
-    public Bin Bin { get; init; } = null!;
     public int BinId { get; init; }
+    public Bin Bin { get; init; } = null!;
 
     [Range(10, 1000)]
     public int Capacity { get; init; }
@@ -109,12 +105,11 @@ public class Box : Location
 
 public class Bin
 {
-    [JsonInclude]
-    public int Id { get; set; }
+    [JsonIgnore]
+    public int Id { get; private set; }
 
     [StringLength(10)]
     public string Name { get; init; } = string.Empty;
 
-    [JsonIgnore]
-    public List<Box> Boxes { get; } = new();
+    public List<Box> Boxes { get; init; } = new();
 }

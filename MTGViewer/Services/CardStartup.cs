@@ -26,7 +26,7 @@ public static class CardStorageExtension
             case "SqlServer":
                 services.AddTriggeredDbContextFactory<CardDbContext>(options => options
                         // TODO: change connection string name
-                    .UseSqlServer(config.GetConnectionString("MTGCardContext"))
+                    .UseSqlServer(config.GetConnectionString("SqlServerContext"))
                     .UseTriggers(triggers => triggers
                         .AddTrigger<QuantityValidate>()
                         .AddTrigger<TradeValidate>() ));
@@ -35,7 +35,7 @@ public static class CardStorageExtension
             case "Sqlite":
             default:
                 services.AddTriggeredDbContextFactory<CardDbContext>(options => options
-                    .UseSqlite(config.GetConnectionString("MTGCardContext"))
+                    .UseSqlite(config.GetConnectionString("SqliteContext"))
                     .UseTriggers(triggers => triggers
                         .AddTrigger<QuantityValidate>()
                         .AddTrigger<LiteTokenUpdate>()

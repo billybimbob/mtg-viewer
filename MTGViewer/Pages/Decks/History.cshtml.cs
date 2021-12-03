@@ -52,8 +52,8 @@ public class HistoryModel : PageModel
 
     public Data.Pages Pages { get; private set; }
 
-    public IReadOnlySet<(int, int?, int)> IsFirstTransfer { get; private set; } =
-        ImmutableHashSet<(int, int?, int)>.Empty;
+    public IReadOnlySet<(int, int?, int?)> IsFirstTransfer { get; private set; } =
+        ImmutableHashSet<(int, int?, int?)>.Empty;
 
 
     public async Task<IActionResult> OnGetAsync(
@@ -112,7 +112,7 @@ public class HistoryModel : PageModel
 
             .OrderByDescending(c => c.Transaction.AppliedAt)
                 .ThenBy(c => c.From!.Name)
-                .ThenBy(c => c.To.Name)
+                .ThenBy(c => c.To!.Name)
                     .ThenBy(c => c.Card.Name)
                     .ThenBy(c => c.Amount)
                     

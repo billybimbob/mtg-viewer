@@ -88,7 +88,7 @@
         @foreach (var card in Cards)
         {
             <tr>
-                <td> <HoverCard Card="@card"/> </td>
+                <td> <HoverCard Card="@((CardPreview)card)"/> </td>
 
                 <td> @(MtgSymbols.Format(card.ManaCost).ToMarkupString()) </td>
                 <td> @card.SetName </td>

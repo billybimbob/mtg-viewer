@@ -14,21 +14,21 @@ namespace MTGViewer.Data;
     nameof(CardId), IsUnique = true)]
 public abstract class Quantity : Concurrent
 {
-    [JsonInclude]
-    public int Id { get; set; }
+    [JsonIgnore]
+    public int Id { get; private set; }
 
     [JsonIgnore]
     internal Discriminator Type { get; private set; }
 
 
     [JsonIgnore]
-    public Card Card { get; init; } = null!;
     public string CardId { get; init; } = null!;
+    public Card Card { get; init; } = null!;
 
 
     [JsonIgnore]
-    public Location Location { get; init; } = null!;
     public int LocationId { get; init; }
+    public Location Location { get; init; } = null!;
 
 
     [Display(Name = "Copies")]
