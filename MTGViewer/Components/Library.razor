@@ -130,7 +130,7 @@
     private IReadOnlyList<Card> _dbCards = Array.Empty<Card>();
     private IReadOnlyDictionary<string, int> _cardAmounts = ImmutableDictionary<string, int>.Empty;
 
-    private readonly HashSet<string> _colorFilter = new();
+    private readonly HashSet<string> _colorFilter = new(StringComparer.CurrentCultureIgnoreCase);
     private string? _searchName;
 
     private string? _orderProperty;
@@ -241,9 +241,9 @@
 
         if (_colorFilter.Any())
         {
-            cards = cards.Where(c => c.Colors
-                .IntersectBy(_colorFilter, color => color.Name.ToLower())
-                .Any());
+            cards = cards
+                .Where(c => c.Colors
+                    .Any(cl => _colorFilter.Contains(cl.Name) ));
         }
 
         return CardsOrdered(cards);

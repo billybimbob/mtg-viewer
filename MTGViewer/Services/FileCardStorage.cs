@@ -66,7 +66,12 @@ public class FileCardStorage
     public Task<int> GetTotalPagesAsync(CancellationToken cancel = default)
     {
         // fine to not use factory here since the query is not tracked
-        return CardData.TotalPagesAsync(_dbContext, _pageSize, cancel);
+
+        return CardData.DbSetCountsAsync(_dbContext, cancel)
+            .Select(count => count / _pageSize)
+            .Prepend(1)
+            .MaxAsync(cancel)
+            .AsTask();
     }
 
 
@@ -80,13 +85,13 @@ public class FileCardStorage
 
         var data = await CardData.CreateAsync(dbContext, _userManager, cancel);
 
-        var serialOptions = new JsonSerializerOptions 
+        var serializeOptions = new JsonSerializerOptions 
         {
             ReferenceHandler = ReferenceHandler.Preserve,
             WriteIndented = true 
         };
 
-        await JsonSerializer.SerializeAsync(writer, data, serialOptions, cancel);
+        await JsonSerializer.SerializeAsync(writer, data, serializeOptions, cancel);
     }
 
 
@@ -96,7 +101,12 @@ public class FileCardStorage
 
         var data = await CardData.CreateAsync(dbContext, _pageSize, page, cancel);
 
-        return JsonSerializer.SerializeToUtf8Bytes(data);
+        var serializeOptions = new JsonSerializerOptions 
+        {
+            ReferenceHandler = ReferenceHandler.Preserve
+        };
+
+        return JsonSerializer.SerializeToUtf8Bytes(data, serializeOptions);
     }
 
 
@@ -111,13 +121,13 @@ public class FileCardStorage
         {
             await using var reader = File.OpenRead(path);
 
-            var serialOptions = new JsonSerializerOptions
+            var deserializeOptions = new JsonSerializerOptions
             {
                 ReferenceHandler = ReferenceHandler.Preserve,
                 PropertyNameCaseInsensitive = true 
             };
 
-            var data = await JsonSerializer.DeserializeAsync<CardData>(reader, serialOptions, cancel);
+            var data = await JsonSerializer.DeserializeAsync<CardData>(reader, deserializeOptions, cancel);
 
             if (data is null)
             {
@@ -182,13 +192,13 @@ public class FileCardStorage
         {
             await using var fileStream = jsonFile.OpenReadStream();
 
-            var serialOptions = new JsonSerializerOptions
+            var deserializeOptions = new JsonSerializerOptions
             {
                 ReferenceHandler = ReferenceHandler.Preserve,
                 PropertyNameCaseInsensitive = true
             };
 
-            var data = await JsonSerializer.DeserializeAsync<CardData>(fileStream, serialOptions, cancel);
+            var data = await JsonSerializer.DeserializeAsync<CardData>(fileStream, deserializeOptions, cancel);
 
             if (data is null)
             {
@@ -219,9 +229,9 @@ public class FileCardStorage
         var cards = await NewCardsAsync(dbContext, data, cancel);
 
         var bins = data.Bins;
-        var unclaimed = GetDecksAsUnclaimed(data);
+        var unclaimed = DecksAndUnclaimed(data);
 
-        var transaction = GetAddTranscation(bins, unclaimed);
+        var transaction = MergeTranscation(bins, unclaimed);
 
         // TODO: merge to existing bins, boxes, and decks
         // merging may have issue with card amount/want conflicts
@@ -303,7 +313,7 @@ public class FileCardStorage
     }
 
 
-    private static IReadOnlyList<Unclaimed> GetDecksAsUnclaimed(CardData data)
+    private static IReadOnlyList<Unclaimed> DecksAndUnclaimed(CardData data)
     {
         if (!data.Decks.Any() && !data.Unclaimed.Any())
         {
@@ -317,23 +327,19 @@ public class FileCardStorage
     }
 
 
-    private static Transaction GetAddTranscation(
+    private static Transaction MergeTranscation(
         IReadOnlyList<Bin> bins, 
         IReadOnlyList<Unclaimed> unclaimed)
     {
-        var transaction = new Transaction();
-
         var boxChanges = bins
             .SelectMany(b => b.Boxes)
             .SelectMany(b => b.Cards,
                 (box, a) => new Change
                 {
-                    Card = a.Card, // cardId should be known
+                    Card = a.Card,
                     To = box,
                     Amount = a.NumCopies
                 });
-
-        transaction.Changes.AddRange(boxChanges);
 
         var deckChanges = unclaimed
             .SelectMany(u => u.Cards,
@@ -344,9 +350,12 @@ public class FileCardStorage
                     Amount = a.NumCopies
                 });
 
-        transaction.Changes.AddRange(deckChanges);
-
-        return transaction;
+        return new Transaction
+        {
+            Changes = boxChanges
+                .Concat(deckChanges)
+                .ToList()
+        };
     }
 
 
@@ -397,19 +406,34 @@ public class FileCardStorage
         CsvReader csv, 
         CancellationToken cancel)
     {
-        var cardMultis = await csv.GetRecordsAsync<CsvCard>(cancel)
-            .Where(cc => cc.Quantity > 0)
-            .GroupByAwaitWithCancellation(
-                (cc, _) => ValueTask.FromResult(cc.MultiverseID),
-                async (multiverseId, ccs, can) => 
-                    (multiverseId, quantity: await ccs.SumAsync(cc => cc.Quantity, can)))
-
-            .ToDictionaryAsync(
-                cc => cc.multiverseId, cc => cc.quantity, cancel);
+        var cardMultis = await CsvAdditionsAsync(csv, cancel);
 
         var allCards = await MergeCardsAsync(dbContext, cardMultis.Keys, cancel);
 
         await AddAmountsAsync(dbContext, allCards, cardMultis, cancel);
+    }
+
+
+    private Task<Dictionary<string, int>> CsvAdditionsAsync(
+        CsvReader csv, 
+        CancellationToken cancel)
+    {
+        return csv.GetRecordsAsync<CsvCard>(cancel)
+            .Where(cc => cc.Quantity > 0)
+
+            .GroupByAwaitWithCancellation(
+                MultiverseIdAsync,
+                async (multiverseId, ccs, cnl) => 
+                    (multiverseId, quantity: await ccs.SumAsync(cc => cc.Quantity, cnl)))
+
+            .ToDictionaryAsync(
+                cc => cc.multiverseId, cc => cc.quantity, cancel)
+            .AsTask();
+
+        ValueTask<string> MultiverseIdAsync(CsvCard card, CancellationToken _)
+        {
+            return ValueTask.FromResult(card.MultiverseID);
+        }
     }
 
 
@@ -505,8 +529,8 @@ internal class CardData
                 .Include(c => c.Types)
                 .Include(c => c.Subtypes)
                 .Include(c => c.Supertypes)
-                .AsSplitQuery()
                 .OrderBy(c => c.Id)
+                .AsSplitQuery()
                 .ToPagedListAsync(pageSize, page, cancel),
 
             Decks = await dbContext.Decks
@@ -515,18 +539,24 @@ internal class CardData
                 .Include(d => d.Cards)
                 .Include(d => d.Wants)
                 .OrderBy(d => d.Id)
+                .AsSplitQuery()
                 .ToPagedListAsync(pageSize, page, cancel),
 
             Unclaimed = await dbContext.Unclaimed
                 .Include(u => u.Cards)
                 .Include(u => u.Wants)
                 .OrderBy(u => u.Id)
+                .AsSplitQuery()
                 .ToPagedListAsync(pageSize, page, cancel),
             
             Bins = await dbContext.Bins
+                // keep eye on, paging does not account for
+                // the variable amount of Box andQuantity 
+                // entries
                 .Include(b => b.Boxes)
                     .ThenInclude(b => b.Cards)
                 .OrderBy(b => b.Id)
+                .AsSplitQuery()
                 .ToPagedListAsync(pageSize, page, cancel),
         };
     }
@@ -540,7 +570,6 @@ internal class CardData
         return new CardData
         {
             Users = await userManager.Users
-                .AsNoTrackingWithIdentityResolution()
                 .OrderBy(u => u.Id)
                 .ToListAsync(cancel),
 
@@ -593,20 +622,7 @@ internal class CardData
     }
 
 
-    public static Task<int> TotalPagesAsync(
-        CardDbContext dbContext,
-        int pageSize, 
-        CancellationToken cancel = default)
-    {
-        return DbSetCountsAsync(dbContext, cancel)
-            .Select(count => count / pageSize)
-            .Prepend(1)
-            .MaxAsync(cancel)
-            .AsTask();
-    }
-
-
-    private static async IAsyncEnumerable<int> DbSetCountsAsync(
+    public static async IAsyncEnumerable<int> DbSetCountsAsync(
         CardDbContext dbContext,
         [System.Runtime.CompilerServices.EnumeratorCancellation]
         CancellationToken cancel = default)

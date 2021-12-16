@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
-using System.Text.Encodings.Web;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authentication;
@@ -15,18 +14,13 @@ using MTGViewer.Areas.Identity.Data;
 
 namespace MTGViewer.Areas.Identity.Pages.Account
 {
-    [AllowAnonymous]
     public class LoginModel : PageModel
     {
-        private readonly UserManager<CardUser> _userManager;
         private readonly SignInManager<CardUser> _signInManager;
         private readonly ILogger<LoginModel> _logger;
 
-        public LoginModel(SignInManager<CardUser> signInManager, 
-            ILogger<LoginModel> logger,
-            UserManager<CardUser> userManager)
+        public LoginModel(SignInManager<CardUser> signInManager, ILogger<LoginModel> logger)
         {
-            _userManager = userManager;
             _signInManager = signInManager;
             _logger = logger;
         }
@@ -34,9 +28,7 @@ namespace MTGViewer.Areas.Identity.Pages.Account
         [BindProperty]
         public InputModel Input { get; set; } = null!;
 
-        public IList<AuthenticationScheme>? ExternalLogins { get; set; }
-
-        public string ReturnUrl { get; set; } = null!;
+        public string? ReturnUrl { get; set; }
 
         [TempData]
         public string? ErrorMessage { get; set; }
@@ -67,8 +59,6 @@ namespace MTGViewer.Areas.Identity.Pages.Account
             // Clear the existing external cookie to ensure a clean login process
             await HttpContext.SignOutAsync(IdentityConstants.ExternalScheme);
 
-            ExternalLogins = (await _signInManager.GetExternalAuthenticationSchemesAsync()).ToList();
-
             ReturnUrl = returnUrl;
         }
 
@@ -76,8 +66,6 @@ namespace MTGViewer.Areas.Identity.Pages.Account
         {
             returnUrl ??= Url.Content("~/");
 
-            ExternalLogins = (await _signInManager.GetExternalAuthenticationSchemesAsync()).ToList();
-        
             if (ModelState.IsValid)
             {
                 // This doesn't count login failures towards account lockout

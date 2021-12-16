@@ -32,51 +32,27 @@ namespace MTGViewer.Areas.Identity
                     switch (provider)
                     {
                         case "SqlServer":
-                            // TODO: change connection string name
-                            options.UseSqlServer(config.GetConnectionString("SqlServerContext"));
+                            options.UseSqlServer(config.GetConnectionString("SqlServer"));
                             break;
 
                         case "Sqlite":
                         default:
-                            options.UseSqlite(config.GetConnectionString("SqliteContext"));
+                            options.UseSqlite(config.GetConnectionString("Sqlite"));
                             break;
                     }
 
                 });
 
-                services.AddDefaultIdentity<CardUser>(options => options.SignIn.RequireConfirmedAccount = true)
+                services
+                    .AddDefaultIdentity<CardUser>(options =>
+                    {
+                        options.SignIn.RequireConfirmedAccount = true;
+                    })
                     .AddEntityFrameworkStores<UserDbContext>();
 
                 services.AddTransient<IEmailSender, EmailSender>();
                 services.Configure<AuthMessageSenderOptions>(config);
-
-                services.AddHostedService<UserSetup>();
             });
         }
-    }
-
-
-    internal class UserSetup : IHostedService
-    {
-        private readonly IServiceProvider _serviceProvider;
-
-        public UserSetup(IServiceProvider serviceProvider)
-        {
-            _serviceProvider = serviceProvider;
-        }
-
-
-        public async Task StartAsync(CancellationToken cancel)
-        {
-            await using var scope = _serviceProvider.CreateAsyncScope();
-            var scopeProvider = scope.ServiceProvider;
-
-            var userDb = scopeProvider.GetRequiredService<UserDbContext>();
-
-            await userDb.Database.MigrateAsync(cancel);
-        }
-
-
-        public Task StopAsync(CancellationToken cancel) => Task.CompletedTask;
     }
 }

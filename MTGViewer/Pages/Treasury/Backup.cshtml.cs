@@ -51,7 +51,7 @@ public class BackupModel : PageModel
     public int NumberOfSections { get; private set; }
 
 
-    [BindProperty(SupportsGet = true)]
+    [BindProperty]
     public Export? Export { get; set; }
 
 
@@ -66,7 +66,7 @@ public class BackupModel : PageModel
     }
 
 
-    public async Task<IActionResult> OnGetDownloadAsync(CancellationToken cancel)
+    public async Task<IActionResult> OnPostDownloadAsync(CancellationToken cancel)
     {
         if (Export is null || Export.Section < 0)
         {
@@ -84,7 +84,7 @@ public class BackupModel : PageModel
 
         var cardData = await _fileStorage.GetFileDataAsync(section - 1, cancel);
 
-        return File(cardData, "application/json", $"cardsSection{section}.json");
+        return File(cardData, "application/json", $"CardsSection{section}.json");
     }
 
 

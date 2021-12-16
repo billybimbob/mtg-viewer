@@ -85,19 +85,15 @@
             <div class="col-sm-4">
                 <p> Enter the card search parameters below </p>
 
-                <div class="form-group">
-                    <InputText @bind-Value="_search.Name" 
-                        placeholder="@_search.DisplayName(c => c.Name)" 
-                        class="form-control" />
-                </div>
+                <InputText @bind-Value="_search.Name" 
+                    placeholder="@_search.DisplayName(c => c.Name)" 
+                    class="form-control mb-3" />
 
-                <div class="form-group">
-                    <InputNumber @bind-Value="_search.Cmc" min="0"
-                        placeholder="@_search.DisplayName(c => c.Cmc)" 
-                        class="form-control" />
-                </div>
+                <InputNumber @bind-Value="_search.Cmc" min="0"
+                    placeholder="@_search.DisplayName(c => c.Cmc)" 
+                    class="form-control mb-3" />
 
-                <div class="form-group">
+                <div class="mb-3">
                     @foreach (var (symbol, color) in Color.Symbols)
                     {
                         var toggleId = $"{color}Toggle";
@@ -123,31 +119,23 @@
                     </div>
                 </div>
 
-                <div class="form-group">
-                    <InputText @bind-Value="_search.Supertypes"
-                        placeholder="@_search.DisplayName(c => c.Supertypes)"
-                        class="form-control" />
-                </div>
+                <InputText @bind-Value="_search.Supertypes"
+                    placeholder="@_search.DisplayName(c => c.Supertypes)"
+                    class="form-control mb-3" />
 
-                <div class="form-group">
-                    <InputText @bind-Value="_search.Types"
-                        placeholder="@_search.DisplayName(c => c.Types)"
-                        class="form-control" />
-                </div>
+                <InputText @bind-Value="_search.Types"
+                    placeholder="@_search.DisplayName(c => c.Types)"
+                    class="form-control mb-3" />
 
-                <div class="form-group">
-                    <InputText @bind-Value="_search.Subtypes"
-                        placeholder="@_search.DisplayName(c => c.Subtypes)"
-                        class="form-control" />
-                </div>
+                <InputText @bind-Value="_search.Subtypes"
+                    placeholder="@_search.DisplayName(c => c.Subtypes)"
+                    class="form-control mb-3" />
 
-                <div class="form-group">
-                    <InputText @bind-Value="_search.SetName" 
-                        placeholder="@_search.DisplayName(c => c.SetName)" 
-                        class="form-control" />
-                </div>
+                <InputText @bind-Value="_search.SetName" 
+                    placeholder="@_search.DisplayName(c => c.SetName)" 
+                    class="form-control mb-3" />
 
-                <div class="form-row mb-3">
+                <div class="row mb-3">
                     @for (int i = 0; i < Rarity.Values.Count; ++i)
                     {
                         var rarity = Rarity.Values[i];
@@ -171,26 +159,22 @@
                 <div class="form-group">
                     <InputText @bind-Value="_search.Artist" 
                         placeholder="@_search.DisplayName(c => c.Artist)" 
-                        class="form-control" />
+                        class="form-control mb-3" />
                 </div>
 
                 <div class="form-group">
                     <InputText @bind-Value="_search.Power" 
                         placeholder="@_search.DisplayName(c => c.Power)" 
-                        class="form-control" />
+                        class="form-control mb-3" />
                 </div>
 
-                <div class="form-group">
-                    <InputText @bind-Value="_search.Toughness" 
-                        placeholder="@_search.DisplayName(c => c.Toughness)" 
-                        class="form-control" />
-                </div>
+                <InputText @bind-Value="_search.Toughness" 
+                    placeholder="@_search.DisplayName(c => c.Toughness)" 
+                    class="form-control mb-3" />
 
-                <div class="form-group">
-                    <InputText @bind-Value="_search.Loyalty" 
-                        placeholder="@_search.DisplayName(c => c.Loyalty)" 
-                        class="form-control" />
-                </div>
+                <InputText @bind-Value="_search.Loyalty" 
+                    placeholder="@_search.DisplayName(c => c.Loyalty)" 
+                    class="form-control mb-3" />
 
                 <div class="btn-group" role="group">
                     <button type="submit" class="btn btn-secondary" 
@@ -223,7 +207,7 @@ else
             Reset </button>
     </div>
 
-    <div class="form-row align-items-center my-3">
+    <div class="row align-items-center my-3">
 
         <div class="col-3">
             <input class="form-control" placeholder="Name" @bind="_matchName" />
@@ -280,13 +264,11 @@ else
         </tbody>
     </table>
 
-    <div class="form-group">
-        <button title="More Results" type="button"
-            @onclick="SearchForCardAsync" 
-            disabled="@(HasNoNext || IsBusy)"
-            class="btn btn-secondary">
-            Load More</button>
-    </div>
+    <button title="More Results" type="button"
+        @onclick="SearchForCardAsync" 
+        disabled="@(HasNoNext || IsBusy)"
+        class="btn btn-secondary">
+        Load More</button>
 }
 
 
@@ -622,9 +604,8 @@ else
         }
         finally
         {
-            Reset();
-
             _isBusy = false;
+            Reset();
         }
     }
 

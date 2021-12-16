@@ -7,10 +7,10 @@ using Microsoft.EntityFrameworkCore;
 namespace MTGViewer.Data;
 
 [Index(
+    nameof(TransactionId),
     nameof(FromId),
     nameof(ToId),
-    nameof(CardId),
-    nameof(TransactionId), IsUnique = true)]
+    nameof(CardId), IsUnique = true)]
 public class Change
 {
     [JsonIgnore]

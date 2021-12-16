@@ -17,9 +17,10 @@ public class OperationCancelledFilter : ExceptionFilterAttribute
 
     public override void OnException(ExceptionContext context)
     {
-        if(context.Exception is OperationCanceledException)
+        if (context.Exception is OperationCanceledException)
         {
             _logger.LogInformation("Request was cancelled");
+
             context.ExceptionHandled = true;
             context.Result = new StatusCodeResult(499);
         }

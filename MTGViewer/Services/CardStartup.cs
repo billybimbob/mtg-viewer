@@ -9,6 +9,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
+using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
 using MTGViewer.Data.Triggers;
 
@@ -26,7 +27,7 @@ public static class CardStorageExtension
             case "SqlServer":
                 services.AddTriggeredDbContextFactory<CardDbContext>(options => options
                         // TODO: change connection string name
-                    .UseSqlServer(config.GetConnectionString("SqlServerContext"))
+                    .UseSqlServer(config.GetConnectionString("SqlServer"))
                     .UseTriggers(triggers => triggers
                         .AddTrigger<QuantityValidate>()
                         .AddTrigger<TradeValidate>() ));
@@ -35,7 +36,7 @@ public static class CardStorageExtension
             case "Sqlite":
             default:
                 services.AddTriggeredDbContextFactory<CardDbContext>(options => options
-                    .UseSqlite(config.GetConnectionString("SqliteContext"))
+                    .UseSqlite(config.GetConnectionString("Sqlite"))
                     .UseTriggers(triggers => triggers
                         .AddTrigger<QuantityValidate>()
                         .AddTrigger<LiteTokenUpdate>()
@@ -70,6 +71,11 @@ internal class CardSetup : IHostedService
     {
         await using var scope = _serviceProvider.CreateAsyncScope();
         var scopeProvider = scope.ServiceProvider;
+
+        // migrate all here so that no concurrent migrations occur
+
+        var userContext = scopeProvider.GetRequiredService<UserDbContext>();
+        await userContext.Database.MigrateAsync(cancel);
 
         var dbContext = scopeProvider.GetRequiredService<CardDbContext>();
         await dbContext.Database.MigrateAsync(cancel);

@@ -9,6 +9,10 @@ namespace MTGViewer.Areas.Identity.Services;
 public class AuthMessageSenderOptions
 {
     public string SendGridKey { get; set; } = string.Empty;
+
+    public string SenderEmail { get; set; } = string.Empty;
+
+    public string SenderName { get; set; } = string.Empty;
 }
 
 
@@ -27,7 +31,7 @@ public class EmailSender : IEmailSender
 
         var msg = new SendGridMessage()
         {
-            From = new EmailAddress("mtgviewer@outlook.com", "Phil"),
+            From = new EmailAddress(_options.SenderEmail, _options.SenderName),
             Subject = subject,
             PlainTextContent = message,
             HtmlContent = message
@@ -38,6 +42,9 @@ public class EmailSender : IEmailSender
         // Disable click tracking.
         // See https://sendgrid.com/docs/User_Guide/Settings/tracking.html
         msg.SetClickTracking(false, false);
+        msg.SetOpenTracking(false);
+        msg.SetGoogleAnalytics(false);
+        msg.SetSubscriptionTracking(false);
 
         return client.SendEmailAsync(msg);
     }

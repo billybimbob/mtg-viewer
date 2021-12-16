@@ -14,14 +14,21 @@
 @inject ILogger<DeckBuilder> Logger
 
 
-<EditForm EditContext="@_deckEdit">
-    <h1 id="builder-title">
-        <InputText @bind-Value="_deck!.Name" DisplayName="Deck Name"/>
-    </h1>
+@if (_deckEdit is not null)
+{
+    <EditForm EditContext="@_deckEdit">
+        <h1 id="builder-title">
+            <InputText @bind-Value="_deck!.Name" DisplayName="Deck Name"/>
+        </h1>
 
-    <DataAnnotationsValidator />
-    <ValidationSummary />
-</EditForm>
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+    </EditForm>
+}
+else
+{
+    <h1> Deck Builder </h1>
+}
 
 <div class="mb-3">
     <button title="Save Deck" type="button"

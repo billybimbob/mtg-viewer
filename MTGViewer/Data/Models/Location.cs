@@ -2,12 +2,14 @@ using System.Linq;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
+using Microsoft.EntityFrameworkCore;
 
 using MTGViewer.Data.Concurrency;
 using MTGViewer.Data.Internal;
 using MTGViewer.Services;
 
 namespace MTGViewer.Data;
+
 
 public abstract class Location : Concurrent
 {
@@ -45,6 +47,9 @@ public class Unclaimed : Owned
 }
 
 
+[Index(
+    nameof(Type),
+    nameof(OwnerId))]
 public class Deck : Owned
 {
     [JsonIgnore]
