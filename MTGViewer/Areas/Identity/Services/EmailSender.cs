@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Identity.UI.Services;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SendGrid;
 using SendGrid.Helpers.Mail;
@@ -12,20 +13,25 @@ public class AuthMessageSenderOptions
 
     public string SenderEmail { get; set; } = string.Empty;
 
+    public string? SenderEmailAlt { get; set; }
+
     public string SenderName { get; set; } = string.Empty;
 }
 
 
 public class EmailSender : IEmailSender
 {
-    public EmailSender(IOptions<AuthMessageSenderOptions> optionsAccessor)
+    public EmailSender(IOptions<AuthMessageSenderOptions> optionsAccessor, ILogger<EmailSender> logger)
     {
         _options = optionsAccessor.Value;
+        _logger = logger;
     }
 
     private readonly AuthMessageSenderOptions _options;
+    private readonly ILogger<EmailSender> _logger;
 
-    public Task SendEmailAsync(string email, string subject, string message)
+
+    public async Task SendEmailAsync(string email, string subject, string message)
     {
         var client = new SendGridClient(_options.SendGridKey);
 
@@ -37,6 +43,12 @@ public class EmailSender : IEmailSender
             HtmlContent = message
         };
 
+        // issue where if the to and From are the same, the email is not sent
+        if (email == _options.SenderEmail && _options.SenderEmailAlt is not null)
+        {
+            email = _options.SenderEmailAlt;
+        }
+
         msg.AddTo(new EmailAddress(email));
 
         // Disable click tracking.
@@ -46,6 +58,8 @@ public class EmailSender : IEmailSender
         msg.SetGoogleAnalytics(false);
         msg.SetSubscriptionTracking(false);
 
-        return client.SendEmailAsync(msg);
+        var result = await client.SendEmailAsync(msg);
+
+        _logger.LogInformation($"email with response code {result.StatusCode}");
     }
 }

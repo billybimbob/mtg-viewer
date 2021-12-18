@@ -182,6 +182,8 @@ public class DeleteModel : PageModel
             });
 
         _dbContext.AttachResult(returns);
+
+        _dbContext.Transactions.Attach(newTransaction);
         _dbContext.Changes.AttachRange(returnChanges);
 
         _dbContext.Amounts.RemoveRange(deck.Cards);

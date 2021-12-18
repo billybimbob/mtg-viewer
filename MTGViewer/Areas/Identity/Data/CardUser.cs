@@ -1,11 +1,4 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Identity;
-
-using MTGViewer.Data;
-
 
 namespace MTGViewer.Areas.Identity.Data
 {
@@ -13,6 +6,8 @@ namespace MTGViewer.Areas.Identity.Data
     public class CardUser : IdentityUser
     {
         [PersonalData]
-        public string? Name { get; set; }
+        public string Name { get; set; } = string.Empty;
+
+        public bool IsApproved { get; set; }
     }
 }

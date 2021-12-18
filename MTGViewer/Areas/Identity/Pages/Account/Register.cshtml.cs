@@ -6,6 +6,7 @@ using System.Text;
 using System.Text.Encodings.Web;
 using System.Threading;
 using System.Threading.Tasks;
+
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -14,144 +15,151 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+
 using MTGViewer.Areas.Identity.Data;
+using MTGViewer.Areas.Identity.Services;
 
-namespace MTGViewer.Areas.Identity.Pages.Account
+namespace MTGViewer.Areas.Identity.Pages.Account;
+
+public class RegisterModel : PageModel
 {
-    public class RegisterModel : PageModel
+    private readonly ReferenceManager _referenceManager;
+    private readonly UserManager<CardUser> _userManager;
+    private readonly SignInManager<CardUser> _signInManager;
+    private readonly EmailVerification _emailVerify;
+    private readonly ILogger<RegisterModel> _logger;
+
+    public RegisterModel(
+        ReferenceManager referenceManager,
+        UserManager<CardUser> userManager,
+        SignInManager<CardUser> signInManager,
+        EmailVerification emailVerify,
+        ILogger<RegisterModel> logger)
     {
-        private readonly SignInManager<CardUser> _signInManager;
-        private readonly UserManager<CardUser> _userManager;
-        private readonly IUserStore<CardUser> _userStore;
-        private readonly IUserEmailStore<CardUser> _emailStore;
-        private readonly ILogger<RegisterModel> _logger;
-        private readonly IEmailSender _emailSender;
+        _referenceManager = referenceManager;
+        _userManager = userManager;
+        _signInManager = signInManager;
+        _emailVerify = emailVerify;
+        _logger = logger;
+    }
 
-        public RegisterModel(
-            UserManager<CardUser> userManager,
-            IUserStore<CardUser> userStore,
-            SignInManager<CardUser> signInManager,
-            ILogger<RegisterModel> logger,
-            IEmailSender emailSender)
+
+    public class InputModel
+    {
+        [Required]
+        [MaxLength(256)]
+        [Display(Name = "Full Name")]
+        public string Name { get; set; } = null!;
+
+        [Required]
+        [EmailAddress]
+        [Display(Name = "Email")]
+        public string Email { get; set; } = null!;
+
+        [Required]
+        [StringLength(100, ErrorMessage = "The {0} must be at least {2} and at max {1} characters long.", MinimumLength = 6)]
+        [DataType(DataType.Password)]
+        [Display(Name = "Password")]
+        public string Password { get; set; } = null!;
+
+        [DataType(DataType.Password)]
+        [Display(Name = "Confirm password")]
+        [Compare("Password", ErrorMessage = "The password and confirmation password do not match.")]
+        public string ConfirmPassword { get; set; } = null!;
+    }
+
+
+    [BindProperty]
+    public InputModel Input { get; set; } = null!;
+
+    [BindProperty(SupportsGet = true)]
+    public string? ReturnUrl { get; set; }
+
+
+    public void OnGet()
+    { }
+
+
+    public async Task<IActionResult> OnPostAsync()
+    {
+        ReturnUrl ??= Url.Content("~/");
+
+        if (!ModelState.IsValid)
         {
-            _userManager = userManager;
-            _userStore = userStore;
-            _emailStore = GetEmailStore();
-            _signInManager = signInManager;
-            _logger = logger;
-            _emailSender = emailSender;
+            // If we got this far, something failed, redisplay form
+            return Page();
         }
 
-        [BindProperty]
-        public InputModel Input { get; set; } = null!;
-
-        public string? ReturnUrl { get; set; }
-
-
-        public class InputModel
+        var user = new CardUser
         {
-            [Required]
-            [EmailAddress]
-            [Display(Name = "Email")]
-            public string Email { get; set; } = null!;
+            Name = Input.Name,
+            UserName = Input.Email,
+            Email = Input.Email
+        };
 
-            [Required]
-            [StringLength(100, ErrorMessage = "The {0} must be at least {2} and at max {1} characters long.", MinimumLength = 6)]
-            [DataType(DataType.Password)]
-            [Display(Name = "Password")]
-            public string Password { get; set; } = null!;
-
-            [DataType(DataType.Password)]
-            [Display(Name = "Confirm password")]
-            [Compare("Password", ErrorMessage = "The password and confirmation password do not match.")]
-            public string ConfirmPassword { get; set; } = null!;
+        var result = await _userManager.CreateAsync(user, Input.Password);
+        if (!result.Succeeded)
+        {
+            AddResultErrors(result.Errors);
+            return Page();
         }
 
+        var userId = await _userManager.GetUserIdAsync(user);
+        user.Id = userId;
 
-        public void OnGet(string? returnUrl = null)
+        var created = await _referenceManager.CreateReferenceAsync(user);
+        if (!created)
         {
-            ReturnUrl = returnUrl;
+            ModelState.AddModelError(string.Empty, "Issue creating user account");
+            // try to delete, possibly can still fail and remain in user store
+            await _userManager.DeleteAsync(user);
+
+            return Page();
         }
 
-
-        public async Task<IActionResult> OnPostAsync(string? returnUrl = null)
+        bool emailed = await _emailVerify.SendApproveRequestAsync(user);
+        if (!emailed)
         {
-            returnUrl ??= Url.Content("~/");
+            ModelState.AddModelError(string.Empty, "Issue creating user account");
+            return Page();
+        }
 
-            if (!ModelState.IsValid)
+        _logger.LogInformation("User created a new account with password.");
+
+        return RedirectToPage("RegisterConfirmation", new { user.Email, ReturnUrl });
+    }
+
+
+    private void AddResultErrors(IEnumerable<IdentityError> errors)
+    {
+        const StringComparison comparison = StringComparison.CurrentCultureIgnoreCase;
+
+        const string input = nameof(Input) + ".";
+        const string userName = nameof(CardUser.UserName);
+        const string email = nameof(InputModel.Email);
+        const string password = nameof(InputModel.Password);
+
+        foreach (var error in errors)
+        {
+            if (error.Code.Contains(userName, comparison))
             {
-                // If we got this far, something failed, redisplay form
-                return Page();
+                continue;
             }
 
-            var user = CreateUser();
-
-            await _userStore.SetUserNameAsync(user, Input.Email, CancellationToken.None);
-            await _emailStore.SetEmailAsync(user, Input.Email, CancellationToken.None);
-            var result = await _userManager.CreateAsync(user, Input.Password);
-
-            if (!result.Succeeded)
+            if (error.Code.Contains(email))
             {
-                foreach (var error in result.Errors)
-                {
-                    ModelState.AddModelError(string.Empty, error.Description);
-                }
-
-                return Page();
+                ModelState.AddModelError(input + email, error.Description);
             }
-
-            _logger.LogInformation("User created a new account with password.");
-
-            var userId = await _userManager.GetUserIdAsync(user);
-            var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
-
-            var code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
-
-            var callbackUrl = Url.Page(
-                "/Account/ConfirmEmail",
-                pageHandler: null,
-                values: new { area = "Identity", userId, code, returnUrl },
-                protocol: Request.Scheme);
-
-            if (callbackUrl is not null)
+            else if (error.Code.Contains(password))
             {
-                await _emailSender.SendEmailAsync(Input.Email, "Confirm your email",
-                    $"Please confirm your account by <a href='{HtmlEncoder.Default.Encode(callbackUrl)}'>clicking here</a>.");
-            }
-
-            if (_userManager.Options.SignIn.RequireConfirmedAccount)
-            {
-                return RedirectToPage("RegisterConfirmation", new { email = Input.Email, returnUrl });
+                ModelState.AddModelError(input + password, error.Description);
             }
             else
             {
-                await _signInManager.SignInAsync(user, isPersistent: false);
-                return LocalRedirect(returnUrl);
+                ModelState.AddModelError(string.Empty, error.Description);
             }
-        }
 
-
-        private CardUser CreateUser()
-        {
-            try
-            {
-                return Activator.CreateInstance<CardUser>();
-            }
-            catch
-            {
-                throw new InvalidOperationException($"Can't create an instance of '{nameof(CardUser)}'. " +
-                    $"Ensure that '{nameof(CardUser)}' is not an abstract class and has a parameterless constructor, or alternatively " +
-                    $"override the register page in /Areas/Identity/Pages/Account/Register.cshtml");
-            }
-        }
-
-        private IUserEmailStore<CardUser> GetEmailStore()
-        {
-            if (!_userManager.SupportsUserEmail)
-            {
-                throw new NotSupportedException("The default UI requires a user store with email support.");
-            }
-            return (IUserEmailStore<CardUser>)_userStore;
         }
     }
 }

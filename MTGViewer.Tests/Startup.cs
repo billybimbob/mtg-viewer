@@ -1,10 +1,12 @@
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
 using MtgApiManager.Lib.Service;
 using MTGViewer.Areas.Identity.Data;
+using MTGViewer.Areas.Identity.Services;
 using MTGViewer.Data;
 using MTGViewer.Services;
 using MTGViewer.Tests.Utils;
@@ -20,6 +22,7 @@ public class Startup
             .ConfigureAppConfiguration(config =>
             {
                 config.AddJsonFile("appsettings.Test.json", optional: true, reloadOnChange: true);
+                config.AddUserSecrets<MTGViewer.Program>();
             });
     }
 
@@ -71,5 +74,8 @@ public class Startup
         services.AddScoped<FileCardStorage>();
         services.AddScoped<CardDataGenerator>();
         services.AddScoped<TestDataGenerator>();
+
+        services.AddTransient<IEmailSender, EmailSender>();
+        services.Configure<AuthMessageSenderOptions>(context.Configuration);
     }
 }

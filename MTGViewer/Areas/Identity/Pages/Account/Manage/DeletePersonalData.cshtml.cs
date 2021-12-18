@@ -5,21 +5,26 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.Extensions.Logging;
+
 using MTGViewer.Areas.Identity.Data;
+using MTGViewer.Areas.Identity.Services;
 
 namespace MTGViewer.Areas.Identity.Pages.Account.Manage
 {
     public class DeletePersonalDataModel : PageModel
     {
+        private readonly ReferenceManager _referenceManager;
         private readonly UserManager<CardUser> _userManager;
         private readonly SignInManager<CardUser> _signInManager;
         private readonly ILogger<DeletePersonalDataModel> _logger;
 
         public DeletePersonalDataModel(
+            ReferenceManager referenceManager,
             UserManager<CardUser> userManager,
             SignInManager<CardUser> signInManager,
             ILogger<DeletePersonalDataModel> logger)
         {
+            _referenceManager = referenceManager;
             _userManager = userManager;
             _signInManager = signInManager;
             _logger = logger;
@@ -67,22 +72,26 @@ namespace MTGViewer.Areas.Identity.Pages.Account.Manage
             }
 
             RequirePassword = await _userManager.HasPasswordAsync(user);
-            if (RequirePassword)
+            if (RequirePassword && !await _userManager.CheckPasswordAsync(user, Input.Password))
             {
-                if (!await _userManager.CheckPasswordAsync(user, Input.Password))
-                {
-                    ModelState.AddModelError(string.Empty, "Incorrect password.");
-                    return Page();
-                }
+                ModelState.AddModelError(string.Empty, "Incorrect password.");
+                return Page();
+            }
+
+            if (!await _referenceManager.DeleteReferenceAsync(user))
+            {
+                ModelState.AddModelError(string.Empty, "Failed to delete the user");
+                return Page();
             }
 
             var result = await _userManager.DeleteAsync(user);
-            var userId = await _userManager.GetUserIdAsync(user);
             if (!result.Succeeded)
             {
-                throw new InvalidOperationException($"Unexpected error occurred deleting user.");
+                ModelState.AddModelError(string.Empty, "Failed to delete the user");
+                return Page();
             }
 
+            var userId = await _userManager.GetUserIdAsync(user);
             await _signInManager.SignOutAsync();
 
             _logger.LogInformation("User with ID '{UserId}' deleted themselves.", userId);

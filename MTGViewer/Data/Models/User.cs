@@ -11,12 +11,12 @@ public class UserRef
     public UserRef(CardUser user)
     {
         Id = user.Id;
-        Name = user.Name ?? string.Empty;
+        Name = user.Name;
     }
 
     [Key]
     public string Id { get; init; } = null!;
 
     [StringLength(256)]
-    public string Name { get; init; } = null!;
+    public string Name { get; set; } = null!;
 }

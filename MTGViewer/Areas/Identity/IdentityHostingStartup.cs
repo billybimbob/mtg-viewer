@@ -40,18 +40,22 @@ namespace MTGViewer.Areas.Identity
                             options.UseSqlite(config.GetConnectionString("Sqlite"));
                             break;
                     }
-
                 });
 
                 services
                     .AddDefaultIdentity<CardUser>(options =>
                     {
                         options.SignIn.RequireConfirmedAccount = true;
+                        options.SignIn.RequireConfirmedEmail = true;
+                        options.User.RequireUniqueEmail = true;
                     })
                     .AddEntityFrameworkStores<UserDbContext>();
 
                 services.AddTransient<IEmailSender, EmailSender>();
                 services.Configure<AuthMessageSenderOptions>(config);
+
+                services.AddTransient<EmailVerification>();
+                services.AddScoped<ReferenceManager>();
             });
         }
     }
