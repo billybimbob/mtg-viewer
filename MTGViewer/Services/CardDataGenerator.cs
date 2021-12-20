@@ -53,7 +53,7 @@ public class CardDataGenerator
         var users = GetUsers();
         var userRefs = users.Select(u => new UserRef(u)).ToList();
 
-        var cards = await GetCardsAsync(_fetch);
+        var cards = await GetCardsAsync(_fetch, cancel);
         var decks = GetDecks(userRefs);
         var boxes = GetBoxes();
 
@@ -78,10 +78,9 @@ public class CardDataGenerator
         await _dbContext.SaveChangesAsync(cancel);
 
         // TODO: fix created accounts not being verified
-        var results = await Task.WhenAll(
-            users.Select(u => _seedPassword != default
-                ? _userManager.CreateAsync(u, _seedPassword)
-                : _userManager.CreateAsync(u)));
+
+        await users.ToAsyncEnumerable()
+            .ForEachAwaitWithCancellationAsync(RegisterUserAsync, cancel);
     }
 
 
@@ -111,11 +110,15 @@ public class CardDataGenerator
     };
 
 
-    private async Task<IReadOnlyList<Card>> GetCardsAsync(MTGFetchService fetchService)
+    private async Task<IReadOnlyList<Card>> GetCardsAsync(MTGFetchService fetchService, CancellationToken cancel)
     {
-        return await fetchService
+        var cards = await fetchService
             .Where(c => c.Cmc, 3)
             .SearchAsync();
+
+        cancel.ThrowIfCancellationRequested();
+
+        return cards;
     }
 
 
@@ -225,4 +228,34 @@ public class CardDataGenerator
         };
     }
 
+
+    private async Task<IdentityResult> RegisterUserAsync(CardUser user, CancellationToken cancel)
+    {
+        var created = _seedPassword != default
+            ? await _userManager.CreateAsync(user, _seedPassword)
+            : await _userManager.CreateAsync(user);
+        
+        cancel.ThrowIfCancellationRequested();
+
+        if (!created.Succeeded)
+        {
+            return created;
+        }
+
+        var providers = await _userManager.GetValidTwoFactorProvidersAsync(user);
+        cancel.ThrowIfCancellationRequested();
+
+        if (!providers.Any())
+        {
+            return created;
+        }
+
+        string token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+        cancel.ThrowIfCancellationRequested();
+
+        var confirmed = await _userManager.ConfirmEmailAsync(user, token);
+        cancel.ThrowIfCancellationRequested();
+
+        return confirmed;
+    }
 }

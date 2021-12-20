@@ -248,7 +248,8 @@ public class ExchangeModel : PageModel
 
         var hasInvalidGives = deck.GiveBacks
             .GroupJoin(deck.Cards,
-                give => give.CardId, amt => amt.CardId,
+                give => give.CardId,
+                amt => amt.CardId,
                 (giveBack, amounts) => 
                     (giveBack, amtCopies: amounts.Sum(a => a.NumCopies)))
             .Any(ga =>
@@ -264,17 +265,6 @@ public class ExchangeModel : PageModel
 
         return _treasuryQuery.FindReturnAsync(returnRequests, cancel);
     }
-
-
-    private Dictionary<int, int> GetDbCopies(
-        IReadOnlyDictionary<int, int> oldCheckouts,
-        IReadOnlyDictionary<int, int> oldReturns)
-    {
-        return oldCheckouts
-            .UnionBy(oldReturns, kv => kv.Key)
-            .ToDictionary(kv => kv.Key, kv => kv.Value);
-    }
-
 
 
     private void ApplyCheckouts(Deck deck, Transaction transaction, RequestResult result)
@@ -307,8 +297,8 @@ public class ExchangeModel : PageModel
                 (deckAmt, treAmt) => new ExchangePair(deckAmt, treAmt.Id))
             .ToList();
 
-        ApplyExactCheckouts(amountChanges, wants, checkoutPairs);
-        ApplyApproxCheckouts(amountChanges, wants, checkoutPairs);
+        ApplyExactCheckoutPair(amountChanges, wants, checkoutPairs);
+        ApplyApproxCheckoutPairs(amountChanges, wants, checkoutPairs);
     }
 
 
@@ -356,7 +346,7 @@ public class ExchangeModel : PageModel
     }
 
 
-    private void ApplyExactCheckouts(
+    private void ApplyExactCheckoutPair(
         IDictionary<int, int> checkAmounts,
         IEnumerable<Want> wants, 
         IEnumerable<ExchangePair> pairs)
@@ -389,7 +379,7 @@ public class ExchangeModel : PageModel
     }
 
 
-    private void ApplyApproxCheckouts(
+    private void ApplyApproxCheckoutPairs(
         IDictionary<int, int> checkAmounts,
         IEnumerable<Want> wants, 
         IEnumerable<ExchangePair> pairs)
@@ -454,13 +444,13 @@ public class ExchangeModel : PageModel
 
         var giveBacks = deck.GiveBacks;
 
-        var exchangePairs = deck.Cards
+        var returnPairs = deck.Cards
             .Join( returns,
                 da => da.CardId,
                 ra => ra.CardId,
                 (deckAmt, ret) => new ExchangePair(deckAmt, ret.Id));
 
-        ApplyReturns(amountChanges, giveBacks, exchangePairs);
+        ApplyReturnPairs(amountChanges, giveBacks, returnPairs);
     }
 
 
@@ -487,7 +477,7 @@ public class ExchangeModel : PageModel
     }
 
 
-    private void ApplyReturns(
+    private void ApplyReturnPairs(
         IDictionary<int, int> amountChanges,
         IEnumerable<GiveBack> giveBacks,
         IEnumerable<ExchangePair> pairs)

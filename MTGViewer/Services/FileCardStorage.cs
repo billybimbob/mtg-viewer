@@ -7,7 +7,6 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Reflection;
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
@@ -141,10 +140,11 @@ public class FileCardStorage
             await dbContext.SaveChangesAsync(cancel);
 
             // TODO: generate secure temp passwords, and send emails to users
-            var results = await Task.WhenAll(
-                data.Users.Select(u => _tempPassword != default
-                    ? _userManager.CreateAsync(u, _tempPassword)
-                    : _userManager.CreateAsync(u)));
+
+            var results = await data.Users
+                .ToAsyncEnumerable()
+                .SelectAwaitWithCancellation( AddUserAsync )
+                .ToListAsync(cancel);
 
             return results.All(r => r.Succeeded);
 
@@ -176,6 +176,32 @@ public class FileCardStorage
 
         dbContext.Transactions.AddRange(data.Transactions);
         dbContext.Suggestions.AddRange(data.Suggestions);
+    }
+
+
+    private async ValueTask<IdentityResult> AddUserAsync(CardUser user, CancellationToken cancel)
+    {
+        var created = _tempPassword != default
+            ? await _userManager.CreateAsync(user, _tempPassword)
+            : await _userManager.CreateAsync(user);
+        
+        cancel.ThrowIfCancellationRequested();
+
+        var providers = await _userManager.GetValidTwoFactorProvidersAsync(user);
+        cancel.ThrowIfCancellationRequested();
+
+        if (!providers.Any())
+        {
+            return created;
+        }
+
+        string token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+        cancel.ThrowIfCancellationRequested();
+
+        var confirmed = await _userManager.ConfirmEmailAsync(user, token);
+        cancel.ThrowIfCancellationRequested();
+
+        return confirmed;
     }
 
 

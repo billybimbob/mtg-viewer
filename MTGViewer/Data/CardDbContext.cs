@@ -214,12 +214,9 @@ internal class TransactionConfiguration : IEntityTypeConfiguration<Transaction>
 
     public void Configure(EntityTypeBuilder<Transaction> builder)
     {
-        // TODO; add more database cases
-        var dateFunc = _database.IsSqlite() ? "datetime('now', 'localtime')" : "getdate()";
-
         builder
             .Property(t => t.AppliedAt)
-            .HasDefaultValueSql(dateFunc);
+            .HasDefaultValueSql(_database.GetCurrentTime());
 
         builder
             .HasMany(t => t.Changes)
@@ -241,11 +238,9 @@ internal class SuggestionConfiguration : IEntityTypeConfiguration<Suggestion>
     
     public void Configure(EntityTypeBuilder<Suggestion> builder)
     {
-        var dateFunc = _database.IsSqlite() ? "datetime('now', 'localtime')" : "getdate()";
-
         builder
             .Property(s => s.SentAt)
-            .HasDefaultValueSql(dateFunc);
+            .HasDefaultValueSql(_database.GetCurrentTime());
 
         builder
             .HasOne(s => s.To)
