@@ -74,12 +74,12 @@ public class TestDataGenerator
     {
         if (_dbContext.Database.IsRelational())
         {
-            await _dbContext.Database.MigrateAsync();
+            await _dbContext.Database.EnsureCreatedAsync();
         }
 
         if (_userContext.Database.IsRelational())
         {
-            await _userContext.Database.MigrateAsync();
+            await _userContext.Database.EnsureCreatedAsync();
         }
     }
 
@@ -155,8 +155,8 @@ public class TestDataGenerator
 
             var decks = new List<Deck>()
             {
-                new Deck { Name = "Source #1" },
-                new Deck { Name = "Source #2" }
+                new Deck { Name = "Source #1", Owner = nonOwner },
+                new Deck { Name = "Source #2", Owner = nonOwner }
             };
 
             var amounts = decks

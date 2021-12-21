@@ -1,8 +1,10 @@
 using System.ComponentModel.DataAnnotations;
 using System.Threading.Tasks;
+
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+
 using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Areas.Identity.Services;
 

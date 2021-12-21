@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 using MTGViewer.Data.Concurrency;
 using MTGViewer.Data.Internal;
@@ -216,7 +216,8 @@ internal class TransactionConfiguration : IEntityTypeConfiguration<Transaction>
     {
         builder
             .Property(t => t.AppliedAt)
-            .HasDefaultValueSql(_database.GetCurrentTime());
+            .HasDefaultValueSql(_database.GetUtcTime())
+            .UtcToLocal();
 
         builder
             .HasMany(t => t.Changes)
@@ -240,7 +241,8 @@ internal class SuggestionConfiguration : IEntityTypeConfiguration<Suggestion>
     {
         builder
             .Property(s => s.SentAt)
-            .HasDefaultValueSql(_database.GetCurrentTime());
+            .HasDefaultValueSql(_database.GetUtcTime())
+            .UtcToLocal();
 
         builder
             .HasOne(s => s.To)

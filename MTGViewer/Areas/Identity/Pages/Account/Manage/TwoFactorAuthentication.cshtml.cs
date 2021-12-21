@@ -1,12 +1,10 @@
 using System;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
-namespace MTGViewer.Areas.Identity.Pages.Account.Manage
+namespace MTGViewer.Areas.Identity.Pages.Account.Manage;
+
+public class TwoFactorAuthenticationModel : PageModel
 {
-    public class TwoFactorAuthenticationModel : PageModel
-    {
-        public IActionResult OnGet() => RedirectToPage("./Index");
-    }
+    public IActionResult OnGet() => RedirectToPage("./Index");
 }

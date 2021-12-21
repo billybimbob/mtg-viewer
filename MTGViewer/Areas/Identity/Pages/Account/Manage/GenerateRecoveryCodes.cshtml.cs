@@ -1,10 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
-namespace MTGViewer.Areas.Identity.Pages.Account.Manage
+namespace MTGViewer.Areas.Identity.Pages.Account.Manage;
+
+public class GenerateRecoveryCodesModel : PageModel
 {
-    public class GenerateRecoveryCodesModel : PageModel
-    {
-        public IActionResult OnGet() => RedirectToPage("./Index");
-    }
+    public IActionResult OnGet() => RedirectToPage("./Index");
 }
