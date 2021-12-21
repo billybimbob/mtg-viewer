@@ -14,22 +14,31 @@ public static class CardStorageExtension
     {
         var provider = config.GetValue("Provider", "Sqlite");
 
+        string connString = provider switch
+        {
+            "SqlServer" => 
+                config.GetConnectionString("SqlServer"),
+
+            "Postgresql" when config["RemoteKey"] is var remoteKey => 
+                config[remoteKey].ToNpgsqlConnectionString(),
+
+            _ => 
+                config.GetConnectionString("Sqlite")
+        };
+
         switch (provider)
         {
             case "SqlServer":
                 services.AddTriggeredDbContextFactory<CardDbContext>(options => options
-                        // TODO: change connection string name
-                    .UseSqlServer(config.GetConnectionString("SqlServer"))
+                    .UseSqlServer(connString)
                     .UseTriggers(triggers => triggers
                         .AddTrigger<QuantityValidate>()
                         .AddTrigger<TradeValidate>() ));
                 break;
 
             case "Postgresql":
-                string remoteKey = config["RemoteKey"];
-
                 services.AddTriggeredPooledDbContextFactory<CardDbContext>(options => options
-                    .UseNpgsql(config[remoteKey])
+                    .UseNpgsql(connString)
                     .UseTriggers(triggers => triggers
                         .AddTrigger<QuantityValidate>()
                         .AddTrigger<TradeValidate>() ));
@@ -38,7 +47,7 @@ public static class CardStorageExtension
             case "Sqlite":
             default:
                 services.AddTriggeredDbContextFactory<CardDbContext>(options => options
-                    .UseSqlite(config.GetConnectionString("Sqlite"))
+                    .UseSqlite(connString)
                     .UseTriggers(triggers => triggers
                         .AddTrigger<QuantityValidate>()
                         .AddTrigger<LiteTokenUpdate>()

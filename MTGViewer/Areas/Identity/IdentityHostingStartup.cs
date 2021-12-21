@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
+using MTGViewer.Data;
 using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Areas.Identity.Services;
 
@@ -20,22 +21,33 @@ public class IdentityHostingStartup : IHostingStartup
             var config = context.Configuration;
             var provider = config.GetValue("Provider", "Sqlite");
 
+            string connString = provider switch
+            {
+                "SqlServer" => 
+                    config.GetConnectionString("SqlServer"),
+
+                "Postgresql" when config["RemoteKey"] is var remoteKey => 
+                    config[remoteKey].ToNpgsqlConnectionString(),
+
+                _ => 
+                    config.GetConnectionString("Sqlite")
+            };
+
             services.AddDbContext<UserDbContext>(options =>
             {
                 switch (provider)
                 {
                     case "SqlServer":
-                        options.UseSqlServer(config.GetConnectionString("SqlServer"));
+                        options.UseSqlServer(connString);
                         break;
                     
                     case "Postgresql":
-                        string remoteKey = config["RemoteKey"];
-                        options.UseNpgsql(config[remoteKey]);
+                        options.UseNpgsql(connString);
                         break;
 
                     case "Sqlite":
                     default:
-                        options.UseSqlite(config.GetConnectionString("Sqlite"));
+                        options.UseSqlite(connString);
                         break;
                 }
             });
