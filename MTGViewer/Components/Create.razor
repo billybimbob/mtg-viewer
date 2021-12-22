@@ -628,10 +628,13 @@ else
             .Where(cid => cardIds.Contains(cid))
             .ToListAsync(cancel);
 
+        var existingCards = requestCards
+            .IntersectBy(existingIds, c => c.Id);
+
         var newCards = requestCards
             .ExceptBy(existingIds, c => c.Id);
 
-        dbContext.Cards.AttachRange(requestCards);
+        dbContext.Cards.AttachRange(existingCards);
         dbContext.Cards.AddRange(newCards);
     }
 

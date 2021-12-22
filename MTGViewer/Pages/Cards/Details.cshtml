@@ -2,7 +2,7 @@
 @model Cards.DetailsModel
 @using Microsoft.AspNetCore.Mvc.Rendering
 @{
-    ViewData["Title"] = "Details";
+    ViewData["Title"] = $"{Model.Card.Name} - Details";
 }
 @inject SymbolFormatter MtgSymbols
 

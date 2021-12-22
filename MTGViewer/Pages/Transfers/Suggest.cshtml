@@ -2,10 +2,9 @@
 @model Transfers.SuggestModel
 @inject SymbolFormatter MtgSymbols
 
-
 @if (Model.Receiver is null)
 {
-    ViewData["Title"] = $"Suggest {Model.Card.Name}";
+    ViewData["Title"] = $"{Model.Card.Name} - Suggest ({Model.Users.Pages})";
 
     <h2>
         Suggest 
@@ -15,7 +14,7 @@
 }
 else
 {
-    ViewData["Title"] = $"Suggest {Model.Card.Name} - {Model.Receiver.Name}";
+    ViewData["Title"] = $"{Model.Card.Name} - Suggest {Model.Receiver.Name}";
 
     <h2>
         Suggest 

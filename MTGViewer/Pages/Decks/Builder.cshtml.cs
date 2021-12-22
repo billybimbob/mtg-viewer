@@ -32,18 +32,26 @@ public class BuilderModel : PageModel
     }
 
 
-    public string? UserId { get; private set; }
+    public string UserId { get; private set; } = null!;
+
     public int DeckId { get; private set; }
+    public string? DeckName { get; private set; }
+
     public int PageSize { get; }
 
 
     public async Task<IActionResult> OnGetAsync(int? id, CancellationToken cancel)
     {
-        UserId = _userManager.GetUserId(User);
+        var userId = _userManager.GetUserId(User);
+
+        if (userId is null)
+        {
+            return NotFound();
+        }
 
         if (id is int deckId)
         {
-            var deck = await DeckForBuilder(deckId, UserId)
+            var deck = await DeckForBuilder(deckId, userId)
                 .SingleOrDefaultAsync(cancel);
 
             if (deck == default)
@@ -56,8 +64,11 @@ public class BuilderModel : PageModel
                 return RedirectToPage("Viewer", new { id = deckId });
             }
 
+            DeckName = deck.Name;
             DeckId = deckId;
         }
+
+        UserId = userId;
 
         // the deck cannot be used as a param because of cyclic refs
         return Page();

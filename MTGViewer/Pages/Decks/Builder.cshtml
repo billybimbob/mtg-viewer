@@ -1,7 +1,11 @@
 @page "{id:int?}"
 @model Decks.BuilderModel
 @{
-    ViewData["Title"] = "Deck Builder";
+    string title = Model.DeckName is null
+        ? "New Deck"
+        : $"{Model.DeckName} - Builder";
+
+    ViewData["Title"] = title;
 }
 
 @* <component type="typeof(Components.DeckBuilder)" 

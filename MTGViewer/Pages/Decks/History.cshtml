@@ -1,7 +1,7 @@
 @page "{id:int}/{pageIndex:int?}"
 @model Decks.HistoryModel
 @{
-    ViewData["Title"] = $"{Model.Deck.Name} Change History";
+    ViewData["Title"] = $"{Model.Deck.Name} - History ({Model.Pages})";
 }
 
 <h1>
@@ -34,7 +34,9 @@
                     <tr>
                         @if (isFirstTransfer)
                         {
-                            <th scope="rowgroup" rowspan="@transaction.Changes.Count"> @transaction.AppliedAt </th>
+                            <th scope="rowgroup" rowspan="@transaction.Changes.Count">
+                                @transaction.AppliedAt
+                            </th>
                         }
 
                         <td rowspan="@changes.Count">

@@ -193,19 +193,18 @@ public class MTGFetchService : IMtgQueryable<MTGFetchService, CardQuery>
             // .Where(c => c.OrderBy, "name") get error code 500 with this
             .AllAsync();
 
-        var totalPages = response.PagingInfo.TotalPages;
-
-        var pages = new Data.Pages(_page, totalPages);
-
-        _empty = true;
-        _page = 0;
-
         var matches = LoggedUnwrap(response) ?? Enumerable.Empty<ICard>();
 
         if (!matches.Any())
         {
+            _empty = true;
+            _page = 0;
+
             return PagedList<Card>.Empty;
         }
+
+        var totalPages = response.PagingInfo.TotalPages;
+        var pages = new Data.Pages(_page, totalPages);
 
         var cards = matches
             .Select(c => c.ToCard())
@@ -218,6 +217,9 @@ public class MTGFetchService : IMtgQueryable<MTGFetchService, CardQuery>
         {
             _cache[card.MultiverseId] = card;
         }
+
+        _empty = true;
+        _page = 0;
 
         return new PagedList<Card>(pages, cards);
     }
