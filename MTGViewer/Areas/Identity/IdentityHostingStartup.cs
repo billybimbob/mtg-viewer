@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity.UI.Services;
 
@@ -60,6 +61,9 @@ public class IdentityHostingStartup : IHostingStartup
                     options.User.RequireUniqueEmail = true;
                 })
                 .AddEntityFrameworkStores<UserDbContext>();
+
+            services.AddDataProtection()
+                .PersistKeysToDbContext<UserDbContext>();
 
             services.AddTransient<IEmailSender, EmailSender>();
             services.Configure<AuthMessageSenderOptions>(config);

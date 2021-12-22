@@ -596,6 +596,12 @@ else
 
             _result = SaveResult.Error;
         }
+        catch (InvalidOperationException e)
+        {
+            logger.LogError($"failed to add new cards {e}");
+
+            _result = SaveResult.Error;
+        }
         catch (OperationCanceledException e)
         {
             logger.LogError($"cancel error: {e}");
@@ -661,6 +667,8 @@ else
             });
 
         dbContext.AttachResult(result);
+
         dbContext.Changes.AttachRange(addChanges);
+        dbContext.Transactions.Attach(newTransaction);
     }
 }

@@ -16,6 +16,7 @@ namespace MTGViewer.Areas.Identity.Services;
 public class EmailVerification
 {
     public const string Approval = "approve-account";
+    private const string https = "https";
 
     private readonly UserManager<CardUser> _userManager;
     private readonly IHttpContextAccessor _httpAccessor;
@@ -58,7 +59,7 @@ public class EmailVerification
             "/Account/ApproveConfirmation",
             handler: null,
             values: new { area = "Identity", userId, code },
-            scheme: httpContext.Request.Scheme);
+            scheme: https);
 
         if (callbackUrl is null)
         {
@@ -99,7 +100,7 @@ public class EmailVerification
             "/Account/ConfirmEmailChange",
             handler: null,
             values: new { area = "Identity", userId, email = newEmail, code },
-            scheme: httpContext.Request.Scheme);
+            scheme: https);
 
         if (callbackUrl is null)
         {
@@ -134,7 +135,7 @@ public class EmailVerification
             "/Account/ConfirmEmail",
             handler: null,
             values: new { area = "Identity", userId, code },
-            scheme: httpContext.Request.Scheme);
+            scheme: https);
 
         if (callbackUrl is null)
         {
@@ -171,7 +172,7 @@ public class EmailVerification
             "/Account/ResetPassword",
             handler: null,
             values: new { area = "Identity", code },
-            scheme: httpContext.Request.Scheme);
+            scheme: https);
 
         if (callbackUrl is null)
         {

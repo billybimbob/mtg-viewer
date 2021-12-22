@@ -57,6 +57,7 @@ public interface ITreasuryQuery
     /// to accommodate for the requested <see cref="Card"/> returns.
     /// </returns>
     /// <exception cref="ArgumentNullException"></exception>
+    /// <exception cref="InvalidOperationException"></exception>
     /// <exception cref="OperationCanceledException"></exception>
     Task<RequestResult> FindReturnAsync(
         IEnumerable<CardRequest> requests, 

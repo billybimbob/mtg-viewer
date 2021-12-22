@@ -317,28 +317,28 @@ public class SortedPartitionTreasury : ITreasuryQuery
     {
         if (!sortedBoxes.Any())
         {
-            return RequestResult.Empty;
+            throw new InvalidOperationException("There are no boxes to return to");
         }
 
-        var state = new ReturnState(sortedBoxes);
+        var returnContext = new ReturnContext(sortedBoxes);
 
-        ApplyExistingReturns(state, returns);
-        ApplyNewReturns(state, returns);
+        ApplyExistingReturns(returnContext, returns);
+        ApplyNewReturns(returnContext, returns);
 
         var allReturns = ModifiedAmounts(dbContext)
-            .Concat(state.AddedAmounts)
+            .Concat(returnContext.AddedAmounts)
             .ToList();
 
         return AsResult(dbContext, allReturns);
     }
 
 
-    private sealed class ReturnState
+    private sealed class ReturnContext
     {
         private readonly Dictionary<int, int> _boxSpace;
         private readonly Dictionary<QuantityIndex, Amount> _amountMap;
 
-        public ReturnState(IReadOnlyList<Box> boxes)
+        public ReturnContext(IReadOnlyList<Box> boxes)
         {
             SortedBoxes = boxes;
             SortedAmounts = GetSortedAmounts(boxes);
@@ -436,9 +436,9 @@ public class SortedPartitionTreasury : ITreasuryQuery
 
 
     private static void ApplyExistingReturns(
-        ReturnState state, IEnumerable<CardRequest> requests)
+        ReturnContext returnContext, IEnumerable<CardRequest> requests)
     {
-        var (_, sortedAmounts, boxSpace) = state;
+        var (_, sortedAmounts, boxSpace) = returnContext;
 
         var existingSpots = sortedAmounts
             // each group should be ordered by box capacity
@@ -458,7 +458,7 @@ public class SortedPartitionTreasury : ITreasuryQuery
 
             foreach ((Box box, int splitCopies) in splitToBoxes)
             {
-                state.Update(card, box, splitCopies);
+                returnContext.Update(card, box, splitCopies);
                 // changes will cascade to the split iter via boxSpace
 
                 request.NumCopies -= splitCopies;
@@ -497,15 +497,15 @@ public class SortedPartitionTreasury : ITreasuryQuery
 
 
     private static void ApplyNewReturns(
-        ReturnState returnState, IEnumerable<CardRequest> returns)
+        ReturnContext returnContext, IEnumerable<CardRequest> returns)
     {
         if (returns.All(cr => cr.NumCopies == 0))
         {
             return;
         }
 
-        var boxSearch = new BoxSearcher(returnState);
-        var boxSpace = returnState.BoxSpace;
+        var boxSearch = new BoxSearcher(returnContext);
+        var boxSpace = returnContext.BoxSpace;
 
         foreach ((Card card, int numCopies) in returns)
         {
@@ -520,7 +520,7 @@ public class SortedPartitionTreasury : ITreasuryQuery
             foreach ((Box box, int splitCopies) in splitToBoxes)
             {
                 // returnState changes will cascade to the split iter via boxSpace
-                returnState.Add(card, box, splitCopies);
+                returnContext.Add(card, box, splitCopies);
             }
         }
     }
@@ -537,9 +537,9 @@ public class SortedPartitionTreasury : ITreasuryQuery
         private readonly List<int> _boxBoundaries;
 
 
-        public BoxSearcher(ReturnState returnState)
+        public BoxSearcher(ReturnContext returnContext)
         {
-            var (sortedBoxes, sortedAmounts, _) = returnState;
+            var (sortedBoxes, sortedAmounts, _) = returnContext;
 
             _sortedBoxes = sortedBoxes;
 

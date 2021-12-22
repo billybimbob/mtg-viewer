@@ -44,7 +44,9 @@ public readonly record struct Pages(int Current, int Total)
         return (int) Math.Ceiling((double) totalItems / pageSize);
     }
 
-    public override string ToString() => $"{Current + 1}/{Total}";
+    public override string ToString() => Current == Total 
+        ? $"{Current}/{Total}" 
+        : $"{Current + 1}/{Total}";
 }
 
 
