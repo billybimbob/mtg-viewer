@@ -9,4 +9,4 @@
     param-IsSignedIn="@Model.IsSignedIn" /> *@
 
 @(await Html.RenderComponentAsync<Library>(
-    RenderMode.ServerPrerendered, new { Model.IsSignedIn, Model.PageSize }))
+    RenderMode.Server, new { Model.IsSignedIn, Model.PageSize }))

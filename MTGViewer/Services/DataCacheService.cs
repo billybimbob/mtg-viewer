@@ -1,32 +1,21 @@
-using System;
 using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
 namespace MTGViewer.Services;
 
-public class DataCacheService : IDisposable
+public class DataCacheService
 {
     private readonly ILogger<DataCacheService> _logger;
-    private readonly MemoryCache _cache;
+    private readonly IMemoryCache _cache;
     private readonly MemoryCacheEntryOptions _options;
 
-    public DataCacheService(IConfiguration config, ILogger<DataCacheService> logger)
+    public DataCacheService(IMemoryCache cache, ILogger<DataCacheService> logger)
     {
         _logger = logger;
-        _cache = new MemoryCache(new MemoryCacheOptions
-        {
-            // should auto evict from limit
-            SizeLimit = config.GetValue("CacheLimit", 100L)
-        });
-
-        _options = new()
-        {
-            Size = 1,
-        };
+        _cache = cache;
+        _options = new() { Size = 1, };
     }
 
-    public void Dispose() => _cache.Dispose();
 
     public object this[object key]
     {

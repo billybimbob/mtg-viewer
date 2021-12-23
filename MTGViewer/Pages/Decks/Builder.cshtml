@@ -14,5 +14,5 @@
     param-DeckId="@Model.DeckId" /> *@
 
 @(await Html.RenderComponentAsync<DeckBuilder>(
-    RenderMode.ServerPrerendered,
+    RenderMode.Server,
     new { Model.UserId, Model.DeckId, Model.PageSize }))

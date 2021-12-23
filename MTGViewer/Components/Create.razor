@@ -668,7 +668,7 @@ else
 
         dbContext.AttachResult(result);
 
-        dbContext.Changes.AttachRange(addChanges);
         dbContext.Transactions.Attach(newTransaction);
+        dbContext.Changes.AttachRange(addChanges);
     }
 }

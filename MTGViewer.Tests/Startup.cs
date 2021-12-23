@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.UI.Services;
+
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
@@ -29,7 +31,8 @@ public class Startup
 
     public void ConfigureServices(IServiceCollection services, HostBuilderContext context)
     {
-        var provider = context.Configuration.GetValue("Provider", "InMemory");
+        var config = context.Configuration;
+        var provider = config.GetValue("Provider", "InMemory");
 
         services.AddScoped<InMemoryConnection>();
         services.AddScoped<TempFileName>();
@@ -62,7 +65,16 @@ public class Startup
             .AddFormatter<CardText>()
             .AddTranslator<ManaTranslator>());
 
+        services.AddSingleton<IMemoryCache>(
+            // should auto evict from limit
+            new MemoryCache(
+                new MemoryCacheOptions
+                { 
+                    SizeLimit = config.GetValue("CacheLimit", 100L) 
+                }));
+
         services.AddSingleton<DataCacheService>();
+
         services.AddSingleton<IMtgServiceProvider, MtgServiceProvider>();
 
         services.AddScoped<ICardService>(provider => provider
@@ -76,6 +88,6 @@ public class Startup
         services.AddScoped<TestDataGenerator>();
 
         services.AddTransient<IEmailSender, EmailSender>();
-        services.Configure<AuthMessageSenderOptions>(context.Configuration);
+        services.Configure<AuthMessageSenderOptions>(config);
     }
 }

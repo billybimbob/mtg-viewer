@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
@@ -32,15 +33,24 @@ public class Startup
 
         services.AddServerSideBlazor();
 
+        services.AddCardStorage(_config);
+
         services.AddSingleton<PageSizes>();
 
         services.AddSymbols(options => options
             .AddFormatter<CardText>(isDefault: true)
             .AddTranslator<ManaTranslator>(isDefault: true));
 
-        services.AddCardStorage(_config);
+        services.AddSingleton<IMemoryCache>(
+            // should auto evict from limit
+            new MemoryCache(
+                new MemoryCacheOptions 
+                { 
+                    SizeLimit = _config.GetValue("CacheLimit", 100L) 
+                }));
 
         services.AddSingleton<DataCacheService>();
+
         services.AddSingleton<IMtgServiceProvider, MtgServiceProvider>();
 
         services.AddScoped<ICardService>(provider => provider

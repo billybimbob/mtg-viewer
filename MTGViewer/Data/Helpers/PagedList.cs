@@ -89,7 +89,8 @@ public static class PagingLinqExtensions
 {
     public static PagedList<T> ToPagedList<T>(
         this IEnumerable<T> source,
-        int pageSize, int? pageIndex = null)
+        int pageSize, 
+        int? pageIndex = null)
     {
         pageSize = Math.Max(pageSize, 0);
 
@@ -107,7 +108,29 @@ public static class PagingLinqExtensions
     }
 
 
-    public async static Task<PagedList<TEntity>> ToPagedListAsync<TEntity>(
+    public static async Task<PagedList<TEntity>> ToPagedListAsync<TEntity>(
+        this IAsyncEnumerable<TEntity> source,
+        int pageSize,
+        int? pageIndex = null,
+        CancellationToken cancel = default)
+    {
+        pageSize = Math.Max(pageSize, 0);
+
+        int page = pageIndex ?? 0;
+        int totalItems = await source.CountAsync(cancel);
+
+        var pages = new Pages(page, totalItems, pageSize);
+
+        var items = await source
+            .Skip(pages.Current * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancel);
+
+        return new(pages, items);
+    }
+
+
+    public static async Task<PagedList<TEntity>> ToPagedListAsync<TEntity>(
         this IQueryable<TEntity> source,
         int pageSize, 
         int? pageIndex = null,

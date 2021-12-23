@@ -260,12 +260,7 @@ else
 
     protected override async Task OnParametersSetAsync()
     {
-        if (_isBusy)
-        {
-            return;
-        }
-
-        if (_dbContext is null)
+        if (_isBusy || _dbContext is null)
         {
             return;
         }
@@ -402,16 +397,14 @@ else
 
         if (!string.IsNullOrWhiteSpace(_searchName))
         {
-            filter = filter
-                .Where(c => c.Name
-                    .Contains(_searchName, ignoreCase));
+            filter = filter.Where(c => 
+                c.Name.Contains(_searchName, ignoreCase));
         }
 
         if (_colorFilter.Any())
         {
-            filter = filter
-                .Where(c => c.Colors
-                    .Any(cl => _colorFilter.Contains(cl.Name) ));
+            filter = filter.Where(c => 
+                c.Colors.Any(cl => _colorFilter.Contains(cl.Name) ));
         }
 
         _filteredCards = filter.ToPagedList(PageSize, pageIndex);
@@ -448,13 +441,12 @@ else
 
         if (deckGroup is null && _deckCards.Count >= PageSizes.Limit)
         {
+            Logger.LogWarning("deck want failed since at limit");
             return;
         }
 
         if (deckGroup?.Want is null)
         {
-            // todo: add want limit
-
             var wantAmount = new Want
             {
                 Card = card,
@@ -505,7 +497,7 @@ else
 
         if (actualRemain == 0)
         {
-            // Logger.LogError($"there are no more of {card.Id} to remove");
+            Logger.LogError($"there are no more of {card.Id} to remove");
             return;
         }
 
@@ -529,12 +521,10 @@ else
 
     private async Task CommitChangesAsync()
     {
-        if (_dbContext == null || _deck == null || _deckCards == null)
-        {
-            return;
-        }
-
-        if (_isBusy)
+        if (_isBusy
+            || _dbContext is null 
+            || _deck is null 
+            || _deckCards is null)
         {
             return;
         }
@@ -640,7 +630,7 @@ else
             return;
         }
 
-        Deck? dbDeck = default;
+        Deck? dbDeck = null;
 
         try
         {
