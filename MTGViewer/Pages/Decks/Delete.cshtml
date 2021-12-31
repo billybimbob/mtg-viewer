@@ -29,61 +29,66 @@
     </form>
 </div>
 
-<table class="table mt-2">
-    <thead>
-        <tr>
-            <th scope="col"> Card Name </th>
-            <th scope="col"> Mana Cost </th>
-            <th scope="col"> Set </th>
-            <th scope="col"> Deck Amount </th>
-            <th scope="col"> Requests </th>
-        </tr>
-    </thead>
-
-    <tbody>
-        @foreach (var nameGroup in Model.NameGroups)
-        {
-            var card = nameGroup.Cards.First();
+<div class="table-responsive-md">
+    <table class="table mt-2">
+        <thead>
             <tr>
-                <td>
-                    <a asp-page="/Cards/Details" asp-route-id="@card.Id">
-                       @nameGroup.Name </a>
-                </td>
-                <td> @(MtgSymbols.Format(card.ManaCost).ToHtmlString()) </td>
-
-                <td>@card.SetName</td>
-                <td>@nameGroup.InDeck</td>
-                <td>@nameGroup.Requests</td>
+                <th scope="col"> Card Name </th>
+                <th scope="col"> Mana Cost </th>
+                <th scope="col"> Set </th>
+                <th scope="col"> Deck Amount </th>
+                <th scope="col"> Requests </th>
             </tr>
-        }
-    </tbody>
-</table>
+        </thead>
+
+        <tbody>
+            @foreach (var nameGroup in Model.NameGroups)
+            {
+                var card = nameGroup.Cards.First();
+                <tr>
+                    <td>
+                        <a asp-page="/Cards/Details" asp-route-id="@card.Id">
+                        @nameGroup.Name </a>
+                    </td>
+                    <td> @(MtgSymbols.Format(card.ManaCost).ToHtmlString()) </td>
+
+                    <td>@card.SetName</td>
+                    <td>@nameGroup.InDeck</td>
+                    <td>@nameGroup.Requests</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
 
 
 @if (Model.Trades.Any())
 {
     <div class="my-3">
         <h3>The following trades will also be deleted</h3>
-        <table class="table">
-            <thead>
-                <tr>
-                    <th scope="col"> @Html.DisplayNameForInnerType((Trade t) => t.To) </th>
-                    <th scope="col"> @Html.DisplayNameForInnerType((Trade t) => t.From) </th>
-                    <th scope="col"> @Html.DisplayNameForInnerType((Trade t) => t.Card) </th>
-                    <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.ManaCost) </th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach(var trade in Model.Trades)
-                {
+
+        <div class="table-responsive-md">
+            <table class="table">
+                <thead>
                     <tr>
-                        <td> @trade.To.Name </td>
-                        <td> @trade.From.Name </td>
-                        <td> @trade.Card.Name </td>
-                        <td> @(MtgSymbols.Format(trade.Card.ManaCost).ToHtmlString()) </td>
+                        <th scope="col"> @Html.DisplayNameForInnerType((Trade t) => t.To) </th>
+                        <th scope="col"> @Html.DisplayNameForInnerType((Trade t) => t.From) </th>
+                        <th scope="col"> @Html.DisplayNameForInnerType((Trade t) => t.Card) </th>
+                        <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.ManaCost) </th>
                     </tr>
-                }
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                    @foreach(var trade in Model.Trades)
+                    {
+                        <tr>
+                            <td> @trade.To.Name </td>
+                            <td> @trade.From.Name </td>
+                            <td> @trade.Card.Name </td>
+                            <td> @(MtgSymbols.Format(trade.Card.ManaCost).ToHtmlString()) </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
     </div>
 }

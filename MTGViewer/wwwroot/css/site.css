@@ -70,6 +70,26 @@ body {
   line-height: 60px; /* Vertically center the text there */
 }
 
+.multiline {
+   white-space: pre-line;
+}
+
+.table tbody th, .table td {
+  vertical-align: middle;
+}
+
+.ellipsis {
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.row-title {
+  width: -moz-fit-content;
+  width: fit-content;
+  max-width: 90%;
+}
+
 .validation-errors {
   position: relative;
   padding: 0.75rem 1.25rem;
@@ -88,6 +108,7 @@ body {
 .validation-message {
   margin-left: 1rem;
 }
+
 
 .preview-img {
   position: fixed;
@@ -122,42 +143,4 @@ body {
 .clickable {
   cursor: pointer;
   pointer-events: auto;
-}
-
-.multiline
-{
-   white-space: pre-line;
-}
-
-.table tbody th, .table td {
-  vertical-align: middle;
-}
-
-
-#builder-title input {
-  margin-bottom: 0.5rem;
-  font-weight: 500;
-  line-height: 1.2;
-  font-size: 2.5rem;
-  padding: 0.375rem 0.75rem;
-  display: block;
-  color: #495057;
-  border: 1px solid #ced4da;
-  border-radius: 0.25rem;
-  background-color: #fff;
-  background-clip: padding-box;
-  transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
-}
-
-#builder-title input::-ms-expand {
-  background-color: transparent;
-  border: 0;
-}
-
-#builder-title input:focus {
-  color: #495057;
-  background-color: #fff;
-  border-color: #80bdff;
-  outline: 0;
-  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
 }

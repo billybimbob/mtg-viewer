@@ -1,3 +1,4 @@
+@using System.Linq.Expressions
 @using Microsoft.Extensions.DependencyInjection
 @using MTGViewer.Data.Internal
 @namespace MTGViewer.Components
@@ -209,11 +210,11 @@ else
 
     <div class="row align-items-center my-3">
 
-        <div class="col-3">
+        <div class="col-12 col-md-4">
             <input class="form-control" placeholder="Name" @bind="_matchName" />
         </div>
 
-        <div class="col-auto btn-group" role="group" aria-label="Color Buttons">
+        <div class="col-auto btn-group pt-2 pt-md-0" role="group" aria-label="Color Buttons">
             @foreach (var (symbol, color) in Color.Symbols)
             {
                 var active = _pickedColors.Contains(color) ? "active" : "";
@@ -228,41 +229,43 @@ else
         </div>
     </div>
 
-    <table class="table">
-        <thead>
-            <tr>
-                <th scope="col"> @Entities.DisplayName((Card c) => c.Name) </th>
-                <th scope="col"> @Entities.DisplayName((Card c) => c.ManaCost) </th>
-                <th scope="col"> @Entities.DisplayName((Card c) => c.SetName) </th>
-                <th scope="col"> @Entities.DisplayName((Card c) => c.Rarity) </th>
-                <th scope="col"> Amount </th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var (match, amount) in _matches)
-            {
-                @if (MatchPassesFilters(match))
+    <div class="table-responsive-md">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th scope="col"> @DisplayName(c => c.Name) </th>
+                    <th scope="col"> @DisplayName(c => c.ManaCost) </th>
+                    <th scope="col"> @DisplayName(c => c.SetName) </th>
+                    <th scope="col"> @DisplayName(c => c.Rarity) </th>
+                    <th scope="col"> Amount </th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var (match, amount) in _matches)
                 {
-                    <tr>
-                        <td> 
-                            <HoverCard Card="@((CardPreview)match)">
-                                <span class="btn-link">@match.Name</span> 
-                            </HoverCard> 
-                        </td>
-                        <td> @MtgSymbols.Format(match.ManaCost).ToMarkupString() </td>
-                        <td> @match.SetName </td>
-                        <td> @match.Rarity </td>
-                        <td>
-                            <input title="@match.Name Amount" 
-                                type="number" min="0" value="@amount" 
-                                @onchange="e => UpdateAmount(e, match)"
-                                class="form-control w-50" />
-                        </td>
-                    </tr>
+                    @if (MatchPassesFilters(match))
+                    {
+                        <tr>
+                            <td> 
+                                <HoverCard Card="@((CardPreview)match)">
+                                    <span class="btn-link">@match.Name</span> 
+                                </HoverCard> 
+                            </td>
+                            <td> @MtgSymbols.Format(match.ManaCost).ToMarkupString() </td>
+                            <td> @match.SetName </td>
+                            <td> @match.Rarity </td>
+                            <td>
+                                <input title="@match.Name Amount" 
+                                    type="number" min="0" value="@amount" 
+                                    @onchange="e => UpdateAmount(e, match)"
+                                    class="form-control w-50" />
+                            </td>
+                        </tr>
+                    }
                 }
-            }
-        </tbody>
-    </table>
+            </tbody>
+        </table>
+    </div>
 
     <button title="More Results" type="button"
         @onclick="SearchForCardAsync" 
@@ -277,6 +280,8 @@ else
     private bool HasNoNext => !_pages.HasNext;
     private bool IsBusy => _isBusy;
 
+    private string DisplayName<T>(Expression<Func<Card, T>> property) =>
+        EntityExtensions.DisplayName(property);
 
     private readonly CancellationTokenSource _cancel = new();
     private bool _isBusy;
@@ -318,6 +323,7 @@ else
         _cancel.Cancel();
         _cancel.Dispose();
     }
+    
 
 
     private void ClearErrors(object? sender, ValidationRequestedEventArgs args)

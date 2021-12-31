@@ -28,32 +28,34 @@
     </div>
 }
 
-<table class="table">
-    <thead>
-        <tr>
-            <th scope="col"> @Html.DisplayNameForInnerType((Amount ca) => ca.Card) </th>
-            <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.ManaCost) </th>
-            <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.SetName) </th>
-            <th scope="col"> Cards In Deck </th>
-            <th scope="col"> Take Requests </th>
-            <th scope="col"> Return Requests </th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var group in Model.Cards)
-        {
+<div class="table-responsive-md">
+    <table class="table">
+        <thead>
             <tr>
-                <td>
-                    @(await Html.RenderComponentAsync<HoverCard>(
-                        RenderMode.Static, new { Card = (CardPreview)group.Card }))
-                </td>
-                <td> @(MtgSymbols.Format(group.Card.ManaCost).ToHtmlString()) </td>
-                <td> @group.Card.SetName </td>
-
-                <td> @(group.Amount?.NumCopies ?? 0) </td>
-                <td> @(group.Want?.NumCopies ?? 0) </td>
-                <td> @(group.GiveBack?.NumCopies ?? 0) </td>
+                <th scope="col"> @Html.DisplayNameForInnerType((Amount ca) => ca.Card) </th>
+                <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.ManaCost) </th>
+                <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.SetName) </th>
+                <th scope="col"> Cards In Deck </th>
+                <th scope="col"> Take Requests </th>
+                <th scope="col"> Return Requests </th>
             </tr>
-        }
-    </tbody>
-</table>
+        </thead>
+        <tbody>
+            @foreach (var group in Model.Cards)
+            {
+                <tr>
+                    <td>
+                        @(await Html.RenderComponentAsync<HoverCard>(
+                            RenderMode.Static, new { Card = (CardPreview)group.Card }))
+                    </td>
+                    <td> @(MtgSymbols.Format(group.Card.ManaCost).ToHtmlString()) </td>
+                    <td> @group.Card.SetName </td>
+
+                    <td> @(group.Amount?.NumCopies ?? 0) </td>
+                    <td> @(group.Want?.NumCopies ?? 0) </td>
+                    <td> @(group.GiveBack?.NumCopies ?? 0) </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

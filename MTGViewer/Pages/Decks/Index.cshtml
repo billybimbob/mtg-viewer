@@ -10,69 +10,71 @@
 
 <a asp-page="Builder" class="btn btn-secondary mb-3" role="button">New Deck</a>
 
-<table class="table">
-    <thead>
-        <tr>
-            <th scope="col"> @Html.DisplayNameForInnerType((Deck d) => d.Name) </th>
-            <th scope="col"> Colors </th>
-            <th scope="col"> Number of Cards </th>
-            <th scope="col"> State </th>
-            <th scope="col"></th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var (deck, state) in Model.Decks)
-        {
+<div class="table-responsive-md">
+    <table class="table">
+        <thead>
             <tr>
-                <td>
-                    <a asp-page="Viewer" asp-route-id="@deck.Id">
-                        @deck.Name </a>
-                </td>
-
-                <td> @(MtgSymbols.Format(deck.Colors).ToHtmlString()) </td>
-                <td> @deck.Cards.Sum(ca => ca.NumCopies) </td>
-
-                <td>
-                    @if (state is State.Requesting)
-                    {
-                        <a asp-page="/Transfers/Status" asp-route-deckid="@deck.Id">
-                            @state.ToString() </a>
-                    }
-                    else if (state is State.Theorycraft)
-                    {
-                        <a asp-page="Exchange" asp-route-id="@deck.Id">
-                            @state.ToString() </a>
-                    }
-                    else
-                    {
-                        @state.ToString()
-                    }
-                </td>
-                
-                <td class="btn-group" role="group">
-                    @if (state is State.Requesting)
-                    {
-                        <button class="btn btn-secondary" type="button" disabled> Edit </button>
-                    }
-                    else
-                    {
-                        <a asp-page="Builder" asp-route-id="@deck.Id"
-                            class="btn btn-secondary" role="button">
-                            Edit </a>
-                    }
-
-                    <a asp-page="History" asp-route-id="@deck.Id"
-                        class="btn btn-secondary" role="button">
-                        History </a>
-
-                    <a asp-page="Delete" asp-route-id="@deck.Id"
-                        class="btn btn-danger" role="button">
-                        Delete </a>
-                </td>
+                <th scope="col"> @Html.DisplayNameForInnerType((Deck d) => d.Name) </th>
+                <th scope="col"> Colors </th>
+                <th scope="col"> Number of Cards </th>
+                <th scope="col"> State </th>
+                <th scope="col"></th>
             </tr>
-        }
-    </tbody>
-</table>
+        </thead>
+        <tbody>
+            @foreach (var (deck, state) in Model.Decks)
+            {
+                <tr>
+                    <td>
+                        <a asp-page="Viewer" asp-route-id="@deck.Id">
+                            @deck.Name </a>
+                    </td>
+
+                    <td> @(MtgSymbols.Format(deck.Colors).ToHtmlString()) </td>
+                    <td> @deck.Cards.Sum(ca => ca.NumCopies) </td>
+
+                    <td>
+                        @if (state is State.Requesting)
+                        {
+                            <a asp-page="/Transfers/Status" asp-route-deckid="@deck.Id">
+                                @state.ToString() </a>
+                        }
+                        else if (state is State.Theorycraft)
+                        {
+                            <a asp-page="Exchange" asp-route-id="@deck.Id">
+                                @state.ToString() </a>
+                        }
+                        else
+                        {
+                            @state.ToString()
+                        }
+                    </td>
+                    
+                    <td class="btn-group" role="group">
+                        @if (state is State.Requesting)
+                        {
+                            <button class="btn btn-secondary" type="button" disabled> Edit </button>
+                        }
+                        else
+                        {
+                            <a asp-page="Builder" asp-route-id="@deck.Id"
+                                class="btn btn-secondary" role="button">
+                                Edit </a>
+                        }
+
+                        <a asp-page="History" asp-route-id="@deck.Id"
+                            class="btn btn-secondary" role="button">
+                            History </a>
+
+                        <a asp-page="Delete" asp-route-id="@deck.Id"
+                            class="btn btn-danger" role="button">
+                            Delete </a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
 
 
 @await Html.PartialAsync("_PaginationPartial", Model.Decks.Pages)

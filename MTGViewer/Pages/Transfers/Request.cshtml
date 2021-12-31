@@ -39,50 +39,19 @@ else
 
 <h2>Cards to Request</h2>
 
-<table class="table">
-    <thead>
-        <tr>
-            <th scope="col"> @Html.DisplayNameForInnerType((Amount ca) => ca.Card) </th>
-            <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.ManaCost) </th>
-            <th scope="col"> @Html.DisplayNameForInnerType((Amount ca) => ca.NumCopies) </th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var cardGroup in Model.Requests)
-        {
-            var card = cardGroup.Cards.First();
-            <tr>
-                <td>
-                    <a asp-page="/Cards/Details" asp-route-id="@card.Id"
-                        title="@card.Name Details">
-                        @card.Name </a>
-                </td>
-
-                <td> @(MtgSymbols.Format(card.ManaCost).ToHtmlString()) </td>
-                <td> @cardGroup.NumCopies </td>
-            </tr>
-        } 
-    </tbody>
-</table>
-
-
-@if (Model.Deck.Cards.Any())
-{
-    <h2>Current Cards</h2>
-
+<div class="table-responsive-md">
     <table class="table">
         <thead>
             <tr>
-                <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.Name) </th>
+                <th scope="col"> @Html.DisplayNameForInnerType((Amount ca) => ca.Card) </th>
                 <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.ManaCost) </th>
-                <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.SetName) </th>
                 <th scope="col"> @Html.DisplayNameForInnerType((Amount ca) => ca.NumCopies) </th>
             </tr>
         </thead>
         <tbody>
-            @foreach (var amount in Model.Deck.Cards)
+            @foreach (var cardGroup in Model.Requests)
             {
-                var card = amount.Card;
+                var card = cardGroup.Cards.First();
                 <tr>
                     <td>
                         <a asp-page="/Cards/Details" asp-route-id="@card.Id"
@@ -91,10 +60,45 @@ else
                     </td>
 
                     <td> @(MtgSymbols.Format(card.ManaCost).ToHtmlString()) </td>
-                    <td> @card.SetName </td>
-                    <td> @amount.NumCopies </td>
+                    <td> @cardGroup.NumCopies </td>
                 </tr>
-            }
+            } 
         </tbody>
     </table>
+</div>
+
+
+@if (Model.Deck.Cards.Any())
+{
+    <h2>Current Cards</h2>
+
+    <div class="table-responsive-md">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.Name) </th>
+                    <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.ManaCost) </th>
+                    <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.SetName) </th>
+                    <th scope="col"> @Html.DisplayNameForInnerType((Amount ca) => ca.NumCopies) </th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var amount in Model.Deck.Cards)
+                {
+                    var card = amount.Card;
+                    <tr>
+                        <td>
+                            <a asp-page="/Cards/Details" asp-route-id="@card.Id"
+                                title="@card.Name Details">
+                                @card.Name </a>
+                        </td>
+
+                        <td> @(MtgSymbols.Format(card.ManaCost).ToHtmlString()) </td>
+                        <td> @card.SetName </td>
+                        <td> @amount.NumCopies </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
 }

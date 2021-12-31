@@ -1,24 +1,22 @@
+namespace MTGViewer.Data.Internal;
 
-namespace MTGViewer.Data.Internal
+public enum SaveResult
 {
-    public enum SaveResult
-    {
-        None,
-        Success,
-        Error
-    }
+    None,
+    Success,
+    Error
+}
 
 
-    internal enum Discriminator
-    {
-        Invalid,
+internal enum Discriminator
+{
+    Invalid,
 
-        Box,
-        Unclaimed,
-        Deck,
+    Box,
+    Unclaimed,
+    Deck,
 
-        Amount,
-        Want,
-        GiveBack,
-    }
+    Amount,
+    Want,
+    GiveBack,
 }

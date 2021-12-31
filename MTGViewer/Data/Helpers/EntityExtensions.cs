@@ -4,9 +4,9 @@ using System.ComponentModel.DataAnnotations;
 using System.Linq.Expressions;
 using System.Reflection;
 
-namespace MTGViewer.Data;
+namespace MTGViewer.Data.Internal;
 
-public static class Entities
+public static class EntityExtensions
 {
     public static string DisplayName<TEntity, TProperty>(Expression<Func<TEntity, TProperty>> property)
         where TEntity : class

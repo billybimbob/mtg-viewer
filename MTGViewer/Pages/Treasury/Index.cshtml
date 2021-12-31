@@ -8,78 +8,86 @@
 
 <h1>Treasury</h1>
 
-<div class="btn-group mb-3" role="group" aria-label="Treasury Main Actions">
+<div class="row mb-3">
+    <div class="col-auto btn-group pr-0" role="group" aria-label="Treasury Main Actions">
+        @if (Model.IsSignedIn)
+        {
+            <a asp-page="Create" class="btn btn-secondary" role="button"> Add Box </a>
+            @* <input asp-page-handler="Optimize" type="submit" form="optimize-form" class="btn btn-secondary" value="Optimize" />
+            <form method="POST" class="sr-only" id="optimize-form"></form> *@
+        }
+
+        <a asp-page="History" class="btn btn-secondary" role="button"> History </a>
+    </div>
+
     @if (Model.IsSignedIn)
     {
-        <a asp-page="Create" class="btn btn-secondary" role="button"> Add Box </a>
-        <a asp-page="/Unowned/Index" class="btn btn-secondary" role="button"> Unclaimed Decks </a>
-
-        <a asp-page="Backup" class="btn btn-secondary" role="button"> Backup </a>
-
-        @* <input asp-page-handler="Optimize" type="submit" form="optimize-form" class="btn btn-secondary" value="Optimize" />
-        <form method="POST" class="sr-only" id="optimize-form"></form> *@
+        <div class="col-auto btn-group" role="group" aria-label="Treasury Miscellaneous Actions">
+            <a asp-page="/Unowned/Index" class="btn btn-secondary" role="button"> Unclaimed Decks </a>
+            <a asp-page="Backup" class="btn btn-secondary" role="button"> Backup </a>
+        </div>
     }
-
-    <a asp-page="History" class="btn btn-secondary" role="button"> History </a>
 </div>
 
 
-<table class="table table-bordered">
-    <thead>
-        <tr>
-            <th scope="col"> Box </th>
-            <th scope="col"> @Html.DisplayNameForInnerType((Amount ca) => ca.Card) </th>
-            <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.ManaCost) </th>
-            <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.SetName) </th>
-            <th scope="col"> @Html.DisplayNameForInnerType((Amount a) => a.NumCopies) </th>
-            <th scope="col"> @Html.DisplayNameForInnerType((Box b) => b.Capacity) </th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var box in Model.Boxes)
-        {
-            var firstAmount = box.Cards.FirstOrDefault();
-            var boxSpan = Math.Max(1, box.Cards.Count);
-
+<div class="table-responsive-md">
+    <table class="table table-bordered">
+        <thead>
             <tr>
-                <th scope="rowgroup" rowspan="@boxSpan"> @box.Name (@box.Bin.Name) </th>
-
-                @if (firstAmount != default)
-                {
-                    <td>
-                        <a asp-page="/Cards/Details" asp-route-id="@firstAmount.CardId">
-                            @firstAmount.Card.Name </a>
-                    </td>
-
-                    <td> @(MtgSymbols.Format(firstAmount.Card.ManaCost).ToHtmlString()) </td>
-                    <td> @firstAmount.Card.SetName </td>
-                    <td> @firstAmount.NumCopies </td>
-                }
-                else
-                {
-                    <td></td>
-                    <td></td>
-                    <td></td>
-                    <td></td>
-                }
-
-                <td rowspan="@boxSpan"> @box.Cards.Sum(a => a.NumCopies) / @box.Capacity </td>
+                <th scope="col"> Box </th>
+                <th scope="col"> @Html.DisplayNameForInnerType((Amount ca) => ca.Card) </th>
+                <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.ManaCost) </th>
+                <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.SetName) </th>
+                <th scope="col"> @Html.DisplayNameForInnerType((Amount a) => a.NumCopies) </th>
+                <th scope="col"> @Html.DisplayNameForInnerType((Box b) => b.Capacity) </th>
             </tr>
-
-            @foreach (var amount in box.Cards.Skip(1))
+        </thead>
+        <tbody>
+            @foreach (var box in Model.Boxes)
             {
+                var firstAmount = box.Cards.FirstOrDefault();
+                var boxSpan = Math.Max(1, box.Cards.Count);
+
                 <tr>
-                    <td>
-                        <a asp-page="/Cards/Details" asp-route-id="@amount.CardId">
-                            @amount.Card.Name </a>
-                    </td>
-                    <td> @(MtgSymbols.Format(amount.Card.ManaCost).ToHtmlString()) </td>
-                    <td> @amount.Card.SetName </td>
-                    <td> @amount.NumCopies </td>
+                    <th scope="rowgroup" rowspan="@boxSpan"> @box.Name (@box.Bin.Name) </th>
+
+                    @if (firstAmount != default)
+                    {
+                        <td>
+                            <a asp-page="/Cards/Details" asp-route-id="@firstAmount.CardId">
+                                @firstAmount.Card.Name </a>
+                        </td>
+
+                        <td> @(MtgSymbols.Format(firstAmount.Card.ManaCost).ToHtmlString()) </td>
+                        <td> @firstAmount.Card.SetName </td>
+                        <td> @firstAmount.NumCopies </td>
+                    }
+                    else
+                    {
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                    }
+
+                    <td rowspan="@boxSpan"> @box.Cards.Sum(a => a.NumCopies) / @box.Capacity </td>
                 </tr>
+
+                @foreach (var amount in box.Cards.Skip(1))
+                {
+                    <tr>
+                        <td>
+                            <a asp-page="/Cards/Details" asp-route-id="@amount.CardId">
+                                @amount.Card.Name </a>
+                        </td>
+                        <td> @(MtgSymbols.Format(amount.Card.ManaCost).ToHtmlString()) </td>
+                        <td> @amount.Card.SetName </td>
+                        <td> @amount.NumCopies </td>
+                    </tr>
+                }
             }
-        }
-    </tbody>
-</table>
+        </tbody>
+    </table>
+</div>
 
 @await Html.PartialAsync("_PaginationPartial", Model.Boxes.Pages)

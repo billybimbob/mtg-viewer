@@ -14,10 +14,10 @@
         <h3>Cards from our collection!</h3>
     </a>
 
-    <div class="row">
+    <div class="row justify-content-center">
         @foreach (var card in _randomCards)
         {
-            <a href="/Cards/Details/@card.Id" class="col-md-3 col-6"
+            <a href="/Cards/Details/@card.Id" class="col-md-3 col-9"
                 title="@card.Name Details"
                 aria-label="@card.Id details">
 
@@ -41,32 +41,35 @@
             var adds = changes.Where(c => c.To is Box);
             var removes = changes.Where(c => c.From is Box);
 
-            var anyAdds = adds.Any();
-            var anyRemoves = removes.Any();
-            var both = anyAdds && anyRemoves;
+            <li class="list-group-item">
+                <div class="row justify-content-between">
 
-            <li class="list-group-item d-flex justify-content-between">
-                <p class="m-0">
-                    @if (anyAdds)
-                    {
-                        <strong> Added </strong> @AllCardNames(adds)
+                    <div class="col-md-10 col-8">
+                        <div class="row align-items-center">
+                            <div class="row-title ellipsis pr-2">
+                                @if (adds.Any())
+                                {
+                                    <strong> Added </strong> @CardNames(adds)
+                                }
+                                else if (removes.Any())
+                                {
+                                    <strong> Removed </strong> @CardNames(removes)
+                                }
+                                else
+                                {
+                                    <text> No cards added </text>
+                                }
+                            </div>
+                            <span class="badge badge-secondary badge-pill">
+                                @changes.Sum(c => c.Amount) 
+                            </span>
+                        </div>
+                    </div>
 
-                        <span class="ml-2 badge badge-secondary badge-pill">
-                            @adds.Sum(c => c.Amount) 
-                        </span>
-                    }
-                    @if (both) { <br> }
-                    @if (anyRemoves)
-                    {
-                        <strong> Removed </strong> @AllCardNames(removes)
-
-                        <span class="ml-2 badge badge-secondary badge-pill">
-                            @removes.Sum(c => c.Amount) 
-                        </span>
-                    }
-                </p>
-
-                <small class="text-muted"> @ElapsedTime(transaction) </small>
+                    <div class="col d-flex align-items-center justify-content-end">
+                        <small class="text-muted"> @ElapsedTime(transaction) </small>
+                    </div>
+                </div>
             </li>
         }
     </ul>
@@ -74,9 +77,6 @@
 
 
 @code {
-
-    [Parameter]
-    public int NameLength { get; set; } = 80;
 
     [Parameter]
     public int NumberOfCards { get; set; } = 4;
@@ -91,17 +91,12 @@
     private IReadOnlyList<Transaction> _recentChanges = Array.Empty<Transaction>();
 
 
-    private string AllCardNames(IEnumerable<Change> changes)
+    private string CardNames(IEnumerable<Change> changes)
     {
         var cardNames = changes
             .GroupBy(c => c.Card.Name, (name, _) => name);
 
-        var cards = string.Join(", ", cardNames);
-        var cardLimit = Math.Min(cards.Length, NameLength);
-
-        var elipsis = cardLimit < cards.Length ? "..." : string.Empty;
-
-        return $"{cards.Substring(0, cardLimit)}{elipsis}";
+        return string.Join(", ", cardNames);
     }
 
 

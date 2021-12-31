@@ -2,6 +2,7 @@
 @using System.Linq
 @using System.Linq.Expressions
 @using System.Collections.Immutable
+@using MTGViewer.Data.Internal
 
 @namespace MTGViewer.Components
 @implements IDisposable
@@ -13,22 +14,22 @@
 
 <h1>Card Collection</h1>
 
-<div class="btn-group" role="group">
-    @if (IsSignedIn)
-    {
+@if (IsSignedIn)
+{
+    <div class="btn-group" role="group">
         <a class="btn btn-secondary" href="Cards/Create" role="button">Add Card</a>
-    }
-</div>
+    </div>
+}
 
 <div class="form-row align-items-center my-3">
-    <div class="col-3">
+    <div class="col-12 col-md-4">
         <input class="form-control" 
             placeholder="Card Name" 
             disabled="@_isBusy"
             @onchange="SearchNameAsync" />
     </div>
 
-    <div class="col-auto btn-group" role="group" aria-label="Color Buttons">
+    <div class="col-auto btn-group pt-2 pt-md-0" role="group" aria-label="Color Buttons">
         @foreach (var (symbol, color) in Color.Symbols)
         {
             var active = _colorFilter.Contains(color) ? "active" : "";
@@ -45,73 +46,80 @@
     </div>
 </div>
 
-<table class="table">
-    <thead>
-        <tr>
-            <th scope="col"
-                title="Order By Name"
-                @onclick="() => ReorderCardsAsync(c => c.Name)" 
-                class="@HeaderClass(c => c.Name)">
-                @Entities.DisplayName((Card c) => c.Name)
-            </th>
-
-            <th scope="col" 
-                title="Order By Cmc"
-                @onclick="() => ReorderCardsAsync(c => c.ManaCost)" 
-                class="@HeaderClass(c => c.ManaCost)">
-                @Entities.DisplayName((Card c) => c.ManaCost)
-            </th>
-
-            <th scope="col"
-                title="Order By Set Name"
-                @onclick="() => ReorderCardsAsync(c => c.SetName)" 
-                class="@HeaderClass(c => c.SetName)">
-                @Entities.DisplayName((Card c) => c.SetName)
-            </th>
-
-            <th scope="col"
-                title="Order By Rarity"
-                @onclick="() => ReorderCardsAsync(c => c.Rarity)" 
-                class="@HeaderClass(c => c.Rarity)">
-                @Entities.DisplayName((Card c) => c.Rarity)
-            </th>
-
-            <th scope="col" 
-                title="Order By Number of Copies"
-                @onclick="() => ReorderCardsAsync(c => c.Amounts)" 
-                class="@HeaderClass(c => c.Amounts)">
-                Total Copies
-            </th>
-
-            <th scope="col"></th>
-        </tr>
-    </thead>
-
-    <tbody>
-        @foreach (var card in Cards)
-        {
+<div class="table-responsive-md">
+    <table class="table">
+        <thead>
             <tr>
-                <td> <HoverCard Card="@((CardPreview)card)"/> </td>
+                <th scope="col"
+                    title="Order By Name"
+                    @onclick="() => ReorderCardsAsync(c => c.Name)" 
+                    class="@HeaderClass(c => c.Name)">
+                    @DisplayName(c => c.Name)
+                    @Direction(c => c.Name)
+                </th>
 
-                <td> @(MtgSymbols.Format(card.ManaCost).ToMarkupString()) </td>
-                <td> @card.SetName </td>
-                <td> @card.Rarity </td>
-                <td> @CardTotal(card) </td>
+                <th scope="col" 
+                    title="Order By Cmc"
+                    @onclick="() => ReorderCardsAsync(c => c.ManaCost)" 
+                    class="@HeaderClass(c => c.ManaCost)">
+                    @DisplayName(c => c.ManaCost)
+                    @Direction(c => c.ManaCost)
+                </th>
 
-                <td>
-                    @if (IsSignedIn)
-                    {
-                        <a title="Suggest @card.Name"
-                           href="/Transfers/Suggest/@card.Id"
-                           class="btn btn-secondary"
-                           role="button">
-                           Suggest </a>
-                    }
-                </td>
+                <th scope="col"
+                    title="Order By Set Name"
+                    @onclick="() => ReorderCardsAsync(c => c.SetName)" 
+                    class="@HeaderClass(c => c.SetName)">
+                    @DisplayName(c => c.SetName)
+                    @Direction(c => c.SetName)
+                </th>
+
+                <th scope="col"
+                    title="Order By Rarity"
+                    @onclick="() => ReorderCardsAsync(c => c.Rarity)" 
+                    class="@HeaderClass(c => c.Rarity)">
+                    @DisplayName(c => c.Rarity)
+                    @Direction(c => c.Rarity)
+                </th>
+
+                <th scope="col" 
+                    title="Order By Number of Copies"
+                    @onclick="() => ReorderCardsAsync(c => c.Amounts)" 
+                    class="@HeaderClass(c => c.Amounts)">
+                    Total Copies
+                    @Direction(c => c.Amounts)
+                </th>
+
+                <th scope="col"></th>
             </tr>
-        }
-    </tbody>
-</table>
+        </thead>
+
+        <tbody>
+            @foreach (var card in Cards)
+            {
+                <tr>
+                    <td> <HoverCard Card="@((CardPreview)card)"/> </td>
+
+                    <td> @(MtgSymbols.Format(card.ManaCost).ToMarkupString()) </td>
+                    <td> @card.SetName </td>
+                    <td> @card.Rarity </td>
+                    <td> @CardTotal(card) </td>
+
+                    <td>
+                        @if (IsSignedIn)
+                        {
+                            <a title="Suggest @card.Name"
+                            href="/Transfers/Suggest/@card.Id"
+                            class="btn btn-secondary"
+                            role="button">
+                            Suggest </a>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
 
 <Pagination Pages="Cards.Pages" PageSelected="FetchCardsAsync"></Pagination>
 
@@ -160,6 +168,24 @@
         }
     }
 
+
+    private string DisplayName<T>(Expression<Func<Card, T>> property) =>
+        EntityExtensions.DisplayName(property);
+
+
+    private RenderFragment Direction<T>(Expression<Func<Card, T>> property)
+    {
+        bool invalid = _isBusy
+            || _orderProperty == null
+            || MemberName(property) != _orderProperty;
+
+        return _isReversed switch
+        {
+            _ when invalid => @<text></text>,
+            true => @<text>&#9650;</text>,
+            false => @<text>&#9660;</text>
+        };
+    }
 
     private string? MemberName<T>(Expression<Func<Card, T>> property) =>
         (property.Body as MemberExpression)?.Member.Name;
@@ -258,7 +284,7 @@
             ? CardsOrdered(cards)
                 .ToPagedListAsync(PageSize, pageIndex, cancel)
 
-            : CardsOrdered(cards.AsAsyncEnumerable())
+            : CardsOrdered( cards.AsAsyncEnumerable() )
                 // paging is kind of pointless since server eval is unbounded
                 .ToPagedListAsync(PageSize, pageIndex, cancel);
     }

@@ -25,68 +25,72 @@
 
 <h2>Sent Trades</h2>
 
-<table class="table">
-    <thead>
-        <tr>
-            <th scope="col"> @Html.DisplayNameForInnerType((Trade t) => t.Card) </th>
-            <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.SetName) </th>
-            <th scope="col"> Trade With </th>
-            <th scope="col"> @Html.DisplayNameForInnerType((Trade t) => t.From) </th>
-            <th scope="col"> Deck Color </th>
-            <th scope="col"> @Html.DisplayNameForInnerType((Trade t) => t.Amount) </th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var trade in Model.Deck.TradesTo)
-        {
+<div class="table-responsive-md">
+    <table class="table">
+        <thead>
             <tr>
-                <td>
-                    <a asp-page="/Cards/Details" asp-route-id="@trade.CardId">
-                        @trade.Card.Name </a>
-                </td>
-
-                <td> @trade.Card.SetName </td>
-                <td> @trade.From.Owner.Name </td>
-
-                <td>
-                    <a asp-page="/Decks/Viewer"
-                       asp-route-id="@trade.FromId">
-                       @trade.From.Name </a>
-                </td>
-
-                <td> @(MtgSymbols.Format(trade.From.Colors).ToHtmlString()) </td>
-                <td> @trade.Amount </td>
+                <th scope="col"> @Html.DisplayNameForInnerType((Trade t) => t.Card) </th>
+                <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.SetName) </th>
+                <th scope="col"> Trade With </th>
+                <th scope="col"> @Html.DisplayNameForInnerType((Trade t) => t.From) </th>
+                <th scope="col"> Deck Color </th>
+                <th scope="col"> @Html.DisplayNameForInnerType((Trade t) => t.Amount) </th>
             </tr>
-        }
-    </tbody>
-</table>
+        </thead>
+        <tbody>
+            @foreach (var trade in Model.Deck.TradesTo)
+            {
+                <tr>
+                    <td>
+                        <a asp-page="/Cards/Details" asp-route-id="@trade.CardId">
+                            @trade.Card.Name </a>
+                    </td>
+
+                    <td> @trade.Card.SetName </td>
+                    <td> @trade.From.Owner.Name </td>
+
+                    <td>
+                        <a asp-page="/Decks/Viewer"
+                        asp-route-id="@trade.FromId">
+                        @trade.From.Name </a>
+                    </td>
+
+                    <td> @(MtgSymbols.Format(trade.From.Colors).ToHtmlString()) </td>
+                    <td> @trade.Amount </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
 
 
 <h2>Current Cards</h2>
 
-<table class="table">
-    <thead>
-        <tr>
-            <th scope="col"> @Html.DisplayNameForInnerType((Amount ca) => ca.Card) </th>
-            <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.ManaCost) </th>
-            <th scope="col"> Cards In Deck </th>
-            <th scope="col"> Requests </th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var group in Model.CardGroups)
-        {
-            var card = group.Cards.First();
+<div class="table-responsive-md">
+    <table class="table">
+        <thead>
             <tr>
-                <td>
-                    <a asp-page="/Cards/Details" asp-route-id="@card.Id">
-                        @group.Name </a>
-                </td>
-
-                <td> @(MtgSymbols.Format(card.ManaCost).ToHtmlString()) </td>
-                <td> @group.InDeck </td>
-                <td> @group.Requests </td>
+                <th scope="col"> @Html.DisplayNameForInnerType((Amount ca) => ca.Card) </th>
+                <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.ManaCost) </th>
+                <th scope="col"> Cards In Deck </th>
+                <th scope="col"> Requests </th>
             </tr>
-        }
-    </tbody>
-</table>
+        </thead>
+        <tbody>
+            @foreach (var group in Model.CardGroups)
+            {
+                var card = group.Cards.First();
+                <tr>
+                    <td>
+                        <a asp-page="/Cards/Details" asp-route-id="@card.Id">
+                            @group.Name </a>
+                    </td>
+
+                    <td> @(MtgSymbols.Format(card.ManaCost).ToHtmlString()) </td>
+                    <td> @group.InDeck </td>
+                    <td> @group.Requests </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

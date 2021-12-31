@@ -10,63 +10,65 @@
     <div class="col">
         <h2>@Model.SelfUser.Name's Deck Trades</h2>
 
-        <table class="table mb-3">
-            <thead>
-                <tr>
-                    <th scope="col">Deck</th>
-                    <th scope="col">Colors</th>
-                    <th scope="col">Cards From Players</th>
-                    <th scope="col">Received Requests</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var deck in Model.TradeDecks)
-                {
+        <div class="table-responsive-md">
+            <table class="table mb-3">
+                <thead>
                     <tr>
-                        <td>
-                            <a asp-page="/Decks/Viewer" asp-route-id="@deck.Id">
-                                @deck.Name </a>
-                        </td>
-
-                        <td> @(MtgSymbols.Format(deck.Colors).ToHtmlString()) </td>
-
-                        @if (deck.TradesTo.Any())
-                        {
-                            <td>
-                                <a asp-page="Status" asp-route-deckid="@deck.Id"
-                                    title="@deck.Name Trade Status">
-                                    Sent </a>
-                            </td>
-                        }
-                        else if (deck.Wants.Any())
-                        {
-                            <td>
-                                <a asp-page="Request" asp-route-deckid="@deck.Id"
-                                    title="@deck.Name Card Requests">
-                                    Possible </a>
-                            </td>
-                        }
-                        else
-                        {
-                            <td> None </td>
-                        }
-
-                        @if (deck.TradesFrom.Any())
-                        {
-                            <td>
-                                <a asp-page="Review" asp-route-deckid="@deck.Id"
-                                    title="@deck.Name Trade Review">
-                                    Received </a>
-                            </td>
-                        }
-                        else
-                        {
-                            <td> None </td>
-                        }
+                        <th scope="col">Deck</th>
+                        <th scope="col">Colors</th>
+                        <th scope="col">Cards From Players</th>
+                        <th scope="col">Received Requests</th>
                     </tr>
-                }
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                    @foreach (var deck in Model.TradeDecks)
+                    {
+                        <tr>
+                            <td>
+                                <a asp-page="/Decks/Viewer" asp-route-id="@deck.Id">
+                                    @deck.Name </a>
+                            </td>
+
+                            <td> @(MtgSymbols.Format(deck.Colors).ToHtmlString()) </td>
+
+                            @if (deck.TradesTo.Any())
+                            {
+                                <td>
+                                    <a asp-page="Status" asp-route-deckid="@deck.Id"
+                                        title="@deck.Name Trade Status">
+                                        Sent </a>
+                                </td>
+                            }
+                            else if (deck.Wants.Any())
+                            {
+                                <td>
+                                    <a asp-page="Request" asp-route-deckid="@deck.Id"
+                                        title="@deck.Name Card Requests">
+                                        Possible </a>
+                                </td>
+                            }
+                            else
+                            {
+                                <td> None </td>
+                            }
+
+                            @if (deck.TradesFrom.Any())
+                            {
+                                <td>
+                                    <a asp-page="Review" asp-route-deckid="@deck.Id"
+                                        title="@deck.Name Trade Review">
+                                        Received </a>
+                                </td>
+                            }
+                            else
+                            {
+                                <td> None </td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
 
         @await Html.PartialAsync("_PaginationPartial", Model.TradeDecks.Pages)
     </div>
@@ -79,41 +81,43 @@
         <div class="col">
             <h2>Suggestions</h2>
 
-            <table class="table mb-3">
-                <thead>
-                    <tr>
-                        <th scope="col"> @Html.DisplayNameForInnerType((Suggestion t) => t.Card) </th>
-                        <th scope="col"> @Html.DisplayNameForInnerType((Suggestion t) => t.To) </th>
-                        <th scope="col"> @Html.DisplayNameForInnerType((Suggestion t) => t.Comment) </th>
-                        <th scope="col"></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var suggestion in Model.Suggestions)
-                    {
+            <div class="table-responsive-md">
+                <table class="table mb-3">
+                    <thead>
                         <tr>
-                            <td>
-                                <a asp-page="/Cards/Details" asp-route-id="@suggestion.CardId">
-                                    @suggestion.Card.Name </a>
-                            </td>
-
-                            <td>@(suggestion.To?.Name ?? "")</td>
-                            <td>@suggestion.Comment</td>
-                            <td>
-                                <form method="POST">
-                                    <input type="hidden" asp-for="DeckIndex"/>
-                                    <input type="hidden" asp-for="SuggestIndex"/>
-
-                                    <input type="submit"
-                                        asp-route-suggestid="@suggestion.Id"
-                                        class="btn btn-secondary"
-                                        value="Acknowledge" />
-                                </form>
-                            </td>
+                            <th scope="col"> @Html.DisplayNameForInnerType((Suggestion t) => t.Card) </th>
+                            <th scope="col"> @Html.DisplayNameForInnerType((Suggestion t) => t.To) </th>
+                            <th scope="col"> @Html.DisplayNameForInnerType((Suggestion t) => t.Comment) </th>
+                            <th scope="col"></th>
                         </tr>
-                    }
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        @foreach (var suggestion in Model.Suggestions)
+                        {
+                            <tr>
+                                <td>
+                                    <a asp-page="/Cards/Details" asp-route-id="@suggestion.CardId">
+                                        @suggestion.Card.Name </a>
+                                </td>
+
+                                <td>@(suggestion.To?.Name ?? "")</td>
+                                <td>@suggestion.Comment</td>
+                                <td>
+                                    <form method="POST">
+                                        <input type="hidden" asp-for="DeckIndex"/>
+                                        <input type="hidden" asp-for="SuggestIndex"/>
+
+                                        <input type="submit"
+                                            asp-route-suggestid="@suggestion.Id"
+                                            class="btn btn-secondary"
+                                            value="Acknowledge" />
+                                    </form>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
 
             @await Html.PartialAsync("_PaginationPartial", Model.Suggestions.Pages)
        </div>

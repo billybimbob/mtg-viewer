@@ -12,94 +12,99 @@
 
 <h2>Received Trades</h2>
 
-<table class="table">
-    <thead>
-        <tr>
-            <th scope="col"> @Html.DisplayNameForInnerType((Trade t) => t.Card) </th>
-            <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.SetName) </th>
-            <th scope="col"> Requested By </th>
-            <th scope="col"> @Html.DisplayNameForInnerType((Trade t) => t.To) </th>
-            <th scope="col"> Deck Color </th>
-            <th scope="col"> @Html.DisplayNameForInnerType((Trade t) => t.Amount) </th>
-            <th scope="col"></th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var trade in Model.Deck.TradesFrom)
-        {
+<div class="table-responsive-md">
+    <table class="table">
+        <thead>
             <tr>
-                <td>
-                    <a asp-page="/Cards/Details" asp-route-id="@trade.CardId">
-                        @trade.Card.Name </a>
-                </td>
-
-                <td> @trade.Card.SetName </td>
-                <td> @trade.To.Owner.Name </td>
-                <td>
-                    <a asp-page="/Decks/Viewer" asp-route-id="@trade.ToId">
-                       @trade.To.Name </a>
-                </td>
-
-                <td> @(MtgSymbols.Format(trade.To.Colors).ToHtmlString()) </td>
-
-                <form method="POST">
-                    <td>
-                        <select title="trade amount" name="amount" class="form-control form-control-sm">
-                            @for (int i = 1; i < trade.Amount; ++i)
-                            {
-                                <option>@i</option>
-                            }
-                            <option selected>@trade.Amount</option>
-                        </select>
-                    </td>
-                    <td>
-                        <input type="hidden" asp-for="@trade.Id" name="tradeId" />
-
-                        <input type="submit"
-                            asp-page-handler="Accept"
-                            class="btn btn-secondary mb-3"
-                            value="Accept" />
-
-                        <input type="submit"
-                            asp-page-handler="Reject"
-                            class="btn btn-secondary mb-3"
-                            value="Reject" />
-                    </td>
-                </form>
+                <th scope="col"> @Html.DisplayNameForInnerType((Trade t) => t.Card) </th>
+                <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.SetName) </th>
+                <th scope="col"> Requested By </th>
+                <th scope="col"> @Html.DisplayNameForInnerType((Trade t) => t.To) </th>
+                <th scope="col"> Deck Color </th>
+                <th scope="col"> @Html.DisplayNameForInnerType((Trade t) => t.Amount) </th>
+                <th scope="col"></th>
             </tr>
-        }
-    </tbody>
-</table>
+        </thead>
+        <tbody>
+            @foreach (var trade in Model.Deck.TradesFrom)
+            {
+                <tr>
+                    <td>
+                        <a asp-page="/Cards/Details" asp-route-id="@trade.CardId">
+                            @trade.Card.Name </a>
+                    </td>
+
+                    <td> @trade.Card.SetName </td>
+                    <td> @trade.To.Owner.Name </td>
+                    <td>
+                        <a asp-page="/Decks/Viewer" asp-route-id="@trade.ToId">
+                        @trade.To.Name </a>
+                    </td>
+
+                    <td> @(MtgSymbols.Format(trade.To.Colors).ToHtmlString()) </td>
+
+                    <form method="POST">
+                        <td>
+                            <select title="trade amount" name="amount" 
+                                class="form-control form-control-sm">
+
+                                @for (int i = 1; i < trade.Amount; ++i)
+                                {
+                                    <option>@i</option>
+                                }
+                                <option selected>@trade.Amount</option>
+                            </select>
+                        </td>
+                        <td>
+                            <input type="hidden" asp-for="@trade.Id" name="tradeId" />
+
+                            <input type="submit"
+                                asp-page-handler="Accept"
+                                class="btn btn-secondary mb-3"
+                                value="Accept" />
+
+                            <input type="submit"
+                                asp-page-handler="Reject"
+                                class="btn btn-secondary mb-3"
+                                value="Reject" />
+                        </td>
+                    </form>
+                </tr>
+            }
+        </tbody>
+    </table>
 
 
 @if (Model.Deck.Cards.Any())
 {
     <h2>Current Cards</h2>
 
-    <table class="table">
-        <thead>
-            <tr>
-                <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.Name) </th>
-                <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.ManaCost) </th>
-                <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.SetName) </th>
-                <th scope="col"> @Html.DisplayNameForInnerType((Amount ca) => ca.NumCopies) </th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var amount in Model.Deck.Cards)
-            {
-                var card = amount.Card;
+    <div class="table-responsive-md">
+        <table class="table">
+            <thead>
                 <tr>
-                    <td>
-                        <a asp-page="/Cards/Details" asp-route-id="@card.Id">
-                            @card.Name </a>
-                    </td>
-
-                    <td> @(MtgSymbols.Format(card.ManaCost).ToHtmlString()) </td>
-                    <td> @card.SetName </td>
-                    <td> @amount.NumCopies </td>
+                    <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.Name) </th>
+                    <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.ManaCost) </th>
+                    <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.SetName) </th>
+                    <th scope="col"> @Html.DisplayNameForInnerType((Amount ca) => ca.NumCopies) </th>
                 </tr>
-            }
-        </tbody>
-    </table>
+            </thead>
+            <tbody>
+                @foreach (var amount in Model.Deck.Cards)
+                {
+                    var card = amount.Card;
+                    <tr>
+                        <td>
+                            <a asp-page="/Cards/Details" asp-route-id="@card.Id">
+                                @card.Name </a>
+                        </td>
+
+                        <td> @(MtgSymbols.Format(card.ManaCost).ToHtmlString()) </td>
+                        <td> @card.SetName </td>
+                        <td> @amount.NumCopies </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
 }

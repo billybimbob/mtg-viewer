@@ -68,6 +68,14 @@ public class CreateModel : PageModel
                 .LoadAsync(cancel);
         }
 
+        if (Box.Bin?.Name is null)
+        {
+            const string bin = $"{nameof(Box)}.{nameof(Box.Bin)}";
+            ModelState.AddModelError(bin, "Either a new or existing Bin must be specified.");
+
+            return await PageWithBinsAsync(cancel);
+        }
+
         ModelState.ClearValidationState(nameof(Box));
 
         if (!TryValidateModel(Box, nameof(Box)))

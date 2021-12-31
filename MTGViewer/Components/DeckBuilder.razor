@@ -17,12 +17,17 @@
 @if (_deckEdit is not null)
 {
     <EditForm EditContext="@_deckEdit">
-        <h1 id="builder-title">
-            <InputText @bind-Value="_deck!.Name" DisplayName="Deck Name"/>
-        </h1>
+        <div class="row">
+            <div class="col col-md-6">
+            <InputText 
+                class="form-control form-control-lg mb-3"
+                @bind-Value="_deck!.Name" 
+                DisplayName="Deck Name"/>
 
-        <DataAnnotationsValidator />
-        <ValidationSummary />
+                <DataAnnotationsValidator />
+                <ValidationSummary />
+            </div>
+        </div>
     </EditForm>
 }
 else
@@ -40,11 +45,11 @@ else
 </div>
 
 <div class="form-row align-items-center my-3">
-    <div class="col-3">
+    <div class="col-12 col-md-4">
         <input class="form-control" placeholder="Card Name" @onchange="SearchName" />
     </div>
 
-    <div class="col-auto btn-group" role="group" aria-label="Color Buttons">
+    <div class="col-auto btn-group pt-2 pt-md-0" role="group" aria-label="Color Buttons">
         @foreach (var (symbol, color) in Color.Symbols)
         {
             var active = _colorFilter.Contains(color) ? "active" : "";
@@ -71,7 +76,7 @@ else
 </SavePrompt>
 
 <div class="row">
-    <div class="col-7">
+    <div class="col-12 col-md-7">
         <h3>Treasury</h3>
 
         <div class="list-group list-group-flush mb-4">
@@ -136,7 +141,7 @@ else
             }
         </div>
 
-        <Pagination Pages="DeckPages" PageSelected="ChangeDeckPage" />
+        <Pagination Pages="DeckPages" PageSelected="ChangeDeckPages" />
     </div>
 </div>
 
@@ -166,8 +171,8 @@ else
     private readonly HashSet<string> _colorFilter = new(StringComparer.CurrentCultureIgnoreCase);
     private string? _searchName;
 
-    private int _deckPage;
     private Deck? _deck;
+    private Data.Pages _deckPages;
     private EditContext? _deckEdit;
     private Dictionary<string, QuantityGroup>? _deckCards;
 
@@ -185,11 +190,7 @@ else
     private Data.Pages TreasuryPages => _filteredCards.Pages;
 
 
-    private Data.Pages DeckPages =>
-        new Data.Pages(
-            _deckPage, 
-            _deckCards?.Count(kv => kv.Value.Total > 0) ?? 0,
-            PageSize);
+    private Data.Pages DeckPages => _deckPages;
 
 
     private IEnumerable<(Card, QuantityGroup)> DeckCards =>
@@ -198,7 +199,7 @@ else
                 .Join(_deckCards.Where(kv => kv.Value.Total > 0),
                     c => c.Id, kv => kv.Key,
                     (card, kv) => (card, group: kv.Value))
-                .Skip(DeckPages.Current * PageSize)
+                .Skip(_deckPages.Current * PageSize)
                 .Take(PageSize)
 
             : Enumerable.Empty<(Card, QuantityGroup)>();
@@ -278,6 +279,7 @@ else
             _deckCards = GetDeckCardGroups(_deck)
                 .ToDictionary(cg => cg.CardId);
 
+            ChangeDeckPages();
             ApplyFilters();
         }
 
@@ -411,14 +413,22 @@ else
     }
 
 
-    private void ChangeDeckPage(int pageIndex = 0)
+    private void ChangeDeckPages(int pageIndex = 0)
     {
-        if (pageIndex == _deckPage)
+        if (_deckPages != default && pageIndex == _deckPages.Current)
         {
             return;
         }
 
-        _deckPage = pageIndex;
+        if (_deckCards == default || PageSize <= 0)
+        {
+            return;
+        }
+
+        _deckPages = new Data.Pages(
+            pageIndex, 
+            _deckCards.Count(kv => kv.Value.Total > 0),
+            PageSize);
     }
 
 
