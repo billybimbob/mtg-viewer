@@ -21,7 +21,7 @@
 </div>
 
 <div class="row">
-    <div class="col-md-5">
+    <div class="col col-md-5">
         <h3>Import New Data</h3>
         <form method="POST" enctype="multipart/form-data">
             <div asp-validation-summary="ModelOnly" class="text-danger"></div>
@@ -39,7 +39,7 @@
         </form>
     </div>
 
-    <div class="col-md-5">
+    <div class="col col-md-5 pt-md-0 pt-2">
         <h3>Export Current Data</h3>
 
         <form method="POST" asp-page-handler="Download">
@@ -61,5 +61,5 @@
 </div>
 
 @section Scripts {
-    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <partial name="_ValidationScriptsPartial"/>
 }

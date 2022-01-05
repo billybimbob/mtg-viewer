@@ -4,9 +4,6 @@
     ViewData["Title"] = "Card Collection";
 }
 
-@* <component type="typeof(Library)" 
-    render-mode="ServerPrerendered" 
-    param-IsSignedIn="@Model.IsSignedIn" /> *@
-
-@(await Html.RenderComponentAsync<Library>(
-    RenderMode.Server, new { Model.IsSignedIn, Model.PageSize }))
+<component type="typeof(Library)" render-mode="ServerPrerendered" 
+    param-IsSignedIn="Model.IsSignedIn"
+    param-PageSize="Model.PageSize" />

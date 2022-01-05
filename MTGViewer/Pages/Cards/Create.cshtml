@@ -4,4 +4,4 @@
     ViewData["Title"] = "Add Cards";
 }
 
-@(await Html.RenderComponentAsync<Create>(RenderMode.ServerPrerendered))
+<component type="typeof(Create)" render-mode="ServerPrerendered"/>

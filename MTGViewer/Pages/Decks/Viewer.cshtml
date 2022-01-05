@@ -45,10 +45,10 @@
             {
                 <tr>
                     <td>
-                        @(await Html.RenderComponentAsync<HoverCard>(
-                            RenderMode.Static, new { Card = (CardPreview)group.Card }))
+                        <component type="typeof(HoverCard)" render-mode="Static"
+                            param-Target="group.Card"/>
                     </td>
-                    <td> @(MtgSymbols.Format(group.Card.ManaCost).ToHtmlString()) </td>
+                    <td> @MtgSymbols.Format(group.Card.ManaCost).ToHtmlString() </td>
                     <td> @group.Card.SetName </td>
 
                     <td> @(group.Amount?.NumCopies ?? 0) </td>

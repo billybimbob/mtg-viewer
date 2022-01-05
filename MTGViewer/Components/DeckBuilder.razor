@@ -5,11 +5,12 @@
 @namespace MTGViewer.Components
 @implements IAsyncDisposable
 
+@inject FixedCache Cache
 @inject IDbContextFactory<CardDbContext> DbFactory
 @inject SymbolFormatter MtgSymbols
 @inject CardText CardText
-@inject PageSizes PageSizes
 
+@inject PageSizes PageSizes
 @inject NavigationManager Nav
 @inject ILogger<DeckBuilder> Logger
 
@@ -92,7 +93,7 @@ else
 
                     <span class="row">
                         <span class="col-6"> 
-                            <HoverCard Card="@((CardPreview)card)"> 
+                            <HoverCard Target="card"> 
                                 <span class="btn-link">@card.Name</span>
                             </HoverCard>
                         </span>
@@ -120,7 +121,7 @@ else
 
                     <span class="row">
                         <span class="col-5">
-                            <HoverCard Card="@((CardPreview)card)"> 
+                            <HoverCard Target="card"> 
                                 <span class="btn-link">@card.Name</span>
                             </HoverCard>
                         </span>
@@ -141,7 +142,7 @@ else
             }
         </div>
 
-        <Pagination Pages="DeckPages" PageSelected="ChangeDeckPages" />
+        <Pagination Pages="DeckPages" PageSelected="ChangeDeckPage" />
     </div>
 </div>
 
@@ -172,7 +173,7 @@ else
     private string? _searchName;
 
     private Deck? _deck;
-    private Data.Pages _deckPages;
+    private int _deckPage;
     private EditContext? _deckEdit;
     private Dictionary<string, QuantityGroup>? _deckCards;
 
@@ -180,6 +181,13 @@ else
 
     private bool HasNoChanges =>
         !_dbContext?.ChangeTracker.HasChanges() ?? true;
+
+
+    private IEnumerable<(string cardId, QuantityGroup group)> ActiveDeck =>
+        _deckCards
+            ?.Where(kv => kv.Value.Total > 0)
+            .Select(kv => (kv.Key, kv.Value))
+            ?? Enumerable.Empty<(string, QuantityGroup)>();
 
 
     private IEnumerable<(Card, int amount)> Treasury =>
@@ -190,19 +198,18 @@ else
     private Data.Pages TreasuryPages => _filteredCards.Pages;
 
 
-    private Data.Pages DeckPages => _deckPages;
+    private Data.Pages DeckPages =>
+        new Data.Pages(_deckPage, ActiveDeck.Count(), PageSize);
 
 
     private IEnumerable<(Card, QuantityGroup)> DeckCards =>
-        _deckCards is not null
-            ? _cards
-                .Join(_deckCards.Where(kv => kv.Value.Total > 0),
-                    c => c.Id, kv => kv.Key,
-                    (card, kv) => (card, group: kv.Value))
-                .Skip(_deckPages.Current * PageSize)
-                .Take(PageSize)
-
-            : Enumerable.Empty<(Card, QuantityGroup)>();
+        _cards
+            .Join( ActiveDeck,
+                c => c.Id,
+                cg => cg.cardId,
+                (card, cg) => (card, cg.group))
+            .Skip(_deckPage * PageSize)
+            .Take(PageSize);
 
 
     private string DeckName =>
@@ -228,25 +235,17 @@ else
 
         _isBusy = true;
 
-        var cancelToken = _cancel.Token;
-
         try
         {
-            _dbContext = await DbFactory.CreateDbContextAsync(cancelToken);
+            _dbContext = await DbFactory.CreateDbContextAsync(_cancel.Token);
 
-            _cards = await _dbContext.Cards
-                .Include(c => c.Colors)
-                .OrderBy(c => c.Name)
-                    .ThenBy(c => c.SetName)
-                .ToListAsync(cancelToken); // unbounded, keep eye on
+            _cards = await Cache
+                .GetOrCreateAsync(nameof(_cards), () => 
+                    GetCardsAsync(_dbContext, _cancel.Token));
 
-            _boxAmounts = await _dbContext.Amounts
-                .Where(ca => ca.Location is Box)
-                .GroupBy(ca => ca.CardId,
-                    (CardId, cas) => 
-                        new { CardId, Total = cas.Sum(ca => ca.NumCopies) })
-                .ToDictionaryAsync(
-                    ct => ct.CardId, ct => ct.Total, cancelToken);
+            _boxAmounts = await Cache
+                .GetOrCreateAsync(nameof(_boxAmounts), () =>
+                    GetBoxAmountsAsync(_dbContext, _cancel.Token));
         }
         catch (OperationCanceledException ex)
         {
@@ -255,6 +254,29 @@ else
         finally
         {
             _isBusy = false;
+        }
+
+        Task<List<Card>> GetCardsAsync(
+            CardDbContext dbContext, CancellationToken cancel)
+        {
+            return dbContext.Cards
+                .Include(c => c.Colors)
+                .OrderBy(c => c.Name)
+                    .ThenBy(c => c.SetName)
+                .ToListAsync(cancel); // unbounded, keep eye on
+        }
+
+        Task<Dictionary<string, int>> GetBoxAmountsAsync(
+            CardDbContext dbContext, CancellationToken cancel)
+        {
+            return dbContext.Amounts
+                .Where(ca => ca.Location is Box)
+                .GroupBy(ca => ca.CardId,
+                    (CardId, cas) => 
+                        new { CardId, Total = cas.Sum(ca => ca.NumCopies) })
+
+                .ToDictionaryAsync(
+                    ct => ct.CardId, ct => ct.Total, cancel);
         }
     }
 
@@ -268,18 +290,15 @@ else
 
         _isBusy = true;
 
-        var cancelToken = _cancel.Token;
-
         try
         {
-            _deck = await GetOrCreateDeckAsync(_dbContext, cancelToken);
+            _deck = await GetOrCreateDeckAsync(_dbContext, _cancel.Token);
 
             _deckEdit = new(_deck);
 
             _deckCards = GetDeckCardGroups(_deck)
                 .ToDictionary(cg => cg.CardId);
 
-            ChangeDeckPages();
             ApplyFilters();
         }
 
@@ -303,10 +322,8 @@ else
     {
         if (DeckId != default)
         {
-            var deck = await DeckForBuilder(dbContext)
-                .SingleAsync(cancel);
-
-            return deck;
+            return await Cache
+                .GetOrCreateAsync($"deck{DeckId}", GetDeckAsync);
         }
 
         if (UserId == null)
@@ -314,17 +331,16 @@ else
             throw new ArgumentException(nameof(UserId));
         }
 
-        var userValue = new []{ UserId };
-        var user = await dbContext.Users.FindAsync(userValue, cancel);
+        var user = await Cache
+            .GetOrCreateAsync($"user{UserId}", GetUserAsync);
 
         if (user == null)
         {
             throw new ArgumentException(nameof(UserId));
         }
 
-        var userDeckCount = await dbContext.Decks
-            .Where(d => d.OwnerId == UserId)
-            .CountAsync(cancel);
+        var userDeckCount = await Cache
+            .GetOrCreateAsync($"count{UserId}", GetDeckCountAsync);
 
         var newLoc = new Deck
         {
@@ -335,6 +351,20 @@ else
         dbContext.Decks.Attach(newLoc);
 
         return newLoc;
+
+        Task<Deck> GetDeckAsync() =>
+            DeckForBuilder(dbContext)
+                .SingleAsync(cancel);
+
+        Task<UserRef?> GetUserAsync() =>
+            dbContext.Users
+                .FindAsync(new []{ UserId }, cancel)
+                .AsTask();
+
+        Task<int> GetDeckCountAsync() =>
+            dbContext.Decks
+                .Where(d => d.OwnerId == UserId)
+                .CountAsync(cancel);
     }
 
 
@@ -413,22 +443,16 @@ else
     }
 
 
-    private void ChangeDeckPages(int pageIndex = 0)
+    private void ChangeDeckPage(int pageIndex = 0)
     {
-        if (_deckPages != default && pageIndex == _deckPages.Current)
+        if (_deckPage == pageIndex 
+            || pageIndex < 0
+            || pageIndex >= DeckPages.Total)
         {
             return;
         }
 
-        if (_deckCards == default || PageSize <= 0)
-        {
-            return;
-        }
-
-        _deckPages = new Data.Pages(
-            pageIndex, 
-            _deckCards.Count(kv => kv.Value.Total > 0),
-            PageSize);
+        _deckPage = pageIndex;
     }
 
 
@@ -546,13 +570,11 @@ else
 
         _isBusy = true;
 
-        var cancelToken = _cancel.Token;
-
         try
         {
             PrepareChanges(_dbContext, _deck);
 
-            await _dbContext.SaveChangesAsync(cancelToken);
+            await _dbContext.SaveChangesAsync(_cancel.Token);
 
             if (_deck.GiveBacks.Any() || _deck.Wants.Any())
             {
@@ -567,7 +589,7 @@ else
         {
             _result = SaveResult.Error;
 
-            await UpdateDeckAsync(_dbContext, _deck, _deckCards, ex, cancelToken);
+            await UpdateDeckAsync(_dbContext, _deck, _deckCards, ex, _cancel.Token);
         }
         catch (DbUpdateException ex)
         {

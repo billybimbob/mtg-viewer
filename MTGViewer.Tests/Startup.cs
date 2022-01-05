@@ -34,20 +34,23 @@ public class Startup
         var config = context.Configuration;
         var provider = config.GetValue("Provider", "InMemory");
 
-        services.AddScoped<InMemoryConnection>();
-        services.AddScoped<TempFileName>();
+        services
+            .AddScoped<InMemoryConnection>()
+            .AddScoped<TempFileName>();
 
         switch (provider)
         {
             case "Sqlite":
-                services.AddDbContext<CardDbContext>(TestFactory.SqliteInMemory);
-                services.AddDbContext<UserDbContext>(TestFactory.SqliteInMemory);
+                services
+                    .AddDbContext<CardDbContext>(TestFactory.SqliteInMemory)
+                    .AddDbContext<UserDbContext>(TestFactory.SqliteInMemory);
                 break;
             
             case "InMemory":
             default:
-                services.AddDbContext<CardDbContext>(TestFactory.InMemoryDatabase);
-                services.AddDbContext<UserDbContext>(TestFactory.InMemoryDatabase);
+                services
+                    .AddDbContext<CardDbContext>(TestFactory.InMemoryDatabase)
+                    .AddDbContext<UserDbContext>(TestFactory.InMemoryDatabase);
                 break;
         }
 
@@ -58,34 +61,33 @@ public class Startup
         services.AddScoped<ITreasuryQuery, SortedPartitionTreasury>();
         services.AddSingleton<PageSizes>();
 
-        services.AddScoped<UserManager<CardUser>>(TestFactory.CardUserManager);
-        services.AddScoped<SignInManager<CardUser>>(TestFactory.CardSignInManager);
+        services
+            .AddScoped<UserManager<CardUser>>(TestFactory.CardUserManager)
+            .AddScoped<SignInManager<CardUser>>(TestFactory.CardSignInManager);
 
-        services.AddSymbols(options => options
-            .AddFormatter<CardText>()
-            .AddTranslator<ManaTranslator>());
+        services
+            .AddSymbols(options => options
+                .AddFormatter<CardText>()
+                .AddTranslator<ManaTranslator>());
 
-        services.AddSingleton<IMemoryCache>(
-            // should auto evict from limit
-            new MemoryCache(
-                new MemoryCacheOptions
-                { 
-                    SizeLimit = config.GetValue("CacheLimit", 100L) 
-                }));
+        services
+            .AddSingleton<FixedCache>()
+            .AddMemoryCache(options =>
+                // should auto evict from limit
+                options.SizeLimit = config.GetValue("CacheLimit", 100L));
 
-        services.AddSingleton<DataCacheService>();
-
-        services.AddSingleton<IMtgServiceProvider, MtgServiceProvider>();
-
-        services.AddScoped<ICardService>(provider => provider
-            .GetRequiredService<IMtgServiceProvider>()
-            .GetCardService());
+        services
+            .AddSingleton<IMtgServiceProvider, MtgServiceProvider>()
+            .AddScoped<ICardService>(provider => provider
+                .GetRequiredService<IMtgServiceProvider>()
+                .GetCardService());
 
         services.AddScoped<MTGFetchService>();
-
         services.AddScoped<FileCardStorage>();
-        services.AddScoped<CardDataGenerator>();
-        services.AddScoped<TestDataGenerator>();
+
+        services
+            .AddScoped<CardDataGenerator>()
+            .AddScoped<TestDataGenerator>();
 
         services.AddTransient<IEmailSender, EmailSender>();
         services.Configure<AuthMessageSenderOptions>(config);

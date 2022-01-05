@@ -66,7 +66,7 @@ else
                                         title="@card.Name Details">
                                         @card.Name </a>
                                 </td>
-                                <td> @(MtgSymbols.Format(card.ManaCost).ToHtmlString()) </td>
+                                <td> @MtgSymbols.Format(card.ManaCost).ToHtmlString() </td>
 
                                 <td>@card.SetName</td>
                                 <td>@amount.NumCopies</td>
@@ -106,7 +106,7 @@ else
                                         title="@card.Name Details">
                                         @card.Name </a>
                                 </td>
-                                <td> @(MtgSymbols.Format(card.ManaCost).ToHtmlString()) </td>
+                                <td> @MtgSymbols.Format(card.ManaCost).ToHtmlString() </td>
 
                                 <td>@card.SetName</td>
                                 <td>@want.NumCopies</td>
@@ -142,7 +142,7 @@ else
                                     <a asp-page="/Cards/Details" asp-route-id="@card.Id">
                                         @card.Name </a>
                                 </td>
-                                <td> @(MtgSymbols.Format(card.ManaCost).ToHtmlString()) </td>
+                                <td> @MtgSymbols.Format(card.ManaCost).ToHtmlString() </td>
 
                                 <td>@card.SetName</td>
                                 <td>@giveBack.NumCopies</td>

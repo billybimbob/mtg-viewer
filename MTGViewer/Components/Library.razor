@@ -7,6 +7,7 @@
 @namespace MTGViewer.Components
 @implements IDisposable
 
+@inject FixedCache Cache
 @inject IDbContextFactory<CardDbContext> DbFactory
 @inject SymbolFormatter MtgSymbols
 @inject ILogger<Library> Logger
@@ -14,12 +15,14 @@
 
 <h1>Card Collection</h1>
 
+@* <AuthorizeView> *@
 @if (IsSignedIn)
 {
     <div class="btn-group" role="group">
         <a class="btn btn-secondary" href="Cards/Create" role="button">Add Card</a>
     </div>
 }
+@* </AuthorizeView> *@
 
 <div class="form-row align-items-center my-3">
     <div class="col-12 col-md-4">
@@ -98,7 +101,7 @@
             @foreach (var card in Cards)
             {
                 <tr>
-                    <td> <HoverCard Card="@((CardPreview)card)"/> </td>
+                    <td> <HoverCard Target="card"/> </td>
 
                     <td> @(MtgSymbols.Format(card.ManaCost).ToMarkupString()) </td>
                     <td> @card.SetName </td>
@@ -106,14 +109,16 @@
                     <td> @CardTotal(card) </td>
 
                     <td>
+                        @* <AuthorizeView> *@
                         @if (IsSignedIn)
                         {
                             <a title="Suggest @card.Name"
-                            href="/Transfers/Suggest/@card.Id"
-                            class="btn btn-secondary"
-                            role="button">
-                            Suggest </a>
+                                href="/Transfers/Suggest/@card.Id"
+                                class="btn btn-secondary"
+                                role="button">
+                                Suggest </a>
                         }
+                        @* </AuthorizeView> *@
                     </td>
                 </tr>
             }
@@ -121,7 +126,7 @@
     </table>
 </div>
 
-<Pagination Pages="Cards.Pages" PageSelected="FetchCardsAsync"></Pagination>
+<Pagination Pages="Cards.Pages" PageSelected="(index) => FetchCardsAsync(index)"></Pagination>
 
 
 @code {
@@ -189,8 +194,7 @@
 
     private string? MemberName<T>(Expression<Func<Card, T>> property) =>
         (property.Body as MemberExpression)?.Member.Name;
-
-
+    
 
     protected override Task OnParametersSetAsync()
     {
@@ -198,7 +202,7 @@
         _orderProperty = null;
         _searchName = string.Empty;
 
-        return FetchCardsAsync();
+        return FetchCardsAsync(shouldCache: true);
     }
 
 
@@ -212,7 +216,7 @@
 
     #region Fetch
 
-    private async Task FetchCardsAsync(int pageIndex = 0)
+    private async Task FetchCardsAsync(int pageIndex = 0, bool shouldCache = false)
     {
         if (_isBusy
             || PageSize <= 0
@@ -225,17 +229,23 @@
         _isBusy = true;
         _orderProperty ??= nameof(Card.Name);
 
-        var cancelToken = _cancel.Token;
-
         try
         {
-            await using var dbContext = await DbFactory.CreateDbContextAsync(cancelToken);
+            await using var dbContext = await DbFactory.CreateDbContextAsync(_cancel.Token);
 
             dbContext.AttachRange(_dbCards); // reuse prior card objs
 
-            Cards = await GetFilteredCardsAsync(dbContext, pageIndex, cancelToken);
+            Cards = !shouldCache
+                ? await GetFilteredCardsAsync(dbContext, pageIndex, _cancel.Token)
+                : await Cache
+                    .GetOrCreateAsync(nameof(Cards), () =>
+                        GetFilteredCardsAsync(dbContext, pageIndex, _cancel.Token));
 
-            var cardAmounts = await GetCardAmountsAsync(dbContext, Cards, cancelToken);
+            var cardAmounts = !shouldCache
+                ? await GetCardAmountsAsync(dbContext, Cards, _cancel.Token)
+                : await Cache
+                    .GetOrCreateAsync("cardAmounts", () =>
+                        GetCardAmountsAsync(dbContext, Cards, _cancel.Token));
 
             _dbCards.UnionWith(Cards);
 
@@ -264,8 +274,11 @@
 
         if (!string.IsNullOrWhiteSpace(_searchName))
         {
+            string name = _searchName.ToLower();
+
+            // keep eye on perf, postgres is slow here
             cards = cards.Where(c => 
-                c.Name.ToLower().Contains(_searchName));
+                c.Name.ToLower().Contains(name));
         }
 
         if (_colorFilter.Any())

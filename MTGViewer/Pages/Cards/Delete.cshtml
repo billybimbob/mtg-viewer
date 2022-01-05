@@ -6,7 +6,7 @@
 @inject SymbolFormatter MtgSymbols
 
 
-<h1>Delete @(Model.Card.Name)</h1>
+<h1>Delete @Model.Card.Name</h1>
 
 <hr />
 <div class="alert alert-warning" role="alert">
@@ -29,5 +29,4 @@
     </form>
 </div>
 
-
-@(await Html.PartialAsync("_CardPartial", Model.Card))
+<partial name="_CardPartial" for="Card"/>

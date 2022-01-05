@@ -35,8 +35,7 @@
                         var card = first.Cards.First();
 
                         <td> 
-                            @(await Html.RenderComponentAsync<HoverCard>(
-                                RenderMode.Static, new { Card = (CardPreview)card }))
+                            <component type="typeof(HoverCard)" render-mode="Static" param-Target="card" />
                         </td>
                         <td> @MtgSymbols.Format(card.ManaCost).ToHtmlString() </td>
                         <td> @first.InDeck </td>
@@ -75,8 +74,7 @@
 
                     <tr>
                         <td> 
-                            @(await Html.RenderComponentAsync<HoverCard>(
-                                RenderMode.Static, new { Card = (CardPreview)card }))
+                            <component type="typeof(HoverCard)" render-mode="Static" param-Target="card" />
                         </td>
                         <td> @MtgSymbols.Format(card.ManaCost).ToHtmlString() </td>
                         <td> @group.InDeck </td>
@@ -88,4 +86,4 @@
     </table>
 </div>
 
-@(await Html.PartialAsync("_PaginationPartial", Model.Unclaimed.Pages))
+<partial name="_PaginationPartial" for="Unclaimed.Pages"/>

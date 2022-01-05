@@ -5,7 +5,4 @@
     //code blocks not affected by rendering, asterisk blocks are for rendering
 }
 
-@* <h3>This should allow you to select an image</h3>
-<input type="file" accept="image/*"> *@
-
-@(await Html.RenderComponentAsync<Home>(RenderMode.Static))
+<component type="typeof(Home)" render-mode="ServerPrerendered"/>

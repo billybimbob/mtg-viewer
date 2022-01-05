@@ -58,7 +58,7 @@
                                 @firstAmount.Card.Name </a>
                         </td>
 
-                        <td> @(MtgSymbols.Format(firstAmount.Card.ManaCost).ToHtmlString()) </td>
+                        <td> @MtgSymbols.Format(firstAmount.Card.ManaCost).ToHtmlString() </td>
                         <td> @firstAmount.Card.SetName </td>
                         <td> @firstAmount.NumCopies </td>
                     }
@@ -90,4 +90,4 @@
     </table>
 </div>
 
-@await Html.PartialAsync("_PaginationPartial", Model.Boxes.Pages)
+<partial name="_PaginationPartial" for="Boxes.Pages"/>

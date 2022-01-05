@@ -33,7 +33,7 @@ public class MTGFetchService : IMtgQueryable<MTGFetchService, CardQuery>
 
 
     private readonly ICardService _service;
-    private readonly DataCacheService _cache;
+    private readonly FixedCache _cache;
 
     private readonly int _pageSize;
     private readonly ILogger<MTGFetchService> _logger;
@@ -43,7 +43,7 @@ public class MTGFetchService : IMtgQueryable<MTGFetchService, CardQuery>
 
     public MTGFetchService(
         ICardService service,
-        DataCacheService cache, 
+        FixedCache cache, 
         PageSizes pageSizes,
         ILogger<MTGFetchService> logger)
     {

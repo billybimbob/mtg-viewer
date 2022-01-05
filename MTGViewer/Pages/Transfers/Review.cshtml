@@ -41,7 +41,7 @@
                         @trade.To.Name </a>
                     </td>
 
-                    <td> @(MtgSymbols.Format(trade.To.Colors).ToHtmlString()) </td>
+                    <td> @MtgSymbols.Format(trade.To.Colors).ToHtmlString() </td>
 
                     <form method="POST">
                         <td>
@@ -99,7 +99,7 @@
                                 @card.Name </a>
                         </td>
 
-                        <td> @(MtgSymbols.Format(card.ManaCost).ToHtmlString()) </td>
+                        <td> @MtgSymbols.Format(card.ManaCost).ToHtmlString() </td>
                         <td> @card.SetName </td>
                         <td> @amount.NumCopies </td>
                     </tr>

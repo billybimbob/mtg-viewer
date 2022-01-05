@@ -8,11 +8,7 @@
     ViewData["Title"] = title;
 }
 
-@* <component type="typeof(Components.DeckBuilder)" 
-    render-mode="ServerPrerendered" 
-    param-User="@Model.CardUser"
-    param-DeckId="@Model.DeckId" /> *@
-
-@(await Html.RenderComponentAsync<DeckBuilder>(
-    RenderMode.Server,
-    new { Model.UserId, Model.DeckId, Model.PageSize }))
+<component type="typeof(DeckBuilder)" render-mode="ServerPrerendered" 
+    param-UserId="Model.UserId"
+    param-DeckId="Model.DeckId"
+    param-PageSize="Model.PageSize" />

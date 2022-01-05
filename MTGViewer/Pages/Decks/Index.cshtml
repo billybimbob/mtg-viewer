@@ -30,7 +30,7 @@
                             @deck.Name </a>
                     </td>
 
-                    <td> @(MtgSymbols.Format(deck.Colors).ToHtmlString()) </td>
+                    <td> @MtgSymbols.Format(deck.Colors).ToHtmlString() </td>
                     <td> @deck.Cards.Sum(ca => ca.NumCopies) </td>
 
                     <td>
@@ -77,4 +77,4 @@
 </div>
 
 
-@await Html.PartialAsync("_PaginationPartial", Model.Decks.Pages)
+<partial name="_PaginationPartial" for="Decks.Pages"/>

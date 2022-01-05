@@ -247,7 +247,7 @@ else
                     {
                         <tr>
                             <td> 
-                                <HoverCard Card="@((CardPreview)match)">
+                                <HoverCard Target="match">
                                     <span class="btn-link">@match.Name</span> 
                                 </HoverCard> 
                             </td>
@@ -318,6 +318,11 @@ else
         {
             _searchEdit.OnValidationRequested -= ClearErrors;
             _searchEdit.OnFieldChanged -= ClearErrors;
+        }
+
+        if (!disposing)
+        {
+            return;
         }
 
         _cancel.Cancel();

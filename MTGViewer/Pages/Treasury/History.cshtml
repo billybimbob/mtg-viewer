@@ -84,8 +84,8 @@
                     </td>
 
                     <td>
-                        @(await Html.RenderComponentAsync<HoverCard>(
-                            RenderMode.Static, new { Card = (CardPreview)first.Card }))
+                        <component type="typeof(HoverCard)" render-mode="Static"
+                            param-Target="first.Card"/>
                     </td>
 
                     <td> @first.Amount </td>
@@ -107,8 +107,8 @@
                 {
                     <tr>
                         <td> 
-                            @(await Html.RenderComponentAsync<HoverCard>(
-                                RenderMode.Static, new { Card = (CardPreview)change.Card }))
+                            <component type="typeof(HoverCard)" render-mode="Static"
+                                param-Target="change.Card"/>
                         </td>
                         <td> @change.Amount </td>
                     </tr>
@@ -118,4 +118,4 @@
     </table>
 </div>
 
-@await Html.PartialAsync("_PaginationPartial", Model.Pages)
+<partial name="_PaginationPartial" for="Pages"/>

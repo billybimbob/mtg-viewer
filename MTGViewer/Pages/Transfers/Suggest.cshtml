@@ -49,7 +49,7 @@ else
                                     <label class="form-check-label row" for="@deckId">
                                         <span class="col-sm-5"> @deck.Name </span>
                                         <span class="col-sm-6">
-                                            @(MtgSymbols.Format(deck.Colors).ToHtmlString())
+                                            @MtgSymbols.Format(deck.Colors).ToHtmlString()
                                         </span>
                                     </label>
                                 </div>
@@ -211,5 +211,5 @@ else
 
 
 @section Scripts {
-    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <partial name="_ValidationScriptsPartial"/>
 }

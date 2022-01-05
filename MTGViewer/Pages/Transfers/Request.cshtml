@@ -59,7 +59,7 @@ else
                             @card.Name </a>
                     </td>
 
-                    <td> @(MtgSymbols.Format(card.ManaCost).ToHtmlString()) </td>
+                    <td> @MtgSymbols.Format(card.ManaCost).ToHtmlString() </td>
                     <td> @cardGroup.NumCopies </td>
                 </tr>
             } 
@@ -93,7 +93,7 @@ else
                                 @card.Name </a>
                         </td>
 
-                        <td> @(MtgSymbols.Format(card.ManaCost).ToHtmlString()) </td>
+                        <td> @MtgSymbols.Format(card.ManaCost).ToHtmlString() </td>
                         <td> @card.SetName </td>
                         <td> @amount.NumCopies </td>
                     </tr>

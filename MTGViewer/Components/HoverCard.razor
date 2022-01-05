@@ -8,12 +8,12 @@
         }
         else
         {
-            <a href="/Cards/Details/@Card.Id"> @Card.Name </a>
+            <a href="/Cards/Details/@Target.Id"> @Target.Name </a>
         }
     </div>
 
     <aside class="preview-item">
-        <img alt="@Card.Name image" src="@Card.ImageUrl.WithHttps()" class="img-fluid rounded" />
+        <img alt="@Target.Name image" src="@Target.ImageUrl.WithHttps()" class="img-fluid rounded" />
     </aside>
 </div>
 
@@ -21,7 +21,7 @@
 @code
 {
     [Parameter]
-    public CardPreview Card { get; set; } = null!;
+    public Card Target { get; set; } = null!;
 
     [Parameter]
     public RenderFragment? ChildContent { get; set; }

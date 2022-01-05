@@ -4,6 +4,7 @@
 @implements IDisposable
 
 @inject IDbContextFactory<CardDbContext> DbFactory
+@inject FixedCache Cache
 @inject ILogger<Home> Logger
 
 
@@ -114,7 +115,6 @@
     }
 
 
-
     protected override async Task OnParametersSetAsync()
     {
         if (_isBusy)
@@ -124,17 +124,17 @@
 
         _isBusy = true;
 
-        var cancelToken = _cancel.Token;
-
         try
         {
-            await using var dbContext = await DbFactory.CreateDbContextAsync(cancelToken);
+            await using var dbContext = await DbFactory.CreateDbContextAsync(_cancel.Token);
 
-            _randomCards = await ShuffledCards(dbContext)
-                .ToListAsync(cancelToken);
+            _randomCards = await Cache
+                .GetOrCreateAsync(nameof(_randomCards), () => 
+                    ShuffledCardsAsync(dbContext, _cancel.Token));
 
-            _recentChanges = await RecentTransactions(dbContext)
-                .ToListAsync(cancelToken);
+            _recentChanges = await Cache
+                .GetOrCreateAsync(nameof(_recentChanges), () =>
+                    RecentTransactionsAsync(dbContext, _cancel.Token));
 
             _currentTime = DateTime.Now;
         }
@@ -156,15 +156,18 @@
     }
 
 
-    private IQueryable<Card> ShuffledCards(CardDbContext dbContext)
+    private Task<List<Card>> ShuffledCardsAsync(
+        CardDbContext dbContext, CancellationToken cancel)
     {
         return dbContext.Cards
             .OrderBy(_ => EF.Functions.Random())
-            .Take(NumberOfCards);
+            .Take(NumberOfCards)
+            .ToListAsync(cancel);
     }
 
 
-    private IQueryable<Transaction> RecentTransactions(CardDbContext dbContext)
+    private Task<List<Transaction>> RecentTransactionsAsync(
+        CardDbContext dbContext, CancellationToken cancel)
     {
         return dbContext.Transactions
             .Where(t => t.Changes.Any(c => c.To is Box || c.From is Box))
@@ -183,6 +186,8 @@
                 .OrderBy(c => c.Card.Name))
 
             .OrderByDescending(t => t.AppliedAt)
-            .Take(NumberOfCards);
+            .Take(NumberOfCards)
+
+            .ToListAsync(cancel);
     }
 }

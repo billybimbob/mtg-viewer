@@ -50,7 +50,7 @@
                         <a asp-page="/Cards/Details" asp-route-id="@card.Id">
                         @nameGroup.Name </a>
                     </td>
-                    <td> @(MtgSymbols.Format(card.ManaCost).ToHtmlString()) </td>
+                    <td> @MtgSymbols.Format(card.ManaCost).ToHtmlString() </td>
 
                     <td>@card.SetName</td>
                     <td>@nameGroup.InDeck</td>
@@ -84,7 +84,7 @@
                             <td> @trade.To.Name </td>
                             <td> @trade.From.Name </td>
                             <td> @trade.Card.Name </td>
-                            <td> @(MtgSymbols.Format(trade.Card.ManaCost).ToHtmlString()) </td>
+                            <td> @MtgSymbols.Format(trade.Card.ManaCost).ToHtmlString() </td>
                         </tr>
                     }
                 </tbody>

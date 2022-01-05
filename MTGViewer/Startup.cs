@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 
@@ -27,35 +29,33 @@ public class Startup
     // This method gets called by the runtime. Use this method to add services to the container.
     public void ConfigureServices(IServiceCollection services)
     {
-        services.AddRazorPages()
+        services
+            .AddRazorPages()
+            .AddJsonOptions(options =>
+                options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.Preserve)
             .AddMvcOptions(options =>
                 options.Filters.Add<OperationCancelledFilter>());
 
         services.AddServerSideBlazor();
 
         services.AddCardStorage(_config);
-
         services.AddSingleton<PageSizes>();
 
-        services.AddSymbols(options => options
-            .AddFormatter<CardText>(isDefault: true)
-            .AddTranslator<ManaTranslator>(isDefault: true));
+        services
+            .AddSymbols(options => options
+                .AddFormatter<CardText>(isDefault: true)
+                .AddTranslator<ManaTranslator>(isDefault: true));
 
-        services.AddSingleton<IMemoryCache>(
-            // should auto evict from limit
-            new MemoryCache(
-                new MemoryCacheOptions 
-                { 
-                    SizeLimit = _config.GetValue("CacheLimit", 100L) 
-                }));
+        services
+            .AddSingleton<FixedCache>()
+            .AddMemoryCache(options =>
+                options.SizeLimit = _config.GetValue("CacheLimit", 100L));
 
-        services.AddSingleton<DataCacheService>();
-
-        services.AddSingleton<IMtgServiceProvider, MtgServiceProvider>();
-
-        services.AddScoped<ICardService>(provider => provider
-            .GetRequiredService<IMtgServiceProvider>()
-            .GetCardService());
+        services
+            .AddSingleton<IMtgServiceProvider, MtgServiceProvider>()
+            .AddScoped<ICardService>(provider => provider
+                .GetRequiredService<IMtgServiceProvider>()
+                .GetCardService());
 
         services.AddScoped<MTGFetchService>();
 

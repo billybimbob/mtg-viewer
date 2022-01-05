@@ -40,5 +40,5 @@ public class PageSizes
         return _config
             .GetSection(sectionKey)
             .GetValue(pageName, Default);
-        }
+    }
 }
