@@ -1,12 +1,15 @@
-@using MTGViewer.Data
-
-@namespace MTGViewer.Components
+@page "/"
 @implements IDisposable
+
+@using Microsoft.Extensions.Configuration
 
 @inject IDbContextFactory<CardDbContext> DbFactory
 @inject FixedCache Cache
+@inject IConfiguration Config
 @inject ILogger<Home> Logger
 
+
+<PageTitle> MTG Viewer </PageTitle>
 
 <h1 class="text-center display-4">Welcome to the card database!</h1>
 
@@ -79,10 +82,6 @@
 
 @code {
 
-    [Parameter]
-    public int NumberOfCards { get; set; } = 4;
-
-    private readonly Random _random = new();
     private readonly CancellationTokenSource _cancel = new();
 
     private bool _isBusy;
@@ -115,7 +114,7 @@
     }
 
 
-    protected override async Task OnParametersSetAsync()
+    protected override async Task OnInitializedAsync()
     {
         if (_isBusy)
         {
@@ -128,13 +127,15 @@
         {
             await using var dbContext = await DbFactory.CreateDbContextAsync(_cancel.Token);
 
+            var numberOfCards = Config.GetValue("NumberOfCards", 4);
+
             _randomCards = await Cache
                 .GetOrCreateAsync(nameof(_randomCards), () => 
-                    ShuffledCardsAsync(dbContext, _cancel.Token));
+                    ShuffledCardsAsync(dbContext, numberOfCards, _cancel.Token));
 
             _recentChanges = await Cache
                 .GetOrCreateAsync(nameof(_recentChanges), () =>
-                    RecentTransactionsAsync(dbContext, _cancel.Token));
+                    RecentTransactionsAsync(dbContext, numberOfCards, _cancel.Token));
 
             _currentTime = DateTime.Now;
         }
@@ -156,18 +157,22 @@
     }
 
 
-    private Task<List<Card>> ShuffledCardsAsync(
-        CardDbContext dbContext, CancellationToken cancel)
+    private static Task<List<Card>> ShuffledCardsAsync(
+        CardDbContext dbContext, 
+        int numberOfCards,
+        CancellationToken cancel)
     {
         return dbContext.Cards
             .OrderBy(_ => EF.Functions.Random())
-            .Take(NumberOfCards)
+            .Take(numberOfCards)
             .ToListAsync(cancel);
     }
 
 
-    private Task<List<Transaction>> RecentTransactionsAsync(
-        CardDbContext dbContext, CancellationToken cancel)
+    private static Task<List<Transaction>> RecentTransactionsAsync(
+        CardDbContext dbContext,
+        int numberOfCards,
+        CancellationToken cancel)
     {
         return dbContext.Transactions
             .Where(t => t.Changes.Any(c => c.To is Box || c.From is Box))
@@ -186,7 +191,7 @@
                 .OrderBy(c => c.Card.Name))
 
             .OrderByDescending(t => t.AppliedAt)
-            .Take(NumberOfCards)
+            .Take(numberOfCards)
 
             .ToListAsync(cancel);
     }

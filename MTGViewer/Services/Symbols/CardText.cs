@@ -78,8 +78,8 @@ public class CardText : ISymbolFinder, ISymbolTranslator
             .Matches(mtgText, _saga)
             .SelectMany(m =>
             {
+                const string separator = ", ";
                 var sagaGroup = m.Groups[nameof(_saga)];
-                var separator = ", ";
 
                 var sagas = sagaGroup.Value.Split(separator);
                 var indices = SagaIndices(sagas, sagaGroup.Index, separator);

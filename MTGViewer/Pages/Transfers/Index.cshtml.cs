@@ -27,7 +27,7 @@ public class IndexModel : PageModel
         UserManager<CardUser> userManager, 
         CardDbContext dbContext)
     {
-        _pageSize = pageSizes.GetSize<IndexModel>();
+        _pageSize = pageSizes.GetPageModelSize<IndexModel>();
         _userManager = userManager;
         _dbContext = dbContext;
     }

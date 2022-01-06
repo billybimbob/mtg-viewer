@@ -31,7 +31,7 @@ public class HistoryModel : PageModel
         SignInManager<CardUser> signInManager,
         ILogger<HistoryModel> logger)
     {
-        _pageSize = pageSizes.GetSize<HistoryModel>();
+        _pageSize = pageSizes.GetPageModelSize<HistoryModel>();
         _dbContext = dbContext;
         _signInManager = signInManager;
         _logger = logger;

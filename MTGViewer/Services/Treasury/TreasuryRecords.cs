@@ -64,11 +64,11 @@ public static class DbTrackingExtensions
         {
             if (originals.TryGetValue(modify.Id, out int oldCopies))
             {
-                var copyProp = dbContext
+                var numCopiesProp = dbContext
                     .Entry(modify)
                     .Property(a => a.NumCopies);
                     
-                copyProp.OriginalValue = oldCopies;
+                numCopiesProp.OriginalValue = oldCopies;
             }
         }
     }

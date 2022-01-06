@@ -36,7 +36,7 @@ public class IndexModel : PageModel
         ILogger<IndexModel> logger)
     {
         _dbContext = dbContext;
-        _pageSize = pageSizes.GetSize<IndexModel>();
+        _pageSize = pageSizes.GetPageModelSize<IndexModel>();
 
         _signInManager = signInManager;
         _userManager = userManager;

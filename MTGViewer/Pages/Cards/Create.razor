@@ -1,11 +1,16 @@
-@using System.Linq.Expressions
+@page "/Cards/Create"
+@attribute [Authorize]
+@inherits OwningComponentBase
+
 @using Microsoft.Extensions.DependencyInjection
 @using MTGViewer.Data.Internal
-@namespace MTGViewer.Components
 
-@inherits OwningComponentBase
+@inject IDbContextFactory<CardDbContext> DbFactory
 @inject SymbolFormatter MtgSymbols
+@inject ILogger<Create> Logger
 
+
+<PageTitle> Add Cards </PageTitle>
 
 <h1>Add New Card(s)</h1>
 
@@ -18,7 +23,7 @@
     </ErrorMessage>
 </SavePrompt>
 
-@if (!_matches.Any())
+@if (!Matches.Any())
 {
     <hr />
     <EditForm EditContext="@_searchEdit" OnValidSubmit="@SearchForCardAsync">
@@ -86,54 +91,51 @@
             <div class="col-sm-4">
                 <p> Enter the card search parameters below </p>
 
-                <InputText @bind-Value="_search.Name" 
-                    placeholder="@_search.DisplayName(c => c.Name)" 
+                <InputText @bind-Value="Query.Name" 
+                    placeholder="@Query.DisplayName(c => c.Name)" 
                     class="form-control mb-3" />
 
-                <InputNumber @bind-Value="_search.Cmc" min="0"
-                    placeholder="@_search.DisplayName(c => c.Cmc)" 
+                <InputNumber @bind-Value="Query.Cmc" min="0"
+                    placeholder="@Query.DisplayName(c => c.Cmc)" 
                     class="form-control mb-3" />
 
                 <div class="mb-3">
                     @foreach (var (symbol, color) in Color.Symbols)
                     {
-                        var toggleId = $"{color}Toggle";
-                        var active = _pickedColors.Contains(color) ? "active" : string.Empty;
-
-                        <button title="@toggleId"
+                        <button title="toggle @color"
                             type="button"
-                            class="btn btn-outline-secondary border-0 rounded @active"
+                            class="btn btn-outline-secondary border-0 rounded @ActiveColor(color)"
                             @onclick="() => ColorToggle(color)">
                             <i class="ms ms-@symbol.ToLower() ms-cost"></i>
                         </button>
                     }
 
                     <div class="form-check mt-2 ml-2">
-                        <input class="form-check-input" id="@nameof(_multiColored)" 
+                        <input class="form-check-input" id="@nameof(CardSearch.IsMultiColored)" 
                             type="checkbox" 
-                            checked="@_multiColored"
+                            checked="@IsMultiColored"
                             @onchange="MultiColorSwitch" />
 
-                        <label class="form-check-label" for="@nameof(_multiColored)">
+                        <label class="form-check-label" for="@nameof(CardSearch.IsMultiColored)">
                             Multicolored Only
                         </label>
                     </div>
                 </div>
 
-                <InputText @bind-Value="_search.Supertypes"
-                    placeholder="@_search.DisplayName(c => c.Supertypes)"
+                <InputText @bind-Value="Query.Supertypes"
+                    placeholder="@Query.DisplayName(c => c.Supertypes)"
                     class="form-control mb-3" />
 
-                <InputText @bind-Value="_search.Types"
-                    placeholder="@_search.DisplayName(c => c.Types)"
+                <InputText @bind-Value="Query.Types"
+                    placeholder="@Query.DisplayName(c => c.Types)"
                     class="form-control mb-3" />
 
-                <InputText @bind-Value="_search.Subtypes"
-                    placeholder="@_search.DisplayName(c => c.Subtypes)"
+                <InputText @bind-Value="Query.Subtypes"
+                    placeholder="@Query.DisplayName(c => c.Subtypes)"
                     class="form-control mb-3" />
 
-                <InputText @bind-Value="_search.SetName" 
-                    placeholder="@_search.DisplayName(c => c.SetName)" 
+                <InputText @bind-Value="Query.SetName" 
+                    placeholder="@Query.DisplayName(c => c.SetName)" 
                     class="form-control mb-3" />
 
                 <div class="row mb-3">
@@ -141,13 +143,12 @@
                     {
                         var rarity = Rarity.Values[i];
                         var toggleId = $"{rarity}-toggle";
-                        var picked = _pickedRarities.Contains(rarity);
 
                         <div class="col-6">
                             <div class="form-check form-check-inline ml-2">
 
                                 <input class="form-check-input" id="@toggleId"
-                                    type="checkbox" checked="@picked" 
+                                    type="checkbox" checked="@RaritySelected(rarity)" 
                                     @onclick="() => RarityToggle(rarity)"
                                     value="@rarity" />
 
@@ -158,23 +159,23 @@
                 </div>
 
                 <div class="form-group">
-                    <InputText @bind-Value="_search.Artist" 
-                        placeholder="@_search.DisplayName(c => c.Artist)" 
+                    <InputText @bind-Value="Query.Artist" 
+                        placeholder="@Query.DisplayName(c => c.Artist)" 
                         class="form-control mb-3" />
                 </div>
 
                 <div class="form-group">
-                    <InputText @bind-Value="_search.Power" 
-                        placeholder="@_search.DisplayName(c => c.Power)" 
+                    <InputText @bind-Value="Query.Power" 
+                        placeholder="@Query.DisplayName(c => c.Power)" 
                         class="form-control mb-3" />
                 </div>
 
-                <InputText @bind-Value="_search.Toughness" 
-                    placeholder="@_search.DisplayName(c => c.Toughness)" 
+                <InputText @bind-Value="Query.Toughness" 
+                    placeholder="@Query.DisplayName(c => c.Toughness)" 
                     class="form-control mb-3" />
 
-                <InputText @bind-Value="_search.Loyalty" 
-                    placeholder="@_search.DisplayName(c => c.Loyalty)" 
+                <InputText @bind-Value="Query.Loyalty" 
+                    placeholder="@Query.DisplayName(c => c.Loyalty)" 
                     class="form-control mb-3" />
 
                 <div class="btn-group" role="group">
@@ -211,18 +212,17 @@ else
     <div class="row align-items-center my-3">
 
         <div class="col-12 col-md-4">
-            <input class="form-control" placeholder="Name" @bind="_matchName" />
+            <input class="form-control" placeholder="Name" @bind="_search.MatchName" />
         </div>
 
         <div class="col-auto btn-group pt-2 pt-md-0" role="group" aria-label="Color Buttons">
             @foreach (var (symbol, color) in Color.Symbols)
             {
-                var active = _pickedColors.Contains(color) ? "active" : "";
-
                 <button title="@color filter"
-                        type="button"
-                        class="btn btn-outline-secondary border-0 rounded @active"
-                        @onclick="() => ColorToggle(color)">
+                    type="button"
+                    class="btn btn-outline-secondary border-0 rounded @ActiveColor(color)"
+                    @onclick="() => ColorToggle(color)">
+
                     <i class="ms ms-@symbol.ToLower() ms-cost"></i>
                 </button>
             }
@@ -241,7 +241,7 @@ else
                 </tr>
             </thead>
             <tbody>
-                @foreach (var (match, amount) in _matches)
+                @foreach (var (match, amount) in Matches)
                 {
                     @if (MatchPassesFilters(match))
                     {
@@ -276,33 +276,55 @@ else
 
 
 @code {
+
+    private CardQuery Query => _search.Query;
+    private bool IsMultiColored => _search.IsMultiColored;
+
+    private IReadOnlyDictionary<Card, int> Matches => _matches;
+
     private bool CannotAdd => _matches.All(kv => kv.Value <= 0);
-    private bool HasNoNext => !_pages.HasNext;
+    private bool HasNoNext => !_matchPage.HasNext;
     private bool IsBusy => _isBusy;
 
     private string DisplayName<T>(Expression<Func<Card, T>> property) =>
         EntityExtensions.DisplayName(property);
 
+    private string ActiveColor(string color) =>
+        _search.PickedColors.Contains(color) ? "active" : string.Empty;
+
+    private bool RaritySelected(string rarity) =>
+        _search.PickedRarities.Contains(rarity);
+
+
     private readonly CancellationTokenSource _cancel = new();
     private bool _isBusy;
     private SaveResult _result;
 
-    private bool _multiColored;
-    private readonly HashSet<string> _pickedColors = new(StringComparer.OrdinalIgnoreCase);
-    private readonly HashSet<string> _pickedRarities = new(StringComparer.OrdinalIgnoreCase);
-
-    private readonly CardQuery _search = new();
+    private readonly CardSearch _search = new();
     private EditContext? _searchEdit;
     private ValidationMessageStore? _resultErrors;
 
     private readonly Dictionary<Card, int> _matches = new();
-    private string? _matchName;
-    private Pages _pages;
+    private Pages _matchPage;
+
+
+    private class CardSearch
+    {
+        public CardQuery Query { get; } = new();
+
+        public HashSet<string> PickedRarities { get; } = new(StringComparer.OrdinalIgnoreCase);
+
+        public HashSet<string> PickedColors { get; } = new(StringComparer.OrdinalIgnoreCase);
+
+        public bool IsMultiColored { get; set; }
+
+        public string? MatchName { get; set; }
+    }
 
 
     protected override void OnInitialized()
     {
-        _searchEdit = new(_search);
+        _searchEdit = new(_search.Query);
         _resultErrors = new(_searchEdit);
 
         Reset();
@@ -386,7 +408,7 @@ else
             return;
         }
 
-        _multiColored = value;
+        _search.IsMultiColored = value;
 
         var colorField = _searchEdit.Field(nameof(CardQuery.Colors));
 
@@ -401,13 +423,15 @@ else
             return;
         }
 
-        if (_pickedColors.Contains(color))
+        var pickedColors = _search.PickedColors;
+
+        if (pickedColors.Contains(color))
         {
-            _pickedColors.Remove(color);
+            pickedColors.Remove(color);
         }
         else
         {
-            _pickedColors.Add(color);
+            pickedColors.Add(color);
         }
 
         var colorField = _searchEdit.Field(nameof(CardQuery.Colors));
@@ -423,13 +447,15 @@ else
             return;
         }
 
-        if (_pickedRarities.Contains(rarity))
+        var pickedRarities = _search.PickedRarities;
+
+        if (pickedRarities.Contains(rarity))
         {
-            _pickedRarities.Remove(rarity);
+            pickedRarities.Remove(rarity);
         }
         else
         {
-            _pickedRarities.Add(rarity);
+            pickedRarities.Add(rarity);
         }
 
         var rarityField = _searchEdit.Field(nameof(CardQuery.Rarity));
@@ -445,27 +471,25 @@ else
             return;
         }
 
-        if (_pages != default && !_pages.HasNext)
+        if (_matchPage != default && !_matchPage.HasNext)
         {
             return;
         }
 
-        _isBusy = true;
         _result = SaveResult.None;
-
-        var cancelToken = _cancel.Token;
-
-        var logger = ScopedServices.GetRequiredService<ILogger<Create>>();
-        var fetch = ScopedServices.GetRequiredService<MTGFetchService>();
+        _isBusy = true;
 
         try
         {
-            PrepareSearch();
+            PrepareSearch(_search, _matchPage);
 
-            var result = await fetch.Where(_search).SearchAsync();
+            var fetch = ScopedServices.GetRequiredService<MTGFetchService>();
 
-            cancelToken.ThrowIfCancellationRequested();
-            _pages = result.Pages;
+            var result = await fetch.Where(_search.Query).SearchAsync();
+
+            _cancel.Token.ThrowIfCancellationRequested();
+            
+            _matchPage = result.Pages;
 
             foreach (var match in result)
             {
@@ -479,7 +503,7 @@ else
         }
         catch (OperationCanceledException ex)
         {
-            logger.LogError(ex.ToString());
+            Logger.LogError(ex.ToString());
         }
         finally
         {
@@ -488,15 +512,15 @@ else
     }
 
 
-    private void PrepareSearch()
+    private static void PrepareSearch(CardSearch search, Data.Pages matchPage)
     {
-        var colorJoin = _multiColored ? MTGFetchService.And : MTGFetchService.Or;
+        var query = search.Query;
+        var colorJoin = search.IsMultiColored ? MTGFetchService.And : MTGFetchService.Or;
 
-        _search.Colors = string.Join(colorJoin, _pickedColors);
+        query.Colors = string.Join(colorJoin, search.PickedColors);
+        query.Rarity = string.Join(MTGFetchService.Or, search.PickedRarities);
 
-        _search.Rarity = string.Join(MTGFetchService.Or, _pickedRarities);
-
-        _search.Page = _pages == default ? 0 : _pages.Current + 1;
+        query.Page = matchPage == default ? 0 : matchPage.Current + 1;
     }
 
 
@@ -513,14 +537,16 @@ else
     private bool MatchPassesFilters(Card match)
     {
         const StringComparison ignoreCase = StringComparison.CurrentCultureIgnoreCase;
+        string? matchName = _search.MatchName;
 
+        var pickedColors = _search.PickedColors;
         var matchColors = match.Colors.Select(c => c.Name);
 
-        bool nameMatches = string.IsNullOrWhiteSpace(_matchName) 
-            || match.Name.Contains(_matchName, ignoreCase);
+        bool nameMatches = string.IsNullOrWhiteSpace(matchName) 
+            || match.Name.Contains(matchName, ignoreCase);
 
-        bool colorMatches = _pickedColors.Count == 0 
-            || _pickedColors.Overlaps(matchColors);
+        bool colorMatches = !pickedColors.Any() 
+            || pickedColors.Overlaps(matchColors);
 
         return nameMatches && colorMatches;
     }
@@ -538,25 +564,28 @@ else
             return;
         }
 
-        _pickedColors.Clear();
-
         _matches.Clear();
-        _pages = default;
+        _matchPage = default;
 
-        _search.Name = default;
-        _search.Cmc = default;
-        _search.Colors = default;
-        _search.Rarity = default;
-        _search.SetName = default;
+        var query = _search.Query;
 
-        _search.Supertypes = default;
-        _search.Types = default;
-        _search.Subtypes = default;
+        _search.PickedColors.Clear();
+        _search.PickedRarities.Clear();
 
-        _search.Artist = default;
-        _search.Power = default;
-        _search.Toughness = default;
-        _search.Loyalty = default;
+        query.Name = default;
+        query.Cmc = default;
+        query.Colors = default;
+        query.Rarity = default;
+        query.SetName = default;
+
+        query.Supertypes = default;
+        query.Types = default;
+        query.Subtypes = default;
+
+        query.Artist = default;
+        query.Power = default;
+        query.Toughness = default;
+        query.Loyalty = default;
 
         // force data validation, might be inefficient
         _searchEdit.Validate();
@@ -580,48 +609,44 @@ else
             return;
         }
 
-        _isBusy = true;
         _result = SaveResult.None;
-
-        var cancelToken = _cancel.Token;
-
-        var dbFactory = ScopedServices.GetRequiredService<IDbContextFactory<CardDbContext>>();
-        var logger = ScopedServices.GetRequiredService<ILogger<Create>>();
+        _isBusy = true;
 
         try
         {
-            await using var dbContext = await dbFactory.CreateDbContextAsync(cancelToken);
+            await using var dbContext = await DbFactory.CreateDbContextAsync(_cancel.Token);
 
-            await AddNewCardsAsync(dbContext, addedAmounts, cancelToken);
+            await AddNewCardsAsync(dbContext, addedAmounts, _cancel.Token);
 
-            await AddAmountsAsync(dbContext, addedAmounts, cancelToken);
+            await AddAmountsAsync(dbContext, addedAmounts, _cancel.Token);
 
-            await dbContext.SaveChangesAsync(cancelToken);
+            await dbContext.SaveChangesAsync(_cancel.Token);
 
             // nav.NavigateTo("/Cards", true);
             _result = SaveResult.Success;
         }
         catch (DbUpdateException e)
         {
-            logger.LogError($"failed to add new cards {e}");
+            Logger.LogError($"failed to add new cards {e}");
 
             _result = SaveResult.Error;
         }
         catch (InvalidOperationException e)
         {
-            logger.LogError($"failed to add new cards {e}");
+            Logger.LogError($"failed to add new cards {e}");
 
             _result = SaveResult.Error;
         }
         catch (OperationCanceledException e)
         {
-            logger.LogError($"cancel error: {e}");
+            Logger.LogError($"cancel error: {e}");
 
             _result = SaveResult.Error;
         }
         finally
         {
             _isBusy = false;
+
             Reset();
         }
     }

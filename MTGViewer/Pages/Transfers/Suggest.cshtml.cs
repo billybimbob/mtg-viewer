@@ -29,7 +29,7 @@ public class SuggestModel : PageModel
         CardDbContext dbContext, 
         UserManager<CardUser> userManager)
     {
-        _pageSize = pageSizes.GetSize<SuggestModel>();
+        _pageSize = pageSizes.GetPageModelSize<SuggestModel>();
         _dbContext = dbContext;
         _userManager = userManager;
     }

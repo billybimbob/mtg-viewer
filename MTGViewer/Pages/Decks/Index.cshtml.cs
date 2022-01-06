@@ -55,7 +55,7 @@ public class IndexModel : PageModel
     {
         _userManager = userManager;
         _dbContext = dbContext;
-        _pageSize = pageSizes.GetSize<IndexModel>();
+        _pageSize = pageSizes.GetPageModelSize<IndexModel>();
     }
 
 

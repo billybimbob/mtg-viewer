@@ -1,10 +1,9 @@
-@namespace MTGViewer.Components
 @inject PageSizes PageSizes
 
 @if (Pages.HasMultiple)
 {
-    var start = Pages.Current / PageSizes.Default * PageSizes.Default;
-    var end = Math.Min(Pages.Total, start + PageSizes.Default + 1);
+    var start = Pages.Current / PageSize * PageSize;
+    var end = Math.Min(Pages.Total, start + PageSize + 1);
 
     if (start > 0)
     {
@@ -79,8 +78,36 @@
     [Parameter]
     public EventCallback<int> PageSelected { get; set; }
 
-    private Task ChangePageAsync(int page)
+    [Parameter]
+    public int PageSizeParam { get; set; }
+
+    public int PageSize { get; set; }
+
+    private bool _isBusy;
+
+
+    protected override void OnParametersSet()
     {
-        return PageSelected.InvokeAsync(page);
+        PageSize = PageSizeParam > 0 ? PageSizeParam : PageSizes.Default;
+    }
+
+
+    private async Task ChangePageAsync(int page)
+    {
+        if (_isBusy)
+        {
+            return;
+        }
+
+        _isBusy = true;
+
+        try
+        {
+            await PageSelected.InvokeAsync(page);
+        }
+        finally
+        {
+            _isBusy = false;
+        }
     }
 }

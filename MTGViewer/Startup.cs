@@ -4,7 +4,6 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
@@ -96,6 +95,7 @@ public class Startup
         {
             endpoints.MapRazorPages();
             endpoints.MapBlazorHub();
+            endpoints.MapFallbackToPage("/_Host");
         });
     }
 }

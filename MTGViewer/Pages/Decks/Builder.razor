@@ -1,9 +1,13 @@
-@using System.Linq.Expressions
+@page "/Decks/Builder/{DeckId:int?}"
+@attribute [Authorize]
+@inherits OwningComponentBase
+
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.Extensions.DependencyInjection
+
+@using MTGViewer.Areas.Identity.Data
 @using MTGViewer.Data.Concurrency
 @using MTGViewer.Data.Internal
-
-@namespace MTGViewer.Components
-@implements IAsyncDisposable
 
 @inject FixedCache Cache
 @inject IDbContextFactory<CardDbContext> DbFactory
@@ -12,17 +16,19 @@
 
 @inject PageSizes PageSizes
 @inject NavigationManager Nav
-@inject ILogger<DeckBuilder> Logger
+@inject ILogger<Builder> Logger
 
 
-@if (_deckEdit is not null)
+<PageTitle> @Title </PageTitle>
+
+@if (_deckContext is not null)
 {
-    <EditForm EditContext="@_deckEdit">
+    <EditForm EditContext="@_deckContext.EditContext">
         <div class="row">
             <div class="col col-md-6">
             <InputText 
                 class="form-control form-control-lg mb-3"
-                @bind-Value="_deck!.Name" 
+                @bind-Value="_deckContext.Deck.Name" 
                 DisplayName="Deck Name"/>
 
                 <DataAnnotationsValidator />
@@ -53,10 +59,8 @@ else
     <div class="col-auto btn-group pt-2 pt-md-0" role="group" aria-label="Color Buttons">
         @foreach (var (symbol, color) in Color.Symbols)
         {
-            var active = _colorFilter.Contains(color) ? "active" : "";
-
             <button title="@color filter" type="button"
-                class="btn btn-outline-secondary border-0 rounded @active"
+                class="btn btn-outline-secondary border-0 rounded @ActiveColor(color)"
                 @onclick="() => FilterColor(color)">
 
                 <i class="ms ms-@symbol.ToLower() ms-cost"></i>
@@ -149,14 +153,11 @@ else
 
 @code {
 
-    [Parameter]
-    public string UserId { get; set; } = string.Empty;
+    [CascadingParameter]
+    public Task<AuthenticationState> AuthState { get; set; } = null!;
 
     [Parameter]
     public int DeckId { get; set; } = default;
-
-    [Parameter]
-    public int PageSize { get; set; }
 
 
     private bool _isBusy;
@@ -166,63 +167,66 @@ else
     private CardDbContext? _dbContext;
 
     private IReadOnlyList<Card> _cards = Array.Empty<Card>();
-    private IReadOnlyDictionary<string, int>? _boxAmounts;
+    private readonly Dictionary<string, int> _boxAmounts = new();
 
+    private DeckContext? _deckContext;
+
+    private readonly TreasuryFilterContext _treasuryFilters = new();
     private PagedList<Card> _filteredCards = PagedList<Card>.Empty;
-    private readonly HashSet<string> _colorFilter = new(StringComparer.CurrentCultureIgnoreCase);
-    private string? _searchName;
-
-    private Deck? _deck;
-    private int _deckPage;
-    private EditContext? _deckEdit;
-    private Dictionary<string, QuantityGroup>? _deckCards;
 
 
+    private string DeckName =>
+        _deckContext?.Deck.Name is string name
+            && !string.IsNullOrWhiteSpace(name) 
+            ? name
+            : "New Deck";
+
+    private string Title => $"{DeckName} - Builder";
+
+
+    private string ActiveColor(string color) =>
+        _treasuryFilters.PickedColors.Contains(color) ? "active" : string.Empty;
 
     private bool HasNoChanges =>
         !_dbContext?.ChangeTracker.HasChanges() ?? true;
 
 
-    private IEnumerable<(string cardId, QuantityGroup group)> ActiveDeck =>
-        _deckCards
-            ?.Where(kv => kv.Value.Total > 0)
-            .Select(kv => (kv.Key, kv.Value))
-            ?? Enumerable.Empty<(string, QuantityGroup)>();
-
-
     private IEnumerable<(Card, int amount)> Treasury =>
         _filteredCards
-            .Select(c => (c, _boxAmounts?.GetValueOrDefault(c.Id) ?? 0));
-
+            .Select(c => (c, _boxAmounts.GetValueOrDefault(c.Id)));
 
     private Data.Pages TreasuryPages => _filteredCards.Pages;
 
 
+    private IEnumerable<(string cardId, QuantityGroup group)> ActiveDeck =>
+        _deckContext
+            ?.Groups
+            ?.Where(kv => kv.Value.Total > 0)
+            .Select(kv => (kv.Key, kv.Value))
+            ?? Enumerable.Empty<(string, QuantityGroup)>();
+
+    private IEnumerable<(Card, QuantityGroup)> DeckCards
+    {
+        get
+        {
+            int pageIndex = _deckContext?.PageIndex ?? 0;
+            int pageSize = _deckContext?.PageSize ?? _treasuryFilters.PageSize;
+
+            return _cards
+                .Join( ActiveDeck,
+                    c => c.Id,
+                    cg => cg.cardId,
+                    (card, cg) => (card, cg.group))
+                .Skip(pageIndex * pageSize)
+                .Take(pageSize);
+        }
+    }
+
     private Data.Pages DeckPages =>
-        new Data.Pages(_deckPage, ActiveDeck.Count(), PageSize);
-
-
-    private IEnumerable<(Card, QuantityGroup)> DeckCards =>
-        _cards
-            .Join( ActiveDeck,
-                c => c.Id,
-                cg => cg.cardId,
-                (card, cg) => (card, cg.group))
-            .Skip(_deckPage * PageSize)
-            .Take(PageSize);
-
-
-    private string DeckName =>
-        string.IsNullOrWhiteSpace(_deck?.Name) ? "--" : _deck.Name;
-
-
-    private IQueryable<Deck> DeckForBuilder(CardDbContext dbContext) =>
-        dbContext.Decks
-            .Where(d => d.Id == DeckId)
-            .Include(d => d.Cards) // unbounded: keep eye on
-            .Include(d => d.Wants) // unbounded: keep eye on
-            .Include(d => d.GiveBacks) // unbounded: keep eye on
-            .AsSplitQuery();
+        new Data.Pages(
+            _deckContext?.PageIndex ?? 0, 
+            ActiveDeck.Count(), 
+            _deckContext?.PageSize ?? _treasuryFilters.PageSize);
 
 
 
@@ -237,15 +241,24 @@ else
 
         try
         {
+            _treasuryFilters.PageSize = PageSizes.GetComponentSize<Builder>();
+
             _dbContext = await DbFactory.CreateDbContextAsync(_cancel.Token);
 
             _cards = await Cache
-                .GetOrCreateAsync(nameof(_cards), () => 
+                .GetOrCreateAsync(nameof(_cards), () =>
                     GetCardsAsync(_dbContext, _cancel.Token));
 
-            _boxAmounts = await Cache
+            var boxAmounts = await Cache
                 .GetOrCreateAsync(nameof(_boxAmounts), () =>
                     GetBoxAmountsAsync(_dbContext, _cancel.Token));
+
+            foreach ((string cardId, int amount) in boxAmounts)
+            {
+                _boxAmounts[cardId] = amount;
+            }
+
+            ApplyFilters();
         }
         catch (OperationCanceledException ex)
         {
@@ -255,29 +268,30 @@ else
         {
             _isBusy = false;
         }
+    }
 
-        Task<List<Card>> GetCardsAsync(
-            CardDbContext dbContext, CancellationToken cancel)
-        {
-            return dbContext.Cards
-                .Include(c => c.Colors)
-                .OrderBy(c => c.Name)
-                    .ThenBy(c => c.SetName)
-                .ToListAsync(cancel); // unbounded, keep eye on
-        }
 
-        Task<Dictionary<string, int>> GetBoxAmountsAsync(
-            CardDbContext dbContext, CancellationToken cancel)
-        {
-            return dbContext.Amounts
-                .Where(ca => ca.Location is Box)
-                .GroupBy(ca => ca.CardId,
-                    (CardId, cas) => 
-                        new { CardId, Total = cas.Sum(ca => ca.NumCopies) })
+    private Task<List<Card>> GetCardsAsync(
+        CardDbContext dbContext, CancellationToken cancel)
+    {
+        return dbContext.Cards
+            .Include(c => c.Colors)
+            .OrderBy(c => c.Name)
+                .ThenBy(c => c.SetName)
+            .ToListAsync(cancel); // unbounded, keep eye on
+    }
 
-                .ToDictionaryAsync(
-                    ct => ct.CardId, ct => ct.Total, cancel);
-        }
+
+    private Task<Dictionary<string, int>> GetBoxAmountsAsync(
+        CardDbContext dbContext, CancellationToken cancel)
+    {
+        return dbContext.Amounts
+            .Where(ca => ca.Location is Box)
+            .GroupBy(ca => ca.CardId,
+                (CardId, cas) => 
+                    new { CardId, Total = cas.Sum(ca => ca.NumCopies) })
+            .ToDictionaryAsync(
+                ct => ct.CardId, ct => ct.Total, cancel);
     }
 
 
@@ -292,14 +306,23 @@ else
 
         try
         {
-            _deck = await GetOrCreateDeckAsync(_dbContext, _cancel.Token);
+            var userId = await GetUserIdAsync();
 
-            _deckEdit = new(_deck);
+            if (userId is null)
+            {
+                return;
+            }
 
-            _deckCards = GetDeckCardGroups(_deck)
-                .ToDictionary(cg => cg.CardId);
+            var deckResult = DeckId == default
+                ? await CreateDeckAsync(_dbContext, userId, _cancel.Token)
+                : await FetchDeckOrRedirectAsync(_dbContext, userId, _cancel.Token);
 
-            ApplyFilters();
+            if (deckResult is null)
+            {
+                return;
+            }
+
+            _deckContext = new(deckResult, _treasuryFilters.PageSize);
         }
 
         catch (DbUpdateException ex)
@@ -317,30 +340,72 @@ else
     }
 
 
-    private async Task<Deck> GetOrCreateDeckAsync(
-        CardDbContext dbContext, CancellationToken cancel)
+    private async Task<string?> GetUserIdAsync()
     {
-        if (DeckId != default)
+        if (AuthState is null)
         {
-            return await Cache
-                .GetOrCreateAsync($"deck{DeckId}", GetDeckAsync);
+            return null;
         }
 
-        if (UserId == null)
+        var userManager = ScopedServices.GetRequiredService<UserManager<CardUser>>();
+        var authState = await AuthState;
+
+        return userManager.GetUserId(authState.User);
+    }
+
+
+    private async Task<Deck?> FetchDeckOrRedirectAsync(
+        CardDbContext dbContext, string userId, CancellationToken cancel)
+    {
+        var deck = await Cache
+            .GetOrCreateAsync($"deck{DeckId}", GetDeckAsync);
+
+        if (deck is null)
         {
-            throw new ArgumentException(nameof(UserId));
+            Nav.NavigateTo("/Decks", true);
+
+            return null;
         }
 
+        if (deck.TradesTo.Any())
+        {
+            Nav.NavigateTo("/Decks/Viewer", true);
+
+            return null;
+        }
+
+        return deck;
+
+        Task<Deck?> GetDeckAsync() =>
+            dbContext.Decks
+                .Where(d => d.Id == DeckId && d.OwnerId == userId)
+
+                .Include(d => d.Cards) // unbounded: keep eye on
+                .Include(d => d.Wants) // unbounded: keep eye on
+                .Include(d => d.GiveBacks) // unbounded: keep eye on
+
+                .Include(d => d.TradesTo
+                    .OrderBy(t => t.Id)
+                    .Take(1))
+
+                .AsSplitQuery()
+                .SingleOrDefaultAsync(cancel);
+    }
+
+
+    private async Task<Deck> CreateDeckAsync(
+        CardDbContext dbContext, string userId, CancellationToken cancel)
+    {
         var user = await Cache
-            .GetOrCreateAsync($"user{UserId}", GetUserAsync);
+            .GetOrCreateAsync($"user{userId}", GetUserAsync);
 
         if (user == null)
         {
-            throw new ArgumentException(nameof(UserId));
+            throw new ArgumentException(nameof(userId));
         }
 
         var userDeckCount = await Cache
-            .GetOrCreateAsync($"count{UserId}", GetDeckCountAsync);
+            .GetOrCreateAsync($"count{userId}", GetDeckCountAsync);
 
         var newLoc = new Deck
         {
@@ -352,61 +417,101 @@ else
 
         return newLoc;
 
-        Task<Deck> GetDeckAsync() =>
-            DeckForBuilder(dbContext)
-                .SingleAsync(cancel);
-
         Task<UserRef?> GetUserAsync() =>
             dbContext.Users
-                .FindAsync(new []{ UserId }, cancel)
+                .FindAsync(new []{ userId }, cancel)
                 .AsTask();
 
         Task<int> GetDeckCountAsync() =>
             dbContext.Decks
-                .Where(d => d.OwnerId == UserId)
+                .Where(d => d.OwnerId == userId)
                 .CountAsync(cancel);
     }
 
 
-    private IEnumerable<QuantityGroup> GetDeckCardGroups(Deck deck)
+    protected override void Dispose(bool disposing)
     {
-        var amountsById = deck.Cards.ToDictionary(ca => ca.CardId);
-        var takesById = deck.Wants.ToDictionary(w => w.CardId);
-        var givesById = deck.GiveBacks.ToDictionary(g => g.CardId);
+        if (!disposing)
+        {
+            return;
+        }
 
-        var cardIds = amountsById.Keys
-            .Union(takesById.Keys)
-            .Union(givesById.Keys);
-
-        return cardIds.Select(cid =>
-            new QuantityGroup(
-                amountsById.GetValueOrDefault(cid),
-                takesById.GetValueOrDefault(cid),
-                givesById.GetValueOrDefault(cid) ));
-    }
-
-
-    public async ValueTask DisposeAsync()
-    {
         _cancel.Cancel();
         _cancel.Dispose();
 
-        if (_dbContext is not null)
+        _dbContext?.Dispose();
+    }
+
+
+    private class DeckContext
+    {
+        public Deck Deck { get; }
+
+        public EditContext EditContext { get; }
+
+        public Dictionary<string, QuantityGroup> Groups { get; }
+
+        public int PageSize { get; }
+
+        public int PageIndex { get; set; }
+
+        public DeckContext(Deck deck, int pageSize)
         {
-            await _dbContext.DisposeAsync();
+            if (deck is null)
+            {
+                throw new ArgumentNullException(nameof(deck));
+            }
+
+            Deck = deck;
+
+            EditContext = new(deck);
+
+            Groups = GetDeckCardGroups(deck)
+                .ToDictionary(cg => cg.CardId);
+
+            PageSize = pageSize;
         }
+
+        private IEnumerable<QuantityGroup> GetDeckCardGroups(Deck deck)
+        {
+            var amountsById = deck.Cards.ToDictionary(ca => ca.CardId);
+            var takesById = deck.Wants.ToDictionary(w => w.CardId);
+            var givesById = deck.GiveBacks.ToDictionary(g => g.CardId);
+
+            var cardIds = amountsById.Keys
+                .Union(takesById.Keys)
+                .Union(givesById.Keys);
+
+            return cardIds.Select(cid =>
+                new QuantityGroup(
+                    amountsById.GetValueOrDefault(cid),
+                    takesById.GetValueOrDefault(cid),
+                    givesById.GetValueOrDefault(cid) ));
+        }
+    }
+
+
+    private class TreasuryFilterContext
+    {
+        public readonly HashSet<string> PickedColors = new(StringComparer.CurrentCultureIgnoreCase);
+
+        public int PageSize { get; set; }
+
+        public string? SearchName { get; set; }
     }
 
 
     private void FilterColor(string color)
     {
-        if (_colorFilter.Contains(color))
+        var pickedColors = _treasuryFilters.PickedColors;
+
+        if (pickedColors.Contains(color))
         {
-            _colorFilter.Remove(color);
+            pickedColors.Remove(color);
         }
         else
         {
-            _colorFilter.Add(color);
+            pickedColors.Add(color);
         }
 
         ApplyFilters();
@@ -415,7 +520,14 @@ else
 
     private void SearchName(ChangeEventArgs eventArgs)
     {
-        _searchName = eventArgs.Value?.ToString();
+        string? newSearch = eventArgs.Value?.ToString();
+
+        if (newSearch == _treasuryFilters.SearchName)
+        {
+            return;
+        }
+
+        _treasuryFilters.SearchName = newSearch;
         
         ApplyFilters();
     }
@@ -427,45 +539,52 @@ else
 
         var filter = _cards.AsEnumerable();
 
-        if (!string.IsNullOrWhiteSpace(_searchName))
+        var searchName = _treasuryFilters.SearchName;
+        var pickedColors = _treasuryFilters.PickedColors;
+
+        int pageSize = _treasuryFilters.PageSize;
+
+        if (!string.IsNullOrWhiteSpace(searchName))
         {
             filter = filter.Where(c => 
-                c.Name.Contains(_searchName, ignoreCase));
+                c.Name.Contains(searchName, ignoreCase));
         }
 
-        if (_colorFilter.Any())
+        if (pickedColors.Any())
         {
             filter = filter.Where(c => 
-                c.Colors.Any(cl => _colorFilter.Contains(cl.Name) ));
+                c.Colors.Any(cl => pickedColors.Contains(cl.Name) ));
         }
 
-        _filteredCards = filter.ToPagedList(PageSize, pageIndex);
+        _filteredCards = filter.ToPagedList(pageSize, pageIndex);
     }
 
 
     private void ChangeDeckPage(int pageIndex = 0)
     {
-        if (_deckPage == pageIndex 
+        if (_deckContext is null 
+            || _deckContext.PageIndex == pageIndex
             || pageIndex < 0
             || pageIndex >= DeckPages.Total)
         {
             return;
         }
 
-        _deckPage = pageIndex;
+        _deckContext.PageIndex = pageIndex;
     }
 
 
     private void AddCardToDeck(Card card)
     {
-        if (_dbContext == null || _deck == null || _deckCards == null)
+        if (_dbContext == null || _deckContext == null)
         {
             return;
         }
 
         _result = SaveResult.None;
 
-        var deckGroup = _deckCards.GetValueOrDefault(card.Id);
+        var groups = _deckContext.Groups;
+        var deckGroup = groups.GetValueOrDefault(card.Id);
 
         if (deckGroup?.GiveBack?.NumCopies > 0)
         {
@@ -473,7 +592,7 @@ else
             return;
         }
 
-        if (deckGroup is null && _deckCards.Count >= PageSizes.Limit)
+        if (deckGroup is null && groups.Count >= PageSizes.Limit)
         {
             Logger.LogWarning("deck want failed since at limit");
             return;
@@ -484,7 +603,7 @@ else
             var wantAmount = new Want
             {
                 Card = card,
-                Location = _deck,
+                Location = _deckContext.Deck,
                 NumCopies = 0,
             };
 
@@ -493,7 +612,7 @@ else
             if (deckGroup is null)
             {
                 deckGroup = new QuantityGroup(wantAmount);
-                _deckCards.Add(card.Id, deckGroup);
+                groups.Add(card.Id, deckGroup);
             }
             else
             {
@@ -507,14 +626,14 @@ else
 
     private void RemoveCardFromDeck(Card card)
     {
-        if (_dbContext == null || _deck == null || _deckCards == null)
+        if (_dbContext == null || _deckContext == null)
         {
             return;
         }
 
         _result = SaveResult.None;
 
-        if (!_deckCards.TryGetValue(card.Id, out var deckGroup))
+        if (!_deckContext.Groups.TryGetValue(card.Id, out var deckGroup))
         {
             Logger.LogError($"card {card.Id} is not in the deck");
             return;
@@ -540,7 +659,7 @@ else
             var returnAmount = new GiveBack
             {
                 Card = deckGroup.Card,
-                Location = _deck,
+                Location = _deckContext.Deck,
                 NumCopies = 0
             };
 
@@ -557,28 +676,31 @@ else
     {
         if (_isBusy
             || _dbContext is null 
-            || _deck is null 
-            || _deckCards is null)
+            || _deckContext is null)
         {
             return;
         }
 
-        if (_deckEdit is null || !_deckEdit.Validate())
+        if (!_deckContext.EditContext.Validate())
         {
             return;
         }
+
+        var deck = _deckContext.Deck;
+        var groups = _deckContext.Groups;
 
         _isBusy = true;
 
         try
         {
-            PrepareChanges(_dbContext, _deck);
+            PrepareChanges(_dbContext, deck);
 
             await _dbContext.SaveChangesAsync(_cancel.Token);
 
-            if (_deck.GiveBacks.Any() || _deck.Wants.Any())
+            if (deck.GiveBacks.Any() || deck.Wants.Any())
             {
-                Nav.NavigateTo($"/Decks/Exchange/{_deck.Id}", true);
+                Nav.NavigateTo($"/Decks/Exchange/{deck.Id}", true);
+                return;
             }
             else
             {
@@ -589,7 +711,7 @@ else
         {
             _result = SaveResult.Error;
 
-            await UpdateDeckAsync(_dbContext, _deck, _deckCards, ex, _cancel.Token);
+            await UpdateDeckAsync(_dbContext, deck, groups, ex, _cancel.Token);
         }
         catch (DbUpdateException ex)
         {
@@ -666,7 +788,13 @@ else
 
         try
         {
-            dbDeck = await DeckForBuilder(dbContext)
+            dbDeck = await dbContext.Decks
+                .Where(d => d.Id == DeckId)
+                .Include(d => d.Cards) // unbounded: keep eye on
+                .Include(d => d.Wants) // unbounded: keep eye on
+                .Include(d => d.GiveBacks) // unbounded: keep eye on
+
+                .AsSplitQuery()
                 .AsNoTracking()
                 .SingleOrDefaultAsync(cancel);
         }

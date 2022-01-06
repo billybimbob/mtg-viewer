@@ -19,7 +19,7 @@ public class FixedCache
         { 
             Size = 1,
             // TODO: add config expire
-            AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(10)
+            AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(5)
         };
     }
 

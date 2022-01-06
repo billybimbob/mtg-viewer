@@ -1,9 +1,0 @@
-@page
-@model Cards.IndexModel
-@{
-    ViewData["Title"] = "Card Collection";
-}
-
-<component type="typeof(Library)" render-mode="ServerPrerendered" 
-    param-IsSignedIn="Model.IsSignedIn"
-    param-PageSize="Model.PageSize" />

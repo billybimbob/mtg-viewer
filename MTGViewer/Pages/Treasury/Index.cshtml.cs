@@ -25,7 +25,7 @@ public class IndexModel : PageModel
         SignInManager<CardUser> signInManager, 
         ITreasuryQuery treasury)
     {
-        _pageSize = pageSizes.GetSize<IndexModel>();
+        _pageSize = pageSizes.GetPageModelSize<IndexModel>();
         _signInManager = signInManager;
         _treasury = treasury;
     }
