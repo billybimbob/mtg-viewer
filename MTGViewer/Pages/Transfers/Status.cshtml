@@ -55,7 +55,11 @@
                         @trade.From.Name </a>
                     </td>
 
-                    <td> @MtgSymbols.Format(trade.From.Colors).ToHtmlString() </td>
+                    <td> 
+                        <div class="ms-group">
+                            @MtgSymbols.Format(trade.From.Colors).ToHtmlString() 
+                        </div>
+                    </td>
                     <td> @trade.Amount </td>
                 </tr>
             }
@@ -86,7 +90,11 @@
                             @group.Name </a>
                     </td>
 
-                    <td> @MtgSymbols.Format(card.ManaCost).ToHtmlString() </td>
+                    <td> 
+                        <div class="ms-group">
+                            @MtgSymbols.Format(card.ManaCost).ToHtmlString() 
+                        </div>
+                    </td>
                     <td> @group.InDeck </td>
                     <td> @group.Requests </td>
                 </tr>

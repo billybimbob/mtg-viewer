@@ -204,6 +204,7 @@ public class IndexModel : PageModel
         var unclaimed = await _dbContext.Unclaimed
             .Include(u => u.Cards)
             .Include(u => u.Wants)
+            .AsSplitQuery()
             .SingleOrDefaultAsync(u => u.Id == id, cancel);
 
         if (unclaimed == default)

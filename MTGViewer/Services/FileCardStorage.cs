@@ -257,7 +257,7 @@ public class FileCardStorage
         var bins = data.Bins;
         var unclaimed = DecksAndUnclaimed(data);
 
-        var transaction = MergeTranscation(bins, unclaimed);
+        var transaction = MergeTransaction(bins, unclaimed);
 
         // TODO: merge to existing bins, boxes, and decks
         // merging may have issue with card amount/want conflicts
@@ -285,22 +285,25 @@ public class FileCardStorage
             .Where(cid => dataCardIds.Contains(cid))
             .ToListAsync(cancel);
 
-        var multiIds = data.Cards
+        // existing cards will be left unmodified, so they don't 
+        // need to be validated
+
+        var newMultiIds = data.Cards
             .ExceptBy(dbCardIds, c => c.Id)
             .Where(c => c.MultiverseId is not null)
             .Select(c => c.MultiverseId);
 
-        var validated = await ValidatedCardsAsync(multiIds, cancel);
-
+        var newValidated = await ValidatedCardsAsync(newMultiIds, cancel);
         var newCards = new List<Card>();
 
         var validatePairs = data.Cards
-            .Join(validated,
+            .Join(newValidated,
                 c => c.Id, v => v.Id,
                 (card, valid) => (card, valid));
 
         foreach(var (card, valid) in validatePairs)
         {
+            // update original card ref since CardData uses that ref
             dbContext.Entry(card).CurrentValues.SetValues(valid);
             newCards.Add(card);
         }
@@ -353,7 +356,7 @@ public class FileCardStorage
     }
 
 
-    private static Transaction MergeTranscation(
+    private static Transaction MergeTransaction(
         IReadOnlyList<Bin> bins, 
         IReadOnlyList<Unclaimed> unclaimed)
     {
@@ -432,11 +435,11 @@ public class FileCardStorage
         CsvReader csv, 
         CancellationToken cancel)
     {
-        var cardMultis = await CsvAdditionsAsync(csv, cancel);
+        var csvAdditions = await CsvAdditionsAsync(csv, cancel);
 
-        var allCards = await MergeCardsAsync(dbContext, cardMultis.Keys, cancel);
+        var allCards = await MergeCardsAsync(dbContext, csvAdditions.Keys, cancel);
 
-        await AddAmountsAsync(dbContext, allCards, cardMultis, cancel);
+        await AddAmountsAsync(dbContext, allCards, csvAdditions, cancel);
     }
 
 
@@ -444,7 +447,8 @@ public class FileCardStorage
         CsvReader csv, 
         CancellationToken cancel)
     {
-        return csv.GetRecordsAsync<CsvCard>(cancel)
+        return csv
+            .GetRecordsAsync<CsvCard>(cancel)
             .Where(cc => cc.Quantity > 0)
 
             .GroupByAwaitWithCancellation(
@@ -492,7 +496,7 @@ public class FileCardStorage
     private async Task AddAmountsAsync(
         CardDbContext dbContext,
         IReadOnlyList<Card> cards,
-        IReadOnlyDictionary<string, int> cardMultis,
+        IReadOnlyDictionary<string, int> multiAdditions,
         CancellationToken cancel)
     {
         if (!cards.Any())
@@ -501,9 +505,9 @@ public class FileCardStorage
         }
 
         var requests = cards
-            .IntersectBy(cardMultis.Keys, c => c.MultiverseId)
+            .IntersectBy(multiAdditions.Keys, c => c.MultiverseId)
             .Select(card => 
-                new CardRequest(card, cardMultis[card.MultiverseId]));
+                new CardRequest(card, multiAdditions[card.MultiverseId]));
 
         var result = await _treasuryQuery.FindReturnAsync(requests, cancel);
 
@@ -639,6 +643,7 @@ internal class CardData
             Transactions = await dbContext.Transactions
                 .Include(t => t.Changes)
                 .OrderBy(t => t.Id)
+                .AsSplitQuery()
                 .ToListAsync(cancel),
 
             Suggestions = await dbContext.Suggestions

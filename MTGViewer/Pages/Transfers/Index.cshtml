@@ -29,7 +29,11 @@
                                     @deck.Name </a>
                             </td>
 
-                            <td> @MtgSymbols.Format(deck.Colors).ToHtmlString() </td>
+                            <td> 
+                                <div class="ms-group">
+                                    @MtgSymbols.Format(deck.Colors).ToHtmlString()
+                                </div>
+                            </td>
 
                             @if (deck.TradesTo.Any())
                             {

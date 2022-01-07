@@ -12,7 +12,7 @@ public static class CardStorageExtension
     public static IServiceCollection AddCardStorage(
         this IServiceCollection services, IConfiguration config)
     {
-        var provider = config.GetValue("Provider", "Sqlite");
+        string provider = config.GetValue("Provider", "Sqlite");
 
         string connString = provider switch
         {

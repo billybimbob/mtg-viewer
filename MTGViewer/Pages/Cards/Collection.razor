@@ -9,7 +9,7 @@
 @inject SymbolFormatter MtgSymbols
 @inject PageSizes PageSizes
 
-@inject ILogger<Library> Logger
+@inject ILogger<Collection> Logger
 
 
 <PageTitle> Card Collection </PageTitle>
@@ -101,7 +101,11 @@
                 <tr>
                     <td> <HoverCard Target="card"/> </td>
 
-                    <td> @(MtgSymbols.Format(card.ManaCost).ToMarkupString()) </td>
+                    <td>
+                        <div class="ms-group">
+                            @MtgSymbols.Format(card.ManaCost).ToMarkupString()
+                        </div>
+                    </td>
                     <td> @card.SetName </td>
                     <td> @card.Rarity </td>
                     <td> @CardTotal(card) </td>
@@ -121,7 +125,7 @@
     </table>
 </div>
 
-<Pagination Pages="Cards.Pages" PageSelected="(index) => FetchCardsAsync(index)"></Pagination>
+<Pagination Pages="Cards.Pages" PageSelected="ChangePageAsync"></Pagination>
 
 
 @code {
@@ -189,11 +193,14 @@
 
 
 
-    protected override Task OnInitializedAsync()
+    protected override async Task OnInitializedAsync()
     {
-        _filters.PageSize = PageSizes.GetComponentSize<Library>();
+        _filters.PageSize = PageSizes.GetComponentSize<Collection>();
+        _filters.ShouldCache = true;
 
-        return FetchCardsAsync(shouldCache: false);
+        await FetchCardsAsync();
+
+        _filters.ShouldCache = false;
     }
 
 
@@ -213,24 +220,21 @@
 
         public string? SearchName { get; set; }
 
-        public string? OrderBy { get; set; }
+        public string OrderBy { get; set; } = nameof(Card.Name);
 
         public bool IsReversed { get; set; }
 
         public int PageSize { get; set; }
 
         public int PageIndex { get; set; }
+
+        public bool ShouldCache { get; set; }
     }
 
 
-    private async Task FetchCardsAsync(int pageIndex = 0, bool shouldCache = false)
+    private async Task FetchCardsAsync()
     {
-        if (_isBusy
-            || _filters.PageSize <= 0
-            || pageIndex < 0 
-            || _pagedCards.Pages.Total is int totalPages
-                && totalPages > 0
-                && pageIndex >= totalPages)
+        if (_isBusy || _filters.PageSize <= 0)
         {
             return;
         }
@@ -239,24 +243,24 @@
 
         try
         {
-            _filters.OrderBy ??= nameof(Card.Name);
-            _filters.PageIndex = pageIndex;
+            var cancelToken = _cancel.Token;
+            bool shouldCache = _filters.ShouldCache;
 
-            await using var dbContext = await DbFactory.CreateDbContextAsync(_cancel.Token);
+            await using var dbContext = await DbFactory.CreateDbContextAsync(cancelToken);
 
             dbContext.AttachRange(_loadedCards); // reuse prior card objs
 
             _pagedCards = !shouldCache
-                ? await GetFilteredCardsAsync(dbContext, _filters, _cancel.Token)
+                ? await GetFilteredCardsAsync(dbContext, _filters, cancelToken)
                 : await Cache
                     .GetOrCreateAsync(nameof(_pagedCards), () =>
-                        GetFilteredCardsAsync(dbContext, _filters, _cancel.Token));
+                        GetFilteredCardsAsync(dbContext, _filters, cancelToken));
 
             var cardAmounts = !shouldCache
-                ? await GetCardAmountsAsync(dbContext, _pagedCards, _cancel.Token)
+                ? await GetCardAmountsAsync(dbContext, _pagedCards, cancelToken)
                 : await Cache
                     .GetOrCreateAsync("cardAmounts", () => 
-                        GetCardAmountsAsync(dbContext, _pagedCards, _cancel.Token));
+                        GetCardAmountsAsync(dbContext, _pagedCards, cancelToken));
 
             _loadedCards.UnionWith(_pagedCards);
 
@@ -347,7 +351,8 @@
                     .ThenBy(c => c.Name)
                     .ThenBy(c => c.SetName),
 
-            _ => PrimaryOrder(c => c.Name)
+            nameof(Card.Name) or _ =>
+                PrimaryOrder(c => c.Name)
                     .ThenBy(c => c.SetName)
         };
     }
@@ -450,10 +455,26 @@
             return Task.CompletedTask;
         }
 
-        string? oldOrder = _filters.OrderBy;
+        string oldOrder = _filters.OrderBy;
 
         _filters.IsReversed = newOrder == oldOrder && !_filters.IsReversed;
         _filters.OrderBy = newOrder;
+
+        return FetchCardsAsync();
+    }
+
+
+    private Task ChangePageAsync(int pageIndex)
+    {
+        if (_isBusy
+            || _filters.PageIndex == pageIndex
+            || pageIndex < 0 
+            || pageIndex >= _pagedCards.Pages.Total)
+        {
+            return Task.CompletedTask;
+        }
+
+        _filters.PageIndex = pageIndex;
 
         return FetchCardsAsync();
     }

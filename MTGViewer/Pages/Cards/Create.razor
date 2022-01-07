@@ -30,65 +30,68 @@
         <DataAnnotationsValidator />
         <div class="row">
 
-            <div class="col-sm order-sm-last">
+            <div class="col-md order-md-last">
                 <ValidationSummary role="alert"/>
 
-                <h5> Or Operator </h5>
-                <p> 
-                    All of the parameters (except Converted Mana Cost) can search with multiple values 
-                    specified by adding the pipe character between each value. These multiple values act 
-                    as a logical <strong>or</strong> for the search.
-                </p>
+                <section>
+                    <h5> Or Operator </h5>
+                    <p> 
+                        All of the parameters (except Converted Mana Cost) can search with multiple values 
+                        specified by adding the pipe character between each value. These multiple values act 
+                        as a logical <strong>or</strong> for the search.
+                    </p>
 
-                <p> Example or for Name: <code>jace|ajani|nissa, worldwaker</code> </p>
+                    <p> Example or for Name: <code>jace|ajani|nissa, worldwaker</code> </p>
+                </section>
 
-                <h5> And Operator </h5>
-                <p>
-                    Parameters that can have more than one value per card (Types, Supertypes, and Subtypes) 
-                    can also have multiple values specified by adding a comma or space between each value. 
-                    These multiple values act as a logical <strong>and</strong> for the search.
-                </p>
+                <section>
+                    <h5> And Operator </h5>
+                    <p>
+                        Parameters that can have more than one value per card (Types, Supertypes, and Subtypes) 
+                        can also have multiple values specified by adding a comma or space between each value. 
+                        These multiple values act as a logical <strong>and</strong> for the search.
+                    </p>
 
-                <p> Example and for Subtype(s): <code>bear,bird</code> or <code>bear bird</code> </p>
-                <p> 
-                    Note that <strong>either</strong> the <i>and</i> or the <i>or</i> operator can be
-                    applied on a given parameter value, not both.
-                </p>
+                    <p> Example and for Subtype(s): <code>bear,bird</code> or <code>bear bird</code> </p>
+                    <p> 
+                        Note that <strong>either</strong> the <i>and</i> or the <i>or</i> operator can be
+                        applied on a given parameter value, not both.
+                    </p>
+                </section>
 
                 <hr/>
-                <h5> Type Parameters </h5>
+                <section>
+                    <h5> Type Parameters </h5>
+                    <p>
+                        All of the type parameters are specified on the type line of the card (the center description),
+                        which is broken down into three different categories:
+                    </p>
 
-                <p>
-                    All of the type parameters are specified on the type line of the card (the center description),
-                    which is broken down into three different categories:
-                </p>
+                    <dl class="row mb-0">
+                        <dt class="col-12 col-lg-2"> Supertypes </dt>
+                        <dd class="col-12 col-lg-10">
+                            <p> Type information that is the most left of the type line </p>
+                            <p> Examples: Basic, Legendary, Snow </p>
+                        </dd>
 
-                <dl class="row">
-                    <dt class="col-2"> Supertypes </dt>
-                    <dd class="col">
-                        <p> Type information that is the most left of the type line </p>
-                        <p> Examples: Basic, Legendary, Snow </p>
-                    </dd>
+                        <dt class="col-12 col-lg-2"> Types </dt>
+                        <dd class="col-12 col-lg-10">
+                            <p> Type information that follows immediately to the left of the dash. </p>
+                            <p> Examples: Instant, Creature, Land, Planeswalker </p>
+                        </dd>
 
-                    <div class="w-100"></div>
-
-                    <dt class="col-2"> Types </dt>
-                    <dd class="col">
-                        <p> Type information that follows immediately to the left of the dash. </p>
-                        <p> Examples: Instant, Creature, Land, Planeswalker </p>
-                    </dd>
-
-                    <div class="w-100"></div>
-
-                    <dt class="col-2"> Subtypes </dt>
-                    <dd class="col">
-                        <p> Type information that appears to the right of the dash. </p>
-                        <p> Examples: Equipment, Aura, Human, Vampire </p>
-                    </dd>
-                </dl>
+                        <dt class="col-12 col-lg-2"> Subtypes </dt>
+                        <dd class="col-12 col-lg-10">
+                            <p> Type information that appears to the right of the dash. </p>
+                            <p> Examples: Equipment, Aura, Human, Vampire </p>
+                        </dd>
+                    </dl>
+                </section>
             </div>
 
-            <div class="col-sm-4">
+            <hr class="d-md-none col-12"/>
+
+            <div class="col-md col-lg-4">
                 <p> Enter the card search parameters below </p>
 
                 <InputText @bind-Value="Query.Name" 
@@ -408,9 +411,9 @@ else
             return;
         }
 
-        _search.IsMultiColored = value;
-
         var colorField = _searchEdit.Field(nameof(CardQuery.Colors));
+
+        _search.IsMultiColored = value;
 
         _searchEdit.NotifyFieldChanged(colorField);
     }
@@ -424,6 +427,7 @@ else
         }
 
         var pickedColors = _search.PickedColors;
+        var colorField = _searchEdit.Field(nameof(CardQuery.Colors));
 
         if (pickedColors.Contains(color))
         {
@@ -433,8 +437,6 @@ else
         {
             pickedColors.Add(color);
         }
-
-        var colorField = _searchEdit.Field(nameof(CardQuery.Colors));
 
         _searchEdit.NotifyFieldChanged(colorField);
     }
@@ -448,6 +450,7 @@ else
         }
 
         var pickedRarities = _search.PickedRarities;
+        var rarityField = _searchEdit.Field(nameof(CardQuery.Rarity));
 
         if (pickedRarities.Contains(rarity))
         {
@@ -458,20 +461,13 @@ else
             pickedRarities.Add(rarity);
         }
 
-        var rarityField = _searchEdit.Field(nameof(CardQuery.Rarity));
-
         _searchEdit.NotifyFieldChanged(rarityField);
     }
 
 
     private async Task SearchForCardAsync()
     {
-        if (_isBusy)
-        {
-            return;
-        }
-
-        if (_matchPage != default && !_matchPage.HasNext)
+        if (_isBusy || (_matchPage != default && !_matchPage.HasNext))
         {
             return;
         }
@@ -483,11 +479,11 @@ else
         {
             PrepareSearch(_search, _matchPage);
 
+            var cancelToken = _cancel.Token;
             var fetch = ScopedServices.GetRequiredService<MTGFetchService>();
 
             var result = await fetch.Where(_search.Query).SearchAsync();
-
-            _cancel.Token.ThrowIfCancellationRequested();
+            cancelToken.ThrowIfCancellationRequested();
             
             _matchPage = result.Pages;
 
@@ -554,12 +550,7 @@ else
 
     private void Reset()
     {
-        if (_searchEdit is null)
-        {
-            return;
-        }
-
-        if (_isBusy)
+        if (_isBusy || _searchEdit is null)
         {
             return;
         }
@@ -571,6 +562,8 @@ else
 
         _search.PickedColors.Clear();
         _search.PickedRarities.Clear();
+
+        // TODO: use reflection to reset
 
         query.Name = default;
         query.Cmc = default;
@@ -614,15 +607,17 @@ else
 
         try
         {
-            await using var dbContext = await DbFactory.CreateDbContextAsync(_cancel.Token);
+            var cancelToken = _cancel.Token;
+            var treasury = ScopedServices.GetRequiredService<ITreasuryQuery>();
 
-            await AddNewCardsAsync(dbContext, addedAmounts, _cancel.Token);
+            await using var dbContext = await DbFactory.CreateDbContextAsync(cancelToken);
 
-            await AddAmountsAsync(dbContext, addedAmounts, _cancel.Token);
+            await AddNewCardsAsync(dbContext, addedAmounts, cancelToken);
 
-            await dbContext.SaveChangesAsync(_cancel.Token);
+            await AddAmountsAsync(dbContext, treasury, addedAmounts, cancelToken);
 
-            // nav.NavigateTo("/Cards", true);
+            await dbContext.SaveChangesAsync(cancelToken);
+
             _result = SaveResult.Success;
         }
         catch (DbUpdateException e)
@@ -652,7 +647,7 @@ else
     }
 
 
-    private async Task AddNewCardsAsync(
+    private static async Task AddNewCardsAsync(
         CardDbContext dbContext,
         IReadOnlyList<CardRequest> requests,
         CancellationToken cancel)
@@ -681,13 +676,12 @@ else
     }
 
 
-    private async Task AddAmountsAsync(
+    private static async Task AddAmountsAsync(
         CardDbContext dbContext,
+        ITreasuryQuery treasury,
         IEnumerable<CardRequest> newAmounts,
         CancellationToken cancel)
     {
-        var treasury = ScopedServices.GetRequiredService<ITreasuryQuery>();
-
         var result = await treasury.FindReturnAsync(newAmounts, cancel);
 
         var (addTargets, oldCopies) = result;

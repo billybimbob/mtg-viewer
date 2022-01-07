@@ -78,6 +78,10 @@ body {
   vertical-align: middle;
 }
 
+.ms-group {
+  display: inline-flex;
+}
+
 .ellipsis {
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -136,8 +140,10 @@ body {
   max-width: 220px;
 }
 
-.preview-watch:hover ~ .preview-item {
-  display: inherit;
+@media (min-width: 768px) {
+  .preview-watch:hover ~ .preview-item {
+    display: inherit;
+  }
 }
 
 .clickable {

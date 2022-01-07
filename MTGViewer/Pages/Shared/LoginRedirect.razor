@@ -1,0 +1,19 @@
+@inject NavigationManager Nav
+@inject ILogger<LoginRedirect> Logger
+
+<p> Redirecting to Login </p>
+
+@code {
+
+    protected override void OnInitialized()
+    {
+        try
+        {
+            Nav.NavigateTo("/Identity/Account/Login", true, true);
+        }
+        catch (NavigationException e)
+        {
+            Logger.LogWarning(e.ToString());
+        }
+    }
+}

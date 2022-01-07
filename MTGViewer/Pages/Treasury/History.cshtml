@@ -62,7 +62,7 @@
                         @switch (to)
                         {
                             case Deck:
-                                <a asp-page="Viewer" asp-route-id="@to.Id"> @to.Name </a>
+                                <a asp-page="/Decks/Viewer" asp-route-id="@to.Id"> @to.Name </a>
                                 break;
 
                             case Box:

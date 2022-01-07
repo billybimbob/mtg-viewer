@@ -102,14 +102,14 @@ else
                             </HoverCard>
                         </span>
 
-                        <span class="col-4"> @(MtgSymbols.Format(card.ManaCost).ToMarkupString()) </span>
+                        <span class="col-4"> @MtgSymbols.Format(card.ManaCost).ToMarkupString() </span>
                         <span class="col-2"> @(available - Math.Min(wantTotal, available)) </span>
                     </span>
                 </button>
             }
         </div>
 
-        <Pagination Pages="TreasuryPages" PageSelected="ApplyFilters" />
+        <Pagination Pages="TreasuryPages" PageSelected="ChangeTreasuryPage" />
     </div>
 
     <div class="col">
@@ -129,7 +129,7 @@ else
                                 <span class="btn-link">@card.Name</span>
                             </HoverCard>
                         </span>
-                        <span class="col-4"> @(MtgSymbols.Format(card.ManaCost).ToMarkupString()) </span>
+                        <span class="col-4"> @MtgSymbols.Format(card.ManaCost).ToMarkupString() </span>
 
                         <span class="col-3">
                             <span title="@card.Name Held" class="badge badge-pill badge-primary"> 
@@ -205,6 +205,7 @@ else
             .Select(kv => (kv.Key, kv.Value))
             ?? Enumerable.Empty<(string, QuantityGroup)>();
 
+
     private IEnumerable<(Card, QuantityGroup)> DeckCards
     {
         get
@@ -241,17 +242,19 @@ else
 
         try
         {
+            var cancelToken = _cancel.Token;
+
             _treasuryFilters.PageSize = PageSizes.GetComponentSize<Builder>();
 
-            _dbContext = await DbFactory.CreateDbContextAsync(_cancel.Token);
+            _dbContext = await DbFactory.CreateDbContextAsync(cancelToken);
 
             _cards = await Cache
                 .GetOrCreateAsync(nameof(_cards), () =>
-                    GetCardsAsync(_dbContext, _cancel.Token));
+                    GetCardsAsync(_dbContext, cancelToken));
 
             var boxAmounts = await Cache
                 .GetOrCreateAsync(nameof(_boxAmounts), () =>
-                    GetBoxAmountsAsync(_dbContext, _cancel.Token));
+                    GetBoxAmountsAsync(_dbContext, cancelToken));
 
             foreach ((string cardId, int amount) in boxAmounts)
             {
@@ -278,6 +281,7 @@ else
             .Include(c => c.Colors)
             .OrderBy(c => c.Name)
                 .ThenBy(c => c.SetName)
+            .AsSplitQuery()
             .ToListAsync(cancel); // unbounded, keep eye on
     }
 
@@ -306,6 +310,7 @@ else
 
         try
         {
+            var cancelToken = _cancel.Token;
             var userId = await GetUserIdAsync();
 
             if (userId is null)
@@ -314,8 +319,8 @@ else
             }
 
             var deckResult = DeckId == default
-                ? await CreateDeckAsync(_dbContext, userId, _cancel.Token)
-                : await FetchDeckOrRedirectAsync(_dbContext, userId, _cancel.Token);
+                ? await CreateDeckAsync(_dbContext, userId, cancelToken)
+                : await FetchDeckOrRedirectAsync(_dbContext, userId, cancelToken);
 
             if (deckResult is null)
             {
@@ -332,6 +337,10 @@ else
         catch (OperationCanceledException ex)
         {
             Logger.LogError(ex.ToString());
+        }
+        catch (NavigationException ex)
+        {
+            Logger.LogWarning(ex.ToString());
         }
         finally
         {
@@ -358,9 +367,9 @@ else
         CardDbContext dbContext, string userId, CancellationToken cancel)
     {
         var deck = await Cache
-            .GetOrCreateAsync($"deck{DeckId}", GetDeckAsync);
+            .GetOrCreateAsync($"deck{DeckId}{userId}", GetDeckAsync);
 
-        if (deck is null)
+        if (deck is null || deck.OwnerId != userId)
         {
             Nav.NavigateTo("/Decks", true);
 
@@ -497,7 +506,37 @@ else
 
         public int PageSize { get; set; }
 
+        public int PageIndex { get; set; }
+
         public string? SearchName { get; set; }
+    }
+
+
+    private void ApplyFilters()
+    {
+        const StringComparison ignoreCase = StringComparison.CurrentCultureIgnoreCase;
+
+        var filter = _cards.AsEnumerable();
+        string? searchName = _treasuryFilters.SearchName;
+
+        if (!string.IsNullOrWhiteSpace(searchName))
+        {
+            filter = filter.Where(c => 
+                c.Name.Contains(searchName, ignoreCase));
+        }
+
+        var pickedColors = _treasuryFilters.PickedColors;
+
+        if (pickedColors.Any())
+        {
+            filter = filter.Where(c => 
+                c.Colors.Any(cl => pickedColors.Contains(cl.Name) ));
+        }
+
+        int pageSize = _treasuryFilters.PageSize;
+        int pageIndex = _treasuryFilters.PageIndex;
+
+        _filteredCards = filter.ToPagedList(pageSize, pageIndex);
     }
 
 
@@ -533,34 +572,22 @@ else
     }
 
 
-    private void ApplyFilters(int pageIndex = 0)
+    private void ChangeTreasuryPage(int pageIndex)
     {
-        const StringComparison ignoreCase = StringComparison.CurrentCultureIgnoreCase;
-
-        var filter = _cards.AsEnumerable();
-
-        var searchName = _treasuryFilters.SearchName;
-        var pickedColors = _treasuryFilters.PickedColors;
-
-        int pageSize = _treasuryFilters.PageSize;
-
-        if (!string.IsNullOrWhiteSpace(searchName))
+        if (_treasuryFilters.PageIndex == pageIndex
+            || pageIndex < 0
+            || pageIndex >= TreasuryPages.Total)
         {
-            filter = filter.Where(c => 
-                c.Name.Contains(searchName, ignoreCase));
+            return;
         }
 
-        if (pickedColors.Any())
-        {
-            filter = filter.Where(c => 
-                c.Colors.Any(cl => pickedColors.Contains(cl.Name) ));
-        }
+        _treasuryFilters.PageIndex = pageIndex;
 
-        _filteredCards = filter.ToPagedList(pageSize, pageIndex);
+        ApplyFilters();
     }
 
 
-    private void ChangeDeckPage(int pageIndex = 0)
+    private void ChangeDeckPage(int pageIndex)
     {
         if (_deckContext is null 
             || _deckContext.PageIndex == pageIndex
@@ -645,7 +672,7 @@ else
             return;
         }
 
-        var actualRemain = (deckGroup.Amount?.NumCopies ?? 0)
+        int actualRemain = (deckGroup.Amount?.NumCopies ?? 0)
             - (deckGroup.GiveBack?.NumCopies ?? 0);
 
         if (actualRemain == 0)
@@ -686,6 +713,7 @@ else
             return;
         }
 
+        var cancelToken = _cancel.Token;
         var deck = _deckContext.Deck;
         var groups = _deckContext.Groups;
 
@@ -695,12 +723,11 @@ else
         {
             PrepareChanges(_dbContext, deck);
 
-            await _dbContext.SaveChangesAsync(_cancel.Token);
+            await _dbContext.SaveChangesAsync(cancelToken);
 
             if (deck.GiveBacks.Any() || deck.Wants.Any())
             {
                 Nav.NavigateTo($"/Decks/Exchange/{deck.Id}", true);
-                return;
             }
             else
             {
@@ -711,7 +738,7 @@ else
         {
             _result = SaveResult.Error;
 
-            await UpdateDeckAsync(_dbContext, deck, groups, ex, _cancel.Token);
+            await UpdateDeckAsync(_dbContext, deck, groups, ex, cancelToken);
         }
         catch (DbUpdateException ex)
         {
@@ -721,7 +748,10 @@ else
         {
             Logger.LogError(ex.ToString());
         }
-
+        catch (NavigationException ex)
+        {
+            Logger.LogWarning(ex.ToString());
+        }
         finally
         {
             _isBusy = false;

@@ -18,10 +18,10 @@
         <h3>Cards from our collection!</h3>
     </a>
 
-    <div class="row justify-content-center">
-        @foreach (var card in _randomCards)
+    <div class="row no-gutters justify-content-center">
+        @foreach (var card in RandomCards)
         {
-            <a href="/Cards/Details/@card.Id" class="col-md-3 col-9"
+            <a href="/Cards/Details/@card.Id" class="col-md-3 col-6"
                 title="@card.Name Details"
                 aria-label="@card.Id details">
 
@@ -39,7 +39,7 @@
     </a>
 
     <ul class="list-group list-group-flush">
-        @foreach (var transaction in _recentChanges)
+        @foreach (var transaction in RecentChanges)
         {
             var changes = transaction.Changes;
             var adds = changes.Where(c => c.To is Box);
@@ -48,7 +48,7 @@
             <li class="list-group-item">
                 <div class="row justify-content-between">
 
-                    <div class="col-md-10 col-8">
+                    <div class="col-md-10 col-9">
                         <div class="row align-items-center">
                             <div class="row-title ellipsis pr-2">
                                 @if (adds.Any())
@@ -81,6 +81,10 @@
 
 
 @code {
+
+    public IReadOnlyList<Card> RandomCards => _randomCards;
+
+    public IReadOnlyList<Transaction> RecentChanges => _recentChanges;
 
     private readonly CancellationTokenSource _cancel = new();
 
@@ -125,17 +129,19 @@
 
         try
         {
-            await using var dbContext = await DbFactory.CreateDbContextAsync(_cancel.Token);
+            var cancelToken = _cancel.Token;
+            var numberOfCards = Config.GetValue("NumberOfCards", 8);
+            var numberOfChanges = Config.GetValue("NumberOfChanges", 5);
 
-            var numberOfCards = Config.GetValue("NumberOfCards", 4);
+            await using var dbContext = await DbFactory.CreateDbContextAsync(cancelToken);
 
             _randomCards = await Cache
                 .GetOrCreateAsync(nameof(_randomCards), () => 
-                    ShuffledCardsAsync(dbContext, numberOfCards, _cancel.Token));
+                    ShuffledCardsAsync(dbContext, numberOfCards, cancelToken));
 
             _recentChanges = await Cache
                 .GetOrCreateAsync(nameof(_recentChanges), () =>
-                    RecentTransactionsAsync(dbContext, numberOfCards, _cancel.Token));
+                    RecentTransactionsAsync(dbContext, numberOfChanges, cancelToken));
 
             _currentTime = DateTime.Now;
         }
@@ -171,7 +177,7 @@
 
     private static Task<List<Transaction>> RecentTransactionsAsync(
         CardDbContext dbContext,
-        int numberOfCards,
+        int numberOfChanges,
         CancellationToken cancel)
     {
         return dbContext.Transactions
@@ -191,8 +197,10 @@
                 .OrderBy(c => c.Card.Name))
 
             .OrderByDescending(t => t.AppliedAt)
-            .Take(numberOfCards)
+            .Take(numberOfChanges)
 
+            // no split query to avoid extra round trips
+            // also Transactions has very few props
             .ToListAsync(cancel);
     }
 }

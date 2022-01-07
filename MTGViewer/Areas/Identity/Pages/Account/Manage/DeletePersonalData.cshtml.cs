@@ -72,13 +72,18 @@ public class DeletePersonalDataModel : PageModel
         }
 
         RequirePassword = await _userManager.HasPasswordAsync(user);
-        if (RequirePassword && !await _userManager.CheckPasswordAsync(user, Input.Password))
+        if (RequirePassword)
         {
-            ModelState.AddModelError(string.Empty, "Incorrect password.");
-            return Page();
+            bool correctPassword = await _userManager.CheckPasswordAsync(user, Input.Password);
+            if (!correctPassword)
+            {
+                ModelState.AddModelError(string.Empty, "Incorrect password.");
+                return Page();
+            }
         }
 
-        if (!await _referenceManager.DeleteReferenceAsync(user))
+        bool referenceDeleted = await _referenceManager.DeleteReferenceAsync(user);
+        if (!referenceDeleted)
         {
             ModelState.AddModelError(string.Empty, "Failed to delete the user");
             return Page();

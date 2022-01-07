@@ -166,6 +166,7 @@ public class StatusModel : PageModel
         // makes the assumption that trades are always started by the owner of the To deck
         var deck = await _dbContext.Decks
             .Include(d => d.TradesTo)
+            .AsSplitQuery()
             .SingleOrDefaultAsync(d =>
                 d.Id == deckId && d.OwnerId == userId, cancel);
 

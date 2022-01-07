@@ -37,7 +37,11 @@
                         <td> 
                             <component type="typeof(HoverCard)" render-mode="Static" param-Target="card" />
                         </td>
-                        <td> @MtgSymbols.Format(card.ManaCost).ToHtmlString() </td>
+                        <td> 
+                            <div class="ms-group">
+                                @MtgSymbols.Format(card.ManaCost).ToHtmlString() 
+                            </div>
+                        </td>
                         <td> @first.InDeck </td>
                         <td> @first.Requests </td>
                     }
@@ -76,7 +80,11 @@
                         <td> 
                             <component type="typeof(HoverCard)" render-mode="Static" param-Target="card" />
                         </td>
-                        <td> @MtgSymbols.Format(card.ManaCost).ToHtmlString() </td>
+                        <td> 
+                            <div class="ms-group">
+                                @MtgSymbols.Format(card.ManaCost).ToHtmlString()
+                            </div>
+                        </td>
                         <td> @group.InDeck </td>
                         <td> @group.Requests </td>
                     </tr>

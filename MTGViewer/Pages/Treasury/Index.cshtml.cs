@@ -87,6 +87,7 @@ public class IndexModel : PageModel
                 .ThenInclude(ca => ca.Card)
 
             .OrderBy(b => b.Id)
+            .AsSplitQuery()
             .AsNoTrackingWithIdentityResolution();
     }
 

@@ -58,7 +58,11 @@
                                 @firstAmount.Card.Name </a>
                         </td>
 
-                        <td> @MtgSymbols.Format(firstAmount.Card.ManaCost).ToHtmlString() </td>
+                        <td> 
+                            <div class="ms-group">
+                                @MtgSymbols.Format(firstAmount.Card.ManaCost).ToHtmlString() 
+                            </div>
+                        </td>
                         <td> @firstAmount.Card.SetName </td>
                         <td> @firstAmount.NumCopies </td>
                     }
@@ -80,7 +84,11 @@
                             <a asp-page="/Cards/Details" asp-route-id="@amount.CardId">
                                 @amount.Card.Name </a>
                         </td>
-                        <td> @(MtgSymbols.Format(amount.Card.ManaCost).ToHtmlString()) </td>
+                        <td> 
+                            <div class="ms-group">
+                                @MtgSymbols.Format(amount.Card.ManaCost).ToHtmlString()
+                            </div>
+                        </td>
                         <td> @amount.Card.SetName </td>
                         <td> @amount.NumCopies </td>
                     </tr>

@@ -48,7 +48,11 @@
                         <component type="typeof(HoverCard)" render-mode="Static"
                             param-Target="group.Card"/>
                     </td>
-                    <td> @MtgSymbols.Format(group.Card.ManaCost).ToHtmlString() </td>
+                    <td> 
+                        <div class="ms-group">
+                            @MtgSymbols.Format(group.Card.ManaCost).ToHtmlString() 
+                        </div>
+                    </td>
                     <td> @group.Card.SetName </td>
 
                     <td> @(group.Amount?.NumCopies ?? 0) </td>
