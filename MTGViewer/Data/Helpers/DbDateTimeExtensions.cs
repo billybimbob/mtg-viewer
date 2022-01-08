@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace MTGViewer.Data;
 
-public static class DbCurrentTime
+public static class DbDateTimeExtensions
 {
     public static string GetUtcTime(this DatabaseFacade database)
     {

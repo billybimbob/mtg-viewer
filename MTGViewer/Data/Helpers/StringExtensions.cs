@@ -6,7 +6,7 @@ using Npgsql;
 
 namespace MTGViewer.Data;
 
-public static class StringConversionExtension
+public static class StringExtensions
 {
     public static HtmlString ToHtmlString(this string value) => new(value);
 
