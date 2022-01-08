@@ -125,7 +125,6 @@ public class ReferenceManager
         var userDecks = await dbContext.Decks
             .Where(d => d.OwnerId == reference.Id)
             .Include(d => d.Cards)
-            .AsSplitQuery()
             .ToListAsync(cancel);
 
         if (!userDecks.Any())

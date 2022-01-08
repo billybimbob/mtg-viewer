@@ -37,7 +37,7 @@ internal class CardSetup : IHostedService
         var dbContext = scopeProvider.GetRequiredService<CardDbContext>();
         await dbContext.Database.MigrateAsync(cancel);
 
-        if (!_env.IsDevelopment())
+        if (_env.IsProduction())
         {
             return;
         }
@@ -48,21 +48,50 @@ internal class CardSetup : IHostedService
             return;
         }
 
-        var fileStorage = scopeProvider.GetRequiredService<FileCardStorage>();
+        if (_env.IsStaging())
+        {
+            await StagingSeedAsync(scopeProvider, cancel);
+            return;
+        }
+
+        if (_env.IsDevelopment())
+        {
+            await DevelopmentSeedAsync(scopeProvider, cancel);
+            return;
+        }
+    }
+
+
+    private Task StagingSeedAsync(IServiceProvider provider, CancellationToken cancel)
+    {
+        var cardGen = provider.GetService<CardDataGenerator>();
+        if (cardGen == null)
+        {
+            return Task.CompletedTask;
+        }
+
+        return cardGen.GenerateAsync(cancel);
+    }
+
+
+    private async Task DevelopmentSeedAsync(IServiceProvider provider, CancellationToken cancel)
+    {
+        var fileStorage = provider.GetRequiredService<FileCardStorage>();
 
         bool jsonSuccess = await fileStorage.TryJsonSeedAsync(cancel: cancel);
-        if (!jsonSuccess)
+        if (jsonSuccess)
         {
-            var cardGen = scopeProvider.GetService<CardDataGenerator>();
-
-            if (cardGen == null)
-            {
-                return;
-            }
-
-            await cardGen.GenerateAsync(cancel);
-            await fileStorage.WriteJsonAsync(cancel: cancel);
+            return;
         }
+
+        var cardGen = provider.GetService<CardDataGenerator>();
+        if (cardGen == null)
+        {
+            return;
+        }
+
+        await cardGen.GenerateAsync(cancel);
+        await fileStorage.WriteJsonAsync(cancel: cancel);
     }
 
 

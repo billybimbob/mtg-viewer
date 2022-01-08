@@ -277,12 +277,15 @@ else
     private Task<List<Card>> GetCardsAsync(
         CardDbContext dbContext, CancellationToken cancel)
     {
+        // split query since Card model has many props that will dup
+        // unbounded, keep eye on
+
         return dbContext.Cards
             .Include(c => c.Colors)
             .OrderBy(c => c.Name)
                 .ThenBy(c => c.SetName)
             .AsSplitQuery()
-            .ToListAsync(cancel); // unbounded, keep eye on
+            .ToListAsync(cancel);
     }
 
 

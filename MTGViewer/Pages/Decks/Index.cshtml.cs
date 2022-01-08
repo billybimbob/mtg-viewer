@@ -112,7 +112,9 @@ public class IndexModel : PageModel
                 .Take(1))
 
             .OrderBy(d => d.Name)
-            .Select(deck => new DeckState(deck))
-            .AsSplitQuery();
+            .AsSplitQuery()
+            .AsNoTrackingWithIdentityResolution()
+
+            .Select(deck => new DeckState(deck));
     }
 }

@@ -306,7 +306,6 @@ public class SortedPartitionTreasury : ITreasuryQuery
             .Include(b => b.Cards)
                 .ThenInclude(ca => ca.Card)
             .OrderBy(s => s.Id)
-            .AsSplitQuery()
             .ToListAsync(cancel);
     }
 

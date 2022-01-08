@@ -28,6 +28,8 @@ public class HistoryModel : PageModel
     private readonly UserManager<CardUser> _userManager;
     private readonly ILogger<HistoryModel> _logger;
 
+    private readonly HashSet<(int, int?, int?)> _firstTransfers = new();
+
     public HistoryModel(
         PageSizes pageSizes,
         CardDbContext dbContext, 
@@ -44,16 +46,13 @@ public class HistoryModel : PageModel
     [TempData]
     public string? PostMessage { get; set; }
 
-    [BindProperty]
-    public Deck Deck { get; set; } = null!;
+
+    public Deck Deck { get; private set; } = null!;
 
     public IReadOnlyList<Transfer> Transfers { get; private set; } =
         Array.Empty<Transfer>();
 
     public Data.Pages Pages { get; private set; }
-
-    public IReadOnlySet<(int, int?, int?)> IsFirstTransfer { get; private set; } =
-        ImmutableHashSet<(int, int?, int?)>.Empty;
 
 
     public async Task<IActionResult> OnGetAsync(
@@ -69,6 +68,13 @@ public class HistoryModel : PageModel
         var changes = await ChangesForHistory(id)
             .ToPagedListAsync(_pageSize, pageIndex, cancel);
 
+        var firstTransfers = changes
+            .Select(c => (c.TransactionId, c.FromId, c.ToId))
+            .GroupBy(tft => tft.TransactionId,
+                (_, tfts) => tfts.First());
+
+        _firstTransfers.UnionWith(firstTransfers);
+
         Deck = deck;
 
         Transfers = changes
@@ -79,12 +85,6 @@ public class HistoryModel : PageModel
             .ToList();
 
         Pages = changes.Pages;
-
-        IsFirstTransfer = changes
-            .Select(c => (c.TransactionId, c.FromId, c.ToId))
-            .GroupBy(tft => tft.TransactionId,
-                (_, tfts) => tfts.First())
-            .ToHashSet();
 
         return Page();
     }
@@ -120,6 +120,13 @@ public class HistoryModel : PageModel
     }
 
 
+    public bool IsFirstTransfer(Transfer transfer)
+    {
+        var transferKey = (transfer.Transaction.Id, transfer.From?.Id, transfer.To?.Id);
+        return _firstTransfers.Contains(transferKey);
+    }
+
+
 
     public async Task<IActionResult> OnPostAsync(int transactionId, CancellationToken cancel)
     {
@@ -141,13 +148,15 @@ public class HistoryModel : PageModel
         try
         {
             await _dbContext.SaveChangesAsync(cancel);
+
+            PostMessage = "Successfully removed deck transaction log";
         }
         catch (DbUpdateException e)
         {
             _logger.LogError($"issue removing changes {e}");
         }
 
-        return RedirectToPage(new { deckId = Deck?.Id });
+        return RedirectToPage();
     }
 
 

@@ -1,13 +1,9 @@
+
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore;
 
 namespace MTGViewer.Data;
-
 
 public readonly record struct Pages(int Current, int Total)
 {
@@ -31,7 +27,6 @@ public readonly record struct Pages(int Current, int Total)
     public bool HasNext => Current < Total - 1;
     public bool HasMultiple => Total > 1;
 
-
     public Pages(int currentPage, int totalItems, int pageSize) 
         : this(currentPage, TotalPages(totalItems, pageSize))
     { }
@@ -43,6 +38,7 @@ public readonly record struct Pages(int Current, int Total)
 
         return (int) Math.Ceiling((double) totalItems / pageSize);
     }
+
 
     public override string ToString() => Current == Total 
         ? $"{Current}/{Total}" 
@@ -81,73 +77,4 @@ public class PagedList<T> : IReadOnlyList<T>
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
     public IEnumerator<T> GetEnumerator() => _items.GetEnumerator();
-}
-
-
-
-public static class PagingLinqExtensions
-{
-    public static PagedList<T> ToPagedList<T>(
-        this IEnumerable<T> source,
-        int pageSize, 
-        int? pageIndex = null)
-    {
-        pageSize = Math.Max(pageSize, 0);
-
-        int page = pageIndex ?? 0;
-        int totalItems = source.Count();
-
-        var pages = new Pages(page, totalItems, pageSize);
-
-        var items = source
-            .Skip(pages.Current * pageSize)
-            .Take(pageSize)
-            .ToList();
-
-        return new(pages, items);
-    }
-
-
-    public static async Task<PagedList<TEntity>> ToPagedListAsync<TEntity>(
-        this IAsyncEnumerable<TEntity> source,
-        int pageSize,
-        int? pageIndex = null,
-        CancellationToken cancel = default)
-    {
-        pageSize = Math.Max(pageSize, 0);
-
-        int page = pageIndex ?? 0;
-        int totalItems = await source.CountAsync(cancel);
-
-        var pages = new Pages(page, totalItems, pageSize);
-
-        var items = await source
-            .Skip(pages.Current * pageSize)
-            .Take(pageSize)
-            .ToListAsync(cancel);
-
-        return new(pages, items);
-    }
-
-
-    public static async Task<PagedList<TEntity>> ToPagedListAsync<TEntity>(
-        this IQueryable<TEntity> source,
-        int pageSize, 
-        int? pageIndex = null,
-        CancellationToken cancel = default)
-    {
-        pageSize = Math.Max(pageSize, 0);
-
-        int page = pageIndex ?? 0;
-        int totalItems = await source.CountAsync(cancel);
-
-        var pages = new Pages(page, totalItems, pageSize);
-
-        var items = await source
-            .Skip(pages.Current * pageSize)
-            .Take(pageSize)
-            .ToListAsync(cancel);
-
-        return new(pages, items);
-    }
 }

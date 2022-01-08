@@ -43,6 +43,13 @@
             </button>
         }
     </div>
+
+    @if (IsBusy)
+    {
+        <div class="spinner-border text-secondary m-2" role="status">
+            <span class="sr-only">Loading...</span>
+        </div>
+    }
 </div>
 
 <div class="table-responsive-md">

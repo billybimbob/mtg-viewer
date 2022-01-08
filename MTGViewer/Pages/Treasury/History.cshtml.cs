@@ -25,6 +25,8 @@ public class HistoryModel : PageModel
     private readonly SignInManager<CardUser> _signInManager;
     private readonly ILogger<HistoryModel> _logger;
 
+    private readonly HashSet<(int, int?, int?)> _firstTransfers = new();
+
     public HistoryModel(
         PageSizes pageSizes,
         CardDbContext dbContext,
@@ -42,24 +44,22 @@ public class HistoryModel : PageModel
     public string? PostMessage { get; set; }
 
 
-    public IReadOnlyList<Transfer> Transfers { get; private set; } =
-        Array.Empty<Transfer>();
-
-    public IReadOnlySet<(int, int?, int?)> IsFirstTransfer { get; private set; } =
-        ImmutableHashSet<(int, int?, int?)>.Empty;
-
-    public IReadOnlySet<int> IsSharedTransaction { get; private set; } =
-        ImmutableHashSet<int>.Empty;
+    public IReadOnlyList<Transfer> Transfers { get; private set; } = Array.Empty<Transfer>();
 
     public Data.Pages Pages { get; private set; }
-
-    public bool IsSignedIn => _signInManager.IsSignedIn(User);
 
 
     public async Task OnGetAsync(int? pageIndex, CancellationToken cancel)
     {
         var changes = await ChangesForHistory()
             .ToPagedListAsync(_pageSize, pageIndex, cancel);
+
+        var firstTransfers = changes
+            .Select(c => (c.TransactionId, c.FromId, c.ToId))
+            .GroupBy(tft => tft.TransactionId,
+                (_, tfts) => tfts.First());
+
+        _firstTransfers.UnionWith(firstTransfers);
 
         Transfers = changes
             .GroupBy(c => (c.Transaction, c.From, c.To),
@@ -69,17 +69,6 @@ public class HistoryModel : PageModel
             .ToList();
 
         Pages = changes.Pages;
-
-        IsFirstTransfer = changes
-            .Select(c => (c.TransactionId, c.FromId, c.ToId))
-            .GroupBy(tft => tft.TransactionId,
-                (_, tfts) => tfts.First())
-            .ToHashSet();
-
-        IsSharedTransaction = changes
-            .Where(IsShared)
-            .Select(c => c.TransactionId)
-            .ToHashSet();
     }
 
 
@@ -103,6 +92,15 @@ public class HistoryModel : PageModel
     }
 
 
+    public bool IsFirstTransfer(Transfer transfer)
+    {
+        var transferKey = (transfer.Transaction.Id, transfer.From?.Id, transfer.To?.Id);
+        return _firstTransfers.Contains(transferKey);
+    }
+
+    public bool IsShared(Transaction transaction) =>
+        transaction.Changes.All(IsShared);
+
     private bool IsShared(Change change) => 
         change.To is Box && change.From is Box or null;
 
@@ -110,7 +108,7 @@ public class HistoryModel : PageModel
 
     public async Task<IActionResult> OnPostAsync(int transactionId, CancellationToken cancel)
     {
-        if (!IsSignedIn)
+        if (!_signInManager.IsSignedIn(User))
         {
             return NotFound();
         }
@@ -122,7 +120,7 @@ public class HistoryModel : PageModel
                 .ThenInclude(c => c.To)
             .SingleOrDefaultAsync(t => t.Id == transactionId, cancel);
 
-        if (transaction == default || transaction.Changes.Any(c => !IsShared(c)))
+        if (transaction == default || !IsShared(transaction))
         {
             return NotFound();
         }

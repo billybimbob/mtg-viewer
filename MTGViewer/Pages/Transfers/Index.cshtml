@@ -1,14 +1,14 @@
 @page
 @model Transfers.IndexModel
 @{
-    ViewData["Title"] = $"{Model.SelfUser.Name} - Trades";
+    ViewData["Title"] = $"{Model.UserName} - Trades";
 }
 @inject SymbolFormatter MtgSymbols
 
 
 <div class="row">
     <div class="col">
-        <h2>@Model.SelfUser.Name's Deck Trades</h2>
+        <h2>@Model.UserName's Deck Trades</h2>
 
         <div class="table-responsive-md">
             <table class="table mb-3">

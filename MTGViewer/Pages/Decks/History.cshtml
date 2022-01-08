@@ -26,14 +26,13 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach (var (transaction, from, to, changes) in Model.Transfers)
+                    @foreach (var transfer in Model.Transfers)
                     {
-                        var transferKey = (transaction.Id, from?.Id, to?.Id);
-                        var isFirstTransfer = Model.IsFirstTransfer.Contains(transferKey);
+                        var (transaction, from, to, changes) = transfer;
                         var first = changes.First();
 
                         <tr>
-                            @if (isFirstTransfer)
+                            @if (Model.IsFirstTransfer(transfer))
                             {
                                 <th scope="rowgroup" rowspan="@transaction.Changes.Count">
                                     @transaction.AppliedAt
@@ -96,7 +95,7 @@
                             </td>
                             <td> @first.Amount </td>
 
-                            @if (isFirstTransfer)
+                            @if (Model.IsFirstTransfer(transfer))
                             {
                                 <td rowspan="@transaction.Changes.Count" class="text-center">
                                     <form method="POST">

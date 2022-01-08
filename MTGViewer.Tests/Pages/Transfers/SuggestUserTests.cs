@@ -21,11 +21,10 @@ public class SuggestTests : IAsyncLifetime
     private readonly UserManager<CardUser> _userManager;
     private readonly TestDataGenerator _testGen;
 
-    private readonly SuggestModel _suggestModel;
+    private readonly SuggestUserModel _suggestUserModel;
 
     public SuggestTests(
         CardDbContext dbContext,
-        PageSizes pageSizes,
         UserManager<CardUser> userManager,
         TestDataGenerator testGen)
     {
@@ -33,7 +32,7 @@ public class SuggestTests : IAsyncLifetime
         _userManager = userManager;
         _testGen = testGen;
 
-        _suggestModel = new(pageSizes, dbContext, userManager);
+        _suggestUserModel = new(dbContext, userManager);
     }
 
 
@@ -59,16 +58,16 @@ public class SuggestTests : IAsyncLifetime
             .Select(c => c.Id)
             .FirstAsync();
 
-        await _suggestModel.SetModelContextAsync(_userManager, receiverId);
+        await _suggestUserModel.SetModelContextAsync(_userManager, receiverId);
 
-        _suggestModel.Suggestion = new Suggestion
+        _suggestUserModel.Suggestion = new Suggestion
         {
             CardId = cardId,
             ReceiverId = receiverId
         };
 
         int suggestsBefore = await _dbContext.Suggestions.CountAsync();
-        var result = await _suggestModel.OnPostSuggestAsync(default);
+        var result = await _suggestUserModel.OnPostAsync(default);
         int suggestsAfter = await _dbContext.Suggestions.CountAsync();
 
         Assert.IsType<RedirectToPageResult>(result);
@@ -87,15 +86,15 @@ public class SuggestTests : IAsyncLifetime
             .Select(u => u.Id)
             .FirstAsync(uid => uid != receiverId);
 
-        await _suggestModel.SetModelContextAsync(_userManager, senderId);
+        await _suggestUserModel.SetModelContextAsync(_userManager, senderId);
 
-        _suggestModel.Suggestion = new Suggestion
+        _suggestUserModel.Suggestion = new Suggestion
         {
             ReceiverId = receiverId
         };
 
         int suggestsBefore = await _dbContext.Suggestions.CountAsync();
-        var result = await _suggestModel.OnPostSuggestAsync(default);
+        var result = await _suggestUserModel.OnPostAsync(default);
         int suggestsAfter = await _dbContext.Suggestions.CountAsync();
 
         Assert.IsType<RedirectToPageResult>(result);
@@ -124,15 +123,15 @@ public class SuggestTests : IAsyncLifetime
             .Select(u => u.Id)
             .FirstAsync(uid => uid != receiverId);
 
-        await _suggestModel.SetModelContextAsync(_userManager, senderId);
+        await _suggestUserModel.SetModelContextAsync(_userManager, senderId);
 
-        _suggestModel.Suggestion = new Suggestion
+        _suggestUserModel.Suggestion = new Suggestion
         {
             CardId = cardId,
         };
 
         int suggestsBefore = await _dbContext.Suggestions.CountAsync();
-        var result = await _suggestModel.OnPostSuggestAsync(default);
+        var result = await _suggestUserModel.OnPostAsync(default);
         int suggestsAfter = await _dbContext.Suggestions.CountAsync();
 
         Assert.IsType<RedirectToPageResult>(result);
@@ -154,9 +153,9 @@ public class SuggestTests : IAsyncLifetime
             .Select(u => u.Id)
             .FirstAsync(uid => uid != receiverId);
 
-        await _suggestModel.SetModelContextAsync(_userManager, senderId);
+        await _suggestUserModel.SetModelContextAsync(_userManager, senderId);
 
-        _suggestModel.Suggestion = new Suggestion
+        _suggestUserModel.Suggestion = new Suggestion
         {
             CardId = target.CardId,
             ReceiverId = receiverId,
@@ -164,7 +163,7 @@ public class SuggestTests : IAsyncLifetime
         };
 
         int suggestsBefore = await _dbContext.Suggestions.CountAsync();
-        var result = await _suggestModel.OnPostSuggestAsync(default);
+        var result = await _suggestUserModel.OnPostAsync(default);
         int suggestsAfter = await _dbContext.Suggestions.CountAsync();
 
         Assert.IsType<RedirectToPageResult>(result);
@@ -195,9 +194,9 @@ public class SuggestTests : IAsyncLifetime
             .Select(u => u.Id)
             .FirstAsync(uid => uid != receiverId);
 
-        await _suggestModel.SetModelContextAsync(_userManager, senderId);
+        await _suggestUserModel.SetModelContextAsync(_userManager, senderId);
 
-        _suggestModel.Suggestion = new Suggestion
+        _suggestUserModel.Suggestion = new Suggestion
         {
             CardId = cardId,
             ReceiverId = receiverId,
@@ -205,7 +204,7 @@ public class SuggestTests : IAsyncLifetime
         };
 
         int suggestsBefore = await _dbContext.Suggestions.CountAsync();
-        var result = await _suggestModel.OnPostSuggestAsync(default);
+        var result = await _suggestUserModel.OnPostAsync(default);
         int suggestsAfter = await _dbContext.Suggestions.CountAsync();
 
         Assert.IsType<RedirectToPageResult>(result);
@@ -224,12 +223,12 @@ public class SuggestTests : IAsyncLifetime
             .Select(u => u.Id)
             .FirstAsync(uid => uid != suggest.ReceiverId);
 
-        await _suggestModel.SetModelContextAsync(_userManager, senderId);
+        await _suggestUserModel.SetModelContextAsync(_userManager, senderId);
 
-        _suggestModel.Suggestion = suggest;
+        _suggestUserModel.Suggestion = suggest;
 
         int suggestsBefore = await _dbContext.Suggestions.CountAsync();
-        var result = await _suggestModel.OnPostSuggestAsync(default);
+        var result = await _suggestUserModel.OnPostAsync(default);
         int suggestsAfter = await _dbContext.Suggestions.CountAsync();
 
         Assert.IsType<RedirectToPageResult>(result);
@@ -258,16 +257,16 @@ public class SuggestTests : IAsyncLifetime
             .Select(u => u.Id)
             .FirstAsync(uid => uid != receiverId);
 
-        await _suggestModel.SetModelContextAsync(_userManager, senderId);
+        await _suggestUserModel.SetModelContextAsync(_userManager, senderId);
 
-        _suggestModel.Suggestion = new Suggestion
+        _suggestUserModel.Suggestion = new Suggestion
         {
             CardId = cardId,
             ReceiverId = receiverId,
         };
 
         int suggestsBefore = await _dbContext.Suggestions.CountAsync();
-        var result = await _suggestModel.OnPostSuggestAsync(default);
+        var result = await _suggestUserModel.OnPostAsync(default);
         int suggestsAfter = await _dbContext.Suggestions.CountAsync();
 
         Assert.IsType<RedirectToPageResult>(result);
@@ -298,9 +297,9 @@ public class SuggestTests : IAsyncLifetime
             .Select(u => u.Id)
             .FirstAsync(uid => uid != receiverId);
 
-        await _suggestModel.SetModelContextAsync(_userManager, senderId);
+        await _suggestUserModel.SetModelContextAsync(_userManager, senderId);
 
-        _suggestModel.Suggestion = new Suggestion
+        _suggestUserModel.Suggestion = new Suggestion
         {
             CardId = cardId,
             ReceiverId = receiverId,
@@ -308,7 +307,7 @@ public class SuggestTests : IAsyncLifetime
         };
 
         int suggestsBefore = await _dbContext.Suggestions.CountAsync();
-        var result = await _suggestModel.OnPostSuggestAsync(default);
+        var result = await _suggestUserModel.OnPostAsync(default);
         int suggestsAfter = await _dbContext.Suggestions.CountAsync();
 
         Assert.IsType<RedirectToPageResult>(result);
@@ -340,9 +339,9 @@ public class SuggestTests : IAsyncLifetime
             .Select(u => u.Id)
             .FirstAsync(uid => uid != receiverId);
 
-        await _suggestModel.SetModelContextAsync(_userManager, senderId);
+        await _suggestUserModel.SetModelContextAsync(_userManager, senderId);
 
-        _suggestModel.Suggestion = new Suggestion
+        _suggestUserModel.Suggestion = new Suggestion
         {
             CardId = cardId,
             ReceiverId = receiverId,
@@ -350,7 +349,7 @@ public class SuggestTests : IAsyncLifetime
         };
 
         int suggestsBefore = await _dbContext.Suggestions.CountAsync();
-        var result = await _suggestModel.OnPostSuggestAsync(default);
+        var result = await _suggestUserModel.OnPostAsync(default);
         int suggestsAfter = await _dbContext.Suggestions.CountAsync();
 
         Assert.IsType<RedirectToPageResult>(result);

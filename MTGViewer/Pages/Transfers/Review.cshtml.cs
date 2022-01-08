@@ -190,7 +190,7 @@ public class ReviewModel : PageModel
         return _dbContext.Trades
             .Where(t => t.Id == tradeId && t.From.OwnerId == userId)
 
-            .Include(t => t.To.Cards
+            .Include(t => t.To.Cards // unbounded: keep eye on
                 .Where(ca => ca.CardId == tradeCard.Id))
                 .ThenInclude(ca => ca.Card)
 
@@ -198,11 +198,11 @@ public class ReviewModel : PageModel
                 .Where(w => w.Card.Name == tradeCard.Name))
                 .ThenInclude(w => w.Card)
 
-            .Include(t => t.From.Cards
+            .Include(t => t.From.Cards // unbounded: keep eye on
                 .Where(ca => ca.CardId == tradeCard.Id))
                 .ThenInclude(ca => ca.Card)
 
-            .Include(t => t.From.Wants
+            .Include(t => t.From.Wants // unbounded: keep eye on
                 .Where(w => w.CardId == tradeCard.Id))
                 .ThenInclude(w => w.Card)
 

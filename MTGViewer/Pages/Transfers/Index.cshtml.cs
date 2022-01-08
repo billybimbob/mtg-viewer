@@ -43,7 +43,7 @@ public class IndexModel : PageModel
     public int? SuggestIndex { get; set; }
 
 
-    public UserRef SelfUser { get; private set; } = null!;
+    public string UserName { get; private set; } = string.Empty;
 
     public PagedList<Deck> TradeDecks { get; private set; } = PagedList<Deck>.Empty;
 
@@ -64,7 +64,7 @@ public class IndexModel : PageModel
         TradeDecks = await DecksForTransfer(userId)
             .ToPagedListAsync(_pageSize, DeckIndex, cancel);
 
-        SelfUser = user;
+        UserName = user.Name;
 
         Suggestions = await SuggestionsForIndex(userId)
             .ToPagedListAsync(_pageSize, SuggestIndex, cancel);

@@ -183,9 +183,19 @@
 
                 <div class="btn-group" role="group">
                     <button type="submit" class="btn btn-secondary" 
-                        title="Search For Card"
-                        disabled="@IsBusy">
-                        Search </button>
+                        title="Search For Card" disabled="@IsBusy">
+                        @if (IsBusy)
+                        {
+                            <text>
+                                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"> </span>
+                                Loading...
+                            </text>
+                        }
+                        else
+                        {
+                            <text> Search </text>
+                        }
+                    </button>
 
                     <button type="button" class="btn btn-secondary" 
                         @onclick="Reset" title="Reset All Fields"
@@ -200,10 +210,21 @@ else
 {
     <div class="btn-group" role="group">
         <button title="Add Button" type="button"
+            class="btn btn-secondary"
             @onclick="AddNewCardsAsync" 
-            disabled="@(CannotAdd || IsBusy)" 
-            class="btn btn-secondary">
-            Add Cards/Amounts </button>
+            disabled="@(CannotAdd || IsBusy)">
+            @if (IsBusy)
+            {
+                <text>
+                    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"> </span>
+                    Loading...
+                </text>
+            }
+            else
+            {
+                <text> Add Cards/Amounts </text>
+            }
+        </button>
 
         <button title="Reset Button" type="button"
             @onclick="Reset" 
@@ -271,10 +292,11 @@ else
     </div>
 
     <button title="More Results" type="button"
+        class="btn btn-secondary"
         @onclick="SearchForCardAsync" 
-        disabled="@(HasNoNext || IsBusy)"
-        class="btn btn-secondary">
-        Load More</button>
+        disabled="@(HasNoNext || IsBusy)" >
+        Load More
+    </button>
 }
 
 

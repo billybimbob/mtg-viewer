@@ -40,6 +40,11 @@ public class FixedCache
 
     public bool TryGetValue<TValue>(string key, out TValue value)
     {
+        if (key is null)
+        {
+            throw new ArgumentNullException(nameof(key));
+        }
+
         return _cache.TryGetValue(key, out value);
     }
 

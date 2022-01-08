@@ -4,6 +4,11 @@
     ViewData["Title"] = $"Treasury - History ({Model.Pages})";
 }
 
+@using Microsoft.AspNetCore.Identity
+@using MTGViewer.Areas.Identity.Data
+
+@inject SignInManager<CardUser> SignInManager
+
 <h1>Changes To Treasury</h1>
 
 <div class="table-responsive-md">
@@ -15,18 +20,21 @@
                 <th scope="col"> @Html.DisplayNameForInnerType((Change c) => c.To) </th>
                 <th scope="col"> @Html.DisplayNameForInnerType((Change c) => c.Card) </th>
                 <th scope="col"> @Html.DisplayNameForInnerType((Change c) => c.Amount) </th>
-                <th scope="col"></th>
+
+                @if (SignInManager.IsSignedIn(User))
+                {
+                    <th scope="col"></th>
+                }
             </tr>
         </thead>
         <tbody>
-            @foreach (var (transaction, from, to, changes) in Model.Transfers)
+            @foreach (var transfer in Model.Transfers)
             {
-                var transferKey = (transaction.Id, from?.Id, to?.Id);
-                var isFirstTransfer = Model.IsFirstTransfer.Contains(transferKey);
+                var (transaction, from, to, changes) = transfer;
                 var first = changes.First();
 
                 <tr>
-                    @if (isFirstTransfer)
+                    @if (Model.IsFirstTransfer(transfer))
                     {
                         <th scope="rowgroup" rowspan="@transaction.Changes.Count">
                             @transaction.AppliedAt
@@ -90,9 +98,9 @@
 
                     <td> @first.Amount </td>
 
-                    @if ( Model.IsSignedIn
-                        && isFirstTransfer 
-                        && Model.IsSharedTransaction.Contains(transaction.Id))
+                    @if (SignInManager.IsSignedIn(User)
+                        && Model.IsFirstTransfer(transfer)
+                        && Model.IsShared(transaction))
                     {
                         <td rowspan="@transaction.Changes.Count" class="text-center">
                             <form method="POST">

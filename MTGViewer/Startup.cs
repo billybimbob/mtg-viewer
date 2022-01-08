@@ -63,8 +63,12 @@ public class Startup
 
         if (_env.IsDevelopment())
         {
-            services.AddScoped<CardDataGenerator>();
             services.AddDatabaseDeveloperPageExceptionFilter();
+        }
+
+        if (!_env.IsProduction())
+        {
+            services.AddScoped<CardDataGenerator>();
         }
     }
 
