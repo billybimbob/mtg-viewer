@@ -258,16 +258,16 @@
             dbContext.AttachRange(_loadedCards); // reuse prior card objs
 
             _pagedCards = !shouldCache
-                ? await GetFilteredCardsAsync(dbContext, _filters, cancelToken)
+                ? await FilteredCardsAsync(dbContext, _filters, cancelToken)
                 : await Cache
                     .GetOrCreateAsync(nameof(_pagedCards), () =>
-                        GetFilteredCardsAsync(dbContext, _filters, cancelToken));
+                        FilteredCardsAsync(dbContext, _filters, cancelToken));
 
             var cardAmounts = !shouldCache
-                ? await GetCardAmountsAsync(dbContext, _pagedCards, cancelToken)
+                ? await CardAmountsAsync(dbContext, _pagedCards, cancelToken)
                 : await Cache
                     .GetOrCreateAsync("cardAmounts", () => 
-                        GetCardAmountsAsync(dbContext, _pagedCards, cancelToken));
+                        CardAmountsAsync(dbContext, _pagedCards, cancelToken));
 
             _loadedCards.UnionWith(_pagedCards);
 
@@ -287,7 +287,7 @@
     }
 
 
-    private static Task<PagedList<Card>> GetFilteredCardsAsync(
+    private static Task<PagedList<Card>> FilteredCardsAsync(
         CardDbContext dbContext,
         FilterContext filters,
         CancellationToken cancel)
@@ -397,7 +397,7 @@
     };
 
 
-    private static Task<Dictionary<string, int>> GetCardAmountsAsync(
+    private static Task<Dictionary<string, int>> CardAmountsAsync(
         CardDbContext dbContext, 
         IEnumerable<Card> cards,
         CancellationToken cancel)

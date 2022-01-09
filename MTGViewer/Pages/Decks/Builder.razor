@@ -81,31 +81,40 @@ else
 </SavePrompt>
 
 <div class="row">
-    <div class="col-12 col-md-7">
+    <div class="col-12 col-lg-7">
         <h3>Treasury</h3>
 
         <div class="list-group list-group-flush mb-4">
             @foreach (var (card, available) in Treasury)
             {
                 var wantTotal = card.Wants.Sum(w => w.NumCopies);
-                var previewId = $"{card.Id}-preview";
 
                 <button type="button" title="Add @card.Name"
-                    aria-controls="@previewId"
-                    class="list-group-item list-group-item-action"
+                    class="list-group-item list-group-item-action px-2"
                     @onclick="() => AddCardToDeck(card)">
 
-                    <span class="row">
-                        <span class="col-6"> 
+                    <div class="row">
+                        <div class="col-6"> 
                             <HoverCard Target="card"> 
                                 <span class="btn-link">@card.Name</span>
                             </HoverCard>
-                        </span>
+                        </div>
 
-                        <span class="col-4"> @MtgSymbols.Format(card.ManaCost).ToMarkupString() </span>
-                        <span class="col-2"> @(available - Math.Min(wantTotal, available)) </span>
-                    </span>
+                        <div class="col-4"> @MtgSymbols.Format(card.ManaCost).ToMarkupString() </div>
+                        <div class="col-2"> @(available - Math.Min(wantTotal, available)) </div>
+                    </div>
                 </button>
+            }
+
+            @if (!Treasury.Any())
+            {
+                <div class="list-group-item disabled px-2" aria-disabled="true">
+                    <div class="row">
+                        <div class="col-6"> --- </div>
+                        <div class="col-4"> --- </div>
+                        <div class="col-2"> --- </div>
+                    </div>
+                </div>
             }
         </div>
 
@@ -119,19 +128,20 @@ else
             @foreach (var (card, group) in DeckCards)
             {
                 <button type="button" title="Remove @card.Name"
-                    class="list-group-item list-group-item-action"
+                    class="list-group-item list-group-item-action px-2"
                     disabled="@(group.NumCopies <= 0)"
                     @onclick="() => RemoveCardFromDeck(card)">
 
-                    <span class="row">
-                        <span class="col-5">
+                    <div class="row">
+                        <div class="col-5">
                             <HoverCard Target="card"> 
                                 <span class="btn-link">@card.Name</span>
                             </HoverCard>
-                        </span>
-                        <span class="col-4"> @MtgSymbols.Format(card.ManaCost).ToMarkupString() </span>
+                        </div>
 
-                        <span class="col-3">
+                        <div class="col-4"> @MtgSymbols.Format(card.ManaCost).ToMarkupString() </div>
+
+                        <div class="col-3">
                             <span title="@card.Name Held" class="badge badge-pill badge-primary"> 
                                 @(group.Amount?.NumCopies ?? 0) </span>
 
@@ -140,9 +150,24 @@ else
 
                             <span title="@card.Name Wanted" class="badge badge-pill badge-secondary">
                                 @(group.Want?.NumCopies ?? 0) </span>
-                        </span>
-                    </span>
+                        </div>
+                    </div>
                 </button>
+            }
+
+            @if (!DeckCards.Any())
+            {
+                <div class="list-group-item disabled px-2" aria-disabled="true">
+                    <div class="row">
+                        <div class="col-5"> --- </div>
+                        <div class="col-4"> --- </div>
+                        <div class="col-3">
+                            <span class="badge badge-pill badge-primary"> 0 </span>
+                            <span class="badge badge-pill badge-danger"> 0 </span>
+                            <span class="badge badge-pill badge-secondary"> 0 </span>
+                        </div>
+                    </div>
+                </div>
             }
         </div>
 
@@ -250,11 +275,11 @@ else
 
             _cards = await Cache
                 .GetOrCreateAsync(nameof(_cards), () =>
-                    GetCardsAsync(_dbContext, cancelToken));
+                    CardsAsync(_dbContext, cancelToken));
 
             var boxAmounts = await Cache
                 .GetOrCreateAsync(nameof(_boxAmounts), () =>
-                    GetBoxAmountsAsync(_dbContext, cancelToken));
+                    BoxAmountsAsync(_dbContext, cancelToken));
 
             foreach ((string cardId, int amount) in boxAmounts)
             {
@@ -274,7 +299,7 @@ else
     }
 
 
-    private Task<List<Card>> GetCardsAsync(
+    private static Task<List<Card>> CardsAsync(
         CardDbContext dbContext, CancellationToken cancel)
     {
         // split query since Card model has many props that will dup
@@ -289,7 +314,7 @@ else
     }
 
 
-    private Task<Dictionary<string, int>> GetBoxAmountsAsync(
+    private static Task<Dictionary<string, int>> BoxAmountsAsync(
         CardDbContext dbContext, CancellationToken cancel)
     {
         return dbContext.Amounts

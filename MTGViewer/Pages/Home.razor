@@ -12,89 +12,99 @@
 <h1 class="text-center display-4">Welcome to the card database!</h1>
 
 <div class="pt-4">
-    <a href="/Cards" title="Card Collection">
-        <h3>Cards from our collection!</h3>
-    </a>
+    @if (RandomCards.Any())
+    {
+        <a href="/Cards" title="Card Collection">
+            <h3>Cards from our collection!</h3>
+        </a>
 
-    <div class="row no-gutters justify-content-center">
-        @foreach (var card in RandomCards)
-        {
-            <a href="/Cards/Details/@card.Id" class="col-md-3 col-6"
-                title="@card.Name Details"
-                aria-label="@card.Id details">
-
-                <img alt="@card.Id image" 
-                    class="w-100 img-fluid rounded" 
-                    src="@card.ImageUrl.WithHttps()">
-            </a>
-        }
-    </div>
-
-    <div class="pt-3 d-flex justify-content-center">
-        <button title="More Cards" type="button" class="btn btn-secondary"
-            @onclick="LoadMoreCardsAsync" 
-            disabled="@(IsBusy || IsFullyLoaded)" >
-            @if (IsBusy)
+        <div class="row no-gutters justify-content-center">
+            @foreach (var card in RandomCards)
             {
-                <text>
-                    <span class="spinner-border spinner-border-sm"
-                        role="status" aria-hidden="true"> </span>
-                    Loading...
-                </text>
+                <a href="/Cards/Details/@card.Id" class="col-md-3 col-6"
+                    title="@card.Name Details"
+                    aria-label="@card.Id details">
+
+                    <img alt="@card.Id image" 
+                        class="w-100 img-fluid rounded" 
+                        src="@card.ImageUrl.WithHttps()">
+                </a>
             }
-            else
-            {
-                <text> Load More </text>
-            }
-        </button>
-    </div>
+        </div>
+
+        <div class="pt-3 d-flex justify-content-center">
+            <button title="More Cards" type="button" class="btn btn-secondary"
+                @onclick="LoadMoreCardsAsync" 
+                disabled="@(IsBusy || IsFullyLoaded)" >
+                @if (IsBusy)
+                {
+                    <text>
+                        <span class="spinner-border spinner-border-sm"
+                            role="status" aria-hidden="true"> </span>
+                        Loading...
+                    </text>
+                }
+                else
+                {
+                    <text> Load More </text>
+                }
+            </button>
+        </div>
+    }
+    else
+    {
+        <h3> Currently, there are no cards in the collection. </h3>
+    }
 </div>
 
-<div class="pt-5">
-    <a href="/Treasury/History" title="Treasury History">
-        <h3>Recent Shared Collection Changes</h3>
-    </a>
+@if (RecentChanges.Any())
+{
+    <div class="pt-5">
+        <a href="/Treasury/History" title="Treasury History">
+            <h3>Recent Shared Collection Changes</h3>
+        </a>
 
-    <ul class="list-group list-group-flush">
-        @foreach (var transaction in RecentChanges)
-        {
-            var changes = transaction.Changes;
-            var adds = changes.Where(c => c.To is Box);
-            var removes = changes.Where(c => c.From is Box);
+        <ul class="list-group list-group-flush">
+            @foreach (var transaction in RecentChanges)
+            {
+                var changes = transaction.Changes;
+                var adds = changes.Where(c => c.To is Box);
+                var removes = changes.Where(c => c.From is Box);
 
-            <li class="list-group-item">
-                <div class="row justify-content-between">
+                <li class="list-group-item">
+                    <div class="row justify-content-between">
 
-                    <div class="col-md-10 col-9">
-                        <div class="row align-items-center">
-                            <div class="row-title ellipsis pr-2">
-                                @if (adds.Any())
-                                {
-                                    <strong> Added </strong> @CardNames(adds)
-                                }
-                                else if (removes.Any())
-                                {
-                                    <strong> Removed </strong> @CardNames(removes)
-                                }
-                                else
-                                {
-                                    <text> No cards added </text>
-                                }
+                        <div class="col-md-10 col-9">
+                            <div class="row align-items-center">
+                                <div class="row-title ellipsis pr-2">
+                                    @if (adds.Any())
+                                    {
+                                        <strong> Added </strong> @CardNames(adds)
+                                    }
+                                    else if (removes.Any())
+                                    {
+                                        <strong> Removed </strong> @CardNames(removes)
+                                    }
+                                    else
+                                    {
+                                        <text> No cards added </text>
+                                    }
+                                </div>
+                                <span class="badge badge-secondary badge-pill">
+                                    @changes.Sum(c => c.Amount) 
+                                </span>
                             </div>
-                            <span class="badge badge-secondary badge-pill">
-                                @changes.Sum(c => c.Amount) 
-                            </span>
+                        </div>
+
+                        <div class="col d-flex align-items-center justify-content-end text-right">
+                            <small class="text-muted"> @ElapsedTime(transaction) </small>
                         </div>
                     </div>
-
-                    <div class="col d-flex align-items-center justify-content-end text-right">
-                        <small class="text-muted"> @ElapsedTime(transaction) </small>
-                    </div>
-                </div>
-            </li>
-        }
-    </ul>
-</div>
+                </li>
+            }
+        </ul>
+    </div>
+}
 
 
 @code {
