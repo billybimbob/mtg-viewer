@@ -67,7 +67,7 @@ public class EmailVerification
         }
 
         var subject = $"Approve {user.Name}";
-        var message = $"Please {email}({user.Name}) wants to create an account. "
+        var message = $"New request to create an account for {email}({user.Name}). "
             + $"<a href='{HtmlEncoder.Default.Encode(callbackUrl)}'>Click here</a> to approve the request.";
 
         await _emailSender.SendEmailAsync(_authOptions.SenderEmail, subject, message);
@@ -107,8 +107,10 @@ public class EmailVerification
             return false;
         }
 
-        var subject = $"[{nameof(MTGViewer)}] Confirm your email";
-        var message = $"Please confirm your account by <a href='{HtmlEncoder.Default.Encode(callbackUrl)}'>clicking here</a>.";
+        var subject = "Confirm Email Change";
+        var message = $"A request to change your email to {newEmail} was made. "
+            + $"<a href='{HtmlEncoder.Default.Encode(callbackUrl)}'>Click here</a> "
+            + "to approve the change, or ignore this email if the change was not made by you.";
 
         await _emailSender.SendEmailAsync(newEmail, subject, message);
 
@@ -142,7 +144,7 @@ public class EmailVerification
             return false;
         }
 
-        var subject = $"[{nameof(MTGViewer)}] Confirm your email";
+        var subject = "Confirm Account";
         var message = $"Your {nameof(MTGViewer)} account was approved. "
             + $"Please confirm your account by <a href='{HtmlEncoder.Default.Encode(callbackUrl)}'>clicking here</a>.";
 
@@ -180,7 +182,9 @@ public class EmailVerification
         }
 
         var subject = "Reset Password";
-        var message = $"Please reset your password by <a href='{HtmlEncoder.Default.Encode(callbackUrl)}'>clicking here</a>.";
+        var message = "A request to reset you account password was made. "
+            + $"<a href='{HtmlEncoder.Default.Encode(callbackUrl)}'>Click here</a> "
+            + "to complete the password reset, or ignore this email if the reset was not made by you.";
 
         await _emailSender.SendEmailAsync(email, subject, message);
 
