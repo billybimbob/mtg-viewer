@@ -62,7 +62,7 @@ public class IndexModel : PageModel
     [TempData]
     public string? PostMessage { get; set; }
 
-    public UserRef CardUser { get; private set; } = null!;
+    public string UserName { get; private set; } = string.Empty;
 
     public PagedList<DeckState> Decks { get; private set; } = PagedList<DeckState>.Empty;
 
@@ -70,20 +70,22 @@ public class IndexModel : PageModel
     public async Task<IActionResult> OnGetAsync(int? pageIndex, CancellationToken cancel)
     {
         var userId = _userManager.GetUserId(User);
+        if (userId is null)
+        {
+            return NotFound();
+        }
 
         var decks = await DeckStates(userId)
             .ToPagedListAsync(_pageSize, pageIndex, cancel);
 
-        var user = decks.FirstOrDefault()?.Deck.Owner
-            ?? await _dbContext.Users.FindAsync(new [] { userId }, cancel);
-
-        if (user is null)
+        var userName = _userManager.GetDisplayName(User);
+        if (userName is null)
         {
             return NotFound();
         }
 
         Decks = decks;
-        CardUser = user;
+        UserName = userName;
 
         return Page();
     }
@@ -93,8 +95,6 @@ public class IndexModel : PageModel
     {
         return _dbContext.Decks
             .Where(d => d.OwnerId == userId)
-
-            .Include(d => d.Owner)
 
             .Include(d => d.Cards) // unbounded: keep eye on
                 .ThenInclude(ca => ca.Card)

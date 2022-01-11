@@ -86,7 +86,7 @@ public class RegisterModel : PageModel
 
         var user = new CardUser
         {
-            Name = Input.Name,
+            DisplayName = Input.Name,
             UserName = Input.Email,
             Email = Input.Email
         };

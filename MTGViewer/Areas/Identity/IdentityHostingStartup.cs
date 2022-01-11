@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.UI.Services;
 
 using Microsoft.EntityFrameworkCore;
@@ -60,9 +61,11 @@ public class IdentityHostingStartup : IHostingStartup
                     options.SignIn.RequireConfirmedEmail = true;
                     options.User.RequireUniqueEmail = true;
                 })
+                .AddClaimsPrincipalFactory<CardUserClaimsPrincipalFactory>()
                 .AddEntityFrameworkStores<UserDbContext>();
 
-            services.AddDataProtection()
+            services
+                .AddDataProtection()
                 .PersistKeysToDbContext<UserDbContext>();
 
             services.AddTransient<IEmailSender, EmailSender>();

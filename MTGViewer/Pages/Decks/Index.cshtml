@@ -1,12 +1,12 @@
 @page "{pageIndex:int?}"
 @model Decks.IndexModel
 @{
-    ViewData["Title"] = $"{Model.CardUser.Name} - Decks ({Model.Decks.Pages})";
+    ViewData["Title"] = $"{Model.UserName} - Decks ({Model.Decks.Pages})";
 }
 @inject SymbolFormatter MtgSymbols
 
  
-<h1>@Model.CardUser.Name's Decks</h1>
+<h1>@Model.UserName's Decks</h1>
 
 <a href="/Decks/Builder" class="btn btn-secondary mb-3" role="button">New Deck</a>
 

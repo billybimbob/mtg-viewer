@@ -68,7 +68,7 @@ public class SuggestModel : PageModel
             .Where(u => u.Id != proposerId);
 
         var cardSuggests = _dbContext.Suggestions
-            .Where(s => s.Card.Name == card.Name && s.ToId == default);
+            .Where(s => s.Card.Name == card.Name && s.ReceiverId != proposerId);
 
         return nonProposers
             .GroupJoin( cardSuggests,

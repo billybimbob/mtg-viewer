@@ -94,10 +94,6 @@ public class StatusModel : PageModel
             .Include(d => d.TradesTo)
                 .ThenInclude(t => t.From.Owner)
 
-            .Include(d => d.TradesTo)
-                .ThenInclude(t => t.From.Cards) // unbounded: keep eye on
-                    .ThenInclude(ca => ca.Card)
-
             .Include(d => d.TradesTo // unbounded: keep eye on
                 .OrderBy(t => t.From.Owner.Name)
                     .ThenBy(t => t.Card.Name))

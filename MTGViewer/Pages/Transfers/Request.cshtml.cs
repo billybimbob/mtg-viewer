@@ -123,9 +123,7 @@ public class RequestModel : PageModel
 
     public async Task<IActionResult> OnPostAsync(int deckId, CancellationToken cancel)
     {
-        var deck = await DeckForRequest(deckId)
-            .SingleOrDefaultAsync(cancel);
-
+        var deck = await DeckForRequest(deckId).SingleOrDefaultAsync(cancel);
         if (deck == default)
         {
             return NotFound();
@@ -137,8 +135,13 @@ public class RequestModel : PageModel
             return RedirectToPage("Index");
         }
 
-        var trades = await CreateTradesAsync(deck, cancel);
+        if (!deck.Wants.Any())
+        {
+            PostMessage = "There are no specified requested cards";
+            return RedirectToPage("Index");
+        }
 
+        var trades = await TradeMatches(deck).ToListAsync(cancel);
         if (!trades.Any())
         {
             PostMessage = "There are no possible decks to trade with";
@@ -162,40 +165,26 @@ public class RequestModel : PageModel
     }
 
 
-    private async Task<IEnumerable<Trade>> CreateTradesAsync(Deck deck, CancellationToken cancel)
-    {
-        if (!deck.Wants.Any())
-        {
-            return Enumerable.Empty<Trade>();
-        }
-
-        var requestTargets = await TakeTargets(deck)
-            .ToListAsync(cancel); // unbounded: keep eye on
-
-        if (!requestTargets.Any())
-        {
-            return Enumerable.Empty<Trade>();
-        }
-
-        return FindTradeMatches(deck, requestTargets);
-    }
-
-
-    private IReadOnlyList<Trade> FindTradeMatches(Deck deck, IEnumerable<Amount> targets)
+    private IAsyncEnumerable<Trade> TradeMatches(Deck deck)
     {
         // TODO: figure out how to query more on server
         // TODO: prioritize requesting from exact card matches
 
+        var targets = TakeTargets(deck).AsAsyncEnumerable();
+        var wants = deck.Wants.ToAsyncEnumerable();
+
         var requestMatches = targets
-            .GroupJoin( deck.Wants,
-                target => target.Card.Name,
-                want => want.Card.Name,
-                (target, wantMatches) =>
+            .GroupJoinAwaitWithCancellation(
+                wants,
+                (target, _) => ValueTask.FromResult(target.Card.Name),
+                (want, _) => ValueTask.FromResult(want.Card.Name),
+
+                async (target, wantMatches, cancel) =>
                     // intentionally leave wants unbounded by target since
                     // that cap will be handled later
-                    (target, amount: wantMatches.Sum(w => w.NumCopies)));
+                    (target, amount: await wantMatches.SumAsync(w => w.NumCopies, cancel)));
 
-        var newTrades = requestMatches
+        return requestMatches
             .Select(ta => new Trade
             {
                 Card = ta.target.Card,
@@ -203,7 +192,5 @@ public class RequestModel : PageModel
                 From = (Deck) ta.target.Location,
                 Amount = ta.amount
             });
-            
-        return newTrades.ToList();
     }
 }

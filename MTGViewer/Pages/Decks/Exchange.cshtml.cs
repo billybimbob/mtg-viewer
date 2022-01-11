@@ -120,8 +120,7 @@ public class ExchangeModel : PageModel
             .ToArray();
 
         return _treasuryQuery.Cards
-            .Where(a => a.NumCopies > 0 
-                && wantNames.Contains(a.Card.Name))
+            .Where(a => a.NumCopies > 0 && wantNames.Contains(a.Card.Name))
             .AnyAsync(cancel);
     }
 

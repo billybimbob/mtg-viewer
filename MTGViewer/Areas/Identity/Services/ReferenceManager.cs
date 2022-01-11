@@ -68,14 +68,14 @@ public class ReferenceManager
             return false;
         }
 
-        if (reference.Name == user.Name)
+        if (reference.Name == user.DisplayName)
         {
             return true;
         }
 
         try
         {
-            reference.Name = user.Name;
+            reference.Name = user.DisplayName;
 
             await dbContext.SaveChangesAsync(cancel);
 

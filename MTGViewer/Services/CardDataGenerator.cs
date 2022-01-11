@@ -88,21 +88,21 @@ public class CardDataGenerator
     {
         new CardUser
         {
-            Name = "Test Name",
+            DisplayName = "Test Name",
             UserName = "testingname",
             Email = "test@gmail.com",
             EmailConfirmed = true
         },
         new CardUser
         {
-            Name = "Bob Billy",
+            DisplayName = "Bob Billy",
             UserName = "bobbilly213",
             Email = "bob@gmail.com",
             EmailConfirmed = true
         },
         new CardUser
         {
-            Name = "Steve Phil",
+            DisplayName = "Steve Phil",
             UserName = "stephenthegreat",
             Email = "steve@gmail.com",
             EmailConfirmed = true

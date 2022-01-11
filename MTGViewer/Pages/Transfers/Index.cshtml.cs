@@ -54,9 +54,13 @@ public class IndexModel : PageModel
     public async Task<IActionResult> OnGetAsync(CancellationToken cancel)
     {
         var userId = _userManager.GetUserId(User);
-        var user = await _dbContext.Users.FindAsync(new []{ userId }, cancel);
+        if (userId is null)
+        {
+            return NotFound();
+        }
 
-        if (user is null)
+        var userName = _userManager.GetDisplayName(User);
+        if (userName is null)
         {
             return NotFound();
         }
@@ -64,7 +68,7 @@ public class IndexModel : PageModel
         TradeDecks = await DecksForTransfer(userId)
             .ToPagedListAsync(_pageSize, DeckIndex, cancel);
 
-        UserName = user.Name;
+        UserName = userName;
 
         Suggestions = await SuggestionsForIndex(userId)
             .ToPagedListAsync(_pageSize, SuggestIndex, cancel);

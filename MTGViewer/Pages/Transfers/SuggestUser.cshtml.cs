@@ -247,6 +247,12 @@ public class SuggestUserModel : PageModel
             await entry
                 .Reference(s => s.To)
                 .LoadAsync(cancel);
+
+            if (suggestion.To!.OwnerId != suggestion.ReceiverId)
+            {
+                PostMessage = "Suggestion To Deck is not valid";
+                return false;
+            }
         }
 
         ModelState.ClearValidationState(nameof(Suggestion)); 

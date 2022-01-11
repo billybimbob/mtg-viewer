@@ -66,8 +66,8 @@ public class EmailVerification
             return false;
         }
 
-        var subject = $"Approve {user.Name}";
-        var message = $"New request to create an account for {email}({user.Name}). "
+        var subject = $"Approve {user.DisplayName}";
+        var message = $"New request to create an account for {email}({user.DisplayName}). "
             + $"<a href='{HtmlEncoder.Default.Encode(callbackUrl)}'>Click here</a> to approve the request.";
 
         await _emailSender.SendEmailAsync(_authOptions.SenderEmail, subject, message);

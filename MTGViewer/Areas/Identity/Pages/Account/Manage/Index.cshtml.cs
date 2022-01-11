@@ -1,4 +1,5 @@
 using System.Threading.Tasks;
+using System.ComponentModel.DataAnnotations;
 
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -29,7 +30,8 @@ public class IndexModel : PageModel
     public string? StatusMessage { get; set; }
 
     [BindProperty]
-    public string? Username { get; set; }
+    [Display(Name = "User Name")]
+    public string? UserName { get; set; }
 
 
     public async Task<IActionResult> OnGetAsync()
@@ -40,7 +42,7 @@ public class IndexModel : PageModel
             return NotFound($"Unable to load user with ID '{_userManager.GetUserId(User)}'.");
         }
 
-        Username = user.Name;
+        UserName = user.DisplayName;
 
         return Page();
     }
@@ -54,12 +56,19 @@ public class IndexModel : PageModel
             return NotFound($"Unable to load user with ID '{_userManager.GetUserId(User)}'.");
         }
 
-        if (Username is null)
+        if (string.IsNullOrWhiteSpace(UserName))
         {
-            return NotFound();
+            ModelState.AddModelError(nameof(UserName), "Invalid user name");
+            return Page();
         }
 
-        user.Name = Username;
+        if (user.DisplayName == UserName)
+        {
+            StatusMessage = "Successfully changed user name";
+            return RedirectToPage();
+        }
+
+        user.DisplayName = UserName;
 
         var result = await _userManager.UpdateAsync(user);
         if (!result.Succeeded)
@@ -75,6 +84,7 @@ public class IndexModel : PageModel
             return Page();
         }
 
+        await _signInManager.RefreshSignInAsync(user);
         StatusMessage = "Successfully changed user name";
 
         return RedirectToPage();

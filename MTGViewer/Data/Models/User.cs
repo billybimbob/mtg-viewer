@@ -11,7 +11,7 @@ public class UserRef
     public UserRef(CardUser user)
     {
         Id = user.Id;
-        Name = user.Name;
+        Name = user.DisplayName;
     }
 
     [Key]

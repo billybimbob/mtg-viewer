@@ -25,6 +25,11 @@ public static class StringExtensions
             + $@"(?<port>[^/]*)\/"
             + $@"(?<database>.*)";
 
+        if (pgUrl is null)
+        {
+            throw new ArgumentNullException(nameof(pgUrl));
+        }
+
         var urlValues = Regex.Match(pgUrl, pgUrlPattern).Groups;
 
         var conn = new NpgsqlConnectionStringBuilder
