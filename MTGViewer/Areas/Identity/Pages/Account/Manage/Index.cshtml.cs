@@ -42,6 +42,13 @@ public class IndexModel : PageModel
             return NotFound($"Unable to load user with ID '{_userManager.GetUserId(User)}'.");
         }
 
+        var claimName = _userManager.GetDisplayName(User);
+        if (user.DisplayName != claimName)
+        {
+            await _signInManager.RefreshSignInAsync(user);
+            return RedirectToPage();
+        }
+
         UserName = user.DisplayName;
 
         return Page();

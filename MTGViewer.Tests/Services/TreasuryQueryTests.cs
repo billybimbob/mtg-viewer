@@ -65,29 +65,29 @@ public class TreasuryQueryTests : IAsyncLifetime
 
 
     [Fact]
-    public async Task FindCheckout_NullRequests_Throws()
+    public async Task RequestCheckout_NullRequests_Throws()
     {
         const IEnumerable<CardRequest> nullRequests = null!;
 
-        Task FindAsync() => _treasuryQuery.FindCheckoutAsync(nullRequests);
+        Task FindAsync() => _treasuryQuery.RequestCheckoutAsync(nullRequests);
 
         await Assert.ThrowsAsync<ArgumentNullException>(FindAsync);
     }
 
 
     [Fact]
-    public async Task FindCheckout_WithNullCardRequest_Throws()
+    public async Task RequestCheckout_WithNullCardRequest_Throws()
     {
         var withNull = new CardRequest[] { null! };
 
-        Task FindAsync() => _treasuryQuery.FindCheckoutAsync(withNull);
+        Task FindAsync() => _treasuryQuery.RequestCheckoutAsync(withNull);
 
         await Assert.ThrowsAsync<ArgumentNullException>(FindAsync);
     }
 
 
     [Fact]
-    public async Task FindCheckout_WithNullCard_Throws()
+    public async Task RequestCheckout_WithNullCard_Throws()
     {
         const Card nullCard = null!;
 
@@ -98,7 +98,7 @@ public class TreasuryQueryTests : IAsyncLifetime
 
 
     [Fact]
-    public async Task FindCheckout_MissingCardName_EmptyResult()
+    public async Task RequestCheckout_MissingCardName_EmptyResult()
     {
         const int amount = 1;
 
@@ -130,7 +130,7 @@ public class TreasuryQueryTests : IAsyncLifetime
 
 
     [Fact]
-    public async Task FindCheckout_LackCopies_IncompleteResult()
+    public async Task RequestCheckout_LackCopies_IncompleteResult()
     {
         const int unfulfilled = 2;
 
@@ -169,7 +169,7 @@ public class TreasuryQueryTests : IAsyncLifetime
 
 
     [Fact]
-    public async Task FindCheckout_SatisfyCopies_CompleteResult()
+    public async Task RequestCheckout_SatisfyCopies_CompleteResult()
     {
         var card = await _dbContext.Amounts
             .Where(ca => ca.Location is Box)
@@ -195,29 +195,29 @@ public class TreasuryQueryTests : IAsyncLifetime
 
 
     [Fact]
-    public async Task FindReturn_NullRequests_Throws()
+    public async Task RequestReturn_NullRequests_Throws()
     {
         const IEnumerable<CardRequest> nullRequests = null!;
 
-        Task FindAsync() => _treasuryQuery.FindReturnAsync(nullRequests);
+        Task FindAsync() => _treasuryQuery.RequestReturnAsync(nullRequests);
 
         await Assert.ThrowsAsync<ArgumentNullException>(FindAsync);
     }
 
 
     [Fact]
-    public async Task FindReturn_WithNullCardRequest_Throws()
+    public async Task RequestReturn_WithNullCardRequest_Throws()
     {
         var withNull = new CardRequest[] { null! };
 
-        Task FindAsync() => _treasuryQuery.FindReturnAsync(withNull);
+        Task FindAsync() => _treasuryQuery.RequestReturnAsync(withNull);
 
         await Assert.ThrowsAsync<ArgumentNullException>(FindAsync);
     }
 
 
     [Fact]
-    public async Task FindReturn_WithNullCard_Throws()
+    public async Task RequestReturn_WithNullCard_Throws()
     {
         const Card nullCard = null!;
 
@@ -228,7 +228,7 @@ public class TreasuryQueryTests : IAsyncLifetime
 
 
     [Fact]
-    public async Task FindReturn_NewCard_OnlyNew()
+    public async Task RequestReturn_NewCard_OnlyNew()
     {
         const int amount = 2;
 
@@ -262,7 +262,7 @@ public class TreasuryQueryTests : IAsyncLifetime
 
 
     [Fact]
-    public async Task FindReturn_ExistingWithCapcity_OnlyExisting()
+    public async Task RequestReturn_ExistingWithCapcity_OnlyExisting()
     {
         var card = await _dbContext.Amounts
             .Where(ca => ca.Location is Box)
@@ -302,7 +302,7 @@ public class TreasuryQueryTests : IAsyncLifetime
 
 
     [Fact]
-    public async Task FindReturn_ExistingLackCapacity_MixDeposits()
+    public async Task RequestReturn_ExistingLackCapacity_MixDeposits()
     {
         const int modAmount = 5;
 
@@ -340,5 +340,206 @@ public class TreasuryQueryTests : IAsyncLifetime
 
         Assert.Equal(modAmount, newTotal);
         Assert.Equal(requestAmount, totalAfter - totalBefore);
+    }
+
+
+    private async Task AddExcessAsync(int excessSpace)
+    {
+        int capacity = await _dbContext.Boxes
+            .Where(b => !b.IsExcess)
+            .SumAsync(b => b.Capacity);
+
+        int availAmounts = await _dbContext.Boxes
+            .Where(b => !b.IsExcess)
+            .SumAsync(b => b.Cards.Sum(a => a.NumCopies));
+
+        if (availAmounts > capacity)
+        {
+            throw new InvalidOperationException("There are too many cards not in excess");
+        }
+
+        var card = await _dbContext.Cards.FirstAsync();
+
+        if (availAmounts < capacity)
+        {
+            var boxes = await _dbContext.Boxes
+                .Where(b => !b.IsExcess)
+                .Include(b => b.Cards)
+                .ToListAsync();
+
+            foreach (var box in boxes)
+            {
+                int remaining = box.Capacity - box.Cards.Sum(a => a.NumCopies);
+                if (remaining <= 0)
+                {
+                    continue;
+                }
+
+                if (box.Cards.FirstOrDefault() is Amount amount)
+                {
+                    amount.NumCopies += remaining;
+                    continue;
+                }
+
+                amount = new Amount
+                {
+                    Card = card,
+                    Location = box,
+                    NumCopies = remaining
+                };
+
+                _dbContext.Amounts.Attach(amount);
+            }
+        }
+
+        if (await _dbContext.Boxes.AnyAsync(b => b.IsExcess))
+        {
+            return;
+        }
+
+        var excess = new Box
+        {
+            Name = "Excess",
+            Capacity = 0,
+            Bin = new Bin
+            {
+                Name = "Excess Bin"
+            }
+        };
+
+        var excessCard = new Amount
+        {
+            Card = card,
+            Location = excess,
+            NumCopies = excessSpace
+        };
+
+        _dbContext.Boxes.Attach(excess);
+        _dbContext.Amounts.Attach(excessCard);
+
+        await _dbContext.SaveChangesAsync();
+
+        _dbContext.ChangeTracker.Clear();
+    }
+
+
+    [Fact]
+    public async Task RequestUpdate_NewBox_DecreaseExcess()
+    {
+        const int extraSpace = 15;
+
+        await AddExcessAsync(extraSpace);
+
+        int oldAvailable = await _dbContext.Boxes
+            .Where(b => !b.IsExcess)
+            .SumAsync(b => b.Cards.Sum(a => a.NumCopies));
+
+        int oldExcess = await _dbContext.Boxes
+            .Where(b => b.IsExcess)
+            .SumAsync(b => b.Cards.Sum(a => a.NumCopies));
+
+        var bin = await _dbContext.Bins.LastAsync();
+        var newBox = new Box
+        {
+            Name = "Extra Box",
+            Bin = bin,
+            Capacity = extraSpace
+        };
+
+        var transfers = await _treasuryQuery.RequestUpdateAsync(newBox);
+
+        _dbContext.Boxes.Add(newBox);
+        _dbContext.AttachResult(transfers);
+
+        await _dbContext.SaveChangesAsync();
+
+        int newAvailable = await _dbContext.Boxes
+            .Where(b => !b.IsExcess)
+            .SumAsync(b => b.Cards.Sum(a => a.NumCopies));
+
+        int newExcess = await _dbContext.Boxes
+            .Where(b => b.IsExcess)
+            .SumAsync(b => b.Cards.Sum(a => a.NumCopies));
+
+        Assert.Equal(extraSpace, newAvailable - oldAvailable);
+        Assert.Equal(extraSpace, oldExcess - newExcess);
+    }
+
+
+    [Fact]
+    public async Task RequestUpdate_IncreaseCapacity_DecreaseExcess()
+    {
+        const int extraSpace = 15;
+
+        await AddExcessAsync(extraSpace);
+
+        int oldAvailable = await _dbContext.Boxes
+            .Where(b => !b.IsExcess)
+            .SumAsync(b => b.Cards.Sum(a => a.NumCopies));
+
+        int oldExcess = await _dbContext.Boxes
+            .Where(b => b.IsExcess)
+            .SumAsync(b => b.Cards.Sum(a => a.NumCopies));
+
+        var higherBox = await _dbContext.Boxes.FirstAsync();
+
+        higherBox.Capacity += extraSpace;
+
+        var transfers = await _treasuryQuery.RequestUpdateAsync(higherBox);
+
+        _dbContext.Boxes.Update(higherBox);
+        _dbContext.AttachResult(transfers);
+
+        await _dbContext.SaveChangesAsync();
+
+        int newAvailable = await _dbContext.Boxes
+            .Where(b => !b.IsExcess)
+            .SumAsync(b => b.Cards.Sum(a => a.NumCopies));
+
+        int newExcess = await _dbContext.Boxes
+            .Where(b => b.IsExcess)
+            .SumAsync(b => b.Cards.Sum(a => a.NumCopies));
+
+        Assert.Equal(extraSpace, newAvailable - oldAvailable);
+        Assert.Equal(extraSpace, oldExcess - newExcess);
+    }
+
+
+    [Fact]
+    public async Task RequestUpdate_DecreaseCapacity_IncreaseExcess()
+    {
+        const int extraSpace = 15;
+
+        await AddExcessAsync(extraSpace);
+
+        int oldAvailable = await _dbContext.Boxes
+            .Where(b => !b.IsExcess)
+            .SumAsync(b => b.Cards.Sum(a => a.NumCopies));
+
+        int oldExcess = await _dbContext.Boxes
+            .Where(b => b.IsExcess)
+            .SumAsync(b => b.Cards.Sum(a => a.NumCopies));
+
+        var lowerBox = await _dbContext.Boxes.FirstAsync();
+
+        lowerBox.Capacity -= extraSpace;
+
+        var transfers = await _treasuryQuery.RequestUpdateAsync(lowerBox);
+
+        _dbContext.Boxes.Update(lowerBox);
+        _dbContext.AttachResult(transfers);
+
+        await _dbContext.SaveChangesAsync();
+
+        int newAvailable = await _dbContext.Boxes
+            .Where(b => !b.IsExcess)
+            .SumAsync(b => b.Cards.Sum(a => a.NumCopies));
+
+        int newExcess = await _dbContext.Boxes
+            .Where(b => b.IsExcess)
+            .SumAsync(b => b.Cards.Sum(a => a.NumCopies));
+
+        Assert.Equal(extraSpace, oldAvailable - newAvailable);
+        Assert.Equal(extraSpace, newExcess - oldExcess);
     }
 }

@@ -166,7 +166,7 @@ public class DeleteModel : PageModel
         var returningCards = deck.Cards
             .Select(a => new CardRequest(a.Card, a.NumCopies));
 
-        var returns = await _treasuryQuery.FindReturnAsync(returningCards, cancel);
+        var returns = await _treasuryQuery.RequestReturnAsync(returningCards, cancel);
 
         var newTransaction = new Transaction();
         var (returnTargets, dbCopies) = returns;

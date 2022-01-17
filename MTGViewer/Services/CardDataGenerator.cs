@@ -79,7 +79,8 @@ public class CardDataGenerator
 
         // TODO: fix created accounts not being verified
 
-        await users.ToAsyncEnumerable()
+        await users
+            .ToAsyncEnumerable()
             .ForEachAwaitWithCancellationAsync(RegisterUserAsync, cancel);
     }
 
@@ -89,21 +90,21 @@ public class CardDataGenerator
         new CardUser
         {
             DisplayName = "Test Name",
-            UserName = "testingname",
+            UserName = "test@gmail.com",
             Email = "test@gmail.com",
             EmailConfirmed = true
         },
         new CardUser
         {
             DisplayName = "Bob Billy",
-            UserName = "bobbilly213",
+            UserName = "bob@gmail.com",
             Email = "bob@gmail.com",
             EmailConfirmed = true
         },
         new CardUser
         {
             DisplayName = "Steve Phil",
-            UserName = "stephenthegreat",
+            UserName = "steve@gmail.com",
             Email = "steve@gmail.com",
             EmailConfirmed = true
         }

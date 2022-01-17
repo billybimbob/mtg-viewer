@@ -509,7 +509,7 @@ public class FileCardStorage
             .Select(card => 
                 new CardRequest(card, multiAdditions[card.MultiverseId]));
 
-        var result = await _treasuryQuery.FindReturnAsync(requests, cancel);
+        var result = await _treasuryQuery.RequestReturnAsync(requests, cancel);
 
         var (addTargets, oldCopies) = result;
         var newTransaction = new Transaction();

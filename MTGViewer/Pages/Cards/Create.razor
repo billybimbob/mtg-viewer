@@ -704,7 +704,7 @@ else
         IEnumerable<CardRequest> newAmounts,
         CancellationToken cancel)
     {
-        var result = await treasury.FindReturnAsync(newAmounts, cancel);
+        var result = await treasury.RequestReturnAsync(newAmounts, cancel);
 
         var (addTargets, oldCopies) = result;
         var newTransaction = new Transaction();

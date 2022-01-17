@@ -234,7 +234,7 @@ public class ExchangeModel : PageModel
         var wantRequests = deck.Wants
             .Select(w => new CardRequest(w.Card, w.NumCopies));
 
-        return _treasuryQuery.FindCheckoutAsync(wantRequests, cancel);
+        return _treasuryQuery.RequestCheckoutAsync(wantRequests, cancel);
     }
 
 
@@ -262,7 +262,7 @@ public class ExchangeModel : PageModel
         var returnRequests = deck.GiveBacks
             .Select(g => new CardRequest(g.Card, g.NumCopies));
 
-        return _treasuryQuery.FindReturnAsync(returnRequests, cancel);
+        return _treasuryQuery.RequestReturnAsync(returnRequests, cancel);
     }
 
 

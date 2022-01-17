@@ -46,7 +46,7 @@
             @foreach (var box in Model.Boxes)
             {
                 var firstAmount = box.Cards.FirstOrDefault();
-                var boxSpan = Math.Max(1, box.Cards.Count);
+                int boxSpan = Math.Max(1, box.Cards.Count);
 
                 <tr>
                     <th scope="rowgroup" rowspan="@boxSpan"> @box.Name (@box.Bin.Name) </th>

@@ -141,7 +141,7 @@ public class ReferenceManager
                 (card, amounts) => 
                     new CardRequest(card, amounts.Sum(a => a.NumCopies)) );
 
-        var returns = await _treasuryQuery.FindReturnAsync(returnRequests, cancel);
+        var returns = await _treasuryQuery.RequestReturnAsync(returnRequests, cancel);
 
         var newTransaction = new Transaction();
         var (returnTargets, dbCopies) = returns;

@@ -41,7 +41,7 @@ public interface ITreasuryQuery
     /// </returns>
     /// <exception cref="ArgumentNullException"></exception>
     /// <exception cref="OperationCanceledException"></exception>
-    Task<RequestResult> FindCheckoutAsync(
+    Task<RequestResult> RequestCheckoutAsync(
         IEnumerable<CardRequest> requests,
         CancellationToken cancel = default);
 
@@ -59,8 +59,25 @@ public interface ITreasuryQuery
     /// <exception cref="ArgumentNullException"></exception>
     /// <exception cref="InvalidOperationException"></exception>
     /// <exception cref="OperationCanceledException"></exception>
-    Task<RequestResult> FindReturnAsync(
+    Task<RequestResult> RequestReturnAsync(
         IEnumerable<CardRequest> requests, 
+        CancellationToken cancel = default);
+
+
+    /// <summary>
+    /// Finds possible changes to the Treasury to account for <see cref="Box"/> modifications.
+    /// </summary>
+    /// <remarks> 
+    /// No actual modifications are applied to the Treasury,
+    /// </remarks>
+    /// <returns>
+    /// Modified <see cref="Amount"/> values specifying how the Treasury is allowed to be modified 
+    /// to accommodate for the added/modified <see cref="Box"/>.
+    /// </returns>
+    /// <exception cref="ArgumentNullException"></exception>
+    /// <exception cref="OperationCanceledException"></exception>
+    Task<RequestResult> RequestUpdateAsync(
+        Box updated,
         CancellationToken cancel = default);
 }
 
@@ -79,7 +96,7 @@ public static class TreasuryQueryExtensions
 
         var request = new []{ new CardRequest(card, numCopies) };
 
-        return treasury.FindCheckoutAsync(request, cancel);
+        return treasury.RequestCheckoutAsync(request, cancel);
     }
 
 
@@ -94,6 +111,6 @@ public static class TreasuryQueryExtensions
 
         var request = new []{ new CardRequest(card, numCopies) };
 
-        return treasury.FindReturnAsync(request, cancel);
+        return treasury.RequestReturnAsync(request, cancel);
     }
 }

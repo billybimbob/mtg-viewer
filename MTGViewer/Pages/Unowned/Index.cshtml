@@ -24,7 +24,7 @@
             @foreach (var unclaimed in Model.Unclaimed)
             {
                 var groups = Model.Cards[unclaimed.Id];
-                var groupSpan = Math.Max(1, groups.Count);
+                int groupSpan = Math.Max(1, groups.Count);
 
                 <tr>
                     <th scope="row" rowspan="@groupSpan"> @unclaimed.Name </th>

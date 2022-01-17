@@ -3,8 +3,8 @@
 
 @if (Model.HasMultiple)
 {
-    var start = Model.Current / PageSizes.Default * PageSizes.Default;
-    var end = Math.Min(Model.Total, start + PageSizes.Default + 1);
+    int start = Model.Current / PageSizes.Default * PageSizes.Default;
+    int end = Math.Min(Model.Total, start + PageSizes.Default + 1);
 
     if (start > 0)
     {

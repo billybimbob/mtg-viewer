@@ -75,17 +75,21 @@ public class IndexModel : PageModel
             return NotFound();
         }
 
-        var decks = await DeckStates(userId)
-            .ToPagedListAsync(_pageSize, pageIndex, cancel);
+        var userName = await _dbContext.Users
+            .Where(u => u.Id == userId)
+            .Select(u => u.Name)
+            .SingleOrDefaultAsync(cancel);
 
-        var userName = _userManager.GetDisplayName(User);
         if (userName is null)
         {
             return NotFound();
         }
 
-        Decks = decks;
+        var decks = await DeckStates(userId)
+            .ToPagedListAsync(_pageSize, pageIndex, cancel);
+
         UserName = userName;
+        Decks = decks;
 
         return Page();
     }

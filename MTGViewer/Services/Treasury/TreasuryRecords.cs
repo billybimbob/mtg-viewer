@@ -1,7 +1,7 @@
 using System;
+using System.Linq;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using Microsoft.EntityFrameworkCore;
 using MTGViewer.Data;
 
 namespace MTGViewer.Services;
@@ -71,5 +71,9 @@ public static class DbTrackingExtensions
                 numCopiesProp.OriginalValue = oldCopies;
             }
         }
+
+        var emptyAmounts = modifies.Where(a => a.NumCopies <= 0);
+
+        dbContext.Amounts.RemoveRange(emptyAmounts);
     }
 }

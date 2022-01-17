@@ -238,7 +238,7 @@ public class ReviewModel : PageModel
 
     private void ApplyAccept(AcceptRequest acceptRequest, int amount)
     {
-        var acceptAmount = Math.Max(amount, 1);
+        int acceptAmount = Math.Max(amount, 1);
 
         ModifyAmountsAndRequests(acceptRequest, acceptAmount);
 
