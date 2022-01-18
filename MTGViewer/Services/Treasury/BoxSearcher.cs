@@ -19,11 +19,11 @@ internal sealed class BoxSearcher
     private readonly List<int> _addPositions;
 
 
-    public BoxSearcher(TreasuryContext treasuryContext)
+    public BoxSearcher(IReadOnlyCollection<Box> boxes)
     {
         _cardComparer = new CardNameComparer();
 
-        _sortedBoxes = treasuryContext.Available
+        _sortedBoxes = boxes
             .OrderBy(b => b.Id)
             .ToList();
 

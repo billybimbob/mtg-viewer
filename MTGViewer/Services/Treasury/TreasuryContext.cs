@@ -18,34 +18,28 @@ internal sealed class TreasuryContext
     private readonly Amount[] _originalAmounts;
     private readonly Dictionary<(string, Box), Amount> _amountMap;
 
-    public TreasuryContext(
-        IReadOnlyList<Box> bounded, IReadOnlyList<Box> excess)
+    public TreasuryContext(IReadOnlyList<Box> boxes)
     {
-        if (!bounded.Any() || bounded.Any(b => b.IsExcess))
+        if (!boxes.Any(b => b.IsExcess) || !boxes.Any(b => b.IsExcess))
         {
-            throw new ArgumentException(nameof(bounded));
+            throw new ArgumentException(nameof(boxes));
         }
-
-        if (!excess.Any() || excess.Any(b => !b.IsExcess))
-        {
-            throw new ArgumentException(nameof(excess));
-        }
-
-        var boxes = bounded.Concat(excess);
 
         _boxSpace = boxes
             .ToDictionary(
                 b => b, b => b.Cards.Sum(a => a.NumCopies));
 
-        _available = bounded
-            .Where(b => _boxSpace.GetValueOrDefault(b) < b.Capacity)
+        _available = boxes
+            .Where(b => !b.IsExcess && _boxSpace.GetValueOrDefault(b) < b.Capacity)
             .ToHashSet();
 
-        _overflow = bounded
-            .Where(b => _boxSpace.GetValueOrDefault(b) > b.Capacity)
+        _overflow = boxes
+            .Where(b => !b.IsExcess && _boxSpace.GetValueOrDefault(b) > b.Capacity)
             .ToHashSet();
 
-        _excess = excess;
+        _excess = boxes
+            .Where(b => b.IsExcess)
+            .ToList();
 
         _originalAmounts = boxes
             .SelectMany(b => b.Cards)
