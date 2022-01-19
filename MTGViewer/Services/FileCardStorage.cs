@@ -39,7 +39,6 @@ public class FileCardStorage
         PageSizes pageSizes,
         IDbContextFactory<CardDbContext> dbFactory,
         CardDbContext dbContext, 
-        ITreasuryQuery treasuryQuery,
         MTGFetchService fetch,
         UserManager<CardUser> userManager)
     {
@@ -51,7 +50,6 @@ public class FileCardStorage
         _dbFactory = dbFactory;
         _dbContext = dbContext;
 
-        _treasuryQuery = treasuryQuery;
         _fetch = fetch;
 
         var seedOptions = new SeedSettings();
@@ -509,7 +507,8 @@ public class FileCardStorage
             .Select(card => 
                 new CardRequest(card, multiAdditions[card.MultiverseId]));
 
-        var result = await _treasuryQuery.RequestReturnAsync(requests, cancel);
+        // var result = await _treasuryQuery.RequestReturnAsync(requests, cancel);
+        var result = RequestResult.Empty;
 
         var (addTargets, oldCopies) = result;
         var newTransaction = new Transaction();

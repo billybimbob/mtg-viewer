@@ -10,19 +10,19 @@ using MTGViewer.Tests.Utils;
 
 namespace MTGViewer.Services;
 
-public class TreasuryQueryTests : IAsyncLifetime
+public class TreasuryHandlerTests : IAsyncLifetime
 {
     private readonly CardDbContext _dbContext;
-    private readonly ITreasuryQuery _treasuryQuery;
+    private readonly TreasuryHandler _treasuryHandler;
     private readonly TestDataGenerator _testGen;
 
-    public TreasuryQueryTests(
+    public TreasuryHandlerTests(
         CardDbContext dbContext,
-        ITreasuryQuery treasuryQuery, 
+        TreasuryHandler treasuryHandler,
         TestDataGenerator testGen)
     {
         _dbContext = dbContext;
-        _treasuryQuery = treasuryQuery;
+        _treasuryHandler = treasuryHandler;
         _testGen = testGen;
     }
 
@@ -34,12 +34,6 @@ public class TreasuryQueryTests : IAsyncLifetime
 
     private Task<int> GetTotalCopiesAsync() =>
         _dbContext.Amounts.SumAsync(amt => amt.NumCopies);
-
-    private Task<int[]> GetAmountIdsAsync() =>
-        _dbContext.Amounts
-            .Select(ca => ca.Id)
-            .OrderBy(id => id)
-            .ToArrayAsync();
 
 
     private async Task RemoveCardCopiesAsync(Card card)
@@ -56,179 +50,53 @@ public class TreasuryQueryTests : IAsyncLifetime
     }
 
 
-    private Task ApplyChangesAsync(IEnumerable<Amount> changes)
+    [Fact]
+    public async Task Add_NullDbContext_Throws()
     {
-        _dbContext.Amounts.UpdateRange(changes);
+        const CardDbContext nullDbContext = null!;
+        IEnumerable<CardRequest> emptyRequests = Enumerable.Empty<CardRequest>();
 
-        return _dbContext.SaveChangesAsync();
+        Task AddAsync() => _treasuryHandler.AddAsync(nullDbContext, emptyRequests);
+
+        await Assert.ThrowsAsync<ArgumentNullException>(AddAsync);
     }
 
 
-    [Fact(Skip = "Skip")]
-    public async Task RequestCheckout_NullRequests_Throws()
-    {
-        const IEnumerable<CardRequest> nullRequests = null!;
-
-        Task FindAsync() => _treasuryQuery.RequestCheckoutAsync(nullRequests);
-
-        await Assert.ThrowsAsync<ArgumentNullException>(FindAsync);
-    }
-
-
-    [Fact(Skip = "Skip")]
-    public async Task RequestCheckout_WithNullCardRequest_Throws()
-    {
-        var withNull = new CardRequest[] { null! };
-
-        Task FindAsync() => _treasuryQuery.RequestCheckoutAsync(withNull);
-
-        await Assert.ThrowsAsync<ArgumentNullException>(FindAsync);
-    }
-
-
-    [Fact(Skip = "Skip")]
-    public async Task RequestCheckout_WithNullCard_Throws()
-    {
-        const Card nullCard = null!;
-
-        Task FindAsync() => _treasuryQuery.FindCheckoutAsync(nullCard, 0);
-
-        await Assert.ThrowsAsync<ArgumentNullException>(FindAsync);
-    }
-
-
-    [Fact(Skip = "Skip")]
-    public async Task RequestCheckout_MissingCardName_EmptyResult()
-    {
-        const int amount = 1;
-
-        var card = await _dbContext.Amounts
-            .Where(ca => ca.Location is Box)
-            .Select(ca => ca.Card)
-            .FirstAsync();
-
-        await RemoveCardCopiesAsync(card);
-
-        var (checkouts, originals) = await _treasuryQuery.FindCheckoutAsync(card, amount);
-
-        Assert.Empty(checkouts);
-        Assert.Empty(originals);
-    }
-
-
-    // [Fact]
-    // public async Task FindCheckout_MissingExactCard_CloseResults()
-    // {
-    //     var card = await _dbContext.Amounts
-    //         .Where(ca => ca.Location is Box)
-    //         .Select(ca => ca.Card)
-    //         .FirstAsync();
-
-    //     var boxCards = _dbContext.Amounts
-    //         .Where(ca => ca.Location is Box && ca.CardId == card.Id);
-    // }
-
-
-    [Fact(Skip = "Skip")]
-    public async Task RequestCheckout_LackCopies_IncompleteResult()
-    {
-        const int unfulfilled = 2;
-
-        var card = await _dbContext.Amounts
-            .Where(ca => ca.Location is Box)
-            .Select(ca => ca.Card)
-            .AsNoTracking()
-            .FirstAsync();
-
-        var totalAmount = await _dbContext.Amounts
-            .Where(ca => ca.Location is Box && ca.Card.Name == card.Name)
-            .SumAsync(ca => ca.NumCopies);
-
-        int incompleteCopies = totalAmount + unfulfilled;
-        int totalBefore = await GetTotalCopiesAsync();
-
-        var (checkouts, _) = await _treasuryQuery.FindCheckoutAsync(card, incompleteCopies);
-
-        var amountIds = checkouts
-            .Select(amt => amt.Id)
-            .ToArray();
-
-        var cardNames = await _dbContext.Amounts
-            .Where(ca => amountIds.Contains(ca.Id))
-            .Select(ca => ca.Card.Name)
-            .ToListAsync();
-
-        await ApplyChangesAsync(checkouts);
-        int totalAfter = await GetTotalCopiesAsync();
-
-        Assert.All(cardNames, name => 
-            Assert.Equal(card.Name, name));
-
-        Assert.Equal(totalAmount, totalBefore - totalAfter);
-    }
-
-
-    [Fact(Skip = "Skip")]
-    public async Task RequestCheckout_SatisfyCopies_CompleteResult()
-    {
-        var card = await _dbContext.Amounts
-            .Where(ca => ca.Location is Box)
-            .Select(ca => ca.Card)
-            .AsNoTracking()
-            .FirstAsync();
-
-        int totalAmount = await _dbContext.Amounts
-            .Where(ca => ca.Location is Box && ca.CardId == card.Id)
-            .SumAsync(ca => ca.NumCopies);
-
-        int totalBefore = await GetTotalCopiesAsync();
-        var (checkouts, _) = await _treasuryQuery.FindCheckoutAsync(card, totalAmount);
-
-        await ApplyChangesAsync(checkouts);
-        int totalAfter = await GetTotalCopiesAsync();
-
-        Assert.All(checkouts, amt =>
-            Assert.Equal(card.Id, amt.CardId));
-
-        Assert.Equal(totalAmount, totalBefore - totalAfter);
-    }
-
-
-    [Fact(Skip = "Skip")]
-    public async Task RequestReturn_NullRequests_Throws()
+    [Fact]
+    public async Task Add_NullRequests_Throws()
     {
         const IEnumerable<CardRequest> nullRequests = null!;
 
-        Task FindAsync() => _treasuryQuery.RequestReturnAsync(nullRequests);
+        Task AddAsync() => _treasuryHandler.AddAsync(_dbContext, nullRequests);
 
-        await Assert.ThrowsAsync<ArgumentNullException>(FindAsync);
+        await Assert.ThrowsAsync<ArgumentNullException>(AddAsync);
     }
 
 
-    [Fact(Skip = "Skip")]
-    public async Task RequestReturn_WithNullCardRequest_Throws()
+    [Fact]
+    public async Task Add_WithNullCardRequest_Throws()
     {
         var withNull = new CardRequest[] { null! };
 
-        Task FindAsync() => _treasuryQuery.RequestReturnAsync(withNull);
+        Task AddAsync() => _treasuryHandler.AddAsync(_dbContext, withNull);
 
-        await Assert.ThrowsAsync<ArgumentNullException>(FindAsync);
+        await Assert.ThrowsAsync<ArgumentNullException>(AddAsync);
     }
 
 
-    [Fact(Skip = "Skip")]
-    public async Task RequestReturn_WithNullCard_Throws()
+    [Fact]
+    public async Task Add_WithNullCard_Throws()
     {
         const Card nullCard = null!;
 
-        Task FindAsync() => _treasuryQuery.FindReturnAsync(nullCard, 0);
+        Task AddAsync() => _treasuryHandler.AddAsync(_dbContext, nullCard, 0);
 
-        await Assert.ThrowsAsync<ArgumentNullException>(FindAsync);
+        await Assert.ThrowsAsync<ArgumentNullException>(AddAsync);
     }
 
 
-    [Fact(Skip = "Skip")]
-    public async Task RequestReturn_NewCard_OnlyNew()
+    [Fact]
+    public async Task Add_NewCard_OnlyNew()
     {
         const int amount = 2;
 
@@ -239,30 +107,25 @@ public class TreasuryQueryTests : IAsyncLifetime
 
         await RemoveCardCopiesAsync(card);
 
-        var (additions, originals) = await _treasuryQuery.FindReturnAsync(card, amount);
+        int totalBefore = await GetTotalCopiesAsync();
 
-        var addIds = additions
-            .Select(add => add.Id)
-            .ToArray();
+        await _treasuryHandler.AddAsync(_dbContext, card, amount);
 
-        bool anyExist = await _dbContext.Amounts
-            .AnyAsync(ca => addIds.Contains(ca.Id));
+        bool noModified = _dbContext.ChangeTracker
+            .Entries<Amount>()
+            .All(e => e.State is not EntityState.Modified);
 
-        int newTotal = additions.Sum(amt => amt.NumCopies);
+        await _dbContext.SaveChangesAsync();
 
-        Assert.NotEmpty(additions);
-        Assert.Empty(originals);
-        Assert.False(anyExist);
+        int totalAfter = await GetTotalCopiesAsync();
 
-        Assert.All(additions, add =>
-            Assert.Equal(card.Id, add.CardId));
-
-        Assert.Equal(amount, newTotal);
+        Assert.True(noModified);
+        Assert.Equal(amount, totalAfter - totalBefore);
     }
 
 
-    [Fact(Skip = "Skip")]
-    public async Task RequestReturn_ExistingWithCapcity_OnlyExisting()
+    [Fact]
+    public async Task Add_ExistingWithCapcity_OnlyExisting()
     {
         var card = await _dbContext.Amounts
             .Where(ca => ca.Location is Box)
@@ -276,33 +139,24 @@ public class TreasuryQueryTests : IAsyncLifetime
             .SumAsync();
 
         int totalBefore = await GetTotalCopiesAsync();
-        var dbIds = await GetAmountIdsAsync();
 
-        var (additions, originals) = await _treasuryQuery.FindReturnAsync(card, remainingSpace);
+        await _treasuryHandler.AddAsync(_dbContext, card, remainingSpace);
 
-        bool anyNew = additions
-            .ExceptBy(dbIds, add => add.Id)
-            .Any();
+        bool noAdded = _dbContext.ChangeTracker
+            .Entries<Amount>()
+            .All(e => e.State is not EntityState.Added);
 
-        await ApplyChangesAsync(additions);
+        await _dbContext.SaveChangesAsync();
 
         int totalAfter = await GetTotalCopiesAsync();
 
-        Assert.NotEmpty(additions);
-        Assert.False(anyNew);
-
-        Assert.All(originals.Keys, id =>
-            Assert.Contains(id, dbIds));
-
-        Assert.All(additions, amt =>
-            Assert.Equal(card.Id, amt.CardId));
-
+        Assert.True(noAdded);
         Assert.Equal(remainingSpace, totalAfter - totalBefore);
     }
 
 
-    [Fact(Skip = "Skip")]
-    public async Task RequestReturn_ExistingLackCapacity_MixDeposits()
+    [Fact]
+    public async Task Add_ExistingLackCapacity_MixDeposits()
     {
         const int modAmount = 5;
 
@@ -318,27 +172,23 @@ public class TreasuryQueryTests : IAsyncLifetime
             .SumAsync();
 
         int requestAmount = remainingSpace + modAmount;
-
         int totalBefore = await GetTotalCopiesAsync();
-        var dbIds = await GetAmountIdsAsync();
 
-        var (additions, originals) = await _treasuryQuery.FindReturnAsync(card, requestAmount);
+        await _treasuryHandler.AddAsync(_dbContext, card, requestAmount);
 
-        int newTotal = additions
-            .ExceptBy(dbIds, add => add.Id)
-            .Sum(amt => amt.NumCopies);
+        bool allAdded = _dbContext.ChangeTracker
+            .Entries<Amount>()
+            .All(e => e.State is EntityState.Added);
 
-        await ApplyChangesAsync(additions);
+        bool allModified = _dbContext.ChangeTracker
+            .Entries<Amount>()
+            .All(e => e.State is EntityState.Modified);
+
+        await _dbContext.SaveChangesAsync();
 
         int totalAfter = await GetTotalCopiesAsync();
 
-        Assert.All(originals.Keys, id =>
-            Assert.Contains(id, dbIds));
-
-        Assert.All(additions, amt =>
-            Assert.Equal(card.Id, amt.CardId));
-
-        Assert.Equal(modAmount, newTotal);
+        Assert.True(!allAdded && !allModified);
         Assert.Equal(requestAmount, totalAfter - totalBefore);
     }
 
@@ -423,8 +273,54 @@ public class TreasuryQueryTests : IAsyncLifetime
     }
 
 
-    [Fact(Skip = "Skip")]
-    public async Task RequestUpdate_NewBox_DecreaseExcess()
+    [Fact]
+    public async Task Exchange_NullDbContext_Throws()
+    {
+        const CardDbContext nullDbContext = null!;
+        var deck = new Deck();
+
+        Task ExchangeAsync() => _treasuryHandler.ExchangeAsync(nullDbContext, deck);
+
+        await Assert.ThrowsAsync<ArgumentNullException>(ExchangeAsync);
+    }
+
+
+    [Fact]
+    public async Task Exchange_NullDeck_Throws()
+    {
+        const Deck nullDeck = null!;
+
+        Task ExchangeAsync() => _treasuryHandler.ExchangeAsync(_dbContext, nullDeck);
+
+        await Assert.ThrowsAsync<ArgumentNullException>(ExchangeAsync);
+    }
+
+
+    [Fact]
+    public async Task Update_NullDbContext_Throws()
+    {
+        const CardDbContext nullDbContext = null!;
+        var box = new Box();
+
+        Task UpdateAsync() => _treasuryHandler.UpdateAsync(nullDbContext, box);
+
+        await Assert.ThrowsAsync<ArgumentNullException>(UpdateAsync);
+    }
+
+
+    [Fact]
+    public async Task Update_NullBox_Throws()
+    {
+        const Box nullBox = null!;
+
+        Task UpdateAsync() => _treasuryHandler.UpdateAsync(_dbContext, nullBox);
+
+        await Assert.ThrowsAsync<ArgumentNullException>(UpdateAsync);
+    }
+
+
+    [Fact]
+    public async Task Update_NewBox_DecreaseExcess()
     {
         const int extraSpace = 15;
 
@@ -446,10 +342,9 @@ public class TreasuryQueryTests : IAsyncLifetime
             Capacity = extraSpace
         };
 
-        var transfers = await _treasuryQuery.RequestUpdateAsync(newBox);
+        await _treasuryHandler.UpdateAsync(_dbContext, newBox);
 
         _dbContext.Boxes.Add(newBox);
-        _dbContext.AttachResult(transfers);
 
         await _dbContext.SaveChangesAsync();
 
@@ -466,8 +361,8 @@ public class TreasuryQueryTests : IAsyncLifetime
     }
 
 
-    [Fact(Skip = "Skip")]
-    public async Task RequestUpdate_IncreaseCapacity_DecreaseExcess()
+    [Fact]
+    public async Task Update_IncreaseCapacity_DecreaseExcess()
     {
         const int extraSpace = 15;
 
@@ -485,10 +380,9 @@ public class TreasuryQueryTests : IAsyncLifetime
 
         higherBox.Capacity += extraSpace;
 
-        var transfers = await _treasuryQuery.RequestUpdateAsync(higherBox);
+        await _treasuryHandler.UpdateAsync(_dbContext, higherBox);
 
         _dbContext.Boxes.Update(higherBox);
-        _dbContext.AttachResult(transfers);
 
         await _dbContext.SaveChangesAsync();
 
@@ -505,8 +399,8 @@ public class TreasuryQueryTests : IAsyncLifetime
     }
 
 
-    [Fact(Skip = "Skip")]
-    public async Task RequestUpdate_DecreaseCapacity_IncreaseExcess()
+    [Fact]
+    public async Task Update_DecreaseCapacity_IncreaseExcess()
     {
         const int extraSpace = 15;
 
@@ -524,10 +418,9 @@ public class TreasuryQueryTests : IAsyncLifetime
 
         lowerBox.Capacity -= extraSpace;
 
-        var transfers = await _treasuryQuery.RequestUpdateAsync(lowerBox);
+        await _treasuryHandler.UpdateAsync(_dbContext, lowerBox);
 
         _dbContext.Boxes.Update(lowerBox);
-        _dbContext.AttachResult(transfers);
 
         await _dbContext.SaveChangesAsync();
 

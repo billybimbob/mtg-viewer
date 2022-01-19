@@ -4,8 +4,7 @@ using System.Linq;
 using Microsoft.EntityFrameworkCore;
 using MTGViewer.Data;
 
-namespace MTGViewer.Services.Treasury;
-
+namespace MTGViewer.Services.Internal;
 
 internal sealed class BoxSearcher
 {
@@ -96,7 +95,6 @@ internal sealed class BoxSearcher
             : Math.Min(~boxSearch, _sortedBoxes.Count - 1);
 
         // circle back to prevent possible fragmentation
-        return _sortedBoxes.Skip(boxIndex)
-            .Concat(_sortedBoxes.Take(boxIndex));
+        return _sortedBoxes.Skip(boxIndex);
     }
 }

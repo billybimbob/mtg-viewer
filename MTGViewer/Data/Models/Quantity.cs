@@ -10,8 +10,8 @@ namespace MTGViewer.Data;
 
 [Index(
     nameof(Type),
-    nameof(LocationId),
-    nameof(CardId), IsUnique = true)]
+    nameof(CardId),
+    nameof(LocationId), IsUnique = true)]
 public abstract class Quantity : Concurrent
 {
     [JsonIgnore]

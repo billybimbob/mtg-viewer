@@ -58,7 +58,8 @@ public class Startup
             // used scoped so that the db referenced is the locally scoped one
             provider.GetRequiredService<CardDbContext>(), ServiceLifetime.Scoped);
 
-        services.AddScoped<ITreasuryQuery, SortedPartitionTreasury>();
+        // services.AddScoped<ITreasuryQuery, SortedPartitionTreasury>();
+        services.AddSingleton<TreasuryHandler>();
         services.AddSingleton<PageSizes>();
 
         services

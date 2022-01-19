@@ -198,6 +198,23 @@ public class QuantityGroup : IEnumerable<Quantity>
         CheckGroup();
     }
 
+    public static IEnumerable<QuantityGroup> FromDeck(Deck deck)
+    {
+        var amountsById = deck.Cards.ToDictionary(ca => ca.CardId);
+        var takesById = deck.Wants.ToDictionary(w => w.CardId);
+        var givesById = deck.GiveBacks.ToDictionary(g => g.CardId);
+
+        var cardIds = amountsById.Keys
+            .Union(takesById.Keys)
+            .Union(givesById.Keys);
+
+        return cardIds.Select(cid =>
+            new QuantityGroup(
+                amountsById.GetValueOrDefault(cid),
+                takesById.GetValueOrDefault(cid),
+                givesById.GetValueOrDefault(cid) ));
+    }
+
 
     // Guaranteed to not all be null
     private Amount? _amount;

@@ -503,27 +503,11 @@ else
 
             EditContext = new(deck);
 
-            Groups = GetDeckCardGroups(deck)
+            Groups = QuantityGroup
+                .FromDeck(deck)
                 .ToDictionary(cg => cg.CardId);
 
             PageSize = pageSize;
-        }
-
-        private IEnumerable<QuantityGroup> GetDeckCardGroups(Deck deck)
-        {
-            var amountsById = deck.Cards.ToDictionary(ca => ca.CardId);
-            var takesById = deck.Wants.ToDictionary(w => w.CardId);
-            var givesById = deck.GiveBacks.ToDictionary(g => g.CardId);
-
-            var cardIds = amountsById.Keys
-                .Union(takesById.Keys)
-                .Union(givesById.Keys);
-
-            return cardIds.Select(cid =>
-                new QuantityGroup(
-                    amountsById.GetValueOrDefault(cid),
-                    takesById.GetValueOrDefault(cid),
-                    givesById.GetValueOrDefault(cid) ));
         }
     }
 

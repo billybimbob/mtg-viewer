@@ -4,11 +4,11 @@ using System.Linq;
 using Microsoft.EntityFrameworkCore;
 using MTGViewer.Data;
 
-namespace MTGViewer.Services.Treasury;
-
+namespace MTGViewer.Services.Internal;
 
 internal sealed class TreasuryContext
 {
+    private readonly CardDbContext _dbContext;
     private readonly Dictionary<Box, int> _boxSpace;
 
     private readonly HashSet<Box> _available;
@@ -16,14 +16,21 @@ internal sealed class TreasuryContext
     private readonly IReadOnlyList<Box> _excess;
 
     private readonly Amount[] _originalAmounts;
-    private readonly Dictionary<(string, Box), Amount> _amountMap;
+    private readonly Dictionary<(string, Box), Amount> _amounts;
 
-    public TreasuryContext(IReadOnlyList<Box> boxes)
+    private readonly Dictionary<(string, Location?, Location?), Change> _changes;
+    private readonly Transaction _transaction;
+
+    public TreasuryContext(CardDbContext dbContext)
     {
+        var boxes = dbContext.Boxes.Local.AsEnumerable();
+
         if (!boxes.Any(b => b.IsExcess) || !boxes.Any(b => b.IsExcess))
         {
             throw new ArgumentException(nameof(boxes));
         }
+
+        _dbContext = dbContext;
 
         _boxSpace = boxes
             .ToDictionary(
@@ -45,10 +52,16 @@ internal sealed class TreasuryContext
             .SelectMany(b => b.Cards)
             .ToArray();
 
-        _amountMap = _originalAmounts
+        _amounts = _originalAmounts
             .Where(a => a.Location is Box)
             .ToDictionary(
                 a => (a.CardId, (Box)a.Location));
+
+        _transaction = dbContext.Transactions.Local
+            .FirstOrDefault() ?? new();
+
+        _changes = dbContext.Changes.Local
+            .ToDictionary(c => (c.CardId, c.To, c.From));
     }
 
     public IReadOnlyCollection<Box> Available => _available;
@@ -57,8 +70,10 @@ internal sealed class TreasuryContext
     public IReadOnlyList<Box> Excess => _excess;
     public IReadOnlyDictionary<Box, int> BoxSpace => _boxSpace;
 
+    public IReadOnlyCollection<Amount> Amounts => _amounts.Values;
+
     public IEnumerable<Amount> AddedAmounts() => 
-        _amountMap.Values.Except(_originalAmounts);
+        _amounts.Values.Except(_originalAmounts);
 
     public void Deconstruct(
         out IReadOnlyCollection<Box> available,
@@ -73,44 +88,112 @@ internal sealed class TreasuryContext
     }
 
 
-    public void ReturnCopies(Card card, Box box, int numCopies)
+    public void AddCopies(Card card, int numCopies, Box box)
+    {
+        UpdateAmount(card, numCopies, box);
+        UpdateChange(card, numCopies, box, null);
+        UpdateBoxSpace(box, numCopies);
+    }
+
+
+    public void TransferCopies(Card card, int numCopies, Box to, Location from)
+    {
+        if (to == from)
+        {
+            return;
+        }
+
+        UpdateAmount(card, numCopies, to);
+        UpdateBoxSpace(to, numCopies);
+
+        if (from is Box fromBox)
+        {
+            UpdateAmount(card, -numCopies, fromBox);
+            UpdateBoxSpace(fromBox, -numCopies);
+        }
+
+        UpdateChange(card, numCopies, to, from);
+    }
+
+
+    public void TransferCopies(Card card, int numCopies, Location to, Box from)
+    {
+        if (to == from)
+        {
+            return;
+        }
+
+        UpdateChange(card, numCopies, to, from);
+
+        if (to is Box toBox)
+        {
+            UpdateAmount(card, numCopies, toBox);
+            UpdateBoxSpace(toBox, numCopies);
+        }
+
+        UpdateAmount(card, -numCopies, from);
+        UpdateBoxSpace(from, -numCopies);
+    }
+
+
+    private void UpdateAmount(Card card, int numCopies, Box box)
+    {
+        var index = (card.Id, box);
+
+        if (!_amounts.TryGetValue(index, out var amount))
+        {
+            amount = new Amount
+            {
+                Card = card,
+                Location = box,
+                NumCopies = numCopies
+            };
+
+            _dbContext.Amounts.Attach(amount);
+            _amounts.Add(index, amount);
+        }
+        else
+        {
+            amount.NumCopies += numCopies;
+        }
+    }
+
+
+    private void UpdateChange(Card card, int amount, Location? to, Location? from)
+    {
+        var changeIndex = (card.Id, to, from);
+
+        if (!_changes.TryGetValue(changeIndex, out var change))
+        {
+            change = new Change
+            {
+                To = to,
+                From = from,
+                Card = card,
+                Amount = amount,
+                Transaction = _transaction
+            };
+
+            _dbContext.Changes.Attach(change);
+            _changes.Add(changeIndex, change);
+        }
+        else
+        {
+            change.Amount += amount;
+        }
+    }
+
+
+    private void UpdateBoxSpace(Box box, int numCopies)
     {
         if (!_boxSpace.TryGetValue(box, out int boxSize))
         {
             throw new ArgumentException(nameof(box));
         }
 
-        var index = (card.Id, box);
-
-        if (!_amountMap.TryGetValue(index, out var amount))
-        {
-            // avoid dbContext tracking the added amount so that 
-            // the primary key will not be set
-            // there is also no prop fixup, so all props fully specified
-
-            _amountMap[index] = new Amount
-            {
-                CardId = card.Id,
-                Card = card,
-                LocationId = box.Id,
-                Location = box,
-                NumCopies = numCopies
-            };
-        }
-        else
-        {
-            amount.NumCopies += numCopies;
-        }
-
-        boxSize += numCopies;
-
+        int newSize = boxSize + numCopies;
         _boxSpace[box] = boxSize;
-        UpdateBoxSets(box, boxSize);
-    }
 
-
-    private void UpdateBoxSets(Box box, int newSize)
-    {
         if (box.IsExcess)
         {
             return;
