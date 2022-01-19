@@ -14,16 +14,16 @@ namespace MTGViewer.Areas.Identity.Services;
 public class ReferenceManager
 {
     private readonly IDbContextFactory<CardDbContext> _dbFactory;
-    private readonly ITreasuryQuery _treasuryQuery;
+    private readonly TreasuryHandler _treasuryHandler;
     private readonly ILogger<ReferenceManager> _logger;
 
     public ReferenceManager(
         IDbContextFactory<CardDbContext> dbFactory, 
-        ITreasuryQuery treasuryQuery,
+        TreasuryHandler treasuryHandler,
         ILogger<ReferenceManager> logger)
     {
         _dbFactory = dbFactory;
-        _treasuryQuery = treasuryQuery;
+        _treasuryHandler = treasuryHandler;
         _logger = logger;
     }
 
@@ -141,25 +141,7 @@ public class ReferenceManager
                 (card, amounts) => 
                     new CardRequest(card, amounts.Sum(a => a.NumCopies)) );
 
-        var returns = await _treasuryQuery.RequestReturnAsync(returnRequests, cancel);
-
-        var newTransaction = new Transaction();
-        var (returnTargets, dbCopies) = returns;
-
-        var returnChanges = returnTargets
-            .Select(a => new Change
-            {
-                Card = a.Card,
-                To = a.Location,
-                // no From since deck is being deleted
-                Amount = a.NumCopies - dbCopies.GetValueOrDefault(a.Id),
-                Transaction = newTransaction
-            });
-
-        dbContext.AttachResult(returns);
-
-        dbContext.Transactions.Attach(newTransaction);
-        dbContext.Changes.AttachRange(returnChanges);
+        await _treasuryHandler.AddAsync(dbContext, returnRequests, cancel);
 
         dbContext.Amounts.RemoveRange(userCards);
         dbContext.Decks.RemoveRange(userDecks);

@@ -23,19 +23,19 @@ public class DeleteModel : PageModel
 {
     private readonly UserManager<CardUser> _userManager;
     private readonly CardDbContext _dbContext;
-    private readonly ITreasuryQuery _treasuryQuery;
+    private readonly TreasuryHandler _treasuryHandler;
 
     private readonly ILogger<DeleteModel> _logger;
 
     public DeleteModel(
         UserManager<CardUser> userManager,
         CardDbContext dbContext,
-        ITreasuryQuery treasuryQuery,
+        TreasuryHandler treasuryHandler,
         ILogger<DeleteModel> logger)
     {
         _userManager = userManager;
         _dbContext = dbContext;
-        _treasuryQuery = treasuryQuery;
+        _treasuryHandler = treasuryHandler;
         _logger = logger;
     }
 
@@ -139,7 +139,17 @@ public class DeleteModel : PageModel
             return RedirectToPage("Index");
         }
 
-        await ReturnCardsAsync(deck, cancel);
+        if (deck.Cards.Any())
+        {
+            var returningCards = deck.Cards
+                .Select(a => new CardRequest(a.Card, a.NumCopies));
+
+            // just add since deck is being deleted
+            await _treasuryHandler.AddAsync(_dbContext, returningCards, cancel);
+
+            _dbContext.Amounts.RemoveRange(deck.Cards);
+            _dbContext.Decks.Remove(deck);
+        }
 
         try
         {
@@ -153,40 +163,5 @@ public class DeleteModel : PageModel
         }
 
         return RedirectToPage("Index");
-    }
-
-
-    private async Task ReturnCardsAsync(Deck deck, CancellationToken cancel)
-    {
-        if (!deck.Cards.Any())
-        {
-            return;
-        }
-
-        var returningCards = deck.Cards
-            .Select(a => new CardRequest(a.Card, a.NumCopies));
-
-        var returns = await _treasuryQuery.RequestReturnAsync(returningCards, cancel);
-
-        var newTransaction = new Transaction();
-        var (returnTargets, dbCopies) = returns;
-
-        var returnChanges = returnTargets
-            .Select(a => new Change
-            {
-                Card = a.Card,
-                To = a.Location,
-                // no From since deck is being deleted
-                Amount = a.NumCopies - dbCopies.GetValueOrDefault(a.Id),
-                Transaction = newTransaction
-            });
-
-        _dbContext.AttachResult(returns);
-
-        _dbContext.Transactions.Attach(newTransaction);
-        _dbContext.Changes.AttachRange(returnChanges);
-
-        _dbContext.Amounts.RemoveRange(deck.Cards);
-        _dbContext.Decks.Remove(deck);
     }
 }

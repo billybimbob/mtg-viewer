@@ -6,6 +6,7 @@
 @using MTGViewer.Data.Internal
 
 @inject IDbContextFactory<CardDbContext> DbFactory
+@inject TreasuryHandler TreasuryHandler
 @inject SymbolFormatter MtgSymbols
 @inject ILogger<Create> Logger
 
@@ -630,13 +631,12 @@ else
         try
         {
             var cancelToken = _cancel.Token;
-            var treasury = ScopedServices.GetRequiredService<ITreasuryQuery>();
 
             await using var dbContext = await DbFactory.CreateDbContextAsync(cancelToken);
 
-            await AddNewCardsAsync(dbContext, addedAmounts, cancelToken);
+            await TreasuryHandler.AddAsync(dbContext, addedAmounts, cancelToken);
 
-            await AddAmountsAsync(dbContext, treasury, addedAmounts, cancelToken);
+            await AddNewCardsAsync(dbContext, addedAmounts, cancelToken);
 
             await dbContext.SaveChangesAsync(cancelToken);
 
@@ -695,32 +695,5 @@ else
 
         dbContext.Cards.AttachRange(existingCards);
         dbContext.Cards.AddRange(newCards);
-    }
-
-
-    private static async Task AddAmountsAsync(
-        CardDbContext dbContext,
-        ITreasuryQuery treasury,
-        IEnumerable<CardRequest> newAmounts,
-        CancellationToken cancel)
-    {
-        var result = await treasury.RequestReturnAsync(newAmounts, cancel);
-
-        var (addTargets, oldCopies) = result;
-        var newTransaction = new Transaction();
-
-        var addChanges = addTargets
-            .Select(a => new Change
-            {
-                Card = a.Card,
-                To = a.Location,
-                Amount = a.NumCopies - oldCopies.GetValueOrDefault(a.Id),
-                Transaction = newTransaction
-            });
-
-        dbContext.AttachResult(result);
-
-        dbContext.Transactions.Attach(newTransaction);
-        dbContext.Changes.AttachRange(addChanges);
     }
 }

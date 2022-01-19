@@ -18,16 +18,19 @@ public class IndexModel : PageModel
 {
     private readonly int _pageSize;
     private readonly SignInManager<CardUser> _signInManager;
-    private readonly ITreasuryQuery _treasury;
+    private readonly CardDbContext _dbContext;
+    private readonly TreasuryHandler _treasuryHandler;
 
     public IndexModel(
         PageSizes pageSizes, 
         SignInManager<CardUser> signInManager, 
-        ITreasuryQuery treasury)
+        CardDbContext dbContext,
+        TreasuryHandler treasuryHandler)
     {
         _pageSize = pageSizes.GetPageModelSize<IndexModel>();
         _signInManager = signInManager;
-        _treasury = treasury;
+        _dbContext = dbContext;
+        _treasuryHandler = treasuryHandler;
     }
 
 
@@ -60,7 +63,7 @@ public class IndexModel : PageModel
             return null;
         }
 
-        bool exists = await _treasury.Boxes
+        bool exists = await _dbContext.Boxes
             .AnyAsync(b => b.Id == boxId, cancel);
 
         if (!exists)
@@ -68,7 +71,7 @@ public class IndexModel : PageModel
             return null;
         }
 
-        int position = await _treasury.Boxes
+        int position = await _dbContext.Boxes
             .Where(b => b.Id < boxId)
             .CountAsync(cancel);
 
@@ -78,7 +81,7 @@ public class IndexModel : PageModel
 
     private IQueryable<Box> BoxesForViewing()
     {
-        return _treasury.Boxes
+        return _dbContext.Boxes
             .Include(b => b.Bin)
 
             .Include(b => b.Cards // unbounded: keep eye on
@@ -89,33 +92,4 @@ public class IndexModel : PageModel
             .OrderBy(b => b.Id)
             .AsNoTrackingWithIdentityResolution();
     }
-
-
-    // public async Task<IActionResult> OnPostOptimizeAsync()
-    // {
-    //     if (!IsSignedIn)
-    //     {
-    //         return NotFound();
-    //     }
-
-    //     try
-    //     {
-    //         var transaction = await _treasury.OptimizeAsync();
-
-    //         if (transaction is null)
-    //         {
-    //             PostMessage = "No optimizations could be made";
-    //         }
-    //         else
-    //         {
-    //             PostMessage = "Successfully applied optimizations to storage";
-    //         }
-    //     }
-    //     catch (DbUpdateException)
-    //     {
-    //         PostMessage = "Ran into issue while trying to optimize the storage";
-    //     }
-
-    //     return RedirectToPage();
-    // }
 }

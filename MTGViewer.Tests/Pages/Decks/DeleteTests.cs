@@ -31,7 +31,7 @@ public class DeleteTests : IAsyncLifetime
         CardDbContext dbContext,
         UserManager<CardUser> userManager,
         TestDataGenerator testGen,
-        ITreasuryQuery treasuryQuery)
+        TreasuryHandler treasuryHandler)
     {
         _dbContext = dbContext;
         _userManager = userManager;
@@ -39,7 +39,7 @@ public class DeleteTests : IAsyncLifetime
 
         var logger = Mock.Of<ILogger<DeleteModel>>();
 
-        _deleteModel = new(_userManager, _dbContext, treasuryQuery, logger);
+        _deleteModel = new(_userManager, _dbContext, treasuryHandler, logger);
     }
 
 

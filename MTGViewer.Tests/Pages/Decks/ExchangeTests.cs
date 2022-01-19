@@ -29,7 +29,7 @@ public class ExchangeTests : IAsyncLifetime
 
     public ExchangeTests(
         CardDbContext dbContext,
-        ITreasuryQuery treasury,
+        TreasuryHandler treasuryHandler,
         UserManager<CardUser> userManager,
         CardText cardText,
         TestDataGenerator testGen)
@@ -41,7 +41,7 @@ public class ExchangeTests : IAsyncLifetime
         var logger = Mock.Of<ILogger<ExchangeModel>>();
 
         _exchangeModel = new(
-            _dbContext, treasury, _userManager, cardText, logger);
+            _dbContext, treasuryHandler, _userManager, cardText, logger);
     }
 
 

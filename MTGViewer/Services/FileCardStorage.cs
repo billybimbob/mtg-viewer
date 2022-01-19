@@ -27,8 +27,8 @@ public class FileCardStorage
 
     private readonly IDbContextFactory<CardDbContext> _dbFactory;
     private readonly CardDbContext _dbContext;
+    private readonly TreasuryHandler _treasuryHandler;
 
-    private readonly ITreasuryQuery _treasuryQuery;
     private readonly MTGFetchService _fetch;
 
     private readonly UserManager<CardUser> _userManager;
@@ -38,7 +38,8 @@ public class FileCardStorage
         IConfiguration config, 
         PageSizes pageSizes,
         IDbContextFactory<CardDbContext> dbFactory,
-        CardDbContext dbContext, 
+        CardDbContext dbContext,
+        TreasuryHandler treasuryHandler,
         MTGFetchService fetch,
         UserManager<CardUser> userManager)
     {
@@ -49,6 +50,7 @@ public class FileCardStorage
 
         _dbFactory = dbFactory;
         _dbContext = dbContext;
+        _treasuryHandler = treasuryHandler;
 
         _fetch = fetch;
 
@@ -507,23 +509,7 @@ public class FileCardStorage
             .Select(card => 
                 new CardRequest(card, multiAdditions[card.MultiverseId]));
 
-        // var result = await _treasuryQuery.RequestReturnAsync(requests, cancel);
-        var result = RequestResult.Empty;
-
-        var (addTargets, oldCopies) = result;
-        var newTransaction = new Transaction();
-
-        var addChanges = addTargets
-            .Select(a => new Change
-            {
-                Card = a.Card,
-                To = a.Location,
-                Amount = a.NumCopies - oldCopies.GetValueOrDefault(a.Id),
-                Transaction = newTransaction
-            });
-
-        dbContext.AttachResult(result);
-        dbContext.Changes.AttachRange(addChanges);
+        await _treasuryHandler.AddAsync(dbContext, requests, cancel);
     }
 }
 

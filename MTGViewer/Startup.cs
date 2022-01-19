@@ -58,7 +58,6 @@ public class Startup
 
         services.AddScoped<MTGFetchService>();
 
-        // services.AddScoped<ITreasuryQuery, SortedPartitionTreasury>();
         services.AddSingleton<TreasuryHandler>();
         services.AddScoped<FileCardStorage>();
 

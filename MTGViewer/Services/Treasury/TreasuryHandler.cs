@@ -83,9 +83,9 @@ public class TreasuryHandler
 
         var treasuryContext = new TreasuryContext(dbContext);
 
-        ApplyExactAdds(treasuryContext, adding);
-        ApplyApproxAdds(treasuryContext, adding);
-        ApplyNewAdds(treasuryContext, adding);
+        AddCopies(treasuryContext, adding, AddScheme.Exact);
+        AddCopies(treasuryContext, adding, AddScheme.Approximate);
+        AddCopies(treasuryContext, adding, AddScheme.Guess);
 
         RemoveEmpty(dbContext);
     }
@@ -124,104 +124,17 @@ public class TreasuryHandler
     }
 
 
-    private static void ApplyExactAdds(
-        TreasuryContext treasuryContext, IEnumerable<CardRequest> requests)
+    private static void AddCopies(
+        TreasuryContext treasuryContext, 
+        IEnumerable<CardRequest> requests,
+        AddScheme scheme)
     {
-        var (available, _, _, boxSpace) = treasuryContext;
+        var adds = treasuryContext.AddAssignment(requests, scheme);
 
-        var availableCards = available.SelectMany(b => b.Cards);
-        var cardRequests = requests.Select(cr => cr.Card);
-
-        var existingSpots = ExactLookup(availableCards, cardRequests, boxSpace);
-
-        foreach (CardRequest request in requests)
+        foreach ((CardRequest request, int numCopies, Box box) in adds)
         {
-            var (card, numCopies) = request;
-            var possibleBoxes = existingSpots[card.Id];
-
-            if (!possibleBoxes.Any())
-            {
-                continue;
-            }
-
-            var splitToBoxes = FitToBoxes(possibleBoxes, boxSpace, numCopies);
-
-            foreach ((Box box, int splitCopies) in splitToBoxes)
-            {
-                treasuryContext.AddCopies(card, splitCopies, box);
-
-                request.NumCopies -= splitCopies;
-            }
-        }
-    }
-
-
-    private static void ApplyApproxAdds(
-        TreasuryContext treasuryContext, IEnumerable<CardRequest> requests)
-    {
-        if (requests.All(cr => cr.NumCopies == 0))
-        {
-            return;
-        }
-
-        var (available, _, _, boxSpace) = treasuryContext;
-
-        var availableCards = available.SelectMany(b => b.Cards);
-        var cardRequests = requests.Select(cr => cr.Card);
-
-        var existingSpots = ApproxLookup(availableCards, cardRequests, boxSpace);
-
-        foreach (CardRequest request in requests)
-        {
-            var (card, numCopies) = request;
-            var possibleBoxes = existingSpots[card.Name];
-
-            if (!possibleBoxes.Any())
-            {
-                continue;
-            }
-
-            var splitToBoxes = FitToBoxes(possibleBoxes, boxSpace, numCopies);
-
-            foreach ((Box box, int splitCopies) in splitToBoxes)
-            {
-                treasuryContext.AddCopies(card, splitCopies, box);
-
-                request.NumCopies -= splitCopies;
-            }
-        }
-    }
-
-
-    private static void ApplyNewAdds(
-        TreasuryContext treasuryContext, IEnumerable<CardRequest> requests)
-    {
-        if (requests.All(cr => cr.NumCopies == 0))
-        {
-            return;
-        }
-
-        var (available, _, excess, boxSpace) = treasuryContext;
-
-        var boxSearch = new BoxSearcher(available);
-
-        foreach ((Card card, int numCopies) in requests)
-        {
-            if (numCopies == 0)
-            {
-                continue;
-            }
-
-            var bestBoxes = boxSearch
-                .FindBestBoxes(card)
-                .Union(available);
-
-            var newReturns = FitToBoxes(bestBoxes, boxSpace, numCopies, excess);
-
-            foreach ((Box box, int splitCopies) in newReturns)
-            {
-                treasuryContext.AddCopies(card, splitCopies, box);
-            }
+            treasuryContext.AddCopies(request.Card, numCopies, box);
+            request.NumCopies -= numCopies;
         }
     }
 
@@ -260,248 +173,44 @@ public class TreasuryHandler
         var treasuryContext = new TreasuryContext(dbContext);
         var exchangeContext = new ExchangeContext(dbContext, treasuryContext);
 
-        ApplyExactCheckouts(treasuryContext, exchangeContext);
-        ApplyApproxCheckouts(treasuryContext, exchangeContext);
+        TakeCopies(treasuryContext, exchangeContext, TakeScheme.Exact);
+        TakeCopies(treasuryContext, exchangeContext, TakeScheme.Approximate);
 
-        ApplyExactReturns(treasuryContext, exchangeContext);
-        ApplyApproxReturns(treasuryContext, exchangeContext);
-        ApplyNewReturns(treasuryContext, exchangeContext);
+        ReturnCopies(treasuryContext, exchangeContext, ReturnScheme.Exact);
+        ReturnCopies(treasuryContext, exchangeContext, ReturnScheme.Approximate);
+        ReturnCopies(treasuryContext, exchangeContext, ReturnScheme.Guess);
 
-        TransferExactExcess(treasuryContext);
-        TransferApproxExcess(treasuryContext);
+        Transfer(treasuryContext, TransferScheme.Exact);
+        Transfer(treasuryContext, TransferScheme.Approximate);
 
         RemoveEmpty(dbContext);
     }
 
 
-    private static void ApplyExactCheckouts(
-        TreasuryContext treasuryContext, ExchangeContext exchangeContext)
+    private static void TakeCopies(
+        TreasuryContext treasuryContext, 
+        ExchangeContext exchangeContext,
+        TakeScheme scheme)
     {
-        var wants = exchangeContext.Deck.Wants;
+        var checkouts = treasuryContext.TakeAssignment(exchangeContext, scheme);
 
-        if (wants.All(w => w.NumCopies == 0))
+        foreach ((Card card, int numCopies, Box box) in checkouts)
         {
-            return;
-        }
-
-        var boxAmounts = treasuryContext.Amounts;
-        var boxSpace = treasuryContext.BoxSpace;
-        var wantCards = wants.Select(w => w.Card);
-
-        // TODO: account for changing NumCopies while iter
-        var exactReturns = ExactReturnLookup(boxAmounts, wantCards, boxSpace);
-
-        foreach (var want in wants)
-        {
-            var idPositions = exactReturns[want.CardId];
-
-            if (!idPositions.Any())
-            {
-                continue;
-            }
-
-            var boxTakes = TakeFromBoxes(idPositions, want.NumCopies);
-
-            foreach ((Box box, int splitCopies) in boxTakes)
-            {
-                exchangeContext.TakeCopies(want.Card, splitCopies, box);
-            }
+            exchangeContext.TakeCopies(card, numCopies, box);
         }
     }
 
 
-    private static ILookup<string, Amount> ExactReturnLookup(
-        IEnumerable<Amount> targets,
-        IEnumerable<Card> cards,
-        IReadOnlyDictionary<Box, int> boxSpace)
+    private static void ReturnCopies(
+        TreasuryContext treasuryContext,
+        ExchangeContext exchangeContext,
+        ReturnScheme scheme)
     {
-        var cardIds = cards
-            .Select(c => c.Id)
-            .Distinct();
+        var returns = treasuryContext.ReturnAssignment(exchangeContext, scheme);
 
-        // TODO: account for changing NumCopies while iter
-        return targets
-            .Join( cardIds,
-                a => a.CardId, cid => cid,
-                (target, _) => target)
-
-            // lookup group orders should preserve NumCopies order
-            .OrderBy(a => a.NumCopies)
-                .ThenByDescending(a => a.Location switch
-                {
-                    Box box => box.Capacity - boxSpace.GetValueOrDefault(box),
-                    _ => throw new ArgumentException(nameof(targets))
-                })
-            
-            .ToLookup(a => a.CardId);
-    }
-
-
-    private static void ApplyApproxCheckouts(
-        TreasuryContext treasuryContext, ExchangeContext exchangeContext)
-    {
-        var wants = exchangeContext.Deck.Wants;
-
-        if (wants.All(w => w.NumCopies == 0))
+        foreach ((Card card, int numCopies, Box box) in returns)
         {
-            return;
-        }
-
-        var boxAmounts = treasuryContext.Amounts;
-        var boxSpace = treasuryContext.BoxSpace;
-        var wantCards = wants.Select(w => w.Card);
-
-        // TODO: account for changing NumCopies while iter
-        var approxReturns = ApproxReturnLookup(boxAmounts, wantCards, boxSpace);
-
-        foreach (var want in wants)
-        {
-            var namePositions = approxReturns[want.Card.Name];
-
-            if (!namePositions.Any())
-            {
-                continue;
-            }
-
-            var boxTakes = TakeFromBoxes(namePositions, want.NumCopies);
-
-            foreach ((Box box, int splitCopies) in boxTakes)
-            {
-                exchangeContext.TakeCopies(want.Card, splitCopies, box);
-            }
-        }
-    }
-
-
-    private static ILookup<string, Amount> ApproxReturnLookup(
-        IEnumerable<Amount> targets,
-        IEnumerable<Card> cards,
-        IReadOnlyDictionary<Box, int> boxSpace)
-    {
-        var cardNames = cards
-            .Select(c => c.Name)
-            .Distinct();
-
-        // TODO: account for changing NumCopies while iter
-        return targets
-            .Join( cardNames,
-                a => a.Card.Name, cn => cn,
-                (target, _) => target)
-
-            // lookup group orders should preserve NumCopies order
-            .OrderBy(a => a.NumCopies)
-                .ThenByDescending(a => a.Location switch
-                {
-                    Box box => box.Capacity - boxSpace.GetValueOrDefault(box),
-                    _ => throw new ArgumentException(nameof(targets))
-                })
-            
-            .ToLookup(a => a.Card.Name);
-    }
-
-
-    private static void ApplyExactReturns(
-        TreasuryContext treasuryContext, ExchangeContext exchangeContext)
-    {
-        var (available, _, _, boxSpace) = treasuryContext;
-        var giveBacks = exchangeContext.Deck.GiveBacks;
-
-        if (!available.Any() || giveBacks.All(g => g.NumCopies == 0))
-        {
-            return;
-        }
-
-        var availableAmounts = available.SelectMany(b => b.Cards);
-        var giveCards = giveBacks.Select(w => w.Card);
-
-        // TODO: account for changing NumCopies while iter
-        var exactMatch = ExactLookup(availableAmounts, giveCards, boxSpace);
-
-        foreach (var giveBack in giveBacks)
-        {
-            var bestBoxes = exactMatch[giveBack.CardId];
-
-            if (giveBack.NumCopies == 0 || !bestBoxes.Any())
-            {
-                continue;
-            }
-
-            var boxReturns = FitToBoxes(bestBoxes, boxSpace, giveBack.NumCopies);
-
-            foreach ((Box box, int splitCopies) in boxReturns)
-            {
-                exchangeContext.ReturnCopies(giveBack.Card, splitCopies, box);
-            }
-        }
-    }
-
-
-    private static void ApplyApproxReturns(
-        TreasuryContext treasuryContext, ExchangeContext exchangeContext)
-    {
-        var (available, _, _, boxSpace) = treasuryContext;
-        var giveBacks = exchangeContext.Deck.GiveBacks;
-
-        if (!available.Any() || giveBacks.All(g => g.NumCopies == 0))
-        {
-            return;
-        }
-
-        var availableAmounts = available.SelectMany(b => b.Cards);
-        var giveCards = giveBacks.Select(w => w.Card);
-
-        // TODO: account for changing NumCopies while iter
-        var approxMatch = ApproxLookup(availableAmounts, giveCards, boxSpace);
-
-        foreach (var giveBack in giveBacks)
-        {
-            var bestBoxes = approxMatch[giveBack.Card.Name];
-
-            if (giveBack.NumCopies == 0 || !bestBoxes.Any())
-            {
-                continue;
-            }
-
-            var boxReturns = FitToBoxes(bestBoxes, boxSpace, giveBack.NumCopies);
-
-            foreach ((Box box, int splitCopies) in boxReturns)
-            {
-                exchangeContext.ReturnCopies(giveBack.Card, splitCopies, box);
-            }
-        }
-    }
-
-
-    private static void ApplyNewReturns(
-        TreasuryContext treasuryContext, ExchangeContext exchangeContext)
-    {
-        var (available, _, excess, boxSpace) = treasuryContext;
-        var giveBacks = exchangeContext.Deck.GiveBacks;
-
-        if (!available.Any() || giveBacks.All(g => g.NumCopies == 0))
-        {
-            return;
-        }
-
-        var boxSearch = new BoxSearcher(available);
-
-        foreach (var giveBack in giveBacks)
-        {
-            if (giveBack.NumCopies == 0)
-            {
-                continue;
-            }
-
-            var bestBoxes = boxSearch
-                .FindBestBoxes(giveBack.Card)
-                .Union(available);
-
-            var newReturns = FitToBoxes(bestBoxes, boxSpace, giveBack.NumCopies, excess);
-
-            foreach ((Box box, int splitCopies) in newReturns)
-            {
-                exchangeContext.ReturnCopies(giveBack.Card, splitCopies, box);
-            }
+            exchangeContext.ReturnCopies(card, numCopies, box);
         }
     }
 
@@ -538,9 +247,9 @@ public class TreasuryHandler
 
         var treasuryContext = new TreasuryContext(dbContext);
 
-        TransferExactExcess(treasuryContext);
-        TransferApproxExcess(treasuryContext);
-        TransferOverflow(treasuryContext);
+        Transfer(treasuryContext, TransferScheme.Exact);
+        Transfer(treasuryContext, TransferScheme.Approximate);
+        Transfer(treasuryContext, TransferScheme.Overflow);
 
         RemoveEmpty(dbContext);
     }
@@ -553,7 +262,7 @@ public class TreasuryHandler
 
         if (entry.State is EntityState.Detached)
         {
-            dbContext.Attach(updated);
+            dbContext.Boxes.Attach(updated);
         }
 
         if (entry.State is not EntityState.Unchanged)
@@ -567,236 +276,19 @@ public class TreasuryHandler
             && dbValues?.GetValue<int>(capacityMeta) == updated.Capacity;
     }
 
-
-    private static void TransferOverflow(TreasuryContext treasuryContext)
-    {
-        var (_, overflowBoxes, excess, boxSpace) = treasuryContext;
-
-        if (!overflowBoxes.Any())
-        {
-            return;
-        }
-
-        var overflowCards = overflowBoxes.SelectMany(b => b.Cards);
-        var nonAvailable = Array.Empty<Box>();
-
-        foreach (var overflow in overflowCards)
-        {
-            if (overflow.Location is not Box sourceBox)
-            {
-                continue;
-            }
-
-            int copiesAbove = boxSpace.GetValueOrDefault(sourceBox) - sourceBox.Capacity;
-            if (copiesAbove <= 0)
-            {
-                continue;
-            }
-
-            int minTransfer = Math.Min(overflow.NumCopies, copiesAbove);
-            var boxTransfers = FitToBoxes(nonAvailable, boxSpace, minTransfer, excess);
-
-            foreach ((Box box, int splitCopies) in boxTransfers)
-            {
-                treasuryContext.TransferCopies(overflow.Card, splitCopies, box, overflow.Location);
-            }
-        }
-    }
-
     #endregion
 
 
-
-    private static void TransferExactExcess(TreasuryContext treasuryContext)
+    private static void Transfer(
+        TreasuryContext treasuryContext, 
+        TransferScheme scheme)
     {
-        var (available, _, excessBoxes, boxSpace) = treasuryContext;
+        var transfers = treasuryContext.TransferAssignment(scheme);
 
-        var availableAmounts = available.SelectMany(b => b.Cards);
-        var excessAmounts = excessBoxes.SelectMany(b => b.Cards);
-        var excessCards = excessAmounts.Select(a => a.Card);
-
-        if (!available.Any() || excessAmounts.All(a => a.NumCopies == 0))
+        foreach ((Amount source, int numCopies, Box box) in transfers)
         {
-            return;
+            treasuryContext.TransferCopies(source.Card, numCopies, box, source.Location);
         }
-
-        // TODO: account for changing NumCopies while iter
-        var exactRebalance = ExactLookup(availableAmounts, excessCards, boxSpace);
-
-        foreach (var excess in excessAmounts)
-        {
-            var bestBoxes = exactRebalance[excess.CardId];
-
-            if (!bestBoxes.Any())
-            {
-                continue;
-            }
-
-            var boxTransfers = FitToBoxes(bestBoxes, boxSpace, excess.NumCopies);
-
-            foreach ((Box box, int splitCopies) in boxTransfers)
-            {
-                treasuryContext.TransferCopies(excess.Card, splitCopies, box, excess.Location);
-            }
-        }
-    }
-
-
-    private static void TransferApproxExcess(TreasuryContext treasuryContext)
-    {
-        var (available, _, excessBoxes, boxSpace) = treasuryContext;
-
-        var availableAmounts = available.SelectMany(b => b.Cards);
-        var excessAmounts = excessBoxes.SelectMany(b => b.Cards);
-        var excessCards = excessAmounts.Select(a => a.Card);
-
-        if (!available.Any() || excessAmounts.All(a => a.NumCopies == 0))
-        {
-            return;
-        }
-
-        var exactRebalance = ApproxLookup(availableAmounts, excessCards, boxSpace);
-
-        foreach (var excess in excessAmounts)
-        {
-            var bestBoxes = exactRebalance[excess.Card.Name].Union(available);
-
-            if (!bestBoxes.Any())
-            {
-                continue;
-            }
-
-            var boxTransfers = FitToBoxes(bestBoxes, boxSpace, excess.NumCopies);
-
-            foreach ((Box box, int splitCopies) in boxTransfers)
-            {
-                treasuryContext.TransferCopies(excess.Card, splitCopies, box, excess.Location);
-            }
-        }
-    }
-
-
-    private static IEnumerable<(Box, int)> FitToBoxes(
-        IEnumerable<Box> boxes,
-        IReadOnlyDictionary<Box, int> boxSpace,
-        int cardsToAssign,
-        IEnumerable<Box>? excess = null)
-    {
-        foreach (var box in boxes)
-        {
-            if (box.IsExcess)
-            {
-                continue;
-            }
-
-            int spaceUsed = boxSpace.GetValueOrDefault(box);
-            int remainingSpace = Math.Max(0, box.Capacity - spaceUsed);
-
-            int newCopies = Math.Min(cardsToAssign, remainingSpace);
-            if (newCopies == 0)
-            {
-                continue;
-            }
-
-            yield return (box, newCopies);
-
-            cardsToAssign -= newCopies;
-            if (cardsToAssign == 0)
-            {
-                yield break;
-            }
-        }
-        
-        excess ??= Enumerable.Empty<Box>();
-
-        if (cardsToAssign > 0
-            && excess.FirstOrDefault() is Box firstExcess
-            && firstExcess.IsExcess)
-        {
-            yield return (firstExcess, cardsToAssign);
-        }
-    }
-
-
-    private static IEnumerable<(Box, int)> TakeFromBoxes(
-        IEnumerable<Amount> boxAmounts,
-        int cardsToTake)
-    {
-        foreach (var amount in boxAmounts)
-        {
-            if (amount.Location is not Box box)
-            {
-                continue;
-            }
-
-            int takeCopies = Math.Min(cardsToTake, amount.NumCopies);
-            if (takeCopies == 0)
-            {
-                continue;
-            }
-
-            yield return (box, takeCopies);
-
-            cardsToTake -= takeCopies;
-            if (cardsToTake == 0)
-            {
-                yield break;
-            }
-        }
-    }
-
-
-    private static ILookup<string, Box> ExactLookup(
-        IEnumerable<Amount> targets, 
-        IEnumerable<Card> cards,
-        IReadOnlyDictionary<Box, int> boxSpace)
-    {
-        var cardIds = cards
-            .Select(c => c.Id)
-            .Distinct();
-
-        // TODO: account for changing NumCopies while iter
-        return targets
-            .Join( cardIds,
-                a => a.CardId, cid => cid,
-                (target, _) => target)
-
-            // lookup group orders should preserve NumCopies order
-            .OrderBy(a => a.NumCopies)
-                .ThenByDescending(a => a.Location switch
-                {
-                    Box box => box.Capacity - boxSpace.GetValueOrDefault(box),
-                    _ => throw new ArgumentException(nameof(targets))
-                })
-            
-            .ToLookup(a => a.CardId, a => (Box)a.Location);
-    }
-
-
-    private static ILookup<string, Box> ApproxLookup(
-        IEnumerable<Amount> targets, 
-        IEnumerable<Card> cards,
-        IReadOnlyDictionary<Box, int> boxSpace)
-    {
-        var cardNames = cards
-            .Select(c => c.Name)
-            .Distinct();
-
-        // TODO: account for changing NumCopies while iter
-        return targets
-            .Join( cardNames,
-                a => a.Card.Name, cn => cn,
-                (target, _) => target)
-
-            // lookup group orders should preserve NumCopies order
-            .OrderBy(a => a.NumCopies)
-                .ThenByDescending(a => a.Location switch
-                {
-                    Box box => box.Capacity - boxSpace.GetValueOrDefault(box),
-                    _ => throw new ArgumentException(nameof(targets))
-                })
-            
-            .ToLookup(a => a.Card.Name, a => (Box)a.Location);
     }
 
 
@@ -830,8 +322,13 @@ public class TreasuryHandler
         var emptyGiveBacks = dbContext.GiveBacks.Local
             .Where(g => g.NumCopies == 0);
 
+        var emptyTransactions = dbContext.Transactions.Local
+            .Where(t => !t.Changes.Any());
+
         dbContext.Amounts.RemoveRange(emptyAmounts);
         dbContext.Wants.RemoveRange(emptyWants);
         dbContext.GiveBacks.RemoveRange(emptyGiveBacks);
+
+        dbContext.Transactions.RemoveRange(emptyTransactions);
     }
 }

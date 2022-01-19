@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Microsoft.EntityFrameworkCore;
 using MTGViewer.Data;
 
 namespace MTGViewer.Services.Internal;
@@ -57,11 +56,18 @@ internal sealed class TreasuryContext
             .ToDictionary(
                 a => (a.CardId, (Box)a.Location));
 
-        _transaction = dbContext.Transactions.Local
-            .FirstOrDefault() ?? new();
-
         _changes = dbContext.Changes.Local
             .ToDictionary(c => (c.CardId, c.To, c.From));
+
+        if (dbContext.Transactions.Local.FirstOrDefault() is Transaction transaction)
+        {
+            _transaction = transaction;
+        }
+        else
+        {
+            _transaction = new();
+            _dbContext.Transactions.Attach(_transaction);
+        }
     }
 
     public IReadOnlyCollection<Box> Available => _available;
@@ -72,8 +78,6 @@ internal sealed class TreasuryContext
 
     public IReadOnlyCollection<Amount> Amounts => _amounts.Values;
 
-    public IEnumerable<Amount> AddedAmounts() => 
-        _amounts.Values.Except(_originalAmounts);
 
     public void Deconstruct(
         out IReadOnlyCollection<Box> available,
