@@ -235,8 +235,7 @@ public class TreasuryHandler
             throw new ArgumentNullException(nameof(updated));
         }
 
-        if (updated.IsExcess
-            || await IsBoxUnchangedAsync(dbContext, updated, cancel))
+        if (await IsBoxUnchangedAsync(dbContext, updated, cancel))
         {
             return;
         }
@@ -262,18 +261,19 @@ public class TreasuryHandler
 
         if (entry.State is EntityState.Detached)
         {
-            dbContext.Boxes.Attach(updated);
+            dbContext.Boxes.Update(updated);
         }
 
-        if (entry.State is not EntityState.Unchanged)
+        var capacityProperty = entry.Property(b => b.Capacity);
+
+        if (capacityProperty.CurrentValue != capacityProperty.OriginalValue)
         {
             return false;
         }
 
-        var capacityMeta = entry.Property(b => b.Capacity).Metadata;
-
         return await entry.GetDatabaseValuesAsync(cancel) is var dbValues
-            && dbValues?.GetValue<int>(capacityMeta) == updated.Capacity;
+            && capacityProperty.Metadata is var capacityMeta
+            && dbValues?.GetValue<int?>(capacityMeta) == updated.Capacity;
     }
 
     #endregion

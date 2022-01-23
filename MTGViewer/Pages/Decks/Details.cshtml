@@ -1,7 +1,7 @@
 @page "{id:int}"
-@model Decks.ViewerModel
+@model Decks.DetailsModel
 @{
-    ViewData["Title"] = $"{Model.Deck.Name} - Viewer";
+    ViewData["Title"] = $"{Model.Deck.Name} - Details";
 }
 @inject SymbolFormatter MtgSymbols
 
@@ -17,14 +17,18 @@
         }
         else
         {
-            <a href="/Decks/Builder/@Model.Deck.Id"
+            <a href="/Decks/Craft/@Model.Deck.Id"
                 class="btn btn-secondary" role="button">
-                Edit</a>
+                Edit </a>
         }
 
         <a asp-page="History" asp-route-id="@Model.Deck.Id"
             class="btn btn-secondary" role="button">
             History </a>
+
+        <a asp-page="Delete" asp-route-id="@Model.Deck.Id"
+            class="btn btn-danger" role="alert">
+            Delete </a>
     </div>
 }
 

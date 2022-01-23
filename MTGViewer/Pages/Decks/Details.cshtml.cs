@@ -15,12 +15,12 @@ using MTGViewer.Data;
 namespace MTGViewer.Pages.Decks;
 
 
-public class ViewerModel : PageModel
+public class DetailsModel : PageModel
 {
     private readonly UserManager<CardUser> _userManager;
     private readonly CardDbContext _dbContext;
 
-    public ViewerModel(UserManager<CardUser> userManager, CardDbContext dbContext)
+    public DetailsModel(UserManager<CardUser> userManager, CardDbContext dbContext)
     {
         _userManager = userManager;
         _dbContext = dbContext;

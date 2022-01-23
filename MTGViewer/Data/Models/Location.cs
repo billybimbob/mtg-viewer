@@ -14,7 +14,7 @@ namespace MTGViewer.Data;
 public abstract class Location : Concurrent
 {
     [JsonIgnore]
-    public int Id { get; private set; }
+    public int Id { get; init; }
 
     [JsonIgnore]
     internal Discriminator Type { get; private set; }
@@ -106,7 +106,7 @@ public class Box : Location
     [Range(10, 10_000)]
     public int Capacity { get; set; }
 
-    [StringLength(20)]
+    [StringLength(40)]
     public string? Appearance { get; init; }
 
     public bool IsExcess
@@ -120,7 +120,7 @@ public class Box : Location
 public class Bin
 {
     [JsonIgnore]
-    public int Id { get; private set; }
+    public int Id { get; init; }
 
     [StringLength(10)]
     public string Name { get; set; } = string.Empty;

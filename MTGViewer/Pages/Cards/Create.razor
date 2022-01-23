@@ -95,15 +95,19 @@
             <div class="col-md col-lg-4">
                 <p> Enter the card search parameters below </p>
 
-                <InputText @bind-Value="Query.Name" 
-                    placeholder="@Query.DisplayName(c => c.Name)" 
-                    class="form-control mb-3" />
+                <div class="form-group">
+                    <InputText @bind-Value="Query.Name" 
+                        placeholder="@Query.DisplayName(c => c.Name)" 
+                        class="form-control" />
+                </div>
 
-                <InputNumber @bind-Value="Query.Cmc" min="0"
-                    placeholder="@Query.DisplayName(c => c.Cmc)" 
-                    class="form-control mb-3" />
+                <div class="form-group">
+                    <InputNumber @bind-Value="Query.Cmc" min="0"
+                        placeholder="@Query.DisplayName(c => c.Cmc)" 
+                        class="form-control" />
+                </div>
 
-                <div class="mb-3">
+                <div class="form-group">
                     @foreach (var (symbol, color) in Color.Symbols)
                     {
                         <button title="toggle @color"
@@ -126,23 +130,31 @@
                     </div>
                 </div>
 
-                <InputText @bind-Value="Query.Supertypes"
-                    placeholder="@Query.DisplayName(c => c.Supertypes)"
-                    class="form-control mb-3" />
+                <div class="form-group">
+                    <InputText @bind-Value="Query.Supertypes"
+                        placeholder="@Query.DisplayName(c => c.Supertypes)"
+                        class="form-control" />
+                </div>
 
-                <InputText @bind-Value="Query.Types"
-                    placeholder="@Query.DisplayName(c => c.Types)"
-                    class="form-control mb-3" />
+                <div class="form-group">
+                    <InputText @bind-Value="Query.Types"
+                        placeholder="@Query.DisplayName(c => c.Types)"
+                        class="form-control" />
+                </div>
 
-                <InputText @bind-Value="Query.Subtypes"
-                    placeholder="@Query.DisplayName(c => c.Subtypes)"
-                    class="form-control mb-3" />
+                <div class="form-group">
+                    <InputText @bind-Value="Query.Subtypes"
+                        placeholder="@Query.DisplayName(c => c.Subtypes)"
+                        class="form-control" />
+                </div>
 
-                <InputText @bind-Value="Query.SetName" 
-                    placeholder="@Query.DisplayName(c => c.SetName)" 
-                    class="form-control mb-3" />
+                <div class="form-group">
+                    <InputText @bind-Value="Query.SetName" 
+                        placeholder="@Query.DisplayName(c => c.SetName)" 
+                        class="form-control" />
+                </div>
 
-                <div class="row mb-3">
+                <div class="row form-group">
                     @for (int i = 0; i < Rarity.Values.Count; ++i)
                     {
                         var rarity = Rarity.Values[i];
@@ -165,24 +177,34 @@
                 <div class="form-group">
                     <InputText @bind-Value="Query.Artist" 
                         placeholder="@Query.DisplayName(c => c.Artist)" 
-                        class="form-control mb-3" />
+                        class="form-control" />
                 </div>
 
                 <div class="form-group">
                     <InputText @bind-Value="Query.Power" 
                         placeholder="@Query.DisplayName(c => c.Power)" 
-                        class="form-control mb-3" />
+                        class="form-control" />
                 </div>
 
-                <InputText @bind-Value="Query.Toughness" 
-                    placeholder="@Query.DisplayName(c => c.Toughness)" 
-                    class="form-control mb-3" />
+                <div class="form-group">
+                    <InputText @bind-Value="Query.Toughness" 
+                        placeholder="@Query.DisplayName(c => c.Toughness)" 
+                        class="form-control" />
+                </div>
 
-                <InputText @bind-Value="Query.Loyalty" 
-                    placeholder="@Query.DisplayName(c => c.Loyalty)" 
-                    class="form-control mb-3" />
+                <div class="form-group">
+                    <InputText @bind-Value="Query.Loyalty" 
+                        placeholder="@Query.DisplayName(c => c.Loyalty)" 
+                        class="form-control" />
+                </div>
 
                 <div class="btn-group" role="group">
+
+                    <button type="button" class="btn btn-danger" 
+                        @onclick="Reset" title="Reset All Fields"
+                        disabled="@IsBusy">
+                        Reset </button>
+
                     <button type="submit" class="btn btn-secondary" 
                         title="Search For Card" disabled="@IsBusy">
                         @if (IsBusy)
@@ -197,11 +219,6 @@
                             <text> Search </text>
                         }
                     </button>
-
-                    <button type="button" class="btn btn-secondary" 
-                        @onclick="Reset" title="Reset All Fields"
-                        disabled="@IsBusy">
-                        Reset </button>
                 </div>
             </div>
         </div>
@@ -210,6 +227,12 @@
 else
 {
     <div class="btn-group" role="group">
+        <button title="Reset Button" type="button"
+            @onclick="Reset" 
+            disabled="@IsBusy"
+            class="btn btn-danger">
+            Reset </button>
+
         <button title="Add Button" type="button"
             class="btn btn-secondary"
             @onclick="AddNewCardsAsync" 
@@ -226,12 +249,6 @@ else
                 <text> Add Cards/Amounts </text>
             }
         </button>
-
-        <button title="Reset Button" type="button"
-            @onclick="Reset" 
-            disabled="@IsBusy"
-            class="btn btn-secondary">
-            Reset </button>
     </div>
 
     <div class="row align-items-center my-3">
@@ -301,8 +318,8 @@ else
 }
 
 
-@code {
-
+@code
+{
     private CardQuery Query => _search.Query;
     private bool IsMultiColored => _search.IsMultiColored;
 

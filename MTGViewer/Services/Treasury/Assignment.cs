@@ -129,7 +129,7 @@ static class AssignmentExtensions
             var availableCards = available.SelectMany(b => b.Cards);
             var cardRequests = requests.Select(cr => cr.Card);
 
-            var existingSpots = ExactLookup(availableCards, cardRequests, boxSpace);
+            var existingSpots = ExactAddLookup(availableCards, cardRequests, boxSpace);
 
             foreach (CardRequest request in requests)
             {
@@ -165,7 +165,7 @@ static class AssignmentExtensions
             var availableCards = available.SelectMany(b => b.Cards);
             var cardRequests = requests.Select(cr => cr.Card);
 
-            var existingSpots = ApproxLookup(availableCards, cardRequests, boxSpace);
+            var existingSpots = ApproxAddLookup(availableCards, cardRequests, boxSpace);
 
             foreach (CardRequest request in requests)
             {
@@ -320,7 +320,7 @@ static class AssignmentExtensions
             var giveCards = giveBacks.Select(w => w.Card);
 
             // TODO: account for changing NumCopies while iter
-            var exactMatch = ExactLookup(availableAmounts, giveCards, boxSpace);
+            var exactMatch = ExactAddLookup(availableAmounts, giveCards, boxSpace);
 
             foreach (var giveBack in giveBacks)
             {
@@ -357,7 +357,7 @@ static class AssignmentExtensions
             var giveCards = giveBacks.Select(w => w.Card);
 
             // TODO: account for changing NumCopies while iter
-            var approxMatch = ApproxLookup(availableAmounts, giveCards, boxSpace);
+            var approxMatch = ApproxAddLookup(availableAmounts, giveCards, boxSpace);
 
             foreach (var giveBack in giveBacks)
             {
@@ -431,7 +431,7 @@ static class AssignmentExtensions
             }
 
             // TODO: account for changing NumCopies while iter
-            var exactRebalance = ExactLookup(availableAmounts, excessCards, boxSpace);
+            var exactRebalance = ExactAddLookup(availableAmounts, excessCards, boxSpace);
 
             foreach (var excess in excessAmounts)
             {
@@ -465,7 +465,7 @@ static class AssignmentExtensions
                 yield break;
             }
 
-            var exactRebalance = ApproxLookup(availableAmounts, excessCards, boxSpace);
+            var exactRebalance = ApproxAddLookup(availableAmounts, excessCards, boxSpace);
 
             foreach (var excess in excessAmounts)
             {
@@ -496,11 +496,10 @@ static class AssignmentExtensions
             }
 
             var overflowCards = overflowBoxes.SelectMany(b => b.Cards);
-            var nonAvailable = Array.Empty<Box>();
 
-            foreach (var overflow in overflowCards)
+            foreach (var source in overflowCards)
             {
-                if (overflow.Location is not Box sourceBox)
+                if (source.Location is not Box sourceBox)
                 {
                     continue;
                 }
@@ -511,8 +510,8 @@ static class AssignmentExtensions
                     continue;
                 }
 
-                int minTransfer = Math.Min(overflow.NumCopies, copiesAbove);
-                var assignments = FitToBoxes(overflow, minTransfer, excess, boxSpace);
+                int minTransfer = Math.Min(source.NumCopies, copiesAbove);
+                var assignments = FitToBoxes(source, minTransfer, excess, boxSpace);
 
                 foreach (var assignment in assignments)
                 {
@@ -592,7 +591,10 @@ static class AssignmentExtensions
     }
 
 
-    private static ILookup<string, Box> ExactLookup(
+    // add assignments should add to larger dup stacks
+    // in boxes with more available space
+
+    private static ILookup<string, Box> ExactAddLookup(
         IEnumerable<Amount> targets, 
         IEnumerable<Card> cards,
         IReadOnlyDictionary<Box, int> boxSpace)
@@ -607,19 +609,19 @@ static class AssignmentExtensions
                 a => a.CardId, cid => cid,
                 (target, _) => target)
 
-            // lookup group orders should preserve NumCopies order
-            .OrderBy(a => a.NumCopies)
+            .OrderByDescending(a => a.NumCopies)
                 .ThenByDescending(a => a.Location switch
                 {
                     Box box => box.Capacity - boxSpace.GetValueOrDefault(box),
                     _ => throw new ArgumentException(nameof(targets))
-                })
-            
+                })            
+
+            // lookup group orders should preserve NumCopies order
             .ToLookup(a => a.CardId, a => (Box)a.Location);
     }
 
 
-    private static ILookup<string, Box> ApproxLookup(
+    private static ILookup<string, Box> ApproxAddLookup(
         IEnumerable<Amount> targets, 
         IEnumerable<Card> cards,
         IReadOnlyDictionary<Box, int> boxSpace)
@@ -635,7 +637,7 @@ static class AssignmentExtensions
                 (target, _) => target)
 
             // lookup group orders should preserve NumCopies order
-            .OrderBy(a => a.NumCopies)
+            .OrderByDescending(a => a.NumCopies)
                 .ThenByDescending(a => a.Location switch
                 {
                     Box box => box.Capacity - boxSpace.GetValueOrDefault(box),
@@ -645,6 +647,9 @@ static class AssignmentExtensions
             .ToLookup(a => a.Card.Name, a => (Box)a.Location);
     }
 
+
+    // take assignments should take from smaller dup stacks first
+    // in boxes with less available space
 
     private static ILookup<string, Amount> ExactTakeLookup(
         IEnumerable<Amount> targets,
@@ -661,14 +666,14 @@ static class AssignmentExtensions
                 a => a.CardId, cid => cid,
                 (target, _) => target)
 
-            // lookup group orders should preserve NumCopies order
             .OrderBy(a => a.NumCopies)
-                .ThenByDescending(a => a.Location switch
+                .ThenBy(a => a.Location switch
                 {
                     Box box => box.Capacity - boxSpace.GetValueOrDefault(box),
                     _ => throw new ArgumentException(nameof(targets))
                 })
             
+            // lookup group orders should preserve NumCopies order
             .ToLookup(a => a.CardId);
     }
 
@@ -690,7 +695,7 @@ static class AssignmentExtensions
 
             // lookup group orders should preserve NumCopies order
             .OrderBy(a => a.NumCopies)
-                .ThenByDescending(a => a.Location switch
+                .ThenBy(a => a.Location switch
                 {
                     Box box => box.Capacity - boxSpace.GetValueOrDefault(box),
                     _ => throw new ArgumentException(nameof(targets))

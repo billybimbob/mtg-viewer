@@ -18,10 +18,9 @@
 
     <form method="POST">
         <div class="btn-group" role="group">
-            <!-- js hack -->
-            <a href="javascript:history.back()"
+            <a asp-page="Details" asp-route-id="@Model.Deck.Id"
                 class="btn btn-secondary" role="button">
-                Back </a>
+                Cancel </a>
 
             <input type="hidden" asp-for="Deck.Id" class="sr-only"/>
             <input type="submit" value="Delete" class="btn btn-danger" />

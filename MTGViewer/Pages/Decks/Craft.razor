@@ -1,4 +1,4 @@
-@page "/Decks/Builder/{DeckId:int?}"
+@page "/Decks/Craft/{DeckId:int?}"
 @attribute [Authorize]
 @inherits OwningComponentBase
 
@@ -16,7 +16,7 @@
 
 @inject PageSizes PageSizes
 @inject NavigationManager Nav
-@inject ILogger<Builder> Logger
+@inject ILogger<Craft> Logger
 
 
 <PageTitle> @Title </PageTitle>
@@ -176,8 +176,8 @@ else
 </div>
 
 
-@code {
-
+@code
+{
     [CascadingParameter]
     public Task<AuthenticationState> AuthState { get; set; } = null!;
 
@@ -269,7 +269,7 @@ else
         {
             var cancelToken = _cancel.Token;
 
-            _treasuryFilters.PageSize = PageSizes.GetComponentSize<Builder>();
+            _treasuryFilters.PageSize = PageSizes.GetComponentSize<Craft>();
 
             _dbContext = await DbFactory.CreateDbContextAsync(cancelToken);
 
@@ -406,7 +406,7 @@ else
 
         if (deck.TradesTo.Any())
         {
-            Nav.NavigateTo("/Decks/Viewer", true);
+            Nav.NavigateTo($"/Decks/Details/{DeckId}", true);
 
             return null;
         }
@@ -746,6 +746,7 @@ else
                 _result = SaveResult.Success;
             }
         }
+
         catch (DbUpdateConcurrencyException ex)
         {
             _result = SaveResult.Error;
@@ -764,6 +765,7 @@ else
         {
             Logger.LogWarning(ex.ToString());
         }
+
         finally
         {
             _isBusy = false;

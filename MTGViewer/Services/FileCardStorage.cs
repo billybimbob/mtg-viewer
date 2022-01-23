@@ -546,7 +546,8 @@ internal class CardData
                 .Include(c => c.Supertypes)
                 .OrderBy(c => c.Id)
                 .AsSplitQuery()
-                .ToPagedListAsync(pageSize, page, cancel),
+                .ToPagedListAsync(pageSize, page, cancel)
+                .ConfigureAwait(false),
 
             Decks = await dbContext.Decks
                 // keep eye on, paging does not account for
@@ -555,14 +556,16 @@ internal class CardData
                 .Include(d => d.Wants)
                 .OrderBy(d => d.Id)
                 .AsSplitQuery()
-                .ToPagedListAsync(pageSize, page, cancel),
+                .ToPagedListAsync(pageSize, page, cancel)
+                .ConfigureAwait(false),
 
             Unclaimed = await dbContext.Unclaimed
                 .Include(u => u.Cards)
                 .Include(u => u.Wants)
                 .OrderBy(u => u.Id)
                 .AsSplitQuery()
-                .ToPagedListAsync(pageSize, page, cancel),
+                .ToPagedListAsync(pageSize, page, cancel)
+                .ConfigureAwait(false),
             
             Bins = await dbContext.Bins
                 // keep eye on, paging does not account for
@@ -572,7 +575,8 @@ internal class CardData
                     .ThenInclude(b => b.Cards)
                 .OrderBy(b => b.Id)
                 .AsSplitQuery()
-                .ToPagedListAsync(pageSize, page, cancel),
+                .ToPagedListAsync(pageSize, page, cancel)
+                .ConfigureAwait(false),
         };
     }
 
@@ -599,7 +603,8 @@ internal class CardData
                 .Include(c => c.Supertypes)
                 .OrderBy(c => c.Id)
                 .AsSplitQuery()
-                .ToListAsync(cancel),
+                .ToListAsync(cancel)
+                .ConfigureAwait(false),
 
             Decks = await dbContext.Decks
                 .Include(d => d.Cards)
@@ -609,31 +614,36 @@ internal class CardData
                 .Include(d => d.TradesTo)
                 .OrderBy(d => d.Id)
                 .AsSplitQuery()
-                .ToListAsync(cancel),
+                .ToListAsync(cancel)
+                .ConfigureAwait(false),
 
             Unclaimed = await dbContext.Unclaimed
                 .Include(u => u.Cards)
                 .Include(u => u.Wants)
                 .OrderBy(u => u.Id)
                 .AsSplitQuery()
-                .ToListAsync(cancel),
+                .ToListAsync(cancel)
+                .ConfigureAwait(false),
             
             Bins = await dbContext.Bins
                 .Include(b => b.Boxes)
                     .ThenInclude(b => b.Cards)
                 .OrderBy(b => b.Id)
                 .AsSplitQuery()
-                .ToListAsync(cancel),
+                .ToListAsync(cancel)
+                .ConfigureAwait(false),
 
             Transactions = await dbContext.Transactions
                 .Include(t => t.Changes)
                 .OrderBy(t => t.Id)
                 .AsSplitQuery()
-                .ToListAsync(cancel),
+                .ToListAsync(cancel)
+                .ConfigureAwait(false),
 
             Suggestions = await dbContext.Suggestions
                 .OrderBy(s => s.Id)
                 .ToListAsync(cancel)
+                .ConfigureAwait(false)
         };
     }
 
@@ -643,12 +653,20 @@ internal class CardData
         [System.Runtime.CompilerServices.EnumeratorCancellation]
         CancellationToken cancel = default)
     {
-        yield return await dbContext.Cards.CountAsync(cancel);
+        yield return await dbContext.Cards
+            .CountAsync(cancel)
+            .ConfigureAwait(false);
 
-        yield return await dbContext.Decks.CountAsync(cancel);
+        yield return await dbContext.Decks
+            .CountAsync(cancel)
+            .ConfigureAwait(false);
 
-        yield return await dbContext.Unclaimed.CountAsync(cancel);
+        yield return await dbContext.Unclaimed
+            .CountAsync(cancel)
+            .ConfigureAwait(false);
 
-        yield return await dbContext.Bins.CountAsync(cancel);
+        yield return await dbContext.Bins
+            .CountAsync(cancel)
+            .ConfigureAwait(false);
     }
 }

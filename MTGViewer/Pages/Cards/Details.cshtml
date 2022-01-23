@@ -3,6 +3,11 @@
 @{
     ViewData["Title"] = $"{Model.Card.Name} - Details";
 }
+
+@using Microsoft.AspNetCore.Identity
+@using MTGViewer.Areas.Identity.Data
+
+@inject SignInManager<CardUser> SignInManager
 @inject SymbolFormatter MtgSymbols
 
 
@@ -14,12 +19,6 @@
 </div>
 
 <div class="btn-group" role="group">
-    <!-- js hack -->
-    <a href="javascript:history.back()"
-        class="btn btn-secondary"
-        role="button">
-        Back </a>
-
     @if (Model.CardAlts.Any())
     {
         <div class="btn-group" role="group">
@@ -40,9 +39,9 @@
         </div>
     }
 
-    @if (Model.IsSignedIn)
+    @if (SignInManager.IsSignedIn(User))
     {
-        <a asp-page="./Delete" asp-route-id="@Model.Card.Id"
+        <a asp-page="Delete" asp-route-id="@Model.Card.Id"
             class="btn btn-danger" role="alert">
             Delete </a>
     }

@@ -11,7 +11,6 @@ internal class ExchangeContext
     private readonly TreasuryContext _treasuryContext;
 
     private readonly Dictionary<string, QuantityGroup> _deckCards;
-    private readonly ILookup<string, string> _cardNames;
 
     public ExchangeContext(
         CardDbContext dbContext, TreasuryContext treasuryContext)
@@ -25,9 +24,6 @@ internal class ExchangeContext
         _deckCards = QuantityGroup
             .FromDeck(Deck)
             .ToDictionary(q => q.CardId);
-
-        _cardNames = _deckCards.Values
-            .ToLookup(q => q.Card.Name, q => q.CardId);
     }
 
     public Deck Deck { get; }

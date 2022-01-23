@@ -168,6 +168,10 @@ internal class BoxConfiguration : IEntityTypeConfiguration<Box>
             .HasOne(b => b.Bin)
             .WithMany(b => b.Boxes)
             .OnDelete(DeleteBehavior.Restrict);
+
+        builder
+            .Property(b => b.IsExcess)
+            .HasDefaultValue(false);
     }
 }
 

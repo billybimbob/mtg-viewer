@@ -45,15 +45,19 @@
                         @switch (from)
                         {
                             case Deck:
-                                <a asp-page="/Decks/Viewer" asp-route-id="@from.Id"> @from.Name </a>
+                                <a asp-page="/Decks/Details" asp-route-id="@from.Id"> @from.Name </a>
+                                break;
+
+                            case Box box when box.IsExcess:
+                                <a asp-page="Excess" asp-route-id="@from.Id"> @from.Name </a>
                                 break;
 
                             case Box:
-                                <a asp-page="/Treasury/Index" asp-route-id="@from.Id"> @from.Name </a>
+                                <a asp-page="Details" asp-route-id="@from.Id"> @from.Name </a>
                                 break;
 
                             case Unclaimed:
-                                <a asp-page="Unclaimed" asp-route-id="@from.Id"> @from.Name </a>
+                                <a asp-page="/Unowned/Index" asp-route-id="@from.Id"> @from.Name </a>
                                 break;
 
                             case null:
@@ -70,11 +74,15 @@
                         @switch (to)
                         {
                             case Deck:
-                                <a asp-page="/Decks/Viewer" asp-route-id="@to.Id"> @to.Name </a>
+                                <a asp-page="/Decks/Details" asp-route-id="@to.Id"> @to.Name </a>
+                                break;
+
+                            case Box box when box.IsExcess:
+                                <a asp-page="Excess" asp-route-id="@to.Id"> @to.Name </a>
                                 break;
 
                             case Box:
-                                <a asp-page="/Treasury/Index" asp-route-id="@to.Id"> @to.Name </a>
+                                <a asp-page="Details" asp-route-id="@to.Id"> @to.Name </a>
                                 break;
 
                             case Unclaimed:

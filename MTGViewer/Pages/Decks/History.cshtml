@@ -6,7 +6,7 @@
 
 <h1>
     Changes To
-    <a asp-page="Viewer" asp-route-id="@Model.Deck.Id">
+    <a asp-page="Details" asp-route-id="@Model.Deck.Id">
         @Model.Deck.Name </a>
 </h1>
 
@@ -43,11 +43,15 @@
                                 @switch (from)
                                 {
                                     case Deck when from.Id != Model.Deck.Id:
-                                        <a asp-page="Viewer" asp-route-id="@from.Id"> @from.Name </a>
+                                        <a asp-page="Details" asp-route-id="@from.Id"> @from.Name </a>
+                                        break;
+
+                                    case Box box when box.IsExcess:
+                                        <a asp-page="/Treasury/Excess" asp-route-id="@from.Id"> @from.Name </a>
                                         break;
 
                                     case Box:
-                                        <a asp-page="/Treasury/Index" asp-route-id="@from.Id"> @from.Name </a>
+                                        <a asp-page="/Treasury/Details" asp-route-id="@from.Id"> @from.Name </a>
                                         break;
 
                                     case Unclaimed:
@@ -68,11 +72,15 @@
                                 @switch (to)
                                 {
                                     case Deck when to.Id != Model.Deck.Id:
-                                        <a asp-page="Viewer" asp-route-id="@to.Id"> @to.Name </a>
+                                        <a asp-page="Details" asp-route-id="@to.Id"> @to.Name </a>
+                                        break;
+
+                                    case Box box when box.IsExcess:
+                                        <a asp-page="/Treasury/Excess" asp-route-id="@to.Id"> @to.Name </a>
                                         break;
 
                                     case Box:
-                                        <a asp-page="/Treasury/Index" asp-route-id="@to.Id"> @to.Name </a>
+                                        <a asp-page="/Treasury/Details" asp-route-id="@to.Id"> @to.Name </a>
                                         break;
 
                                     case Unclaimed:
