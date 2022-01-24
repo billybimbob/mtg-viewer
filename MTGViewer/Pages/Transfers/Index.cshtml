@@ -8,7 +8,7 @@
 
 <div class="row">
     <div class="col">
-        <h2>@Model.UserName's Deck Trades</h2>
+        <h2>@Model.UserName's Trades</h2>
 
         <div class="table-responsive-md">
             <table class="table mb-3">
@@ -25,7 +25,7 @@
                     {
                         <tr>
                             <td>
-                                <a asp-page="/Decks/Viewer" asp-route-id="@deck.Id">
+                                <a asp-page="/Decks/Details" asp-route-id="@deck.Id">
                                     @deck.Name </a>
                             </td>
 

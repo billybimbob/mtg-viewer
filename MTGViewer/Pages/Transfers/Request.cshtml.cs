@@ -88,8 +88,8 @@ public class RequestModel : PageModel
             .Where(d => d.Id == deckId && d.OwnerId == userId)
 
             .Include(d => d.Cards // unbounded: keep eye on
-                .OrderBy(ca => ca.Card.Name))
-                .ThenInclude(ca => ca.Card)
+                .OrderBy(a => a.Card.Name))
+                .ThenInclude(a => a.Card)
 
             .Include(d => d.Wants // unbounded: keep eye on
                 .OrderBy(w => w.Card.Name))
@@ -106,17 +106,17 @@ public class RequestModel : PageModel
     private IQueryable<Amount> TakeTargets(Deck deck)
     {
         var takeNames = deck.Wants
-            .Select(ca => ca.Card.Name)
+            .Select(w => w.Card.Name)
             .Distinct()
             .ToArray();
 
         return _dbContext.Amounts
-            .Where(ca => ca.Location is Deck
-                && (ca.Location as Deck)!.OwnerId != deck.OwnerId
-                && takeNames.Contains(ca.Card.Name))
+            .Where(a => a.Location is Deck
+                && (a.Location as Deck)!.OwnerId != deck.OwnerId
+                && takeNames.Contains(a.Card.Name))
 
-            .Include(ca => ca.Card)
-            .Include(ca => ca.Location);
+            .Include(a => a.Card)
+            .Include(a => a.Location);
     }
 
 

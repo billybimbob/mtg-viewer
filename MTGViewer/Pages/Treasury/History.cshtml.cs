@@ -25,7 +25,7 @@ public class HistoryModel : PageModel
     private readonly SignInManager<CardUser> _signInManager;
     private readonly ILogger<HistoryModel> _logger;
 
-    private readonly HashSet<(int, int?, int?)> _firstTransfers = new();
+    private readonly HashSet<(int, int, int?)> _firstTransfers = new();
 
     public HistoryModel(
         PageSizes pageSizes,
@@ -55,17 +55,17 @@ public class HistoryModel : PageModel
             .ToPagedListAsync(_pageSize, pageIndex, cancel);
 
         var firstTransfers = changes
-            .Select(c => (c.TransactionId, c.FromId, c.ToId))
+            .Select(c => (c.TransactionId, c.ToId, c.FromId))
             .GroupBy(tft => tft.TransactionId,
                 (_, tfts) => tfts.First());
 
         _firstTransfers.UnionWith(firstTransfers);
 
         Transfers = changes
-            .GroupBy(c => (c.Transaction, c.From, c.To),
+            .GroupBy(c => (c.Transaction, c.To, c.From),
                 (tft, changes) =>
                     new Transfer(
-                        tft.Transaction, tft.From, tft.To, changes.ToList()) )
+                        tft.Transaction, tft.To, tft.From, changes.ToList()) )
             .ToList();
 
         Pages = changes.Pages;
@@ -94,7 +94,7 @@ public class HistoryModel : PageModel
 
     public bool IsFirstTransfer(Transfer transfer)
     {
-        var transferKey = (transfer.Transaction.Id, transfer.From?.Id, transfer.To?.Id);
+        var transferKey = (transfer.Transaction.Id, transfer.To.Id, transfer.From?.Id);
         return _firstTransfers.Contains(transferKey);
     }
 

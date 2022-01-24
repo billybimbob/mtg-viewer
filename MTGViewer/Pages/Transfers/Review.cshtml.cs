@@ -73,10 +73,10 @@ public class ReviewModel : PageModel
             .Include(d => d.Owner)
 
             .Include(d => d.Cards)
-                .ThenInclude(ca => ca.Card)
+                .ThenInclude(a => a.Card)
 
             .Include(d => d.Cards // unbounded: keep eye on
-                .OrderBy(ca => ca.Card.Name))
+                .OrderBy(a => a.Card.Name))
 
             .Include(d => d.TradesFrom)
                 .ThenInclude(t => t.Card)
@@ -98,7 +98,7 @@ public class ReviewModel : PageModel
         var tradesWithCapAmount = deck.TradesFrom
             .GroupJoin( deck.Cards,
                 t => t.CardId,
-                ca => ca.CardId,
+                a => a.CardId,
                 (trade, actuals) => (trade, actuals))
             .SelectMany(
                 ta => ta.actuals.DefaultIfEmpty(),
@@ -191,16 +191,16 @@ public class ReviewModel : PageModel
             .Where(t => t.Id == tradeId && t.From.OwnerId == userId)
 
             .Include(t => t.To.Cards // unbounded: keep eye on
-                .Where(ca => ca.CardId == tradeCard.Id))
-                .ThenInclude(ca => ca.Card)
+                .Where(a => a.CardId == tradeCard.Id))
+                .ThenInclude(a => a.Card)
 
             .Include(t => t.To.Wants // unbounded: keep eye on
                 .Where(w => w.Card.Name == tradeCard.Name))
                 .ThenInclude(w => w.Card)
 
             .Include(t => t.From.Cards // unbounded: keep eye on
-                .Where(ca => ca.CardId == tradeCard.Id))
-                .ThenInclude(ca => ca.Card)
+                .Where(a => a.CardId == tradeCard.Id))
+                .ThenInclude(a => a.Card)
 
             .Include(t => t.From.Wants // unbounded: keep eye on
                 .Where(w => w.CardId == tradeCard.Id))
@@ -214,7 +214,7 @@ public class ReviewModel : PageModel
     private AcceptRequest? GetAcceptRequest(Trade trade)
     {
         var tradeValid = trade.From.Cards
-            .Select(ca => ca.CardId)
+            .Select(a => a.CardId)
             .Contains(trade.CardId);
 
         if (!tradeValid)
@@ -232,13 +232,13 @@ public class ReviewModel : PageModel
                 ? new WantNameGroup(toWants) : default,
 
             FromAmount: trade.From.Cards
-                .Single(ca => ca.CardId == trade.CardId));
+                .Single(a => a.CardId == trade.CardId));
     }
 
 
     private void ApplyAccept(AcceptRequest acceptRequest, int amount)
     {
-        var acceptAmount = Math.Max(amount, 1);
+        int acceptAmount = Math.Max(amount, 1);
 
         ModifyAmountsAndRequests(acceptRequest, acceptAmount);
 
@@ -313,7 +313,7 @@ public class ReviewModel : PageModel
         var trade = request.Trade;
 
         var toAmount = trade.To.Cards
-            .SingleOrDefault(ca => ca.CardId == trade.CardId);
+            .SingleOrDefault(a => a.CardId == trade.CardId);
 
         if (toAmount is null)
         {

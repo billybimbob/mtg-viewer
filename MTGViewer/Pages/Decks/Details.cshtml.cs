@@ -15,12 +15,12 @@ using MTGViewer.Data;
 namespace MTGViewer.Pages.Decks;
 
 
-public class ViewerModel : PageModel
+public class DetailsModel : PageModel
 {
     private readonly UserManager<CardUser> _userManager;
     private readonly CardDbContext _dbContext;
 
-    public ViewerModel(UserManager<CardUser> userManager, CardDbContext dbContext)
+    public DetailsModel(UserManager<CardUser> userManager, CardDbContext dbContext)
     {
         _userManager = userManager;
         _dbContext = dbContext;
@@ -61,7 +61,7 @@ public class ViewerModel : PageModel
             .Include(d => d.Owner)
 
             .Include(d => d.Cards) // unbounded: keep eye on
-                .ThenInclude(ca => ca.Card)
+                .ThenInclude(a => a.Card)
 
             .Include(d => d.Wants) // unbounded: keep eye on
                 .ThenInclude(w => w.Card)
@@ -81,7 +81,7 @@ public class ViewerModel : PageModel
     private IEnumerable<QuantityGroup> DeckCardGroups(Deck deck)
     {
         var amountsById = deck.Cards
-            .ToDictionary(ca => ca.CardId);
+            .ToDictionary(a => a.CardId);
 
         var wantsById = deck.Wants
             .ToDictionary(w => w.CardId);

@@ -1,0 +1,28 @@
+@page "{id:int}"
+@model Treasury.DetailsModel
+@{
+    ViewData["Title"] = $"{Model.Box.Name} - Details";
+}
+
+@using Microsoft.AspNetCore.Identity
+@using MTGViewer.Areas.Identity.Data
+
+@inject SignInManager<CardUser> SignInManager
+
+
+<h1> @Model.Box.Name - @Model.Box.Bin.Name </h1>
+
+@if (SignInManager.IsSignedIn(User))
+{
+    <div class="btn-group mb-3" role="group">
+        <a href="/Treasury/Adjust/@Model.Box.Id"
+            class="btn btn-secondary" role="button">
+            Edit </a>
+
+        <a asp-page="Delete" asp-route-id="@Model.Box.Id"
+            class="btn btn-danger" role="alert">
+            Delete </a>
+    </div>
+}
+
+<partial name="_BoxPartial", for="Box"/>

@@ -8,7 +8,7 @@
  
 <h1>@Model.UserName's Decks</h1>
 
-<a href="/Decks/Builder" class="btn btn-secondary mb-3" role="button">New Deck</a>
+<a href="/Decks/Craft" class="btn btn-secondary mb-3" role="button">New Deck</a>
 
 <div class="table-responsive-md">
     <table class="table">
@@ -26,7 +26,7 @@
             {
                 <tr>
                     <td>
-                        <a asp-page="Viewer" asp-route-id="@deck.Id">
+                        <a asp-page="Details" asp-route-id="@deck.Id">
                             @deck.Name </a>
                     </td>
 
@@ -35,7 +35,7 @@
                             @MtgSymbols.Format(deck.Colors).ToHtmlString()
                         </div>
                     </td>
-                    <td> @deck.Cards.Sum(ca => ca.NumCopies) </td>
+                    <td> @deck.Cards.Sum(a => a.NumCopies) </td>
 
                     <td>
                         @if (state is State.Requesting)
@@ -61,7 +61,7 @@
                         }
                         else
                         {
-                            <a href="/Decks/Builder/@deck.Id"
+                            <a href="/Decks/Craft/@deck.Id"
                                 class="btn btn-secondary" role="button">
                                 Edit </a>
                         }

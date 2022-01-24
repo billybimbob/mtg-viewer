@@ -14,7 +14,7 @@ namespace MTGViewer.Data;
 public abstract class Location : Concurrent
 {
     [JsonIgnore]
-    public int Id { get; private set; }
+    public int Id { get; init; }
 
     [JsonIgnore]
     internal Discriminator Type { get; private set; }
@@ -94,27 +94,36 @@ public class Deck : Owned
 }
 
 
+[Index(
+    nameof(IsExcess),
+    nameof(Capacity))]
 public class Box : Location
 {
     [JsonIgnore]
     public int BinId { get; init; }
-    public Bin Bin { get; init; } = null!;
+    public Bin Bin { get; set; } = null!;
 
-    [Range(10, 1000)]
-    public int Capacity { get; init; }
+    [Range(10, 10_000)]
+    public int Capacity { get; set; }
 
-    [StringLength(20)]
-    public string? Appearance { get; init; }
+    [StringLength(40)]
+    public string? Appearance { get; set; }
+
+    public bool IsExcess
+    {
+        get => Capacity == 0;
+        private set { }
+    }
 }
 
 
 public class Bin
 {
     [JsonIgnore]
-    public int Id { get; private set; }
+    public int Id { get; init; }
 
     [StringLength(10)]
-    public string Name { get; init; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
 
     public List<Box> Boxes { get; init; } = new();
 }

@@ -1,0 +1,539 @@
+@page "/Treasury/Adjust/{BoxId:int?}"
+@attribute [Authorize]
+@implements IDisposable
+
+@using System.ComponentModel.DataAnnotations
+@using MTGViewer.Data.Internal
+
+@inject FixedCache Cache
+@inject TreasuryHandler TreasuryHandler
+@inject IDbContextFactory<CardDbContext> DbFactory
+
+@inject ILogger<Adjust> Logger
+
+
+<PageTitle>
+    @if (Box.IsEdit)
+    {
+        <text> Edit @Box.Name </text>
+    }
+    else
+    {
+        <text> Add New Box </text>
+    }
+</PageTitle>
+
+<h1>
+    @if (Box.IsEdit)
+    {
+        <text> Edit <a href="/Treasury/Details/@Box.Id"> @Box.Name </a> </text>
+    }
+    else
+    {
+        <text> Add New Box </text>
+    }
+</h1>
+<hr />
+
+<SavePrompt @bind-Result="_result">
+    <SuccessMessage>
+        @if (Box.IsEdit)
+        {
+            <text> @Box.Name was successfully updated. </text>
+        }
+        else
+        {
+            <text> New box was successfully added. </text>
+        }
+    </SuccessMessage>
+    <ErrorMessage>
+        Ran into issues while try to
+        @if (Box.IsEdit)
+        {
+            <text> update @Box.Name </text>
+        }
+        else
+        {
+            <text> add a new Box. </text>
+        }
+    </ErrorMessage>
+</SavePrompt>
+
+<EditForm Model="@Box" OnValidSubmit="ValidBoxSubmittedAsync">
+    <ObjectGraphDataAnnotationsValidator />
+
+    <div class="row">
+        <div class="col-12 col-md-8 col-lg-5 order-lg-last">
+            <ValidationSummary role="alert" />
+        </div>
+
+        <div class="col col-md-8 col-lg-4">
+
+            <div class="form-group">
+                <label for="@BoxPropertyId(b => b.Name)">
+                    @Box.DisplayName(b => b.Name)
+                </label>
+                <InputText @bind-Value="Box.Name" 
+                    id="@BoxPropertyId(b => b.Name)" class="form-control" />
+            </div>
+
+            <div class="form-group">
+                <label for="@BoxPropertyId(b => b.Bin)">
+                    @Box.DisplayName(b => b.Bin)
+                </label>
+                <select @onchange="BinSelected" id="@BoxPropertyId(b => b.Bin)" class="form-control">
+                    <option value="0" selected="@(!Box.Bin.IsEdit)"> Create New </option>
+
+                    @foreach (var bin in Bins)
+                    {
+                        <option value="@bin.Id" selected="@(bin.Id == Box.Bin.Id)"> @bin.Name </option>
+                    }
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="@BinPropertyId(b => b.Name)">
+                    @if (!Box.Bin.IsEdit)
+                    {
+                        <text>
+                            New @Box.DisplayName(b => b.Bin) @Box.Bin.DisplayName(b => b.Name)
+                        </text>
+                    }
+                    else if (Box.IsEdit)
+                    {
+                        <text>
+                            Change @Box.Bin.Name's @Box.Bin.DisplayName(b => b.Name)
+                        </text>
+                    }
+                    else
+                    {
+                        <text>
+                            @Box.DisplayName(b => b.Bin) @Box.Bin.DisplayName(b => b.Name)
+                        </text>
+                    }
+                </label>
+                <input value="@Box.Bin.Name" @onchange="BinNameChanged"
+                    readonly="@(!Box.IsEdit && Box.Bin.IsEdit)"
+                    id="@BinPropertyId(b => b.Name)" class="form-control" />
+            </div>
+
+            <div class="form-group">
+                <label for="@BoxPropertyId(b => b.Appearance)">
+                    @Box.DisplayName(b => b.Appearance)
+                </label>
+                <InputTextArea @bind-Value="Box.Appearance"
+                    id="@BoxPropertyId(b => b.Appearance)" class="form-control" />
+            </div>
+
+
+            <div class="form-group">
+                <label for="@BoxPropertyId(b => b.Capacity)">
+                    @Box.DisplayName(b => b.Capacity)
+                </label>
+                <InputNumber @bind-Value="Box.Capacity" min=0
+                    id="@BoxPropertyId(b => b.Capacity)" class="form-control" />
+            </div>
+
+            <div class="btn-group" role="group">
+                <button class="btn btn-secondary" type="submit" disabled="@IsBusy">
+                    @if (IsBusy)
+                    {
+                        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"> </span>
+                    }
+                    @if (Box.IsEdit)
+                    {
+                        <text> Update </text>
+                    }
+                    else
+                    {
+                        <text> Add </text>
+                    }
+                </button>
+            </div>
+        </div>
+    </div>
+</EditForm>
+
+
+@code
+{
+    [Parameter]
+    public int BoxId { get; set; } = default;
+
+    public BoxDto Box { get; } = new();
+    public IReadOnlyList<Bin> Bins => _bins;
+
+    public bool IsBusy => _dbBusy;
+
+
+    private readonly CancellationTokenSource _cancel = new();
+
+    private bool _dbBusy;
+    private SaveResult _result;
+
+    private Bin[] _bins = Array.Empty<Bin>();
+
+
+    public sealed class BoxDto
+    {
+        public int Id { get; set; }
+
+        public bool IsEdit => Id != default;
+
+        [Required(ErrorMessage = "Box Name is Missing")]
+        [StringLength(20, ErrorMessage = "Box Name has a character limit of 20")]
+        public string? Name { get; set; }
+
+        [StringLength(40, ErrorMessage = "Appearance has a character limit of 40")]
+        public string? Appearance{ get; set; }
+
+        [Range(10, 10_000, ErrorMessage = "Capacity must be Between 10 and 10,000")]
+        public int Capacity { get; set; }
+
+        [ValidateComplexType]
+        public BinDto Bin { get; } = new();
+    }
+
+
+    public sealed class BinDto
+    {
+        public int Id { get; set; }
+
+        [Required(ErrorMessage = "Bin Name is Missing")]
+        [StringLength(10, ErrorMessage = "Bin Name has a character limit of 10")]
+        public string? Name { get; set; }
+
+        public bool IsEdit => Id != default;
+    }
+
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (_dbBusy)
+        {
+            return;
+        }
+
+        _dbBusy = true;
+
+        try
+        {
+            var cancelToken = _cancel.Token;
+
+            await using var dbContext = await DbFactory.CreateDbContextAsync(cancelToken);
+
+            _bins = await Cache
+                .GetOrCreateAsync($"{nameof(Adjust)}{nameof(_bins)}", () =>
+                    BinOptionsAsync(dbContext, cancelToken));
+        }
+        catch (OperationCanceledException e)
+        {
+            Logger.LogWarning(e.ToString());
+        }
+        finally
+        {
+            _dbBusy = false;
+        }
+    }
+
+
+    private static Task<Bin[]> BinOptionsAsync(CardDbContext dbContext, CancellationToken cancel)
+    {
+        return dbContext.Bins
+            .Where(b => !b.Boxes.Any(box => box.IsExcess))
+            .OrderBy(b => b.Name)
+            .AsNoTracking()
+            .ToArrayAsync(cancel);
+    }
+
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_dbBusy)
+        {
+            return;
+        }
+        
+        if (BoxId == default)
+        {
+            return;
+        }
+
+        _dbBusy = true;
+
+        try
+        {
+            var box = await GetBoxAsync(_cancel.Token);
+
+            if (box != null)
+            {
+                Box.Id = box.Id;
+                Box.Name = box.Name;
+
+                Box.Appearance = box.Appearance;
+                Box.Capacity = box.Capacity;
+
+                Box.Bin.Id = box.Bin.Id;
+                Box.Bin.Name = box.Bin.Name;
+            }
+        }
+        catch (OperationCanceledException e)
+        {
+            Logger.LogWarning(e.ToString());
+        }
+        finally
+        {
+            _dbBusy = false;
+        }
+    }
+
+
+    private async Task<Box?> GetBoxAsync(CancellationToken cancel)
+    {
+        await using var dbContext = await DbFactory.CreateDbContextAsync(cancel);
+
+        dbContext.Bins.AttachRange(_bins);
+
+        var box = await Cache
+            .GetOrCreateAsync($"{nameof(Adjust)}{nameof(Box)}{BoxId}", FetchBoxAsync);
+
+        if (box is null)
+        {
+            return null;
+        }
+
+        if (dbContext.Entry(box).State is not EntityState.Detached)
+        {
+            return box;
+        }
+
+        if (_bins.Any(b => b.Id == box.BinId && b != box.Bin))
+        {
+            // cache may cause different Bin objs with the same ids to be tracked
+            return await FetchBoxAsync();
+        }
+
+        dbContext.Boxes.Attach(box);
+
+        return box;
+
+        Task<Box?> FetchBoxAsync() =>
+            ExistingBoxAsync(dbContext, BoxId, cancel);
+    }
+
+
+    private static Task<Box?> ExistingBoxAsync(
+        CardDbContext dbContext, int id, CancellationToken cancel)
+    {
+        if (id == default)
+        {
+            Task.FromResult<Box?>(null);
+        }
+
+        return dbContext.Boxes
+            .Include(b => b.Bin)
+            .SingleOrDefaultAsync(b => !b.IsExcess && b.Id == id, cancel);
+    }
+    
+
+    public void Dispose()
+    {
+        _cancel.Cancel();
+        _cancel.Dispose();
+    }
+
+
+
+    public static string BoxPropertyId<T>(Expression<Func<BoxDto, T>> property)
+    {
+        if (property.Body is not MemberExpression expression)
+        {
+            return string.Empty;
+        }
+
+        return $"{nameof(BoxDto)}-{expression.Member.Name}";
+    }
+
+
+    public static string BinPropertyId<T>(Expression<Func<BinDto, T>> property)
+    {
+        if (property.Body is not MemberExpression expression)
+        {
+            return string.Empty;
+        }
+
+        return $"{nameof(BinDto)}-{expression.Member.Name}";
+    }
+
+
+
+    public async Task ValidBoxSubmittedAsync()
+    {
+        if (_dbBusy || Box.Name is null || Box.Bin.Name is null)
+        {
+            return;
+        }
+
+        _result = SaveResult.None;
+        _dbBusy = true;
+
+        try
+        {
+            await ApplyBoxChangesAsync(Box, _cancel.Token);
+
+            _result = SaveResult.Success;
+        }
+        catch (DbUpdateException e)
+        {
+            _result = SaveResult.Error;
+
+            Logger.LogError(e.ToString());
+        }
+        catch (OperationCanceledException e)
+        {
+            _result = SaveResult.Error;
+
+            Logger.LogWarning(e.ToString());
+        }
+        finally
+        {
+            _dbBusy = false;
+        }
+    }
+
+
+    private async Task ApplyBoxChangesAsync(BoxDto changes, CancellationToken cancel)
+    {
+        await using var dbContext = await DbFactory.CreateDbContextAsync(cancel);
+
+        var box = await GetBoxAsync(dbContext, changes, cancel);
+        if (box is null)
+        {
+            return;
+        }
+
+        var bin = await GetBinAsync(dbContext, changes.Bin, cancel);
+        if (bin is null)
+        {
+            return;
+        }
+
+        var oldBin = box.Bin;
+        box.Bin = bin;
+
+        if (oldBin != bin && !oldBin.Boxes.Any(b => b.Id != box.Id))
+        {
+            dbContext.Bins.Remove(oldBin);
+        }
+
+        await TreasuryHandler.UpdateBoxesAsync(dbContext, cancel);
+
+        await dbContext.SaveChangesAsync(cancel);
+    }
+
+
+    private static async Task<Box?> GetBoxAsync(
+        CardDbContext dbContext, BoxDto boxDto, CancellationToken cancel)
+    {
+        if (boxDto.Name is null)
+        {
+            return null;
+        }
+
+        Box? box;
+        
+        if (boxDto.IsEdit)
+        {
+            box = await dbContext.Boxes
+                .Include(b => b.Bin)
+                    .ThenInclude(bn => bn.Boxes
+                        .Where(b => b.Id != boxDto.Id)
+                        .OrderBy(b => b.Id)
+                        .Take(1))
+                .SingleOrDefaultAsync(b => b.Id == boxDto.Id, cancel);
+        }
+        else
+        {
+            box = new Box();
+            dbContext.Boxes.Attach(box);
+        }
+
+        if (box is null)
+        {
+            return null;
+        }
+
+        dbContext.Entry(box)
+            .CurrentValues.SetValues(boxDto);
+
+        return box;
+    }
+
+
+    private static async Task<Bin?> GetBinAsync(
+        CardDbContext dbContext, BinDto binDto, CancellationToken cancel)
+    {
+        if (binDto.Name is null)
+        {
+            return null;
+        }
+
+        Bin? bin;
+
+        if (binDto.IsEdit)
+        {
+            bin = await dbContext.Bins
+                .SingleOrDefaultAsync(b => b.Id == binDto.Id, cancel);
+        }
+        else
+        {
+            bin = new Bin();
+            dbContext.Bins.Attach(bin);
+        }
+
+        if (bin is null)
+        {
+            return null;
+        }
+
+        dbContext.Entry(bin)
+            .CurrentValues.SetValues(binDto);
+
+        return bin;
+    }
+
+
+    public void BinSelected(ChangeEventArgs args)
+    {
+        if (!int.TryParse(args.Value?.ToString(), out int binId))
+        {
+            return;
+        }
+
+        var bin = _bins.SingleOrDefault(b => b.Id == binId);
+        var binDto = Box.Bin;
+
+        if (bin == default)
+        {
+            binDto.Id = default;
+            binDto.Name = null;
+        }
+        else
+        {
+            binDto.Id = bin.Id;
+            binDto.Name = bin.Name;
+        }
+    }
+
+
+    public void BinNameChanged(ChangeEventArgs args)
+    {
+        var newName = args.Value?.ToString();
+
+        if (Box.IsEdit || !Box.Bin.IsEdit)
+        {
+            Box.Bin.Name = newName;
+        }
+    }
+}

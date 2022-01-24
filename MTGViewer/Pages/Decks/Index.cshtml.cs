@@ -75,17 +75,21 @@ public class IndexModel : PageModel
             return NotFound();
         }
 
-        var decks = await DeckStates(userId)
-            .ToPagedListAsync(_pageSize, pageIndex, cancel);
+        var userName = await _dbContext.Users
+            .Where(u => u.Id == userId)
+            .Select(u => u.Name)
+            .SingleOrDefaultAsync(cancel);
 
-        var userName = _userManager.GetDisplayName(User);
         if (userName is null)
         {
             return NotFound();
         }
 
-        Decks = decks;
+        var decks = await DeckStates(userId)
+            .ToPagedListAsync(_pageSize, pageIndex, cancel);
+
         UserName = userName;
+        Decks = decks;
 
         return Page();
     }
@@ -97,14 +101,14 @@ public class IndexModel : PageModel
             .Where(d => d.OwnerId == userId)
 
             .Include(d => d.Cards) // unbounded: keep eye on
-                .ThenInclude(ca => ca.Card)
+                .ThenInclude(a => a.Card)
 
             .Include(d => d.Wants
                 .OrderBy(w => w.Id)
                 .Take(1))
 
             .Include(d => d.GiveBacks
-                .OrderBy(gb => gb.Id)
+                .OrderBy(g => g.Id)
                 .Take(1))
 
             .Include(d => d.TradesTo

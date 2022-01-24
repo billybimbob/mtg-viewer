@@ -29,7 +29,7 @@ public class ExchangeTests : IAsyncLifetime
 
     public ExchangeTests(
         CardDbContext dbContext,
-        ITreasuryQuery treasury,
+        TreasuryHandler treasuryHandler,
         UserManager<CardUser> userManager,
         CardText cardText,
         TestDataGenerator testGen)
@@ -41,7 +41,7 @@ public class ExchangeTests : IAsyncLifetime
         var logger = Mock.Of<ILogger<ExchangeModel>>();
 
         _exchangeModel = new(
-            _dbContext, treasury, _userManager, cardText, logger);
+            _dbContext, treasuryHandler, _userManager, cardText, logger);
     }
 
 
@@ -70,15 +70,15 @@ public class ExchangeTests : IAsyncLifetime
 
     private IQueryable<int> ActualNumCopies(Quantity quantity) =>
         _dbContext.Amounts
-            .Where(ca => ca.LocationId == quantity.LocationId
-                && ca.CardId == quantity.CardId)
-            .Select(ca => ca.NumCopies);
+            .Where(a => a.LocationId == quantity.LocationId
+                && a.CardId == quantity.CardId)
+            .Select(a => a.NumCopies);
 
 
     private IQueryable<int> BoxNumCopies(Quantity quantity) =>
         _dbContext.Amounts
-            .Where(ca => ca.Location is Box && ca.CardId == quantity.CardId)
-            .Select(ca => ca.NumCopies);
+            .Where(a => a.Location is Box && a.CardId == quantity.CardId)
+            .Select(a => a.NumCopies);
 
 
     private IQueryable<int> ChangeAmount(Quantity quantity) =>
@@ -274,9 +274,9 @@ public class ExchangeTests : IAsyncLifetime
         var deckOwnerId = await OwnerId(request).SingleAsync();
 
         var tradeTarget = await _dbContext.Amounts
-            .Where(ca => ca.Location is Deck
-                && (ca.Location as Deck)!.OwnerId != deckOwnerId)
-            .Select(ca => ca.Location)
+            .Where(a => a.Location is Deck
+                && (a.Location as Deck)!.OwnerId != deckOwnerId)
+            .Select(a => a.Location)
             .FirstAsync();
 
         var activeTrade = new Trade

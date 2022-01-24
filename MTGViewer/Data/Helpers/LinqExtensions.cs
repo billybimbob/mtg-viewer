@@ -49,14 +49,15 @@ public static class LinqExtensions
         pageSize = Math.Max(pageSize, 0);
 
         int page = pageIndex ?? 0;
-        int totalItems = await source.CountAsync(cancel);
+        int totalItems = await source.CountAsync(cancel).ConfigureAwait(false);
 
         var pages = new Pages(page, totalItems, pageSize);
 
         var items = await source
             .Skip(pages.Current * pageSize)
             .Take(pageSize)
-            .ToListAsync(cancel);
+            .ToListAsync(cancel)
+            .ConfigureAwait(false);
 
         return new(pages, items);
     }
@@ -76,52 +77,59 @@ public static class LinqExtensions
         pageSize = Math.Max(pageSize, 0);
 
         int page = pageIndex ?? 0;
-        int totalItems = await source.CountAsync(cancel);
+        int totalItems = await source.CountAsync(cancel).ConfigureAwait(false);
 
         var pages = new Pages(page, totalItems, pageSize);
 
         var items = await source
             .Skip(pages.Current * pageSize)
             .Take(pageSize)
-            .ToListAsync(cancel);
+            .ToListAsync(cancel)
+            .ConfigureAwait(false);
 
         return new(pages, items);
     }
 
 
-    public static async IAsyncEnumerable<TSource[]> Chunk<TSource>(
-        this IAsyncEnumerable<TSource> source,
-        int size,
-        [System.Runtime.CompilerServices.EnumeratorCancellation]
-        CancellationToken cancel = default)
+    public static IAsyncEnumerable<TSource[]> Chunk<TSource>(
+        this IAsyncEnumerable<TSource> source, int size)
     {
         if (source == null)
         {
             throw new ArgumentNullException(nameof(source));
         }
 
-        await using var e = source.GetAsyncEnumerator(cancel);
+        return CoreChunk(source, size);
 
-        while (await e.MoveNextAsync(cancel))
+        static async IAsyncEnumerable<TSource[]> CoreChunk(
+            IAsyncEnumerable<TSource> source, 
+            int size, 
+            [System.Runtime.CompilerServices.EnumeratorCancellation]
+            CancellationToken cancel = default)
         {
-            TSource[] chunk = new TSource[size];
-            chunk[0] = e.Current;
+            await using var e = source.WithCancellation(cancel).ConfigureAwait(false).GetAsyncEnumerator();
 
-            int i = 1;
-            while (i < chunk.Length && await e.MoveNextAsync(cancel))
+            while (await e.MoveNextAsync())
             {
-                chunk[i++] = e.Current;
-            }
+                TSource[] chunk = new TSource[size];
+                chunk[0] = e.Current;
 
-            if (i == chunk.Length)
-            {
-                yield return chunk;
-            }
-            else
-            {
-                Array.Resize(ref chunk, i);
-                yield return chunk;
-                yield break;
+                int i = 1;
+                while (i < chunk.Length && await e.MoveNextAsync())
+                {
+                    chunk[i++] = e.Current;
+                }
+
+                if (i == chunk.Length)
+                {
+                    yield return chunk;
+                }
+                else
+                {
+                    Array.Resize(ref chunk, i);
+                    yield return chunk;
+                    yield break;
+                }
             }
         }
     }

@@ -6,6 +6,7 @@
 @using MTGViewer.Data.Internal
 
 @inject IDbContextFactory<CardDbContext> DbFactory
+@inject TreasuryHandler TreasuryHandler
 @inject SymbolFormatter MtgSymbols
 @inject ILogger<Create> Logger
 
@@ -94,15 +95,19 @@
             <div class="col-md col-lg-4">
                 <p> Enter the card search parameters below </p>
 
-                <InputText @bind-Value="Query.Name" 
-                    placeholder="@Query.DisplayName(c => c.Name)" 
-                    class="form-control mb-3" />
+                <div class="form-group">
+                    <InputText @bind-Value="Query.Name" 
+                        placeholder="@Query.DisplayName(c => c.Name)" 
+                        class="form-control" />
+                </div>
 
-                <InputNumber @bind-Value="Query.Cmc" min="0"
-                    placeholder="@Query.DisplayName(c => c.Cmc)" 
-                    class="form-control mb-3" />
+                <div class="form-group">
+                    <InputNumber @bind-Value="Query.Cmc" min="0"
+                        placeholder="@Query.DisplayName(c => c.Cmc)" 
+                        class="form-control" />
+                </div>
 
-                <div class="mb-3">
+                <div class="form-group">
                     @foreach (var (symbol, color) in Color.Symbols)
                     {
                         <button title="toggle @color"
@@ -125,23 +130,31 @@
                     </div>
                 </div>
 
-                <InputText @bind-Value="Query.Supertypes"
-                    placeholder="@Query.DisplayName(c => c.Supertypes)"
-                    class="form-control mb-3" />
+                <div class="form-group">
+                    <InputText @bind-Value="Query.Supertypes"
+                        placeholder="@Query.DisplayName(c => c.Supertypes)"
+                        class="form-control" />
+                </div>
 
-                <InputText @bind-Value="Query.Types"
-                    placeholder="@Query.DisplayName(c => c.Types)"
-                    class="form-control mb-3" />
+                <div class="form-group">
+                    <InputText @bind-Value="Query.Types"
+                        placeholder="@Query.DisplayName(c => c.Types)"
+                        class="form-control" />
+                </div>
 
-                <InputText @bind-Value="Query.Subtypes"
-                    placeholder="@Query.DisplayName(c => c.Subtypes)"
-                    class="form-control mb-3" />
+                <div class="form-group">
+                    <InputText @bind-Value="Query.Subtypes"
+                        placeholder="@Query.DisplayName(c => c.Subtypes)"
+                        class="form-control" />
+                </div>
 
-                <InputText @bind-Value="Query.SetName" 
-                    placeholder="@Query.DisplayName(c => c.SetName)" 
-                    class="form-control mb-3" />
+                <div class="form-group">
+                    <InputText @bind-Value="Query.SetName" 
+                        placeholder="@Query.DisplayName(c => c.SetName)" 
+                        class="form-control" />
+                </div>
 
-                <div class="row mb-3">
+                <div class="row form-group">
                     @for (int i = 0; i < Rarity.Values.Count; ++i)
                     {
                         var rarity = Rarity.Values[i];
@@ -164,24 +177,34 @@
                 <div class="form-group">
                     <InputText @bind-Value="Query.Artist" 
                         placeholder="@Query.DisplayName(c => c.Artist)" 
-                        class="form-control mb-3" />
+                        class="form-control" />
                 </div>
 
                 <div class="form-group">
                     <InputText @bind-Value="Query.Power" 
                         placeholder="@Query.DisplayName(c => c.Power)" 
-                        class="form-control mb-3" />
+                        class="form-control" />
                 </div>
 
-                <InputText @bind-Value="Query.Toughness" 
-                    placeholder="@Query.DisplayName(c => c.Toughness)" 
-                    class="form-control mb-3" />
+                <div class="form-group">
+                    <InputText @bind-Value="Query.Toughness" 
+                        placeholder="@Query.DisplayName(c => c.Toughness)" 
+                        class="form-control" />
+                </div>
 
-                <InputText @bind-Value="Query.Loyalty" 
-                    placeholder="@Query.DisplayName(c => c.Loyalty)" 
-                    class="form-control mb-3" />
+                <div class="form-group">
+                    <InputText @bind-Value="Query.Loyalty" 
+                        placeholder="@Query.DisplayName(c => c.Loyalty)" 
+                        class="form-control" />
+                </div>
 
                 <div class="btn-group" role="group">
+
+                    <button type="button" class="btn btn-danger" 
+                        @onclick="Reset" title="Reset All Fields"
+                        disabled="@IsBusy">
+                        Reset </button>
+
                     <button type="submit" class="btn btn-secondary" 
                         title="Search For Card" disabled="@IsBusy">
                         @if (IsBusy)
@@ -196,11 +219,6 @@
                             <text> Search </text>
                         }
                     </button>
-
-                    <button type="button" class="btn btn-secondary" 
-                        @onclick="Reset" title="Reset All Fields"
-                        disabled="@IsBusy">
-                        Reset </button>
                 </div>
             </div>
         </div>
@@ -209,28 +227,17 @@
 else
 {
     <div class="btn-group" role="group">
+        <button title="Reset Button" type="button"
+            @onclick="Reset" 
+            disabled="@IsBusy"
+            class="btn btn-danger">
+            Reset </button>
+
         <button title="Add Button" type="button"
             class="btn btn-secondary"
             @onclick="AddNewCardsAsync" 
             disabled="@(CannotAdd || IsBusy)">
-            @if (IsBusy)
-            {
-                <text>
-                    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"> </span>
-                    Loading...
-                </text>
-            }
-            else
-            {
-                <text> Add Cards/Amounts </text>
-            }
-        </button>
-
-        <button title="Reset Button" type="button"
-            @onclick="Reset" 
-            disabled="@IsBusy"
-            class="btn btn-secondary">
-            Reset </button>
+            Add Cards/Amounts </button>
     </div>
 
     <div class="row align-items-center my-3">
@@ -295,30 +302,31 @@ else
         class="btn btn-secondary"
         @onclick="SearchForCardAsync" 
         disabled="@(HasNoNext || IsBusy)" >
-        Load More
+        @if (IsBusy)
+        {
+            <text>
+                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"> </span>
+                Loading...
+            </text>
+        }
+        else
+        {
+            <text> Load More </text>
+        }
     </button>
 }
 
 
-@code {
+@code
+{
+    public CardQuery Query => _search.Query;
+    public bool IsMultiColored => _search.IsMultiColored;
 
-    private CardQuery Query => _search.Query;
-    private bool IsMultiColored => _search.IsMultiColored;
+    public IReadOnlyDictionary<Card, int> Matches => _matches;
 
-    private IReadOnlyDictionary<Card, int> Matches => _matches;
-
-    private bool CannotAdd => _matches.All(kv => kv.Value <= 0);
-    private bool HasNoNext => !_matchPage.HasNext;
-    private bool IsBusy => _isBusy;
-
-    private string DisplayName<T>(Expression<Func<Card, T>> property) =>
-        EntityExtensions.DisplayName(property);
-
-    private string ActiveColor(string color) =>
-        _search.PickedColors.Contains(color) ? "active" : string.Empty;
-
-    private bool RaritySelected(string rarity) =>
-        _search.PickedRarities.Contains(rarity);
+    public bool CannotAdd => _matches.All(kv => kv.Value <= 0);
+    public bool HasNoNext => !_matchPage.HasNext;
+    public bool IsBusy => _isBusy;
 
 
     private readonly CancellationTokenSource _cancel = new();
@@ -378,6 +386,17 @@ else
     
 
 
+    public string DisplayName<T>(Expression<Func<Card, T>> property) =>
+        EntityExtensions.DisplayName(property);
+
+    public string ActiveColor(string color) =>
+        _search.PickedColors.Contains(color) ? "active" : string.Empty;
+
+    public bool RaritySelected(string rarity) =>
+        _search.PickedRarities.Contains(rarity);
+
+
+
     private void ClearErrors(object? sender, ValidationRequestedEventArgs args)
     {
         if (_searchEdit is null || _resultErrors is null)
@@ -421,7 +440,7 @@ else
     }
 
 
-    private void MultiColorSwitch(ChangeEventArgs args)
+    public void MultiColorSwitch(ChangeEventArgs args)
     {
         if (_searchEdit is null)
         {
@@ -441,7 +460,7 @@ else
     }
 
 
-    private void ColorToggle(string color)
+    public void ColorToggle(string color)
     {
         if (_searchEdit is null)
         {
@@ -464,7 +483,7 @@ else
     }
 
 
-    private void RarityToggle(string rarity)
+    public void RarityToggle(string rarity)
     {
         if (_searchEdit is null)
         {
@@ -487,7 +506,7 @@ else
     }
 
 
-    private async Task SearchForCardAsync()
+    public async Task SearchForCardAsync()
     {
         if (_isBusy || (_matchPage != default && !_matchPage.HasNext))
         {
@@ -570,7 +589,7 @@ else
     }
 
 
-    private void Reset()
+    public void Reset()
     {
         if (_isBusy || _searchEdit is null)
         {
@@ -607,7 +626,7 @@ else
     }
 
 
-    private async Task AddNewCardsAsync()
+    public async Task AddNewCardsAsync()
     {
         if (_isBusy)
         {
@@ -630,13 +649,12 @@ else
         try
         {
             var cancelToken = _cancel.Token;
-            var treasury = ScopedServices.GetRequiredService<ITreasuryQuery>();
 
             await using var dbContext = await DbFactory.CreateDbContextAsync(cancelToken);
 
             await AddNewCardsAsync(dbContext, addedAmounts, cancelToken);
 
-            await AddAmountsAsync(dbContext, treasury, addedAmounts, cancelToken);
+            await TreasuryHandler.AddAsync(dbContext, addedAmounts, cancelToken);
 
             await dbContext.SaveChangesAsync(cancelToken);
 
@@ -695,32 +713,5 @@ else
 
         dbContext.Cards.AttachRange(existingCards);
         dbContext.Cards.AddRange(newCards);
-    }
-
-
-    private static async Task AddAmountsAsync(
-        CardDbContext dbContext,
-        ITreasuryQuery treasury,
-        IEnumerable<CardRequest> newAmounts,
-        CancellationToken cancel)
-    {
-        var result = await treasury.FindReturnAsync(newAmounts, cancel);
-
-        var (addTargets, oldCopies) = result;
-        var newTransaction = new Transaction();
-
-        var addChanges = addTargets
-            .Select(a => new Change
-            {
-                Card = a.Card,
-                To = a.Location,
-                Amount = a.NumCopies - oldCopies.GetValueOrDefault(a.Id),
-                Transaction = newTransaction
-            });
-
-        dbContext.AttachResult(result);
-
-        dbContext.Transactions.Attach(newTransaction);
-        dbContext.Changes.AttachRange(addChanges);
     }
 }

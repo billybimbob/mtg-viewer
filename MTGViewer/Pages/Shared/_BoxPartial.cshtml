@@ -1,0 +1,50 @@
+@model Box
+@inject SymbolFormatter MtgSymbols
+
+@if (Model is not null)
+{
+    <div class="table-responsive-md">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th scope="col"> @Html.DisplayNameForInnerType((Amount a) => a.Card) </th>
+                    <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.ManaCost) </th>
+                    <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.SetName) </th>
+                    <th scope="col"> @Html.DisplayNameForInnerType((Amount a) => a.NumCopies) </th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var amount in Model.Cards)
+                {
+                    <tr>
+                        <td>
+                            <component type="typeof(HoverCard)" render-mode="Static"
+                                param-Target="@amount.Card" />
+                        </td>
+                        <td> 
+                            <div class="ms-group">
+                                @MtgSymbols.Format(amount.Card.ManaCost).ToHtmlString() 
+                            </div>
+                        </td>
+                        <td> @amount.Card.SetName </td>
+                        <td> @amount.Card.Amounts.Sum(c => c.NumCopies) </td>
+                    </tr>
+                }
+                <tr>
+                    <th> Total </th>
+                    <td> -- </td>
+                    <td> -- </td>
+                    <td class="font-weight-bold">
+                        @Model.Cards.Sum(a => a.NumCopies) / @Model.Capacity
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(Model.Appearance))
+    {
+        <h4> @Html.DisplayNameFor(b => b.Appearance) </h4>
+        <p> @Html.DisplayFor(b => b.Appearance) </p>
+    }
+}

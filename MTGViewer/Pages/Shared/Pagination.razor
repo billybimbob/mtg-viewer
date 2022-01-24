@@ -2,8 +2,8 @@
 
 @if (Pages.HasMultiple)
 {
-    var start = Pages.Current / PageSize * PageSize;
-    var end = Math.Min(Pages.Total, start + PageSize + 1);
+    int start = Pages.Current / PageSize * PageSize;
+    int end = Math.Min(Pages.Total, start + PageSize + 1);
 
     if (start > 0)
     {
@@ -70,8 +70,8 @@
     </nav>
 }
 
-@code {
-
+@code
+{
     [Parameter]
     public Data.Pages Pages { get; set; }
 

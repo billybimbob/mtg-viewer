@@ -43,8 +43,8 @@ public class DeleteModel : PageModel
             .Include(c => c.Types)
             .Include(c => c.Subtypes)
             .Include(c => c.Amounts
-                .OrderBy(ca => ca.Location.Name))
-                .ThenInclude(ca => ca.Location)
+                .OrderBy(a => a.Location.Name))
+                .ThenInclude(a => a.Location)
             .AsSplitQuery()
             .AsNoTrackingWithIdentityResolution()
             .SingleOrDefaultAsync(c => c.Id == id, cancel);
@@ -71,7 +71,7 @@ public class DeleteModel : PageModel
 
         if (card is null)
         {
-            return RedirectToPage("Index");
+            return Redirect("~/Cards/");
         }
 
         _dbContext.Cards.Remove(card);
@@ -89,6 +89,6 @@ public class DeleteModel : PageModel
             PostMessage = $"Ran into issue deleting {card.Name}";
         }
 
-        return RedirectToPage("Index");
+        return Redirect("~/Cards/");
     }
 }

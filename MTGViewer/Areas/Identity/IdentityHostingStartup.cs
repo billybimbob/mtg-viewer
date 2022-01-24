@@ -59,6 +59,7 @@ public class IdentityHostingStartup : IHostingStartup
                 {
                     options.SignIn.RequireConfirmedAccount = true;
                     options.SignIn.RequireConfirmedEmail = true;
+
                     options.User.RequireUniqueEmail = true;
                 })
                 .AddClaimsPrincipalFactory<CardUserClaimsPrincipalFactory>()

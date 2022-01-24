@@ -59,16 +59,20 @@ public class IndexModel : PageModel
             return NotFound();
         }
 
-        var userName = _userManager.GetDisplayName(User);
+        var userName = await _dbContext.Users
+            .Where(u => u.Id == userId)
+            .Select(u => u.Name)
+            .SingleOrDefaultAsync(cancel);
+
         if (userName is null)
         {
             return NotFound();
         }
 
+        UserName = userName;
+
         TradeDecks = await DecksForTransfer(userId)
             .ToPagedListAsync(_pageSize, DeckIndex, cancel);
-
-        UserName = userName;
 
         Suggestions = await SuggestionsForIndex(userId)
             .ToPagedListAsync(_pageSize, SuggestIndex, cancel);

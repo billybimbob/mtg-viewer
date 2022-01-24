@@ -141,8 +141,8 @@ public class TestDataGenerator
 
         var cardOptions = await _dbContext.Decks
             .Where(d => d.OwnerId != owner.Id)
-            .SelectMany(ca => ca.Cards)
-            .Select(ca => ca.Card)
+            .SelectMany(d => d.Cards)
+            .Select(a => a.Card)
             .Distinct()
             .ToListAsync();
 
@@ -275,8 +275,8 @@ public class TestDataGenerator
         UserRef optionsUser)
     {
         var source = await _dbContext.Decks
-            .Include(l => l.Cards)
-                .ThenInclude(ca => ca.Card)
+            .Include(d => d.Cards)
+                .ThenInclude(a => a.Card)
             .FirstOrDefaultAsync(l => l.OwnerId == sourceUser.Id);
 
         if (source == default)
@@ -349,8 +349,8 @@ public class TestDataGenerator
     private async Task<Amount> FindAmountAsync(Card card, Location location, int amount)
     {
         var cardAmount = await _dbContext.Amounts
-            .SingleOrDefaultAsync(ca =>
-                ca.LocationId == location.Id && ca.CardId == card.Id);
+            .SingleOrDefaultAsync(a =>
+                a.LocationId == location.Id && a.CardId == card.Id);
 
         if (cardAmount == default)
         {
@@ -422,14 +422,14 @@ public class TestDataGenerator
             .FirstAsync();
 
         var takeTarget = await _dbContext.Amounts
-            .Where(ca => ca.Location is Box && ca.NumCopies > 0)
-            .Select(ca => ca.Card)
+            .Where(a => a.Location is Box && a.NumCopies > 0)
+            .Select(a => a.Card)
             .AsNoTracking()
             .FirstAsync();
 
         var targetCap = await _dbContext.Amounts
-            .Where(ca => ca.Location is Box && ca.CardId == takeTarget.Id)
-            .Select(ca => ca.NumCopies)
+            .Where(a => a.Location is Box && a.CardId == takeTarget.Id)
+            .Select(a => a.NumCopies)
             .SumAsync();
 
         int limit = Math.Max(1, targetCap + targetMod);
@@ -446,10 +446,10 @@ public class TestDataGenerator
     public async Task<GiveBack> GetGiveBackAsync(int targetMod = 0)
     {
         var returnTarget = await _dbContext.Amounts
-            .Include(ca => ca.Card)
-            .Include(ca => ca.Location)
+            .Include(a => a.Card)
+            .Include(a => a.Location)
             .AsNoTracking()
-            .FirstAsync(ca => ca.Location is Deck && ca.NumCopies > 0);
+            .FirstAsync(a => a.Location is Deck && a.NumCopies > 0);
 
         int limit = Math.Max(1, returnTarget.NumCopies + targetMod);
 
@@ -466,24 +466,24 @@ public class TestDataGenerator
     public async Task<(Want, GiveBack)> GetMixedRequestDeckAsync()
     {
         var returnTarget = await _dbContext.Amounts
-            .Include(ca => ca.Card)
-            .Include(ca => ca.Location)
+            .Include(a => a.Card)
+            .Include(a => a.Location)
             .AsNoTracking()
-            .FirstAsync(ca => ca.Location is Deck && ca.NumCopies > 0);
+            .FirstAsync(a => a.Location is Deck && a.NumCopies > 0);
 
         var deckTarget = (Deck)returnTarget.Location;
 
         var takeTarget = await _dbContext.Amounts
-            .Where(ca => ca.Location is Box 
-                && ca.NumCopies > 0
-                && ca.CardId != returnTarget.CardId)
-            .Select(ca => ca.Card)
+            .Where(a => a.Location is Box 
+                && a.NumCopies > 0
+                && a.CardId != returnTarget.CardId)
+            .Select(a => a.Card)
             .AsNoTracking()
             .FirstAsync();
 
         var targetCap = await _dbContext.Amounts
-            .Where(ca => ca.Location is Box && ca.CardId == takeTarget.Id)
-            .Select(ca => ca.NumCopies)
+            .Where(a => a.Location is Box && a.CardId == takeTarget.Id)
+            .Select(a => a.NumCopies)
             .SumAsync();
 
         var deckGive = await FindGiveBackAsync(

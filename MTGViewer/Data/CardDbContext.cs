@@ -120,7 +120,7 @@ internal class LocationConfiguration : IEntityTypeConfiguration<Location>
 
         builder
             .HasMany(l => l.Cards)
-            .WithOne(ca => ca.Location)
+            .WithOne(a => a.Location)
             .OnDelete(DeleteBehavior.Restrict);
     }
 }
@@ -150,12 +150,12 @@ internal class DeckConfiguration : IEntityTypeConfiguration<Deck>
         builder
             .HasMany(d => d.TradesTo)
             .WithOne(t => t.To)
-            .OnDelete(DeleteBehavior.ClientCascade);
+            .OnDelete(DeleteBehavior.Cascade);
 
         builder
             .HasMany(d => d.TradesFrom)
             .WithOne(t => t.From)
-            .OnDelete(DeleteBehavior.ClientCascade);
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }
 
@@ -168,6 +168,10 @@ internal class BoxConfiguration : IEntityTypeConfiguration<Box>
             .HasOne(b => b.Bin)
             .WithMany(b => b.Boxes)
             .OnDelete(DeleteBehavior.Restrict);
+
+        builder
+            .Property(b => b.IsExcess)
+            .HasDefaultValue(false);
     }
 }
 
@@ -193,12 +197,12 @@ internal class ChangeConfiguration : IEntityTypeConfiguration<Change>
         builder
             .HasOne(c => c.To)
             .WithMany()
-            .OnDelete(DeleteBehavior.ClientSetNull);
+            .OnDelete(DeleteBehavior.Cascade);
 
         builder
             .HasOne(c => c.From)
             .WithMany()
-            .OnDelete(DeleteBehavior.ClientSetNull);
+            .OnDelete(DeleteBehavior.SetNull);
     }
 }
 
@@ -247,7 +251,7 @@ internal class SuggestionConfiguration : IEntityTypeConfiguration<Suggestion>
         builder
             .HasOne(s => s.To)
             .WithMany()
-            .OnDelete(DeleteBehavior.ClientSetNull);
+            .OnDelete(DeleteBehavior.SetNull);
 
         builder
             .HasOne(s => s.Receiver)
