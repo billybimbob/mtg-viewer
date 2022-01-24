@@ -112,5 +112,37 @@ public class DeleteTests : IAsyncLifetime
     [Fact]
     public async Task OnPost_LastInBin_BinDeleted()
     {
+        var lastInBin = new Box
+        {
+            Name = "Last in Bin",
+            Capacity = 20,
+            Bin = new Bin
+            {
+                Name = "Last"
+            }
+        };
+
+        _dbContext.Boxes.Add(lastInBin);
+        await _dbContext.SaveChangesAsync();
+
+        _dbContext.ChangeTracker.Clear();
+
+        bool binExistsBefore = await _dbContext.Bins
+            .AnyAsync(b => b.Id == lastInBin.BinId);
+
+        var result = await _deleteModel.OnPostAsync(lastInBin.Id, default);
+
+        bool boxExistsAfter = await _dbContext.Boxes
+            .AnyAsync(b => b.Id == lastInBin.Id);
+
+        bool binExistsAfter = await _dbContext.Bins
+            .AnyAsync(b => b.Id == lastInBin.BinId);
+
+        Assert.True(binExistsBefore);
+
+        Assert.IsType<RedirectToPageResult>(result);
+
+        Assert.False(boxExistsAfter);
+        Assert.False(binExistsAfter);
     }
 }

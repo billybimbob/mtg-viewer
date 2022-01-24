@@ -29,11 +29,16 @@ enum ReturnScheme
     Guess
 }
 
-enum TransferScheme
+enum ExcessScheme
 {
     Exact,
     Approximate,
-    Overflow
+}
+
+enum OverflowScheme
+{
+    Exact,
+    Approximate
 }
 
 
@@ -95,9 +100,9 @@ static class AssignmentExtensions
     }
 
 
-    internal static IEnumerable<BoxAssignment<Amount>> TransferAssignment(
+    internal static IEnumerable<BoxAssignment<Amount>> ExcessAssignment(
         this TreasuryContext treasuryContext,
-        TransferScheme scheme)
+        ExcessScheme scheme)
     {
         if (treasuryContext is null)
         {
@@ -106,9 +111,25 @@ static class AssignmentExtensions
 
         return scheme switch
         {
-            TransferScheme.Approximate => TransferHandler.Approximate(treasuryContext),
-            TransferScheme.Overflow => TransferHandler.Overflow(treasuryContext),
-            TransferScheme.Exact or _ => TransferHandler.Exact(treasuryContext)
+            ExcessScheme.Approximate => ExcessHandler.Approximate(treasuryContext),
+            ExcessScheme.Exact or _ => ExcessHandler.Exact(treasuryContext)
+        };
+    }
+
+
+    internal static IEnumerable<BoxAssignment<Amount>> OverflowAssignment(
+        this TreasuryContext treasuryContext,
+        OverflowScheme scheme)
+    {
+        if (treasuryContext is null)
+        {
+            throw new ArgumentNullException(nameof(treasuryContext));
+        }
+
+        return scheme switch
+        {
+            OverflowScheme.Approximate => OverflowHandler.Approximate(treasuryContext),
+            OverflowScheme.Exact or _ => OverflowHandler.Exact(treasuryContext)
         };
     }
 
@@ -136,7 +157,7 @@ static class AssignmentExtensions
                 var (card, numCopies) = request;
                 var possibleBoxes = existingSpots[card.Id];
 
-                if (!possibleBoxes.Any())
+                if (numCopies == 0 || !possibleBoxes.Any())
                 {
                     continue;
                 }
@@ -172,7 +193,7 @@ static class AssignmentExtensions
                 var (card, numCopies) = request;
                 var possibleBoxes = existingSpots[card.Name];
 
-                if (!possibleBoxes.Any())
+                if (numCopies == 0 || !possibleBoxes.Any())
                 {
                     continue;
                 }
@@ -200,7 +221,16 @@ static class AssignmentExtensions
 
             var boxSearch = new BoxSearcher(available);
 
-            foreach (var request in requests)
+            // descending so that the first added cards do not shift down the 
+            // positioning of the sorted card amounts
+            // each of the returned cards should have less effect on following returns
+            // keep eye on
+
+            var orderedRequests = requests
+                .OrderByDescending(cr => cr.Card.Name)
+                    .ThenByDescending(cr => cr.Card.SetName);
+
+            foreach (var request in orderedRequests)
             {
                 (Card card, int numCopies) = request;
 
@@ -385,14 +415,23 @@ static class AssignmentExtensions
             var (available, _, excess, boxSpace) = treasuryContext;
             var giveBacks = exchangeContext.Deck.GiveBacks;
 
-            if (!available.Any() || giveBacks.All(g => g.NumCopies == 0))
+            if (giveBacks.All(g => g.NumCopies == 0))
             {
                 yield break;
             }
 
             var boxSearch = new BoxSearcher(available);
 
-            foreach (var giveBack in giveBacks)
+            // descending so that the first added cards do not shift down the 
+            // positioning of the sorted card amounts
+            // each of the returned cards should have less effect on following returns
+            // keep eye on
+
+            var orderedGiveBacks = giveBacks
+                .OrderByDescending(g => g.Card.Name)
+                    .ThenByDescending(g => g.Card.SetName);
+
+            foreach (var giveBack in orderedGiveBacks)
             {
                 if (giveBack.NumCopies == 0)
                 {
@@ -415,7 +454,7 @@ static class AssignmentExtensions
     }
 
 
-    private static class TransferHandler
+    private static class ExcessHandler
     {
         internal static IEnumerable<BoxAssignment<Amount>> Exact(TreasuryContext treasuryContext)
         {
@@ -431,11 +470,11 @@ static class AssignmentExtensions
             }
 
             // TODO: account for changing NumCopies while iter
-            var exactRebalance = ExactAddLookup(availableAmounts, excessCards, boxSpace);
+            var exactMatch = ExactAddLookup(availableAmounts, excessCards, boxSpace);
 
             foreach (var excess in excessAmounts)
             {
-                var bestBoxes = exactRebalance[excess.CardId];
+                var bestBoxes = exactMatch[excess.CardId];
 
                 if (!bestBoxes.Any())
                 {
@@ -465,11 +504,11 @@ static class AssignmentExtensions
                 yield break;
             }
 
-            var exactRebalance = ApproxAddLookup(availableAmounts, excessCards, boxSpace);
+            var approxMatch = ApproxAddLookup(availableAmounts, excessCards, boxSpace);
 
             foreach (var excess in excessAmounts)
             {
-                var bestBoxes = exactRebalance[excess.Card.Name].Union(available);
+                var bestBoxes = approxMatch[excess.Card.Name].Union(available);
 
                 if (!bestBoxes.Any())
                 {
@@ -484,21 +523,35 @@ static class AssignmentExtensions
                 }
             }
         }
+    }
 
 
-        internal static IEnumerable<BoxAssignment<Amount>> Overflow(TreasuryContext treasuryContext)
+    private static class OverflowHandler
+    {
+        internal static IEnumerable<BoxAssignment<Amount>> Exact(TreasuryContext treasuryContext)
         {
-            var (_, overflowBoxes, excess, boxSpace) = treasuryContext;
+            var (available, overflowBoxes, _, boxSpace) = treasuryContext;
 
-            if (!overflowBoxes.Any())
+            if (!available.Any() || !overflowBoxes.Any())
             {
                 yield break;
             }
 
-            var overflowCards = overflowBoxes.SelectMany(b => b.Cards);
+            var availableCards = available.SelectMany(b => b.Cards);
+            var overflowAmounts = overflowBoxes.SelectMany(b => b.Cards);
+            var overflowCards = overflowAmounts.Select(a => a.Card);
 
-            foreach (var source in overflowCards)
+            var exactMatches = ExactAddLookup(availableCards, overflowCards, boxSpace);
+
+            foreach (var source in overflowAmounts)
             {
+                var bestBoxes = exactMatches[source.CardId];
+
+                if (!bestBoxes.Any())
+                {
+                    continue;
+                }
+
                 if (source.Location is not Box sourceBox)
                 {
                     continue;
@@ -511,7 +564,51 @@ static class AssignmentExtensions
                 }
 
                 int minTransfer = Math.Min(source.NumCopies, copiesAbove);
-                var assignments = FitToBoxes(source, minTransfer, excess, boxSpace);
+
+                var assignments = FitToBoxes(source, minTransfer, bestBoxes, boxSpace);
+
+                foreach (var assignment in assignments)
+                {
+                    yield return assignment;
+                }
+            }
+        }
+
+
+        internal static IEnumerable<BoxAssignment<Amount>> Approximate(TreasuryContext treasuryContext)
+        {
+            var (available, overflowBoxes, excess, boxSpace) = treasuryContext;
+
+            if (!overflowBoxes.Any())
+            {
+                yield break;
+            }
+
+            var availableAmounts = available.SelectMany(b => b.Cards);
+            var overflowAmounts = overflowBoxes.SelectMany(b => b.Cards);
+            var overflowCards = overflowAmounts .Select(a => a.Card);
+
+            var approxMatch = ApproxAddLookup(availableAmounts, overflowCards, boxSpace);
+
+            foreach (var source in overflowAmounts)
+            {
+                if (source.Location is not Box sourceBox)
+                {
+                    continue;
+                }
+
+                int copiesAbove = boxSpace.GetValueOrDefault(sourceBox) - sourceBox.Capacity;
+                if (copiesAbove <= 0)
+                {
+                    continue;
+                }
+
+                var bestBoxes = approxMatch[source.Card.Name]
+                    .Union(available)
+                    .Concat(excess);
+
+                int minTransfer = Math.Min(source.NumCopies, copiesAbove);
+                var assignments = FitToBoxes(source, minTransfer, bestBoxes, boxSpace);
 
                 foreach (var assignment in assignments)
                 {

@@ -136,8 +136,12 @@
                                         <a asp-page="/Decks/Details" asp-route-id="@location.Id"> @location.Name </a>
                                         break;
 
+                                    case Box box when box.IsExcess:
+                                        <a asp-page="/Treasury/Excess" asp-route-id="@location.Id"> @location.Name </a>
+                                        break;
+
                                     case Box:
-                                        <a asp-page="/Treasury/Index" asp-route-id="@location.Id"> @location.Name </a>
+                                        <a asp-page="/Treasury/Details" asp-route-id="@location.Id"> @location.Name </a>
                                         break;
 
                                     case Unclaimed:

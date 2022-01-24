@@ -70,20 +70,23 @@ public class DeleteModel : PageModel
             return NotFound();
         }
 
-        box.Capacity = 0; // move out all cards first
-
-        await _treasuryHandler.UpdateAsync(_dbContext, box, cancel);
-
-        _dbContext.Amounts.RemoveRange(box.Cards);
-        _dbContext.Boxes.Remove(box);
-
         bool isSingleBin = await _dbContext.Boxes
             .AllAsync(b => b.Id == box.Id || b.BinId != box.BinId, cancel);
+
+        _dbContext.Amounts.RemoveRange(box.Cards);
+        _dbContext.Boxes.Remove(box); 
 
         if (isSingleBin)
         {
             _dbContext.Bins.Remove(box.Bin);
         }
+
+        // removing box before ensures that box will not be a return target
+
+        var cardReturns = box.Cards
+            .Select(a => new CardRequest(a.Card, a.NumCopies));
+
+        await _treasuryHandler.AddAsync(_dbContext, cardReturns, cancel);
 
         try
         {
@@ -95,6 +98,8 @@ public class DeleteModel : PageModel
         }
         catch (DbUpdateException)
         {
+            PostMessage = $"Ran into issue Deleting {box.Name}";
+
             return RedirectToPage();
         }
     }

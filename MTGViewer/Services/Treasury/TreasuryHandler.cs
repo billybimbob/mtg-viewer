@@ -68,16 +68,9 @@ public class TreasuryHandler
             return;
         }
 
-        var cards = adding.Select(cr => cr.Card);
-
-        dbContext.Cards.AttachRange(cards);
+        AttachCardRequests(dbContext, adding);
 
         await OrderedBoxes(dbContext).LoadAsync(cancel); 
-
-        if (!dbContext.Boxes.Local.Any())
-        {
-            throw new InvalidOperationException("There are no boxes to return to");
-        }
 
         AddMissingExcess(dbContext);
 
@@ -113,14 +106,26 @@ public class TreasuryHandler
         return requests
             .Cast<CardRequest>()
             .GroupBy(
-                req => req.Card.Id,
+                cr => cr.Card.Id,
                 (_, requests) => requests.First() with
                 {
                     NumCopies = requests.Sum(req => req.NumCopies)
                 })
-            .OrderByDescending(req => req.Card.Name)
-                .ThenByDescending(req => req.Card.SetName)
+            .OrderByDescending(cr => cr.Card.Name)
+                .ThenByDescending(cr => cr.Card.SetName)
             .ToList();
+    }
+
+
+    private static void AttachCardRequests(
+        CardDbContext dbContext, 
+        IEnumerable<CardRequest> requests)
+    {
+        var detachedCards = requests
+            .Select(cr => cr.Card)
+            .Where(c => dbContext.Entry(c).State is EntityState.Detached);
+
+        dbContext.Cards.AttachRange(detachedCards);
     }
 
 
@@ -180,8 +185,8 @@ public class TreasuryHandler
         ReturnCopies(treasuryContext, exchangeContext, ReturnScheme.Approximate);
         ReturnCopies(treasuryContext, exchangeContext, ReturnScheme.Guess);
 
-        Transfer(treasuryContext, TransferScheme.Exact);
-        Transfer(treasuryContext, TransferScheme.Approximate);
+        TransferExcessCopies(treasuryContext, ExcessScheme.Exact);
+        TransferExcessCopies(treasuryContext, ExcessScheme.Approximate);
 
         RemoveEmpty(dbContext);
     }
@@ -218,11 +223,10 @@ public class TreasuryHandler
 
 
 
-    #region Update
+    #region Update Boxes
 
-    public async Task UpdateAsync(
+    public async Task UpdateBoxesAsync(
         CardDbContext dbContext,
-        Box updated, 
         CancellationToken cancel = default)
     {
         if (dbContext is null)
@@ -230,12 +234,7 @@ public class TreasuryHandler
             throw new ArgumentNullException(nameof(dbContext));
         }
 
-        if (updated is null)
-        {
-            throw new ArgumentNullException(nameof(updated));
-        }
-
-        if (await IsBoxUnchangedAsync(dbContext, updated, cancel))
+        if (AreBoxesUnchanged(dbContext))
         {
             return;
         }
@@ -246,44 +245,43 @@ public class TreasuryHandler
 
         var treasuryContext = new TreasuryContext(dbContext);
 
-        Transfer(treasuryContext, TransferScheme.Exact);
-        Transfer(treasuryContext, TransferScheme.Approximate);
-        Transfer(treasuryContext, TransferScheme.Overflow);
+        TransferOverflowCopies(treasuryContext, OverflowScheme.Exact);
+        TransferOverflowCopies(treasuryContext, OverflowScheme.Approximate);
+
+        TransferExcessCopies(treasuryContext, ExcessScheme.Exact);
+        TransferExcessCopies(treasuryContext, ExcessScheme.Approximate);
 
         RemoveEmpty(dbContext);
     }
 
 
-    private static async Task<bool> IsBoxUnchangedAsync(
-        CardDbContext dbContext, Box updated, CancellationToken cancel)
+    private static bool AreBoxesUnchanged(CardDbContext dbContext)
     {
-        var entry = dbContext.Entry(updated);
+        return dbContext.ChangeTracker
+            .Entries<Box>()
+            .All(e => e.State is EntityState.Detached
+                || e.State is not EntityState.Added
+                && !e.Property(b => b.Capacity).IsModified);
+    }
 
-        if (entry.State is EntityState.Detached)
+    private static void TransferOverflowCopies(TreasuryContext treasuryContext, OverflowScheme scheme)
+    {
+        var transfers = treasuryContext.OverflowAssignment(scheme);
+
+        foreach ((Amount source, int numCopies, Box box) in transfers)
         {
-            dbContext.Boxes.Update(updated);
+            treasuryContext.TransferCopies(source.Card, numCopies, box, source.Location);
         }
-
-        var capacityProperty = entry.Property(b => b.Capacity);
-
-        if (capacityProperty.CurrentValue != capacityProperty.OriginalValue)
-        {
-            return false;
-        }
-
-        return await entry.GetDatabaseValuesAsync(cancel) is var dbValues
-            && capacityProperty.Metadata is var capacityMeta
-            && dbValues?.GetValue<int?>(capacityMeta) == updated.Capacity;
     }
 
     #endregion
 
 
-    private static void Transfer(
+    private static void TransferExcessCopies(
         TreasuryContext treasuryContext, 
-        TransferScheme scheme)
+        ExcessScheme scheme)
     {
-        var transfers = treasuryContext.TransferAssignment(scheme);
+        var transfers = treasuryContext.ExcessAssignment(scheme);
 
         foreach ((Amount source, int numCopies, Box box) in transfers)
         {

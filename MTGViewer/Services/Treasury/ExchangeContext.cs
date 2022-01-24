@@ -89,7 +89,7 @@ internal class ExchangeContext
             Location = Deck
         };
 
-        _dbContext.Amounts.Add(amount);
+        _dbContext.Amounts.Attach(amount);
 
         if (group is not null)
         {

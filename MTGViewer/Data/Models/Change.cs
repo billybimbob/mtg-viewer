@@ -27,8 +27,8 @@ public class Change
 
 
     [JsonIgnore]
-    public int? ToId { get; init; }
-    public Location? To { get; init; } = null!;
+    public int ToId { get; init; }
+    public Location To { get; init; } = null!;
 
 
     [JsonIgnore]

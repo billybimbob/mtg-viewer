@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -136,16 +135,15 @@ public class ReferenceManager
             .SelectMany(d => d.Cards)
             .ToList();
 
+        dbContext.Amounts.RemoveRange(userCards);
+        dbContext.Decks.RemoveRange(userDecks);
+        dbContext.Users.Remove(reference);
+
         var returnRequests = userCards
             .GroupBy(a => a.Card,
                 (card, amounts) => 
                     new CardRequest(card, amounts.Sum(a => a.NumCopies)) );
 
         await _treasuryHandler.AddAsync(dbContext, returnRequests, cancel);
-
-        dbContext.Amounts.RemoveRange(userCards);
-        dbContext.Decks.RemoveRange(userDecks);
-
-        dbContext.Users.Remove(reference);
     }
 }

@@ -101,14 +101,14 @@ public class IndexModel : PageModel
             .Where(d => d.OwnerId == userId)
 
             .Include(d => d.Cards) // unbounded: keep eye on
-                .ThenInclude(ca => ca.Card)
+                .ThenInclude(a => a.Card)
 
             .Include(d => d.Wants
                 .OrderBy(w => w.Id)
                 .Take(1))
 
             .Include(d => d.GiveBacks
-                .OrderBy(gb => gb.Id)
+                .OrderBy(g => g.Id)
                 .Take(1))
 
             .Include(d => d.TradesTo

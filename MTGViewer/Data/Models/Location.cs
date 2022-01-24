@@ -101,13 +101,13 @@ public class Box : Location
 {
     [JsonIgnore]
     public int BinId { get; init; }
-    public Bin Bin { get; init; } = null!;
+    public Bin Bin { get; set; } = null!;
 
     [Range(10, 10_000)]
     public int Capacity { get; set; }
 
     [StringLength(40)]
-    public string? Appearance { get; init; }
+    public string? Appearance { get; set; }
 
     public bool IsExcess
     {

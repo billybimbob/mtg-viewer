@@ -14,10 +14,9 @@ internal sealed class TreasuryContext
     private readonly HashSet<Box> _overflow;
     private readonly IReadOnlyList<Box> _excess;
 
-    private readonly Amount[] _originalAmounts;
     private readonly Dictionary<(string, Box), Amount> _amounts;
+    private readonly Dictionary<(string, Location, Location?), Change> _changes;
 
-    private readonly Dictionary<(string, Location?, Location?), Change> _changes;
     private readonly Transaction _transaction;
 
     public TreasuryContext(CardDbContext dbContext)
@@ -47,11 +46,8 @@ internal sealed class TreasuryContext
             .Where(b => b.IsExcess)
             .ToList();
 
-        _originalAmounts = boxes
+        _amounts = boxes
             .SelectMany(b => b.Cards)
-            .ToArray();
-
-        _amounts = _originalAmounts
             .Where(a => a.Location is Box)
             .ToDictionary(
                 a => (a.CardId, (Box)a.Location));
@@ -163,7 +159,7 @@ internal sealed class TreasuryContext
     }
 
 
-    private void UpdateChange(Card card, int amount, Location? to, Location? from)
+    private void UpdateChange(Card card, int amount, Location to, Location? from)
     {
         var changeIndex = (card.Id, to, from);
 
@@ -195,7 +191,7 @@ internal sealed class TreasuryContext
             throw new ArgumentException(nameof(box));
         }
 
-        int newSize = boxSize + numCopies;
+        boxSize += numCopies;
         _boxSpace[box] = boxSize;
 
         if (box.IsExcess)
@@ -205,24 +201,24 @@ internal sealed class TreasuryContext
 
         if (_available.Contains(box))
         {
-            if (newSize >= box.Capacity)
+            if (boxSize >= box.Capacity)
             {
                 _available.Remove(box);
             }
 
-            if (newSize > box.Capacity)
+            if (boxSize > box.Capacity)
             {
                 _overflow.Add(box);
             }
         }
         else if (_overflow.Contains(box))
         {
-            if (newSize <= box.Capacity)
+            if (boxSize <= box.Capacity)
             {
                 _overflow.Remove(box);
             }
             
-            if (newSize < box.Capacity)
+            if (boxSize < box.Capacity)
             {
                 _available.Add(box);
             }

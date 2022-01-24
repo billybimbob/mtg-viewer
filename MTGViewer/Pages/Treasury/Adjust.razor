@@ -9,7 +9,6 @@
 @inject TreasuryHandler TreasuryHandler
 @inject IDbContextFactory<CardDbContext> DbFactory
 
-@inject NavigationManager Nav
 @inject ILogger<Adjust> Logger
 
 
@@ -103,7 +102,7 @@
                     else if (Box.IsEdit)
                     {
                         <text>
-                            Edit @Box.Bin.Name's @Box.Bin.DisplayName(b => b.Name)
+                            Change @Box.Bin.Name's @Box.Bin.DisplayName(b => b.Name)
                         </text>
                     }
                     else
@@ -225,7 +224,7 @@
             await using var dbContext = await DbFactory.CreateDbContextAsync(cancelToken);
 
             _bins = await Cache
-                .GetOrCreateAsync(nameof(_bins), () =>
+                .GetOrCreateAsync($"{nameof(Adjust)}{nameof(_bins)}", () =>
                     BinOptionsAsync(dbContext, cancelToken));
         }
         catch (OperationCanceledException e)
@@ -265,13 +264,7 @@
 
         try
         {
-            var cancelToken = _cancel.Token;
-
-            await using var dbContext = await DbFactory.CreateDbContextAsync(cancelToken);
-
-            var box = await Cache
-                .GetOrCreateAsync($"{nameof(Box)}{BoxId}", () =>
-                    ExistingBoxAsync(dbContext, BoxId, _bins, cancelToken));
+            var box = await GetBoxAsync(_cancel.Token);
 
             if (box != null)
             {
@@ -296,10 +289,47 @@
     }
 
 
-    private static Task<Box?> ExistingBoxAsync(
-        CardDbContext dbContext, int id, IEnumerable<Bin> bins, CancellationToken cancel)
+    private async Task<Box?> GetBoxAsync(CancellationToken cancel)
     {
-        dbContext.Bins.AttachRange(bins);
+        await using var dbContext = await DbFactory.CreateDbContextAsync(cancel);
+
+        dbContext.Bins.AttachRange(_bins);
+
+        var box = await Cache
+            .GetOrCreateAsync($"{nameof(Adjust)}{nameof(Box)}{BoxId}", FetchBoxAsync);
+
+        if (box is null)
+        {
+            return null;
+        }
+
+        if (dbContext.Entry(box).State is not EntityState.Detached)
+        {
+            return box;
+        }
+
+        if (_bins.Any(b => b.Id == box.BinId && b != box.Bin))
+        {
+            // cache may cause different Bin objs with the same ids to be tracked
+            return await FetchBoxAsync();
+        }
+
+        dbContext.Boxes.Attach(box);
+
+        return box;
+
+        Task<Box?> FetchBoxAsync() =>
+            ExistingBoxAsync(dbContext, BoxId, cancel);
+    }
+
+
+    private static Task<Box?> ExistingBoxAsync(
+        CardDbContext dbContext, int id, CancellationToken cancel)
+    {
+        if (id == default)
+        {
+            Task.FromResult<Box?>(null);
+        }
 
         return dbContext.Boxes
             .Include(b => b.Bin)
@@ -345,41 +375,15 @@
             return;
         }
 
+        _result = SaveResult.None;
         _dbBusy = true;
 
         try
         {
-            _result = SaveResult.None;
-
-            var cancelToken = _cancel.Token;
-            await using var dbContext = await DbFactory.CreateDbContextAsync(cancelToken);
-
-            var box = new Box
-            {
-                Id = Box.Id,
-                Name = Box.Name,
-
-                Appearance = Box.Appearance,
-                Capacity = Box.Capacity,
-
-                Bin = new Bin
-                {
-                    Id = Box.Bin.Id,
-                    Name = Box.Bin.Name
-                }
-            };
-
-            dbContext.Update(box);
-
-            await TreasuryHandler.UpdateAsync(dbContext, box, cancelToken);
-
-            await dbContext.SaveChangesAsync(cancelToken);
+            await ApplyBoxChangesAsync(Box, _cancel.Token);
 
             _result = SaveResult.Success;
-
-            Nav.NavigateTo("/Treasury/", true);
         }
-
         catch (DbUpdateException e)
         {
             _result = SaveResult.Error;
@@ -392,11 +396,111 @@
 
             Logger.LogWarning(e.ToString());
         }
-
         finally
         {
             _dbBusy = false;
         }
+    }
+
+
+    private async Task ApplyBoxChangesAsync(BoxDto changes, CancellationToken cancel)
+    {
+        await using var dbContext = await DbFactory.CreateDbContextAsync(cancel);
+
+        var box = await GetBoxAsync(dbContext, changes, cancel);
+        if (box is null)
+        {
+            return;
+        }
+
+        var bin = await GetBinAsync(dbContext, changes.Bin, cancel);
+        if (bin is null)
+        {
+            return;
+        }
+
+        var oldBin = box.Bin;
+        box.Bin = bin;
+
+        if (oldBin != bin && !oldBin.Boxes.Any(b => b.Id != box.Id))
+        {
+            dbContext.Bins.Remove(oldBin);
+        }
+
+        await TreasuryHandler.UpdateBoxesAsync(dbContext, cancel);
+
+        await dbContext.SaveChangesAsync(cancel);
+    }
+
+
+    private static async Task<Box?> GetBoxAsync(
+        CardDbContext dbContext, BoxDto boxDto, CancellationToken cancel)
+    {
+        if (boxDto.Name is null)
+        {
+            return null;
+        }
+
+        Box? box;
+        
+        if (boxDto.IsEdit)
+        {
+            box = await dbContext.Boxes
+                .Include(b => b.Bin)
+                    .ThenInclude(bn => bn.Boxes
+                        .Where(b => b.Id != boxDto.Id)
+                        .OrderBy(b => b.Id)
+                        .Take(1))
+                .SingleOrDefaultAsync(b => b.Id == boxDto.Id, cancel);
+        }
+        else
+        {
+            box = new Box();
+            dbContext.Boxes.Attach(box);
+        }
+
+        if (box is null)
+        {
+            return null;
+        }
+
+        dbContext.Entry(box)
+            .CurrentValues.SetValues(boxDto);
+
+        return box;
+    }
+
+
+    private static async Task<Bin?> GetBinAsync(
+        CardDbContext dbContext, BinDto binDto, CancellationToken cancel)
+    {
+        if (binDto.Name is null)
+        {
+            return null;
+        }
+
+        Bin? bin;
+
+        if (binDto.IsEdit)
+        {
+            bin = await dbContext.Bins
+                .SingleOrDefaultAsync(b => b.Id == binDto.Id, cancel);
+        }
+        else
+        {
+            bin = new Bin();
+            dbContext.Bins.Attach(bin);
+        }
+
+        if (bin is null)
+        {
+            return null;
+        }
+
+        dbContext.Entry(bin)
+            .CurrentValues.SetValues(binDto);
+
+        return bin;
     }
 
 

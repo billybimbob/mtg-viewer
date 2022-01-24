@@ -105,9 +105,9 @@ public class SuggestUserModel : PageModel
         IQueryable<Deck> decks, Card card, UserRef receiver)
     {
         var userCardAmounts = _dbContext.Amounts
-            .Where(ca => ca.Card.Name == card.Name
-                && ca.Location is Deck
-                && (ca.Location as Deck)!.OwnerId == receiver.Id);
+            .Where(a => a.Card.Name == card.Name
+                && a.Location is Deck
+                && (a.Location as Deck)!.OwnerId == receiver.Id);
 
         return decks 
             .GroupJoin( userCardAmounts,

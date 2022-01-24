@@ -147,20 +147,20 @@
     private PagedList<Card> _pagedCards = PagedList<Card>.Empty;
 
 
-    private PagedList<Card> Cards => _pagedCards;
+    public PagedList<Card> Cards => _pagedCards;
 
-    private bool IsBusy => _isBusy;
+    public bool IsBusy => _isBusy;
 
 
-    private int CardTotal(Card card) =>
+    public int CardTotal(Card card) =>
         _cardAmounts.GetValueOrDefault(card.Id);
 
 
-    private string ColorActive(string color) =>
+    public string ColorActive(string color) =>
         _filters.PickedColors.Contains(color) ? "active" : string.Empty;
 
 
-    private string HeaderClass<T>(Expression<Func<Card, T>> property)
+    public string HeaderClass<T>(Expression<Func<Card, T>> property)
     {
         if (_isBusy)
         {
@@ -177,11 +177,11 @@
     }
 
 
-    private static string DisplayName<T>(Expression<Func<Card, T>> property) =>
+    public static string DisplayName<T>(Expression<Func<Card, T>> property) =>
         EntityExtensions.DisplayName(property);
 
 
-    private RenderFragment Direction<T>(Expression<Func<Card, T>> property)
+    public RenderFragment Direction<T>(Expression<Func<Card, T>> property)
     {
         bool invalid = _isBusy
             || _filters.OrderBy == null
@@ -207,13 +207,13 @@
             return;
         }
 
+        _filters.PageSize = PageSizes.GetComponentSize<Collection>();
+        _filters.ShouldCache = true;
+
         _isBusy = true;
 
         try
         {
-            _filters.PageSize = PageSizes.GetComponentSize<Collection>();
-            _filters.ShouldCache = true;
-
             await LoadCardsAsync(_filters, _cancel.Token);
         }
         catch (OperationCanceledException ex)
@@ -272,17 +272,24 @@
         if (filters.ShouldCache)
         {
             _pagedCards = await Cache
-                .GetOrCreateAsync(nameof(_pagedCards), () =>
+                .GetOrCreateAsync($"{nameof(Collection)}{nameof(_pagedCards)}", () =>
                     FilteredCardsAsync(dbContext, filters, cancel));
 
             cardAmounts = await Cache
-                .GetOrCreateAsync(nameof(cardAmounts), () =>
+                .GetOrCreateAsync($"{nameof(Collection)}{nameof(_cardAmounts)}", () =>
                     CardAmountsAsync(dbContext, _pagedCards, cancel));
         }
         else
         {
             _pagedCards = await FilteredCardsAsync(dbContext, filters, cancel);
             cardAmounts = await CardAmountsAsync(dbContext, _pagedCards, cancel);
+        }
+
+        bool conflicting = HasConflictingCards(filters.ShouldCache, _loadedCards, _pagedCards);
+        if (conflicting)
+        {
+            // keep eye on, cache can return card with the same ids but are different objs
+            _pagedCards = await FilteredCardsAsync(dbContext, filters, cancel);
         }
 
         _loadedCards.UnionWith(_pagedCards);
@@ -294,6 +301,24 @@
     }
 
 
+    private static bool HasConflictingCards(
+        bool cached,
+        IEnumerable<Card> cardsA, 
+        IEnumerable<Card> cardB)
+    {
+        if (!cached)
+        {
+            return false;
+        }
+
+        return cardsA
+            .Join(cardB,
+                c => c.Id, c => c.Id,
+                (a, b) => (a, b))
+            .Any(ab => ab.a != ab.b);
+    }
+
+
     private static Task<PagedList<Card>> FilteredCardsAsync(
         CardDbContext dbContext,
         FilterContext filters,
@@ -301,22 +326,22 @@
     {
         var cards = dbContext.Cards.AsQueryable();
 
-        var searchName = filters.SearchName;
+        var searchName = filters.SearchName?.ToLower();
         var pickedColors = filters.PickedColors;
 
         if (!string.IsNullOrWhiteSpace(searchName))
         {
-            string name = searchName.ToLower();
-
             // keep eye on perf, postgres is slow here
-            cards = cards.Where(c => 
-                c.Name.ToLower().Contains(name));
+            cards = cards
+                .Where(c => c.Name.ToLower()
+                    .Contains(searchName));
         }
 
         if (pickedColors.Any())
         {
-            cards = cards.Where(c =>
-                c.Colors.Any(cl => pickedColors.Contains(cl.Name)));
+            cards = cards
+                .Where(c => c.Colors
+                    .Any(cl => pickedColors.Contains(cl.Name)));
         }
 
         bool dbEval = filters.OrderBy switch
@@ -416,8 +441,8 @@
         return dbContext.Amounts
             .Where(a => cardIds.Contains(a.CardId))
             .GroupBy(a => a.CardId,
-                (CardId, cas) =>
-                    new { CardId, Total = cas.Sum(ca => ca.NumCopies) })
+                (CardId, amounts) =>
+                    new { CardId, Total = amounts.Sum(a => a.NumCopies) })
 
             .ToDictionaryAsync(
                 ct => ct.CardId, ct => ct.Total, cancel);
@@ -427,29 +452,33 @@
 
 
 
-    private async Task FilterColorAsync(string color)
+    public async Task FilterColorAsync(string color)
     {
         if (_isBusy)
         {
             return;
         }
 
+        var pickedColors = _filters.PickedColors;
+
+        if (pickedColors.Contains(color))
+        {
+            pickedColors.Remove(color);
+        }
+        else
+        {
+            pickedColors.Add(color);
+        }
+
         _isBusy = true;
 
         try
         {
-            var pickedColors = _filters.PickedColors;
-
-            if (pickedColors.Contains(color))
-            {
-                pickedColors.Remove(color);
-            }
-            else
-            {
-                pickedColors.Add(color);
-            }
-
             await LoadCardsAsync(_filters, _cancel.Token);
+        }
+        catch (OperationCanceledException ex)
+        {
+            Logger.LogError(ex.ToString());
         }
         finally
         {
@@ -458,20 +487,23 @@
     }
 
 
-    private async Task SearchNameAsync(ChangeEventArgs eventArgs)
+    public async Task SearchNameAsync(ChangeEventArgs eventArgs)
     {
         if (_isBusy)
         {
             return;
         }
 
+        _filters.SearchName = eventArgs.Value?.ToString();
         _isBusy = true;
 
         try
         {
-            _filters.SearchName = eventArgs.Value?.ToString();
-        
             await LoadCardsAsync(_filters, _cancel.Token);
+        }
+        catch (OperationCanceledException ex)
+        {
+            Logger.LogError(ex.ToString());
         }
         finally
         {
@@ -480,23 +512,27 @@
     }
 
 
-    private async Task ReorderCardsAsync<T>(Expression<Func<Card, T>> property)
+    public async Task ReorderCardsAsync<T>(Expression<Func<Card, T>> property)
     {
         if (_isBusy || MemberName(property) is not string newOrder)
         {
             return;
         }
 
+        string oldOrder = _filters.OrderBy;
+
+        _filters.IsReversed = newOrder == oldOrder && !_filters.IsReversed;
+        _filters.OrderBy = newOrder;
+
         _isBusy = true;
 
         try
         {
-            string oldOrder = _filters.OrderBy;
-
-            _filters.IsReversed = newOrder == oldOrder && !_filters.IsReversed;
-            _filters.OrderBy = newOrder;
-
             await LoadCardsAsync(_filters, _cancel.Token);
+        }
+        catch (OperationCanceledException ex)
+        {
+            Logger.LogError(ex.ToString());
         }
         finally
         {
@@ -505,7 +541,7 @@
     }
 
 
-    private async Task ChangePageAsync(int pageIndex)
+    public async Task ChangePageAsync(int pageIndex)
     {
         if (_isBusy
             || _filters.PageIndex == pageIndex
@@ -515,13 +551,16 @@
             return;
         }
 
+        _filters.PageIndex = pageIndex;
         _isBusy = true;
 
         try
         {
-            _filters.PageIndex = pageIndex;
-
             await LoadCardsAsync(_filters, _cancel.Token);
+        }
+        catch (OperationCanceledException ex)
+        {
+            Logger.LogError(ex.ToString());
         }
         finally
         {

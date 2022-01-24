@@ -17,12 +17,12 @@ public class CardNameGroup : IEnumerable<Amount>
             throw new ArgumentException("The amounts are empty");
         }
 
-        if (_amounts.Any(ca => ca.Card.Name != Name))
+        if (_amounts.Any(a => a.Card.Name != Name))
         {
             throw new ArgumentException("All cards do not match the name");
         }
 
-        if (_amounts.Any(ca => ca.Card.ManaCost != ManaCost))
+        if (_amounts.Any(a => a.Card.ManaCost != ManaCost))
         {
             throw new ArgumentException("All cards do not match the mana cost");
         }
@@ -42,13 +42,13 @@ public class CardNameGroup : IEnumerable<Amount>
     public string Name => First.Card.Name;
     public string? ManaCost => First.Card.ManaCost;
 
-    public IEnumerable<string> CardIds => _amounts.Select(ca => ca.CardId);
-    public IEnumerable<Card> Cards => _amounts.Select(ca => ca.Card);
+    public IEnumerable<string> CardIds => _amounts.Select(a => a.CardId);
+    public IEnumerable<Card> Cards => _amounts.Select(a => a.Card);
 
 
     public int NumCopies
     {
-        get => _amounts.Sum(ca => ca.NumCopies);
+        get => _amounts.Sum(a => a.NumCopies);
         set
         {
             var lastCycle = _amounts.Last!.Value;
@@ -116,13 +116,13 @@ public class WantNameGroup : IEnumerable<Want>
     public string Name => First.Card.Name;
     public string? ManaCost => First.Card.ManaCost;
 
-    public IEnumerable<string> CardIds => _wants.Select(ca => ca.CardId);
-    public IEnumerable<Card> Cards => _wants.Select(ca => ca.Card);
+    public IEnumerable<string> CardIds => _wants.Select(w => w.CardId);
+    public IEnumerable<Card> Cards => _wants.Select(w => w.Card);
 
 
     public int NumCopies
     {
-        get => _wants.Sum(ca => ca.NumCopies);
+        get => _wants.Sum(w => w.NumCopies);
         set
         {
             int change = NumCopies - value;
@@ -200,7 +200,7 @@ public class QuantityGroup : IEnumerable<Quantity>
 
     public static IEnumerable<QuantityGroup> FromDeck(Deck deck)
     {
-        var amountsById = deck.Cards.ToDictionary(ca => ca.CardId);
+        var amountsById = deck.Cards.ToDictionary(a => a.CardId);
         var takesById = deck.Wants.ToDictionary(w => w.CardId);
         var givesById = deck.GiveBacks.ToDictionary(g => g.CardId);
 
@@ -400,9 +400,9 @@ public class QuantityNameGroup : IEnumerable<QuantityGroup>
         IEnumerable<GiveBack>? giveBacks = null)
     {
         // do a full outer join
-        var amountTable = amounts.ToDictionary(ca => ca.CardId ?? ca.Card.Id);
-        var wantTable = wants.ToDictionary(ca => ca.CardId ?? ca.Card.Id);
-        var giveTable = giveBacks?.ToDictionary(ca => ca.CardId ?? ca.Card.Id);
+        var amountTable = amounts.ToDictionary(a => a.CardId ?? a.Card.Id);
+        var wantTable = wants.ToDictionary(w => w.CardId ?? w.Card.Id);
+        var giveTable = giveBacks?.ToDictionary(g => g.CardId ?? g.Card.Id);
 
         var allCardIds = amountTable.Keys
             .Union(wantTable.Keys)
@@ -478,8 +478,8 @@ public class QuantityNameGroup : IEnumerable<QuantityGroup>
 
 public record Transfer(
     Transaction Transaction, 
+    Location To,
     Location? From, 
-    Location? To,
     IReadOnlyList<Change> Changes);
 
 

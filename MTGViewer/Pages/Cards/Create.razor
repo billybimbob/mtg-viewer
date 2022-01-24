@@ -237,18 +237,7 @@ else
             class="btn btn-secondary"
             @onclick="AddNewCardsAsync" 
             disabled="@(CannotAdd || IsBusy)">
-            @if (IsBusy)
-            {
-                <text>
-                    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"> </span>
-                    Loading...
-                </text>
-            }
-            else
-            {
-                <text> Add Cards/Amounts </text>
-            }
-        </button>
+            Add Cards/Amounts </button>
     </div>
 
     <div class="row align-items-center my-3">
@@ -313,30 +302,31 @@ else
         class="btn btn-secondary"
         @onclick="SearchForCardAsync" 
         disabled="@(HasNoNext || IsBusy)" >
-        Load More
+        @if (IsBusy)
+        {
+            <text>
+                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"> </span>
+                Loading...
+            </text>
+        }
+        else
+        {
+            <text> Load More </text>
+        }
     </button>
 }
 
 
 @code
 {
-    private CardQuery Query => _search.Query;
-    private bool IsMultiColored => _search.IsMultiColored;
+    public CardQuery Query => _search.Query;
+    public bool IsMultiColored => _search.IsMultiColored;
 
-    private IReadOnlyDictionary<Card, int> Matches => _matches;
+    public IReadOnlyDictionary<Card, int> Matches => _matches;
 
-    private bool CannotAdd => _matches.All(kv => kv.Value <= 0);
-    private bool HasNoNext => !_matchPage.HasNext;
-    private bool IsBusy => _isBusy;
-
-    private string DisplayName<T>(Expression<Func<Card, T>> property) =>
-        EntityExtensions.DisplayName(property);
-
-    private string ActiveColor(string color) =>
-        _search.PickedColors.Contains(color) ? "active" : string.Empty;
-
-    private bool RaritySelected(string rarity) =>
-        _search.PickedRarities.Contains(rarity);
+    public bool CannotAdd => _matches.All(kv => kv.Value <= 0);
+    public bool HasNoNext => !_matchPage.HasNext;
+    public bool IsBusy => _isBusy;
 
 
     private readonly CancellationTokenSource _cancel = new();
@@ -396,6 +386,17 @@ else
     
 
 
+    public string DisplayName<T>(Expression<Func<Card, T>> property) =>
+        EntityExtensions.DisplayName(property);
+
+    public string ActiveColor(string color) =>
+        _search.PickedColors.Contains(color) ? "active" : string.Empty;
+
+    public bool RaritySelected(string rarity) =>
+        _search.PickedRarities.Contains(rarity);
+
+
+
     private void ClearErrors(object? sender, ValidationRequestedEventArgs args)
     {
         if (_searchEdit is null || _resultErrors is null)
@@ -439,7 +440,7 @@ else
     }
 
 
-    private void MultiColorSwitch(ChangeEventArgs args)
+    public void MultiColorSwitch(ChangeEventArgs args)
     {
         if (_searchEdit is null)
         {
@@ -459,7 +460,7 @@ else
     }
 
 
-    private void ColorToggle(string color)
+    public void ColorToggle(string color)
     {
         if (_searchEdit is null)
         {
@@ -482,7 +483,7 @@ else
     }
 
 
-    private void RarityToggle(string rarity)
+    public void RarityToggle(string rarity)
     {
         if (_searchEdit is null)
         {
@@ -505,7 +506,7 @@ else
     }
 
 
-    private async Task SearchForCardAsync()
+    public async Task SearchForCardAsync()
     {
         if (_isBusy || (_matchPage != default && !_matchPage.HasNext))
         {
@@ -588,7 +589,7 @@ else
     }
 
 
-    private void Reset()
+    public void Reset()
     {
         if (_isBusy || _searchEdit is null)
         {
@@ -625,7 +626,7 @@ else
     }
 
 
-    private async Task AddNewCardsAsync()
+    public async Task AddNewCardsAsync()
     {
         if (_isBusy)
         {
@@ -651,9 +652,9 @@ else
 
             await using var dbContext = await DbFactory.CreateDbContextAsync(cancelToken);
 
-            await TreasuryHandler.AddAsync(dbContext, addedAmounts, cancelToken);
-
             await AddNewCardsAsync(dbContext, addedAmounts, cancelToken);
+
+            await TreasuryHandler.AddAsync(dbContext, addedAmounts, cancelToken);
 
             await dbContext.SaveChangesAsync(cancelToken);
 

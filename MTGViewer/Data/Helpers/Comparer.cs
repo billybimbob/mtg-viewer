@@ -52,14 +52,19 @@ public class CardNameComparer : Comparer<Card>
 
     public override int Compare(Card? cardA, Card? cardB)
     {
-        var nameCompare = string.Compare(cardA?.Name, cardB?.Name, _currentCompare);
-
+        int nameCompare = string.Compare(cardA?.Name, cardB?.Name, _currentCompare);
         if (nameCompare != 0)
         {
             return nameCompare;
         }
 
-        return string.Compare(cardA?.SetName, cardB?.SetName, _currentCompare);
+        int setCompare = string.Compare(cardA?.SetName, cardB?.SetName, _currentCompare);
+        if (setCompare != 0)
+        {
+            return setCompare;
+        }
+
+        return string.Compare(cardA?.Id, cardB?.Id, _currentCompare);
     }
 }
 

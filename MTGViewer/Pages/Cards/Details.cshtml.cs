@@ -40,8 +40,8 @@ public class DetailsModel : PageModel
             .Include(c => c.Types)
             .Include(c => c.Subtypes)
             .Include(c => c.Amounts
-                .OrderBy(ca => ca.Location.Name))
-                .ThenInclude(ca => ca.Location)
+                .OrderBy(a => a.Location.Name))
+                .ThenInclude(a => a.Location)
             .AsSplitQuery()
             .AsNoTrackingWithIdentityResolution()
             .SingleOrDefaultAsync(c => c.Id == id, cancel);

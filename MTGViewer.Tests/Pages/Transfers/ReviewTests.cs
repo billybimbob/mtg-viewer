@@ -59,13 +59,13 @@ public class ReviewTests : IAsyncLifetime
 
     private IQueryable<Amount> ToTarget(Trade trade) =>
         _dbContext.Amounts
-            .Where(ca => ca.CardId == trade.CardId && ca.LocationId == trade.ToId)
+            .Where(a => a.CardId == trade.CardId && a.LocationId == trade.ToId)
             .AsNoTracking();
 
 
     private IQueryable<Amount> FromTarget(Trade trade) =>
         _dbContext.Amounts
-            .Where(ca => ca.CardId == trade.CardId && ca.LocationId == _trades.TargetId)
+            .Where(a => a.CardId == trade.CardId && a.LocationId == _trades.TargetId)
             .AsNoTracking();
 
 
@@ -130,8 +130,8 @@ public class ReviewTests : IAsyncLifetime
             amount = trade.Amount;
         }
 
-        var toAmount = ToTarget(trade).Select(ca => ca.NumCopies);
-        var fromAmount = FromTarget(trade).Select(ca => ca.NumCopies);
+        var toAmount = ToTarget(trade).Select(a => a.NumCopies);
+        var fromAmount = FromTarget(trade).Select(a => a.NumCopies);
 
         // Act
         var toBefore = await toAmount.SingleOrDefaultAsync();
@@ -168,8 +168,8 @@ public class ReviewTests : IAsyncLifetime
         await _dbContext.SaveChangesAsync();
         _dbContext.ChangeTracker.Clear();
 
-        var toAmount = ToTarget(trade).Select(ca => ca.NumCopies);
-        var fromAmount = FromTarget(trade).Select(ca => ca.NumCopies);
+        var toAmount = ToTarget(trade).Select(a => a.NumCopies);
+        var fromAmount = FromTarget(trade).Select(a => a.NumCopies);
         var tradeSet = TradesInSet.Select(t => t.Id);
 
         // Act
@@ -204,7 +204,7 @@ public class ReviewTests : IAsyncLifetime
 
         await _reviewModel.SetModelContextAsync(_userManager, trade.To.OwnerId);
 
-        var fromAmount = FromTarget(trade).Select(ca => ca.NumCopies);
+        var fromAmount = FromTarget(trade).Select(a => a.NumCopies);
 
         // Act
         var fromBefore = await fromAmount.SingleAsync();
@@ -230,7 +230,7 @@ public class ReviewTests : IAsyncLifetime
         var trade = await TradesInSet.AsNoTracking().FirstAsync();
         var wrongTradeId = 0;
 
-        var fromAmount = FromTarget(trade).Select(ca => ca.NumCopies);
+        var fromAmount = FromTarget(trade).Select(a => a.NumCopies);
 
         // Act
         var fromBefore = await fromAmount.SingleAsync();
@@ -255,7 +255,7 @@ public class ReviewTests : IAsyncLifetime
 
         var trade = await TradesInSet.AsNoTracking().FirstAsync();
 
-        var fromAmount = FromTarget(trade).Select(ca => ca.NumCopies);
+        var fromAmount = FromTarget(trade).Select(a => a.NumCopies);
 
         // Act
         var fromBefore = await fromAmount.SingleAsync();

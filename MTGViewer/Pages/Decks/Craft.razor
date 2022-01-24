@@ -19,7 +19,7 @@
 @inject ILogger<Craft> Logger
 
 
-<PageTitle> @Title </PageTitle>
+<PageTitle> @DeckName - Builder </PageTitle>
 
 @if (_deckContext is not null)
 {
@@ -42,18 +42,54 @@ else
     <h1> Deck Builder </h1>
 }
 
-<div class="mb-3">
+<div class="btn-group mb-3" role="group">
     <button title="Save Deck" type="button"
         class="btn btn-secondary" 
-        disabled="@HasNoChanges"
+        disabled="@(IsBusy || HasNoChanges())"
         @onclick="CommitChangesAsync">
-        Save Changes
+        @if (IsBusy)
+        {
+            <text>
+                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"> </span>
+                Loading...
+            </text>
+        }
+        else
+        {
+            <text> Save Changes </text>
+        }
     </button>
+
+    @if (_result is SaveResult.Success && _deckContext is not null)
+    {
+        <a href="/Decks/Exchange/@_deckContext.Deck.Id"
+            class="btn btn-secondary" role="button">
+            Exchange </a>
+    }
+    else
+    {
+        <button title="To Exchange Page" type="button"
+            class="btn btn-secondary"
+            disabled="true">
+            Exchange </button>
+    }
 </div>
+
+<SavePrompt @bind-Result="_result">
+    <SuccessMessage>
+        <p>Save was succesful, and values have been updated.</p>
+        <p class="mb-1">The wanted cards are not actually removed from the Treasury. Proceed to the Exchange page to take from the Treasury.</p>
+    </SuccessMessage>
+    <ErrorMessage>
+        <p>There are conflicts while trying to save, and values have been updated. </p>
+        <hr />
+        <p>Save again to confirm.</p>
+    </ErrorMessage>
+</SavePrompt>
 
 <div class="form-row align-items-center my-3">
     <div class="col-12 col-md-4">
-        <input class="form-control" placeholder="Card Name" @onchange="SearchName" />
+        <input class="form-control" placeholder="Card Name" @onchange="SearchNameAsync" />
     </div>
 
     <div class="col-auto btn-group pt-2 pt-md-0" role="group" aria-label="Color Buttons">
@@ -61,7 +97,7 @@ else
         {
             <button title="@color filter" type="button"
                 class="btn btn-outline-secondary border-0 rounded @ActiveColor(color)"
-                @onclick="() => FilterColor(color)">
+                @onclick="() => FilterColorAsync(color)">
 
                 <i class="ms ms-@symbol.ToLower() ms-cost"></i>
             </button>
@@ -69,25 +105,25 @@ else
     </div>
 </div>
 
-<SavePrompt @bind-Result="_result">
-    <SuccessMessage>
-        Save was succesful, and values have been updated
-    </SuccessMessage>
-    <ErrorMessage>
-        <p>There are conflicts while trying to save, and values have been updated. </p>
-        <hr />
-        <p>Save again to confirm</p>
-    </ErrorMessage>
-</SavePrompt>
-
 <div class="row">
-    <div class="col-12 col-lg-7">
+    <section class="col-12 col-lg-7">
         <h3>Treasury</h3>
 
         <div class="list-group list-group-flush mb-4">
-            @foreach (var (card, available) in Treasury)
+            @if (!Treasury.Any())
             {
-                var wantTotal = card.Wants.Sum(w => w.NumCopies);
+                <div class="list-group-item disabled px-2" aria-disabled="true">
+                    <div class="row">
+                        <div class="col-6"> --- </div>
+                        <div class="col-4"> --- </div>
+                        <div class="col-2"> --- </div>
+                    </div>
+                </div>
+            }
+            @foreach (var card in Treasury)
+            {
+                int available = TreasuryAmount(card);
+                int wantTotal = card.Wants.Sum(w => w.NumCopies);
 
                 <button type="button" title="Add @card.Name"
                     class="list-group-item list-group-item-action px-2"
@@ -105,28 +141,36 @@ else
                     </div>
                 </button>
             }
+        </div>
 
-            @if (!Treasury.Any())
+        <Pagination Pages="Treasury.Pages" PageSelected="ChangeTreasuryPageAsync" />
+    </section>
+
+
+    <section class="col">
+        <h3>@DeckName</h3>
+
+        @{ var deckCards = DeckCards(); }
+
+        <div class="list-group list-group-flush mb-4">
+            @if (!deckCards.Any())
             {
                 <div class="list-group-item disabled px-2" aria-disabled="true">
                     <div class="row">
-                        <div class="col-6"> --- </div>
+                        <div class="col-5"> --- </div>
                         <div class="col-4"> --- </div>
-                        <div class="col-2"> --- </div>
+                        <div class="col-3">
+                            <span class="badge badge-pill badge-primary"> 0 </span>
+                            <span class="badge badge-pill badge-danger"> 0 </span>
+                            <span class="badge badge-pill badge-secondary"> 0 </span>
+                        </div>
                     </div>
                 </div>
             }
-        </div>
-
-        <Pagination Pages="TreasuryPages" PageSelected="ChangeTreasuryPage" />
-    </div>
-
-    <div class="col">
-        <h3>@DeckName</h3>
-
-        <div class="list-group list-group-flush mb-4">
-            @foreach (var (card, group) in DeckCards)
+            @foreach (var group in deckCards)
             {
+                var card = group.Card;
+
                 <button type="button" title="Remove @card.Name"
                     class="list-group-item list-group-item-action px-2"
                     disabled="@(group.NumCopies <= 0)"
@@ -154,25 +198,10 @@ else
                     </div>
                 </button>
             }
-
-            @if (!DeckCards.Any())
-            {
-                <div class="list-group-item disabled px-2" aria-disabled="true">
-                    <div class="row">
-                        <div class="col-5"> --- </div>
-                        <div class="col-4"> --- </div>
-                        <div class="col-3">
-                            <span class="badge badge-pill badge-primary"> 0 </span>
-                            <span class="badge badge-pill badge-danger"> 0 </span>
-                            <span class="badge badge-pill badge-secondary"> 0 </span>
-                        </div>
-                    </div>
-                </div>
-            }
         </div>
 
-        <Pagination Pages="DeckPages" PageSelected="ChangeDeckPage" />
-    </div>
+        <Pagination Pages="deckCards.Pages" PageSelected="ChangeDeckPage" />
+    </section>
 </div>
 
 
@@ -185,74 +214,52 @@ else
     public int DeckId { get; set; } = default;
 
 
-    private bool _isBusy;
-    private readonly CancellationTokenSource _cancel = new();
+    public bool IsBusy => _isBusy;
 
-    private SaveResult _result;
-    private CardDbContext? _dbContext;
+    public PagedList<Card> Treasury => _filteredTreasury;
 
-    private IReadOnlyList<Card> _cards = Array.Empty<Card>();
-    private readonly Dictionary<string, int> _boxAmounts = new();
-
-    private DeckContext? _deckContext;
-
-    private readonly TreasuryFilterContext _treasuryFilters = new();
-    private PagedList<Card> _filteredCards = PagedList<Card>.Empty;
-
-
-    private string DeckName =>
+    public string DeckName =>
         _deckContext?.Deck.Name is string name
             && !string.IsNullOrWhiteSpace(name) 
             ? name
             : "New Deck";
 
-    private string Title => $"{DeckName} - Builder";
 
+    public int TreasuryAmount(Card card) =>
+        _boxAmounts.GetValueOrDefault(card.Id);
 
-    private string ActiveColor(string color) =>
-        _treasuryFilters.PickedColors.Contains(color) ? "active" : string.Empty;
-
-    private bool HasNoChanges =>
-        !_dbContext?.ChangeTracker.HasChanges() ?? true;
-
-
-    private IEnumerable<(Card, int amount)> Treasury =>
-        _filteredCards
-            .Select(c => (c, _boxAmounts.GetValueOrDefault(c.Id)));
-
-    private Data.Pages TreasuryPages => _filteredCards.Pages;
-
-
-    private IEnumerable<(string cardId, QuantityGroup group)> ActiveDeck =>
-        _deckContext
-            ?.Groups
-            ?.Where(kv => kv.Value.Total > 0)
-            .Select(kv => (kv.Key, kv.Value))
-            ?? Enumerable.Empty<(string, QuantityGroup)>();
-
-
-    private IEnumerable<(Card, QuantityGroup)> DeckCards
+    public PagedList<QuantityGroup> DeckCards()
     {
-        get
+        if (_deckContext is null)
         {
-            int pageIndex = _deckContext?.PageIndex ?? 0;
-            int pageSize = _deckContext?.PageSize ?? _treasuryFilters.PageSize;
-
-            return _cards
-                .Join( ActiveDeck,
-                    c => c.Id,
-                    cg => cg.cardId,
-                    (card, cg) => (card, cg.group))
-                .Skip(pageIndex * pageSize)
-                .Take(pageSize);
+            return PagedList<QuantityGroup>.Empty;
         }
+
+        return _cards
+            .Join( _deckContext.ActiveCards(),
+                c => c.Id,
+                qg => qg.CardId,
+                (_, group) => group)
+            .ToPagedList(
+                _deckContext.PageSize,
+                _deckContext.PageIndex);
     }
 
-    private Data.Pages DeckPages =>
-        new Data.Pages(
-            _deckContext?.PageIndex ?? 0, 
-            ActiveDeck.Count(), 
-            _deckContext?.PageSize ?? _treasuryFilters.PageSize);
+
+    private bool _isBusy;
+    private readonly CancellationTokenSource _cancel = new();
+
+
+    private SaveResult _result;
+    private CardDbContext? _dbContext;
+
+    private readonly SortedSet<Card> _cards = new(new CardNameComparer());
+    private readonly Dictionary<string, int> _boxAmounts = new();
+
+    private DeckContext? _deckContext;
+
+    private readonly TreasuryFilterContext _treasuryFilters = new();
+    private PagedList<Card> _filteredTreasury = PagedList<Card>.Empty;
 
 
 
@@ -263,30 +270,17 @@ else
             return;
         }
 
+        _treasuryFilters.PageSize = PageSizes.GetComponentSize<Craft>();
+        _treasuryFilters.ShouldCache = true;
         _isBusy = true;
 
         try
         {
             var cancelToken = _cancel.Token;
 
-            _treasuryFilters.PageSize = PageSizes.GetComponentSize<Craft>();
-
             _dbContext = await DbFactory.CreateDbContextAsync(cancelToken);
 
-            _cards = await Cache
-                .GetOrCreateAsync(nameof(_cards), () =>
-                    CardsAsync(_dbContext, cancelToken));
-
-            var boxAmounts = await Cache
-                .GetOrCreateAsync(nameof(_boxAmounts), () =>
-                    BoxAmountsAsync(_dbContext, cancelToken));
-
-            foreach ((string cardId, int amount) in boxAmounts)
-            {
-                _boxAmounts[cardId] = amount;
-            }
-
-            ApplyFilters();
+            await LoadCardsAsync(_dbContext, _treasuryFilters, cancelToken);
         }
         catch (OperationCanceledException ex)
         {
@@ -294,34 +288,27 @@ else
         }
         finally
         {
+            _treasuryFilters.ShouldCache = false;
             _isBusy = false;
         }
     }
 
 
-    private static Task<List<Card>> CardsAsync(
-        CardDbContext dbContext, CancellationToken cancel)
-    {
-        // split query since Card model has many props that will dup
-        // unbounded, keep eye on
-
-        return dbContext.Cards
-            .Include(c => c.Colors)
-            .OrderBy(c => c.Name)
-                .ThenBy(c => c.SetName)
-            .AsSplitQuery()
-            .ToListAsync(cancel);
-    }
-
-
     private static Task<Dictionary<string, int>> BoxAmountsAsync(
-        CardDbContext dbContext, CancellationToken cancel)
+        CardDbContext dbContext,
+        IEnumerable<Card> cards,
+        CancellationToken cancel)
     {
+        var cardIds = cards
+            .Select(c => c.Id)
+            .ToArray();
+
         return dbContext.Amounts
-            .Where(ca => ca.Location is Box)
-            .GroupBy(ca => ca.CardId,
-                (CardId, cas) => 
-                    new { CardId, Total = cas.Sum(ca => ca.NumCopies) })
+            .Where(a => a.Location is Box && cardIds.Contains(a.CardId))
+            .GroupBy(a => a.CardId,
+                (CardId, amounts) => 
+                    new { CardId, Total = amounts.Sum(a => a.NumCopies) })
+
             .ToDictionaryAsync(
                 ct => ct.CardId, ct => ct.Total, cancel);
     }
@@ -370,6 +357,7 @@ else
         {
             Logger.LogWarning(ex.ToString());
         }
+
         finally
         {
             _isBusy = false;
@@ -395,7 +383,7 @@ else
         CardDbContext dbContext, string userId, CancellationToken cancel)
     {
         var deck = await Cache
-            .GetOrCreateAsync($"deck{DeckId}{userId}", GetDeckAsync);
+            .GetOrCreateAsync($"{nameof(Craft)}deck{DeckId}{userId}", GetDeckAsync);
 
         if (deck is null || deck.OwnerId != userId)
         {
@@ -410,6 +398,13 @@ else
 
             return null;
         }
+
+        if (HasConflictingCards(dbContext, deck, _cards))
+        {
+            return await GetDeckAsync();
+        }
+
+        dbContext.Decks.Attach(deck);
 
         return deck;
 
@@ -430,11 +425,35 @@ else
     }
 
 
+    private static bool HasConflictingCards(
+        CardDbContext dbContext, Deck deck, IEnumerable<Card> cards)
+    {
+        if (dbContext.Entry(deck).State is not EntityState.Detached)
+        {
+            return false;
+        }
+
+        var deckCards = deck.Cards
+            .Cast<Quantity>()
+            .Concat(deck.Wants)
+            .Concat(deck.GiveBacks)
+            .Select(q => q.Card);
+
+        var matchingCards = cards
+            .Join(deckCards,
+                c => c.Id, c => c.Id,
+                (card, deckCard) => (card, deckCard));
+
+        return matchingCards
+            .Any(cd => cd.card != cd.deckCard);
+    }
+
+
     private async Task<Deck> CreateDeckAsync(
         CardDbContext dbContext, string userId, CancellationToken cancel)
     {
         var user = await Cache
-            .GetOrCreateAsync($"user{userId}", GetUserAsync);
+            .GetOrCreateAsync($"{nameof(Craft)}user{userId}", GetUserAsync);
 
         if (user == null)
         {
@@ -442,7 +461,7 @@ else
         }
 
         var userDeckCount = await Cache
-            .GetOrCreateAsync($"count{userId}", GetDeckCountAsync);
+            .GetOrCreateAsync($"{nameof(Craft)}count{userId}", GetDeckCountAsync);
 
         var newLoc = new Deck
         {
@@ -477,11 +496,38 @@ else
         _cancel.Dispose();
 
         _dbContext?.Dispose();
+        _dbContext = null;
     }
+
+
+
+    public string ActiveColor(string color) =>
+        _treasuryFilters.PickedColors.Contains(color) ? "active" : string.Empty;
+
+
+    public bool HasNoChanges()
+    {
+        if (_dbContext is null || _deckContext is null)
+        {
+            return true;
+        }
+
+        if (_dbContext.Entry(_deckContext.Deck).State is EntityState.Added)
+        {
+            return false;
+        }
+
+        return !_deckContext.Groups.Values
+            .SelectMany(qg => qg)
+            .Any(_deckContext.IsModified);
+    }
+
 
 
     private class DeckContext
     {
+        private readonly Dictionary<Quantity, int> _originalCopies = new();
+
         public Deck Deck { get; }
 
         public EditContext EditContext { get; }
@@ -508,6 +554,38 @@ else
                 .ToDictionary(cg => cg.CardId);
 
             PageSize = pageSize;
+
+            UpdateOriginals();
+        }
+
+
+        public IEnumerable<QuantityGroup> ActiveCards() =>
+            Groups.Values.Where(qg => qg.Total > 0);
+
+        
+        public Data.Pages Pages()
+        {
+            int totalActive = ActiveCards().Count();
+
+            return new Data.Pages(PageIndex, totalActive, PageSize);
+        }
+
+
+        public bool IsModified(Quantity quantity)
+        {
+            return _originalCopies.TryGetValue(quantity, out int numCopies)
+                ? quantity.NumCopies != numCopies
+                : quantity.NumCopies != 0;
+        }
+
+        public void UpdateOriginals()
+        {
+            var allQuantities = Groups.Values.SelectMany(qg => qg);
+
+            foreach (var quantity in allQuantities)
+            {
+                _originalCopies[quantity] = quantity.NumCopies;
+            }
         }
     }
 
@@ -521,39 +599,112 @@ else
         public int PageIndex { get; set; }
 
         public string? SearchName { get; set; }
+
+        public bool ShouldCache { get; set; }
     }
 
 
-    private void ApplyFilters()
+    private async Task LoadCardsAsync(
+        CardDbContext dbContext, TreasuryFilterContext filters, CancellationToken cancel)
     {
-        const StringComparison ignoreCase = StringComparison.CurrentCultureIgnoreCase;
+        if (filters.PageSize <= 0)
+        {
+            return;
+        }
 
-        var filter = _cards.AsEnumerable();
-        string? searchName = _treasuryFilters.SearchName;
+        Dictionary<string, int> boxAmounts;
+
+        if (filters.ShouldCache)
+        {
+            _filteredTreasury = await Cache
+                .GetOrCreateAsync($"{nameof(Craft)}{nameof(_cards)}", () =>
+                    FilteredCardsAsync(dbContext, filters, cancel));
+
+            boxAmounts = await Cache
+                .GetOrCreateAsync($"{nameof(Craft)}{nameof(_boxAmounts)}", () =>
+                    BoxAmountsAsync(dbContext, _filteredTreasury, cancel));
+        }
+        else
+        {
+            _filteredTreasury = await FilteredCardsAsync(dbContext, filters, cancel);
+            boxAmounts = await BoxAmountsAsync(dbContext, _filteredTreasury, cancel);
+        }
+
+        bool conflicting = HasConflictingCards(filters.ShouldCache, _cards, _filteredTreasury);
+        if (conflicting)
+        {
+            _filteredTreasury = await FilteredCardsAsync(dbContext, filters, cancel);
+        }
+
+        _cards.UnionWith(_filteredTreasury);
+
+        foreach ((string cardId, int total) in boxAmounts)
+        {
+            _boxAmounts[cardId] = total;
+        }
+    }
+
+
+    private static bool HasConflictingCards(
+        bool cached,
+        IEnumerable<Card> cardsA, 
+        IEnumerable<Card> cardB)
+    {
+        if (!cached)
+        {
+            return false;
+        }
+
+        return cardsA
+            .Join(cardB,
+                c => c.Id, c => c.Id,
+                (a, b) => (a, b))
+            .Any(ab => ab.a != ab.b);
+    }
+
+
+    private Task<PagedList<Card>> FilteredCardsAsync(
+        CardDbContext dbContext,
+        TreasuryFilterContext filters,
+        CancellationToken cancel)
+    {
+        var cards = dbContext.Cards.AsQueryable();
+
+        var searchName = filters.SearchName?.ToLower();
+        var pickedColors = filters.PickedColors;
 
         if (!string.IsNullOrWhiteSpace(searchName))
         {
-            filter = filter.Where(c => 
-                c.Name.Contains(searchName, ignoreCase));
+            cards = cards
+                .Where(c => c.Name.ToLower()
+                    .Contains(searchName));
         }
-
-        var pickedColors = _treasuryFilters.PickedColors;
 
         if (pickedColors.Any())
         {
-            filter = filter.Where(c => 
-                c.Colors.Any(cl => pickedColors.Contains(cl.Name) ));
+            cards = cards
+                .Where(c => c.Colors
+                    .Any(cl => pickedColors.Contains(cl.Name) ));
         }
 
-        int pageSize = _treasuryFilters.PageSize;
-        int pageIndex = _treasuryFilters.PageIndex;
+        int pageSize = filters.PageSize;
+        int pageIndex = filters.PageIndex;
 
-        _filteredCards = filter.ToPagedList(pageSize, pageIndex);
+        return cards
+            .OrderBy(c => c.Name)
+                .ThenBy(c => c.SetName)
+
+            .ToPagedListAsync(pageSize, pageIndex, cancel);
     }
 
 
-    private void FilterColor(string color)
+    public async Task FilterColorAsync(string color)
     {
+        if (_isBusy || _dbContext is null)
+        {
+            return;
+        }
+
         var pickedColors = _treasuryFilters.PickedColors;
 
         if (pickedColors.Contains(color))
@@ -565,12 +716,30 @@ else
             pickedColors.Add(color);
         }
 
-        ApplyFilters();
+        _isBusy = true;
+
+        try
+        {
+            await LoadCardsAsync(_dbContext, _treasuryFilters, _cancel.Token);
+        }
+        catch (OperationCanceledException ex)
+        {
+            Logger.LogError(ex.ToString());
+        }
+        finally
+        {
+            _isBusy = false;
+        }
     }
 
 
-    private void SearchName(ChangeEventArgs eventArgs)
+    public async Task SearchNameAsync(ChangeEventArgs eventArgs)
     {
+        if (_isBusy || _dbContext is null)
+        {
+            return;
+        }
+
         string? newSearch = eventArgs.Value?.ToString();
 
         if (newSearch == _treasuryFilters.SearchName)
@@ -579,32 +748,61 @@ else
         }
 
         _treasuryFilters.SearchName = newSearch;
-        
-        ApplyFilters();
+        _isBusy = true;
+
+        try
+        {
+            await LoadCardsAsync(_dbContext, _treasuryFilters, _cancel.Token);
+        }
+        catch (OperationCanceledException ex)
+        {
+            Logger.LogError(ex.ToString());
+        }
+        finally
+        {
+            _isBusy = false;
+        }
     }
 
 
-    private void ChangeTreasuryPage(int pageIndex)
+    public async Task ChangeTreasuryPageAsync(int pageIndex)
     {
+        if (_isBusy || _dbContext is null)
+        {
+            return;
+        }
+
         if (_treasuryFilters.PageIndex == pageIndex
             || pageIndex < 0
-            || pageIndex >= TreasuryPages.Total)
+            || pageIndex >= _filteredTreasury.Pages.Total)
         {
             return;
         }
 
         _treasuryFilters.PageIndex = pageIndex;
+        _isBusy = true;
 
-        ApplyFilters();
+        try
+        {
+            await LoadCardsAsync(_dbContext, _treasuryFilters, _cancel.Token);
+        }
+        catch (OperationCanceledException ex)
+        {
+            Logger.LogError(ex.ToString());
+        }
+        finally
+        {
+            _isBusy = false;
+        }
     }
 
 
-    private void ChangeDeckPage(int pageIndex)
+    public void ChangeDeckPage(int pageIndex)
     {
-        if (_deckContext is null 
-            || _deckContext.PageIndex == pageIndex
+        if (_deckContext is null
             || pageIndex < 0
-            || pageIndex >= DeckPages.Total)
+            || _deckContext.PageIndex == pageIndex
+            || _deckContext.Pages().Total >= pageIndex)
         {
             return;
         }
@@ -613,7 +811,7 @@ else
     }
 
 
-    private void AddCardToDeck(Card card)
+    public void AddCardToDeck(Card card)
     {
         if (_dbContext == null || _deckContext == null)
         {
@@ -663,7 +861,7 @@ else
     }
 
 
-    private void RemoveCardFromDeck(Card card)
+    public void RemoveCardFromDeck(Card card)
     {
         if (_dbContext == null || _deckContext == null)
         {
@@ -711,7 +909,7 @@ else
 
 
 
-    private async Task CommitChangesAsync()
+    public async Task CommitChangesAsync()
     {
         if (_isBusy
             || _dbContext is null 
@@ -721,6 +919,11 @@ else
         }
 
         if (!_deckContext.EditContext.Validate())
+        {
+            return;
+        }
+
+        if (HasNoChanges())
         {
             return;
         }
@@ -737,14 +940,9 @@ else
 
             await _dbContext.SaveChangesAsync(cancelToken);
 
-            if (deck.GiveBacks.Any() || deck.Wants.Any())
-            {
-                Nav.NavigateTo($"/Decks/Exchange/{deck.Id}", true);
-            }
-            else
-            {
-                _result = SaveResult.Success;
-            }
+            _deckContext.UpdateOriginals();
+
+            _result = SaveResult.Success;
         }
 
         catch (DbUpdateConcurrencyException ex)

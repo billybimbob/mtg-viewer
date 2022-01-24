@@ -30,7 +30,7 @@
         <tbody>
             @foreach (var transfer in Model.Transfers)
             {
-                var (transaction, from, to, changes) = transfer;
+                var (transaction, to, from, changes) = transfer;
                 var first = changes.First();
 
                 <tr>
@@ -87,10 +87,6 @@
 
                             case Unclaimed:
                                 <a asp-page="/Unowned/Index" asp-route-id="@to.Id"> @to.Name </a>
-                                break;
-
-                            case null:
-                                <i> -- </i>
                                 break;
                             
                             default:

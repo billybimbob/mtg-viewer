@@ -85,9 +85,9 @@ public class ExchangeModel : PageModel
             .Where(d => d.Id == deckId && d.OwnerId == userId)
 
             .Include(d => d.Cards // unbounded: keep eye one
-                .OrderBy(ca => ca.Card.Name)
-                    .ThenBy(ca => ca.Card.SetName))
-                .ThenInclude(ca => ca.Card)
+                .OrderBy(a => a.Card.Name)
+                    .ThenBy(a => a.Card.SetName))
+                .ThenInclude(a => a.Card)
 
             .Include(d => d.Wants // unbounded: keep eye one
                 .OrderBy(w => w.Card.Name)
@@ -187,7 +187,7 @@ public class ExchangeModel : PageModel
             .GroupJoin(deck.Cards,
                 g => g.CardId, a => a.CardId,
                 (give, amounts) => give.NumCopies > amounts.Sum(a => a.NumCopies))
-            .Any(b => b);
+            .Any(gt => gt);
 
         if (lackReturns)
         {

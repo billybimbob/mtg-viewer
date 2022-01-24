@@ -109,7 +109,7 @@ public class DeleteModel : PageModel
     private IEnumerable<QuantityNameGroup> DeckNameGroup(Deck deck)
     {
         var amountsByName = deck.Cards
-            .ToLookup(ca => ca.Card.Name);
+            .ToLookup(a => a.Card.Name);
 
         var wantsByName = deck.Wants
             .ToLookup(w => w.Card.Name);
@@ -141,15 +141,16 @@ public class DeleteModel : PageModel
 
         if (deck.Cards.Any())
         {
+            _dbContext.Amounts.RemoveRange(deck.Cards);
+
             var returningCards = deck.Cards
                 .Select(a => new CardRequest(a.Card, a.NumCopies));
 
             // just add since deck is being deleted
             await _treasuryHandler.AddAsync(_dbContext, returningCards, cancel);
-
-            _dbContext.Amounts.RemoveRange(deck.Cards);
-            _dbContext.Decks.Remove(deck);
         }
+
+        _dbContext.Decks.Remove(deck);
 
         try
         {

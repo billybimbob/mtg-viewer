@@ -39,7 +39,7 @@ public class TreasuryHandlerTests : IAsyncLifetime
     private async Task RemoveCardCopiesAsync(Card card)
     {
         var boxCards = await _dbContext.Amounts
-            .Where(ca => ca.Location is Box && ca.Card.Name == card.Name)
+            .Where(a => a.Location is Box && a.Card.Name == card.Name)
             .ToListAsync();
 
         _dbContext.RemoveRange(boxCards);
@@ -101,8 +101,8 @@ public class TreasuryHandlerTests : IAsyncLifetime
         const int amount = 2;
 
         var card = await _dbContext.Amounts
-            .Where(ca => ca.Location is Box)
-            .Select(ca => ca.Card)
+            .Where(a => a.Location is Box)
+            .Select(a => a.Card)
             .FirstAsync();
 
         await RemoveCardCopiesAsync(card);
@@ -128,8 +128,8 @@ public class TreasuryHandlerTests : IAsyncLifetime
     public async Task Add_ExistingWithCapcity_OnlyExisting()
     {
         var card = await _dbContext.Amounts
-            .Where(ca => ca.Location is Box)
-            .Select(ca => ca.Card)
+            .Where(a => a.Location is Box)
+            .Select(a => a.Card)
             .AsNoTracking()
             .FirstAsync();
 
@@ -161,8 +161,8 @@ public class TreasuryHandlerTests : IAsyncLifetime
         const int modAmount = 5;
 
         var card = await _dbContext.Amounts
-            .Where(ca => ca.Location is Box)
-            .Select(ca => ca.Card)
+            .Where(a => a.Location is Box)
+            .Select(a => a.Card)
             .AsNoTracking()
             .FirstAsync();
 
@@ -300,20 +300,8 @@ public class TreasuryHandlerTests : IAsyncLifetime
     public async Task Update_NullDbContext_Throws()
     {
         const CardDbContext nullDbContext = null!;
-        var box = new Box();
 
-        Task UpdateAsync() => _treasuryHandler.UpdateAsync(nullDbContext, box);
-
-        await Assert.ThrowsAsync<ArgumentNullException>(UpdateAsync);
-    }
-
-
-    [Fact]
-    public async Task Update_NullBox_Throws()
-    {
-        const Box nullBox = null!;
-
-        Task UpdateAsync() => _treasuryHandler.UpdateAsync(_dbContext, nullBox);
+        Task UpdateAsync() => _treasuryHandler.UpdateBoxesAsync(nullDbContext);
 
         await Assert.ThrowsAsync<ArgumentNullException>(UpdateAsync);
     }
@@ -342,9 +330,9 @@ public class TreasuryHandlerTests : IAsyncLifetime
             Capacity = extraSpace
         };
 
-        await _treasuryHandler.UpdateAsync(_dbContext, newBox);
-
         _dbContext.Boxes.Add(newBox);
+
+        await _treasuryHandler.UpdateBoxesAsync(_dbContext);
 
         await _dbContext.SaveChangesAsync();
 
@@ -380,7 +368,7 @@ public class TreasuryHandlerTests : IAsyncLifetime
 
         higherBox.Capacity += extraSpace;
 
-        await _treasuryHandler.UpdateAsync(_dbContext, higherBox);
+        await _treasuryHandler.UpdateBoxesAsync(_dbContext);
 
         _dbContext.Boxes.Update(higherBox);
 
@@ -418,7 +406,7 @@ public class TreasuryHandlerTests : IAsyncLifetime
 
         lowerBox.Capacity -= extraSpace;
 
-        await _treasuryHandler.UpdateAsync(_dbContext, lowerBox);
+        await _treasuryHandler.UpdateBoxesAsync(_dbContext);
 
         _dbContext.Boxes.Update(lowerBox);
 

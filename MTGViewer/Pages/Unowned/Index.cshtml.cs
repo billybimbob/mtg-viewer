@@ -99,7 +99,7 @@ public class IndexModel : PageModel
     {
         return _dbContext.Unclaimed
             .Include(u => u.Cards)
-                .ThenInclude(ca => ca.Card)
+                .ThenInclude(a => a.Card)
 
             .Include(u => u.Wants)
                 .ThenInclude(w => w.Card)
@@ -113,7 +113,7 @@ public class IndexModel : PageModel
     private IReadOnlyList<QuantityNameGroup> UnclaimedNameGroup(Unclaimed unclaimed)
     {
         var amountsByName = unclaimed.Cards
-            .ToLookup(ca => ca.Card.Name);
+            .ToLookup(a => a.Card.Name);
 
         var wantsByName = unclaimed.Wants
             .ToLookup(w => w.Card.Name);

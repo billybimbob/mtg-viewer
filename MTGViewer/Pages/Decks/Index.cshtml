@@ -35,7 +35,7 @@
                             @MtgSymbols.Format(deck.Colors).ToHtmlString()
                         </div>
                     </td>
-                    <td> @deck.Cards.Sum(ca => ca.NumCopies) </td>
+                    <td> @deck.Cards.Sum(a => a.NumCopies) </td>
 
                     <td>
                         @if (state is State.Requesting)

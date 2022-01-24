@@ -83,7 +83,7 @@ public class StatusModel : PageModel
             .Include(d => d.Owner)
 
             .Include(d => d.Cards) // unbounded: keep eye on
-                .ThenInclude(ca => ca.Card)
+                .ThenInclude(a => a.Card)
 
             .Include(d => d.Wants) // unbounded: keep eye on
                 .ThenInclude(w => w.Card)
@@ -112,7 +112,7 @@ public class StatusModel : PageModel
         var tradesWithAmountCap = deck.TradesTo
             .GroupJoin( fromTargets,
                 t => (t.CardId, t.FromId),
-                ca => (ca.CardId, ca.LocationId),
+                a => (a.CardId, a.LocationId),
                 (trade, targets) => (trade, targets))
             .SelectMany(
                 tts => tts.targets.DefaultIfEmpty(),
@@ -132,7 +132,7 @@ public class StatusModel : PageModel
     private IEnumerable<QuantityNameGroup> CardNameGroups(Deck deck)
     {
         var amountsByName = deck.Cards
-            .ToLookup(ca => ca.Card.Name);
+            .ToLookup(a => a.Card.Name);
 
         var wantsByName = deck.Wants
             .ToLookup(w => w.Card.Name);

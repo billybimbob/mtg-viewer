@@ -61,7 +61,7 @@ public class DetailsModel : PageModel
             .Include(d => d.Owner)
 
             .Include(d => d.Cards) // unbounded: keep eye on
-                .ThenInclude(ca => ca.Card)
+                .ThenInclude(a => a.Card)
 
             .Include(d => d.Wants) // unbounded: keep eye on
                 .ThenInclude(w => w.Card)
@@ -81,7 +81,7 @@ public class DetailsModel : PageModel
     private IEnumerable<QuantityGroup> DeckCardGroups(Deck deck)
     {
         var amountsById = deck.Cards
-            .ToDictionary(ca => ca.CardId);
+            .ToDictionary(a => a.CardId);
 
         var wantsById = deck.Wants
             .ToDictionary(w => w.CardId);

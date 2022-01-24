@@ -18,8 +18,8 @@
                 {
                     <tr>
                         <td>
-                            <a asp-page="/Cards/Details" asp-route-id="@amount.CardId">
-                                @amount.Card.Name </a>
+                            <component type="typeof(HoverCard)" render-mode="Static"
+                                param-Target="@amount.Card" />
                         </td>
                         <td> 
                             <div class="ms-group">
