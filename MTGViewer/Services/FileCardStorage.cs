@@ -278,11 +278,12 @@ public class FileCardStorage
     {
         var dataCardIds = data.Cards
             .Select(c => c.Id)
-            .ToArray();
+            .ToAsyncEnumerable();
 
         var dbCardIds = await dbContext.Cards
             .Select(c => c.Id)
-            .Where(cid => dataCardIds.Contains(cid))
+            .AsAsyncEnumerable()
+            .Intersect(dataCardIds)
             .ToListAsync(cancel);
 
         // existing cards will be left unmodified, so they don't 
@@ -478,7 +479,11 @@ public class FileCardStorage
         }
 
         var allCards = await dbContext.Cards
-            .Where(c => multiIds.Contains(c.MultiverseId))
+            .AsAsyncEnumerable()
+            .Join( multiIds.ToAsyncEnumerable(),
+                c => c.MultiverseId,
+                mid => mid,
+                (card, _) => card)
             .ToListAsync(cancel);
 
         var newMultiIds = multiIds

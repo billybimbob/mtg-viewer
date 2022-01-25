@@ -698,11 +698,12 @@ else
 
         var cardIds = requestCards
             .Select(c => c.Id)
-            .ToArray();
+            .ToAsyncEnumerable();
 
         var existingIds = await dbContext.Cards
             .Select(c => c.Id)
-            .Where(cid => cardIds.Contains(cid))
+            .AsAsyncEnumerable()
+            .Intersect(cardIds)
             .ToListAsync(cancel);
 
         var existingCards = requestCards
