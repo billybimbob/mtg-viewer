@@ -422,7 +422,9 @@
         var oldBin = box.Bin;
         box.Bin = bin;
 
-        if (oldBin != bin && !oldBin.Boxes.Any(b => b.Id != box.Id))
+        if (changes.IsEdit 
+            && oldBin != bin 
+            && !oldBin.Boxes.Any(b => b.Id != box.Id))
         {
             dbContext.Bins.Remove(oldBin);
         }

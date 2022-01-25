@@ -154,7 +154,14 @@ internal sealed class TreasuryContext
         }
         else
         {
-            amount.NumCopies += numCopies;
+            long newCopies = amount.NumCopies + numCopies;
+
+            if (newCopies > int.MaxValue)
+            {
+                throw new ArgumentException(nameof(numCopies));
+            }
+
+            amount.NumCopies = (int)newCopies;
         }
     }
 

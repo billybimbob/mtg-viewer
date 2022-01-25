@@ -404,6 +404,8 @@ else
             return await GetDeckAsync();
         }
 
+        _cards.UnionWith( DeckCards(deck) );
+
         dbContext.Decks.Attach(deck);
 
         return deck;
@@ -413,8 +415,13 @@ else
                 .Where(d => d.Id == DeckId && d.OwnerId == userId)
 
                 .Include(d => d.Cards) // unbounded: keep eye on
+                    .ThenInclude(a => a.Card)
+
                 .Include(d => d.Wants) // unbounded: keep eye on
+                    .ThenInclude(a => a.Card)
+
                 .Include(d => d.GiveBacks) // unbounded: keep eye on
+                    .ThenInclude(a => a.Card)
 
                 .Include(d => d.TradesTo
                     .OrderBy(t => t.Id)
@@ -422,6 +429,16 @@ else
 
                 .AsSplitQuery()
                 .SingleOrDefaultAsync(cancel);
+    }
+
+
+    private static IEnumerable<Card> DeckCards(Deck deck)
+    {
+        return deck.Cards
+            .Cast<Quantity>()
+            .Concat(deck.Wants)
+            .Concat(deck.GiveBacks)
+            .Select(q => q.Card);
     }
 
 
@@ -433,14 +450,8 @@ else
             return false;
         }
 
-        var deckCards = deck.Cards
-            .Cast<Quantity>()
-            .Concat(deck.Wants)
-            .Concat(deck.GiveBacks)
-            .Select(q => q.Card);
-
         var matchingCards = cards
-            .Join(deckCards,
+            .Join( DeckCards(deck),
                 c => c.Id, c => c.Id,
                 (card, deckCard) => (card, deckCard));
 

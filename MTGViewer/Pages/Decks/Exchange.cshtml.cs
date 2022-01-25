@@ -121,6 +121,7 @@ public class ExchangeModel : PageModel
 
         return _dbContext.Amounts
             .Where(a => a.Location is Box && a.NumCopies > 0)
+            .Include(a => a.Card)
 
             .AsAsyncEnumerable()
             .Join(wantNames,

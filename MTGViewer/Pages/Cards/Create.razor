@@ -7,7 +7,9 @@
 
 @inject IDbContextFactory<CardDbContext> DbFactory
 @inject TreasuryHandler TreasuryHandler
+
 @inject SymbolFormatter MtgSymbols
+@inject PageSizes PageSizes
 @inject ILogger<Create> Logger
 
 
@@ -287,7 +289,9 @@ else
                             <td> @match.Rarity </td>
                             <td>
                                 <input title="@match.Name Amount" 
-                                    type="number" min="0" value="@amount" 
+                                    type="number"
+                                    min="0" max="@PageSizes.Limit"
+                                    value="@amount" 
                                     @onchange="e => UpdateAmount(e, match)"
                                     class="form-control w-50" />
                             </td>
@@ -634,7 +638,7 @@ else
         }
 
         var addedAmounts = _matches
-            .Where(kv => kv.Value > 0)
+            .Where(kv => kv.Value > 0 && kv.Value < PageSizes.Limit)
             .Select(kv => new CardRequest(kv.Key, kv.Value))
             .ToList();
 
