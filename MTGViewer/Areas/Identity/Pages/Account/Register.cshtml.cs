@@ -38,7 +38,7 @@ public class RegisterModel : PageModel
     }
 
 
-    public class InputModel
+    public sealed class InputModel
     {
         [Required]
         [MaxLength(256)]

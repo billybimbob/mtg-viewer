@@ -103,24 +103,21 @@ public class RequestModel : PageModel
     }
 
 
-    private IAsyncEnumerable<Amount> TakeTargets(Deck deck)
+    private IQueryable<Amount> TakeTargets(Deck deck)
     {
         var takeNames = deck.Wants
             .Select(w => w.Card.Name)
             .Distinct()
-            .ToAsyncEnumerable();
+            .ToArray();
 
         return _dbContext.Amounts
             .Where(a => a.Location is Deck
-                && (a.Location as Deck)!.OwnerId != deck.OwnerId)
+                && (a.Location as Deck)!.OwnerId != deck.OwnerId
+                && a.NumCopies > 0
+                && takeNames.Contains(a.Card.Name))
 
             .Include(a => a.Card)
-            .Include(a => a.Location)
-
-            .AsAsyncEnumerable()
-            .Join(takeNames,
-                c => c.Card.Name, cn => cn,
-                (amount, _) => amount);
+            .Include(a => a.Location);
     }
 
 
@@ -174,10 +171,10 @@ public class RequestModel : PageModel
         // TODO: figure out how to query more on server
         // TODO: prioritize requesting from exact card matches
 
-        var targets = TakeTargets(deck);
         var wants = deck.Wants.ToAsyncEnumerable();
 
-        var requestMatches = targets
+        var requestMatches = TakeTargets(deck)
+            .AsAsyncEnumerable()
             .GroupJoinAwaitWithCancellation(
                 wants,
                 (target, _) => ValueTask.FromResult(target.Card.Name),

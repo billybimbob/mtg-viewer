@@ -17,7 +17,7 @@ public class Name
     [JsonInclude]
     public string Value { get; init; } = null!;
 
-    [JsonIgnore]
+    [JsonInclude]
     public string CardId { get; init; } = null!;
 
 
@@ -49,7 +49,7 @@ public class Color
     [JsonInclude]
     public string Name { get; init; } = null!;
 
-    [JsonIgnore]
+    [JsonInclude]
     public string CardId { get; init; } = null!;
 
 
@@ -71,7 +71,7 @@ public class Supertype
     [JsonInclude]
     public string Name { get; init; } = null!;
 
-    [JsonIgnore]
+    [JsonInclude]
     public string CardId { get; init; } = null!;
 
 
@@ -93,7 +93,7 @@ public class Type
     [JsonInclude]
     public string Name { get; init; } = null!;
 
-    [JsonIgnore]
+    [JsonInclude]
     public string CardId { get; init; } = null!;
 
 
@@ -115,7 +115,7 @@ public class Subtype
     [JsonInclude]
     public string Name { get; init; } = null!;
 
-    [JsonIgnore]
+    [JsonInclude]
     public string CardId { get; init; } = null!;
 
 

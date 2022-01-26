@@ -53,12 +53,12 @@ public class TestDataGenerator
         {
             await SetupAsync();
 
-            bool jsonSuccess = await _fileStorage.TryJsonSeedAsync();
+            bool jsonSuccess = await TryJsonSeedAsync();
 
             if (!jsonSuccess)
             {
                 await _cardGen.GenerateAsync();
-                await _fileStorage.WriteJsonAsync();
+                await _fileStorage.WriteBackupAsync();
             }
 
             _dbContext.ChangeTracker.Clear();
@@ -66,6 +66,28 @@ public class TestDataGenerator
         finally
         {
             _jsonLock.Release();
+        }
+    }
+
+
+    private async Task<bool> TryJsonSeedAsync()
+    {
+        try
+        {
+            await _fileStorage.JsonSeedAsync();
+            return true;
+        }
+        catch (System.IO.FileNotFoundException)
+        {
+            return false;
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            return false;
+        }
+        catch (DbUpdateException)
+        {
+            return false;
         }
     }
 
@@ -449,7 +471,9 @@ public class TestDataGenerator
             .Include(a => a.Card)
             .Include(a => a.Location)
             .AsNoTracking()
-            .FirstAsync(a => a.Location is Deck && a.NumCopies > 0);
+            .FirstAsync(a => a.Location is Deck
+                && !(a.Location as Deck)!.TradesTo.Any()
+                && a.NumCopies > 0);
 
         int limit = Math.Max(1, returnTarget.NumCopies + targetMod);
 

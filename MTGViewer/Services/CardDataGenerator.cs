@@ -77,11 +77,11 @@ public class CardDataGenerator
 
         await _dbContext.SaveChangesAsync(cancel);
 
-        // TODO: fix created accounts not being verified
-
-        await users
-            .ToAsyncEnumerable()
-            .ForEachAwaitWithCancellationAsync(RegisterUserAsync, cancel);
+        foreach (var user in users)
+        {
+            // TODO: fix created accounts not being verified
+            await RegisterUserAsync(user, cancel);
+        }
     }
 
 
@@ -115,6 +115,7 @@ public class CardDataGenerator
     {
         var cards = await fetchService
             .Where(c => c.Cmc, 3)
+            .Where(c => c.PageSize, 20)
             .SearchAsync();
 
         cancel.ThrowIfCancellationRequested();
@@ -171,17 +172,34 @@ public class CardDataGenerator
 
 
     private IReadOnlyList<Amount> GetBoxAmounts(
-        IEnumerable<Card> cards,
-        IReadOnlyList<Box> boxes)
+        IEnumerable<Card> cards, IReadOnlyList<Box> boxes)
     {
-        return cards
-            .Select(card => new Amount
+        var amounts = new List<Amount>();
+        var boxSpace = boxes.ToDictionary(b => b, _ => 0);
+
+        foreach (var card in cards)
+        {
+            var box = boxes[_random.Next(boxes.Count)];
+
+            int space = boxSpace.GetValueOrDefault(box);
+            int numCopies = _random.Next(1, 6);
+
+            if (space + numCopies > box.Capacity)
             {
-                Card = card, 
-                Location = boxes[_random.Next(boxes.Count)],
-                NumCopies = _random.Next(1, 6)
-            })
-            .ToList();
+                continue;
+            }
+
+            amounts.Add(new Amount
+            {
+                Card = card,
+                Location = box,
+                NumCopies = numCopies
+            });
+
+            boxSpace[box] = space + numCopies;
+        }
+
+        return amounts;
     }
 
 

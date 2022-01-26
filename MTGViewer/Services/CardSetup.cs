@@ -62,7 +62,7 @@ internal class CardSetup : IHostedService
     }
 
 
-    private Task StagingSeedAsync(IServiceProvider provider, CancellationToken cancel)
+    private static Task StagingSeedAsync(IServiceProvider provider, CancellationToken cancel)
     {
         var cardGen = provider.GetService<CardDataGenerator>();
         if (cardGen == null)
@@ -74,24 +74,38 @@ internal class CardSetup : IHostedService
     }
 
 
-    private async Task DevelopmentSeedAsync(IServiceProvider provider, CancellationToken cancel)
+    private static async Task DevelopmentSeedAsync(IServiceProvider provider, CancellationToken cancel)
     {
         var fileStorage = provider.GetRequiredService<FileCardStorage>();
 
-        bool jsonSuccess = await fileStorage.TryJsonSeedAsync(cancel: cancel);
-        if (jsonSuccess)
+        try
         {
-            return;
+            await fileStorage.JsonSeedAsync(cancel: cancel);
         }
 
+        catch (System.IO.FileNotFoundException)
+        {
+            await GenerateAsync(provider, cancel);
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            await GenerateAsync(provider, cancel);
+        }
+    }
+
+
+    private static async Task GenerateAsync(IServiceProvider provider, CancellationToken cancel)
+    {
+        var fileStorage = provider.GetRequiredService<FileCardStorage>();
         var cardGen = provider.GetService<CardDataGenerator>();
+
         if (cardGen == null)
         {
             return;
         }
 
         await cardGen.GenerateAsync(cancel);
-        await fileStorage.WriteJsonAsync(cancel: cancel);
+        await fileStorage.WriteBackupAsync(cancel: cancel);
     }
 
 

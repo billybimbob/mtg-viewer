@@ -189,7 +189,6 @@ public class MTGFetchService : IMtgQueryable<MTGFetchService, CardQuery>
         }
 
         var response = await _service
-            .Where(c => c.PageSize, _pageSize) // if pageSize set before, this is ignored
             // .Where(c => c.OrderBy, "name") get error code 500 with this
             .AllAsync();
 

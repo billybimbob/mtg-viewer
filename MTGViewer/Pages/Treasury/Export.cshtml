@@ -1,0 +1,39 @@
+@page "{handler?}"
+@model Treasury.ExportModel
+@{
+    ViewData["Title"] = "Treasury - Download";
+}
+
+<h1>Download Backup</h1>
+
+<div class="row">
+    <section class="col col-md-8">
+        <hr />
+        <p>
+            Download currently stored card collection information. This data can then be 
+            <a href="/Treasury/Import">uploaded to bulk insert<a>.
+        </p>
+    </section>
+</div>
+
+<div class="row">
+    <section class="col-10 col-sm-6 col-lg-4">
+        <form method="POST">
+            <div class="form-group">
+                <label asp-for="Download!.Section" class="control-label"></label>
+                <input asp-for="Download!.Section" class="form-control" min="1" max="@Model.NumberOfSections" />
+                <span asp-validation-for="Download!.Section" class="text-danger"></span>
+
+                <p> There are @Model.NumberOfSections possible section(s) </p>
+            </div>
+
+            <input type="submit" class="btn btn-secondary"
+                title="Download Card Data"
+                value="Download" />
+        </form>
+    </section>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial"/>
+}

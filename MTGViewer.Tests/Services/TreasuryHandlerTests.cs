@@ -201,7 +201,8 @@ public class TreasuryHandlerTests : IAsyncLifetime
 
         int availAmounts = await _dbContext.Boxes
             .Where(b => !b.IsExcess)
-            .SumAsync(b => b.Cards.Sum(a => a.NumCopies));
+            .SelectMany(b => b.Cards)
+            .SumAsync(a => a.NumCopies);
 
         if (availAmounts > capacity)
         {

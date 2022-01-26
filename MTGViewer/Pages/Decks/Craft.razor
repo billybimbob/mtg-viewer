@@ -498,16 +498,16 @@ else
 
     protected override void Dispose(bool disposing)
     {
-        if (!disposing)
+        if (disposing)
         {
-            return;
+            _cancel.Cancel();
+            _cancel.Dispose();
+
+            _dbContext?.Dispose();
+            _dbContext = null;
         }
 
-        _cancel.Cancel();
-        _cancel.Dispose();
-
-        _dbContext?.Dispose();
-        _dbContext = null;
+        base.Dispose(disposing);
     }
 
 
@@ -846,9 +846,9 @@ else
             return;
         }
 
-        if (deckGroup?.Want is null)
+        if (deckGroup?.Want is not Want wantAmount)
         {
-            var wantAmount = new Want
+            wantAmount = new Want
             {
                 Card = card,
                 Location = _deckContext.Deck,
@@ -868,7 +868,13 @@ else
             }
         }
 
-        deckGroup.Want!.NumCopies += 1;
+        if (wantAmount.NumCopies >= PageSizes.Limit)
+        {
+            Logger.LogWarning("deck want failed since at limit");
+            return;
+        }
+
+        wantAmount.NumCopies += 1;
     }
 
 

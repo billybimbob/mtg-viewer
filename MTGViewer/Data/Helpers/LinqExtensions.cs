@@ -19,7 +19,10 @@ public static class LinqExtensions
             throw new ArgumentNullException(nameof(source));
         }
 
-        pageSize = Math.Max(pageSize, 0);
+        if (pageSize < 0)
+        {
+            throw new ArgumentException(nameof(pageSize));
+        }
 
         int page = pageIndex ?? 0;
         int totalItems = source.Count();
@@ -46,7 +49,10 @@ public static class LinqExtensions
             throw new ArgumentNullException(nameof(source));
         }
 
-        pageSize = Math.Max(pageSize, 0);
+        if (pageSize < 0)
+        {
+            throw new ArgumentException(nameof(pageSize));
+        }
 
         int page = pageIndex ?? 0;
         int totalItems = await source.CountAsync(cancel).ConfigureAwait(false);
@@ -74,7 +80,10 @@ public static class LinqExtensions
             throw new ArgumentNullException(nameof(source));
         }
 
-        pageSize = Math.Max(pageSize, 0);
+        if (pageSize < 0)
+        {
+            throw new ArgumentException(nameof(pageSize));
+        }
 
         int page = pageIndex ?? 0;
         int totalItems = await source.CountAsync(cancel).ConfigureAwait(false);

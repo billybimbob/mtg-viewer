@@ -60,7 +60,10 @@ internal sealed class BoxSearcher
 
         foreach (Box box in boxes)
         {
-            capacitySum += box.Capacity;
+            checked
+            {
+                capacitySum += box.Capacity;
+            }
 
             yield return capacitySum;
         }
@@ -74,7 +77,10 @@ internal sealed class BoxSearcher
         {
             yield return amountSum;
 
-            amountSum += amount.NumCopies;
+            checked
+            {
+                amountSum += amount.NumCopies;
+            }
         }
     }
 

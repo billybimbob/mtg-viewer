@@ -9,7 +9,7 @@ public class CardUser : IdentityUser
     public const string DisplayNameClaim = "CardUserDisplayName";
 
     [PersonalData]
-    [MaxLength(256)]
+    [StringLength(256)]
     [Display(Name = "Name")]
     public string DisplayName { get; set; } = null!;
 

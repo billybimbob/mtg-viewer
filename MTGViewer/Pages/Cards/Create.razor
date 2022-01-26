@@ -366,6 +366,8 @@ else
 
         Reset();
 
+        _search.Query.PageSize = PageSizes.GetComponentSize<Create>();
+
         _searchEdit.OnValidationRequested += ClearErrors;
         _searchEdit.OnFieldChanged += ClearErrors;
     }
@@ -373,19 +375,19 @@ else
 
     protected override void Dispose(bool disposing)
     {
-        if (_searchEdit is not null)
+        if (disposing)
         {
-            _searchEdit.OnValidationRequested -= ClearErrors;
-            _searchEdit.OnFieldChanged -= ClearErrors;
+            if (_searchEdit is not null)
+            {
+                _searchEdit.OnValidationRequested -= ClearErrors;
+                _searchEdit.OnFieldChanged -= ClearErrors;
+            }
+
+            _cancel.Cancel();
+            _cancel.Dispose();
         }
 
-        if (!disposing)
-        {
-            return;
-        }
-
-        _cancel.Cancel();
-        _cancel.Dispose();
+        base.Dispose(disposing);
     }
     
 
@@ -638,7 +640,7 @@ else
         }
 
         var addedAmounts = _matches
-            .Where(kv => kv.Value > 0 && kv.Value < PageSizes.Limit)
+            .Where(kv => kv.Value > 0 && kv.Value <= PageSizes.Limit)
             .Select(kv => new CardRequest(kv.Key, kv.Value))
             .ToList();
 
@@ -656,7 +658,7 @@ else
 
             await using var dbContext = await DbFactory.CreateDbContextAsync(cancelToken);
 
-            await AddNewCardsAsync(dbContext, addedAmounts, cancelToken);
+            await AddNewCardsAsync(dbContext, addedAmounts, PageSizes.Limit, cancelToken);
 
             await TreasuryHandler.AddAsync(dbContext, addedAmounts, cancelToken);
 
@@ -694,21 +696,14 @@ else
     private static async Task AddNewCardsAsync(
         CardDbContext dbContext,
         IReadOnlyList<CardRequest> requests,
+        int limit,
         CancellationToken cancel)
     {
         var requestCards = requests
-            .Select(req => req.Card)
+            .Select(cr => cr.Card)
             .ToList();
 
-        var cardIds = requestCards
-            .Select(c => c.Id)
-            .ToAsyncEnumerable();
-
-        var existingIds = await dbContext.Cards
-            .Select(c => c.Id)
-            .AsAsyncEnumerable()
-            .Intersect(cardIds)
-            .ToListAsync(cancel);
+        var existingIds = await ExistingCardIdsAsync(dbContext, requestCards, limit, cancel);
 
         var existingCards = requestCards
             .IntersectBy(existingIds, c => c.Id);
@@ -718,5 +713,38 @@ else
 
         dbContext.Cards.AttachRange(existingCards);
         dbContext.Cards.AddRange(newCards);
+    }
+
+
+    private static Task<List<string>> ExistingCardIdsAsync(
+        CardDbContext dbContext,
+        IReadOnlyList<Card> cards,
+        int limit,
+        CancellationToken cancel)
+    {
+        if (cards.Count > limit)
+        {
+            var cardIds = cards
+                .Select(c => c.Id)
+                .ToAsyncEnumerable();
+
+            return dbContext.Cards
+                .Select(c => c.Id)
+                .AsAsyncEnumerable()
+                .Intersect(cardIds)
+                .ToListAsync(cancel)
+                .AsTask();
+        }
+        else
+        {
+            var cardIds = cards
+                .Select(c => c.Id)
+                .ToArray();
+
+            return dbContext.Cards
+                .Select(c => c.Id)
+                .Where(cid => cardIds.Contains(cid))
+                .ToListAsync(cancel);
+        }
     }
 }

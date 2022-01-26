@@ -117,19 +117,14 @@ public class ExchangeModel : PageModel
         var wantNames = deck.Wants
             .Select(w => w.Card.Name)
             .Distinct()
-            .ToAsyncEnumerable();
+            .ToArray();
 
         return _dbContext.Amounts
-            .Where(a => a.Location is Box && a.NumCopies > 0)
-            .Include(a => a.Card)
-
-            .AsAsyncEnumerable()
-            .Join(wantNames,
-                c => c.Card.Name, cn => cn,
-                (amount, _) => amount)
-
-            .AnyAsync(cancel)
-            .AsTask();
+            .Where(a => a.Location is Box 
+                && a.LocationId != deck.Id
+                && a.NumCopies > 0
+                && wantNames.Contains(a.Card.Name))
+            .AnyAsync(cancel);
     }
 
 

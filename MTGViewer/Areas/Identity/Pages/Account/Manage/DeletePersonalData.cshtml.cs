@@ -1,6 +1,7 @@
-using System;
 using System.ComponentModel.DataAnnotations;
+using System.Threading;
 using System.Threading.Tasks;
+
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -58,7 +59,7 @@ public class DeletePersonalDataModel : PageModel
     }
 
 
-    public async Task<IActionResult> OnPostAsync()
+    public async Task<IActionResult> OnPostAsync(CancellationToken cancel)
     {
         if (Input is null)
         {
@@ -82,7 +83,7 @@ public class DeletePersonalDataModel : PageModel
             }
         }
 
-        bool referenceDeleted = await _referenceManager.DeleteReferenceAsync(user);
+        bool referenceDeleted = await _referenceManager.DeleteReferenceAsync(user, cancel);
         if (!referenceDeleted)
         {
             ModelState.AddModelError(string.Empty, "Failed to delete the user");

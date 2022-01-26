@@ -145,24 +145,20 @@ internal sealed class TreasuryContext
             amount = new Amount
             {
                 Card = card,
-                Location = box,
-                NumCopies = numCopies
+                Location = box
             };
 
             _dbContext.Amounts.Attach(amount);
             _amounts.Add(index, amount);
         }
-        else
+
+        int newCopies = checked(amount.NumCopies + numCopies);
+        if (newCopies < 0)
         {
-            long newCopies = amount.NumCopies + numCopies;
-
-            if (newCopies > int.MaxValue)
-            {
-                throw new ArgumentException(nameof(numCopies));
-            }
-
-            amount.NumCopies = (int)newCopies;
+            throw new ArgumentException(nameof(numCopies));
         }
+
+        amount.NumCopies = newCopies;
     }
 
 
@@ -177,17 +173,20 @@ internal sealed class TreasuryContext
                 To = to,
                 From = from,
                 Card = card,
-                Amount = amount,
                 Transaction = _transaction
             };
 
             _dbContext.Changes.Attach(change);
             _changes.Add(changeIndex, change);
         }
-        else
+
+        int newAmount = checked(change.Amount + amount);
+        if (newAmount < 0)
         {
-            change.Amount += amount;
+            throw new ArgumentException(nameof(amount));
         }
+
+        change.Amount = newAmount;
     }
 
 
@@ -198,7 +197,16 @@ internal sealed class TreasuryContext
             throw new ArgumentException(nameof(box));
         }
 
-        boxSize += numCopies;
+        checked
+        {
+            boxSize += numCopies;
+        }
+
+        if (boxSize < 0)
+        {
+            throw new ArgumentException(nameof(numCopies));
+        }
+
         _boxSpace[box] = boxSize;
 
         if (box.IsExcess)
