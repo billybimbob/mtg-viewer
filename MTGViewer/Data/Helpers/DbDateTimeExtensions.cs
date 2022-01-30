@@ -1,7 +1,5 @@
-using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
-using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace MTGViewer.Data;
 
@@ -25,18 +23,5 @@ public static class DbDateTimeExtensions
             // uses utc by default: https://sqlite.org/lang_datefunc.html
             return "datetime('now')";
         }
-    }
-
-
-    public static PropertyBuilder<DateTime> UtcToLocal(this PropertyBuilder<DateTime> timeProperty)
-    {
-        return timeProperty.HasConversion(
-            local => DateTime
-                .SpecifyKind(local, DateTimeKind.Local)
-                .ToUniversalTime(), 
-
-            utc => DateTime
-                .SpecifyKind(utc, DateTimeKind.Utc)
-                .ToLocalTime());
     }
 }

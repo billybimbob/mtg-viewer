@@ -144,3 +144,8 @@ body {
   cursor: pointer;
   pointer-events: auto;
 }
+
+.dropdown-menu {
+  max-height: 80vh;
+  overflow-y: auto;
+}

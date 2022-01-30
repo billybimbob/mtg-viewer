@@ -42,7 +42,7 @@
     @if (SignInManager.IsSignedIn(User))
     {
         <a asp-page="Delete" asp-route-id="@Model.Card.Id"
-            class="btn btn-danger" role="alert">
+            title="Delete @Model.Card.Name" class="btn btn-danger" role="alert">
             Delete </a>
     }
 </div>

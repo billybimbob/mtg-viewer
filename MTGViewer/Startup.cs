@@ -1,7 +1,9 @@
 using System.Text.Json.Serialization;
 
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.CookiePolicy;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -31,9 +33,20 @@ public class Startup
         services
             .AddRazorPages()
             .AddJsonOptions(options =>
-                options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.Preserve)
+            {
+                options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.Preserve;
+            })
             .AddMvcOptions(options =>
-                options.Filters.Add<OperationCancelledFilter>());
+            {
+                options.Filters.Add<OperationCancelledFilter>();
+            })
+            .AddCookieTempDataProvider(setup =>
+            {
+                setup.Cookie.IsEssential = false;
+                setup.Cookie.HttpOnly = true;
+                setup.Cookie.SameSite = SameSiteMode.Strict;
+                setup.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+            });
 
         services.AddServerSideBlazor();
 

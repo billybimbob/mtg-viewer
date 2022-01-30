@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -43,13 +42,17 @@ public class HistoryModel : PageModel
     [TempData]
     public string? PostMessage { get; set; }
 
+    [TempData]
+    public string? TimeZoneId { get; set; }
 
     public IReadOnlyList<Transfer> Transfers { get; private set; } = Array.Empty<Transfer>();
 
     public Data.Pages Pages { get; private set; }
 
+    public TimeZoneInfo TimeZone { get; private set; } = TimeZoneInfo.Utc;
 
-    public async Task OnGetAsync(int? pageIndex, CancellationToken cancel)
+
+    public async Task OnGetAsync(int? pageIndex, string? tz, CancellationToken cancel)
     {
         var changes = await ChangesForHistory()
             .ToPagedListAsync(_pageSize, pageIndex, cancel);
@@ -69,6 +72,8 @@ public class HistoryModel : PageModel
             .ToList();
 
         Pages = changes.Pages;
+
+        UpdateTimeZone(tz);
     }
 
 
@@ -89,6 +94,32 @@ public class HistoryModel : PageModel
                     .ThenBy(c => c.Amount)
                     
             .AsNoTrackingWithIdentityResolution();
+    }
+
+
+    private void UpdateTimeZone(string? timeZoneId)
+    {
+        if (timeZoneId is null && TimeZoneId is not null)
+        {
+            timeZoneId = TimeZoneId;
+        }
+
+        if (timeZoneId is null)
+        {
+            return;
+        }
+
+        try
+        {
+            TimeZone = TimeZoneInfo.FindSystemTimeZoneById(timeZoneId);
+            TimeZoneId = timeZoneId;
+
+            TempData.Keep(nameof(TimeZoneId));
+        }
+        catch (Exception e)
+        {
+            _logger.LogError(e.ToString());
+        }
     }
 
 

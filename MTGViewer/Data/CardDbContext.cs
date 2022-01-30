@@ -220,8 +220,7 @@ internal class TransactionConfiguration : IEntityTypeConfiguration<Transaction>
     {
         builder
             .Property(t => t.AppliedAt)
-            .HasDefaultValueSql(_database.GetUtcTime())
-            .UtcToLocal();
+            .HasDefaultValueSql(_database.GetUtcTime());
 
         builder
             .HasMany(t => t.Changes)
@@ -245,8 +244,7 @@ internal class SuggestionConfiguration : IEntityTypeConfiguration<Suggestion>
     {
         builder
             .Property(s => s.SentAt)
-            .HasDefaultValueSql(_database.GetUtcTime())
-            .UtcToLocal();
+            .HasDefaultValueSql(_database.GetUtcTime());
 
         builder
             .HasOne(s => s.To)

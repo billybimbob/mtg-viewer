@@ -28,7 +28,7 @@
                     title="@card.Name Details"
                     aria-label="@card.Id details">
 
-                    <img alt="@card.Id image" 
+                    <img alt="@card.Name image" 
                         class="w-100 img-fluid rounded" 
                         src="@card.ImageUrl.WithHttps()">
                 </a>
@@ -150,7 +150,7 @@
 
             _recentChanges = await RecentTransactionsAsync(dbContext, cancelToken);
 
-            _currentTime = DateTime.Now;
+            _currentTime = DateTime.UtcNow;
         }
         catch (OperationCanceledException ex)
         {

@@ -16,33 +16,6 @@ using MTGViewer.Services;
 namespace MTGViewer.Pages.Decks;
 
 
-public enum State
-{
-    Theorycraft,
-    Built,
-    Requesting
-}
-
-public record DeckState(Deck Deck, State State)
-{
-    public DeckState(Deck deck) : this(deck, State.Theorycraft)
-    {
-        if (deck.TradesTo.Any())
-        {
-            State = State.Requesting;
-        }
-        else if (deck.Wants.Any() || deck.GiveBacks.Any())
-        {
-            State = State.Theorycraft;
-        }
-        else
-        {
-            State = State.Built;
-        }
-    }
-}
-
-
 [Authorize]
 public class IndexModel : PageModel
 {
@@ -56,6 +29,33 @@ public class IndexModel : PageModel
         _userManager = userManager;
         _dbContext = dbContext;
         _pageSize = pageSizes.GetPageModelSize<IndexModel>();
+    }
+
+
+    public enum State
+    {
+        Theorycraft,
+        Built,
+        Requesting
+    }
+
+    public record DeckState(Deck Deck, State State)
+    {
+        public DeckState(Deck deck) : this(deck, State.Theorycraft)
+        {
+            if (deck.TradesTo.Any())
+            {
+                State = State.Requesting;
+            }
+            else if (deck.Cards.Any())
+            {
+                State = State.Built;
+            }
+            else
+            {
+                State = State.Theorycraft;
+            }
+        }
     }
 
 
@@ -101,16 +101,6 @@ public class IndexModel : PageModel
             .Where(d => d.OwnerId == userId)
 
             .Include(d => d.Cards) // unbounded: keep eye on
-                .ThenInclude(a => a.Card)
-
-            .Include(d => d.Wants
-                .OrderBy(w => w.Id)
-                .Take(1))
-
-            .Include(d => d.GiveBacks
-                .OrderBy(g => g.Id)
-                .Take(1))
-
             .Include(d => d.TradesTo
                 .OrderBy(t => t.Id)
                 .Take(1))

@@ -11,6 +11,8 @@
 
 <h1>Changes To Treasury</h1>
 
+<partial name="_TimeZonePartial" for="TimeZone"/>
+
 <div class="table-responsive-md">
     <table class="table table-bordered">
         <thead>
@@ -51,7 +53,7 @@
                     @if (Model.IsFirstTransfer(transfer))
                     {
                         <th scope="rowgroup" rowspan="@transaction.Changes.Count">
-                            @transaction.AppliedAt
+                            @TimeZoneInfo.ConvertTimeFromUtc(transaction.AppliedAt, Model.TimeZone)
                         </th>
                     }
 

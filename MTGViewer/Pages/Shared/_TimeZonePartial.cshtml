@@ -1,0 +1,46 @@
+@model TimeZoneInfo
+
+@{
+    var timeZoneOptions = TimeZoneInfo.GetSystemTimeZones()
+        .OrderBy(tz => ListName(tz))
+        .ToList();
+}
+
+
+@if (Model is not null && timeZoneOptions.Any())
+{
+    <div class="btn-group pb-3" role="group">
+        <button id="tz-btn" type="button" class="btn btn-secondary dropdown-toggle"
+            data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+            @Model.DisplayName
+        </button>
+
+        <div class="dropdown-menu" aria-label="tz-btn">
+            @foreach (var tz in timeZoneOptions)
+            {
+                if (tz.Id == Model.Id)
+                {
+                    <button class="dropdown-item active" role="button">
+                        @ListName(tz) </button>
+                }
+                else
+                {
+                    <a class="dropdown-item" asp-route-tz="@tz.Id">
+                        @ListName(tz) </a>
+                }
+            }
+        </div>
+    </div>
+}
+
+@functions
+{
+    private DateTime _now = DateTime.UtcNow;
+
+    private string ListName(TimeZoneInfo timeZone)
+    {
+        return timeZone.IsDaylightSavingTime(_now)
+            ? timeZone.DaylightName
+            : timeZone.StandardName;
+    }
+}

@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -46,6 +45,9 @@ public class HistoryModel : PageModel
     [TempData]
     public string? PostMessage { get; set; }
 
+    [TempData]
+    public string? TimeZoneId { get; set; }
+
 
     public Deck Deck { get; private set; } = null!;
 
@@ -54,9 +56,14 @@ public class HistoryModel : PageModel
 
     public Data.Pages Pages { get; private set; }
 
+    public TimeZoneInfo TimeZone { get; private set; } = TimeZoneInfo.Utc;
+
 
     public async Task<IActionResult> OnGetAsync(
-        int id, int? pageIndex, CancellationToken cancel)
+        int id, 
+        int? pageIndex, 
+        string? tz,
+        CancellationToken cancel)
     {
         var deck = await DeckForHistory(id).SingleOrDefaultAsync(cancel);
 
@@ -86,6 +93,8 @@ public class HistoryModel : PageModel
 
         Pages = changes.Pages;
 
+        UpdateTimeZone(tz);
+
         return Page();
     }
 
@@ -95,8 +104,7 @@ public class HistoryModel : PageModel
         var userId = _userManager.GetUserId(User);
 
         return _dbContext.Decks
-            .Where(d => d.Id == deckId && d.OwnerId == userId)
-            .AsNoTracking();
+            .Where(d => d.Id == deckId && d.OwnerId == userId);
     }
 
 
@@ -104,7 +112,7 @@ public class HistoryModel : PageModel
     {
         return _dbContext.Changes
             .Where(c => c.ToId == deckId || c.FromId == deckId)
-            
+
             .Include(c => c.Transaction)
             .Include(c => c.From)
             .Include(c => c.To)
@@ -114,9 +122,33 @@ public class HistoryModel : PageModel
                 .ThenBy(c => c.From!.Name)
                 .ThenBy(c => c.To!.Name)
                     .ThenBy(c => c.Card.Name)
-                    .ThenBy(c => c.Amount)
-                    
-            .AsNoTrackingWithIdentityResolution();
+                    .ThenBy(c => c.Amount);
+    }
+
+
+    private void UpdateTimeZone(string? timeZoneId)
+    {
+        if (timeZoneId is null && TimeZoneId is not null)
+        {
+            timeZoneId = TimeZoneId;
+        }
+
+        if (timeZoneId is null)
+        {
+            return;
+        }
+
+        try
+        {
+            TimeZone = TimeZoneInfo.FindSystemTimeZoneById(timeZoneId);
+            TimeZoneId = timeZoneId;
+
+            TempData.Keep(nameof(TimeZoneId));
+        }
+        catch (Exception e)
+        {
+            _logger.LogError(e.ToString());
+        }
     }
 
 

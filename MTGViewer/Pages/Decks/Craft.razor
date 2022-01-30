@@ -59,9 +59,9 @@ else
         }
     </button>
 
-    @if (_result is SaveResult.Success && _deckContext is not null)
+    @if (GetExchangeDeck() is Deck deck)
     {
-        <a href="/Decks/Exchange/@_deckContext.Deck.Id"
+        <a href="/Decks/Exchange/@deck.Id"
             class="btn btn-secondary" role="button">
             Exchange </a>
     }
@@ -436,24 +436,6 @@ else
     }
 
 
-    private static bool HasConflictingCards(
-        CardDbContext dbContext, Deck deck, IEnumerable<Card> cards)
-    {
-        if (dbContext.Entry(deck).State is not EntityState.Detached)
-        {
-            return false;
-        }
-
-        var matchingCards = cards
-            .Join( DeckCards(deck),
-                c => c.Id, c => c.Id,
-                (card, deckCard) => (card, deckCard));
-
-        return matchingCards
-            .Any(cd => cd.card != cd.deckCard);
-    }
-
-
     private async Task<Deck> CreateDeckAsync(
         CardDbContext dbContext, string userId, CancellationToken cancel)
     {
@@ -514,6 +496,28 @@ else
         return !_deckContext.Groups.Values
             .SelectMany(qg => qg)
             .Any(_deckContext.IsModified);
+    }
+
+
+    public Deck? GetExchangeDeck()
+    {
+        if (_deckContext?.Deck is not Deck deck)
+        {
+            return null;
+        }
+
+        if (_result is SaveResult.Success)
+        {
+            return deck;
+        }
+
+        if (HasNoChanges()
+            && (deck.Wants.Any() || deck.GiveBacks.Any()))
+        {
+            return deck;
+        }
+
+        return null;
     }
 
 
