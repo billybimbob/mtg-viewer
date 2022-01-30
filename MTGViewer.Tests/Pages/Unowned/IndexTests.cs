@@ -1,15 +1,14 @@
 using System.Linq;
 using System.Threading.Tasks;
-using Xunit;
 
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.Extensions.Logging;
 using Microsoft.EntityFrameworkCore;
+
+using Xunit;
 
 using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
-using MTGViewer.Services;
 using MTGViewer.Pages.Unowned;
 using MTGViewer.Tests.Utils;
 
@@ -17,27 +16,22 @@ namespace MTGViewer.Tests.Pages.Unowned;
 
 public class IndexTests : IAsyncLifetime
 {
+    private readonly IndexModel _indexModel;
     private readonly CardDbContext _dbContext;
     private readonly UserManager<CardUser> _userManager;
-    private TestDataGenerator _testGen;
-
-    private readonly IndexModel _indexModel;
+    private readonly TestDataGenerator _testGen;
     private Unclaimed _unclaimed = null!;
 
     public IndexTests(
+        IndexModel indexModel,
         CardDbContext dbContext,
-        PageSizes pageSizes,
-        SignInManager<CardUser> signInManager,
         UserManager<CardUser> userManager,
-        ILogger<IndexModel> logger,
         TestDataGenerator testGen)
     {
+        _indexModel = indexModel;
         _dbContext = dbContext;
         _userManager = userManager;
         _testGen = testGen;
-
-        _indexModel = new(
-            dbContext, pageSizes, signInManager, userManager, logger);
     }
 
 

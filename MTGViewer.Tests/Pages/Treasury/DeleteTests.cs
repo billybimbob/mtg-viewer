@@ -1,5 +1,3 @@
-using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -8,7 +6,6 @@ using Microsoft.EntityFrameworkCore;
 using Xunit;
 
 using MTGViewer.Data;
-using MTGViewer.Services;
 using MTGViewer.Pages.Treasury;
 using MTGViewer.Tests.Utils;
 
@@ -16,21 +13,19 @@ namespace MTGViewer.Tests.Pages.Treasury;
 
 public class DeleteTests : IAsyncLifetime
 {
+    private readonly DeleteModel _deleteModel;
     private readonly CardDbContext _dbContext;
-    private readonly TreasuryHandler _treasuryHandler;
     private readonly TestDataGenerator _testGen;
-
-    private DeleteModel _deleteModel;
 
 
     public DeleteTests(
-        CardDbContext dbContext, TreasuryHandler treasuryHandler, TestDataGenerator testGen)
+        DeleteModel deleteModel,
+        CardDbContext dbContext,
+        TestDataGenerator testGen)
     {
+        _deleteModel = deleteModel;
         _dbContext = dbContext;
-        _treasuryHandler = treasuryHandler;
         _testGen = testGen;
-
-        _deleteModel = new(dbContext, treasuryHandler);
     }
 
 

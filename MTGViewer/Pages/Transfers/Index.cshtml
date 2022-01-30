@@ -21,6 +21,15 @@
                     </tr>
                 </thead>
                 <tbody>
+                    @if (!Model.TradeDecks.Any())
+                    {
+                        <tr>
+                            <td> -- </td>
+                            <td> -- </td>
+                            <td> -- </td>
+                            <td> -- </td>
+                        </tr>
+                    }
                     @foreach (var deck in Model.TradeDecks)
                     {
                         <tr>

@@ -9,7 +9,6 @@
 @using MTGViewer.Data.Concurrency
 @using MTGViewer.Data.Internal
 
-@inject FixedCache Cache
 @inject IDbContextFactory<CardDbContext> DbFactory
 @inject SymbolFormatter MtgSymbols
 @inject CardText CardText
@@ -271,7 +270,6 @@ else
         }
 
         _treasuryFilters.PageSize = PageSizes.GetComponentSize<Craft>();
-        _treasuryFilters.ShouldCache = true;
         _isBusy = true;
 
         try
@@ -288,7 +286,6 @@ else
         }
         finally
         {
-            _treasuryFilters.ShouldCache = false;
             _isBusy = false;
         }
     }
@@ -382,8 +379,8 @@ else
     private async Task<Deck?> FetchDeckOrRedirectAsync(
         CardDbContext dbContext, string userId, CancellationToken cancel)
     {
-        var deck = await Cache
-            .GetOrCreateAsync($"{nameof(Craft)}deck{DeckId}{userId}", GetDeckAsync);
+        var deck = await DeckForCrafting(dbContext, DeckId, userId)
+            .SingleOrDefaultAsync(cancel);
 
         if (deck is null || deck.OwnerId != userId)
         {
@@ -399,36 +396,33 @@ else
             return null;
         }
 
-        if (HasConflictingCards(dbContext, deck, _cards))
-        {
-            return await GetDeckAsync();
-        }
-
         _cards.UnionWith( DeckCards(deck) );
-
         dbContext.Decks.Attach(deck);
 
         return deck;
+    }
 
-        Task<Deck?> GetDeckAsync() =>
-            dbContext.Decks
-                .Where(d => d.Id == DeckId && d.OwnerId == userId)
 
-                .Include(d => d.Cards) // unbounded: keep eye on
-                    .ThenInclude(a => a.Card)
+    private static IQueryable<Deck> DeckForCrafting(
+        CardDbContext dbContext, int deckId, string userId)
+    {
+        return dbContext.Decks
+            .Where(d => d.Id == deckId && d.OwnerId == userId)
 
-                .Include(d => d.Wants) // unbounded: keep eye on
-                    .ThenInclude(a => a.Card)
+            .Include(d => d.Cards) // unbounded: keep eye on
+                .ThenInclude(a => a.Card)
 
-                .Include(d => d.GiveBacks) // unbounded: keep eye on
-                    .ThenInclude(a => a.Card)
+            .Include(d => d.Wants) // unbounded: keep eye on
+                .ThenInclude(a => a.Card)
 
-                .Include(d => d.TradesTo
-                    .OrderBy(t => t.Id)
-                    .Take(1))
+            .Include(d => d.GiveBacks) // unbounded: keep eye on
+                .ThenInclude(a => a.Card)
 
-                .AsSplitQuery()
-                .SingleOrDefaultAsync(cancel);
+            .Include(d => d.TradesTo
+                .OrderBy(t => t.Id)
+                .Take(1))
+
+            .AsSplitQuery();
     }
 
 
@@ -463,16 +457,15 @@ else
     private async Task<Deck> CreateDeckAsync(
         CardDbContext dbContext, string userId, CancellationToken cancel)
     {
-        var user = await Cache
-            .GetOrCreateAsync($"{nameof(Craft)}user{userId}", GetUserAsync);
+        var user = await dbContext.Users.FindAsync(new []{ userId }, cancel);
 
         if (user == null)
         {
             throw new ArgumentException(nameof(userId));
         }
 
-        var userDeckCount = await Cache
-            .GetOrCreateAsync($"{nameof(Craft)}count{userId}", GetDeckCountAsync);
+        var userDeckCount = await dbContext.Decks
+            .CountAsync(d => d.OwnerId == userId, cancel);
 
         var newLoc = new Deck
         {
@@ -483,16 +476,6 @@ else
         dbContext.Decks.Attach(newLoc);
 
         return newLoc;
-
-        Task<UserRef?> GetUserAsync() =>
-            dbContext.Users
-                .FindAsync(new []{ userId }, cancel)
-                .AsTask();
-
-        Task<int> GetDeckCountAsync() =>
-            dbContext.Decks
-                .Where(d => d.OwnerId == userId)
-                .CountAsync(cancel);
     }
 
 
@@ -573,14 +556,12 @@ else
         public IEnumerable<QuantityGroup> ActiveCards() =>
             Groups.Values.Where(qg => qg.Total > 0);
 
-        
         public Data.Pages Pages()
         {
             int totalActive = ActiveCards().Count();
 
             return new Data.Pages(PageIndex, totalActive, PageSize);
         }
-
 
         public bool IsModified(Quantity quantity)
         {
@@ -610,8 +591,6 @@ else
         public int PageIndex { get; set; }
 
         public string? SearchName { get; set; }
-
-        public bool ShouldCache { get; set; }
     }
 
 
@@ -623,54 +602,16 @@ else
             return;
         }
 
-        Dictionary<string, int> boxAmounts;
-
-        if (filters.ShouldCache)
-        {
-            _filteredTreasury = await Cache
-                .GetOrCreateAsync($"{nameof(Craft)}{nameof(_cards)}", () =>
-                    FilteredCardsAsync(dbContext, filters, cancel));
-
-            boxAmounts = await Cache
-                .GetOrCreateAsync($"{nameof(Craft)}{nameof(_boxAmounts)}", () =>
-                    BoxAmountsAsync(dbContext, _filteredTreasury, cancel));
-        }
-        else
-        {
-            _filteredTreasury = await FilteredCardsAsync(dbContext, filters, cancel);
-            boxAmounts = await BoxAmountsAsync(dbContext, _filteredTreasury, cancel);
-        }
-
-        bool conflicting = HasConflictingCards(filters.ShouldCache, _cards, _filteredTreasury);
-        if (conflicting)
-        {
-            _filteredTreasury = await FilteredCardsAsync(dbContext, filters, cancel);
-        }
+        _filteredTreasury = await FilteredCardsAsync(dbContext, filters, cancel);
 
         _cards.UnionWith(_filteredTreasury);
+
+        var boxAmounts = await BoxAmountsAsync(dbContext, _filteredTreasury, cancel);
 
         foreach ((string cardId, int total) in boxAmounts)
         {
             _boxAmounts[cardId] = total;
         }
-    }
-
-
-    private static bool HasConflictingCards(
-        bool cached,
-        IEnumerable<Card> cardsA, 
-        IEnumerable<Card> cardB)
-    {
-        if (!cached)
-        {
-            return false;
-        }
-
-        return cardsA
-            .Join(cardB,
-                c => c.Id, c => c.Id,
-                (a, b) => (a, b))
-            .Any(ab => ab.a != ab.b);
     }
 
 
@@ -681,14 +622,14 @@ else
     {
         var cards = dbContext.Cards.AsQueryable();
 
-        var searchName = filters.SearchName?.ToLower();
+        var searchName = filters.SearchName;
         var pickedColors = filters.PickedColors;
 
         if (!string.IsNullOrWhiteSpace(searchName))
         {
             cards = cards
                 .Where(c => c.Name.ToLower()
-                    .Contains(searchName));
+                    .Contains(searchName.ToLower()));
         }
 
         if (pickedColors.Any())

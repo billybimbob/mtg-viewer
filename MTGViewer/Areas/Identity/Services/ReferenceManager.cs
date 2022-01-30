@@ -5,33 +5,25 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 using MTGViewer.Data;
-using MTGViewer.Services;
 using MTGViewer.Areas.Identity.Data;
 
 namespace MTGViewer.Areas.Identity.Services;
 
 public class ReferenceManager
 {
-    private readonly IDbContextFactory<CardDbContext> _dbFactory;
-    private readonly TreasuryHandler _treasuryHandler;
+    private readonly CardDbContext _dbContext;
     private readonly ILogger<ReferenceManager> _logger;
 
-    public ReferenceManager(
-        IDbContextFactory<CardDbContext> dbFactory, 
-        TreasuryHandler treasuryHandler,
-        ILogger<ReferenceManager> logger)
+    public ReferenceManager(CardDbContext dbContext, ILogger<ReferenceManager> logger)
     {
-        _dbFactory = dbFactory;
-        _treasuryHandler = treasuryHandler;
+        _dbContext = dbContext;
         _logger = logger;
     }
 
 
     public async Task<bool> CreateReferenceAsync(CardUser user, CancellationToken cancel = default)
     {
-        await using var dbContext = await _dbFactory.CreateDbContextAsync(cancel);
-
-        var reference = await dbContext.Users
+        var reference = await _dbContext.Users
             .AsNoTracking()
             .SingleOrDefaultAsync(u => u.Id == user.Id, cancel);
 
@@ -42,9 +34,9 @@ public class ReferenceManager
 
         try
         {
-            dbContext.Users.Add(new UserRef(user));
+            _dbContext.Users.Add(new UserRef(user));
 
-            await dbContext.SaveChangesAsync(cancel);
+            await _dbContext.SaveChangesAsync(cancel);
 
             return true;
         }
@@ -57,9 +49,7 @@ public class ReferenceManager
 
     public async Task<bool> UpdateReferenceAsync(CardUser user, CancellationToken cancel = default)
     {
-        await using var dbContext = await _dbFactory.CreateDbContextAsync(cancel);
-
-        var reference = await dbContext.Users
+        var reference = await _dbContext.Users
             .SingleOrDefaultAsync(u => u.Id == user.Id, cancel);
 
         if (reference is null)
@@ -76,7 +66,7 @@ public class ReferenceManager
         {
             reference.Name = user.DisplayName;
 
-            await dbContext.SaveChangesAsync(cancel);
+            await _dbContext.SaveChangesAsync(cancel);
 
             return true;
         }
@@ -91,9 +81,7 @@ public class ReferenceManager
 
     public async Task<bool> DeleteReferenceAsync(CardUser user, CancellationToken cancel = default)
     {
-        await using var dbContext = await _dbFactory.CreateDbContextAsync(cancel);
-
-        var reference = await dbContext.Users
+        var reference = await _dbContext.Users
             .SingleOrDefaultAsync(u => u.Id == user.Id, cancel);
 
         if (reference is null)
@@ -103,9 +91,9 @@ public class ReferenceManager
 
         try
         {
-            await ReturnUserDecksAsync(dbContext, reference, cancel);
+            await ReturnUserDecksAsync(reference, cancel);
 
-            await dbContext.SaveChangesAsync(cancel);
+            await _dbContext.SaveChangesAsync(cancel);
 
             return true;
         }
@@ -118,10 +106,9 @@ public class ReferenceManager
     }
 
 
-    private async Task ReturnUserDecksAsync(
-        CardDbContext dbContext, UserRef reference, CancellationToken cancel)
+    private async Task ReturnUserDecksAsync(UserRef reference, CancellationToken cancel)
     {
-        var userDecks = await dbContext.Decks
+        var userDecks = await _dbContext.Decks
             .Where(d => d.OwnerId == reference.Id)
             .Include(d => d.Cards)
             .ToListAsync(cancel);
@@ -135,15 +122,15 @@ public class ReferenceManager
             .SelectMany(d => d.Cards)
             .ToList();
 
-        dbContext.Amounts.RemoveRange(userCards);
-        dbContext.Decks.RemoveRange(userDecks);
-        dbContext.Users.Remove(reference);
+        _dbContext.Amounts.RemoveRange(userCards);
+        _dbContext.Decks.RemoveRange(userDecks);
+        _dbContext.Users.Remove(reference);
 
         var returnRequests = userCards
             .GroupBy(a => a.Card,
                 (card, amounts) => 
                     new CardRequest(card, amounts.Sum(a => a.NumCopies)) );
 
-        await _treasuryHandler.AddAsync(dbContext, returnRequests, cancel);
+        await _dbContext.AddCardsAsync(returnRequests, cancel);
     }
 }

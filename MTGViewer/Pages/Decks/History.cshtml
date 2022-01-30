@@ -25,6 +25,17 @@
                         <th scope="col"></th>
                     </tr>
                 </thead>
+                @if (!Model.Transfers.Any())
+                {
+                    <tr>
+                        <td> -- </td>
+                        <td> -- </td>
+                        <td> -- </td>
+                        <td> -- </td>
+                        <td> -- </td>
+                        <td> -- </td>
+                    </tr>
+                }
                 <tbody>
                     @foreach (var transfer in Model.Transfers)
                     {
@@ -76,7 +87,7 @@
                                         break;
 
                                     case Box box when box.IsExcess:
-                                        <a asp-page="/Treasury/Excess" asp-route-id="@to.Id"> @to.Name </a>
+                                        <a asp-page="/Treasury/Excess"> @to.Name </a>
                                         break;
 
                                     case Box:

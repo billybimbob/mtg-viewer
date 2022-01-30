@@ -114,6 +114,19 @@ public class Box : Location
         get => Capacity == 0;
         private set { }
     }
+
+    public static Box CreateExcess()
+    {
+        return new Box
+        {
+            Name = "Excess",
+            Capacity = 0,
+            Bin = new Bin
+            {
+                Name = "Excess"
+            }
+        };
+    }
 }
 
 

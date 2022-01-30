@@ -9,7 +9,6 @@ using Microsoft.EntityFrameworkCore;
 
 using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
-using MTGViewer.Services;
 using MTGViewer.Pages.Transfers;
 using MTGViewer.Tests.Utils;
 
@@ -17,22 +16,21 @@ namespace MTGViewer.Tests.Pages.Transfers;
 
 public class SuggestTests : IAsyncLifetime
 {
+    private readonly SuggestUserModel _suggestUserModel;
     private readonly CardDbContext _dbContext;
     private readonly UserManager<CardUser> _userManager;
     private readonly TestDataGenerator _testGen;
 
-    private readonly SuggestUserModel _suggestUserModel;
-
     public SuggestTests(
+        SuggestUserModel suggestUserModel,
         CardDbContext dbContext,
         UserManager<CardUser> userManager,
         TestDataGenerator testGen)
     {
+        _suggestUserModel = suggestUserModel;
         _dbContext = dbContext;
         _userManager = userManager;
         _testGen = testGen;
-
-        _suggestUserModel = new(dbContext, userManager);
     }
 
 

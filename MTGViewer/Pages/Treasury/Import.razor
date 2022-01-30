@@ -33,7 +33,7 @@
             The .csv file format expects for a header with the format: <code>Name,MultiverseID,Quantity</code>.
         </p>
         <p>
-            The uploading process may take a long time complete.
+            The uploading process may take a long to time complete.
         </p>
     </section>
 </div>
@@ -42,7 +42,8 @@
     <section class="col col-md-5">
         <form @onsubmit="UploadAsync">
             <div class="form-group">
-                <label for="import-file" class="sr-only">Card Data</label>
+
+                <label for="import-file">Card Data</label>
 
                 <InputFile OnChange="FileChosen"
                     accept=".json,application/json,text/csv"
@@ -54,14 +55,20 @@
                 }
             </div>
 
-            <button title="Upload Card Data" class="btn btn-secondary"
-                type="submit" disabled="@(IsBusy || HasNoFile)">
-                @if (IsBusy)
-                {
-                    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"> </span>
-                }
-                Upload
-            </button>
+            <div class="btn-group" role="group">
+                <button title="Cancel Upload" class="btn btn-danger" type="button" 
+                    @onclick="CancelUpload" disabled="@(!IsBusy || HasNoFile)">
+                    Cancel
+                </button>
+                <button title="Upload Card Data" class="btn btn-secondary"
+                    type="submit" disabled="@(IsBusy || HasNoFile)">
+                    @if (IsBusy)
+                    {
+                        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"> </span>
+                    }
+                    Upload
+                </button>
+            </div>
         </form>
     </section>
 </div>
@@ -75,8 +82,9 @@
 
     private const long _2_MB = 2_097_152;
     
-    private readonly CancellationTokenSource _cancel = new();
+    private CancellationTokenSource? _cancel = new();
 
+    private bool _isCancelRaised;
     private bool _isBusy;
     private SaveResult _result;
     private string _fileError = string.Empty;
@@ -87,8 +95,9 @@
     {
         if (disposing)
         {
-            _cancel.Cancel();
-            _cancel.Dispose();
+            _cancel?.Cancel();
+            _cancel?.Dispose();
+            _cancel = null;
         }
 
         base.Dispose(disposing);
@@ -116,6 +125,7 @@
 
         if (content != ".json" 
             && content != "application/json"
+            && content != "application/vnd.ms-excel"
             && content != "text/csv")
         {
             _fileError = "File is not the correct type";
@@ -140,6 +150,11 @@
             return;
         }
 
+        if (_cancel?.Token is not CancellationToken cancelToken)
+        {
+            return;
+        }
+
         _isBusy = true;
         _result = SaveResult.None;
 
@@ -147,16 +162,16 @@
         {
             var fileStorage = ScopedServices.GetRequiredService<FileCardStorage>();
 
-            await using var fileStream = _chosenImport.OpenReadStream(_2_MB, _cancel.Token);
+            await using var fileStream = _chosenImport.OpenReadStream(_2_MB, cancelToken);
 
             switch (Path.GetExtension(_chosenImport.Name).ToLowerInvariant())
             {
                 case ".json":
-                    await fileStorage.JsonAddAsync(fileStream, _cancel.Token);
+                    await fileStorage.JsonAddAsync(fileStream, cancelToken);
                     break;
 
                 case ".csv":
-                    await fileStorage.CsvAddAsync(fileStream, _cancel.Token);
+                    await fileStorage.CsvAddAsync(fileStream, cancelToken);
                     break;
             }
 
@@ -170,7 +185,26 @@
         }
         finally
         {
+            _isCancelRaised = false;
             _isBusy = false;
         }
+    }
+
+
+    public void CancelUpload()
+    {
+        if (!_isBusy
+            || HasNoFile 
+            || _isCancelRaised
+            || _cancel is null)
+        {
+            return;
+        }
+
+        _cancel.Cancel();
+        _cancel.Dispose();
+        _cancel = new();
+
+        _isCancelRaised = true;
     }
 }

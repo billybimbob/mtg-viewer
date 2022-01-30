@@ -23,7 +23,6 @@ namespace MTGViewer.Pages.Decks;
 public class ExchangeModel : PageModel
 {
     private readonly CardDbContext _dbContext;
-    private readonly TreasuryHandler _treasuryHandler;
     private readonly UserManager<CardUser> _userManager;
 
     private readonly CardText _cardText;
@@ -31,13 +30,11 @@ public class ExchangeModel : PageModel
 
     public ExchangeModel(
         CardDbContext dbContext,
-        TreasuryHandler treasuryHandler,
         UserManager<CardUser> userManager,
         CardText cardText,
         ILogger<ExchangeModel> logger)
     {
         _dbContext = dbContext;
-        _treasuryHandler = treasuryHandler;
         _userManager = userManager;
 
         _cardText = cardText;
@@ -197,7 +194,7 @@ public class ExchangeModel : PageModel
             return;
         }
 
-        await _treasuryHandler.ExchangeAsync(_dbContext, deck, cancel);
+        await _dbContext.ExchangeAsync(deck, cancel);
 
         var emptyTrades = deck.Cards
             .Where(a => a.NumCopies == 0)

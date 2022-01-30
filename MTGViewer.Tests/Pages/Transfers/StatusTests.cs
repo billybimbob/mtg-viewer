@@ -17,23 +17,23 @@ namespace MTGViewer.Tests.Pages.Transfers;
 
 public class StatusTests : IAsyncLifetime
 {
+    private readonly StatusModel _statusModel;
     private readonly CardDbContext _dbContext;
     private readonly UserManager<CardUser> _userManager;
-    private readonly TestDataGenerator _testGen;
 
-    private readonly StatusModel _statusModel;
+    private readonly TestDataGenerator _testGen;
     private TradeSet _trades = null!;
 
     public StatusTests(
+        StatusModel statusModel,
         CardDbContext dbContext,
         UserManager<CardUser> userManager,
         TestDataGenerator testGen)
     {
+        _statusModel = statusModel;
         _dbContext = dbContext;
         _userManager = userManager;
         _testGen = testGen;
-
-        _statusModel = new(_userManager, _dbContext);
     }
 
 

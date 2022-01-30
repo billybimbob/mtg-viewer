@@ -41,6 +41,16 @@
         </thead>
 
         <tbody>
+            @if (!Model.NameGroups.Any())
+            {
+                <tr>
+                    <td> -- </td>
+                    <td> -- </td>
+                    <td> -- </td>
+                    <td> -- </td>
+                    <td> -- </td>
+                </tr>
+            }
             @foreach (var nameGroup in Model.NameGroups)
             {
                 var card = nameGroup.Cards.First();

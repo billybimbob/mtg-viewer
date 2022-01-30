@@ -4,7 +4,7 @@ using System.Linq;
 using Microsoft.EntityFrameworkCore;
 using MTGViewer.Data;
 
-namespace MTGViewer.Services.Internal;
+namespace MTGViewer.Data.Internal;
 
 internal sealed class BoxSearcher
 {

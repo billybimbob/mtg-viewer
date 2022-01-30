@@ -14,7 +14,6 @@ using Microsoft.Extensions.Logging;
 
 using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
-using MTGViewer.Services;
 
 namespace MTGViewer.Pages.Decks;
 
@@ -23,19 +22,16 @@ public class DeleteModel : PageModel
 {
     private readonly UserManager<CardUser> _userManager;
     private readonly CardDbContext _dbContext;
-    private readonly TreasuryHandler _treasuryHandler;
 
     private readonly ILogger<DeleteModel> _logger;
 
     public DeleteModel(
         UserManager<CardUser> userManager,
         CardDbContext dbContext,
-        TreasuryHandler treasuryHandler,
         ILogger<DeleteModel> logger)
     {
         _userManager = userManager;
         _dbContext = dbContext;
-        _treasuryHandler = treasuryHandler;
         _logger = logger;
     }
 
@@ -147,7 +143,7 @@ public class DeleteModel : PageModel
                 .Select(a => new CardRequest(a.Card, a.NumCopies));
 
             // just add since deck is being deleted
-            await _treasuryHandler.AddAsync(_dbContext, returningCards, cancel);
+            await _dbContext.AddCardsAsync(returningCards, cancel);
         }
 
         _dbContext.Decks.Remove(deck);

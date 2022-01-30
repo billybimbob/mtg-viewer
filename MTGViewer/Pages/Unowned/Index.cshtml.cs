@@ -22,10 +22,12 @@ namespace MTGViewer.Pages.Unowned;
 [Authorize]
 public class IndexModel : PageModel
 {
-    private int _pageSize;
+    private readonly int _pageSize;
     private readonly CardDbContext _dbContext;
+
     private readonly SignInManager<CardUser> _signInManager;
     private readonly UserManager<CardUser> _userManager;
+
     private readonly ILogger<IndexModel> _logger;
 
     public IndexModel(
@@ -35,8 +37,8 @@ public class IndexModel : PageModel
         UserManager<CardUser> userManager,
         ILogger<IndexModel> logger)
     {
-        _dbContext = dbContext;
         _pageSize = pageSizes.GetPageModelSize<IndexModel>();
+        _dbContext = dbContext;
 
         _signInManager = signInManager;
         _userManager = userManager;
@@ -87,9 +89,8 @@ public class IndexModel : PageModel
             return null;
         }
 
-        var position = await _dbContext.Unclaimed
-            .Where(u => u.Name.CompareTo(name) < 0)
-            .CountAsync(cancel);
+        int position = await _dbContext.Unclaimed
+            .CountAsync(u => u.Name.CompareTo(name) < 0, cancel);
 
         return position / _pageSize;
     }
@@ -203,6 +204,7 @@ public class IndexModel : PageModel
 
         var unclaimed = await _dbContext.Unclaimed
             .Include(u => u.Cards)
+                .ThenInclude(a => a.Card)
             .Include(u => u.Wants)
             .AsSplitQuery()
             .SingleOrDefaultAsync(u => u.Id == id, cancel);
@@ -212,8 +214,13 @@ public class IndexModel : PageModel
             return NotFound();
         }
 
+        var cardReturns = unclaimed.Cards
+            .Select(a => new CardRequest(a.Card, a.NumCopies));
+
         _dbContext.Amounts.RemoveRange(unclaimed.Cards);
         _dbContext.Unclaimed.Remove(unclaimed);
+
+        await _dbContext.AddCardsAsync(cardReturns, cancel);
 
         try
         {

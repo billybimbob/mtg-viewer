@@ -1,7 +1,4 @@
-using System;
-using System.Collections.Generic;
 using System.Linq;
-using System.Linq.Expressions;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -25,15 +22,17 @@ public class ExcessModel : PageModel
         _dbContext = dbContext;
     }
 
+
     public PagedList<Card> Cards { get; private set; } = PagedList<Card>.Empty;
 
     public bool HasExcess => Cards.Pages.Total > 0;
 
-    public async Task<IActionResult> OnGetAsync(int? id, int pageIndex, CancellationToken cancel)
+
+    public async Task<IActionResult> OnGetAsync(string? cardId, int pageIndex, CancellationToken cancel)
     {
-        if (await GetExcessPageAsync(id, cancel) is int boxPage)
+        if (await GetExcessPageAsync(cardId, cancel) is int cardPage)
         {
-            return RedirectToPage(new { pageIndex = boxPage });
+            return RedirectToPage(new { pageIndex = cardPage });
         }
 
         Cards = await ExcessCards()
@@ -43,23 +42,25 @@ public class ExcessModel : PageModel
     }
 
 
-    private async Task<int?> GetExcessPageAsync(int? id, CancellationToken cancel)
+    private async Task<int?> GetExcessPageAsync(string? cardId, CancellationToken cancel)
     {
-        if (id is not int boxId)
+        if (cardId is null)
         {
             return null;
         }
 
-        bool exists = await _dbContext.Boxes
-            .AnyAsync(b => b.Id == boxId && b.IsExcess, cancel);
+        var cardName = await ExcessCards()
+            .Where(c => c.Id == cardId)
+            .Select(c => c.Name)
+            .FirstOrDefaultAsync(cancel);
 
-        if (!exists)
+        if (cardName is null)
         {
             return null;
         }
 
-        int position = await _dbContext.Boxes
-            .CountAsync(b => b.Id < boxId && b.IsExcess, cancel);
+        int position = await ExcessCards()
+            .CountAsync(c => c.Name.CompareTo(cardName) < 0, cancel);
 
         return position / _pageSize;
     }

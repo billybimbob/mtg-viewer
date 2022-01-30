@@ -51,6 +51,8 @@ public class DetailsModel : PageModel
             return NotFound();
         }
 
+        MergeExcessAmounts(card);
+
         Card = card;
 
         CardAlts = await _dbContext.Cards
@@ -60,5 +62,38 @@ public class DetailsModel : PageModel
             .ToListAsync(cancel);
 
         return Page();
+    }
+
+
+    private void MergeExcessAmounts(Card card)
+    {
+        var excessAmounts = card.Amounts
+            .Where(a => a.Location is Box
+                && (a.Location as Box)!.IsExcess);
+
+        if (!excessAmounts.Any())
+        {
+            return;
+        }
+
+        var mergedExcess = new Amount
+        {
+            Card = card,
+            Location = Box.CreateExcess(),
+            NumCopies = 0
+        };
+
+        foreach (var excess in excessAmounts)
+        {
+            mergedExcess.NumCopies += excess.NumCopies;
+        }
+
+        var mergedAmounts = card.Amounts
+            .Except(excessAmounts)
+            .Prepend(mergedExcess)
+            .ToList();
+
+        card.Amounts.Clear();
+        card.Amounts.AddRange(mergedAmounts);
     }
 }

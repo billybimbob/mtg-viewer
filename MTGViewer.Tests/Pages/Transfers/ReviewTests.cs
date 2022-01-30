@@ -17,23 +17,23 @@ namespace MTGViewer.Tests.Pages.Transfers;
 
 public class ReviewTests : IAsyncLifetime
 {
+    private readonly ReviewModel _reviewModel;
     private readonly CardDbContext _dbContext;
     private readonly UserManager<CardUser> _userManager;
-    private readonly TestDataGenerator _testGen;
 
-    private readonly ReviewModel _reviewModel;
+    private readonly TestDataGenerator _testGen;
     private TradeSet _trades = null!;
 
     public ReviewTests(
+        ReviewModel reviewModel,
         CardDbContext dbContext,
         UserManager<CardUser> userManager,
         TestDataGenerator testGen)
     {
+        _reviewModel = reviewModel;
         _dbContext = dbContext;
         _userManager = userManager;
         _testGen = testGen;
-
-        _reviewModel = new(_dbContext, _userManager);
     }
 
 

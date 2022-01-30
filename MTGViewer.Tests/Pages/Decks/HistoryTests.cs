@@ -3,17 +3,13 @@ using System.Threading.Tasks;
 
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Identity;
-
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 
-using Moq;
 using Xunit;
 
 using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
 using MTGViewer.Pages.Decks;
-using MTGViewer.Services;
 using MTGViewer.Tests.Utils;
 
 namespace MTGViewer.Tests.Pages.Decks;
@@ -21,26 +17,24 @@ namespace MTGViewer.Tests.Pages.Decks;
 
 public class HistoryTests : IAsyncLifetime
 {
+    private readonly HistoryModel _historyModel;
     private readonly CardDbContext _dbContext;
     private readonly UserManager<CardUser> _userManager;
-    private readonly TestDataGenerator _testGen;
 
-    private readonly HistoryModel _historyModel;
+    private readonly TestDataGenerator _testGen;
     private Transaction _transaction = null!;
 
+
     public HistoryTests(
-        PageSizes pageSizes,
+        HistoryModel historyModel,
         CardDbContext dbContext,
         UserManager<CardUser> userManager,
         TestDataGenerator testGen)
     {
+        _historyModel = historyModel;
         _dbContext = dbContext;
         _userManager = userManager;
         _testGen = testGen;
-
-        var logger = Mock.Of<ILogger<HistoryModel>>();
-        
-        _historyModel = new(pageSizes, _dbContext, _userManager, logger);
     }
 
 

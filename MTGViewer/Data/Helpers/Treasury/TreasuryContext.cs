@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using MTGViewer.Data;
 
-namespace MTGViewer.Services.Internal;
+namespace MTGViewer.Data.Internal;
 
 internal sealed class TreasuryContext
 {

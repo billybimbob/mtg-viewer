@@ -3,46 +3,46 @@ using System.Collections.Generic;
 using System.Linq;
 using MTGViewer.Data;
 
-namespace MTGViewer.Services.Internal;
+namespace MTGViewer.Data.Internal;
 
 
-readonly record struct BoxAssignment<TSource>(TSource Source, int NumCopies, Box Box);
+internal readonly record struct BoxAssignment<TSource>(TSource Source, int NumCopies, Box Box);
 
 
-enum AddScheme
+internal enum AddScheme
 {
     Exact,
     Approximate,
     Guess
 }
 
-enum TakeScheme
+internal enum TakeScheme
 {
     Exact,
     Approximate
 }
 
-enum ReturnScheme
+internal enum ReturnScheme
 {
     Exact,
     Approximate,
     Guess
 }
 
-enum ExcessScheme
+internal enum ExcessScheme
 {
     Exact,
     Approximate,
 }
 
-enum OverflowScheme
+internal enum OverflowScheme
 {
     Exact,
     Approximate
 }
 
 
-static class AssignmentExtensions
+internal static class AssignmentExtensions
 {
     internal static IEnumerable<BoxAssignment<CardRequest>> AddAssignment(
         this TreasuryContext treasuryContext,

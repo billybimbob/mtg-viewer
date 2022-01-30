@@ -16,12 +16,10 @@ namespace MTGViewer.Pages.Treasury;
 public class DeleteModel : PageModel
 {
     private readonly CardDbContext _dbContext; 
-    private readonly TreasuryHandler _treasuryHandler;
 
-    public DeleteModel(CardDbContext dbContext, TreasuryHandler treasuryHandler)
+    public DeleteModel(CardDbContext dbContext)
     {
         _dbContext = dbContext;
-        _treasuryHandler = treasuryHandler;
     }
 
     [TempData]
@@ -86,7 +84,7 @@ public class DeleteModel : PageModel
         var cardReturns = box.Cards
             .Select(a => new CardRequest(a.Card, a.NumCopies));
 
-        await _treasuryHandler.AddAsync(_dbContext, cardReturns, cancel);
+        await _dbContext.AddCardsAsync(cardReturns, cancel);
 
         try
         {

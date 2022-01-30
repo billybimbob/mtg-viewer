@@ -14,29 +14,26 @@
 <h1>Treasury</h1>
 
 <div class="row mb-3">
-    <div class="col-auto btn-group pr-0" role="group" aria-label="Treasury Main Actions">
-        @if (SignInManager.IsSignedIn(User))
-        {
+    @if (SignInManager.IsSignedIn(User))
+    {
+        <div class="col-auto btn-group px-1" role="group" aria-label="Treasury Backup">
             <a href="/Treasury/Adjust" class="btn btn-secondary" role="button"> Add Box </a>
-        }
-
+            <a href="/Treasury/Import" class="btn btn-secondary" role="button"> Import </a>
+            <a asp-page="Export" class="btn btn-secondary" role="button"> Export </a>
+        </div>
+    }
+    <div class="col-auto btn-group px-1" role="group" aria-label="Treasury Miscellaneous">
         <a asp-page="History" class="btn btn-secondary" role="button"> History </a>
 
         @if (Model.HasExcess)
         {
             <a asp-page="Excess" class="btn btn-secondary" role="button"> Excess </a>
         }
-    </div>
-
-    @if (SignInManager.IsSignedIn(User))
-    {
-        <div class="col-auto btn-group" role="group" aria-label="Treasury Miscellaneous Actions">
+        @if (Model.HasUnclaimed)
+        {
             <a asp-page="/Unowned/Index" class="btn btn-secondary" role="button"> Unclaimed Decks </a>
-
-            <a href="/Treasury/Import" class="btn btn-secondary" role="button"> Import </a>
-            <a asp-page="Export" class="btn btn-secondary" role="button"> Export </a>
-        </div>
-    }
+        }
+    </div>
 </div>
 
 @if (!Model.Bins.Any())

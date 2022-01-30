@@ -2,7 +2,6 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.UI.Services;
 
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
@@ -33,6 +32,8 @@ public class Startup
     {
         var config = context.Configuration;
         var provider = config.GetValue("Provider", "InMemory");
+        
+        services.AddRazorPageModels();
 
         services
             .AddScoped<InMemoryConnection>()
@@ -58,7 +59,6 @@ public class Startup
             // used scoped so that the db referenced is the locally scoped one
             provider.GetRequiredService<CardDbContext>(), ServiceLifetime.Scoped);
 
-        services.AddSingleton<TreasuryHandler>();
         services.AddSingleton<PageSizes>();
 
         services
@@ -83,6 +83,8 @@ public class Startup
                 .GetCardService());
 
         services.AddScoped<MTGFetchService>();
+
+        services.AddScoped<BulkOperations>();
         services.AddScoped<FileCardStorage>();
 
         services

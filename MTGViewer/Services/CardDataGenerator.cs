@@ -4,10 +4,10 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
-using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
 using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
+using MTGViewer.Services.Internal;
 
 namespace MTGViewer.Services;
 
@@ -22,29 +22,21 @@ internal class SeedSettings
 public class CardDataGenerator
 {
     private readonly Random _random;
-    private readonly string _seedPassword;
-
     private readonly MTGFetchService _fetch;
+    private readonly BulkOperations _bulkOperations;
 
-    private readonly CardDbContext _dbContext;
-    private readonly UserManager<CardUser> _userManager;
 
     public CardDataGenerator(
         IConfiguration config,
         MTGFetchService fetchService,
-        CardDbContext dbContext,
-        UserManager<CardUser> userManager)
+        BulkOperations bulkOperations)
     {
         var seed = new SeedSettings();
         config.GetSection(nameof(SeedSettings)).Bind(seed);
 
         _random = new(seed.Value);
-        _seedPassword = seed.Password;
-
         _fetch = fetchService;
-
-        _dbContext = dbContext;
-        _userManager = userManager;
+        _bulkOperations = bulkOperations;
     }
 
 
@@ -55,33 +47,28 @@ public class CardDataGenerator
 
         var cards = await GetCardsAsync(_fetch, cancel);
         var decks = GetDecks(userRefs);
-        var boxes = GetBoxes();
+        var bin = GetBin();
 
-        var boxAmounts = GetBoxAmounts(cards, boxes);
-        var deckAmounts = GetDeckAmounts(cards, decks);
+        AddBoxAmounts(cards, bin);
+        AddDeckAmounts(cards, decks);
 
-        var trades = GetTrades(userRefs, cards, decks, deckAmounts);
-        var suggestions = GetSuggestions(userRefs, cards, decks, deckAmounts);
+        var suggestions = GetSuggestions(userRefs, cards, decks);
+        var trades = GetTrades(userRefs, cards, decks);
 
-        _dbContext.Users.AddRange(userRefs);
-        _dbContext.Cards.AddRange(cards);
-
-        _dbContext.Decks.AddRange(decks);
-        _dbContext.Boxes.AddRange(boxes);
-
-        _dbContext.Amounts.AddRange(deckAmounts);
-        _dbContext.Amounts.AddRange(boxAmounts);
-
-        _dbContext.Suggestions.AddRange(suggestions);
-        _dbContext.Trades.AddRange(trades);
-
-        await _dbContext.SaveChangesAsync(cancel);
-
-        foreach (var user in users)
+        var data = new CardData
         {
-            // TODO: fix created accounts not being verified
-            await RegisterUserAsync(user, cancel);
-        }
+            Users = users,
+            Refs = userRefs,
+
+            Cards = cards,
+            Decks = decks,
+            Bins = new[] { bin },
+
+            Suggestions = suggestions,
+            Trades = trades
+        };
+
+        await _bulkOperations.SeedAsync(data, cancel);
     }
 
 
@@ -92,6 +79,7 @@ public class CardDataGenerator
             DisplayName = "Test Name",
             UserName = "test@gmail.com",
             Email = "test@gmail.com",
+            IsApproved = true,
             EmailConfirmed = true
         },
         new CardUser
@@ -99,6 +87,7 @@ public class CardDataGenerator
             DisplayName = "Bob Billy",
             UserName = "bob@gmail.com",
             Email = "bob@gmail.com",
+            IsApproved = true,
             EmailConfirmed = true
         },
         new CardUser
@@ -106,6 +95,7 @@ public class CardDataGenerator
             DisplayName = "Steve Phil",
             UserName = "steve@gmail.com",
             Email = "steve@gmail.com",
+            IsApproved = true,
             EmailConfirmed = true
         }
     };
@@ -124,20 +114,19 @@ public class CardDataGenerator
     }
 
 
-    private IReadOnlyList<Box> GetBoxes()
+    private Bin GetBin() => new Bin
     {
         // just use same bin for now
-        var bin = new Bin { Name = "Bin #1" };
-
-        return Enumerable.Range(0, 3)
+        Name = "Bin #1",
+        Boxes = Enumerable
+            .Range(0, 3)
             .Select(i => new Box
             {
-                Name = $"Box #{i+1}",
-                Bin = bin,
+                Name = $"Box #{i + 1}",
                 Capacity = _random.Next(10, 50)
             })
-            .ToList();
-    }
+            .ToList()
+    };
 
 
     private IReadOnlyList<Deck> GetDecks(IEnumerable<UserRef> users)
@@ -155,26 +144,22 @@ public class CardDataGenerator
     }
 
 
-    private IReadOnlyList<Amount> GetDeckAmounts(
-        IEnumerable<Card> cards,
-        IEnumerable<Deck> decks)
+    private void AddDeckAmounts(IEnumerable<Card> cards, IEnumerable<Deck> decks)
     {
-        return cards.Zip(decks,
-            (card, deck) => (card, deck))
-            .Select(cd => new Amount
+        foreach (var (card, deck) in cards.Zip(decks))
+        {
+            deck.Cards.Add(new Amount
             {
-                Card = cd.card,
-                Location = cd.deck,
+                Card = card,
                 NumCopies = _random.Next(6)
-            })
-            .ToList();
+            });
+        }
     }
 
 
-    private IReadOnlyList<Amount> GetBoxAmounts(
-        IEnumerable<Card> cards, IReadOnlyList<Box> boxes)
+    private void AddBoxAmounts(IEnumerable<Card> cards, Bin bin)
     {
-        var amounts = new List<Amount>();
+        var boxes = bin.Boxes;
         var boxSpace = boxes.ToDictionary(b => b, _ => 0);
 
         foreach (var card in cards)
@@ -189,35 +174,31 @@ public class CardDataGenerator
                 continue;
             }
 
-            amounts.Add(new Amount
+            box.Cards.Add(new Amount
             {
                 Card = card,
-                Location = box,
                 NumCopies = numCopies
             });
 
             boxSpace[box] = space + numCopies;
         }
-
-        return amounts;
     }
 
 
     private IReadOnlyList<Trade> GetTrades(
         IEnumerable<UserRef> users,
         IEnumerable<Card> cards,
-        IEnumerable<Deck> decks,
-        IEnumerable<Amount> amounts)
+        IEnumerable<Deck> decks)
     {
-        var source = amounts.First();
-        var tradeFrom = (Deck)source.Location;
-        var tradeTo = decks.First(d => d != source.Location);
+        var tradeFrom = decks.First();
+        var tradeTo = decks.First(d => d != tradeFrom);
+        var card = tradeFrom.Cards.First().Card;
 
         return new List<Trade>()
         {
             new Trade
             {
-                Card = source.Card,
+                Card = card,
                 To = tradeTo,
                 From = tradeFrom,
                 Amount = _random.Next(5)
@@ -229,12 +210,11 @@ public class CardDataGenerator
     private IReadOnlyList<Suggestion> GetSuggestions(
         IEnumerable<UserRef> users,
         IEnumerable<Card> cards,
-        IEnumerable<Deck> decks,
-        IEnumerable<Amount> amounts)
+        IEnumerable<Deck> decks)
     {
-        var source = amounts.First();
         var suggestCard = cards.First();
-        var tradeTo = decks.First(d => d != source.Location);
+        var source = decks.First();
+        var tradeTo = decks.First(d => d != source);
 
         return new List<Suggestion>()
         {
@@ -245,36 +225,5 @@ public class CardDataGenerator
                 To = tradeTo
             }
         };
-    }
-
-
-    private async Task<IdentityResult> RegisterUserAsync(CardUser user, CancellationToken cancel)
-    {
-        var created = _seedPassword != default
-            ? await _userManager.CreateAsync(user, _seedPassword)
-            : await _userManager.CreateAsync(user);
-        
-        cancel.ThrowIfCancellationRequested();
-
-        if (!created.Succeeded)
-        {
-            return created;
-        }
-
-        var providers = await _userManager.GetValidTwoFactorProvidersAsync(user);
-        cancel.ThrowIfCancellationRequested();
-
-        if (!providers.Any())
-        {
-            return created;
-        }
-
-        string token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
-        cancel.ThrowIfCancellationRequested();
-
-        var confirmed = await _userManager.ConfirmEmailAsync(user, token);
-        cancel.ThrowIfCancellationRequested();
-
-        return confirmed;
     }
 }

@@ -5,23 +5,13 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 
-using MTGViewer.Data;
-using MTGViewer.Services.Internal;
+using MTGViewer.Data.Internal;
 
-namespace MTGViewer.Services;
+namespace MTGViewer.Data;
 
-public class TreasuryHandler
+public static partial class TreasuryExtensions
 {
-    private readonly ILogger<TreasuryHandler> _logger;
-
-    public TreasuryHandler(ILogger<TreasuryHandler> logger)
-    {
-        _logger = logger;
-    }
-
-
     private static IQueryable<Box> OrderedBoxes(CardDbContext dbContext)
     {
         // loading all shared cards, could be memory inefficient
@@ -39,20 +29,25 @@ public class TreasuryHandler
 
     #region Add
 
-    public Task AddAsync(
-        CardDbContext dbContext, 
+    public static Task AddCardsAsync(
+        this CardDbContext dbContext, 
         Card card, 
         int numCopies,
         CancellationToken cancel = default)
     {
+        if (dbContext is null)
+        {
+            throw new ArgumentNullException(nameof(dbContext));
+        }
+
         var request = new []{ new CardRequest(card, numCopies) };
 
-        return AddAsync(dbContext, request, cancel);
+        return dbContext.AddCardsAsync(request, cancel);
     }
 
 
-    public async Task AddAsync(
-        CardDbContext dbContext,
+    public static async Task AddCardsAsync(
+        this CardDbContext dbContext,
         IEnumerable<CardRequest> adding, 
         CancellationToken cancel = default)
     {
@@ -149,8 +144,8 @@ public class TreasuryHandler
 
     #region Exchange
 
-    public async Task ExchangeAsync(
-        CardDbContext dbContext, 
+    public static async Task ExchangeAsync(
+        this CardDbContext dbContext, 
         Deck deck, 
         CancellationToken cancel = default)
     {
@@ -225,8 +220,8 @@ public class TreasuryHandler
 
     #region Update Boxes
 
-    public async Task UpdateBoxesAsync(
-        CardDbContext dbContext,
+    public static async Task UpdateBoxesAsync(
+        this CardDbContext dbContext,
         CancellationToken cancel = default)
     {
         if (dbContext is null)
@@ -234,7 +229,7 @@ public class TreasuryHandler
             throw new ArgumentNullException(nameof(dbContext));
         }
 
-        if (AreBoxesUnchanged(dbContext))
+        if (AreBoxesUnchanged(dbContext) && AreAmountsUnchanged(dbContext))
         {
             return;
         }
@@ -263,6 +258,17 @@ public class TreasuryHandler
                 || e.State is not EntityState.Added
                 && !e.Property(b => b.Capacity).IsModified);
     }
+
+
+    private static bool AreAmountsUnchanged(CardDbContext dbContext)
+    {
+        return dbContext.ChangeTracker
+            .Entries<Amount>()
+            .All(e => e.State is EntityState.Detached
+                || e.State is not EntityState.Added
+                && !e.Property(a => a.NumCopies).IsModified);
+    }
+
 
     private static void TransferOverflowCopies(TreasuryContext treasuryContext, OverflowScheme scheme)
     {
@@ -294,16 +300,8 @@ public class TreasuryHandler
     {
         if (!dbContext.Boxes.Local.Any(b => b.IsExcess))
         {
-            var excessBox = new Box
-            {
-                Name = "Excess",
-                Capacity = 0,
-                Bin = new Bin
-                {
-                    Name = "Excess"
-                }
-            };
-            
+            var excessBox = Box.CreateExcess();
+
             dbContext.Boxes.Add(excessBox);
         }
     }

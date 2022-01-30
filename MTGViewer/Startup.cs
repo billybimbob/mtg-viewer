@@ -58,7 +58,7 @@ public class Startup
 
         services.AddScoped<MTGFetchService>();
 
-        services.AddSingleton<TreasuryHandler>();
+        services.AddScoped<BulkOperations>();
         services.AddScoped<FileCardStorage>();
 
         if (_env.IsDevelopment())

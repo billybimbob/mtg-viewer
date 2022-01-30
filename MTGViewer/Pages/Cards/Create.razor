@@ -6,7 +6,6 @@
 @using MTGViewer.Data.Internal
 
 @inject IDbContextFactory<CardDbContext> DbFactory
-@inject TreasuryHandler TreasuryHandler
 
 @inject SymbolFormatter MtgSymbols
 @inject PageSizes PageSizes
@@ -121,10 +120,8 @@
                     }
 
                     <div class="form-check mt-2 ml-2">
-                        <input class="form-check-input" id="@nameof(CardSearch.IsMultiColored)" 
-                            type="checkbox" 
-                            checked="@IsMultiColored"
-                            @onchange="MultiColorSwitch" />
+                        <InputCheckbox @bind-Value="_search.IsMultiColored"
+                            class="form-check-input" id="@nameof(CardSearch.IsMultiColored)" />
 
                         <label class="form-check-label" for="@nameof(CardSearch.IsMultiColored)">
                             Multicolored Only
@@ -166,9 +163,9 @@
                             <div class="form-check form-check-inline ml-2">
 
                                 <input class="form-check-input" id="@toggleId"
-                                    type="checkbox" checked="@RaritySelected(rarity)" 
-                                    @onclick="() => RarityToggle(rarity)"
-                                    value="@rarity" />
+                                    type="checkbox" value="@rarity"
+                                    checked="@IsRaritySelected(rarity)" 
+                                    @onchange="() => RarityToggle(rarity)" />
 
                                 <label class="form-check-label" for="@toggleId"> @rarity </label>
                             </div>
@@ -238,7 +235,7 @@ else
         <button title="Add Button" type="button"
             class="btn btn-secondary"
             @onclick="AddNewCardsAsync" 
-            disabled="@(CannotAdd || IsBusy)">
+            disabled="@(CannotAdd() || IsBusy)">
             Add Cards/Amounts </button>
     </div>
 
@@ -274,25 +271,24 @@ else
                 </tr>
             </thead>
             <tbody>
-                @foreach (var (match, amount) in Matches)
+                @foreach (var match in Matches)
                 {
                     @if (MatchPassesFilters(match))
                     {
+                        var card = match.Card;
                         <tr>
                             <td> 
-                                <HoverCard Target="match">
-                                    <span class="btn-link">@match.Name</span> 
+                                <HoverCard Target="card">
+                                    <span class="btn-link">@card.Name</span> 
                                 </HoverCard> 
                             </td>
-                            <td> @MtgSymbols.Format(match.ManaCost).ToMarkupString() </td>
-                            <td> @match.SetName </td>
-                            <td> @match.Rarity </td>
+                            <td> @MtgSymbols.Format(card.ManaCost).ToMarkupString() </td>
+                            <td> @card.SetName </td>
+                            <td> @card.Rarity </td>
                             <td>
-                                <input title="@match.Name Amount" 
-                                    type="number"
-                                    min="0" max="@PageSizes.Limit"
-                                    value="@amount" 
-                                    @onchange="e => UpdateAmount(e, match)"
+                                <input @bind="match.NumCopies"
+                                    title="@card.Name Amount" 
+                                    type="number" min="0" max="@PageSizes.Limit"
                                     class="form-control w-50" />
                             </td>
                         </tr>
@@ -324,13 +320,14 @@ else
 @code
 {
     public CardQuery Query => _search.Query;
-    public bool IsMultiColored => _search.IsMultiColored;
 
-    public IReadOnlyDictionary<Card, int> Matches => _matches;
-
-    public bool CannotAdd => _matches.All(kv => kv.Value <= 0);
-    public bool HasNoNext => !_matchPage.HasNext;
     public bool IsBusy => _isBusy;
+    public bool HasNoNext => !_matchPage.HasNext;
+
+    public IReadOnlyList<MatchInput> Matches => _matches;
+
+    public bool CannotAdd() =>
+        !_matches.Any() || _matches.All(m => m.NumCopies == 0);
 
 
     private readonly CancellationTokenSource _cancel = new();
@@ -341,11 +338,11 @@ else
     private EditContext? _searchEdit;
     private ValidationMessageStore? _resultErrors;
 
-    private readonly Dictionary<Card, int> _matches = new();
+    private readonly List<MatchInput> _matches = new();
     private Pages _matchPage;
 
 
-    private class CardSearch
+    private sealed class CardSearch
     {
         public CardQuery Query { get; } = new();
 
@@ -359,14 +356,39 @@ else
     }
 
 
+    public sealed class MatchInput
+    {
+        private readonly int _limit;
+        private int _numCopies;
+
+        public MatchInput(Card card, int limit)
+        {
+            Card = card;
+            _limit = limit;
+        }
+
+        public Card Card { get; }
+
+        public int NumCopies
+        {
+            get => _numCopies;
+            set
+            {
+                if (value >= 0 && value <= _limit)
+                {
+                    _numCopies = value;
+                }
+            }
+        }
+    }
+
+
     protected override void OnInitialized()
     {
         _searchEdit = new(_search.Query);
         _resultErrors = new(_searchEdit);
 
         Reset();
-
-        _search.Query.PageSize = PageSizes.GetComponentSize<Create>();
 
         _searchEdit.OnValidationRequested += ClearErrors;
         _searchEdit.OnFieldChanged += ClearErrors;
@@ -398,7 +420,7 @@ else
     public string ActiveColor(string color) =>
         _search.PickedColors.Contains(color) ? "active" : string.Empty;
 
-    public bool RaritySelected(string rarity) =>
+    public bool IsRaritySelected(string rarity) =>
         _search.PickedRarities.Contains(rarity);
 
 
@@ -446,26 +468,6 @@ else
     }
 
 
-    public void MultiColorSwitch(ChangeEventArgs args)
-    {
-        if (_searchEdit is null)
-        {
-            return;
-        }
-
-        if (!bool.TryParse(args.Value?.ToString(), out bool value))
-        {
-            return;
-        }
-
-        var colorField = _searchEdit.Field(nameof(CardQuery.Colors));
-
-        _search.IsMultiColored = value;
-
-        _searchEdit.NotifyFieldChanged(colorField);
-    }
-
-
     public void ColorToggle(string color)
     {
         if (_searchEdit is null)
@@ -491,13 +493,7 @@ else
 
     public void RarityToggle(string rarity)
     {
-        if (_searchEdit is null)
-        {
-            return;
-        }
-
         var pickedRarities = _search.PickedRarities;
-        var rarityField = _searchEdit.Field(nameof(CardQuery.Rarity));
 
         if (pickedRarities.Contains(rarity))
         {
@@ -507,8 +503,6 @@ else
         {
             pickedRarities.Add(rarity);
         }
-
-        _searchEdit.NotifyFieldChanged(rarityField);
     }
 
 
@@ -527,17 +521,20 @@ else
             PrepareSearch(_search, _matchPage);
 
             var cancelToken = _cancel.Token;
+            var limit = PageSizes.Limit;
+
             var fetch = ScopedServices.GetRequiredService<MTGFetchService>();
 
-            var result = await fetch.Where(_search.Query).SearchAsync();
-            cancelToken.ThrowIfCancellationRequested();
-            
-            _matchPage = result.Pages;
+            var result = await fetch
+                .Where(_search.Query)
+                .SearchAsync();
 
-            foreach (var match in result)
-            {
-                _matches.Add(match, 0);
-            }
+            cancelToken.ThrowIfCancellationRequested();
+
+            _matches.AddRange(
+                result.Select(c => new MatchInput(c, limit)));
+
+            _matchPage = result.Pages;
 
             if (!_matches.Any())
             {
@@ -567,29 +564,21 @@ else
     }
 
 
-    private void UpdateAmount(ChangeEventArgs args, Card card)
-    {
-        if (int.TryParse(args.Value?.ToString(), out int newAmount)
-            && newAmount >= 0)
-        {
-            _matches[card] = newAmount;
-        }
-    }
-
-
-    private bool MatchPassesFilters(Card match)
+    private bool MatchPassesFilters(MatchInput match)
     {
         const StringComparison ignoreCase = StringComparison.CurrentCultureIgnoreCase;
-        string? matchName = _search.MatchName;
 
+        string? matchName = _search.MatchName;
         var pickedColors = _search.PickedColors;
-        var matchColors = match.Colors.Select(c => c.Name);
+
+        var card = match.Card;
+        var cardColors = card.Colors.Select(c => c.Name);
 
         bool nameMatches = string.IsNullOrWhiteSpace(matchName) 
-            || match.Name.Contains(matchName, ignoreCase);
+            || card.Name.Contains(matchName, ignoreCase);
 
         bool colorMatches = !pickedColors.Any() 
-            || pickedColors.Overlaps(matchColors);
+            || pickedColors.Overlaps(cardColors);
 
         return nameMatches && colorMatches;
     }
@@ -627,6 +616,8 @@ else
         query.Toughness = default;
         query.Loyalty = default;
 
+        query.PageSize = PageSizes.GetComponentSize<Create>();
+
         // force data validation, might be inefficient
         _searchEdit.Validate();
     }
@@ -640,8 +631,8 @@ else
         }
 
         var addedAmounts = _matches
-            .Where(kv => kv.Value > 0 && kv.Value <= PageSizes.Limit)
-            .Select(kv => new CardRequest(kv.Key, kv.Value))
+            .Where(m => m.NumCopies > 0 && m.NumCopies <= PageSizes.Limit)
+            .Select(m => new CardRequest(m.Card, m.NumCopies))
             .ToList();
 
         if (!addedAmounts.Any())
@@ -660,7 +651,7 @@ else
 
             await AddNewCardsAsync(dbContext, addedAmounts, PageSizes.Limit, cancelToken);
 
-            await TreasuryHandler.AddAsync(dbContext, addedAmounts, cancelToken);
+            await dbContext.AddCardsAsync(addedAmounts, cancelToken);
 
             await dbContext.SaveChangesAsync(cancelToken);
 

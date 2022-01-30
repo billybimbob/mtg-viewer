@@ -9,7 +9,6 @@ using Xunit;
 
 using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
-using MTGViewer.Services;
 using MTGViewer.Pages.Transfers;
 using MTGViewer.Tests.Utils;
 
@@ -18,23 +17,21 @@ namespace MTGViewer.Tests.Pages.Transfers;
 
 public class IndexTests : IAsyncLifetime
 {
+    private readonly IndexModel _indexModel;
     private readonly CardDbContext _dbContext;
     private readonly UserManager<CardUser> _userManager;
     private readonly TestDataGenerator _testGen;
 
-    private readonly IndexModel _indexModel;
-
     public IndexTests(
-        PageSizes pageSizes,
+        IndexModel indexModel,
         CardDbContext dbContext,
         UserManager<CardUser> userManager,
         TestDataGenerator testGen)
     {
+        _indexModel = indexModel;
         _dbContext = dbContext;
         _userManager = userManager;
         _testGen = testGen;
-
-        _indexModel = new(pageSizes, _userManager, _dbContext);
     }
 
 

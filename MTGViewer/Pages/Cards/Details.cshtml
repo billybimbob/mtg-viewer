@@ -47,4 +47,166 @@
     }
 </div>
 
-<partial name="_CardPartial" for="Card"/>
+<hr />
+
+<div class="row">
+
+    <div class="col-lg-3 col-12 pb-4 d-flex justify-content-center justify-content-lg-start align-items-center">
+        <img class="img-fluid" alt="@Model.Card.Name" src="@Model.Card.ImageUrl.WithHttps()"/>
+    </div>
+
+    <div class="col">
+        <dl class="row m-0">
+
+            <dt class="col-md-3 col-5">
+                @Html.DisplayNameFor(m => m.Card.Cmc)
+            </dt>
+            <dd class="col-md-9 col-7">
+                @(Model.Card.Cmc?.ToString() ?? "--")
+            </dd>
+                
+            <dt class="col-md-3 col-5">
+                @Html.DisplayNameFor(m => m.Card.Rarity)
+            </dt>
+            <dd class="col-md-9 col-7">
+                @Html.DisplayFor(m => m.Card.Rarity)
+            </dd>
+
+            <dt class="col-md-3 col-5">
+                @Html.DisplayNameFor(m => m.Card.SetName)
+            </dt>
+            <dd class="col-md-9 col-7">
+                @Html.DisplayFor(m => m.Card.SetName)
+            </dd>
+
+            <dt class="col-md-3 col-5">
+                @Html.DisplayNameFor(m => m.Card.Supertypes)
+            </dt>
+            <dd class="col-md-9 col-7">
+                @(Model.Card.Supertypes.Any()
+                    ? string.Join(" ", Model.Card.Supertypes.Select(st => st.Name))
+                    : "--")
+            </dd>
+
+            <dt class="col-md-3 col-5">
+                @Html.DisplayNameFor(m => m.Card.Types)
+            </dt>
+            <dd class="col-md-9 col-7">
+                @(Model.Card.Types.Any()
+                    ? string.Join(" ", Model.Card.Types.Select(st => st.Name))
+                    : "--")
+            </dd>
+
+            <dt class="col-md-3 col-5">
+                @Html.DisplayNameFor(m => m.Card.Subtypes)
+            </dt>
+            <dd class="col-md-9 col-7">
+                @(Model.Card.Subtypes.Any() 
+                    ? string.Join(" ", Model.Card.Subtypes.Select(st => st.Name))
+                    : "--")
+            </dd>
+
+            <dt class="col-md-3 col-5">
+                @Html.DisplayNameFor(m => m.Card.Power)
+            </dt>
+            <dd class="col-md-9 col-7">
+                @(Model.Card.Power ?? "--")
+            </dd>
+
+            <dt class="col-md-3 col-5">
+                @Html.DisplayNameFor(m => m.Card.Toughness)
+            </dt>
+            <dd class="col-md-9 col-7">
+                @(Model.Card.Toughness ?? "--")
+            </dd>
+
+            <dt class="col-md-3 col-5">
+                @Html.DisplayNameFor(m => m.Card.Loyalty)
+            </dt>
+            <dd class="col-md-9 col-7">
+                @(Model.Card.Loyalty ?? "--")
+            </dd>
+
+            <dt class="col-md-3 col-5">
+                @Html.DisplayNameFor(m => m.Card.Artist)
+            </dt>
+            <dd class="col-md-9 col-7">
+                @(Model.Card.Artist ?? "--")
+            </dd>
+
+            <dt class="col-md-3 col-5">
+                @Html.DisplayNameFor(m => m.Card.Text)
+            </dt>
+
+            @if (Model.Card.Text == null)
+            {
+                <dd class="col-md-9 col-7"> -- </dd>
+            }
+            else
+            {
+                <dd class="col-md-9 col-12">
+                    <span class="multiline">@MtgSymbols.Format(Model.Card.Text).ToHtmlString()</span>
+                </dd>
+            }
+
+            <dt class="col-md-3 col-5">
+                @Html.DisplayNameFor(m => m.Card.Flavor)
+            </dt>
+
+            @if (Model.Card.Flavor == null)
+            {
+                <dd class="col-md-9 col-7"> -- </dd>
+            }
+            else
+            {
+                <dd class="col-md-9 col-12">
+                    <span class="multiline">@Model.Card.Flavor</span>
+                </dd>
+            }
+
+
+            <dt class="col-md-3 col-5 align-self-center">
+                Location of Copies
+            </dt>
+            <dd class="col-md-9 col-12">
+                <ul class="list-group list-group-horizontal-md d-flex py-1">
+                    @foreach(var cardAmount in Model.Card.Amounts)
+                    {
+                        var location = cardAmount.Location;
+
+                        <li class="list-group-item col-md-4 d-flex justify-content-between align-items-center">
+                            @switch (location)
+                            {
+                                case Deck:
+                                    <a asp-page="/Decks/Details" asp-route-id="@location.Id"> @location.Name </a>
+                                    break;
+
+                                case Box box when box.IsExcess:
+                                    <a asp-page="/Treasury/Excess" asp-route-cardId="@Model.Card.Id"> @location.Name </a>
+                                    break;
+
+                                case Box:
+                                    <a asp-page="/Treasury/Details" asp-route-id="@location.Id"> @location.Name </a>
+                                    break;
+
+                                case Unclaimed:
+                                    <a asp-page="/Unowned/Index" asp-route-id="@location.Id"> @location.Name </a>
+                                    break;
+
+                                default:
+                                    @location.Name
+                                    break;
+                            }
+
+                            <span class="ml-1 badge badge-secondary badge-pill">
+                                @cardAmount.NumCopies
+                            </span>
+                        </li>
+                    }
+                </ul>
+            </dd>
+
+        </dl>
+    </div>
+
+</div>

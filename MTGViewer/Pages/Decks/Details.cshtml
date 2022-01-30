@@ -27,7 +27,7 @@
             History </a>
 
         <a asp-page="Delete" asp-route-id="@Model.Deck.Id"
-            class="btn btn-danger" role="alert">
+            class="btn btn-danger" role="button">
             Delete </a>
     </div>
 }
@@ -45,6 +45,17 @@
             </tr>
         </thead>
         <tbody>
+            @if (!Model.Cards.Any())
+            {
+                <tr>
+                    <td> -- </td>
+                    <td> -- </td>
+                    <td> -- </td>
+                    <td> -- </td>
+                    <td> -- </td>
+                    <td> -- </td>
+                </tr>
+            }
             @foreach (var group in Model.Cards)
             {
                 <tr>

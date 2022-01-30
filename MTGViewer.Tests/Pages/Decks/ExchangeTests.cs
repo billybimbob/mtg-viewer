@@ -4,14 +4,11 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 
-using Moq;
 using Xunit;
 
 using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
-using MTGViewer.Services;
 using MTGViewer.Pages.Decks;
 using MTGViewer.Tests.Utils;
 
@@ -20,28 +17,22 @@ namespace MTGViewer.Tests.Pages.Decks;
 
 public class ExchangeTests : IAsyncLifetime
 {
+    private readonly ExchangeModel _exchangeModel;
     private readonly CardDbContext _dbContext;
     private readonly UserManager<CardUser> _userManager;
     private readonly TestDataGenerator _testGen;
 
-    private readonly ExchangeModel _exchangeModel;
-
 
     public ExchangeTests(
+        ExchangeModel exchangeModel,
         CardDbContext dbContext,
-        TreasuryHandler treasuryHandler,
         UserManager<CardUser> userManager,
-        CardText cardText,
         TestDataGenerator testGen)
     {
+        _exchangeModel = exchangeModel;
         _dbContext = dbContext;
         _userManager = userManager;
         _testGen = testGen;
-
-        var logger = Mock.Of<ILogger<ExchangeModel>>();
-
-        _exchangeModel = new(
-            _dbContext, treasuryHandler, _userManager, cardText, logger);
     }
 
 

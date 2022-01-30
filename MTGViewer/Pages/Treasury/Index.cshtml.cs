@@ -17,16 +17,11 @@ public class IndexModel : PageModel
 {
     private readonly int _pageSize;
     private readonly CardDbContext _dbContext;
-    private readonly TreasuryHandler _treasuryHandler;
 
-    public IndexModel(
-        PageSizes pageSizes, 
-        CardDbContext dbContext,
-        TreasuryHandler treasuryHandler)
+    public IndexModel(PageSizes pageSizes, CardDbContext dbContext)
     {
         _pageSize = pageSizes.GetPageModelSize<IndexModel>();
         _dbContext = dbContext;
-        _treasuryHandler = treasuryHandler;
     }
 
     public IReadOnlyList<Bin> Bins { get; private set; } = Array.Empty<Bin>();
@@ -34,6 +29,8 @@ public class IndexModel : PageModel
     public Data.Pages Pages { get; private set; }
 
     public bool HasExcess { get; private set; }
+
+    public bool HasUnclaimed { get; private set; }
 
 
     public async Task OnGetAsync(int? pageIndex, CancellationToken cancel)
@@ -50,6 +47,8 @@ public class IndexModel : PageModel
         HasExcess = await _dbContext.Amounts
             .AnyAsync(a => 
                 a.Location is Box && (a.Location as Box)!.IsExcess, cancel);
+
+        HasUnclaimed = await _dbContext.Unclaimed.AnyAsync(cancel);
     }
 
 

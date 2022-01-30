@@ -4,7 +4,6 @@
 @using System.Collections.Immutable
 @using MTGViewer.Data.Internal
 
-@inject FixedCache Cache
 @inject IDbContextFactory<CardDbContext> DbFactory
 @inject SymbolFormatter MtgSymbols
 @inject PageSizes PageSizes
@@ -46,7 +45,7 @@
 
     @if (IsBusy)
     {
-        <div class="spinner-border text-secondary m-2" role="status">
+        <div class="spinner-grow text-secondary p-2" role="status">
             <span class="sr-only">Loading...</span>
         </div>
     }
@@ -208,8 +207,6 @@
         }
 
         _filters.PageSize = PageSizes.GetComponentSize<Collection>();
-        _filters.ShouldCache = true;
-
         _isBusy = true;
 
         try
@@ -222,7 +219,6 @@
         }
         finally
         {
-            _filters.ShouldCache = false;
             _isBusy = false;
         }
     }
@@ -251,8 +247,6 @@
         public int PageSize { get; set; }
 
         public int PageIndex { get; set; }
-
-        public bool ShouldCache { get; set; }
     }
 
 
@@ -267,55 +261,16 @@
 
         dbContext.AttachRange(_loadedCards); // reuse prior card objs
 
-        Dictionary<string, int> cardAmounts;
-
-        if (filters.ShouldCache)
-        {
-            _pagedCards = await Cache
-                .GetOrCreateAsync($"{nameof(Collection)}{nameof(_pagedCards)}", () =>
-                    FilteredCardsAsync(dbContext, filters, cancel));
-
-            cardAmounts = await Cache
-                .GetOrCreateAsync($"{nameof(Collection)}{nameof(_cardAmounts)}", () =>
-                    CardAmountsAsync(dbContext, _pagedCards, cancel));
-        }
-        else
-        {
-            _pagedCards = await FilteredCardsAsync(dbContext, filters, cancel);
-            cardAmounts = await CardAmountsAsync(dbContext, _pagedCards, cancel);
-        }
-
-        bool conflicting = HasConflictingCards(filters.ShouldCache, _loadedCards, _pagedCards);
-        if (conflicting)
-        {
-            // keep eye on, cache can return card with the same ids but are different objs
-            _pagedCards = await FilteredCardsAsync(dbContext, filters, cancel);
-        }
+        _pagedCards = await FilteredCardsAsync(dbContext, filters, cancel);
 
         _loadedCards.UnionWith(_pagedCards);
+
+        var cardAmounts = await CardAmountsAsync(dbContext, _pagedCards, cancel);
 
         foreach ((string cardId, int total) in cardAmounts)
         {
             _cardAmounts[cardId] = total;
         }
-    }
-
-
-    private static bool HasConflictingCards(
-        bool cached,
-        IEnumerable<Card> cardsA, 
-        IEnumerable<Card> cardB)
-    {
-        if (!cached)
-        {
-            return false;
-        }
-
-        return cardsA
-            .Join(cardB,
-                c => c.Id, c => c.Id,
-                (a, b) => (a, b))
-            .Any(ab => ab.a != ab.b);
     }
 
 
@@ -326,7 +281,7 @@
     {
         var cards = dbContext.Cards.AsQueryable();
 
-        var searchName = filters.SearchName?.ToLower();
+        var searchName = filters.SearchName;
         var pickedColors = filters.PickedColors;
 
         if (!string.IsNullOrWhiteSpace(searchName))
@@ -334,7 +289,7 @@
             // keep eye on perf, postgres is slow here
             cards = cards
                 .Where(c => c.Name.ToLower()
-                    .Contains(searchName));
+                    .Contains(searchName.ToLower()));
         }
 
         if (pickedColors.Any())

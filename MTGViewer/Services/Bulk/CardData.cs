@@ -9,10 +9,18 @@ using Microsoft.EntityFrameworkCore;
 using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
 
-namespace MTGViewer.Services;
+namespace MTGViewer.Services.Internal;
 
 
-internal sealed class CardData
+public enum DataScope
+{
+    Default,
+    Full,
+    Paged,
+}
+
+
+public sealed class CardData
 {
     public IReadOnlyList<CardUser> Users { get; set; } = Array.Empty<CardUser>();
     public IReadOnlyList<UserRef> Refs { get; set; } = Array.Empty<UserRef>();
@@ -26,10 +34,11 @@ internal sealed class CardData
 
     public IReadOnlyList<Transaction> Transactions { get; set; } = Array.Empty<Transaction>();
     public IReadOnlyList<Suggestion> Suggestions { get; set; } = Array.Empty<Suggestion>();
+    public IReadOnlyList<Trade> Trades { get; set; } = Array.Empty<Trade>();
 }
 
 
-internal sealed class CardStream
+public sealed class CardStream
 {
     public IAsyncEnumerable<CardUser> Users { get; set; } = AsyncEnumerable.Empty<CardUser>();
     public IAsyncEnumerable<UserRef> Refs { get; set; } = AsyncEnumerable.Empty<UserRef>();
@@ -43,6 +52,52 @@ internal sealed class CardStream
 
     public IAsyncEnumerable<Transaction> Transactions { get; set; } = AsyncEnumerable.Empty<Transaction>();
     public IAsyncEnumerable<Suggestion> Suggestions { get; set; } = AsyncEnumerable.Empty<Suggestion>();
+
+
+    public static CardStream Create(CardDbContext dbContext)
+    {
+        if (dbContext is null)
+        {
+            throw new ArgumentNullException(nameof(dbContext));
+        }
+
+        return new CardStream
+        {
+            Cards = dbContext.Cards
+                .Include(c => c.Colors)
+                .Include(c => c.Types)
+                .Include(c => c.Subtypes)
+                .Include(c => c.Supertypes)
+
+                .OrderBy(c => c.Id)
+                .AsSplitQuery()
+                .AsAsyncEnumerable(),
+
+            Decks = dbContext.Decks
+                .Include(d => d.Cards)
+                .Include(d => d.Wants)
+
+                .OrderBy(d => d.Id)
+                .AsSplitQuery()
+                .AsAsyncEnumerable(),
+
+            Unclaimed = dbContext.Unclaimed
+                .Include(u => u.Cards)
+                .Include(u => u.Wants)
+
+                .OrderBy(u => u.Id)
+                .AsSplitQuery()
+                .AsAsyncEnumerable(),
+
+            Bins = dbContext.Bins
+                .Include(b => b.Boxes)
+                    .ThenInclude(b => b.Cards)
+
+                .OrderBy(b => b.Id)
+                .AsSplitQuery()
+                .AsAsyncEnumerable()
+        };
+    }
 
 
     public static CardStream Create(
@@ -194,11 +249,20 @@ internal sealed class CardStream
     }
 
 
-    public static async IAsyncEnumerable<int> DbSetCountsAsync(
+    public static async IAsyncEnumerable<int> DbSetCounts(
         CardDbContext dbContext,
         [System.Runtime.CompilerServices.EnumeratorCancellation]
         CancellationToken cancel = default)
     {
+        if (dbContext is null)
+        {
+            throw new ArgumentNullException(nameof(dbContext));
+        }
+
+        yield return await dbContext.Users
+            .CountAsync(cancel)
+            .ConfigureAwait(false);
+
         yield return await dbContext.Cards
             .CountAsync(cancel)
             .ConfigureAwait(false);

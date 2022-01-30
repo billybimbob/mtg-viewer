@@ -3,7 +3,6 @@
 
 @inject IDbContextFactory<CardDbContext> DbFactory
 @inject PageSizes PageSizes
-@inject FixedCache Cache
 @inject ILogger<Home> Logger
 
 
@@ -147,12 +146,9 @@
 
             await using var dbContext = await DbFactory.CreateDbContextAsync(cancelToken);
 
-            _randomContext = await RandomCardsContext
-                .InitializeAsync(dbContext, Cache, loadLimit, cancelToken);
+            _randomContext = await RandomCardsContext.CreateAsync(dbContext, loadLimit, cancelToken);
 
-            _recentChanges = await Cache
-                .GetOrCreateAsync($"{nameof(Home)}{nameof(_recentChanges)}", () =>
-                    RecentTransactionsAsync(dbContext, cancelToken));
+            _recentChanges = await RecentTransactionsAsync(dbContext, cancelToken);
 
             _currentTime = DateTime.Now;
         }
@@ -241,61 +237,26 @@
         private RandomCardsContext(IReadOnlyList<string[]> loadOrder)
         {
             _cards = new();
-            _loadOrder = loadOrder.ToList();
+            _loadOrder = loadOrder;
             _limit = _loadOrder.Sum(chunk => chunk.Length);
         }
 
 
-        public static async Task<RandomCardsContext> InitializeAsync(
+        public static async Task<RandomCardsContext> CreateAsync(
             CardDbContext dbContext, 
-            FixedCache cache, 
             int loadLimit, 
             CancellationToken cancel)
         {
-            var loadOrder = await cache
-                .GetOrCreateAsync($"{nameof(Home)}{nameof(_loadOrder)}", () =>
-                    ShuffleOrderAsync(dbContext, loadLimit, cancel));
-
+            var loadOrder = await ShuffleOrderAsync(dbContext, loadLimit, cancel);
             var randomContext = new RandomCardsContext(loadOrder);
-            var cacheCards = randomContext.GetCachedCards(cache);
 
-            if (cacheCards is not null)
-            {
-                randomContext._cards.AddRange(cacheCards);
-            }
-
-            else if (randomContext.HasMore)
+            if (randomContext.HasMore)
             {
                 await randomContext.LoadNextChunkAsync(dbContext, cancel);
-                cache[$"{nameof(Home)}{nameof(_cards)}"] = randomContext._cards;
             }
 
             return randomContext;
         }
-
-
-        private IReadOnlyList<Card>? GetCachedCards(FixedCache cache)
-        {
-            if (!cache.TryGetValue(
-                $"{nameof(Home)}{nameof(_cards)}", out IReadOnlyList<Card>? cacheCards) 
-                || cacheCards is null)
-            {
-                return null;
-            }
-
-            bool orderMatches = _loadOrder
-                .SelectMany(chunk => chunk)
-                .Take(cacheCards.Count)
-                .SequenceEqual( cacheCards.Select(c => c.Id) );
-
-            if (!orderMatches)
-            {
-                return null;
-            }
-
-            return cacheCards;
-        }
-
 
         public async Task LoadNextChunkAsync(CardDbContext dbContext, CancellationToken cancel)
         {
@@ -340,7 +301,7 @@
     }
 
 
-    private static Task<List<Card>> CardChunkAsync(
+    private static ValueTask<List<Card>> CardChunkAsync(
         CardDbContext dbContext, 
         string[] chunk,
         CancellationToken cancel)
@@ -357,8 +318,7 @@
                 cid => cid,
                 c => c.Id,
                 (_, card) => card)
-            .ToListAsync(cancel)
-            .AsTask();
+            .ToListAsync(cancel);
     }
 
 

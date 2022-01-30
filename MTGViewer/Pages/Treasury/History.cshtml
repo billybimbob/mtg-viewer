@@ -28,6 +28,20 @@
             </tr>
         </thead>
         <tbody>
+            @if (!Model.Transfers.Any())
+            {
+                <tr>
+                    <td> -- </td>
+                    <td> -- </td>
+                    <td> -- </td>
+                    <td> -- </td>
+                    <td> -- </td>
+                    @if (SignInManager.IsSignedIn(User))
+                    {
+                        <td> -- </td>
+                    }
+                    </tr>
+            }
             @foreach (var transfer in Model.Transfers)
             {
                 var (transaction, to, from, changes) = transfer;
@@ -78,7 +92,7 @@
                                 break;
 
                             case Box box when box.IsExcess:
-                                <a asp-page="Excess" asp-route-id="@to.Id"> @to.Name </a>
+                                <a asp-page="Excess"> @to.Name </a>
                                 break;
 
                             case Box:

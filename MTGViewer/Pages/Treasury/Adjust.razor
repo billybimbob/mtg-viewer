@@ -5,8 +5,6 @@
 @using System.ComponentModel.DataAnnotations
 @using MTGViewer.Data.Internal
 
-@inject FixedCache Cache
-@inject TreasuryHandler TreasuryHandler
 @inject IDbContextFactory<CardDbContext> DbFactory
 
 @inject ILogger<Adjust> Logger
@@ -112,7 +110,7 @@
                         </text>
                     }
                 </label>
-                <input value="@Box.Bin.Name" @onchange="BinNameChanged"
+                <InputText @bind-Value="@Box.Bin.Name"
                     readonly="@(!Box.IsEdit && Box.Bin.IsEdit)"
                     id="@BinPropertyId(b => b.Name)" class="form-control" />
             </div>
@@ -176,6 +174,11 @@
 
     public sealed class BoxDto
     {
+        public BoxDto()
+        {
+            Bin = new(this);
+        }
+
         public int Id { get; set; }
 
         public bool IsEdit => Id != default;
@@ -191,19 +194,52 @@
         public int Capacity { get; set; }
 
         [ValidateComplexType]
-        public BinDto Bin { get; } = new();
+        public BinDto Bin { get; }
     }
 
 
     public sealed class BinDto
     {
+        private BoxDto _box;
+        private string? _name;
+
+        public BinDto(BoxDto box)
+        {
+            _box = box;
+        }
+
         public int Id { get; set; }
 
         [Required(ErrorMessage = "Bin Name is Missing")]
         [StringLength(10, ErrorMessage = "Bin Name has a character limit of 10")]
-        public string? Name { get; set; }
+        public string? Name
+        {
+            get => _name;
+            set
+            {
+                if (_box.IsEdit || !IsEdit)
+                {
+                    _name = value;
+                }
+            }
+        }
 
         public bool IsEdit => Id != default;
+
+
+        public void Update(Bin? bin)
+        {
+            if (bin == default)
+            {
+                Id = default;
+                _name = null;
+            }
+            else
+            {
+                Id = bin.Id;
+                _name = bin?.Name;
+            }
+        }
     }
 
 
@@ -223,9 +259,7 @@
 
             await using var dbContext = await DbFactory.CreateDbContextAsync(cancelToken);
 
-            _bins = await Cache
-                .GetOrCreateAsync($"{nameof(Adjust)}{nameof(_bins)}", () =>
-                    BinOptionsAsync(dbContext, cancelToken));
+            _bins = await BinOptionsAsync(dbContext, cancelToken);
         }
         catch (OperationCanceledException e)
         {
@@ -295,8 +329,7 @@
 
         dbContext.Bins.AttachRange(_bins);
 
-        var box = await Cache
-            .GetOrCreateAsync($"{nameof(Adjust)}{nameof(Box)}{BoxId}", FetchBoxAsync);
+        var box = await ExistingBoxAsync(dbContext, BoxId, cancel);
 
         if (box is null)
         {
@@ -308,18 +341,9 @@
             return box;
         }
 
-        if (_bins.Any(b => b.Id == box.BinId && b != box.Bin))
-        {
-            // cache may cause different Bin objs with the same ids to be tracked
-            return await FetchBoxAsync();
-        }
-
         dbContext.Boxes.Attach(box);
 
         return box;
-
-        Task<Box?> FetchBoxAsync() =>
-            ExistingBoxAsync(dbContext, BoxId, cancel);
     }
 
 
@@ -429,7 +453,7 @@
             dbContext.Bins.Remove(oldBin);
         }
 
-        await TreasuryHandler.UpdateBoxesAsync(dbContext, cancel);
+        await dbContext.UpdateBoxesAsync(cancel);
 
         await dbContext.SaveChangesAsync(cancel);
     }
@@ -508,34 +532,10 @@
 
     public void BinSelected(ChangeEventArgs args)
     {
-        if (!int.TryParse(args.Value?.ToString(), out int binId))
+        if (int.TryParse(args.Value?.ToString(), out int binId)
+            && _bins.SingleOrDefault(b => b.Id == binId) is var bin)
         {
-            return;
-        }
-
-        var bin = _bins.SingleOrDefault(b => b.Id == binId);
-        var binDto = Box.Bin;
-
-        if (bin == default)
-        {
-            binDto.Id = default;
-            binDto.Name = null;
-        }
-        else
-        {
-            binDto.Id = bin.Id;
-            binDto.Name = bin.Name;
-        }
-    }
-
-
-    public void BinNameChanged(ChangeEventArgs args)
-    {
-        var newName = args.Value?.ToString();
-
-        if (Box.IsEdit || !Box.Bin.IsEdit)
-        {
-            Box.Bin.Name = newName;
+            Box.Bin.Update(bin);
         }
     }
 }

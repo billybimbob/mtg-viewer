@@ -1,8 +1,7 @@
 using System;
 using MTGViewer.Data;
 
-namespace MTGViewer.Services;
-
+namespace MTGViewer.Data;
 
 /// <summary>
 /// Requests to either take or return  a <see cref="Data.Card"/> to the Treasury

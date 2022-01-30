@@ -22,7 +22,7 @@
 }
 else if (Model.Deck.Wants.Any())
 {
-    <div class="alert alert-secondary" role="alert">
+    <section class="alert alert-secondary" role="alert">
         <h5 class="alert-heading">The Treasury Lacks Wanted Cards</h5>
         <p>Wanted cards can also be obtained by requesting from other players.</p>
 
@@ -30,7 +30,7 @@ else if (Model.Deck.Wants.Any())
             asp-route-deckid="@Model.Deck.Id"
             class="btn btn-secondary" role="button">
             Player Request </a>
-    </div>
+    </section>
 }
 else
 {
