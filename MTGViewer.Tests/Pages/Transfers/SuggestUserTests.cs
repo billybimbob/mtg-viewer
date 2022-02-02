@@ -4,10 +4,8 @@ using System.Threading.Tasks;
 using Xunit;
 
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
-using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
 using MTGViewer.Pages.Transfers;
 using MTGViewer.Tests.Utils;
@@ -18,18 +16,18 @@ public class SuggestTests : IAsyncLifetime
 {
     private readonly SuggestUserModel _suggestUserModel;
     private readonly CardDbContext _dbContext;
-    private readonly UserManager<CardUser> _userManager;
+    private readonly PageContextFactory _pageFactory;
     private readonly TestDataGenerator _testGen;
 
     public SuggestTests(
         SuggestUserModel suggestUserModel,
         CardDbContext dbContext,
-        UserManager<CardUser> userManager,
+        PageContextFactory pageFactory,
         TestDataGenerator testGen)
     {
         _suggestUserModel = suggestUserModel;
         _dbContext = dbContext;
-        _userManager = userManager;
+        _pageFactory = pageFactory;
         _testGen = testGen;
     }
 
@@ -56,7 +54,7 @@ public class SuggestTests : IAsyncLifetime
             .Select(c => c.Id)
             .FirstAsync();
 
-        await _suggestUserModel.SetModelContextAsync(_userManager, receiverId);
+        await _pageFactory.AddModelContextAsync(_suggestUserModel, receiverId);
 
         _suggestUserModel.Suggestion = new Suggestion
         {
@@ -84,7 +82,7 @@ public class SuggestTests : IAsyncLifetime
             .Select(u => u.Id)
             .FirstAsync(uid => uid != receiverId);
 
-        await _suggestUserModel.SetModelContextAsync(_userManager, senderId);
+        await _pageFactory.AddModelContextAsync(_suggestUserModel, senderId);
 
         _suggestUserModel.Suggestion = new Suggestion
         {
@@ -121,7 +119,7 @@ public class SuggestTests : IAsyncLifetime
             .Select(u => u.Id)
             .FirstAsync(uid => uid != receiverId);
 
-        await _suggestUserModel.SetModelContextAsync(_userManager, senderId);
+        await _pageFactory.AddModelContextAsync(_suggestUserModel, senderId);
 
         _suggestUserModel.Suggestion = new Suggestion
         {
@@ -151,7 +149,7 @@ public class SuggestTests : IAsyncLifetime
             .Select(u => u.Id)
             .FirstAsync(uid => uid != receiverId);
 
-        await _suggestUserModel.SetModelContextAsync(_userManager, senderId);
+        await _pageFactory.AddModelContextAsync(_suggestUserModel, senderId);
 
         _suggestUserModel.Suggestion = new Suggestion
         {
@@ -192,7 +190,7 @@ public class SuggestTests : IAsyncLifetime
             .Select(u => u.Id)
             .FirstAsync(uid => uid != receiverId);
 
-        await _suggestUserModel.SetModelContextAsync(_userManager, senderId);
+        await _pageFactory.AddModelContextAsync(_suggestUserModel, senderId);
 
         _suggestUserModel.Suggestion = new Suggestion
         {
@@ -221,7 +219,7 @@ public class SuggestTests : IAsyncLifetime
             .Select(u => u.Id)
             .FirstAsync(uid => uid != suggest.ReceiverId);
 
-        await _suggestUserModel.SetModelContextAsync(_userManager, senderId);
+        await _pageFactory.AddModelContextAsync(_suggestUserModel, senderId);
 
         _suggestUserModel.Suggestion = suggest;
 
@@ -255,7 +253,7 @@ public class SuggestTests : IAsyncLifetime
             .Select(u => u.Id)
             .FirstAsync(uid => uid != receiverId);
 
-        await _suggestUserModel.SetModelContextAsync(_userManager, senderId);
+        await _pageFactory.AddModelContextAsync(_suggestUserModel, senderId);
 
         _suggestUserModel.Suggestion = new Suggestion
         {
@@ -295,7 +293,7 @@ public class SuggestTests : IAsyncLifetime
             .Select(u => u.Id)
             .FirstAsync(uid => uid != receiverId);
 
-        await _suggestUserModel.SetModelContextAsync(_userManager, senderId);
+        await _pageFactory.AddModelContextAsync(_suggestUserModel, senderId);
 
         _suggestUserModel.Suggestion = new Suggestion
         {
@@ -337,7 +335,7 @@ public class SuggestTests : IAsyncLifetime
             .Select(u => u.Id)
             .FirstAsync(uid => uid != receiverId);
 
-        await _suggestUserModel.SetModelContextAsync(_userManager, senderId);
+        await _pageFactory.AddModelContextAsync(_suggestUserModel, senderId);
 
         _suggestUserModel.Suggestion = new Suggestion
         {

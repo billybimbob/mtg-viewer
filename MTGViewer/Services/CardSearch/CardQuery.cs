@@ -1,10 +1,9 @@
 using System;
 using System.ComponentModel.DataAnnotations;
-using MtgApiManager.Lib.Service;
 
 namespace MTGViewer.Services;
 
-public class CardQuery : IQueryParameter
+public class CardQuery
 {
     public string? Id { get; set; }
 
@@ -54,6 +53,6 @@ public class CardQuery : IQueryParameter
     [Range(0, int.MaxValue)]
     public int Page { get; set; }
     
-    [Range(1, MTGFetchService.Limit)]
+    [Range(1, 100)]
     public int? PageSize { get; set; }
 }

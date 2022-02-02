@@ -22,20 +22,20 @@ internal class SeedSettings
 public class CardDataGenerator
 {
     private readonly Random _random;
-    private readonly MTGFetchService _fetch;
+    private readonly IMTGQuery _mtgQuery;
     private readonly BulkOperations _bulkOperations;
 
 
     public CardDataGenerator(
         IConfiguration config,
-        MTGFetchService fetchService,
+        IMTGQuery mtgQuery,
         BulkOperations bulkOperations)
     {
         var seed = new SeedSettings();
         config.GetSection(nameof(SeedSettings)).Bind(seed);
 
         _random = new(seed.Value);
-        _fetch = fetchService;
+        _mtgQuery = mtgQuery;
         _bulkOperations = bulkOperations;
     }
 
@@ -45,7 +45,7 @@ public class CardDataGenerator
         var users = GetUsers();
         var userRefs = users.Select(u => new UserRef(u)).ToList();
 
-        var cards = await GetCardsAsync(_fetch, cancel);
+        var cards = await GetCardsAsync(_mtgQuery, cancel);
         var decks = GetDecks(userRefs);
         var bin = GetBin();
 
@@ -101,14 +101,12 @@ public class CardDataGenerator
     };
 
 
-    private async Task<IReadOnlyList<Card>> GetCardsAsync(MTGFetchService fetchService, CancellationToken cancel)
+    private async Task<IReadOnlyList<Card>> GetCardsAsync(IMTGQuery fetchService, CancellationToken cancel)
     {
         var cards = await fetchService
-            .Where(c => c.Cmc, 3)
-            .Where(c => c.PageSize, 20)
-            .SearchAsync();
-
-        cancel.ThrowIfCancellationRequested();
+            .Where(c => c.Cmc == 3)
+            .Where(c => c.PageSize == 20)
+            .SearchAsync(cancel);
 
         return cards;
     }

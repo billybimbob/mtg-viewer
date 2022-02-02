@@ -7,15 +7,15 @@
 @inject IDbContextFactory<CardDbContext> DbFactory
 @inject SymbolFormatter MtgSymbols
 @inject PageSizes PageSizes
-
 @inject ILogger<Collection> Logger
 
+@using MTGViewer.Areas.Identity.Data
 
 <PageTitle> Card Collection </PageTitle>
 
 <h1>Card Collection</h1>
 
-<AuthorizeView>
+<AuthorizeView Policy="@CardPolicies.ChangeTreasury">
     <div class="btn-group" role="group">
         <a class="btn btn-secondary" href="/Cards/Create" role="button">Add Card</a>
     </div>
@@ -95,7 +95,7 @@
                     @Direction(c => c.Amounts)
                 </th>
 
-                <AuthorizeView>
+                <AuthorizeView Policy="@CardPolicies.ChangeTreasury">
                     <th scope="col"></th>
                 </AuthorizeView>
             </tr>
@@ -116,7 +116,7 @@
                     <td> @card.Rarity </td>
                     <td> @CardTotal(card) </td>
 
-                    <AuthorizeView>
+                    <AuthorizeView Policy="@CardPolicies.ChangeTreasury">
                         <td>
                             <a title="Suggest @card.Name"
                                 href="/Transfers/Suggest/@card.Id"
@@ -131,7 +131,7 @@
     </table>
 </div>
 
-<Pagination Pages="Cards.Pages" PageSelected="ChangePageAsync"></Pagination>
+<Pagination Offset="Cards.Offset" PageSelected="ChangePageAsync"></Pagination>
 
 
 @code
@@ -143,10 +143,10 @@
     private readonly Dictionary<string, int> _cardAmounts = new();
 
     private readonly FilterContext _filters = new();
-    private PagedList<Card> _pagedCards = PagedList<Card>.Empty;
+    private OffsetList<Card> _pagedCards = OffsetList<Card>.Empty();
 
 
-    public PagedList<Card> Cards => _pagedCards;
+    public OffsetList<Card> Cards => _pagedCards;
 
     public bool IsBusy => _isBusy;
 
@@ -274,7 +274,7 @@
     }
 
 
-    private static Task<PagedList<Card>> FilteredCardsAsync(
+    private static Task<OffsetList<Card>> FilteredCardsAsync(
         CardDbContext dbContext,
         FilterContext filters,
         CancellationToken cancel)
@@ -334,20 +334,25 @@
             nameof(Card.ManaCost) => 
                 PrimaryOrder(c => c.Cmc)
                     .ThenBy(c => c.Name)
-                    .ThenBy(c => c.SetName),
+                    .ThenBy(c => c.SetName)
+                    .ThenBy(c => c.Id),
 
             nameof(Card.SetName) =>
                 PrimaryOrder(c => c.SetName)
-                    .ThenBy(c => c.Name),
+                    .ThenBy(c => c.Name)
+                    .ThenBy(c => c.Id),
 
             nameof(Card.Amounts) => 
                 PrimaryOrder(c => c.Amounts.Sum(a => a.NumCopies))
                     .ThenBy(c => c.Name)
-                    .ThenBy(c => c.SetName),
+                    .ThenBy(c => c.SetName)
+                    .ThenBy(c => c.Id),
+
 
             nameof(Card.Name) or _ =>
                 PrimaryOrder(c => c.Name)
                     .ThenBy(c => c.SetName)
+                    .ThenBy(c => c.Id)
         };
     }
 
@@ -369,7 +374,8 @@
             nameof(Card.Rarity) or _ => 
                 PrimaryOrder(c => c.Rarity, new RarityComparer())
                     .ThenBy(c => c.Name)
-                    .ThenBy(c => c.SetName),
+                    .ThenBy(c => c.SetName)
+                    .ThenBy(c => c.Id)
         };
     }
 
@@ -501,7 +507,7 @@
         if (_isBusy
             || _filters.PageIndex == pageIndex
             || pageIndex < 0 
-            || pageIndex >= _pagedCards.Pages.Total)
+            || pageIndex >= _pagedCards.Offset.Total)
         {
             return;
         }

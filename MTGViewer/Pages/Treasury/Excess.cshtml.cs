@@ -23,9 +23,9 @@ public class ExcessModel : PageModel
     }
 
 
-    public PagedList<Card> Cards { get; private set; } = PagedList<Card>.Empty;
+    public OffsetList<Card> Cards { get; private set; } = OffsetList<Card>.Empty();
 
-    public bool HasExcess => Cards.Pages.Total > 0;
+    public bool HasExcess => Cards.Offset.Total > 0;
 
 
     public async Task<IActionResult> OnGetAsync(string? cardId, int pageIndex, CancellationToken cancel)
@@ -81,6 +81,7 @@ public class ExcessModel : PageModel
             
             .OrderBy(c => c.Name)
                 .ThenBy(c => c.SetName)
+                .ThenBy(c => c.Id)
 
             .AsNoTrackingWithIdentityResolution();
     }

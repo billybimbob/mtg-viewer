@@ -1,5 +1,7 @@
 @page "/Decks/Craft/{DeckId:int?}"
 @attribute [Authorize]
+@attribute [Authorize(CardPolicies.ChangeTreasury)]
+
 @inherits OwningComponentBase
 
 @using Microsoft.AspNetCore.Identity
@@ -142,7 +144,7 @@ else
             }
         </div>
 
-        <Pagination Pages="Treasury.Pages" PageSelected="ChangeTreasuryPageAsync" />
+        <Pagination Offset="Treasury.Offset" PageSelected="ChangeTreasuryPageAsync" />
     </section>
 
 
@@ -152,20 +154,6 @@ else
         @{ var deckCards = DeckCards(); }
 
         <div class="list-group list-group-flush mb-4">
-            @if (!deckCards.Any())
-            {
-                <div class="list-group-item disabled px-2" aria-disabled="true">
-                    <div class="row">
-                        <div class="col-5"> --- </div>
-                        <div class="col-4"> --- </div>
-                        <div class="col-3">
-                            <span class="badge badge-pill badge-primary"> 0 </span>
-                            <span class="badge badge-pill badge-danger"> 0 </span>
-                            <span class="badge badge-pill badge-secondary"> 0 </span>
-                        </div>
-                    </div>
-                </div>
-            }
             @foreach (var group in deckCards)
             {
                 var card = group.Card;
@@ -197,9 +185,25 @@ else
                     </div>
                 </button>
             }
+            <div class="list-group-item disabled px-2" aria-disabled="true">
+                <div class="row">
+                    <div class="col-5"> <b> Total </b> </div>
+                    <div class="col-4"> --- </div>
+                    <div class="col-3">
+                        <span title="Total Held" class="badge badge-pill badge-primary"> 
+                            @deckCards.Sum(qg => qg.Amount?.NumCopies ?? 0) </span>
+
+                        <span title="Total Returning" class="badge badge-pill badge-danger"> 
+                            @deckCards.Sum(qg => qg.GiveBack?.NumCopies ?? 0) </span>
+
+                        <span title="Total Wanted" class="badge badge-pill badge-secondary">
+                            @deckCards.Sum(qg => qg.Want?.NumCopies ?? 0) </span>
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <Pagination Pages="deckCards.Pages" PageSelected="ChangeDeckPage" />
+        <Pagination Offset="deckCards.Offset" PageSelected="ChangeDeckPage" />
     </section>
 </div>
 
@@ -215,7 +219,7 @@ else
 
     public bool IsBusy => _isBusy;
 
-    public PagedList<Card> Treasury => _filteredTreasury;
+    public OffsetList<Card> Treasury => _filteredTreasury;
 
     public string DeckName =>
         _deckContext?.Deck.Name is string name
@@ -227,11 +231,11 @@ else
     public int TreasuryAmount(Card card) =>
         _boxAmounts.GetValueOrDefault(card.Id);
 
-    public PagedList<QuantityGroup> DeckCards()
+    public OffsetList<QuantityGroup> DeckCards()
     {
         if (_deckContext is null)
         {
-            return PagedList<QuantityGroup>.Empty;
+            return OffsetList<QuantityGroup>.Empty();
         }
 
         return _cards
@@ -258,7 +262,7 @@ else
     private DeckContext? _deckContext;
 
     private readonly TreasuryFilterContext _treasuryFilters = new();
-    private PagedList<Card> _filteredTreasury = PagedList<Card>.Empty;
+    private OffsetList<Card> _filteredTreasury = OffsetList<Card>.Empty();
 
 
 
@@ -560,11 +564,11 @@ else
         public IEnumerable<QuantityGroup> ActiveCards() =>
             Groups.Values.Where(qg => qg.Total > 0);
 
-        public Data.Pages Pages()
+        public Data.Offset Pages()
         {
             int totalActive = ActiveCards().Count();
 
-            return new Data.Pages(PageIndex, totalActive, PageSize);
+            return new Data.Offset(PageIndex, totalActive, PageSize);
         }
 
         public bool IsModified(Quantity quantity)
@@ -619,7 +623,7 @@ else
     }
 
 
-    private Task<PagedList<Card>> FilteredCardsAsync(
+    private Task<OffsetList<Card>> FilteredCardsAsync(
         CardDbContext dbContext,
         TreasuryFilterContext filters,
         CancellationToken cancel)
@@ -649,6 +653,7 @@ else
         return cards
             .OrderBy(c => c.Name)
                 .ThenBy(c => c.SetName)
+                .ThenBy(c => c.Id)
 
             .ToPagedListAsync(pageSize, pageIndex, cancel);
     }
@@ -730,7 +735,7 @@ else
 
         if (_treasuryFilters.PageIndex == pageIndex
             || pageIndex < 0
-            || pageIndex >= _filteredTreasury.Pages.Total)
+            || pageIndex >= _filteredTreasury.Offset.Total)
         {
             return;
         }

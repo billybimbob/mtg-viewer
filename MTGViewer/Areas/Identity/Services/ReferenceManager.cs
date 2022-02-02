@@ -1,6 +1,8 @@
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Security.Claims;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -14,11 +16,16 @@ public class ReferenceManager
     private readonly CardDbContext _dbContext;
     private readonly ILogger<ReferenceManager> _logger;
 
-    public ReferenceManager(CardDbContext dbContext, ILogger<ReferenceManager> logger)
+    public ReferenceManager(
+        CardDbContext dbContext, ILogger<ReferenceManager> logger)
     {
         _dbContext = dbContext;
         _logger = logger;
     }
+
+
+    public IQueryable<UserRef> References =>
+        _dbContext.Users.AsNoTrackingWithIdentityResolution();
 
 
     public async Task<bool> CreateReferenceAsync(CardUser user, CancellationToken cancel = default)

@@ -120,6 +120,9 @@ public static partial class TreasuryExtensions
             .Select(cr => cr.Card)
             .Where(c => dbContext.Entry(c).State is EntityState.Detached);
 
+        // by default treats detached cards as existing
+        // new vs existing cards should be handled outside of this function
+
         dbContext.Cards.AttachRange(detachedCards);
     }
 

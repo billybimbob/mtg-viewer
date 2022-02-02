@@ -1,0 +1,29 @@
+@using MTGViewer.Areas.Identity.Data
+
+<PageTitle> Not Authorized </PageTitle>
+
+<AuthorizeView>
+    <Authorized>
+        <AuthorizeView Policy="@CardPolicies.ChangeTreasury">
+            <NotAuthorized Context="treasuryPolicy">
+                <h1> Read-only Treasury </h1>
+                <p>
+                    You are currently requesting a card data reset, and therefore cannot
+                    make changes to the Treasury.
+                </p>
+                <p>
+                    <a href="/Treasury/Reset"> Click here </a> to cancel the reset request
+                    in order to make changes to the Treasury.
+                </p>
+            </NotAuthorized>
+        </AuthorizeView>
+    </Authorized>
+
+    <NotAuthorized>
+        <h1> Not Signed in</h1>
+        <p> You need to be signed in to an account access this page. </p>
+        <p>
+            <a href="/Identity/Account/Login"> Click here </a> to login.
+        </p>
+    </NotAuthorized>
+</AuthorizeView>

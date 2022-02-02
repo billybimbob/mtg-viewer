@@ -17,6 +17,7 @@ namespace MTGViewer.Pages.Transfers;
 
 
 [Authorize]
+[Authorize(CardPolicies.ChangeTreasury)]
 public class ReviewModel : PageModel
 {
     private readonly CardDbContext _dbContext;

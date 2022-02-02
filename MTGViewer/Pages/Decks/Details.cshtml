@@ -3,7 +3,17 @@
 @{
     ViewData["Title"] = $"{Model.Deck.Name} - Details";
 }
+
+@using Microsoft.AspNetCore.Authorization
+@using MTGViewer.Areas.Identity.Data
+
+@inject IAuthorizationService AuthorizationService
 @inject SymbolFormatter MtgSymbols
+
+@{ 
+    bool canChangeTreasury = (await AuthorizationService
+        .AuthorizeAsync(User, CardPolicies.ChangeTreasury)).Succeeded;
+}
 
 
 <h1>@Model.Deck.Owner.Name's @Model.Deck.Name</h1>
@@ -11,7 +21,7 @@
 @if (Model.IsOwner)
 {
     <div class="btn-group mb-3" role="group">
-        @if (Model.Deck.TradesTo.Any())
+        @if (Model.Deck.TradesTo.Any() || !canChangeTreasury)
         {
             <button class="btn btn-secondary" type="button" disabled> Edit </button>
         }
@@ -26,9 +36,16 @@
             class="btn btn-secondary" role="button">
             History </a>
 
-        <a asp-page="Delete" asp-route-id="@Model.Deck.Id"
-            class="btn btn-danger" role="button">
-            Delete </a>
+        @if (canChangeTreasury)
+        {
+            <a asp-page="Delete" asp-route-id="@Model.Deck.Id"
+                class="btn btn-danger" role="button">
+                Delete </a>
+        }
+        else
+        {
+            <button type="button" class="btn btn-danger" disabled> Delete </button>
+        }
     </div>
 }
 

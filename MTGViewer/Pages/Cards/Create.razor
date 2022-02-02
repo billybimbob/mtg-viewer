@@ -1,8 +1,10 @@
 @page "/Cards/Create"
 @attribute [Authorize]
+@attribute [Authorize(CardPolicies.ChangeTreasury)]
 @inherits OwningComponentBase
 
 @using Microsoft.Extensions.DependencyInjection
+@using MTGViewer.Areas.Identity.Data
 @using MTGViewer.Data.Internal
 
 @inject IDbContextFactory<CardDbContext> DbFactory
@@ -339,7 +341,7 @@ else
     private ValidationMessageStore? _resultErrors;
 
     private readonly List<MatchInput> _matches = new();
-    private Pages _matchPage;
+    private Offset _matchPage;
 
 
     private sealed class CardSearch
@@ -523,18 +525,16 @@ else
             var cancelToken = _cancel.Token;
             var limit = PageSizes.Limit;
 
-            var fetch = ScopedServices.GetRequiredService<MTGFetchService>();
+            var fetch = ScopedServices.GetRequiredService<IMTGQuery>();
 
             var result = await fetch
                 .Where(_search.Query)
-                .SearchAsync();
-
-            cancelToken.ThrowIfCancellationRequested();
+                .SearchAsync(cancelToken);
 
             _matches.AddRange(
                 result.Select(c => new MatchInput(c, limit)));
 
-            _matchPage = result.Pages;
+            _matchPage = result.Offset;
 
             if (!_matches.Any())
             {
@@ -552,13 +552,13 @@ else
     }
 
 
-    private static void PrepareSearch(CardSearch search, Data.Pages matchPage)
+    private static void PrepareSearch(CardSearch search, Data.Offset matchPage)
     {
         var query = search.Query;
-        var colorJoin = search.IsMultiColored ? MTGFetchService.And : MTGFetchService.Or;
+        var colorJoin = search.IsMultiColored ? IMTGQuery.And : IMTGQuery.Or;
 
         query.Colors = string.Join(colorJoin, search.PickedColors);
-        query.Rarity = string.Join(MTGFetchService.Or, search.PickedRarities);
+        query.Rarity = string.Join(IMTGQuery.Or, search.PickedRarities);
 
         query.Page = matchPage == default ? 0 : matchPage.Current + 1;
     }

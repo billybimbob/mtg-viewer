@@ -26,7 +26,7 @@ public class IndexModel : PageModel
 
     public IReadOnlyList<Bin> Bins { get; private set; } = Array.Empty<Bin>();
 
-    public Data.Pages Pages { get; private set; }
+    public Data.Offset Pages { get; private set; }
 
     public bool HasExcess { get; private set; }
 
@@ -42,7 +42,7 @@ public class IndexModel : PageModel
             .GroupBy(b => b.Bin, (bin, _) => bin)
             .ToList();
 
-        Pages = boxes.Pages;
+        Pages = boxes.Offset;
 
         HasExcess = await _dbContext.Amounts
             .AnyAsync(a => 

@@ -2,12 +2,10 @@ using System.Linq;
 using System.Threading.Tasks;
 
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
 using Xunit;
 
-using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
 using MTGViewer.Pages.Transfers;
 using MTGViewer.Tests.Utils;
@@ -19,7 +17,7 @@ public class StatusTests : IAsyncLifetime
 {
     private readonly StatusModel _statusModel;
     private readonly CardDbContext _dbContext;
-    private readonly UserManager<CardUser> _userManager;
+    private readonly PageContextFactory _pageFactory;
 
     private readonly TestDataGenerator _testGen;
     private TradeSet _trades = null!;
@@ -27,12 +25,12 @@ public class StatusTests : IAsyncLifetime
     public StatusTests(
         StatusModel statusModel,
         CardDbContext dbContext,
-        UserManager<CardUser> userManager,
+        PageContextFactory pageFactory,
         TestDataGenerator testGen)
     {
         _statusModel = statusModel;
         _dbContext = dbContext;
-        _userManager = userManager;
+        _pageFactory = pageFactory;
         _testGen = testGen;
     }
 
@@ -64,7 +62,7 @@ public class StatusTests : IAsyncLifetime
         var trade = await TradesInSet.Include(t => t.From).FirstAsync();
         var tradeSet = TradesInSet.Select(t => t.Id);
 
-        await _statusModel.SetModelContextAsync(_userManager, trade.From.OwnerId);
+        await _pageFactory.AddModelContextAsync(_statusModel, trade.From.OwnerId);
 
         // Act
         var tradesBefore = await tradeSet.ToListAsync();
@@ -82,7 +80,7 @@ public class StatusTests : IAsyncLifetime
     public async Task OnPost_InvalidTrade_NoChange()
     {
         // Arrange
-        await _statusModel.SetModelContextAsync(_userManager, _trades.Target.OwnerId);
+        await _pageFactory.AddModelContextAsync(_statusModel, _trades.Target.OwnerId);
 
         var trade = await TradesInSet.FirstAsync();
         var tradeSet = TradesInSet.Select(t => t.Id);
@@ -103,7 +101,7 @@ public class StatusTests : IAsyncLifetime
     public async Task OnPost_ValidTrade_RemovesTrade()
     {
         // Arrange
-        await _statusModel.SetModelContextAsync(_userManager, _trades.Target.OwnerId);
+        await _pageFactory.AddModelContextAsync(_statusModel, _trades.Target.OwnerId);
 
         var tradeSet = TradesInSet.Select(t => t.Id);
 

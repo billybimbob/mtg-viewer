@@ -1,9 +1,11 @@
 @page "/Treasury/Adjust/{BoxId:int?}"
 @attribute [Authorize]
+@attribute [Authorize(Policy = CardPolicies.ChangeTreasury)]
 @implements IDisposable
 
 @using System.ComponentModel.DataAnnotations
 @using MTGViewer.Data.Internal
+@using MTGViewer.Areas.Identity.Data
 
 @inject IDbContextFactory<CardDbContext> DbFactory
 

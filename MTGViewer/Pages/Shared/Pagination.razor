@@ -1,9 +1,9 @@
 @inject PageSizes PageSizes
 
-@if (Pages.HasMultiple)
+@if (Offset.HasMultiple)
 {
-    int start = Pages.Current / PageSize * PageSize;
-    int end = Math.Min(Pages.Total, start + PageSize + 1);
+    int start = Offset.Current / PageSize * PageSize;
+    int end = Math.Min(Offset.Total, start + PageSize + 1);
 
     if (start > 0)
     {
@@ -29,10 +29,10 @@
             @for (int i = start; i < end; ++i)
             {
                 var pageIndex = i;
-                var activePage = pageIndex == Pages.Current ? "active" : "";
+                var activePage = pageIndex == Offset.Current ? "active" : "";
 
                 <li class="page-item @activePage">
-                    @if (pageIndex != Pages.Current)
+                    @if (pageIndex != Offset.Current)
                     {
                         <button title="To Page @(pageIndex + 1)"
                             @onclick="() => ChangePageAsync(pageIndex)"
@@ -49,20 +49,20 @@
                 </li>
             }
 
-            @if (end < Pages.Total - 1)
+            @if (end < Offset.Total - 1)
             {
                 <li class="page-item disabled">
                     <span class="page-link"> ... </span>
                 </li>
             }
 
-            @if (end < Pages.Total)
+            @if (end < Offset.Total)
             {
                 <li class="page-item">
                     <button title="To Last Page"
-                        @onclick="() => ChangePageAsync(Pages.Total - 1)" 
+                        @onclick="() => ChangePageAsync(Offset.Total - 1)" 
                         class="page-link"> 
-                        @Pages.Total </button>
+                        @Offset.Total </button>
                 </li>
             }
 
@@ -73,7 +73,7 @@
 @code
 {
     [Parameter]
-    public Data.Pages Pages { get; set; }
+    public Offset Offset { get; set; }
 
     [Parameter]
     public EventCallback<int> PageSelected { get; set; }

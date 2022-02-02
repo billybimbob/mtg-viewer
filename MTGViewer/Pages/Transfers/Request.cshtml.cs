@@ -19,6 +19,7 @@ namespace MTGViewer.Pages.Transfers;
 
 
 [Authorize]
+[Authorize(CardPolicies.ChangeTreasury)]
 public class RequestModel : PageModel
 {
     private CardDbContext _dbContext;

@@ -16,6 +16,7 @@ namespace MTGViewer.Pages.Transfers;
 
 
 [Authorize]
+[Authorize(Policy = CardPolicies.ChangeTreasury)]
 public class SuggestModel : PageModel
 {
     private readonly int _pageSize;
@@ -35,7 +36,7 @@ public class SuggestModel : PageModel
 
     public Card Card { get; private set; } = null!;
 
-    public PagedList<UserRef> Users { get; private set; } = PagedList<UserRef>.Empty;
+    public OffsetList<UserRef> Users { get; private set; } = OffsetList<UserRef>.Empty();
 
 
     public async Task<IActionResult> OnGetAsync(string cardId, int? pageIndex, CancellationToken cancel)
@@ -83,7 +84,9 @@ public class SuggestModel : PageModel
 
             .Where(us => us.suggest == default)
             .Select(us => us.user)
+
             .OrderBy(u => u.Name)
+                .ThenBy(u => u.Id)
             .AsNoTracking();
     }
 

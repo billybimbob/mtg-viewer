@@ -3,7 +3,12 @@
 @{
     ViewData["Title"] = $"{Model.UserName} - Trades";
 }
+
+@using Microsoft.AspNetCore.Authorization
+@using MTGViewer.Areas.Identity.Data
+
 @inject SymbolFormatter MtgSymbols
+@inject IAuthorizationService AuthorizationService
 
 
 <div class="row">
@@ -83,13 +88,16 @@
             </table>
         </div>
 
-        <partial name="_PaginationPartial" for="TradeDecks.Pages"/>
+        <partial name="_PaginationPartial" for="TradeDecks.Offset"/>
     </div>
 </div>
 
 
 @if (Model.Suggestions.Any())
 {
+    bool canChangeTreasury = (await AuthorizationService
+        .AuthorizeAsync(User, CardPolicies.ChangeTreasury)).Succeeded;
+
     <div class="row">
         <div class="col">
             <h2>Suggestions</h2>
@@ -101,7 +109,11 @@
                             <th scope="col"> @Html.DisplayNameForInnerType((Suggestion t) => t.Card) </th>
                             <th scope="col"> @Html.DisplayNameForInnerType((Suggestion t) => t.To) </th>
                             <th scope="col"> @Html.DisplayNameForInnerType((Suggestion t) => t.Comment) </th>
-                            <th scope="col"></th>
+
+                            @if (canChangeTreasury)
+                            {
+                                <th scope="col"></th>
+                            }
                         </tr>
                     </thead>
                     <tbody>
@@ -115,24 +127,28 @@
 
                                 <td>@(suggestion.To?.Name ?? "")</td>
                                 <td>@suggestion.Comment</td>
-                                <td>
-                                    <form method="POST">
-                                        <input type="hidden" asp-for="DeckIndex"/>
-                                        <input type="hidden" asp-for="SuggestIndex"/>
 
-                                        <input type="submit"
-                                            asp-route-suggestid="@suggestion.Id"
-                                            class="btn btn-secondary"
-                                            value="Acknowledge" />
-                                    </form>
-                                </td>
+                                @if (canChangeTreasury)
+                                {
+                                    <td>
+                                        <form method="POST">
+                                            <input type="hidden" asp-for="DeckIndex"/>
+                                            <input type="hidden" asp-for="SuggestIndex"/>
+
+                                            <input type="submit"
+                                                asp-route-suggestid="@suggestion.Id"
+                                                class="btn btn-secondary"
+                                                value="Acknowledge" />
+                                        </form>
+                                    </td>
+                                }
                             </tr>
                         }
                     </tbody>
                 </table>
             </div>
 
-            <partial name="_PaginationPartial" for="Suggestions.Pages"/>
+            <partial name="_PaginationPartial" for="Suggestions.Offset"/>
        </div>
     </div>
 }

@@ -1,8 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Microsoft.EntityFrameworkCore;
-using MTGViewer.Data;
 
 namespace MTGViewer.Data.Internal;
 

@@ -20,6 +20,7 @@ namespace MTGViewer.Pages.Decks;
 
 
 [Authorize]
+[Authorize(CardPolicies.ChangeTreasury)]
 public class ExchangeModel : PageModel
 {
     private readonly CardDbContext _dbContext;

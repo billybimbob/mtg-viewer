@@ -1,9 +1,19 @@
 @page "{pageIndex:int?}"
 @model Decks.IndexModel
 @{
-    ViewData["Title"] = $"{Model.UserName} - Decks ({Model.Decks.Pages})";
+    ViewData["Title"] = $"{Model.UserName} - Decks ({Model.Decks.Offset})";
 }
+
+@using Microsoft.AspNetCore.Authorization
+@using MTGViewer.Areas.Identity.Data
+
+@inject IAuthorizationService AuthorizationService
 @inject SymbolFormatter MtgSymbols
+
+@{
+    bool canChangeTreasury = (await AuthorizationService
+        .AuthorizeAsync(User, CardPolicies.ChangeTreasury)).Succeeded;
+}
 
  
 <h1>@Model.UserName's Decks</h1>
@@ -22,8 +32,9 @@
             </tr>
         </thead>
         <tbody>
-            @foreach (var (deck, state) in Model.Decks)
+            @foreach (var deck in Model.Decks)
             {
+                var state = Model.GetDeckState(deck);
                 <tr>
                     <td>
                         <a asp-page="Details" asp-route-id="@deck.Id">
@@ -38,12 +49,12 @@
                     <td> @deck.Cards.Sum(a => a.NumCopies) </td>
 
                     <td>
-                        @if (state is IndexModel.State.Requesting)
+                        @if (state is IndexModel.State.Requesting && canChangeTreasury)
                         {
                             <a asp-page="/Transfers/Status" asp-route-deckid="@deck.Id">
                                 @state.ToString() </a>
                         }
-                        else if (state is IndexModel.State.Theorycraft)
+                        else if (state is IndexModel.State.Theorycraft && canChangeTreasury)
                         {
                             <a asp-page="Exchange" asp-route-id="@deck.Id">
                                 @state.ToString() </a>
@@ -55,24 +66,32 @@
                     </td>
                     
                     <td class="btn-group" role="group">
-                        @if (state is IndexModel.State.Requesting)
-                        {
-                            <button class="btn btn-secondary" type="button" disabled> Edit </button>
-                        }
-                        else
+                        @if (state is not IndexModel.State.Requesting && canChangeTreasury)
                         {
                             <a href="/Decks/Craft/@deck.Id"
                                 class="btn btn-secondary" role="button">
                                 Edit </a>
+                        }
+                        else
+                        {
+                            <button class="btn btn-secondary" type="button" disabled> Edit </button>
                         }
 
                         <a asp-page="History" asp-route-id="@deck.Id"
                             class="btn btn-secondary" role="button">
                             History </a>
 
-                        <a asp-page="Delete" asp-route-id="@deck.Id"
-                            class="btn btn-danger" role="button">
-                            Delete </a>
+                        @if (canChangeTreasury)
+                        {
+                            <a asp-page="Delete" asp-route-id="@deck.Id"
+                                class="btn btn-danger" role="button">
+                                Delete </a>
+                        }
+                        else
+                        {
+                            <button class="btn btn-danger" type="button" disabled>
+                                Delete </button>
+                        }
                     </td>
                 </tr>
             }
@@ -81,4 +100,4 @@
 </div>
 
 
-<partial name="_PaginationPartial" for="Decks.Pages"/>
+<partial name="_PaginationPartial" for="Decks.Offset"/>

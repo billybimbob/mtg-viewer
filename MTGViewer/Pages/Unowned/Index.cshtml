@@ -54,7 +54,7 @@
                     }
 
                     <td rowspan="@groupSpan">
-                        <form method="POST">
+                        <form method="POST" asp-page-handler="Remove">
                             <input type="hidden" name="id" value="@unclaimed.Id"/>
 
                             <div class="btn-group" role="group">
@@ -63,10 +63,8 @@
                                     type="submit" class="btn btn-secondary"
                                     value="Claim" />
 
-                                <input title="Remove @unclaimed.Name" 
-                                    asp-page-handler="Remove"
-                                    type="submit" class="btn btn-danger"
-                                    value="Remove" />
+                                <button title="Remove @unclaimed.Name" type="submit" class="btn btn-danger">
+                                    &times; </button>
                             </div>
                         </form>
                     </td>
@@ -94,4 +92,4 @@
     </table>
 </div>
 
-<partial name="_PaginationPartial" for="Unclaimed.Pages"/>
+<partial name="_PaginationPartial" for="Unclaimed.Offset"/>

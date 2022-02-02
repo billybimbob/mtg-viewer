@@ -17,6 +17,7 @@ namespace MTGViewer.Pages.Transfers;
 
 
 [Authorize]
+[Authorize(Policy = CardPolicies.ChangeTreasury)]
 public class SuggestUserModel : PageModel
 {
     private readonly CardDbContext _dbContext;

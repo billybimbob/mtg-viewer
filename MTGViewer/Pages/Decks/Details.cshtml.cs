@@ -45,8 +45,11 @@ public class DetailsModel : PageModel
 
         var userId = _userManager.GetUserId(User);
 
+
         IsOwner = deck.OwnerId == userId;
+
         Deck = deck;
+
         Cards = DeckCardGroups(deck).ToList();
 
         return Page();

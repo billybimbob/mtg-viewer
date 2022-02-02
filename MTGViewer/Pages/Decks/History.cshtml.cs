@@ -25,6 +25,7 @@ public class HistoryModel : PageModel
     private readonly int _pageSize;
     private readonly CardDbContext _dbContext;
     private readonly UserManager<CardUser> _userManager;
+    private readonly IAuthorizationService _authorization;
     private readonly ILogger<HistoryModel> _logger;
 
     private readonly HashSet<(int, int, int?)> _firstTransfers = new();
@@ -33,11 +34,13 @@ public class HistoryModel : PageModel
         PageSizes pageSizes,
         CardDbContext dbContext, 
         UserManager<CardUser> userManager,
+        IAuthorizationService authorization,
         ILogger<HistoryModel> logger)
     {
         _pageSize = pageSizes.GetPageModelSize<HistoryModel>();
         _dbContext = dbContext;
         _userManager = userManager;
+        _authorization = authorization;
         _logger = logger;
     }
 
@@ -54,7 +57,7 @@ public class HistoryModel : PageModel
     public IReadOnlyList<Transfer> Transfers { get; private set; } =
         Array.Empty<Transfer>();
 
-    public Data.Pages Pages { get; private set; }
+    public Data.Offset Pages { get; private set; }
 
     public TimeZoneInfo TimeZone { get; private set; } = TimeZoneInfo.Utc;
 
@@ -91,7 +94,7 @@ public class HistoryModel : PageModel
                         tft.Transaction, tft.To, tft.From, changeGroup.ToList()))
             .ToList();
 
-        Pages = changes.Pages;
+        Pages = changes.Offset;
 
         UpdateTimeZone(tz);
 
@@ -122,7 +125,8 @@ public class HistoryModel : PageModel
                 .ThenBy(c => c.From!.Name)
                 .ThenBy(c => c.To!.Name)
                     .ThenBy(c => c.Card.Name)
-                    .ThenBy(c => c.Amount);
+                    .ThenBy(c => c.Amount)
+                    .ThenBy(c => c.Id);
     }
 
 
@@ -162,6 +166,13 @@ public class HistoryModel : PageModel
 
     public async Task<IActionResult> OnPostAsync(int transactionId, CancellationToken cancel)
     {
+        var authorized = await _authorization.AuthorizeAsync(User, CardPolicies.ChangeTreasury);
+
+        if (!authorized.Succeeded)
+        {
+            return Forbid();
+        }
+
         var transaction = await _dbContext.Transactions
             .Include(t => t.Changes)
                 .ThenInclude(c => c.From)

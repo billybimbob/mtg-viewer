@@ -9,23 +9,23 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title> @ViewData["Title"] </title>
+
     <meta http-equiv="Content-Security-Policy" 
-      content="base-uri 'self';
-               block-all-mixed-content;
-               default-src 'self';
-               img-src data: https:;
-               object-src 'none';
-               script-src 'self';
-               style-src 'self';
-               upgrade-insecure-requests;">
+        content="base-uri 'self';
+                 block-all-mixed-content;
+                 default-src 'self';
+                 img-src data: https:;
+                 object-src 'none';
+                 script-src 'self';
+                 style-src 'self';
+                 upgrade-insecure-requests;">
 
     <link rel="stylesheet" href="~/lib/mana/css/mana.min.css"/>
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
 
     <base href="~/" />
-
-    <title> @ViewData["Title"] </title>
     <component type="typeof(HeadOutlet)" render-mode="Server" />
 </head>
 <body>

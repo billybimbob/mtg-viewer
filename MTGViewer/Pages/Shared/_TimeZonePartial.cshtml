@@ -1,9 +1,7 @@
 @model TimeZoneInfo
 
 @{
-    var timeZoneOptions = TimeZoneInfo.GetSystemTimeZones()
-        .OrderBy(tz => ListName(tz))
-        .ToList();
+    var timeZoneOptions = TimeZoneInfo.GetSystemTimeZones();
 }
 
 
@@ -12,7 +10,7 @@
     <div class="btn-group pb-3" role="group">
         <button id="tz-btn" type="button" class="btn btn-secondary dropdown-toggle"
             data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-            @Model.DisplayName
+            @ListName(Model)
         </button>
 
         <div class="dropdown-menu" aria-label="tz-btn">
@@ -21,12 +19,12 @@
                 if (tz.Id == Model.Id)
                 {
                     <button class="dropdown-item active" role="button">
-                        @ListName(tz) </button>
+                        @tz.DisplayName </button>
                 }
                 else
                 {
                     <a class="dropdown-item" asp-route-tz="@tz.Id">
-                        @ListName(tz) </a>
+                        @tz.DisplayName </a>
                 }
             }
         </div>

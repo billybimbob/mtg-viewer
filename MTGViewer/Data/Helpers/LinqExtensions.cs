@@ -9,8 +9,8 @@ namespace MTGViewer.Data;
 
 public static class LinqExtensions
 {
-    public static PagedList<T> ToPagedList<T>(
-        this IEnumerable<T> source,
+    public static OffsetList<TEntity> ToPagedList<TEntity>(
+        this IEnumerable<TEntity> source,
         int pageSize, 
         int? pageIndex = null)
     {
@@ -27,18 +27,18 @@ public static class LinqExtensions
         int page = pageIndex ?? 0;
         int totalItems = source.Count();
 
-        var pages = new Pages(page, totalItems, pageSize);
-
         var items = source
-            .Skip(pages.Current * pageSize)
+            .Skip(page * pageSize)
             .Take(pageSize)
             .ToList();
 
-        return new(pages, items);
+        var offset = new Offset(page, totalItems, pageSize);
+
+        return new(offset, items);
     }
 
 
-    public static async Task<PagedList<TEntity>> ToPagedListAsync<TEntity>(
+    public static async Task<OffsetList<TEntity>> ToPagedListAsync<TEntity>(
         this IAsyncEnumerable<TEntity> source,
         int pageSize,
         int? pageIndex = null,
@@ -57,19 +57,19 @@ public static class LinqExtensions
         int page = pageIndex ?? 0;
         int totalItems = await source.CountAsync(cancel).ConfigureAwait(false);
 
-        var pages = new Pages(page, totalItems, pageSize);
-
         var items = await source
-            .Skip(pages.Current * pageSize)
+            .Skip(page * pageSize)
             .Take(pageSize)
             .ToListAsync(cancel)
             .ConfigureAwait(false);
 
-        return new(pages, items);
+        var offset = new Offset(page, totalItems, pageSize);
+
+        return new(offset, items);
     }
 
 
-    public static async Task<PagedList<TEntity>> ToPagedListAsync<TEntity>(
+    public static async Task<OffsetList<TEntity>> ToPagedListAsync<TEntity>(
         this IQueryable<TEntity> source,
         int pageSize, 
         int? pageIndex = null,
@@ -88,15 +88,15 @@ public static class LinqExtensions
         int page = pageIndex ?? 0;
         int totalItems = await source.CountAsync(cancel).ConfigureAwait(false);
 
-        var pages = new Pages(page, totalItems, pageSize);
-
         var items = await source
-            .Skip(pages.Current * pageSize)
+            .Skip(page * pageSize)
             .Take(pageSize)
             .ToListAsync(cancel)
             .ConfigureAwait(false);
 
-        return new(pages, items);
+        var offset = new Offset(page, totalItems, pageSize);
+
+        return new(offset, items);
     }
 
 
@@ -116,11 +116,14 @@ public static class LinqExtensions
             [System.Runtime.CompilerServices.EnumeratorCancellation]
             CancellationToken cancel = default)
         {
-            await using var e = source.WithCancellation(cancel).ConfigureAwait(false).GetAsyncEnumerator();
+            await using var e = source
+                .WithCancellation(cancel)
+                .ConfigureAwait(false)
+                .GetAsyncEnumerator();
 
             while (await e.MoveNextAsync())
             {
-                TSource[] chunk = new TSource[size];
+                var chunk = new TSource[size];
                 chunk[0] = e.Current;
 
                 int i = 1;

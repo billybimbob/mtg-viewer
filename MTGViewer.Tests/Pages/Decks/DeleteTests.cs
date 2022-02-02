@@ -2,12 +2,10 @@ using System.Linq;
 using System.Threading.Tasks;
 
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
 using Xunit;
 
-using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
 using MTGViewer.Pages.Decks;
 using MTGViewer.Tests.Utils;
@@ -19,19 +17,19 @@ public class DeleteTests : IAsyncLifetime
 {
     private readonly DeleteModel _deleteModel;
     private readonly CardDbContext _dbContext;
-    private readonly UserManager<CardUser> _userManager;
+    private readonly PageContextFactory _pageFactory;
     private readonly TestDataGenerator _testGen;
 
 
     public DeleteTests(
         DeleteModel deleteModel,
         CardDbContext dbContext,
-        UserManager<CardUser> userManager,
+        PageContextFactory pageFactory,
         TestDataGenerator testGen)
     {
         _deleteModel = deleteModel;
         _dbContext = dbContext;
-        _userManager = userManager;
+        _pageFactory = pageFactory;
         _testGen = testGen;
     }
 
@@ -61,7 +59,7 @@ public class DeleteTests : IAsyncLifetime
         var deck = await _testGen.CreateDeckAsync();
         var wrongUser = await _dbContext.Users.FirstAsync(u => u.Id != deck.OwnerId);
 
-        await _deleteModel.SetModelContextAsync(_userManager, wrongUser.Id);
+        await _pageFactory.AddModelContextAsync(_deleteModel, wrongUser.Id);
 
         // Act
         var result = await _deleteModel.OnPostAsync(deck.Id, default);
@@ -79,7 +77,7 @@ public class DeleteTests : IAsyncLifetime
         // Arrange
         var deck = await _testGen.CreateDeckAsync();
 
-        await _deleteModel.SetModelContextAsync(_userManager, deck.OwnerId);
+        await _pageFactory.AddModelContextAsync(_deleteModel, deck.OwnerId);
 
         var wrongDeck = -1;
 
@@ -102,7 +100,7 @@ public class DeleteTests : IAsyncLifetime
         // Arrange
         var deck = await _testGen.CreateDeckAsync(numCopies);
 
-        await _deleteModel.SetModelContextAsync(_userManager, deck.OwnerId);
+        await _pageFactory.AddModelContextAsync(_deleteModel, deck.OwnerId);
 
         var deckCardTotal = await DeckCards(deck).SumAsync(a => a.NumCopies);
 

@@ -2,12 +2,10 @@ using System.Linq;
 using System.Threading.Tasks;
 
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
 using Xunit;
 
-using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
 using MTGViewer.Pages.Decks;
 using MTGViewer.Tests.Utils;
@@ -19,7 +17,7 @@ public class HistoryTests : IAsyncLifetime
 {
     private readonly HistoryModel _historyModel;
     private readonly CardDbContext _dbContext;
-    private readonly UserManager<CardUser> _userManager;
+    private readonly PageContextFactory _pageFactory;
 
     private readonly TestDataGenerator _testGen;
     private Transaction _transaction = null!;
@@ -28,12 +26,12 @@ public class HistoryTests : IAsyncLifetime
     public HistoryTests(
         HistoryModel historyModel,
         CardDbContext dbContext,
-        UserManager<CardUser> userManager,
+        PageContextFactory pageFactory,
         TestDataGenerator testGen)
     {
         _historyModel = historyModel;
         _dbContext = dbContext;
-        _userManager = userManager;
+        _pageFactory = pageFactory;
         _testGen = testGen;
     }
 
@@ -60,7 +58,7 @@ public class HistoryTests : IAsyncLifetime
 
         var invalidTransactionId = 0;
 
-        await _historyModel.SetModelContextAsync(_userManager, ownedId);
+        await _pageFactory.AddModelContextAsync(_historyModel, ownedId);
 
         var result = await _historyModel.OnPostAsync(invalidTransactionId, default);
         var transactions = await Transactions.Select(t => t.Id).ToListAsync();
@@ -81,7 +79,7 @@ public class HistoryTests : IAsyncLifetime
             .Select(u => u.Id)
             .FirstAsync();
 
-        await _historyModel.SetModelContextAsync(_userManager, wrongUser);
+        await _pageFactory.AddModelContextAsync(_historyModel, wrongUser);
 
         var result = await _historyModel.OnPostAsync(_transaction.Id, default);
         var transactions = await Transactions.Select(t => t.Id).ToListAsync();
@@ -97,7 +95,7 @@ public class HistoryTests : IAsyncLifetime
         var change = _transaction.Changes.First();
         var ownedId = (change.To as Deck)?.OwnerId ?? (change.From as Deck)!.OwnerId;
 
-        await _historyModel.SetModelContextAsync(_userManager, ownedId);
+        await _pageFactory.AddModelContextAsync(_historyModel, ownedId);
 
         var result = await _historyModel.OnPostAsync(_transaction.Id, default);
         var transactions = await Transactions.Select(t => t.Id).ToListAsync();

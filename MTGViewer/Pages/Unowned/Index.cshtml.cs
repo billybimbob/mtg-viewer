@@ -20,6 +20,7 @@ namespace MTGViewer.Pages.Unowned;
 
 
 [Authorize]
+[Authorize(Policy = CardPolicies.ChangeTreasury)]
 public class IndexModel : PageModel
 {
     private readonly int _pageSize;
@@ -49,7 +50,7 @@ public class IndexModel : PageModel
     [TempData]
     public string? PostMessage { get; set; }
 
-    public PagedList<Unclaimed> Unclaimed { get; private set; } = PagedList<Unclaimed>.Empty;
+    public OffsetList<Unclaimed> Unclaimed { get; private set; } = OffsetList<Unclaimed>.Empty();
 
     public IReadOnlyDictionary<int, IReadOnlyList<QuantityNameGroup>> Cards { get; private set; } =
         ImmutableDictionary<int, IReadOnlyList<QuantityNameGroup>>.Empty;
@@ -106,6 +107,7 @@ public class IndexModel : PageModel
                 .ThenInclude(w => w.Card)
 
             .OrderBy(u => u.Name)
+                .ThenBy(u => u.Id)
             .AsSplitQuery()
             .AsNoTrackingWithIdentityResolution();
     }

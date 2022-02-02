@@ -1,5 +1,4 @@
 using System;
-using MTGViewer.Data;
 
 namespace MTGViewer.Data;
 

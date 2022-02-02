@@ -4,6 +4,7 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 
 using Microsoft.Extensions.Logging;
@@ -16,9 +17,9 @@ using MTGViewer.Data;
 
 namespace MTGViewer.Services;
 
-public class MTGFetchService : IMtgQueryable<MTGFetchService, CardQuery>
+public class MtgApiQuery : IMTGQuery
 {
-    private static readonly IReadOnlySet<string> _multipleValues = 
+    private static readonly IReadOnlyCollection<string> _multipleValues = 
         new HashSet<string>(new []
         {
             nameof(CardQuery.Colors),
@@ -27,25 +28,20 @@ public class MTGFetchService : IMtgQueryable<MTGFetchService, CardQuery>
             nameof(CardQuery.Subtypes)
         });
 
-    public const char Or = '|';
-    public const char And = ',';
-    public const int Limit = 100;
-
-
     private readonly ICardService _service;
     private readonly FixedCache _cache;
 
     private readonly int _pageSize;
-    private readonly ILogger<MTGFetchService> _logger;
+    private readonly ILogger<MtgApiQuery> _logger;
 
     private bool _empty;
     private int _page;
 
-    public MTGFetchService(
+    public MtgApiQuery(
         ICardService service,
         FixedCache cache, 
         PageSizes pageSizes,
-        ILogger<MTGFetchService> logger)
+        ILogger<MtgApiQuery> logger)
     {
         _service = service;
         _cache = cache;
@@ -58,6 +54,9 @@ public class MTGFetchService : IMtgQueryable<MTGFetchService, CardQuery>
     }
 
 
+    public int Limit => 100;
+
+
     public void Reset()
     {
         _service.Reset();
@@ -67,56 +66,63 @@ public class MTGFetchService : IMtgQueryable<MTGFetchService, CardQuery>
     }
 
 
-    public MTGFetchService Where<TParameter>(
-        Expression<Func<CardQuery, TParameter>> property, TParameter value)
+    public IMTGQuery Where(Expression<Func<CardQuery, bool>> predicate)
     {
-        if (property.Body is MemberExpression expression)
+        if (predicate.Body is not BinaryExpression binary
+            || binary.NodeType is not ExpressionType.Equal)
         {
-            QueryProperty(expression.Member.Name, value);
+            throw new NotSupportedException("Only equality expressions are supported");
+        }
+
+        if (binary.Left is MemberExpression leftMember)
+        {
+            QueryProperty(leftMember.Member.Name, ParsePropertyValue(binary.Right));
+        }
+        else if (binary.Right is MemberExpression rightMember)
+        {
+            QueryProperty(rightMember.Member.Name, ParsePropertyValue(binary.Left));
+        }
+        else
+        {
+            throw new NotSupportedException("Comparisons must be done on the Card Query");
         }
 
         return this;
-    }
 
-
-    public MTGFetchService Where(CardQuery search)
-    {
-        if (search is null)
+        object ParsePropertyValue(Expression expression)
         {
-            return this;
-        }
+            // boxes, keep eye on
+            var objCast = Expression.Convert(expression, typeof(object));
 
-        const BindingFlags binds = BindingFlags.Instance | BindingFlags.Public;
-
-        foreach (var info in typeof(CardQuery).GetProperties(binds))
-        {
-            if (info.GetGetMethod() is not null
-                && info.GetSetMethod() is not null)
+            if (Expression
+                .Lambda<Func<object?>>(objCast)
+                .Compile()
+                .Invoke() is not object value)
             {
-                QueryProperty(info.Name, info.GetValue(search));
+                throw new ArgumentException(nameof(predicate));
             }
-        }
 
-        return this;
+            return value;
+        }
     }
 
 
-    private void QueryProperty<TParameter>(string propertyName, TParameter parameter)
+    private void QueryProperty(string propertyName, object propertyValue)
     {
         const BindingFlags binds = BindingFlags.IgnoreCase | BindingFlags.Instance | BindingFlags.Public;
 
         if (typeof(CardQueryParameter).GetProperty(propertyName, binds) == null)
         {
-            return;
+            throw new ArgumentException(nameof(propertyName));
         }
 
         const string pageName = nameof(CardQueryParameter.Page);
         const string pageSizeName = nameof(CardQueryParameter.PageSize);
 
         bool TryString(out string? stringValue) =>
-            TryToString(parameter, _multipleValues.Contains(propertyName), out stringValue);
+            TryToString(propertyValue, _multipleValues.Contains(propertyName), out stringValue);
 
-        switch ((propertyName, parameter))
+        switch ((propertyName, propertyValue))
         {
             case (pageName, int page) when page != default:
                 // translate zero-based page index to one-based page from the api
@@ -137,27 +143,33 @@ public class MTGFetchService : IMtgQueryable<MTGFetchService, CardQuery>
                 break;
 
             default:
-                break;
+                throw new ArgumentException(nameof(propertyValue));
         }
     }
 
 
-    private bool TryToString(object? paramValue, bool multipleValues, out string? stringValue)
+    private bool TryToString(object paramValue, bool multipleValues, out string? stringValue)
     {
         const StringSplitOptions noWhitespace = StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries;
 
-        stringValue = paramValue?.ToString();
+        stringValue = paramValue.ToString();
 
         if (string.IsNullOrWhiteSpace(stringValue))
         {
             return false;
         }
 
-        stringValue = string.Join(Or, stringValue.Split(Or, noWhitespace));
+        // truncates any whitespace between logical operators
+
+        stringValue = string.Join(
+            IMTGQuery.Or,
+            stringValue.Split(IMTGQuery.Or, noWhitespace));
 
         if (multipleValues)
         {
-            stringValue = string.Join(And, Regex.Split(stringValue, $@"(?:\s*{And}\s*)|\s+"));
+            stringValue = string.Join(
+                IMTGQuery.And, 
+                Regex.Split(stringValue, $@"(?:\s*{IMTGQuery.And}\s*)|\s+"));
         }
 
         return true;
@@ -169,7 +181,7 @@ public class MTGFetchService : IMtgQueryable<MTGFetchService, CardQuery>
         var xParam = Expression.Parameter(typeof(CardQueryParameter), "x");
         var propExpr = Expression.Property(xParam, name);
 
-        var expression = Expression.Lambda<Func<CardQueryParameter,TParameter>>(propExpr, xParam);
+        var expression = Expression.Lambda<Func<CardQueryParameter, TParameter>>(propExpr, xParam);
 
         _service.Where(expression, value);
         _empty = false;
@@ -181,16 +193,20 @@ public class MTGFetchService : IMtgQueryable<MTGFetchService, CardQuery>
     /// be active at the same time. Be sure to <see langword="await"/> before 
     /// executing another search.
     /// </remarks>
-    public async Task<PagedList<Card>> SearchAsync()
+    public async Task<OffsetList<Card>> SearchAsync(CancellationToken cancel = default)
     {
         if (_empty)
         {
-            return PagedList<Card>.Empty;
+            return OffsetList<Card>.Empty();
         }
+
+        cancel.ThrowIfCancellationRequested();
 
         var response = await _service
             // .Where(c => c.OrderBy, "name") get error code 500 with this
             .AllAsync();
+
+        cancel.ThrowIfCancellationRequested();
 
         var matches = LoggedUnwrap(response) ?? Enumerable.Empty<ICard>();
 
@@ -199,11 +215,11 @@ public class MTGFetchService : IMtgQueryable<MTGFetchService, CardQuery>
             _empty = true;
             _page = 0;
 
-            return PagedList<Card>.Empty;
+            return OffsetList<Card>.Empty();
         }
 
         var totalPages = response.PagingInfo.TotalPages;
-        var pages = new Data.Pages(_page, totalPages);
+        var pages = new Offset(_page, totalPages);
 
         var cards = matches
             .Select(c => c.ToCard())
@@ -220,12 +236,12 @@ public class MTGFetchService : IMtgQueryable<MTGFetchService, CardQuery>
         _empty = true;
         _page = 0;
 
-        return new PagedList<Card>(pages, cards);
+        return new OffsetList<Card>(pages, cards);
     }
 
 
 
-    public async Task<Card?> FindAsync(string id)
+    public async Task<Card?> FindAsync(string id, CancellationToken cancel = default)
     {
         if (string.IsNullOrWhiteSpace(id))
         {
@@ -240,7 +256,12 @@ public class MTGFetchService : IMtgQueryable<MTGFetchService, CardQuery>
 
         _logger.LogInformation($"refetching {id}");
 
+        cancel.ThrowIfCancellationRequested();
+
         var result = await _service.FindAsync(id);
+
+        cancel.ThrowIfCancellationRequested();
+
         var match = LoggedUnwrap(result);
 
         if (match is null)

@@ -18,8 +18,10 @@ public class BulkOperations
 {
     private readonly PageSizes _pageSizes;
 
+    // might want to use dbFactory
+    // keep eye on
     private readonly CardDbContext _dbContext;
-    private readonly MTGFetchService _fetch;
+    private readonly IMTGQuery _mtgQuery;
 
     private readonly UserManager<CardUser> _userManager;
     private readonly string _tempPassword;
@@ -28,13 +30,13 @@ public class BulkOperations
         IConfiguration config, 
         PageSizes pageSizes,
         CardDbContext dbContext,
-        MTGFetchService fetch,
+        IMTGQuery fetch,
         UserManager<CardUser> userManager)
     {
         _pageSizes = pageSizes;
 
         _dbContext = dbContext;
-        _fetch = fetch;
+        _mtgQuery = fetch;
 
         var seedOptions = new SeedSettings();
         config.GetSection(nameof(SeedSettings)).Bind(seedOptions);
@@ -44,9 +46,9 @@ public class BulkOperations
     }
 
 
-    public async ValueTask<int> GetTotalPagesAsync(CancellationToken cancel = default)
+    public ValueTask<int> GetTotalPagesAsync(CancellationToken cancel = default)
     {
-        return await CardStream
+        return CardStream
             .DbSetCounts(_dbContext)
             .Select(count => count / _pageSizes.Limit)
             .Prepend(1)
@@ -295,7 +297,7 @@ public class BulkOperations
         IEnumerable<string> multiIds, 
         CancellationToken cancel)
     {
-        const int limit = MTGFetchService.Limit;
+        int limit = _mtgQuery.Limit;
 
         cancel.ThrowIfCancellationRequested();
 
@@ -308,14 +310,12 @@ public class BulkOperations
                 continue;
             }
 
-            var multiArg = string.Join(MTGFetchService.Or, multiChunk);
+            var multiArg = string.Join(IMTGQuery.Or, multiChunk);
 
-            var validated = await _fetch
-                .Where(c => c.MultiverseId, multiArg)
-                .Where(c => c.PageSize, limit)
-                .SearchAsync();
-
-            cancel.ThrowIfCancellationRequested();
+            var validated = await _mtgQuery
+                .Where(c => c.MultiverseId == multiArg)
+                .Where(c => c.PageSize == limit)
+                .SearchAsync(cancel);
 
             cards.AddRange(validated);
         }
@@ -326,7 +326,7 @@ public class BulkOperations
 
     public async Task MergeAsync(
         IReadOnlyDictionary<string, int> multiAdditions,
-        CancellationToken cancel)
+        CancellationToken cancel = default)
     {
         if (!multiAdditions.Any())
         {
@@ -362,6 +362,56 @@ public class BulkOperations
                 new CardRequest(card, multiAdditions[card.MultiverseId]));
 
         await _dbContext.AddCardsAsync(requests, cancel);
+
+        await _dbContext.SaveChangesAsync(cancel);
+    }
+
+
+    public async Task ResetAsync(CancellationToken cancel = default)
+    {
+        var data = GetCardStream(DataScope.Default);
+
+        await foreach (var card in data.Cards.WithCancellation(cancel))
+        {
+            _dbContext.Cards.Remove(card);
+        }
+
+        await foreach (var deck in data.Decks.WithCancellation(cancel))
+        {
+            _dbContext.Amounts.RemoveRange(deck.Cards);
+            _dbContext.Wants.RemoveRange(deck.Wants);
+            _dbContext.GiveBacks.RemoveRange(deck.GiveBacks);
+
+            _dbContext.Decks.Remove(deck);
+        }
+
+        await foreach (var unclaimed in data.Unclaimed.WithCancellation(cancel))
+        {
+            _dbContext.Amounts.RemoveRange(unclaimed.Cards);
+            _dbContext.Wants.RemoveRange(unclaimed.Wants);
+            
+            _dbContext.Unclaimed.Remove(unclaimed);
+        }
+
+        await foreach (var bin in data.Bins.WithCancellation(cancel))
+        {
+            var binCards = bin.Boxes.SelectMany(b => b.Cards);
+
+            _dbContext.Amounts.RemoveRange(binCards);
+            _dbContext.Boxes.RemoveRange(bin.Boxes);
+            _dbContext.Bins.Remove(bin);
+        }
+
+        await foreach (var transaction in data.Transactions.WithCancellation(cancel))
+        {
+            _dbContext.Changes.RemoveRange(transaction.Changes);
+            _dbContext.Transactions.Remove(transaction);
+        }
+
+        await foreach (var suggestion in data.Suggestions.WithCancellation(cancel))
+        {
+            _dbContext.Suggestions.Remove(suggestion);
+        }
 
         await _dbContext.SaveChangesAsync(cancel);
     }

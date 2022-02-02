@@ -17,9 +17,10 @@
     }
     else
     {
-        <a href="/Cards" title="Card Collection">
-            <h3>Cards from our collection!</h3>
-        </a>
+        <h3>
+            <a href="/Cards" title="Card Collection">
+                Cards from our collection!  </a>
+        </h3>
 
         <div class="row no-gutters justify-content-center">
             @foreach (var card in RandomCards)
@@ -59,9 +60,10 @@
 @if (RecentChanges.Any())
 {
     <section class="pt-5">
-        <a href="/Treasury/History" title="Treasury History">
-            <h3>Recent Shared Collection Changes</h3>
-        </a>
+        <h3>
+            <a href="/Treasury/History" title="Treasury History">
+                Recent Shared Collection Changes </a>
+        </h3>
 
         <ul class="list-group list-group-flush">
             @foreach (var transaction in RecentChanges)

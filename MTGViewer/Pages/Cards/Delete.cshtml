@@ -14,7 +14,8 @@
 </div>
 <hr />
 
-@{ bool inDeck = Model.Card.Amounts.Any(a => a.Location is Deck); }
+@{ bool inDeck = Model.Card.Amounts
+    .Any(a => a.Location is Deck || a.Location is Unclaimed); }
 
 <div class="row">
     <section class="col col-sm-10 col-md-8">
@@ -40,7 +41,7 @@
             <input type="hidden" asp-for="Input!.CardId" value="@Model.Card.Id" class="sr-only"/>
 
             @{ int maxCopies = Model.Card.Amounts
-                .Where(a => a.Location is Box || a.Location is Unclaimed)
+                .Where(a => a.Location is Box)
                 .Sum(a => a.NumCopies); }
 
             <div class="form-group">

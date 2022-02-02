@@ -2,7 +2,7 @@
 @model Transfers.SuggestModel
 @inject SymbolFormatter MtgSymbols
 @{
-    ViewData["Title"] = $"{Model.Card.Name} - Suggest ({Model.Users.Pages})";
+    ViewData["Title"] = $"{Model.Card.Name} - Suggest ({Model.Users.Offset})";
 }
 
 <h2>
@@ -71,9 +71,9 @@
                 </fieldset>
             </form>
 
-            @if (Model.Users.Pages.HasMultiple)
+            @if (Model.Users.Offset.HasMultiple)
             {
-                var pages = Model.Users.Pages;
+                var pages = Model.Users.Offset;
 
                 <div class="form-group row">
                     <div class="col-sm">

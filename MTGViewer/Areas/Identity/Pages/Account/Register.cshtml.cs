@@ -1,10 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using System.Threading;
 using System.Threading.Tasks;
 
-using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -74,7 +73,7 @@ public class RegisterModel : PageModel
     { }
 
 
-    public async Task<IActionResult> OnPostAsync()
+    public async Task<IActionResult> OnPostAsync(CancellationToken cancel)
     {
         ReturnUrl ??= Url.Content("~/");
 
@@ -101,7 +100,7 @@ public class RegisterModel : PageModel
         var userId = await _userManager.GetUserIdAsync(user);
         user.Id = userId;
 
-        var created = await _referenceManager.CreateReferenceAsync(user);
+        var created = await _referenceManager.CreateReferenceAsync(user, cancel);
         if (!created)
         {
             ModelState.AddModelError(string.Empty, "Issue creating user account");

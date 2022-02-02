@@ -18,6 +18,7 @@ using MTGViewer.Data;
 namespace MTGViewer.Pages.Decks;
 
 [Authorize]
+[Authorize(CardPolicies.ChangeTreasury)]
 public class DeleteModel : PageModel
 {
     private readonly UserManager<CardUser> _userManager;

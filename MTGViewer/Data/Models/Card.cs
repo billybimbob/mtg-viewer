@@ -8,6 +8,7 @@ namespace MTGViewer.Data;
 // adding annotations for validator
 
 [Index(nameof(Name))]
+[Index(nameof(Name), nameof(SetName))]
 public class Card
 {
     [Required]

@@ -19,4 +19,6 @@ public class UserRef
 
     [StringLength(256)]
     public string Name { get; set; } = null!;
+
+    public bool ResetRequested { get; set;  }
 }

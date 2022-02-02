@@ -2,30 +2,29 @@ using System.Linq;
 using System.Threading.Tasks;
 using Xunit;
 
-using MTGViewer.Data;
 using MTGViewer.Services;
 
 namespace MTGViewer.Tests.Services;
 
 
-public class MTGFetchTests
+public class MTGQueryTests
 {
     private const string TEST_ID = "386616";
     private const string TEST_NAME = "Narset, Enlightened Master";
 
-    private readonly MTGFetchService _fetch;
+    private readonly IMTGQuery _mtgQuery;
 
-    public MTGFetchTests(MTGFetchService fetch)
+    public MTGQueryTests(IMTGQuery query)
     {
-        _fetch = fetch;
+        _mtgQuery = query;
     }
 
 
     [Fact]
     public async Task Search_NoParams_ReturnsEmpty()
     {
-        _fetch.Reset();
-        var cards = await _fetch.SearchAsync();
+        _mtgQuery.Reset();
+        var cards = await _mtgQuery.SearchAsync();
 
         Assert.Empty(cards);
     }
@@ -34,8 +33,8 @@ public class MTGFetchTests
     [Fact(Skip = "Calls external api")]
     public async Task Search_NameParam_ReturnsSameName()
     {
-        var cards = await _fetch
-            .Where(c => c.Name, TEST_NAME)
+        var cards = await _mtgQuery
+            .Where(c => c.Name == TEST_NAME)
             .SearchAsync();
 
         var cardNames = cards.Select(c => c.Name);
@@ -44,10 +43,27 @@ public class MTGFetchTests
     }
 
 
+    private string GetName() => TEST_NAME;
+
+
+    [Fact(Skip = "Calls external api")]
+    public async Task Search_NameParamCall_ReturnsSameName()
+    { 
+        var cards = await _mtgQuery
+            .Where(c => c.Name == GetName())
+            .SearchAsync();
+
+        var cardNames = cards.Select(c => c.Name);
+
+        Assert.Contains(TEST_NAME, cardNames);
+    }
+
+
+
     [Fact(Skip = "Calls external api")]
     public async Task Find_Id_ReturnsCard()
     {
-        var card = await _fetch.FindAsync(TEST_ID);
+        var card = await _mtgQuery.FindAsync(TEST_ID);
 
         Assert.NotNull(card);
         Assert.Equal(TEST_NAME, card!.Name);
@@ -57,7 +73,7 @@ public class MTGFetchTests
     [Fact(Skip = "Calls external api")]
     public async Task Find_NoId_ReturnsNull()
     {
-        var card = await _fetch.FindAsync(null!);
+        var card = await _mtgQuery.FindAsync(null!);
 
         Assert.Null(card);
     }
@@ -66,9 +82,9 @@ public class MTGFetchTests
     [Fact(Skip = "Calls external api")]
     public async Task Find_Cache_ReturnsCard()
     {
-        var testCard = await _fetch.FindAsync(TEST_ID);
+        var testCard = await _mtgQuery.FindAsync(TEST_ID);
 
-        var card = await _fetch.FindAsync(TEST_ID);
+        var card = await _mtgQuery.FindAsync(TEST_ID);
 
         Assert.NotNull(testCard);
         Assert.NotNull(card);
@@ -86,7 +102,7 @@ public class MTGFetchTests
             MultiverseId = TEST_ID
         };
 
-        var cards = await _fetch
+        var cards = await _mtgQuery
             .Where(search)
             .SearchAsync();
 
@@ -101,7 +117,7 @@ public class MTGFetchTests
     {
         var search = new CardQuery();
 
-        var cards = await _fetch
+        var cards = await _mtgQuery
             .Where(search)
             .SearchAsync();
 
@@ -117,7 +133,7 @@ public class MTGFetchTests
             Name = TEST_NAME
         };
 
-        var cards = await _fetch
+        var cards = await _mtgQuery
             .Where(search)
             .SearchAsync();
 
@@ -133,12 +149,12 @@ public class MTGFetchTests
         const int pageSize = 10;
         const int page = 1;
 
-        var result = await _fetch
-            .Where(x => x.Page, page)
-            .Where(x => x.PageSize, pageSize)
+        var result = await _mtgQuery
+            .Where(x => x.Page == page)
+            .Where(x => x.PageSize == pageSize)
             .SearchAsync();
 
         Assert.True(pageSize >= result.Count);
-        Assert.Equal(page, result.Pages.Current);
+        Assert.Equal(page, result.Offset.Current);
     }
 }

@@ -76,6 +76,7 @@ public sealed class CardStream
             Decks = dbContext.Decks
                 .Include(d => d.Cards)
                 .Include(d => d.Wants)
+                .Include(d => d.GiveBacks)
 
                 .OrderBy(d => d.Id)
                 .AsSplitQuery()
@@ -95,6 +96,16 @@ public sealed class CardStream
 
                 .OrderBy(b => b.Id)
                 .AsSplitQuery()
+                .AsAsyncEnumerable(),
+
+            Transactions = dbContext.Transactions
+                .Include(t => t.Changes)
+
+                .OrderBy(t => t.Id)
+                .AsAsyncEnumerable(),
+
+            Suggestions = dbContext.Suggestions
+                .OrderBy(s => s.Id)
                 .AsAsyncEnumerable()
         };
     }
@@ -130,9 +141,9 @@ public sealed class CardStream
                 .Include(c => c.Subtypes)
                 .Include(c => c.Supertypes)
 
+                .OrderBy(c => c.Id)
                 .Skip(skip)
                 .Take(pageSize)
-                .OrderBy(c => c.Id)
 
                 .AsSplitQuery()
                 .AsAsyncEnumerable(),
@@ -143,9 +154,9 @@ public sealed class CardStream
                 .Include(d => d.Cards)
                 .Include(d => d.Wants)
 
+                .OrderBy(d => d.Id)
                 .Skip(skip)
                 .Take(pageSize)
-                .OrderBy(d => d.Id)
 
                 .AsSplitQuery()
                 .AsAsyncEnumerable(),
@@ -154,9 +165,9 @@ public sealed class CardStream
                 .Include(u => u.Cards)
                 .Include(u => u.Wants)
 
+                .OrderBy(u => u.Id)
                 .Skip(skip)
                 .Take(pageSize)
-                .OrderBy(u => u.Id)
 
                 .AsSplitQuery()
                 .AsAsyncEnumerable(),
@@ -168,9 +179,9 @@ public sealed class CardStream
                 .Include(b => b.Boxes)
                     .ThenInclude(b => b.Cards)
 
+                .OrderBy(b => b.Id)
                 .Skip(skip)
                 .Take(pageSize)
-                .OrderBy(b => b.Id)
 
                 .AsSplitQuery()
                 .AsAsyncEnumerable()

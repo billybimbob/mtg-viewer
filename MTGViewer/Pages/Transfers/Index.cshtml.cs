@@ -21,15 +21,18 @@ public class IndexModel : PageModel
     private readonly int _pageSize;
     private readonly UserManager<CardUser> _userManager;
     private readonly CardDbContext _dbContext;
+    private readonly IAuthorizationService _authorizations;
 
     public IndexModel(
         PageSizes pageSizes, 
         UserManager<CardUser> userManager, 
-        CardDbContext dbContext)
+        CardDbContext dbContext,
+        IAuthorizationService authorizations)
     {
         _pageSize = pageSizes.GetPageModelSize<IndexModel>();
         _userManager = userManager;
         _dbContext = dbContext;
+        _authorizations = authorizations;
     }
 
 
@@ -45,9 +48,9 @@ public class IndexModel : PageModel
 
     public string UserName { get; private set; } = string.Empty;
 
-    public PagedList<Deck> TradeDecks { get; private set; } = PagedList<Deck>.Empty;
+    public OffsetList<Deck> TradeDecks { get; private set; } = OffsetList<Deck>.Empty();
 
-    public PagedList<Suggestion> Suggestions { get; private set; } = PagedList<Suggestion>.Empty;
+    public OffsetList<Suggestion> Suggestions { get; private set; } = OffsetList<Suggestion>.Empty();
 
 
 
@@ -103,6 +106,7 @@ public class IndexModel : PageModel
                 .Take(1))
 
             .OrderBy(d => d.Name)
+                .ThenBy(d => d.Id)
             .AsSplitQuery()
             .AsNoTrackingWithIdentityResolution();
     }
@@ -116,6 +120,7 @@ public class IndexModel : PageModel
             .Include(s => s.To)
             .OrderBy(s => s.SentAt)
                 .ThenBy(s => s.Card.Name)
+                .ThenBy(s => s.Id)
             .AsNoTrackingWithIdentityResolution();
     }
 
@@ -123,6 +128,16 @@ public class IndexModel : PageModel
     public async Task<IActionResult> OnPostAsync(int suggestId, CancellationToken cancel)
     {
         var userId = _userManager.GetUserId(User);
+        if (userId is null)
+        {
+            return NotFound();
+        }
+
+        var changeTreasury = await _authorizations.AuthorizeAsync(User, CardPolicies.ChangeTreasury);
+        if (!changeTreasury.Succeeded)
+        {
+            return NotFound();
+        }
 
         var suggestion = await _dbContext.Suggestions
             .SingleOrDefaultAsync(s =>
@@ -139,6 +154,7 @@ public class IndexModel : PageModel
         try
         {
             await _dbContext.SaveChangesAsync(cancel);
+
             PostMessage = "Suggestion Acknowledged";
         }
         catch (DbUpdateException)

@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity.UI.Services;
 
 using Microsoft.Extensions.Configuration;
@@ -33,7 +34,10 @@ public class Startup
         var config = context.Configuration;
         var provider = config.GetValue("Provider", "InMemory");
         
-        services.AddRazorPageModels();
+        services
+            .AddRazorPageModels()
+            .AddScoped<PageContextFactory>()
+            .AddSingleton<PageSizes>();
 
         services
             .AddScoped<InMemoryConnection>()
@@ -55,15 +59,20 @@ public class Startup
                 break;
         }
 
-        services.AddDbContextFactory<CardDbContext>((provider, options) => 
-            // used scoped so that the db referenced is the locally scoped one
-            provider.GetRequiredService<CardDbContext>(), ServiceLifetime.Scoped);
-
-        services.AddSingleton<PageSizes>();
-
         services
+            .Configure<IdentityOptions>(config)
+            .AddScoped<UserStore<CardUser>>(TestFactory.CardUserStore)
             .AddScoped<UserManager<CardUser>>(TestFactory.CardUserManager)
             .AddScoped<SignInManager<CardUser>>(TestFactory.CardSignInManager);
+
+        services
+            .AddScoped<ReferenceManager>()
+            .AddScoped<IUserClaimsPrincipalFactory<CardUser>, CardUserClaimsPrincipalFactory>()
+            .AddAuthorization(options =>
+            {
+                options.AddPolicy(CardPolicies.ChangeTreasury,
+                    p => p.RequireClaim(CardClaims.ChangeTreasury));
+            });
 
         services
             .AddSymbols(options => options
@@ -77,12 +86,11 @@ public class Startup
                 options.SizeLimit = config.GetValue("CacheLimit", 100L));
 
         services
+            .AddScoped<IMTGQuery, MtgApiQuery>()
             .AddSingleton<IMtgServiceProvider, MtgServiceProvider>()
             .AddScoped<ICardService>(provider => provider
                 .GetRequiredService<IMtgServiceProvider>()
                 .GetCardService());
-
-        services.AddScoped<MTGFetchService>();
 
         services.AddScoped<BulkOperations>();
         services.AddScoped<FileCardStorage>();
@@ -91,7 +99,8 @@ public class Startup
             .AddScoped<CardDataGenerator>()
             .AddScoped<TestDataGenerator>();
 
-        services.AddTransient<IEmailSender, EmailSender>();
-        services.Configure<AuthMessageSenderOptions>(config);
+        services
+            .AddTransient<IEmailSender, EmailSender>()
+            .Configure<AuthMessageSenderOptions>(config);
     }
 }

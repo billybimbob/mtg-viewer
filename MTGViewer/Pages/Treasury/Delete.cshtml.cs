@@ -8,11 +8,12 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 
 using MTGViewer.Data;
-using MTGViewer.Services;
+using MTGViewer.Areas.Identity.Data;
 
 namespace MTGViewer.Pages.Treasury;
 
 [Authorize]
+[Authorize(Policy = CardPolicies.ChangeTreasury)]
 public class DeleteModel : PageModel
 {
     private readonly CardDbContext _dbContext; 

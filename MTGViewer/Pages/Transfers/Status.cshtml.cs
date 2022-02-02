@@ -17,6 +17,7 @@ namespace MTGViewer.Pages.Transfers;
 
 
 [Authorize]
+[Authorize(Policy = CardPolicies.ChangeTreasury)]
 public class StatusModel : PageModel
 {
     private readonly UserManager<CardUser> _userManager;
