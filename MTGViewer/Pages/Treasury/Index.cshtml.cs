@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Paging;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -26,7 +27,7 @@ public class IndexModel : PageModel
 
     public IReadOnlyList<Bin> Bins { get; private set; } = Array.Empty<Bin>();
 
-    public Data.Offset Pages { get; private set; }
+    public Offset Offset { get; private set; }
 
     public bool HasExcess { get; private set; }
 
@@ -36,13 +37,13 @@ public class IndexModel : PageModel
     public async Task OnGetAsync(int? pageIndex, CancellationToken cancel)
     {
         var boxes = await BoxesForViewing()
-            .ToPagedListAsync(_pageSize, pageIndex, cancel);
+            .ToOffsetListAsync(_pageSize, pageIndex, cancel);
         
         Bins = boxes
             .GroupBy(b => b.Bin, (bin, _) => bin)
             .ToList();
 
-        Pages = boxes.Offset;
+        Offset = boxes.Offset;
 
         HasExcess = await _dbContext.Amounts
             .AnyAsync(a => 

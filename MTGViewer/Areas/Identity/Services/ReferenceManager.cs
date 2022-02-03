@@ -3,23 +3,32 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Security.Claims;
 
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
-using MTGViewer.Data;
 using MTGViewer.Areas.Identity.Data;
+using MTGViewer.Data;
+using MTGViewer.Services;
 
 namespace MTGViewer.Areas.Identity.Services;
 
 public class ReferenceManager
 {
     private readonly CardDbContext _dbContext;
+    private readonly UserManager<CardUser> _userManager;
+    private readonly BulkOperations _bulkOperations;
     private readonly ILogger<ReferenceManager> _logger;
 
     public ReferenceManager(
-        CardDbContext dbContext, ILogger<ReferenceManager> logger)
+        CardDbContext dbContext,
+        UserManager<CardUser> userManager,
+        BulkOperations bulkOperations,
+        ILogger<ReferenceManager> logger)
     {
         _dbContext = dbContext;
+        _userManager = userManager;
+        _bulkOperations = bulkOperations;
         _logger = logger;
     }
 
@@ -139,5 +148,42 @@ public class ReferenceManager
                     new CardRequest(card, amounts.Sum(a => a.NumCopies)) );
 
         await _dbContext.AddCardsAsync(returnRequests, cancel);
+    }
+
+
+    public async Task ApplyResetAsync(CancellationToken cancel = default)
+    {
+        var transaction = await _dbContext.Database.BeginTransactionAsync(cancel);
+
+        await _bulkOperations.ResetAsync(cancel);
+
+        var usersResetting = await _dbContext.Users
+            .Where(u => u.ResetRequested)
+            .ToListAsync(cancel);
+
+        var resettingIds = usersResetting
+            .Select(u => u.Id)
+            .ToArray();
+
+        var cardUsers = _userManager.Users
+            .Where(u => resettingIds.Contains(u.Id))
+            .AsAsyncEnumerable();
+
+        await foreach (var cardUser in cardUsers)
+        {
+            await _userManager.AddClaimAsync(
+                cardUser, new Claim(CardClaims.ChangeTreasury, cardUser.Id));
+        }
+
+        foreach (var reference in usersResetting)
+        {
+            reference.ResetRequested = false;
+        }
+
+        // intentionally don't pass cancel token
+
+        await _dbContext.SaveChangesAsync();
+
+        await transaction.CommitAsync();
     }
 }

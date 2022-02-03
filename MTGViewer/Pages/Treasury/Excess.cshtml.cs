@@ -1,3 +1,4 @@
+using System.Collections.Paging;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -36,7 +37,7 @@ public class ExcessModel : PageModel
         }
 
         Cards = await ExcessCards()
-            .ToPagedListAsync(_pageSize, pageIndex, cancel);
+            .ToOffsetListAsync(_pageSize, pageIndex, cancel);
 
         return Page();
     }

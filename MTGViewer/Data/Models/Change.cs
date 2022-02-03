@@ -13,6 +13,7 @@ namespace MTGViewer.Data;
     nameof(CardId), IsUnique = true)]
 public class Change
 {
+    [Key]
     [JsonIgnore]
     public int Id { get; private set; }
 
@@ -22,7 +23,7 @@ public class Change
     public Card Card { get; init; } = null!;
 
 
-    [Range(1, int.MaxValue)]
+    [Range(1, 4_096)]
     public int Amount { get; set; }
 
 

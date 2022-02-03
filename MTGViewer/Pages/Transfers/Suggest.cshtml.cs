@@ -1,3 +1,4 @@
+using System.Collections.Paging;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -55,7 +56,7 @@ public class SuggestModel : PageModel
         Card = card;
 
         Users = await UsersForSuggest(card)
-            .ToPagedListAsync(_pageSize, pageIndex, cancel);
+            .ToOffsetListAsync(_pageSize, pageIndex, cancel);
 
         return Page();
     }

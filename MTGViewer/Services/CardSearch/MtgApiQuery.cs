@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Paging;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
@@ -119,9 +120,6 @@ public class MtgApiQuery : IMTGQuery
         const string pageName = nameof(CardQueryParameter.Page);
         const string pageSizeName = nameof(CardQueryParameter.PageSize);
 
-        bool TryString(out string? stringValue) =>
-            TryToString(propertyValue, _multipleValues.Contains(propertyName), out stringValue);
-
         switch ((propertyName, propertyValue))
         {
             case (pageName, int page) when page != default:
@@ -144,6 +142,12 @@ public class MtgApiQuery : IMTGQuery
 
             default:
                 throw new ArgumentException(nameof(propertyValue));
+        }
+
+        bool TryString(out string? stringValue)
+        {
+            bool isMultiple = _multipleValues.Contains(propertyName);
+            return TryToString(propertyValue, isMultiple, out stringValue);
         }
     }
 

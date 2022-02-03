@@ -8,8 +8,9 @@ namespace MTGViewer.Data;
 
 public class Suggestion
 {
+    [Key]
     [JsonIgnore]
-    public int Id { get; private set; }
+   public int Id { get; private set; }
 
 
     [JsonIgnore]
@@ -75,6 +76,6 @@ public class Trade : Concurrent
     public Deck To { get; init; } = null!;
 
 
-    [Range(1, int.MaxValue)]
+    [Range(1, 4_096)]
     public int Amount { get; set; }
 }

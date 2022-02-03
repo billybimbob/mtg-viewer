@@ -552,7 +552,7 @@ else
     }
 
 
-    private static void PrepareSearch(CardSearch search, Data.Offset matchPage)
+    private static void PrepareSearch(CardSearch search, Offset matchPage)
     {
         var query = search.Query;
         var colorJoin = search.IsMultiColored ? IMTGQuery.And : IMTGQuery.Or;

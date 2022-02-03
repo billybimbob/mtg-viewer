@@ -1,8 +1,6 @@
-using System;
-using System.Collections;
 using System.Collections.Generic;
 
-namespace MTGViewer.Data;
+namespace System.Collections.Paging;
 
 public readonly record struct Offset(int Current, int Total)
 {
@@ -56,7 +54,7 @@ public class OffsetList<T> : IReadOnlyList<T>
     {
         if (items is null)
         {
-            throw new ArgumentNullException("Items is null");
+            throw new ArgumentNullException(nameof(items));
         }
 
         Offset = offset;

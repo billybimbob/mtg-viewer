@@ -1,3 +1,4 @@
+using System.Collections.Paging;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -67,7 +68,7 @@ public class IndexModel : PageModel
         }
 
         var decks = await DecksForIndex(userId)
-            .ToPagedListAsync(_pageSize, pageIndex, cancel);
+            .ToOffsetListAsync(_pageSize, pageIndex, cancel);
 
         UserName = userName;
         Decks = decks;

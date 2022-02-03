@@ -310,11 +310,11 @@
 
         return dbEval
             ? CardsOrdered(cards, filters)
-                .ToPagedListAsync(pageSize, pageIndex, cancel)
+                .ToOffsetListAsync(pageSize, pageIndex, cancel)
 
             : CardsOrdered(cards.AsAsyncEnumerable(), filters)
                 // paging is kind of pointless since server eval is unbounded
-                .ToPagedListAsync(pageSize, pageIndex, cancel);
+                .ToOffsetListAsync(pageSize, pageIndex, cancel);
     }
 
 

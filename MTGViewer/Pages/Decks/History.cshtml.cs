@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Paging;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -57,7 +58,7 @@ public class HistoryModel : PageModel
     public IReadOnlyList<Transfer> Transfers { get; private set; } =
         Array.Empty<Transfer>();
 
-    public Data.Offset Pages { get; private set; }
+    public Offset Offset { get; private set; }
 
     public TimeZoneInfo TimeZone { get; private set; } = TimeZoneInfo.Utc;
 
@@ -76,7 +77,7 @@ public class HistoryModel : PageModel
         }
 
         var changes = await ChangesForHistory(id)
-            .ToPagedListAsync(_pageSize, pageIndex, cancel);
+            .ToOffsetListAsync(_pageSize, pageIndex, cancel);
 
         var firstTransfers = changes
             .Select(c => (c.TransactionId, c.ToId, c.FromId))
@@ -94,7 +95,7 @@ public class HistoryModel : PageModel
                         tft.Transaction, tft.To, tft.From, changeGroup.ToList()))
             .ToList();
 
-        Pages = changes.Offset;
+        Offset = changes.Offset;
 
         UpdateTimeZone(tz);
 

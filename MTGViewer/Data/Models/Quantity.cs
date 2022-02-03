@@ -14,6 +14,7 @@ namespace MTGViewer.Data;
     nameof(LocationId), IsUnique = true)]
 public abstract class Quantity : Concurrent
 {
+    [Key]
     [JsonIgnore]
     public int Id { get; private set; }
 
@@ -30,9 +31,10 @@ public abstract class Quantity : Concurrent
     public int LocationId { get; init; }
     public Location Location { get; init; } = null!;
 
+    // limit is kind of arbitrary
 
     [Display(Name = "Copies")]
-    [Range(1, int.MaxValue)]
+    [Range(1, 4_096)]
     public int NumCopies { get; set; }
 }
 

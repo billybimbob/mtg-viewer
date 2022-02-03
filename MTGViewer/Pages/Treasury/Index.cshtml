@@ -1,7 +1,7 @@
 @page "{pageIndex:int?}"
 @model Treasury.IndexModel
 @{
-    ViewData["Title"] = $"Treasury ({Model.Pages})";
+    ViewData["Title"] = $"Treasury ({Model.Offset})";
 }
 
 @using Microsoft.AspNetCore.Authorization
@@ -143,4 +143,4 @@
     </div>
 }
 
-<partial name="_PaginationPartial" for="Pages"/>
+<partial name="_PaginationPartial" for="Offset"/>

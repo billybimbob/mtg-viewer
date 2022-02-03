@@ -3,3 +3,62 @@
 @{
     ViewData["Title"] = "Treasury - Reset";
 }
+
+<h1> Request Reset </h1>
+<hr />
+
+<div class="row">
+    <section class="col col-md-8">
+        <p>
+            All of the currently stored card data (cards, decks, trades, transactions)
+            will be deleted. For this to occur, <b>all users</b> must request for a reset.
+            Be sure to <a asp-page="Export"> Backup </a> the data before it gets deleted.
+        </p>
+        <p>
+            The reset will be applied when @Model.Remaining remain users request for 
+            the reset.
+        </p>
+    </section>
+</div>
+
+<div class="row">
+    <section class="col-10 col-sm-6 col-lg-4">
+        @if (Model.ResetRequested)
+        {
+            <p>
+                Current you are requesting for a reset. This request can be cancelled
+                by clicking the button below. Cancelling the request will allow you to 
+                modify the Treasury again.
+            </p>
+        }
+        else
+        {
+            <p>
+                Click on the button below to request for a reset. While a request is active,
+                your account will be locked out of features to modify the Treasury, like
+                add/delete cards, theorycraft/build decks, or trade with other users. Also, 
+                all currently active trades and suggestions for you will be deleted.
+            </p>
+            <p>
+                These restrictions will stay active for as long the request is active. The 
+                request will automatically be turned off if/when the reset is actually applied,
+                or also manually cancelled.
+            </p>
+        }
+
+        @{
+            string title = Model.ResetRequested
+                ? "Cancel Current Request"
+                : "Request for a Reset"; 
+
+            string label = Model.ResetRequested
+                ? "Cancel"
+                : "Request";
+        }
+
+        <form method="POST">
+            <input type="submit" class="btn btn-danger"
+                title="@title" value="@label" />
+        </form>
+    </section>
+</div>

@@ -1,3 +1,4 @@
+using System.Collections.Paging;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -75,10 +76,10 @@ public class IndexModel : PageModel
         UserName = userName;
 
         TradeDecks = await DecksForTransfer(userId)
-            .ToPagedListAsync(_pageSize, DeckIndex, cancel);
+            .ToOffsetListAsync(_pageSize, DeckIndex, cancel);
 
         Suggestions = await SuggestionsForIndex(userId)
-            .ToPagedListAsync(_pageSize, SuggestIndex, cancel);
+            .ToOffsetListAsync(_pageSize, SuggestIndex, cancel);
 
         return Page();
     }

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Collections.Paging;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Threading;
@@ -64,7 +65,7 @@ public class IndexModel : PageModel
         }
 
         Unclaimed = await UnclaimedForViewing()
-            .ToPagedListAsync(_pageSize, pageIndex, cancel);
+            .ToOffsetListAsync(_pageSize, pageIndex, cancel);
 
         Cards = Unclaimed
             .ToDictionary(u => u.Id, UnclaimedNameGroup);

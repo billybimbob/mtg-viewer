@@ -31,25 +31,32 @@ public static class CardStorageExtensions
             case "SqlServer":
                 services.AddTriggeredDbContextFactory<CardDbContext>(options => options
                     .UseSqlServer(connString)
+                    .UseValidationCheckConstraints()
+                    .UseDiscriminatorCheckConstraints()
                     .UseTriggers(triggers => triggers
-                        .AddTrigger<QuantityValidate>()
+                        // .AddTrigger<QuantityValidate>()
                         .AddTrigger<TradeValidate>() ));
                 break;
 
             case "Postgresql":
                 services.AddTriggeredPooledDbContextFactory<CardDbContext>(options => options
                     .UseNpgsql(connString)
+                    .UseValidationCheckConstraints()
+                    .UseDiscriminatorCheckConstraints()
                     .UseTriggers(triggers => triggers
-                        .AddTrigger<QuantityValidate>()
+                        // .AddTrigger<QuantityValidate>()
                         .AddTrigger<TradeValidate>() ));
+
                 break;
 
             case "Sqlite":
             default:
                 services.AddTriggeredDbContextFactory<CardDbContext>(options => options
                     .UseSqlite(connString)
+                    .UseValidationCheckConstraints()
+                    .UseDiscriminatorCheckConstraints()
                     .UseTriggers(triggers => triggers
-                        .AddTrigger<QuantityValidate>()
+                        // .AddTrigger<QuantityValidate>()
                         .AddTrigger<LiteTokenUpdate>()
                         .AddTrigger<TradeValidate>() ));
                 break;

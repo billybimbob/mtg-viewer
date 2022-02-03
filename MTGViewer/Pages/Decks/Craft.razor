@@ -243,7 +243,7 @@ else
                 c => c.Id,
                 qg => qg.CardId,
                 (_, group) => group)
-            .ToPagedList(
+            .ToOffsetList(
                 _deckContext.PageSize,
                 _deckContext.PageIndex);
     }
@@ -564,11 +564,11 @@ else
         public IEnumerable<QuantityGroup> ActiveCards() =>
             Groups.Values.Where(qg => qg.Total > 0);
 
-        public Data.Offset Pages()
+        public Offset Offset()
         {
             int totalActive = ActiveCards().Count();
 
-            return new Data.Offset(PageIndex, totalActive, PageSize);
+            return new Offset(PageIndex, totalActive, PageSize);
         }
 
         public bool IsModified(Quantity quantity)
@@ -655,7 +655,7 @@ else
                 .ThenBy(c => c.SetName)
                 .ThenBy(c => c.Id)
 
-            .ToPagedListAsync(pageSize, pageIndex, cancel);
+            .ToOffsetListAsync(pageSize, pageIndex, cancel);
     }
 
 
@@ -763,7 +763,7 @@ else
         if (_deckContext is null
             || pageIndex < 0
             || _deckContext.PageIndex == pageIndex
-            || _deckContext.Pages().Total >= pageIndex)
+            || _deckContext.Offset().Total >= pageIndex)
         {
             return;
         }

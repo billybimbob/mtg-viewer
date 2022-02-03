@@ -1,15 +1,13 @@
-using System;
 using System.Collections.Generic;
-using System.Linq;
+using System.Collections.Paging;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore;
 
-namespace MTGViewer.Data;
+namespace System.Linq;
 
-public static class LinqExtensions
+public static partial class PagingExtensions
 {
-    public static OffsetList<TEntity> ToPagedList<TEntity>(
+    public static OffsetList<TEntity> ToOffsetList<TEntity>(
         this IEnumerable<TEntity> source,
         int pageSize, 
         int? pageIndex = null)
@@ -38,7 +36,7 @@ public static class LinqExtensions
     }
 
 
-    public static async Task<OffsetList<TEntity>> ToPagedListAsync<TEntity>(
+    public static async Task<OffsetList<TEntity>> ToOffsetListAsync<TEntity>(
         this IAsyncEnumerable<TEntity> source,
         int pageSize,
         int? pageIndex = null,
@@ -69,39 +67,9 @@ public static class LinqExtensions
     }
 
 
-    public static async Task<OffsetList<TEntity>> ToPagedListAsync<TEntity>(
-        this IQueryable<TEntity> source,
-        int pageSize, 
-        int? pageIndex = null,
-        CancellationToken cancel = default)
-    {
-        if (source == null)
-        {
-            throw new ArgumentNullException(nameof(source));
-        }
-
-        if (pageSize < 0)
-        {
-            throw new ArgumentException(nameof(pageSize));
-        }
-
-        int page = pageIndex ?? 0;
-        int totalItems = await source.CountAsync(cancel).ConfigureAwait(false);
-
-        var items = await source
-            .Skip(page * pageSize)
-            .Take(pageSize)
-            .ToListAsync(cancel)
-            .ConfigureAwait(false);
-
-        var offset = new Offset(page, totalItems, pageSize);
-
-        return new(offset, items);
-    }
-
-
     public static IAsyncEnumerable<TSource[]> Chunk<TSource>(
-        this IAsyncEnumerable<TSource> source, int size)
+        this IAsyncEnumerable<TSource> source,
+        int size)
     {
         if (source == null)
         {
@@ -145,4 +113,5 @@ public static class LinqExtensions
             }
         }
     }
+
 }

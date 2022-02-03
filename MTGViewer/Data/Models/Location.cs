@@ -13,6 +13,7 @@ namespace MTGViewer.Data;
 
 public abstract class Location : Concurrent
 {
+    [Key]
     [JsonIgnore]
     public int Id { get; init; }
 
@@ -103,7 +104,9 @@ public class Box : Location
     public int BinId { get; init; }
     public Bin Bin { get; set; } = null!;
 
-    [Range(10, 10_000)]
+    // min is 0 to account for other loc types, should be min 10
+
+    [Range(0, 10_000)]
     public int Capacity { get; set; }
 
     [StringLength(40)]

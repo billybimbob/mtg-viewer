@@ -348,8 +348,9 @@
                 .ThenInclude(c => c.To)
 
             .OrderByDescending(t => t.AppliedAt)
-            .Take(ChunkSize)
+                .ThenBy(t => t.Id)
 
+            .Take(ChunkSize)
             .AsNoTrackingWithIdentityResolution()
             .ToListAsync(cancel);
     }
