@@ -1,7 +1,7 @@
-@page "{pageIndex:int?}"
+@page 
 @model Treasury.HistoryModel
 @{
-    ViewData["Title"] = $"Treasury - History ({Model.Offset})";
+    ViewData["Title"] = $"Treasury - History";
 }
 
 @using Microsoft.AspNetCore.Authorization
@@ -162,4 +162,4 @@
     </table>
 </div>
 
-<partial name="_PaginationPartial" for="Offset"/>
+<component type="typeof(SeekPaging<Change>)" render-mode="Static" param-Seek="Model.Seek" />

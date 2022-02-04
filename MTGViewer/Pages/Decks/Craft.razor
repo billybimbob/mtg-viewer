@@ -144,7 +144,7 @@ else
             }
         </div>
 
-        <Pagination Offset="Treasury.Offset" PageSelected="ChangeTreasuryPageAsync" />
+        <OffsetPaging Offset="Treasury.Offset" PageSelected="ChangeTreasuryPageAsync" />
     </section>
 
 
@@ -203,7 +203,7 @@ else
             </div>
         </div>
 
-        <Pagination Offset="deckCards.Offset" PageSelected="ChangeDeckPage" />
+        <OffsetPaging Offset="deckCards.Offset" PageSelected="ChangeDeckPage" />
     </section>
 </div>
 
@@ -440,7 +440,7 @@ else
     }
 
 
-    private async Task<Deck> CreateDeckAsync(
+    private static async Task<Deck> CreateDeckAsync(
         CardDbContext dbContext, string userId, CancellationToken cancel)
     {
         var user = await dbContext.Users.FindAsync(new []{ userId }, cancel);
@@ -623,7 +623,7 @@ else
     }
 
 
-    private Task<OffsetList<Card>> FilteredCardsAsync(
+    private static Task<OffsetList<Card>> FilteredCardsAsync(
         CardDbContext dbContext,
         TreasuryFilterContext filters,
         CancellationToken cancel)
@@ -677,6 +677,11 @@ else
             pickedColors.Add(color);
         }
 
+        if (_treasuryFilters.PageIndex > 0)
+        {
+            _treasuryFilters.PageIndex = 0;
+        }
+
         _isBusy = true;
 
         try
@@ -706,6 +711,11 @@ else
         if (newSearch == _treasuryFilters.SearchName)
         {
             return;
+        }
+
+        if (_treasuryFilters.PageIndex > 0)
+        {
+            _treasuryFilters.PageIndex = 0;
         }
 
         _treasuryFilters.SearchName = newSearch;

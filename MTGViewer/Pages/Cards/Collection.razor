@@ -131,7 +131,7 @@
     </table>
 </div>
 
-<Pagination Offset="Cards.Offset" PageSelected="ChangePageAsync"></Pagination>
+<OffsetPaging Offset="Cards.Offset" PageSelected="ChangePageAsync"></OffsetPaging>
 
 
 @code
@@ -348,7 +348,6 @@
                     .ThenBy(c => c.SetName)
                     .ThenBy(c => c.Id),
 
-
             nameof(Card.Name) or _ =>
                 PrimaryOrder(c => c.Name)
                     .ThenBy(c => c.SetName)
@@ -431,6 +430,11 @@
             pickedColors.Add(color);
         }
 
+        if (_filters.PageIndex > 0)
+        {
+            _filters.PageIndex = 0;
+        }
+
         _isBusy = true;
 
         try
@@ -456,6 +460,12 @@
         }
 
         _filters.SearchName = eventArgs.Value?.ToString();
+
+        if (_filters.PageIndex > 0)
+        {
+            _filters.PageIndex = 0;
+        }
+
         _isBusy = true;
 
         try
@@ -481,6 +491,11 @@
         }
 
         string oldOrder = _filters.OrderBy;
+
+        if (newOrder != oldOrder && _filters.PageIndex > 0)
+        {
+            _filters.PageIndex = 0;
+        }
 
         _filters.IsReversed = newOrder == oldOrder && !_filters.IsReversed;
         _filters.OrderBy = newOrder;

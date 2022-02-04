@@ -3,13 +3,7 @@
 
 @if (Model.HasMultiple)
 {
-    int start = Model.Current / PageSizes.Default * PageSizes.Default;
-    int end = Math.Min(Model.Total, start + PageSizes.Default + 1);
-
-    if (start > 0)
-    {
-        start -= 1;
-    }
+    (int start, int end) = GetBounds();
 
     <nav>
         <ul class="pagination justify-content-center">
@@ -25,8 +19,8 @@
 
             @for (int i = start; i < end; ++i)
             {
-                var pageIndex = i;
-                var activePage = pageIndex == Model.Current ? "active" : "";
+                int pageIndex = i;
+                string activePage = pageIndex == Model.Current ? "active" : "";
 
                 <li class="page-item @activePage">
                     @if (pageIndex != Model.Current)
@@ -60,4 +54,28 @@
             }
         </ul>
     </nav>
+}
+
+
+@functions
+{
+    public (int, int) GetBounds()
+    {
+        int pageSize = PageSizes.Default;
+
+        if (pageSize == 0)
+        {
+            return (0, 0);
+        }
+
+        int start = Model.Current / pageSize * pageSize;
+        int end = Math.Min(Model.Total, start + pageSize + 1);
+
+        if (start > 0)
+        {
+            start -= 1;
+        }
+
+        return (start, end);
+    }
 }

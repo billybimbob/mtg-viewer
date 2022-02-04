@@ -63,6 +63,18 @@ public class ExcessModel : PageModel
         int position = await ExcessCards()
             .CountAsync(c => c.Name.CompareTo(cardName) < 0, cancel);
 
+        // var boundary = await ExcessCards()
+        //     .Select(c => new { c.Id, c.Name })
+        //     .AsAsyncEnumerable()
+
+        //     .Select((idn, Index) => (idn.Id, idn.Name, Index))
+        //     .Where(ini => ini.Index % _pageSize == 0
+        //         && ini.Name.CompareTo(cardName) <= 0)
+
+        //     .OrderByDescending(ini => ini.Name.CompareTo(cardName))
+        //     .Select(ini => ini.Id)
+        //     .FirstOrDefaultAsync(cancel);
+
         return position / _pageSize;
     }
 
@@ -72,13 +84,11 @@ public class ExcessModel : PageModel
         return _dbContext.Cards
             .Where(c => c.Amounts
                 .Any(a => a.Location is Box
-                    && (a.Location as Box)!.IsExcess
-                    && a.NumCopies > 0))
+                    && (a.Location as Box)!.IsExcess))
 
             .Include(c => c.Amounts // unbounded, keep eye on
                 .Where(a => a.Location is Box 
-                    && (a.Location as Box)!.IsExcess
-                    && a.NumCopies > 0))
+                    && (a.Location as Box)!.IsExcess))
             
             .OrderBy(c => c.Name)
                 .ThenBy(c => c.SetName)

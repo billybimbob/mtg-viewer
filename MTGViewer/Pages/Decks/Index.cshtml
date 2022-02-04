@@ -1,7 +1,7 @@
-@page "{pageIndex:int?}"
+@page
 @model Decks.IndexModel
 @{
-    ViewData["Title"] = $"{Model.UserName} - Decks ({Model.Decks.Offset})";
+    ViewData["Title"] = $"{Model.UserName} - Decks";
 }
 
 @using Microsoft.AspNetCore.Authorization
@@ -100,4 +100,4 @@
 </div>
 
 
-<partial name="_PaginationPartial" for="Decks.Offset"/>
+<component type="typeof(SeekPaging<Deck>)" render-mode="Static" param-Seek="Model.Decks.Seek" />

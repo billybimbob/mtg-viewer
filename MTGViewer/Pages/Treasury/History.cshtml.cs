@@ -53,15 +53,14 @@ public class HistoryModel : PageModel
 
     public IReadOnlyList<Transfer> Transfers { get; private set; } = Array.Empty<Transfer>();
 
-    public Offset Offset { get; private set; }
+    public Seek<Change> Seek { get; private set; }
 
     public TimeZoneInfo TimeZone { get; private set; } = TimeZoneInfo.Utc;
 
 
-    public async Task OnGetAsync(int? pageIndex, string? tz, CancellationToken cancel)
+    public async Task OnGetAsync(int? seek, bool backtrack, string? tz, CancellationToken cancel)
     {
-        var changes = await ChangesForHistory()
-            .ToOffsetListAsync(_pageSize, pageIndex, cancel);
+        var changes = await GetChangesAsync(seek, backtrack, cancel);
 
         var firstTransfers = changes
             .Select(c => (c.TransactionId, c.ToId, c.FromId))
@@ -77,9 +76,36 @@ public class HistoryModel : PageModel
                         tft.Transaction, tft.To, tft.From, changes.ToList()) )
             .ToList();
 
-        Offset = changes.Offset;
+        Seek = changes.Seek;
 
         UpdateTimeZone(tz);
+    }
+
+
+    private async Task<SeekList<Change>> GetChangesAsync(
+        int? seek, 
+        bool backtrack, 
+        CancellationToken cancel)
+    {
+        if (seek is null)
+        {
+            return await ChangesForHistory()
+                .ToSeekListAsync(_pageSize, SeekPosition.Start, cancel);
+        }
+
+        var change = await ChangesForHistory()
+            .OrderBy(c => c.Id) // intentionally override order
+            .SingleOrDefaultAsync(c => c.Id == seek, cancel);
+
+        if (change == default)
+        {
+            return await ChangesForHistory()
+                .ToSeekListAsync(_pageSize, SeekPosition.Start, cancel);
+        }
+
+        return backtrack
+            ? await ChangesBeforeAsync(change, cancel)
+            : await ChangesAfterAsync(change, cancel);
     }
 
 
@@ -95,12 +121,106 @@ public class HistoryModel : PageModel
 
             .OrderByDescending(c => c.Transaction.AppliedAt)
                 .ThenBy(c => c.From!.Name)
-                .ThenBy(c => c.To!.Name)
+                .ThenBy(c => c.To.Name)
                     .ThenBy(c => c.Card.Name)
                     .ThenBy(c => c.Amount)
                     .ThenBy(c => c.Id)
-                    
+
             .AsNoTrackingWithIdentityResolution();
+    }
+
+
+    private Task<SeekList<Change>> ChangesAfterAsync(Change change, CancellationToken cancel)
+    {
+        return ChangesForHistory().Where(c => 
+
+            c.Transaction.AppliedAt == change.Transaction.AppliedAt
+                && (c.From is Box && change.From is Box 
+                    && c.From.Name == change.From.Name
+                    || c.From == change.From)
+                && c.To.Name == change.To.Name
+                && c.Card.Name == change.Card.Name
+                && c.Amount == change.Amount
+                && c.Id > change.Id
+
+            || c.Transaction.AppliedAt == change.Transaction.AppliedAt
+                && (c.From is Box && change.From is Box 
+                    && c.From.Name == change.From.Name
+                    || c.From == change.From)
+                && c.To.Name == change.To.Name
+                && c.Card.Name == change.Card.Name
+                && c.Amount > change.Amount
+
+            || c.Transaction.AppliedAt == change.Transaction.AppliedAt
+                && (c.From is Box && change.From is Box 
+                    && c.From.Name == change.From.Name
+                    || c.From == change.From)
+                && c.To.Name == change.To.Name
+                && c.Card.Name.CompareTo(change.Card.Name) > 0
+
+            || c.Transaction.AppliedAt == change.Transaction.AppliedAt
+                && (c.From is Box && change.From is Box 
+                    && c.From.Name == change.From.Name
+                    || c.From == change.From)
+                && c.To.Name.CompareTo(change.To.Name) > 0
+
+            || c.Transaction.AppliedAt == change.Transaction.AppliedAt
+                && c.From is Box && change.From is Box
+                && c.From.Name.CompareTo(change.From.Name) > 0
+
+            || c.Transaction.AppliedAt == change.Transaction.AppliedAt
+                && c.From is Box && change.From == null
+
+            || c.Transaction.AppliedAt < change.Transaction.AppliedAt)
+            
+        .ToSeekListAsync(_pageSize, SeekPosition.Forward, cancel);
+    }
+
+
+    private Task<SeekList<Change>> ChangesBeforeAsync(Change change, CancellationToken cancel)
+    {
+        return ChangesForHistory().Reverse().Where(c =>
+
+            c.Transaction.AppliedAt == change.Transaction.AppliedAt
+                && (c.From is Box && change.From is Box 
+                    && c.From.Name == change.From.Name
+                    || c.From == change.From)
+                && c.To.Name == change.To.Name
+                && c.Card.Name == change.Card.Name
+                && c.Amount == change.Amount
+                && c.Id < change.Id
+
+            || c.Transaction.AppliedAt == change.Transaction.AppliedAt
+                && (c.From is Box && change.From is Box 
+                    && c.From.Name == change.From.Name
+                    || c.From == change.From)
+                && c.To.Name == change.To.Name
+                && c.Card.Name == change.Card.Name
+                && c.Amount < change.Amount
+
+            || c.Transaction.AppliedAt == change.Transaction.AppliedAt
+                && (c.From is Box && change.From is Box 
+                    && c.From.Name == change.From.Name
+                    || c.From == change.From)
+                && c.To.Name == change.To.Name
+                && c.Card.Name.CompareTo(change.Card.Name) < 0
+
+            || c.Transaction.AppliedAt == change.Transaction.AppliedAt
+                && (c.From is Box && change.From is Box 
+                    && c.From.Name == change.From.Name
+                    || c.From == change.From)
+                && c.To.Name.CompareTo(change.To.Name) < 0
+
+            || c.Transaction.AppliedAt == change.Transaction.AppliedAt
+                && c.From is Box && change.From is Box
+                && c.From.Name.CompareTo(change.From.Name) < 0
+
+            || c.Transaction.AppliedAt == change.Transaction.AppliedAt
+                && c.From == null && change.From is Box
+
+            || c.Transaction.AppliedAt > change.Transaction.AppliedAt)
+            
+        .ToSeekListAsync(_pageSize, SeekPosition.Backwards, cancel);
     }
 
 
@@ -151,7 +271,7 @@ public class HistoryModel : PageModel
             return Challenge();
         }
 
-        var authorized = await _authorization.AuthorizeAsync(User, CardClaims.ChangeTreasury);
+        var authorized = await _authorization.AuthorizeAsync(User, CardPolicies.ChangeTreasury);
         if (!authorized.Succeeded)
         {
             return Forbid();

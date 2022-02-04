@@ -1,11 +1,21 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.Paging;
 using System.Linq;
-using System.Linq.Expressions;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace Microsoft.EntityFrameworkCore;
+
+
+public enum SeekPosition
+{
+    Forward,
+    Backwards,
+    Start,
+    End
+}
+
 
 public static partial class PagingExtensions
 {
@@ -40,14 +50,30 @@ public static partial class PagingExtensions
     }
 
 
-    public static async Task<SeekList<TEntity>> ToSeekListAsync<TEntity>(
+    public static Task<SeekList<TEntity>> ToSeekListAsync<TEntity>(
         this IQueryable<TEntity> source,
-        Expression<Func<TEntity, bool>> skip,
         int pageSize,
-        TEntity? before,
-        CancellationToken cancel = default)
+        SeekPosition position,
+        CancellationToken cancel = default) where TEntity : class
     {
-        if (source == null)
+        return position switch
+        {
+            SeekPosition.Start => ToSeekListAsync(source, pageSize, false, cancel),
+            SeekPosition.End => ToSeekBackListAsync(source, pageSize, false, cancel),
+
+            SeekPosition.Backwards => ToSeekBackListAsync(source, pageSize, true, cancel),
+            SeekPosition.Forward or _ => ToSeekListAsync(source, pageSize, true, cancel)
+        };
+    }
+
+
+    private static async Task<SeekList<TEntity>> ToSeekListAsync<TEntity>(
+        IQueryable<TEntity> source,
+        int pageSize,
+        bool hasPrevious,
+        CancellationToken cancel = default) where TEntity : class
+    {
+        if (source is null)
         {
             throw new ArgumentNullException(nameof(source));
         }
@@ -58,49 +84,65 @@ public static partial class PagingExtensions
         }
 
         var items = await source
-            .Where(skip)
-            .Take(pageSize + 1)
+            .Take(pageSize)
             .ToListAsync(cancel)
             .ConfigureAwait(false);
 
-        var seek = new Seek<TEntity>(before, items.ElementAtOrDefault(^1));
+        bool hasNext = await source
+            .Skip(pageSize) // offset is constant, so should be fine, keep eye on
+            .AnyAsync(cancel)
+            .ConfigureAwait(false);
 
-        if (items.Any())
-        {
-            items.RemoveAt(items.Count - 1);
-        }
+        var seek = new Seek<TEntity>(hasPrevious, hasNext, items);
 
         return new(seek, items);
     }
 
 
-    public static async Task<SeekList<TEntity>> ToSeekListAsync<TEntity>(
-        this IQueryable<TEntity> source,
-        Expression<Func<TEntity, bool>> skip,
+    private static async Task<SeekList<TEntity>> ToSeekBackListAsync<TEntity>(
+        IQueryable<TEntity> source,
         int pageSize,
-        Task<TEntity?> before,
-        CancellationToken cancel = default)
+        bool hasNext,
+        CancellationToken cancel = default) where TEntity : class
     {
-        var beforeEntity = await before.ConfigureAwait(false);
+        if (source is null)
+        {
+            throw new ArgumentNullException(nameof(source));
+        }
 
-        return await source
-            .ToSeekListAsync(skip, pageSize, beforeEntity, cancel)
+        if (pageSize < 0)
+        {
+            throw new ArgumentException(nameof(pageSize));
+        }
+
+        var items = await source
+            .Take(pageSize)
+            .Reverse()
+            .ToListAsync(cancel)
             .ConfigureAwait(false);
+
+        bool hasPrevious = await source
+            .Skip(pageSize) // offset is constant, so should be fine, keep eye on
+            .AnyAsync(cancel)
+            .ConfigureAwait(false);
+
+        var seek = new Seek<TEntity>(hasPrevious, hasNext, items);
+
+        return new(seek, items);
+
     }
 
 
-    public static async Task<SeekList<TEntity>> ToSeekListAsync<TEntity>(
-        this IQueryable<TEntity> source,
-        Expression<Func<TEntity, bool>> skip,
+    private static Task<List<TEntity>> SeekBoundaryAsync<TEntity>(
+        IQueryable<TEntity> source,
         int pageSize,
-        ValueTask<TEntity?> before,
-        CancellationToken cancel = default)
+        CancellationToken cancel) where TEntity : class
     {
-        var beforeEntity = await before.ConfigureAwait(false);
-
-        return await source
-            .ToSeekListAsync(skip, pageSize, beforeEntity, cancel)
-            .ConfigureAwait(false);
+        return source
+            .Select((Entity, Index) => new { Entity, Index })
+            .Where(ei => ei.Index % pageSize == 0)
+            .Select(ei => ei.Entity)
+            .AsNoTracking()
+            .ToListAsync(cancel);
     }
-
 }

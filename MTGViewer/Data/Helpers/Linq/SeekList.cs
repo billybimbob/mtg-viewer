@@ -1,17 +1,25 @@
+using System.Linq;
 using System.Collections.Generic;
 
 namespace System.Collections.Paging;
 
-public readonly record struct Seek<T>(T? Previous, T? Next);
-
-
-public class SeekList<T> : IReadOnlyList<T>
+public readonly record struct Seek<TEntity>(TEntity? Previous, TEntity? Next)
+    where TEntity : class
 {
-    private static readonly SeekList<T> _empty = new(default, Array.Empty<T>());
+    public Seek(bool takePrevious, bool takeNext, IReadOnlyList<TEntity> items) : this(
+        takePrevious ? items.ElementAtOrDefault(0) : null,
+        takeNext ? items.ElementAtOrDefault(^1) : null)
+    { }
+}
 
-    private readonly IList<T> _items;
 
-    public SeekList(Seek<T> seek, IList<T> items)
+public class SeekList<TEntity> : IReadOnlyList<TEntity> where TEntity : class
+{
+    private static readonly SeekList<TEntity> _empty = new(default, Array.Empty<TEntity>());
+
+    private readonly IList<TEntity> _items;
+
+    public SeekList(Seek<TEntity> seek, IList<TEntity> items)
     {
         if (items is null)
         {
@@ -22,16 +30,16 @@ public class SeekList<T> : IReadOnlyList<T>
         _items = items;
     }
 
-    public Seek<T> Seek { get; }
+    public Seek<TEntity> Seek { get; }
 
     public int Count => _items.Count;
 
-    public T this[int index] => _items[index];
+    public TEntity this[int index] => _items[index];
 
 
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
-    public IEnumerator<T> GetEnumerator() => _items.GetEnumerator();
+    public IEnumerator<TEntity> GetEnumerator() => _items.GetEnumerator();
 
-    public static SeekList<T> Empty() => _empty;
+    public static SeekList<TEntity> Empty() => _empty;
 }

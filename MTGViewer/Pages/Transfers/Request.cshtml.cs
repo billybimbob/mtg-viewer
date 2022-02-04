@@ -114,7 +114,6 @@ public class RequestModel : PageModel
         return _dbContext.Amounts
             .Where(a => a.Location is Deck
                 && (a.Location as Deck)!.OwnerId != deck.OwnerId
-                && a.NumCopies > 0
                 && takeNames.Contains(a.Card.Name))
 
             .Include(a => a.Card)

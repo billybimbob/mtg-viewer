@@ -2,13 +2,7 @@
 
 @if (Offset.HasMultiple)
 {
-    int start = Offset.Current / PageSize * PageSize;
-    int end = Math.Min(Offset.Total, start + PageSize + 1);
-
-    if (start > 0)
-    {
-        start -= 1;
-    }
+    (int start, int end) = GetBounds();
 
     <nav>
         <ul class="pagination justify-content-center">
@@ -28,21 +22,21 @@
 
             @for (int i = start; i < end; ++i)
             {
-                var pageIndex = i;
-                var activePage = pageIndex == Offset.Current ? "active" : "";
+                int offset = i;
+                string activePage = offset == Offset.Current ? "active" : "";
 
                 <li class="page-item @activePage">
-                    @if (pageIndex != Offset.Current)
+                    @if (offset != Offset.Current)
                     {
-                        <button title="To Page @(pageIndex + 1)"
-                            @onclick="() => ChangePageAsync(pageIndex)"
+                        <button title="To Page @(offset + 1)"
+                            @onclick="() => ChangePageAsync(offset)"
                             class="page-link">
-                            @(pageIndex + 1) </button>
+                            @(offset + 1) </button>
                     }
                     else
                     {
                         <span class="page-link">
-                            @(pageIndex + 1)
+                            @(offset + 1)
                             <span class="sr-only">(current)</span>
                         </span>
                     }
@@ -79,20 +73,39 @@
     public EventCallback<int> PageSelected { get; set; }
 
     [Parameter]
-    public int PageSizeParam { get; set; }
-
     public int PageSize { get; set; }
 
+
     private bool _isBusy;
+    private int _pageSize;
 
 
     protected override void OnParametersSet()
     {
-        PageSize = PageSizeParam > 0 ? PageSizeParam : PageSizes.Default;
+        _pageSize = PageSize > 0 ? PageSize : PageSizes.Default;
     }
 
 
-    private async Task ChangePageAsync(int page)
+    public (int, int) GetBounds()
+    {
+        if (_pageSize == default)
+        {
+            return default;
+        }
+
+        int start = Offset.Current / _pageSize * _pageSize;
+        int end = Math.Min(Offset.Total, start + _pageSize + 1);
+
+        if (start > 0)
+        {
+            start -= 1;
+        }
+
+        return (start, end);
+    }
+
+
+    public async Task ChangePageAsync(int page)
     {
         if (_isBusy)
         {

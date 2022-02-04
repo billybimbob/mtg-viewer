@@ -46,10 +46,10 @@ public class IndexModel : PageModel
 
     public string UserName { get; private set; } = string.Empty;
 
-    public OffsetList<Deck> Decks { get; private set; } = OffsetList<Deck>.Empty();
+    public SeekList<Deck> Decks { get; private set; } = SeekList<Deck>.Empty();
 
 
-    public async Task<IActionResult> OnGetAsync(int? pageIndex, CancellationToken cancel)
+    public async Task<IActionResult> OnGetAsync(int? seek, bool backTrack, CancellationToken cancel)
     {
         var userId = _userManager.GetUserId(User);
         if (userId is null)
@@ -67,13 +67,41 @@ public class IndexModel : PageModel
             return NotFound();
         }
 
-        var decks = await DecksForIndex(userId)
-            .ToOffsetListAsync(_pageSize, pageIndex, cancel);
+        var decks = await GetDecksAsync(userId, seek, backTrack, cancel);
 
         UserName = userName;
         Decks = decks;
 
         return Page();
+    }
+
+
+    private async Task<SeekList<Deck>> GetDecksAsync(
+        string userId, 
+        int? seek,
+        bool backTrack,
+        CancellationToken cancel)
+    {
+        if (seek is null)
+        {
+            return await DecksForIndex(userId)
+                .ToSeekListAsync(_pageSize, SeekPosition.Start, cancel);
+        }
+
+        var deck = await _dbContext.Decks
+            .OrderBy(d => d.Id)
+            .AsNoTracking()
+            .SingleOrDefaultAsync(d => d.Id == seek, cancel);
+
+        if (deck is null)
+        {
+            return await DecksForIndex(userId)
+                .ToSeekListAsync(_pageSize, SeekPosition.Start, cancel);
+        }
+
+        return backTrack
+            ? await DecksBeforeAsync(deck, cancel)
+            : await DecksAfterAsync(deck, cancel);
     }
 
 
@@ -98,8 +126,32 @@ public class IndexModel : PageModel
 
             .OrderBy(d => d.Name)
                 .ThenBy(d => d.Id)
+
             .AsSplitQuery()
             .AsNoTrackingWithIdentityResolution();
+    }
+
+
+    private Task<SeekList<Deck>> DecksAfterAsync(Deck deck, CancellationToken cancel)
+    {
+        return DecksForIndex(deck.OwnerId)
+            .Where(d => 
+                d.Name == deck.Name && d.Id > deck.Id
+                || d.Name.CompareTo(deck.Name) > 0)
+
+            .ToSeekListAsync(_pageSize, SeekPosition.Forward, cancel);
+    }
+
+
+    private Task<SeekList<Deck>> DecksBeforeAsync(Deck deck, CancellationToken cancel)
+    {
+        return DecksForIndex(deck.OwnerId)
+            .Reverse()
+            .Where(d =>
+                d.Name == deck.Name && d.Id < deck.Id
+                || d.Name.CompareTo(deck.Name) < 0)
+                
+            .ToSeekListAsync(_pageSize, SeekPosition.Backwards, cancel);
     }
 
 
