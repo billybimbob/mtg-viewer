@@ -46,7 +46,7 @@ public class Card
 
 
     [Required]
-    public string Rarity { get; init; } = null!;
+    public Rarity Rarity { get; init; }
 
     [Display(Name = "Set Name")]
     [Required]

@@ -19,7 +19,7 @@ public abstract class Quantity : Concurrent
     public int Id { get; private set; }
 
     [JsonIgnore]
-    internal Discriminator Type { get; private set; }
+    internal QuantityType Type { get; private set; }
 
 
     [JsonIgnore]

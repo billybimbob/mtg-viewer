@@ -128,7 +128,7 @@ public class MtgApiQuery : IMTGQuery
                 _page = page;
                 break;
 
-            case (pageSizeName, int pageSize):
+            case (pageSizeName, int pageSize) when pageSize != default:
                 AddParameter(propertyName, pageSize);
                 break;
 
@@ -141,7 +141,7 @@ public class MtgApiQuery : IMTGQuery
                 break;
 
             default:
-                throw new ArgumentException(nameof(propertyValue));
+                break;
         }
 
         bool TryString(out string? stringValue)
@@ -226,8 +226,8 @@ public class MtgApiQuery : IMTGQuery
         var pages = new Offset(_page, totalPages);
 
         var cards = matches
-            .Select(c => c.ToCard())
-            .Where(c => TestValid(c) is not null)
+            .Select( GetValidatedCard )
+            .OfType<Card>()
             .ToArray();
 
         // adventure cards have multiple entries with the same multiId
@@ -274,7 +274,7 @@ public class MtgApiQuery : IMTGQuery
             return null;
         }
 
-        card = TestValid(match.ToCard());
+        card = GetValidatedCard(match);
 
         if (card is not null)
         {
@@ -287,28 +287,77 @@ public class MtgApiQuery : IMTGQuery
 
     private T? LoggedUnwrap<T>(IOperationResult<T> result) where T : class
     {
-        var unwrap = result.Unwrap();
-
-        if (unwrap is null)
+        if (!result.IsSuccess)
         {
             _logger.LogError(result.Exception.ToString());
+            return null;
         }
 
-        return unwrap;
+        return result.Value;
     }
 
 
-    private Card? TestValid(Card card)
+    private Card? GetValidatedCard(ICard iCard)
     {
+        if (!Enum.TryParse<Rarity>(iCard.Rarity, true, out var rarity))
+        {
+            return null;
+        }
+
+        var card = new Card
+        {
+            Id = iCard.Id,
+            MultiverseId = iCard.MultiverseId,
+
+            Name = iCard.Name,
+            Names = (iCard.Names ?? Enumerable.Empty<string>())
+                .Select(s => new Name(s, iCard.Id))
+                .ToList(),
+
+            Layout = iCard.Layout,
+
+            Colors = (iCard.ColorIdentity ?? Enumerable.Empty<string>())
+                .Select(id => Color.Symbols[id.ToUpper()]) 
+
+                .Union(iCard.Colors ?? Enumerable.Empty<string>())
+                .Select(s => new Color(s, iCard.Id))
+                .ToList(),
+
+            Types = (iCard.Types ?? Enumerable.Empty<string>())
+                .Select(s => new Data.Type(s, iCard.Id))
+                .ToList(),
+
+            Subtypes = (iCard.SubTypes ?? Enumerable.Empty<string>())
+                .Select(s => new Subtype(s, iCard.Id))
+                .ToList(),
+
+            Supertypes = (iCard.SuperTypes ?? Enumerable.Empty<string>())
+                .Select(s => new Supertype(s, iCard.Id))
+                .ToList(),
+
+            ManaCost = iCard.ManaCost,
+            Cmc = iCard.Cmc,
+
+            Rarity = rarity,
+            SetName = iCard.SetName,
+            Artist = iCard.Artist,
+
+            Text = iCard.Text,
+            Flavor = iCard.Flavor,
+
+            Power = iCard.Power,
+            Toughness = iCard.Toughness,
+            Loyalty = iCard.Loyalty,
+            ImageUrl = iCard.ImageUrl?.ToString()!
+        };
+
         if (!card.IsValid())
         {
             _logger.LogError($"{card?.Id} was found, but failed validation");
             return null;
         }
-        else
-        {
-            return card;
-        }
+
+        return card;
     }
 
 
@@ -343,62 +392,4 @@ public class MtgApiQuery : IMTGQuery
     //         .Select(sp => new Supertype(sp))
     //         .ToArray();
     // }
-}
-
-
-internal static class MtgApiExtension
-{
-    internal static TResult? Unwrap<TResult>(this IOperationResult<TResult> result)
-        where TResult : class
-    {    
-        return result.IsSuccess ? result.Value : null;
-    }
-
-
-    internal static Card ToCard(this ICard card) => new Card
-    {
-        Id = card.Id,
-        MultiverseId = card.MultiverseId,
-
-        Name = card.Name,
-        Names = (card.Names ?? Enumerable.Empty<string>())
-            .Select(s => new Name(s, card.Id))
-            .ToList(),
-
-        Layout = card.Layout,
-
-        Colors = (card.ColorIdentity ?? Enumerable.Empty<string>())
-            .Select(id => Color.Symbols[id.ToUpper()]) 
-
-            .Union(card.Colors ?? Enumerable.Empty<string>())
-            .Select(s => new Color(s, card.Id))
-            .ToList(),
-
-        Types = (card.Types ?? Enumerable.Empty<string>())
-            .Select(s => new Data.Type(s, card.Id))
-            .ToList(),
-
-        Subtypes = (card.SubTypes ?? Enumerable.Empty<string>())
-            .Select(s => new Subtype(s, card.Id))
-            .ToList(),
-
-        Supertypes = (card.SuperTypes ?? Enumerable.Empty<string>())
-            .Select(s => new Supertype(s, card.Id))
-            .ToList(),
-
-        ManaCost = card.ManaCost,
-        Cmc = card.Cmc,
-
-        Rarity = card.Rarity,
-        SetName = card.SetName,
-        Artist = card.Artist,
-
-        Text = card.Text,
-        Flavor = card.Flavor,
-
-        Power = card.Power,
-        Toughness = card.Toughness,
-        Loyalty = card.Loyalty,
-        ImageUrl = card.ImageUrl?.ToString()!
-    };
 }

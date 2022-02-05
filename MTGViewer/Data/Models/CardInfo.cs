@@ -123,15 +123,11 @@ public class Subtype
 }
 
 
-public static class Rarity
+public enum Rarity
 {
-    public static readonly IReadOnlyList<string> Values =
-        new List<string>()
-        {
-            "Common",
-            "Uncommon",
-            "Rare",
-            "Mythic",
-            "Special"
-        };
+    Common,
+    Uncommon,
+    Rare,
+    Mythic,
+    Special
 }

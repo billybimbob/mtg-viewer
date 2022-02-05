@@ -32,7 +32,7 @@ public static class CardStorageExtensions
                 services.AddTriggeredDbContextFactory<CardDbContext>(options => options
                     .UseSqlServer(connString)
                     .UseValidationCheckConstraints()
-                    .UseDiscriminatorCheckConstraints()
+                    .UseEnumCheckConstraints()
                     .UseTriggers(triggers => triggers
                         // .AddTrigger<QuantityValidate>()
                         .AddTrigger<TradeValidate>() ));
@@ -42,7 +42,7 @@ public static class CardStorageExtensions
                 services.AddTriggeredPooledDbContextFactory<CardDbContext>(options => options
                     .UseNpgsql(connString)
                     .UseValidationCheckConstraints()
-                    .UseDiscriminatorCheckConstraints()
+                    .UseEnumCheckConstraints()
                     .UseTriggers(triggers => triggers
                         // .AddTrigger<QuantityValidate>()
                         .AddTrigger<TradeValidate>() ));
@@ -54,7 +54,7 @@ public static class CardStorageExtensions
                 services.AddTriggeredDbContextFactory<CardDbContext>(options => options
                     .UseSqlite(connString)
                     .UseValidationCheckConstraints()
-                    .UseDiscriminatorCheckConstraints()
+                    .UseEnumCheckConstraints()
                     .UseTriggers(triggers => triggers
                         // .AddTrigger<QuantityValidate>()
                         .AddTrigger<LiteTokenUpdate>()

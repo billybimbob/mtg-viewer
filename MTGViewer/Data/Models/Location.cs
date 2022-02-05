@@ -18,7 +18,7 @@ public abstract class Location : Concurrent
     public int Id { get; init; }
 
     [JsonIgnore]
-    internal Discriminator Type { get; private set; }
+    internal LocationType Type { get; private set; }
 
     [Required]
     [StringLength(20)]

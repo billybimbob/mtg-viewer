@@ -156,9 +156,8 @@
                 </div>
 
                 <div class="row form-group">
-                    @for (int i = 0; i < Rarity.Values.Count; ++i)
+                    @foreach (var rarity in Enum.GetNames<Rarity>())
                     {
-                        var rarity = Rarity.Values[i];
                         var toggleId = $"{rarity}-toggle";
 
                         <div class="col-6">

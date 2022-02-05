@@ -79,7 +79,7 @@ public class FileCardStorage
             PropertyNameCaseInsensitive = true 
         };
 
-        var data = await JsonSerializer.DeserializeAsync<CardStream>(reader, deserializeOptions, cancel);
+        var data = await JsonSerializer.DeserializeAsync<CardData>(reader, deserializeOptions, cancel);
         if (data is null)
         {
             throw new ArgumentException(nameof(path));
