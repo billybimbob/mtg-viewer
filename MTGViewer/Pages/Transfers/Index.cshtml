@@ -10,6 +10,10 @@
 @inject SymbolFormatter MtgSymbols
 @inject IAuthorizationService AuthorizationService
 
+@{
+    bool canChangeTreasury = (await AuthorizationService
+        .AuthorizeAsync(User, CardPolicies.ChangeTreasury)).Succeeded;
+}
 
 <div class="row">
     <div class="col">
@@ -49,39 +53,49 @@
                                 </div>
                             </td>
 
-                            @if (deck.TradesTo.Any())
-                            {
-                                <td>
+                            <td>
+                                @if (deck.TradesTo.Any() && canChangeTreasury)
+                                {
                                     <a asp-page="Status" asp-route-deckid="@deck.Id"
                                         title="@deck.Name Trade Status">
                                         Sent </a>
-                                </td>
-                            }
-                            else if (deck.Wants.Any())
-                            {
-                                <td>
+                                }
+                                else if (deck.Wants.Any() && canChangeTreasury)
+                                {
                                     <a asp-page="Request" asp-route-deckid="@deck.Id"
                                         title="@deck.Name Card Requests">
                                         Possible </a>
-                                </td>
-                            }
-                            else
-                            {
-                                <td> None </td>
-                            }
+                                }
+                                else if (deck.TradesTo.Any() && !canChangeTreasury)
+                                {
+                                    <text> Sent </text>
+                                }
+                                else if (deck.Wants.Any() && !canChangeTreasury)
+                                {
+                                    <text> Possible </text>
+                                }
+                                else
+                                {
+                                    <text> None </text>
+                                }
+                            </td>
 
-                            @if (deck.TradesFrom.Any())
-                            {
-                                <td>
+                            <td>
+                                @if (deck.TradesFrom.Any() && canChangeTreasury)
+                                {
                                     <a asp-page="Review" asp-route-deckid="@deck.Id"
                                         title="@deck.Name Trade Review">
                                         Received </a>
-                                </td>
-                            }
-                            else
-                            {
-                                <td> None </td>
-                            }
+                                }
+                                else if (deck.TradesFrom.Any() && !canChangeTreasury)
+                                {
+                                    <text> Received </text>
+                                }
+                                else
+                                {
+                                    <text> None </text>
+                                }
+                            </td>
                         </tr>
                     }
                 </tbody>
@@ -95,9 +109,6 @@
 
 @if (Model.Suggestions.Any())
 {
-    bool canChangeTreasury = (await AuthorizationService
-        .AuthorizeAsync(User, CardPolicies.ChangeTreasury)).Succeeded;
-
     <div class="row">
         <div class="col">
             <h2>Suggestions</h2>

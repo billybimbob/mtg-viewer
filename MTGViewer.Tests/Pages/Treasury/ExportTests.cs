@@ -1,7 +1,8 @@
-using System;
+using System.Linq;
 using System.Threading.Tasks;
 
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Xunit;
 
 using MTGViewer.Data;
@@ -15,19 +16,20 @@ public class ExportTests : IAsyncLifetime
 {
     private readonly ExportModel _exportModel;
     private readonly CardDbContext _dbContext;
-    private readonly BulkOperations _bulkOperations;
     private readonly TestDataGenerator _testGen;
+    private readonly PageContextFactory _pageContext;
 
     public ExportTests(
         ExportModel exportModel,
         CardDbContext dbContext, 
         BulkOperations bulkOperations,
-        TestDataGenerator testGen)
+        TestDataGenerator testGen,
+        PageContextFactory pageContext)
     {
         _exportModel = exportModel;
         _dbContext = dbContext;
-        _bulkOperations = bulkOperations;
         _testGen = testGen;
+        _pageContext = pageContext;
     }
 
 
@@ -37,9 +39,9 @@ public class ExportTests : IAsyncLifetime
 
 
     [Fact]
-    public async Task OnPost_NullDownload_NotFound()
+    public async Task OnPost_NotSignedIn_NotFound()
     {
-        _exportModel.Download = null;
+        _pageContext.AddModelContext(_exportModel);
 
         var result = await _exportModel.OnPostAsync(default);
 
@@ -47,48 +49,47 @@ public class ExportTests : IAsyncLifetime
     }
 
 
-    [Theory]
-    [InlineData(-2)]
-    [InlineData(-100)]
-    [InlineData(1)]
-    [InlineData(1_000)]
-    public async Task OnPost_InvalidSection_NotFound(int section)
+    [Fact]
+    public async Task OnPost_UserData_File()
     {
-        if (section > 0)
-        {
-            section += await _bulkOperations.GetTotalPagesAsync();
-        }
+        var userId = await _dbContext.Users.Select(u => u.Id).FirstAsync();
 
-        _exportModel.Download = new ExportModel.DownloadModel
-        {
-            Section = section
-        };
+        await _pageContext.AddModelContextAsync(_exportModel, userId);
+
+        _exportModel.BackupType = ExportModel.DataScope.User;
 
         var result = await _exportModel.OnPostAsync(default);
 
-        Assert.IsType<NotFoundResult>(result);
+        Assert.IsType<FileStreamResult>(result);
     }
 
 
-    [Theory]
-    [InlineData(null)]
-    [InlineData(2)]
-    [InlineData(5)]
-    [InlineData(10)]
-    public async Task OnPost_ValidSection_File(int? section)
+    [Fact]
+    public async Task OnPost_TreasuryData_File()
     {
-        if (section is int i)
-        {
-            section = Math.Min(i, await _bulkOperations.GetTotalPagesAsync());
-        }
+        var userId = await _dbContext.Users.Select(u => u.Id).FirstAsync();
 
-        _exportModel.Download = new ExportModel.DownloadModel
-        {
-            Section = section
-        };
+        await _pageContext.AddModelContextAsync(_exportModel, userId);
+
+        _exportModel.BackupType = ExportModel.DataScope.Treasury;
 
         var result = await _exportModel.OnPostAsync(default);
 
-        Assert.IsType<FileContentResult>(result);
+        Assert.IsType<FileStreamResult>(result);
+    }
+
+
+    [Fact]
+    public async Task OnPost_CompleteData_File()
+    {
+        var userId = await _dbContext.Users.Select(u => u.Id).FirstAsync();
+
+        await _pageContext.AddModelContextAsync(_exportModel, userId);
+
+        _exportModel.BackupType = ExportModel.DataScope.Complete;
+
+        var result = await _exportModel.OnPostAsync(default);
+
+        Assert.IsType<FileStreamResult>(result);
     }
 }

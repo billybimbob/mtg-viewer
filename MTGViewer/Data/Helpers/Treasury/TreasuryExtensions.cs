@@ -259,7 +259,7 @@ public static partial class TreasuryExtensions
             .Entries<Box>()
             .All(e => e.State is EntityState.Detached
                 || e.State is not EntityState.Added
-                && !e.Property(b => b.Capacity).IsModified);
+                    && !e.Property(b => b.Capacity).IsModified);
     }
 
 
@@ -269,7 +269,7 @@ public static partial class TreasuryExtensions
             .Entries<Amount>()
             .All(e => e.State is EntityState.Detached
                 || e.State is not EntityState.Added
-                && !e.Property(a => a.NumCopies).IsModified);
+                    && !e.Property(a => a.NumCopies).IsModified);
     }
 
 

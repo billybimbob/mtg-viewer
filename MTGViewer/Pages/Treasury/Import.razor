@@ -16,6 +16,18 @@
 <h1> Upload Card Data </h1>
 <hr />
 
+@if (IsBusy)
+{
+    <div class="progress">
+        <div title="Upload Progress"
+            class="progress-bar" role="progressbar"
+            style="width: @(PercentProgress)%;"aria-valuenow="@PercentProgress"
+            aria-valuemin="0" aria-valuemax="100" >
+            @(PercentProgress)%
+        </div>
+    </div>
+}
+
 <SavePrompt @bind-Result="_result">
     <SuccessMessage>
         Successfully added card data.
@@ -26,7 +38,7 @@
 </SavePrompt>
 
 <div class="row">
-    <section class="col col-md-8">
+    <div class="col-12 col-md-8">
         <p>
             Bulk fetch and add operations can be done via files. Currently, only .json files with
             the same format as the <a href="/Treasury/Export">exported .json format</a> and .csv files are supported.
@@ -37,19 +49,13 @@
         <p>
             The uploading process may take a long to time complete.
         </p>
-    </section>
-</div>
-
-<div class="row">
-    <section class="col col-md-5">
+    </div>
+    <div class="col-12 col-md-5">
         <form @onsubmit="UploadAsync">
             <div class="form-group">
-
-                <label for="import-file">Card Data</label>
-
                 <InputFile OnChange="FileChosen"
                     accept=".json,application/json,text/csv"
-                    id="import-file" class="form-control-file" />
+                    class="form-control-file" />
 
                 @if (!string.IsNullOrWhiteSpace(FileError))
                 {
@@ -59,7 +65,7 @@
 
             <div class="btn-group" role="group">
                 <button title="Cancel Upload" class="btn btn-danger" type="button" 
-                    @onclick="CancelUpload" disabled="@(!IsBusy || HasNoFile)">
+                    @onclick="CancelUpload" disabled="@(!IsBusy || HasNoFile || IsCancelled)">
                     Cancel
                 </button>
                 <button title="Upload Card Data" class="btn btn-secondary"
@@ -72,23 +78,30 @@
                 </button>
             </div>
         </form>
-    </section>
+    </div>
 </div>
 
 
 @code
 {
     public bool IsBusy => _isBusy;
+    public bool IsCancelled => _isCancelRaised;
+
     public string FileError => _fileError;
     public bool HasNoFile => _chosenImport == null;
+
+    public int PercentProgress => _percentProgress;
+
 
     private const long _2_MB = 2_097_152;
     
     private CancellationTokenSource? _cancel = new();
 
-    private bool _isCancelRaised;
     private bool _isBusy;
+    private bool _isCancelRaised;
     private SaveResult _result;
+    private int _percentProgress;
+
     private string _fileError = string.Empty;
     private IBrowserFile? _chosenImport;
 
@@ -157,8 +170,13 @@
             return;
         }
 
+        var loadingProgress = ScopedServices.GetRequiredService<LoadingProgress>();
+
         _isBusy = true;
         _result = SaveResult.None;
+        _percentProgress = 0;
+
+        loadingProgress.ProgressUpdate += UploadProgress;
 
         try
         {
@@ -177,6 +195,7 @@
                     break;
             }
 
+            _chosenImport = null;
             _result = SaveResult.Success;
         }
         catch (Exception e)
@@ -187,9 +206,27 @@
         }
         finally
         {
+            loadingProgress.ProgressUpdate -= UploadProgress;
+
             _isCancelRaised = false;
             _isBusy = false;
         }
+    }
+
+
+    private void UploadProgress(Percent percent)
+    {
+        InvokeAsync(() =>
+        {
+            if (percent <= _percentProgress)
+            {
+                return;
+            }
+
+            _percentProgress = percent;
+
+            StateHasChanged();
+        });
     }
 
 

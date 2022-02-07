@@ -331,35 +331,9 @@
 
         dbContext.Bins.AttachRange(_bins);
 
-        var box = await ExistingBoxAsync(dbContext, BoxId, cancel);
-
-        if (box is null)
-        {
-            return null;
-        }
-
-        if (dbContext.Entry(box).State is not EntityState.Detached)
-        {
-            return box;
-        }
-
-        dbContext.Boxes.Attach(box);
-
-        return box;
-    }
-
-
-    private static Task<Box?> ExistingBoxAsync(
-        CardDbContext dbContext, int id, CancellationToken cancel)
-    {
-        if (id == default)
-        {
-            Task.FromResult<Box?>(null);
-        }
-
-        return dbContext.Boxes
+        return await dbContext.Boxes
             .Include(b => b.Bin)
-            .SingleOrDefaultAsync(b => !b.IsExcess && b.Id == id, cancel);
+            .SingleOrDefaultAsync(b => !b.IsExcess && b.Id == BoxId, cancel);;
     }
     
 

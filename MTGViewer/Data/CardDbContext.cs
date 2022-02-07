@@ -255,5 +255,10 @@ internal class SuggestionConfiguration : IEntityTypeConfiguration<Suggestion>
             .HasOne(s => s.Receiver)
             .WithMany()
             .OnDelete(DeleteBehavior.Cascade);
+
+        builder
+            .HasOne(s => s.Card)
+            .WithMany(c => c.Suggestions)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }

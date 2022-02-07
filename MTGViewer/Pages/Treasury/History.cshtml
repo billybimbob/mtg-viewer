@@ -131,19 +131,19 @@
                         && Model.IsFirstTransfer(transfer)
                         && Model.IsShared(transaction))
                     {
-                        @if (canChangeTreasury)
-                        {
-                            <td rowspan="@transaction.Changes.Count" class="text-center">
+                        <td rowspan="@transaction.Changes.Count" class="text-center">
+                            @if (canChangeTreasury)
+                            {
                                 <form method="POST">
                                     <input type="hidden" name="transactionId" value="@transaction.Id"/>
                                     <button title="Remove Record" type="submit" class="btn btn-danger"> &times; </button>
                                 </form>
-                            </td>
-                        }
-                        else
-                        {
-                            <button class="btn btn-secondary" type="button" disabled> &times; </button>
-                        }
+                            }
+                            else
+                            {
+                                <button class="btn btn-danger" type="button" disabled> &times; </button>
+                            }
+                        </td>
                     }
                 </tr>
 

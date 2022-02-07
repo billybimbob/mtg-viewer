@@ -71,6 +71,7 @@ public class Startup
 
         services.AddScoped<BulkOperations>();
         services.AddScoped<FileCardStorage>();
+        services.AddScoped<LoadingProgress>();
 
         if (_env.IsDevelopment())
         {

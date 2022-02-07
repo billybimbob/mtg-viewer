@@ -94,6 +94,7 @@ public class Startup
 
         services.AddScoped<BulkOperations>();
         services.AddScoped<FileCardStorage>();
+        services.AddScoped<LoadingProgress>();
 
         services
             .AddScoped<CardDataGenerator>()

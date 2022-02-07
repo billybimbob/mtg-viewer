@@ -78,6 +78,9 @@ public class Card
     [JsonIgnore]
     public List<Want> Wants { get; } = new();
 
+    [JsonIgnore]
+    public List<Suggestion> Suggestions { get; } = new();
+
 
     public bool IsValid()
     {

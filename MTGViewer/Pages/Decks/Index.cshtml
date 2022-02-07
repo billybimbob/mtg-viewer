@@ -18,7 +18,18 @@
  
 <h1>@Model.UserName's Decks</h1>
 
-<a href="/Decks/Craft" class="btn btn-secondary mb-3" role="button">New Deck</a>
+<div class="row mb-3">
+    <div class="col-auto btn-group" role="group">
+        @if (canChangeTreasury)
+        {
+            <a href="/Decks/Craft" class="btn btn-secondary" role="button"> New Deck </a>
+        }
+        else
+        {
+            <button role="button" class="btn btn-secondary" disabled> New Deck </button>
+        }
+    </div>
+</div>
 
 <div class="table-responsive-md">
     <table class="table">
