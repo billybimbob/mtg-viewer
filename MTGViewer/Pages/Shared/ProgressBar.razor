@@ -1,0 +1,31 @@
+
+<div class="progress">
+    <div title="Upload Progress"
+        class="progress-bar progress-bar-striped progress-bar-animated bg-success w-@PercentProgress"
+        role="progressbar"
+        aria-valuemin="0"
+        aria-valuemax="100"
+        aria-valuenow="@PercentProgress">
+    </div>
+</div>
+
+@code
+{
+    [Parameter]
+    public Percent Percent { get; set; }
+
+    [Parameter]
+    public int Interval { get; set; } = 10;
+
+    public int PercentProgress => _percentProgress;
+
+    private int _percentProgress;
+
+
+    protected override void OnParametersSet()
+    {
+        int interval = Math.Min(100, Math.Max(1, Interval));
+
+        _percentProgress = (Percent / interval) * interval;
+    }
+}

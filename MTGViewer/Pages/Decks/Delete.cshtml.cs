@@ -40,7 +40,7 @@ public class DeleteModel : PageModel
     [TempData]
     public string? PostMesssage { get; set; }
 
-    public Deck Deck { get; private set; } = null!;
+    public Deck Deck { get; private set; } = default!;
 
     public IReadOnlyList<QuantityNameGroup> NameGroups { get; private set; } = Array.Empty<QuantityNameGroup>();
 

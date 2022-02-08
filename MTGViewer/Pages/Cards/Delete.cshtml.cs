@@ -33,7 +33,7 @@ public class DeleteModel : PageModel
 
     public sealed class InputModel
     {
-        public string CardId { get; set; } = null!;
+        public string CardId { get; set; } = default!;
 
         [Display(Name = "Number of Copies")]
         [Required(ErrorMessage = "No Copies Specified")]
@@ -45,7 +45,7 @@ public class DeleteModel : PageModel
     [TempData]
     public string? PostMessage { get; set; }
 
-    public Card Card { get; private set; } = null!;
+    public Card Card { get; private set; } = default!;
 
     [BindProperty]
     public InputModel? Input { get; set; }

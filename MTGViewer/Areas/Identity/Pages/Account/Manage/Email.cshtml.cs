@@ -27,7 +27,7 @@ public class EmailModel : PageModel
     }
 
     
-    public string Email { get; set; } = null!;
+    public string Email { get; set; } = default!;
 
     public bool IsEmailConfirmed { get; set; }
 
@@ -44,7 +44,7 @@ public class EmailModel : PageModel
         [Required]
         [EmailAddress]
         [Display(Name = "New email")]
-        public string NewEmail { get; set; } = null!;
+        public string NewEmail { get; set; } = default!;
     }
 
 

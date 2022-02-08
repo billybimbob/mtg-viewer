@@ -20,7 +20,7 @@ public class IndexTests : IAsyncLifetime
     private readonly CardDbContext _dbContext;
     private readonly PageContextFactory _pageFactory;
     private readonly TestDataGenerator _testGen;
-    private Unclaimed _unclaimed = null!;
+    private Unclaimed _unclaimed = default!;
 
     public IndexTests(
         IndexModel indexModel,

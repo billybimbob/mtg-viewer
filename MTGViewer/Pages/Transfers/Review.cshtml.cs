@@ -33,7 +33,7 @@ public class ReviewModel : PageModel
     [TempData]
     public string? PostMessage { get; set; }
 
-    public Deck Deck { get; private set; } = null!;
+    public Deck Deck { get; private set; } = default!;
 
 
     public async Task<IActionResult> OnGetAsync(int deckId, CancellationToken cancel)

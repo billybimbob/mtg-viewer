@@ -46,7 +46,7 @@ public class ExchangeModel : PageModel
     [TempData]
     public string? PostMessage { get; set; }
 
-    public Deck Deck { get; private set; } = null!;
+    public Deck Deck { get; private set; } = default!;
     
     public bool HasPendings { get; private set; }
 

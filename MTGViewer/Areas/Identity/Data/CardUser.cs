@@ -9,7 +9,7 @@ public class CardUser : IdentityUser
     [PersonalData]
     [StringLength(256)]
     [Display(Name = "Name")]
-    public string DisplayName { get; set; } = null!;
+    public string DisplayName { get; set; } = default!;
 
     public bool IsApproved { get; set; }
 }

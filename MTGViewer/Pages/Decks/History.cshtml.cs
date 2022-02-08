@@ -53,7 +53,7 @@ public class HistoryModel : PageModel
     public string? TimeZoneId { get; set; }
 
 
-    public Deck Deck { get; private set; } = null!;
+    public Deck Deck { get; private set; } = default!;
 
     public IReadOnlyList<Transfer> Transfers { get; private set; } =
         Array.Empty<Transfer>();

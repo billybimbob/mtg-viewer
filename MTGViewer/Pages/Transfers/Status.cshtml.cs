@@ -33,7 +33,7 @@ public class StatusModel : PageModel
     [TempData]
     public string? PostMessage { get; set; }
 
-    public Deck Deck { get; private set; } = null!;
+    public Deck Deck { get; private set; } = default!;
 
     public IReadOnlyList<QuantityNameGroup> CardGroups { get; private set; } = 
         Array.Empty<QuantityNameGroup>();

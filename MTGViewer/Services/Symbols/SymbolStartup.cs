@@ -68,9 +68,9 @@ public static class MTGSymbolExtensions
 
 public class SymbolOptions
 {
-    public Type DefaultFinder { get; set; } = null!;
+    public Type DefaultFinder { get; set; } = default!;
 
-    public Type DefaultTranslator { get; set; } = null!;
+    public Type DefaultTranslator { get; set; } = default!;
 }
 
 

@@ -14,15 +14,15 @@ public class Suggestion
 
 
     [JsonIgnore]
-    public string CardId { get; init; } = null!;
-    public Card Card { get; init; } = null!;
+    public string CardId { get; init; } = default!;
+    public Card Card { get; init; } = default!;
 
 
     [JsonIgnore]
-    public string ReceiverId { get; init; } = null!;
+    public string ReceiverId { get; init; } = default!;
 
     [Display(Name = "Sent To")]
-    public UserRef Receiver { get; init; } = null!;
+    public UserRef Receiver { get; init; } = default!;
 
 
     [JsonIgnore]
@@ -58,22 +58,22 @@ public class Trade : Concurrent
 
 
     [JsonIgnore]
-    public string CardId { get; init; } = null!;
-    public Card Card { get; init; } = null!;
+    public string CardId { get; init; } = default!;
+    public Card Card { get; init; } = default!;
 
 
     [JsonIgnore]
     public int FromId { get; init; }
 
     [Display(Name = "From Deck")]
-    public Deck From { get; init; } = null!;
+    public Deck From { get; init; } = default!;
 
 
     [JsonIgnore]
     public int ToId { get; init; }
 
     [Display(Name = "To Deck")]
-    public Deck To { get; init; } = null!;
+    public Deck To { get; init; } = default!;
 
 
     [Range(1, 4_096)]

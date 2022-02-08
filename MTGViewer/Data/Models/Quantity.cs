@@ -23,13 +23,13 @@ public abstract class Quantity : Concurrent
 
 
     [JsonIgnore]
-    public string CardId { get; init; } = null!;
-    public Card Card { get; init; } = null!;
+    public string CardId { get; init; } = default!;
+    public Card Card { get; init; } = default!;
 
 
     [JsonIgnore]
     public int LocationId { get; init; }
-    public Location Location { get; init; } = null!;
+    public Location Location { get; init; } = default!;
 
     // limit is kind of arbitrary
 

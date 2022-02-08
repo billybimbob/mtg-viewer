@@ -20,7 +20,7 @@ public class HistoryTests : IAsyncLifetime
     private readonly PageContextFactory _pageFactory;
 
     private readonly TestDataGenerator _testGen;
-    private Transaction _transaction = null!;
+    private Transaction _transaction = default!;
 
 
     public HistoryTests(

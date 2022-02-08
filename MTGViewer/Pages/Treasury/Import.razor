@@ -18,14 +18,7 @@
 
 @if (IsBusy)
 {
-    <div class="progress">
-        <div title="Upload Progress"
-            class="progress-bar" role="progressbar"
-            style="width: @(PercentProgress)%;"aria-valuenow="@PercentProgress"
-            aria-valuemin="0" aria-valuemax="100" >
-            @(PercentProgress)%
-        </div>
-    </div>
+    <ProgressBar Percent="PercentProgress" />
 }
 
 <SavePrompt @bind-Result="_result">
@@ -90,7 +83,7 @@
     public string FileError => _fileError;
     public bool HasNoFile => _chosenImport == null;
 
-    public int PercentProgress => _percentProgress;
+    public Percent PercentProgress => _percentProgress;
 
 
     private const long _2_MB = 2_097_152;
@@ -100,7 +93,7 @@
     private bool _isBusy;
     private bool _isCancelRaised;
     private SaveResult _result;
-    private int _percentProgress;
+    private Percent _percentProgress;
 
     private string _fileError = string.Empty;
     private IBrowserFile? _chosenImport;
@@ -216,17 +209,14 @@
 
     private void UploadProgress(Percent percent)
     {
-        InvokeAsync(() =>
+        if (percent <= _percentProgress)
         {
-            if (percent <= _percentProgress)
-            {
-                return;
-            }
+            return;
+        }
 
-            _percentProgress = percent;
+        _percentProgress = percent;
 
-            StateHasChanged();
-        });
+        StateHasChanged();
     }
 
 

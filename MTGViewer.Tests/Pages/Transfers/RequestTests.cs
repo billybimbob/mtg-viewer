@@ -20,7 +20,7 @@ public class RequestTests : IAsyncLifetime
     private readonly PageContextFactory _pageFactory;
 
     private readonly TestDataGenerator _testGen;
-    private Deck _requestDeck = null!;
+    private Deck _requestDeck = default!;
 
     public RequestTests(
         RequestModel requestModel,

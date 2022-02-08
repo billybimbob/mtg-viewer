@@ -15,10 +15,10 @@ public class Name
     }
 
     [JsonInclude]
-    public string Value { get; init; } = null!;
+    public string Value { get; init; } = default!;
 
     [JsonInclude]
-    public string CardId { get; init; } = null!;
+    public string CardId { get; init; } = default!;
 
 
     public override string ToString() => Value;
@@ -47,10 +47,10 @@ public class Color
     }
 
     [JsonInclude]
-    public string Name { get; init; } = null!;
+    public string Name { get; init; } = default!;
 
     [JsonInclude]
-    public string CardId { get; init; } = null!;
+    public string CardId { get; init; } = default!;
 
 
     public override string ToString() => Name;
@@ -69,10 +69,10 @@ public class Supertype
     }
 
     [JsonInclude]
-    public string Name { get; init; } = null!;
+    public string Name { get; init; } = default!;
 
     [JsonInclude]
-    public string CardId { get; init; } = null!;
+    public string CardId { get; init; } = default!;
 
 
     public override string ToString() => Name;
@@ -91,10 +91,10 @@ public class Type
     }
 
     [JsonInclude]
-    public string Name { get; init; } = null!;
+    public string Name { get; init; } = default!;
 
     [JsonInclude]
-    public string CardId { get; init; } = null!;
+    public string CardId { get; init; } = default!;
 
 
     public override string ToString() => Name;
@@ -113,10 +113,10 @@ public class Subtype
     }
 
     [JsonInclude]
-    public string Name { get; init; } = null!;
+    public string Name { get; init; } = default!;
 
     [JsonInclude]
-    public string CardId { get; init; } = null!;
+    public string CardId { get; init; } = default!;
 
 
     public override string ToString() => Name;

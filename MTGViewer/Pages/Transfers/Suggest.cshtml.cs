@@ -35,7 +35,7 @@ public class SuggestModel : PageModel
     }
 
 
-    public Card Card { get; private set; } = null!;
+    public Card Card { get; private set; } = default!;
 
     public OffsetList<UserRef> Users { get; private set; } = OffsetList<UserRef>.Empty();
 

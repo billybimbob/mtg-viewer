@@ -40,7 +40,7 @@ public class RequestModel : PageModel
 
     public bool TargetsExist { get; private set; }
 
-    public Deck Deck { get; private set; } = null!;
+    public Deck Deck { get; private set; } = default!;
 
     public IReadOnlyList<WantNameGroup> Requests { get; private set; } = Array.Empty<WantNameGroup>();
 

@@ -360,7 +360,7 @@ public class QuantityGroup : IEnumerable<Quantity>
         Amount?.Card
             ?? Want?.Card
             ?? GiveBack?.Card
-            ?? null!;
+            ?? default!;
 
 
     public int LocationId =>
@@ -373,7 +373,7 @@ public class QuantityGroup : IEnumerable<Quantity>
         Amount?.Location
             ?? Want?.Location
             ?? GiveBack?.Location
-            ?? null!;
+            ?? default!;
 
 
     public int NumCopies =>

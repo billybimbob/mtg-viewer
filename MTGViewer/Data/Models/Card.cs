@@ -12,24 +12,24 @@ namespace MTGViewer.Data;
 public class Card
 {
     [Key]
-    public string Id { get; init; } = null!;
+    public string Id { get; init; } = default!;
 
     [Required]
     [Display(Name = "Multiverse Id")]
-    public string MultiverseId { get; init; } = null!;
+    public string MultiverseId { get; init; } = default!;
 
 
     [Required]
-    public string Name { get; init; } = null!;
+    public string Name { get; init; } = default!;
 
     public List<Name> Names { get; init; } = new();
 
     [Required]
-    public string Layout { get; init; } = null!;
+    public string Layout { get; init; } = default!;
 
 
     [Display(Name = "Mana Cost")]
-    public string? ManaCost { get; init; } = null!;
+    public string? ManaCost { get; init; } = default!;
 
     [Display(Name = "Converted Mana Cost")]
     [Range(0f, 1_000_000f)]
@@ -50,10 +50,10 @@ public class Card
 
     [Display(Name = "Set Name")]
     [Required]
-    public string SetName { get; init; } = null!;
+    public string SetName { get; init; } = default!;
 
     [Required]
-    public string Artist { get; init; } = null!;
+    public string Artist { get; init; } = default!;
 
 
     public string? Text { get; init; }
@@ -70,7 +70,7 @@ public class Card
     [Required]
     [Display(Name = "Image")]
     [Url]
-    public string ImageUrl { get; init; } = null!;
+    public string ImageUrl { get; init; } = default!;
 
     [JsonIgnore]
     public List<Amount> Amounts { get; } = new();

@@ -54,8 +54,8 @@ public class Unclaimed : Owned
 public class Deck : Owned
 {
     [JsonIgnore]
-    public string OwnerId { get; init; } = null!;
-    public UserRef Owner { get; init; } = null!;
+    public string OwnerId { get; init; } = default!;
+    public UserRef Owner { get; init; } = default!;
 
 
     [Display(Name = "Give Backs")]
@@ -102,7 +102,7 @@ public class Box : Location
 {
     [JsonIgnore]
     public int BinId { get; init; }
-    public Bin Bin { get; set; } = null!;
+    public Bin Bin { get; set; } = default!;
 
     // min is 0 to account for other loc types, should be min 10
 

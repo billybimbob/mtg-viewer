@@ -20,7 +20,7 @@ public class StatusTests : IAsyncLifetime
     private readonly PageContextFactory _pageFactory;
 
     private readonly TestDataGenerator _testGen;
-    private TradeSet _trades = null!;
+    private TradeSet _trades = default!;
 
     public StatusTests(
         StatusModel statusModel,

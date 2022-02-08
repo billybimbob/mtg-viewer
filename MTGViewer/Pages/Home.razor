@@ -120,17 +120,6 @@
 
 @code
 {
-    private const int ChunkSize = 4;
-
-    private readonly CancellationTokenSource _cancel = new();
-
-    private bool _isBusy;
-    private DateTime _currentTime;
-
-    private RandomCardsContext? _randomContext;
-    private IReadOnlyList<Transaction> _recentChanges = Array.Empty<Transaction>();
-
-
     public bool IsBusy => _isBusy;
 
     public bool IsFullyLoaded => !_randomContext?.HasMore ?? true;
@@ -143,6 +132,17 @@
 
     public bool IsImageLoaded(Card card) =>
         _randomContext?.LoadedImages.Contains(card.Id) ?? false;
+
+
+    private const int ChunkSize = 4;
+
+    private readonly CancellationTokenSource _cancel = new();
+
+    private bool _isBusy;
+    private DateTime _currentTime;
+
+    private RandomCardsContext? _randomContext;
+    private IReadOnlyList<Transaction> _recentChanges = Array.Empty<Transaction>();
 
 
     protected override async Task OnInitializedAsync()

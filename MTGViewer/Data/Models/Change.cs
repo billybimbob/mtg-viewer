@@ -19,8 +19,8 @@ public class Change
 
 
     [JsonIgnore]
-    public string CardId { get; init; } = null!;
-    public Card Card { get; init; } = null!;
+    public string CardId { get; init; } = default!;
+    public Card Card { get; init; } = default!;
 
 
     [Range(1, 4_096)]
@@ -29,17 +29,17 @@ public class Change
 
     [JsonIgnore]
     public int ToId { get; init; }
-    public Location To { get; init; } = null!;
+    public Location To { get; init; } = default!;
 
 
     [JsonIgnore]
     public int? FromId { get; init; }
-    public Location? From { get; init; } = null!;
+    public Location? From { get; init; } = default!;
 
 
     [JsonIgnore]
     public int TransactionId { get; init; }
-    public Transaction Transaction { get; init; } = null!;
+    public Transaction Transaction { get; init; } = default!;
 }
 
 

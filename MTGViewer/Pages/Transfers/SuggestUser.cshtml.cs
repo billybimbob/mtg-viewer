@@ -35,9 +35,9 @@ public class SuggestUserModel : PageModel
     public string? PostMessage { get; set; }
 
 
-    public Card Card { get; private set; } = null!;
+    public Card Card { get; private set; } = default!;
 
-    public UserRef Receiver { get; private set; } = null!;
+    public UserRef Receiver { get; private set; } = default!;
 
     public IReadOnlyList<Deck> Decks { get; private set; } = Array.Empty<Deck>();
 

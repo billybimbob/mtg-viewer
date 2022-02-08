@@ -15,10 +15,10 @@ public class UserRef
     }
 
     [Key]
-    public string Id { get; init; } = null!;
+    public string Id { get; init; } = default!;
 
     [StringLength(256)]
-    public string Name { get; set; } = null!;
+    public string Name { get; set; } = default!;
 
     public bool ResetRequested { get; set;  }
 }

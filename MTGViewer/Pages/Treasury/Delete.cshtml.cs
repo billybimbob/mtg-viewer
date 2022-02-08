@@ -26,7 +26,7 @@ public class DeleteModel : PageModel
     [TempData]
     public string? PostMessage { get; set; }
 
-    public Box Box { get; private set; } = null!;
+    public Box Box { get; private set; } = default!;
 
 
     public async Task<IActionResult> OnGetAsync(int id, CancellationToken cancel)

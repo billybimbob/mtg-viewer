@@ -29,7 +29,7 @@ public class LoginModel : PageModel
     }
 
     [BindProperty]
-    public InputModel Input { get; set; } = null!;
+    public InputModel Input { get; set; } = default!;
 
     public string? ReturnUrl { get; set; }
 
@@ -40,11 +40,11 @@ public class LoginModel : PageModel
     {
         [Required]
         [EmailAddress]
-        public string Email { get; set; } = null!;
+        public string Email { get; set; } = default!;
 
         [Required]
         [DataType(DataType.Password)]
-        public string Password { get; set; } = null!;
+        public string Password { get; set; } = default!;
 
         [Display(Name = "Remember me?")]
         public bool RememberMe { get; set; }
