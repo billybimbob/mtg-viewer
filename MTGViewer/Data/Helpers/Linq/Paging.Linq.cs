@@ -9,8 +9,8 @@ public static partial class PagingExtensions
 {
     public static OffsetList<TEntity> ToOffsetList<TEntity>(
         this IEnumerable<TEntity> source,
-        int pageSize, 
-        int? pageIndex = null)
+        int? pageIndex,
+        int pageSize)
     {
         if (source == null)
         {
@@ -38,8 +38,8 @@ public static partial class PagingExtensions
 
     public static async Task<OffsetList<TEntity>> ToOffsetListAsync<TEntity>(
         this IAsyncEnumerable<TEntity> source,
+        int? pageIndex,
         int pageSize,
-        int? pageIndex = null,
         CancellationToken cancel = default)
     {
         if (source == null)

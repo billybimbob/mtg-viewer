@@ -1,7 +1,7 @@
-@page "{id:int}/{pageIndex:int?}"
+@page "{id:int}"
 @model Decks.HistoryModel
 @{
-    ViewData["Title"] = $"{Model.Deck.Name} - History ({Model.Offset})";
+    ViewData["Title"] = $"{Model.Deck.Name} - History";
 }
 
 @using Microsoft.AspNetCore.Authorization
@@ -157,6 +157,6 @@
             </table>
         </div>
 
-        <partial name="_OffsetPagingPartial" for="Offset"/>
+        <component type="typeof(SeekPaging<Change>)" render-mode="Static" param-Seek="Model.Seek" />
     </div>
 </div>

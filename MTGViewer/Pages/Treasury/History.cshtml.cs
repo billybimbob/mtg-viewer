@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Paging;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -82,33 +83,6 @@ public class HistoryModel : PageModel
     }
 
 
-    private async Task<SeekList<Change>> GetChangesAsync(
-        int? seek, 
-        bool backtrack, 
-        CancellationToken cancel)
-    {
-        if (seek is null)
-        {
-            return await ChangesForHistory()
-                .ToSeekListAsync(_pageSize, SeekPosition.Start, cancel);
-        }
-
-        var change = await ChangesForHistory()
-            .OrderBy(c => c.Id) // intentionally override order
-            .SingleOrDefaultAsync(c => c.Id == seek, cancel);
-
-        if (change == default)
-        {
-            return await ChangesForHistory()
-                .ToSeekListAsync(_pageSize, SeekPosition.Start, cancel);
-        }
-
-        return backtrack
-            ? await ChangesBeforeAsync(change, cancel)
-            : await ChangesAfterAsync(change, cancel);
-    }
-
-
     private IQueryable<Change> ChangesForHistory()
     {
         return _dbContext.Changes
@@ -130,97 +104,125 @@ public class HistoryModel : PageModel
     }
 
 
-    private Task<SeekList<Change>> ChangesAfterAsync(Change change, CancellationToken cancel)
+    private async Task<SeekList<Change>> GetChangesAsync(
+        int? seek, 
+        bool backtrack, 
+        CancellationToken cancel)
     {
-        return ChangesForHistory().Where(c => 
+        var historyChanges = ChangesForHistory();
 
-            c.Transaction.AppliedAt == change.Transaction.AppliedAt
-                && (c.From is Box && change.From is Box 
-                    && c.From.Name == change.From.Name
-                    || c.From == change.From)
-                && c.To.Name == change.To.Name
-                && c.Card.Name == change.Card.Name
-                && c.Amount == change.Amount
-                && c.Id > change.Id
+        if (seek is null)
+        {
+            return await historyChanges
+                .ToSeekListAsync(SeekPosition.Start, _pageSize, cancel);
+        }
 
-            || c.Transaction.AppliedAt == change.Transaction.AppliedAt
-                && (c.From is Box && change.From is Box 
-                    && c.From.Name == change.From.Name
-                    || c.From == change.From)
-                && c.To.Name == change.To.Name
-                && c.Card.Name == change.Card.Name
-                && c.Amount > change.Amount
+        var change = await historyChanges
+            .OrderBy(c => c.Id) // intentionally override order
+            .SingleOrDefaultAsync(c => c.Id == seek, cancel);
 
-            || c.Transaction.AppliedAt == change.Transaction.AppliedAt
-                && (c.From is Box && change.From is Box 
-                    && c.From.Name == change.From.Name
-                    || c.From == change.From)
-                && c.To.Name == change.To.Name
-                && c.Card.Name.CompareTo(change.Card.Name) > 0
+        if (change == default)
+        {
+            return await historyChanges
+                .ToSeekListAsync(SeekPosition.Start, _pageSize, cancel);
+        }
 
-            || c.Transaction.AppliedAt == change.Transaction.AppliedAt
-                && (c.From is Box && change.From is Box 
-                    && c.From.Name == change.From.Name
-                    || c.From == change.From)
-                && c.To.Name.CompareTo(change.To.Name) > 0
+        return backtrack
+            ? await historyChanges
+                .ToSeekListAsync(
+                    ChangesBefore(change), SeekPosition.End, _pageSize, cancel)
 
-            || c.Transaction.AppliedAt == change.Transaction.AppliedAt
-                && c.From is Box && change.From is Box
-                && c.From.Name.CompareTo(change.From.Name) > 0
-
-            || c.Transaction.AppliedAt == change.Transaction.AppliedAt
-                && c.From is Box && change.From == null
-
-            || c.Transaction.AppliedAt < change.Transaction.AppliedAt)
-            
-        .ToSeekListAsync(_pageSize, SeekPosition.Forward, cancel);
+            : await historyChanges
+                .ToSeekListAsync(
+                    ChangesAfter(change), SeekPosition.Start, _pageSize, cancel);
     }
 
 
-    private Task<SeekList<Change>> ChangesBeforeAsync(Change change, CancellationToken cancel)
+    private Expression<Func<Change, bool>> ChangesBefore(Change target)
     {
-        return ChangesForHistory().Reverse().Where(c =>
+        return c =>
+            c.Transaction.AppliedAt == target.Transaction.AppliedAt
+                && (c.From is Box && target.From is Box 
+                    && c.From.Name == target.From.Name
+                    || c.From == target.From)
+                && c.To.Name == target.To.Name
+                && c.Card.Name == target.Card.Name
+                && c.Amount == target.Amount
+                && c.Id < target.Id
 
-            c.Transaction.AppliedAt == change.Transaction.AppliedAt
-                && (c.From is Box && change.From is Box 
-                    && c.From.Name == change.From.Name
-                    || c.From == change.From)
-                && c.To.Name == change.To.Name
-                && c.Card.Name == change.Card.Name
-                && c.Amount == change.Amount
-                && c.Id < change.Id
+            || c.Transaction.AppliedAt == target.Transaction.AppliedAt
+                && (c.From is Box && target.From is Box 
+                    && c.From.Name == target.From.Name
+                    || c.From == target.From)
+                && c.To.Name == target.To.Name
+                && c.Card.Name == target.Card.Name
+                && c.Amount < target.Amount
 
-            || c.Transaction.AppliedAt == change.Transaction.AppliedAt
-                && (c.From is Box && change.From is Box 
-                    && c.From.Name == change.From.Name
-                    || c.From == change.From)
-                && c.To.Name == change.To.Name
-                && c.Card.Name == change.Card.Name
-                && c.Amount < change.Amount
+            || c.Transaction.AppliedAt == target.Transaction.AppliedAt
+                && (c.From is Box && target.From is Box 
+                    && c.From.Name == target.From.Name
+                    || c.From == target.From)
+                && c.To.Name == target.To.Name
+                && c.Card.Name.CompareTo(target.Card.Name) < 0
 
-            || c.Transaction.AppliedAt == change.Transaction.AppliedAt
-                && (c.From is Box && change.From is Box 
-                    && c.From.Name == change.From.Name
-                    || c.From == change.From)
-                && c.To.Name == change.To.Name
-                && c.Card.Name.CompareTo(change.Card.Name) < 0
+            || c.Transaction.AppliedAt == target.Transaction.AppliedAt
+                && (c.From is Box && target.From is Box 
+                    && c.From.Name == target.From.Name
+                    || c.From == target.From)
+                && c.To.Name.CompareTo(target.To.Name) < 0
 
-            || c.Transaction.AppliedAt == change.Transaction.AppliedAt
-                && (c.From is Box && change.From is Box 
-                    && c.From.Name == change.From.Name
-                    || c.From == change.From)
-                && c.To.Name.CompareTo(change.To.Name) < 0
+            || c.Transaction.AppliedAt == target.Transaction.AppliedAt
+                && c.From is Box && target.From is Box
+                && c.From.Name.CompareTo(target.From.Name) < 0
 
-            || c.Transaction.AppliedAt == change.Transaction.AppliedAt
-                && c.From is Box && change.From is Box
-                && c.From.Name.CompareTo(change.From.Name) < 0
+            || c.Transaction.AppliedAt == target.Transaction.AppliedAt
+                && c.From == null && target.From is Box
 
-            || c.Transaction.AppliedAt == change.Transaction.AppliedAt
-                && c.From == null && change.From is Box
+            || c.Transaction.AppliedAt > target.Transaction.AppliedAt;
+    }
 
-            || c.Transaction.AppliedAt > change.Transaction.AppliedAt)
-            
-        .ToSeekListAsync(_pageSize, SeekPosition.Backwards, cancel);
+
+    private Expression<Func<Change, bool>> ChangesAfter(Change target)
+    {
+        return c =>
+            c.Transaction.AppliedAt == target.Transaction.AppliedAt
+                && (c.From is Box && target.From is Box 
+                    && c.From.Name == target.From.Name
+                    || c.From == target.From)
+                && c.To.Name == target.To.Name
+                && c.Card.Name == target.Card.Name
+                && c.Amount == target.Amount
+                && c.Id > target.Id
+
+            || c.Transaction.AppliedAt == target.Transaction.AppliedAt
+                && (c.From is Box && target.From is Box 
+                    && c.From.Name == target.From.Name
+                    || c.From == target.From)
+                && c.To.Name == target.To.Name
+                && c.Card.Name == target.Card.Name
+                && c.Amount > target.Amount
+
+            || c.Transaction.AppliedAt == target.Transaction.AppliedAt
+                && (c.From is Box && target.From is Box 
+                    && c.From.Name == target.From.Name
+                    || c.From == target.From)
+                && c.To.Name == target.To.Name
+                && c.Card.Name.CompareTo(target.Card.Name) > 0
+
+            || c.Transaction.AppliedAt == target.Transaction.AppliedAt
+                && (c.From is Box && target.From is Box 
+                    && c.From.Name == target.From.Name
+                    || c.From == target.From)
+                && c.To.Name.CompareTo(target.To.Name) > 0
+
+            || c.Transaction.AppliedAt == target.Transaction.AppliedAt
+                && c.From is Box && target.From is Box
+                && c.From.Name.CompareTo(target.From.Name) > 0
+
+            || c.Transaction.AppliedAt == target.Transaction.AppliedAt
+                && c.From is Box && target.From == null
+
+            || c.Transaction.AppliedAt < target.Transaction.AppliedAt;
     }
 
 

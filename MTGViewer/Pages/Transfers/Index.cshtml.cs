@@ -1,4 +1,6 @@
+using System;
 using System.Collections.Paging;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -40,22 +42,15 @@ public class IndexModel : PageModel
     [TempData]
     public string? PostMessage { get; set; }
 
-    [BindProperty(SupportsGet = true)]
-    public int? DeckIndex { get; set; }
-
-    [BindProperty(SupportsGet = true)]
-    public int? SuggestIndex { get; set; }
-
-
     public string UserName { get; private set; } = string.Empty;
 
-    public OffsetList<Deck> TradeDecks { get; private set; } = OffsetList<Deck>.Empty();
+    public SeekList<Deck> TradeDecks { get; private set; } = SeekList<Deck>.Empty();
 
-    public OffsetList<Suggestion> Suggestions { get; private set; } = OffsetList<Suggestion>.Empty();
+    public IReadOnlyList<Suggestion> Suggestions { get; private set; } = Array.Empty<Suggestion>();
 
 
 
-    public async Task<IActionResult> OnGetAsync(CancellationToken cancel)
+    public async Task<IActionResult> OnGetAsync(int? seek, bool backTrack, CancellationToken cancel)
     {
         var userId = _userManager.GetUserId(User);
         if (userId is null)
@@ -75,17 +70,15 @@ public class IndexModel : PageModel
 
         UserName = userName;
 
-        TradeDecks = await DecksForTransfer(userId)
-            .ToOffsetListAsync(_pageSize, DeckIndex, cancel);
+        TradeDecks = await GetDecksAsync(userId, seek, backTrack, cancel);
 
-        Suggestions = await SuggestionsForIndex(userId)
-            .ToOffsetListAsync(_pageSize, SuggestIndex, cancel);
+        Suggestions = await SuggestionsForIndex(userId).ToListAsync(cancel);
 
         return Page();
     }
 
 
-    public IQueryable<Deck> DecksForTransfer(string userId)
+    public IQueryable<Deck> DecksForIndex(string userId)
     {
         return _dbContext.Decks
             .Where(d => d.OwnerId == userId)
@@ -108,6 +101,7 @@ public class IndexModel : PageModel
 
             .OrderBy(d => d.Name)
                 .ThenBy(d => d.Id)
+
             .AsSplitQuery()
             .AsNoTrackingWithIdentityResolution();
     }
@@ -117,12 +111,60 @@ public class IndexModel : PageModel
     {
         return _dbContext.Suggestions
             .Where(s => s.ReceiverId == userId)
+
             .Include(s => s.Card)
             .Include(s => s.To)
-            .OrderBy(s => s.SentAt)
+
+            .OrderByDescending(s => s.SentAt)
                 .ThenBy(s => s.Card.Name)
                 .ThenBy(s => s.Id)
+
+            .Take(_pageSize)
+
             .AsNoTrackingWithIdentityResolution();
+    }
+
+
+    private async Task<SeekList<Deck>> GetDecksAsync(
+        string userId, 
+        int? seek, 
+        bool backTrack, 
+        CancellationToken cancel)
+    {
+        var userDecks = DecksForIndex(userId);
+
+        if (seek is null)
+        {
+            return await userDecks
+                .ToSeekListAsync(SeekPosition.Start, _pageSize, cancel);
+        }
+
+        var deck = await _dbContext.Decks
+            .OrderBy(d => d.Id)
+            .AsNoTracking()
+            .SingleOrDefaultAsync(d => d.Id == seek, cancel);
+
+        if (deck == default)
+        {
+            return await userDecks
+                .ToSeekListAsync(SeekPosition.Start, _pageSize, cancel);
+        }
+
+        return backTrack
+
+            ? await userDecks
+                .ToSeekListAsync(d =>
+                    d.Name == deck.Name && d.Id < deck.Id
+                        || d.Name.CompareTo(deck.Name) < 0,
+                        
+                    SeekPosition.End, _pageSize, cancel)
+
+            : await userDecks
+                .ToSeekListAsync(d =>
+                    d.Name == deck.Name && d.Id < deck.Id
+                        || d.Name.CompareTo(deck.Name) < 0,
+                    
+                    SeekPosition.Start, _pageSize, cancel);
     }
 
 
@@ -147,7 +189,8 @@ public class IndexModel : PageModel
         if (suggestion is null)
         {
             PostMessage = "Specified suggestion cannot be acknowledged";
-            return RedirectToPage(new { DeckIndex, SuggestIndex});
+
+            return RedirectToPage();
         }
 
         _dbContext.Suggestions.Remove(suggestion);
@@ -163,6 +206,6 @@ public class IndexModel : PageModel
             PostMessage = "Ran into issue while trying to Acknowledge";
         }
 
-        return RedirectToPage(new { DeckIndex, SuggestIndex });
+        return RedirectToPage();
     }
 }

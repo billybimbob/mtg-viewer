@@ -40,14 +40,16 @@ public class SuggestModel : PageModel
     public OffsetList<UserRef> Users { get; private set; } = OffsetList<UserRef>.Empty();
 
 
-    public async Task<IActionResult> OnGetAsync(string cardId, int? pageIndex, CancellationToken cancel)
+    public async Task<IActionResult> OnGetAsync(string cardId, int? offset, CancellationToken cancel)
     {
         if (cardId is null)
         {
             return NotFound();
         }
 
-        var card = await _dbContext.Cards.FindAsync(new []{ cardId }, cancel);
+        var card = await _dbContext.Cards
+            .SingleOrDefaultAsync(c => c.Id == cardId, cancel);
+
         if (card is null)
         {
             return NotFound();
@@ -56,7 +58,7 @@ public class SuggestModel : PageModel
         Card = card;
 
         Users = await UsersForSuggest(card)
-            .ToOffsetListAsync(_pageSize, pageIndex, cancel);
+            .ToOffsetListAsync(offset, _pageSize, cancel);
 
         return Page();
     }
@@ -88,6 +90,7 @@ public class SuggestModel : PageModel
 
             .OrderBy(u => u.Name)
                 .ThenBy(u => u.Id)
+
             .AsNoTracking();
     }
 

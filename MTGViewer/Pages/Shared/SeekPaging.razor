@@ -143,12 +143,15 @@
         const string id = "Id";
         const BindingFlags binds = BindingFlags.Instance | BindingFlags.Public;
 
+        string typeId = $"{typeof(TEntity).Name}{id}";
+
         // could memo this in a static dict?
         PropertyInfo? key;
 
         var entityProperties = typeof(TEntity).GetProperties(binds);
 
-        key = entityProperties.FirstOrDefault(e => e.Name == id);
+        key = entityProperties
+            .FirstOrDefault(e => e.Name == id || e.Name == typeId);
 
         if (key != default)
         {

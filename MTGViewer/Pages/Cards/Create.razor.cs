@@ -2,15 +2,12 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Paging;
 using System.Linq;
-using System.Linq.Expressions;
 using System.Threading;
 using System.Threading.Tasks;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Components;
-using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Forms;
-using Microsoft.AspNetCore.Identity;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -18,15 +15,25 @@ using Microsoft.Extensions.Logging;
 
 using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
-using MTGViewer.Data.Concurrency;
 using MTGViewer.Data.Internal;
 using MTGViewer.Services;
 
 namespace MTGViewer.Pages.Cards;
 
 
-public partial class Create
+[Authorize]
+[Authorize(CardPolicies.ChangeTreasury)]
+public partial class Create : OwningComponentBase
 {
+    [Inject]
+    protected IDbContextFactory<CardDbContext> DbFactory { get; set; } = default!;
+
+    [Inject]
+    protected PageSizes PageSizes { get; set; } = default!;
+
+    [Inject]
+    protected ILogger<Create> Logger { get; set; } = default!;
+
     public bool IsBusy => _isBusy;
     public bool HasNoNext => !_matchPage.HasNext;
 

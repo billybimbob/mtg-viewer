@@ -1,4 +1,4 @@
-@page "{pageIndex:int?}"
+@page "{offset:int?}"
 @model Unowned.IndexModel
 @{
     ViewData["Title"] = "Unclaimed Decks";
@@ -23,7 +23,7 @@
         <tbody>
             @foreach (var unclaimed in Model.Unclaimed)
             {
-                var groups = Model.Cards[unclaimed.Id];
+                var groups = Model.GetQuantityGroup(unclaimed.Id);
                 int groupSpan = Math.Max(1, groups.Count);
 
                 <tr>

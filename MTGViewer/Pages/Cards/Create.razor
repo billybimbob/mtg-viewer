@@ -1,17 +1,7 @@
 @page "/Cards/Create"
-@attribute [Authorize]
-@attribute [Authorize(CardPolicies.ChangeTreasury)]
 @inherits OwningComponentBase
-
-@using Microsoft.Extensions.DependencyInjection
-@using MTGViewer.Areas.Identity.Data
-@using MTGViewer.Data.Internal
-
-@inject IDbContextFactory<CardDbContext> DbFactory
-
 @inject SymbolFormatter MtgSymbols
-@inject PageSizes PageSizes
-@inject ILogger<Create> Logger
+@using MTGViewer.Data.Internal
 
 
 <PageTitle> Add Cards </PageTitle>

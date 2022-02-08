@@ -1,7 +1,7 @@
-@page "{pageIndex:int?}"
+@page
 @model Treasury.IndexModel
 @{
-    ViewData["Title"] = $"Treasury ({Model.Offset})";
+    ViewData["Title"] = $"Treasury";
 }
 
 @using Microsoft.AspNetCore.Authorization
@@ -144,4 +144,4 @@
     </div>
 }
 
-<partial name="_OffsetPagingPartial" for="Offset"/>
+<component type="typeof(SeekPaging<Box>)" render-mode="Static" param-Seek="Model.Seek" />

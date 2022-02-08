@@ -315,7 +315,7 @@ public partial class Craft : OwningComponentBase
                 .ThenBy(c => c.SetName)
                 .ThenBy(c => c.Id)
 
-            .ToOffsetListAsync(pageSize, pageIndex, cancel);
+            .ToOffsetListAsync(pageIndex, pageSize, cancel);
     }
 
 
@@ -530,8 +530,8 @@ public partial class Craft : OwningComponentBase
                 qg => qg.CardId,
                 (_, group) => group)
             .ToOffsetList(
-                _deckContext.PageSize,
-                _deckContext.PageIndex);
+                _deckContext.PageIndex,
+                _deckContext.PageSize);
     }
 
 

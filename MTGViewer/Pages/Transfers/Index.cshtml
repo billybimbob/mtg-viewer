@@ -102,7 +102,8 @@
             </table>
         </div>
 
-        <partial name="_OffsetPagingPartial" for="TradeDecks.Offset"/>
+        <component type="typeof(SeekPaging<Deck>)" 
+            render-mode="Static" param-Seek="Model.TradeDecks.Seek" />
     </div>
 </div>
 
@@ -111,7 +112,7 @@
 {
     <div class="row">
         <div class="col">
-            <h2>Suggestions</h2>
+            <h2>Most Recent Suggestions</h2>
 
             <div class="table-responsive-md">
                 <table class="table mb-3">
@@ -143,9 +144,6 @@
                                 {
                                     <td>
                                         <form method="POST">
-                                            <input type="hidden" asp-for="DeckIndex"/>
-                                            <input type="hidden" asp-for="SuggestIndex"/>
-
                                             <input type="submit"
                                                 asp-route-suggestid="@suggestion.Id"
                                                 class="btn btn-secondary"
@@ -158,8 +156,6 @@
                     </tbody>
                 </table>
             </div>
-
-            <partial name="_OffsetPagingPartial" for="Suggestions.Offset"/>
        </div>
     </div>
 }

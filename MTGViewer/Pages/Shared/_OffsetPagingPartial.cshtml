@@ -10,7 +10,7 @@
             @if (start > 0)
             {
                 <li class="page-item">
-                    <a asp-route-pageIndex="0" class="page-link"> 1 </a>
+                    <a asp-route-offset="0" class="page-link"> 1 </a>
                 </li>
                 <li class="page-item disabled">
                     <span class="page-link"> ... </span>
@@ -25,7 +25,7 @@
                 <li class="page-item @activePage">
                     @if (pageIndex != Model.Current)
                     {
-                        <a asp-route-pageIndex="@pageIndex"
+                        <a asp-route-offset="@pageIndex"
                             class="page-link">
                             @(pageIndex + 1) </a>
                     }
@@ -49,7 +49,7 @@
             @if (end < Model.Total)
             {
                 <li class="page-item">
-                    <a asp-route-pageIndex="@(Model.Total - 1)" class="page-link"> @Model.Total </a>
+                    <a asp-route-offset="@(Model.Total - 1)" class="page-link"> @Model.Total </a>
                 </li>
             }
         </ul>

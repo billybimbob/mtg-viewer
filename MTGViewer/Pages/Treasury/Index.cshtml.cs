@@ -27,23 +27,22 @@ public class IndexModel : PageModel
 
     public IReadOnlyList<Bin> Bins { get; private set; } = Array.Empty<Bin>();
 
-    public Offset Offset { get; private set; }
+    public Seek<Box> Seek { get; private set; }
 
     public bool HasExcess { get; private set; }
 
     public bool HasUnclaimed { get; private set; }
 
 
-    public async Task OnGetAsync(int? pageIndex, CancellationToken cancel)
+    public async Task OnGetAsync(int? seek, bool backTrack, CancellationToken cancel)
     {
-        var boxes = await BoxesForViewing()
-            .ToOffsetListAsync(_pageSize, pageIndex, cancel);
+        var boxes = await GetBoxesAsync(seek, backTrack, cancel);
         
         Bins = boxes
             .GroupBy(b => b.Bin, (bin, _) => bin)
             .ToList();
 
-        Offset = boxes.Offset;
+        Seek = boxes.Seek;
 
         HasExcess = await _dbContext.Amounts
             .AnyAsync(a => 
@@ -72,5 +71,47 @@ public class IndexModel : PageModel
                 .ThenBy(b => b.Id)
 
             .AsNoTrackingWithIdentityResolution();
+    }
+
+
+    private async Task<SeekList<Box>> GetBoxesAsync(
+        int? seek,
+        bool backTrack,
+        CancellationToken cancel)
+    {
+        var viewBoxes = BoxesForViewing();
+
+        if (seek is null)
+        {
+            return await viewBoxes
+                .ToSeekListAsync(SeekPosition.Start, _pageSize, cancel);
+        }
+
+        var box = await _dbContext.Boxes
+            .OrderBy(b => b.Id)
+            .AsNoTracking()
+            .SingleOrDefaultAsync(b => b.Id == seek, cancel);
+
+        if (box == default)
+        {
+            return await viewBoxes
+                .ToSeekListAsync(SeekPosition.Start, _pageSize, cancel);
+        }
+
+        return backTrack
+
+            ? await viewBoxes
+                .ToSeekListAsync(b =>
+                    b.BinId == box.BinId && b.Id < box.Id
+                        || b.BinId < box.BinId,
+
+                    SeekPosition.End, _pageSize, cancel)
+
+            : await viewBoxes
+                .ToSeekListAsync(b =>
+                    b.BinId == box.BinId && b.Id > box.Id
+                        || b.BinId > box.BinId,
+
+                    SeekPosition.Start, _pageSize, cancel);
     }
 }

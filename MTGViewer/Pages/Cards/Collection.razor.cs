@@ -358,7 +358,7 @@ public partial class Collection : ComponentBase, IDisposable
         int pageIndex = filters.PageIndex;
 
         return CardsOrdered(cards, filters)
-            .ToOffsetListAsync(pageSize, pageIndex, cancel);
+            .ToOffsetListAsync(pageIndex, pageSize, cancel);
     }
 
 

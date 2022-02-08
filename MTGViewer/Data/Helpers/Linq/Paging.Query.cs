@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Paging;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -10,8 +11,6 @@ namespace Microsoft.EntityFrameworkCore;
 
 public enum SeekPosition
 {
-    Forward,
-    Backwards,
     Start,
     End
 }
@@ -21,8 +20,8 @@ public static partial class PagingExtensions
 {
     public static async Task<OffsetList<TEntity>> ToOffsetListAsync<TEntity>(
         this IQueryable<TEntity> source,
+        int? pageIndex,
         int pageSize, 
-        int? pageIndex = null,
         CancellationToken cancel = default)
     {
         if (source == null)
@@ -50,19 +49,17 @@ public static partial class PagingExtensions
     }
 
 
+
     public static Task<SeekList<TEntity>> ToSeekListAsync<TEntity>(
         this IQueryable<TEntity> source,
-        int pageSize,
         SeekPosition position,
+        int pageSize,
         CancellationToken cancel = default) where TEntity : class
     {
         return position switch
         {
-            SeekPosition.Start => ToSeekListAsync(source, pageSize, false, cancel),
-            SeekPosition.End => ToSeekBackListAsync(source, pageSize, false, cancel),
-
-            SeekPosition.Backwards => ToSeekBackListAsync(source, pageSize, true, cancel),
-            SeekPosition.Forward or _ => ToSeekListAsync(source, pageSize, true, cancel)
+            SeekPosition.End => ToSeekBackListAsync(source.Reverse(), pageSize, hasNext: false, cancel),
+            SeekPosition.Start or _ => ToSeekListAsync(source, pageSize, hasPrevious: false, cancel)
         };
     }
 
@@ -71,7 +68,7 @@ public static partial class PagingExtensions
         IQueryable<TEntity> source,
         int pageSize,
         bool hasPrevious,
-        CancellationToken cancel = default) where TEntity : class
+        CancellationToken cancel) where TEntity : class
     {
         if (source is null)
         {
@@ -103,7 +100,7 @@ public static partial class PagingExtensions
         IQueryable<TEntity> source,
         int pageSize,
         bool hasNext,
-        CancellationToken cancel = default) where TEntity : class
+        CancellationToken cancel) where TEntity : class
     {
         if (source is null)
         {
@@ -129,20 +126,66 @@ public static partial class PagingExtensions
         var seek = new Seek<TEntity>(hasPrevious, hasNext, items);
 
         return new(seek, items);
-
     }
 
 
-    private static Task<List<TEntity>> SeekBoundaryAsync<TEntity>(
+    public static Task<SeekList<TEntity>> ToSeekListAsync<TEntity>(
+        this IQueryable<TEntity> source,
+        Expression<Func<TEntity, bool>> seekCondition,
+        SeekPosition position,
+        int pageSize,
+        CancellationToken cancel = default) where TEntity : class
+    {
+        return position switch
+        {
+            SeekPosition.End => ToSeekBackListAsync(source.Reverse(), seekCondition, pageSize, cancel),
+            SeekPosition.Start or _ => ToSeekListAsync(source, seekCondition, pageSize, cancel)
+        };
+    }
+
+
+    private static Task<SeekList<TEntity>> ToSeekListAsync<TEntity>(
         IQueryable<TEntity> source,
+        Expression<Func<TEntity, bool>> seekCondition,
         int pageSize,
         CancellationToken cancel) where TEntity : class
     {
-        return source
-            .Select((Entity, Index) => new { Entity, Index })
-            .Where(ei => ei.Index % pageSize == 0)
-            .Select(ei => ei.Entity)
-            .AsNoTracking()
-            .ToListAsync(cancel);
+        if (source is null)
+        {
+            throw new ArgumentNullException(nameof(source));
+        }
+
+        if (seekCondition is null)
+        {
+            throw new ArgumentNullException(nameof(seekCondition));
+        }
+
+        source = source
+            .Where(seekCondition);
+
+        return ToSeekListAsync(source, pageSize, hasPrevious: true, cancel);
+    }
+    
+
+    private static Task<SeekList<TEntity>> ToSeekBackListAsync<TEntity>(
+        IQueryable<TEntity> source,
+        Expression<Func<TEntity, bool>> seekCondition,
+        int pageSize,
+        CancellationToken cancel) where TEntity : class
+    {
+        if (source is null)
+        {
+            throw new ArgumentNullException(nameof(source));
+        }
+
+        if (seekCondition is null)
+        {
+            throw new ArgumentNullException(nameof(seekCondition));
+        }
+
+        source = source
+            .Where(seekCondition);
+
+        return ToSeekBackListAsync(source, pageSize, hasNext: true, cancel);
     }
 }

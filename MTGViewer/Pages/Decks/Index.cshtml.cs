@@ -82,10 +82,12 @@ public class IndexModel : PageModel
         bool backTrack,
         CancellationToken cancel)
     {
+        var indexDecks = DecksForIndex(userId);
+
         if (seek is null)
         {
-            return await DecksForIndex(userId)
-                .ToSeekListAsync(_pageSize, SeekPosition.Start, cancel);
+            return await indexDecks
+                .ToSeekListAsync(SeekPosition.Start, _pageSize, cancel);
         }
 
         var deck = await _dbContext.Decks
@@ -95,13 +97,25 @@ public class IndexModel : PageModel
 
         if (deck is null)
         {
-            return await DecksForIndex(userId)
-                .ToSeekListAsync(_pageSize, SeekPosition.Start, cancel);
+            return await indexDecks
+                .ToSeekListAsync(SeekPosition.Start, _pageSize, cancel);
         }
 
         return backTrack
-            ? await DecksBeforeAsync(deck, cancel)
-            : await DecksAfterAsync(deck, cancel);
+
+            ? await indexDecks
+                .ToSeekListAsync(d =>
+                    d.Name == deck.Name && d.Id < deck.Id
+                        || d.Name.CompareTo(deck.Name) < 0,
+                    
+                    SeekPosition.End, _pageSize, cancel)
+
+            : await indexDecks
+                .ToSeekListAsync(d =>
+                    d.Name == deck.Name && d.Id > deck.Id
+                        || d.Name.CompareTo(deck.Name) > 0,
+
+                    SeekPosition.Start, _pageSize, cancel);
     }
 
 
@@ -129,29 +143,6 @@ public class IndexModel : PageModel
 
             .AsSplitQuery()
             .AsNoTrackingWithIdentityResolution();
-    }
-
-
-    private Task<SeekList<Deck>> DecksAfterAsync(Deck deck, CancellationToken cancel)
-    {
-        return DecksForIndex(deck.OwnerId)
-            .Where(d => 
-                d.Name == deck.Name && d.Id > deck.Id
-                || d.Name.CompareTo(deck.Name) > 0)
-
-            .ToSeekListAsync(_pageSize, SeekPosition.Forward, cancel);
-    }
-
-
-    private Task<SeekList<Deck>> DecksBeforeAsync(Deck deck, CancellationToken cancel)
-    {
-        return DecksForIndex(deck.OwnerId)
-            .Reverse()
-            .Where(d =>
-                d.Name == deck.Name && d.Id < deck.Id
-                || d.Name.CompareTo(deck.Name) < 0)
-                
-            .ToSeekListAsync(_pageSize, SeekPosition.Backwards, cancel);
     }
 
 
