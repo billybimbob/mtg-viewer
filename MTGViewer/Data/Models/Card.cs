@@ -7,7 +7,7 @@ namespace MTGViewer.Data;
 
 // adding annotations for validator
 
-[Index(nameof(Name))]
+[Index(nameof(Name), nameof(SetName), nameof(Id))]
 [Index(nameof(MultiverseId))]
 public class Card
 {

@@ -2,6 +2,7 @@
 
 @inject NavigationManager Nav
 @using System.Reflection
+@using MTGViewer.Data.Internal
 
 @if (HasPrevious || HasNext)
 {
@@ -80,8 +81,10 @@
     protected override void OnParametersSet()
     {
         _previous["seek"] = GetKey(Seek.Previous);
-        _next["seek"] = GetKey(Seek.Next);
+        _previous["index"] = Seek.Index - 1;
 
+        _next["seek"] = GetKey(Seek.Next);
+        _next["index"] = Seek.Index + 1;
     }
 
 
@@ -140,31 +143,8 @@
             return null;
         }
 
-        const string id = "Id";
-        const BindingFlags binds = BindingFlags.Instance | BindingFlags.Public;
+        var keyProperty = EntityExtensions.GetKeyProperty<TEntity>();
 
-        string typeId = $"{typeof(TEntity).Name}{id}";
-
-        // could memo this in a static dict?
-        PropertyInfo? key;
-
-        var entityProperties = typeof(TEntity).GetProperties(binds);
-
-        key = entityProperties
-            .FirstOrDefault(e => e.Name == id || e.Name == typeId);
-
-        if (key != default)
-        {
-            return key.GetValue(entity);
-        }
-
-        key = entityProperties.FirstOrDefault(e => e.Name.Contains(id));
-
-        if (key != default)
-        {
-            return key.GetValue(entity);
-        }
-
-        throw new ArgumentException($"type {typeof(TEntity).Name} is invalid");
+        return keyProperty.GetValue(entity);
     }
 }

@@ -1,6 +1,6 @@
 using System;
-using System.Collections.Paging;
 using System.Linq.Expressions;
+using System.Paging;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Reflection;
@@ -44,11 +44,11 @@ public static partial class IMTGQueryExtensions
 
         foreach (var info in typeof(CardQuery).GetProperties(binds))
         {
-            if (info.GetGetMethod() is not null
-                && info.GetSetMethod() is not null
+            if (info.CanRead
+                && info.CanWrite
                 && info.GetValue(cardQuery) is object arg)
             {
-                mtgQuery.Where( GetPredicate(info.Name, arg) );
+                mtgQuery.Where( GetPredicate(info, arg) );
             }
         }
 
@@ -56,15 +56,16 @@ public static partial class IMTGQueryExtensions
     }
 
 
-    private static Expression<Func<CardQuery, bool>> GetPredicate(string propertyName, object arg)
+    private static Expression<Func<CardQuery, bool>> GetPredicate(PropertyInfo propertyInfo, object arg)
     {
-        var xParam = Expression.Parameter(typeof(CardQuery), "x");
+        var param = Expression.Parameter(
+            typeof(CardQuery),
+            typeof(CardQuery).Name[0].ToString().ToLower());
 
-        var property = Expression.Property(xParam, propertyName);
-        var constant = Expression.Constant(arg);
+        var equality = Expression.Equal(
+            Expression.Property(param, propertyInfo),
+            Expression.Constant(arg));
 
-        var equality = Expression.Equal(property, constant);
-
-        return Expression.Lambda<Func<CardQuery, bool>>(equality, xParam);
+        return Expression.Lambda<Func<CardQuery, bool>>(equality, param);
     }
 }

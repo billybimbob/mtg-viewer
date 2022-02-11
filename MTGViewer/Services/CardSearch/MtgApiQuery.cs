@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
-using System.Collections.Paging;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Paging;
 using System.Reflection;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -92,13 +92,10 @@ public class MtgApiQuery : IMTGQuery
 
         object ParsePropertyValue(Expression expression)
         {
-            // boxes, keep eye on
-            var objCast = Expression.Convert(expression, typeof(object));
-
             if (Expression
-                .Lambda<Func<object?>>(objCast)
+                .Lambda(expression)
                 .Compile()
-                .Invoke() is not object value)
+                .DynamicInvoke() is not object value)
             {
                 throw new ArgumentException(nameof(predicate));
             }
@@ -182,10 +179,14 @@ public class MtgApiQuery : IMTGQuery
 
     private void AddParameter<TParameter>(string name, TParameter value)
     {
-        var xParam = Expression.Parameter(typeof(CardQueryParameter), "x");
-        var propExpr = Expression.Property(xParam, name);
+        var param = Expression.Parameter(
+            typeof(CardQueryParameter),
+            typeof(CardQueryParameter).Name[0].ToString().ToLower());
 
-        var expression = Expression.Lambda<Func<CardQueryParameter, TParameter>>(propExpr, xParam);
+        var expression = Expression
+            .Lambda<Func<CardQueryParameter, TParameter>>(
+                Expression.Property(param, name),
+                param);
 
         _service.Where(expression, value);
         _empty = false;

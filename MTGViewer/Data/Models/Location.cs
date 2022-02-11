@@ -97,7 +97,9 @@ public class Deck : Owned
 
 [Index(
     nameof(IsExcess),
-    nameof(Capacity))]
+    nameof(Type),
+    nameof(Id),
+    nameof(BinId))]
 public class Box : Location
 {
     [JsonIgnore]

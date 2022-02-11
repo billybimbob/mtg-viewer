@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
-using System.Collections.Paging;
 using System.Linq;
+using System.Paging;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -34,10 +34,11 @@ public class IndexModel : PageModel
     public bool HasUnclaimed { get; private set; }
 
 
-    public async Task OnGetAsync(int? seek, bool backTrack, CancellationToken cancel)
+    public async Task OnGetAsync(int? seek, int? index, bool backTrack, CancellationToken cancel)
     {
-        var boxes = await GetBoxesAsync(seek, backTrack, cancel);
-        
+        var boxes = await BoxesForViewing()
+            .ToSeekListAsync(index, _pageSize, seek, backTrack, cancel);
+
         Bins = boxes
             .GroupBy(b => b.Bin, (bin, _) => bin)
             .ToList();
@@ -73,45 +74,4 @@ public class IndexModel : PageModel
             .AsNoTrackingWithIdentityResolution();
     }
 
-
-    private async Task<SeekList<Box>> GetBoxesAsync(
-        int? seek,
-        bool backTrack,
-        CancellationToken cancel)
-    {
-        var viewBoxes = BoxesForViewing();
-
-        if (seek is null)
-        {
-            return await viewBoxes
-                .ToSeekListAsync(SeekPosition.Start, _pageSize, cancel);
-        }
-
-        var box = await _dbContext.Boxes
-            .OrderBy(b => b.Id)
-            .AsNoTracking()
-            .SingleOrDefaultAsync(b => b.Id == seek, cancel);
-
-        if (box == default)
-        {
-            return await viewBoxes
-                .ToSeekListAsync(SeekPosition.Start, _pageSize, cancel);
-        }
-
-        return backTrack
-
-            ? await viewBoxes
-                .ToSeekListAsync(b =>
-                    b.BinId == box.BinId && b.Id < box.Id
-                        || b.BinId < box.BinId,
-
-                    SeekPosition.End, _pageSize, cancel)
-
-            : await viewBoxes
-                .ToSeekListAsync(b =>
-                    b.BinId == box.BinId && b.Id > box.Id
-                        || b.BinId > box.BinId,
-
-                    SeekPosition.Start, _pageSize, cancel);
-    }
 }

@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.ComponentModel.DataAnnotations;
+using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 
@@ -86,5 +87,44 @@ public static class EntityExtensions
 
             prop.SetValue(entity, defaultProp);
         }
+    }
+
+
+    public static PropertyInfo GetKeyProperty<TEntity>() where TEntity : class
+    {
+        const string id = "Id";
+        const BindingFlags binds = BindingFlags.Instance | BindingFlags.Public;
+
+        string typeId = $"{typeof(TEntity).Name}{id}";
+
+        // could memo this in a static dict?
+        PropertyInfo? key;
+
+        var entityProperties = typeof(TEntity).GetProperties(binds);
+
+        key = entityProperties
+            .FirstOrDefault(e => e.GetCustomAttribute<KeyAttribute>() is not null);
+
+        if (key != default)
+        {
+            return key;
+        }
+
+        key = entityProperties
+            .FirstOrDefault(e => e.Name == id || e.Name == typeId);
+
+        if (key != default)
+        {
+            return key;
+        }
+
+        key = entityProperties.FirstOrDefault(e => e.Name.Contains(id));
+
+        if (key != default)
+        {
+            return key;
+        }
+
+        throw new ArgumentException($"type {typeof(TEntity).Name} is invalid");
     }
 }

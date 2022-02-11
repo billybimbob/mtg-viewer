@@ -8,6 +8,9 @@ using MTGViewer.Data.Concurrency;
 
 namespace MTGViewer.Data;
 
+
+[Index(nameof(Type), nameof(CardId))]
+[Index(nameof(Type), nameof(LocationId))]
 [Index(
     nameof(Type),
     nameof(CardId),

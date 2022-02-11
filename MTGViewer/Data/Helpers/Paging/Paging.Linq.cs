@@ -1,5 +1,5 @@
 using System.Collections.Generic;
-using System.Collections.Paging;
+using System.Paging;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -29,37 +29,6 @@ public static partial class PagingExtensions
             .Skip(page * pageSize)
             .Take(pageSize)
             .ToList();
-
-        var offset = new Offset(page, totalItems, pageSize);
-
-        return new(offset, items);
-    }
-
-
-    public static async Task<OffsetList<TEntity>> ToOffsetListAsync<TEntity>(
-        this IAsyncEnumerable<TEntity> source,
-        int? pageIndex,
-        int pageSize,
-        CancellationToken cancel = default)
-    {
-        if (source == null)
-        {
-            throw new ArgumentNullException(nameof(source));
-        }
-
-        if (pageSize < 0)
-        {
-            throw new ArgumentException(nameof(pageSize));
-        }
-
-        int page = pageIndex ?? 0;
-        int totalItems = await source.CountAsync(cancel).ConfigureAwait(false);
-
-        var items = await source
-            .Skip(page * pageSize)
-            .Take(pageSize)
-            .ToListAsync(cancel)
-            .ConfigureAwait(false);
 
         var offset = new Offset(page, totalItems, pageSize);
 

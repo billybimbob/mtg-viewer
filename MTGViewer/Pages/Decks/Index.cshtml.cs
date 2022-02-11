@@ -1,5 +1,5 @@
-using System.Collections.Paging;
 using System.Linq;
+using System.Paging;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -49,7 +49,11 @@ public class IndexModel : PageModel
     public SeekList<Deck> Decks { get; private set; } = SeekList<Deck>.Empty();
 
 
-    public async Task<IActionResult> OnGetAsync(int? seek, bool backTrack, CancellationToken cancel)
+    public async Task<IActionResult> OnGetAsync(
+        int? seek, 
+        int? index,
+        bool backTrack,
+        CancellationToken cancel)
     {
         var userId = _userManager.GetUserId(User);
         if (userId is null)
@@ -67,55 +71,13 @@ public class IndexModel : PageModel
             return NotFound();
         }
 
-        var decks = await GetDecksAsync(userId, seek, backTrack, cancel);
+        var decks = await DecksForIndex(userId)
+            .ToSeekListAsync(index, _pageSize, seek, backTrack, cancel);
 
         UserName = userName;
         Decks = decks;
 
         return Page();
-    }
-
-
-    private async Task<SeekList<Deck>> GetDecksAsync(
-        string userId, 
-        int? seek,
-        bool backTrack,
-        CancellationToken cancel)
-    {
-        var indexDecks = DecksForIndex(userId);
-
-        if (seek is null)
-        {
-            return await indexDecks
-                .ToSeekListAsync(SeekPosition.Start, _pageSize, cancel);
-        }
-
-        var deck = await _dbContext.Decks
-            .OrderBy(d => d.Id)
-            .AsNoTracking()
-            .SingleOrDefaultAsync(d => d.Id == seek, cancel);
-
-        if (deck is null)
-        {
-            return await indexDecks
-                .ToSeekListAsync(SeekPosition.Start, _pageSize, cancel);
-        }
-
-        return backTrack
-
-            ? await indexDecks
-                .ToSeekListAsync(d =>
-                    d.Name == deck.Name && d.Id < deck.Id
-                        || d.Name.CompareTo(deck.Name) < 0,
-                    
-                    SeekPosition.End, _pageSize, cancel)
-
-            : await indexDecks
-                .ToSeekListAsync(d =>
-                    d.Name == deck.Name && d.Id > deck.Id
-                        || d.Name.CompareTo(deck.Name) > 0,
-
-                    SeekPosition.Start, _pageSize, cancel);
     }
 
 

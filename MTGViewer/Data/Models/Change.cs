@@ -43,6 +43,7 @@ public class Change
 }
 
 
+[Index(nameof(AppliedAt))]
 public class Transaction
 {
     [JsonIgnore]

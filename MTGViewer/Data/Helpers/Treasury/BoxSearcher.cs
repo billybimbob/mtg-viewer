@@ -98,7 +98,6 @@ internal sealed class BoxSearcher
             ? boxSearch
             : Math.Min(~boxSearch, _sortedBoxes.Count - 1);
 
-        // circle back to prevent possible fragmentation
         return _sortedBoxes.Skip(boxIndex);
     }
 }
