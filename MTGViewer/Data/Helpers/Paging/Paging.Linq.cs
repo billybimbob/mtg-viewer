@@ -12,27 +12,10 @@ public static partial class PagingExtensions
         int? pageIndex,
         int pageSize)
     {
-        if (source == null)
-        {
-            throw new ArgumentNullException(nameof(source));
-        }
-
-        if (pageSize < 0)
-        {
-            throw new ArgumentException(nameof(pageSize));
-        }
-
-        int page = pageIndex ?? 0;
-        int totalItems = source.Count();
-
-        var items = source
-            .Skip(page * pageSize)
-            .Take(pageSize)
-            .ToList();
-
-        var offset = new Offset(page, totalItems, pageSize);
-
-        return new(offset, items);
+        return source
+            .AsQueryable()
+            .PageBy(pageIndex, pageSize)
+            .ToOffsetList();
     }
 
 

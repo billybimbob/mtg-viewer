@@ -97,6 +97,21 @@ public class PageBuilder<T>
     }
 
 
+    public OffsetList<T> ToOffsetList()
+    {
+        int totalItems = Source.Count();
+
+        var items = Source
+            .Skip(PageIndex * PageSize)
+            .Take(PageSize)
+            .ToList();
+
+        var offset = new Offset(PageIndex, totalItems, PageSize);
+
+        return new OffsetList<T>(offset, items);
+    }
+
+
     public async Task<OffsetList<T>> ToOffsetListAsync(CancellationToken cancellationToken = default)
     {
         int totalItems = await Source
@@ -217,4 +232,16 @@ public class PageBuilder<T>
     }
 
     #endregion
+}
+
+
+public static partial class PagingExtensions
+{
+    public static PageBuilder<TEntity> PageBy<TEntity>(
+        this IQueryable<TEntity> source,
+        int? index, 
+        int pageSize)
+    {
+        return new PageBuilder<TEntity>(source, index, pageSize);
+    }
 }
