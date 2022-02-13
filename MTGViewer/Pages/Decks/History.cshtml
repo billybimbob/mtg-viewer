@@ -1,8 +1,19 @@
-@page "{id:int}/{pageIndex:int?}"
+@page "{id:int}"
 @model Decks.HistoryModel
 @{
-    ViewData["Title"] = $"{Model.Deck.Name} - History ({Model.Pages})";
+    ViewData["Title"] = $"{Model.Deck.Name} - History";
 }
+
+@using Microsoft.AspNetCore.Authorization
+@using MTGViewer.Areas.Identity.Data
+
+@inject IAuthorizationService AuthorizationService
+
+@{ 
+    bool canChangeTreasury = (await AuthorizationService
+        .AuthorizeAsync(User, CardPolicies.ChangeTreasury)).Succeeded;
+}
+
 
 <h1>
     Changes To
@@ -67,7 +78,7 @@
                                         <a asp-page="/Treasury/Details" asp-route-id="@from.Id"> @from.Name </a>
                                         break;
 
-                                    case Unclaimed:
+                                    case Unclaimed when canChangeTreasury:
                                         <a asp-page="/Unowned/Index" asp-route-id="@from.Id"> @from.Name </a>
                                         break;
 
@@ -96,7 +107,7 @@
                                         <a asp-page="/Treasury/Details" asp-route-id="@to.Id"> @to.Name </a>
                                         break;
 
-                                    case Unclaimed:
+                                    case Unclaimed when canChangeTreasury:
                                         <a asp-page="/Unowned/Index" asp-route-id="@to.Id"> @to.Name </a>
                                         break;
                                     
@@ -115,11 +126,17 @@
                             @if (Model.IsFirstTransfer(transfer))
                             {
                                 <td rowspan="@transaction.Changes.Count" class="text-center">
-                                    <form method="POST">
-                                        <input type="hidden" asp-for="Deck.Id" />
-                                        <input type="hidden" name="transactionId" value="@transaction.Id"/>
-                                        <button title="Remove Record" type="submit" class="btn btn-danger"> &times; </button>
-                                    </form>
+                                    @if (canChangeTreasury)
+                                    {
+                                        <form method="POST">
+                                            <input type="hidden" name="transactionId" value="@transaction.Id"/>
+                                            <button title="Remove Record" type="submit" class="btn btn-danger"> &times; </button>
+                                        </form>
+                                    }
+                                    else
+                                    {
+                                        <button type="button" class="btn btn-danger" disabled> &times; </button>
+                                    }
                                 </td>
                             }
                         </tr>
@@ -139,6 +156,6 @@
             </table>
         </div>
 
-        <partial name="_PaginationPartial" for="Pages"/>
+        <component type="typeof(SeekPaging<Change>)" render-mode="Static" param-Seek="Model.Seek" />
     </div>
 </div>

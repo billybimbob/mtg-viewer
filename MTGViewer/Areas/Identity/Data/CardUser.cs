@@ -6,12 +6,10 @@ namespace MTGViewer.Areas.Identity.Data;
 // Add profile data for application users by adding properties to the CardUser class
 public class CardUser : IdentityUser
 {
-    public const string DisplayNameClaim = "CardUserDisplayName";
-
     [PersonalData]
     [StringLength(256)]
     [Display(Name = "Name")]
-    public string DisplayName { get; set; } = null!;
+    public string DisplayName { get; set; } = default!;
 
     public bool IsApproved { get; set; }
 }

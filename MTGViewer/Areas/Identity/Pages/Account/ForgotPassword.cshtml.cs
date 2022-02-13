@@ -28,7 +28,7 @@ public class ForgotPasswordModel : PageModel
     {
         [Required]
         [EmailAddress]
-        public string Email { get; set; } = null!;
+        public string Email { get; set; } = default!;
     }
 
 

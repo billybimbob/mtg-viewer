@@ -2,12 +2,10 @@ using System.Linq;
 using System.Threading.Tasks;
 
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
 using Xunit;
 
-using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
 using MTGViewer.Pages.Transfers;
 using MTGViewer.Tests.Utils;
@@ -19,20 +17,20 @@ public class RequestTests : IAsyncLifetime
 {
     private readonly RequestModel _requestModel;
     private readonly CardDbContext _dbContext;
-    private readonly UserManager<CardUser> _userManager;
+    private readonly PageContextFactory _pageFactory;
 
     private readonly TestDataGenerator _testGen;
-    private Deck _requestDeck = null!;
+    private Deck _requestDeck = default!;
 
     public RequestTests(
         RequestModel requestModel,
         CardDbContext dbContext,
-        UserManager<CardUser> userManager,
+        PageContextFactory pageFactory,
         TestDataGenerator testGen)
     {
         _requestModel = requestModel;
         _dbContext = dbContext;
-        _userManager = userManager;
+        _pageFactory = pageFactory;
         _testGen = testGen;
     }
 
@@ -57,7 +55,7 @@ public class RequestTests : IAsyncLifetime
     {
         // Arrange
         var wrongUser = await _dbContext.Users.FirstAsync(u => u.Id != _requestDeck.OwnerId);
-        await _requestModel.SetModelContextAsync(_userManager, wrongUser.Id);
+        await _pageFactory.AddModelContextAsync(_requestModel, wrongUser.Id);
 
         var allTradeIds = AllTrades.Select(t => t.Id);
 
@@ -76,7 +74,7 @@ public class RequestTests : IAsyncLifetime
     public async Task OnPost_InvalidDeck_NoChange()
     {
         // Arrange
-        await _requestModel.SetModelContextAsync(_userManager, _requestDeck.OwnerId);
+        await _pageFactory.AddModelContextAsync(_requestModel, _requestDeck.OwnerId);
 
         var allTradeIds = AllTrades.Select(t => t.Id);
         var wrongDeck = await _dbContext.Decks
@@ -98,7 +96,7 @@ public class RequestTests : IAsyncLifetime
     public async Task OnPost_ValidDeck_Requests()
     {
         // Arrange
-        await _requestModel.SetModelContextAsync(_userManager, _requestDeck.OwnerId);
+        await _pageFactory.AddModelContextAsync(_requestModel, _requestDeck.OwnerId);
 
         // Act
         var tradesBefore = await AllTrades.Select(t => t.Id).ToListAsync();
@@ -121,7 +119,7 @@ public class RequestTests : IAsyncLifetime
     public async Task OnPost_MultipleSources_RequestsAll()
     {
         // Arrange
-        await _requestModel.SetModelContextAsync(_userManager, _requestDeck.OwnerId);
+        await _pageFactory.AddModelContextAsync(_requestModel, _requestDeck.OwnerId);
 
         var requestCard = await _dbContext.Wants
             .Where(w => w.LocationId == _requestDeck.Id)

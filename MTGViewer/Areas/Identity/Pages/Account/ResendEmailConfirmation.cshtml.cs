@@ -26,13 +26,13 @@ public class ResendEmailConfirmationModel : PageModel
 
 
     [BindProperty]
-    public InputModel Input { get; set; } = null!;
+    public InputModel Input { get; set; } = default!;
 
     public class InputModel
     {
         [Required]
         [EmailAddress]
-        public string Email { get; set; } = null!;
+        public string Email { get; set; } = default!;
     }
 
 

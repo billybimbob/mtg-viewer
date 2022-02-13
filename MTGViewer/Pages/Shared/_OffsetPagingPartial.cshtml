@@ -1,22 +1,16 @@
-@model Data.Pages
+@model Offset
 @inject PageSizes PageSizes
 
 @if (Model.HasMultiple)
 {
-    int start = Model.Current / PageSizes.Default * PageSizes.Default;
-    int end = Math.Min(Model.Total, start + PageSizes.Default + 1);
-
-    if (start > 0)
-    {
-        start -= 1;
-    }
+    (int start, int end) = GetBounds();
 
     <nav>
         <ul class="pagination justify-content-center">
             @if (start > 0)
             {
                 <li class="page-item">
-                    <a asp-route-pageIndex="0" class="page-link"> 1 </a>
+                    <a asp-route-offset="0" class="page-link"> 1 </a>
                 </li>
                 <li class="page-item disabled">
                     <span class="page-link"> ... </span>
@@ -25,13 +19,13 @@
 
             @for (int i = start; i < end; ++i)
             {
-                var pageIndex = i;
-                var activePage = pageIndex == Model.Current ? "active" : "";
+                int pageIndex = i;
+                string activePage = pageIndex == Model.Current ? "active" : "";
 
                 <li class="page-item @activePage">
                     @if (pageIndex != Model.Current)
                     {
-                        <a asp-route-pageIndex="@pageIndex"
+                        <a asp-route-offset="@pageIndex"
                             class="page-link">
                             @(pageIndex + 1) </a>
                     }
@@ -55,9 +49,33 @@
             @if (end < Model.Total)
             {
                 <li class="page-item">
-                    <a asp-route-pageIndex="@(Model.Total - 1)" class="page-link"> @Model.Total </a>
+                    <a asp-route-offset="@(Model.Total - 1)" class="page-link"> @Model.Total </a>
                 </li>
             }
         </ul>
     </nav>
+}
+
+
+@functions
+{
+    public (int, int) GetBounds()
+    {
+        int pageSize = PageSizes.Default;
+
+        if (pageSize == 0)
+        {
+            return (0, 0);
+        }
+
+        int start = Model.Current / pageSize * pageSize;
+        int end = Math.Min(Model.Total, start + pageSize + 1);
+
+        if (start > 0)
+        {
+            start -= 1;
+        }
+
+        return (start, end);
+    }
 }

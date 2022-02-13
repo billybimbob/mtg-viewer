@@ -17,6 +17,7 @@ namespace MTGViewer.Pages.Transfers;
 
 
 [Authorize]
+[Authorize(Policy = CardPolicies.ChangeTreasury)]
 public class StatusModel : PageModel
 {
     private readonly UserManager<CardUser> _userManager;
@@ -32,20 +33,20 @@ public class StatusModel : PageModel
     [TempData]
     public string? PostMessage { get; set; }
 
-    public Deck Deck { get; private set; } = null!;
+    public Deck Deck { get; private set; } = default!;
 
     public IReadOnlyList<QuantityNameGroup> CardGroups { get; private set; } = 
         Array.Empty<QuantityNameGroup>();
 
 
-    public async Task<IActionResult> OnGetAsync(int deckId, CancellationToken cancel)
+    public async Task<IActionResult> OnGetAsync(int id, CancellationToken cancel)
     {
-        if (deckId == default)
+        if (id == default)
         {
             return NotFound();
         }
 
-        var deck = await DeckForStatus(deckId)
+        var deck = await DeckForStatus(id)
             .SingleOrDefaultAsync(cancel);
 
         if (deck == default)
@@ -61,7 +62,7 @@ public class StatusModel : PageModel
 
         if (!deck.TradesTo.Any())
         {
-            return RedirectToPage("Request", new { deckId });
+            return RedirectToPage("Request", new { id });
         }
 
         CapToTrades(deck);
@@ -73,12 +74,12 @@ public class StatusModel : PageModel
     }
 
 
-    private IQueryable<Deck> DeckForStatus(int deckId)
+    private IQueryable<Deck> DeckForStatus(int id)
     {
         var userId = _userManager.GetUserId(User);
         
         return _dbContext.Decks
-            .Where(d => d.Id == deckId && d.OwnerId == userId)
+            .Where(d => d.Id == id && d.OwnerId == userId)
 
             .Include(d => d.Owner)
 
@@ -148,22 +149,26 @@ public class StatusModel : PageModel
 
 
 
-    public async Task<IActionResult> OnPostAsync(int deckId, CancellationToken cancel)
+    public async Task<IActionResult> OnPostAsync(int id, CancellationToken cancel)
     {
-        if (deckId == default)
+        if (id == default)
         {
             PostMessage = "Deck is not valid";
             return RedirectToPage("Index");
         }
 
         var userId = _userManager.GetUserId(User);
+        if (userId is null)
+        {
+            return Forbid();
+        }
 
         // keep eye on, could possibly remove trades not started by the user
         // makes the assumption that trades are always started by the owner of the To deck
         var deck = await _dbContext.Decks
             .Include(d => d.TradesTo)
             .SingleOrDefaultAsync(d =>
-                d.Id == deckId && d.OwnerId == userId, cancel);
+                d.Id == id && d.OwnerId == userId, cancel);
 
         if (deck == default)
         {

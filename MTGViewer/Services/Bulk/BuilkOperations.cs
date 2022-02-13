@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 
 using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
@@ -16,99 +16,114 @@ namespace MTGViewer.Services;
 
 public class BulkOperations
 {
+    private readonly SeedSettings _seedSettings;
     private readonly PageSizes _pageSizes;
+    private readonly LoadingProgress _loadProgress;
 
+    // might want to use dbFactory, keep eye on
     private readonly CardDbContext _dbContext;
-    private readonly MTGFetchService _fetch;
-
+    private readonly IMTGQuery _mtgQuery;
     private readonly UserManager<CardUser> _userManager;
-    private readonly string _tempPassword;
+
 
     public BulkOperations(
-        IConfiguration config, 
+        IOptions<SeedSettings> seedOptions, 
         PageSizes pageSizes,
+        LoadingProgress loadProgress,
         CardDbContext dbContext,
-        MTGFetchService fetch,
+        IMTGQuery fetch,
         UserManager<CardUser> userManager)
     {
         _pageSizes = pageSizes;
+        _seedSettings = seedOptions.Value;
+        _loadProgress = loadProgress;
 
         _dbContext = dbContext;
-        _fetch = fetch;
-
-        var seedOptions = new SeedSettings();
-        config.GetSection(nameof(SeedSettings)).Bind(seedOptions);
+        _mtgQuery = fetch;
 
         _userManager = userManager;
-        _tempPassword = seedOptions.Password;
     }
 
 
-    public async ValueTask<int> GetTotalPagesAsync(CancellationToken cancel = default)
+    public CardStream GetDefaultStream() => CardStream.Default(_dbContext);
+
+    public CardStream GetUserStream(string userId) => CardStream.User(_dbContext, userId);
+
+    public CardStream GetTreasuryStream() => CardStream.Treasury(_dbContext);
+
+    public CardStream GetSeedStream() => CardStream.All(_dbContext, _userManager);
+
+
+    // public async Task SeedAsync(CardStream data, CancellationToken cancel = default)
+    // {
+    //     await AddRangeAsync(data.Cards, _dbContext.Cards, cancel);
+    //     await AddRangeAsync(data.Refs, _dbContext.Users, cancel);
+
+    //     await AddRangeAsync(data.Bins, _dbContext.Bins, cancel);
+
+    //     await AddRangeAsync(data.Decks, _dbContext.Decks, cancel);
+    //     await AddRangeAsync(data.Unclaimed, _dbContext.Unclaimed, cancel);
+
+    //     await AddRangeAsync(data.Transactions, _dbContext.Transactions, cancel);
+    //     await AddRangeAsync(data.Suggestions, _dbContext.Suggestions, cancel);
+
+    //     await _dbContext.SaveChangesAsync(cancel);
+
+    //     await foreach (var user in data.Users.WithCancellation(cancel))
+    //     {
+    //         var result = await AddUserAsync(user, cancel);
+    //         if (!result.Succeeded)
+    //         {
+    //             string errors = string.Join(',', result.Errors);
+    //             throw new InvalidOperationException(errors);
+    //         }
+    //     }
+    // }
+
+
+    // private static async ValueTask AddRangeAsync<TEntity>(
+    //     IAsyncEnumerable<TEntity> data, 
+    //     DbSet<TEntity> dbSet,
+    //     CancellationToken cancel) where TEntity : class
+    // {
+    //     await foreach (var entity in data.WithCancellation(cancel))
+    //     {
+    //         dbSet.Add(entity);
+    //     }
+    // }
+
+
+    public async Task SeedAsync(CardData data, CancellationToken cancel = default)
     {
-        return await CardStream
-            .DbSetCounts(_dbContext)
-            .Select(count => count / _pageSizes.Limit)
-            .Prepend(1)
-            .MaxAsync(cancel);
-    }
+        _dbContext.Users.AddRange(data.Refs);
+        _dbContext.Cards.AddRange(data.Cards);
 
+        _dbContext.Bins.AddRange(data.Bins);
+        _dbContext.Decks.AddRange(data.Decks);
 
-    public CardStream GetCardStream(DataScope scope, int? pageIndex = null)
-    {
-        return scope switch
-        {
-            DataScope.Full => CardStream.Create(_dbContext, _userManager),
-            DataScope.Paged => CardStream.Create(_dbContext, _pageSizes.Limit, pageIndex),
-            _ => CardStream.Create(_dbContext)
-        };
-    }
+        _dbContext.Suggestions.AddRange(data.Suggestions);
+        _dbContext.Trades.AddRange(data.Trades);
 
-
-    public async Task SeedAsync(CardStream data, CancellationToken cancel = default)
-    {
-        await AddRangeAsync(data.Cards, _dbContext.Cards, cancel);
-        await AddRangeAsync(data.Refs, _dbContext.Users, cancel);
-
-        await AddRangeAsync(data.Bins, _dbContext.Bins, cancel);
-
-        await AddRangeAsync(data.Decks, _dbContext.Decks, cancel);
-        await AddRangeAsync(data.Unclaimed, _dbContext.Unclaimed, cancel);
-
-        await AddRangeAsync(data.Transactions, _dbContext.Transactions, cancel);
-        await AddRangeAsync(data.Suggestions, _dbContext.Suggestions, cancel);
+        _loadProgress.Ticks = data.Users.Count + 1;
 
         await _dbContext.SaveChangesAsync(cancel);
 
-        await foreach (var user in data.Users.WithCancellation(cancel))
-        {
-            var result = await AddUserAsync(user, cancel);
-            if (!result.Succeeded)
-            {
-                string errors = string.Join(',', result.Errors);
-                throw new InvalidOperationException(errors);
-            }
-        }
-    }
+        _loadProgress.AddProgress();
 
-
-    private static async ValueTask AddRangeAsync<TEntity>(
-        IAsyncEnumerable<TEntity> data, 
-        DbSet<TEntity> dbSet,
-        CancellationToken cancel) where TEntity : class
-    {
-        await foreach (var entity in data.WithCancellation(cancel))
+        foreach (var user in data.Users)
         {
-            dbSet.Add(entity);
+            await AddUserAsync(user, cancel);
+
+            _loadProgress.AddProgress();
         }
     }
 
 
     private async ValueTask<IdentityResult> AddUserAsync(CardUser user, CancellationToken cancel)
     {
-        var created = _tempPassword != default
-            ? await _userManager.CreateAsync(user, _tempPassword)
-            : await _userManager.CreateAsync(user);
+        var created = string.IsNullOrWhiteSpace(_seedSettings.Password)
+            ? await _userManager.CreateAsync(user)
+            : await _userManager.CreateAsync(user, _seedSettings.Password);
         
         cancel.ThrowIfCancellationRequested();
 
@@ -133,48 +148,26 @@ public class BulkOperations
     }
 
 
-    public async Task SeedAsync(CardData data, CancellationToken cancel = default)
-    {
-        _dbContext.Users.AddRange(data.Refs);
-        _dbContext.Cards.AddRange(data.Cards);
-
-        _dbContext.Bins.AddRange(data.Bins);
-        _dbContext.Decks.AddRange(data.Decks);
-
-        _dbContext.Suggestions.AddRange(data.Suggestions);
-        _dbContext.Trades.AddRange(data.Trades);
-
-        await _dbContext.SaveChangesAsync(cancel);
-
-        foreach (var user in data.Users)
-        {
-            await AddUserAsync(user, cancel);
-        }
-    }
-
-
     public async Task MergeAsync(CardData data, CancellationToken cancel = default)
     {
-        // guarantee that multiple iters on data will return same obj ref
-        var newCards = await GetNewCardsAsync(data, cancel);
-        var existingCards = data.Cards.Except(newCards);
+        _loadProgress.Ticks = 2;
 
         var unclaimed = data.Decks
             .Select(d => (Unclaimed)d)
-            .Concat(data.Unclaimed);
+            .Concat(data.Unclaimed)
+            .ToList();
 
         var transaction = MergeTransaction(data.Bins, unclaimed);
 
-        // TODO: merge to existing bins, boxes, and decks
-        // merging may have issue with card amount/want conflicts
+        bool hasNewCards = await MergeCardsAsync(data, cancel);
 
-        if (!newCards.Any() && transaction is null)
+        if (transaction is null && !hasNewCards)
         {
-            throw new ArgumentException("Card data has no valid data", nameof(data));
+            return;
         }
 
-        _dbContext.Cards.AttachRange(existingCards);
-        _dbContext.Cards.AddRange(newCards);
+        // TODO: merge to existing bins, boxes, and decks
+        // merging may have issue with card amount/want conflicts
 
         _dbContext.Bins.AddRange(data.Bins);
         _dbContext.Unclaimed.AddRange(unclaimed);
@@ -184,13 +177,19 @@ public class BulkOperations
             _dbContext.Transactions.Add(transaction);
         }
 
+        // keep eye on, possible memory issues?
+
+        await _dbContext.UpdateBoxesAsync(cancel);
+
+        _loadProgress.AddProgress();
+
         await _dbContext.SaveChangesAsync(cancel);
+
+        _loadProgress.AddProgress();
     }
 
 
-    private async Task<IReadOnlyList<Card>> GetNewCardsAsync(
-        CardData data,
-        CancellationToken cancel)
+    private async Task<bool> MergeCardsAsync(CardData data, CancellationToken cancel)
     {
         var dbCardIds = await ExistingCardsAsync(data, cancel);
 
@@ -209,15 +208,22 @@ public class BulkOperations
                 v => v.Id, c => c.Id,
                 (valid, card) => (card, valid));
 
-        var newCards = new List<Card>();
+        bool anyNewCards = false;
 
         foreach (var (card, valid) in cardPairs)
         {
-            _dbContext.Entry(card).CurrentValues.SetValues(valid);
-            newCards.Add(card);
+            var addEntry = _dbContext.Cards.Add(card);
+
+            addEntry.CurrentValues.SetValues(valid);
+
+            anyNewCards = true;
         }
 
-        return newCards;
+        var existingCards = data.Cards.Except(_dbContext.Cards.Local);
+
+        _dbContext.Cards.AttachRange(existingCards);
+
+        return anyNewCards;
     }
 
 
@@ -253,8 +259,8 @@ public class BulkOperations
 
 
     private static Transaction? MergeTransaction(
-        IEnumerable<Bin> bins, 
-        IEnumerable<Unclaimed> unclaimed)
+        IReadOnlyList<Bin> bins, 
+        IReadOnlyList<Unclaimed> unclaimed)
     {
         var boxChanges = bins
             .SelectMany(b => b.Boxes)
@@ -295,27 +301,30 @@ public class BulkOperations
         IEnumerable<string> multiIds, 
         CancellationToken cancel)
     {
-        const int limit = MTGFetchService.Limit;
+        int limit = _mtgQuery.Limit;
 
         cancel.ThrowIfCancellationRequested();
 
+        var chunks = multiIds.Chunk(limit).ToList();
         var cards = new List<Card>();
 
-        foreach (var multiChunk in multiIds.Chunk(limit))
+        _loadProgress.Ticks += chunks.Count;
+
+        foreach (var multiChunk in chunks)
         {
             if (!multiChunk.Any())
             {
                 continue;
             }
 
-            var multiArg = string.Join(MTGFetchService.Or, multiChunk);
+            var multiArg = string.Join(IMTGQuery.Or, multiChunk);
 
-            var validated = await _fetch
-                .Where(c => c.MultiverseId, multiArg)
-                .Where(c => c.PageSize, limit)
-                .SearchAsync();
+            var validated = await _mtgQuery
+                .Where(c => c.MultiverseId == multiArg)
+                .Where(c => c.PageSize == limit)
+                .SearchAsync(cancel);
 
-            cancel.ThrowIfCancellationRequested();
+            _loadProgress.AddProgress();
 
             cards.AddRange(validated);
         }
@@ -326,34 +335,29 @@ public class BulkOperations
 
     public async Task MergeAsync(
         IReadOnlyDictionary<string, int> multiAdditions,
-        CancellationToken cancel)
+        CancellationToken cancel = default)
     {
         if (!multiAdditions.Any())
         {
             return;
         }
 
-        var multiIds = multiAdditions.Keys
-            .ToAsyncEnumerable();
+        var dbCards = await ExistingCardsAsync(multiAdditions.Keys, cancel);
 
-        var allCards = await _dbContext.Cards
-            .AsAsyncEnumerable()
-            .Join( multiIds,
-                c => c.MultiverseId,
-                mid => mid,
-                (card, _) => card)
-            .ToListAsync(cancel);
-
-        var newMultiIds = multiAdditions.Keys
-            .Except(allCards.Select(c => c.MultiverseId))
+        var newMultiverse = multiAdditions.Keys
+            .Except(dbCards.Select(c => c.MultiverseId))
             .ToList();
 
-        if (newMultiIds.Any())
-        {
-            var newCards = await ValidatedCardsAsync(newMultiIds, cancel);
+        var allCards = dbCards;
 
-            _dbContext.Cards.AddRange(newCards);
+        _loadProgress.Ticks = 2;
+
+        if (newMultiverse.Any())
+        {
+            var newCards = await ValidatedCardsAsync(newMultiverse, cancel);
+
             allCards.AddRange(newCards);
+            _dbContext.Cards.AddRange(newCards);
         }
 
         var requests = allCards
@@ -363,6 +367,103 @@ public class BulkOperations
 
         await _dbContext.AddCardsAsync(requests, cancel);
 
+        _loadProgress.AddProgress();
+
         await _dbContext.SaveChangesAsync(cancel);
+
+        _loadProgress.AddProgress();
+    }
+
+
+    private Task<List<Card>> ExistingCardsAsync(
+        IEnumerable<string> multiverseIds, 
+        CancellationToken cancel)
+    {
+        if (multiverseIds.Count() < _pageSizes.Limit)
+        {
+            return _dbContext.Cards
+                .Where(c => multiverseIds.Contains(c.MultiverseId))
+                .ToListAsync(cancel);
+        }
+        else
+        {
+            var asyncMultiverse = multiverseIds
+                .ToAsyncEnumerable();
+
+            return _dbContext.Cards
+                .AsAsyncEnumerable()
+                .Join( asyncMultiverse,
+                    c => c.MultiverseId,
+                    mid => mid,
+                    (card, _) => card)
+                .ToListAsync(cancel)
+                .AsTask();
+        }
+    }
+
+
+    public async Task ResetAsync(CancellationToken cancel = default)
+    {
+        var data = GetDefaultStream();
+
+        _loadProgress.Ticks = 7;
+
+        await foreach (var card in data.Cards.WithCancellation(cancel))
+        {
+            _dbContext.Cards.Remove(card);
+        }
+
+        _loadProgress.AddProgress();
+
+        await foreach (var deck in data.Decks.WithCancellation(cancel))
+        {
+            _dbContext.Amounts.RemoveRange(deck.Cards);
+            _dbContext.Wants.RemoveRange(deck.Wants);
+            _dbContext.GiveBacks.RemoveRange(deck.GiveBacks);
+
+            _dbContext.Decks.Remove(deck);
+        }
+
+        _loadProgress.AddProgress();
+
+        await foreach (var unclaimed in data.Unclaimed.WithCancellation(cancel))
+        {
+            _dbContext.Amounts.RemoveRange(unclaimed.Cards);
+            _dbContext.Wants.RemoveRange(unclaimed.Wants);
+            
+            _dbContext.Unclaimed.Remove(unclaimed);
+        }
+
+        _loadProgress.AddProgress();
+
+        await foreach (var bin in data.Bins.WithCancellation(cancel))
+        {
+            var binCards = bin.Boxes.SelectMany(b => b.Cards);
+
+            _dbContext.Amounts.RemoveRange(binCards);
+            _dbContext.Boxes.RemoveRange(bin.Boxes);
+            _dbContext.Bins.Remove(bin);
+        }
+
+        _loadProgress.AddProgress();
+
+        await foreach (var transaction in data.Transactions.WithCancellation(cancel))
+        {
+            _dbContext.Changes.RemoveRange(transaction.Changes);
+            _dbContext.Transactions.Remove(transaction);
+        }
+
+        _loadProgress.AddProgress();
+
+        await foreach (var suggestion in data.Suggestions.WithCancellation(cancel))
+        {
+            _dbContext.Suggestions.Remove(suggestion);
+        }
+
+        _loadProgress.AddProgress();
+
+        await _dbContext.SaveChangesAsync(cancel);
+
+        _loadProgress.AddProgress();
     }
 }

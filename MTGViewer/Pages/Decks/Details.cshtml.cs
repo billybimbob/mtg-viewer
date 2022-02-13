@@ -29,7 +29,7 @@ public class DetailsModel : PageModel
 
     public bool IsOwner { get; private set; }
 
-    public Deck Deck { get; private set; } = null!;
+    public Deck Deck { get; private set; } = default!;
 
     public IReadOnlyList<QuantityGroup> Cards { get; private set; } = Array.Empty<QuantityGroup>();
 
@@ -45,8 +45,11 @@ public class DetailsModel : PageModel
 
         var userId = _userManager.GetUserId(User);
 
+
         IsOwner = deck.OwnerId == userId;
+
         Deck = deck;
+
         Cards = DeckCardGroups(deck).ToList();
 
         return Page();

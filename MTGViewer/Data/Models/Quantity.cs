@@ -8,31 +8,36 @@ using MTGViewer.Data.Concurrency;
 
 namespace MTGViewer.Data;
 
+
+[Index(nameof(Type), nameof(CardId))]
+[Index(nameof(Type), nameof(LocationId))]
 [Index(
     nameof(Type),
     nameof(CardId),
     nameof(LocationId), IsUnique = true)]
 public abstract class Quantity : Concurrent
 {
+    [Key]
     [JsonIgnore]
     public int Id { get; private set; }
 
     [JsonIgnore]
-    internal Discriminator Type { get; private set; }
+    internal QuantityType Type { get; private set; }
 
 
     [JsonIgnore]
-    public string CardId { get; init; } = null!;
-    public Card Card { get; init; } = null!;
+    public string CardId { get; init; } = default!;
+    public Card Card { get; init; } = default!;
 
 
     [JsonIgnore]
     public int LocationId { get; init; }
-    public Location Location { get; init; } = null!;
+    public Location Location { get; init; } = default!;
 
+    // limit is kind of arbitrary
 
     [Display(Name = "Copies")]
-    [Range(1, int.MaxValue)]
+    [Range(1, 4_096)]
     public int NumCopies { get; set; }
 }
 

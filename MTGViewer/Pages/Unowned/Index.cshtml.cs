@@ -1,6 +1,7 @@
+using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Linq;
+using System.Paging;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -20,6 +21,7 @@ namespace MTGViewer.Pages.Unowned;
 
 
 [Authorize]
+[Authorize(Policy = CardPolicies.ChangeTreasury)]
 public class IndexModel : PageModel
 {
     private readonly int _pageSize;
@@ -29,6 +31,8 @@ public class IndexModel : PageModel
     private readonly UserManager<CardUser> _userManager;
 
     private readonly ILogger<IndexModel> _logger;
+
+    private Dictionary<int, IReadOnlyList<QuantityNameGroup>>? _unclaimedCards;
 
     public IndexModel(
         CardDbContext dbContext, 
@@ -49,23 +53,20 @@ public class IndexModel : PageModel
     [TempData]
     public string? PostMessage { get; set; }
 
-    public PagedList<Unclaimed> Unclaimed { get; private set; } = PagedList<Unclaimed>.Empty;
-
-    public IReadOnlyDictionary<int, IReadOnlyList<QuantityNameGroup>> Cards { get; private set; } =
-        ImmutableDictionary<int, IReadOnlyList<QuantityNameGroup>>.Empty;
+    public OffsetList<Unclaimed> Unclaimed { get; private set; } = OffsetList<Unclaimed>.Empty();
 
 
-    public async Task<IActionResult> OnGetAsync(int? id, int? pageIndex, CancellationToken cancel)
+    public async Task<IActionResult> OnGetAsync(int? id, int? offset, CancellationToken cancel)
     {
         if (await GetUnclaimedPageAsync(id, cancel) is int unclaimedPage)
         {
-            return RedirectToPage(new { pageIndex = unclaimedPage });
+            return RedirectToPage(new { offset = unclaimedPage });
         }
 
         Unclaimed = await UnclaimedForViewing()
-            .ToPagedListAsync(_pageSize, pageIndex, cancel);
+            .ToOffsetListAsync(offset, _pageSize, cancel);
 
-        Cards = Unclaimed
+        _unclaimedCards = Unclaimed
             .ToDictionary(u => u.Id, UnclaimedNameGroup);
 
         return Page();
@@ -106,6 +107,7 @@ public class IndexModel : PageModel
                 .ThenInclude(w => w.Card)
 
             .OrderBy(u => u.Name)
+                .ThenBy(u => u.Id)
             .AsSplitQuery()
             .AsNoTrackingWithIdentityResolution();
     }
@@ -127,6 +129,17 @@ public class IndexModel : PageModel
             .Select(cn =>
                 new QuantityNameGroup( amountsByName[cn], wantsByName[cn] ))
             .ToArray();
+    }
+
+
+    public IReadOnlyList<QuantityNameGroup> GetQuantityGroup(int id)
+    {
+        if (_unclaimedCards?.GetValueOrDefault(id) is IReadOnlyList<QuantityNameGroup> cards)
+        {
+            return cards;
+        }
+
+        return Array.Empty<QuantityNameGroup>();
     }
 
     

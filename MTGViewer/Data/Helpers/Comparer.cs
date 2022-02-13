@@ -69,23 +69,23 @@ public class CardNameComparer : Comparer<Card>
 }
 
 
-public class RarityComparer : Comparer<string>
-{
-    private int GetValue(string? rarity) => rarity switch
-    {
-        "Common" => 1,
-        "Uncommon" => 2,
-        "Rare" => 3,
-        "Mythic" => 4,
-        "Special" => 0,
-        _ => 0
-    };
+// public class RarityComparer : Comparer<string>
+// {
+//     private int GetValue(string? rarity) => rarity switch
+//     {
+//         "Common" => 1,
+//         "Uncommon" => 2,
+//         "Rare" => 3,
+//         "Mythic" => 4,
+//         "Special" => 0,
+//         _ => 0
+//     };
 
-    public override int Compare(string? x, string? y)
-    {
-        var xValue = GetValue(x);
-        var yValue = GetValue(y);
+//     public override int Compare(string? x, string? y)
+//     {
+//         var xValue = GetValue(x);
+//         var yValue = GetValue(y);
 
-        return xValue.CompareTo(yValue);
-    }
-}
+//         return xValue.CompareTo(yValue);
+//     }
+// }

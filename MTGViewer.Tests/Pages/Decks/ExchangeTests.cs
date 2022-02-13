@@ -2,12 +2,10 @@ using System.Linq;
 using System.Threading.Tasks;
 
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
 using Xunit;
 
-using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
 using MTGViewer.Pages.Decks;
 using MTGViewer.Tests.Utils;
@@ -19,19 +17,19 @@ public class ExchangeTests : IAsyncLifetime
 {
     private readonly ExchangeModel _exchangeModel;
     private readonly CardDbContext _dbContext;
-    private readonly UserManager<CardUser> _userManager;
+    private readonly PageContextFactory _pageFactory;
     private readonly TestDataGenerator _testGen;
 
 
     public ExchangeTests(
         ExchangeModel exchangeModel,
         CardDbContext dbContext,
-        UserManager<CardUser> userManager,
+        PageContextFactory pageFactory,
         TestDataGenerator testGen)
     {
         _exchangeModel = exchangeModel;
         _dbContext = dbContext;
-        _userManager = userManager;
+        _pageFactory = pageFactory;
         _testGen = testGen;
     }
 
@@ -85,7 +83,7 @@ public class ExchangeTests : IAsyncLifetime
         var invalidDeckId = 0;
         var validUserId = await _dbContext.Users.Select(u => u.Id).FirstAsync();
 
-        await _exchangeModel.SetModelContextAsync(_userManager, validUserId);
+        await _pageFactory.AddModelContextAsync(_exchangeModel, validUserId);
 
         var result = await _exchangeModel.OnPostAsync(invalidDeckId, default);
 
@@ -104,7 +102,7 @@ public class ExchangeTests : IAsyncLifetime
             .Select(u => u.Id)
             .FirstAsync(uid => uid != deck.OwnerId);
 
-        await _exchangeModel.SetModelContextAsync(_userManager, invalidUserId);
+        await _pageFactory.AddModelContextAsync(_exchangeModel, invalidUserId);
 
         var result = await _exchangeModel.OnPostAsync(deck.Id, default);
 
@@ -120,7 +118,7 @@ public class ExchangeTests : IAsyncLifetime
         var targetAmount = want.NumCopies;
         var deckOwnerId = await OwnerId(want).SingleAsync();
 
-        await _exchangeModel.SetModelContextAsync(_userManager, deckOwnerId);
+        await _pageFactory.AddModelContextAsync(_exchangeModel, deckOwnerId);
 
         // Act
         var wantBefore = await NumCopies(want).SingleAsync();
@@ -158,7 +156,7 @@ public class ExchangeTests : IAsyncLifetime
         var targetLimit = request.NumCopies - targetMod;
         var deckOwnerId = await OwnerId(request).SingleAsync();
 
-        await _exchangeModel.SetModelContextAsync(_userManager, deckOwnerId);
+        await _pageFactory.AddModelContextAsync(_exchangeModel, deckOwnerId);
 
         // Act
         var wantBefore = await NumCopies(request).SingleAsync();
@@ -196,7 +194,7 @@ public class ExchangeTests : IAsyncLifetime
         var returnAmount = request.NumCopies;
         var deckOwnerId = await OwnerId(request).SingleAsync();
 
-        await _exchangeModel.SetModelContextAsync(_userManager, deckOwnerId);
+        await _pageFactory.AddModelContextAsync(_exchangeModel, deckOwnerId);
 
         // Act
         var giveBefore = await NumCopies(request).SingleAsync();
@@ -231,7 +229,7 @@ public class ExchangeTests : IAsyncLifetime
         var request = await _testGen.GetGiveBackAsync(2);
         var deckOwnerId = await OwnerId(request).SingleAsync();
 
-        await _exchangeModel.SetModelContextAsync(_userManager, deckOwnerId);
+        await _pageFactory.AddModelContextAsync(_exchangeModel, deckOwnerId);
 
         // Act
         var giveBefore = await NumCopies(request).SingleAsync();
@@ -282,7 +280,7 @@ public class ExchangeTests : IAsyncLifetime
         await _dbContext.SaveChangesAsync();
         _dbContext.ChangeTracker.Clear();
 
-        await _exchangeModel.SetModelContextAsync(_userManager, deckOwnerId);
+        await _pageFactory.AddModelContextAsync(_exchangeModel, deckOwnerId);
 
         var boxBefore = await BoxNumCopies(request).SumAsync();
         var actualBefore = await ActualNumCopies(request).SingleAsync();
@@ -304,7 +302,7 @@ public class ExchangeTests : IAsyncLifetime
         var (want, give) = await _testGen.GetMixedRequestDeckAsync();
         var deckOwnerId = await OwnerId(want).SingleAsync();
 
-        await _exchangeModel.SetModelContextAsync(_userManager, deckOwnerId);
+        await _pageFactory.AddModelContextAsync(_exchangeModel, deckOwnerId);
 
         var wantTarget = want.NumCopies;
         var giveTarget = give.NumCopies;

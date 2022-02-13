@@ -13,11 +13,12 @@ namespace MTGViewer.Data;
 
 public abstract class Location : Concurrent
 {
+    [Key]
     [JsonIgnore]
     public int Id { get; init; }
 
     [JsonIgnore]
-    internal Discriminator Type { get; private set; }
+    internal LocationType Type { get; private set; }
 
     [Required]
     [StringLength(20)]
@@ -53,8 +54,8 @@ public class Unclaimed : Owned
 public class Deck : Owned
 {
     [JsonIgnore]
-    public string OwnerId { get; init; } = null!;
-    public UserRef Owner { get; init; } = null!;
+    public string OwnerId { get; init; } = default!;
+    public UserRef Owner { get; init; } = default!;
 
 
     [Display(Name = "Give Backs")]
@@ -96,14 +97,18 @@ public class Deck : Owned
 
 [Index(
     nameof(IsExcess),
-    nameof(Capacity))]
+    nameof(Type),
+    nameof(Id),
+    nameof(BinId))]
 public class Box : Location
 {
     [JsonIgnore]
     public int BinId { get; init; }
-    public Bin Bin { get; set; } = null!;
+    public Bin Bin { get; set; } = default!;
 
-    [Range(10, 10_000)]
+    // min is 0 to account for other loc types, should be min 10
+
+    [Range(0, 10_000)]
     public int Capacity { get; set; }
 
     [StringLength(40)]

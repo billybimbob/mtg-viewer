@@ -2,8 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Paging;
 using System.Reflection;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 
 using Microsoft.Extensions.Logging;
@@ -16,9 +18,9 @@ using MTGViewer.Data;
 
 namespace MTGViewer.Services;
 
-public class MTGFetchService : IMtgQueryable<MTGFetchService, CardQuery>
+public class MtgApiQuery : IMTGQuery
 {
-    private static readonly IReadOnlySet<string> _multipleValues = 
+    private static readonly IReadOnlyCollection<string> _multipleValues = 
         new HashSet<string>(new []
         {
             nameof(CardQuery.Colors),
@@ -27,25 +29,20 @@ public class MTGFetchService : IMtgQueryable<MTGFetchService, CardQuery>
             nameof(CardQuery.Subtypes)
         });
 
-    public const char Or = '|';
-    public const char And = ',';
-    public const int Limit = 100;
-
-
     private readonly ICardService _service;
     private readonly FixedCache _cache;
 
     private readonly int _pageSize;
-    private readonly ILogger<MTGFetchService> _logger;
+    private readonly ILogger<MtgApiQuery> _logger;
 
     private bool _empty;
     private int _page;
 
-    public MTGFetchService(
+    public MtgApiQuery(
         ICardService service,
         FixedCache cache, 
         PageSizes pageSizes,
-        ILogger<MTGFetchService> logger)
+        ILogger<MtgApiQuery> logger)
     {
         _service = service;
         _cache = cache;
@@ -58,6 +55,9 @@ public class MTGFetchService : IMtgQueryable<MTGFetchService, CardQuery>
     }
 
 
+    public int Limit => 100;
+
+
     public void Reset()
     {
         _service.Reset();
@@ -67,56 +67,57 @@ public class MTGFetchService : IMtgQueryable<MTGFetchService, CardQuery>
     }
 
 
-    public MTGFetchService Where<TParameter>(
-        Expression<Func<CardQuery, TParameter>> property, TParameter value)
+    public IMTGQuery Where(Expression<Func<CardQuery, bool>> predicate)
     {
-        if (property.Body is MemberExpression expression)
+        if (predicate.Body is not BinaryExpression binary
+            || binary.NodeType is not ExpressionType.Equal)
         {
-            QueryProperty(expression.Member.Name, value);
+            throw new NotSupportedException("Only equality expressions are supported");
+        }
+
+        if (binary.Left is MemberExpression leftMember)
+        {
+            QueryProperty(leftMember.Member.Name, ParsePropertyValue(binary.Right));
+        }
+        else if (binary.Right is MemberExpression rightMember)
+        {
+            QueryProperty(rightMember.Member.Name, ParsePropertyValue(binary.Left));
+        }
+        else
+        {
+            throw new NotSupportedException("Comparisons must be done on the Card Query");
         }
 
         return this;
-    }
 
-
-    public MTGFetchService Where(CardQuery search)
-    {
-        if (search is null)
+        object ParsePropertyValue(Expression expression)
         {
-            return this;
-        }
-
-        const BindingFlags binds = BindingFlags.Instance | BindingFlags.Public;
-
-        foreach (var info in typeof(CardQuery).GetProperties(binds))
-        {
-            if (info.GetGetMethod() is not null
-                && info.GetSetMethod() is not null)
+            if (Expression
+                .Lambda(expression)
+                .Compile()
+                .DynamicInvoke() is not object value)
             {
-                QueryProperty(info.Name, info.GetValue(search));
+                throw new ArgumentException(nameof(predicate));
             }
-        }
 
-        return this;
+            return value;
+        }
     }
 
 
-    private void QueryProperty<TParameter>(string propertyName, TParameter parameter)
+    private void QueryProperty(string propertyName, object propertyValue)
     {
         const BindingFlags binds = BindingFlags.IgnoreCase | BindingFlags.Instance | BindingFlags.Public;
 
         if (typeof(CardQueryParameter).GetProperty(propertyName, binds) == null)
         {
-            return;
+            throw new ArgumentException(nameof(propertyName));
         }
 
         const string pageName = nameof(CardQueryParameter.Page);
         const string pageSizeName = nameof(CardQueryParameter.PageSize);
 
-        bool TryString(out string? stringValue) =>
-            TryToString(parameter, _multipleValues.Contains(propertyName), out stringValue);
-
-        switch ((propertyName, parameter))
+        switch ((propertyName, propertyValue))
         {
             case (pageName, int page) when page != default:
                 // translate zero-based page index to one-based page from the api
@@ -124,7 +125,7 @@ public class MTGFetchService : IMtgQueryable<MTGFetchService, CardQuery>
                 _page = page;
                 break;
 
-            case (pageSizeName, int pageSize):
+            case (pageSizeName, int pageSize) when pageSize != default:
                 AddParameter(propertyName, pageSize);
                 break;
 
@@ -139,25 +140,37 @@ public class MTGFetchService : IMtgQueryable<MTGFetchService, CardQuery>
             default:
                 break;
         }
+
+        bool TryString(out string? stringValue)
+        {
+            bool isMultiple = _multipleValues.Contains(propertyName);
+            return TryToString(propertyValue, isMultiple, out stringValue);
+        }
     }
 
 
-    private bool TryToString(object? paramValue, bool multipleValues, out string? stringValue)
+    private bool TryToString(object paramValue, bool multipleValues, out string? stringValue)
     {
         const StringSplitOptions noWhitespace = StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries;
 
-        stringValue = paramValue?.ToString();
+        stringValue = paramValue.ToString();
 
         if (string.IsNullOrWhiteSpace(stringValue))
         {
             return false;
         }
 
-        stringValue = string.Join(Or, stringValue.Split(Or, noWhitespace));
+        // truncates any whitespace between logical operators
+
+        stringValue = string.Join(
+            IMTGQuery.Or,
+            stringValue.Split(IMTGQuery.Or, noWhitespace));
 
         if (multipleValues)
         {
-            stringValue = string.Join(And, Regex.Split(stringValue, $@"(?:\s*{And}\s*)|\s+"));
+            stringValue = string.Join(
+                IMTGQuery.And, 
+                Regex.Split(stringValue, $@"(?:\s*{IMTGQuery.And}\s*)|\s+"));
         }
 
         return true;
@@ -166,10 +179,14 @@ public class MTGFetchService : IMtgQueryable<MTGFetchService, CardQuery>
 
     private void AddParameter<TParameter>(string name, TParameter value)
     {
-        var xParam = Expression.Parameter(typeof(CardQueryParameter), "x");
-        var propExpr = Expression.Property(xParam, name);
+        var param = Expression.Parameter(
+            typeof(CardQueryParameter),
+            typeof(CardQueryParameter).Name[0].ToString().ToLower());
 
-        var expression = Expression.Lambda<Func<CardQueryParameter,TParameter>>(propExpr, xParam);
+        var expression = Expression
+            .Lambda<Func<CardQueryParameter, TParameter>>(
+                Expression.Property(param, name),
+                param);
 
         _service.Where(expression, value);
         _empty = false;
@@ -181,16 +198,20 @@ public class MTGFetchService : IMtgQueryable<MTGFetchService, CardQuery>
     /// be active at the same time. Be sure to <see langword="await"/> before 
     /// executing another search.
     /// </remarks>
-    public async Task<PagedList<Card>> SearchAsync()
+    public async Task<OffsetList<Card>> SearchAsync(CancellationToken cancel = default)
     {
         if (_empty)
         {
-            return PagedList<Card>.Empty;
+            return OffsetList<Card>.Empty();
         }
+
+        cancel.ThrowIfCancellationRequested();
 
         var response = await _service
             // .Where(c => c.OrderBy, "name") get error code 500 with this
             .AllAsync();
+
+        cancel.ThrowIfCancellationRequested();
 
         var matches = LoggedUnwrap(response) ?? Enumerable.Empty<ICard>();
 
@@ -199,15 +220,15 @@ public class MTGFetchService : IMtgQueryable<MTGFetchService, CardQuery>
             _empty = true;
             _page = 0;
 
-            return PagedList<Card>.Empty;
+            return OffsetList<Card>.Empty();
         }
 
         var totalPages = response.PagingInfo.TotalPages;
-        var pages = new Data.Pages(_page, totalPages);
+        var pages = new Offset(_page, totalPages);
 
         var cards = matches
-            .Select(c => c.ToCard())
-            .Where(c => TestValid(c) is not null)
+            .Select( GetValidatedCard )
+            .OfType<Card>()
             .ToArray();
 
         // adventure cards have multiple entries with the same multiId
@@ -220,12 +241,12 @@ public class MTGFetchService : IMtgQueryable<MTGFetchService, CardQuery>
         _empty = true;
         _page = 0;
 
-        return new PagedList<Card>(pages, cards);
+        return new OffsetList<Card>(pages, cards);
     }
 
 
 
-    public async Task<Card?> FindAsync(string id)
+    public async Task<Card?> FindAsync(string id, CancellationToken cancel = default)
     {
         if (string.IsNullOrWhiteSpace(id))
         {
@@ -240,7 +261,12 @@ public class MTGFetchService : IMtgQueryable<MTGFetchService, CardQuery>
 
         _logger.LogInformation($"refetching {id}");
 
+        cancel.ThrowIfCancellationRequested();
+
         var result = await _service.FindAsync(id);
+
+        cancel.ThrowIfCancellationRequested();
+
         var match = LoggedUnwrap(result);
 
         if (match is null)
@@ -249,7 +275,7 @@ public class MTGFetchService : IMtgQueryable<MTGFetchService, CardQuery>
             return null;
         }
 
-        card = TestValid(match.ToCard());
+        card = GetValidatedCard(match);
 
         if (card is not null)
         {
@@ -262,28 +288,77 @@ public class MTGFetchService : IMtgQueryable<MTGFetchService, CardQuery>
 
     private T? LoggedUnwrap<T>(IOperationResult<T> result) where T : class
     {
-        var unwrap = result.Unwrap();
-
-        if (unwrap is null)
+        if (!result.IsSuccess)
         {
             _logger.LogError(result.Exception.ToString());
+            return null;
         }
 
-        return unwrap;
+        return result.Value;
     }
 
 
-    private Card? TestValid(Card card)
+    private Card? GetValidatedCard(ICard iCard)
     {
+        if (!Enum.TryParse<Rarity>(iCard.Rarity, true, out var rarity))
+        {
+            return null;
+        }
+
+        var card = new Card
+        {
+            Id = iCard.Id,
+            MultiverseId = iCard.MultiverseId,
+
+            Name = iCard.Name,
+            Names = (iCard.Names ?? Enumerable.Empty<string>())
+                .Select(s => new Name { Value = s, CardId = iCard.Id })
+                .ToList(),
+
+            Layout = iCard.Layout,
+
+            Colors = (iCard.ColorIdentity ?? Enumerable.Empty<string>())
+                .Select(id => Color.Symbols[id.ToUpper()]) 
+
+                .Union(iCard.Colors ?? Enumerable.Empty<string>())
+                .Select(s => new Color { Name = s, CardId = iCard.Id })
+                .ToList(),
+
+            Types = (iCard.Types ?? Enumerable.Empty<string>())
+                .Select(s => new Data.Type { Name = s, CardId = iCard.Id })
+                .ToList(),
+
+            Subtypes = (iCard.SubTypes ?? Enumerable.Empty<string>())
+                .Select(s => new Subtype { Name = s, CardId = iCard.Id })
+                .ToList(),
+
+            Supertypes = (iCard.SuperTypes ?? Enumerable.Empty<string>())
+                .Select(s => new Supertype { Name = s, CardId = iCard.Id })
+                .ToList(),
+
+            ManaCost = iCard.ManaCost,
+            Cmc = iCard.Cmc,
+
+            Rarity = rarity,
+            SetName = iCard.SetName,
+            Artist = iCard.Artist,
+
+            Text = iCard.Text,
+            Flavor = iCard.Flavor,
+
+            Power = iCard.Power,
+            Toughness = iCard.Toughness,
+            Loyalty = iCard.Loyalty,
+            ImageUrl = iCard.ImageUrl?.ToString()!
+        };
+
         if (!card.IsValid())
         {
             _logger.LogError($"{card?.Id} was found, but failed validation");
             return null;
         }
-        else
-        {
-            return card;
-        }
+
+        return card;
     }
 
 
@@ -318,62 +393,4 @@ public class MTGFetchService : IMtgQueryable<MTGFetchService, CardQuery>
     //         .Select(sp => new Supertype(sp))
     //         .ToArray();
     // }
-}
-
-
-internal static class MtgApiExtension
-{
-    internal static TResult? Unwrap<TResult>(this IOperationResult<TResult> result)
-        where TResult : class
-    {    
-        return result.IsSuccess ? result.Value : null;
-    }
-
-
-    internal static Card ToCard(this ICard card) => new Card
-    {
-        Id = card.Id,
-        MultiverseId = card.MultiverseId,
-
-        Name = card.Name,
-        Names = (card.Names ?? Enumerable.Empty<string>())
-            .Select(s => new Name(s, card.Id))
-            .ToList(),
-
-        Layout = card.Layout,
-
-        Colors = (card.ColorIdentity ?? Enumerable.Empty<string>())
-            .Select(id => Color.Symbols[id.ToUpper()]) 
-
-            .Union(card.Colors ?? Enumerable.Empty<string>())
-            .Select(s => new Color(s, card.Id))
-            .ToList(),
-
-        Types = (card.Types ?? Enumerable.Empty<string>())
-            .Select(s => new Data.Type(s, card.Id))
-            .ToList(),
-
-        Subtypes = (card.SubTypes ?? Enumerable.Empty<string>())
-            .Select(s => new Subtype(s, card.Id))
-            .ToList(),
-
-        Supertypes = (card.SuperTypes ?? Enumerable.Empty<string>())
-            .Select(s => new Supertype(s, card.Id))
-            .ToList(),
-
-        ManaCost = card.ManaCost,
-        Cmc = card.Cmc,
-
-        Rarity = card.Rarity,
-        SetName = card.SetName,
-        Artist = card.Artist,
-
-        Text = card.Text,
-        Flavor = card.Flavor,
-
-        Power = card.Power,
-        Toughness = card.Toughness,
-        Loyalty = card.Loyalty,
-        ImageUrl = card.ImageUrl?.ToString()!
-    };
 }

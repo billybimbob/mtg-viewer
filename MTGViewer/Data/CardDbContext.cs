@@ -112,11 +112,11 @@ internal class LocationConfiguration : IEntityTypeConfiguration<Location>
     {
         builder
             .HasDiscriminator(l => l.Type)
-                .HasValue<Location>(Discriminator.Invalid)
-                .HasValue<Owned>(Discriminator.Invalid)
-                .HasValue<Unclaimed>(Discriminator.Unclaimed)
-                .HasValue<Deck>(Discriminator.Deck)
-                .HasValue<Box>(Discriminator.Box);
+                .HasValue<Location>(LocationType.Invalid)
+                .HasValue<Owned>(LocationType.Invalid)
+                .HasValue<Unclaimed>(LocationType.Unclaimed)
+                .HasValue<Deck>(LocationType.Deck)
+                .HasValue<Box>(LocationType.Box);
 
         builder
             .HasMany(l => l.Cards)
@@ -182,10 +182,10 @@ internal class QuantityConfiguration : IEntityTypeConfiguration<Quantity>
     {
         builder
             .HasDiscriminator(cq => cq.Type)
-            .HasValue<Quantity>(Discriminator.Invalid)
-            .HasValue<Amount>(Discriminator.Amount)
-            .HasValue<Want>(Discriminator.Want)
-            .HasValue<GiveBack>(Discriminator.GiveBack);
+            .HasValue<Quantity>(QuantityType.Invalid)
+            .HasValue<Amount>(QuantityType.Amount)
+            .HasValue<Want>(QuantityType.Want)
+            .HasValue<GiveBack>(QuantityType.GiveBack);
     }
 }
 
@@ -254,6 +254,11 @@ internal class SuggestionConfiguration : IEntityTypeConfiguration<Suggestion>
         builder
             .HasOne(s => s.Receiver)
             .WithMany()
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder
+            .HasOne(s => s.Card)
+            .WithMany(c => c.Suggestions)
             .OnDelete(DeleteBehavior.Cascade);
     }
 }

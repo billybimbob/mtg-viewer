@@ -1,4 +1,6 @@
+using System;
 using System.Linq;
+using System.Paging;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -23,46 +25,59 @@ public class ExcessModel : PageModel
     }
 
 
-    public PagedList<Card> Cards { get; private set; } = PagedList<Card>.Empty;
+    public SeekList<Card> Cards { get; private set; } = SeekList<Card>.Empty();
 
-    public bool HasExcess => Cards.Pages.Total > 0;
+    public bool HasExcess =>
+        Cards.Any()
+            || Cards.Seek.Previous is not null
+            || Cards.Seek.Next is not null;
 
 
-    public async Task<IActionResult> OnGetAsync(string? cardId, int pageIndex, CancellationToken cancel)
+    public async Task<IActionResult> OnGetAsync(
+        string? seek, 
+        int? index,
+        bool backTrack, 
+        bool jump,
+        CancellationToken cancel)
     {
-        if (await GetExcessPageAsync(cardId, cancel) is int cardPage)
+        if (jump && await GetCardJumpAsync(seek, cancel) is (string cardJump, int cardIndex))
         {
-            return RedirectToPage(new { pageIndex = cardPage });
+            return RedirectToPage(new { seek = cardJump, index = cardIndex });
         }
 
         Cards = await ExcessCards()
-            .ToPagedListAsync(_pageSize, pageIndex, cancel);
+            .ToSeekListAsync(index, _pageSize, seek, backTrack, cancel);
 
         return Page();
     }
 
 
-    private async Task<int?> GetExcessPageAsync(string? cardId, CancellationToken cancel)
+    private async Task<(string?, int?)> GetCardJumpAsync(string? id, CancellationToken cancel)
     {
-        if (cardId is null)
+        if (id is null)
         {
-            return null;
+            return (null, null);
         }
 
         var cardName = await ExcessCards()
-            .Where(c => c.Id == cardId)
+            .Where(c => c.Id == id)
             .Select(c => c.Name)
             .FirstOrDefaultAsync(cancel);
 
         if (cardName is null)
         {
-            return null;
+            return (null, null);
         }
 
-        int position = await ExcessCards()
-            .CountAsync(c => c.Name.CompareTo(cardName) < 0, cancel);
+        var options = await ExcessCards()
+            .Where(c => c.Name.CompareTo(cardName) < 0)
+            .Select(c => c.Id)
 
-        return position / _pageSize;
+            .AsAsyncEnumerable()
+            .Where((id, i) => i % _pageSize == _pageSize - 1)
+            .ToListAsync(cancel);
+
+        return (options.ElementAtOrDefault(^1), options.Count - 1);
     }
 
 
@@ -71,16 +86,15 @@ public class ExcessModel : PageModel
         return _dbContext.Cards
             .Where(c => c.Amounts
                 .Any(a => a.Location is Box
-                    && (a.Location as Box)!.IsExcess
-                    && a.NumCopies > 0))
+                    && (a.Location as Box)!.IsExcess))
 
             .Include(c => c.Amounts // unbounded, keep eye on
                 .Where(a => a.Location is Box 
-                    && (a.Location as Box)!.IsExcess
-                    && a.NumCopies > 0))
+                    && (a.Location as Box)!.IsExcess))
             
             .OrderBy(c => c.Name)
                 .ThenBy(c => c.SetName)
+                .ThenBy(c => c.Id)
 
             .AsNoTrackingWithIdentityResolution();
     }

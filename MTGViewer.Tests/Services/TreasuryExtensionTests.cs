@@ -10,12 +10,12 @@ using MTGViewer.Tests.Utils;
 
 namespace MTGViewer.Services;
 
-public class TreasuryHandlerTests : IAsyncLifetime
+public class TreasuryExtensionTests : IAsyncLifetime
 {
     private readonly CardDbContext _dbContext;
     private readonly TestDataGenerator _testGen;
 
-    public TreasuryHandlerTests(CardDbContext dbContext, TestDataGenerator testGen)
+    public TreasuryExtensionTests(CardDbContext dbContext, TestDataGenerator testGen)
     {
         _dbContext = dbContext;
         _testGen = testGen;
@@ -188,87 +188,6 @@ public class TreasuryHandlerTests : IAsyncLifetime
     }
 
 
-    private async Task AddExcessAsync(int excessSpace)
-    {
-        int capacity = await _dbContext.Boxes
-            .Where(b => !b.IsExcess)
-            .SumAsync(b => b.Capacity);
-
-        int availAmounts = await _dbContext.Boxes
-            .Where(b => !b.IsExcess)
-            .SelectMany(b => b.Cards)
-            .SumAsync(a => a.NumCopies);
-
-        if (availAmounts > capacity)
-        {
-            throw new InvalidOperationException("There are too many cards not in excess");
-        }
-
-        var card = await _dbContext.Cards.FirstAsync();
-
-        if (availAmounts < capacity)
-        {
-            var boxes = await _dbContext.Boxes
-                .Where(b => !b.IsExcess)
-                .Include(b => b.Cards)
-                .ToListAsync();
-
-            foreach (var box in boxes)
-            {
-                int remaining = box.Capacity - box.Cards.Sum(a => a.NumCopies);
-                if (remaining <= 0)
-                {
-                    continue;
-                }
-
-                if (box.Cards.FirstOrDefault() is Amount amount)
-                {
-                    amount.NumCopies += remaining;
-                    continue;
-                }
-
-                amount = new Amount
-                {
-                    Card = card,
-                    Location = box,
-                    NumCopies = remaining
-                };
-
-                _dbContext.Amounts.Attach(amount);
-            }
-        }
-
-        if (await _dbContext.Boxes.AnyAsync(b => b.IsExcess))
-        {
-            return;
-        }
-
-        var excess = new Box
-        {
-            Name = "Excess",
-            Capacity = 0,
-            Bin = new Bin
-            {
-                Name = "Excess Bin"
-            }
-        };
-
-        var excessCard = new Amount
-        {
-            Card = card,
-            Location = excess,
-            NumCopies = excessSpace
-        };
-
-        _dbContext.Boxes.Attach(excess);
-        _dbContext.Amounts.Attach(excessCard);
-
-        await _dbContext.SaveChangesAsync();
-
-        _dbContext.ChangeTracker.Clear();
-    }
-
-
     [Fact]
     public async Task Exchange_NullDbContext_Throws()
     {
@@ -308,7 +227,7 @@ public class TreasuryHandlerTests : IAsyncLifetime
     {
         const int extraSpace = 15;
 
-        await AddExcessAsync(extraSpace);
+        await _testGen.AddExcessAsync(extraSpace);
 
         int oldAvailable = await _dbContext.Boxes
             .Where(b => !b.IsExcess)
@@ -350,7 +269,7 @@ public class TreasuryHandlerTests : IAsyncLifetime
     {
         const int extraSpace = 15;
 
-        await AddExcessAsync(extraSpace);
+        await _testGen.AddExcessAsync(extraSpace);
 
         int oldAvailable = await _dbContext.Boxes
             .Where(b => !b.IsExcess)
@@ -386,7 +305,7 @@ public class TreasuryHandlerTests : IAsyncLifetime
     {
         const int extraSpace = 15;
 
-        await AddExcessAsync(extraSpace);
+        await _testGen.AddExcessAsync(extraSpace);
 
         int oldAvailable = await _dbContext.Boxes
             .Where(b => !b.IsExcess)

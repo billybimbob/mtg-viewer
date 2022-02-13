@@ -2,12 +2,10 @@ using System.Linq;
 using System.Threading.Tasks;
 
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
 using Xunit;
 
-using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
 using MTGViewer.Pages.Transfers;
 using MTGViewer.Tests.Utils;
@@ -19,20 +17,20 @@ public class ReviewTests : IAsyncLifetime
 {
     private readonly ReviewModel _reviewModel;
     private readonly CardDbContext _dbContext;
-    private readonly UserManager<CardUser> _userManager;
+    private readonly PageContextFactory _pageFactory;
 
     private readonly TestDataGenerator _testGen;
-    private TradeSet _trades = null!;
+    private TradeSet _trades = default!;
 
     public ReviewTests(
         ReviewModel reviewModel,
         CardDbContext dbContext,
-        UserManager<CardUser> userManager,
+        PageContextFactory pageFactory,
         TestDataGenerator testGen)
     {
         _reviewModel = reviewModel;
         _dbContext = dbContext;
-        _userManager = userManager;
+        _pageFactory = pageFactory;
         _testGen = testGen;
     }
 
@@ -75,7 +73,7 @@ public class ReviewTests : IAsyncLifetime
         // Arrange
         var trade = await TradesInSet.Include(t => t.To).FirstAsync();
 
-        await _reviewModel.SetModelContextAsync(_userManager, trade.To.OwnerId);
+        await _pageFactory.AddModelContextAsync(_reviewModel, trade.To.OwnerId);
 
         // Act
         var fromBefore = await FromTarget(trade).SingleAsync();
@@ -95,7 +93,7 @@ public class ReviewTests : IAsyncLifetime
     public async Task OnPostAccept_InvalidTrade_NoChange()
     {            
         // Arrange
-        await _reviewModel.SetModelContextAsync(_userManager, _trades.Target.OwnerId);
+        await _pageFactory.AddModelContextAsync(_reviewModel, _trades.Target.OwnerId);
 
         var trade = await TradesInSet.FirstAsync();
         var wrongTradeId = 0;
@@ -121,7 +119,7 @@ public class ReviewTests : IAsyncLifetime
     public async Task OnPostAccept_ValidTrade_AmountsAndRequestsChanged(int amount)
     {
         // Arrange
-        await _reviewModel.SetModelContextAsync(_userManager, _trades.Target.OwnerId);
+        await _pageFactory.AddModelContextAsync(_reviewModel, _trades.Target.OwnerId);
 
         var trade = await TradesInSet.FirstAsync();
 
@@ -158,7 +156,7 @@ public class ReviewTests : IAsyncLifetime
     public async Task OnPostAccept_LackAmount_OnlyRemovesTrade()
     {
         // Arrange
-        await _reviewModel.SetModelContextAsync(_userManager, _trades.Target.OwnerId);
+        await _pageFactory.AddModelContextAsync(_reviewModel, _trades.Target.OwnerId);
 
         var trade = await TradesInSet.FirstAsync();
 
@@ -202,7 +200,7 @@ public class ReviewTests : IAsyncLifetime
         // Arrange
         var trade = await TradesInSet.Include(t => t.To).FirstAsync();
 
-        await _reviewModel.SetModelContextAsync(_userManager, trade.To.OwnerId);
+        await _pageFactory.AddModelContextAsync(_reviewModel, trade.To.OwnerId);
 
         var fromAmount = FromTarget(trade).Select(a => a.NumCopies);
 
@@ -225,7 +223,7 @@ public class ReviewTests : IAsyncLifetime
     public async Task OnPostReject_InvalidTrade_NoChange()
     {
         // Arrange
-        await _reviewModel.SetModelContextAsync(_userManager, _trades.Target.OwnerId);
+        await _pageFactory.AddModelContextAsync(_reviewModel, _trades.Target.OwnerId);
 
         var trade = await TradesInSet.AsNoTracking().FirstAsync();
         var wrongTradeId = 0;
@@ -251,7 +249,7 @@ public class ReviewTests : IAsyncLifetime
     public async Task OnPostReject_ValidTrade_RemovesTrade()
     {
         // Arrange
-        await _reviewModel.SetModelContextAsync(_userManager, _trades.Target.OwnerId);
+        await _pageFactory.AddModelContextAsync(_reviewModel, _trades.Target.OwnerId);
 
         var trade = await TradesInSet.AsNoTracking().FirstAsync();
 

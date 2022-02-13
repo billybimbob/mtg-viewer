@@ -2,12 +2,10 @@ using System.Linq;
 using System.Threading.Tasks;
 
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
 using Xunit;
 
-using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
 using MTGViewer.Pages.Transfers;
 using MTGViewer.Tests.Utils;
@@ -19,18 +17,18 @@ public class IndexTests : IAsyncLifetime
 {
     private readonly IndexModel _indexModel;
     private readonly CardDbContext _dbContext;
-    private readonly UserManager<CardUser> _userManager;
+    private readonly PageContextFactory _pageFactory;
     private readonly TestDataGenerator _testGen;
 
     public IndexTests(
         IndexModel indexModel,
         CardDbContext dbContext,
-        UserManager<CardUser> userManager,
+        PageContextFactory pageFactory,
         TestDataGenerator testGen)
     {
         _indexModel = indexModel;
         _dbContext = dbContext;
-        _userManager = userManager;
+        _pageFactory = pageFactory;
         _testGen = testGen;
     }
 
@@ -53,7 +51,7 @@ public class IndexTests : IAsyncLifetime
         // Arrange
         var suggestion = await AllSuggestions.FirstAsync();
 
-        await _indexModel.SetModelContextAsync(_userManager, suggestion.ReceiverId);
+        await _pageFactory.AddModelContextAsync(_indexModel, suggestion.ReceiverId);
 
         // Act
         var result = await _indexModel.OnPostAsync(suggestion.Id, default);
@@ -75,7 +73,7 @@ public class IndexTests : IAsyncLifetime
             .Select(u => u.Id)
             .FirstAsync(uid => uid != suggestion.ReceiverId);
 
-        await _indexModel.SetModelContextAsync(_userManager, wrongUser);
+        await _pageFactory.AddModelContextAsync(_indexModel, wrongUser);
 
         // Act
         var result = await _indexModel.OnPostAsync(suggestion.Id, default);
@@ -94,7 +92,7 @@ public class IndexTests : IAsyncLifetime
         var suggestion = await AllSuggestions.FirstAsync();
         var invalidSuggestId = 0;
 
-        await _indexModel.SetModelContextAsync(_userManager, suggestion.ReceiverId);
+        await _pageFactory.AddModelContextAsync(_indexModel, suggestion.ReceiverId);
 
         // Act
         var suggestsBefore = await AllSuggestions.Select(t => t.Id).ToListAsync();

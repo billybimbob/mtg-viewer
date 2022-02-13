@@ -3,8 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Options;
 
-using Microsoft.Extensions.Configuration;
 using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
 using MTGViewer.Services.Internal;
@@ -12,30 +12,28 @@ using MTGViewer.Services.Internal;
 namespace MTGViewer.Services;
 
 
-internal class SeedSettings
+public class SeedSettings
 {
-    public int Value { get; set; } = 100;
-    public string Password { get; set; } = string.Empty;
+    public int Seed { get; set; } = 100;
+    public string JsonPath { get; set; } = "cards.json";
+    public string? Password { get; set; }
 }
 
 
 public class CardDataGenerator
 {
     private readonly Random _random;
-    private readonly MTGFetchService _fetch;
+    private readonly IMTGQuery _mtgQuery;
     private readonly BulkOperations _bulkOperations;
 
 
     public CardDataGenerator(
-        IConfiguration config,
-        MTGFetchService fetchService,
+        IOptions<SeedSettings> seedOptions,
+        IMTGQuery mtgQuery,
         BulkOperations bulkOperations)
     {
-        var seed = new SeedSettings();
-        config.GetSection(nameof(SeedSettings)).Bind(seed);
-
-        _random = new(seed.Value);
-        _fetch = fetchService;
+        _random = new Random(seedOptions.Value.Seed);
+        _mtgQuery = mtgQuery;
         _bulkOperations = bulkOperations;
     }
 
@@ -45,7 +43,7 @@ public class CardDataGenerator
         var users = GetUsers();
         var userRefs = users.Select(u => new UserRef(u)).ToList();
 
-        var cards = await GetCardsAsync(_fetch, cancel);
+        var cards = await GetCardsAsync(cancel);
         var decks = GetDecks(userRefs);
         var bin = GetBin();
 
@@ -101,14 +99,12 @@ public class CardDataGenerator
     };
 
 
-    private async Task<IReadOnlyList<Card>> GetCardsAsync(MTGFetchService fetchService, CancellationToken cancel)
+    private async Task<IReadOnlyList<Card>> GetCardsAsync(CancellationToken cancel)
     {
-        var cards = await fetchService
-            .Where(c => c.Cmc, 3)
-            .Where(c => c.PageSize, 20)
-            .SearchAsync();
-
-        cancel.ThrowIfCancellationRequested();
+        var cards = await _mtgQuery
+            .Where(c => c.Cmc == 3)
+            .Where(c => c.PageSize == 20)
+            .SearchAsync(cancel);
 
         return cards;
     }

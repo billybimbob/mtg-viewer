@@ -1,10 +1,9 @@
-using System;
 using System.Collections;
 using System.Collections.Generic;
 
-namespace MTGViewer.Data;
+namespace System.Paging;
 
-public readonly record struct Pages(int Current, int Total)
+public readonly record struct Offset(int Current, int Total)
 {
     private readonly int _current = Math.Max(Current, 0);
     private readonly int _total = Math.Max(Total, 0);
@@ -26,7 +25,7 @@ public readonly record struct Pages(int Current, int Total)
     public bool HasNext => Current < Total - 1;
     public bool HasMultiple => Total > 1;
 
-    public Pages(int currentPage, int totalItems, int pageSize) 
+    public Offset(int currentPage, int totalItems, int pageSize) 
         : this(currentPage, TotalPages(totalItems, pageSize))
     { }
 
@@ -46,27 +45,24 @@ public readonly record struct Pages(int Current, int Total)
 
 
 
-public class PagedList<T> : IReadOnlyList<T>
+public class OffsetList<T> : IReadOnlyList<T>
 {
-    private static readonly Lazy<PagedList<T>> _empty = new(() => 
-        new PagedList<T>(default, Array.Empty<T>()) );
+    private static readonly OffsetList<T> _empty = new(default, Array.Empty<T>());
 
     private readonly IList<T> _items;
 
-    public PagedList(Pages pages, IList<T> items)
+    public OffsetList(Offset offset, IList<T> items)
     {
         if (items is null)
         {
-            throw new ArgumentNullException("Items is null");
+            throw new ArgumentNullException(nameof(items));
         }
 
-        Pages = pages;
+        Offset = offset;
         _items = items;
     }
 
-    public static PagedList<T> Empty => _empty.Value;
-
-    public Pages Pages { get; }
+    public Offset Offset { get; }
 
     public int Count => _items.Count;
 
@@ -76,4 +72,6 @@ public class PagedList<T> : IReadOnlyList<T>
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
     public IEnumerator<T> GetEnumerator() => _items.GetEnumerator();
+
+    public static OffsetList<T> Empty() => _empty;
 }

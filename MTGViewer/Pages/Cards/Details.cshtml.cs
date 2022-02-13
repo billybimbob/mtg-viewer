@@ -23,7 +23,7 @@ public class DetailsModel : PageModel
     }
 
 
-    public Card Card { get; private set; } = null!;
+    public Card Card { get; private set; } = default!;
 
     public IReadOnlyList<Card> CardAlts { get; private set; } = Array.Empty<Card>();
 

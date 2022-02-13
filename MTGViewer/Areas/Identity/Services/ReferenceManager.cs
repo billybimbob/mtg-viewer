@@ -1,33 +1,56 @@
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Security.Claims;
+
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
-using MTGViewer.Data;
 using MTGViewer.Areas.Identity.Data;
+using MTGViewer.Data;
+using MTGViewer.Services;
 
 namespace MTGViewer.Areas.Identity.Services;
 
 public class ReferenceManager
 {
     private readonly CardDbContext _dbContext;
+    private readonly UserManager<CardUser> _userManager;
+    private readonly BulkOperations _bulkOperations;
     private readonly ILogger<ReferenceManager> _logger;
 
-    public ReferenceManager(CardDbContext dbContext, ILogger<ReferenceManager> logger)
+    public ReferenceManager(
+        CardDbContext dbContext,
+        UserManager<CardUser> userManager,
+        BulkOperations bulkOperations,
+        ILogger<ReferenceManager> logger)
     {
         _dbContext = dbContext;
+        _userManager = userManager;
+        _bulkOperations = bulkOperations;
         _logger = logger;
     }
 
 
+    public IQueryable<UserRef> References =>
+        _dbContext.Users.AsNoTrackingWithIdentityResolution();
+
+
     public async Task<bool> CreateReferenceAsync(CardUser user, CancellationToken cancel = default)
     {
-        var reference = await _dbContext.Users
-            .AsNoTracking()
-            .SingleOrDefaultAsync(u => u.Id == user.Id, cancel);
+        bool validUser = await _userManager.Users
+            .AnyAsync(u => u.Id == user.Id, cancel);
 
-        if (reference is not null)
+        if (!validUser)
+        {
+            return false;
+        }
+
+        bool existing = await _dbContext.Users
+            .AnyAsync(u => u.Id == user.Id, cancel);
+
+        if (existing)
         {
             return false;
         }
@@ -49,6 +72,14 @@ public class ReferenceManager
 
     public async Task<bool> UpdateReferenceAsync(CardUser user, CancellationToken cancel = default)
     {
+        bool validUser = await _userManager.Users
+            .AnyAsync(u => u.Id == user.Id, cancel);
+
+        if (!validUser)
+        {
+            return false;
+        }
+
         var reference = await _dbContext.Users
             .SingleOrDefaultAsync(u => u.Id == user.Id, cancel);
 
@@ -81,6 +112,14 @@ public class ReferenceManager
 
     public async Task<bool> DeleteReferenceAsync(CardUser user, CancellationToken cancel = default)
     {
+        bool validUser = await _userManager.Users
+            .AnyAsync(u => u.Id == user.Id, cancel);
+
+        if (validUser)
+        {
+            return false;
+        }
+
         var reference = await _dbContext.Users
             .SingleOrDefaultAsync(u => u.Id == user.Id, cancel);
 
@@ -111,6 +150,7 @@ public class ReferenceManager
         var userDecks = await _dbContext.Decks
             .Where(d => d.OwnerId == reference.Id)
             .Include(d => d.Cards)
+                .ThenInclude(a => a.Card)
             .ToListAsync(cancel);
 
         if (!userDecks.Any())
@@ -132,5 +172,42 @@ public class ReferenceManager
                     new CardRequest(card, amounts.Sum(a => a.NumCopies)) );
 
         await _dbContext.AddCardsAsync(returnRequests, cancel);
+    }
+
+
+    public async Task ApplyResetAsync(CancellationToken cancel = default)
+    {
+        var transaction = await _dbContext.Database.BeginTransactionAsync(cancel);
+
+        await _bulkOperations.ResetAsync(cancel);
+
+        var usersResetting = await _dbContext.Users
+            .Where(u => u.ResetRequested)
+            .ToListAsync(cancel);
+
+        var resettingIds = usersResetting
+            .Select(u => u.Id)
+            .ToArray();
+
+        var cardUsers = await _userManager.Users
+            .Where(u => resettingIds.Contains(u.Id))
+            .ToListAsync(cancel);
+
+        foreach (var cardUser in cardUsers)
+        {
+            await _userManager.AddClaimAsync(
+                cardUser, new Claim(CardClaims.ChangeTreasury, cardUser.Id));
+        }
+
+        foreach (var reference in usersResetting)
+        {
+            reference.ResetRequested = false;
+        }
+
+        // intentionally don't pass cancel token
+
+        await _dbContext.SaveChangesAsync();
+
+        await transaction.CommitAsync();
     }
 }

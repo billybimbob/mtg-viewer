@@ -4,9 +4,11 @@
     ViewData["Title"] = $"{Model.Box.Name} - Details";
 }
 
+@using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Identity
 @using MTGViewer.Areas.Identity.Data
 
+@inject IAuthorizationService AuthorizationService
 @inject SignInManager<CardUser> SignInManager
 
 
@@ -14,14 +16,25 @@
 
 @if (SignInManager.IsSignedIn(User))
 {
-    <div class="btn-group mb-3" role="group">
-        <a href="/Treasury/Adjust/@Model.Box.Id"
-            class="btn btn-secondary" role="button">
-            Edit </a>
+    bool canChangeTreasury = (await AuthorizationService
+        .AuthorizeAsync(User, CardPolicies.ChangeTreasury)).Succeeded; 
 
-        <a asp-page="Delete" asp-route-id="@Model.Box.Id"
-            class="btn btn-danger" role="alert">
-            Delete </a>
+    <div class="btn-group mb-3" role="group">
+        @if (canChangeTreasury)
+        {
+            <a href="/Treasury/Adjust/@Model.Box.Id"
+                class="btn btn-secondary" role="button">
+                Edit </a>
+
+            <a asp-page="Delete" asp-route-id="@Model.Box.Id"
+                class="btn btn-danger" role="alert">
+                Delete </a>
+        }
+        else
+        {
+            <button class="btn btn-secondary" type="button" disabled> Edit </button>
+            <button class="btn btn-danger" type="button" disabled> Delete </button>
+        }
     </div>
 }
 

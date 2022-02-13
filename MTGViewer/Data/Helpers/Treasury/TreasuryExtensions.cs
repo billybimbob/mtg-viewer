@@ -120,6 +120,9 @@ public static partial class TreasuryExtensions
             .Select(cr => cr.Card)
             .Where(c => dbContext.Entry(c).State is EntityState.Detached);
 
+        // by default treats detached cards as existing
+        // new vs existing cards should be handled outside of this function
+
         dbContext.Cards.AttachRange(detachedCards);
     }
 
@@ -256,7 +259,7 @@ public static partial class TreasuryExtensions
             .Entries<Box>()
             .All(e => e.State is EntityState.Detached
                 || e.State is not EntityState.Added
-                && !e.Property(b => b.Capacity).IsModified);
+                    && !e.Property(b => b.Capacity).IsModified);
     }
 
 
@@ -266,7 +269,7 @@ public static partial class TreasuryExtensions
             .Entries<Amount>()
             .All(e => e.State is EntityState.Detached
                 || e.State is not EntityState.Added
-                && !e.Property(a => a.NumCopies).IsModified);
+                    && !e.Property(a => a.NumCopies).IsModified);
     }
 
 

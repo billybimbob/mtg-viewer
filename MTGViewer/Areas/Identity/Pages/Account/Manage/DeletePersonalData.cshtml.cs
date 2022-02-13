@@ -1,10 +1,12 @@
 using System.ComponentModel.DataAnnotations;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 using MTGViewer.Areas.Identity.Data;
@@ -40,7 +42,7 @@ public class DeletePersonalDataModel : PageModel
     {
         [Required]
         [DataType(DataType.Password)]
-        public string Password { get; set; } = null!;
+        public string Password { get; set; } = default!;
     }
 
     public bool RequirePassword { get; set; }
@@ -83,6 +85,12 @@ public class DeletePersonalDataModel : PageModel
             }
         }
 
+        bool resetCheckPassed = await CheckAndApplyResetAsync(user.Id, cancel);
+        if (!resetCheckPassed)
+        {
+            return Page();
+        }
+
         bool referenceDeleted = await _referenceManager.DeleteReferenceAsync(user, cancel);
         if (!referenceDeleted)
         {
@@ -100,8 +108,36 @@ public class DeletePersonalDataModel : PageModel
         var userId = await _userManager.GetUserIdAsync(user);
         await _signInManager.SignOutAsync();
 
-        _logger.LogInformation("User with ID '{UserId}' deleted themselves.", userId);
+        _logger.LogInformation("User with ID '{userId}' deleted themselves.", userId);
 
         return Redirect("~/");
+    }
+
+
+    private async Task<bool> CheckAndApplyResetAsync(string userId, CancellationToken cancel)
+    {
+        bool allRequested = await _referenceManager.References
+            .Where(u => u.Id != userId)
+            .AllAsync(u => u.ResetRequested);
+
+        if (!allRequested)
+        {
+            return true;
+        }
+
+        try
+        {
+            await _referenceManager.ApplyResetAsync(cancel);
+
+            return true;
+        }
+        catch (DbUpdateException e)
+        {
+            _logger.LogError(e.ToString());
+
+            ModelState.AddModelError(string.Empty, "Ran into issue applying delete");
+
+            return false;
+        }
     }
 }

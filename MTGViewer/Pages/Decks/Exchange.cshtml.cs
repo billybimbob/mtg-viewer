@@ -20,6 +20,7 @@ namespace MTGViewer.Pages.Decks;
 
 
 [Authorize]
+[Authorize(CardPolicies.ChangeTreasury)]
 public class ExchangeModel : PageModel
 {
     private readonly CardDbContext _dbContext;
@@ -45,7 +46,7 @@ public class ExchangeModel : PageModel
     [TempData]
     public string? PostMessage { get; set; }
 
-    public Deck Deck { get; private set; } = null!;
+    public Deck Deck { get; private set; } = default!;
     
     public bool HasPendings { get; private set; }
 
@@ -117,10 +118,7 @@ public class ExchangeModel : PageModel
             .ToArray();
 
         return _dbContext.Amounts
-            .Where(a => a.Location is Box 
-                && a.LocationId != deck.Id
-                && a.NumCopies > 0
-                && wantNames.Contains(a.Card.Name))
+            .Where(a => a.Location is Box && wantNames.Contains(a.Card.Name))
             .AnyAsync(cancel);
     }
 

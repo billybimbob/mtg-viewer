@@ -7,28 +7,29 @@ namespace MTGViewer.Data;
 
 // adding annotations for validator
 
-[Index(nameof(Name))]
+[Index(nameof(Name), nameof(SetName), nameof(Id))]
+[Index(nameof(MultiverseId))]
 public class Card
 {
-    [Required]
-    public string Id { get; init; } = null!;
+    [Key]
+    public string Id { get; init; } = default!;
 
     [Required]
     [Display(Name = "Multiverse Id")]
-    public string MultiverseId { get; init; } = null!;
+    public string MultiverseId { get; init; } = default!;
 
 
     [Required]
-    public string Name { get; init; } = null!;
+    public string Name { get; init; } = default!;
 
     public List<Name> Names { get; init; } = new();
 
     [Required]
-    public string Layout { get; init; } = null!;
+    public string Layout { get; init; } = default!;
 
 
     [Display(Name = "Mana Cost")]
-    public string? ManaCost { get; init; } = null!;
+    public string? ManaCost { get; init; } = default!;
 
     [Display(Name = "Converted Mana Cost")]
     [Range(0f, 1_000_000f)]
@@ -45,14 +46,14 @@ public class Card
 
 
     [Required]
-    public string Rarity { get; init; } = null!;
+    public Rarity Rarity { get; init; }
 
     [Display(Name = "Set Name")]
     [Required]
-    public string SetName { get; init; } = null!;
+    public string SetName { get; init; } = default!;
 
     [Required]
-    public string Artist { get; init; } = null!;
+    public string Artist { get; init; } = default!;
 
 
     public string? Text { get; init; }
@@ -69,13 +70,16 @@ public class Card
     [Required]
     [Display(Name = "Image")]
     [Url]
-    public string ImageUrl { get; init; } = null!;
+    public string ImageUrl { get; init; } = default!;
 
     [JsonIgnore]
     public List<Amount> Amounts { get; } = new();
 
     [JsonIgnore]
     public List<Want> Wants { get; } = new();
+
+    [JsonIgnore]
+    public List<Suggestion> Suggestions { get; } = new();
 
 
     public bool IsValid()

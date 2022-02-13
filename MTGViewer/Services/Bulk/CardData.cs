@@ -12,14 +12,6 @@ using MTGViewer.Data;
 namespace MTGViewer.Services.Internal;
 
 
-public enum DataScope
-{
-    Default,
-    Full,
-    Paged,
-}
-
-
 public sealed class CardData
 {
     public IReadOnlyList<CardUser> Users { get; set; } = Array.Empty<CardUser>();
@@ -54,7 +46,7 @@ public sealed class CardStream
     public IAsyncEnumerable<Suggestion> Suggestions { get; set; } = AsyncEnumerable.Empty<Suggestion>();
 
 
-    public static CardStream Create(CardDbContext dbContext)
+    public static CardStream Default(CardDbContext dbContext)
     {
         if (dbContext is null)
         {
@@ -76,6 +68,7 @@ public sealed class CardStream
             Decks = dbContext.Decks
                 .Include(d => d.Cards)
                 .Include(d => d.Wants)
+                .Include(d => d.GiveBacks)
 
                 .OrderBy(d => d.Id)
                 .AsSplitQuery()
@@ -95,58 +88,85 @@ public sealed class CardStream
 
                 .OrderBy(b => b.Id)
                 .AsSplitQuery()
+                .AsAsyncEnumerable(),
+
+            Transactions = dbContext.Transactions
+                .Include(t => t.Changes)
+                .OrderBy(t => t.Id)
+                .AsAsyncEnumerable(),
+
+            Suggestions = dbContext.Suggestions
+                .OrderBy(s => s.Id)
                 .AsAsyncEnumerable()
         };
     }
 
 
-    public static CardStream Create(
-        CardDbContext dbContext,
-        int pageSize,
-        int? page = default)
+    public static CardStream User(CardDbContext dbContext, string userId)
     {
         if (dbContext is null)
         {
             throw new ArgumentNullException(nameof(dbContext));
         }
 
-        if (pageSize < 0)
+        if (userId is null)
         {
-            throw new ArgumentException(nameof(pageSize));
+            throw new ArgumentNullException(nameof(userId));
         }
-
-        if (page < 0)
-        {
-            throw new ArgumentException(nameof(page));
-        }
-
-        int skip = (page ?? 0) * pageSize;
 
         return new CardStream
         {
             Cards = dbContext.Cards
+                .Where(c =>
+                    c.Amounts
+                        .Any(a => a.Location is Deck
+                            && (a.Location as Deck)!.OwnerId == userId)
+                    || c.Wants
+                        .Any(w => w.Location is Deck
+                            && (w.Location as Deck)!.OwnerId == userId)
+                    || c.Suggestions
+                        .Any(s => s.ReceiverId == userId))
+
                 .Include(c => c.Colors)
                 .Include(c => c.Types)
                 .Include(c => c.Subtypes)
                 .Include(c => c.Supertypes)
 
-                .Skip(skip)
-                .Take(pageSize)
                 .OrderBy(c => c.Id)
-
                 .AsSplitQuery()
                 .AsAsyncEnumerable(),
 
             Decks = dbContext.Decks
-                // keep eye on, paging does not account for
-                // the variable amount of Quantity entries
+                .Where(d => d.OwnerId == userId)
                 .Include(d => d.Cards)
                 .Include(d => d.Wants)
 
-                .Skip(skip)
-                .Take(pageSize)
                 .OrderBy(d => d.Id)
+                .AsSplitQuery()
+                .AsAsyncEnumerable()
+        };
+    }
 
+
+    public static CardStream Treasury(CardDbContext dbContext)
+    {
+        if (dbContext is null)
+        {
+            throw new ArgumentNullException(nameof(dbContext));
+        }
+
+        return new CardStream
+        {
+            Cards = dbContext.Cards
+                .Where(c => c.Amounts
+                    .Any(a => a.Location is Box || a.Location is Unclaimed))
+
+                .Include(c => c.Colors)
+                .Include(c => c.Types)
+                .Include(c => c.Subtypes)
+                .Include(c => c.Supertypes)
+
+                .OrderBy(c => c.Id)
                 .AsSplitQuery()
                 .AsAsyncEnumerable(),
 
@@ -154,10 +174,7 @@ public sealed class CardStream
                 .Include(u => u.Cards)
                 .Include(u => u.Wants)
 
-                .Skip(skip)
-                .Take(pageSize)
                 .OrderBy(u => u.Id)
-
                 .AsSplitQuery()
                 .AsAsyncEnumerable(),
 
@@ -168,19 +185,14 @@ public sealed class CardStream
                 .Include(b => b.Boxes)
                     .ThenInclude(b => b.Cards)
 
-                .Skip(skip)
-                .Take(pageSize)
                 .OrderBy(b => b.Id)
-
                 .AsSplitQuery()
                 .AsAsyncEnumerable()
         };
     }
 
 
-    public static CardStream Create(
-        CardDbContext dbContext,
-        UserManager<CardUser> userManager)
+    public static CardStream All(CardDbContext dbContext, UserManager<CardUser> userManager)
     {
         if (dbContext is null)
         {
@@ -246,37 +258,5 @@ public sealed class CardStream
                 .OrderBy(s => s.Id)
                 .AsAsyncEnumerable()
         };
-    }
-
-
-    public static async IAsyncEnumerable<int> DbSetCounts(
-        CardDbContext dbContext,
-        [System.Runtime.CompilerServices.EnumeratorCancellation]
-        CancellationToken cancel = default)
-    {
-        if (dbContext is null)
-        {
-            throw new ArgumentNullException(nameof(dbContext));
-        }
-
-        yield return await dbContext.Users
-            .CountAsync(cancel)
-            .ConfigureAwait(false);
-
-        yield return await dbContext.Cards
-            .CountAsync(cancel)
-            .ConfigureAwait(false);
-
-        yield return await dbContext.Decks
-            .CountAsync(cancel)
-            .ConfigureAwait(false);
-
-        yield return await dbContext.Unclaimed
-            .CountAsync(cancel)
-            .ConfigureAwait(false);
-
-        yield return await dbContext.Bins
-            .CountAsync(cancel)
-            .ConfigureAwait(false);
     }
 }

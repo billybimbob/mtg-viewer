@@ -1,22 +1,14 @@
 @page "/Cards/Create"
-@attribute [Authorize]
 @inherits OwningComponentBase
-
-@using Microsoft.Extensions.DependencyInjection
-@using MTGViewer.Data.Internal
-
-@inject IDbContextFactory<CardDbContext> DbFactory
-
 @inject SymbolFormatter MtgSymbols
-@inject PageSizes PageSizes
-@inject ILogger<Create> Logger
+@using MTGViewer.Data.Internal
 
 
 <PageTitle> Add Cards </PageTitle>
 
 <h1>Add New Card(s)</h1>
 
-<SavePrompt @bind-Result="_result">
+<SavePrompt @bind-Result="Result">
     <SuccessMessage>
         New cards were successfully added.
     </SuccessMessage>
@@ -120,7 +112,7 @@
                     }
 
                     <div class="form-check mt-2 ml-2">
-                        <InputCheckbox @bind-Value="_search.IsMultiColored"
+                        <InputCheckbox @bind-Value="IsMultiColored"
                             class="form-check-input" id="@nameof(CardSearch.IsMultiColored)" />
 
                         <label class="form-check-label" for="@nameof(CardSearch.IsMultiColored)">
@@ -154,9 +146,8 @@
                 </div>
 
                 <div class="row form-group">
-                    @for (int i = 0; i < Rarity.Values.Count; ++i)
+                    @foreach (var rarity in Enum.GetNames<Rarity>())
                     {
-                        var rarity = Rarity.Values[i];
                         var toggleId = $"{rarity}-toggle";
 
                         <div class="col-6">
@@ -242,7 +233,7 @@ else
     <div class="row align-items-center my-3">
 
         <div class="col-12 col-md-4">
-            <input class="form-control" placeholder="Name" @bind="_search.MatchName" />
+            <input class="form-control" placeholder="Name" @bind="MatchName" />
         </div>
 
         <div class="col-auto btn-group pt-2 pt-md-0" role="group" aria-label="Color Buttons">
@@ -319,423 +310,15 @@ else
 
 @code
 {
-    public CardQuery Query => _search.Query;
-
-    public bool IsBusy => _isBusy;
-    public bool HasNoNext => !_matchPage.HasNext;
-
-    public IReadOnlyList<MatchInput> Matches => _matches;
-
-    public bool CannotAdd() =>
-        !_matches.Any() || _matches.All(m => m.NumCopies == 0);
-
-
-    private readonly CancellationTokenSource _cancel = new();
-    private bool _isBusy;
-    private SaveResult _result;
-
-    private readonly CardSearch _search = new();
-    private EditContext? _searchEdit;
-    private ValidationMessageStore? _resultErrors;
-
-    private readonly List<MatchInput> _matches = new();
-    private Pages _matchPage;
-
-
-    private sealed class CardSearch
-    {
-        public CardQuery Query { get; } = new();
-
-        public HashSet<string> PickedRarities { get; } = new(StringComparer.OrdinalIgnoreCase);
-
-        public HashSet<string> PickedColors { get; } = new(StringComparer.OrdinalIgnoreCase);
-
-        public bool IsMultiColored { get; set; }
-
-        public string? MatchName { get; set; }
-    }
-
-
-    public sealed class MatchInput
-    {
-        private readonly int _limit;
-        private int _numCopies;
-
-        public MatchInput(Card card, int limit)
-        {
-            Card = card;
-            _limit = limit;
-        }
-
-        public Card Card { get; }
-
-        public int NumCopies
-        {
-            get => _numCopies;
-            set
-            {
-                if (value >= 0 && value <= _limit)
-                {
-                    _numCopies = value;
-                }
-            }
-        }
-    }
-
-
-    protected override void OnInitialized()
-    {
-        _searchEdit = new(_search.Query);
-        _resultErrors = new(_searchEdit);
-
-        Reset();
-
-        _searchEdit.OnValidationRequested += ClearErrors;
-        _searchEdit.OnFieldChanged += ClearErrors;
-    }
-
-
-    protected override void Dispose(bool disposing)
-    {
-        if (disposing)
-        {
-            if (_searchEdit is not null)
-            {
-                _searchEdit.OnValidationRequested -= ClearErrors;
-                _searchEdit.OnFieldChanged -= ClearErrors;
-            }
-
-            _cancel.Cancel();
-            _cancel.Dispose();
-        }
-
-        base.Dispose(disposing);
-    }
-    
-
-
-    public string DisplayName<T>(Expression<Func<Card, T>> property) =>
+    public static string DisplayName<T>(Expression<Func<Card, T>> property) =>
         EntityExtensions.DisplayName(property);
 
     public string ActiveColor(string color) =>
-        _search.PickedColors.Contains(color) ? "active" : string.Empty;
+        PickedColors.Contains(color) ? "active" : string.Empty;
 
     public bool IsRaritySelected(string rarity) =>
-        _search.PickedRarities.Contains(rarity);
+        PickedRarities.Contains(rarity);
 
-
-
-    private void ClearErrors(object? sender, ValidationRequestedEventArgs args)
-    {
-        if (_searchEdit is null || _resultErrors is null)
-        {
-            return;
-        }
-
-        _resultErrors.Clear();
-        _searchEdit.NotifyValidationStateChanged();
-    }
-
-
-    private void ClearErrors(object? sender, FieldChangedEventArgs args)
-    {
-        if (_searchEdit is null || _resultErrors is null)
-        {
-            return;
-        }
-
-        var idField = _searchEdit.Field(nameof(CardQuery.Id));
-
-        _resultErrors.Clear(idField);
-        _resultErrors.Clear(args.FieldIdentifier);
-
-        _searchEdit.NotifyValidationStateChanged();
-    }
-
-
-    private void NoMatchError()
-    {
-        if (_searchEdit is null || _resultErrors is null)
-        {
-            return;
-        }
-
-        var idField = _searchEdit.Field(nameof(CardQuery.Id));
-        var noMatch = new []{ "No matches were found" };
-
-        _resultErrors.Add(idField, noMatch);
-        _searchEdit.NotifyValidationStateChanged();
-    }
-
-
-    public void ColorToggle(string color)
-    {
-        if (_searchEdit is null)
-        {
-            return;
-        }
-
-        var pickedColors = _search.PickedColors;
-        var colorField = _searchEdit.Field(nameof(CardQuery.Colors));
-
-        if (pickedColors.Contains(color))
-        {
-            pickedColors.Remove(color);
-        }
-        else
-        {
-            pickedColors.Add(color);
-        }
-
-        _searchEdit.NotifyFieldChanged(colorField);
-    }
-
-
-    public void RarityToggle(string rarity)
-    {
-        var pickedRarities = _search.PickedRarities;
-
-        if (pickedRarities.Contains(rarity))
-        {
-            pickedRarities.Remove(rarity);
-        }
-        else
-        {
-            pickedRarities.Add(rarity);
-        }
-    }
-
-
-    public async Task SearchForCardAsync()
-    {
-        if (_isBusy || (_matchPage != default && !_matchPage.HasNext))
-        {
-            return;
-        }
-
-        _result = SaveResult.None;
-        _isBusy = true;
-
-        try
-        {
-            PrepareSearch(_search, _matchPage);
-
-            var cancelToken = _cancel.Token;
-            var limit = PageSizes.Limit;
-
-            var fetch = ScopedServices.GetRequiredService<MTGFetchService>();
-
-            var result = await fetch
-                .Where(_search.Query)
-                .SearchAsync();
-
-            cancelToken.ThrowIfCancellationRequested();
-
-            _matches.AddRange(
-                result.Select(c => new MatchInput(c, limit)));
-
-            _matchPage = result.Pages;
-
-            if (!_matches.Any())
-            {
-                NoMatchError();
-            }
-        }
-        catch (OperationCanceledException ex)
-        {
-            Logger.LogError(ex.ToString());
-        }
-        finally
-        {
-            _isBusy = false;
-        }
-    }
-
-
-    private static void PrepareSearch(CardSearch search, Data.Pages matchPage)
-    {
-        var query = search.Query;
-        var colorJoin = search.IsMultiColored ? MTGFetchService.And : MTGFetchService.Or;
-
-        query.Colors = string.Join(colorJoin, search.PickedColors);
-        query.Rarity = string.Join(MTGFetchService.Or, search.PickedRarities);
-
-        query.Page = matchPage == default ? 0 : matchPage.Current + 1;
-    }
-
-
-    private bool MatchPassesFilters(MatchInput match)
-    {
-        const StringComparison ignoreCase = StringComparison.CurrentCultureIgnoreCase;
-
-        string? matchName = _search.MatchName;
-        var pickedColors = _search.PickedColors;
-
-        var card = match.Card;
-        var cardColors = card.Colors.Select(c => c.Name);
-
-        bool nameMatches = string.IsNullOrWhiteSpace(matchName) 
-            || card.Name.Contains(matchName, ignoreCase);
-
-        bool colorMatches = !pickedColors.Any() 
-            || pickedColors.Overlaps(cardColors);
-
-        return nameMatches && colorMatches;
-    }
-
-
-    public void Reset()
-    {
-        if (_isBusy || _searchEdit is null)
-        {
-            return;
-        }
-
-        _matches.Clear();
-        _matchPage = default;
-
-        var query = _search.Query;
-
-        _search.PickedColors.Clear();
-        _search.PickedRarities.Clear();
-
-        // TODO: use reflection to reset
-
-        query.Name = default;
-        query.Cmc = default;
-        query.Colors = default;
-        query.Rarity = default;
-        query.SetName = default;
-
-        query.Supertypes = default;
-        query.Types = default;
-        query.Subtypes = default;
-
-        query.Artist = default;
-        query.Power = default;
-        query.Toughness = default;
-        query.Loyalty = default;
-
-        query.PageSize = PageSizes.GetComponentSize<Create>();
-
-        // force data validation, might be inefficient
-        _searchEdit.Validate();
-    }
-
-
-    public async Task AddNewCardsAsync()
-    {
-        if (_isBusy)
-        {
-            return;
-        }
-
-        var addedAmounts = _matches
-            .Where(m => m.NumCopies > 0 && m.NumCopies <= PageSizes.Limit)
-            .Select(m => new CardRequest(m.Card, m.NumCopies))
-            .ToList();
-
-        if (!addedAmounts.Any())
-        {
-            return;
-        }
-
-        _result = SaveResult.None;
-        _isBusy = true;
-
-        try
-        {
-            var cancelToken = _cancel.Token;
-
-            await using var dbContext = await DbFactory.CreateDbContextAsync(cancelToken);
-
-            await AddNewCardsAsync(dbContext, addedAmounts, PageSizes.Limit, cancelToken);
-
-            await dbContext.AddCardsAsync(addedAmounts, cancelToken);
-
-            await dbContext.SaveChangesAsync(cancelToken);
-
-            _result = SaveResult.Success;
-        }
-        catch (DbUpdateException e)
-        {
-            Logger.LogError($"failed to add new cards {e}");
-
-            _result = SaveResult.Error;
-        }
-        catch (InvalidOperationException e)
-        {
-            Logger.LogError($"failed to add new cards {e}");
-
-            _result = SaveResult.Error;
-        }
-        catch (OperationCanceledException e)
-        {
-            Logger.LogError($"cancel error: {e}");
-
-            _result = SaveResult.Error;
-        }
-        finally
-        {
-            _isBusy = false;
-
-            Reset();
-        }
-    }
-
-
-    private static async Task AddNewCardsAsync(
-        CardDbContext dbContext,
-        IReadOnlyList<CardRequest> requests,
-        int limit,
-        CancellationToken cancel)
-    {
-        var requestCards = requests
-            .Select(cr => cr.Card)
-            .ToList();
-
-        var existingIds = await ExistingCardIdsAsync(dbContext, requestCards, limit, cancel);
-
-        var existingCards = requestCards
-            .IntersectBy(existingIds, c => c.Id);
-
-        var newCards = requestCards
-            .ExceptBy(existingIds, c => c.Id);
-
-        dbContext.Cards.AttachRange(existingCards);
-        dbContext.Cards.AddRange(newCards);
-    }
-
-
-    private static Task<List<string>> ExistingCardIdsAsync(
-        CardDbContext dbContext,
-        IReadOnlyList<Card> cards,
-        int limit,
-        CancellationToken cancel)
-    {
-        if (cards.Count > limit)
-        {
-            var cardIds = cards
-                .Select(c => c.Id)
-                .ToAsyncEnumerable();
-
-            return dbContext.Cards
-                .Select(c => c.Id)
-                .AsAsyncEnumerable()
-                .Intersect(cardIds)
-                .ToListAsync(cancel)
-                .AsTask();
-        }
-        else
-        {
-            var cardIds = cards
-                .Select(c => c.Id)
-                .ToArray();
-
-            return dbContext.Cards
-                .Select(c => c.Id)
-                .Where(cid => cardIds.Contains(cid))
-                .ToListAsync(cancel);
-        }
-    }
+    public bool CannotAdd() =>
+        !Matches.Any() || Matches.All(m => m.NumCopies == 0);
 }

@@ -1,22 +1,15 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using System.Security.Claims;
 
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Routing;
-
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.ModelBinding;
-using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
-using Microsoft.AspNetCore.Mvc.RazorPages;
-using Microsoft.AspNetCore.Mvc.Routing;
-using Microsoft.AspNetCore.Mvc.ViewFeatures;
 
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -35,7 +28,8 @@ public static class TestFactory
 
         options
             .EnableSensitiveDataLogging()
-            .UseInMemoryDatabase(inMemory.Database);
+            .UseInMemoryDatabase(inMemory.Database)
+            .ConfigureWarnings(b => b.Ignore(InMemoryEventId.TransactionIgnoredWarning));
     }
 
 
@@ -49,16 +43,18 @@ public static class TestFactory
     }
 
 
-    public static UserManager<CardUser> CardUserManager(IServiceProvider provider)
+    public static UserStore<CardUser> CardUserStore(IServiceProvider provider)
     {
         var userDb = provider.GetRequiredService<UserDbContext>();
-        var store = new UserStore<CardUser>(userDb);
 
-        var options = new Mock<IOptions<IdentityOptions>>();
-        var idOptions = new IdentityOptions();
+        return new UserStore<CardUser>(userDb);
+    }
 
-        idOptions.Lockout.AllowedForNewUsers = false;
-        options.Setup(o => o.Value).Returns(idOptions);
+
+    public static UserManager<CardUser> CardUserManager(IServiceProvider provider)
+    {
+        var store = provider.GetRequiredService<UserStore<CardUser>>();
+        var options = provider.GetRequiredService<IOptions<IdentityOptions>>();
 
         var validator = new Mock<IUserValidator<CardUser>>();
         var userValidators = new List<IUserValidator<CardUser>>()
@@ -73,7 +69,7 @@ public static class TestFactory
 
         var userManager = new UserManager<CardUser>(
             store,
-            options.Object,
+            options,
             new PasswordHasher<CardUser>(),
             userValidators,
             pwdValidators,
@@ -94,107 +90,19 @@ public static class TestFactory
 
     public static SignInManager<CardUser> CardSignInManager(IServiceProvider provider)
     {
-        var userDb = provider.GetRequiredService<UserDbContext>();
-        var store = new UserStore<CardUser>(userDb);
-
+        var store = provider.GetRequiredService<UserStore<CardUser>>();
         var userManager = provider.GetRequiredService<UserManager<CardUser>>();
+
+        var claimsFactory = provider.GetRequiredService<IUserClaimsPrincipalFactory<CardUser>>();
+        var options = provider.GetRequiredService<IOptions<IdentityOptions>>();
 
         return new SignInManager<CardUser>(
             userManager,
             Mock.Of<IHttpContextAccessor>(),
-            CardClaimsFactory(userManager),
-            null,
-            null,
-            null,
-            null);
-    }
-
-
-
-    private static IUserClaimsPrincipalFactory<CardUser> CardClaimsFactory(UserManager<CardUser> userManager)
-    {
-        var options = new Mock<IOptions<IdentityOptions>>();
-        var idOptions = new IdentityOptions();
-
-        idOptions.Lockout.AllowedForNewUsers = false;
-        options.Setup(o => o.Value).Returns(idOptions);
-
-        return new UserClaimsPrincipalFactory<CardUser>(
-            userManager,
-            options.Object);
-    }
-
-
-
-    public static void SetModelContext(this PageModel model, ClaimsPrincipal? user = null)
-    {
-        var objectValidate = new Mock<IObjectModelValidator>();
-        var requestServices = new Mock<IServiceProvider>();
-
-        objectValidate
-            .Setup(o => o.Validate(
-                It.IsAny<ActionContext>(),
-                It.IsAny<ValidationStateDictionary>(),
-                It.IsAny<string>(),
-                It.IsAny<object>() ));
-
-        requestServices
-            .Setup(p => p.GetService(
-                It.Is<Type>(t => t == typeof(IObjectModelValidator)) ))
-            .Returns(objectValidate.Object);
-
-        var httpContext = new DefaultHttpContext
-        {
-            RequestServices = requestServices.Object
-        };
-
-        if (user is not null)
-        {
-            httpContext.User = user;
-        }
-
-        var modelState = new ModelStateDictionary();
-
-        var actionContext = new ActionContext(
-            httpContext, 
-            new RouteData(), 
-            new PageActionDescriptor(), 
-            modelState);
-
-        var modelMetadataProvider = new EmptyModelMetadataProvider();
-        var viewData = new ViewDataDictionary(modelMetadataProvider, modelState);
-
-        var pageContext = new PageContext(actionContext)
-        {
-            ViewData = viewData
-        };
-
-        model.PageContext = pageContext;
-        model.Url = new UrlHelper(actionContext);
-    }
-
-
-    public static async Task SetModelContextAsync(
-        this PageModel model, 
-        UserManager<CardUser> userManager,
-        CardUser user)
-    {
-        var claimsFactory = CardClaimsFactory(userManager);
-        var userClaim = await claimsFactory.CreateAsync(user);
-
-        model.SetModelContext(userClaim);
-    }
-
-
-    public static async Task SetModelContextAsync(
-        this PageModel model, 
-        UserManager<CardUser> userManager,
-        string userId)
-    {
-        var claimsFactory = CardClaimsFactory(userManager);
-        var user = await userManager.FindByIdAsync(userId);
-        var userClaim = await claimsFactory.CreateAsync(user);
-
-        model.SetModelContext(userClaim);
+            claimsFactory,
+            options,
+            Mock.Of<ILogger<SignInManager<CardUser>>>(),
+            Mock.Of<IAuthenticationSchemeProvider>(),
+            Mock.Of<IUserConfirmation<CardUser>>());
     }
 }

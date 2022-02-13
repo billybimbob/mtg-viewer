@@ -8,14 +8,18 @@ public enum SaveResult
 }
 
 
-internal enum Discriminator
+internal enum LocationType
 {
     Invalid,
-
     Box,
     Unclaimed,
     Deck,
+}
 
+
+internal enum QuantityType
+{
+    Invalid,
     Amount,
     Want,
     GiveBack,

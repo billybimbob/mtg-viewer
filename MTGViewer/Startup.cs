@@ -1,7 +1,6 @@
 using System.Text.Json.Serialization;
 
 using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.CookiePolicy;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 
@@ -64,15 +63,17 @@ public class Startup
                 options.SizeLimit = _config.GetValue("CacheLimit", 100L));
 
         services
+            .AddScoped<IMTGQuery, MtgApiQuery>()
             .AddSingleton<IMtgServiceProvider, MtgServiceProvider>()
             .AddScoped<ICardService>(provider => provider
                 .GetRequiredService<IMtgServiceProvider>()
                 .GetCardService());
 
-        services.AddScoped<MTGFetchService>();
-
-        services.AddScoped<BulkOperations>();
-        services.AddScoped<FileCardStorage>();
+        services
+            .Configure<SeedSettings>(_config.GetSection(nameof(SeedSettings)))
+            .AddScoped<BulkOperations>()
+            .AddScoped<FileCardStorage>()
+            .AddScoped<LoadingProgress>();
 
         if (_env.IsDevelopment())
         {

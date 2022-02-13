@@ -8,17 +8,12 @@ public class Name
     public Name()
     { }
 
-    public Name(string value, string cardId)
-    {
-        Value = value;
-        CardId = cardId;
-    }
 
     [JsonInclude]
-    public string Value { get; init; } = null!;
+    public string Value { get; init; } = default!;
 
     [JsonInclude]
-    public string CardId { get; init; } = null!;
+    public string CardId { get; init; } = default!;
 
 
     public override string ToString() => Value;
@@ -40,17 +35,11 @@ public class Color
     public Color()
     { }
 
-    public Color(string name, string cardId)
-    {
-        Name = name;
-        CardId = cardId;
-    }
+    [JsonInclude]
+    public string Name { get; init; } = default!;
 
     [JsonInclude]
-    public string Name { get; init; } = null!;
-
-    [JsonInclude]
-    public string CardId { get; init; } = null!;
+    public string CardId { get; init; } = default!;
 
 
     public override string ToString() => Name;
@@ -62,17 +51,11 @@ public class Supertype
     public Supertype()
     { }
 
-    public Supertype(string name, string cardId)
-    {
-        Name = name;
-        CardId = cardId;
-    }
+    [JsonInclude]
+    public string Name { get; init; } = default!;
 
     [JsonInclude]
-    public string Name { get; init; } = null!;
-
-    [JsonInclude]
-    public string CardId { get; init; } = null!;
+    public string CardId { get; init; } = default!;
 
 
     public override string ToString() => Name;
@@ -84,17 +67,11 @@ public class Type
     public Type()
     { }
 
-    public Type(string name, string cardId)
-    {
-        Name = name;
-        CardId = cardId;
-    }
+    [JsonInclude]
+    public string Name { get; init; } = default!;
 
     [JsonInclude]
-    public string Name { get; init; } = null!;
-
-    [JsonInclude]
-    public string CardId { get; init; } = null!;
+    public string CardId { get; init; } = default!;
 
 
     public override string ToString() => Name;
@@ -106,32 +83,22 @@ public class Subtype
     public Subtype()
     { }
 
-    public Subtype(string name, string cardId)
-    {
-        Name = name;
-        CardId = cardId;
-    }
+    [JsonInclude]
+    public string Name { get; init; } = default!;
 
     [JsonInclude]
-    public string Name { get; init; } = null!;
-
-    [JsonInclude]
-    public string CardId { get; init; } = null!;
+    public string CardId { get; init; } = default!;
 
 
     public override string ToString() => Name;
 }
 
 
-public static class Rarity
+public enum Rarity
 {
-    public static readonly IReadOnlyList<string> Values =
-        new List<string>()
-        {
-            "Common",
-            "Uncommon",
-            "Rare",
-            "Mythic",
-            "Special"
-        };
+    Common,
+    Uncommon,
+    Rare,
+    Mythic,
+    Special
 }

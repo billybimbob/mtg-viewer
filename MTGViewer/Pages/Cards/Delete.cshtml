@@ -14,10 +14,11 @@
 </div>
 <hr />
 
-@{ bool inDeck = Model.Card.Amounts.Any(a => a.Location is Deck); }
+@{ bool inDeck = Model.Card.Amounts
+    .Any(a => a.Location is Deck || a.Location is Unclaimed); }
 
-<div class="row">
-    <section class="col col-sm-10 col-md-8">
+<section class="row">
+    <div class="col col-sm-10 col-md-8">
         <p>
             Specify the amount of card copies to delete from the Treasury. Deleting 
             copies removes them from the system entirely.
@@ -31,16 +32,16 @@
         {
             <p> Deleting the max amount of copies will also <strong>delete @Model.Card.Name</strong>. </p>
         }
-    </section>
-</div>
+    </div>
+</section>
 
-<div class="row">
-    <section class="col-8 col-sm-7 col-md-6 col-lg-4">
+<section class="row">
+    <div class="col-8 col-sm-7 col-md-6 col-lg-4">
         <form method="POST">
             <input type="hidden" asp-for="Input!.CardId" value="@Model.Card.Id" class="sr-only"/>
 
             @{ int maxCopies = Model.Card.Amounts
-                .Where(a => a.Location is Box || a.Location is Unclaimed)
+                .Where(a => a.Location is Box)
                 .Sum(a => a.NumCopies); }
 
             <div class="form-group">
@@ -58,8 +59,8 @@
                 <input type="submit" value="Remove" class="btn btn-danger" />
             </div>
         </form>
-    </section>
-</div>
+    </div>
+</section>
 
 @section Scripts
 {

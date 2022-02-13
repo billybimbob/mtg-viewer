@@ -1,4 +1,5 @@
 using System.Linq;
+using System.Paging;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -16,6 +17,7 @@ namespace MTGViewer.Pages.Transfers;
 
 
 [Authorize]
+[Authorize(Policy = CardPolicies.ChangeTreasury)]
 public class SuggestModel : PageModel
 {
     private readonly int _pageSize;
@@ -33,19 +35,21 @@ public class SuggestModel : PageModel
     }
 
 
-    public Card Card { get; private set; } = null!;
+    public Card Card { get; private set; } = default!;
 
-    public PagedList<UserRef> Users { get; private set; } = PagedList<UserRef>.Empty;
+    public OffsetList<UserRef> Users { get; private set; } = OffsetList<UserRef>.Empty();
 
 
-    public async Task<IActionResult> OnGetAsync(string cardId, int? pageIndex, CancellationToken cancel)
+    public async Task<IActionResult> OnGetAsync(string id, int? offset, CancellationToken cancel)
     {
-        if (cardId is null)
+        if (id == default)
         {
             return NotFound();
         }
 
-        var card = await _dbContext.Cards.FindAsync(new []{ cardId }, cancel);
+        var card = await _dbContext.Cards
+            .SingleOrDefaultAsync(c => c.Id == id, cancel);
+
         if (card is null)
         {
             return NotFound();
@@ -54,7 +58,7 @@ public class SuggestModel : PageModel
         Card = card;
 
         Users = await UsersForSuggest(card)
-            .ToPagedListAsync(_pageSize, pageIndex, cancel);
+            .ToOffsetListAsync(offset, _pageSize, cancel);
 
         return Page();
     }
@@ -83,18 +87,21 @@ public class SuggestModel : PageModel
 
             .Where(us => us.suggest == default)
             .Select(us => us.user)
+
             .OrderBy(u => u.Name)
+                .ThenBy(u => u.Id)
+
             .AsNoTracking();
     }
 
 
-    public IActionResult OnPost(string cardId, string receiverId)
+    public IActionResult OnPost(string id, string receiverId)
     {
-        if (cardId == null || receiverId == null)
+        if (id is null || receiverId is null)
         {
             return RedirectToPage();
         }
 
-        return RedirectToPage("SuggestUser", new { cardId, receiverId });
+        return RedirectToPage("SuggestUser", new { id, receiverId });
     }
 }

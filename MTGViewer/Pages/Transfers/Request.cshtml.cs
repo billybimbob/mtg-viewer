@@ -19,6 +19,7 @@ namespace MTGViewer.Pages.Transfers;
 
 
 [Authorize]
+[Authorize(CardPolicies.ChangeTreasury)]
 public class RequestModel : PageModel
 {
     private CardDbContext _dbContext;
@@ -39,14 +40,14 @@ public class RequestModel : PageModel
 
     public bool TargetsExist { get; private set; }
 
-    public Deck Deck { get; private set; } = null!;
+    public Deck Deck { get; private set; } = default!;
 
     public IReadOnlyList<WantNameGroup> Requests { get; private set; } = Array.Empty<WantNameGroup>();
 
 
-    public async Task<IActionResult> OnGetAsync(int deckId, CancellationToken cancel)
+    public async Task<IActionResult> OnGetAsync(int id, CancellationToken cancel)
     {
-        var deck = await DeckForRequest(deckId)
+        var deck = await DeckForRequest(id)
             .AsNoTrackingWithIdentityResolution()
             .SingleOrDefaultAsync(cancel);
 
@@ -63,7 +64,7 @@ public class RequestModel : PageModel
 
         if (deck.TradesTo.Any())
         {
-            return RedirectToPage("Status", new { deckId });
+            return RedirectToPage("Status", new { id });
         }
 
 
@@ -113,7 +114,7 @@ public class RequestModel : PageModel
         return _dbContext.Amounts
             .Where(a => a.Location is Deck
                 && (a.Location as Deck)!.OwnerId != deck.OwnerId
-                && a.NumCopies > 0
+                && !(a.Location as Deck)!.Owner.ResetRequested
                 && takeNames.Contains(a.Card.Name))
 
             .Include(a => a.Card)
@@ -122,9 +123,10 @@ public class RequestModel : PageModel
 
 
 
-    public async Task<IActionResult> OnPostAsync(int deckId, CancellationToken cancel)
+    public async Task<IActionResult> OnPostAsync(int id, CancellationToken cancel)
     {
-        var deck = await DeckForRequest(deckId).SingleOrDefaultAsync(cancel);
+        var deck = await DeckForRequest(id).SingleOrDefaultAsync(cancel);
+
         if (deck == default)
         {
             return NotFound();
@@ -149,14 +151,14 @@ public class RequestModel : PageModel
             return RedirectToPage("Index");
         }
 
-        _dbContext.Trades.AttachRange(trades);
+        _dbContext.Trades.AddRange(trades);
 
         try
         {
             await _dbContext.SaveChangesAsync(cancel);
 
             PostMessage = "Request was successfully sent";
-            return RedirectToPage("Status", new { deckId });
+            return RedirectToPage("Status", new { id });
         }
         catch (DbUpdateException)
         {

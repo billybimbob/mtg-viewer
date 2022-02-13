@@ -133,7 +133,7 @@ public class DeleteTests : IAsyncLifetime
             .FirstAsync();
 
         var deckAmounts = await _dbContext.Amounts
-            .Where(a => a.Location is Deck)
+            .Where(a => a.Location is Deck && a.CardId == cardId)
             .ToListAsync();
 
         _dbContext.Amounts.RemoveRange(deckAmounts);
@@ -214,5 +214,62 @@ public class DeleteTests : IAsyncLifetime
         Assert.IsType<RedirectResult>(result);
         Assert.Equal(0, newCopies);
         Assert.True(cardRemains);
+    }
+
+
+    [Fact]
+    public async Task OnPost_HasExcess_ExcessTranferred()
+    {
+        await _testGen.AddExcessAsync(15);
+
+        var cardId = await _dbContext.Cards
+            .Where(c => !c.Amounts
+                .Any(a => a.Location is Box
+                    && (a.Location as Box)!.IsExcess))
+            .Select(c => c.Id)
+            .FirstAsync();
+
+        var deckAmounts = await _dbContext.Amounts
+            .Where(a => a.Location is Deck && a.CardId == cardId)
+            .ToListAsync();
+
+        _dbContext.Amounts.RemoveRange(deckAmounts);
+
+        await _dbContext.SaveChangesAsync();
+        _dbContext.ChangeTracker.Clear();
+
+        int removeCopies = await _dbContext.Amounts
+            .Where(a => a.CardId == cardId)
+            .SumAsync(a => a.NumCopies);
+
+        _deleteModel.Input = new DeleteModel.InputModel
+        {
+            CardId = cardId,
+            RemoveCopies = removeCopies
+        };
+
+        int boxesOld = await _dbContext.Boxes
+            .SelectMany(b => b.Cards)
+            .SumAsync(a => a.NumCopies);
+
+        int excessOld = await _dbContext.Boxes
+            .Where(b => b.IsExcess)
+            .SelectMany(b => b.Cards)
+            .SumAsync(a => a.NumCopies);
+
+        var result = await _deleteModel.OnPostAsync(default);
+
+        int boxesNew = await _dbContext.Boxes
+            .SelectMany(b => b.Cards)
+            .SumAsync(a => a.NumCopies);
+
+        int excessNew = await _dbContext.Boxes
+            .Where(b => b.IsExcess)
+            .SelectMany(b => b.Cards)
+            .SumAsync(a => a.NumCopies);
+
+        Assert.IsType<RedirectResult>(result);
+        Assert.Equal(removeCopies, boxesOld - boxesNew);
+        Assert.InRange(excessOld - excessNew, 1, removeCopies);
     }
 }

@@ -18,19 +18,19 @@ public class IndexTests : IAsyncLifetime
 {
     private readonly IndexModel _indexModel;
     private readonly CardDbContext _dbContext;
-    private readonly UserManager<CardUser> _userManager;
+    private readonly PageContextFactory _pageFactory;
     private readonly TestDataGenerator _testGen;
-    private Unclaimed _unclaimed = null!;
+    private Unclaimed _unclaimed = default!;
 
     public IndexTests(
         IndexModel indexModel,
         CardDbContext dbContext,
-        UserManager<CardUser> userManager,
+        PageContextFactory pageFactory,
         TestDataGenerator testGen)
     {
         _indexModel = indexModel;
         _dbContext = dbContext;
-        _userManager = userManager;
+        _pageFactory = pageFactory;
         _testGen = testGen;
     }
 
@@ -49,7 +49,7 @@ public class IndexTests : IAsyncLifetime
     [Fact]
     public async Task OnPostClaim_NoUser_NoChange()
     {
-        _indexModel.SetModelContext();
+        _pageFactory.AddModelContext(_indexModel);
 
         bool unclaimedBefore = await _dbContext.Unclaimed
             .Select(u => u.Id)
@@ -75,7 +75,7 @@ public class IndexTests : IAsyncLifetime
             .Select(u => u.Id)
             .FirstAsync();
 
-        await _indexModel.SetModelContextAsync(_userManager, userId);
+        await _pageFactory.AddModelContextAsync(_indexModel, userId);
 
         bool unclaimedBefore = await _dbContext.Unclaimed
             .Select(u => u.Id)
@@ -107,7 +107,7 @@ public class IndexTests : IAsyncLifetime
     [Fact]
     public async Task OnPostRemove_NoUser_NoChange()
     {
-        _indexModel.SetModelContext();
+        _pageFactory.AddModelContext(_indexModel);
 
         bool unclaimedBefore = await _dbContext.Unclaimed
             .Select(u => u.Id)
@@ -133,7 +133,7 @@ public class IndexTests : IAsyncLifetime
             .Select(u => u.Id)
             .FirstAsync();
 
-        await _indexModel.SetModelContextAsync(_userManager, userId);
+        await _pageFactory.AddModelContextAsync(_indexModel, userId);
 
         bool unclaimedBefore = await _dbContext.Unclaimed
             .Select(u => u.Id)

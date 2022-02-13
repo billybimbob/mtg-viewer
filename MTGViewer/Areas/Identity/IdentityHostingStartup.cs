@@ -74,6 +74,12 @@ public class IdentityHostingStartup : IHostingStartup
 
             services.AddTransient<EmailVerification>();
             services.AddScoped<ReferenceManager>();
+
+            services.AddAuthorization(options =>
+            {
+                options.AddPolicy(CardPolicies.ChangeTreasury,
+                    p => p.RequireClaim(CardClaims.ChangeTreasury));
+            });
         });
     }
 }

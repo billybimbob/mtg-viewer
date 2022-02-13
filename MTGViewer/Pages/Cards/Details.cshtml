@@ -4,11 +4,18 @@
     ViewData["Title"] = $"{Model.Card.Name} - Details";
 }
 
+@using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Identity
 @using MTGViewer.Areas.Identity.Data
 
-@inject SignInManager<CardUser> SignInManager
+@inject IAuthorizationService AuthorizationService
 @inject SymbolFormatter MtgSymbols
+@inject SignInManager<CardUser> SignInManager
+
+@{ 
+    bool canChangeTreasury = (await AuthorizationService
+        .AuthorizeAsync(User, CardPolicies.ChangeTreasury)).Succeeded;
+}
 
 
 <div class="row"> 
@@ -41,9 +48,17 @@
 
     @if (SignInManager.IsSignedIn(User))
     {
-        <a asp-page="Delete" asp-route-id="@Model.Card.Id"
-            title="Delete @Model.Card.Name" class="btn btn-danger" role="alert">
-            Delete </a>
+        @if (canChangeTreasury)
+        {
+            <a asp-page="Delete" asp-route-id="@Model.Card.Id"
+                title="Delete @Model.Card.Name" class="btn btn-danger" role="button">
+                Delete </a>
+        }
+        else
+        {
+            <button type="button" class="btn btn-danger" disabled>
+                Delete </button>
+        }
     }
 </div>
 
@@ -52,7 +67,7 @@
 <div class="row">
 
     <div class="col-lg-3 col-12 pb-4 d-flex justify-content-center justify-content-lg-start align-items-center">
-        <img class="img-fluid" alt="@Model.Card.Name" src="@Model.Card.ImageUrl.WithHttps()"/>
+        <img class="card-img" alt="@Model.Card.Name" src="@Model.Card.ImageUrl.WithHttps()"/>
     </div>
 
     <div class="col">
@@ -182,14 +197,15 @@
                                     break;
 
                                 case Box box when box.IsExcess:
-                                    <a asp-page="/Treasury/Excess" asp-route-cardId="@Model.Card.Id"> @location.Name </a>
+                                    <a asp-page="/Treasury/Excess" asp-route-seek="@Model.Card.Id" asp-route-jump="@true">
+                                        @location.Name </a>
                                     break;
 
                                 case Box:
                                     <a asp-page="/Treasury/Details" asp-route-id="@location.Id"> @location.Name </a>
                                     break;
 
-                                case Unclaimed:
+                                case Unclaimed when canChangeTreasury:
                                     <a asp-page="/Unowned/Index" asp-route-id="@location.Id"> @location.Name </a>
                                     break;
 

@@ -1,0 +1,150 @@
+@typeparam TEntity where TEntity : class
+
+@inject NavigationManager Nav
+@using System.Reflection
+@using MTGViewer.Data.Internal
+
+@if (HasPrevious || HasNext)
+{
+    <nav>
+        <ul class="pagination justify-content-center">
+            @if (!HasPrevious)
+            {
+                <li class="page-item disabled">
+                    <span title="Previous Page" class="page-link disabled"> Previous </span>
+                </li>
+            }
+            else if (ChangePage.HasDelegate)
+            {
+                <li class="page-item">
+                    <button title="Previous Page" @onclick="PreviousPageAsync" class="page-link">
+                        Previous </button>
+                </li>
+            }
+            else
+            {
+                <li class="page-item">
+                    <a title="Previous Page" href="@PreviousUrl()" class="page-link"> Previous </a>
+                </li>
+            }
+
+            @if (!HasNext)
+            {
+                <li class="page-item disabled">
+                    <span title="Next Page" class="page-link"> Next </span>
+                </li>
+            }
+            else if (ChangePage.HasDelegate)
+            {
+                <li class="page-item ">
+                    <button title="Next Page" @onclick="NextPageAsync" class="page-link">
+                        Next </button>
+                </li>
+            }
+            else
+            {
+                <li class="page-item ">
+                    <a title="Next Page" href="@NextUrl()" class="page-link"> Next </a>
+                </li>
+            }
+        </ul>
+    </nav>
+}
+
+
+@code 
+{
+    [Parameter]
+    public Seek<TEntity> Seek { get; set; }
+
+    [Parameter]
+    public EventCallback<TEntity> ChangePage { get; set; }
+
+    public bool HasPrevious => Seek.Previous is not null;
+
+    public bool HasNext => Seek.Next is not null;
+
+
+    private bool _isBusy;
+
+    private Dictionary<string, object?> _previous = new()
+    {
+        ["backtrack"] = true
+    };
+
+    private Dictionary<string, object?> _next = new()
+    {
+        ["backtrack"] = null
+    };
+
+
+    protected override void OnParametersSet()
+    {
+        _previous["seek"] = GetKey(Seek.Previous);
+        _previous["index"] = Seek.Index - 1;
+
+        _next["seek"] = GetKey(Seek.Next);
+        _next["index"] = Seek.Index + 1;
+    }
+
+
+    public string PreviousUrl() =>
+        Nav.GetUriWithQueryParameters(_previous);
+
+    public string NextUrl() =>
+        Nav.GetUriWithQueryParameters(_next);
+
+
+    public async Task PreviousPageAsync()
+    {
+        if (_isBusy || Seek.Previous is not TEntity current)
+        {
+            return;
+        }
+
+        _isBusy = true;
+
+        try
+        {
+            await ChangePage.InvokeAsync(current);
+        }
+        finally
+        {
+            _isBusy = false;
+        }
+    }
+
+
+    public async Task NextPageAsync()
+    {
+        if (_isBusy || Seek.Next is not TEntity next)
+        {
+            return;
+        }
+
+        _isBusy = true;
+
+        try
+        {
+            await ChangePage.InvokeAsync(next);
+        }
+        finally
+        {
+            _isBusy = false;
+        }
+    }
+
+
+
+    private static object? GetKey(TEntity? entity)
+    {
+        if (entity is null)
+        {
+            return null;
+        }
+
+        var keyProperty = EntityExtensions.GetKeyProperty<TEntity>();
+
+        return keyProperty.GetValue(entity);
+    }
+}

@@ -1,37 +1,64 @@
-@page "{pageIndex:int?}"
+@page
 @model Treasury.IndexModel
 @{
-    ViewData["Title"] = $"Treasury ({Model.Pages})";
+    ViewData["Title"] = $"Treasury";
 }
 
+@using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Identity
 @using MTGViewer.Areas.Identity.Data
 
-@inject SymbolFormatter MtgSymbols
+@inject IAuthorizationService AuthorizationService
 @inject SignInManager<CardUser> SignInManager
+@inject SymbolFormatter MtgSymbols
 
+@{
+    bool canChangeTreasury = (await AuthorizationService
+        .AuthorizeAsync(User, CardPolicies.ChangeTreasury)).Succeeded;
+
+    bool isSignedIn = SignInManager.IsSignedIn(User);
+}
 
 <h1>Treasury</h1>
 
 <div class="row mb-3">
-    @if (SignInManager.IsSignedIn(User))
+    @if (isSignedIn)
     {
-        <div class="col-auto btn-group px-1" role="group" aria-label="Treasury Backup">
-            <a href="/Treasury/Adjust" class="btn btn-secondary" role="button"> Add Box </a>
-            <a href="/Treasury/Import" class="btn btn-secondary" role="button"> Import </a>
+        <div class="col-auto btn-group pr-2" role="group" aria-label="Treasury Backup">
+            @if (canChangeTreasury)
+            {
+                <a href="/Treasury/Adjust" class="btn btn-secondary" role="button"> Add Box </a>
+                <a href="/Treasury/Import" class="btn btn-secondary" role="button"> Import </a>
+            }
+            else
+            {
+                <button class="btn btn-secondary" type="button" disabled> Add Box </button>
+                <button class="btn btn-secondary" type="button" disabled> Import </button>
+            }
+
             <a asp-page="Export" class="btn btn-secondary" role="button"> Export </a>
+            <a asp-page="Reset" class="btn btn-danger" role="button"> Reset </a>
         </div>
     }
-    <div class="col-auto btn-group px-1" role="group" aria-label="Treasury Miscellaneous">
+    <div class="col-auto btn-group pr-2" role="group" aria-label="Treasury Miscellaneous">
+
         <a asp-page="History" class="btn btn-secondary" role="button"> History </a>
 
         @if (Model.HasExcess)
         {
             <a asp-page="Excess" class="btn btn-secondary" role="button"> Excess </a>
         }
-        @if (Model.HasUnclaimed)
+
+        @if (Model.HasUnclaimed && isSignedIn)
         {
-            <a asp-page="/Unowned/Index" class="btn btn-secondary" role="button"> Unclaimed Decks </a>
+            @if (canChangeTreasury)
+            {
+                <a asp-page="/Unowned/Index" class="btn btn-secondary" role="button"> Unclaimed Decks </a>
+            }
+            else
+            {
+                <button class="btn btn-secondary" type="button" disabled> Unclaimed Decks </button>
+            }
         }
     </div>
 </div>
@@ -117,4 +144,4 @@
     </div>
 }
 
-<partial name="_PaginationPartial" for="Pages"/>
+<component type="typeof(SeekPaging<Box>)" render-mode="Static" param-Seek="Model.Seek" />

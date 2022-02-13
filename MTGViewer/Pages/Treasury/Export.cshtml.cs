@@ -1,11 +1,15 @@
+using System;
 using System.ComponentModel.DataAnnotations;
+using System.Globalization;
 using System.Threading;
 using System.Threading.Tasks;
 
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
+using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Services;
 
 namespace MTGViewer.Pages.Treasury;
@@ -15,61 +19,62 @@ namespace MTGViewer.Pages.Treasury;
 public class ExportModel : PageModel
 {
     private readonly FileCardStorage _fileStorage;
-    private readonly BulkOperations _bulkOperations;
+    private readonly UserManager<CardUser> _userManager;
 
-    public ExportModel(FileCardStorage fileStorage, BulkOperations bulkOperations)
+    public ExportModel(FileCardStorage fileStorage, UserManager<CardUser> userManager)
     {
         _fileStorage = fileStorage;
-        _bulkOperations = bulkOperations;
+        _userManager = userManager;
     }
 
 
-    public sealed class DownloadModel
+    public enum DataScope
     {
-        [Display(Name = "Section To Download")]
-        [Range(0, int.MaxValue)]
-        public int? Section { get; set; }
+        User,
+        Treasury,
+        Complete
     }
 
-
-    [TempData]
-    public string? PostMessage { get; set; }
-
-    public int NumberOfSections { get; private set; }
 
     [BindProperty]
-    public DownloadModel? Download { get; set; }
+    [Display(Name = "Backup Type")]
+    public DataScope BackupType { get; set; }
 
 
-    public async Task OnGetAsync(CancellationToken cancel)
-    {
-        // might be expensive
-        NumberOfSections = await _bulkOperations.GetTotalPagesAsync(cancel);
-    }
+    public void OnGet()
+    { }
 
 
     public async Task<IActionResult> OnPostAsync(CancellationToken cancel)
     {
-        if (Download is null || Download.Section < 0)
+        if (!ModelState.IsValid)
+        {
+            return Page();
+        }
+
+        var userId = _userManager.GetUserId(User);
+        if (userId is null)
         {
             return NotFound();
         }
 
-        NumberOfSections = await _bulkOperations.GetTotalPagesAsync(cancel);
-
-        if (Download.Section > NumberOfSections)
+        var backup = BackupType switch // file stream should close backup
         {
-            return NotFound();
-        }
-
-        int section = Download.Section switch
-        {
-            int page => page,
-            _ => 1
+            DataScope.User => await _fileStorage.GetUserBackupAsync(userId, cancel),
+            DataScope.Treasury => await _fileStorage.GetTreasuryBackupAsync(cancel),
+            DataScope.Complete or _ => await _fileStorage.GetDefaultBackupAsync(cancel)
         };
 
-        var cardData = await _fileStorage.GetBackupAsync(section - 1, cancel);
+        var userName = _userManager.GetDisplayName(User);
+        var timestamp = DateTime.UtcNow.ToString(CultureInfo.InvariantCulture);
 
-        return File(cardData, "application/json", $"CardsSection{section}.json");
+        string filename = BackupType switch
+        {
+            DataScope.User => $"cards-{timestamp}-{userName}.json",
+            DataScope.Treasury => $"cards-{timestamp}-treasury.json",
+            DataScope.Complete or _ => $"cards-{timestamp}-complete.json"
+        };
+
+        return File(backup, "application/json",  filename);
     }
 }

@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
+using System.Paging;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -25,6 +27,7 @@ public class HistoryModel : PageModel
     private readonly int _pageSize;
     private readonly CardDbContext _dbContext;
     private readonly UserManager<CardUser> _userManager;
+    private readonly IAuthorizationService _authorization;
     private readonly ILogger<HistoryModel> _logger;
 
     private readonly HashSet<(int, int, int?)> _firstTransfers = new();
@@ -33,11 +36,13 @@ public class HistoryModel : PageModel
         PageSizes pageSizes,
         CardDbContext dbContext, 
         UserManager<CardUser> userManager,
+        IAuthorizationService authorization,
         ILogger<HistoryModel> logger)
     {
         _pageSize = pageSizes.GetPageModelSize<HistoryModel>();
         _dbContext = dbContext;
         _userManager = userManager;
+        _authorization = authorization;
         _logger = logger;
     }
 
@@ -49,19 +54,21 @@ public class HistoryModel : PageModel
     public string? TimeZoneId { get; set; }
 
 
-    public Deck Deck { get; private set; } = null!;
+    public Deck Deck { get; private set; } = default!;
 
     public IReadOnlyList<Transfer> Transfers { get; private set; } =
         Array.Empty<Transfer>();
 
-    public Data.Pages Pages { get; private set; }
+    public Seek<Change> Seek { get; private set; }
 
     public TimeZoneInfo TimeZone { get; private set; } = TimeZoneInfo.Utc;
 
 
     public async Task<IActionResult> OnGetAsync(
         int id, 
-        int? pageIndex, 
+        int? seek,
+        int? index,
+        bool backTrack,
         string? tz,
         CancellationToken cancel)
     {
@@ -73,7 +80,7 @@ public class HistoryModel : PageModel
         }
 
         var changes = await ChangesForHistory(id)
-            .ToPagedListAsync(_pageSize, pageIndex, cancel);
+            .ToSeekListAsync(index, _pageSize, seek, backTrack, cancel);
 
         var firstTransfers = changes
             .Select(c => (c.TransactionId, c.ToId, c.FromId))
@@ -91,7 +98,7 @@ public class HistoryModel : PageModel
                         tft.Transaction, tft.To, tft.From, changeGroup.ToList()))
             .ToList();
 
-        Pages = changes.Pages;
+        Seek = changes.Seek;
 
         UpdateTimeZone(tz);
 
@@ -120,9 +127,10 @@ public class HistoryModel : PageModel
 
             .OrderByDescending(c => c.Transaction.AppliedAt)
                 .ThenBy(c => c.From!.Name)
-                .ThenBy(c => c.To!.Name)
+                .ThenBy(c => c.To.Name)
                     .ThenBy(c => c.Card.Name)
-                    .ThenBy(c => c.Amount);
+                    .ThenBy(c => c.Amount)
+                    .ThenBy(c => c.Id);
     }
 
 
@@ -162,6 +170,13 @@ public class HistoryModel : PageModel
 
     public async Task<IActionResult> OnPostAsync(int transactionId, CancellationToken cancel)
     {
+        var authorized = await _authorization.AuthorizeAsync(User, CardPolicies.ChangeTreasury);
+
+        if (!authorized.Succeeded)
+        {
+            return Forbid();
+        }
+
         var transaction = await _dbContext.Transactions
             .Include(t => t.Changes)
                 .ThenInclude(c => c.From)

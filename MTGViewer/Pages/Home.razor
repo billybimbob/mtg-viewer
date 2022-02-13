@@ -17,21 +17,32 @@
     }
     else
     {
-        <a href="/Cards" title="Card Collection">
-            <h3>Cards from our collection!</h3>
-        </a>
+        <h3>
+            <a href="/Cards" title="Card Collection">
+                Cards from our collection!  </a>
+        </h3>
 
-        <div class="row no-gutters justify-content-center">
+        <div class="row row-cols-md-4 row-cols-2 justify-content-center mx-n1">
             @foreach (var card in RandomCards)
             {
-                <a href="/Cards/Details/@card.Id" class="col-md-3 col-6"
+                bool imageLoaded = IsImageLoaded(card);
+                string loading = imageLoaded ? string.Empty : "loading";
+
+                <a href="/Cards/Details/@card.Id" class="col p-1"
                     title="@card.Name Details"
                     aria-label="@card.Id details">
 
                     <img alt="@card.Name image" 
-                        class="w-100 img-fluid rounded" 
+                        @onload="() => CardImageLoaded(card)"
+                        class="w-100 card-img @loading" 
                         src="@card.ImageUrl.WithHttps()">
+
+                    @if (!imageLoaded)
+                    {
+                        <div class="placeholder"></div>
+                    }
                 </a>
+
             }
         </div>
 
@@ -59,9 +70,10 @@
 @if (RecentChanges.Any())
 {
     <section class="pt-5">
-        <a href="/Treasury/History" title="Treasury History">
-            <h3>Recent Shared Collection Changes</h3>
-        </a>
+        <h3>
+            <a href="/Treasury/History" title="Treasury History">
+                Recent Shared Collection Changes </a>
+        </h3>
 
         <ul class="list-group list-group-flush">
             @foreach (var transaction in RecentChanges)
@@ -108,6 +120,20 @@
 
 @code
 {
+    public bool IsBusy => _isBusy;
+
+    public bool IsFullyLoaded => !_randomContext?.HasMore ?? true;
+
+    public IReadOnlyList<Card> RandomCards => _randomContext?.Cards ?? Array.Empty<Card>();
+
+    public IReadOnlyList<Transaction> RecentChanges => _recentChanges;
+
+    public bool IsEmptyCollection => !_randomContext?.Cards.Any() ?? false;
+
+    public bool IsImageLoaded(Card card) =>
+        _randomContext?.LoadedImages.Contains(card.Id) ?? false;
+
+
     private const int ChunkSize = 4;
 
     private readonly CancellationTokenSource _cancel = new();
@@ -117,17 +143,6 @@
 
     private RandomCardsContext? _randomContext;
     private IReadOnlyList<Transaction> _recentChanges = Array.Empty<Transaction>();
-
-
-    public bool IsBusy => _isBusy;
-
-    public bool IsFullyLoaded => !_randomContext?.HasMore ?? true;
-
-    public bool IsEmptyCollection => !_randomContext?.Cards.Any() ?? false;
-
-    public IReadOnlyList<Card> RandomCards => _randomContext?.Cards ?? Array.Empty<Card>();
-
-    public IReadOnlyList<Transaction> RecentChanges => _recentChanges;
 
 
     protected override async Task OnInitializedAsync()
@@ -209,8 +224,6 @@
 
             await using var dbContext = await DbFactory.CreateDbContextAsync(cancelToken);
 
-            dbContext.Cards.AttachRange(_randomContext.Cards);
-
             await _randomContext.LoadNextChunkAsync(dbContext, cancelToken);
         }
         catch (OperationCanceledException ex)
@@ -224,12 +237,25 @@
     }
 
 
+    public void CardImageLoaded(Card card)
+    {
+        if (_randomContext is null || card?.Id is not string cardId)
+        {
+            return;
+        }
+
+        _randomContext.LoadedImages.Add(cardId);
+    }
+
+
     private class RandomCardsContext
     {
         private readonly List<Card> _cards;
+        private readonly HashSet<string> _imageLoaded;
         private readonly IReadOnlyList<string[]> _loadOrder;
         private readonly int _limit;
 
+        public ICollection<string> LoadedImages => _imageLoaded;
         public IReadOnlyList<Card> Cards => _cards;
         public bool HasMore => _cards.Count < _limit;
 
@@ -237,6 +263,7 @@
         private RandomCardsContext(IReadOnlyList<string[]> loadOrder)
         {
             _cards = new();
+            _imageLoaded = new();
             _loadOrder = loadOrder;
             _limit = _loadOrder.Sum(chunk => chunk.Length);
         }
@@ -265,6 +292,8 @@
                 throw new ArgumentNullException(nameof(dbContext));
             }
 
+            dbContext.Cards.AttachRange(_cards);
+
             var nextChunk = HasMore 
                 ? _loadOrder[_cards.Count / ChunkSize] 
                 : null;
@@ -274,7 +303,9 @@
                 throw new InvalidOperationException("Cannot load any more chunks");
             }
 
-            _cards.AddRange( await CardChunkAsync(dbContext, nextChunk, cancel) );
+            var newCards = await CardChunkAsync(dbContext, nextChunk, cancel);
+
+            _cards.AddRange(newCards);
         }
     }
 
@@ -282,7 +313,7 @@
 
     #region Database Queries
 
-    private static Task<List<string[]>> ShuffleOrderAsync(
+    private static ValueTask<List<string[]>> ShuffleOrderAsync(
         CardDbContext dbContext,
         int limit,
         CancellationToken cancel)
@@ -291,13 +322,11 @@
             .Select(c => c.Id)
             .OrderBy(_ => EF.Functions.Random())
             .Take(limit)
-
             .AsNoTracking()
+
             .AsAsyncEnumerable()
             .Chunk(ChunkSize)
-
-            .ToListAsync(cancel)
-            .AsTask();
+            .ToListAsync(cancel);
     }
 
 
@@ -346,8 +375,9 @@
                 .ThenInclude(c => c.To)
 
             .OrderByDescending(t => t.AppliedAt)
-            .Take(ChunkSize)
+                .ThenBy(t => t.Id)
 
+            .Take(ChunkSize)
             .AsNoTrackingWithIdentityResolution()
             .ToListAsync(cancel);
     }

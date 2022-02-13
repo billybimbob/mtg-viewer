@@ -1,4 +1,4 @@
-@page "{pageIndex:int?}"
+@page
 @model Treasury.ExcessModel
 @{
     ViewData["Title"] = "Treasury Excess";
@@ -53,4 +53,4 @@ else
     </div>
 }
 
-<partial name="_PaginationPartial" for="Cards.Pages"/>
+<component type="typeof(SeekPaging<Card>)" render-mode="Static" param-Seek="Model.Cards.Seek" />

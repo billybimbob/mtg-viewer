@@ -1,32 +1,30 @@
 @page "/Cards"
-@implements IDisposable
-
-@using System.Collections.Immutable
+@using MTGViewer.Areas.Identity.Data
 @using MTGViewer.Data.Internal
-
-@inject IDbContextFactory<CardDbContext> DbFactory
 @inject SymbolFormatter MtgSymbols
-@inject PageSizes PageSizes
-
-@inject ILogger<Collection> Logger
 
 
 <PageTitle> Card Collection </PageTitle>
 
 <h1>Card Collection</h1>
 
-<AuthorizeView>
-    <div class="btn-group" role="group">
-        <a class="btn btn-secondary" href="/Cards/Create" role="button">Add Card</a>
-    </div>
-</AuthorizeView>
+<div class="btn-group" role="group">
+    <AuthorizeView Policy="@CardPolicies.ChangeTreasury">
+        <Authorized>
+            <a class="btn btn-secondary" href="/Cards/Create" role="button">Add Card</a>
+        </Authorized>
+        <NotAuthorized>
+            <button class="btn btn-secondary" role="button" disabled>Add Card</button>
+        </NotAuthorized>
+    </AuthorizeView>
+</div>
 
 <div class="form-row align-items-center my-3">
     <div class="col-12 col-md-4">
         <input class="form-control" 
             placeholder="Card Name" 
             disabled="@IsBusy"
-            @onchange="SearchNameAsync" />
+            @bind="Filters.SearchName" />
     </div>
 
     <div class="col-auto btn-group pt-2 pt-md-0" role="group" aria-label="Color Buttons">
@@ -36,7 +34,7 @@
                 type="button"
                 class="btn btn-outline-secondary border-0 rounded @ColorActive(color)"
                 disabled="@IsBusy"
-                @onclick="() => FilterColorAsync(color)">
+                @onclick="() => Filters.ToggleColor(color)">
 
                 <i class="ms ms-@symbol.ToLower() ms-cost"></i>
             </button>
@@ -57,7 +55,7 @@
             <tr>
                 <th scope="col"
                     title="Order By Name"
-                    @onclick="() => ReorderCardsAsync(c => c.Name)" 
+                    @onclick="() => Filters.Reorder(c => c.Name)" 
                     class="@HeaderClass(c => c.Name)">
                     @DisplayName(c => c.Name)
                     @Direction(c => c.Name)
@@ -65,7 +63,7 @@
 
                 <th scope="col" 
                     title="Order By Cmc"
-                    @onclick="() => ReorderCardsAsync(c => c.ManaCost)" 
+                    @onclick="() => Filters.Reorder(c => c.ManaCost)" 
                     class="@HeaderClass(c => c.ManaCost)">
                     @DisplayName(c => c.ManaCost)
                     @Direction(c => c.ManaCost)
@@ -73,7 +71,7 @@
 
                 <th scope="col"
                     title="Order By Set Name"
-                    @onclick="() => ReorderCardsAsync(c => c.SetName)" 
+                    @onclick="() => Filters.Reorder(c => c.SetName)" 
                     class="@HeaderClass(c => c.SetName)">
                     @DisplayName(c => c.SetName)
                     @Direction(c => c.SetName)
@@ -81,7 +79,7 @@
 
                 <th scope="col"
                     title="Order By Rarity"
-                    @onclick="() => ReorderCardsAsync(c => c.Rarity)" 
+                    @onclick="() => Filters.Reorder(c => c.Rarity)" 
                     class="@HeaderClass(c => c.Rarity)">
                     @DisplayName(c => c.Rarity)
                     @Direction(c => c.Rarity)
@@ -89,13 +87,13 @@
 
                 <th scope="col" 
                     title="Order By Number of Copies"
-                    @onclick="() => ReorderCardsAsync(c => c.Amounts)" 
+                    @onclick="() => Filters.Reorder(c => c.Amounts)" 
                     class="@HeaderClass(c => c.Amounts)">
                     Total Copies
                     @Direction(c => c.Amounts)
                 </th>
 
-                <AuthorizeView>
+                <AuthorizeView Policy="@CardPolicies.ChangeTreasury">
                     <th scope="col"></th>
                 </AuthorizeView>
             </tr>
@@ -116,7 +114,7 @@
                     <td> @card.Rarity </td>
                     <td> @CardTotal(card) </td>
 
-                    <AuthorizeView>
+                    <AuthorizeView Policy="@CardPolicies.ChangeTreasury">
                         <td>
                             <a title="Suggest @card.Name"
                                 href="/Transfers/Suggest/@card.Id"
@@ -131,62 +129,20 @@
     </table>
 </div>
 
-<Pagination Pages="Cards.Pages" PageSelected="ChangePageAsync"></Pagination>
+<OffsetPaging Offset="Cards.Offset" PageSelected="p => Filters.PageIndex = p">
+</OffsetPaging>
 
 
 @code
 {
-    private bool _isBusy;
-    private readonly CancellationTokenSource _cancel = new();
-
-    private readonly HashSet<Card> _loadedCards = new();
-    private readonly Dictionary<string, int> _cardAmounts = new();
-
-    private readonly FilterContext _filters = new();
-    private PagedList<Card> _pagedCards = PagedList<Card>.Empty;
-
-
-    public PagedList<Card> Cards => _pagedCards;
-
-    public bool IsBusy => _isBusy;
-
-
-    public int CardTotal(Card card) =>
-        _cardAmounts.GetValueOrDefault(card.Id);
-
-
-    public string ColorActive(string color) =>
-        _filters.PickedColors.Contains(color) ? "active" : string.Empty;
-
-
-    public string HeaderClass<T>(Expression<Func<Card, T>> property)
-    {
-        if (_isBusy)
-        {
-            return string.Empty;
-        }
-        else if (_filters.OrderBy == null || MemberName(property) != _filters.OrderBy)
-        {
-            return "clickable btn-link";
-        }
-        else
-        {
-            return "clickable btn-link font-weight-bold";
-        }
-    }
-
-
-    public static string DisplayName<T>(Expression<Func<Card, T>> property) =>
-        EntityExtensions.DisplayName(property);
-
-
     public RenderFragment Direction<T>(Expression<Func<Card, T>> property)
     {
-        bool invalid = _isBusy
-            || _filters.OrderBy == null
-            || MemberName(property) != _filters.OrderBy;
+        bool invalid = IsBusy
+            || Filters.OrderBy == null
+            || property.Body is not MemberExpression memberExpr
+            || memberExpr.Member.Name != Filters.OrderBy;
 
-        return _filters.IsReversed switch
+        return Filters.IsReversed switch
         {
             _ when invalid => @<text></text>,
             true => @<text>&#9650;</text>,
@@ -194,332 +150,29 @@
         };
     }
 
-    private static string? MemberName<T>(Expression<Func<Card, T>> property) =>
-        (property.Body as MemberExpression)?.Member.Name;
+
+    public static string DisplayName<T>(Expression<Func<Card, T>> property) =>
+        EntityExtensions.DisplayName(property);
 
 
+    public string ColorActive(string color) =>
+        Filters.PickedColors.Contains(color) ? "active" : string.Empty;
 
-    protected override async Task OnInitializedAsync()
+
+    public string HeaderClass<T>(Expression<Func<Card, T>> property)
     {
-        if (_isBusy)
+        if (IsBusy)
         {
-            return;
+            return string.Empty;
         }
-
-        _filters.PageSize = PageSizes.GetComponentSize<Collection>();
-        _isBusy = true;
-
-        try
+        else if (property.Body is MemberExpression memberExpr
+            && memberExpr.Member.Name == Filters.OrderBy)
         {
-            await LoadCardsAsync(_filters, _cancel.Token);
-        }
-        catch (OperationCanceledException ex)
-        {
-            Logger.LogError(ex.ToString());
-        }
-        finally
-        {
-            _isBusy = false;
-        }
-    }
-
-
-    public void Dispose()
-    {
-        _cancel.Cancel();
-        _cancel.Dispose();
-    }
-
-
-
-    #region Fetch
-
-    private class FilterContext
-    {
-        public HashSet<string> PickedColors { get; } = new(StringComparer.CurrentCultureIgnoreCase);
-
-        public string? SearchName { get; set; }
-
-        public string OrderBy { get; set; } = nameof(Card.Name);
-
-        public bool IsReversed { get; set; }
-
-        public int PageSize { get; set; }
-
-        public int PageIndex { get; set; }
-    }
-
-
-    private async Task LoadCardsAsync(FilterContext filters, CancellationToken cancel)
-    {
-        if (filters.PageSize <= 0)
-        {
-            return;
-        }
-
-        await using var dbContext = await DbFactory.CreateDbContextAsync(cancel);
-
-        dbContext.AttachRange(_loadedCards); // reuse prior card objs
-
-        _pagedCards = await FilteredCardsAsync(dbContext, filters, cancel);
-
-        _loadedCards.UnionWith(_pagedCards);
-
-        var cardAmounts = await CardAmountsAsync(dbContext, _pagedCards, cancel);
-
-        foreach ((string cardId, int total) in cardAmounts)
-        {
-            _cardAmounts[cardId] = total;
-        }
-    }
-
-
-    private static Task<PagedList<Card>> FilteredCardsAsync(
-        CardDbContext dbContext,
-        FilterContext filters,
-        CancellationToken cancel)
-    {
-        var cards = dbContext.Cards.AsQueryable();
-
-        var searchName = filters.SearchName;
-        var pickedColors = filters.PickedColors;
-
-        if (!string.IsNullOrWhiteSpace(searchName))
-        {
-            // keep eye on perf, postgres is slow here
-            cards = cards
-                .Where(c => c.Name.ToLower()
-                    .Contains(searchName.ToLower()));
-        }
-
-        if (pickedColors.Any())
-        {
-            cards = cards
-                .Where(c => c.Colors
-                    .Any(cl => pickedColors.Contains(cl.Name)));
-        }
-
-        bool dbEval = filters.OrderBy switch
-        {
-            nameof(Card.Rarity) => false,
-            _ => true
-        };
-
-        int pageSize = filters.PageSize;
-        int pageIndex = filters.PageIndex;
-
-        return dbEval
-            ? CardsOrdered(cards, filters)
-                .ToPagedListAsync(pageSize, pageIndex, cancel)
-
-            : CardsOrdered(cards.AsAsyncEnumerable(), filters)
-                // paging is kind of pointless since server eval is unbounded
-                .ToPagedListAsync(pageSize, pageIndex, cancel);
-    }
-
-
-    private static IQueryable<Card> CardsOrdered(
-        IQueryable<Card> cards, FilterContext filters)
-    {
-        IOrderedQueryable<Card> PrimaryOrder<T>(
-            Expression<Func<Card, T>> property)
-        {
-            return IsAscending(filters.OrderBy) ^ filters.IsReversed
-                ? cards.OrderBy(property)
-                : cards.OrderByDescending(property);
-        }
-
-        return filters.OrderBy switch
-        {
-            nameof(Card.ManaCost) => 
-                PrimaryOrder(c => c.Cmc)
-                    .ThenBy(c => c.Name)
-                    .ThenBy(c => c.SetName),
-
-            nameof(Card.SetName) =>
-                PrimaryOrder(c => c.SetName)
-                    .ThenBy(c => c.Name),
-
-            nameof(Card.Amounts) => 
-                PrimaryOrder(c => c.Amounts.Sum(a => a.NumCopies))
-                    .ThenBy(c => c.Name)
-                    .ThenBy(c => c.SetName),
-
-            nameof(Card.Name) or _ =>
-                PrimaryOrder(c => c.Name)
-                    .ThenBy(c => c.SetName)
-        };
-    }
-
-
-    private static IAsyncEnumerable<Card> CardsOrdered(
-        IAsyncEnumerable<Card> cards, FilterContext filters)
-    {
-        IOrderedAsyncEnumerable<Card> PrimaryOrder<T>(
-            Func<Card, T> property, IComparer<T> comparer)
-        {
-            return IsAscending(filters.OrderBy) ^ filters.IsReversed
-                ? cards.OrderBy(property, comparer)
-                : cards.OrderByDescending(property, comparer);
-        }
-
-        // custom order comparers are not supported in ef core
-        return filters.OrderBy switch
-        {
-            nameof(Card.Rarity) or _ => 
-                PrimaryOrder(c => c.Rarity, new RarityComparer())
-                    .ThenBy(c => c.Name)
-                    .ThenBy(c => c.SetName),
-        };
-    }
-
-
-    private static bool IsAscending(string? property) => property switch
-    {
-        nameof(Card.ManaCost) => true,
-        nameof(Card.SetName) => true,
-        nameof(Card.Rarity) => false,
-        nameof(Card.Amounts) => false,
-        _ => true
-    };
-
-
-    private static Task<Dictionary<string, int>> CardAmountsAsync(
-        CardDbContext dbContext, 
-        IEnumerable<Card> cards,
-        CancellationToken cancel)
-    {
-        var cardIds = cards
-            .Select(c => c.Id)
-            .ToArray();
-
-        return dbContext.Amounts
-            .Where(a => cardIds.Contains(a.CardId))
-            .GroupBy(a => a.CardId,
-                (CardId, amounts) =>
-                    new { CardId, Total = amounts.Sum(a => a.NumCopies) })
-
-            .ToDictionaryAsync(
-                ct => ct.CardId, ct => ct.Total, cancel);
-    }
-
-    #endregion
-
-
-
-    public async Task FilterColorAsync(string color)
-    {
-        if (_isBusy)
-        {
-            return;
-        }
-
-        var pickedColors = _filters.PickedColors;
-
-        if (pickedColors.Contains(color))
-        {
-            pickedColors.Remove(color);
+            return "clickable btn-link font-weight-bold";
         }
         else
         {
-            pickedColors.Add(color);
-        }
-
-        _isBusy = true;
-
-        try
-        {
-            await LoadCardsAsync(_filters, _cancel.Token);
-        }
-        catch (OperationCanceledException ex)
-        {
-            Logger.LogError(ex.ToString());
-        }
-        finally
-        {
-            _isBusy = false;
-        }
-    }
-
-
-    public async Task SearchNameAsync(ChangeEventArgs eventArgs)
-    {
-        if (_isBusy)
-        {
-            return;
-        }
-
-        _filters.SearchName = eventArgs.Value?.ToString();
-        _isBusy = true;
-
-        try
-        {
-            await LoadCardsAsync(_filters, _cancel.Token);
-        }
-        catch (OperationCanceledException ex)
-        {
-            Logger.LogError(ex.ToString());
-        }
-        finally
-        {
-            _isBusy = false;
-        }
-    }
-
-
-    public async Task ReorderCardsAsync<T>(Expression<Func<Card, T>> property)
-    {
-        if (_isBusy || MemberName(property) is not string newOrder)
-        {
-            return;
-        }
-
-        string oldOrder = _filters.OrderBy;
-
-        _filters.IsReversed = newOrder == oldOrder && !_filters.IsReversed;
-        _filters.OrderBy = newOrder;
-
-        _isBusy = true;
-
-        try
-        {
-            await LoadCardsAsync(_filters, _cancel.Token);
-        }
-        catch (OperationCanceledException ex)
-        {
-            Logger.LogError(ex.ToString());
-        }
-        finally
-        {
-            _isBusy = false;
-        }
-    }
-
-
-    public async Task ChangePageAsync(int pageIndex)
-    {
-        if (_isBusy
-            || _filters.PageIndex == pageIndex
-            || pageIndex < 0 
-            || pageIndex >= _pagedCards.Pages.Total)
-        {
-            return;
-        }
-
-        _filters.PageIndex = pageIndex;
-        _isBusy = true;
-
-        try
-        {
-            await LoadCardsAsync(_filters, _cancel.Token);
-        }
-        catch (OperationCanceledException ex)
-        {
-            Logger.LogError(ex.ToString());
-        }
-        finally
-        {
-            _isBusy = false;
+            return "clickable btn-link";
         }
     }
 }

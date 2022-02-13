@@ -1,13 +1,22 @@
-@page "{pageIndex:int?}"
+@page 
 @model Treasury.HistoryModel
 @{
-    ViewData["Title"] = $"Treasury - History ({Model.Pages})";
+    ViewData["Title"] = $"Treasury - History";
 }
 
+@using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Identity
 @using MTGViewer.Areas.Identity.Data
 
+@inject IAuthorizationService AuthorizationService
 @inject SignInManager<CardUser> SignInManager
+
+@{
+    bool canChangeTreasury = (await AuthorizationService
+        .AuthorizeAsync(User, CardPolicies.ChangeTreasury)).Succeeded;
+
+    bool isSignedIn = SignInManager.IsSignedIn(User);
+}
 
 <h1>Changes To Treasury</h1>
 
@@ -23,7 +32,7 @@
                 <th scope="col"> @Html.DisplayNameForInnerType((Change c) => c.Card) </th>
                 <th scope="col"> @Html.DisplayNameForInnerType((Change c) => c.Amount) </th>
 
-                @if (SignInManager.IsSignedIn(User))
+                @if (isSignedIn)
                 {
                     <th scope="col"></th>
                 }
@@ -38,11 +47,11 @@
                     <td> -- </td>
                     <td> -- </td>
                     <td> -- </td>
-                    @if (SignInManager.IsSignedIn(User))
+                    @if (isSignedIn)
                     {
                         <td> -- </td>
                     }
-                    </tr>
+                </tr>
             }
             @foreach (var transfer in Model.Transfers)
             {
@@ -72,7 +81,7 @@
                                 <a asp-page="Details" asp-route-id="@from.Id"> @from.Name </a>
                                 break;
 
-                            case Unclaimed:
+                            case Unclaimed when canChangeTreasury:
                                 <a asp-page="/Unowned/Index" asp-route-id="@from.Id"> @from.Name </a>
                                 break;
 
@@ -101,7 +110,7 @@
                                 <a asp-page="Details" asp-route-id="@to.Id"> @to.Name </a>
                                 break;
 
-                            case Unclaimed:
+                            case Unclaimed when canChangeTreasury:
                                 <a asp-page="/Unowned/Index" asp-route-id="@to.Id"> @to.Name </a>
                                 break;
                             
@@ -118,15 +127,22 @@
 
                     <td> @first.Amount </td>
 
-                    @if (SignInManager.IsSignedIn(User)
+                    @if (isSignedIn
                         && Model.IsFirstTransfer(transfer)
                         && Model.IsShared(transaction))
                     {
                         <td rowspan="@transaction.Changes.Count" class="text-center">
-                            <form method="POST">
-                                <input type="hidden" name="transactionId" value="@transaction.Id"/>
-                                <button title="Remove Record" type="submit" class="btn btn-danger"> &times; </button>
-                            </form>
+                            @if (canChangeTreasury)
+                            {
+                                <form method="POST">
+                                    <input type="hidden" name="transactionId" value="@transaction.Id"/>
+                                    <button title="Remove Record" type="submit" class="btn btn-danger"> &times; </button>
+                                </form>
+                            }
+                            else
+                            {
+                                <button class="btn btn-danger" type="button" disabled> &times; </button>
+                            }
                         </td>
                     }
                 </tr>
@@ -146,4 +162,4 @@
     </table>
 </div>
 
-<partial name="_PaginationPartial" for="Pages"/>
+<component type="typeof(SeekPaging<Change>)" render-mode="Static" param-Seek="Model.Seek" />

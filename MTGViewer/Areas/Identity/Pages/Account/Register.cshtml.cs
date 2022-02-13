@@ -1,10 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using System.Threading;
 using System.Threading.Tasks;
 
-using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -43,28 +42,28 @@ public class RegisterModel : PageModel
         [Required]
         [MaxLength(256)]
         [Display(Name = "Full Name")]
-        public string Name { get; set; } = null!;
+        public string Name { get; set; } = default!;
 
         [Required]
         [EmailAddress]
         [Display(Name = "Email")]
-        public string Email { get; set; } = null!;
+        public string Email { get; set; } = default!;
 
         [Required]
         [StringLength(100, ErrorMessage = "The {0} must be at least {2} and at max {1} characters long.", MinimumLength = 6)]
         [DataType(DataType.Password)]
         [Display(Name = "Password")]
-        public string Password { get; set; } = null!;
+        public string Password { get; set; } = default!;
 
         [DataType(DataType.Password)]
         [Display(Name = "Confirm password")]
         [Compare("Password", ErrorMessage = "The password and confirmation password do not match.")]
-        public string ConfirmPassword { get; set; } = null!;
+        public string ConfirmPassword { get; set; } = default!;
     }
 
 
     [BindProperty]
-    public InputModel Input { get; set; } = null!;
+    public InputModel Input { get; set; } = default!;
 
     [BindProperty(SupportsGet = true)]
     public string? ReturnUrl { get; set; }
@@ -74,7 +73,7 @@ public class RegisterModel : PageModel
     { }
 
 
-    public async Task<IActionResult> OnPostAsync()
+    public async Task<IActionResult> OnPostAsync(CancellationToken cancel)
     {
         ReturnUrl ??= Url.Content("~/");
 
@@ -101,7 +100,7 @@ public class RegisterModel : PageModel
         var userId = await _userManager.GetUserIdAsync(user);
         user.Id = userId;
 
-        var created = await _referenceManager.CreateReferenceAsync(user);
+        var created = await _referenceManager.CreateReferenceAsync(user, cancel);
         if (!created)
         {
             ModelState.AddModelError(string.Empty, "Issue creating user account");

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Paging;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -26,23 +27,23 @@ public class IndexModel : PageModel
 
     public IReadOnlyList<Bin> Bins { get; private set; } = Array.Empty<Bin>();
 
-    public Data.Pages Pages { get; private set; }
+    public Seek<Box> Seek { get; private set; }
 
     public bool HasExcess { get; private set; }
 
     public bool HasUnclaimed { get; private set; }
 
 
-    public async Task OnGetAsync(int? pageIndex, CancellationToken cancel)
+    public async Task OnGetAsync(int? seek, int? index, bool backTrack, CancellationToken cancel)
     {
         var boxes = await BoxesForViewing()
-            .ToPagedListAsync(_pageSize, pageIndex, cancel);
-        
+            .ToSeekListAsync(index, _pageSize, seek, backTrack, cancel);
+
         Bins = boxes
             .GroupBy(b => b.Bin, (bin, _) => bin)
             .ToList();
 
-        Pages = boxes.Pages;
+        Seek = boxes.Seek;
 
         HasExcess = await _dbContext.Amounts
             .AnyAsync(a => 
@@ -72,4 +73,5 @@ public class IndexModel : PageModel
 
             .AsNoTrackingWithIdentityResolution();
     }
+
 }

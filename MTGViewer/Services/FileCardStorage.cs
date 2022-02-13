@@ -9,7 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 using CsvHelper;
 
 using MTGViewer.Services.Internal;
@@ -21,31 +21,60 @@ public class FileCardStorage
 {
     private readonly string _defaultFilename;
     private readonly BulkOperations _bulkOperations;
+    private readonly LoadingProgress _loadProgress;
 
-    public FileCardStorage(IConfiguration config, BulkOperations bulkOperations)
+    public FileCardStorage(
+        IOptions<SeedSettings> seedOptions,
+        BulkOperations bulkOperations, 
+        LoadingProgress loadProgress)
     {
-        var filename = config.GetValue("JsonPath", "cards");
-
-        _defaultFilename = Path.ChangeExtension(filename, ".json");
-
+        _defaultFilename = Path.ChangeExtension(seedOptions.Value.JsonPath, ".json");
         _bulkOperations = bulkOperations;
+        _loadProgress = loadProgress;
     }
 
 
-    public async Task<byte[]> GetBackupAsync(int? page = null, CancellationToken cancel = default)
+    public ValueTask<Stream> GetUserBackupAsync(string userId, CancellationToken cancel = default)
     {
-        var data = _bulkOperations.GetCardStream(DataScope.Paged, page);
+        var stream = _bulkOperations.GetUserStream(userId);
 
+        return SerializeAsync(stream, cancel);
+    }
+
+
+    public ValueTask<Stream> GetTreasuryBackupAsync(CancellationToken cancel = default)
+    {
+        var stream = _bulkOperations.GetTreasuryStream();
+
+        return SerializeAsync(stream, cancel);
+    }
+
+
+    public ValueTask<Stream> GetDefaultBackupAsync(CancellationToken cancel = default)
+    {
+        var stream = _bulkOperations.GetDefaultStream();
+
+        return SerializeAsync(stream, cancel);
+    }
+
+
+    private async ValueTask<Stream> SerializeAsync(CardStream stream, CancellationToken cancel)
+    {
         var serializeOptions = new JsonSerializerOptions 
         {
             ReferenceHandler = ReferenceHandler.Preserve
         };
 
-        await using var utf8Stream = new MemoryStream(); // copy all data to memory, keep eye on
+        // copy all data to memory, keep eye on
+        // could possibly use temp file?
 
-        await JsonSerializer.SerializeAsync(utf8Stream, data, serializeOptions, cancel);
+        var utf8Stream = new MemoryStream();
 
-        return utf8Stream.ToArray();
+        await JsonSerializer.SerializeAsync(utf8Stream, stream, serializeOptions, cancel);
+
+        utf8Stream.Position = 0;
+
+        return utf8Stream;
     }
 
 
@@ -55,7 +84,7 @@ public class FileCardStorage
 
         await using var writer = File.Create(path);
 
-        var data = _bulkOperations.GetCardStream(DataScope.Full);
+        var stream = _bulkOperations.GetSeedStream();
 
         var serializeOptions = new JsonSerializerOptions
         {
@@ -63,7 +92,7 @@ public class FileCardStorage
             WriteIndented = true
         };
 
-        await JsonSerializer.SerializeAsync(writer, data, serializeOptions, cancel);
+        await JsonSerializer.SerializeAsync(writer, stream, serializeOptions, cancel);
     }
 
 
@@ -79,11 +108,13 @@ public class FileCardStorage
             PropertyNameCaseInsensitive = true 
         };
 
-        var data = await JsonSerializer.DeserializeAsync<CardStream>(reader, deserializeOptions, cancel);
+        var data = await JsonSerializer.DeserializeAsync<CardData>(reader, deserializeOptions, cancel);
         if (data is null)
         {
             throw new ArgumentException(nameof(path));
         }
+
+        _loadProgress.AddProgress(10); // percent is a guess, TODO: more informed value
 
         await _bulkOperations.SeedAsync(data, cancel);
     }
@@ -104,6 +135,8 @@ public class FileCardStorage
             throw new ArgumentException(nameof(jsonStream));
         }
 
+        _loadProgress.AddProgress(10); // percent is a guess, TODO: more informed value
+
         await _bulkOperations.MergeAsync(data, cancel);
     }
 
@@ -122,6 +155,8 @@ public class FileCardStorage
         using var csv = new CsvReader(readStream, CultureInfo.InvariantCulture);
 
         var csvAdditions = await CsvAdditionsAsync(csv, cancel);
+
+        _loadProgress.AddProgress(10); // percent is a guess, TODO: more informed value
 
         await _bulkOperations.MergeAsync(csvAdditions, cancel);
     }

@@ -11,13 +11,14 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
+using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
-using MTGViewer.Services;
 
 namespace MTGViewer.Pages.Cards;
 
 
 [Authorize]
+[Authorize(CardPolicies.ChangeTreasury)]
 public class DeleteModel : PageModel
 {
     private readonly CardDbContext _dbContext;
@@ -32,7 +33,7 @@ public class DeleteModel : PageModel
 
     public sealed class InputModel
     {
-        public string CardId { get; set; } = null!;
+        public string CardId { get; set; } = default!;
 
         [Display(Name = "Number of Copies")]
         [Required(ErrorMessage = "No Copies Specified")]
@@ -44,7 +45,7 @@ public class DeleteModel : PageModel
     [TempData]
     public string? PostMessage { get; set; }
 
-    public Card Card { get; private set; } = null!;
+    public Card Card { get; private set; } = default!;
 
     [BindProperty]
     public InputModel? Input { get; set; }
@@ -57,11 +58,9 @@ public class DeleteModel : PageModel
             return NotFound();
         }
 
-        var card = await _dbContext.Cards
-            .Include(c => c.Amounts)
-                .ThenInclude(c => c.Location)
+        var card = await CardForDelete(id)
             .AsNoTracking()
-            .SingleOrDefaultAsync(c => c.Id == id, cancel);
+            .SingleOrDefaultAsync(cancel);
 
         if (card == default)
         {
@@ -74,6 +73,16 @@ public class DeleteModel : PageModel
     }
 
 
+    private IQueryable<Card> CardForDelete(string cardId)
+    {
+        return _dbContext.Cards
+            .Where(c => c.Id == cardId)
+            .Include(c => c.Amounts
+                .OrderBy(a => a.NumCopies))
+                .ThenInclude(a => a.Location);
+    }
+
+
     public async Task<IActionResult> OnPostAsync(CancellationToken cancel)
     {
         if (Input is null)
@@ -81,22 +90,16 @@ public class DeleteModel : PageModel
             return NotFound();
         }
 
-        var card = await _dbContext.Cards
-            .Include(c => c.Amounts
-                .OrderBy(a => a.NumCopies))
-                .ThenInclude(a => a.Location)
-            .SingleOrDefaultAsync(c => c.Id == Input.CardId, cancel);
+        var card = await CardForDelete(Input.CardId)
+            .SingleOrDefaultAsync(cancel);
 
         if (card is null)
         {
             return NotFound();
         }
 
-        var removeTargets = card.Amounts
-            .Where(a => a.Location is Box || a.Location is Unclaimed);
-
-        int maxCopies = removeTargets
-            .Sum(a => a.NumCopies);
+        var boxAmounts = card.Amounts.Where(a => a.Location is Box);
+        int maxCopies = boxAmounts.Sum(a => a.NumCopies);
 
         if (!ModelState.IsValid
             || maxCopies == 0 
@@ -106,19 +109,22 @@ public class DeleteModel : PageModel
             return Page();
         }
 
-        RemoveCopies(removeTargets, Input.RemoveCopies);
+        RemoveCopies(boxAmounts, Input.RemoveCopies);
+
+        await _dbContext.UpdateBoxesAsync(cancel);
+
+        _dbContext.Amounts.RemoveRange(
+            card.Amounts.Where(a => a.NumCopies == 0));
 
         bool allRemoved = maxCopies == Input.RemoveCopies
             && !card.Amounts
-                .Except(removeTargets)
+                .Except(boxAmounts)
                 .Any();
 
         if (allRemoved)
         {
             _dbContext.Cards.Remove(card);
         }
-
-        await _dbContext.UpdateBoxesAsync(cancel);
 
         try
         {
