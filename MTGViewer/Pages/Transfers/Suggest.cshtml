@@ -1,4 +1,4 @@
-@page "{cardId}"
+@page "{id}"
 @model Transfers.SuggestModel
 @inject SymbolFormatter MtgSymbols
 @{
@@ -22,7 +22,7 @@
         }
         else
         {
-            <form method="POST" id="user-form" asp-route-cardId="@Model.Card.Id">
+            <form method="POST" id="user-form" asp-route-id="@Model.Card.Id">
                 <fieldset class="form-group mb-4">
                     <div class="row">
                         <legend class="col-form-label col-sm-3 pt-0"> Users </legend>
@@ -80,7 +80,7 @@
 
                         @if (pages.HasPrevious)
                         {
-                            <a asp-route-pageIndex="@(pages.Current - 1)"
+                            <a asp-route-offset="@(pages.Current - 1)"
                                 class="btn btn-secondary" role="button">
                                 &laquo; </a>
                         }
@@ -91,7 +91,7 @@
 
                         @if (pages.HasNext)
                         {
-                            <a asp-route-pageIndex="@(pages.Current + 1)"
+                            <a asp-route-offset="@(pages.Current + 1)"
                                 class="btn btn-secondary" role="button">
                                 &raquo; </a>
                         }

@@ -40,15 +40,15 @@ public class SuggestModel : PageModel
     public OffsetList<UserRef> Users { get; private set; } = OffsetList<UserRef>.Empty();
 
 
-    public async Task<IActionResult> OnGetAsync(string cardId, int? offset, CancellationToken cancel)
+    public async Task<IActionResult> OnGetAsync(string id, int? offset, CancellationToken cancel)
     {
-        if (cardId is null)
+        if (id == default)
         {
             return NotFound();
         }
 
         var card = await _dbContext.Cards
-            .SingleOrDefaultAsync(c => c.Id == cardId, cancel);
+            .SingleOrDefaultAsync(c => c.Id == id, cancel);
 
         if (card is null)
         {
@@ -95,13 +95,13 @@ public class SuggestModel : PageModel
     }
 
 
-    public IActionResult OnPost(string cardId, string receiverId)
+    public IActionResult OnPost(string id, string receiverId)
     {
-        if (cardId == null || receiverId == null)
+        if (id is null || receiverId is null)
         {
             return RedirectToPage();
         }
 
-        return RedirectToPage("SuggestUser", new { cardId, receiverId });
+        return RedirectToPage("SuggestUser", new { id, receiverId });
     }
 }

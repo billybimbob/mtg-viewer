@@ -131,7 +131,7 @@ public class IndexModel : PageModel
 
 
 
-    public async Task<IActionResult> OnPostAsync(int suggestId, CancellationToken cancel)
+    public async Task<IActionResult> OnPostAsync(int id, CancellationToken cancel)
     {
         var userId = _userManager.GetUserId(User);
         if (userId is null)
@@ -147,7 +147,7 @@ public class IndexModel : PageModel
 
         var suggestion = await _dbContext.Suggestions
             .SingleOrDefaultAsync(s =>
-                s.Id == suggestId && s.ReceiverId == userId, cancel);
+                s.Id == id && s.ReceiverId == userId, cancel);
 
         if (suggestion is null)
         {

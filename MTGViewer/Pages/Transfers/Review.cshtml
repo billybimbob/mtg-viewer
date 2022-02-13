@@ -1,4 +1,4 @@
-@page "{deckId:int}"
+@page "{id:int}"
 @model Transfers.ReviewModel
 @{
     ViewData["Title"] = $"{Model.Deck.Name} - Received Trades";
@@ -60,7 +60,7 @@
                             </select>
                         </td>
                         <td>
-                            <input type="hidden" asp-for="@trade.Id" name="tradeId" />
+                            <input type="hidden" name="tradeId" asp-for="@trade.Id" />
 
                             <input type="submit"
                                 asp-page-handler="Accept"

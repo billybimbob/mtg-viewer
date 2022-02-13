@@ -37,13 +37,12 @@ public class ExcessModel : PageModel
         string? seek, 
         int? index,
         bool backTrack, 
-        string? cardId, 
+        bool jump,
         CancellationToken cancel)
     {
-        if (seek is null
-            && await GetCardSeekAsync(cardId, cancel) is (string cardSeek, int cardIndex))
+        if (jump && await GetCardJumpAsync(seek, cancel) is (string cardJump, int cardIndex))
         {
-            return RedirectToPage(new { seek = cardSeek, index = cardIndex });
+            return RedirectToPage(new { seek = cardJump, index = cardIndex });
         }
 
         Cards = await ExcessCards()
@@ -53,15 +52,15 @@ public class ExcessModel : PageModel
     }
 
 
-    private async Task<(string?, int?)> GetCardSeekAsync(string? cardId, CancellationToken cancel)
+    private async Task<(string?, int?)> GetCardJumpAsync(string? id, CancellationToken cancel)
     {
-        if (cardId is null)
+        if (id is null)
         {
             return (null, null);
         }
 
         var cardName = await ExcessCards()
-            .Where(c => c.Id == cardId)
+            .Where(c => c.Id == id)
             .Select(c => c.Name)
             .FirstOrDefaultAsync(cancel);
 

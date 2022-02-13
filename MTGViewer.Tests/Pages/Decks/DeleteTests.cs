@@ -79,7 +79,10 @@ public class DeleteTests : IAsyncLifetime
 
         await _pageFactory.AddModelContextAsync(_deleteModel, deck.OwnerId);
 
-        var wrongDeck = -1;
+        var wrongDeck = await _dbContext.Decks
+            .Where(d => d.OwnerId != deck.OwnerId)
+            .Select(d => d.Id)
+            .FirstAsync();
 
         // Act
         var result = await _deleteModel.OnPostAsync(wrongDeck, default);

@@ -45,9 +45,9 @@ public class RequestModel : PageModel
     public IReadOnlyList<WantNameGroup> Requests { get; private set; } = Array.Empty<WantNameGroup>();
 
 
-    public async Task<IActionResult> OnGetAsync(int deckId, CancellationToken cancel)
+    public async Task<IActionResult> OnGetAsync(int id, CancellationToken cancel)
     {
-        var deck = await DeckForRequest(deckId)
+        var deck = await DeckForRequest(id)
             .AsNoTrackingWithIdentityResolution()
             .SingleOrDefaultAsync(cancel);
 
@@ -64,7 +64,7 @@ public class RequestModel : PageModel
 
         if (deck.TradesTo.Any())
         {
-            return RedirectToPage("Status", new { deckId });
+            return RedirectToPage("Status", new { id });
         }
 
 
@@ -123,9 +123,10 @@ public class RequestModel : PageModel
 
 
 
-    public async Task<IActionResult> OnPostAsync(int deckId, CancellationToken cancel)
+    public async Task<IActionResult> OnPostAsync(int id, CancellationToken cancel)
     {
-        var deck = await DeckForRequest(deckId).SingleOrDefaultAsync(cancel);
+        var deck = await DeckForRequest(id).SingleOrDefaultAsync(cancel);
+
         if (deck == default)
         {
             return NotFound();
@@ -150,14 +151,14 @@ public class RequestModel : PageModel
             return RedirectToPage("Index");
         }
 
-        _dbContext.Trades.AttachRange(trades);
+        _dbContext.Trades.AddRange(trades);
 
         try
         {
             await _dbContext.SaveChangesAsync(cancel);
 
             PostMessage = "Request was successfully sent";
-            return RedirectToPage("Status", new { deckId });
+            return RedirectToPage("Status", new { id });
         }
         catch (DbUpdateException)
         {

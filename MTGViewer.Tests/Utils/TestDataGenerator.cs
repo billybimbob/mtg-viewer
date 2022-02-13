@@ -689,4 +689,56 @@ public class TestDataGenerator
 
         _dbContext.ChangeTracker.Clear();
     }
+
+
+    public async Task CreateChangesAsync()
+    {
+        var cards = await _dbContext.Cards
+            .Take(_random.Next(1, 10))
+            .ToListAsync();
+
+        var additions = cards
+            .Select(c => new CardRequest(c, _random.Next(1, 8)));
+
+        await _dbContext.AddCardsAsync(additions);
+
+        await _dbContext.SaveChangesAsync();
+
+        _dbContext.ChangeTracker.Clear();
+
+        var want = await GetWantAsync(5);
+
+        var deck = await _dbContext.Decks
+            .SingleAsync(d => d.Id == want.LocationId);
+
+        await _dbContext.ExchangeAsync(deck);
+
+        _dbContext.ChangeTracker.Clear();
+    }
+
+
+    public async Task AddUserCardsAsync(UserRef user)
+    {
+        var card = await _dbContext.Cards
+            .Take(_random.Next(1, 4))
+            .ToListAsync();
+
+        var deck = new Deck { Owner = user };
+
+        var amounts = card
+            .Select(c => new Amount
+            {
+                Card = c,
+                Location = deck,
+                NumCopies = _random.Next(4)
+            });
+
+        deck.Cards.AddRange(amounts);
+
+        _dbContext.Decks.Attach(deck);
+
+        await _dbContext.SaveChangesAsync();
+
+        _dbContext.ChangeTracker.Clear();
+    }
 }

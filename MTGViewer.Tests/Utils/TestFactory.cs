@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -27,7 +28,8 @@ public static class TestFactory
 
         options
             .EnableSensitiveDataLogging()
-            .UseInMemoryDatabase(inMemory.Database);
+            .UseInMemoryDatabase(inMemory.Database)
+            .ConfigureWarnings(b => b.Ignore(InMemoryEventId.TransactionIgnoredWarning));
     }
 
 

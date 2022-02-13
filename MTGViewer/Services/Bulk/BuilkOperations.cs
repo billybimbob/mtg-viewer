@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 
 using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
@@ -16,20 +16,18 @@ namespace MTGViewer.Services;
 
 public class BulkOperations
 {
+    private readonly SeedSettings _seedSettings;
     private readonly PageSizes _pageSizes;
     private readonly LoadingProgress _loadProgress;
 
-    // might want to use dbFactory
-    // keep eye on
+    // might want to use dbFactory, keep eye on
     private readonly CardDbContext _dbContext;
     private readonly IMTGQuery _mtgQuery;
-
     private readonly UserManager<CardUser> _userManager;
-    private readonly string _tempPassword;
 
 
     public BulkOperations(
-        IConfiguration config, 
+        IOptions<SeedSettings> seedOptions, 
         PageSizes pageSizes,
         LoadingProgress loadProgress,
         CardDbContext dbContext,
@@ -37,16 +35,13 @@ public class BulkOperations
         UserManager<CardUser> userManager)
     {
         _pageSizes = pageSizes;
+        _seedSettings = seedOptions.Value;
         _loadProgress = loadProgress;
 
         _dbContext = dbContext;
         _mtgQuery = fetch;
 
-        var seedOptions = new SeedSettings();
-        config.GetSection(nameof(SeedSettings)).Bind(seedOptions);
-
         _userManager = userManager;
-        _tempPassword = seedOptions.Password;
     }
 
 
@@ -126,9 +121,9 @@ public class BulkOperations
 
     private async ValueTask<IdentityResult> AddUserAsync(CardUser user, CancellationToken cancel)
     {
-        var created = _tempPassword != default
-            ? await _userManager.CreateAsync(user, _tempPassword)
-            : await _userManager.CreateAsync(user);
+        var created = string.IsNullOrWhiteSpace(_seedSettings.Password)
+            ? await _userManager.CreateAsync(user)
+            : await _userManager.CreateAsync(user, _seedSettings.Password);
         
         cancel.ThrowIfCancellationRequested();
 

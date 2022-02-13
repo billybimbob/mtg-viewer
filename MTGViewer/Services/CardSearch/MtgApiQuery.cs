@@ -312,7 +312,7 @@ public class MtgApiQuery : IMTGQuery
 
             Name = iCard.Name,
             Names = (iCard.Names ?? Enumerable.Empty<string>())
-                .Select(s => new Name(s, iCard.Id))
+                .Select(s => new Name { Value = s, CardId = iCard.Id })
                 .ToList(),
 
             Layout = iCard.Layout,
@@ -321,19 +321,19 @@ public class MtgApiQuery : IMTGQuery
                 .Select(id => Color.Symbols[id.ToUpper()]) 
 
                 .Union(iCard.Colors ?? Enumerable.Empty<string>())
-                .Select(s => new Color(s, iCard.Id))
+                .Select(s => new Color { Name = s, CardId = iCard.Id })
                 .ToList(),
 
             Types = (iCard.Types ?? Enumerable.Empty<string>())
-                .Select(s => new Data.Type(s, iCard.Id))
+                .Select(s => new Data.Type { Name = s, CardId = iCard.Id })
                 .ToList(),
 
             Subtypes = (iCard.SubTypes ?? Enumerable.Empty<string>())
-                .Select(s => new Subtype(s, iCard.Id))
+                .Select(s => new Subtype { Name = s, CardId = iCard.Id })
                 .ToList(),
 
             Supertypes = (iCard.SuperTypes ?? Enumerable.Empty<string>())
-                .Select(s => new Supertype(s, iCard.Id))
+                .Select(s => new Supertype { Name = s, CardId = iCard.Id })
                 .ToList(),
 
             ManaCost = iCard.ManaCost,

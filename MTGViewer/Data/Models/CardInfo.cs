@@ -8,11 +8,6 @@ public class Name
     public Name()
     { }
 
-    public Name(string value, string cardId)
-    {
-        Value = value;
-        CardId = cardId;
-    }
 
     [JsonInclude]
     public string Value { get; init; } = default!;
@@ -40,12 +35,6 @@ public class Color
     public Color()
     { }
 
-    public Color(string name, string cardId)
-    {
-        Name = name;
-        CardId = cardId;
-    }
-
     [JsonInclude]
     public string Name { get; init; } = default!;
 
@@ -61,12 +50,6 @@ public class Supertype
 {
     public Supertype()
     { }
-
-    public Supertype(string name, string cardId)
-    {
-        Name = name;
-        CardId = cardId;
-    }
 
     [JsonInclude]
     public string Name { get; init; } = default!;
@@ -84,12 +67,6 @@ public class Type
     public Type()
     { }
 
-    public Type(string name, string cardId)
-    {
-        Name = name;
-        CardId = cardId;
-    }
-
     [JsonInclude]
     public string Name { get; init; } = default!;
 
@@ -105,12 +82,6 @@ public class Subtype
 {
     public Subtype()
     { }
-
-    public Subtype(string name, string cardId)
-    {
-        Name = name;
-        CardId = cardId;
-    }
 
     [JsonInclude]
     public string Name { get; init; } = default!;

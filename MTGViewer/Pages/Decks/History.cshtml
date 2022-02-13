@@ -129,7 +129,6 @@
                                     @if (canChangeTreasury)
                                     {
                                         <form method="POST">
-                                            <input type="hidden" asp-for="Deck.Id" />
                                             <input type="hidden" name="transactionId" value="@transaction.Id"/>
                                             <button title="Remove Record" type="submit" class="btn btn-danger"> &times; </button>
                                         </form>

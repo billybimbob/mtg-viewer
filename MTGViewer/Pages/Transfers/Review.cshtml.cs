@@ -36,15 +36,14 @@ public class ReviewModel : PageModel
     public Deck Deck { get; private set; } = default!;
 
 
-    public async Task<IActionResult> OnGetAsync(int deckId, CancellationToken cancel)
+    public async Task<IActionResult> OnGetAsync(int id, CancellationToken cancel)
     {
-        if (deckId == default)
+        if (id == default)
         {
             return NotFound();
         }
 
-        var deck = await DeckForReview(deckId)
-            .SingleOrDefaultAsync(cancel);
+        var deck = await DeckForReview(id).SingleOrDefaultAsync(cancel);
 
         if (deck == default)
         {
@@ -151,6 +150,7 @@ public class ReviewModel : PageModel
         try
         {
             await _dbContext.SaveChangesAsync(cancel);
+
             PostMessage = "Trade successfully Applied";
         }
         catch (DbUpdateException)
@@ -162,15 +162,15 @@ public class ReviewModel : PageModel
     }
 
 
-    private async Task<Trade?> GetTradeAsync(int tradeId, CancellationToken cancel)
+    private async Task<Trade?> GetTradeAsync(int id, CancellationToken cancel)
     {
-        if (tradeId == default)
+        if (id == default)
         {
             return null;
         }
 
         var tradeCard = await _dbContext.Trades
-            .Where(t => t.Id == tradeId)
+            .Where(t => t.Id == id)
             .Select(t => t.Card)
             .SingleOrDefaultAsync(cancel);
 
@@ -179,17 +179,17 @@ public class ReviewModel : PageModel
             return null;
         }
 
-        return await TradeForReview(tradeId, tradeCard)
+        return await TradeForReview(id, tradeCard)
             .SingleOrDefaultAsync(cancel);
     }
 
 
-    private IQueryable<Trade> TradeForReview(int tradeId, Card tradeCard)
+    private IQueryable<Trade> TradeForReview(int id, Card tradeCard)
     {
         var userId = _userManager.GetUserId(User);
 
         return _dbContext.Trades
-            .Where(t => t.Id == tradeId && t.From.OwnerId == userId)
+            .Where(t => t.Id == id && t.From.OwnerId == userId)
 
             .Include(t => t.To.Cards // unbounded: keep eye on
                 .Where(a => a.CardId == tradeCard.Id))
@@ -297,7 +297,6 @@ public class ReviewModel : PageModel
         var newChange = new Change
         {
             Card = trade.Card,
-
             From = fromAmount.Location,
             To = toAmount.Location,
 
@@ -397,6 +396,10 @@ public class ReviewModel : PageModel
         }
 
         var userId = _userManager.GetUserId(User);
+        if (userId == null)
+        {
+            return Forbid();
+        }
 
         var deckTrade = await _dbContext.Trades
             .SingleOrDefaultAsync(t => 

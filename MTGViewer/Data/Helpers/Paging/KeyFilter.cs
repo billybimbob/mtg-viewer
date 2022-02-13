@@ -18,11 +18,11 @@ internal static class KeyFilter
     }
 
 
-    public static Expression<Func<T, bool>>? BuildOriginFilter<T>(PageBuilder<T> pageBuilder)
+    public static Expression<Func<T, bool>> BuildOriginFilter<T>(PageBuilder<T> pageBuilder)
     {
-        if (pageBuilder.Origin is null)
+        if (pageBuilder.Origin is not T origin)
         {
-            return null;
+            throw new InvalidOperationException("No origin is defined");
         }
 
         var parameter = Expression.Parameter(
@@ -30,14 +30,16 @@ internal static class KeyFilter
             typeof(T).Name[0].ToString().ToLower());
 
         var source = pageBuilder.Source.Expression;
+        var direction = pageBuilder.Direction;
+
         var keys = GetOrderingKeys(source, parameter).ToList();
 
-        var filter = GetFilter(pageBuilder.Origin, pageBuilder.Direction, keys);
-
-        if (filter is null)
+        if (!keys.Any())
         {
-            return null;
+            throw new InvalidOperationException("There are no properties to filter by");
         }
+
+        var filter = GetFilter(origin, direction, keys);
 
         return Expression.Lambda<Func<T, bool>>(filter, parameter);
     }
@@ -106,23 +108,19 @@ internal static class KeyFilter
     }
 
 
-    private static BinaryExpression? GetFilter<T>(
+    private static BinaryExpression GetFilter<T>(
         T originEntity,
         SeekDirection direction,
         IEnumerable<KeyOrder> keys)
     {
-        if (keys.FirstOrDefault() is not KeyOrder firstKey)
-        {
-            return null;
-        }
-
         var origin = new ReplaceEntity<T>(originEntity);
 
-        var filter = CompareTo(origin, direction, firstKey);
-
+        var firstKey = keys.First();
         var otherKeys = keys
             .Select((key, i) => (key, i))
             .Skip(1);
+
+        var filter = CompareTo(origin, direction, firstKey);
 
         foreach ((KeyOrder key, int before) in otherKeys)
         {
@@ -284,7 +282,9 @@ internal static class KeyFilter
 
     private static BinaryExpression LessThan<T>(ReplaceEntity<T> origin, MemberExpression paramKey)
     {
-        if (paramKey.Type.IsValueType && paramKey.Type.IsAssignableTo(typeof(IComparable)))
+        if (paramKey.Type.IsValueType
+            && (paramKey.Type.IsAssignableTo(typeof(IComparable))
+                || paramKey.Type.IsAssignableTo(typeof(IComparable<>).MakeGenericType(paramKey.Type))))
         {
             return Expression.LessThan(paramKey, origin.Visit(paramKey));
         }
@@ -313,7 +313,9 @@ internal static class KeyFilter
 
     private static BinaryExpression GreaterThan<T>(ReplaceEntity<T> origin, MemberExpression paramKey)
     {
-        if (paramKey.Type.IsValueType && paramKey.Type.IsAssignableTo(typeof(IComparable)))
+        if (paramKey.Type.IsValueType
+            && (paramKey.Type.IsAssignableTo(typeof(IComparable))
+                || paramKey.Type.IsAssignableTo(typeof(IComparable<>).MakeGenericType(paramKey.Type))))
         {
             return Expression.GreaterThan(paramKey, origin.Visit(paramKey));
         }

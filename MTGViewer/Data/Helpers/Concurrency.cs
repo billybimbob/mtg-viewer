@@ -41,8 +41,7 @@ internal static class ConcurrencyExtensions
     {
         var concurrentType = typeof(Concurrent);
 
-        return concurrentType.Assembly
-            .GetExportedTypes()
+        return concurrentType.Assembly.ExportedTypes
             .Where(t => t.IsSubclassOf(concurrentType));
     }
 

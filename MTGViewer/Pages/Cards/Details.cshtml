@@ -197,7 +197,8 @@
                                     break;
 
                                 case Box box when box.IsExcess:
-                                    <a asp-page="/Treasury/Excess" asp-route-cardId="@Model.Card.Id"> @location.Name </a>
+                                    <a asp-page="/Treasury/Excess" asp-route-seek="@Model.Card.Id" asp-route-jump="@true">
+                                        @location.Name </a>
                                     break;
 
                                 case Box:

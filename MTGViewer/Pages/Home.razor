@@ -11,7 +11,7 @@
 <h1 class="text-center display-4">Welcome to the card database!</h1>
 
 <section class="pt-4">
-    @if (IsEmptyCollection())
+    @if (IsEmptyCollection)
     {
         <h3> Currently, there are no cards in the collection. </h3>
     }
@@ -128,7 +128,7 @@
 
     public IReadOnlyList<Transaction> RecentChanges => _recentChanges;
 
-    public bool IsEmptyCollection() => !_randomContext?.Cards.Any() ?? false;
+    public bool IsEmptyCollection => !_randomContext?.Cards.Any() ?? false;
 
     public bool IsImageLoaded(Card card) =>
         _randomContext?.LoadedImages.Contains(card.Id) ?? false;
@@ -313,7 +313,7 @@
 
     #region Database Queries
 
-    private static Task<List<string[]>> ShuffleOrderAsync(
+    private static ValueTask<List<string[]>> ShuffleOrderAsync(
         CardDbContext dbContext,
         int limit,
         CancellationToken cancel)
@@ -322,13 +322,11 @@
             .Select(c => c.Id)
             .OrderBy(_ => EF.Functions.Random())
             .Take(limit)
-
             .AsNoTracking()
+
             .AsAsyncEnumerable()
             .Chunk(ChunkSize)
-
-            .ToListAsync(cancel)
-            .AsTask();
+            .ToListAsync(cancel);
     }
 
 

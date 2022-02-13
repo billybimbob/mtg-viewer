@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 namespace System.Paging;
 
 
-public class PageBuilder<T>
+internal class PageBuilder<T>
 {
     internal PageBuilder(IQueryable<T> source, int? index, int pageSize)
     {
@@ -72,14 +72,14 @@ public class PageBuilder<T>
 
     public IQueryable<T> CreateQuery()
     {
-        var seekCondition = KeyFilter.BuildOriginFilter(this);
-
-        if (seekCondition is null)
+        if (Origin is null)
         {
             return Source
                 .Skip(PageIndex * PageSize)
                 .Take(PageSize);
         }
+
+        var seekCondition = KeyFilter.BuildOriginFilter(this);
 
         if (Direction is SeekDirection.Forward)
         {
@@ -135,11 +135,12 @@ public class PageBuilder<T>
 
     public Task<SeekList<T>> ToSeekListAsync(CancellationToken cancellationToken = default)
     {
-        var seekCondition = KeyFilter.BuildOriginFilter(this);
-        if (seekCondition is null)
+        if (Origin is null)
         {
             return FirstSeekListAsync(cancellationToken);
         }
+
+        var seekCondition = KeyFilter.BuildOriginFilter(this);
 
         return Direction switch
         {
@@ -235,9 +236,9 @@ public class PageBuilder<T>
 }
 
 
-public static partial class PagingExtensions
+internal static partial class PagingExtensions
 {
-    public static PageBuilder<TEntity> PageBy<TEntity>(
+    internal static PageBuilder<TEntity> PageBy<TEntity>(
         this IQueryable<TEntity> source,
         int? index, 
         int pageSize)

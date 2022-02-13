@@ -21,7 +21,7 @@ namespace MTGViewer.Pages.Treasury;
 public partial class Adjust : ComponentBase, IDisposable
 {
     [Parameter]
-    public int BoxId { get; set; } = default;
+    public int BoxId { get; set; }
 
     [Inject]
     protected IDbContextFactory<CardDbContext> DbFactory { get; set; } = default!;
@@ -236,7 +236,7 @@ public partial class Adjust : ComponentBase, IDisposable
         else
         {
             box = new Box();
-            dbContext.Boxes.Attach(box);
+            dbContext.Boxes.Add(box);
         }
 
         if (box is null)
@@ -269,7 +269,7 @@ public partial class Adjust : ComponentBase, IDisposable
         else
         {
             bin = new Bin();
-            dbContext.Bins.Attach(bin);
+            dbContext.Bins.Add(bin);
         }
 
         if (bin is null)
@@ -286,8 +286,8 @@ public partial class Adjust : ComponentBase, IDisposable
 
     public void BinSelected(ChangeEventArgs args)
     {
-        if (int.TryParse(args.Value?.ToString(), out int binId)
-            && _bins.SingleOrDefault(b => b.Id == binId) is var bin)
+        if (int.TryParse(args.Value?.ToString(), out int id)
+            && _bins.SingleOrDefault(b => b.Id == id) is var bin)
         {
             Box.Bin.Update(bin);
         }

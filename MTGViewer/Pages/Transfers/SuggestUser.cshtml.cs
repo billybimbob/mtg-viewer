@@ -46,14 +46,16 @@ public class SuggestUserModel : PageModel
     public Suggestion? Suggestion { get; set; }
 
 
-    public async Task<IActionResult> OnGetAsync(string cardId, string receiverId, CancellationToken cancel)
+    public async Task<IActionResult> OnGetAsync(string id, string receiverId, CancellationToken cancel)
     {
-        if (cardId == null || receiverId == null)
+        if (id == default || receiverId == null)
         {
             return NotFound();
         }
 
-        var card = await _dbContext.Cards.FindAsync(new []{ cardId }, cancel);
+        var card = await _dbContext.Cards
+            .SingleOrDefaultAsync(c => c.Id == id, cancel);
+
         if (card is null)
         {
             return NotFound();
@@ -65,7 +67,9 @@ public class SuggestUserModel : PageModel
             return NotFound();
         }
 
-        var receiver = await _dbContext.Users.FindAsync(new []{ receiverId }, cancel);
+        var receiver = await _dbContext.Users
+            .SingleOrDefaultAsync(u => u.Id == receiverId, cancel);
+
         if (receiver is null)
         {
             return NotFound();
@@ -212,8 +216,7 @@ public class SuggestUserModel : PageModel
     }
 
 
-    private async Task<bool> IsValidSuggestionAsync(
-        Suggestion? suggestion, CancellationToken cancel)
+    private async Task<bool> IsValidSuggestionAsync(Suggestion? suggestion, CancellationToken cancel)
     {
         string userId = _userManager.GetUserId(User);
 

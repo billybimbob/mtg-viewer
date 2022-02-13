@@ -69,9 +69,11 @@ public class Startup
                 .GetRequiredService<IMtgServiceProvider>()
                 .GetCardService());
 
-        services.AddScoped<BulkOperations>();
-        services.AddScoped<FileCardStorage>();
-        services.AddScoped<LoadingProgress>();
+        services
+            .Configure<SeedSettings>(_config.GetSection(nameof(SeedSettings)))
+            .AddScoped<BulkOperations>()
+            .AddScoped<FileCardStorage>()
+            .AddScoped<LoadingProgress>();
 
         if (_env.IsDevelopment())
         {

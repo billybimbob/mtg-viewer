@@ -39,11 +39,18 @@ public class ReferenceManager
 
     public async Task<bool> CreateReferenceAsync(CardUser user, CancellationToken cancel = default)
     {
-        var reference = await _dbContext.Users
-            .AsNoTracking()
-            .SingleOrDefaultAsync(u => u.Id == user.Id, cancel);
+        bool validUser = await _userManager.Users
+            .AnyAsync(u => u.Id == user.Id, cancel);
 
-        if (reference is not null)
+        if (!validUser)
+        {
+            return false;
+        }
+
+        bool existing = await _dbContext.Users
+            .AnyAsync(u => u.Id == user.Id, cancel);
+
+        if (existing)
         {
             return false;
         }
@@ -65,6 +72,14 @@ public class ReferenceManager
 
     public async Task<bool> UpdateReferenceAsync(CardUser user, CancellationToken cancel = default)
     {
+        bool validUser = await _userManager.Users
+            .AnyAsync(u => u.Id == user.Id, cancel);
+
+        if (!validUser)
+        {
+            return false;
+        }
+
         var reference = await _dbContext.Users
             .SingleOrDefaultAsync(u => u.Id == user.Id, cancel);
 
@@ -97,6 +112,14 @@ public class ReferenceManager
 
     public async Task<bool> DeleteReferenceAsync(CardUser user, CancellationToken cancel = default)
     {
+        bool validUser = await _userManager.Users
+            .AnyAsync(u => u.Id == user.Id, cancel);
+
+        if (validUser)
+        {
+            return false;
+        }
+
         var reference = await _dbContext.Users
             .SingleOrDefaultAsync(u => u.Id == user.Id, cancel);
 
@@ -127,6 +150,7 @@ public class ReferenceManager
         var userDecks = await _dbContext.Decks
             .Where(d => d.OwnerId == reference.Id)
             .Include(d => d.Cards)
+                .ThenInclude(a => a.Card)
             .ToListAsync(cancel);
 
         if (!userDecks.Any())
@@ -165,11 +189,11 @@ public class ReferenceManager
             .Select(u => u.Id)
             .ToArray();
 
-        var cardUsers = _userManager.Users
+        var cardUsers = await _userManager.Users
             .Where(u => resettingIds.Contains(u.Id))
-            .AsAsyncEnumerable();
+            .ToListAsync(cancel);
 
-        await foreach (var cardUser in cardUsers)
+        foreach (var cardUser in cardUsers)
         {
             await _userManager.AddClaimAsync(
                 cardUser, new Claim(CardClaims.ChangeTreasury, cardUser.Id));

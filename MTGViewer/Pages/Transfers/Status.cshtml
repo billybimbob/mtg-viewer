@@ -1,4 +1,4 @@
-@page "{deckId:int}"
+@page "{id:int}"
 @model Transfers.StatusModel
 @{
     ViewData["Title"] = $"{Model.Deck.Name} - Sent Trades";
@@ -14,8 +14,6 @@
     <p>Cancelling will allow for edits to @Model.Deck.Name</p>
 
     <form method="POST">
-        <input type="hidden" asp-for="Deck.Id" />
-
         <input type="submit"
             class="btn btn-danger"
             value="Cancel Requests" />

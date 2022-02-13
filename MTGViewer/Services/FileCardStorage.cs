@@ -9,7 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 using CsvHelper;
 
 using MTGViewer.Services.Internal;
@@ -24,13 +24,11 @@ public class FileCardStorage
     private readonly LoadingProgress _loadProgress;
 
     public FileCardStorage(
-        IConfiguration config,
+        IOptions<SeedSettings> seedOptions,
         BulkOperations bulkOperations, 
         LoadingProgress loadProgress)
     {
-        var filename = config.GetValue("JsonPath", "cards");
-
-        _defaultFilename = Path.ChangeExtension(filename, ".json");
+        _defaultFilename = Path.ChangeExtension(seedOptions.Value.JsonPath, ".json");
         _bulkOperations = bulkOperations;
         _loadProgress = loadProgress;
     }
