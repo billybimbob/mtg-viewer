@@ -153,8 +153,10 @@ public class ReferenceManager
                 .ThenInclude(a => a.Card)
             .ToListAsync(cancel);
 
+
         if (!userDecks.Any())
         {
+            _dbContext.Users.Remove(reference);
             return;
         }
 

@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Linq.Expressions;
 using System.Paging;
 using System.Threading;
 using System.Threading.Tasks;
@@ -100,6 +99,7 @@ public class HistoryModel : PageModel
             .Include(c => c.Card)
 
             .OrderByDescending(c => c.Transaction.AppliedAt)
+                .ThenByDescending(c => c.From == null)
                 .ThenBy(c => c.From!.Name)
                 .ThenBy(c => c.To.Name)
                     .ThenBy(c => c.Card.Name)

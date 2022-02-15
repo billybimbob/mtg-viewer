@@ -1,10 +1,14 @@
+using System;
+using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Threading;
 using System.Threading.Tasks;
 
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Query;
 
 using MTGViewer.Data;
 
@@ -30,6 +34,8 @@ public class DetailsModel : PageModel
                 .OrderBy(a => a.Card.Name)
                     .ThenBy(a => a.Card.SetName)
                     .ThenBy(a => a.NumCopies))
+                // todo: page filter with an extension method that visits
+                // the include expression
                 .ThenInclude(a => a.Card)
 
             .AsNoTrackingWithIdentityResolution()

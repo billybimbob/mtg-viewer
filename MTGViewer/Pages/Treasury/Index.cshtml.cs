@@ -19,6 +19,8 @@ public class IndexModel : PageModel
     private readonly int _pageSize;
     private readonly CardDbContext _dbContext;
 
+    private IReadOnlyDictionary<int, int>? _boxSpace;
+
     public IndexModel(PageSizes pageSizes, CardDbContext dbContext)
     {
         _pageSize = pageSizes.GetPageModelSize<IndexModel>();
@@ -38,6 +40,11 @@ public class IndexModel : PageModel
     {
         var boxes = await BoxesForViewing()
             .ToSeekListAsync(index, _pageSize, seek, backTrack, cancel);
+
+        _boxSpace = await _dbContext.Boxes
+            .Select(b => new { b.Id, Total = b.Cards.Sum(a => a.NumCopies) })
+            .ToDictionaryAsync(
+                b => b.Id, b => b.Total);
 
         Bins = boxes
             .GroupBy(b => b.Bin, (bin, _) => bin)
@@ -63,10 +70,10 @@ public class IndexModel : PageModel
                 .ThenInclude(a => a.Card)
 
             .Include(b => b.Cards // unbounded: keep eye on
-                .Where(a => a.NumCopies > 0)
                 .OrderBy(a => a.Card.Name)
                     .ThenBy(a => a.Card.SetName)
-                    .ThenBy(a => a.NumCopies))
+                    .ThenBy(a => a.NumCopies)
+                .Take(_pageSize))
 
             .OrderBy(b => b.Bin.Id)
                 .ThenBy(b => b.Id)
@@ -74,4 +81,14 @@ public class IndexModel : PageModel
             .AsNoTrackingWithIdentityResolution();
     }
 
+
+    public int TotalCards(Box box)
+    {
+        return _boxSpace is null ? 0 : _boxSpace.GetValueOrDefault(box.Id);
+    }
+
+    public bool HasMoreCards(Box box)
+    {
+        return box.Cards.Sum(a => a.NumCopies) < TotalCards(box);
+    }
 }

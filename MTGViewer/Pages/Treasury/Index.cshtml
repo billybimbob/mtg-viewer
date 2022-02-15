@@ -90,6 +90,11 @@
                     var firstAmount = box.Cards.FirstOrDefault();
                     int boxSpan = Math.Max(1, box.Cards.Count);
 
+                    if (Model.HasMoreCards(box))
+                    {
+                        boxSpan += 1;
+                    }
+
                     <tr>
                         <th scope="rowgroup" rowspan="@boxSpan">
                             <a asp-page="Details" asp-route-id="@box.Id">
@@ -119,7 +124,7 @@
                             <td></td>
                         }
 
-                        <td rowspan="@boxSpan"> @box.Cards.Sum(a => a.NumCopies) / @box.Capacity </td>
+                        <td rowspan="@boxSpan"> @Model.TotalCards(box) / @box.Capacity </td>
                     </tr>
 
                     @foreach (var amount in box.Cards.Skip(1))
@@ -136,6 +141,16 @@
                             </td>
                             <td> @amount.Card.SetName </td>
                             <td> @amount.NumCopies </td>
+                        </tr>
+                    }
+
+                    @if (Model.HasMoreCards(box))
+                    {
+                        <tr>
+                            <td> ... </td>
+                            <td> ... </td>
+                            <td> ... </td>
+                            <td> ... </td>
                         </tr>
                     }
                 }

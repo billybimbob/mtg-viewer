@@ -79,7 +79,7 @@ internal class PageBuilder<T>
                 .Take(PageSize);
         }
 
-        var seekCondition = KeyFilter.BuildOriginFilter(this);
+        var seekCondition = OriginFilter.FromPageBuilder(this);
 
         if (Direction is SeekDirection.Forward)
         {
@@ -140,7 +140,7 @@ internal class PageBuilder<T>
             return FirstSeekListAsync(cancellationToken);
         }
 
-        var seekCondition = KeyFilter.BuildOriginFilter(this);
+        var seekCondition = OriginFilter.FromPageBuilder(this);
 
         return Direction switch
         {

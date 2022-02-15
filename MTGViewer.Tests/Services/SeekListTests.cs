@@ -197,6 +197,7 @@ public class SeekListTests : IAsyncLifetime
         var cards = _dbContext.Cards
             .OrderBy(c => c.Name)
                 .ThenBy(c => c.SetName)
+                .ThenBy(c => c.Cmc == null)
                 .ThenByDescending(c => c.Cmc)
                 .ThenByDescending(c => c.Artist)
                 .ThenBy(c => c.Id);
@@ -279,6 +280,7 @@ public class SeekListTests : IAsyncLifetime
             .Include(c => c.To)
             .Include(c => c.From)
             .OrderBy(c => c.To.Name)
+                .ThenBy(c => c.From == null)
                 .ThenBy(c => c.From!.Name)
                 .ThenBy(c => c.Id);
 
