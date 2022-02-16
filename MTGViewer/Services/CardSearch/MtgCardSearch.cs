@@ -14,7 +14,7 @@ namespace MTGViewer.Services;
 
 internal readonly struct MtgCardSearch : IMTGCardSearch
 {
-    private readonly MtgApiQuery _provider;
+    private readonly MtgApiQuery? _provider;
     private readonly ImmutableDictionary<string, object?>? _parameters;
 
     public MtgCardSearch(
@@ -58,13 +58,15 @@ internal readonly struct MtgCardSearch : IMTGCardSearch
 
     public IMTGCardSearch Where(Expression<Func<CardQuery, bool>> predicate)
     {
-        return _provider.Where(this, predicate);
+        // boxes the struct, so really no point
+        return _provider?.Where(this, predicate) ?? new MtgCardSearch();
     }
 
 
     public ValueTask<OffsetList<Card>> SearchAsync(CancellationToken cancel = default)
     {
-        return _provider.SearchAsync(this, cancel);
+        return _provider?.SearchAsync(this, cancel)
+            ?? ValueTask.FromResult(OffsetList<Card>.Empty());
     }
 
 

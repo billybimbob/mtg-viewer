@@ -39,6 +39,28 @@ internal class PredicateConverter : ExpressionVisitor
 
 
 
+    protected override Expression VisitParameter(ParameterExpression node)
+    {
+        if (node.Type != typeof(CardQuery))
+        {
+            return Expression.Empty();
+        }
+
+        return base.VisitParameter(node);
+    }
+
+
+    protected override Expression VisitLambda<T>(Expression<T> node)
+    {
+        if (Visit(node.Parameters.ElementAtOrDefault(0)) is ParameterExpression p)
+        {
+            _parameter = p;
+        }
+
+        return Visit(node.Body);
+    }
+
+
     protected override Expression VisitConstant(ConstantExpression node)
     {
         if (node.Type == typeof(object))
@@ -52,7 +74,10 @@ internal class PredicateConverter : ExpressionVisitor
 
     protected override Expression VisitUnary(UnaryExpression node)
     {
-        if (node.NodeType is not ExpressionType.Quote)
+        bool notObjectCast = node.NodeType 
+            is not ExpressionType.Convert || !node.IsLiftedToNull;
+
+        if (notObjectCast && node.NodeType is not ExpressionType.Quote)
         {
             return base.VisitUnary(node);
         }
@@ -78,7 +103,7 @@ internal class PredicateConverter : ExpressionVisitor
 
     protected override Expression VisitMember(MemberExpression node)
     {
-        return base.Visit(node.Expression) switch
+        return Visit(node.Expression) switch
         {
             ParameterExpression p when p == _parameter => GetOrCreateProperty(node),
 
@@ -107,14 +132,6 @@ internal class PredicateConverter : ExpressionVisitor
     }
 
 
-    protected override Expression VisitLambda<T>(Expression<T> node)
-    {
-        base.Visit(node.Parameters.ElementAtOrDefault(0));
-
-        return base.Visit(node.Body);
-    }
-
-
     protected override Expression VisitBinary(BinaryExpression node)
     {
         if (node.NodeType is ExpressionType.Coalesce)
@@ -127,8 +144,8 @@ internal class PredicateConverter : ExpressionVisitor
             return node;
         }
 
-        var left = base.Visit(node.Left);
-        var right = base.Visit(node.Right);
+        var left = Visit(node.Left);
+        var right = Visit(node.Right);
 
         // only the card query will have a non-object constant
 
@@ -193,17 +210,5 @@ internal class PredicateConverter : ExpressionVisitor
         }
 
         return node;
-    }
-
-
-    protected override Expression VisitParameter(ParameterExpression node)
-    {
-        if (node.Type != typeof(CardQuery))
-        {
-            return Expression.Empty();
-        }
-
-        _parameter = node;
-        return base.VisitParameter(node);
     }
 }

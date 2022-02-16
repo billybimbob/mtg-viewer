@@ -81,6 +81,7 @@ public sealed class MtgApiQuery : IMTGQuery
 
         QueryFromPredicate(builder, predicate);
 
+        // boxes the struct, so really no point
         return new MtgCardSearch(this, builder);
     }
 
