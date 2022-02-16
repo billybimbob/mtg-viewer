@@ -201,7 +201,7 @@ public class BulkOperations
             .Where(c => c.MultiverseId is not null)
             .Select(c => c.MultiverseId);
 
-        var validCards = await ValidatedCardsAsync(newMultiIds, cancel);
+        var validCards = await _mtgQuery.CollectionAsync(newMultiIds, cancel);
 
         var cardPairs = validCards
             .Join(data.Cards,
@@ -295,42 +295,6 @@ public class BulkOperations
             Changes = changes
         };
     }
-    
-
-    private async Task<IReadOnlyList<Card>> ValidatedCardsAsync(
-        IEnumerable<string> multiIds, 
-        CancellationToken cancel)
-    {
-        int limit = _mtgQuery.Limit;
-
-        cancel.ThrowIfCancellationRequested();
-
-        var chunks = multiIds.Chunk(limit).ToList();
-        var cards = new List<Card>();
-
-        _loadProgress.Ticks += chunks.Count;
-
-        foreach (var multiChunk in chunks)
-        {
-            if (!multiChunk.Any())
-            {
-                continue;
-            }
-
-            var multiArg = string.Join(IMTGQuery.Or, multiChunk);
-
-            var validated = await _mtgQuery
-                .Where(c => c.MultiverseId == multiArg)
-                .Where(c => c.PageSize == limit)
-                .SearchAsync(cancel);
-
-            _loadProgress.AddProgress();
-
-            cards.AddRange(validated);
-        }
-
-        return cards;
-    }
 
 
     public async Task MergeAsync(
@@ -354,7 +318,7 @@ public class BulkOperations
 
         if (newMultiverse.Any())
         {
-            var newCards = await ValidatedCardsAsync(newMultiverse, cancel);
+            var newCards = await _mtgQuery.CollectionAsync(newMultiverse, cancel);
 
             allCards.AddRange(newCards);
             _dbContext.Cards.AddRange(newCards);

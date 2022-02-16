@@ -197,12 +197,13 @@
                                     break;
 
                                 case Box box when box.IsExcess:
-                                    <a asp-page="/Treasury/Excess" asp-route-seek="@Model.Card.Id" asp-route-jump="@true">
+                                    <a asp-page="/Treasury/Excess" asp-route-cardId="@Model.Card.Id" >
                                         @location.Name </a>
                                     break;
 
                                 case Box:
-                                    <a asp-page="/Treasury/Details" asp-route-id="@location.Id"> @location.Name </a>
+                                    <a asp-page="/Treasury/Details" asp-route-id="@location.Id" asp-route-cardId="@Model.Card.Id">
+                                        @location.Name </a>
                                     break;
 
                                 case Unclaimed when canChangeTreasury:

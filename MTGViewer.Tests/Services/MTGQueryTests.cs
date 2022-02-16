@@ -20,15 +20,6 @@ public class MTGQueryTests
     }
 
 
-    [Fact]
-    public async Task Search_NoParams_ReturnsEmpty()
-    {
-        _mtgQuery.Reset();
-        var cards = await _mtgQuery.SearchAsync();
-
-        Assert.Empty(cards);
-    }
-
 
     [Fact(Skip = "Calls external api")]
     public async Task Search_NameParam_ReturnsSameName()
@@ -95,66 +86,32 @@ public class MTGQueryTests
 
 
     [Fact(Skip = "Calls external api")]
-    public async Task Where_MultiId_ReturnsSingleCard()
+    public async Task All_PagedQuery_EqualPage()
     {
-        var search = new CardQuery
-        {
-            MultiverseId = TEST_ID
-        };
-
-        var cards = await _mtgQuery
-            .Where(search)
-            .SearchAsync();
-
-        var cardName = cards.Single();
-
-        Assert.Contains(TEST_NAME, cardName.Name);
-    }
-
-
-    [Fact]
-    public async Task Where_Empty_ReturnsEmpty()
-    {
-        var search = new CardQuery();
-
-        var cards = await _mtgQuery
-            .Where(search)
-            .SearchAsync();
-
-        Assert.Empty(cards);
-    }
-
-
-    [Fact(Skip = "Calls external api")]
-    public async Task Where_OnlyName_ReturnsCard()
-    {
-        var search = new CardQuery
-        {
-            Name = TEST_NAME
-        };
-
-        var cards = await _mtgQuery
-            .Where(search)
-            .SearchAsync();
-
-        var cardNames = cards.Select(c => c.Name);
-
-        Assert.Contains(TEST_NAME, cardNames);
-    }
-
-
-    [Fact(Skip = "Calls external api")]
-    public async Task All_PagedQuery_EqualPageSize()
-    {
-        const int pageSize = 10;
         const int page = 1;
 
         var result = await _mtgQuery
             .Where(x => x.Page == page)
-            .Where(x => x.PageSize == pageSize)
             .SearchAsync();
 
-        Assert.True(pageSize >= result.Count);
         Assert.Equal(page, result.Offset.Current);
+    }
+
+
+    [Fact(Skip = "Calls external api")]
+    public async Task Collection_MultipleIds_AllReturned()
+    {
+        int idBase = int.Parse(TEST_ID);
+
+        var multiverseIds = Enumerable
+            .Range(0, 5)
+            .Select(i => idBase + i)
+            .Select(id => id.ToString())
+            .ToArray();
+
+        var cards = await _mtgQuery.CollectionAsync(multiverseIds);
+
+        Assert.Contains(TEST_NAME, cards.Select(c => c.Name));
+        Assert.Equal(multiverseIds.Length, cards.Count);
     }
 }

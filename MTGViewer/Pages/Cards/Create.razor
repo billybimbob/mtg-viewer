@@ -26,58 +26,57 @@
 
             <div class="col-md order-md-last">
                 <ValidationSummary role="alert"/>
-
                 <section>
-                    <h5> Or Operator </h5>
-                    <p> 
-                        All of the parameters (except Converted Mana Cost) can search with multiple values 
-                        specified by adding the pipe character between each value. These multiple values act 
-                        as a logical <strong>or</strong> for the search.
-                    </p>
-
-                    <p> Example or for Name: <code>jace|ajani|nissa, worldwaker</code> </p>
-                </section>
-
-                <section>
-                    <h5> And Operator </h5>
-                    <p>
-                        Parameters that can have more than one value per card (Types, Supertypes, and Subtypes) 
-                        can also have multiple values specified by adding a comma or space between each value. 
-                        These multiple values act as a logical <strong>and</strong> for the search.
-                    </p>
-
-                    <p> Example and for Subtype(s): <code>bear,bird</code> or <code>bear bird</code> </p>
-                    <p> 
-                        Note that <strong>either</strong> the <i>and</i> or the <i>or</i> operator can be
-                        applied on a given parameter value, not both.
-                    </p>
-                </section>
-
-                <hr/>
-                <section>
-                    <h5> Type Parameters </h5>
-                    <p>
-                        All of the type parameters are specified on the type line of the card (the center description),
-                        which is broken down into three different categories:
-                    </p>
+                    <h5> Parameter Descriptions </h5>
+                    <p> Search by different attributes of an MTG card: </p>
 
                     <dl class="row mb-0">
-                        <dt class="col-12 col-lg-2"> Supertypes </dt>
+                        <dt class="col-12 col-lg-2"> @Query.DisplayName(c => c.Name) </dt>
                         <dd class="col-12 col-lg-10">
-                            <p> Type information that is the most left of the type line </p>
-                            <p> Examples: Basic, Legendary, Snow </p>
+                            <p>
+                                The Name of the Card (in the top left). Split cards are treated 
+                                as separate cards, so only side of the card should be specified.
+                            </p>
                         </dd>
 
-                        <dt class="col-12 col-lg-2"> Types </dt>
+                        <dt class="col-12 col-lg-2"> @Query.DisplayName(c => c.Colors) </dt>
                         <dd class="col-12 col-lg-10">
-                            <p> Type information that follows immediately to the left of the dash. </p>
-                            <p> Examples: Instant, Creature, Land, Planeswalker </p>
+                            <p>
+                                The color identity of the card. Color identity is affected
+                                a card's mana cost, but also mana abilities costs and text
+                                effects. Multiple colors can be specified, where the searched 
+                                must have <i>all</i> selected colors.
+                            </p>
                         </dd>
 
-                        <dt class="col-12 col-lg-2"> Subtypes </dt>
+                        <dt class="col-12 col-lg-2"> @Query.DisplayName(c => c.SetName) </dt>
                         <dd class="col-12 col-lg-10">
-                            <p> Type information that appears to the right of the dash. </p>
-                            <p> Examples: Equipment, Aura, Human, Vampire </p>
+                            <p>
+                                The set at which a specific card print was apart of. The set
+                                can only be specified by the set <i>name</i>, not the set code.
+                            </p>
+                        </dd>
+
+                        <dt class="col-12 col-lg-2"> @Query.DisplayName(c => c.Type) </dt>
+                        <dd class="col-12 col-lg-10">
+                            <p> Type information specified on the middle of the card </p>
+                            <p> Examples: Basic Land, Planeswalker, Creature Enchantment </p>
+                        </dd>
+
+                        <dt class="col-12 col-lg-2"> @Query.DisplayName(c => c.Text) </dt>
+                        <dd class="col-12 col-lg-10">
+                            <p>
+                                The card effect text. The Oracle Text can also be searched by 
+                                keywords and phrases.
+                            </p>
+                        </dd>
+
+                        <dt class="col-12 col-lg-2"> @Query.DisplayName(c => c.Flavor) </dt>
+                        <dd class="col-12 col-lg-10">
+                            <p>
+                                The card flavor text. This is the card text that is in italics, and can differ
+                                across card prints.
+                            </p>
                         </dd>
                     </dl>
                 </section>
@@ -110,33 +109,6 @@
                             <i class="ms ms-@symbol.ToLower() ms-cost"></i>
                         </button>
                     }
-
-                    <div class="form-check mt-2 ml-2">
-                        <InputCheckbox @bind-Value="IsMultiColored"
-                            class="form-check-input" id="@nameof(CardSearch.IsMultiColored)" />
-
-                        <label class="form-check-label" for="@nameof(CardSearch.IsMultiColored)">
-                            Multicolored Only
-                        </label>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <InputText @bind-Value="Query.Supertypes"
-                        placeholder="@Query.DisplayName(c => c.Supertypes)"
-                        class="form-control" />
-                </div>
-
-                <div class="form-group">
-                    <InputText @bind-Value="Query.Types"
-                        placeholder="@Query.DisplayName(c => c.Types)"
-                        class="form-control" />
-                </div>
-
-                <div class="form-group">
-                    <InputText @bind-Value="Query.Subtypes"
-                        placeholder="@Query.DisplayName(c => c.Subtypes)"
-                        class="form-control" />
                 </div>
 
                 <div class="form-group">
@@ -145,28 +117,19 @@
                         class="form-control" />
                 </div>
 
-                <div class="row form-group">
-                    @foreach (var rarity in Enum.GetNames<Rarity>())
-                    {
-                        var toggleId = $"{rarity}-toggle";
-
-                        <div class="col-6">
-                            <div class="form-check form-check-inline ml-2">
-
-                                <input class="form-check-input" id="@toggleId"
-                                    type="checkbox" value="@rarity"
-                                    checked="@IsRaritySelected(rarity)" 
-                                    @onchange="() => RarityToggle(rarity)" />
-
-                                <label class="form-check-label" for="@toggleId"> @rarity </label>
-                            </div>
-                        </div>
-                    }
+                <div class="form-group">
+                    <InputSelect @bind-Value="Query.Rarity" title="rarity-input" class="form-control">
+                        <option value=""> Choose Rarity </option>
+                        @foreach (var rarity in Enum.GetNames<Rarity>())
+                        {
+                            <option value="@rarity">@rarity</option>
+                        }
+                    </InputSelect>
                 </div>
 
                 <div class="form-group">
-                    <InputText @bind-Value="Query.Artist" 
-                        placeholder="@Query.DisplayName(c => c.Artist)" 
+                    <InputText @bind-Value="Query.Type"
+                        placeholder="@Query.DisplayName(c => c.Type)"
                         class="form-control" />
                 </div>
 
@@ -185,6 +148,24 @@
                 <div class="form-group">
                     <InputText @bind-Value="Query.Loyalty" 
                         placeholder="@Query.DisplayName(c => c.Loyalty)" 
+                        class="form-control" />
+                </div>
+
+                <div class="form-group">
+                    <InputTextArea @bind-Value="Query.Text" 
+                        placeholder="@Query.DisplayName(c => c.Text)" 
+                        class="form-control" />
+                </div>
+
+                <div class="form-group">
+                    <InputTextArea @bind-Value="Query.Flavor" 
+                        placeholder="@Query.DisplayName(c => c.Flavor)" 
+                        class="form-control" />
+                </div>
+
+                <div class="form-group">
+                    <InputText @bind-Value="Query.Artist" 
+                        placeholder="@Query.DisplayName(c => c.Artist)" 
                         class="form-control" />
                 </div>
 
@@ -315,9 +296,6 @@ else
 
     public string ActiveColor(string color) =>
         PickedColors.Contains(color) ? "active" : string.Empty;
-
-    public bool IsRaritySelected(string rarity) =>
-        PickedRarities.Contains(rarity);
 
     public bool CannotAdd() =>
         !Matches.Any() || Matches.All(m => m.NumCopies == 0);

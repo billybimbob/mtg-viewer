@@ -2,6 +2,8 @@
 @model Treasury.DeleteModel
 @{
     ViewData["Title"] = $"{Model.Box.Name} - Delete";
+    ViewData["HasMore"] = Model.HasMore;
+    ViewData[nameof(Box.Cards)] = Model.NumberOfCards;
 }
 
 <h1> Delete @Model.Box.Name </h1>

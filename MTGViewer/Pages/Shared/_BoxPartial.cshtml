@@ -1,6 +1,20 @@
 @model Box
 @inject SymbolFormatter MtgSymbols
 
+@{
+    if (!ViewData.TryGetValue(nameof(Box.Cards), out var cards)
+        || cards is not int numberOfCards)
+    {
+        numberOfCards = 0;
+    }
+
+    if (!ViewData.TryGetValue("HasMore", out var more)
+        || more is not bool hasMore)
+    {
+        hasMore = false;
+    }
+}
+
 @if (Model is not null)
 {
     <div class="table-responsive-md">
@@ -30,12 +44,21 @@
                         <td> @amount.Card.Amounts.Sum(c => c.NumCopies) </td>
                     </tr>
                 }
+                @if (hasMore)
+                {
+                    <tr>
+                        <td> ... </td>
+                        <td> ... </td>
+                        <td> ... </td>
+                        <td> ... </td>
+                    </tr>
+                }
                 <tr>
                     <th> Total </th>
                     <td> -- </td>
                     <td> -- </td>
                     <td class="font-weight-bold">
-                        @Model.Cards.Sum(a => a.NumCopies) / @Model.Capacity
+                        @numberOfCards / @Model.Capacity
                     </td>
                 </tr>
             </tbody>

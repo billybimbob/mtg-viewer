@@ -1,4 +1,3 @@
-using System;
 using System.Linq;
 using System.Paging;
 using System.Threading;
@@ -36,27 +35,27 @@ public class ExcessModel : PageModel
     public async Task<IActionResult> OnGetAsync(
         string? seek, 
         int? index,
-        bool backTrack, 
-        bool jump,
+        bool backtrack, 
+        string? cardId,
         CancellationToken cancel)
     {
-        if (jump && await GetCardJumpAsync(seek, cancel) is (string cardJump, int cardIndex))
+        if (await GetCardJumpAsync(cardId, cancel) is (string cardJump, int cardIndex))
         {
             return RedirectToPage(new { seek = cardJump, index = cardIndex });
         }
 
         Cards = await ExcessCards()
-            .ToSeekListAsync(index, _pageSize, seek, backTrack, cancel);
+            .ToSeekListAsync(index, _pageSize, seek, backtrack, cancel);
 
         return Page();
     }
 
 
-    private async Task<(string?, int?)> GetCardJumpAsync(string? id, CancellationToken cancel)
+    private async Task<SeekJump<string>> GetCardJumpAsync(string? id, CancellationToken cancel)
     {
         if (id is null)
         {
-            return (null, null);
+            return default;
         }
 
         var cardName = await ExcessCards()
@@ -66,7 +65,7 @@ public class ExcessModel : PageModel
 
         if (cardName is null)
         {
-            return (null, null);
+            return default;
         }
 
         var options = await ExcessCards()
@@ -77,7 +76,7 @@ public class ExcessModel : PageModel
             .Where((id, i) => i % _pageSize == _pageSize - 1)
             .ToListAsync(cancel);
 
-        return (options.ElementAtOrDefault(^1), options.Count - 1);
+        return new SeekJump<string>(options.ElementAtOrDefault(^1), options.Count - 1);
     }
 
 

@@ -36,10 +36,10 @@ public class IndexModel : PageModel
     public bool HasUnclaimed { get; private set; }
 
 
-    public async Task OnGetAsync(int? seek, int? index, bool backTrack, CancellationToken cancel)
+    public async Task OnGetAsync(int? seek, int? index, bool backtrack, CancellationToken cancel)
     {
         var boxes = await BoxesForViewing()
-            .ToSeekListAsync(index, _pageSize, seek, backTrack, cancel);
+            .ToSeekListAsync(index, _pageSize, seek, backtrack, cancel);
 
         _boxSpace = await _dbContext.Boxes
             .Select(b => new { b.Id, Total = b.Cards.Sum(a => a.NumCopies) })

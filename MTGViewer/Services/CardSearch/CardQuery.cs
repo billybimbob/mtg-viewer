@@ -7,8 +7,8 @@ public class CardQuery
 {
     public string? Id { get; set; }
 
-    [Display(Name = "Multiverse Id")]
-    public string? MultiverseId { get; set; }
+    // [Display(Name = "Multiverse Id")]
+    // public string? MultiverseId { get; set; }
 
     [StringLength(50)]
     public string? Name { get; set; }
@@ -19,24 +19,16 @@ public class CardQuery
 
     public string? Colors { get; set; }
 
-    [StringLength(40)]
+    [StringLength(10)]
     public string? Rarity { get; set; }
 
     [Display(Name = "Set Name")]
     [StringLength(30)]
     public string? SetName { get; set; }
 
-    [Display(Name = "Supertype(s)")]
-    [StringLength(40)]
-    public string? Supertypes { get; set; }
-
     [Display(Name = "Type(s)")]
-    [StringLength(40)]
-    public string? Types { get; set; }
-
-    [Display(Name = "Subtype(s)")]
-    [StringLength(40)]
-    public string? Subtypes { get; set; }
+    [StringLength(60)]
+    public string? Type { get; set; }
 
     [StringLength(30)]
     public string? Artist { get; set; }
@@ -48,11 +40,17 @@ public class CardQuery
     public string? Toughness { get; set; }
 
     [StringLength(5)]
+    [Display(Name = "Starting Loyalty")]
     public string? Loyalty { get; set; }
+
+    [StringLength(40)]
+    [Display(Name = "Oracle Text")]
+    public string? Text { get; set; }
+
+    [StringLength(40)]
+    [Display(Name = "Flavor Text")]
+    public string? Flavor { get; set; }
 
     [Range(0, int.MaxValue)]
     public int Page { get; set; }
-    
-    [Range(1, 100)]
-    public int PageSize { get; set; }
 }

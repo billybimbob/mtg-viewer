@@ -52,7 +52,7 @@ public class IndexModel : PageModel
     public async Task<IActionResult> OnGetAsync(
         int? seek, 
         int? index,
-        bool backTrack,
+        bool backtrack,
         CancellationToken cancel)
     {
         var userId = _userManager.GetUserId(User);
@@ -72,7 +72,7 @@ public class IndexModel : PageModel
         }
 
         var decks = await DecksForIndex(userId)
-            .ToSeekListAsync(index, _pageSize, seek, backTrack, cancel);
+            .ToSeekListAsync(index, _pageSize, seek, backtrack, cancel);
 
         UserName = userName;
         Decks = decks;

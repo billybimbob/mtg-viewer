@@ -2,6 +2,7 @@
 @model Treasury.DetailsModel
 @{
     ViewData["Title"] = $"{Model.Box.Name} - Details";
+    ViewData[nameof(Box.Cards)] = Model.NumberOfCards;
 }
 
 @using Microsoft.AspNetCore.Authorization
@@ -39,3 +40,5 @@
 }
 
 <partial name="_BoxPartial", for="Box"/>
+
+<component type="typeof(SeekPaging<Amount>)" render-mode="Static" param-Seek="Model.Seek" />

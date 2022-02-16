@@ -37,8 +37,10 @@ public partial class Create : OwningComponentBase
     public bool IsBusy => _isBusy;
     public bool HasNoNext => !_matchPage.HasNext;
 
+
+    public CardQuery Query => _search.Query;
+
     public IReadOnlyCollection<string> PickedColors => _search.PickedColors;
-    public IReadOnlyCollection<string> PickedRarities => _search.PickedRarities;
 
     public string? MatchName
     {
@@ -46,13 +48,6 @@ public partial class Create : OwningComponentBase
         set => _search.MatchName = value;
     }
 
-    public bool IsMultiColored
-    {
-        get => _search.IsMultiColored;
-        set => _search.IsMultiColored = value;
-    }
-
-    public CardQuery Query => _search.Query;
     public IReadOnlyList<MatchInput> Matches => _matches;
 
     public SaveResult Result { get; set; }
@@ -106,11 +101,7 @@ public partial class Create : OwningComponentBase
     {
         public CardQuery Query { get; } = new();
 
-        public HashSet<string> PickedRarities { get; } = new(StringComparer.OrdinalIgnoreCase);
-
         public HashSet<string> PickedColors { get; } = new(StringComparer.OrdinalIgnoreCase);
-
-        public bool IsMultiColored { get; set; }
 
         private string? _matchName;
         public string? MatchName
@@ -228,21 +219,6 @@ public partial class Create : OwningComponentBase
     }
 
 
-    public void RarityToggle(string rarity)
-    {
-        var pickedRarities = _search.PickedRarities;
-
-        if (pickedRarities.Contains(rarity))
-        {
-            pickedRarities.Remove(rarity);
-        }
-        else
-        {
-            pickedRarities.Add(rarity);
-        }
-    }
-
-
     public async Task SearchForCardAsync()
     {
         if (_isBusy || (_matchPage != default && !_matchPage.HasNext))
@@ -255,16 +231,11 @@ public partial class Create : OwningComponentBase
 
         try
         {
-            PrepareSearch(_search, _matchPage);
-
             var cancelToken = _cancel.Token;
-            var limit = PageSizes.Limit;
+            var mtgQuery = ScopedServices.GetRequiredService<IMTGQuery>();
 
-            var fetch = ScopedServices.GetRequiredService<IMTGQuery>();
-
-            var result = await fetch
-                .Where(_search.Query)
-                .SearchAsync(cancelToken);
+            var result = await ApplyQuery(mtgQuery).SearchAsync(cancelToken);
+            int limit = PageSizes.Limit;
 
             _matches.AddRange(
                 result.Select(c => new MatchInput(c, limit)));
@@ -287,15 +258,32 @@ public partial class Create : OwningComponentBase
     }
 
 
-    private static void PrepareSearch(CardSearch search, Offset matchPage)
+    private IMTGCardSearch ApplyQuery(IMTGQuery search)
     {
-        var query = search.Query;
-        var colorJoin = search.IsMultiColored ? IMTGQuery.And : IMTGQuery.Or;
+        var q = _search.Query;
 
-        query.Colors = string.Join(colorJoin, search.PickedColors);
-        query.Rarity = string.Join(IMTGQuery.Or, search.PickedRarities);
+        var types = q.Type?.Split() ?? Enumerable.Empty<string>();
+        int page = _matchPage == default ? 0 : _matchPage.Current + 1;
 
-        query.Page = matchPage == default ? 0 : matchPage.Current + 1;
+        return search
+            .Where(c => c.Name == q.Name)
+            .Where(c => c.SetName == q.SetName)
+            .Where(c => c.Cmc == q.Cmc)
+
+            .Where(c => _search.PickedColors
+                .All(cl => c.Colors == cl))
+
+            .Where(c => types.All(t => c.Type == t))
+            .Where(c => c.Rarity == q.Rarity)
+
+            .Where(c => c.Power == q.Power)
+            .Where(c => c.Toughness == q.Toughness)
+            .Where(c => c.Loyalty == q.Loyalty)
+
+            .Where(c => c.Text!.Contains(q.Text ?? string.Empty))
+            .Where(c => c.Flavor!.Contains(q.Flavor ?? string.Empty))
+            .Where(c => c.Artist == q.Artist)
+            .Where(c => c.Page == page) ;
     }
 
 
@@ -332,26 +320,25 @@ public partial class Create : OwningComponentBase
         var query = _search.Query;
 
         _search.PickedColors.Clear();
-        _search.PickedRarities.Clear();
 
         // TODO: use reflection to reset
 
         query.Name = default;
         query.Cmc = default;
         query.Colors = default;
+
         query.Rarity = default;
         query.SetName = default;
 
-        query.Supertypes = default;
-        query.Types = default;
-        query.Subtypes = default;
-
+        query.Type = default;
         query.Artist = default;
+
+        query.Text = default;
+        query.Flavor = default;
+
         query.Power = default;
         query.Toughness = default;
         query.Loyalty = default;
-
-        query.PageSize = PageSizes.GetComponentSize<Create>();
 
         // force data validation, might be inefficient
         _searchEdit.Validate();

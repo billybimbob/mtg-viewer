@@ -4,6 +4,7 @@ using System.Linq.Expressions;
 using System.Paging;
 using System.Threading;
 using System.Threading.Tasks;
+// using Microsoft.EntityFrameworkCore.Query;
 using MTGViewer.Data.Internal;
 
 namespace Microsoft.EntityFrameworkCore;
@@ -33,8 +34,7 @@ public static partial class PagingExtensions
         where TKey : struct
     {
         var origin = seek is not TKey s
-            ? null
-            : await source
+            ? null : await source
                 .FindOriginAsync(s, cancel)
                 .ConfigureAwait(false);
 
@@ -55,8 +55,7 @@ public static partial class PagingExtensions
         where TKey : class?
     {
         var origin = seek is null
-            ? null
-            : await source
+            ? null : await source
                 .FindOriginAsync(seek, cancel)
                 .ConfigureAwait(false);
 
@@ -73,6 +72,11 @@ public static partial class PagingExtensions
         where TEntity : class
     {
         var entityId = EntityExtensions.GetKeyProperty<TEntity>();
+
+        if (typeof(TKey) != entityId.PropertyType)
+        {
+            throw new ArgumentException($"{nameof(seek)} is the not correct key type");
+        }
 
         var entityParameter = Expression.Parameter(
             typeof(TEntity), typeof(TEntity).Name[0].ToString().ToLower());

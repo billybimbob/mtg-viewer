@@ -1,10 +1,10 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Paging;
 using System.Reflection;
-using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -13,167 +13,269 @@ using Microsoft.Extensions.Logging;
 using MtgApiManager.Lib.Core;
 using MtgApiManager.Lib.Model;
 using MtgApiManager.Lib.Service;
-
 using MTGViewer.Data;
 
 namespace MTGViewer.Services;
 
-public class MtgApiQuery : IMTGQuery
+
+public sealed class MtgApiQuery : IMTGQuery
 {
-    private static readonly IReadOnlyCollection<string> _multipleValues = 
-        new HashSet<string>(new []
-        {
-            nameof(CardQuery.Colors),
-            nameof(CardQuery.Supertypes),
-            nameof(CardQuery.Types),
-            nameof(CardQuery.Subtypes)
-        });
+    private const int Limit = 100;
+    private const char Or = '|';
+    private const char And = ',';
+
+    public static readonly MethodInfo QueryMethod =
+        typeof(MtgApiQuery)
+            .GetMethod(
+                nameof(MtgApiQuery.QueryProperty),
+                BindingFlags.Instance | BindingFlags.NonPublic,
+                new[] { 
+                    typeof(IDictionary<,>).MakeGenericType(typeof(string), typeof(object)),
+                    typeof(string),
+                    typeof(object) })!;
+
 
     private readonly ICardService _service;
     private readonly FixedCache _cache;
 
     private readonly int _pageSize;
+    private readonly LoadingProgress _loadProgress;
     private readonly ILogger<MtgApiQuery> _logger;
 
-    private bool _empty;
-    private int _page;
+    private readonly PredicateConverter _predicateVisitor;
 
     public MtgApiQuery(
         ICardService service,
         FixedCache cache, 
         PageSizes pageSizes,
+        LoadingProgress loadProgress,
         ILogger<MtgApiQuery> logger)
     {
         _service = service;
         _cache = cache;
 
         _pageSize = pageSizes.Default;
+        _loadProgress = loadProgress;
+        _predicateVisitor = new(this);
+
         _logger = logger;
-
-        _empty = true;
-        _page = 0;
     }
 
 
-    public int Limit => 100;
 
-
-    public void Reset()
+    public IMTGCardSearch Where(Expression<Func<CardQuery, bool>> predicate)
     {
-        _service.Reset();
+        var parameters = new Dictionary<string, object?>();
 
-        _empty = true;
-        _page = 0;
+        QueryFromPredicate(parameters, predicate);
+
+        return new MtgCardSearch(this, parameters);
     }
 
 
-    public IMTGQuery Where(Expression<Func<CardQuery, bool>> predicate)
+    internal IMTGCardSearch Where(
+        MtgCardSearch values,
+        Expression<Func<CardQuery, bool>> predicate)
     {
-        if (predicate.Body is not BinaryExpression binary
-            || binary.NodeType is not ExpressionType.Equal)
-        {
-            throw new NotSupportedException("Only equality expressions are supported");
-        }
+        var builder = values.ToBuilder();
 
-        if (binary.Left is MemberExpression leftMember)
+        QueryFromPredicate(builder, predicate);
+
+        return new MtgCardSearch(this, builder);
+    }
+
+
+
+    private void QueryFromPredicate(
+        IDictionary<string, object?> parameters,
+        Expression<Func<CardQuery, bool>> predicate)
+    {
+        if (_predicateVisitor.Visit(predicate) is MethodCallExpression call
+
+            && (call.Object as ConstantExpression)?.Value == this
+            && call.Method == QueryMethod
+            && call.Arguments.ElementAtOrDefault(1) is ConstantExpression property
+            && call.Arguments.ElementAtOrDefault(2) is ConstantExpression arg
+            && property.Value is string propertyName)
         {
-            QueryProperty(leftMember.Member.Name, ParsePropertyValue(binary.Right));
-        }
-        else if (binary.Right is MemberExpression rightMember)
-        {
-            QueryProperty(rightMember.Member.Name, ParsePropertyValue(binary.Left));
+            QueryProperty(parameters, propertyName, arg.Value);
         }
         else
         {
-            throw new NotSupportedException("Comparisons must be done on the Card Query");
-        }
-
-        return this;
-
-        object ParsePropertyValue(Expression expression)
-        {
-            if (Expression
-                .Lambda(expression)
-                .Compile()
-                .DynamicInvoke() is not object value)
-            {
-                throw new ArgumentException(nameof(predicate));
-            }
-
-            return value;
+            throw new NotSupportedException("Predicate cannot be parsed");
         }
     }
 
-
-    private void QueryProperty(string propertyName, object propertyValue)
+    private void QueryProperty(IDictionary<string, object?> parameters, string name, object? value)
     {
         const BindingFlags binds = BindingFlags.IgnoreCase | BindingFlags.Instance | BindingFlags.Public;
 
-        if (typeof(CardQueryParameter).GetProperty(propertyName, binds) == null)
+        if (typeof(CardQueryParameter).GetProperty(name, binds) == null)
         {
-            throw new ArgumentException(nameof(propertyName));
+            throw new ArgumentException(nameof(name));
         }
 
-        const string pageName = nameof(CardQueryParameter.Page);
-        const string pageSizeName = nameof(CardQueryParameter.PageSize);
+        bool isMultiple = name is nameof(CardQuery.Colors) or nameof(CardQuery.Type);
 
-        switch ((propertyName, propertyValue))
+        switch (value)
         {
-            case (pageName, int page) when page != default:
+            case IEnumerable<string> i:
+                QueryProperty(parameters, name, i);
+                break;
+
+            case >0 when name != nameof(CardQuery.Cmc):
+                parameters[name] = value;
+                break;
+
+            case 0 when name == nameof(CardQuery.Page):
                 // translate zero-based page index to one-based page from the api
-                AddParameter(propertyName, page + 1);
-                _page = page;
+                parameters[name] = 1;
                 break;
 
-            case (pageSizeName, int pageSize) when pageSize != default:
-                AddParameter(propertyName, pageSize);
+            case <0 when name != nameof(CardQuery.Cmc):
                 break;
 
-            case (pageName, _):
-            case (pageSizeName, _):
+            case object when isMultiple
+                && parameters.TryGetValue(name, out var values)
+                && values is List<string> list
+                && TryToString(value, isMultiple, out string s):
+
+                list.AddRange(s.Split());
                 break;
 
-            case (_, _) when TryString(out var stringValue):
-                AddParameter(propertyName, stringValue);
+            case object when isMultiple && TryToString(value, isMultiple, out string s):
+                parameters[name] = s.Split().ToList();
+                break;
+
+            case object when TryToString(value, isMultiple, out string s):
+                parameters[name] = s;
                 break;
 
             default:
                 break;
         }
+    }
 
-        bool TryString(out string? stringValue)
+    private void QueryProperty(
+        IDictionary<string, object?> parameters, 
+        string name, 
+        IEnumerable values)
+    {
+        foreach (var v in values)
         {
-            bool isMultiple = _multipleValues.Contains(propertyName);
-            return TryToString(propertyValue, isMultiple, out stringValue);
+            QueryProperty(parameters, name, v);
         }
     }
 
 
-    private bool TryToString(object paramValue, bool multipleValues, out string? stringValue)
+    private static bool TryToString(object paramValue, bool isMultiple, out string stringValue)
     {
-        const StringSplitOptions noWhitespace = StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries;
+        var toString = paramValue.ToString();
 
-        stringValue = paramValue.ToString();
-
-        if (string.IsNullOrWhiteSpace(stringValue))
+        if (string.IsNullOrWhiteSpace(toString))
         {
+            stringValue = null!;
+            return false;
+        }
+        
+        // make sure that only one specific card is searched for
+
+        toString = toString.Split(Or).FirstOrDefault();
+
+        if (isMultiple && toString is not null)
+        {
+            toString = toString.Split(And).FirstOrDefault();
+        }
+
+        if (string.IsNullOrWhiteSpace(toString))
+        {
+            stringValue = null!;
             return false;
         }
 
-        // truncates any whitespace between logical operators
+        stringValue = toString.Trim();
+        return true;
+    }
 
-        stringValue = string.Join(
-            IMTGQuery.Or,
-            stringValue.Split(IMTGQuery.Or, noWhitespace));
 
-        if (multipleValues)
+    /// <remarks> 
+    /// This method is not thread safe, so multiple calls of this method cannot 
+    /// be active at the same time. Be sure to <see langword="await"/> before 
+    /// executing another search.
+    /// </remarks>
+    internal async ValueTask<OffsetList<Card>> SearchAsync(
+        MtgCardSearch values,
+        CancellationToken cancel = default)
+    {
+        if (values.IsEmpty())
         {
-            stringValue = string.Join(
-                IMTGQuery.And, 
-                Regex.Split(stringValue, $@"(?:\s*{IMTGQuery.And}\s*)|\s+"));
+            return OffsetList<Card>.Empty();
         }
 
-        return true;
+        cancel.ThrowIfCancellationRequested();
+
+        int currentPage = values.Page;
+
+        var response = await ApplyParameters(values)
+            // .Where(c => c.OrderBy, "name") get error code 500 with this
+            .Where(c => c.PageSize, _pageSize)
+            .AllAsync();
+
+        cancel.ThrowIfCancellationRequested();
+
+        var totalPages = response.PagingInfo.TotalPages;
+        var offset = new Offset(currentPage, totalPages);
+
+        var matches = LoggedUnwrap(response) ?? Enumerable.Empty<ICard>();
+        if (!matches.Any())
+        {
+            return OffsetList<Card>.Empty();
+        }
+
+        var cards = matches
+            .Select( GetValidatedCard )
+            .OfType<Card>()
+            .ToArray();
+
+        // adventure cards have multiple entries with the same multiId
+
+        foreach (var card in cards)
+        {
+            _cache[card.MultiverseId] = card;
+        }
+
+        return new OffsetList<Card>(offset, cards);
+    }
+
+
+    private ICardService ApplyParameters(MtgCardSearch values)
+    {
+        foreach ((string name, object? value) in values.Parameters)
+        {
+            switch (value)
+            {
+                case <=0:
+                    break;
+
+                case >0 and int i:
+                    AddParameter(name, i);
+                    break;
+
+                case IEnumerable<string> e:
+                    AddParameter(name, string.Join(And, e));
+                    break;
+
+                case string s when !string.IsNullOrWhiteSpace(s):
+                    AddParameter(name, s);
+                    break;
+
+                case null:
+                default:
+                    break;
+            }
+        }
+
+        return _service;
     }
 
 
@@ -189,64 +291,53 @@ public class MtgApiQuery : IMTGQuery
                 param);
 
         _service.Where(expression, value);
-        _empty = false;
     }
 
 
-    /// <remarks> 
-    /// This method is not thread safe, so multiple calls of this method cannot 
-    /// be active at the same time. Be sure to <see langword="await"/> before 
-    /// executing another search.
-    /// </remarks>
-    public async Task<OffsetList<Card>> SearchAsync(CancellationToken cancel = default)
+    
+    public async ValueTask<IReadOnlyList<Card>> CollectionAsync(
+        IEnumerable<string> multiverseIds,
+        CancellationToken cancel = default)
     {
-        if (_empty)
-        {
-            return OffsetList<Card>.Empty();
-        }
-
         cancel.ThrowIfCancellationRequested();
 
-        var response = await _service
-            // .Where(c => c.OrderBy, "name") get error code 500 with this
-            .AllAsync();
+        var chunks = multiverseIds.Chunk(Limit).ToList();
+        var cards = new List<Card>();
 
-        cancel.ThrowIfCancellationRequested();
+        _loadProgress.Ticks += chunks.Count;
 
-        var matches = LoggedUnwrap(response) ?? Enumerable.Empty<ICard>();
-
-        if (!matches.Any())
+        foreach (var multiChunk in chunks)
         {
-            _empty = true;
-            _page = 0;
+            if (!multiChunk.Any())
+            {
+                continue;
+            }
 
-            return OffsetList<Card>.Empty();
+            var multiArg = string.Join(Or, multiChunk);
+
+            var response = await _service
+                .Where(c => c.MultiverseId, multiArg)
+                .Where(c => c.PageSize, Limit)
+                .AllAsync();
+
+            cancel.ThrowIfCancellationRequested();
+
+            var validated = (LoggedUnwrap(response) ?? Enumerable.Empty<ICard>())
+                .Select( GetValidatedCard )
+                .OfType<Card>()
+                .ToArray();
+
+            cards.AddRange(validated);
+            
+            _loadProgress.AddProgress();
         }
 
-        var totalPages = response.PagingInfo.TotalPages;
-        var pages = new Offset(_page, totalPages);
-
-        var cards = matches
-            .Select( GetValidatedCard )
-            .OfType<Card>()
-            .ToArray();
-
-        // adventure cards have multiple entries with the same multiId
-
-        foreach (var card in cards)
-        {
-            _cache[card.MultiverseId] = card;
-        }
-
-        _empty = true;
-        _page = 0;
-
-        return new OffsetList<Card>(pages, cards);
+        return cards;
     }
 
 
 
-    public async Task<Card?> FindAsync(string id, CancellationToken cancel = default)
+    public async ValueTask<Card?> FindAsync(string id, CancellationToken cancel = default)
     {
         if (string.IsNullOrWhiteSpace(id))
         {
@@ -259,8 +350,6 @@ public class MtgApiQuery : IMTGQuery
             return card;
         }
 
-        _logger.LogInformation($"refetching {id}");
-
         cancel.ThrowIfCancellationRequested();
 
         var result = await _service.FindAsync(id);
@@ -268,7 +357,6 @@ public class MtgApiQuery : IMTGQuery
         cancel.ThrowIfCancellationRequested();
 
         var match = LoggedUnwrap(result);
-
         if (match is null)
         {
             _logger.LogError("match returned null");
@@ -276,7 +364,6 @@ public class MtgApiQuery : IMTGQuery
         }
 
         card = GetValidatedCard(match);
-
         if (card is not null)
         {
             _cache[card.MultiverseId] = card;

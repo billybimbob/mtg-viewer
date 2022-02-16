@@ -67,7 +67,7 @@ public class HistoryModel : PageModel
         int id, 
         int? seek,
         int? index,
-        bool backTrack,
+        bool backtrack,
         string? tz,
         CancellationToken cancel)
     {
@@ -79,7 +79,7 @@ public class HistoryModel : PageModel
         }
 
         var changes = await ChangesForHistory(id)
-            .ToSeekListAsync(index, _pageSize, seek, backTrack, cancel);
+            .ToSeekListAsync(index, _pageSize, seek, backtrack, cancel);
 
         var firstTransfers = changes
             .Select(c => (c.TransactionId, c.ToId, c.FromId))

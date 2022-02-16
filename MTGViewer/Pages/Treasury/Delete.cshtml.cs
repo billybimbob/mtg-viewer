@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 
 using MTGViewer.Data;
+using MTGViewer.Services;
 using MTGViewer.Areas.Identity.Data;
 
 namespace MTGViewer.Pages.Treasury;
@@ -16,17 +17,24 @@ namespace MTGViewer.Pages.Treasury;
 [Authorize(Policy = CardPolicies.ChangeTreasury)]
 public class DeleteModel : PageModel
 {
-    private readonly CardDbContext _dbContext; 
+    private readonly CardDbContext _dbContext;
+    private int _pageSize;
 
-    public DeleteModel(CardDbContext dbContext)
+    public DeleteModel(CardDbContext dbContext, PageSizes pageSizes)
     {
         _dbContext = dbContext;
+        _pageSize = pageSizes.GetPageModelSize<DeleteModel>();
     }
 
     [TempData]
     public string? PostMessage { get; set; }
 
     public Box Box { get; private set; } = default!;
+
+    public int NumberOfCards { get; private set; }
+
+    public bool HasMore =>
+        Box is null ? false : Box.Cards.Sum(a => a.NumCopies) < NumberOfCards;
 
 
     public async Task<IActionResult> OnGetAsync(int id, CancellationToken cancel)
@@ -38,7 +46,9 @@ public class DeleteModel : PageModel
             .Include(b => b.Cards
                 .OrderBy(a => a.Card.Name)
                     .ThenBy(a => a.Card.SetName)
-                    .ThenBy(a => a.NumCopies))
+                    .ThenBy(a => a.NumCopies)
+                    .ThenBy(a => a.Id)
+                    .Take(_pageSize))
                 .ThenInclude(a => a.Card)
 
             .AsNoTrackingWithIdentityResolution()
@@ -50,6 +60,11 @@ public class DeleteModel : PageModel
         }
 
         Box = box;
+
+        NumberOfCards = await _dbContext.Boxes
+            .Where(b => b.Id == id && !b.IsExcess)
+            .SelectMany(b => b.Cards)
+            .SumAsync(a => a.NumCopies, cancel);
 
         return Page();
     }

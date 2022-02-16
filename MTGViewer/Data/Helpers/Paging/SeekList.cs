@@ -4,6 +4,7 @@ using System.Linq;
 
 namespace System.Paging;
 
+
 public enum SeekDirection
 {
     Forward,
@@ -70,3 +71,6 @@ public class SeekList<TEntity> : IReadOnlyList<TEntity>
 
     public static SeekList<TEntity> Empty() => _empty;
 }
+
+
+public readonly record struct SeekJump<TKey>(TKey? Key, int? Index);

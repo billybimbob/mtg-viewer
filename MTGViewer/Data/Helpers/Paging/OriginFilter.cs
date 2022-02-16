@@ -37,19 +37,26 @@ internal sealed class OriginFilter<T>
         }
     }
 
-
     private readonly PageBuilder<T> _pageBuilder;
     private readonly IReadOnlyList<KeyOrder> _orderKeys;
+
+    private static MethodInfo? _stringContains;
 
     private static ConstantExpression? _null;
     private static ConstantExpression? _zero;
     private static ParameterExpression? _parameter;
 
     public static IEqualityComparer<MemberExpression>? _parentEquality;
+
     public static ExpressionVisitor? _orderVisitor;
     private ExpressionVisitor? _origin;
 
     private IReadOnlyDictionary<MemberExpression, NullOrder>? _nullOrders;
+
+
+    private static MethodInfo StringCompare =>
+        _stringContains ??= typeof(string)
+            .GetMethod(nameof(string.CompareTo), new[]{ typeof(string) })!;
 
 
     private static ConstantExpression Null => _null ??= Expression.Constant(null);
@@ -57,8 +64,9 @@ internal sealed class OriginFilter<T>
     private static ConstantExpression Zero => _zero ??= Expression.Constant(0);
 
     private static ParameterExpression Parameter =>
-        _parameter ??=
-            Expression.Parameter(typeof(T), typeof(T).Name[0].ToString().ToLower());
+        _parameter ??= Expression.Parameter(
+            typeof(T), typeof(T).Name[0].ToString().ToLower());
+
 
     private static ExpressionVisitor OrderVisitor =>
         _orderVisitor ??= new OrderByVisitor(Parameter);
@@ -226,13 +234,10 @@ internal sealed class OriginFilter<T>
             return Expression.GreaterThan(parameter, ReplaceWithOrigin(parameter));
         }
 
-        if (typeof(string) is var stringType && parameter.Type == stringType)
+        if (parameter.Type == typeof(string))
         {
-            var compareTo = stringType
-                .GetMethod(nameof(string.CompareTo), new[] { stringType });
-
             return Expression.GreaterThan(
-                Expression.Call(parameter, compareTo!, ReplaceWithOrigin(parameter)),
+                Expression.Call(parameter, StringCompare, ReplaceWithOrigin(parameter)),
                 Zero);
         }
 
@@ -272,11 +277,8 @@ internal sealed class OriginFilter<T>
 
         if (parameter.Type == typeof(string))
         {
-            var compareTo = typeof(string)
-                .GetMethod(nameof(string.CompareTo), new[] { typeof(string) });
-
             return Expression.LessThan(
-                Expression.Call(parameter, compareTo!, ReplaceWithOrigin(parameter)),
+                Expression.Call(parameter, StringCompare, ReplaceWithOrigin(parameter)),
                 Zero);
         }
 
