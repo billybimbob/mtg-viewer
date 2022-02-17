@@ -298,13 +298,15 @@ public class BulkOperations
 
 
     public async Task MergeAsync(
-        IReadOnlyDictionary<string, int> multiAdditions,
+        IDictionary<string, int> multiAdditions,
         CancellationToken cancel = default)
     {
         if (!multiAdditions.Any())
         {
             return;
         }
+
+        multiAdditions = new SortedList<string, int>(multiAdditions);
 
         var dbCards = await ExistingCardsAsync(multiAdditions.Keys, cancel);
 

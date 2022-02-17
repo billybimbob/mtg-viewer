@@ -52,7 +52,7 @@ public class DetailsModel : PageModel
 
         if (!cards.Any())
         {
-            return NotFound();
+            return await EmptyBoxAsync(id, cancel);
         }
 
         NumberOfCards = await _dbContext.Boxes
@@ -63,6 +63,23 @@ public class DetailsModel : PageModel
         Seek = cards.Seek;
 
         Box = (Box)cards.First().Location;
+
+        return Page();
+    }
+
+
+    private async Task<IActionResult> EmptyBoxAsync(int id, CancellationToken cancel)
+    {
+        var box = await _dbContext.Boxes
+            .Include(b => b.Bin)
+            .SingleOrDefaultAsync(b => b.Id == id, cancel);
+
+        if (box == default)
+        {
+            return NotFound();
+        }
+
+        Box = box;
 
         return Page();
     }
@@ -86,6 +103,7 @@ public class DetailsModel : PageModel
         }
 
         var options = await BoxCards(boxId)
+            // not an accurate filter
             .Where(a => a.Card.Name.CompareTo(cardName) < 0)
             .Select(a => a.Id)
 

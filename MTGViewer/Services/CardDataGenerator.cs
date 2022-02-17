@@ -146,7 +146,7 @@ public class CardDataGenerator
             deck.Cards.Add(new Amount
             {
                 Card = card,
-                NumCopies = _random.Next(6)
+                NumCopies = _random.Next(1, 6)
             });
         }
     }

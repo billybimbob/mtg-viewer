@@ -158,7 +158,11 @@ public partial class Adjust : ComponentBase, IDisposable
 
         try
         {
-            await ApplyBoxChangesAsync(Box, _cancel.Token);
+            await using var dbContext = await DbFactory.CreateDbContextAsync(_cancel.Token);
+
+            await ApplyBoxChangesAsync(dbContext, Box, _cancel.Token);
+
+            await ResetAsync(dbContext, _cancel.Token);
 
             Result = SaveResult.Success;
         }
@@ -181,10 +185,11 @@ public partial class Adjust : ComponentBase, IDisposable
     }
 
 
-    private async Task ApplyBoxChangesAsync(BoxDto changes, CancellationToken cancel)
+    private static async Task ApplyBoxChangesAsync(
+        CardDbContext dbContext, 
+        BoxDto changes,
+        CancellationToken cancel)
     {
-        await using var dbContext = await DbFactory.CreateDbContextAsync(cancel);
-
         var box = await GetBoxAsync(dbContext, changes, cancel);
         if (box is null)
         {
@@ -281,6 +286,28 @@ public partial class Adjust : ComponentBase, IDisposable
             .CurrentValues.SetValues(binDto);
 
         return bin;
+    }
+
+
+    private async Task ResetAsync(CardDbContext dbContext, CancellationToken cancel)
+    {
+        if (!Box.Bin.IsEdit)
+        {
+            _bins = await BinOptionsAsync(dbContext, cancel);
+
+            Box.Bin.Update(null);
+        }
+
+        if (Box.IsEdit)
+        {
+            return;
+        }
+
+        Box.Id = 0;
+        Box.Name = null;
+
+        Box.Appearance = null;
+        Box.Capacity = 0;
     }
 
 

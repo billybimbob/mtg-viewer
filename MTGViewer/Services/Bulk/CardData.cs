@@ -68,7 +68,6 @@ public sealed class CardStream
             Decks = dbContext.Decks
                 .Include(d => d.Cards)
                 .Include(d => d.Wants)
-                .Include(d => d.GiveBacks)
 
                 .OrderBy(d => d.Id)
                 .AsSplitQuery()
@@ -88,11 +87,6 @@ public sealed class CardStream
 
                 .OrderBy(b => b.Id)
                 .AsSplitQuery()
-                .AsAsyncEnumerable(),
-
-            Transactions = dbContext.Transactions
-                .Include(t => t.Changes)
-                .OrderBy(t => t.Id)
                 .AsAsyncEnumerable(),
 
             Suggestions = dbContext.Suggestions
@@ -143,6 +137,11 @@ public sealed class CardStream
 
                 .OrderBy(d => d.Id)
                 .AsSplitQuery()
+                .AsAsyncEnumerable(),
+
+            Suggestions = dbContext.Suggestions
+                .Where(s => s.ReceiverId == userId)
+                .OrderBy(s => s.Id)
                 .AsAsyncEnumerable()
         };
     }

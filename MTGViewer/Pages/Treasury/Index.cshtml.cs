@@ -44,7 +44,7 @@ public class IndexModel : PageModel
         _boxSpace = await _dbContext.Boxes
             .Select(b => new { b.Id, Total = b.Cards.Sum(a => a.NumCopies) })
             .ToDictionaryAsync(
-                b => b.Id, b => b.Total);
+                b => b.Id, b => b.Total, cancel);
 
         Bins = boxes
             .GroupBy(b => b.Bin, (bin, _) => bin)
@@ -69,13 +69,14 @@ public class IndexModel : PageModel
             .Include(b => b.Cards)
                 .ThenInclude(a => a.Card)
 
-            .Include(b => b.Cards // unbounded: keep eye on
+            .Include(b => b.Cards
                 .OrderBy(a => a.Card.Name)
                     .ThenBy(a => a.Card.SetName)
                     .ThenBy(a => a.NumCopies)
                 .Take(_pageSize))
 
             .OrderBy(b => b.Bin.Id)
+                .ThenBy(b => b.Name)
                 .ThenBy(b => b.Id)
 
             .AsNoTrackingWithIdentityResolution();
