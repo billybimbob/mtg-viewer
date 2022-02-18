@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Paging;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
 
 namespace System.Linq;
 
@@ -12,9 +13,11 @@ public static partial class PagingExtensions
         int? pageIndex,
         int pageSize)
     {
-        return source
+        var query = source
             .AsQueryable()
-            .PageBy(pageIndex, pageSize)
+            .PageBy(pageIndex, pageSize);
+
+        return new OffsetQuery<TEntity>(query)
             .ToOffsetList();
     }
 

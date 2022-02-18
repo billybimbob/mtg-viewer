@@ -34,49 +34,47 @@ public class ExcessModel : PageModel
 
     public async Task<IActionResult> OnGetAsync(
         string? seek, 
-        int? index,
         bool backtrack, 
         string? cardId,
         CancellationToken cancel)
     {
-        if (await GetCardJumpAsync(cardId, cancel) is (string cardJump, int cardIndex))
+        if (await GetCardJumpAsync(cardId, cancel) is string cardJump)
         {
-            return RedirectToPage(new { seek = cardJump, index = cardIndex });
+            return RedirectToPage(new { seek = cardJump });
         }
 
         Cards = await ExcessCards()
-            .ToSeekListAsync(index, _pageSize, seek, backtrack, cancel);
+            .ToSeekListAsync(seek, _pageSize, backtrack, cancel);
 
         return Page();
     }
 
 
-    private async Task<SeekJump<string>> GetCardJumpAsync(string? id, CancellationToken cancel)
+    private async Task<string?> GetCardJumpAsync(string? id, CancellationToken cancel)
     {
         if (id is null)
         {
             return default;
         }
 
-        var cardName = await ExcessCards()
-            .Where(c => c.Id == id)
-            .Select(c => c.Name)
-            .FirstOrDefaultAsync(cancel);
+        var excessCards = ExcessCards();
 
-        if (cardName is null)
+        var card = await excessCards
+            .OrderBy(c => c.Id)
+            .SingleOrDefaultAsync(c => c.Id == id, cancel);
+
+        if (card is null)
         {
             return default;
         }
 
-        var options = await ExcessCards()
-            .Where(c => c.Name.CompareTo(cardName) < 0)
+        return await excessCards
+            .Before(card)
             .Select(c => c.Id)
 
             .AsAsyncEnumerable()
             .Where((id, i) => i % _pageSize == _pageSize - 1)
-            .ToListAsync(cancel);
-
-        return new SeekJump<string>(options.ElementAtOrDefault(^1), options.Count - 1);
+            .LastOrDefaultAsync(cancel);
     }
 
 

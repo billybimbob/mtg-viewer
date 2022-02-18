@@ -58,7 +58,8 @@ public class SuggestModel : PageModel
         Card = card;
 
         Users = await UsersForSuggest(card)
-            .ToOffsetListAsync(offset, _pageSize, cancel);
+            .PageBy(offset, _pageSize)
+            .ToOffsetListAsync(cancel);
 
         return Page();
     }

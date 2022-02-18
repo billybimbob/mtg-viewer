@@ -12,31 +12,30 @@ public enum SeekDirection
 }
 
 
-public readonly record struct Seek<TEntity>(int Index, TEntity? Previous, TEntity? Next)
+public readonly record struct Seek<TEntity>(TEntity? Previous, TEntity? Next)
 {
-    private readonly int _index = Math.Max(Index, 0);
-    public int Index => _index;
-
-    public Seek(int index, bool hasNext, IReadOnlyList<TEntity> items)
-        : this(index, default(TEntity), default(TEntity))
+    public Seek(IReadOnlyList<TEntity> items, SeekDirection direction, bool hasOrigin, bool lookAhead) : this(default, default)
     {
-        Previous = index > 0
-            ? items.ElementAtOrDefault(0)
-            : default;
+        if (direction is SeekDirection.Forward)
+        {
+            Previous = hasOrigin
+                ? items.ElementAtOrDefault(0)
+                : default;
 
-        Next = hasNext
-            ? items.ElementAtOrDefault(^1)
-            : default;
-    }
+            Next = lookAhead
+                ? items.ElementAtOrDefault(^1)
+                : default;
+        }
+        else
+        {
+            Previous = lookAhead
+                ? items.ElementAtOrDefault(0)
+                : default;
 
-    public Seek(bool hasPrevious, int index, IReadOnlyList<TEntity> items)
-        : this(index, default(TEntity), default(TEntity))
-    {
-        Previous = hasPrevious
-            ? items.ElementAtOrDefault(0)
-            : default;
-
-        Next = items.ElementAtOrDefault(^1);
+            Next = hasOrigin
+                ? items.ElementAtOrDefault(^1)
+                : default;
+        }
     }
 }
 
@@ -71,6 +70,3 @@ public class SeekList<TEntity> : IReadOnlyList<TEntity>
 
     public static SeekList<TEntity> Empty() => _empty;
 }
-
-
-public readonly record struct SeekJump<TKey>(TKey? Key, int? Index);

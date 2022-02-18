@@ -9,23 +9,51 @@ namespace System.Paging;
 
 internal sealed class OriginFilter
 {
-    public static Expression<Func<T, bool>> FromPageBuilder<T>(PageBuilder<T> pageBuilder)
+    public static Expression<Func<TEntity, bool>> Create<TEntity>(
+        IQueryable<TEntity> query,
+        TEntity origin,
+        SeekDirection direction)
     {
-        return new OriginFilter<T>(pageBuilder).BuildExpression();
+        return new OriginFilter<TEntity, TEntity>(query, origin, direction, null)
+            .BuildExpression();
+    }
+
+
+    public static Expression<Func<TEntity, bool>> Create<TEntity, TOrigin>(
+        IQueryable<TEntity> query,
+        TOrigin origin,
+        SeekDirection direction,
+        Expression<Func<TEntity, TOrigin>> selector)
+    {
+        return new OriginFilter<TEntity, TOrigin>(query, origin, direction, selector)
+            .BuildExpression();
     }
 }
 
 
-internal sealed class OriginFilter<T>
+internal sealed class OriginFilter<TEntity, TOrigin>
 { 
-    internal OriginFilter(PageBuilder<T> pageBuilder)
+    internal OriginFilter(
+        IQueryable<TEntity> query, 
+        TOrigin origin, 
+        SeekDirection direction, 
+        Expression<Func<TEntity, TOrigin>>? selector)
     {
-        if (pageBuilder.Origin is null)
+        if (origin is null)
         {
-            throw new ArgumentException($"{nameof(pageBuilder.Origin)} is null");
+            throw new ArgumentNullException(nameof(origin));
         }
 
-        _pageBuilder = pageBuilder;
+        _selectOrigin = GetOriginSelector(selector);
+
+        if (_selectOrigin is null && typeof(TEntity) != typeof(TOrigin))
+        {
+            throw new ArgumentException(nameof(selector));
+        }
+
+        _query = query;
+        _origin = origin;
+        _direction = direction;
 
         _orderKeys = OrderProperties()
             .Reverse()
@@ -37,36 +65,25 @@ internal sealed class OriginFilter<T>
         }
     }
 
-    private readonly PageBuilder<T> _pageBuilder;
+
+    private readonly IQueryable<TEntity> _query;
+    private readonly TOrigin _origin;
+    private readonly SeekDirection _direction;
+
+    private readonly MemberExpression? _selectOrigin;
     private readonly IReadOnlyList<KeyOrder> _orderKeys;
 
-    private static MethodInfo? _stringContains;
-
-    private static ConstantExpression? _null;
-    private static ConstantExpression? _zero;
-    private static ParameterExpression? _parameter;
-
-    public static IEqualityComparer<MemberExpression>? _parentEquality;
-
-    public static ExpressionVisitor? _orderVisitor;
-    private ExpressionVisitor? _origin;
-
+    private ExpressionVisitor? _replaceOrigin;
     private IReadOnlyDictionary<MemberExpression, NullOrder>? _nullOrders;
 
+    private static ParameterExpression? _parameter;
+    public static IEqualityComparer<MemberExpression>? _parentEquality;
+    public static ExpressionVisitor? _orderVisitor;
 
-    private static MethodInfo StringCompare =>
-        _stringContains ??= typeof(string)
-            .GetMethod(nameof(string.CompareTo), new[]{ typeof(string) })!;
-
-
-    private static ConstantExpression Null => _null ??= Expression.Constant(null);
-
-    private static ConstantExpression Zero => _zero ??= Expression.Constant(0);
 
     private static ParameterExpression Parameter =>
         _parameter ??= Expression.Parameter(
-            typeof(T), typeof(T).Name[0].ToString().ToLower());
-
+            typeof(TEntity), typeof(TEntity).Name[0].ToString().ToLower());
 
     private static ExpressionVisitor OrderVisitor =>
         _orderVisitor ??= new OrderByVisitor(Parameter);
@@ -75,7 +92,7 @@ internal sealed class OriginFilter<T>
         _parentEquality ??= new ChainEquality();
 
 
-    internal Expression<Func<T, bool>> BuildExpression()
+    internal Expression<Func<TEntity, bool>> BuildExpression()
     {
         var firstKey = _orderKeys.First();
 
@@ -91,14 +108,26 @@ internal sealed class OriginFilter<T>
                 filter, CompareTo(key, _orderKeys.Take(before)));
         }
 
-        return Expression.Lambda<Func<T, bool>>(filter, Parameter);
+        return Expression.Lambda<Func<TEntity, bool>>(filter, Parameter);
+    }
+
+
+    private MemberExpression? GetOriginSelector(Expression<Func<TEntity, TOrigin>>? selector)
+    {
+        if (selector?.Body is MemberExpression s
+            && OrderVisitor.Visit(s) is MemberExpression getOrigin)
+        {
+            return getOrigin;
+        }
+
+        return null;
     }
 
 
     private IEnumerable<KeyOrder> OrderProperties()
     {
         // get only top level expressions
-        var source = _pageBuilder.Source.Expression;
+        var source = _query.Expression;
 
         while (source is MethodCallExpression orderBy)
         {
@@ -106,7 +135,8 @@ internal sealed class OriginFilter<T>
                 && orderBy.Arguments.ElementAtOrDefault(1) is UnaryExpression quote
                 && quote.Operand is LambdaExpression lambda
                 && lambda.Body is MemberExpression
-                && OrderVisitor.Visit(lambda.Body) is MemberExpression propertyOrder)
+                && OrderVisitor.Visit(lambda.Body) is MemberExpression propertyOrder
+                && IsOriginProperty(propertyOrder))
             {
                 var ordering = IsDescending(orderBy)
                     ? Ordering.Descending
@@ -124,7 +154,7 @@ internal sealed class OriginFilter<T>
     {
         MemberExpression? lastProperty = null;
 
-        var source = _pageBuilder.Source.Expression;
+        var source = _query.Expression;
 
         while (source is MethodCallExpression orderBy)
         {
@@ -150,8 +180,12 @@ internal sealed class OriginFilter<T>
                 continue;
             }
 
-            if (MemberChain(lastProperty)
-                .Any(m => ParentEquality.Equals(m, nullOrder)))
+            // a null is only used as a sort property if there are also 
+            // non null orderings specified
+
+            // null check ordering by itself it not unique enough
+
+            if (IsOriginProperty(nullOrder) && IsDescendant(lastProperty, nullOrder))
             {
                 var ordering = IsDescending(orderBy)
                     ? NullOrder.First
@@ -160,6 +194,20 @@ internal sealed class OriginFilter<T>
                 yield return new NullCheck(nullOrder, ordering);
             }
         }
+    }
+
+
+    private bool IsOriginProperty(MemberExpression entityProperty)
+    {
+        return _selectOrigin is null || IsDescendant(entityProperty, _selectOrigin);
+    }
+
+
+    private bool IsDescendant(MemberExpression? node, MemberExpression possibleAncestor)
+    {
+        // could be a slow way to do this, possible On^2
+        return GetLineage(node)
+            .Any(m => ParentEquality.Equals(m, possibleAncestor));
     }
 
 
@@ -187,18 +235,16 @@ internal sealed class OriginFilter<T>
 
     private bool IsGreaterThan(Ordering ordering)
     {
-        var dir = _pageBuilder.Direction;
-
-        return dir is SeekDirection.Forward && ordering is Ordering.Ascending
-            || dir is SeekDirection.Backwards && ordering is Ordering.Descending;
+        return _direction is SeekDirection.Forward && ordering is Ordering.Ascending
+            || _direction is SeekDirection.Backwards && ordering is Ordering.Descending;
     }
 
 
     private Expression ReplaceWithOrigin(Expression node)
     {
-        _origin ??= new ReplaceEntity(_pageBuilder.Origin!);
+        _replaceOrigin ??= new ReplaceEntity(_origin);
 
-        return _origin.Visit(node);
+        return _replaceOrigin.Visit(node);
     }
 
 
@@ -237,8 +283,8 @@ internal sealed class OriginFilter<T>
         if (parameter.Type == typeof(string))
         {
             return Expression.GreaterThan(
-                Expression.Call(parameter, StringCompare, ReplaceWithOrigin(parameter)),
-                Zero);
+                Expression.Call(parameter, ExpressionConstants.StringCompare, ReplaceWithOrigin(parameter)),
+                ExpressionConstants.Zero);
         }
 
         return nullOrder switch
@@ -278,8 +324,8 @@ internal sealed class OriginFilter<T>
         if (parameter.Type == typeof(string))
         {
             return Expression.LessThan(
-                Expression.Call(parameter, StringCompare, ReplaceWithOrigin(parameter)),
-                Zero);
+                Expression.Call(parameter, ExpressionConstants.StringCompare, ReplaceWithOrigin(parameter)),
+                ExpressionConstants.Zero);
         }
 
         return nullOrder switch
@@ -304,16 +350,16 @@ internal sealed class OriginFilter<T>
     private BinaryExpression OnlyOriginNull(MemberExpression parameter)
     {
         return Expression.AndAlso(
-            Expression.NotEqual(parameter, Null),
-            Expression.Equal(ReplaceWithOrigin(parameter), Null));
+            Expression.NotEqual(parameter, ExpressionConstants.Null),
+            Expression.Equal(ReplaceWithOrigin(parameter), ExpressionConstants.Null));
     }
 
 
     private BinaryExpression OnlyParameterNull(MemberExpression parameter)
     {
         return Expression.AndAlso(
-            Expression.Equal(parameter, Null),
-            Expression.NotEqual(ReplaceWithOrigin(parameter), Null));
+            Expression.Equal(parameter, ExpressionConstants.Null),
+            Expression.NotEqual(ReplaceWithOrigin(parameter), ExpressionConstants.Null));
     }
 
 
@@ -353,8 +399,8 @@ internal sealed class OriginFilter<T>
     private BinaryExpression NotNull(MemberExpression parameter)
     {
         var bothNotNull = Expression.AndAlso(
-            Expression.NotEqual(parameter, Null),
-            Expression.NotEqual(ReplaceWithOrigin(parameter), Null));
+            Expression.NotEqual(parameter, ExpressionConstants.Null),
+            Expression.NotEqual(ReplaceWithOrigin(parameter), ExpressionConstants.Null));
 
         // only do first chain for perf, keep eye on
 
@@ -371,8 +417,8 @@ internal sealed class OriginFilter<T>
     private BinaryExpression BothNull(MemberExpression parameter)
     {
         var bothNull = Expression.AndAlso(
-            Expression.Equal(parameter, Null),
-            Expression.Equal(ReplaceWithOrigin(parameter), Null));
+            Expression.Equal(parameter, ExpressionConstants.Null),
+            Expression.Equal(ReplaceWithOrigin(parameter), ExpressionConstants.Null));
 
         // only do first chain for perf, keep eye on
 
@@ -411,14 +457,14 @@ internal sealed class OriginFilter<T>
     {
         private readonly ConstantExpression _newEntity;
 
-        public ReplaceEntity(T newEntity)
+        public ReplaceEntity(TOrigin newEntity)
         {
             _newEntity = Expression.Constant(newEntity);
         }
 
         protected override Expression VisitMember(MemberExpression node)
         {
-            if (node.Expression?.Type == typeof(T)
+            if (node.Expression?.Type == typeof(TOrigin)
                 && node.Member is PropertyInfo property)
             {
                 return Expression.Property(_newEntity, property);
@@ -450,8 +496,10 @@ internal sealed class OriginFilter<T>
             {
                 return Equals(chain1, chain2);
             }
-
-            return m1.Expression == m2.Expression;
+            else
+            {
+                return m1.Expression == m2.Expression;
+            }
         }
 
         public override int GetHashCode(MemberExpression node)
@@ -544,7 +592,7 @@ internal sealed class OriginFilter<T>
     }
 
 
-    private static IEnumerable<MemberExpression> MemberChain(MemberExpression? member)
+    private static IEnumerable<MemberExpression> GetLineage(MemberExpression? member)
     {
         while (member is not null)
         {

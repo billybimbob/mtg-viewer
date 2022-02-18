@@ -19,22 +19,10 @@ internal class PredicateConverter : ExpressionVisitor
     }
 
 
-    private static readonly MethodInfo StringContains =
-        typeof(string)
-            .GetMethod(nameof(string.Contains), new[] { typeof(string) })!;
-
-    private static readonly MethodInfo EnumerableAny =
-        new Func<IEnumerable<string>, Func<string, bool>, bool>(Enumerable.All)
-            .GetMethodInfo();
-
-
-    private static ConstantExpression? _null;
-    private static ConstantExpression Null => _null ??= Expression.Constant(null);
-
     private static UnaryExpression? _nullDictionary;
     private static UnaryExpression NullDictionary =>
         _nullDictionary ??= Expression
-            .Convert(Null, typeof(IDictionary<,>)
+            .Convert(ExpressionConstants.Null, typeof(IDictionary<,>)
                 .MakeGenericType(typeof(string), typeof(object)));
 
 
@@ -97,7 +85,7 @@ internal class PredicateConverter : ExpressionVisitor
 
     protected override Expression VisitDefault(DefaultExpression node)
     {
-        return Null;
+        return ExpressionConstants.Null;
     }
 
 
@@ -174,14 +162,14 @@ internal class PredicateConverter : ExpressionVisitor
 
     protected override Expression VisitMethodCall(MethodCallExpression node)
     {
-        if (node.Method == StringContains
+        if (node.Method == ExpressionConstants.StringContains
             && Visit(node.Object) is ConstantExpression propertyName
             && propertyName.Type == typeof(string))
         {
             return CallQuery(propertyName, Visit(node.Arguments[0]));
         }
 
-        if (node.Method == EnumerableAny
+        if (node.Method == ExpressionConstants.GetEnumerableAny<string>()
             && Visit(node.Arguments[1]) is MethodCallExpression innerQuery
             && innerQuery.Method == MtgApiQuery.QueryMethod
             && innerQuery.Arguments[1] is ConstantExpression innerProperty

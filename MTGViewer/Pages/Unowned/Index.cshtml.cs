@@ -64,7 +64,8 @@ public class IndexModel : PageModel
         }
 
         Unclaimed = await UnclaimedForViewing()
-            .ToOffsetListAsync(offset, _pageSize, cancel);
+            .PageBy(offset, _pageSize)
+            .ToOffsetListAsync(cancel);
 
         _unclaimedCards = Unclaimed
             .ToDictionary(u => u.Id, UnclaimedNameGroup);

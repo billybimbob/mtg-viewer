@@ -219,7 +219,6 @@ public sealed class MtgApiQuery : IMTGQuery
 
         var response = await ApplyParameters(values)
             // .Where(c => c.OrderBy, "name") get error code 500 with this
-            .Where(c => c.PageSize, _pageSize)
             .AllAsync();
 
         cancel.ThrowIfCancellationRequested();
@@ -274,6 +273,11 @@ public sealed class MtgApiQuery : IMTGQuery
                 default:
                     break;
             }
+        }
+
+        if (values.Parameters.GetValueOrDefault(nameof(CardQuery.PageSize)) == default)
+        {
+            return _service.Where(c => c.PageSize, _pageSize);
         }
 
         return _service;

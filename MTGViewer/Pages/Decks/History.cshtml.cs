@@ -66,7 +66,6 @@ public class HistoryModel : PageModel
     public async Task<IActionResult> OnGetAsync(
         int id, 
         int? seek,
-        int? index,
         bool backtrack,
         string? tz,
         CancellationToken cancel)
@@ -79,7 +78,7 @@ public class HistoryModel : PageModel
         }
 
         var changes = await ChangesForHistory(id)
-            .ToSeekListAsync(index, _pageSize, seek, backtrack, cancel);
+            .ToSeekListAsync(seek, _pageSize, backtrack, cancel);
 
         var firstTransfers = changes
             .Select(c => (c.TransactionId, c.ToId, c.FromId))
@@ -87,6 +86,7 @@ public class HistoryModel : PageModel
                 (_, tfts) => tfts.First());
 
         _firstTransfers.UnionWith(firstTransfers);
+
 
         Deck = deck;
 

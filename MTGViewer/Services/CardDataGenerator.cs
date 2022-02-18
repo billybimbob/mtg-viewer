@@ -103,6 +103,7 @@ public class CardDataGenerator
     {
         var cards = await _mtgQuery
             .Where(c => c.Cmc == 3)
+            .Where(c => c.PageSize == 20)
             .SearchAsync(cancel);
 
         return cards;

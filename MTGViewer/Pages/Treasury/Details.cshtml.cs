@@ -37,18 +37,17 @@ public class DetailsModel : PageModel
     public async Task<IActionResult> OnGetAsync(
         int id, 
         int? seek,
-        int? index,
         bool backtrack,
         string? cardId,
         CancellationToken cancel)
     {
-        if (await GetCardJumpAsync(cardId, id, cancel) is (int cardJump, int cardIndex))
+        if (await GetCardJumpAsync(cardId, id, cancel) is int cardJump)
         {
-            return RedirectToPage(new { seek = cardJump, index = cardIndex });
+            return RedirectToPage(new { seek = cardJump });
         }
 
         var cards = await BoxCards(id)
-            .ToSeekListAsync(index, _pageSize, seek, backtrack, cancel);
+            .ToSeekListAsync(seek, _pageSize, backtrack, cancel);
 
         if (!cards.Any())
         {
@@ -85,33 +84,33 @@ public class DetailsModel : PageModel
     }
 
 
-    private async Task<SeekJump<int>> GetCardJumpAsync(string? cardId, int boxId, CancellationToken cancel)
+    private async Task<int?> GetCardJumpAsync(string? cardId, int boxId, CancellationToken cancel)
     {
         if (cardId is null)
         {
-            return default;
+            return null;
         }
 
-        var cardName = await BoxCards(boxId)
+        var boxCards = BoxCards(boxId);
+
+        var card = await boxCards
             .Where(a => a.CardId == cardId)
-            .Select(a => a.Card.Name)
-            .FirstOrDefaultAsync(cancel);
+            .OrderBy(a => a.Id)
+            .Select(a => a.Card)
+            .SingleOrDefaultAsync(cancel);
 
-        if (cardName is null)
+        if (card is null)
         {
-            return default;
+            return null;
         }
 
-        var options = await BoxCards(boxId)
-            // not an accurate filter
-            .Where(a => a.Card.Name.CompareTo(cardName) < 0)
+        return await boxCards
+            .Before(card, a => a.Card)
             .Select(a => a.Id)
 
             .AsAsyncEnumerable()
             .Where((id, i) => i % _pageSize == _pageSize - 1)
-            .ToListAsync(cancel);
-
-        return new SeekJump<int>(options.ElementAtOrDefault(^1), options.Count - 1);
+            .LastOrDefaultAsync(cancel);
     }
 
 

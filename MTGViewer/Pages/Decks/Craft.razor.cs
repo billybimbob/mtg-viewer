@@ -315,7 +315,8 @@ public partial class Craft : OwningComponentBase
                 .ThenBy(c => c.SetName)
                 .ThenBy(c => c.Id)
 
-            .ToOffsetListAsync(pageIndex, pageSize, cancel);
+            .PageBy(pageIndex, pageSize)
+            .ToOffsetListAsync(cancel);
     }
 
 
