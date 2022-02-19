@@ -20,6 +20,12 @@ public class LogoutModel : PageModel
     }
 
 
+    public IActionResult OnGet()
+    {
+        return RedirectToPage("/Account/Manage/Index");
+    }
+
+
     public async Task<IActionResult> OnPostAsync(string? returnUrl = null)
     {
         await _signInManager.SignOutAsync();

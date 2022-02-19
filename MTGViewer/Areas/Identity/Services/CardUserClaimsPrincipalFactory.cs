@@ -7,7 +7,6 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 using MTGViewer.Areas.Identity.Data;
-using MTGViewer.Data;
 
 namespace MTGViewer.Areas.Identity.Services
 {
@@ -35,10 +34,10 @@ namespace MTGViewer.Areas.Identity.Services
             var reference = await _referenceManager.References
                 .SingleOrDefaultAsync(u => u.Id == user.Id);
 
-            // reference is missing, add a new reference
-
             if (reference == default)
             {
+                // reference is missing, add a new reference
+
                 await GenerateNewReferenceAsync(user, id);
                 return id;
             }
@@ -61,6 +60,7 @@ namespace MTGViewer.Areas.Identity.Services
                 await _referenceManager.CreateReferenceAsync(user);
 
                 id.AddClaim(new Claim(CardClaims.DisplayName, user.DisplayName));
+                id.AddClaim(new Claim(CardClaims.ChangeTreasury, user.Id));
             }
             catch (DbUpdateException e)
             {

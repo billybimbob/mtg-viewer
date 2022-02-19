@@ -87,7 +87,7 @@
     public Percent PercentProgress => _percentProgress;
 
 
-    private const long _2_MB = 2_097_152;
+    private const long _3_MB = 3_145_728;
     
     private CancellationTokenSource? _cancel = new();
 
@@ -141,7 +141,7 @@
             return;
         }
 
-        if (file.Size > _2_MB)
+        if (file.Size > _3_MB)
         {
             _fileError = "File is too large";
             return;
@@ -176,7 +176,7 @@
         {
             var fileStorage = ScopedServices.GetRequiredService<FileCardStorage>();
 
-            await using var fileStream = _chosenImport.OpenReadStream(_2_MB, cancelToken);
+            await using var fileStream = _chosenImport.OpenReadStream(_3_MB, cancelToken);
 
             switch (Path.GetExtension(_chosenImport.Name).ToLowerInvariant())
             {

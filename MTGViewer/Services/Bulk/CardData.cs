@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading;
 
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -53,33 +52,47 @@ public sealed class CardStream
         return new CardStream
         {
             Cards = dbContext.Cards
-                .Include(c => c.Colors)
-                .Include(c => c.Types)
-                .Include(c => c.Subtypes)
-                .Include(c => c.Supertypes)
+                .Include(c => c.Colors
+                    .OrderBy(c => c.Name))
+
+                .Include(c => c.Types
+                    .OrderBy(t => t.Name))
+
+                .Include(c => c.Subtypes
+                    .OrderBy(s => s.Name))
+
+                .Include(c => c.Supertypes
+                    .OrderBy(s => s.Name))
 
                 .OrderBy(c => c.Id)
                 .AsSplitQuery()
                 .AsAsyncEnumerable(),
 
             Decks = dbContext.Decks
-                .Include(d => d.Cards)
-                .Include(d => d.Wants)
+                .Include(d => d.Cards
+                    .OrderBy(a => a.Id))
+
+                .Include(d => d.Wants
+                    .OrderBy(w => w.Id))
 
                 .OrderBy(d => d.Id)
                 .AsSplitQuery()
                 .AsAsyncEnumerable(),
 
             Unclaimed = dbContext.Unclaimed
-                .Include(u => u.Cards)
-                .Include(u => u.Wants)
+                .Include(u => u.Cards
+                    .OrderBy(a => a.Id))
+
+                .Include(u => u.Wants
+                    .OrderBy(w => w.Id))
 
                 .OrderBy(u => u.Id)
                 .AsSplitQuery()
                 .AsAsyncEnumerable(),
 
             Bins = dbContext.Bins
-                .Include(b => b.Boxes)
+                .Include(b => b.Boxes
+                    .OrderBy(b => b.Id))
                     .ThenInclude(b => b.Cards)
 
                 .OrderBy(b => b.Id)
@@ -111,10 +124,17 @@ public sealed class CardStream
                     || c.Suggestions
                         .Any(s => s.ReceiverId == userId))
 
-                .Include(c => c.Colors)
-                .Include(c => c.Types)
-                .Include(c => c.Subtypes)
-                .Include(c => c.Supertypes)
+                .Include(c => c.Colors
+                    .OrderBy(c => c.Name))
+
+                .Include(c => c.Types
+                    .OrderBy(t => t.Name))
+
+                .Include(c => c.Subtypes
+                    .OrderBy(s => s.Name))
+
+                .Include(c => c.Supertypes
+                    .OrderBy(s => s.Name))
 
                 .OrderBy(c => c.Id)
                 .AsSplitQuery()
@@ -122,8 +142,12 @@ public sealed class CardStream
 
             Decks = dbContext.Decks
                 .Where(d => d.OwnerId == userId)
-                .Include(d => d.Cards)
-                .Include(d => d.Wants)
+
+                .Include(d => d.Cards
+                    .OrderBy(a => a.Id))
+
+                .Include(d => d.Wants
+                    .OrderBy(w => w.Id))
 
                 .OrderBy(d => d.Id)
                 .AsSplitQuery()
@@ -147,18 +171,28 @@ public sealed class CardStream
                 .Where(c => c.Amounts
                     .Any(a => a.Location is Box || a.Location is Unclaimed))
 
-                .Include(c => c.Colors)
-                .Include(c => c.Types)
-                .Include(c => c.Subtypes)
-                .Include(c => c.Supertypes)
+                .Include(c => c.Colors
+                    .OrderBy(c => c.Name))
+
+                .Include(c => c.Types
+                    .OrderBy(t => t.Name))
+
+                .Include(c => c.Subtypes
+                    .OrderBy(s => s.Name))
+
+                .Include(c => c.Supertypes
+                    .OrderBy(s => s.Name))
 
                 .OrderBy(c => c.Id)
                 .AsSplitQuery()
                 .AsAsyncEnumerable(),
 
             Unclaimed = dbContext.Unclaimed
-                .Include(u => u.Cards)
-                .Include(u => u.Wants)
+                .Include(u => u.Cards
+                    .OrderBy(a => a.Id))
+
+                .Include(u => u.Wants
+                    .OrderBy(w => w.Id))
 
                 .OrderBy(u => u.Id)
                 .AsSplitQuery()
@@ -166,10 +200,12 @@ public sealed class CardStream
 
             Bins = dbContext.Bins
                 // keep eye on, paging does not account for
-                // the variable amount of Box andQuantity 
+                // the variable amount of Box and Quantity 
                 // entries
-                .Include(b => b.Boxes)
-                    .ThenInclude(b => b.Cards)
+                .Include(b => b.Boxes
+                    .OrderBy(b => b.Id))
+                    .ThenInclude(b => b.Cards
+                        .OrderBy(a => a.Id))
 
                 .OrderBy(b => b.Id)
                 .AsSplitQuery()
@@ -194,42 +230,68 @@ public sealed class CardStream
                 .AsAsyncEnumerable(),
 
             Cards = dbContext.Cards
-                .Include(c => c.Colors)
-                .Include(c => c.Types)
-                .Include(c => c.Subtypes)
-                .Include(c => c.Supertypes)
+                .Include(c => c.Colors
+                    .OrderBy(c => c.Name))
+
+                .Include(c => c.Types
+                    .OrderBy(t => t.Name))
+
+                .Include(c => c.Subtypes
+                    .OrderBy(s => s.Name))
+
+                .Include(c => c.Supertypes
+                    .OrderBy(s => s.Name))
 
                 .OrderBy(c => c.Id)
                 .AsSplitQuery()
                 .AsAsyncEnumerable(),
 
             Decks = dbContext.Decks
-                .Include(d => d.Cards)
-                .Include(d => d.Wants)
-                .Include(d => d.GiveBacks)
-                .Include(d => d.TradesFrom)
-                .Include(d => d.TradesTo)
+                .Include(d => d.Cards
+                    .OrderBy(a => a.Id))
+
+                .Include(d => d.Wants
+                    .OrderBy(w => w.Id))
+
+                .Include(d => d.GiveBacks
+                    .OrderBy(g => g.Id))
+
+                .Include(d => d.TradesFrom
+                    .OrderBy(t => t.Id))
+
+                .Include(d => d.TradesTo
+                    .OrderBy(t => t.Id))
 
                 .OrderBy(d => d.Id)
                 .AsSplitQuery()
                 .AsAsyncEnumerable(),
 
             Unclaimed = dbContext.Unclaimed
-                .Include(u => u.Cards)
-                .Include(u => u.Wants)
+
+                .Include(u => u.Cards
+                    .OrderBy(a => a.Id))
+
+                .Include(u => u.Wants
+                    .OrderBy(w => w.Id))
+
                 .OrderBy(u => u.Id)
                 .AsSplitQuery()
                 .AsAsyncEnumerable(),
 
             Bins = dbContext.Bins
-                .Include(b => b.Boxes)
-                    .ThenInclude(b => b.Cards)
+
+                .Include(b => b.Boxes
+                    .OrderBy(b => b.Id))
+                    .ThenInclude(b => b.Cards
+                        .OrderBy(a => a.Id))
+
                 .OrderBy(b => b.Id)
                 .AsSplitQuery()
                 .AsAsyncEnumerable(),
 
             Transactions = dbContext.Transactions
-                .Include(t => t.Changes)
+                .Include(t => t.Changes
+                    .OrderBy(c => c.Id))
                 .OrderBy(t => t.Id)
                 .AsAsyncEnumerable(),
 
