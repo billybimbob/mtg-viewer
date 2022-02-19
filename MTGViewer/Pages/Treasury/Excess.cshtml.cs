@@ -24,7 +24,7 @@ public class ExcessModel : PageModel
     }
 
 
-    public SeekList<Card> Cards { get; private set; } = SeekList<Card>.Empty();
+    public SeekList<Card> Cards { get; private set; } = SeekList<Card>.Empty;
 
     public bool HasExcess =>
         Cards.Any()

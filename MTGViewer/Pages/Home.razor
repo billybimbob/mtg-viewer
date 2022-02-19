@@ -287,10 +287,7 @@
 
         public async Task LoadNextChunkAsync(CardDbContext dbContext, CancellationToken cancel)
         {
-            if (dbContext is null)
-            {
-                throw new ArgumentNullException(nameof(dbContext));
-            }
+            ArgumentNullException.ThrowIfNull(dbContext, nameof(dbContext));
 
             dbContext.Cards.AttachRange(_cards);
 

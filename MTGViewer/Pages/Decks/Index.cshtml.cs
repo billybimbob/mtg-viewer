@@ -46,7 +46,7 @@ public class IndexModel : PageModel
 
     public string UserName { get; private set; } = string.Empty;
 
-    public SeekList<Deck> Decks { get; private set; } = SeekList<Deck>.Empty();
+    public SeekList<Deck> Decks { get; private set; } = SeekList<Deck>.Empty;
 
 
     public async Task<IActionResult> OnGetAsync(

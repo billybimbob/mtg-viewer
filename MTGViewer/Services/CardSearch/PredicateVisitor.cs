@@ -1,18 +1,16 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
-using System.Reflection;
 
 namespace MTGViewer.Services;
 
-internal class PredicateConverter : ExpressionVisitor
+internal class PredicateVisitor : ExpressionVisitor
 {
     private Expression _parent;
     private ParameterExpression? _parameter;
     private Dictionary<string, Expression> _propertyNames;
 
-    public PredicateConverter(MtgApiQuery parent)
+    public PredicateVisitor(MtgApiQuery parent)
     {
         _parent = Expression.Constant(parent);
         _propertyNames = new();
@@ -21,9 +19,10 @@ internal class PredicateConverter : ExpressionVisitor
 
     private static UnaryExpression? _nullDictionary;
     private static UnaryExpression NullDictionary =>
-        _nullDictionary ??= Expression
-            .Convert(ExpressionConstants.Null, typeof(IDictionary<,>)
-                .MakeGenericType(typeof(string), typeof(object)));
+        _nullDictionary ??=
+            Expression.Convert(
+                ExpressionConstants.Null,
+                typeof(IDictionary<,>).MakeGenericType(typeof(string), typeof(object)));
 
 
 

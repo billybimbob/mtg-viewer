@@ -26,10 +26,7 @@ public static partial class PagingExtensions
         this IAsyncEnumerable<TSource> source,
         int size)
     {
-        if (source == null)
-        {
-            throw new ArgumentNullException(nameof(source));
-        }
+        ArgumentNullException.ThrowIfNull(source, nameof(source));
 
         return CoreChunk(source, size);
 

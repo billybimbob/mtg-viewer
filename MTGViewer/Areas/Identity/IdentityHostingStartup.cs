@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.UI.Services;
 
 using Microsoft.EntityFrameworkCore;
@@ -8,6 +7,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 using MTGViewer.Data;
+using MTGViewer.Services;
 using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Areas.Identity.Services;
 
@@ -20,34 +20,25 @@ public class IdentityHostingStartup : IHostingStartup
     public void Configure(IWebHostBuilder builder)
     {
         builder.ConfigureServices((context, services) => {
+
             var config = context.Configuration;
-            var provider = config.GetValue("Provider", "Sqlite");
+            var databaseOptions = DatabaseOptions.Bind(config);
 
-            string connString = provider switch
-            {
-                "SqlServer" => 
-                    config.GetConnectionString("SqlServer"),
-
-                "Postgresql" when config["RemoteKey"] is var remoteKey => 
-                    config[remoteKey].ToNpgsqlConnectionString(),
-
-                _ => 
-                    config.GetConnectionString("Sqlite")
-            };
+            string connString = databaseOptions.GetConnectionString(config, DatabaseContext.User);
 
             services.AddDbContext<UserDbContext>(options =>
             {
-                switch (provider)
+                switch (databaseOptions.Provider)
                 {
-                    case "SqlServer":
+                    case DatabaseOptions.SqlServer:
                         options.UseSqlServer(connString);
                         break;
                     
-                    case "Postgresql":
-                        options.UseNpgsql(connString);
+                    case DatabaseOptions.Postgresql:
+                        options.UseNpgsql(connString.ToNpgsqlConnectionString());
                         break;
 
-                    case "Sqlite":
+                    case DatabaseOptions.Sqlite:
                     default:
                         options.UseSqlite(connString);
                         break;

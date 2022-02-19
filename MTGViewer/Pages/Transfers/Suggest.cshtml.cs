@@ -37,7 +37,7 @@ public class SuggestModel : PageModel
 
     public Card Card { get; private set; } = default!;
 
-    public OffsetList<UserRef> Users { get; private set; } = OffsetList<UserRef>.Empty();
+    public OffsetList<UserRef> Users { get; private set; } = OffsetList<UserRef>.Empty;
 
 
     public async Task<IActionResult> OnGetAsync(string id, int? offset, CancellationToken cancel)

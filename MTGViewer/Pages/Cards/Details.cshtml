@@ -15,6 +15,9 @@
 @{ 
     bool canChangeTreasury = (await AuthorizationService
         .AuthorizeAsync(User, CardPolicies.ChangeTreasury)).Succeeded;
+
+    bool hasAlts = Model.CardAlts.Any();
+    bool isSignedIn = SignInManager.IsSignedIn(User);
 }
 
 
@@ -25,45 +28,44 @@
     </div>
 </div>
 
-<div class="btn-group" role="group">
-    @if (Model.CardAlts.Any())
-    {
-        <div class="btn-group" role="group">
+@if (hasAlts || isSignedIn)
+{
+    <div class="btn-group" role="group">
+        @if (hasAlts)
+        {
+            <div class="btn-group" role="group">
 
-            <button id="alt-btn" type="button" class="btn btn-secondary dropdown-toggle"
-                data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" >
-                Alternate Versions
-            </button>
+                <button id="alt-btn" type="button" class="btn btn-secondary dropdown-toggle"
+                    data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" >
+                    Alternate Versions
+                </button>
 
-            <div class="dropdown-menu" aria-labelledby="alt-btn">
-                @foreach (var card in Model.CardAlts)
-                {
-                    <a class="dropdown-item" asp-page="Details" asp-route-id="@card.Id" >
-                        @card.Name (@card.SetName)
-                    </a>
-                }
+                <div class="dropdown-menu" aria-labelledby="alt-btn">
+                    @foreach (var card in Model.CardAlts)
+                    {
+                        <a class="dropdown-item" asp-page="Details" asp-route-id="@card.Id" >
+                            @card.Name (@card.SetName)
+                        </a>
+                    }
+                </div>
             </div>
-        </div>
-    }
+        }
 
-    @if (SignInManager.IsSignedIn(User))
-    {
-        @if (canChangeTreasury)
+        @if (isSignedIn && canChangeTreasury)
         {
             <a asp-page="Delete" asp-route-id="@Model.Card.Id"
                 title="Delete @Model.Card.Name" class="btn btn-danger" role="button">
                 Delete </a>
         }
-        else
+        else if (isSignedIn)
         {
             <button type="button" class="btn btn-danger" disabled>
                 Delete </button>
         }
-    }
-</div>
+    </div>
+}
 
 <hr />
-
 <div class="row">
 
     <div class="col-lg-3 col-12 pb-4 d-flex justify-content-center justify-content-lg-start align-items-center">

@@ -48,10 +48,7 @@ public sealed class CardStream
 
     public static CardStream Default(CardDbContext dbContext)
     {
-        if (dbContext is null)
-        {
-            throw new ArgumentNullException(nameof(dbContext));
-        }
+        ArgumentNullException.ThrowIfNull(dbContext, nameof(dbContext));
 
         return new CardStream
         {
@@ -98,15 +95,8 @@ public sealed class CardStream
 
     public static CardStream User(CardDbContext dbContext, string userId)
     {
-        if (dbContext is null)
-        {
-            throw new ArgumentNullException(nameof(dbContext));
-        }
-
-        if (userId is null)
-        {
-            throw new ArgumentNullException(nameof(userId));
-        }
+        ArgumentNullException.ThrowIfNull(dbContext, nameof(dbContext));
+        ArgumentNullException.ThrowIfNull(userId, nameof(userId));
 
         return new CardStream
         {
@@ -149,10 +139,7 @@ public sealed class CardStream
 
     public static CardStream Treasury(CardDbContext dbContext)
     {
-        if (dbContext is null)
-        {
-            throw new ArgumentNullException(nameof(dbContext));
-        }
+        ArgumentNullException.ThrowIfNull(dbContext, nameof(dbContext));
 
         return new CardStream
         {
@@ -193,15 +180,8 @@ public sealed class CardStream
 
     public static CardStream All(CardDbContext dbContext, UserManager<CardUser> userManager)
     {
-        if (dbContext is null)
-        {
-            throw new ArgumentNullException(nameof(dbContext));
-        }
-
-        if (userManager is null)
-        {
-            throw new ArgumentNullException(nameof(userManager));
-        }
+        ArgumentNullException.ThrowIfNull(dbContext, nameof(dbContext));
+        ArgumentNullException.ThrowIfNull(userManager, nameof(userManager));
 
         return new CardStream
         {

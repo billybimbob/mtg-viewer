@@ -21,8 +21,7 @@ public static class RazorPageExtensions
         var mtgViewerRef = typeof(MTGViewer.Program);
         var pageModel = typeof(PageModel);
 
-        return mtgViewerRef.Assembly
-            .GetExportedTypes()
+        return mtgViewerRef.Assembly.ExportedTypes
             .Where(t => t.IsSubclassOf(pageModel));
     }
 }

@@ -77,15 +77,8 @@ public static class ComposeExtensions
     public static SymbolFormatter ComposeWith(
         this ISymbolFinder finder, ISymbolTranslator translator)
     {
-        if (translator is null)
-        {
-            throw new ArgumentNullException("Translator is null");
-        }
-
-        if (finder is null)
-        {
-            throw new ArgumentNullException("Finder is null");
-        }
+        ArgumentNullException.ThrowIfNull(finder, nameof(finder));
+        ArgumentNullException.ThrowIfNull(translator, nameof(translator));
 
         return new SymbolFormatter(finder, translator);
     }
@@ -94,15 +87,8 @@ public static class ComposeExtensions
     public static SymbolFormatter ComposeWith(
         this ISymbolTranslator translator, ISymbolFinder finder)
     {
-        if (translator is null)
-        {
-            throw new ArgumentNullException("Translator is null");
-        }
-
-        if (finder is null)
-        {
-            throw new ArgumentNullException("Finder is null");
-        }
+        ArgumentNullException.ThrowIfNull(finder, nameof(finder));
+        ArgumentNullException.ThrowIfNull(translator, nameof(translator));
 
         return new SymbolFormatter(finder, translator);
     }

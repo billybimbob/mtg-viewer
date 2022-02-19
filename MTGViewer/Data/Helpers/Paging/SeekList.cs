@@ -12,9 +12,13 @@ public enum SeekDirection
 }
 
 
-public readonly record struct Seek<TEntity>(TEntity? Previous, TEntity? Next)
+public readonly record struct Seek<T>(T? Previous, T? Next)
 {
-    public Seek(IReadOnlyList<TEntity> items, SeekDirection direction, bool hasOrigin, bool lookAhead) : this(default, default)
+    public Seek(
+        IReadOnlyList<T> items,
+        SeekDirection direction,
+        bool hasOrigin,
+        bool lookAhead) : this(default, default)
     {
         if (direction is SeekDirection.Forward)
         {
@@ -40,33 +44,31 @@ public readonly record struct Seek<TEntity>(TEntity? Previous, TEntity? Next)
 }
 
 
-public class SeekList<TEntity> : IReadOnlyList<TEntity>
+public class SeekList<T> : IReadOnlyList<T>
 {
-    private static readonly SeekList<TEntity> _empty = new(default, Array.Empty<TEntity>());
+    private readonly IList<T> _items;
 
-    private readonly IList<TEntity> _items;
-
-    public SeekList(Seek<TEntity> seek, IList<TEntity> items)
+    public SeekList(Seek<T> seek, IList<T> items)
     {
-        if (items is null)
-        {
-            throw new ArgumentNullException(nameof(items));
-        }
+        ArgumentNullException.ThrowIfNull(items, nameof(items));
 
         Seek = seek;
+
         _items = items;
     }
 
-    public Seek<TEntity> Seek { get; }
+    public Seek<T> Seek { get; }
 
     public int Count => _items.Count;
 
-    public TEntity this[int index] => _items[index];
+    public T this[int index] => _items[index];
 
 
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
-    public IEnumerator<TEntity> GetEnumerator() => _items.GetEnumerator();
+    public IEnumerator<T> GetEnumerator() => _items.GetEnumerator();
 
-    public static SeekList<TEntity> Empty() => _empty;
+
+    private static SeekList<T>? _empty;
+    public static SeekList<T> Empty => _empty ??= new(default, Array.Empty<T>());
 }

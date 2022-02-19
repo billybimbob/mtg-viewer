@@ -15,10 +15,7 @@ public static partial class PagingExtensions
         int? index,
         int pageSize)
     {
-        if (source is null)
-        {
-            throw new ArgumentNullException(nameof(source));
-        }
+        ArgumentNullException.ThrowIfNull(source, nameof(source));
 
         if (index < 0)
         {
@@ -42,10 +39,7 @@ public static partial class PagingExtensions
         this IQueryable<TEntity> source,
         CancellationToken cancel = default)
     {
-        if (source is null)
-        {
-            throw new ArgumentNullException(nameof(source));
-        }
+        ArgumentNullException.ThrowIfNull(source, nameof(source));
 
         return new OffsetQuery<TEntity>(source)
             .ToOffsetListAsync(cancel);
@@ -54,15 +48,12 @@ public static partial class PagingExtensions
 
     public static Task<TEntity?> FindOriginAsync<TEntity, TKey>(
         this IQueryable<TEntity> source,
-        Nullable<TKey> seek,
+        TKey? seek,
         CancellationToken cancel = default)
         where TEntity : class
         where TKey : struct
     {
-        if (source is null)
-        {
-            throw new ArgumentNullException(nameof(source));
-        }
+        ArgumentNullException.ThrowIfNull(source, nameof(source));
 
         if (seek is not TKey s)
         {
@@ -80,17 +71,14 @@ public static partial class PagingExtensions
         where TEntity : class
         where TKey : class?
     {
-        if (source is null)
-        {
-            throw new ArgumentNullException(nameof(source));
-        }
+        ArgumentNullException.ThrowIfNull(source, nameof(source));
 
-        if (seek is null)
+        if (seek is not TKey s)
         {
             return Task.FromResult<TEntity?>(null);
         }
 
-        return FindNonNullOriginAsync(source, seek, cancel);
+        return FindNonNullOriginAsync(source, s, cancel);
     }
 
 
@@ -131,15 +119,8 @@ public static partial class PagingExtensions
         this IQueryable<TEntity> source,
         TEntity origin)
     {
-        if (source is null)
-        {
-            throw new ArgumentNullException(nameof(source));
-        }
-
-        if (origin is null)
-        {
-            throw new ArgumentNullException(nameof(origin));
-        }
+        ArgumentNullException.ThrowIfNull(source, nameof(source));
+        ArgumentNullException.ThrowIfNull(origin, nameof(origin));
 
         var seekCondition = OriginFilter.Create(source, origin, SeekDirection.Forward);
 
@@ -152,15 +133,8 @@ public static partial class PagingExtensions
         TOrigin origin,
         Expression<Func<TEntity, TOrigin>> selector)
     {
-        if (source is null)
-        {
-            throw new ArgumentNullException(nameof(source));
-        }
-
-        if (origin is null)
-        {
-            throw new ArgumentNullException(nameof(origin));
-        }
+        ArgumentNullException.ThrowIfNull(source, nameof(source));
+        ArgumentNullException.ThrowIfNull(origin, nameof(origin));
 
         var seekCondition = OriginFilter.Create(source, origin, SeekDirection.Forward, selector);
 
@@ -172,15 +146,8 @@ public static partial class PagingExtensions
         this IQueryable<TEntity> source,
         TEntity origin)
     {
-        if (source is null)
-        {
-            throw new ArgumentNullException(nameof(source));
-        }
-
-        if (origin is null)
-        {
-            throw new ArgumentNullException(nameof(origin));
-        }
+        ArgumentNullException.ThrowIfNull(source, nameof(source));
+        ArgumentNullException.ThrowIfNull(origin, nameof(origin));
 
         var seekCondition = OriginFilter.Create(source, origin, SeekDirection.Backwards);
 
@@ -196,15 +163,8 @@ public static partial class PagingExtensions
         TOrigin origin,
         Expression<Func<TEntity, TOrigin>> selector)
     {
-        if (source is null)
-        {
-            throw new ArgumentNullException(nameof(source));
-        }
-
-        if (origin is null)
-        {
-            throw new ArgumentNullException(nameof(origin));
-        }
+        ArgumentNullException.ThrowIfNull(source, nameof(source));
+        ArgumentNullException.ThrowIfNull(origin, nameof(origin));
 
         var seekCondition = OriginFilter.Create(source, origin, SeekDirection.Backwards, selector);
 
@@ -222,15 +182,7 @@ public static partial class PagingExtensions
         bool backtrack)
         where TEntity : class?
     {
-        if (source is null)
-        {
-            throw new ArgumentNullException(nameof(source));
-        }
-
-        if (pageSize <= 0)
-        {
-            throw new ArgumentException(nameof(pageSize));
-        }
+        ArgumentNullException.ThrowIfNull(source, nameof(source));
 
         var direction = backtrack
             ? SeekDirection.Backwards
@@ -264,10 +216,7 @@ public static partial class PagingExtensions
         this IQueryable<TEntity> source,
         CancellationToken cancel = default)
     {
-        if (source is null)
-        {
-            throw new ArgumentNullException(nameof(source));
-        }
+        ArgumentNullException.ThrowIfNull(source, nameof(source));
 
         return new SeekQuery<TEntity>(source).ToSeekListAsync(cancel);
     }
@@ -275,17 +224,14 @@ public static partial class PagingExtensions
 
     public static async Task<SeekList<TEntity>> ToSeekListAsync<TEntity, TKey>(
         this IQueryable<TEntity> source,
-        Nullable<TKey> seek,
+        TKey? seek,
         int pageSize,
         bool backtrack,
         CancellationToken cancel = default)
         where TEntity : class
         where TKey : struct
     {
-        if (source is null)
-        {
-            throw new ArgumentNullException(nameof(source));
-        }
+        ArgumentNullException.ThrowIfNull(source, nameof(source));
 
         if (pageSize <= 0)
         {
@@ -312,10 +258,7 @@ public static partial class PagingExtensions
         where TEntity : class
         where TKey : class?
     {
-        if (source is null)
-        {
-            throw new ArgumentNullException(nameof(source));
-        }
+        ArgumentNullException.ThrowIfNull(source, nameof(source));
 
         if (pageSize <= 0)
         {

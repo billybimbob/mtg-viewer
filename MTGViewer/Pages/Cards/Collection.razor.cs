@@ -32,7 +32,7 @@ public partial class Collection : ComponentBase, IDisposable
 
     public FilterContext Filters => _filters;
 
-    public OffsetList<Card> Cards => _loader.Cards ?? OffsetList<Card>.Empty();
+    public OffsetList<Card> Cards => _loader.Cards ?? OffsetList<Card>.Empty;
 
     public int CardTotal(Card card) => _loader.CardTotal(card);
 
@@ -293,10 +293,7 @@ public partial class Collection : ComponentBase, IDisposable
 
         public int CardTotal(Card card)
         {
-            if (card is null)
-            {
-                throw new ArgumentNullException(nameof(card));
-            }
+            ArgumentNullException.ThrowIfNull(card, nameof(card));
 
             return _cardAmounts.GetValueOrDefault(card.Id);
         }

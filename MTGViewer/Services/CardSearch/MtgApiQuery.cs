@@ -29,20 +29,22 @@ public sealed class MtgApiQuery : IMTGQuery
             .GetMethod(
                 nameof(MtgApiQuery.QueryProperty),
                 BindingFlags.Instance | BindingFlags.NonPublic,
-                new[] { 
+                new[]
+                { 
                     typeof(IDictionary<,>).MakeGenericType(typeof(string), typeof(object)),
                     typeof(string),
-                    typeof(object) })!;
+                    typeof(object)
+                })!;
 
 
-    private readonly ICardService _service;
+    private readonly ICardService _cardService;
     private readonly FixedCache _cache;
 
     private readonly int _pageSize;
     private readonly LoadingProgress _loadProgress;
     private readonly ILogger<MtgApiQuery> _logger;
 
-    private readonly PredicateConverter _predicateVisitor;
+    private readonly PredicateVisitor _predicateConverter;
 
     public MtgApiQuery(
         ICardService service,
@@ -51,12 +53,12 @@ public sealed class MtgApiQuery : IMTGQuery
         LoadingProgress loadProgress,
         ILogger<MtgApiQuery> logger)
     {
-        _service = service;
+        _cardService = service;
         _cache = cache;
 
         _pageSize = pageSizes.Default;
         _loadProgress = loadProgress;
-        _predicateVisitor = new(this);
+        _predicateConverter = new(this);
 
         _logger = logger;
     }
@@ -81,7 +83,6 @@ public sealed class MtgApiQuery : IMTGQuery
 
         QueryFromPredicate(builder, predicate);
 
-        // boxes the struct, so really no point
         return new MtgCardSearch(this, builder);
     }
 
@@ -91,7 +92,7 @@ public sealed class MtgApiQuery : IMTGQuery
         IDictionary<string, object?> parameters,
         Expression<Func<CardQuery, bool>> predicate)
     {
-        if (_predicateVisitor.Visit(predicate) is MethodCallExpression call
+        if (_predicateConverter.Visit(predicate) is MethodCallExpression call
 
             && (call.Object as ConstantExpression)?.Value == this
             && call.Method == QueryMethod
@@ -158,9 +159,7 @@ public sealed class MtgApiQuery : IMTGQuery
     }
 
     private void QueryProperty(
-        IDictionary<string, object?> parameters, 
-        string name, 
-        IEnumerable values)
+        IDictionary<string, object?> parameters, string name, IEnumerable values)
     {
         foreach (var v in values)
         {
@@ -210,16 +209,13 @@ public sealed class MtgApiQuery : IMTGQuery
     {
         if (values.IsEmpty())
         {
-            return OffsetList<Card>.Empty();
+            return OffsetList<Card>.Empty;
         }
 
         cancel.ThrowIfCancellationRequested();
 
         int currentPage = values.Page;
-
-        var response = await ApplyParameters(values)
-            // .Where(c => c.OrderBy, "name") get error code 500 with this
-            .AllAsync();
+        var response = await ApplyParameters(values).AllAsync();
 
         cancel.ThrowIfCancellationRequested();
 
@@ -229,7 +225,7 @@ public sealed class MtgApiQuery : IMTGQuery
         var matches = LoggedUnwrap(response) ?? Enumerable.Empty<ICard>();
         if (!matches.Any())
         {
-            return OffsetList<Card>.Empty();
+            return OffsetList<Card>.Empty;
         }
 
         var cards = matches
@@ -275,12 +271,14 @@ public sealed class MtgApiQuery : IMTGQuery
             }
         }
 
+        // _cardService.Where(c => c.OrderBy, "name") get error code 500 with this
+
         if (values.Parameters.GetValueOrDefault(nameof(CardQuery.PageSize)) == default)
         {
-            return _service.Where(c => c.PageSize, _pageSize);
+            return _cardService.Where(c => c.PageSize, _pageSize);
         }
 
-        return _service;
+        return _cardService;
     }
 
 
@@ -295,7 +293,7 @@ public sealed class MtgApiQuery : IMTGQuery
                 Expression.Property(param, name),
                 param);
 
-        _service.Where(expression, value);
+        _cardService.Where(expression, value);
     }
 
 
@@ -320,7 +318,7 @@ public sealed class MtgApiQuery : IMTGQuery
 
             var multiArg = string.Join(Or, multiChunk);
 
-            var response = await _service
+            var response = await _cardService
                 .Where(c => c.MultiverseId, multiArg)
                 .Where(c => c.PageSize, Limit)
                 .AllAsync();
@@ -357,7 +355,7 @@ public sealed class MtgApiQuery : IMTGQuery
 
         cancel.ThrowIfCancellationRequested();
 
-        var result = await _service.FindAsync(id);
+        var result = await _cardService.FindAsync(id);
 
         cancel.ThrowIfCancellationRequested();
 
@@ -452,37 +450,4 @@ public sealed class MtgApiQuery : IMTGQuery
 
         return card;
     }
-
-
-    // public async Task<Data.Type[]> AllTypesAsync()
-    // {
-    //     var result = await _service.GetCardTypesAsync();
-    //     var types = LoggedUnwrap(result) ?? Enumerable.Empty<string>();
-
-    //     return types
-    //         .Select(ty => new Data.Type(ty))
-    //         .ToArray();
-    // }
-
-
-    // public async Task<Subtype[]> AllSubtypesAsync()
-    // {
-    //     var result = await _service.GetCardTypesAsync();
-    //     var subtypes = LoggedUnwrap(result) ?? Enumerable.Empty<string>();
-
-    //     return subtypes
-    //         .Select(sb => new Subtype(sb))
-    //         .ToArray();
-    // }
-
-
-    // public async Task<Supertype[]> AllSupertypesAsync()
-    // {
-    //     var result = await _service.GetCardTypesAsync();
-    //     var supertypes = LoggedUnwrap(result) ?? Enumerable.Empty<string>();
-
-    //     return supertypes
-    //         .Select(sp => new Supertype(sp))
-    //         .ToArray();
-    // }
 }

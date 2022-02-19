@@ -53,7 +53,7 @@ public partial class Craft : OwningComponentBase
 
     public bool IsBusy => _isBusy;
 
-    public OffsetList<Card> Treasury => _pagedCards ?? OffsetList<Card>.Empty();
+    public OffsetList<Card> Treasury => _pagedCards ?? OffsetList<Card>.Empty;
 
     public string DeckName =>
         _deckContext?.Deck.Name is string name && !string.IsNullOrWhiteSpace(name) 
@@ -522,7 +522,7 @@ public partial class Craft : OwningComponentBase
     {
         if (_deckContext is null)
         {
-            return OffsetList<QuantityGroup>.Empty();
+            return OffsetList<QuantityGroup>.Empty;
         }
 
         return _cards
@@ -716,10 +716,7 @@ public partial class Craft : OwningComponentBase
 
         public DeckContext(Deck deck, int pageSize)
         {
-            if (deck is null)
-            {
-                throw new ArgumentNullException(nameof(deck));
-            }
+            ArgumentNullException.ThrowIfNull(deck, nameof(deck));
 
             _groups = QuantityGroup
                 .FromDeck(deck)
@@ -854,10 +851,8 @@ public partial class Craft : OwningComponentBase
         public void AddQuantity<TQuantity>(TQuantity quantity)
             where TQuantity : Quantity
         {
-            if (quantity is null)
-            {
-                throw new ArgumentNullException(nameof(quantity));
-            }
+            ArgumentNullException.ThrowIfNull(quantity, nameof(quantity));
+
 
             if (!_groups.TryGetValue(quantity.CardId, out var group))
             {

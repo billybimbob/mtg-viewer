@@ -48,64 +48,18 @@ internal class CardSetup : IHostedService
             return;
         }
 
-        if (_env.IsStaging())
+        if (_env.IsProduction())
         {
-            await StagingSeedAsync(scopeProvider, cancel);
             return;
         }
 
-        if (_env.IsDevelopment())
-        {
-            await DevelopmentSeedAsync(scopeProvider, cancel);
-            return;
-        }
-    }
-
-
-    private static Task StagingSeedAsync(IServiceProvider provider, CancellationToken cancel)
-    {
-        var cardGen = provider.GetService<CardDataGenerator>();
-        if (cardGen == null)
-        {
-            return Task.CompletedTask;
-        }
-
-        return cardGen.GenerateAsync(cancel);
-    }
-
-
-    private static async Task DevelopmentSeedAsync(IServiceProvider provider, CancellationToken cancel)
-    {
-        var fileStorage = provider.GetRequiredService<FileCardStorage>();
-
-        try
-        {
-            await fileStorage.JsonSeedAsync(cancel: cancel);
-        }
-
-        catch (System.IO.FileNotFoundException)
-        {
-            await GenerateAsync(provider, cancel);
-        }
-        catch (System.Text.Json.JsonException)
-        {
-            await GenerateAsync(provider, cancel);
-        }
-    }
-
-
-    private static async Task GenerateAsync(IServiceProvider provider, CancellationToken cancel)
-    {
-        var fileStorage = provider.GetRequiredService<FileCardStorage>();
-        var cardGen = provider.GetService<CardDataGenerator>();
-
+        var cardGen = scopeProvider.GetService<CardDataGenerator>();
         if (cardGen == null)
         {
             return;
         }
 
         await cardGen.GenerateAsync(cancel);
-        await fileStorage.WriteBackupAsync(cancel: cancel);
     }
 
 

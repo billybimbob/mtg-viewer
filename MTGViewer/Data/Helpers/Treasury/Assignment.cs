@@ -48,10 +48,7 @@ internal static class AssignmentExtensions
         IEnumerable<CardRequest> requests,
         AddScheme scheme)
     {
-        if (treasuryContext is null)
-        {
-            throw new ArgumentNullException(nameof(treasuryContext));
-        }
+        ArgumentNullException.ThrowIfNull(treasuryContext, nameof(treasuryContext));
 
         return scheme switch
         {
@@ -67,10 +64,7 @@ internal static class AssignmentExtensions
         ExchangeContext exchangeContext,
         TakeScheme scheme)
     {
-        if (treasuryContext is null)
-        {
-            throw new ArgumentNullException(nameof(treasuryContext));
-        }
+        ArgumentNullException.ThrowIfNull(treasuryContext, nameof(treasuryContext));
 
         return scheme switch
         {
@@ -85,10 +79,7 @@ internal static class AssignmentExtensions
         ExchangeContext exchangeContext,
         ReturnScheme scheme)
     {
-        if (treasuryContext is null)
-        {
-            throw new ArgumentNullException(nameof(treasuryContext));
-        }
+        ArgumentNullException.ThrowIfNull(treasuryContext, nameof(treasuryContext));
 
         return scheme switch
         {
@@ -103,10 +94,7 @@ internal static class AssignmentExtensions
         this TreasuryContext treasuryContext,
         ExcessScheme scheme)
     {
-        if (treasuryContext is null)
-        {
-            throw new ArgumentNullException(nameof(treasuryContext));
-        }
+        ArgumentNullException.ThrowIfNull(treasuryContext, nameof(treasuryContext));
 
         return scheme switch
         {
@@ -120,10 +108,7 @@ internal static class AssignmentExtensions
         this TreasuryContext treasuryContext,
         OverflowScheme scheme)
     {
-        if (treasuryContext is null)
-        {
-            throw new ArgumentNullException(nameof(treasuryContext));
-        }
+        ArgumentNullException.ThrowIfNull(treasuryContext, nameof(treasuryContext));
 
         return scheme switch
         {

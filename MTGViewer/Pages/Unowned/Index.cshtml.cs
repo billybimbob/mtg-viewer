@@ -53,7 +53,7 @@ public class IndexModel : PageModel
     [TempData]
     public string? PostMessage { get; set; }
 
-    public OffsetList<Unclaimed> Unclaimed { get; private set; } = OffsetList<Unclaimed>.Empty();
+    public OffsetList<Unclaimed> Unclaimed { get; private set; } = OffsetList<Unclaimed>.Empty;
 
 
     public async Task<IActionResult> OnGetAsync(int? id, int? offset, CancellationToken cancel)

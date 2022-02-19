@@ -9,13 +9,19 @@ internal class VisitedQuery<T> : IQueryable<T>
 
     public VisitedQuery(IQueryable<T> source, Expression visited)
     {
-        _source = source;
+        if (!typeof(IQueryable<T>).IsAssignableFrom(visited.Type))
+        {
+            throw new ArgumentException(nameof(visited));
+        }
+
         Expression = visited;
+
+        _source = source;
     }
 
-    public Type ElementType => _source.ElementType;
-
     public Expression Expression { get; }
+
+    public Type ElementType => _source.ElementType;
 
     public IQueryProvider Provider => _source.Provider;
 
@@ -36,9 +42,13 @@ internal class VisitedQuery<T> : IQueryable<T>
 }
 
 
-public static partial class QueryVisitExtensions
+internal static partial class QueryVisitExtensions
 {
-    public static IQueryable<T> Visit<T>(this IQueryable<T> source, ExpressionVisitor visitor)
+    /// <summary>
+    /// Used to apply custom Expression visitors on an IQueryable. This method has a chance to
+    /// create an invalid IQueryable based on result of the visitor
+    /// </summary>
+    internal static IQueryable<T> Visit<T>(this IQueryable<T> source, ExpressionVisitor visitor)
     {
         var modifiedSource = visitor.Visit(source.Expression);
 

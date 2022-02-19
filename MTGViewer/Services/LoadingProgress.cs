@@ -86,11 +86,11 @@ public class LoadingProgress
     public void AddProgress() => AddProgress(_defaultProgress);
 
 
-    // public void Reset()
-    // {
-    //     Current = 0;
-    //     ProgressUpdate?.Invoke(Current);
+    public void Reset()
+    {
+        Current = 0;
+        ProgressUpdate?.Invoke(Current);
 
-    //     _logger.LogInformation($"progress reset");
-    // }
+        _logger.LogInformation($"progress reset");
+    }
 }

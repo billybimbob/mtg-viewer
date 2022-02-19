@@ -32,7 +32,7 @@ public class Startup
     public void ConfigureServices(IServiceCollection services, HostBuilderContext context)
     {
         var config = context.Configuration;
-        var provider = config.GetValue("Provider", "InMemory");
+        var databaseOptions = DatabaseOptions.Bind(config);
         
         services
             .AddRazorPageModels()
@@ -43,15 +43,15 @@ public class Startup
             .AddScoped<InMemoryConnection>()
             .AddScoped<TempFileName>();
 
-        switch (provider)
+        switch (databaseOptions.Provider)
         {
-            case "Sqlite":
+            case DatabaseOptions.Sqlite:
                 services
                     .AddDbContext<CardDbContext>(TestFactory.SqliteInMemory)
                     .AddDbContext<UserDbContext>(TestFactory.SqliteInMemory);
                 break;
             
-            case "InMemory":
+            case DatabaseOptions.InMemory:
             default:
                 services
                     .AddDbContext<CardDbContext>(TestFactory.InMemoryDatabase)

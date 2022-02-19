@@ -6,16 +6,14 @@ using System.Linq.Expressions;
 using System.Paging;
 using System.Threading;
 using System.Threading.Tasks;
-
 using MTGViewer.Data;
 
 namespace MTGViewer.Services;
 
-
-internal readonly struct MtgCardSearch : IMTGCardSearch
+internal class MtgCardSearch : IMTGCardSearch
 {
-    private readonly MtgApiQuery? _provider;
-    private readonly ImmutableDictionary<string, object?>? _parameters;
+    private readonly MtgApiQuery _provider;
+    private readonly ImmutableDictionary<string, object?> _parameters;
 
     public MtgCardSearch(
         MtgApiQuery provider,
@@ -25,10 +23,7 @@ internal readonly struct MtgCardSearch : IMTGCardSearch
         _parameters = parameters.ToImmutableDictionary();
     }
 
-    private ImmutableDictionary<string, object?> Values =>
-        _parameters ?? ImmutableDictionary<string, object?>.Empty;
-
-    public IReadOnlyDictionary<string, object?> Parameters => Values;
+    public IReadOnlyDictionary<string, object?> Parameters => _parameters;
 
     public int Page => (Parameters
         .GetValueOrDefault(nameof(CardQuery.Page)) as int?) ?? 0;
@@ -55,20 +50,18 @@ internal readonly struct MtgCardSearch : IMTGCardSearch
         return true;
     }
 
+    public ImmutableDictionary<string, object?>.Builder ToBuilder()
+    {
+        return _parameters.ToBuilder();
+    }
 
     public IMTGCardSearch Where(Expression<Func<CardQuery, bool>> predicate)
     {
-        // boxes the struct, so really no point
-        return _provider?.Where(this, predicate) ?? new MtgCardSearch();
+        return _provider.Where(this, predicate);
     }
-
 
     public ValueTask<OffsetList<Card>> SearchAsync(CancellationToken cancel = default)
     {
-        return _provider?.SearchAsync(this, cancel)
-            ?? ValueTask.FromResult(OffsetList<Card>.Empty());
+        return _provider.SearchAsync(this, cancel);
     }
-
-
-    public ImmutableDictionary<string, object?>.Builder ToBuilder() => Values.ToBuilder();
 }

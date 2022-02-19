@@ -47,16 +47,11 @@ public readonly record struct Offset(int Current, int Total)
 
 public class OffsetList<T> : IReadOnlyList<T>
 {
-    private static readonly OffsetList<T> _empty = new(default, Array.Empty<T>());
-
     private readonly IList<T> _items;
 
     public OffsetList(Offset offset, IList<T> items)
     {
-        if (items is null)
-        {
-            throw new ArgumentNullException(nameof(items));
-        }
+        ArgumentNullException.ThrowIfNull(items, nameof(items));
 
         Offset = offset;
         _items = items;
@@ -73,5 +68,7 @@ public class OffsetList<T> : IReadOnlyList<T>
 
     public IEnumerator<T> GetEnumerator() => _items.GetEnumerator();
 
-    public static OffsetList<T> Empty() => _empty;
+
+    private static OffsetList<T>? _empty;
+    public static OffsetList<T> Empty => _empty ??= new(default, Array.Empty<T>());
 }

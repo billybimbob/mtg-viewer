@@ -69,17 +69,6 @@ public class TreasuryExtensionTests : IAsyncLifetime
 
 
     [Fact]
-    public async Task AddCards_WithNullCardRequest_Throws()
-    {
-        var withNull = new CardRequest[] { null! };
-
-        Task AddAsync() => _dbContext.AddCardsAsync(withNull);
-
-        await Assert.ThrowsAsync<ArgumentNullException>(AddAsync);
-    }
-
-
-    [Fact]
     public async Task AddCards_WithNullCard_Throws()
     {
         const Card nullCard = null!;
@@ -87,6 +76,36 @@ public class TreasuryExtensionTests : IAsyncLifetime
         Task AddAsync() => _dbContext.AddCardsAsync(nullCard, 0);
 
         await Assert.ThrowsAsync<ArgumentNullException>(AddAsync);
+    }
+    
+
+    [Fact]
+    public async Task AddCards_WithNullCardRequest_NoChange()
+    {
+        var withNull = new CardRequest[] { null! };
+
+        int totalBefore = await GetTotalCopiesAsync();
+
+        await _dbContext.AddCardsAsync(withNull);
+
+        int totalAfter = await GetTotalCopiesAsync();
+
+        Assert.Equal(totalBefore, totalAfter);
+    }
+
+
+    [Fact]
+    public async Task AddCards_EmptyCardRequest_NoChange()
+    {
+        var empty = Array.Empty<CardRequest>();
+
+        int totalBefore = await GetTotalCopiesAsync();
+
+        await _dbContext.AddCardsAsync(empty);
+
+        int totalAfter = await GetTotalCopiesAsync();
+
+        Assert.Equal(totalBefore, totalAfter);
     }
 
 

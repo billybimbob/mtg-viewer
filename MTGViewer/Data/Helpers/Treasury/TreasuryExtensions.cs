@@ -35,10 +35,7 @@ public static partial class TreasuryExtensions
         int numCopies,
         CancellationToken cancel = default)
     {
-        if (dbContext is null)
-        {
-            throw new ArgumentNullException(nameof(dbContext));
-        }
+        ArgumentNullException.ThrowIfNull(dbContext, nameof(dbContext));
 
         var request = new []{ new CardRequest(card, numCopies) };
 
@@ -51,10 +48,7 @@ public static partial class TreasuryExtensions
         IEnumerable<CardRequest> adding, 
         CancellationToken cancel = default)
     {
-        if (dbContext is null)
-        {
-            throw new ArgumentNullException(nameof(dbContext));
-        }
+        ArgumentNullException.ThrowIfNull(dbContext, nameof(dbContext));
 
         adding = AsAddRequests(adding); 
 
@@ -79,19 +73,9 @@ public static partial class TreasuryExtensions
     }
 
 
-    private static IReadOnlyList<CardRequest> AsAddRequests(IEnumerable<CardRequest?>? requests)
+    private static IReadOnlyList<CardRequest> AsAddRequests(IEnumerable<CardRequest>? requests)
     {
-        if (requests is null)
-        {
-            throw new ArgumentNullException(nameof(requests));
-        }
-
-        requests = requests.ToArray();
-
-        if (requests.Any(req => req is null))
-        {
-            throw new ArgumentNullException(nameof(requests));
-        }
+        ArgumentNullException.ThrowIfNull(requests, nameof(requests));
 
         // descending so that the first added cards do not shift down the 
         // positioning of the sorted card amounts
@@ -99,7 +83,7 @@ public static partial class TreasuryExtensions
         // keep eye on
 
         return requests
-            .Cast<CardRequest>()
+            .OfType<CardRequest>()
             .GroupBy(
                 cr => cr.Card.Id,
                 (_, requests) => requests.First() with
@@ -152,15 +136,8 @@ public static partial class TreasuryExtensions
         Deck deck, 
         CancellationToken cancel = default)
     {
-        if (dbContext is null)
-        {
-            throw new ArgumentNullException(nameof(dbContext));
-        }
-
-        if (deck is null)
-        {
-            throw new ArgumentNullException(nameof(deck));
-        }
+        ArgumentNullException.ThrowIfNull(dbContext, nameof(dbContext));
+        ArgumentNullException.ThrowIfNull(deck, nameof(deck));
 
         var entry = dbContext.Entry(deck);
 
@@ -227,10 +204,7 @@ public static partial class TreasuryExtensions
         this CardDbContext dbContext,
         CancellationToken cancel = default)
     {
-        if (dbContext is null)
-        {
-            throw new ArgumentNullException(nameof(dbContext));
-        }
+        ArgumentNullException.ThrowIfNull(dbContext, nameof(dbContext));
 
         if (AreBoxesUnchanged(dbContext) && AreAmountsUnchanged(dbContext))
         {

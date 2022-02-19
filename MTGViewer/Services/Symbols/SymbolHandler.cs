@@ -98,10 +98,7 @@ public static class TranslatorExtensions
 {
     public static string SymbolString(this ISymbolTranslator translator, Symbol symbol)
     {
-        if (translator is null)
-        {
-            throw new ArgumentNullException("Translator is null");
-        }
+        ArgumentNullException.ThrowIfNull(translator, nameof(translator));
 
         return symbol switch
         {
@@ -117,15 +114,8 @@ public static class TranslatorExtensions
     public static string ManaString(
         this ISymbolTranslator translator, string mana)
     {
-        if (translator is null)
-        {
-            throw new ArgumentNullException("Translator is null");
-        }
-
-        if (mana is null)
-        {
-            throw new ArgumentNullException("mana is null");
-        }
+        ArgumentNullException.ThrowIfNull(translator, nameof(translator));
+        ArgumentNullException.ThrowIfNull(mana, nameof(mana));
 
         return translator.ManaString(new ManaSymbol(default, mana));
     }
@@ -134,15 +124,8 @@ public static class TranslatorExtensions
     public static string LoyaltyString(
         this ISymbolTranslator translator, string? direction, string value)
     {
-        if (translator is null)
-        {
-            throw new ArgumentNullException("Translator is null");
-        }
-
-        if (value is null)
-        {
-            throw new ArgumentNullException("value is null");
-        }
+        ArgumentNullException.ThrowIfNull(translator, nameof(translator));
+        ArgumentNullException.ThrowIfNull(value, nameof(value));
 
         return translator.LoyaltyString(new LoyaltySymbol(default, direction, value));
     }
@@ -151,15 +134,8 @@ public static class TranslatorExtensions
     public static string SagaString(
         this ISymbolTranslator translator, string saga, bool hasNext = default)
     {
-        if (translator is null)
-        {
-            throw new ArgumentNullException("Translator is null");
-        }
-
-        if (saga is null)
-        {
-            throw new ArgumentNullException("saga is null");
-        }
+        ArgumentNullException.ThrowIfNull(translator, nameof(translator));
+        ArgumentNullException.ThrowIfNull(saga, nameof(saga));
 
         return translator.SagaString(new SagaSymbol(default, saga, hasNext));
     }
