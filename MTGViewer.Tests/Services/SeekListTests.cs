@@ -275,14 +275,14 @@ public class SeekListTests : IAsyncLifetime
     {
         await _testGen.CreateChangesAsync();
 
-        const int pageSize = 4;
-        const int numPages = 2;
+        const int pageSize = 3;
+        const int numPages = 1;
 
         var changes = _dbContext.Changes
             .Include(c => c.To)
             .Include(c => c.From)
             .OrderBy(c => c.To.Name)
-                .ThenBy(c => c.From == null)
+                .ThenByDescending(c => c.From == null)
                 .ThenBy(c => c.From!.Name)
                 .ThenBy(c => c.Id);
 

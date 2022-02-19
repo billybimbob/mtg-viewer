@@ -77,11 +77,6 @@ public static partial class TreasuryExtensions
     {
         ArgumentNullException.ThrowIfNull(requests, nameof(requests));
 
-        // descending so that the first added cards do not shift down the 
-        // positioning of the sorted card amounts
-        // each of the returned cards should have less effect on following returns
-        // keep eye on
-
         return requests
             .OfType<CardRequest>()
             .GroupBy(
@@ -90,8 +85,6 @@ public static partial class TreasuryExtensions
                 {
                     NumCopies = requests.Sum(req => req.NumCopies)
                 })
-            .OrderByDescending(cr => cr.Card.Name)
-                .ThenByDescending(cr => cr.Card.SetName)
             .ToList();
     }
 

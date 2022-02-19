@@ -211,8 +211,9 @@ internal static class AssignmentExtensions
             // keep eye on
 
             var orderedRequests = requests
-                .OrderByDescending(cr => cr.Card.Name)
-                    .ThenByDescending(cr => cr.Card.SetName);
+                .OrderByDescending(cr => cr.NumCopies)
+                    .ThenByDescending(cr => cr.Card.Name)
+                        .ThenByDescending(cr => cr.Card.SetName);
 
             foreach (var request in orderedRequests)
             {
@@ -412,8 +413,9 @@ internal static class AssignmentExtensions
             // keep eye on
 
             var orderedGiveBacks = giveBacks
-                .OrderByDescending(g => g.Card.Name)
-                    .ThenByDescending(g => g.Card.SetName);
+                .OrderByDescending(g => g.NumCopies)
+                    .ThenByDescending(g => g.Card.Name)
+                        .ThenByDescending(g => g.Card.SetName);
 
             foreach (var giveBack in orderedGiveBacks)
             {
