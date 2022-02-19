@@ -48,11 +48,6 @@ internal class CardSetup : IHostedService
             return;
         }
 
-        if (_env.IsProduction())
-        {
-            return;
-        }
-
         var cardGen = scopeProvider.GetService<CardDataGenerator>();
         if (cardGen == null)
         {

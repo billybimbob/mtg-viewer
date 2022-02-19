@@ -47,7 +47,7 @@ public class IndexModel : PageModel
         if (user.DisplayName != claimName)
         {
             await _signInManager.RefreshSignInAsync(user);
-            return RedirectToPage();
+            return RedirectToPage("/Index");
         }
 
         UserName = user.DisplayName;

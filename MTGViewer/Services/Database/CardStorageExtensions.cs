@@ -28,7 +28,6 @@ public static class CardStorageExtensions
                     .UseNpgsql(connString.ToNpgsqlConnectionString())
                     .UseValidationCheckConstraints()
                     .UseEnumCheckConstraints());
-
                 break;
 
             case DatabaseOptions.Sqlite:
