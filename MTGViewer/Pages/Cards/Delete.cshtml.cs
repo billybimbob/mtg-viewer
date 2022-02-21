@@ -33,8 +33,6 @@ public class DeleteModel : PageModel
 
     public sealed class InputModel
     {
-        public string CardId { get; set; } = default!;
-
         [Display(Name = "Number of Copies")]
         [Required(ErrorMessage = "No Copies Specified")]
         [Range(1, int.MaxValue)]
@@ -47,11 +45,13 @@ public class DeleteModel : PageModel
 
     public Card Card { get; private set; } = default!;
 
+    public string? ReturnUrl { get; private set; }
+
     [BindProperty]
     public InputModel? Input { get; set; }
 
 
-    public async Task<IActionResult> OnGetAsync(string id, CancellationToken cancel)
+    public async Task<IActionResult> OnGetAsync(string id, string? returnUrl, CancellationToken cancel)
     {
         if (id is null)
         {
@@ -65,6 +65,11 @@ public class DeleteModel : PageModel
         if (card == default)
         {
             return NotFound();
+        }
+
+        if (Url.IsLocalUrl(returnUrl))
+        {
+            ReturnUrl = returnUrl;
         }
 
         Card = card;
@@ -83,14 +88,14 @@ public class DeleteModel : PageModel
     }
 
 
-    public async Task<IActionResult> OnPostAsync(CancellationToken cancel)
+    public async Task<IActionResult> OnPostAsync(string id, string? returnUrl, CancellationToken cancel)
     {
         if (Input is null)
         {
             return NotFound();
         }
 
-        var card = await CardForDelete(Input.CardId)
+        var card = await CardForDelete(id)
             .SingleOrDefaultAsync(cancel);
 
         if (card is null)
@@ -137,6 +142,11 @@ public class DeleteModel : PageModel
             _logger.LogError(e.ToString());
 
             PostMessage = $"Ran into issue deleting {card.Name}";
+        }
+
+        if (returnUrl is not null)
+        {
+            return LocalRedirect(returnUrl);
         }
 
         return Redirect("~/Cards/");

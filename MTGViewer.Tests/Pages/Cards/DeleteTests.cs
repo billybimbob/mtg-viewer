@@ -40,7 +40,7 @@ public class DeleteTests : IAsyncLifetime
     {
         _deleteModel.Input = null;
 
-        var result = await _deleteModel.OnPostAsync(default);
+        var result = await _deleteModel.OnPostAsync(null!, null, default);
 
         Assert.IsType<NotFoundResult>(result);
     }
@@ -51,11 +51,10 @@ public class DeleteTests : IAsyncLifetime
     {
         _deleteModel.Input = new DeleteModel.InputModel
         {
-            CardId = null!,
             RemoveCopies = 0
         };
 
-        var result = await _deleteModel.OnPostAsync(default);
+        var result = await _deleteModel.OnPostAsync(null!, null, default);
 
         Assert.IsType<NotFoundResult>(result);
     }
@@ -71,7 +70,6 @@ public class DeleteTests : IAsyncLifetime
 
         _deleteModel.Input = new DeleteModel.InputModel
         {
-            CardId = cardId,
             RemoveCopies = amount
         };
 
@@ -79,7 +77,7 @@ public class DeleteTests : IAsyncLifetime
             .Where(a => a.CardId == cardId && a.Location is Box)
             .SumAsync(a => a.NumCopies);
 
-        var result = await _deleteModel.OnPostAsync(default);
+        var result = await _deleteModel.OnPostAsync(cardId, null, default);
 
         int newCopies = await _dbContext.Amounts
             .Where(a => a.CardId == cardId && a.Location is Box)
@@ -109,11 +107,10 @@ public class DeleteTests : IAsyncLifetime
 
         _deleteModel.Input = new DeleteModel.InputModel
         {
-            CardId = cardId,
             RemoveCopies = amount
         };
 
-        var result = await _deleteModel.OnPostAsync(default);
+        var result = await _deleteModel.OnPostAsync(cardId, null, default);
 
         int newCopies = await _dbContext.Amounts
             .Where(a => a.CardId == cardId && a.Location is Box)
@@ -147,11 +144,10 @@ public class DeleteTests : IAsyncLifetime
 
         _deleteModel.Input = new DeleteModel.InputModel
         {
-            CardId = cardId,
             RemoveCopies = oldCopies
         };
 
-        var result = await _deleteModel.OnPostAsync(default);
+        var result = await _deleteModel.OnPostAsync(cardId, null, default);
 
         int newCopies = await _dbContext.Amounts
             .Where(a => a.CardId == cardId && a.Location is Box)
@@ -198,11 +194,10 @@ public class DeleteTests : IAsyncLifetime
 
         _deleteModel.Input = new DeleteModel.InputModel
         {
-            CardId = cardId,
             RemoveCopies = oldCopies
         };
 
-        var result = await _deleteModel.OnPostAsync(default);
+        var result = await _deleteModel.OnPostAsync(cardId, null, default);
 
         int newCopies = await _dbContext.Amounts
             .Where(a => a.CardId == cardId && a.Location is Box)
@@ -244,7 +239,6 @@ public class DeleteTests : IAsyncLifetime
 
         _deleteModel.Input = new DeleteModel.InputModel
         {
-            CardId = cardId,
             RemoveCopies = removeCopies
         };
 
@@ -257,7 +251,7 @@ public class DeleteTests : IAsyncLifetime
             .SelectMany(b => b.Cards)
             .SumAsync(a => a.NumCopies);
 
-        var result = await _deleteModel.OnPostAsync(default);
+        var result = await _deleteModel.OnPostAsync(cardId, null, default);
 
         int boxesNew = await _dbContext.Boxes
             .SelectMany(b => b.Cards)

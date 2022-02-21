@@ -2,6 +2,7 @@
 @model Treasury.DetailsModel
 @{
     ViewData["Title"] = $"{Model.Box.Name} - Details";
+    ViewData["ReturnUrl"] = $"{Request.Path}{Request.QueryString}";
     ViewData[nameof(Box.Cards)] = Model.NumberOfCards;
 }
 

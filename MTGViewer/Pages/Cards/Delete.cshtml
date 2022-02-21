@@ -12,6 +12,7 @@
         @MtgSymbols.Format(Model.Card.ManaCost).ToHtmlString()
     </div>
 </div>
+
 <hr />
 
 @{ bool inDeck = Model.Card.Amounts
@@ -38,8 +39,6 @@
 <section class="row">
     <div class="col-8 col-sm-7 col-md-6 col-lg-4">
         <form method="POST">
-            <input type="hidden" asp-for="Input!.CardId" value="@Model.Card.Id" class="sr-only"/>
-
             @{ int maxCopies = Model.Card.Amounts
                 .Where(a => a.Location is Box)
                 .Sum(a => a.NumCopies); }
@@ -53,9 +52,11 @@
             </div>
 
             <div class="btn-group" role="group">
-                <a asp-page="Details" asp-route-id="@Model.Card.Id"
+                <a asp-page="Details"
+                    asp-route-id="@Model.Card.Id" asp-route-returnurl="@Model.ReturnUrl"
                     class="btn btn-secondary" role="button">
                     Cancel </a>
+
                 <input type="submit" value="Remove" class="btn btn-danger" />
             </div>
         </form>

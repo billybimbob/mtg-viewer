@@ -27,8 +27,10 @@ public class DetailsModel : PageModel
 
     public IReadOnlyList<Card> CardAlts { get; private set; } = Array.Empty<Card>();
 
+    public string? ReturnUrl { get; private set; }
 
-    public async Task<IActionResult> OnGetAsync(string? id, CancellationToken cancel)
+
+    public async Task<IActionResult> OnGetAsync(string? id, string? returnUrl, CancellationToken cancel)
     {
         if (id is null)
         {
@@ -60,6 +62,11 @@ public class DetailsModel : PageModel
             .OrderBy(c => c.SetName)
             .AsNoTrackingWithIdentityResolution()
             .ToListAsync(cancel);
+
+        if (Url.IsLocalUrl(returnUrl))
+        {
+            ReturnUrl = returnUrl;
+        }
 
         return Page();
     }

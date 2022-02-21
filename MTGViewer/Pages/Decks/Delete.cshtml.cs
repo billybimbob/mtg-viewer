@@ -126,7 +126,7 @@ public class DeleteModel : PageModel
 
 
 
-    public async Task<IActionResult> OnPostAsync(int id, CancellationToken cancel)
+    public async Task<IActionResult> OnPostAsync(int id, string? returnUrl, CancellationToken cancel)
     {
         var deck = await DeckForDelete(id)
             .SingleOrDefaultAsync(cancel);
@@ -158,6 +158,11 @@ public class DeleteModel : PageModel
         catch (DbUpdateException)
         {
             PostMesssage = $"Ran into issue while trying to delete {deck.Name}";
+        }
+
+        if (returnUrl is not null)
+        {
+            return LocalRedirect(returnUrl);
         }
 
         return RedirectToPage("Index");

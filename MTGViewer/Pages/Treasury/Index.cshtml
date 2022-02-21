@@ -17,6 +17,8 @@
         .AuthorizeAsync(User, CardPolicies.ChangeTreasury)).Succeeded;
 
     bool isSignedIn = SignInManager.IsSignedIn(User);
+
+    string returnUrl = $"{Request.Path}{Request.QueryString}";
 }
 
 <h1>Treasury</h1>
@@ -104,7 +106,8 @@
                         @if (firstAmount != default)
                         {
                             <td>
-                                <a asp-page="/Cards/Details" asp-route-id="@firstAmount.CardId">
+                                <a asp-page="/Cards/Details"
+                                    asp-route-id="@firstAmount.CardId" asp-route-returnurl="@returnUrl">
                                     @firstAmount.Card.Name </a>
                             </td>
 
@@ -131,7 +134,8 @@
                     {
                         <tr>
                             <td>
-                                <a asp-page="/Cards/Details" asp-route-id="@amount.CardId">
+                                <a asp-page="/Cards/Details"
+                                    asp-route-id="@amount.CardId" asp-route-returnurl="@returnUrl">
                                     @amount.Card.Name </a>
                             </td>
                             <td> 

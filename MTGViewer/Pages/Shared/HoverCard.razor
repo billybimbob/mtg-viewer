@@ -1,3 +1,5 @@
+@inject NavigationManager Nav
+@using Microsoft.AspNetCore.Http.Extensions
 
 <div class="preview">
     <div class="preview-watch">
@@ -7,7 +9,7 @@
         }
         else
         {
-            <a href="/Cards/Details/@Target.Id"> @Target.Name </a>
+            <a href="@TargetRoute"> @Target.Name </a>
         }
     </div>
 
@@ -19,9 +21,29 @@
 
 @code
 {
+    public readonly QueryBuilder _query = new();
+
+    public string TargetRoute => $"/Cards/Details/{Target.Id}{_query}";
+
     [Parameter]
     public Card Target { get; set; } = default!;
 
     [Parameter]
+    public string? ReturnUrl { get; set; }
+
+    [Parameter]
     public RenderFragment? ChildContent { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        if (ChildContent is not null)
+        {
+            return;
+        }
+
+        if (ReturnUrl is not null)
+        {
+            _query.Add("returnUrl", ReturnUrl);
+        }
+    }
 }
