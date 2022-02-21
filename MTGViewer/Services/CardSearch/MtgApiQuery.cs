@@ -117,12 +117,17 @@ public sealed class MtgApiQuery : IMTGQuery
             throw new ArgumentException(nameof(name));
         }
 
-        bool isMultiple = name is nameof(CardQuery.Colors) or nameof(CardQuery.Type);
-
         switch (value)
         {
             case IEnumerable<string> i:
                 QueryProperty(parameters, name, i);
+                break;
+
+            case Color and Color.None:
+                break;
+
+            case Color:
+                parameters[name] = value;
                 break;
 
             case >0 when name != nameof(CardQuery.Cmc):
@@ -137,19 +142,20 @@ public sealed class MtgApiQuery : IMTGQuery
             case <0 when name != nameof(CardQuery.Cmc):
                 break;
 
-            case object when isMultiple
+            case object when name is nameof(CardQuery.Type)
                 && parameters.TryGetValue(name, out var values)
                 && values is List<string> list
-                && TryToString(value, isMultiple, out string s):
+                && TryToString(value, isMultiple: true, out string s):
 
                 list.AddRange(s.Split());
                 break;
 
-            case object when isMultiple && TryToString(value, isMultiple, out string s):
+            case object when name is nameof(CardQuery.Type)
+                && TryToString(value, isMultiple: true, out string s):
                 parameters[name] = s.Split().ToList();
                 break;
 
-            case object when TryToString(value, isMultiple, out string s):
+            case object when TryToString(value, isMultiple: false, out string s):
                 parameters[name] = s;
                 break;
 
@@ -250,6 +256,14 @@ public sealed class MtgApiQuery : IMTGQuery
         {
             switch (value)
             {
+                case Color color and not Color.None:
+                    var colorNames = Enum.GetValues<Color>()
+                        .Where(c => c is not Color.None && color.HasFlag(c))
+                        .Select(c => c.ToString().ToLower());
+
+                    AddParameter(name, string.Join(And, colorNames));
+                    break;
+
                 case <=0:
                     break;
 
@@ -390,7 +404,7 @@ public sealed class MtgApiQuery : IMTGQuery
 
     private Card? GetValidatedCard(ICard iCard)
     {
-        if (!Enum.TryParse<Rarity>(iCard.Rarity, true, out var rarity))
+        if (!Enum.TryParse(iCard.Rarity, true, out Rarity rarity))
         {
             return null;
         }
@@ -405,33 +419,18 @@ public sealed class MtgApiQuery : IMTGQuery
                 .Select(s => new Name { Value = s, CardId = iCard.Id })
                 .ToList(),
 
+            Color = (iCard.Colors ?? Enumerable.Empty<string>())
+                .Select(c =>
+                    Enum.TryParse(c, false, out Color color) ? color : default)
+                .Aggregate(Color.None, (color, iColor) => color | iColor),
+
             Layout = iCard.Layout,
-
-            Colors = (iCard.ColorIdentity ?? Enumerable.Empty<string>())
-                .Select(id => Color.Symbols[id.ToUpper()]) 
-
-                .Union(iCard.Colors ?? Enumerable.Empty<string>())
-                .Select(s => new Color { Name = s, CardId = iCard.Id })
-                .ToList(),
-
-            Types = (iCard.Types ?? Enumerable.Empty<string>())
-                .Select(s => new Data.Type { Name = s, CardId = iCard.Id })
-                .ToList(),
-
-            Subtypes = (iCard.SubTypes ?? Enumerable.Empty<string>())
-                .Select(s => new Subtype { Name = s, CardId = iCard.Id })
-                .ToList(),
-
-            Supertypes = (iCard.SuperTypes ?? Enumerable.Empty<string>())
-                .Select(s => new Supertype { Name = s, CardId = iCard.Id })
-                .ToList(),
-
             ManaCost = iCard.ManaCost,
             Cmc = iCard.Cmc,
 
+            Type = iCard.Type,
             Rarity = rarity,
             SetName = iCard.SetName,
-            Artist = iCard.Artist,
 
             Text = iCard.Text,
             Flavor = iCard.Flavor,
@@ -439,6 +438,8 @@ public sealed class MtgApiQuery : IMTGQuery
             Power = iCard.Power,
             Toughness = iCard.Toughness,
             Loyalty = iCard.Loyalty,
+
+            Artist = iCard.Artist,
             ImageUrl = iCard.ImageUrl?.ToString()!
         };
 

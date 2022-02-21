@@ -23,9 +23,12 @@ public class DetailsModel : PageModel
     }
 
 
+    public record CardAlt(string Id, string Name, string SetName);
+
+
     public Card Card { get; private set; } = default!;
 
-    public IReadOnlyList<Card> CardAlts { get; private set; } = Array.Empty<Card>();
+    public IReadOnlyList<CardAlt> CardAlts { get; private set; } = Array.Empty<CardAlt>();
 
     public string? ReturnUrl { get; private set; }
 
@@ -38,13 +41,9 @@ public class DetailsModel : PageModel
         }
 
         var card = await _dbContext.Cards
-            .Include(c => c.Supertypes)
-            .Include(c => c.Types)
-            .Include(c => c.Subtypes)
             .Include(c => c.Amounts
                 .OrderBy(a => a.Location.Name))
                 .ThenInclude(a => a.Location)
-            .AsSplitQuery()
             .AsNoTrackingWithIdentityResolution()
             .SingleOrDefaultAsync(c => c.Id == id, cancel);
 
@@ -60,7 +59,7 @@ public class DetailsModel : PageModel
         CardAlts = await _dbContext.Cards
             .Where(c => c.Id != id && c.Name == Card.Name)
             .OrderBy(c => c.SetName)
-            .AsNoTrackingWithIdentityResolution()
+            .Select(c => new CardAlt(c.Id, c.Name, c.SetName))
             .ToListAsync(cancel);
 
         if (Url.IsLocalUrl(returnUrl))

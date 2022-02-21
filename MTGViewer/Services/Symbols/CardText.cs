@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
+using MTGViewer.Data;
 
 namespace MTGViewer.Services;
 
@@ -118,6 +119,15 @@ public class CardText : ISymbolFinder, ISymbolTranslator
     public string ManaString(ManaSymbol symbol)
     {
         return $"{{{symbol.Value}}}";
+    }
+
+    public string ColorString(Color color)
+    {
+        var manaSymbols = Enum.GetValues<Color>()
+            .Where(c => color.HasFlag(c))
+            .Select(c => ManaString(new ManaSymbol(default, c.ToString())));
+
+        return string.Join(string.Empty, manaSymbols);
     }
 
 

@@ -70,27 +70,19 @@ public class Deck : Owned
     public List<Trade> TradesFrom { get; init; } = new();
 
 
-    public string Colors { get; private set; } = string.Empty;
+    public Color Color { get; private set; }
 
     public void UpdateColors(CardText toCardText)
     {
         var cardMana = Cards
-            .Where(a => a.NumCopies > 0)
-            .Select(a => a.Card.ManaCost)
-            .SelectMany( toCardText.FindMana )
-            .SelectMany(mana => mana.Value.Split('/'));
+            .Select(a => a.Card.Color);
 
         var wantMana = Wants
-            .Where(w => w.NumCopies > 0)
-            .Select(w => w.Card.ManaCost)
-            .SelectMany( toCardText.FindMana )
-            .SelectMany(mana => mana.Value.Split('/'));
+            .Select(w => w.Card.Color);
 
-        var colorSymbols = Color.Symbols.Keys
-            .Intersect( cardMana.Union(wantMana) )
-            .Select( toCardText.ManaString );
-
-        Colors = string.Join(string.Empty, colorSymbols);
+        Color = cardMana
+            .Concat(wantMana)
+            .Aggregate(Color.None, (color, mana) => color | mana);
     }
 }
 

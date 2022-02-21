@@ -9,6 +9,7 @@
 
 @inject IAuthorizationService AuthorizationService
 @inject SymbolFormatter MtgSymbols
+@inject CardText CardText
 
 @{
     bool canChangeTreasury = (await AuthorizationService
@@ -54,7 +55,7 @@
 
                     <td>
                         <div class="ms-group">
-                            @MtgSymbols.Format(deck.Colors).ToHtmlString()
+                            @MtgSymbols.Format(CardText.ColorString(deck.Color)).ToHtmlString()
                         </div>
                     </td>
                     <td> @deck.Cards.Sum(a => a.NumCopies) </td>

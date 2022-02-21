@@ -201,23 +201,23 @@ public partial class Collection : ComponentBase, IDisposable
             }
         }
 
-        private readonly HashSet<string> _pickedColors = new(StringComparer.CurrentCultureIgnoreCase);
-        public IReadOnlyCollection<string> PickedColors => _pickedColors;
+        private Color _pickedColors;
+        public Color PickedColors => _pickedColors;
 
-        public void ToggleColor(string color)
+        public void ToggleColor(Color color)
         {
             if (_loadContext.IsBusy)
             {
                 return;
             }
 
-            if (_pickedColors.Contains(color))
+            if (_pickedColors.HasFlag(color))
             {
-                _pickedColors.Remove(color);
+                _pickedColors &= ~color;
             }
             else
             {
-                _pickedColors.Add(color);
+                _pickedColors |= color;
             }
 
             if (_pageIndex > 0)
@@ -344,11 +344,9 @@ public partial class Collection : ComponentBase, IDisposable
                     .Contains(searchName.ToLower()));
         }
 
-        if (pickedColors.Any())
+        if (pickedColors is not Color.None)
         {
-            cards = cards
-                .Where(c => c.Colors
-                    .Any(cl => pickedColors.Contains(cl.Name)));
+            cards = cards.Where(c => (c.Color & pickedColors) == pickedColors);
         }
 
         int pageSize = filters.PageSize;

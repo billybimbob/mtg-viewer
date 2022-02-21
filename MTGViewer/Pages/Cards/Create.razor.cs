@@ -40,8 +40,6 @@ public partial class Create : OwningComponentBase
 
     public CardQuery Query => _search.Query;
 
-    public IReadOnlyCollection<string> PickedColors => _search.PickedColors;
-
     public string? MatchName
     {
         get => _search.MatchName;
@@ -101,8 +99,6 @@ public partial class Create : OwningComponentBase
     {
         public CardQuery Query { get; } = new();
 
-        public HashSet<string> PickedColors { get; } = new(StringComparer.OrdinalIgnoreCase);
-
         private string? _matchName;
         public string? MatchName
         {
@@ -120,6 +116,18 @@ public partial class Create : OwningComponentBase
                 }
 
                 _matchName = value;
+            }
+        }
+
+        public void ToggleColor(Color toggle)
+        {
+            if (Query.Colors.HasFlag(toggle))
+            {
+                Query.Colors &= ~toggle;
+            }
+            else
+            {
+                Query.Colors |= toggle;
             }
         }
     }
@@ -150,7 +158,21 @@ public partial class Create : OwningComponentBase
             }
         }
     }
-    
+
+
+    public void ToggleColor(Color toggle)
+    {
+        if (_searchEdit is null)
+        {
+            return;
+        }
+
+        var colorField = _searchEdit.Field(nameof(CardQuery.Colors));
+
+        _search.ToggleColor(toggle);
+        _searchEdit.NotifyFieldChanged(colorField);
+    }
+
 
 
     private void ClearErrors(object? sender, ValidationRequestedEventArgs args)
@@ -193,29 +215,6 @@ public partial class Create : OwningComponentBase
 
         _resultErrors.Add(idField, noMatch);
         _searchEdit.NotifyValidationStateChanged();
-    }
-
-
-    public void ColorToggle(string color)
-    {
-        if (_searchEdit is null)
-        {
-            return;
-        }
-
-        var pickedColors = _search.PickedColors;
-        var colorField = _searchEdit.Field(nameof(CardQuery.Colors));
-
-        if (pickedColors.Contains(color))
-        {
-            pickedColors.Remove(color);
-        }
-        else
-        {
-            pickedColors.Add(color);
-        }
-
-        _searchEdit.NotifyFieldChanged(colorField);
     }
 
 
@@ -268,10 +267,9 @@ public partial class Create : OwningComponentBase
         return search
             .Where(c => c.Name == q.Name)
             .Where(c => c.SetName == q.SetName)
-            .Where(c => c.Cmc == q.Cmc)
 
-            .Where(c => _search.PickedColors
-                .All(cl => c.Colors == cl))
+            .Where(c => c.Cmc == q.Cmc)
+            .Where(c => c.Colors == q.Colors)
 
             .Where(c => types.All(t => c.Type == t))
             .Where(c => c.Rarity == q.Rarity)
@@ -292,16 +290,15 @@ public partial class Create : OwningComponentBase
         const StringComparison ignoreCase = StringComparison.CurrentCultureIgnoreCase;
 
         string? matchName = _search.MatchName;
-        var pickedColors = _search.PickedColors;
+        var pickedColors = _search.Query.Colors;
 
         var card = match.Card;
-        var cardColors = card.Colors.Select(c => c.Name);
 
         bool nameMatches = string.IsNullOrWhiteSpace(matchName) 
             || card.Name.Contains(matchName, ignoreCase);
 
-        bool colorMatches = !pickedColors.Any() 
-            || pickedColors.Overlaps(cardColors);
+        bool colorMatches = pickedColors is Color.None 
+            || (card.Color & pickedColors) == pickedColors;
 
         return nameMatches && colorMatches;
     }
@@ -318,8 +315,6 @@ public partial class Create : OwningComponentBase
         _matchPage = default;
 
         var query = _search.Query;
-
-        _search.PickedColors.Clear();
 
         // TODO: use reflection to reset
 

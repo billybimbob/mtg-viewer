@@ -25,22 +25,22 @@ public interface ISymbolTranslator
 }
 
 
-public abstract record Symbol(Range Position);
+public abstract record TextSymbol(Range Position);
 
-public record ManaSymbol(Range Postion, string Value) 
-    : Symbol(Postion);
+public record ManaSymbol(Range Postion, string Value)
+   : TextSymbol(Postion);
 
 public record LoyaltySymbol(Range Postion, string? Direction, string Value)
-    : Symbol(Postion);
+    : TextSymbol(Postion);
 
 public record SagaSymbol(Range Position, string Value, bool HasNext)
-    : Symbol(Position);
+    : TextSymbol(Position);
 
 
 
-public static class FinderExtensions
+public static class SymbolExtensions
 {
-    public static IEnumerable<Symbol> FindSymbols(this ISymbolFinder finder, string? mtgText)
+    public static IEnumerable<TextSymbol> FindSymbols(this ISymbolFinder finder, string? mtgText)
     {
         // return Enumerable.Empty<Symbol>()
         //     .Concat(finder.FindMana(mtgText))
@@ -55,7 +55,7 @@ public static class FinderExtensions
             yield break;
         }
 
-        var symbolStrings = new List<IReadOnlyList<Symbol>>
+        var symbolStrings = new List<IReadOnlyList<TextSymbol>>
         {
             finder.FindMana(mtgText),
             finder.FindLoyalties(mtgText),
@@ -91,12 +91,9 @@ public static class FinderExtensions
             }
         }
     }
-}
 
 
-public static class TranslatorExtensions
-{
-    public static string SymbolString(this ISymbolTranslator translator, Symbol symbol)
+    public static string SymbolString(this ISymbolTranslator translator, TextSymbol symbol)
     {
         ArgumentNullException.ThrowIfNull(translator, nameof(translator));
 

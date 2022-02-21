@@ -98,30 +98,10 @@
             </dd>
 
             <dt class="col-md-3 col-5">
-                @Html.DisplayNameFor(m => m.Card.Supertypes)
+                @Html.DisplayNameFor(m => m.Card.Type)
             </dt>
             <dd class="col-md-9 col-7">
-                @(Model.Card.Supertypes.Any()
-                    ? string.Join(" ", Model.Card.Supertypes.Select(st => st.Name))
-                    : "--")
-            </dd>
-
-            <dt class="col-md-3 col-5">
-                @Html.DisplayNameFor(m => m.Card.Types)
-            </dt>
-            <dd class="col-md-9 col-7">
-                @(Model.Card.Types.Any()
-                    ? string.Join(" ", Model.Card.Types.Select(st => st.Name))
-                    : "--")
-            </dd>
-
-            <dt class="col-md-3 col-5">
-                @Html.DisplayNameFor(m => m.Card.Subtypes)
-            </dt>
-            <dd class="col-md-9 col-7">
-                @(Model.Card.Subtypes.Any() 
-                    ? string.Join(" ", Model.Card.Subtypes.Select(st => st.Name))
-                    : "--")
+                @Html.DisplayFor(m => m.Card.Type)
             </dd>
 
             <dt class="col-md-3 col-5">

@@ -8,6 +8,7 @@
 @using MTGViewer.Areas.Identity.Data
 
 @inject SymbolFormatter MtgSymbols
+@inject CardText CardText
 @inject IAuthorizationService AuthorizationService
 
 @{
@@ -49,7 +50,7 @@
 
                             <td> 
                                 <div class="ms-group">
-                                    @MtgSymbols.Format(deck.Colors).ToHtmlString()
+                                    @MtgSymbols.Format(CardText.ColorString(deck.Color)).ToHtmlString()
                                 </div>
                             </td>
 

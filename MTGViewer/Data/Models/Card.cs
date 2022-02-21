@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
@@ -18,7 +19,6 @@ public class Card
     [Display(Name = "Multiverse Id")]
     public string MultiverseId { get; init; } = default!;
 
-
     [Required]
     public string Name { get; init; } = default!;
 
@@ -35,25 +35,17 @@ public class Card
     [Range(0f, 1_000_000f)]
     public float? Cmc { get; init; }
 
-    public List<Color> Colors { get; init; } = new();
-
-
-    public List<Supertype> Supertypes { get; init; } = new();
-
-    public List<Type> Types { get; init; } = new();
-
-    public List<Subtype> Subtypes { get; init; } = new();
-
+    public Color Color { get; init; }
 
     [Required]
-    public Rarity Rarity { get; init; }
+    public string Type { get; init; } = default!;
 
     [Display(Name = "Set Name")]
     [Required]
     public string SetName { get; init; } = default!;
 
     [Required]
-    public string Artist { get; init; } = default!;
+    public Rarity Rarity { get; init; }
 
 
     public string? Text { get; init; }
@@ -65,6 +57,9 @@ public class Card
     public string? Toughness { get; init; }
 
     public string? Loyalty { get; init; }
+
+    [Required]
+    public string Artist { get; init; } = default!;
 
 
     [Required]
@@ -87,4 +82,53 @@ public class Card
         var context = new ValidationContext(this);
         return Validator.TryValidateObject(this, context, null);
     }
+}
+
+
+public enum Rarity
+{
+    Common,
+    Uncommon,
+    Rare,
+    Mythic,
+    Special
+}
+
+
+[Flags]
+public enum Color
+{
+    None = 0,
+    Black = 2,
+    Blue = 4,
+    Green = 8,
+    Red = 16,
+    White = 32
+}
+
+
+public static class Symbol
+{
+    private static SortedList<Color, string>? _colors;
+    public static IReadOnlyDictionary<Color, string> Colors =>
+        _colors ??= new()
+        {
+            [Color.Black] = "B",
+            [Color.Blue] = "U",
+            [Color.Green] = "G",
+            [Color.Red] = "R",
+            [Color.White] = "W"
+        };
+}
+
+
+public class Name
+{
+    [JsonInclude]
+    public string Value { get; init; } = default!;
+
+    [JsonInclude]
+    public string CardId { get; init; } = default!;
+
+    public override string ToString() => Value;
 }

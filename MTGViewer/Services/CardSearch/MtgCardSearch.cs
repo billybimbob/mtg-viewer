@@ -37,7 +37,8 @@ internal class MtgCardSearch : IMTGCardSearch
             {
                 IEnumerable<string> ie => ie.Any(),
                 string s => !string.IsNullOrWhiteSpace(s),
-                int i => i > 0,
+                >1 => true,
+                Color and not Color.None => true,
                 _ => false
             };
 

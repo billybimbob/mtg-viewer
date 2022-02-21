@@ -300,11 +300,10 @@ public partial class Craft : OwningComponentBase
                     .Contains(searchName.ToLower()));
         }
 
-        if (pickedColors.Any())
+        if (pickedColors is not Color.None)
         {
             cards = cards
-                .Where(c => c.Colors
-                    .Any(cl => pickedColors.Contains(cl.Name) ));
+                .Where(c => (c.Color & pickedColors) == pickedColors);
         }
 
         int pageSize = filters.PageSize;
@@ -345,11 +344,12 @@ public partial class Craft : OwningComponentBase
 
     #region Treasury Operations
 
-    public int TreasuryCopies(Card card) =>
-        _boxCopies.GetValueOrDefault(card.Id);
+    public int TreasuryCopies(Card card) => _boxCopies.GetValueOrDefault(card.Id);
 
-    public string ActiveColor(string color) =>
-        _treasuryFilters.PickedColors.Contains(color) ? "active" : string.Empty;
+    public void ToggleColor(Color color) => _treasuryFilters.ToggleColor(color);
+
+    public string ActiveColor(Color color) =>
+        _treasuryFilters.PickedColors.HasFlag(color) ? "active" : string.Empty;
 
 
     private sealed class TreasuryFilters
@@ -432,23 +432,23 @@ public partial class Craft : OwningComponentBase
             }
         }
 
-        private readonly HashSet<string> _pickedColors = new(StringComparer.CurrentCultureIgnoreCase);
-        public IReadOnlyCollection<string> PickedColors => _pickedColors;
+        private Color _pickedColors;
+        public Color PickedColors => _pickedColors;
 
-        public void ToggleColor(string color)
+        public void ToggleColor(Color color)
         {
             if (_loader.IsBusy)
             {
                 return;
             }
 
-            if (_pickedColors.Contains(color))
+            if (_pickedColors.HasFlag(color))
             {
-                _pickedColors.Remove(color);
+                _pickedColors &= ~color;
             }
             else
             {
-                _pickedColors.Add(color);
+                _pickedColors |= color;
             }
 
             if (_pageIndex > 0)

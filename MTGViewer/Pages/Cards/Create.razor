@@ -100,12 +100,12 @@
                 </div>
 
                 <div class="form-group">
-                    @foreach (var (symbol, color) in Color.Symbols)
+                    @foreach (var (color, symbol) in Symbol.Colors)
                     {
                         <button title="toggle @color"
                             type="button"
                             class="btn btn-outline-secondary border-0 rounded @ActiveColor(color)"
-                            @onclick="() => ColorToggle(color)">
+                            @onclick="() => ToggleColor(color)">
                             <i class="ms ms-@symbol.ToLower() ms-cost"></i>
                         </button>
                     }
@@ -218,12 +218,12 @@ else
         </div>
 
         <div class="col-auto btn-group pt-2 pt-md-0" role="group" aria-label="Color Buttons">
-            @foreach (var (symbol, color) in Color.Symbols)
+            @foreach (var (color, symbol) in Symbol.Colors)
             {
                 <button title="@color filter"
                     type="button"
                     class="btn btn-outline-secondary border-0 rounded @ActiveColor(color)"
-                    @onclick="() => ColorToggle(color)">
+                    @onclick="() => ToggleColor(color)">
 
                     <i class="ms ms-@symbol.ToLower() ms-cost"></i>
                 </button>
@@ -294,8 +294,8 @@ else
     public static string DisplayName<T>(Expression<Func<Card, T>> property) =>
         EntityExtensions.DisplayName(property);
 
-    public string ActiveColor(string color) =>
-        PickedColors.Contains(color) ? "active" : string.Empty;
+    public string ActiveColor(Color color) =>
+        Query.Colors.HasFlag(color) ? "active" : string.Empty;
 
     public bool CannotAdd() =>
         !Matches.Any() || Matches.All(m => m.NumCopies == 0);
