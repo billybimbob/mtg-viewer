@@ -7,8 +7,6 @@ namespace MTGViewer.Data.Internal;
 internal class ExchangeContext
 {
     private readonly CardDbContext _dbContext;
-    private readonly TreasuryContext _treasuryContext;
-
     private readonly Dictionary<string, QuantityGroup> _deckCards;
 
     public ExchangeContext(
@@ -16,14 +14,16 @@ internal class ExchangeContext
     {
         Deck = dbContext.Decks.Local.First();
 
-        _dbContext = dbContext;
+        TreasuryContext = treasuryContext;
 
-        _treasuryContext = treasuryContext;
+        _dbContext = dbContext;
 
         _deckCards = QuantityGroup
             .FromDeck(Deck)
             .ToDictionary(q => q.CardId);
     }
+
+    public TreasuryContext TreasuryContext { get; }
 
     public Deck Deck { get; }
 
@@ -52,7 +52,7 @@ internal class ExchangeContext
         var amount = GetOrAddAmount(card);
         amount.NumCopies += numCopies;
 
-        _treasuryContext.TransferCopies(card, numCopies, Deck, box);
+        TreasuryContext.TransferCopies(card, numCopies, Deck, box);
     }
 
 
@@ -118,6 +118,6 @@ internal class ExchangeContext
         give.NumCopies -= numCopies;
         amount.NumCopies -= numCopies;
 
-        _treasuryContext.TransferCopies(card, numCopies, box, Deck);
+        TreasuryContext.TransferCopies(card, numCopies, box, Deck);
     }
 }

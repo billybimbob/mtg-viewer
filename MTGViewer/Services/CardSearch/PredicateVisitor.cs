@@ -22,7 +22,7 @@ internal class PredicateVisitor : ExpressionVisitor
         _nullDictionary ??=
             Expression.Convert(
                 ExpressionConstants.Null,
-                typeof(IDictionary<,>).MakeGenericType(typeof(string), typeof(object)));
+                typeof(IDictionary<,>).MakeGenericType(typeof(string), typeof(IMtgParameter)));
 
 
 

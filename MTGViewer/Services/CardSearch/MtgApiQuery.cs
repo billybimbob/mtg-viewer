@@ -20,9 +20,9 @@ namespace MTGViewer.Services;
 
 public sealed class MtgApiQuery : IMTGQuery
 {
+    internal const char Or = '|';
+    internal const char And = ',';
     private const int Limit = 100;
-    private const char Or = '|';
-    private const char And = ',';
 
     public static readonly MethodInfo QueryMethod =
         typeof(MtgApiQuery)
@@ -31,11 +31,13 @@ public sealed class MtgApiQuery : IMTGQuery
                 BindingFlags.Instance | BindingFlags.NonPublic,
                 new[]
                 { 
-                    typeof(IDictionary<,>).MakeGenericType(typeof(string), typeof(object)),
+                    typeof(IDictionary<,>).MakeGenericType(typeof(string), typeof(IMtgParameter)),
                     typeof(string),
                     typeof(object)
                 })!;
 
+    private PredicateVisitor? _predicateConverter;
+    private ExpressionVisitor PredicateConverter => _predicateConverter ??= new(this);
 
     private readonly ICardService _cardService;
     private readonly FixedCache _cache;
@@ -43,8 +45,6 @@ public sealed class MtgApiQuery : IMTGQuery
     private readonly int _pageSize;
     private readonly LoadingProgress _loadProgress;
     private readonly ILogger<MtgApiQuery> _logger;
-
-    private readonly PredicateVisitor _predicateConverter;
 
     public MtgApiQuery(
         ICardService service,
@@ -58,8 +58,6 @@ public sealed class MtgApiQuery : IMTGQuery
 
         _pageSize = pageSizes.Default;
         _loadProgress = loadProgress;
-        _predicateConverter = new(this);
-
         _logger = logger;
     }
 
@@ -67,34 +65,18 @@ public sealed class MtgApiQuery : IMTGQuery
 
     public IMTGCardSearch Where(Expression<Func<CardQuery, bool>> predicate)
     {
-        var parameters = new Dictionary<string, object?>();
+        var parameters = CardQueryParameters.Base
+            .ToDictionary(kv => kv.Key, kv => kv.Value);
 
-        QueryFromPredicate(parameters, predicate);
-
-        return new MtgCardSearch(this, parameters);
+        return QueryFromPredicate(parameters, predicate);
     }
 
 
-    internal IMTGCardSearch Where(
-        MtgCardSearch values,
+    internal IMTGCardSearch QueryFromPredicate(
+        IDictionary<string, IMtgParameter> parameters,
         Expression<Func<CardQuery, bool>> predicate)
     {
-        var builder = values.ToBuilder();
-
-        QueryFromPredicate(builder, predicate);
-
-        return new MtgCardSearch(this, builder);
-    }
-
-
-
-    private void QueryFromPredicate(
-        IDictionary<string, object?> parameters,
-        Expression<Func<CardQuery, bool>> predicate)
-    {
-        if (_predicateConverter.Visit(predicate) is MethodCallExpression call
-
-            && (call.Object as ConstantExpression)?.Value == this
+        if (PredicateConverter.Visit(predicate) is MethodCallExpression call
             && call.Method == QueryMethod
             && call.Arguments.ElementAtOrDefault(1) is ConstantExpression property
             && call.Arguments.ElementAtOrDefault(2) is ConstantExpression arg
@@ -106,102 +88,41 @@ public sealed class MtgApiQuery : IMTGQuery
         {
             throw new NotSupportedException("Predicate cannot be parsed");
         }
+
+        return new MtgCardSearch(this, parameters);
     }
 
-    private void QueryProperty(IDictionary<string, object?> parameters, string name, object? value)
+
+    private void QueryProperty(IDictionary<string, IMtgParameter> parameters, string name, object? value)
+    {
+        if (!parameters.TryGetValue(name, out var parameter))
+        {
+            parameter = new MtgDefaultParameter(GetParameter(name));
+        }
+
+        parameters[name] = parameter.Accept(value);
+    }
+
+
+    private Expression<Func<CardQueryParameter, string>> GetParameter(string name)
     {
         const BindingFlags binds = BindingFlags.IgnoreCase | BindingFlags.Instance | BindingFlags.Public;
 
-        if (typeof(CardQueryParameter).GetProperty(name, binds) == null)
+        var property = typeof(CardQueryParameter).GetProperty(name, binds);
+        if (property == null || property.PropertyType != typeof(string))
         {
             throw new ArgumentException(nameof(name));
         }
 
-        switch (value)
-        {
-            case IEnumerable<string> i:
-                QueryProperty(parameters, name, i);
-                break;
+        var param = Expression.Parameter(
+            typeof(CardQueryParameter),
+            typeof(CardQueryParameter).Name[0].ToString().ToLower());
 
-            case Color and Color.None:
-                break;
-
-            case Color:
-                parameters[name] = value;
-                break;
-
-            case >0 when name != nameof(CardQuery.Cmc):
-                parameters[name] = value;
-                break;
-
-            case 0 when name == nameof(CardQuery.Page):
-                // translate zero-based page index to one-based page from the api
-                parameters[name] = 1;
-                break;
-
-            case <0 when name != nameof(CardQuery.Cmc):
-                break;
-
-            case object when name is nameof(CardQuery.Type)
-                && parameters.TryGetValue(name, out var values)
-                && values is List<string> list
-                && TryToString(value, isMultiple: true, out string s):
-
-                list.AddRange(s.Split());
-                break;
-
-            case object when name is nameof(CardQuery.Type)
-                && TryToString(value, isMultiple: true, out string s):
-                parameters[name] = s.Split().ToList();
-                break;
-
-            case object when TryToString(value, isMultiple: false, out string s):
-                parameters[name] = s;
-                break;
-
-            default:
-                break;
-        }
+        return Expression
+            .Lambda<Func<CardQueryParameter, string>>(
+                Expression.Property(param, name), param);
     }
 
-    private void QueryProperty(
-        IDictionary<string, object?> parameters, string name, IEnumerable values)
-    {
-        foreach (var v in values)
-        {
-            QueryProperty(parameters, name, v);
-        }
-    }
-
-
-    private static bool TryToString(object paramValue, bool isMultiple, out string stringValue)
-    {
-        var toString = paramValue.ToString();
-
-        if (string.IsNullOrWhiteSpace(toString))
-        {
-            stringValue = null!;
-            return false;
-        }
-        
-        // make sure that only one specific card is searched for
-
-        toString = toString.Split(Or).FirstOrDefault();
-
-        if (isMultiple && toString is not null)
-        {
-            toString = toString.Split(And).FirstOrDefault();
-        }
-
-        if (string.IsNullOrWhiteSpace(toString))
-        {
-            stringValue = null!;
-            return false;
-        }
-
-        stringValue = toString.Trim();
-        return true;
-    }
 
 
     /// <remarks> 
@@ -213,7 +134,7 @@ public sealed class MtgApiQuery : IMTGQuery
         MtgCardSearch values,
         CancellationToken cancel = default)
     {
-        if (values.IsEmpty())
+        if (values.IsEmpty)
         {
             return OffsetList<Card>.Empty;
         }
@@ -252,62 +173,20 @@ public sealed class MtgApiQuery : IMTGQuery
 
     private ICardService ApplyParameters(MtgCardSearch values)
     {
-        foreach ((string name, object? value) in values.Parameters)
+        foreach (var parameter in values.Parameters.Values)
         {
-            switch (value)
-            {
-                case Color color and not Color.None:
-                    var colorNames = Enum.GetValues<Color>()
-                        .Where(c => c is not Color.None && color.HasFlag(c))
-                        .Select(c => c.ToString().ToLower());
-
-                    AddParameter(name, string.Join(And, colorNames));
-                    break;
-
-                case <=0:
-                    break;
-
-                case >0 and int i:
-                    AddParameter(name, i);
-                    break;
-
-                case IEnumerable<string> e:
-                    AddParameter(name, string.Join(And, e));
-                    break;
-
-                case string s when !string.IsNullOrWhiteSpace(s):
-                    AddParameter(name, s);
-                    break;
-
-                case null:
-                default:
-                    break;
-            }
+            parameter.Apply(_cardService);
         }
 
         // _cardService.Where(c => c.OrderBy, "name") get error code 500 with this
 
-        if (values.Parameters.GetValueOrDefault(nameof(CardQuery.PageSize)) == default)
+        if (values.Parameters.GetValueOrDefault(nameof(CardQuery.PageSize))
+            ?.IsEmpty ?? true)
         {
             return _cardService.Where(c => c.PageSize, _pageSize);
         }
 
         return _cardService;
-    }
-
-
-    private void AddParameter<TParameter>(string name, TParameter value)
-    {
-        var param = Expression.Parameter(
-            typeof(CardQueryParameter),
-            typeof(CardQueryParameter).Name[0].ToString().ToLower());
-
-        var expression = Expression
-            .Lambda<Func<CardQueryParameter, TParameter>>(
-                Expression.Property(param, name),
-                param);
-
-        _cardService.Where(expression, value);
     }
 
 

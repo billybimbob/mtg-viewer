@@ -7,8 +7,10 @@ internal class VisitedQuery<T> : IQueryable<T>
 {
     private readonly IQueryable<T> _source;
 
-    public VisitedQuery(IQueryable<T> source, Expression visited)
+    public VisitedQuery(IQueryable<T> source, ExpressionVisitor visitor)
     {
+        var visited = visitor.Visit(source.Expression);
+
         if (!typeof(IQueryable<T>).IsAssignableFrom(visited.Type))
         {
             throw new ArgumentException(nameof(visited));
@@ -50,8 +52,6 @@ internal static partial class QueryVisitExtensions
     /// </summary>
     internal static IQueryable<T> Visit<T>(this IQueryable<T> source, ExpressionVisitor visitor)
     {
-        var modifiedSource = visitor.Visit(source.Expression);
-
-        return new VisitedQuery<T>(source, modifiedSource);
+        return new VisitedQuery<T>(source, visitor);
     }
 }

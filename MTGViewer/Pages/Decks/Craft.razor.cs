@@ -686,7 +686,7 @@ public partial class Craft : OwningComponentBase
         private readonly Dictionary<Quantity, int> _originalCopies;
         private readonly Dictionary<string, QuantityGroup> _groups;
 
-        public bool IsNewDeck { get; }
+        public bool IsNewDeck { get; private set; }
 
         public Deck Deck { get; }
 
@@ -890,7 +890,7 @@ public partial class Craft : OwningComponentBase
         }
 
 
-        public void UpdateOriginals()
+        private void UpdateOriginals()
         {
             var allQuantities = _groups.Values.SelectMany(qg => qg);
 
@@ -898,6 +898,14 @@ public partial class Craft : OwningComponentBase
             {
                 _originalCopies[quantity] = quantity.NumCopies;
             }
+        }
+
+
+        public void SuccessfullySaved()
+        {
+            UpdateOriginals();
+
+            IsNewDeck = false;
         }
     }
 
@@ -955,7 +963,7 @@ public partial class Craft : OwningComponentBase
 
             await dbContext.SaveChangesAsync(cancel);
 
-            deckContext.UpdateOriginals();
+            deckContext.SuccessfullySaved();
 
             return SaveResult.Success;
         }
