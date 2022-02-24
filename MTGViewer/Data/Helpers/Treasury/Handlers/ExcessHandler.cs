@@ -19,11 +19,11 @@ internal static class ExcessExtensions
 
 internal abstract class ExcessHandler
 {
-    protected readonly TreasuryContext _treasuryContext;
+    protected TreasuryContext TreasuryContext { get; }
 
-    public ExcessHandler(TreasuryContext treasuryContext)
+    protected ExcessHandler(TreasuryContext treasuryContext)
     {
-        _treasuryContext = treasuryContext;
+        TreasuryContext = treasuryContext;
     }
 
     protected abstract IEnumerable<BoxAssignment<Amount>> GetAssignments();
@@ -32,7 +32,7 @@ internal abstract class ExcessHandler
     {
         foreach ((Amount source, int numCopies, Box box) in GetAssignments())
         {
-            _treasuryContext.TransferCopies(source.Card, numCopies, box, source.Location);
+            TreasuryContext.TransferCopies(source.Card, numCopies, box, source.Location);
         }
     }
 }
@@ -48,7 +48,7 @@ internal class ExactExcess : ExcessHandler
 
     protected override IEnumerable<BoxAssignment<Amount>> GetAssignments()
     {
-        var (available, _, excessBoxes, _) = _treasuryContext;
+        var (available, _, excessBoxes, _) = TreasuryContext;
         var excessAmounts = excessBoxes.SelectMany(b => b.Cards);
 
         if (!available.Any() || excessAmounts.All(a => a.NumCopies == 0))
@@ -71,14 +71,14 @@ internal class ExactExcess : ExcessHandler
         _exactMatches ??= AddLookup();
 
         var bestBoxes = _exactMatches[excess.CardId];
-        var boxSpace = _treasuryContext.BoxSpace;
+        var boxSpace = TreasuryContext.BoxSpace;
 
         return Assignment.FitToBoxes(excess, excess.NumCopies, bestBoxes, boxSpace);
     }
 
     private ILookup<string, Box> AddLookup()
     {
-        var (available, _, excessBoxes, boxSpace) = _treasuryContext;
+        var (available, _, excessBoxes, boxSpace) = TreasuryContext;
 
         var availableAmounts = available.SelectMany(b => b.Cards);
 
@@ -102,7 +102,7 @@ internal class ApproximateExcess : ExcessHandler
 
     protected override IEnumerable<BoxAssignment<Amount>> GetAssignments()
     {
-        var (available, _, excessBoxes, _) = _treasuryContext;
+        var (available, _, excessBoxes, _) = TreasuryContext;
         var excessAmounts = excessBoxes.SelectMany(b => b.Cards);
 
         if (!available.Any() || excessAmounts.All(a => a.NumCopies == 0))
@@ -124,7 +124,7 @@ internal class ApproximateExcess : ExcessHandler
     {
         _approxMatches ??= AddLookup();
 
-        var (available, _, _, boxSpace) = _treasuryContext;
+        var (available, _, _, boxSpace) = TreasuryContext;
         var bestBoxes = _approxMatches[excess.Card.Name].Union(available);
 
         return Assignment.FitToBoxes(excess, excess.NumCopies, bestBoxes, boxSpace);
@@ -132,7 +132,7 @@ internal class ApproximateExcess : ExcessHandler
 
     private ILookup<string, Box> AddLookup()
     {
-        var (available, _, excessBoxes, boxSpace) = _treasuryContext;
+        var (available, _, excessBoxes, boxSpace) = TreasuryContext;
 
         var availableAmounts = available.SelectMany(b => b.Cards);
 

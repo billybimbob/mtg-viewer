@@ -95,8 +95,7 @@ public class DeleteModel : PageModel
             return NotFound();
         }
 
-        var card = await CardForDelete(id)
-            .SingleOrDefaultAsync(cancel);
+        var card = await CardForDelete(id).SingleOrDefaultAsync(cancel);
 
         if (card is null)
         {

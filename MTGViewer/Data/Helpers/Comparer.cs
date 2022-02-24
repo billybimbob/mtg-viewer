@@ -48,23 +48,23 @@ internal class PropertyComparer<E> : EqualityComparer<E>
 
 public class CardNameComparer : Comparer<Card>
 {
-    private const StringComparison _currentCompare = StringComparison.CurrentCulture;
+    private const StringComparison CurrentCompare = StringComparison.CurrentCulture;
 
     public override int Compare(Card? cardA, Card? cardB)
     {
-        int nameCompare = string.Compare(cardA?.Name, cardB?.Name, _currentCompare);
+        int nameCompare = string.Compare(cardA?.Name, cardB?.Name, CurrentCompare);
         if (nameCompare != 0)
         {
             return nameCompare;
         }
 
-        int setCompare = string.Compare(cardA?.SetName, cardB?.SetName, _currentCompare);
+        int setCompare = string.Compare(cardA?.SetName, cardB?.SetName, CurrentCompare);
         if (setCompare != 0)
         {
             return setCompare;
         }
 
-        return string.Compare(cardA?.Id, cardB?.Id, _currentCompare);
+        return string.Compare(cardA?.Id, cardB?.Id, CurrentCompare);
     }
 }
 

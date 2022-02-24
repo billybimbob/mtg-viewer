@@ -129,7 +129,7 @@
     </table>
 </div>
 
-<OffsetPaging Offset="Cards.Offset" PageSelected="p => Filters.PageIndex = p">
+<OffsetPaging Offset="Cards.Offset" PageSelected="SetPage">
 </OffsetPaging>
 
 
@@ -175,4 +175,6 @@
             return "clickable btn-link";
         }
     }
+
+    public void SetPage(int pageIndex) => Filters.PageIndex = pageIndex;
 }

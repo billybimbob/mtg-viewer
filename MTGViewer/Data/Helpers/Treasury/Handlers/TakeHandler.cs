@@ -20,13 +20,12 @@ internal static class TakeExtensions
 
 internal abstract class TakeHandler
 {
-    protected readonly ExchangeContext _exchangeContext;
-    protected readonly TreasuryContext _treasuryContext;
+    protected ExchangeContext ExchangeContext { get; }
+    protected TreasuryContext TreasuryContext => ExchangeContext.TreasuryContext;
 
-    public TakeHandler(ExchangeContext exchangeContext)
+    protected TakeHandler(ExchangeContext exchangeContext)
     {
-        _exchangeContext = exchangeContext;
-        _treasuryContext = exchangeContext.TreasuryContext;
+        ExchangeContext = exchangeContext;
     }
 
     protected abstract IEnumerable<BoxAssignment<Card>> GetAssignments();
@@ -35,7 +34,7 @@ internal abstract class TakeHandler
     {
         foreach ((Card card, int numCopies, Box box) in GetAssignments())
         {
-            _exchangeContext.TakeCopies(card, numCopies, box);
+            ExchangeContext.TakeCopies(card, numCopies, box);
         }
     }
 
@@ -79,7 +78,7 @@ internal class ExactTake : TakeHandler
 
     protected override IEnumerable<BoxAssignment<Card>> GetAssignments()
     {
-        var wants = _exchangeContext.Deck.Wants;
+        var wants = ExchangeContext.Deck.Wants;
 
         if (wants.All(w => w.NumCopies == 0))
         {
@@ -111,13 +110,13 @@ internal class ExactTake : TakeHandler
 
     private ILookup<string, Amount> TakeLookup()
     {
-        var targets = _treasuryContext.Amounts;
+        var targets = TreasuryContext.Amounts;
 
-        var cardIds = _exchangeContext.Deck.Wants
+        var cardIds = ExchangeContext.Deck.Wants
             .Select(w => w.CardId)
             .Distinct();
 
-        var boxSpace = _treasuryContext.BoxSpace;
+        var boxSpace = TreasuryContext.BoxSpace;
 
         // TODO: account for changing NumCopies while iter
         return targets
@@ -148,7 +147,7 @@ internal class ApproximateTake : TakeHandler
 
     protected override IEnumerable<BoxAssignment<Card>> GetAssignments()
     {
-        var wants = _exchangeContext.Deck.Wants;
+        var wants = ExchangeContext.Deck.Wants;
 
         if (wants.All(w => w.NumCopies == 0))
         {
@@ -184,13 +183,13 @@ internal class ApproximateTake : TakeHandler
 
     private ILookup<string, Amount> TakeLookup()
     {
-        var targets = _treasuryContext.Amounts;
+        var targets = TreasuryContext.Amounts;
 
-        var cardNames = _exchangeContext.Deck.Wants
+        var cardNames = ExchangeContext.Deck.Wants
             .Select(w => w.Card.Name)
             .Distinct();
 
-        var boxSpace = _treasuryContext.BoxSpace;
+        var boxSpace = TreasuryContext.BoxSpace;
 
         // TODO: account for changing NumCopies while iter
         return targets

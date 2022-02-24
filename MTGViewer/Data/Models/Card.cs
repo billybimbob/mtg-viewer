@@ -6,8 +6,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MTGViewer.Data;
 
-// adding annotations for validator
-
+[Index(nameof(Color), nameof(Name), nameof(SetName), nameof(Id))]
 [Index(nameof(Name), nameof(SetName), nameof(Id))]
 [Index(nameof(MultiverseId))]
 public class Card
@@ -15,16 +14,11 @@ public class Card
     [Key]
     public string Id { get; init; } = default!;
 
-    [Required]
     [Display(Name = "Multiverse Id")]
     public string MultiverseId { get; init; } = default!;
 
-    [Required]
     public string Name { get; init; } = default!;
 
-    public List<Name> Names { get; init; } = new();
-
-    [Required]
     public string Layout { get; init; } = default!;
 
 
@@ -37,15 +31,14 @@ public class Card
 
     public Color Color { get; init; }
 
-    [Required]
     public string Type { get; init; } = default!;
 
     [Display(Name = "Set Name")]
-    [Required]
     public string SetName { get; init; } = default!;
 
-    [Required]
     public Rarity Rarity { get; init; }
+
+    public Flip? Flip { get; set; }
 
 
     public string? Text { get; init; }
@@ -58,14 +51,12 @@ public class Card
 
     public string? Loyalty { get; init; }
 
-    [Required]
-    public string Artist { get; init; } = default!;
-
-
-    [Required]
     [Display(Name = "Image")]
     [Url]
     public string ImageUrl { get; init; } = default!;
+
+    public string Artist { get; init; } = default!;
+
 
     [JsonIgnore]
     public List<Amount> Amounts { get; } = new();
@@ -75,13 +66,6 @@ public class Card
 
     [JsonIgnore]
     public List<Suggestion> Suggestions { get; } = new();
-
-
-    public bool IsValid()
-    {
-        var context = new ValidationContext(this);
-        return Validator.TryValidateObject(this, context, null);
-    }
 }
 
 
@@ -91,7 +75,8 @@ public enum Rarity
     Uncommon,
     Rare,
     Mythic,
-    Special
+    Special,
+    Bonus
 }
 
 
@@ -110,6 +95,7 @@ public enum Color
 public static class Symbol
 {
     private static SortedList<Color, string>? _colors;
+
     public static IReadOnlyDictionary<Color, string> Colors =>
         _colors ??= new()
         {
@@ -122,13 +108,34 @@ public static class Symbol
 }
 
 
-public class Name
+[Owned]
+public class Flip
 {
-    [JsonInclude]
-    public string Value { get; init; } = default!;
+    [Display(Name = "Multiverse Id")]
+    public string MultiverseId { get; init; } = default!;
 
-    [JsonInclude]
-    public string CardId { get; init; } = default!;
+    [Display(Name = "Mana Cost")]
+    public string? ManaCost { get; init; } = default!;
 
-    public override string ToString() => Value;
+    [Display(Name = "Converted Mana Cost")]
+    [Range(0f, 1_000_000f)]
+    public float? Cmc { get; init; }
+
+    public string Type { get; init; } = default!;
+
+    public string? Text { get; init; }
+
+    public string? Flavor { get; init; }
+
+    public string? Power { get; init; }
+
+    public string? Toughness { get; init; }
+
+    public string? Loyalty { get; init; }
+
+    [Display(Name = "Image")]
+    [Url]
+    public string ImageUrl { get; init; } = default!;
+
+    public string Artist { get; init; } = default!;
 }

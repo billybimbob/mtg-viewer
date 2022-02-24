@@ -63,13 +63,6 @@ internal class CardConfiguration : IEntityTypeConfiguration<Card>
 {
     public void Configure(EntityTypeBuilder<Card> builder)
     {
-        builder
-            .OwnsMany(c => c.Names)
-            .HasKey(n => new { n.Value, n.CardId });
-
-        builder
-            .Navigation(c => c.Names)
-            .AutoInclude(false);
     }
 }
 

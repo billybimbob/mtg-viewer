@@ -93,7 +93,7 @@ public partial class Craft : OwningComponentBase
 
             await ApplyFiltersAsync(_treasuryFilters, _cancel.Token);
 
-            _treasuryFilters.Loader = new TreasuryLoader(this);
+            _treasuryFilters.SetLoader(new TreasuryLoader(this));
         }
         catch (OperationCanceledException ex)
         {
@@ -344,20 +344,22 @@ public partial class Craft : OwningComponentBase
 
     #region Treasury Operations
 
+    public string ActiveColor(Color color) =>
+        _treasuryFilters.PickedColors.HasFlag(color) ? "active" : string.Empty;
+
     public int TreasuryCopies(Card card) => _boxCopies.GetValueOrDefault(card.Id);
 
     public void ToggleColor(Color color) => _treasuryFilters.ToggleColor(color);
 
-    public string ActiveColor(Color color) =>
-        _treasuryFilters.PickedColors.HasFlag(color) ? "active" : string.Empty;
+    public void ChangeTreasuryPage(int pageIndex) => _treasuryFilters.PageIndex = pageIndex;
 
 
     private sealed class TreasuryFilters
     {
         private TreasuryLoader _loader;
-        internal TreasuryLoader Loader
+        internal void SetLoader(TreasuryLoader treasuryLoader)
         {
-            set => _loader = value;
+            _loader = treasuryLoader;
         }
 
         private int _pageSize;
@@ -814,7 +816,7 @@ public partial class Craft : OwningComponentBase
         public bool TryGetQuantity<TQuantity>(Card card, out TQuantity quantity)
             where TQuantity : Quantity
         {
-            quantity = default!;
+            quantity = null!;
 
             if (card is null)
             {

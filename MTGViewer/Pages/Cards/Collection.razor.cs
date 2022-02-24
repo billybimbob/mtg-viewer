@@ -60,7 +60,7 @@ public partial class Collection : ComponentBase, IDisposable
 
             await _loader.LoadCardsAsync(DbFactory, _filters, _cancel.Token);
 
-            _filters.LoadContext = new LoadContext(this);
+            _filters.SetLoadContext(new LoadContext(this));
         }
         catch (OperationCanceledException ex)
         {
@@ -88,9 +88,9 @@ public partial class Collection : ComponentBase, IDisposable
     public sealed class FilterContext
     {
         private LoadContext _loadContext;
-        internal LoadContext LoadContext
+        internal void SetLoadContext(LoadContext loadContext)
         {
-            set => _loadContext = value;
+            _loadContext = loadContext;
         }
 
         private string? _searchName;

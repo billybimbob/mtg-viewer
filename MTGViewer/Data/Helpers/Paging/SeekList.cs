@@ -46,9 +46,9 @@ public readonly record struct Seek<T>(T? Previous, T? Next)
 
 public class SeekList<T> : IReadOnlyList<T>
 {
-    private readonly IList<T> _items;
+    private readonly IReadOnlyList<T> _items;
 
-    public SeekList(Seek<T> seek, IList<T> items)
+    public SeekList(Seek<T> seek, IReadOnlyList<T> items)
     {
         ArgumentNullException.ThrowIfNull(items, nameof(items));
 

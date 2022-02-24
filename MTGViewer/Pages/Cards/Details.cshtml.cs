@@ -74,8 +74,7 @@ public class DetailsModel : PageModel
     private void MergeExcessAmounts(Card card)
     {
         var excessAmounts = card.Amounts
-            .Where(a => a.Location is Box
-                && (a.Location as Box)!.IsExcess);
+            .Where(a => a.Location is Box box && box.IsExcess);
 
         if (!excessAmounts.Any())
         {

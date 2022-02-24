@@ -20,11 +20,11 @@ internal static class OverflowExtensions
 
 internal abstract class OverflowHandler
 {
-    protected readonly TreasuryContext _treasuryContext;
+    protected TreasuryContext TreasuryContext { get; }
 
-    public OverflowHandler(TreasuryContext treasuryContext)
+    protected OverflowHandler(TreasuryContext treasuryContext)
     {
-        _treasuryContext = treasuryContext;
+        TreasuryContext = treasuryContext;
     }
 
     protected abstract IEnumerable<BoxAssignment<Amount>> GetAssignments();
@@ -33,7 +33,7 @@ internal abstract class OverflowHandler
     {
         foreach ((Amount source, int numCopies, Box box) in GetAssignments())
         {
-            _treasuryContext.TransferCopies(source.Card, numCopies, box, source.Location);
+            TreasuryContext.TransferCopies(source.Card, numCopies, box, source.Location);
         }
     }
 }
@@ -50,7 +50,7 @@ internal class ExactOverflow: OverflowHandler
 
     protected override IEnumerable<BoxAssignment<Amount>> GetAssignments()
     {
-        var (available, overflowBoxes, _, _) = _treasuryContext;
+        var (available, overflowBoxes, _, _) = TreasuryContext;
 
         if (!available.Any() || !overflowBoxes.Any())
         {
@@ -85,7 +85,7 @@ internal class ExactOverflow: OverflowHandler
             return Enumerable.Empty<BoxAssignment<Amount>>();
         }
 
-        var boxSpace = _treasuryContext.BoxSpace;
+        var boxSpace = TreasuryContext.BoxSpace;
 
         int copiesAbove = boxSpace.GetValueOrDefault(sourceBox) - sourceBox.Capacity;
         if (copiesAbove <= 0)
@@ -101,7 +101,7 @@ internal class ExactOverflow: OverflowHandler
 
     private ILookup<string, Box> AddLookup()
     {
-        var (available, overflowBoxes, _, boxSpace) = _treasuryContext;
+        var (available, overflowBoxes, _, boxSpace) = TreasuryContext;
 
         var availableCards = available.SelectMany(b => b.Cards);
 
@@ -125,7 +125,7 @@ internal class ApproximateOverflow : OverflowHandler
 
     protected override IEnumerable<BoxAssignment<Amount>> GetAssignments()
     {
-        var overflowBoxes = _treasuryContext.Overflow;
+        var overflowBoxes = TreasuryContext.Overflow;
 
         if (!overflowBoxes.Any())
         {
@@ -153,7 +153,7 @@ internal class ApproximateOverflow : OverflowHandler
             return Enumerable.Empty<BoxAssignment<Amount>>();
         }
 
-        var boxSpace = _treasuryContext.BoxSpace;
+        var boxSpace = TreasuryContext.BoxSpace;
 
         int copiesAbove = boxSpace.GetValueOrDefault(sourceBox) - sourceBox.Capacity;
         if (copiesAbove <= 0)
@@ -162,8 +162,8 @@ internal class ApproximateOverflow : OverflowHandler
         }
 
         var bestBoxes = _approxMatches[source.Card.Name]
-            .Union(_treasuryContext.Available)
-            .Concat(_treasuryContext.Excess);
+            .Union(TreasuryContext.Available)
+            .Concat(TreasuryContext.Excess);
 
         int minTransfer = Math.Min(source.NumCopies, copiesAbove);
 
@@ -173,7 +173,7 @@ internal class ApproximateOverflow : OverflowHandler
 
     private ILookup<string, Box> AddLookup()
     {
-        var (available, overflowBoxes, _, boxSpace) = _treasuryContext;
+        var (available, overflowBoxes, _, boxSpace) = TreasuryContext;
 
         var availableCards = available.SelectMany(b => b.Cards);
 

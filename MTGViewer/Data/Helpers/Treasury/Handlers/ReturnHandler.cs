@@ -24,13 +24,12 @@ internal static class ReturnExtensions
 
 internal abstract class ReturnHandler
 {
-    protected readonly ExchangeContext _exchangeContext;
-    protected readonly TreasuryContext _treasuryContext;
+    protected ExchangeContext ExchangeContext { get; }
+    protected TreasuryContext TreasuryContext => ExchangeContext.TreasuryContext;
 
-    public ReturnHandler(ExchangeContext exchangeContext)
+    protected ReturnHandler(ExchangeContext exchangeContext)
     {
-        _exchangeContext = exchangeContext;
-        _treasuryContext = exchangeContext.TreasuryContext;
+        ExchangeContext = exchangeContext;
     }
 
     protected abstract IEnumerable<BoxAssignment<Card>> GetAssignments();
@@ -39,7 +38,7 @@ internal abstract class ReturnHandler
     {
         foreach ((Card card, int numCopies, Box box) in GetAssignments())
         {
-            _exchangeContext.ReturnCopies(card, numCopies, box);
+            ExchangeContext.ReturnCopies(card, numCopies, box);
         }
     }
 }
@@ -55,9 +54,9 @@ internal class ExactReturn : ReturnHandler
 
     protected override IEnumerable<BoxAssignment<Card>> GetAssignments()
     {
-        var giveBacks = _exchangeContext.Deck.GiveBacks;
+        var giveBacks = ExchangeContext.Deck.GiveBacks;
 
-        if (!_treasuryContext.Available.Any() || giveBacks.All(g => g.NumCopies == 0))
+        if (!TreasuryContext.Available.Any() || giveBacks.All(g => g.NumCopies == 0))
         {
             yield break;
         }
@@ -79,15 +78,15 @@ internal class ExactReturn : ReturnHandler
         var bestBoxes = _exactMatch[giveBack.CardId];
 
         return Assignment.FitToBoxes(
-            giveBack.Card, giveBack.NumCopies, bestBoxes, _treasuryContext.BoxSpace);
+            giveBack.Card, giveBack.NumCopies, bestBoxes, TreasuryContext.BoxSpace);
     }
 
     private ILookup<string, Box> AddLookup()
     {
-        var (available, _, _, boxSpace) = _treasuryContext;
+        var (available, _, _, boxSpace) = TreasuryContext;
         var availableAmounts = available.SelectMany(b => b.Cards);
 
-        var giveCards = _exchangeContext.Deck.GiveBacks.Select(w => w.Card);
+        var giveCards = ExchangeContext.Deck.GiveBacks.Select(w => w.Card);
 
         // TODO: account for changing NumCopies while iter
         return Assignment.ExactAddLookup(availableAmounts, giveCards, boxSpace);
@@ -105,9 +104,9 @@ internal class ApproximateReturn : ReturnHandler
 
     protected override IEnumerable<BoxAssignment<Card>> GetAssignments()
     {
-        var giveBacks = _exchangeContext.Deck.GiveBacks;
+        var giveBacks = ExchangeContext.Deck.GiveBacks;
 
-        if (!_treasuryContext.Available.Any() || giveBacks.All(g => g.NumCopies == 0))
+        if (!TreasuryContext.Available.Any() || giveBacks.All(g => g.NumCopies == 0))
         {
             yield break;
         }
@@ -134,15 +133,15 @@ internal class ApproximateReturn : ReturnHandler
         var bestBoxes = _approxMatch[giveBack.Card.Name];
 
         return Assignment.FitToBoxes(
-            giveBack.Card, giveBack.NumCopies, bestBoxes, _treasuryContext.BoxSpace);
+            giveBack.Card, giveBack.NumCopies, bestBoxes, TreasuryContext.BoxSpace);
     }
 
     private ILookup<string, Box> AddLookup()
     {
-        var availableAmounts = _treasuryContext.Available.SelectMany(b => b.Cards);
-        var giveCards = _exchangeContext.Deck.GiveBacks.Select(w => w.Card);
+        var availableAmounts = TreasuryContext.Available.SelectMany(b => b.Cards);
+        var giveCards = ExchangeContext.Deck.GiveBacks.Select(w => w.Card);
 
-        var boxSpace = _treasuryContext.BoxSpace;
+        var boxSpace = TreasuryContext.BoxSpace;
 
         // TODO: account for changing NumCopies while iter
         return Assignment.ApproxAddLookup(availableAmounts, giveCards, boxSpace);
@@ -160,7 +159,7 @@ internal class GuessReturn : ReturnHandler
 
     protected override IEnumerable<BoxAssignment<Card>> GetAssignments()
     {
-        var giveBacks = _exchangeContext.Deck.GiveBacks;
+        var giveBacks = ExchangeContext.Deck.GiveBacks;
 
         if (giveBacks.All(g => g.NumCopies == 0))
         {
@@ -194,7 +193,7 @@ internal class GuessReturn : ReturnHandler
 
     private IEnumerable<BoxAssignment<Card>> FitToBoxes(GiveBack giveBack)
     {
-        var (available, excess, _, boxSpace) = _treasuryContext;
+        var (available, _, excess, boxSpace) = TreasuryContext;
 
         _boxSearch ??= new BoxSearcher(available);
 
