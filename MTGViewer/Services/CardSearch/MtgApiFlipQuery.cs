@@ -27,6 +27,14 @@ public sealed class MtgApiFlipQuery
     }
 
 
+    public bool HasFlip(Card card)
+    {
+        ArgumentNullException.ThrowIfNull(card, nameof(card));
+
+        return card.Name.Contains(FaceSplit);
+    }
+
+
     public async ValueTask<Card?> GetCardAsync(
         IOperationResult<ICard> result,
         CancellationToken cancel)
@@ -37,7 +45,7 @@ public sealed class MtgApiFlipQuery
             return null;
         }
 
-        if (!card.Name.Contains(FaceSplit))
+        if (!HasFlip(card))
         {
             return card;
         }
@@ -84,7 +92,7 @@ public sealed class MtgApiFlipQuery
             return null;
         }
 
-        if (!card.Name.Contains(FaceSplit))
+        if (!HasFlip(card))
         {
             return card;
         }

@@ -52,8 +52,8 @@ public sealed class CardStream
         return new CardStream
         {
             Cards = dbContext.Cards
+                .Include(c => c.Flip)
                 .OrderBy(c => c.Id)
-                .AsSplitQuery()
                 .AsAsyncEnumerable(),
 
             Decks = dbContext.Decks
@@ -111,6 +111,8 @@ public sealed class CardStream
                             && (w.Location as Deck)!.OwnerId == userId)
                     || c.Suggestions
                         .Any(s => s.ReceiverId == userId))
+
+                .Include(c => c.Flip)
                 .OrderBy(c => c.Id)
                 .AsAsyncEnumerable(),
 
@@ -144,6 +146,7 @@ public sealed class CardStream
             Cards = dbContext.Cards
                 .Where(c => c.Amounts
                     .Any(a => a.Location is Box || a.Location is Unclaimed))
+                .Include(c => c.Flip)
                 .OrderBy(c => c.Id)
                 .AsAsyncEnumerable(),
 
@@ -159,9 +162,6 @@ public sealed class CardStream
                 .AsAsyncEnumerable(),
 
             Bins = dbContext.Bins
-                // keep eye on, paging does not account for
-                // the variable amount of Box and Quantity 
-                // entries
                 .Include(b => b.Boxes
                     .OrderBy(b => b.Id))
                     .ThenInclude(b => b.Cards
@@ -190,6 +190,7 @@ public sealed class CardStream
                 .AsAsyncEnumerable(),
 
             Cards = dbContext.Cards
+                .Include(c => c.Flip)
                 .OrderBy(c => c.Id)
                 .AsAsyncEnumerable(),
 
@@ -214,7 +215,6 @@ public sealed class CardStream
                 .AsAsyncEnumerable(),
 
             Unclaimed = dbContext.Unclaimed
-
                 .Include(u => u.Cards
                     .OrderBy(a => a.Id))
 
@@ -226,7 +226,6 @@ public sealed class CardStream
                 .AsAsyncEnumerable(),
 
             Bins = dbContext.Bins
-
                 .Include(b => b.Boxes
                     .OrderBy(b => b.Id))
                     .ThenInclude(b => b.Cards

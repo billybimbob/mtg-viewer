@@ -36,7 +36,6 @@ public class Suggestion
     public string? Comment { get; set; }
 
     [Display(Name = "Sent At")]
-    [JsonInclude]
     public DateTime SentAt { get; private set; }
 }
 

@@ -59,7 +59,7 @@ public class DeleteModel : PageModel
         }
 
         var card = await CardForDelete(id)
-            .AsNoTracking()
+            .AsNoTrackingWithIdentityResolution()
             .SingleOrDefaultAsync(cancel);
 
         if (card == default)
@@ -95,7 +95,9 @@ public class DeleteModel : PageModel
             return NotFound();
         }
 
-        var card = await CardForDelete(id).SingleOrDefaultAsync(cancel);
+        var card = await CardForDelete(id)
+            .Include(c => c.Flip)
+            .SingleOrDefaultAsync(cancel);
 
         if (card is null)
         {

@@ -63,6 +63,9 @@ internal class CardConfiguration : IEntityTypeConfiguration<Card>
 {
     public void Configure(EntityTypeBuilder<Card> builder)
     {
+        builder
+            .Navigation(c => c.Flip)
+            .AutoInclude(false);
     }
 }
 

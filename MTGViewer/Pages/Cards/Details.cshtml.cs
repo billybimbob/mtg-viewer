@@ -25,7 +25,6 @@ public class DetailsModel : PageModel
 
     public record CardAlt(string Id, string Name, string SetName);
 
-
     public Card Card { get; private set; } = default!;
 
     public IReadOnlyList<CardAlt> CardAlts { get; private set; } = Array.Empty<CardAlt>();
@@ -33,19 +32,14 @@ public class DetailsModel : PageModel
     public string? ReturnUrl { get; private set; }
 
 
-    public async Task<IActionResult> OnGetAsync(string? id, string? returnUrl, CancellationToken cancel)
+    public async Task<IActionResult> OnGetAsync(string? id, bool flip, string? returnUrl, CancellationToken cancel)
     {
         if (id is null)
         {
             return NotFound();
         }
 
-        var card = await _dbContext.Cards
-            .Include(c => c.Amounts
-                .OrderBy(a => a.Location.Name))
-                .ThenInclude(a => a.Location)
-            .AsNoTrackingWithIdentityResolution()
-            .SingleOrDefaultAsync(c => c.Id == id, cancel);
+        var card = await CardForDetails(id, flip).SingleOrDefaultAsync(cancel);
 
         if (card == default)
         {
@@ -56,11 +50,7 @@ public class DetailsModel : PageModel
 
         Card = card;
 
-        CardAlts = await _dbContext.Cards
-            .Where(c => c.Id != id && c.Name == Card.Name)
-            .OrderBy(c => c.SetName)
-            .Select(c => new CardAlt(c.Id, c.Name, c.SetName))
-            .ToListAsync(cancel);
+        CardAlts = await CardAlternatives(card).ToListAsync(cancel);
 
         if (Url.IsLocalUrl(returnUrl))
         {
@@ -68,6 +58,28 @@ public class DetailsModel : PageModel
         }
 
         return Page();
+    }
+
+
+    private IQueryable<Card> CardForDetails(string cardId, bool flip)
+    {
+        var cards = _dbContext.Cards
+            .Where(c => c.Id == cardId)
+            .Include(c => c.Amounts
+                .OrderBy(a => a.Location.Name))
+                .ThenInclude(a => a.Location)
+            .AsNoTrackingWithIdentityResolution();
+
+        return flip ? cards.Include(c => c.Flip) : cards;
+    }
+    
+
+    private IQueryable<CardAlt> CardAlternatives(Card card)
+    {
+        return _dbContext.Cards
+            .Where(c => c.Id != card.Id && c.Name == card.Name)
+            .OrderBy(c => c.SetName)
+            .Select(c => new CardAlt(c.Id, c.Name, c.SetName));
     }
 
 
