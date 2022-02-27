@@ -45,9 +45,6 @@ public partial class Craft : OwningComponentBase
     protected NavigationManager NavManager { get; set; } = default!;
 
     [Inject]
-    protected CardText CardText { get; set; } = default!;
-
-    [Inject]
     protected ILogger<Craft> Logger { get; set; } = default!;
 
 
@@ -718,7 +715,7 @@ public partial class Craft : OwningComponentBase
 
         public DeckContext(Deck deck, int pageSize)
         {
-            ArgumentNullException.ThrowIfNull(deck, nameof(deck));
+            ArgumentNullException.ThrowIfNull(deck);
 
             _groups = QuantityGroup
                 .FromDeck(deck)
@@ -828,23 +825,7 @@ public partial class Craft : OwningComponentBase
                 return false;
             }
 
-            Quantity? groupQuantity = null;
-            var quantityType = typeof(TQuantity);
-
-            if (quantityType == typeof(Amount))
-            {
-                groupQuantity = group.Amount;
-            }
-            else if (quantityType == typeof(Want))
-            {
-                groupQuantity = group.Want;
-            }
-            else if (quantityType == typeof(GiveBack))
-            {
-                groupQuantity = group.GiveBack;
-            }
-
-            quantity = (TQuantity)groupQuantity!;
+            quantity = GetQuantity<TQuantity>(group)!;
 
             return quantity != null;
         }
@@ -853,8 +834,7 @@ public partial class Craft : OwningComponentBase
         public void AddQuantity<TQuantity>(TQuantity quantity)
             where TQuantity : Quantity
         {
-            ArgumentNullException.ThrowIfNull(quantity, nameof(quantity));
-
+            ArgumentNullException.ThrowIfNull(quantity);
 
             if (!_groups.TryGetValue(quantity.CardId, out var group))
             {
@@ -862,33 +842,58 @@ public partial class Craft : OwningComponentBase
                 return;
             }
 
-            var quantityType = typeof(TQuantity);
-
-            if (quantityType == typeof(Amount))
+            if (GetQuantity<TQuantity>(group) is not null)
             {
-                var amount = (Amount)(Quantity)quantity;
+                return;
+            }
 
-                group.Amount = amount;
-                Deck.Cards.Add(amount);
-            }
-            else if (quantityType == typeof(Want))
+            switch (quantity)
             {
-                var want = (Want)(Quantity)quantity;
+                case Amount amount:
+                    group.Amount = amount;
+                    Deck.Cards.Add(amount);
+                    break;
 
-                group.Want = want;
-                Deck.Wants.Add(want);
-            }
-            else if (quantityType == typeof(GiveBack))
-            {
-                var giveBack = (GiveBack)(Quantity)quantity;
+                case Want want:
+                    group.Want = want;
+                    Deck.Wants.Add(want);
+                    break;
 
-                group.GiveBack = giveBack;
-                Deck.GiveBacks.Add(giveBack);
+                case GiveBack giveBack:
+                    group.GiveBack = giveBack;
+                    Deck.GiveBacks.Add(giveBack);
+                    break;
+
+                default:
+                    throw new ArgumentException(nameof(quantity));
             }
-            else
-            {
-                throw new ArgumentException(nameof(quantity));
-            }
+        }
+
+
+        private TQuantity? GetQuantity<TQuantity>(QuantityGroup group)
+            where TQuantity : Quantity
+        {
+            return group.Amount as TQuantity
+                ?? group.Want as TQuantity
+                ?? group.GiveBack as TQuantity;
+        }
+
+
+        public void AddOriginalQuantity(Quantity quantity)
+        {
+            ArgumentNullException.ThrowIfNull(quantity);
+
+            AddQuantity(quantity);
+
+            _originalCopies.Add(quantity, quantity.NumCopies);
+        }
+
+
+        public void ConvertToAddition(Quantity quantity)
+        {
+            ArgumentNullException.ThrowIfNull(quantity);
+
+            _originalCopies.Remove(quantity);
         }
 
 
@@ -961,7 +966,7 @@ public partial class Craft : OwningComponentBase
     {
         try
         {
-            PrepareChanges(dbContext, deckContext, CardText);
+            PrepareChanges(dbContext, deckContext);
 
             await dbContext.SaveChangesAsync(cancel);
 
@@ -980,10 +985,7 @@ public partial class Craft : OwningComponentBase
     }
 
 
-    private static void PrepareChanges(
-        CardDbContext dbContext, 
-        DeckContext deckContext, 
-        CardText cardText)
+    private static void PrepareChanges(CardDbContext dbContext, DeckContext deckContext)
     {
         var deck = deckContext.Deck;
 
@@ -993,14 +995,14 @@ public partial class Craft : OwningComponentBase
         }
         else
         {
-            dbContext.Decks.Update(deck);
+            dbContext.Decks.Attach(deck).State = EntityState.Modified;
         }
 
         PrepareQuantity(deckContext, dbContext.Amounts);
         PrepareQuantity(deckContext, dbContext.Wants);
         PrepareQuantity(deckContext, dbContext.GiveBacks);
 
-        deck.UpdateColors(cardText);
+        deck.UpdateColors();
     }
 
 
@@ -1011,17 +1013,26 @@ public partial class Craft : OwningComponentBase
     {
         foreach (var quantity in deckContext.GetQuantities<TQuantity>())
         {
-            if (quantity.NumCopies == 0)
-            {
-                dbQuantities.Remove(quantity);
-            }
-            else if (deckContext.IsAdded(quantity))
+            bool isEmpty = quantity.NumCopies == 0;
+
+            if (deckContext.IsAdded(quantity) && !isEmpty)
             {
                 dbQuantities.Add(quantity);
             }
-            else
+            else if (deckContext.IsModified(quantity))
             {
-                dbQuantities.Update(quantity);
+                if (isEmpty)
+                {
+                    dbQuantities.Remove(quantity);
+                }
+                else
+                {
+                    dbQuantities.Attach(quantity).State = EntityState.Modified;
+                }
+            }
+            else if (!isEmpty)
+            {
+                dbQuantities.Attach(quantity);
             }
         }
     }
@@ -1073,10 +1084,11 @@ public partial class Craft : OwningComponentBase
             return;
         }
 
-        MergeDeckRemoves(deckContext, dbDeck);
-        MergeDeckCardConflicts(dbContext, deckContext, dbDeck);
+        MergeDbRemoves(deckContext, dbDeck);
 
-        TrackNewDeckCards(dbContext, deckContext, dbDeck);
+        MergeDbConflicts(dbContext, deckContext, dbDeck);
+
+        MergeDbAdditions(dbContext, deckContext, dbDeck);
 
         CapGiveBacks(deckContext.Groups);
 
@@ -1114,66 +1126,62 @@ public partial class Craft : OwningComponentBase
     }
 
 
-    private static void MergeDeckRemoves(DeckContext deckContext, Deck dbDeck)
+    private static void MergeDbRemoves(DeckContext deckContext, Deck dbDeck)
     {
-        var localDeck = deckContext.Deck;
+        MergeRemovedQuantity(deckContext, dbDeck.Cards);
 
-        var removedCards = RemovedFromDb(localDeck.Cards, dbDeck.Cards)
-            .Where(a => !deckContext.IsModified(a));
+        MergeRemovedQuantity(deckContext, dbDeck.Wants);
 
-        foreach(var removedCard in removedCards)
-        {
-            removedCard.NumCopies = 0;
-        }
-
-        var removedWants = RemovedFromDb(localDeck.Wants, dbDeck.Wants)
-            .Where(w => !deckContext.IsModified(w));
-
-        foreach (var removedWant in removedWants)
-        {
-            removedWant.NumCopies = 0;
-        }
-
-        var removedGiveBacks = RemovedFromDb(localDeck.GiveBacks, dbDeck.GiveBacks)
-            .Where(g => !deckContext.IsModified(g));
-
-        foreach (var removedGive in removedGiveBacks)
-        {
-            removedGive.NumCopies = 0;
-        }
+        MergeRemovedQuantity(deckContext, dbDeck.GiveBacks);
     }
 
 
-    private static IEnumerable<TQuantity> RemovedFromDb<TQuantity>(
-        IEnumerable<TQuantity> localQuantity, 
-        IEnumerable<TQuantity> dbQuantity)
+    private static void MergeRemovedQuantity<TQuantity>(
+        DeckContext deckContext,
+        IReadOnlyList<TQuantity> dbQuantities)
         where TQuantity : Quantity
     {
-        return localQuantity
-            .GroupJoin(dbQuantity,
+        var removedQuantities = deckContext
+            .GetQuantities<TQuantity>()
+
+            .GroupJoin(dbQuantities,
                 lq => (lq.CardId, lq.LocationId),
                 db => (db.CardId, db.LocationId),
                 (local, dbs) =>
                     (local, noDb: !dbs.Any()))
+
             .Where(ln => ln.noDb)
             .Select(ln => ln.local);
+
+        foreach (var removedQuantity in removedQuantities)
+        {
+            if (deckContext.IsModified(removedQuantity))
+            {
+                deckContext.ConvertToAddition(removedQuantity);
+            }
+            else
+            {
+                removedQuantity.NumCopies = 0;
+            }
+        }
     }
 
 
-    private static void MergeDeckCardConflicts(
+
+    private static void MergeDbConflicts(
         CardDbContext dbContext,
         DeckContext deckContext,
         Deck dbDeck)
     {
-        MergeQuantityConflicts(dbContext, deckContext, dbDeck.Cards);
+        MergeQuantityConflict(dbContext, deckContext, dbDeck.Cards);
 
-        MergeQuantityConflicts(dbContext, deckContext, dbDeck.Wants);
+        MergeQuantityConflict(dbContext, deckContext, dbDeck.Wants);
 
-        MergeQuantityConflicts(dbContext, deckContext, dbDeck.GiveBacks);
+        MergeQuantityConflict(dbContext, deckContext, dbDeck.GiveBacks);
     }
 
 
-    private static void MergeQuantityConflicts<TQuantity>(
+    private static void MergeQuantityConflict<TQuantity>(
         CardDbContext dbContext, 
         DeckContext deckContext,
         IEnumerable<TQuantity> dbQuantities)
@@ -1196,23 +1204,22 @@ public partial class Craft : OwningComponentBase
     }
 
 
-    private static void TrackNewDeckCards(
+    private static void MergeDbAdditions(
         CardDbContext dbContext, 
         DeckContext deckContext, 
         Deck dbDeck)
     {
-        TrackNewQuantity(deckContext, dbContext.Cards, dbContext.Amounts, dbDeck.Cards);
+        MergeNewQuantity(deckContext, dbContext, dbDeck.Cards);
 
-        TrackNewQuantity(deckContext, dbContext.Cards, dbContext.Wants, dbDeck.Wants);
+        MergeNewQuantity(deckContext, dbContext, dbDeck.Wants);
 
-        TrackNewQuantity(deckContext, dbContext.Cards, dbContext.GiveBacks, dbDeck.GiveBacks);
+        MergeNewQuantity(deckContext, dbContext, dbDeck.GiveBacks);
     }
 
 
-    private static void TrackNewQuantity<TQuantity>(
+    private static void MergeNewQuantity<TQuantity>(
         DeckContext deckContext, 
-        DbSet<Card> localCards,
-        DbSet<TQuantity> localQuantities,
+        CardDbContext dbContext,
         IReadOnlyList<TQuantity> dbQuantities)
         where TQuantity : Quantity, new()
     {
@@ -1223,7 +1230,7 @@ public partial class Craft : OwningComponentBase
                 continue;
             }
 
-            var card = localCards.Local
+            var card = dbContext.Cards.Local
                 .FirstOrDefault(c => c.Id == dbQuantity.CardId);
 
             if (card == default)
@@ -1233,19 +1240,45 @@ public partial class Craft : OwningComponentBase
                 card.Amounts.Clear();
                 card.Wants.Clear();
 
-                localCards.Attach(card);
+                dbContext.Cards.Attach(card);
             }
 
             var newQuantity = new TQuantity
             {
+                Id = dbQuantity.Id,
                 Card = card,
                 Location = deckContext.Deck,
                 NumCopies = dbQuantity.NumCopies
             };
 
             // attach for nav fixup
-            localQuantities.Attach(newQuantity);
-            deckContext.AddQuantity(newQuantity);
+            AttachQuantity(dbContext, newQuantity);
+            dbContext.MatchToken(newQuantity, dbQuantity);
+
+            deckContext.AddOriginalQuantity(newQuantity);
+        }
+    }
+
+
+    private static void AttachQuantity<TQuantity>(CardDbContext dbContext, TQuantity quantity)
+        where TQuantity : Quantity
+    {
+        switch (quantity)
+        {
+            case Amount amount:
+                dbContext.Amounts.Attach(amount);
+                break;
+
+            case Want want:
+                dbContext.Wants.Attach(want);
+                break;
+
+            case GiveBack giveBack:
+                dbContext.GiveBacks.Attach(giveBack);
+                break;
+
+            default:
+                throw new ArgumentException(typeof(TQuantity).Name);
         }
     }
 

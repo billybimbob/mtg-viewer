@@ -19,7 +19,7 @@ public abstract class Quantity : Concurrent
 {
     [Key]
     [JsonIgnore]
-    public int Id { get; private set; }
+    public int Id { get; init; }
 
     [JsonIgnore]
     internal QuantityType Type { get; private set; }

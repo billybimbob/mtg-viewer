@@ -15,7 +15,7 @@
 
 @{ 
     bool hasAlts = Model.CardAlts.Any();
-    bool hasFlip = FlipQuery.HasFlip(Model.Card);
+    bool hasFlip = FlipQuery.HasFlip(Model.Card.Name);
 
     bool isSignedIn = SignInManager.IsSignedIn(User);
 

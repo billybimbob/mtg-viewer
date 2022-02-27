@@ -82,7 +82,7 @@ public class QuantityValidate : IBeforeSaveTrigger<Quantity>, IAfterSaveTrigger<
 
         try
         {
-            await _dbContext.SaveChangesAsync();
+            await _dbContext.SaveChangesAsync(cancel);
         }
         catch (DbUpdateException e)
         {

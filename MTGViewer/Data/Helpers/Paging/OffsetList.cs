@@ -51,7 +51,7 @@ public class OffsetList<T> : IReadOnlyList<T>
 
     public OffsetList(Offset offset, IReadOnlyList<T> items)
     {
-        ArgumentNullException.ThrowIfNull(items, nameof(items));
+        ArgumentNullException.ThrowIfNull(items);
 
         Offset = offset;
         _items = items;

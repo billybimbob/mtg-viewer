@@ -293,7 +293,7 @@ public partial class Collection : ComponentBase, IDisposable
 
         public int CardTotal(Card card)
         {
-            ArgumentNullException.ThrowIfNull(card, nameof(card));
+            ArgumentNullException.ThrowIfNull(card);
 
             return _cardAmounts.GetValueOrDefault(card.Id);
         }

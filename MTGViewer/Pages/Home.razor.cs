@@ -196,7 +196,7 @@ public partial class Home : ComponentBase, IDisposable
 
         public async Task LoadNextChunkAsync(CardDbContext dbContext, CancellationToken cancel)
         {
-            ArgumentNullException.ThrowIfNull(dbContext, nameof(dbContext));
+            ArgumentNullException.ThrowIfNull(dbContext);
 
             var nextChunk = HasMore 
                 ? _loadOrder[_cards.Count / ChunkSize] 
@@ -224,8 +224,8 @@ public partial class Home : ComponentBase, IDisposable
     {
         return dbContext.Cards
             .Select(c => c.Id)
-            .Take(limit)
             .OrderBy(_ => EF.Functions.Random())
+            .Take(limit)
 
             .AsAsyncEnumerable()
             .Chunk(ChunkSize)

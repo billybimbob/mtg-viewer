@@ -15,7 +15,7 @@ public static partial class PagingExtensions
         int? index,
         int pageSize)
     {
-        ArgumentNullException.ThrowIfNull(source, nameof(source));
+        ArgumentNullException.ThrowIfNull(source);
 
         if (index < 0)
         {
@@ -39,7 +39,7 @@ public static partial class PagingExtensions
         this IQueryable<TEntity> source,
         CancellationToken cancel = default)
     {
-        ArgumentNullException.ThrowIfNull(source, nameof(source));
+        ArgumentNullException.ThrowIfNull(source);
 
         return new OffsetQuery<TEntity>(source)
             .ToOffsetListAsync(cancel);
@@ -53,7 +53,7 @@ public static partial class PagingExtensions
         where TEntity : class
         where TKey : struct
     {
-        ArgumentNullException.ThrowIfNull(source, nameof(source));
+        ArgumentNullException.ThrowIfNull(source);
 
         if (seek is not TKey s)
         {
@@ -71,7 +71,7 @@ public static partial class PagingExtensions
         where TEntity : class
         where TKey : class?
     {
-        ArgumentNullException.ThrowIfNull(source, nameof(source));
+        ArgumentNullException.ThrowIfNull(source);
 
         if (seek is not TKey s)
         {
@@ -119,8 +119,8 @@ public static partial class PagingExtensions
         this IQueryable<TEntity> source,
         TEntity origin)
     {
-        ArgumentNullException.ThrowIfNull(source, nameof(source));
-        ArgumentNullException.ThrowIfNull(origin, nameof(origin));
+        ArgumentNullException.ThrowIfNull(source);
+        ArgumentNullException.ThrowIfNull(origin);
 
         var seekCondition = OriginFilter.Create(source, origin, SeekDirection.Forward);
 
@@ -133,8 +133,8 @@ public static partial class PagingExtensions
         TOrigin origin,
         Expression<Func<TEntity, TOrigin>> selector)
     {
-        ArgumentNullException.ThrowIfNull(source, nameof(source));
-        ArgumentNullException.ThrowIfNull(origin, nameof(origin));
+        ArgumentNullException.ThrowIfNull(source);
+        ArgumentNullException.ThrowIfNull(origin);
 
         var seekCondition = OriginFilter.Create(source, origin, SeekDirection.Forward, selector);
 
@@ -146,8 +146,8 @@ public static partial class PagingExtensions
         this IQueryable<TEntity> source,
         TEntity origin)
     {
-        ArgumentNullException.ThrowIfNull(source, nameof(source));
-        ArgumentNullException.ThrowIfNull(origin, nameof(origin));
+        ArgumentNullException.ThrowIfNull(source);
+        ArgumentNullException.ThrowIfNull(origin);
 
         var seekCondition = OriginFilter.Create(source, origin, SeekDirection.Backwards);
 
@@ -163,8 +163,8 @@ public static partial class PagingExtensions
         TOrigin origin,
         Expression<Func<TEntity, TOrigin>> selector)
     {
-        ArgumentNullException.ThrowIfNull(source, nameof(source));
-        ArgumentNullException.ThrowIfNull(origin, nameof(origin));
+        ArgumentNullException.ThrowIfNull(source);
+        ArgumentNullException.ThrowIfNull(origin);
 
         var seekCondition = OriginFilter.Create(source, origin, SeekDirection.Backwards, selector);
 
@@ -182,7 +182,7 @@ public static partial class PagingExtensions
         bool backtrack)
         where TEntity : class?
     {
-        ArgumentNullException.ThrowIfNull(source, nameof(source));
+        ArgumentNullException.ThrowIfNull(source);
 
         var direction = backtrack
             ? SeekDirection.Backwards
@@ -216,7 +216,7 @@ public static partial class PagingExtensions
         this IQueryable<TEntity> source,
         CancellationToken cancel = default)
     {
-        ArgumentNullException.ThrowIfNull(source, nameof(source));
+        ArgumentNullException.ThrowIfNull(source);
 
         return new SeekQuery<TEntity>(source).ToSeekListAsync(cancel);
     }
@@ -231,7 +231,7 @@ public static partial class PagingExtensions
         where TEntity : class
         where TKey : struct
     {
-        ArgumentNullException.ThrowIfNull(source, nameof(source));
+        ArgumentNullException.ThrowIfNull(source);
 
         if (pageSize <= 0)
         {
@@ -258,7 +258,7 @@ public static partial class PagingExtensions
         where TEntity : class
         where TKey : class?
     {
-        ArgumentNullException.ThrowIfNull(source, nameof(source));
+        ArgumentNullException.ThrowIfNull(source);
 
         if (pageSize <= 0)
         {

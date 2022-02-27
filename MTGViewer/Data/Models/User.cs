@@ -17,7 +17,7 @@ public class UserRef
     [Key]
     public string Id { get; init; } = default!;
 
-    [StringLength(256)]
+    [StringLength(256, MinimumLength = 1)]
     public string Name { get; set; } = default!;
 
     public bool ResetRequested { get; set;  }

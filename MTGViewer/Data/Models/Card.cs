@@ -38,7 +38,7 @@ public class Card
 
     public Rarity Rarity { get; init; }
 
-    public Flip? Flip { get; set; }
+    public Flip? Flip { get; init; }
 
 
     public string? Text { get; init; }

@@ -45,7 +45,7 @@ internal sealed class OriginFilter<TEntity, TOrigin>
         SeekDirection direction, 
         Expression<Func<TEntity, TOrigin>>? selector)
     {
-        ArgumentNullException.ThrowIfNull(origin, nameof(origin));
+        ArgumentNullException.ThrowIfNull(origin);
 
         _query = query;
         _origin = origin;

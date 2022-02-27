@@ -33,7 +33,7 @@ public static partial class TreasuryExtensions
         int numCopies,
         CancellationToken cancel = default)
     {
-        ArgumentNullException.ThrowIfNull(dbContext, nameof(dbContext));
+        ArgumentNullException.ThrowIfNull(dbContext);
 
         var request = new []{ new CardRequest(card, numCopies) };
 
@@ -46,7 +46,7 @@ public static partial class TreasuryExtensions
         IEnumerable<CardRequest> adding, 
         CancellationToken cancel = default)
     {
-        ArgumentNullException.ThrowIfNull(dbContext, nameof(dbContext));
+        ArgumentNullException.ThrowIfNull(dbContext);
 
         adding = AsAddRequests(adding); 
 
@@ -73,7 +73,7 @@ public static partial class TreasuryExtensions
 
     private static IReadOnlyList<CardRequest> AsAddRequests(IEnumerable<CardRequest>? requests)
     {
-        ArgumentNullException.ThrowIfNull(requests, nameof(requests));
+        ArgumentNullException.ThrowIfNull(requests);
 
         return requests
             .OfType<CardRequest>()
@@ -108,8 +108,8 @@ public static partial class TreasuryExtensions
         Deck deck, 
         CancellationToken cancel = default)
     {
-        ArgumentNullException.ThrowIfNull(dbContext, nameof(dbContext));
-        ArgumentNullException.ThrowIfNull(deck, nameof(deck));
+        ArgumentNullException.ThrowIfNull(dbContext);
+        ArgumentNullException.ThrowIfNull(deck);
 
         var entry = dbContext.Entry(deck);
 
@@ -144,7 +144,7 @@ public static partial class TreasuryExtensions
         this CardDbContext dbContext,
         CancellationToken cancel = default)
     {
-        ArgumentNullException.ThrowIfNull(dbContext, nameof(dbContext));
+        ArgumentNullException.ThrowIfNull(dbContext);
 
         if (AreBoxesUnchanged(dbContext) && AreAmountsUnchanged(dbContext))
         {

@@ -15,8 +15,6 @@ namespace MTGViewer.Services;
 
 public sealed class MtgApiFlipQuery
 {
-    private const string FaceSplit = "//";
-
     private readonly ICardService _cardService;
     private readonly ILogger<MtgApiFlipQuery> _logger;
 
@@ -27,11 +25,11 @@ public sealed class MtgApiFlipQuery
     }
 
 
-    public bool HasFlip(Card card)
+    public bool HasFlip(string cardName)
     {
-        ArgumentNullException.ThrowIfNull(card, nameof(card));
+        const string faceSplit = "//";
 
-        return card.Name.Contains(FaceSplit);
+        return cardName.Contains(faceSplit);
     }
 
 
@@ -39,24 +37,46 @@ public sealed class MtgApiFlipQuery
         IOperationResult<ICard> result,
         CancellationToken cancel)
     {
-        if (LoggedUnwrap(result) is not ICard iCard
-            || GetValidatedCard(iCard) is not Card card)
+        if (LoggedUnwrap(result) is not ICard iCard)
         {
             return null;
         }
 
-        if (!HasFlip(card))
-        {
-            return card;
-        }
+        bool hasFlip = HasFlip(iCard.Name);
 
-        if (await GetFlipAsync(card, cancel) is not Flip flip)
+        var flip = hasFlip
+            ? await GetFlipAsync(iCard, cancel)
+            : null;
+
+        if (hasFlip && flip is null)
         {
             return null;
         }
 
-        card.Flip = flip;
-        return card;
+        return GetValidatedCard(iCard, flip);
+    }
+    
+
+    private async ValueTask<Flip?> GetFlipAsync(ICard card, CancellationToken cancel)
+    {
+        var result = await _cardService
+            .Where(c => c.ColorIdentity, string.Join(MtgApiQuery.And, card.ColorIdentity))
+            .Where(c => c.Name, card.Name)
+            .Where(c => c.Set, card.Set)
+            .Where(c => c.Layout, card.Layout)
+            .AllAsync();
+
+        cancel.ThrowIfCancellationRequested();
+
+        var iFlip = LoggedUnwrap(result)
+            ?.FirstOrDefault(c => c.Id != card.Id && c.MultiverseId is not null);
+
+        if (iFlip is null)
+        {
+            return null;
+        }
+
+        return GetValidatedFlip(iFlip);
     }
 
 
@@ -84,68 +104,45 @@ public sealed class MtgApiFlipQuery
     }
 
 
+
     private async ValueTask<Card?> CardWithFlipAsync(Queue<ICard> cardGroup, CancellationToken cancel)
     {
-        if (!cardGroup.TryDequeue(out var iCard)
-            || GetValidatedCard(iCard) is not Card card)
+        if (!cardGroup.TryDequeue(out var iCard))
         {
             return null;
         }
 
-        if (!HasFlip(card))
+        bool hasFlip = HasFlip(iCard.Name);
+
+        // has to search for an individual card, which is very inefficient
+
+        var flip = hasFlip
+            ? await GetFlipAsync(iCard, cardGroup, cancel)
+            : null;
+
+        if (flip is null && hasFlip)
         {
-            return card;
+            return null;
         }
 
+        return GetValidatedCard(iCard, flip);
+    }
+
+
+    private async ValueTask<Flip?> GetFlipAsync(ICard card, Queue<ICard> cardGroup, CancellationToken cancel)
+    { 
         if (cardGroup.TryDequeue(out var iFlip)
             && GetValidatedFlip(iFlip) is Flip groupFlip)
         {
             // assume closest multiverseId card is the flip
             // keep eye on
 
-            card.Flip = groupFlip;
-            return card;
+            return groupFlip;
         }
 
-        // has to search for an individual card, which is very inefficient
-
-        if (await GetFlipAsync(card, cancel) is not Flip flip)
-        {
-            return null;
-        }
-
-        card.Flip = flip;
-        return card;
+        return await GetFlipAsync(card, cancel);
     }
 
-
-
-    private async ValueTask<Flip?> GetFlipAsync(Card card, CancellationToken cancel)
-    {
-        var colors = Enum
-            .GetValues<Color>()
-            .Where(c => c is not Color.None && card.Color.HasFlag(c))
-            .Select(c => Symbol.Colors[c]);
-
-        var result = await _cardService
-            .Where(c => c.ColorIdentity, string.Join(MtgApiQuery.And, colors))
-            .Where(c => c.Name, card.Name)
-            .Where(c => c.SetName, card.SetName)
-            .Where(c => c.Layout, card.Layout)
-            .AllAsync();
-
-        cancel.ThrowIfCancellationRequested();
-
-        var iFlip = LoggedUnwrap(result)
-            ?.FirstOrDefault(c => c.Id != card.Id && c.MultiverseId is not null);
-
-        if (iFlip is null)
-        {
-            return null;
-        }
-
-        return GetValidatedFlip(iFlip);
-    }
 
 
     private T? LoggedUnwrap<T>(IOperationResult<T> result) where T : class
@@ -160,7 +157,7 @@ public sealed class MtgApiFlipQuery
     }
 
 
-    private Card? GetValidatedCard(ICard iCard)
+    private Card? GetValidatedCard(ICard iCard, Flip? flip)
     {
         if (!Enum.TryParse(iCard.Rarity, true, out Rarity rarity))
         {
@@ -187,6 +184,7 @@ public sealed class MtgApiFlipQuery
             Type = iCard.Type,
             Rarity = rarity,
             SetName = iCard.SetName,
+            Flip = flip,
 
             Text = iCard.Text,
             Flavor = iCard.Flavor,

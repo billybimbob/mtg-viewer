@@ -186,10 +186,14 @@ public class IndexModel : PageModel
             Owner = user
         };
 
+        _dbContext.Decks.Attach(claimed);
+
         claimed.Cards.AddRange(unclaimed.Cards);
         claimed.Wants.AddRange(unclaimed.Wants);
 
-        _dbContext.Decks.Update(claimed);
+        unclaimed.Cards.Clear();
+        unclaimed.Wants.Clear();
+
         _dbContext.Unclaimed.Remove(unclaimed);
 
         try

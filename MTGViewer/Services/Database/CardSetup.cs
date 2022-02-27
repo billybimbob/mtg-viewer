@@ -42,8 +42,10 @@ internal class CardSetup : IHostedService
             return;
         }
 
-        bool anyCards = await dbContext.Cards.AnyAsync(cancel);
-        if (anyCards)
+        bool notEmpty = await dbContext.Cards.AnyAsync(cancel)
+            || await userContext.Users.AnyAsync(cancel);
+
+        if (notEmpty)
         {
             return;
         }

@@ -50,7 +50,7 @@ public class SeekList<T> : IReadOnlyList<T>
 
     public SeekList(Seek<T> seek, IReadOnlyList<T> items)
     {
-        ArgumentNullException.ThrowIfNull(items, nameof(items));
+        ArgumentNullException.ThrowIfNull(items);
 
         Seek = seek;
 

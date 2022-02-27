@@ -579,7 +579,10 @@ public class TestDataGenerator
             .Select(ck => ck.card)
             .ToList();
 
-        var unclaimed = new Unclaimed();
+        var unclaimed = new Unclaimed()
+        {
+            Name = "Test Unclaimed"
+        };
 
         var amounts = targetCards
             .Take(_random.Next(1, targetCards.Count))
@@ -723,7 +726,11 @@ public class TestDataGenerator
             .Take(_random.Next(1, 4))
             .ToListAsync();
 
-        var deck = new Deck { Owner = user };
+        var deck = new Deck
+        {
+            Name = "Test Deck",
+            Owner = user
+        };
 
         var amounts = card
             .Select(c => new Amount

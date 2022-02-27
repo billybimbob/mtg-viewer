@@ -30,6 +30,7 @@ public class IndexModel : PageModel
     public string? StatusMessage { get; set; }
 
     [BindProperty]
+    [Required]
     [StringLength(256)]
     [Display(Name = "User Name")]
     public string? UserName { get; set; }

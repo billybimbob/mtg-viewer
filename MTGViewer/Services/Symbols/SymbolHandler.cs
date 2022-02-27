@@ -95,7 +95,7 @@ public static class SymbolExtensions
 
     public static string SymbolString(this ISymbolTranslator translator, TextSymbol symbol)
     {
-        ArgumentNullException.ThrowIfNull(translator, nameof(translator));
+        ArgumentNullException.ThrowIfNull(translator);
 
         return symbol switch
         {
@@ -111,8 +111,8 @@ public static class SymbolExtensions
     public static string ManaString(
         this ISymbolTranslator translator, string mana)
     {
-        ArgumentNullException.ThrowIfNull(translator, nameof(translator));
-        ArgumentNullException.ThrowIfNull(mana, nameof(mana));
+        ArgumentNullException.ThrowIfNull(translator);
+        ArgumentNullException.ThrowIfNull(mana);
 
         return translator.ManaString(new ManaSymbol(default, mana));
     }
@@ -121,8 +121,8 @@ public static class SymbolExtensions
     public static string LoyaltyString(
         this ISymbolTranslator translator, string? direction, string value)
     {
-        ArgumentNullException.ThrowIfNull(translator, nameof(translator));
-        ArgumentNullException.ThrowIfNull(value, nameof(value));
+        ArgumentNullException.ThrowIfNull(translator);
+        ArgumentNullException.ThrowIfNull(value);
 
         return translator.LoyaltyString(new LoyaltySymbol(default, direction, value));
     }
@@ -131,8 +131,8 @@ public static class SymbolExtensions
     public static string SagaString(
         this ISymbolTranslator translator, string saga, bool hasNext = default)
     {
-        ArgumentNullException.ThrowIfNull(translator, nameof(translator));
-        ArgumentNullException.ThrowIfNull(saga, nameof(saga));
+        ArgumentNullException.ThrowIfNull(translator);
+        ArgumentNullException.ThrowIfNull(saga);
 
         return translator.SagaString(new SagaSymbol(default, saga, hasNext));
     }

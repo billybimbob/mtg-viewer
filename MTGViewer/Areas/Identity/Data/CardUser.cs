@@ -7,7 +7,7 @@ namespace MTGViewer.Areas.Identity.Data;
 public class CardUser : IdentityUser
 {
     [PersonalData]
-    [StringLength(256)]
+    [StringLength(256, MinimumLength = 1)]
     [Display(Name = "Name")]
     public string DisplayName { get; set; } = default!;
 

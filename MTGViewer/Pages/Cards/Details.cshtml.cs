@@ -32,13 +32,8 @@ public class DetailsModel : PageModel
     public string? ReturnUrl { get; private set; }
 
 
-    public async Task<IActionResult> OnGetAsync(string? id, bool flip, string? returnUrl, CancellationToken cancel)
+    public async Task<IActionResult> OnGetAsync(string id, bool flip, string? returnUrl, CancellationToken cancel)
     {
-        if (id is null)
-        {
-            return NotFound();
-        }
-
         var card = await CardForDetails(id, flip).SingleOrDefaultAsync(cancel);
 
         if (card == default)
@@ -68,6 +63,7 @@ public class DetailsModel : PageModel
             .Include(c => c.Amounts
                 .OrderBy(a => a.Location.Name))
                 .ThenInclude(a => a.Location)
+            .OrderBy(c => c.Id)
             .AsNoTrackingWithIdentityResolution();
 
         return flip ? cards.Include(c => c.Flip) : cards;

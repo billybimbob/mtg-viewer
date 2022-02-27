@@ -84,7 +84,8 @@ public class DeleteModel : PageModel
             .Where(c => c.Id == cardId)
             .Include(c => c.Amounts
                 .OrderBy(a => a.NumCopies))
-                .ThenInclude(a => a.Location);
+                .ThenInclude(a => a.Location)
+            .OrderBy(c => c.Id);
     }
 
 
@@ -112,6 +113,11 @@ public class DeleteModel : PageModel
             || maxCopies < Input.RemoveCopies)
         {
             Card = card;
+
+            ModelState.AddModelError(
+                $"{nameof(InputModel)}.{nameof(InputModel.RemoveCopies)}",
+                "Amount of remove copies is invalid");
+
             return Page();
         }
 
