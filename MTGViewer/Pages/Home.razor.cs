@@ -29,13 +29,13 @@ public partial class Home : ComponentBase, IDisposable
 
     public bool IsFullyLoaded => !_randomContext?.HasMore ?? true;
 
-    public IReadOnlyList<CardPreview> RandomCards => _randomContext?.Cards ?? Array.Empty<CardPreview>();
+    public IReadOnlyList<CardImage> RandomCards => _randomContext?.Cards ?? Array.Empty<CardImage>();
 
-    public IReadOnlyList<Transaction> RecentChanges => _recentChanges;
+    public IReadOnlyList<TransactionPreview> RecentChanges => _recentChanges;
 
     public bool IsEmptyCollection => !_randomContext?.Cards.Any() ?? false;
 
-    public bool IsImageLoaded(CardPreview card) =>
+    public bool IsImageLoaded(CardImage card) =>
         _randomContext?.LoadedImages.Contains(card.Id) ?? false;
 
 
@@ -47,7 +47,7 @@ public partial class Home : ComponentBase, IDisposable
     private DateTime _currentTime;
 
     private RandomCardsContext? _randomContext;
-    private IReadOnlyList<Transaction> _recentChanges = Array.Empty<Transaction>();
+    private IReadOnlyList<TransactionPreview> _recentChanges = Array.Empty<TransactionPreview>();
 
 
     protected override async Task OnInitializedAsync()
@@ -91,16 +91,16 @@ public partial class Home : ComponentBase, IDisposable
 
 
 
-    public static string CardNames(IEnumerable<Change> changes)
+    public static string CardNames(IEnumerable<ChangePreview> changes)
     {
         var cardNames = changes
-            .GroupBy(c => c.Card.Name, (name, _) => name);
+            .GroupBy(c => c.CardName, (name, _) => name);
 
         return string.Join(", ", cardNames);
     }
 
 
-    public string ElapsedTime(Transaction transaction)
+    public string ElapsedTime(TransactionPreview transaction)
     {
         var elapsed = _currentTime - transaction.AppliedAt;
 
@@ -142,7 +142,7 @@ public partial class Home : ComponentBase, IDisposable
     }
 
 
-    public void CardImageLoaded(CardPreview card)
+    public void CardImageLoaded(CardImage card)
     {
         if (_randomContext is null || card?.Id is not string cardId)
         {
@@ -154,18 +154,16 @@ public partial class Home : ComponentBase, IDisposable
 
 
 
-    public record CardPreview(string Id, string Name, string ImageUrl);
-
 
     private class RandomCardsContext
     {
-        private readonly List<CardPreview> _cards;
+        private readonly List<CardImage> _cards;
         private readonly HashSet<string> _imageLoaded;
         private readonly IReadOnlyList<string[]> _loadOrder;
         private readonly int _limit;
 
         public ICollection<string> LoadedImages => _imageLoaded;
-        public IReadOnlyList<CardPreview> Cards => _cards;
+        public IReadOnlyList<CardImage> Cards => _cards;
         public bool HasMore => _cards.Count < _limit;
 
 
@@ -233,14 +231,19 @@ public partial class Home : ComponentBase, IDisposable
     }
 
 
-    private static ValueTask<List<CardPreview>> CardChunkAsync(
+    private static ValueTask<List<CardImage>> CardChunkAsync(
         CardDbContext dbContext, 
         string[] chunk,
         CancellationToken cancel)
     {
         var chunkPreview = dbContext.Cards
             .Where(c => chunk.Contains(c.Id))
-            .Select(c => new CardPreview(c.Id, c.Name, c.ImageUrl))
+            .Select(c => new CardImage
+            {
+                Id = c.Id,
+                Name = c.Name,
+                ImageUrl = c.ImageUrl
+            })
             .AsAsyncEnumerable();
 
         // preserve order of chunk
@@ -254,7 +257,7 @@ public partial class Home : ComponentBase, IDisposable
     }
 
 
-    private static Task<List<Transaction>> RecentTransactionsAsync(
+    private static Task<List<TransactionPreview>> RecentTransactionsAsync(
         CardDbContext dbContext,
         CancellationToken cancel)
     {
@@ -263,25 +266,23 @@ public partial class Home : ComponentBase, IDisposable
                 .Any(c => c.To is Deck && c.From is Box
                     || c.To is Box && (c.From == null || c.From is Deck)))
 
-            .Include(t => t.Changes // unbounded, keep eye on
-                .Where(c => c.To is Deck && c.From is Box
-                    || c.To is Box && (c.From == null || c.From is Deck))
-                .OrderBy(c => c.Card.Name))
-
-            .Include(t => t.Changes)
-                .ThenInclude(c => c.Card)
-
-            .Include(t => t.Changes)
-                .ThenInclude(c => c.From)
-
-            .Include(t => t.Changes)
-                .ThenInclude(c => c.To)
-
             .OrderByDescending(t => t.AppliedAt)
                 .ThenBy(t => t.Id)
 
             .Take(ChunkSize)
-            .AsNoTrackingWithIdentityResolution()
+            .Select(t => new TransactionPreview
+            {
+                AppliedAt = t.AppliedAt,
+                Total = t.Changes.Sum(c => c.Amount),
+                Changes = t.Changes
+                    .OrderBy(c => c.Card.Name)
+                    .Select(c => new ChangePreview
+                    {
+                        ToBox = c.To is Box,
+                        FromBox = c.From is Box,
+                        CardName = c.Card.Name
+                    }),
+            })
             .ToListAsync(cancel);
     }
 

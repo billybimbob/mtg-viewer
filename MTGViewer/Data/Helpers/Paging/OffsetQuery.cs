@@ -2,26 +2,28 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Threading;
 using System.Threading.Tasks;
+
 using Microsoft.EntityFrameworkCore;
 
 namespace System.Paging;
 
-internal class OffsetQuery<T>
+internal class OffsetQuery<TResult>
 {
-    private readonly IQueryable<T> _source;
+    private readonly IQueryable<TResult> _query;
     private readonly PageInfo _pageInfo;
 
-    public OffsetQuery(IQueryable<T> source)
+
+    public OffsetQuery(IQueryable<TResult> query)
     {
-        if (GetPageInfo.Visit(source.Expression)
+        if (GetPageInfo.Visit(query.Expression)
             is not ConstantExpression constant
             || constant.Value is not PageInfo pageInfo)
         {
             throw new ArgumentException(
-                $"{nameof(source)} must have a \"Skip\" followed by a \"Take\"");
+                $"{nameof(query)} must have a \"Skip\" followed by a \"Take\"");
         }
 
-        _source = source;
+        _query = query;
         _pageInfo = pageInfo;
     }
 
@@ -33,9 +35,9 @@ internal class OffsetQuery<T>
     private static ExpressionVisitor RemoveOffset => _removeOffset ??= new();
 
 
-    public OffsetList<T> ToOffsetList()
+    public OffsetList<TResult> ToOffsetList()
     {
-        int totalItems = _source
+        int totalItems = _query
             .Visit(RemoveOffset)
             .Count();
 
@@ -43,15 +45,15 @@ internal class OffsetQuery<T>
 
         var offset = new Offset(index, totalItems, size);
 
-        var items = _source.ToList();
+        var items = _query.ToList();
 
-        return new OffsetList<T>(offset, items);
+        return new OffsetList<TResult>(offset, items);
     }
 
 
-    public async Task<OffsetList<T>> ToOffsetListAsync(CancellationToken cancel = default)
+    public async Task<OffsetList<TResult>> ToOffsetListAsync(CancellationToken cancel = default)
     {
-        int totalItems = await _source
+        int totalItems = await _query
             .Visit(RemoveOffset)
             .CountAsync(cancel)
             .ConfigureAwait(false);
@@ -60,11 +62,11 @@ internal class OffsetQuery<T>
 
         var offset = new Offset(index, totalItems, size);
 
-        var items = await _source
+        var items = await _query
             .ToListAsync(cancel)
             .ConfigureAwait(false);
 
-        return new OffsetList<T>(offset, items);
+        return new OffsetList<TResult>(offset, items);
     }
 
 
@@ -75,13 +77,13 @@ internal class OffsetQuery<T>
     {
         protected override Expression VisitMethodCall(MethodCallExpression node)
         {
-            if (node.Method == ExpressionConstants.GetQueryableSkip<T>()
+            if (node.Method.GetGenericMethodDefinition() == ExpressionConstants.QueryableSkip
                 && node.Arguments.ElementAtOrDefault(1) is ConstantExpression skip)
             {
                 return skip;
             }
 
-            if (node.Method == ExpressionConstants.GetQueryableTake<T>()
+            if (node.Method.GetGenericMethodDefinition() == ExpressionConstants.QueryableTake
 
                 && node.Arguments.ElementAtOrDefault(1)
                     is ConstantExpression take
@@ -93,6 +95,11 @@ internal class OffsetQuery<T>
                 && take.Value is int pageSize)
             {
                 return Expression.Constant(new PageInfo(skipBy / pageSize, pageSize));
+            }
+
+            if (node.Arguments.ElementAtOrDefault(0) is Expression caller)
+            {
+                return Visit(caller);
             }
 
             return base.VisitMethodCall(node);
@@ -109,14 +116,19 @@ internal class OffsetQuery<T>
                 return node;
             }
 
-            if (node.Method == ExpressionConstants.GetQueryableTake<T>())
+            if (node.Method.GetGenericMethodDefinition() == ExpressionConstants.QueryableTake)
             {
                 return Visit(parent);
             }
 
-            if (node.Method == ExpressionConstants.GetQueryableSkip<T>())
+            if (node.Method.GetGenericMethodDefinition() == ExpressionConstants.QueryableSkip)
             {
                 return Visit(parent);
+            }
+
+            if (node.Object is not null)
+            {
+                return node;
             }
 
             return base.VisitMethodCall(node);

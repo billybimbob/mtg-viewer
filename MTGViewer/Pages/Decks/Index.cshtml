@@ -58,15 +58,15 @@
                             @MtgSymbols.Format(CardText.ColorString(deck.Color)).ToHtmlString()
                         </div>
                     </td>
-                    <td> @deck.Cards.Sum(a => a.NumCopies) </td>
+                    <td> @deck.CardTotal </td>
 
                     <td>
-                        @if (state is IndexModel.State.Requesting && canChangeTreasury)
+                        @if (state is BuildState.Requesting && canChangeTreasury)
                         {
                             <a asp-page="/Transfers/Status" asp-route-deckid="@deck.Id">
                                 @state.ToString() </a>
                         }
-                        else if (state is IndexModel.State.Theorycraft && canChangeTreasury)
+                        else if (state is BuildState.Theorycraft && canChangeTreasury)
                         {
                             <a asp-page="Exchange" asp-route-id="@deck.Id">
                                 @state.ToString() </a>
@@ -78,7 +78,7 @@
                     </td>
                     
                     <td class="btn-group" role="group">
-                        @if (state is not IndexModel.State.Requesting && canChangeTreasury)
+                        @if (state is not BuildState.Requesting && canChangeTreasury)
                         {
                             <a href="/Decks/Craft/@deck.Id"
                                 class="btn btn-secondary" role="button">
@@ -112,4 +112,4 @@
 </div>
 
 
-<component type="typeof(SeekPaging<Deck>)" render-mode="Static" param-Seek="Model.Decks.Seek" />
+<component type="typeof(SeekPaging<int>)" render-mode="Static" param-Seek="Model.Decks.Seek" />

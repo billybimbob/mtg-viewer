@@ -24,7 +24,7 @@ public class ExcessModel : PageModel
     }
 
 
-    public SeekList<Card> Cards { get; private set; } = SeekList<Card>.Empty;
+    public SeekList<Card, string> Cards { get; private set; } = SeekList<Card, string>.Empty;
 
     public bool HasExcess =>
         Cards.Any()
@@ -44,7 +44,8 @@ public class ExcessModel : PageModel
         }
 
         Cards = await ExcessCards()
-            .ToSeekListAsync(seek, _pageSize, backtrack, cancel);
+            .SeekBy(c => c.Id, seek, _pageSize, backtrack)
+            .ToSeekListAsync(cancel);
 
         return Page();
     }

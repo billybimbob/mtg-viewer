@@ -24,7 +24,7 @@ public class DetailsModel : PageModel
     }
 
 
-    public Seek<Amount> Seek { get; private set; }
+    public Seek<int> Seek { get; private set; }
 
     public Box Box { get; private set; } = default!;
 
@@ -47,7 +47,8 @@ public class DetailsModel : PageModel
         }
 
         var cards = await BoxCards(id)
-            .ToSeekListAsync(seek, _pageSize, backtrack, cancel);
+            .SeekBy(b => b.Id, seek, _pageSize, backtrack)
+            .ToSeekListAsync(cancel);
 
         if (!cards.Any())
         {

@@ -34,7 +34,7 @@ public class SeekListTests : IAsyncLifetime
         int pageSize = Math.Min(10, await cards.CountAsync() / 2);
 
         var seekList = await cards
-            .SeekBy(null, pageSize, false)
+            .SeekBy(c => c.Id, null as string, pageSize, false)
             .ToSeekListAsync();
 
         var firstCards = await cards
@@ -58,7 +58,7 @@ public class SeekListTests : IAsyncLifetime
         int pageSize = Math.Min(10, await cards.CountAsync() / 2);
 
         var seekList = await cards
-            .SeekBy(null, pageSize, false)
+            .SeekBy(c => c.Id, null as string, pageSize, false)
             .ToSeekListAsync();
 
         var firstCards = await cards
@@ -87,7 +87,7 @@ public class SeekListTests : IAsyncLifetime
 
         Task SeekListAsync() => cards
             .SeekBy(seek, pageSize, false)
-            .ToSeekListAsync();
+            .ToSeekListAsync(c => c.Id);
 
         await Assert.ThrowsAsync<InvalidOperationException>(SeekListAsync);
     }
@@ -106,7 +106,7 @@ public class SeekListTests : IAsyncLifetime
 
         var seekList = await cards
             .SeekBy(seek, pageSize, false)
-            .ToSeekListAsync();
+            .ToSeekListAsync(c => c.Id);
 
         Assert.NotNull(seekList.Seek.Previous);
 
@@ -128,7 +128,7 @@ public class SeekListTests : IAsyncLifetime
 
         var seekList = await cards
             .SeekBy(seek, pageSize, true)
-            .ToSeekListAsync();
+            .ToSeekListAsync(c => c.Id);
 
         Assert.Null(seekList.Seek.Previous);
 
@@ -153,7 +153,7 @@ public class SeekListTests : IAsyncLifetime
 
         var seekList = await cards
             .SeekBy(seek, pageSize, false)
-            .ToSeekListAsync();
+            .ToSeekListAsync(c => c.Id);
 
         Assert.NotNull(seekList.Seek.Previous);
 
@@ -179,7 +179,7 @@ public class SeekListTests : IAsyncLifetime
 
         var seekList = await cards
             .SeekBy(seek, pageSize, true)
-            .ToSeekListAsync();
+            .ToSeekListAsync(c => c.Id);
 
         Assert.NotNull(seekList.Seek.Previous);
 
@@ -208,7 +208,7 @@ public class SeekListTests : IAsyncLifetime
 
         var seekList = await cards
             .SeekBy(seek, pageSize, false)
-            .ToSeekListAsync();
+            .ToSeekListAsync(c => c.Id);
 
         Assert.NotNull(seekList.Seek.Previous);
 
@@ -292,7 +292,7 @@ public class SeekListTests : IAsyncLifetime
 
         var seekList = await changes
             .SeekBy(seek, pageSize, false)
-            .ToSeekListAsync();
+            .ToSeekListAsync(c => c.Id);
 
         Assert.NotNull(seekList.Seek.Previous);
 

@@ -169,7 +169,7 @@ internal class PredicateVisitor : ExpressionVisitor
             return CallQuery(propertyName, Visit(node.Arguments[0]));
         }
 
-        if (node.Method == ExpressionConstants.GetEnumerableAny<string>()
+        if (node.Method == ExpressionConstants.EnumerableAny.MakeGenericMethod(typeof(string))
             && Visit(node.Arguments[1]) is MethodCallExpression innerQuery
             && innerQuery.Method == MtgApiQuery.QueryMethod
             && innerQuery.Arguments[1] is ConstantExpression innerProperty

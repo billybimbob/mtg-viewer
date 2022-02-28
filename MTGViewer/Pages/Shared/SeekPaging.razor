@@ -1,7 +1,6 @@
-@typeparam TEntity where TEntity : class
+@typeparam TEntity where TEntity : IEquatable<TEntity>
 
 @inject NavigationManager Nav
-@using MTGViewer.Data.Internal
 
 @if (HasPrevious || HasNext)
 {
@@ -75,9 +74,11 @@
     [Parameter]
     public EventCallback<TEntity> ChangePage { get; set; }
 
-    public bool HasPrevious => Seek.Previous is not null;
+    public bool HasPrevious =>
+        Seek.Previous is TEntity previous && !previous.Equals(default);
 
-    public bool HasNext => Seek.Next is not null;
+    public bool HasNext =>
+        Seek.Next is TEntity next && !next.Equals(default);
 
 
     private bool _isBusy;
@@ -108,8 +109,8 @@
 
     protected override void OnParametersSet()
     {
-        _previous["seek"] = GetKey(Seek.Previous);
-        _next["seek"] = GetKey(Seek.Next);
+        _previous["seek"] = Seek.Previous;
+        _next["seek"] = Seek.Next;
     }
 
 
@@ -165,17 +166,4 @@
         }
     }
 
-
-
-    private static object? GetKey(TEntity? entity)
-    {
-        if (entity is null)
-        {
-            return null;
-        }
-
-        var keyProperty = EntityExtensions.GetKeyProperty<TEntity>();
-
-        return keyProperty.GetValue(entity);
-    }
 }

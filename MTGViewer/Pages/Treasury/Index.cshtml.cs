@@ -29,7 +29,7 @@ public class IndexModel : PageModel
 
     public IReadOnlyList<Bin> Bins { get; private set; } = Array.Empty<Bin>();
 
-    public Seek<Box> Seek { get; private set; }
+    public Seek<int> Seek { get; private set; }
 
     public bool HasExcess { get; private set; }
 
@@ -39,7 +39,8 @@ public class IndexModel : PageModel
     public async Task OnGetAsync(int? seek, bool backtrack, CancellationToken cancel)
     {
         var boxes = await BoxesForViewing()
-            .ToSeekListAsync(seek, _pageSize, backtrack, cancel);
+            .SeekBy(b => b.Id, seek, _pageSize, backtrack)
+            .ToSeekListAsync(cancel);
 
         _boxSpace = await _dbContext.Boxes
             .Select(b => new { b.Id, Total = b.Cards.Sum(a => a.NumCopies) })

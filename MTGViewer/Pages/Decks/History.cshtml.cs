@@ -58,7 +58,7 @@ public class HistoryModel : PageModel
     public IReadOnlyList<Transfer> Transfers { get; private set; } =
         Array.Empty<Transfer>();
 
-    public Seek<Change> Seek { get; private set; }
+    public Seek<int> Seek { get; private set; }
 
     public TimeZoneInfo TimeZone { get; private set; } = TimeZoneInfo.Utc;
 
@@ -78,7 +78,8 @@ public class HistoryModel : PageModel
         }
 
         var changes = await ChangesForHistory(id)
-            .ToSeekListAsync(seek, _pageSize, backtrack, cancel);
+            .SeekBy(c => c.Id, seek, _pageSize, backtrack)
+            .ToSeekListAsync(cancel);
 
         var firstTransfers = changes
             .Select(c => (c.TransactionId, c.ToId, c.FromId))

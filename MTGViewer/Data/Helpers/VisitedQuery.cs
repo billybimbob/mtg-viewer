@@ -5,9 +5,9 @@ namespace System.Linq.Expressions;
 
 internal class VisitedQuery<T> : IQueryable<T>
 {
-    private readonly IQueryable<T> _source;
+    private readonly IQueryable _source;
 
-    public VisitedQuery(IQueryable<T> source, ExpressionVisitor visitor)
+    public VisitedQuery(IQueryable source, ExpressionVisitor visitor)
     {
         var visited = visitor.Visit(source.Expression);
 
@@ -53,5 +53,11 @@ internal static partial class QueryVisitExtensions
     internal static IQueryable<T> Visit<T>(this IQueryable<T> source, ExpressionVisitor visitor)
     {
         return new VisitedQuery<T>(source, visitor);
+    }
+
+
+    internal static IQueryable<TResult> Visit<TResult>(this IQueryable source, ExpressionVisitor visitor)
+    {
+        return new VisitedQuery<TResult>(source, visitor);
     }
 }

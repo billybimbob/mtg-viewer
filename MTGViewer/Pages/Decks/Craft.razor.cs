@@ -50,7 +50,7 @@ public partial class Craft : OwningComponentBase
 
     public bool IsBusy => _isBusy;
 
-    public OffsetList<Card> Treasury => _pagedCards ?? OffsetList<Card>.Empty;
+    public OffsetList<CardTotal> Treasury => _pagedCards ?? OffsetList<CardTotal>.Empty;
 
     public string DeckName =>
         _deckContext?.Deck.Name is string name && !string.IsNullOrWhiteSpace(name) 
@@ -71,8 +71,7 @@ public partial class Craft : OwningComponentBase
     private DeckContext? _deckContext;
 
     private readonly TreasuryFilters _treasuryFilters = new();
-    private readonly Dictionary<string, int> _boxCopies = new();
-    private OffsetList<Card>? _pagedCards;
+    private OffsetList<CardTotal>? _pagedCards;
 
 
     protected override async Task OnInitializedAsync()
@@ -238,17 +237,9 @@ public partial class Craft : OwningComponentBase
 
         dbContext.Cards.AttachRange(_cards);
 
-        var newCards = await FilteredCardsAsync(dbContext, filters, cancel);
-        var cardAmounts = await BoxAmountsAsync(dbContext, newCards, cancel);
+        _pagedCards = await FilteredCardsAsync(dbContext, filters, cancel);
 
-        foreach ((string cardId, int total) in cardAmounts)
-        {
-            _boxCopies[cardId] = total;
-        }
-
-        _cards.UnionWith(newCards);
-
-        _pagedCards = newCards;
+        _cards.UnionWith(_pagedCards.Select(c => c.Card));
     }
 
 
@@ -280,7 +271,7 @@ public partial class Craft : OwningComponentBase
     }
 
 
-    private static Task<OffsetList<Card>> FilteredCardsAsync(
+    private static Task<OffsetList<CardTotal>> FilteredCardsAsync(
         CardDbContext dbContext,
         TreasuryFilters filters,
         CancellationToken cancel)
@@ -312,6 +303,7 @@ public partial class Craft : OwningComponentBase
                 .ThenBy(c => c.Id)
 
             .PageBy(pageIndex, pageSize)
+            .Select(c => new CardTotal(c, c.Amounts.Sum(a => a.NumCopies)))
             .ToOffsetListAsync(cancel);
     }
 
@@ -343,8 +335,6 @@ public partial class Craft : OwningComponentBase
 
     public string ActiveColor(Color color) =>
         _treasuryFilters.PickedColors.HasFlag(color) ? "active" : string.Empty;
-
-    public int TreasuryCopies(Card card) => _boxCopies.GetValueOrDefault(card.Id);
 
     public void ToggleColor(Color color) => _treasuryFilters.ToggleColor(color);
 

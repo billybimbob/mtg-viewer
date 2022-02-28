@@ -2,27 +2,31 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Threading;
 using System.Threading.Tasks;
+
 using Microsoft.EntityFrameworkCore;
 
 namespace System.Paging;
 
 
-public class SeekQuery<T>
+public class SeekQuery<TEntity, TKey> where TKey : IEquatable<TKey>
 {
-    private readonly IQueryable<T> _source;
     private readonly SeekInfo _seekInfo;
 
-    public SeekQuery(IQueryable<T> source)
+    private readonly IQueryable<TEntity> _query;
+    private readonly Func<TEntity, TKey> _getKey;
+
+    public SeekQuery(IQueryable<TEntity> query, Func<TEntity, TKey> getKey)
     {
-        if (GetSeekInfo.Visit(source.Expression)
+        if (GetSeekInfo.Visit(query.Expression)
             is not ConstantExpression constant
             || constant.Value is not SeekInfo seekInfo)
         {
-            throw new ArgumentException($"{nameof(source)} must have a \"Take\"");
+            throw new ArgumentException($"{nameof(query)} must have a \"Take\"");
         }
 
         _seekInfo = seekInfo;
-        _source = source;
+        _query = query;
+        _getKey = getKey;
     }
 
 
@@ -33,23 +37,23 @@ public class SeekQuery<T>
     private static ExpressionVisitor RemoveSeekOffset => _lookAhead ??= new();
 
 
-    public async Task<SeekList<T>> ToSeekListAsync(CancellationToken cancel = default)
+    public async Task<SeekList<TEntity, TKey>> ToSeekListAsync(CancellationToken cancel = default)
     {
-        var items = await _source
+        var items = await _query
             .ToListAsync(cancel)
             .ConfigureAwait(false);
 
         (SeekDirection direction, bool hasOrigin, int size) = _seekInfo;
 
-        bool lookAhead = await _source
+        bool lookAhead = await _query
             .Visit(RemoveSeekOffset)
             .Skip(size)
             .AnyAsync(cancel)
             .ConfigureAwait(false);
 
-        var seek = new Seek<T>(items, direction, hasOrigin, lookAhead);
+        var seek = new Seek<TKey>(items.Select(_getKey), direction, hasOrigin, lookAhead);
 
-        return new SeekList<T>(seek, items);
+        return new SeekList<TEntity, TKey>(seek, items);
     }
 
 
@@ -58,9 +62,6 @@ public class SeekQuery<T>
 
     private class GetSeekInfoVisitor : ExpressionVisitor
     {
-        private static OriginFilterVisitor? _getOriginFilter;
-        private static ExpressionVisitor GetOriginFilter => _getOriginFilter ??= new();
-
         protected override Expression VisitMethodCall(MethodCallExpression node)
         {
             if (node.Arguments.ElementAtOrDefault(0) is not Expression parent)
@@ -68,17 +69,18 @@ public class SeekQuery<T>
                 return node;
             }
 
-            if (node.Method == ExpressionConstants.GetQueryableWhere<T>()
+            if (node.Method == ExpressionConstants.QueryableWhere.MakeGenericMethod(typeof(TEntity))
                 && node.Arguments.ElementAtOrDefault(1) is UnaryExpression quote
                 && quote.NodeType is ExpressionType.Quote
-                && GetOriginFilter.Visit(quote.Operand) is not DefaultExpression)
+                && OriginFilterVisitor.Instance.Visit(quote.Operand)
+                is not DefaultExpression)
             {
                 return ExpressionConstants.Null;
             }
 
             var visitedParent = Visit(parent);
 
-            if (node.Method == ExpressionConstants.GetQueryableTake<T>()
+            if (node.Method == ExpressionConstants.QueryableTake.MakeGenericMethod(typeof(TEntity))
                 && node.Arguments.ElementAtOrDefault(1) is ConstantExpression takeBy
                 && takeBy.Value is int take)
             {
@@ -89,7 +91,7 @@ public class SeekQuery<T>
                     new SeekInfo(SeekDirection.Forward, hasOrigin, take));
             }
 
-            if (node.Method != ExpressionConstants.GetQueryableReverse<T>())
+            if (node.Method != ExpressionConstants.QueryableReverse.MakeGenericMethod(typeof(TEntity)))
             {
                 return visitedParent;
             }
@@ -110,7 +112,7 @@ public class SeekQuery<T>
     {
         protected override Expression VisitLambda<TFunc>(Expression<TFunc> node)
         {
-            if (node.Parameters.ElementAtOrDefault(0)?.Type != typeof(T))
+            if (node.Parameters.ElementAtOrDefault(0)?.Type != typeof(TEntity))
             {
                 return Expression.Empty();
             }
@@ -159,6 +161,10 @@ public class SeekQuery<T>
 
             return Expression.Empty();
         }
+
+
+        private static OriginFilterVisitor? _instance;
+        public static ExpressionVisitor Instance => _instance ??= new();
     }
 
 
@@ -174,12 +180,12 @@ public class SeekQuery<T>
                 return node;
             }
 
-            if (node.Method == ExpressionConstants.GetQueryableTake<T>())
+            if (node.Method == ExpressionConstants.QueryableTake.MakeGenericMethod(typeof(TEntity)))
             {
                 return Visit(parent);
             }
 
-            if (node.Method == ExpressionConstants.GetQueryableReverse<T>())
+            if (node.Method == ExpressionConstants.QueryableReverse.MakeGenericMethod(typeof(TEntity)))
             {
                 return ReverseVisitor.Visit(parent);
             }
@@ -198,7 +204,7 @@ public class SeekQuery<T>
                 return node;
             }
 
-            if (node.Method == ExpressionConstants.GetQueryableTake<T>())
+            if (node.Method == ExpressionConstants.QueryableTake.MakeGenericMethod(typeof(TEntity)))
             {
                 return Visit(parent);
             }

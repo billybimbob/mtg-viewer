@@ -103,7 +103,7 @@
             @foreach (var card in Cards)
             {
                 <tr>
-                    <td> <HoverCard Target="card"/> </td>
+                    <td> <HoverCard Preview="card"/> </td>
 
                     <td>
                         <div class="ms-group">
@@ -112,7 +112,7 @@
                     </td>
                     <td> @card.SetName </td>
                     <td> @card.Rarity </td>
-                    <td> @CardTotal(card) </td>
+                    <td> @card.Total </td>
 
                     <AuthorizeView Policy="@CardPolicies.ChangeTreasury">
                         <td>

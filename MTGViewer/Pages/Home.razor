@@ -74,8 +74,8 @@
             @foreach (var transaction in RecentChanges)
             {
                 var changes = transaction.Changes;
-                var adds = changes.Where(c => c.To is Box);
-                var removes = changes.Where(c => c.From is Box);
+                var adds = changes.Where(c => c.ToBox);
+                var removes = changes.Where(c => c.FromBox);
 
                 <li class="list-group-item">
                     <div class="row justify-content-between">
@@ -97,7 +97,7 @@
                                     }
                                 </div>
                                 <span class="badge badge-secondary badge-pill">
-                                    @changes.Sum(c => c.Amount) 
+                                    @transaction.Total 
                                 </span>
                             </div>
                         </div>

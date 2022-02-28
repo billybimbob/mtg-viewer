@@ -44,7 +44,7 @@ public class IndexModel : PageModel
 
     public string UserName { get; private set; } = string.Empty;
 
-    public SeekList<Deck> TradeDecks { get; private set; } = SeekList<Deck>.Empty;
+    public SeekList<Deck, int> TradeDecks { get; private set; } = SeekList<Deck, int>.Empty;
 
     public IReadOnlyList<Suggestion> Suggestions { get; private set; } = Array.Empty<Suggestion>();
 
@@ -74,7 +74,8 @@ public class IndexModel : PageModel
         UserName = userName;
 
         TradeDecks = await DecksForIndex(userId)
-            .ToSeekListAsync(seek, _pageSize, backtrack, cancel);
+            .SeekBy(d => d.Id, seek, _pageSize, backtrack)
+            .ToSeekListAsync(cancel);
 
         Suggestions = await SuggestionsForIndex(userId).ToListAsync(cancel);
 

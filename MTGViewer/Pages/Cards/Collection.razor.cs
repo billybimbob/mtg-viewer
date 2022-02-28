@@ -32,9 +32,8 @@ public partial class Collection : ComponentBase, IDisposable
 
     public FilterContext Filters => _filters;
 
-    public OffsetList<Card> Cards => _loader.Cards ?? OffsetList<Card>.Empty;
+    public OffsetList<CardPreview> Cards => _loader.Cards ?? OffsetList<CardPreview>.Empty;
 
-    public int CardTotal(Card card) => _loader.CardTotal(card);
 
 
     private const int SearchNameLimit = 40;
@@ -285,18 +284,9 @@ public partial class Collection : ComponentBase, IDisposable
 
     private sealed class Loader
     {
-        private readonly HashSet<Card> _loadedCards = new();
-        private readonly Dictionary<string, int> _cardAmounts = new();
-        private OffsetList<Card>? _pagedCards;
+        private OffsetList<CardPreview>? _pagedCards;
 
-        public OffsetList<Card>? Cards => _pagedCards;
-
-        public int CardTotal(Card card)
-        {
-            ArgumentNullException.ThrowIfNull(card);
-
-            return _cardAmounts.GetValueOrDefault(card.Id);
-        }
+        public OffsetList<CardPreview>? Cards => _pagedCards;
 
 
         public async Task LoadCardsAsync(
@@ -306,27 +296,12 @@ public partial class Collection : ComponentBase, IDisposable
         {
             await using var dbContext = await dbFactory.CreateDbContextAsync(cancel);
 
-            dbContext.AttachRange(_loadedCards); // reuse prior card objs
-
-            var newCards = await FilteredCardsAsync(dbContext, filters, cancel);
-            var cardAmounts = await CardAmountsAsync(dbContext, newCards, cancel);
-
-            _loadedCards.UnionWith(newCards);
-
-            foreach ((string cardId, int total) in cardAmounts)
-            {
-                _cardAmounts[cardId] = total;
-            }
-
-            _pagedCards = newCards;
+            _pagedCards = await FilteredCardsAsync(dbContext, filters, cancel);
         }
     }
 
 
-
-    #region Fetch Queries
-
-    private static Task<OffsetList<Card>> FilteredCardsAsync(
+    private static Task<OffsetList<CardPreview>> FilteredCardsAsync(
         CardDbContext dbContext,
         FilterContext filters,
         CancellationToken cancel)
@@ -354,6 +329,16 @@ public partial class Collection : ComponentBase, IDisposable
 
         return CardsOrdered(cards, filters)
             .PageBy(pageIndex, pageSize)
+            .Select(c => new CardPreview
+            {
+                Id = c.Id,
+                Name = c.Name,
+                SetName = c.SetName,
+                ManaCost = c.ManaCost,
+                Rarity = c.Rarity,
+                ImageUrl = c.ImageUrl,
+                Total = c.Amounts.Sum(c => c.NumCopies)
+            })
             .ToOffsetListAsync(cancel);
     }
 
@@ -407,27 +392,5 @@ public partial class Collection : ComponentBase, IDisposable
                     .ThenBy(c => c.Id)
         };
     }
-
-
-    private static Task<Dictionary<string, int>> CardAmountsAsync(
-        CardDbContext dbContext, 
-        IEnumerable<Card> cards,
-        CancellationToken cancel)
-    {
-        var cardIds = cards
-            .Select(c => c.Id)
-            .ToArray();
-
-        return dbContext.Amounts
-            .Where(a => cardIds.Contains(a.CardId))
-            .GroupBy(a => a.CardId,
-                (CardId, amounts) =>
-                    new { CardId, Total = amounts.Sum(a => a.NumCopies) })
-
-            .ToDictionaryAsync(
-                ct => ct.CardId, ct => ct.Total, cancel);
-    }
-
-    #endregion
 
 }

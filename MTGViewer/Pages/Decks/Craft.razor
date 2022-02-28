@@ -112,9 +112,8 @@ else
                     </div>
                 </div>
             }
-            @foreach (var card in Treasury)
+            @foreach ((Card card, int available) in Treasury)
             {
-                int available = TreasuryCopies(card);
                 int wantTotal = card.Wants.Sum(w => w.NumCopies);
 
                 <button type="button" title="Add @card.Name"
