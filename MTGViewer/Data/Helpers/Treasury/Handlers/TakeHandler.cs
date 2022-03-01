@@ -128,7 +128,7 @@ internal class ExactTake : TakeHandler
                 .ThenBy(a => a.Location switch
                 {
                     Box box => box.Capacity - storageSpace.GetValueOrDefault(box),
-                    Excess excess => - storageSpace.GetValueOrDefault(excess),
+                    Excess excess => -storageSpace.GetValueOrDefault(excess),
                     _ => throw new ArgumentException(nameof(targets))
                 })
             
@@ -203,7 +203,7 @@ internal class ApproximateTake : TakeHandler
                 .ThenBy(a => a.Location switch
                 {
                     Box box => box.Capacity - storageSpace.GetValueOrDefault(box),
-                    Excess excess => - storageSpace.GetValueOrDefault(excess),
+                    Excess excess => -storageSpace.GetValueOrDefault(excess),
                     _ => throw new ArgumentException(nameof(targets))
                 })
 

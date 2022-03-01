@@ -23,9 +23,9 @@ internal sealed class TreasuryContext
         var boxes = dbContext.Boxes.Local.OfType<Box>();
         var excess = dbContext.Excess.Local.OfType<Excess>();
 
-        if (!boxes.Any() || !excess.Any())
+        if (!excess.Any())
         {
-            throw new ArgumentException(nameof(boxes));
+            throw new ArgumentException("There are no excess boxes");
         }
 
         _dbContext = dbContext;
@@ -95,7 +95,7 @@ internal sealed class TreasuryContext
     {
         UpdateAmount(card, numCopies, storage);
         UpdateChange(card, numCopies, storage, null);
-        UpdateBoxSpace(storage, numCopies);
+        UpdateStorageSpace(storage, numCopies);
     }
 
 
@@ -107,12 +107,12 @@ internal sealed class TreasuryContext
         }
 
         UpdateAmount(card, numCopies, to);
-        UpdateBoxSpace(to, numCopies);
+        UpdateStorageSpace(to, numCopies);
 
         if (from is Storage fromStorage)
         {
             UpdateAmount(card, -numCopies, fromStorage);
-            UpdateBoxSpace(fromStorage, -numCopies);
+            UpdateStorageSpace(fromStorage, -numCopies);
         }
 
         UpdateChange(card, numCopies, to, from);
@@ -131,11 +131,11 @@ internal sealed class TreasuryContext
         if (to is Storage toStorage)
         {
             UpdateAmount(card, numCopies, toStorage);
-            UpdateBoxSpace(toStorage, numCopies);
+            UpdateStorageSpace(toStorage, numCopies);
         }
 
         UpdateAmount(card, -numCopies, from);
-        UpdateBoxSpace(from, -numCopies);
+        UpdateStorageSpace(from, -numCopies);
     }
 
 
@@ -193,7 +193,7 @@ internal sealed class TreasuryContext
     }
 
 
-    private void UpdateBoxSpace(Storage storage, int numCopies)
+    private void UpdateStorageSpace(Storage storage, int numCopies)
     {
         if (!_storageSpace.TryGetValue(storage, out int boxSize))
         {

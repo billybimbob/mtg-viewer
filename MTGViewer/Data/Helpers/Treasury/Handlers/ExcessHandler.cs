@@ -71,9 +71,9 @@ internal class ExactExcess : ExcessHandler
         _exactMatches ??= AddLookup();
 
         var bestBoxes = _exactMatches[excess.CardId];
-        var boxSpace = TreasuryContext.StorageSpace;
+        var storageSpace = TreasuryContext.StorageSpace;
 
-        return Assignment.FitToBoxes(excess, excess.NumCopies, bestBoxes, boxSpace);
+        return Assignment.FitToBoxes(excess, excess.NumCopies, bestBoxes, storageSpace);
     }
 
     private ILookup<string, Storage> AddLookup()
@@ -132,11 +132,11 @@ internal class ApproximateExcess : ExcessHandler
 
     private ILookup<string, Storage> AddLookup()
     {
-        var (available, _, excessBoxes, storageSpace) = TreasuryContext;
+        var (available, _, excessStorage, storageSpace) = TreasuryContext;
 
         var availableAmounts = available.SelectMany(b => b.Cards);
 
-        var excessCards = excessBoxes
+        var excessCards = excessStorage
             .SelectMany(b => b.Cards)
             .Select(a => a.Card);
 

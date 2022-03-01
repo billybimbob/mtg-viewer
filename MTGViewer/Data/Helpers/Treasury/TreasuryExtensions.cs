@@ -82,7 +82,7 @@ public static partial class TreasuryExtensions
     }
 
 
-    private static IReadOnlyList<CardRequest> AsAddRequests(IEnumerable<CardRequest>? requests)
+    private static IReadOnlyList<CardRequest> AsAddRequests(IEnumerable<CardRequest> requests)
     {
         ArgumentNullException.ThrowIfNull(requests);
 

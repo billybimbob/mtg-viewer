@@ -42,7 +42,7 @@ internal static class Assignment
         }
         
         if (copiesToAssign > 0
-            && storageOptions.OfType<Storage>().FirstOrDefault() is Excess firstExcess)
+            && storageOptions.OfType<Excess>().FirstOrDefault() is Excess firstExcess)
         {
             yield return new StorageAssignment<TSource>(source, copiesToAssign, firstExcess);
         }
@@ -71,7 +71,7 @@ internal static class Assignment
                 .ThenByDescending(a => a.Location switch
                 {
                     Box box => box.Capacity - storageSpace.GetValueOrDefault(box),
-                    Excess excess => - storageSpace.GetValueOrDefault(excess),
+                    Excess excess => -storageSpace.GetValueOrDefault(excess),
                     _ => throw new ArgumentException(nameof(targets))
                 })            
 
@@ -100,7 +100,7 @@ internal static class Assignment
                 .ThenByDescending(a => a.Location switch
                 {
                     Box box => box.Capacity - storageSpace.GetValueOrDefault(box),
-                    Excess excess => - storageSpace.GetValueOrDefault(excess),
+                    Excess excess => -storageSpace.GetValueOrDefault(excess),
                     _ => throw new ArgumentException(nameof(targets))
                 })
             
