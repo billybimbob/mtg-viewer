@@ -197,8 +197,8 @@ public class SeekListTests : IAsyncLifetime
         var cards = _dbContext.Cards
             .OrderBy(c => c.Name)
                 .ThenBy(c => c.SetName)
-                .ThenBy(c => c.Cmc == null)
-                .ThenByDescending(c => c.Cmc)
+                .ThenBy(c => c.ManaValue == null)
+                .ThenByDescending(c => c.ManaValue)
                 .ThenByDescending(c => c.Artist)
                 .ThenBy(c => c.Id);
 
@@ -221,16 +221,16 @@ public class SeekListTests : IAsyncLifetime
 
                 || c.Name == seek.Name
                     && c.SetName == seek.SetName
-                    && c.Cmc < seek.Cmc
+                    && c.ManaValue < seek.ManaValue
 
                 || c.Name == seek.Name
                     && c.SetName == seek.SetName
-                    && c.Cmc == seek.Cmc
+                    && c.ManaValue == seek.ManaValue
                     && c.Artist.CompareTo(seek.Artist) < 0
 
                 || c.Name == seek.Name
                     && c.SetName == seek.SetName
-                    && c.Cmc == seek.Cmc
+                    && c.ManaValue == seek.ManaValue
                     && c.Artist == seek.Artist
                     && c.Id.CompareTo(seek.Id) > 0));
     }

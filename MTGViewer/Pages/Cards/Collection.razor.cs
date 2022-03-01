@@ -364,7 +364,7 @@ public partial class Collection : ComponentBase, IDisposable
         return filters.OrderBy switch
         {
             nameof(Card.ManaCost) => 
-                PrimaryOrder(c => c.Cmc)
+                PrimaryOrder(c => c.ManaValue)
                     .ThenBy(c => c.Name)
                     .ThenBy(c => c.SetName)
                     .ThenBy(c => c.Id),

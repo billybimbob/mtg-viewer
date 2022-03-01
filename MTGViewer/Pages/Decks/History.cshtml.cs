@@ -175,13 +175,14 @@ public class HistoryModel : PageModel
         }
 
         var transaction = await _dbContext.Transactions
-            .Include(t => t.Changes)
-                .ThenInclude(c => c.From)
             .Include(t => t.Changes) // unbounded: keep eye on
                 .ThenInclude(c => c.To)
+            .Include(t => t.Changes)
+                .ThenInclude(c => c.From)
+
             .SingleOrDefaultAsync(t => t.Id == transactionId, cancel);
 
-        if (transaction == default || IsNotUserTransaction(transaction))
+        if (transaction == default || IsInvalidTransaction(transaction))
         {
             return NotFound();
         }
@@ -204,17 +205,17 @@ public class HistoryModel : PageModel
     }
 
 
-    private bool IsNotUserTransaction(Transaction transaction)
+    private bool IsInvalidTransaction(Transaction transaction)
     {
         var userId = _userManager.GetUserId(User);
-
-        bool IsInvalidLocation(Location? loc)
+        if (userId is null)
         {
-            return loc is Deck deck && deck.OwnerId != userId;
+            return true;
         }
 
-        return transaction.Changes.Any(c => 
-            IsInvalidLocation(c.To) || IsInvalidLocation(c.From));
+        return transaction.Changes
+            .Any(c => c.To is Deck toDeck && toDeck.OwnerId != userId
+                || c.From is Deck fromDeck && fromDeck.OwnerId != userId);
     }
 
 

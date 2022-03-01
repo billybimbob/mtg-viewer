@@ -111,7 +111,6 @@ public class Box : Storage
     public int BinId { get; init; }
     public Bin Bin { get; set; } = default!;
 
-
     [Range(10, 10_000)]
     public int Capacity { get; set; }
 

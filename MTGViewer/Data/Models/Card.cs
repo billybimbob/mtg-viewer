@@ -25,9 +25,9 @@ public class Card
     [Display(Name = "Mana Cost")]
     public string? ManaCost { get; init; } = default!;
 
-    [Display(Name = "Converted Mana Cost")]
+    [Display(Name = "Mana Value")]
     [Range(0f, 1_000_000f)]
-    public float? Cmc { get; init; }
+    public float? ManaValue { get; init; }
 
     public Color Color { get; init; }
 

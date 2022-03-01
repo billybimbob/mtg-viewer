@@ -31,7 +31,10 @@
 
         @if (!inDeck)
         {
-            <p> Deleting the max amount of copies will also <strong>delete @Model.Card.Name</strong>. </p>
+            <p>
+                Deleting the max amount of copies may also <strong>delete @Model.Card.Name</strong>. 
+                If there are no copies held in decks.
+            </p>
         }
     </div>
 </section>

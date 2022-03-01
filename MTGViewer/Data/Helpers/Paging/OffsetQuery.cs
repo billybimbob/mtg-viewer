@@ -123,7 +123,7 @@ internal class OffsetQuery<TResult>
 
             if (node.Method.GetGenericMethodDefinition() == ExpressionConstants.QueryableSkip)
             {
-                return Visit(parent);
+                return parent;
             }
 
             if (node.Object is not null)

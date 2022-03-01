@@ -146,12 +146,8 @@ internal sealed class OriginFilter<TEntity, TOrigin>
 
                 yield return new KeyOrder(propertyOrder, ordering);
             }
-            else
-            {
-                // TODO: parse projection and use it as a property translation map
-                throw new InvalidOperationException(
-                    "Ordering method found, but cannot be used as a filter. Orderings must come after a projection");
-            }
+
+            // TODO: parse projection and use it as a property translation map
         }
     }
 

@@ -10,7 +10,7 @@ public class Suggestion
 {
     [Key]
     [JsonIgnore]
-   public int Id { get; private set; }
+    public int Id { get; private set; }
 
 
     [JsonIgnore]

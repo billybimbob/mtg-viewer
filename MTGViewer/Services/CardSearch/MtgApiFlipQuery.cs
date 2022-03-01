@@ -59,8 +59,10 @@ public sealed class MtgApiFlipQuery
 
     private async ValueTask<Flip?> GetFlipAsync(ICard card, CancellationToken cancel)
     {
+        var colors = card.ColorIdentity ?? Enumerable.Empty<string>();
+
         var result = await _cardService
-            .Where(c => c.ColorIdentity, string.Join(MtgApiQuery.And, card.ColorIdentity))
+            .Where(c => c.ColorIdentity, string.Join(MtgApiQuery.And, colors))
             .Where(c => c.Name, card.Name)
             .Where(c => c.Set, card.Set)
             .Where(c => c.Layout, card.Layout)
@@ -179,7 +181,7 @@ public sealed class MtgApiFlipQuery
 
             Layout = iCard.Layout,
             ManaCost = iCard.ManaCost,
-            Cmc = iCard.Cmc,
+            ManaValue = iCard.Cmc,
 
             Type = iCard.Type,
             Rarity = rarity,

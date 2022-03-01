@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using MTGViewer.Data.Internal;
 
 namespace MTGViewer.Data;
 
@@ -18,15 +17,25 @@ public class CardPreview
 {
     public string Id { get; init; } = default!;
     public string Name { get; init; } = default!;
+
     public string? ManaCost { get; init; }
     public string SetName { get; init; } = default!;
     public Rarity Rarity { get; init; }
+
     public string ImageUrl { get; init; } = default!;
     public int Total { get; init; }
 }
 
 
 public record CardTotal(Card Card, int Total);
+
+
+public class TransactionPreview
+{
+    public DateTime AppliedAt { get; init; }
+    public IEnumerable<RecentChange> Changes { get; init; } = Enumerable.Empty<RecentChange>();
+    public int Total { get; init; }
+}
 
 
 public class RecentChange
@@ -36,13 +45,6 @@ public class RecentChange
     public string CardName { get; init; } = default!;
 }
 
-
-public class TransactionPreview
-{
-    public DateTime AppliedAt { get; init; }
-    public IEnumerable<RecentChange> Changes { get; init; } = Enumerable.Empty<RecentChange>();
-    public int Total { get; init; }
-}
 
 
 public enum BuildState
@@ -64,24 +66,12 @@ public class DeckPreview
     public bool HasReturns { get; init; }
     public bool HasTradesTo { get; init; }
 
-    public BuildState BuildState
+    public BuildState BuildState => this switch
     {
-        get
-        {
-            if (HasTradesTo)
-            {
-                return BuildState.Requesting;
-            }
-            else if (HasWants || HasReturns)
-            {
-                return BuildState.Theorycraft;
-            }
-            else
-            {
-                return BuildState.Built;
-            }
-        }
-    }
+        { HasTradesTo: true } => BuildState.Requesting,
+        { HasWants: true } or { HasReturns: true } => BuildState.Theorycraft,
+        _ => BuildState.Built
+    };
 }
 
 
@@ -113,9 +103,7 @@ public class SuggestionPreview
 
 
 
-
 public record BinPreview(int Id, string Name, IEnumerable<BoxPreview> Boxes);
-
 
 
 public class BoxPreview

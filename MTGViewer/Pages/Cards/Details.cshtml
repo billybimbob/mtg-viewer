@@ -109,7 +109,7 @@
             @if (Model.Card.Flip is not null)
             {
                 <dt class="col-md-3 col-5">
-                    @Html.DisplayNameFor(m => m.Card.Cmc)
+                    @Html.DisplayNameFor(m => m.Card.ManaValue)
                 </dt>
                 <dd class="col-md-9 col-7">
                     @(Model.Card.Flip.Cmc?.ToString() ?? "--")
@@ -153,10 +153,10 @@
             else
             {
                 <dt class="col-md-3 col-5">
-                    @Html.DisplayNameFor(m => m.Card.Cmc)
+                    @Html.DisplayNameFor(m => m.Card.ManaValue)
                 </dt>
                 <dd class="col-md-9 col-7">
-                    @(Model.Card.Cmc?.ToString() ?? "--")
+                    @(Model.Card.ManaValue?.ToString() ?? "--")
                 </dd>
 
                 <dt class="col-md-3 col-5">
