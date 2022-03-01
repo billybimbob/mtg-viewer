@@ -53,13 +53,10 @@
                     }
                 </tr>
             }
-            @foreach (var transfer in Model.Transfers)
+            @foreach (var (transaction, to, from, changes) in Model.Transfers)
             {
-                var (transaction, to, from, changes) = transfer;
-                var first = changes.First();
-
                 <tr>
-                    @if (Model.IsFirstTransfer(transfer))
+                    @if (Model.IsFirstTransfer(transaction, to, from))
                     {
                         <th scope="rowgroup" rowspan="@transaction.Changes.Count">
                             @TimeZoneInfo.ConvertTimeFromUtc(transaction.AppliedAt, Model.TimeZone)
@@ -73,16 +70,16 @@
                                 <a asp-page="/Decks/Details" asp-route-id="@from.Id"> @from.Name </a>
                                 break;
 
-                            case Box box when box.IsExcess:
+                            case Unclaimed when canChangeTreasury:
+                                <a asp-page="/Unowned/Index" asp-route-id="@from.Id"> @from.Name </a>
+                                break;
+
+                            case Excess:
                                 <a asp-page="Excess" asp-route-id="@from.Id"> @from.Name </a>
                                 break;
 
                             case Box:
                                 <a asp-page="Details" asp-route-id="@from.Id"> @from.Name </a>
-                                break;
-
-                            case Unclaimed when canChangeTreasury:
-                                <a asp-page="/Unowned/Index" asp-route-id="@from.Id"> @from.Name </a>
                                 break;
 
                             case null:
@@ -102,16 +99,16 @@
                                 <a asp-page="/Decks/Details" asp-route-id="@to.Id"> @to.Name </a>
                                 break;
 
-                            case Box box when box.IsExcess:
+                            case Unclaimed when canChangeTreasury:
+                                <a asp-page="/Unowned/Index" asp-route-id="@to.Id"> @to.Name </a>
+                                break;
+
+                            case Excess:
                                 <a asp-page="Excess"> @to.Name </a>
                                 break;
 
                             case Box:
                                 <a asp-page="Details" asp-route-id="@to.Id"> @to.Name </a>
-                                break;
-
-                            case Unclaimed when canChangeTreasury:
-                                <a asp-page="/Unowned/Index" asp-route-id="@to.Id"> @to.Name </a>
                                 break;
                             
                             default:
@@ -122,17 +119,18 @@
 
                     <td>
                         <component type="typeof(HoverCard)" render-mode="Static"
-                            param-Target="first.Card"/>
+                            param-Target="changes[0].Card"/>
                     </td>
 
-                    <td> @first.Amount </td>
+                    <td> @changes[0].Amount </td>
 
                     @if (isSignedIn
-                        && Model.IsFirstTransfer(transfer)
-                        && Model.IsShared(transaction))
+                        && Model.IsFirstTransfer(transaction, to, from))
                     {
                         <td rowspan="@transaction.Changes.Count" class="text-center">
-                            @if (canChangeTreasury)
+                            @if (!Model.IsShared(transaction))
+                            { }
+                            else if (canChangeTreasury)
                             {
                                 <form method="POST">
                                     <input type="hidden" name="transactionId" value="@transaction.Id"/>
@@ -162,4 +160,4 @@
     </table>
 </div>
 
-<component type="typeof(SeekPaging<Change>)" render-mode="Static" param-Seek="Model.Seek" />
+<partial name="_SeekPagingPartial" for="Seek"/>

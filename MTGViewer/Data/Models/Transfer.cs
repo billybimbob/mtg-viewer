@@ -10,7 +10,7 @@ public class Suggestion
 {
     [Key]
     [JsonIgnore]
-   public int Id { get; private set; }
+    public int Id { get; private set; }
 
 
     [JsonIgnore]
@@ -36,7 +36,6 @@ public class Suggestion
     public string? Comment { get; set; }
 
     [Display(Name = "Sent At")]
-    [JsonInclude]
     public DateTime SentAt { get; private set; }
 }
 

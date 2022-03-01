@@ -77,8 +77,8 @@ public static class ComposeExtensions
     public static SymbolFormatter ComposeWith(
         this ISymbolFinder finder, ISymbolTranslator translator)
     {
-        ArgumentNullException.ThrowIfNull(finder, nameof(finder));
-        ArgumentNullException.ThrowIfNull(translator, nameof(translator));
+        ArgumentNullException.ThrowIfNull(finder);
+        ArgumentNullException.ThrowIfNull(translator);
 
         return new SymbolFormatter(finder, translator);
     }
@@ -87,8 +87,8 @@ public static class ComposeExtensions
     public static SymbolFormatter ComposeWith(
         this ISymbolTranslator translator, ISymbolFinder finder)
     {
-        ArgumentNullException.ThrowIfNull(finder, nameof(finder));
-        ArgumentNullException.ThrowIfNull(translator, nameof(translator));
+        ArgumentNullException.ThrowIfNull(finder);
+        ArgumentNullException.ThrowIfNull(translator);
 
         return new SymbolFormatter(finder, translator);
     }

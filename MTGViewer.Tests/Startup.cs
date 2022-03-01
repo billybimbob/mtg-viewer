@@ -86,15 +86,19 @@ public class Startup
                 options.SizeLimit = config.GetValue("CacheLimit", 100L));
 
         services
-            .AddScoped<IMTGQuery, MtgApiQuery>()
             .AddSingleton<IMtgServiceProvider, MtgServiceProvider>()
             .AddScoped<ICardService>(provider => provider
                 .GetRequiredService<IMtgServiceProvider>()
                 .GetCardService());
 
-        services.AddScoped<BulkOperations>();
-        services.AddScoped<FileCardStorage>();
-        services.AddScoped<LoadingProgress>();
+        services
+            .AddScoped<IMTGQuery, MtgApiQuery>()
+            .AddScoped<MtgApiFlipQuery>();
+
+        services
+            .AddScoped<BulkOperations>()
+            .AddScoped<FileCardStorage>()
+            .AddScoped<LoadingProgress>();
 
         services
             .AddScoped<CardDataGenerator>()

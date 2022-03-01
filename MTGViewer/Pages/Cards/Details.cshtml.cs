@@ -23,30 +23,18 @@ public class DetailsModel : PageModel
     }
 
 
+    public record CardAlt(string Id, string Name, string SetName);
+
     public Card Card { get; private set; } = default!;
 
-    public IReadOnlyList<Card> CardAlts { get; private set; } = Array.Empty<Card>();
+    public IReadOnlyList<CardAlt> CardAlts { get; private set; } = Array.Empty<CardAlt>();
 
     public string? ReturnUrl { get; private set; }
 
 
-    public async Task<IActionResult> OnGetAsync(string? id, string? returnUrl, CancellationToken cancel)
+    public async Task<IActionResult> OnGetAsync(string id, bool flip, string? returnUrl, CancellationToken cancel)
     {
-        if (id is null)
-        {
-            return NotFound();
-        }
-
-        var card = await _dbContext.Cards
-            .Include(c => c.Supertypes)
-            .Include(c => c.Types)
-            .Include(c => c.Subtypes)
-            .Include(c => c.Amounts
-                .OrderBy(a => a.Location.Name))
-                .ThenInclude(a => a.Location)
-            .AsSplitQuery()
-            .AsNoTrackingWithIdentityResolution()
-            .SingleOrDefaultAsync(c => c.Id == id, cancel);
+        var card = await CardForDetails(id, flip).SingleOrDefaultAsync(cancel);
 
         if (card == default)
         {
@@ -57,11 +45,7 @@ public class DetailsModel : PageModel
 
         Card = card;
 
-        CardAlts = await _dbContext.Cards
-            .Where(c => c.Id != id && c.Name == Card.Name)
-            .OrderBy(c => c.SetName)
-            .AsNoTrackingWithIdentityResolution()
-            .ToListAsync(cancel);
+        CardAlts = await CardAlternatives(card).ToListAsync(cancel);
 
         if (Url.IsLocalUrl(returnUrl))
         {
@@ -72,11 +56,33 @@ public class DetailsModel : PageModel
     }
 
 
+    private IQueryable<Card> CardForDetails(string cardId, bool flip)
+    {
+        var cards = _dbContext.Cards
+            .Where(c => c.Id == cardId)
+            .Include(c => c.Amounts
+                .OrderBy(a => a.Location.Name))
+                .ThenInclude(a => a.Location)
+            .OrderBy(c => c.Id)
+            .AsNoTrackingWithIdentityResolution();
+
+        return flip ? cards.Include(c => c.Flip) : cards;
+    }
+    
+
+    private IQueryable<CardAlt> CardAlternatives(Card card)
+    {
+        return _dbContext.Cards
+            .Where(c => c.Id != card.Id && c.Name == card.Name)
+            .OrderBy(c => c.SetName)
+            .Select(c => new CardAlt(c.Id, c.Name, c.SetName));
+    }
+
+
     private void MergeExcessAmounts(Card card)
     {
         var excessAmounts = card.Amounts
-            .Where(a => a.Location is Box
-                && (a.Location as Box)!.IsExcess);
+            .Where(a => a.Location is Excess);
 
         if (!excessAmounts.Any())
         {
@@ -86,7 +92,7 @@ public class DetailsModel : PageModel
         var mergedExcess = new Amount
         {
             Card = card,
-            Location = Box.CreateExcess(),
+            Location = Excess.Create(),
             NumCopies = 0
         };
 

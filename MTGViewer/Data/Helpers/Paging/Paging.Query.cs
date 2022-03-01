@@ -4,7 +4,6 @@ using System.Linq.Expressions;
 using System.Paging;
 using System.Threading;
 using System.Threading.Tasks;
-using MTGViewer.Data.Internal;
 
 namespace Microsoft.EntityFrameworkCore;
 
@@ -15,7 +14,7 @@ public static partial class PagingExtensions
         int? index,
         int pageSize)
     {
-        ArgumentNullException.ThrowIfNull(source, nameof(source));
+        ArgumentNullException.ThrowIfNull(source);
 
         if (index < 0)
         {
@@ -39,88 +38,21 @@ public static partial class PagingExtensions
         this IQueryable<TEntity> source,
         CancellationToken cancel = default)
     {
-        ArgumentNullException.ThrowIfNull(source, nameof(source));
+        ArgumentNullException.ThrowIfNull(source);
 
         return new OffsetQuery<TEntity>(source)
             .ToOffsetListAsync(cancel);
     }
 
 
-    public static Task<TEntity?> FindOriginAsync<TEntity, TKey>(
-        this IQueryable<TEntity> source,
-        TKey? seek,
-        CancellationToken cancel = default)
-        where TEntity : class
-        where TKey : struct
-    {
-        ArgumentNullException.ThrowIfNull(source, nameof(source));
-
-        if (seek is not TKey s)
-        {
-            return Task.FromResult<TEntity?>(null);
-        }
-
-        return FindNonNullOriginAsync(source, s, cancel);
-    }
-
-
-    public static Task<TEntity?> FindOriginAsync<TEntity, TKey>(
-        this IQueryable<TEntity> source,
-        TKey? seek,
-        CancellationToken cancel = default)
-        where TEntity : class
-        where TKey : class?
-    {
-        ArgumentNullException.ThrowIfNull(source, nameof(source));
-
-        if (seek is not TKey s)
-        {
-            return Task.FromResult<TEntity?>(null);
-        }
-
-        return FindNonNullOriginAsync(source, s, cancel);
-    }
-
-
-    private static Task<TEntity?> FindNonNullOriginAsync<TEntity, TKey>(
-        IQueryable<TEntity> source,
-        TKey seek,
-        CancellationToken cancellationToken)
-        where TEntity : class
-    {
-        var entityId = EntityExtensions.GetKeyProperty<TEntity>();
-
-        if (typeof(TKey) != entityId.PropertyType)
-        {
-            throw new ArgumentException($"{nameof(seek)} is the not correct key type");
-        }
-
-        var entityParameter = Expression.Parameter(
-            typeof(TEntity), typeof(TEntity).Name[0].ToString().ToLower());
-
-        var paramId = Expression.Property(entityParameter, entityId);
-
-        var idLambda = Expression.Lambda<Func<TEntity, TKey>>(
-            paramId,
-            entityParameter);
-
-        var equalSeek = Expression.Lambda<Func<TEntity, bool>>(
-            Expression.Equal(paramId, Expression.Constant(seek)),
-            entityParameter);
-
-        return source
-            .OrderBy(idLambda) // intentionally override order
-            .AsNoTracking()
-            .SingleOrDefaultAsync(equalSeek, cancellationToken);
-    }
 
 
     public static IQueryable<TEntity> After<TEntity>(
         this IQueryable<TEntity> source,
         TEntity origin)
     {
-        ArgumentNullException.ThrowIfNull(source, nameof(source));
-        ArgumentNullException.ThrowIfNull(origin, nameof(origin));
+        ArgumentNullException.ThrowIfNull(source);
+        ArgumentNullException.ThrowIfNull(origin);
 
         var seekCondition = OriginFilter.Create(source, origin, SeekDirection.Forward);
 
@@ -133,8 +65,8 @@ public static partial class PagingExtensions
         TOrigin origin,
         Expression<Func<TEntity, TOrigin>> selector)
     {
-        ArgumentNullException.ThrowIfNull(source, nameof(source));
-        ArgumentNullException.ThrowIfNull(origin, nameof(origin));
+        ArgumentNullException.ThrowIfNull(source);
+        ArgumentNullException.ThrowIfNull(origin);
 
         var seekCondition = OriginFilter.Create(source, origin, SeekDirection.Forward, selector);
 
@@ -146,8 +78,8 @@ public static partial class PagingExtensions
         this IQueryable<TEntity> source,
         TEntity origin)
     {
-        ArgumentNullException.ThrowIfNull(source, nameof(source));
-        ArgumentNullException.ThrowIfNull(origin, nameof(origin));
+        ArgumentNullException.ThrowIfNull(source);
+        ArgumentNullException.ThrowIfNull(origin);
 
         var seekCondition = OriginFilter.Create(source, origin, SeekDirection.Backwards);
 
@@ -163,8 +95,8 @@ public static partial class PagingExtensions
         TOrigin origin,
         Expression<Func<TEntity, TOrigin>> selector)
     {
-        ArgumentNullException.ThrowIfNull(source, nameof(source));
-        ArgumentNullException.ThrowIfNull(origin, nameof(origin));
+        ArgumentNullException.ThrowIfNull(source);
+        ArgumentNullException.ThrowIfNull(origin);
 
         var seekCondition = OriginFilter.Create(source, origin, SeekDirection.Backwards, selector);
 
@@ -177,12 +109,11 @@ public static partial class PagingExtensions
 
     public static IQueryable<TEntity> SeekBy<TEntity>(
         this IQueryable<TEntity> source,
-        TEntity? origin,
+        TEntity? origin, 
         int pageSize,
         bool backtrack)
-        where TEntity : class?
     {
-        ArgumentNullException.ThrowIfNull(source, nameof(source));
+        ArgumentNullException.ThrowIfNull(source);
 
         var direction = backtrack
             ? SeekDirection.Backwards
@@ -204,6 +135,7 @@ public static partial class PagingExtensions
             ? source
                 .Where(seekCondition)
                 .Take(pageSize)
+
             : source
                 .Reverse()
                 .Where(seekCondition)
@@ -212,66 +144,40 @@ public static partial class PagingExtensions
     }
 
 
-    public static Task<SeekList<TEntity>> ToSeekListAsync<TEntity>(
+    public static SeekBuilder<TEntity, TKey> SeekBy<TEntity, TKey>(
         this IQueryable<TEntity> source,
-        CancellationToken cancel = default)
+        Expression<Func<TEntity, TKey>> sourceKey,
+        TKey? key,
+        int pageSize,
+        bool backtrack)
+        where TEntity : class
+        where TKey : IEquatable<TKey>
     {
-        ArgumentNullException.ThrowIfNull(source, nameof(source));
-
-        return new SeekQuery<TEntity>(source).ToSeekListAsync(cancel);
+        return new SeekBuilder<TEntity, TKey>(source, sourceKey, key, pageSize, backtrack);
     }
 
 
-    public static async Task<SeekList<TEntity>> ToSeekListAsync<TEntity, TKey>(
+    public static SeekBuilder<TEntity, TKey> SeekBy<TEntity, TKey>(
         this IQueryable<TEntity> source,
-        TKey? seek,
+        Expression<Func<TEntity, TKey>> sourceKey,
+        TKey? key,
         int pageSize,
-        bool backtrack,
-        CancellationToken cancel = default)
+        bool backtrack)
         where TEntity : class
-        where TKey : struct
+        where TKey : struct, IEquatable<TKey>
     {
-        ArgumentNullException.ThrowIfNull(source, nameof(source));
-
-        if (pageSize <= 0)
-        {
-            throw new ArgumentException(nameof(pageSize));
-        }
-
-        var origin = await source
-            .FindOriginAsync(seek, cancel)
-            .ConfigureAwait(false);
-
-        return await source
-            .SeekBy(origin, pageSize, backtrack)
-            .ToSeekListAsync(cancel)
-            .ConfigureAwait(false);
+        return new NullableSeekBuilder<TEntity, TKey>(source, sourceKey, key, pageSize, backtrack);
     }
     
 
-    public static async Task<SeekList<TEntity>> ToSeekListAsync<TEntity, TKey>(
+    public static Task<SeekList<TEntity>> ToSeekListAsync<TEntity, TKey>(
         this IQueryable<TEntity> source,
-        TKey? seek,
-        int pageSize,
-        bool backtrack,
+        Func<TEntity, TKey> key,
         CancellationToken cancel = default)
-        where TEntity : class
-        where TKey : class?
     {
-        ArgumentNullException.ThrowIfNull(source, nameof(source));
+        ArgumentNullException.ThrowIfNull(source);
 
-        if (pageSize <= 0)
-        {
-            throw new ArgumentException(nameof(pageSize));
-        }
-
-        var origin = await source
-            .FindOriginAsync(seek, cancel)
-            .ConfigureAwait(false);
-
-        return await source
-            .SeekBy(origin, pageSize, backtrack)
-            .ToSeekListAsync(cancel)
-            .ConfigureAwait(false);
+        return new SeekQuery<TEntity, TKey>(source, key).ToSeekListAsync(cancel);
     }
+
 }

@@ -1,5 +1,6 @@
 using System;
 using System.ComponentModel.DataAnnotations;
+using MTGViewer.Data;
 
 namespace MTGViewer.Services;
 
@@ -17,7 +18,7 @@ public class CardQuery
     [Range(0, 1_000_000)]
     public int? Cmc { get; set; }
 
-    public string? Colors { get; set; }
+    public Color Colors { get; set; }
 
     [StringLength(10)]
     public string? Rarity { get; set; }

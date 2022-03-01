@@ -40,7 +40,7 @@ public class FixedCache
 
     public bool TryGetValue<TValue>(string key, out TValue value)
     {
-        ArgumentNullException.ThrowIfNull(key, nameof(key));
+        ArgumentNullException.ThrowIfNull(key);
 
         return _cache.TryGetValue(key, out value);
     }
@@ -48,7 +48,7 @@ public class FixedCache
 
     public void Remove(string key)
     {
-        ArgumentNullException.ThrowIfNull(key, nameof(key));
+        ArgumentNullException.ThrowIfNull(key);
 
         _cache.Remove(key);
     }
@@ -56,7 +56,7 @@ public class FixedCache
 
     public Task<TValue> GetOrCreateAsync<TValue>(string key, Func<Task<TValue>> factory)
     {
-        ArgumentNullException.ThrowIfNull(key, nameof(key));
+        ArgumentNullException.ThrowIfNull(key);
 
         return _cache.GetOrCreateAsync(key, entry =>
         {

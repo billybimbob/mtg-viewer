@@ -9,6 +9,7 @@
 
 @inject IAuthorizationService AuthorizationService
 @inject SymbolFormatter MtgSymbols
+@inject CardText CardText
 
 @{
     bool canChangeTreasury = (await AuthorizationService
@@ -28,6 +29,15 @@
         {
             <button role="button" class="btn btn-secondary" disabled> New Deck </button>
         }
+
+        @if (Model.HasUnclaimed && canChangeTreasury)
+        {
+            <a asp-page="/Unowned/Index" class="btn btn-secondary" role="button"> Unclaimed Decks </a>
+        }
+        else if (Model.HasUnclaimed)
+        {
+            <button type="button" class="btn btn-secondary" disabled> Unclaimed Decks </button>
+        }
     </div>
 </div>
 
@@ -45,7 +55,6 @@
         <tbody>
             @foreach (var deck in Model.Decks)
             {
-                var state = Model.GetDeckState(deck);
                 <tr>
                     <td>
                         <a asp-page="Details" asp-route-id="@deck.Id">
@@ -54,30 +63,30 @@
 
                     <td>
                         <div class="ms-group">
-                            @MtgSymbols.Format(deck.Colors).ToHtmlString()
+                            @MtgSymbols.Format(CardText.ColorString(deck.Color)).ToHtmlString()
                         </div>
                     </td>
-                    <td> @deck.Cards.Sum(a => a.NumCopies) </td>
+                    <td> @deck.CardTotal </td>
 
                     <td>
-                        @if (state is IndexModel.State.Requesting && canChangeTreasury)
+                        @if (deck.BuildState is BuildState.Requesting && canChangeTreasury)
                         {
                             <a asp-page="/Transfers/Status" asp-route-deckid="@deck.Id">
-                                @state.ToString() </a>
+                                @deck.BuildState.ToString() </a>
                         }
-                        else if (state is IndexModel.State.Theorycraft && canChangeTreasury)
+                        else if (deck.BuildState is BuildState.Theorycraft && canChangeTreasury)
                         {
                             <a asp-page="Exchange" asp-route-id="@deck.Id">
-                                @state.ToString() </a>
+                                @deck.BuildState.ToString() </a>
                         }
                         else
                         {
-                            @state.ToString()
+                            @deck.BuildState.ToString()
                         }
                     </td>
                     
                     <td class="btn-group" role="group">
-                        @if (state is not IndexModel.State.Requesting && canChangeTreasury)
+                        @if (deck.BuildState is not BuildState.Requesting && canChangeTreasury)
                         {
                             <a href="/Decks/Craft/@deck.Id"
                                 class="btn btn-secondary" role="button">
@@ -111,4 +120,4 @@
 </div>
 
 
-<component type="typeof(SeekPaging<Deck>)" render-mode="Static" param-Seek="Model.Decks.Seek" />
+<partial name="_SeekPagingPartial" for="Decks.Seek"/>

@@ -12,10 +12,10 @@ public enum SeekDirection
 }
 
 
-public readonly record struct Seek<T>(T? Previous, T? Next)
+public readonly record struct Seek(object? Previous, object? Next)
 {
     public Seek(
-        IReadOnlyList<T> items,
+        IEnumerable items,
         SeekDirection direction,
         bool hasOrigin,
         bool lookAhead) : this(default, default)
@@ -23,52 +23,52 @@ public readonly record struct Seek<T>(T? Previous, T? Next)
         if (direction is SeekDirection.Forward)
         {
             Previous = hasOrigin
-                ? items.ElementAtOrDefault(0)
+                ? items.OfType<object>().FirstOrDefault()
                 : default;
 
             Next = lookAhead
-                ? items.ElementAtOrDefault(^1)
+                ? items.OfType<object>().LastOrDefault()
                 : default;
         }
         else
         {
             Previous = lookAhead
-                ? items.ElementAtOrDefault(0)
+                ? items.OfType<object>().FirstOrDefault()
                 : default;
 
             Next = hasOrigin
-                ? items.ElementAtOrDefault(^1)
+                ? items.OfType<object>().LastOrDefault()
                 : default;
         }
     }
 }
 
 
-public class SeekList<T> : IReadOnlyList<T>
+public class SeekList<TEntity> : IReadOnlyList<TEntity>
 {
-    private readonly IList<T> _items;
+    private readonly IReadOnlyList<TEntity> _items;
 
-    public SeekList(Seek<T> seek, IList<T> items)
+    public SeekList(Seek seek, IReadOnlyList<TEntity> items)
     {
-        ArgumentNullException.ThrowIfNull(items, nameof(items));
+        ArgumentNullException.ThrowIfNull(items);
 
         Seek = seek;
 
         _items = items;
     }
 
-    public Seek<T> Seek { get; }
+    public Seek Seek { get; }
 
     public int Count => _items.Count;
 
-    public T this[int index] => _items[index];
+    public TEntity this[int index] => _items[index];
 
 
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
-    public IEnumerator<T> GetEnumerator() => _items.GetEnumerator();
+    public IEnumerator<TEntity> GetEnumerator() => _items.GetEnumerator();
 
 
-    private static SeekList<T>? _empty;
-    public static SeekList<T> Empty => _empty ??= new(default, Array.Empty<T>());
+    private static SeekList<TEntity>? _empty;
+    public static SeekList<TEntity> Empty => _empty ??= new(default, Array.Empty<TEntity>());
 }

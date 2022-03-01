@@ -109,6 +109,9 @@ internal static class ConcurrencyExtensions
 
             tokenProp.OriginalValue = dbProps
                 .GetValue<uint>(tokenProp.Metadata);
+
+            tokenProp.CurrentValue = dbProps
+                .GetValue<uint>(tokenProp.Metadata);
         }
 
         // else if (context.Database.IsSqlite())
@@ -129,6 +132,12 @@ internal static class ConcurrencyExtensions
         context.MatchToken(
             current,
             context.Entry(dbValues).CurrentValues);
+    }
+
+
+    public static void MatchToken<E>(this DbSet<E> dbSet, E current, E dbValues)
+        where E : Concurrent
+    {
     }
 
 

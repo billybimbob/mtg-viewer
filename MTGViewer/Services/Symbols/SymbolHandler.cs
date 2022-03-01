@@ -25,22 +25,22 @@ public interface ISymbolTranslator
 }
 
 
-public abstract record Symbol(Range Position);
+public abstract record TextSymbol(Range Position);
 
-public record ManaSymbol(Range Postion, string Value) 
-    : Symbol(Postion);
+public record ManaSymbol(Range Postion, string Value)
+   : TextSymbol(Postion);
 
 public record LoyaltySymbol(Range Postion, string? Direction, string Value)
-    : Symbol(Postion);
+    : TextSymbol(Postion);
 
 public record SagaSymbol(Range Position, string Value, bool HasNext)
-    : Symbol(Position);
+    : TextSymbol(Position);
 
 
 
-public static class FinderExtensions
+public static class SymbolExtensions
 {
-    public static IEnumerable<Symbol> FindSymbols(this ISymbolFinder finder, string? mtgText)
+    public static IEnumerable<TextSymbol> FindSymbols(this ISymbolFinder finder, string? mtgText)
     {
         // return Enumerable.Empty<Symbol>()
         //     .Concat(finder.FindMana(mtgText))
@@ -55,7 +55,7 @@ public static class FinderExtensions
             yield break;
         }
 
-        var symbolStrings = new List<IReadOnlyList<Symbol>>
+        var symbolStrings = new List<IReadOnlyList<TextSymbol>>
         {
             finder.FindMana(mtgText),
             finder.FindLoyalties(mtgText),
@@ -91,14 +91,11 @@ public static class FinderExtensions
             }
         }
     }
-}
 
 
-public static class TranslatorExtensions
-{
-    public static string SymbolString(this ISymbolTranslator translator, Symbol symbol)
+    public static string SymbolString(this ISymbolTranslator translator, TextSymbol symbol)
     {
-        ArgumentNullException.ThrowIfNull(translator, nameof(translator));
+        ArgumentNullException.ThrowIfNull(translator);
 
         return symbol switch
         {
@@ -114,8 +111,8 @@ public static class TranslatorExtensions
     public static string ManaString(
         this ISymbolTranslator translator, string mana)
     {
-        ArgumentNullException.ThrowIfNull(translator, nameof(translator));
-        ArgumentNullException.ThrowIfNull(mana, nameof(mana));
+        ArgumentNullException.ThrowIfNull(translator);
+        ArgumentNullException.ThrowIfNull(mana);
 
         return translator.ManaString(new ManaSymbol(default, mana));
     }
@@ -124,8 +121,8 @@ public static class TranslatorExtensions
     public static string LoyaltyString(
         this ISymbolTranslator translator, string? direction, string value)
     {
-        ArgumentNullException.ThrowIfNull(translator, nameof(translator));
-        ArgumentNullException.ThrowIfNull(value, nameof(value));
+        ArgumentNullException.ThrowIfNull(translator);
+        ArgumentNullException.ThrowIfNull(value);
 
         return translator.LoyaltyString(new LoyaltySymbol(default, direction, value));
     }
@@ -134,8 +131,8 @@ public static class TranslatorExtensions
     public static string SagaString(
         this ISymbolTranslator translator, string saga, bool hasNext = default)
     {
-        ArgumentNullException.ThrowIfNull(translator, nameof(translator));
-        ArgumentNullException.ThrowIfNull(saga, nameof(saga));
+        ArgumentNullException.ThrowIfNull(translator);
+        ArgumentNullException.ThrowIfNull(saga);
 
         return translator.SagaString(new SagaSymbol(default, saga, hasNext));
     }

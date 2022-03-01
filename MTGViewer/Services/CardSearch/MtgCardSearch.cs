@@ -13,51 +13,30 @@ namespace MTGViewer.Services;
 internal class MtgCardSearch : IMTGCardSearch
 {
     private readonly MtgApiQuery _provider;
-    private readonly ImmutableDictionary<string, object?> _parameters;
+    private readonly ImmutableDictionary<string, IMtgParameter> _parameters;
 
     public MtgCardSearch(
         MtgApiQuery provider,
-        IReadOnlyDictionary<string, object?> parameters)
+        IDictionary<string, IMtgParameter> parameters)
     {
         _provider = provider;
         _parameters = parameters.ToImmutableDictionary();
     }
 
-    public IReadOnlyDictionary<string, object?> Parameters => _parameters;
+    public IReadOnlyDictionary<string, IMtgParameter> Parameters => _parameters;
 
-    public int Page => (Parameters
-        .GetValueOrDefault(nameof(CardQuery.Page)) as int?) ?? 0;
+    public int Page =>
+        (_parameters.GetValueOrDefault(nameof(CardQuery.Page)) as MtgPageParameter)
+        ?.Page ?? 0;
 
 
-    public bool IsEmpty()
-    {
-        foreach (var value in Parameters.Values)
-        {
-            bool notEmpty = value switch
-            {
-                IEnumerable<string> ie => ie.Any(),
-                string s => !string.IsNullOrWhiteSpace(s),
-                int i => i > 0,
-                _ => false
-            };
+    public bool IsEmpty => _parameters.Values.All(p => p.IsEmpty);
 
-            if (notEmpty)
-            {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    public ImmutableDictionary<string, object?>.Builder ToBuilder()
-    {
-        return _parameters.ToBuilder();
-    }
 
     public IMTGCardSearch Where(Expression<Func<CardQuery, bool>> predicate)
     {
-        return _provider.Where(this, predicate);
+        return _provider
+            .QueryFromPredicate(_parameters.ToBuilder(), predicate);
     }
 
     public ValueTask<OffsetList<Card>> SearchAsync(CancellationToken cancel = default)

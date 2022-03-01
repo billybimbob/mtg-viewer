@@ -4,6 +4,7 @@
     ViewData["Title"] = $"{Model.Deck.Name} - Received Trades";
 }
 @inject SymbolFormatter MtgSymbols
+@inject CardText CardText
 
 
 <h1>Trades From @Model.Deck.Name</h1>
@@ -43,7 +44,7 @@
 
                     <td> 
                         <div class="ms-group">
-                            @MtgSymbols.Format(trade.To.Colors).ToHtmlString() 
+                            @MtgSymbols.Format(CardText.ColorString(trade.To.Color)).ToHtmlString() 
                         </div>
                     </td>
 

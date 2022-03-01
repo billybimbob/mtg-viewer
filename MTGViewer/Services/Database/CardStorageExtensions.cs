@@ -17,26 +17,38 @@ public static class CardStorageExtensions
         switch (databaseOptions.Provider)
         {
             case DatabaseOptions.SqlServer:
-                services.AddDbContextFactory<CardDbContext>(options => options
+                services.AddTriggeredDbContextFactory<CardDbContext>(options => options
                     .UseSqlServer(connString)
+
                     .UseValidationCheckConstraints()
-                    .UseEnumCheckConstraints());
+                    .UseEnumCheckConstraints()
+
+                    .UseTriggers(triggers => triggers
+                        .AddTrigger<ImmutableCard>()));
+
                 break;
 
             case DatabaseOptions.Postgresql:
-                services.AddPooledDbContextFactory<CardDbContext>(options => options
+                services.AddTriggeredPooledDbContextFactory<CardDbContext>(options => options
                     .UseNpgsql(connString.ToNpgsqlConnectionString())
+
                     .UseValidationCheckConstraints()
-                    .UseEnumCheckConstraints());
+                    .UseEnumCheckConstraints()
+
+                    .UseTriggers(triggers => triggers
+                        .AddTrigger<ImmutableCard>()));
                 break;
 
             case DatabaseOptions.Sqlite:
             default:
                 services.AddTriggeredDbContextFactory<CardDbContext>(options => options
                     .UseSqlite(connString)
+
                     .UseValidationCheckConstraints()
                     .UseEnumCheckConstraints()
+
                     .UseTriggers(triggers => triggers
+                        .AddTrigger<ImmutableCard>()
                         .AddTrigger<LiteTokenUpdate>()));
                 break;
         }

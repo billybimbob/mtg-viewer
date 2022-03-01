@@ -109,6 +109,7 @@ public class IndexModel : PageModel
 
             .OrderBy(u => u.Name)
                 .ThenBy(u => u.Id)
+
             .AsSplitQuery()
             .AsNoTrackingWithIdentityResolution();
     }
@@ -166,9 +167,6 @@ public class IndexModel : PageModel
             return NotFound();
         }
 
-        // must not be tracked so that it can be
-        // replaced/updated
-
         var unclaimed = await _dbContext.Unclaimed
             .Include(u => u.Cards)
             .Include(u => u.Wants)
@@ -186,10 +184,14 @@ public class IndexModel : PageModel
             Owner = user
         };
 
+        _dbContext.Decks.Attach(claimed);
+
         claimed.Cards.AddRange(unclaimed.Cards);
         claimed.Wants.AddRange(unclaimed.Wants);
 
-        _dbContext.Decks.Update(claimed);
+        unclaimed.Cards.Clear();
+        unclaimed.Wants.Clear();
+
         _dbContext.Unclaimed.Remove(unclaimed);
 
         try

@@ -47,25 +47,13 @@ public sealed class CardStream
 
     public static CardStream Default(CardDbContext dbContext)
     {
-        ArgumentNullException.ThrowIfNull(dbContext, nameof(dbContext));
+        ArgumentNullException.ThrowIfNull(dbContext);
 
         return new CardStream
         {
             Cards = dbContext.Cards
-                .Include(c => c.Colors
-                    .OrderBy(c => c.Name))
-
-                .Include(c => c.Types
-                    .OrderBy(t => t.Name))
-
-                .Include(c => c.Subtypes
-                    .OrderBy(s => s.Name))
-
-                .Include(c => c.Supertypes
-                    .OrderBy(s => s.Name))
-
+                .Include(c => c.Flip)
                 .OrderBy(c => c.Id)
-                .AsSplitQuery()
                 .AsAsyncEnumerable(),
 
             Decks = dbContext.Decks
@@ -108,8 +96,8 @@ public sealed class CardStream
 
     public static CardStream User(CardDbContext dbContext, string userId)
     {
-        ArgumentNullException.ThrowIfNull(dbContext, nameof(dbContext));
-        ArgumentNullException.ThrowIfNull(userId, nameof(userId));
+        ArgumentNullException.ThrowIfNull(dbContext);
+        ArgumentNullException.ThrowIfNull(userId);
 
         return new CardStream
         {
@@ -124,20 +112,8 @@ public sealed class CardStream
                     || c.Suggestions
                         .Any(s => s.ReceiverId == userId))
 
-                .Include(c => c.Colors
-                    .OrderBy(c => c.Name))
-
-                .Include(c => c.Types
-                    .OrderBy(t => t.Name))
-
-                .Include(c => c.Subtypes
-                    .OrderBy(s => s.Name))
-
-                .Include(c => c.Supertypes
-                    .OrderBy(s => s.Name))
-
+                .Include(c => c.Flip)
                 .OrderBy(c => c.Id)
-                .AsSplitQuery()
                 .AsAsyncEnumerable(),
 
             Decks = dbContext.Decks
@@ -163,28 +139,15 @@ public sealed class CardStream
 
     public static CardStream Treasury(CardDbContext dbContext)
     {
-        ArgumentNullException.ThrowIfNull(dbContext, nameof(dbContext));
+        ArgumentNullException.ThrowIfNull(dbContext);
 
         return new CardStream
         {
             Cards = dbContext.Cards
                 .Where(c => c.Amounts
                     .Any(a => a.Location is Box || a.Location is Unclaimed))
-
-                .Include(c => c.Colors
-                    .OrderBy(c => c.Name))
-
-                .Include(c => c.Types
-                    .OrderBy(t => t.Name))
-
-                .Include(c => c.Subtypes
-                    .OrderBy(s => s.Name))
-
-                .Include(c => c.Supertypes
-                    .OrderBy(s => s.Name))
-
+                .Include(c => c.Flip)
                 .OrderBy(c => c.Id)
-                .AsSplitQuery()
                 .AsAsyncEnumerable(),
 
             Unclaimed = dbContext.Unclaimed
@@ -199,9 +162,6 @@ public sealed class CardStream
                 .AsAsyncEnumerable(),
 
             Bins = dbContext.Bins
-                // keep eye on, paging does not account for
-                // the variable amount of Box and Quantity 
-                // entries
                 .Include(b => b.Boxes
                     .OrderBy(b => b.Id))
                     .ThenInclude(b => b.Cards
@@ -216,8 +176,8 @@ public sealed class CardStream
 
     public static CardStream All(CardDbContext dbContext, UserManager<CardUser> userManager)
     {
-        ArgumentNullException.ThrowIfNull(dbContext, nameof(dbContext));
-        ArgumentNullException.ThrowIfNull(userManager, nameof(userManager));
+        ArgumentNullException.ThrowIfNull(dbContext);
+        ArgumentNullException.ThrowIfNull(userManager);
 
         return new CardStream
         {
@@ -230,20 +190,8 @@ public sealed class CardStream
                 .AsAsyncEnumerable(),
 
             Cards = dbContext.Cards
-                .Include(c => c.Colors
-                    .OrderBy(c => c.Name))
-
-                .Include(c => c.Types
-                    .OrderBy(t => t.Name))
-
-                .Include(c => c.Subtypes
-                    .OrderBy(s => s.Name))
-
-                .Include(c => c.Supertypes
-                    .OrderBy(s => s.Name))
-
+                .Include(c => c.Flip)
                 .OrderBy(c => c.Id)
-                .AsSplitQuery()
                 .AsAsyncEnumerable(),
 
             Decks = dbContext.Decks
@@ -267,7 +215,6 @@ public sealed class CardStream
                 .AsAsyncEnumerable(),
 
             Unclaimed = dbContext.Unclaimed
-
                 .Include(u => u.Cards
                     .OrderBy(a => a.Id))
 
@@ -279,7 +226,6 @@ public sealed class CardStream
                 .AsAsyncEnumerable(),
 
             Bins = dbContext.Bins
-
                 .Include(b => b.Boxes
                     .OrderBy(b => b.Id))
                     .ThenInclude(b => b.Cards

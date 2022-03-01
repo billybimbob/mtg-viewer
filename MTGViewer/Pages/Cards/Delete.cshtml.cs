@@ -59,7 +59,7 @@ public class DeleteModel : PageModel
         }
 
         var card = await CardForDelete(id)
-            .AsNoTracking()
+            .AsNoTrackingWithIdentityResolution()
             .SingleOrDefaultAsync(cancel);
 
         if (card == default)
@@ -84,7 +84,8 @@ public class DeleteModel : PageModel
             .Where(c => c.Id == cardId)
             .Include(c => c.Amounts
                 .OrderBy(a => a.NumCopies))
-                .ThenInclude(a => a.Location);
+                .ThenInclude(a => a.Location)
+            .OrderBy(c => c.Id);
     }
 
 
@@ -96,6 +97,7 @@ public class DeleteModel : PageModel
         }
 
         var card = await CardForDelete(id)
+            .Include(c => c.Flip)
             .SingleOrDefaultAsync(cancel);
 
         if (card is null)
@@ -103,18 +105,25 @@ public class DeleteModel : PageModel
             return NotFound();
         }
 
-        var boxAmounts = card.Amounts.Where(a => a.Location is Box);
-        int maxCopies = boxAmounts.Sum(a => a.NumCopies);
+        var storageAmounts = card.Amounts
+            .Where(a => a.Location is Box or Excess);
+
+        int maxCopies = storageAmounts.Sum(a => a.NumCopies);
 
         if (!ModelState.IsValid
             || maxCopies == 0 
             || maxCopies < Input.RemoveCopies)
         {
             Card = card;
+
+            ModelState.AddModelError(
+                $"{nameof(InputModel)}.{nameof(InputModel.RemoveCopies)}",
+                "Amount of remove copies is invalid");
+
             return Page();
         }
 
-        RemoveCopies(boxAmounts, Input.RemoveCopies);
+        RemoveCopies(storageAmounts, Input.RemoveCopies);
 
         await _dbContext.UpdateBoxesAsync(cancel);
 
@@ -123,7 +132,7 @@ public class DeleteModel : PageModel
 
         bool allRemoved = maxCopies == Input.RemoveCopies
             && !card.Amounts
-                .Except(boxAmounts)
+                .Except(storageAmounts)
                 .Any();
 
         if (allRemoved)

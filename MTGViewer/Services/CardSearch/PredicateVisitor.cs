@@ -22,7 +22,7 @@ internal class PredicateVisitor : ExpressionVisitor
         _nullDictionary ??=
             Expression.Convert(
                 ExpressionConstants.Null,
-                typeof(IDictionary<,>).MakeGenericType(typeof(string), typeof(object)));
+                typeof(IDictionary<,>).MakeGenericType(typeof(string), typeof(IMtgParameter)));
 
 
 
@@ -61,16 +61,16 @@ internal class PredicateVisitor : ExpressionVisitor
 
     protected override Expression VisitUnary(UnaryExpression node)
     {
-        bool notObjectCast = node.NodeType 
-            is not ExpressionType.Convert || !node.IsLiftedToNull;
-
-        if (notObjectCast && node.NodeType is not ExpressionType.Quote)
-        {
-            return base.VisitUnary(node);
-        }
-
         if (node.Operand is not LambdaExpression lambda)
         {
+            var operand = Visit(node.Operand);
+
+            if (operand is DefaultExpression
+                || operand is ConstantExpression && operand.Type == typeof(string))
+            {
+                return operand;
+            }
+
             lambda = Expression.Lambda(node.Operand);
         }
 
@@ -101,6 +101,7 @@ internal class PredicateVisitor : ExpressionVisitor
                 or UnaryExpression => Expression.Quote(Expression.Lambda(node)),
 
             DefaultExpression d => d,
+
             _ => node
         };
     }
@@ -168,7 +169,7 @@ internal class PredicateVisitor : ExpressionVisitor
             return CallQuery(propertyName, Visit(node.Arguments[0]));
         }
 
-        if (node.Method == ExpressionConstants.GetEnumerableAny<string>()
+        if (node.Method == ExpressionConstants.EnumerableAny.MakeGenericMethod(typeof(string))
             && Visit(node.Arguments[1]) is MethodCallExpression innerQuery
             && innerQuery.Method == MtgApiQuery.QueryMethod
             && innerQuery.Arguments[1] is ConstantExpression innerProperty

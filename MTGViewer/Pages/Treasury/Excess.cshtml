@@ -45,7 +45,7 @@ else
                             </div>
                         </td>
                         <td> @card.SetName </td>
-                        <td> @card.Amounts.Sum(c => c.NumCopies) </td>
+                        <td> @card.Total </td>
                     </tr>
                 }
             </tbody>
@@ -53,4 +53,4 @@ else
     </div>
 }
 
-<component type="typeof(SeekPaging<Card>)" render-mode="Static" param-Seek="Model.Cards.Seek" />
+<partial name="_SeekPagingPartial" for="Cards.Seek"/>

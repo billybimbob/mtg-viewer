@@ -5,10 +5,12 @@ namespace System.Linq.Expressions;
 
 internal class VisitedQuery<T> : IQueryable<T>
 {
-    private readonly IQueryable<T> _source;
+    private readonly IQueryable _source;
 
-    public VisitedQuery(IQueryable<T> source, Expression visited)
+    public VisitedQuery(IQueryable source, ExpressionVisitor visitor)
     {
+        var visited = visitor.Visit(source.Expression);
+
         if (!typeof(IQueryable<T>).IsAssignableFrom(visited.Type))
         {
             throw new ArgumentException(nameof(visited));
@@ -50,8 +52,12 @@ internal static partial class QueryVisitExtensions
     /// </summary>
     internal static IQueryable<T> Visit<T>(this IQueryable<T> source, ExpressionVisitor visitor)
     {
-        var modifiedSource = visitor.Visit(source.Expression);
+        return new VisitedQuery<T>(source, visitor);
+    }
 
-        return new VisitedQuery<T>(source, modifiedSource);
+
+    internal static IQueryable<TResult> Visit<TResult>(this IQueryable source, ExpressionVisitor visitor)
+    {
+        return new VisitedQuery<TResult>(source, visitor);
     }
 }

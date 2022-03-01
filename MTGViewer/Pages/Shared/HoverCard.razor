@@ -9,12 +9,12 @@
         }
         else
         {
-            <a href="@TargetRoute"> @Target.Name </a>
+            <a href="@TargetRoute"> @Card.Name </a>
         }
     </div>
 
     <aside class="preview-item">
-        <img alt="@Target.Name image" src="@Target.ImageUrl.WithHttps()" class="img-fluid rounded" />
+        <img alt="@Card.Name image" src="@Card.ImageUrl.WithHttps()" class="img-fluid rounded" />
     </aside>
 </div>
 
@@ -23,10 +23,15 @@
 {
     public readonly QueryBuilder _query = new();
 
-    public string TargetRoute => $"/Cards/Details/{Target.Id}{_query}";
+    public string TargetRoute => $"/Cards/Details/{Card!.Id}{_query}";
+
+    public CardPreview Card { get; private set; } = default!;
 
     [Parameter]
-    public Card Target { get; set; } = default!;
+    public Card? Target { get; set; }
+
+    [Parameter]
+    public CardPreview? Preview { get; set;}
 
     [Parameter]
     public string? ReturnUrl { get; set; }
@@ -36,14 +41,30 @@
 
     protected override void OnParametersSet()
     {
-        if (ChildContent is not null)
-        {
-            return;
-        }
-
         if (ReturnUrl is not null)
         {
             _query.Add("returnUrl", ReturnUrl);
         }
+
+        if (Preview is not null)
+        {
+            Card = Preview;
+            return;
+        }
+
+        if (Target is null)
+        {
+            throw new ArgumentNullException(nameof(Target));
+        }
+
+        Card = new CardPreview
+        {
+            Id = Target.Id,
+            Name = Target.Name,
+            ManaCost = Target.ManaCost,
+            SetName = Target.SetName,
+            Rarity = Target.Rarity,
+            ImageUrl = Target.ImageUrl
+        };
     }
 }

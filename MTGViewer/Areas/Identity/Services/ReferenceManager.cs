@@ -81,6 +81,7 @@ public class ReferenceManager
         }
 
         var reference = await _dbContext.Users
+            .OrderBy(u => u.Id)
             .SingleOrDefaultAsync(u => u.Id == user.Id, cancel);
 
         if (reference is null)
@@ -121,6 +122,7 @@ public class ReferenceManager
         }
 
         var reference = await _dbContext.Users
+            .OrderBy(u => u.Id)
             .SingleOrDefaultAsync(u => u.Id == user.Id, cancel);
 
         if (reference is null)
@@ -206,9 +208,7 @@ public class ReferenceManager
             reference.ResetRequested = false;
         }
 
-        // intentionally don't pass cancel token
-
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(cancel);
 
         await transaction.CommitAsync();
     }

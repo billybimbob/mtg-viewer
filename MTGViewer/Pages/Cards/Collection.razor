@@ -28,7 +28,7 @@
     </div>
 
     <div class="col-auto btn-group pt-2 pt-md-0" role="group" aria-label="Color Buttons">
-        @foreach (var (symbol, color) in Color.Symbols)
+        @foreach (var (color, symbol) in Symbol.Colors)
         {
             <button title="@color filter"
                 type="button"
@@ -103,7 +103,7 @@
             @foreach (var card in Cards)
             {
                 <tr>
-                    <td> <HoverCard Target="card"/> </td>
+                    <td> <HoverCard Preview="card"/> </td>
 
                     <td>
                         <div class="ms-group">
@@ -112,7 +112,7 @@
                     </td>
                     <td> @card.SetName </td>
                     <td> @card.Rarity </td>
-                    <td> @CardTotal(card) </td>
+                    <td> @card.Total </td>
 
                     <AuthorizeView Policy="@CardPolicies.ChangeTreasury">
                         <td>
@@ -129,7 +129,7 @@
     </table>
 </div>
 
-<OffsetPaging Offset="Cards.Offset" PageSelected="p => Filters.PageIndex = p">
+<OffsetPaging Offset="Cards.Offset" PageSelected="SetPage">
 </OffsetPaging>
 
 
@@ -155,8 +155,8 @@
         EntityExtensions.DisplayName(property);
 
 
-    public string ColorActive(string color) =>
-        Filters.PickedColors.Contains(color) ? "active" : string.Empty;
+    public string ColorActive(Color color) =>
+        Filters.PickedColors.HasFlag(color) ? "active" : string.Empty;
 
 
     public string HeaderClass<T>(Expression<Func<Card, T>> property)
@@ -175,4 +175,6 @@
             return "clickable btn-link";
         }
     }
+
+    public void SetPage(int pageIndex) => Filters.PageIndex = pageIndex;
 }

@@ -2,18 +2,19 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
+using MTGViewer.Data;
 
 namespace MTGViewer.Services;
 
 
 public class CardText : ISymbolFinder, ISymbolTranslator
 {
-    private const string _mana = $@"{{(?<{ nameof(_mana) }>[^}}]+)}}";
+    private const string Mana = $@"{{(?<{ nameof(Mana) }>[^}}]+)}}";
 
-    private const string _direction = "direction";
-    private const string _loyalty = $@"\[(?<{ _direction }>[+−])?(?<{ nameof(_loyalty) }>\d+)\]";
+    private const string Direction = "direction";
+    private const string Loyalty = $@"\[(?<{ Direction }>[+−])?(?<{ nameof(Loyalty) }>\d+)\]";
 
-    private const string _saga = $@"(?<{ nameof(_saga) }>(?:[IV]+(?:, )?)+) —";
+    private const string Saga = $@"(?<{ nameof(Saga) }>(?:[IV]+(?:, )?)+) —";
 
 
     public IReadOnlyList<ManaSymbol> FindMana(string? mtgText)
@@ -24,10 +25,10 @@ public class CardText : ISymbolFinder, ISymbolTranslator
         }
 
         return Regex
-            .Matches(mtgText, _mana)
+            .Matches(mtgText, Mana)
             .Select(m =>
             {
-                var mana = m.Groups[nameof(_mana)];
+                var mana = m.Groups[nameof(Mana)];
 
                 var start = m.Index;
                 var end = m.Index + m.Length;
@@ -46,16 +47,16 @@ public class CardText : ISymbolFinder, ISymbolTranslator
         }
 
         return Regex
-            .Matches(mtgText, _loyalty)
+            .Matches(mtgText, Loyalty)
             .Select(m =>
             {
-                var direction = m.Groups[_direction];
+                var direction = m.Groups[Direction];
 
                 var directionValue = direction.Success 
                     ? direction.Value 
                     : null;
 
-                var loyalty = m.Groups[nameof(_loyalty)];
+                var loyalty = m.Groups[nameof(Loyalty)];
 
                 var start = m.Index;
                 var end = m.Index + m.Length;
@@ -75,11 +76,11 @@ public class CardText : ISymbolFinder, ISymbolTranslator
         }
 
         return Regex
-            .Matches(mtgText, _saga)
+            .Matches(mtgText, Saga)
             .SelectMany(m =>
             {
                 const string separator = ", ";
-                var sagaGroup = m.Groups[nameof(_saga)];
+                var sagaGroup = m.Groups[nameof(Saga)];
 
                 var sagas = sagaGroup.Value.Split(separator);
                 var indices = SagaIndices(sagas, sagaGroup.Index, separator);
@@ -118,6 +119,15 @@ public class CardText : ISymbolFinder, ISymbolTranslator
     public string ManaString(ManaSymbol symbol)
     {
         return $"{{{symbol.Value}}}";
+    }
+
+    public string ColorString(Color color)
+    {
+        var manaSymbols = Enum.GetValues<Color>()
+            .Where(c => c is not Color.None && color.HasFlag(c))
+            .Select(c => ManaString(new ManaSymbol(default, Symbol.Colors[c])));
+
+        return string.Join(string.Empty, manaSymbols);
     }
 
 

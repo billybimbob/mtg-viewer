@@ -25,7 +25,7 @@ public static class StringExtensions
             + $@"(?<port>[^/]*)\/"
             + $@"(?<database>.*)";
 
-        ArgumentNullException.ThrowIfNull(pgUrl, nameof(pgUrl));
+        ArgumentNullException.ThrowIfNull(pgUrl);
 
         var urlValues = Regex.Match(pgUrl, pgUrlPattern).Groups;
 

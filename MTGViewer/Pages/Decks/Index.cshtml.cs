@@ -33,20 +33,14 @@ public class IndexModel : PageModel
     }
 
 
-    public enum State
-    {
-        Theorycraft,
-        Built,
-        Requesting
-    }
-
-
     [TempData]
     public string? PostMessage { get; set; }
 
     public string UserName { get; private set; } = string.Empty;
 
-    public SeekList<Deck> Decks { get; private set; } = SeekList<Deck>.Empty;
+    public SeekList<DeckPreview> Decks { get; private set; } = SeekList<DeckPreview>.Empty;
+
+    public bool HasUnclaimed { get; private set; }
 
 
     public async Task<IActionResult> OnGetAsync(
@@ -71,55 +65,34 @@ public class IndexModel : PageModel
         }
 
         var decks = await DecksForIndex(userId)
-            .ToSeekListAsync(seek, _pageSize, backtrack, cancel);
+            .SeekBy(d => d.Id, seek, _pageSize, backtrack)
+            .ToSeekListAsync(cancel);
 
         UserName = userName;
         Decks = decks;
+        HasUnclaimed =  await _dbContext.Unclaimed.AnyAsync(cancel);
 
         return Page();
     }
 
 
-    private IQueryable<Deck> DecksForIndex(string userId)
+    private IQueryable<DeckPreview> DecksForIndex(string userId)
     {
         return _dbContext.Decks
             .Where(d => d.OwnerId == userId)
+            .Select(d => new DeckPreview
+            {
+                Id = d.Id,
+                Name = d.Name,
+                Color = d.Color,
+                CardTotal = d.Cards.Sum(a => a.NumCopies),
 
-            .Include(d => d.Cards) // unbounded: keep eye on
-
-            .Include(d => d.Wants
-                .OrderBy(w => w.Id)
-                .Take(1))
-
-            .Include(d => d.GiveBacks
-                .OrderBy(g => g.Id)
-                .Take(1))
-
-            .Include(d => d.TradesTo
-                .OrderBy(t => t.Id)
-                .Take(1))
+                HasWants = d.Wants.Any(),
+                HasReturns = d.GiveBacks.Any(),
+                HasTradesTo = d.TradesTo.Any(),
+            })
 
             .OrderBy(d => d.Name)
-                .ThenBy(d => d.Id)
-
-            .AsSplitQuery()
-            .AsNoTrackingWithIdentityResolution();
-    }
-
-
-    public State GetDeckState(Deck deck)
-    {
-        if (deck.TradesTo.Any())
-        {
-            return State.Requesting;
-        }
-        else if (deck.Wants.Any() || deck.GiveBacks.Any())
-        {
-            return State.Theorycraft;
-        }
-        else
-        {
-            return State.Built;
-        }
+                .ThenBy(d => d.Id);
     }
 }

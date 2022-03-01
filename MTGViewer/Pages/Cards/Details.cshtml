@@ -10,25 +10,32 @@
 
 @inject IAuthorizationService AuthorizationService
 @inject SymbolFormatter MtgSymbols
+@inject MtgApiFlipQuery FlipQuery
 @inject SignInManager<CardUser> SignInManager
 
 @{ 
+    bool hasAlts = Model.CardAlts.Any();
+    bool hasFlip = FlipQuery.HasFlip(Model.Card.Name);
+
+    bool isSignedIn = SignInManager.IsSignedIn(User);
+
     bool canChangeTreasury = (await AuthorizationService
         .AuthorizeAsync(User, CardPolicies.ChangeTreasury)).Succeeded;
-
-    bool hasAlts = Model.CardAlts.Any();
-    bool isSignedIn = SignInManager.IsSignedIn(User);
 }
 
 
 <div class="row"> 
     <h1 class="h1 col-auto"> @Model.Card.Name </h1> 
-    <div class="h5 m-0 pl-sm-0 pb-2 pb-sm-0 col-sm-auto col-12 d-flex align-items-center">
-        @MtgSymbols.Format(Model.Card.ManaCost).ToHtmlString()
-    </div>
+    @{ var manaCost = Model.Card.Flip is not null ? Model.Card.Flip.ManaCost : Model.Card.ManaCost; }
+    @if (manaCost is not null)
+    {
+        <div class="h5 m-0 pl-sm-0 pb-2 pb-sm-0 col-sm-auto col-12 d-flex align-items-center">
+            @MtgSymbols.Format(manaCost).ToHtmlString()
+        </div>
+    }
 </div>
 
-@if (hasAlts || isSignedIn)
+@if (hasAlts || isSignedIn || hasFlip)
 {
     <div class="btn-group" role="group">
         @if (hasAlts)
@@ -43,9 +50,8 @@
                 <div class="dropdown-menu" aria-labelledby="alt-btn">
                     @foreach (var card in Model.CardAlts)
                     {
-                        <a class="dropdown-item" asp-page="Details" asp-route-id="@card.Id" >
-                            @card.Name (@card.SetName)
-                        </a>
+                        <a class="dropdown-item" asp-route-id="@card.Id" >
+                            @card.Name (@card.SetName) </a>
                     }
                 </div>
             </div>
@@ -63,6 +69,15 @@
             <button type="button" class="btn btn-danger" disabled>
                 Delete </button>
         }
+
+        @if (hasFlip)
+        {
+            bool flip = Model.Card.Flip is null;
+
+            <a title="Flip @Model.Card.Name" class="btn btn-secondary"
+                role="button" asp-route-flip="@flip">
+                Flip </a>
+        }
     </div>
 }
 
@@ -70,18 +85,12 @@
 <div class="row">
 
     <div class="col-lg-3 col-12 pb-4 d-flex justify-content-center justify-content-lg-start align-items-center">
-        <img class="card-img" alt="@Model.Card.Name" src="@Model.Card.ImageUrl.WithHttps()"/>
+        @{ var imageUrl = Model.Card.Flip is not null ? Model.Card.Flip.ImageUrl : Model.Card.ImageUrl; }
+        <img class="card-img" alt="@Model.Card.Name" src="@imageUrl.WithHttps()"/>
     </div>
 
     <div class="col">
         <dl class="row m-0">
-
-            <dt class="col-md-3 col-5">
-                @Html.DisplayNameFor(m => m.Card.Cmc)
-            </dt>
-            <dd class="col-md-9 col-7">
-                @(Model.Card.Cmc?.ToString() ?? "--")
-            </dd>
                 
             <dt class="col-md-3 col-5">
                 @Html.DisplayNameFor(m => m.Card.Rarity)
@@ -97,88 +106,126 @@
                 @Html.DisplayFor(m => m.Card.SetName)
             </dd>
 
-            <dt class="col-md-3 col-5">
-                @Html.DisplayNameFor(m => m.Card.Supertypes)
-            </dt>
-            <dd class="col-md-9 col-7">
-                @(Model.Card.Supertypes.Any()
-                    ? string.Join(" ", Model.Card.Supertypes.Select(st => st.Name))
-                    : "--")
-            </dd>
+            @if (Model.Card.Flip is not null)
+            {
+                <dt class="col-md-3 col-5">
+                    @Html.DisplayNameFor(m => m.Card.ManaValue)
+                </dt>
+                <dd class="col-md-9 col-7">
+                    @(Model.Card.Flip.Cmc?.ToString() ?? "--")
+                </dd>
 
-            <dt class="col-md-3 col-5">
-                @Html.DisplayNameFor(m => m.Card.Types)
-            </dt>
-            <dd class="col-md-9 col-7">
-                @(Model.Card.Types.Any()
-                    ? string.Join(" ", Model.Card.Types.Select(st => st.Name))
-                    : "--")
-            </dd>
+                <dt class="col-md-3 col-5">
+                    @Html.DisplayNameFor(m => m.Card.Flip!.Type)
+                </dt>
+                <dd class="col-md-9 col-7">
+                    @Model.Card.Flip.Type
+                </dd>
 
-            <dt class="col-md-3 col-5">
-                @Html.DisplayNameFor(m => m.Card.Subtypes)
-            </dt>
-            <dd class="col-md-9 col-7">
-                @(Model.Card.Subtypes.Any() 
-                    ? string.Join(" ", Model.Card.Subtypes.Select(st => st.Name))
-                    : "--")
-            </dd>
+                <dt class="col-md-3 col-5">
+                    @Html.DisplayNameFor(m => m.Card.Power)
+                </dt>
+                <dd class="col-md-9 col-7">
+                    @(Model.Card.Flip.Power ?? "--")
+                </dd>
 
-            <dt class="col-md-3 col-5">
-                @Html.DisplayNameFor(m => m.Card.Power)
-            </dt>
-            <dd class="col-md-9 col-7">
-                @(Model.Card.Power ?? "--")
-            </dd>
+                <dt class="col-md-3 col-5">
+                    @Html.DisplayNameFor(m => m.Card.Toughness)
+                </dt>
+                <dd class="col-md-9 col-7">
+                    @(Model.Card.Flip.Toughness ?? "--")
+                </dd>
 
-            <dt class="col-md-3 col-5">
-                @Html.DisplayNameFor(m => m.Card.Toughness)
-            </dt>
-            <dd class="col-md-9 col-7">
-                @(Model.Card.Toughness ?? "--")
-            </dd>
+                <dt class="col-md-3 col-5">
+                    @Html.DisplayNameFor(m => m.Card.Loyalty)
+                </dt>
+                <dd class="col-md-9 col-7">
+                    @(Model.Card.Flip.Loyalty ?? "--")
+                </dd>
 
-            <dt class="col-md-3 col-5">
-                @Html.DisplayNameFor(m => m.Card.Loyalty)
-            </dt>
-            <dd class="col-md-9 col-7">
-                @(Model.Card.Loyalty ?? "--")
-            </dd>
+                <dt class="col-md-3 col-5">
+                    @Html.DisplayNameFor(m => m.Card.Artist)
+                </dt>
+                <dd class="col-md-9 col-7">
+                    @Model.Card.Flip.Artist
+                </dd>
+            }
+            else
+            {
+                <dt class="col-md-3 col-5">
+                    @Html.DisplayNameFor(m => m.Card.ManaValue)
+                </dt>
+                <dd class="col-md-9 col-7">
+                    @(Model.Card.ManaValue?.ToString() ?? "--")
+                </dd>
 
-            <dt class="col-md-3 col-5">
-                @Html.DisplayNameFor(m => m.Card.Artist)
-            </dt>
-            <dd class="col-md-9 col-7">
-                @(Model.Card.Artist ?? "--")
-            </dd>
+                <dt class="col-md-3 col-5">
+                    @Html.DisplayNameFor(m => m.Card.Type)
+                </dt>
+                <dd class="col-md-9 col-7">
+                    @Model.Card.Type
+                </dd>
+
+                <dt class="col-md-3 col-5">
+                    @Html.DisplayNameFor(m => m.Card.Power)
+                </dt>
+                <dd class="col-md-9 col-7">
+                    @(Model.Card.Power ?? "--")
+                </dd>
+
+                <dt class="col-md-3 col-5">
+                    @Html.DisplayNameFor(m => m.Card.Toughness)
+                </dt>
+                <dd class="col-md-9 col-7">
+                    @(Model.Card.Toughness ?? "--")
+                </dd>
+
+                <dt class="col-md-3 col-5">
+                    @Html.DisplayNameFor(m => m.Card.Loyalty)
+                </dt>
+                <dd class="col-md-9 col-7">
+                    @(Model.Card.Loyalty ?? "--")
+                </dd>
+
+                <dt class="col-md-3 col-5">
+                    @Html.DisplayNameFor(m => m.Card.Artist)
+                </dt>
+                <dd class="col-md-9 col-7">
+                    @Model.Card.Artist
+                </dd>
+            }
+
+            @{ var text = Model.Card.Flip is not null ? Model.Card.Flip.Text : Model.Card.Text; }
 
             <dt class="col-md-3 col-5">
                 @Html.DisplayNameFor(m => m.Card.Text)
             </dt>
 
-            @if (Model.Card.Text == null)
+            @if (text == null)
             {
                 <dd class="col-md-9 col-7"> -- </dd>
             }
             else
             {
                 <dd class="col-md-9 col-12">
-                    <span class="multiline">@MtgSymbols.Format(Model.Card.Text).ToHtmlString()</span>
+                    <span class="multiline">@MtgSymbols.Format(text).ToHtmlString()</span>
                 </dd>
             }
+
+            @{ var flavor = Model.Card.Flip is not null ? Model.Card.Flip.Flavor : Model.Card.Flavor; }
 
             <dt class="col-md-3 col-5">
                 @Html.DisplayNameFor(m => m.Card.Flavor)
             </dt>
 
-            @if (Model.Card.Flavor == null)
+            @if (flavor == null)
             {
                 <dd class="col-md-9 col-7"> -- </dd>
             }
             else
             {
                 <dd class="col-md-9 col-12">
-                    <span class="multiline">@Model.Card.Flavor</span>
+                    <span class="multiline">@flavor</span>
                 </dd>
             }
 
@@ -199,7 +246,11 @@
                                     <a asp-page="/Decks/Details" asp-route-id="@location.Id"> @location.Name </a>
                                     break;
 
-                                case Box box when box.IsExcess:
+                                case Unclaimed when canChangeTreasury:
+                                    <a asp-page="/Unowned/Index" asp-route-id="@location.Id"> @location.Name </a>
+                                    break;
+
+                                case Excess:
                                     <a asp-page="/Treasury/Excess" asp-route-cardId="@Model.Card.Id" >
                                         @location.Name </a>
                                     break;
@@ -207,10 +258,6 @@
                                 case Box:
                                     <a asp-page="/Treasury/Details" asp-route-id="@location.Id" asp-route-cardId="@Model.Card.Id">
                                         @location.Name </a>
-                                    break;
-
-                                case Unclaimed when canChangeTreasury:
-                                    <a asp-page="/Unowned/Index" asp-route-id="@location.Id"> @location.Name </a>
                                     break;
 
                                 default:

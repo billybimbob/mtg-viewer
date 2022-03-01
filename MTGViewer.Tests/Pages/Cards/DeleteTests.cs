@@ -218,9 +218,8 @@ public class DeleteTests : IAsyncLifetime
         await _testGen.AddExcessAsync(15);
 
         var cardId = await _dbContext.Cards
-            .Where(c => !c.Amounts
-                .Any(a => a.Location is Box
-                    && (a.Location as Box)!.IsExcess))
+            .Where(c => c.Amounts
+                .Any(a => a.Location is Excess))
             .Select(c => c.Id)
             .FirstAsync();
 
@@ -246,8 +245,7 @@ public class DeleteTests : IAsyncLifetime
             .SelectMany(b => b.Cards)
             .SumAsync(a => a.NumCopies);
 
-        int excessOld = await _dbContext.Boxes
-            .Where(b => b.IsExcess)
+        int excessOld = await _dbContext.Excess
             .SelectMany(b => b.Cards)
             .SumAsync(a => a.NumCopies);
 
@@ -257,13 +255,12 @@ public class DeleteTests : IAsyncLifetime
             .SelectMany(b => b.Cards)
             .SumAsync(a => a.NumCopies);
 
-        int excessNew = await _dbContext.Boxes
-            .Where(b => b.IsExcess)
+        int excessNew = await _dbContext.Excess
             .SelectMany(b => b.Cards)
             .SumAsync(a => a.NumCopies);
 
         Assert.IsType<RedirectResult>(result);
-        Assert.Equal(removeCopies, boxesOld - boxesNew);
+        Assert.Equal(removeCopies, boxesOld - boxesNew + excessOld - excessNew);
         Assert.InRange(excessOld - excessNew, 1, removeCopies);
     }
 }

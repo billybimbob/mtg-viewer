@@ -1,9 +1,10 @@
 @page "{id}/{receiverId}"
 @model Transfers.SuggestUserModel
-@inject SymbolFormatter MtgSymbols
 @{
     ViewData["Title"] = $"{Model.Card.Name} - Suggest {Model.Receiver.Name}";
 }
+@inject SymbolFormatter MtgSymbols
+@inject CardText CardText
 
 <h2>
     Suggest 
@@ -35,7 +36,7 @@
                                 <label class="form-check-label row" for="@deckId">
                                     <span class="col-sm-5"> @deck.Name </span>
                                     <span class="col-sm-6">
-                                        @MtgSymbols.Format(deck.Colors).ToHtmlString()
+                                        @MtgSymbols.Format(CardText.ColorString(deck.Color)).ToHtmlString()
                                     </span>
                                 </label>
                             </div>

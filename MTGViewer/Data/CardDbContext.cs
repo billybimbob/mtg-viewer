@@ -20,6 +20,7 @@ public class CardDbContext : DbContext
 
     public DbSet<Deck> Decks => Set<Deck>();
     public DbSet<Unclaimed> Unclaimed => Set<Unclaimed>();
+    public DbSet<Excess> Excess => Set<Excess>();
 
     public DbSet<Box> Boxes => Set<Box>();
     public DbSet<Bin> Bins => Set<Bin>();
@@ -64,43 +65,7 @@ internal class CardConfiguration : IEntityTypeConfiguration<Card>
     public void Configure(EntityTypeBuilder<Card> builder)
     {
         builder
-            .OwnsMany(c => c.Names)
-            .HasKey(n => new { n.Value, n.CardId });
-
-        builder
-            .Navigation(c => c.Names)
-            .AutoInclude(false);
-
-        builder
-            .OwnsMany(c => c.Colors)
-            .HasKey(cl => new { cl.Name, cl.CardId });
-
-        builder
-            .Navigation(c => c.Colors)
-            .AutoInclude(false);
-
-        builder
-            .OwnsMany(c => c.Supertypes)
-            .HasKey(sp => new { sp.Name, sp.CardId });
-
-        builder
-            .Navigation(c => c.Supertypes)
-            .AutoInclude(false);
-
-        builder
-            .OwnsMany(c => c.Types)
-            .HasKey(ty => new { ty.Name, ty.CardId });
-
-        builder
-            .Navigation(c => c.Types)
-            .AutoInclude(false);
-
-        builder
-            .OwnsMany(c => c.Subtypes)
-            .HasKey(sb => new { sb.Name, sb.CardId });
-
-        builder
-            .Navigation(c => c.Subtypes)
+            .Navigation(c => c.Flip)
             .AutoInclude(false);
     }
 }
@@ -113,10 +78,14 @@ internal class LocationConfiguration : IEntityTypeConfiguration<Location>
         builder
             .HasDiscriminator(l => l.Type)
                 .HasValue<Location>(LocationType.Invalid)
+
                 .HasValue<Owned>(LocationType.Invalid)
-                .HasValue<Unclaimed>(LocationType.Unclaimed)
                 .HasValue<Deck>(LocationType.Deck)
-                .HasValue<Box>(LocationType.Box);
+                .HasValue<Unclaimed>(LocationType.Unclaimed)
+
+                .HasValue<Storage>(LocationType.Invalid)
+                .HasValue<Box>(LocationType.Box)
+                .HasValue<Excess>(LocationType.Excess);
 
         builder
             .HasMany(l => l.Cards)
@@ -168,10 +137,6 @@ internal class BoxConfiguration : IEntityTypeConfiguration<Box>
             .HasOne(b => b.Bin)
             .WithMany(b => b.Boxes)
             .OnDelete(DeleteBehavior.Restrict);
-
-        builder
-            .Property(b => b.IsExcess)
-            .HasDefaultValue(false);
     }
 }
 

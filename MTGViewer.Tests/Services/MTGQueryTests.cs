@@ -9,8 +9,12 @@ namespace MTGViewer.Tests.Services;
 
 public class MTGQueryTests
 {
-    private const string TEST_ID = "386616";
-    private const string TEST_NAME = "Narset, Enlightened Master";
+    private const string TestId = "386616";
+    private const string TestName = "Narset, Enlightened Master";
+
+    private const string SplitId = "27163";
+    private const string SplitName = "Illusion // Reality";
+
 
     private readonly IMTGQuery _mtgQuery;
 
@@ -25,16 +29,16 @@ public class MTGQueryTests
     public async Task Search_NameParam_ReturnsSameName()
     {
         var cards = await _mtgQuery
-            .Where(c => c.Name == TEST_NAME)
+            .Where(c => c.Name == TestName)
             .SearchAsync();
 
         var cardNames = cards.Select(c => c.Name);
 
-        Assert.Contains(TEST_NAME, cardNames);
+        Assert.Contains(TestName, cardNames);
     }
 
 
-    private string GetName() => TEST_NAME;
+    private string GetName() => TestName;
 
 
     [Fact(Skip = "Calls external api")]
@@ -46,7 +50,24 @@ public class MTGQueryTests
 
         var cardNames = cards.Select(c => c.Name);
 
-        Assert.Contains(TEST_NAME, cardNames);
+        Assert.Contains(TestName, cardNames);
+    }
+
+
+    [Fact(Skip = "Calls external api")]
+    public async Task Search_SplitName_ResturnsWithFlip()
+    {
+        var cards = await _mtgQuery
+            .Where(c => c.Name == SplitName)
+            .SearchAsync();
+
+        var first = cards.FirstOrDefault();
+
+        Assert.NotNull(first);
+        Assert.NotNull(first!.Flip);
+
+        Assert.Equal(SplitName, first!.Name);
+        Assert.Equal(SplitId, first!.MultiverseId);
     }
 
 
@@ -54,10 +75,10 @@ public class MTGQueryTests
     [Fact(Skip = "Calls external api")]
     public async Task Find_Id_ReturnsCard()
     {
-        var card = await _mtgQuery.FindAsync(TEST_ID);
+        var card = await _mtgQuery.FindAsync(TestId);
 
         Assert.NotNull(card);
-        Assert.Equal(TEST_NAME, card!.Name);
+        Assert.Equal(TestName, card!.Name);
     }
 
 
@@ -71,22 +92,35 @@ public class MTGQueryTests
 
 
     [Fact(Skip = "Calls external api")]
-    public async Task Find_Cache_ReturnsCard()
+    public async Task Find_SplitId_ReturnsWithFlip()
     {
-        var testCard = await _mtgQuery.FindAsync(TEST_ID);
+        var card = await _mtgQuery.FindAsync(SplitId);
 
-        var card = await _mtgQuery.FindAsync(TEST_ID);
-
-        Assert.NotNull(testCard);
         Assert.NotNull(card);
+        Assert.NotNull(card!.Flip);
 
-        Assert.Equal(TEST_ID, testCard!.MultiverseId);
-        Assert.Equal(TEST_NAME, card!.Name);
+        Assert.Equal(SplitName, card!.Name);
+        Assert.Equal(SplitId, card!.MultiverseId);
     }
 
 
+    // [Fact(Skip = "Calls external api")]
+    // public async Task Find_Cache_ReturnsCard()
+    // {
+    //     var testCard = await _mtgQuery.FindAsync(TestId);
+
+    //     var card = await _mtgQuery.FindAsync(TestId);
+
+    //     Assert.NotNull(testCard);
+    //     Assert.NotNull(card);
+
+    //     Assert.Equal(TestId, testCard!.MultiverseId);
+    //     Assert.Equal(TestName, card!.Name);
+    // }
+
+
     [Fact(Skip = "Calls external api")]
-    public async Task All_PagedQuery_EqualPage()
+    public async Task Search_PagedQuery_EqualPage()
     {
         const int page = 1;
 
@@ -101,7 +135,7 @@ public class MTGQueryTests
     [Fact(Skip = "Calls external api")]
     public async Task Collection_MultipleIds_AllReturned()
     {
-        int idBase = int.Parse(TEST_ID);
+        int idBase = int.Parse(TestId);
 
         var multiverseIds = Enumerable
             .Range(0, 5)
@@ -111,7 +145,7 @@ public class MTGQueryTests
 
         var cards = await _mtgQuery.CollectionAsync(multiverseIds);
 
-        Assert.Contains(TEST_NAME, cards.Select(c => c.Name));
+        Assert.Contains(TestName, cards.Select(c => c.Name));
         Assert.Equal(multiverseIds.Length, cards.Count);
     }
 }

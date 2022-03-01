@@ -24,7 +24,7 @@ public class ExcessModel : PageModel
     }
 
 
-    public SeekList<Card> Cards { get; private set; } = SeekList<Card>.Empty;
+    public SeekList<CardPreview> Cards { get; private set; } = SeekList<CardPreview>.Empty;
 
     public bool HasExcess =>
         Cards.Any()
@@ -44,7 +44,8 @@ public class ExcessModel : PageModel
         }
 
         Cards = await ExcessCards()
-            .ToSeekListAsync(seek, _pageSize, backtrack, cancel);
+            .SeekBy(c => c.Id, seek, _pageSize, backtrack)
+            .ToSeekListAsync(cancel);
 
         return Page();
     }
@@ -78,21 +79,29 @@ public class ExcessModel : PageModel
     }
 
 
-    private IQueryable<Card> ExcessCards()
+    private IQueryable<CardPreview> ExcessCards()
     {
         return _dbContext.Cards
             .Where(c => c.Amounts
-                .Any(a => a.Location is Box
-                    && (a.Location as Box)!.IsExcess))
+                .Any(a => a.Location is Excess))
 
-            .Include(c => c.Amounts // unbounded, keep eye on
-                .Where(a => a.Location is Box 
-                    && (a.Location as Box)!.IsExcess))
-            
+            .Select(c => new CardPreview
+            {
+                Id = c.Id,
+                Name = c.Name,
+                ManaCost = c.ManaCost,
+                SetName = c.SetName,
+
+                Rarity = c.Rarity,
+                ImageUrl = c.ImageUrl,
+
+                Total = c.Amounts
+                    .Where(a => a.Location is Excess)
+                    .Sum(a => a.NumCopies)
+            })
+
             .OrderBy(c => c.Name)
                 .ThenBy(c => c.SetName)
-                .ThenBy(c => c.Id)
-
-            .AsNoTrackingWithIdentityResolution();
+                .ThenBy(c => c.Id);
     }
 }

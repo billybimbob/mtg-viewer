@@ -1,7 +1,4 @@
-@typeparam TEntity where TEntity : class
-
 @inject NavigationManager Nav
-@using MTGViewer.Data.Internal
 
 @if (HasPrevious || HasNext)
 {
@@ -70,10 +67,10 @@
 @code 
 {
     [Parameter]
-    public Seek<TEntity> Seek { get; set; }
+    public Seek Seek { get; set; }
 
     [Parameter]
-    public EventCallback<TEntity> ChangePage { get; set; }
+    public EventCallback<object> ChangePage { get; set; }
 
     public bool HasPrevious => Seek.Previous is not null;
 
@@ -108,8 +105,8 @@
 
     protected override void OnParametersSet()
     {
-        _previous["seek"] = GetKey(Seek.Previous);
-        _next["seek"] = GetKey(Seek.Next);
+        _previous["seek"] = Seek.Previous;
+        _next["seek"] = Seek.Next;
     }
 
 
@@ -128,7 +125,7 @@
 
     public async Task PreviousPageAsync()
     {
-        if (_isBusy || Seek.Previous is not TEntity current)
+        if (_isBusy || Seek.Previous is not object current)
         {
             return;
         }
@@ -148,7 +145,7 @@
 
     public async Task NextPageAsync()
     {
-        if (_isBusy || Seek.Next is not TEntity next)
+        if (_isBusy || Seek.Next is not object next)
         {
             return;
         }
@@ -165,17 +162,4 @@
         }
     }
 
-
-
-    private static object? GetKey(TEntity? entity)
-    {
-        if (entity is null)
-        {
-            return null;
-        }
-
-        var keyProperty = EntityExtensions.GetKeyProperty<TEntity>();
-
-        return keyProperty.GetValue(entity);
-    }
 }

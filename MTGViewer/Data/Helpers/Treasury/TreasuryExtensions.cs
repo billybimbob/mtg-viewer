@@ -26,8 +26,15 @@ public static partial class TreasuryExtensions
     }
 
 
+    private static IQueryable<Excess> ExistingExcess(CardDbContext dbContext)
+    {
+        return dbContext.Excess
+            .Include(e => e.Cards
+                .OrderBy(a => a.NumCopies))
+                .ThenInclude(a => a.Card)
+            .OrderBy(e => e.Id);
+    }
 
-    #region Add
 
     public static Task AddCardsAsync(
         this CardDbContext dbContext, 
@@ -35,7 +42,7 @@ public static partial class TreasuryExtensions
         int numCopies,
         CancellationToken cancel = default)
     {
-        ArgumentNullException.ThrowIfNull(dbContext, nameof(dbContext));
+        ArgumentNullException.ThrowIfNull(dbContext);
 
         var request = new []{ new CardRequest(card, numCopies) };
 
@@ -48,7 +55,7 @@ public static partial class TreasuryExtensions
         IEnumerable<CardRequest> adding, 
         CancellationToken cancel = default)
     {
-        ArgumentNullException.ThrowIfNull(dbContext, nameof(dbContext));
+        ArgumentNullException.ThrowIfNull(dbContext);
 
         adding = AsAddRequests(adding); 
 
@@ -59,15 +66,17 @@ public static partial class TreasuryExtensions
 
         AttachCardRequests(dbContext, adding);
 
-        await OrderedBoxes(dbContext).LoadAsync(cancel); 
+        await OrderedBoxes(dbContext).LoadAsync(cancel);
+
+        await ExistingExcess(dbContext).LoadAsync(cancel);
 
         AddMissingExcess(dbContext);
 
         var treasuryContext = new TreasuryContext(dbContext);
 
-        AddCopies(treasuryContext, adding, AddScheme.Exact);
-        AddCopies(treasuryContext, adding, AddScheme.Approximate);
-        AddCopies(treasuryContext, adding, AddScheme.Guess);
+        treasuryContext.AddExact(adding);
+        treasuryContext.AddApproximate(adding);
+        treasuryContext.AddGuess(adding);
 
         RemoveEmpty(dbContext);
     }
@@ -75,7 +84,7 @@ public static partial class TreasuryExtensions
 
     private static IReadOnlyList<CardRequest> AsAddRequests(IEnumerable<CardRequest>? requests)
     {
-        ArgumentNullException.ThrowIfNull(requests, nameof(requests));
+        ArgumentNullException.ThrowIfNull(requests);
 
         return requests
             .OfType<CardRequest>()
@@ -104,33 +113,14 @@ public static partial class TreasuryExtensions
     }
 
 
-    private static void AddCopies(
-        TreasuryContext treasuryContext, 
-        IEnumerable<CardRequest> requests,
-        AddScheme scheme)
-    {
-        var adds = treasuryContext.AddAssignment(requests, scheme);
-
-        foreach ((CardRequest request, int numCopies, Box box) in adds)
-        {
-            treasuryContext.AddCopies(request.Card, numCopies, box);
-            request.NumCopies -= numCopies;
-        }
-    }
-
-    #endregion
-
-
-
-    #region Exchange
 
     public static async Task ExchangeAsync(
         this CardDbContext dbContext, 
         Deck deck, 
         CancellationToken cancel = default)
     {
-        ArgumentNullException.ThrowIfNull(dbContext, nameof(dbContext));
-        ArgumentNullException.ThrowIfNull(deck, nameof(deck));
+        ArgumentNullException.ThrowIfNull(dbContext);
+        ArgumentNullException.ThrowIfNull(deck);
 
         var entry = dbContext.Entry(deck);
 
@@ -141,63 +131,33 @@ public static partial class TreasuryExtensions
 
         await OrderedBoxes(dbContext).LoadAsync(cancel);
 
+        await ExistingExcess(dbContext).LoadAsync(cancel);
+
         AddMissingExcess(dbContext);
 
         var treasuryContext = new TreasuryContext(dbContext);
         var exchangeContext = new ExchangeContext(dbContext, treasuryContext);
 
-        TakeCopies(treasuryContext, exchangeContext, TakeScheme.Exact);
-        TakeCopies(treasuryContext, exchangeContext, TakeScheme.Approximate);
+        exchangeContext.TakeExact();
+        exchangeContext.TakeApproximate();
 
-        ReturnCopies(treasuryContext, exchangeContext, ReturnScheme.Exact);
-        ReturnCopies(treasuryContext, exchangeContext, ReturnScheme.Approximate);
-        ReturnCopies(treasuryContext, exchangeContext, ReturnScheme.Guess);
+        exchangeContext.ReturnExact();
+        exchangeContext.ReturnApproximate();
+        exchangeContext.ReturnGuess();
 
-        TransferExcessCopies(treasuryContext, ExcessScheme.Exact);
-        TransferExcessCopies(treasuryContext, ExcessScheme.Approximate);
+        treasuryContext.LowerExactExcess();
+        treasuryContext.LowerApproximateExcess();
 
         RemoveEmpty(dbContext);
     }
 
 
-    private static void TakeCopies(
-        TreasuryContext treasuryContext, 
-        ExchangeContext exchangeContext,
-        TakeScheme scheme)
-    {
-        var checkouts = treasuryContext.TakeAssignment(exchangeContext, scheme);
-
-        foreach ((Card card, int numCopies, Box box) in checkouts)
-        {
-            exchangeContext.TakeCopies(card, numCopies, box);
-        }
-    }
-
-
-    private static void ReturnCopies(
-        TreasuryContext treasuryContext,
-        ExchangeContext exchangeContext,
-        ReturnScheme scheme)
-    {
-        var returns = treasuryContext.ReturnAssignment(exchangeContext, scheme);
-
-        foreach ((Card card, int numCopies, Box box) in returns)
-        {
-            exchangeContext.ReturnCopies(card, numCopies, box);
-        }
-    }
-
-    #endregion
-
-
-
-    #region Update Boxes
 
     public static async Task UpdateBoxesAsync(
         this CardDbContext dbContext,
         CancellationToken cancel = default)
     {
-        ArgumentNullException.ThrowIfNull(dbContext, nameof(dbContext));
+        ArgumentNullException.ThrowIfNull(dbContext);
 
         if (AreBoxesUnchanged(dbContext) && AreAmountsUnchanged(dbContext))
         {
@@ -206,15 +166,17 @@ public static partial class TreasuryExtensions
 
         await OrderedBoxes(dbContext).LoadAsync(cancel);
 
+        await ExistingExcess(dbContext).LoadAsync(cancel);
+
         AddMissingExcess(dbContext);
 
         var treasuryContext = new TreasuryContext(dbContext);
 
-        TransferOverflowCopies(treasuryContext, OverflowScheme.Exact);
-        TransferOverflowCopies(treasuryContext, OverflowScheme.Approximate);
+        treasuryContext.LowerExactOver();
+        treasuryContext.LowerApproximateOver();
 
-        TransferExcessCopies(treasuryContext, ExcessScheme.Exact);
-        TransferExcessCopies(treasuryContext, ExcessScheme.Approximate);
+        treasuryContext.LowerExactExcess();
+        treasuryContext.LowerApproximateExcess();
 
         RemoveEmpty(dbContext);
     }
@@ -240,39 +202,13 @@ public static partial class TreasuryExtensions
     }
 
 
-    private static void TransferOverflowCopies(TreasuryContext treasuryContext, OverflowScheme scheme)
-    {
-        var transfers = treasuryContext.OverflowAssignment(scheme);
-
-        foreach ((Amount source, int numCopies, Box box) in transfers)
-        {
-            treasuryContext.TransferCopies(source.Card, numCopies, box, source.Location);
-        }
-    }
-
-    #endregion
-
-
-    private static void TransferExcessCopies(
-        TreasuryContext treasuryContext, 
-        ExcessScheme scheme)
-    {
-        var transfers = treasuryContext.ExcessAssignment(scheme);
-
-        foreach ((Amount source, int numCopies, Box box) in transfers)
-        {
-            treasuryContext.TransferCopies(source.Card, numCopies, box, source.Location);
-        }
-    }
-
-
     private static void AddMissingExcess(CardDbContext dbContext)
     {
-        if (!dbContext.Boxes.Local.Any(b => b.IsExcess))
+        if (!dbContext.Excess.Local.Any())
         {
-            var excessBox = Box.CreateExcess();
+            var excessBox = Excess.Create();
 
-            dbContext.Boxes.Add(excessBox);
+            dbContext.Excess.Add(excessBox);
         }
     }
 

@@ -19,55 +19,42 @@ public class IndexModel : PageModel
     private readonly int _pageSize;
     private readonly CardDbContext _dbContext;
 
-    private IReadOnlyDictionary<int, int>? _boxSpace;
-
     public IndexModel(PageSizes pageSizes, CardDbContext dbContext)
     {
         _pageSize = pageSizes.GetPageModelSize<IndexModel>();
         _dbContext = dbContext;
     }
 
-    public IReadOnlyList<Bin> Bins { get; private set; } = Array.Empty<Bin>();
 
-    public Seek<Box> Seek { get; private set; }
+    public IReadOnlyList<BinPreview> Bins { get; private set; } = Array.Empty<BinPreview>();
+
+    public Seek Seek { get; private set; }
 
     public bool HasExcess { get; private set; }
-
-    public bool HasUnclaimed { get; private set; }
 
 
     public async Task OnGetAsync(int? seek, bool backtrack, CancellationToken cancel)
     {
         var boxes = await BoxesForViewing()
-            .ToSeekListAsync(seek, _pageSize, backtrack, cancel);
-
-        _boxSpace = await _dbContext.Boxes
-            .Select(b => new { b.Id, Total = b.Cards.Sum(a => a.NumCopies) })
-            .ToDictionaryAsync(
-                b => b.Id, b => b.Total, cancel);
+            .SeekBy(b => b.Id, seek, _pageSize, backtrack)
+            .ToSeekListAsync(cancel);
 
         Bins = boxes
-            .GroupBy(b => b.Bin, (bin, _) => bin)
+            .GroupBy(b => (Name: b.BinName, Id: b.BinId),
+                (bin, boxes) => new BinPreview(bin.Id, bin.Name, boxes))
             .ToList();
 
         Seek = boxes.Seek;
 
         HasExcess = await _dbContext.Amounts
-            .AnyAsync(a => 
-                a.Location is Box && (a.Location as Box)!.IsExcess, cancel);
+            .AnyAsync(a => a.Location is Excess, cancel);
 
-        HasUnclaimed = await _dbContext.Unclaimed.AnyAsync(cancel);
     }
 
 
-    private IQueryable<Box> BoxesForViewing()
+    private IQueryable<BoxPreview> BoxesForViewing()
     {
         return _dbContext.Boxes
-            .Where(b => !b.IsExcess)
-            .Include(b => b.Bin)
-
-            .Include(b => b.Cards)
-                .ThenInclude(a => a.Card)
 
             .Include(b => b.Cards
                 .OrderBy(a => a.Card.Name)
@@ -75,21 +62,38 @@ public class IndexModel : PageModel
                     .ThenBy(a => a.NumCopies)
                 .Take(_pageSize))
 
-            .OrderBy(b => b.Bin.Id)
+            .Select(b => new BoxPreview
+            {
+                Id = b.Id,
+                Name = b.Name,
+
+                BinId = b.BinId,
+                BinName = b.Bin.Name,
+
+                Capacity = b.Capacity,
+                TotalCards = b.Cards.Sum(a => a.NumCopies),
+
+                Cards = b.Cards
+                    .Select(a => new BoxCard
+                    {
+                        CardId = a.CardId,
+                        CardName = a.Card.Name,
+                        CardManaCost = a.Card.ManaCost,
+                        CardSetName = a.Card.SetName,
+
+                        NumCopies = a.NumCopies
+                    })
+                    .OrderBy(a => a.CardName)
+                        .ThenBy(a => a.CardSetName)
+                        .ThenBy(a => a.NumCopies)
+                    .Take(_pageSize)
+            })
+
+            .OrderBy(b => b.BinName)
+                .ThenBy(b => b.BinId)
                 .ThenBy(b => b.Name)
                 .ThenBy(b => b.Id)
 
             .AsNoTrackingWithIdentityResolution();
-    }
-
-
-    public int TotalCards(Box box)
-    {
-        return _boxSpace is null ? 0 : _boxSpace.GetValueOrDefault(box.Id);
-    }
-
-    public bool HasMoreCards(Box box)
-    {
-        return box.Cards.Sum(a => a.NumCopies) < TotalCards(box);
     }
 }

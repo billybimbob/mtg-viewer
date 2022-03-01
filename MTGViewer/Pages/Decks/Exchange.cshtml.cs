@@ -25,20 +25,15 @@ public class ExchangeModel : PageModel
 {
     private readonly CardDbContext _dbContext;
     private readonly UserManager<CardUser> _userManager;
-
-    private readonly CardText _cardText;
     private readonly ILogger<ExchangeModel> _logger;
 
     public ExchangeModel(
         CardDbContext dbContext,
         UserManager<CardUser> userManager,
-        CardText cardText,
         ILogger<ExchangeModel> logger)
     {
         _dbContext = dbContext;
         _userManager = userManager;
-
-        _cardText = cardText;
         _logger = logger;
     }
 
@@ -101,6 +96,7 @@ public class ExchangeModel : PageModel
                 .OrderBy(t => t.Id)
                 .Take(1))
 
+            .OrderBy(d => d.Id)
             .AsSplitQuery();
     }
 
@@ -202,6 +198,6 @@ public class ExchangeModel : PageModel
 
         _dbContext.Trades.RemoveRange(emptyTrades);
 
-        deck.UpdateColors(_cardText);
+        deck.UpdateColors();
     }
 }

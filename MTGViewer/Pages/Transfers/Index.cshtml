@@ -8,6 +8,7 @@
 @using MTGViewer.Areas.Identity.Data
 
 @inject SymbolFormatter MtgSymbols
+@inject CardText CardText
 @inject IAuthorizationService AuthorizationService
 
 @{
@@ -24,7 +25,7 @@
                 <thead>
                     <tr>
                         <th scope="col">Deck</th>
-                        <th scope="col">Colors</th>
+                        <th scope="col">@Html.DisplayNameForInnerType((Deck d) => d.Color)</th>
                         <th scope="col">Cards From Players</th>
                         <th scope="col">Received Requests</th>
                     </tr>
@@ -49,28 +50,28 @@
 
                             <td> 
                                 <div class="ms-group">
-                                    @MtgSymbols.Format(deck.Colors).ToHtmlString()
+                                    @MtgSymbols.Format(CardText.ColorString(deck.Color)).ToHtmlString()
                                 </div>
                             </td>
 
                             <td>
-                                @if (deck.TradesTo.Any() && canChangeTreasury)
+                                @if (deck.SentTrades && canChangeTreasury)
                                 {
                                     <a asp-page="Status" asp-route-id="@deck.Id"
                                         title="@deck.Name Trade Status">
                                         Sent </a>
                                 }
-                                else if (deck.Wants.Any() && canChangeTreasury)
+                                else if (deck.WantsCards && canChangeTreasury)
                                 {
                                     <a asp-page="Request" asp-route-id="@deck.Id"
                                         title="@deck.Name Card Requests">
                                         Possible </a>
                                 }
-                                else if (deck.TradesTo.Any() && !canChangeTreasury)
+                                else if (deck.SentTrades && !canChangeTreasury)
                                 {
                                     <text> Sent </text>
                                 }
-                                else if (deck.Wants.Any() && !canChangeTreasury)
+                                else if (deck.WantsCards && !canChangeTreasury)
                                 {
                                     <text> Possible </text>
                                 }
@@ -81,13 +82,13 @@
                             </td>
 
                             <td>
-                                @if (deck.TradesFrom.Any() && canChangeTreasury)
+                                @if (deck.ReceivedTrades && canChangeTreasury)
                                 {
                                     <a asp-page="Review" asp-route-id="@deck.Id"
                                         title="@deck.Name Trade Review">
                                         Received </a>
                                 }
-                                else if (deck.TradesFrom.Any() && !canChangeTreasury)
+                                else if (deck.ReceivedTrades && !canChangeTreasury)
                                 {
                                     <text> Received </text>
                                 }
@@ -102,8 +103,7 @@
             </table>
         </div>
 
-        <component type="typeof(SeekPaging<Deck>)" 
-            render-mode="Static" param-Seek="Model.TradeDecks.Seek" />
+        <partial name="_SeekPagingPartial" for="TradeDecks.Seek" />
     </div>
 </div>
 
@@ -119,6 +119,7 @@
                     <thead>
                         <tr>
                             <th scope="col"> @Html.DisplayNameForInnerType((Suggestion t) => t.Card) </th>
+                            <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.ManaCost) </th>
                             <th scope="col"> @Html.DisplayNameForInnerType((Suggestion t) => t.To) </th>
                             <th scope="col"> @Html.DisplayNameForInnerType((Suggestion t) => t.Comment) </th>
 
@@ -134,10 +135,15 @@
                             <tr>
                                 <td>
                                     <a asp-page="/Cards/Details" asp-route-id="@suggestion.CardId">
-                                        @suggestion.Card.Name </a>
+                                        @suggestion.CardName </a>
+                                </td>
+                                <td>
+                                    <div class="ms-group">
+                                        @MtgSymbols.Format(suggestion.CardManaCost).ToMarkupString()
+                                    </div>
                                 </td>
 
-                                <td>@(suggestion.To?.Name ?? "")</td>
+                                <td>@suggestion.ToName</td>
                                 <td>@suggestion.Comment</td>
 
                                 @if (canChangeTreasury)

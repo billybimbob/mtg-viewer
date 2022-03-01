@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Security.Claims;
 using System.Threading.Tasks;
 
@@ -32,6 +33,7 @@ namespace MTGViewer.Areas.Identity.Services
             var id = await base.GenerateClaimsAsync(user);
 
             var reference = await _referenceManager.References
+                .OrderBy(u => u.Id)
                 .SingleOrDefaultAsync(u => u.Id == user.Id);
 
             if (reference == default)

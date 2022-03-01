@@ -28,7 +28,8 @@ public class HistoryModel : PageModel
     private readonly IAuthorizationService _authorization;
     private readonly ILogger<HistoryModel> _logger;
 
-    private readonly HashSet<(int, int, int?)> _firstTransfers = new();
+    private HashSet<int>? _sharedMap;
+    private HashSet<(int, int, int?)>? _firstTransfer;
 
     public HistoryModel(
         PageSizes pageSizes,
@@ -53,7 +54,7 @@ public class HistoryModel : PageModel
 
     public IReadOnlyList<Transfer> Transfers { get; private set; } = Array.Empty<Transfer>();
 
-    public Seek<Change> Seek { get; private set; }
+    public Seek Seek { get; private set; }
 
     public TimeZoneInfo TimeZone { get; private set; } = TimeZoneInfo.Utc;
 
@@ -65,20 +66,23 @@ public class HistoryModel : PageModel
         CancellationToken cancel)
     {
         var changes = await ChangesForHistory()
-            .ToSeekListAsync(seek, _pageSize, backtrack, cancel);
+            .SeekBy(c => c.Id, seek, _pageSize, backtrack)
+            .ToSeekListAsync(cancel);
 
-        var firstTransfers = changes
+        _firstTransfer = changes
+            .DistinctBy(c => c.TransactionId)
             .Select(c => (c.TransactionId, c.ToId, c.FromId))
-            .GroupBy(tft => tft.TransactionId,
-                (_, tfts) => tfts.First());
+            .ToHashSet();
 
-        _firstTransfers.UnionWith(firstTransfers);
+        _sharedMap = await SharedTransactionIds(changes)
+            .AsAsyncEnumerable()
+            .ToHashSetAsync(cancel);
 
         Transfers = changes
             .GroupBy(c => (c.Transaction, c.To, c.From),
-                (tft, changes) =>
+                (tft, changeGroup) =>
                     new Transfer(
-                        tft.Transaction, tft.To, tft.From, changes.ToList()) )
+                        tft.Transaction, tft.To, tft.From, changeGroup.ToList()))
             .ToList();
 
         Seek = changes.Seek;
@@ -93,8 +97,8 @@ public class HistoryModel : PageModel
             .Where(c => c.From is Box || c.To is Box)
 
             .Include(c => c.Transaction)
-            .Include(c => c.From)
             .Include(c => c.To)
+            .Include(c => c.From)
             .Include(c => c.Card)
 
             .OrderByDescending(c => c.Transaction.AppliedAt)
@@ -105,7 +109,30 @@ public class HistoryModel : PageModel
                     .ThenBy(c => c.Amount)
                     .ThenBy(c => c.Id)
 
+            // no projection because lack of identity resolution
+
             .AsNoTrackingWithIdentityResolution();
+    }
+
+
+    private IQueryable<Transaction> SharedTransactions()
+    {
+        return _dbContext.Transactions
+            .Where(t => t.Changes
+                .All(c => c.To is Box && (c.From == null || c.From is Box)))
+            .OrderBy(t => t.Id);
+    }
+
+
+    private IQueryable<int> SharedTransactionIds(IEnumerable<Change> changes)
+    {
+        var transactionIds = changes
+            .Select(c => c.TransactionId)
+            .ToHashSet();
+
+        return SharedTransactions()
+            .Select(t => t.Id)
+            .Where(tid => transactionIds.Contains(tid));
     }
 
 
@@ -135,18 +162,16 @@ public class HistoryModel : PageModel
     }
 
 
-    public bool IsFirstTransfer(Transfer transfer)
+    public bool IsShared(Transaction transaction)
     {
-        var transferKey = (transfer.Transaction.Id, transfer.To.Id, transfer.From?.Id);
-        return _firstTransfers.Contains(transferKey);
+        return _sharedMap?.Contains(transaction.Id) ?? false;
     }
 
-    public bool IsShared(Transaction transaction) =>
-        transaction.Changes.All(IsShared);
 
-    private bool IsShared(Change change) => 
-        change.To is Box && change.From is Box or null;
-
+    public bool IsFirstTransfer(Transaction transaction, Location to, Location? from)
+    {
+        return _firstTransfer?.Contains((transaction.Id, to.Id, from?.Id)) ?? false;
+    }
 
 
     public async Task<IActionResult> OnPostAsync(int transactionId, CancellationToken cancel)
@@ -162,14 +187,11 @@ public class HistoryModel : PageModel
             return Forbid();
         }
 
-        var transaction = await _dbContext.Transactions
-            .Include(t => t.Changes)
-                .ThenInclude(c => c.From)
+        var transaction = await SharedTransactions()
             .Include(t => t.Changes) // unbounded, keep eye on
-                .ThenInclude(c => c.To)
             .SingleOrDefaultAsync(t => t.Id == transactionId, cancel);
 
-        if (transaction == default || !IsShared(transaction))
+        if (transaction == default)
         {
             return NotFound();
         }

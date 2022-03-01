@@ -579,7 +579,10 @@ public class TestDataGenerator
             .Select(ck => ck.card)
             .ToList();
 
-        var unclaimed = new Unclaimed();
+        var unclaimed = new Unclaimed()
+        {
+            Name = "Test Unclaimed"
+        };
 
         var amounts = targetCards
             .Take(_random.Next(1, targetCards.Count))
@@ -613,11 +616,9 @@ public class TestDataGenerator
     public async Task AddExcessAsync(int excessSpace)
     {
         int capacity = await _dbContext.Boxes
-            .Where(b => !b.IsExcess)
             .SumAsync(b => b.Capacity);
 
         int availAmounts = await _dbContext.Boxes
-            .Where(b => !b.IsExcess)
             .SelectMany(b => b.Cards)
             .SumAsync(a => a.NumCopies);
 
@@ -631,7 +632,6 @@ public class TestDataGenerator
         if (availAmounts < capacity)
         {
             var boxes = await _dbContext.Boxes
-                .Where(b => !b.IsExcess)
                 .Include(b => b.Cards)
                 .ToListAsync();
 
@@ -660,19 +660,14 @@ public class TestDataGenerator
             }
         }
 
-        if (await _dbContext.Boxes.AnyAsync(b => b.IsExcess))
+        if (await _dbContext.Excess.AnyAsync())
         {
             return;
         }
 
-        var excess = new Box
+        var excess = new Excess
         {
             Name = "Excess",
-            Capacity = 0,
-            Bin = new Bin
-            {
-                Name = "Excess Bin"
-            }
         };
 
         var excessCard = new Amount
@@ -682,7 +677,7 @@ public class TestDataGenerator
             NumCopies = excessSpace
         };
 
-        _dbContext.Boxes.Attach(excess);
+        _dbContext.Excess.Attach(excess);
         _dbContext.Amounts.Attach(excessCard);
 
         await _dbContext.SaveChangesAsync();
@@ -723,7 +718,11 @@ public class TestDataGenerator
             .Take(_random.Next(1, 4))
             .ToListAsync();
 
-        var deck = new Deck { Owner = user };
+        var deck = new Deck
+        {
+            Name = "Test Deck",
+            Owner = user
+        };
 
         var amounts = card
             .Select(c => new Amount

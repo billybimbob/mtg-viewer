@@ -15,7 +15,7 @@
         <p>Alternatively, wanted cards can be obtained from other players</p>
 
         <a asp-page="/Transfers/Request"
-            asp-route-deckid="@Model.Deck.Id"
+            asp-route-id="@Model.Deck.Id"
             class="btn btn-secondary" role="button">
             Player Request </a>
     </div>
@@ -27,7 +27,7 @@ else if (Model.Deck.Wants.Any())
         <p>Wanted cards can also be obtained by requesting from other players.</p>
 
         <a asp-page="/Transfers/Request"
-            asp-route-deckid="@Model.Deck.Id"
+            asp-route-id="@Model.Deck.Id"
             class="btn btn-secondary" role="button">
             Player Request </a>
     </section>

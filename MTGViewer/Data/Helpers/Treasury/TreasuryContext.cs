@@ -7,49 +7,53 @@ namespace MTGViewer.Data.Internal;
 internal sealed class TreasuryContext
 {
     private readonly CardDbContext _dbContext;
-    private readonly Dictionary<Box, int> _boxSpace;
+    private readonly Dictionary<Storage, int> _storageSpace;
 
     private readonly HashSet<Box> _available;
     private readonly HashSet<Box> _overflow;
-    private readonly IReadOnlyList<Box> _excess;
+    private readonly IReadOnlyList<Excess> _excess;
 
-    private readonly Dictionary<(string, Box), Amount> _amounts;
+    private readonly Dictionary<(string, Storage), Amount> _amounts;
     private readonly Dictionary<(string, Location, Location?), Change> _changes;
 
     private readonly Transaction _transaction;
 
     public TreasuryContext(CardDbContext dbContext)
     {
-        var boxes = dbContext.Boxes.Local.AsEnumerable();
+        var boxes = dbContext.Boxes.Local.OfType<Box>();
+        var excess = dbContext.Excess.Local.OfType<Excess>();
 
-        if (!boxes.Any(b => b.IsExcess) || !boxes.Any(b => b.IsExcess))
+        if (!boxes.Any() || !excess.Any())
         {
             throw new ArgumentException(nameof(boxes));
         }
 
         _dbContext = dbContext;
 
-        _boxSpace = boxes
+        _storageSpace = boxes
+            .Cast<Storage>()
+            .Concat(excess)
             .ToDictionary(
-                b => b, b => b.Cards.Sum(a => a.NumCopies));
+                s => s, s => s.Cards.Sum(a => a.NumCopies));
 
         _available = boxes
-            .Where(b => !b.IsExcess && _boxSpace.GetValueOrDefault(b) < b.Capacity)
+            .Where(b => _storageSpace.GetValueOrDefault(b) < b.Capacity)
             .ToHashSet();
 
         _overflow = boxes
-            .Where(b => !b.IsExcess && _boxSpace.GetValueOrDefault(b) > b.Capacity)
+            .Where(b => _storageSpace.GetValueOrDefault(b) > b.Capacity)
             .ToHashSet();
 
-        _excess = boxes
-            .Where(b => b.IsExcess)
-            .ToList();
+        _excess = excess.ToList();
 
         _amounts = boxes
             .SelectMany(b => b.Cards)
-            .Where(a => a.Location is Box)
+            .Concat(excess
+                .SelectMany(e => e.Cards))
+            .Where(a => a.Location is Storage)
+
             .ToDictionary(
-                a => (a.CardId, (Box)a.Location));
+                a => (a.CardId, (Storage)a.Location));
 
         _changes = dbContext.Changes.Local
             .ToDictionary(c => (c.CardId, c.To, c.From));
@@ -68,8 +72,8 @@ internal sealed class TreasuryContext
     public IReadOnlyCollection<Box> Available => _available;
     public IReadOnlyCollection<Box> Overflow => _overflow;
 
-    public IReadOnlyList<Box> Excess => _excess;
-    public IReadOnlyDictionary<Box, int> BoxSpace => _boxSpace;
+    public IReadOnlyList<Excess> Excess => _excess;
+    public IReadOnlyDictionary<Storage, int> StorageSpace => _storageSpace;
 
     public IReadOnlyCollection<Amount> Amounts => _amounts.Values;
 
@@ -77,25 +81,25 @@ internal sealed class TreasuryContext
     public void Deconstruct(
         out IReadOnlyCollection<Box> available,
         out IReadOnlyCollection<Box> overflow,
-        out IReadOnlyList<Box> excess,
-        out IReadOnlyDictionary<Box, int> boxSpace)
+        out IReadOnlyList<Excess> excess,
+        out IReadOnlyDictionary<Storage, int> storageSpace)
     {
         available = _available;
         overflow = _overflow;
         excess = _excess;
-        boxSpace = _boxSpace;
+        storageSpace = _storageSpace;
     }
 
 
-    public void AddCopies(Card card, int numCopies, Box box)
+    public void AddCopies(Card card, int numCopies, Storage storage)
     {
-        UpdateAmount(card, numCopies, box);
-        UpdateChange(card, numCopies, box, null);
-        UpdateBoxSpace(box, numCopies);
+        UpdateAmount(card, numCopies, storage);
+        UpdateChange(card, numCopies, storage, null);
+        UpdateBoxSpace(storage, numCopies);
     }
 
 
-    public void TransferCopies(Card card, int numCopies, Box to, Location from)
+    public void TransferCopies(Card card, int numCopies, Storage to, Location from)
     {
         if (to == from)
         {
@@ -105,17 +109,17 @@ internal sealed class TreasuryContext
         UpdateAmount(card, numCopies, to);
         UpdateBoxSpace(to, numCopies);
 
-        if (from is Box fromBox)
+        if (from is Storage fromStorage)
         {
-            UpdateAmount(card, -numCopies, fromBox);
-            UpdateBoxSpace(fromBox, -numCopies);
+            UpdateAmount(card, -numCopies, fromStorage);
+            UpdateBoxSpace(fromStorage, -numCopies);
         }
 
         UpdateChange(card, numCopies, to, from);
     }
 
 
-    public void TransferCopies(Card card, int numCopies, Location to, Box from)
+    public void TransferCopies(Card card, int numCopies, Location to, Storage from)
     {
         if (to == from)
         {
@@ -124,10 +128,10 @@ internal sealed class TreasuryContext
 
         UpdateChange(card, numCopies, to, from);
 
-        if (to is Box toBox)
+        if (to is Storage toStorage)
         {
-            UpdateAmount(card, numCopies, toBox);
-            UpdateBoxSpace(toBox, numCopies);
+            UpdateAmount(card, numCopies, toStorage);
+            UpdateBoxSpace(toStorage, numCopies);
         }
 
         UpdateAmount(card, -numCopies, from);
@@ -135,16 +139,16 @@ internal sealed class TreasuryContext
     }
 
 
-    private void UpdateAmount(Card card, int numCopies, Box box)
+    private void UpdateAmount(Card card, int numCopies, Storage storage)
     {
-        var index = (card.Id, box);
+        var index = (card.Id, storage);
 
         if (!_amounts.TryGetValue(index, out var amount))
         {
             amount = new Amount
             {
                 Card = card,
-                Location = box
+                Location = storage
             };
 
             _dbContext.Amounts.Attach(amount);
@@ -189,11 +193,11 @@ internal sealed class TreasuryContext
     }
 
 
-    private void UpdateBoxSpace(Box box, int numCopies)
+    private void UpdateBoxSpace(Storage storage, int numCopies)
     {
-        if (!_boxSpace.TryGetValue(box, out int boxSize))
+        if (!_storageSpace.TryGetValue(storage, out int boxSize))
         {
-            throw new ArgumentException(nameof(box));
+            throw new ArgumentException(nameof(storage));
         }
 
         checked
@@ -206,9 +210,9 @@ internal sealed class TreasuryContext
             throw new ArgumentException(nameof(numCopies));
         }
 
-        _boxSpace[box] = boxSize;
+        _storageSpace[storage] = boxSize;
 
-        if (box.IsExcess)
+        if (storage is not Box box)
         {
             return;
         }

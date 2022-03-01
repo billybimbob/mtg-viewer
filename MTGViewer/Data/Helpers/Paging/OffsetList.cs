@@ -47,11 +47,11 @@ public readonly record struct Offset(int Current, int Total)
 
 public class OffsetList<T> : IReadOnlyList<T>
 {
-    private readonly IList<T> _items;
+    private readonly IReadOnlyList<T> _items;
 
-    public OffsetList(Offset offset, IList<T> items)
+    public OffsetList(Offset offset, IReadOnlyList<T> items)
     {
-        ArgumentNullException.ThrowIfNull(items, nameof(items));
+        ArgumentNullException.ThrowIfNull(items);
 
         Offset = offset;
         _items = items;

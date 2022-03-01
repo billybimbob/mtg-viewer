@@ -84,12 +84,12 @@ else
     </div>
 
     <div class="col-auto btn-group pt-2 pt-md-0" role="group" aria-label="Color Buttons">
-        @foreach (var (symbol, color) in Color.Symbols)
+        @foreach (var (color, symbol) in Symbol.Colors)
         {
             <button title="@color filter" type="button"
                 class="btn btn-outline-secondary border-0 rounded @ActiveColor(color)"
                 disabled="@IsBusy"
-                @onclick="() => _treasuryFilters.ToggleColor(color)">
+                @onclick="() => ToggleColor(color)">
 
                 <i class="ms ms-@symbol.ToLower() ms-cost"></i>
             </button>
@@ -112,9 +112,8 @@ else
                     </div>
                 </div>
             }
-            @foreach (var card in Treasury)
+            @foreach ((Card card, int available) in Treasury)
             {
-                int available = TreasuryCopies(card);
                 int wantTotal = card.Wants.Sum(w => w.NumCopies);
 
                 <button type="button" title="Add @card.Name"
@@ -135,7 +134,7 @@ else
             }
         </div>
 
-        <OffsetPaging Offset="Treasury.Offset" PageSelected="p => _treasuryFilters.PageIndex = p" />
+        <OffsetPaging Offset="Treasury.Offset" PageSelected="ChangeTreasuryPage" />
     </section>
 
 

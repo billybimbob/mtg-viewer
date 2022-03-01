@@ -44,9 +44,9 @@ public class IndexModel : PageModel
 
     public string UserName { get; private set; } = string.Empty;
 
-    public SeekList<Deck> TradeDecks { get; private set; } = SeekList<Deck>.Empty;
+    public SeekList<DeckTradePreview> TradeDecks { get; private set; } = SeekList<DeckTradePreview>.Empty;
 
-    public IReadOnlyList<Suggestion> Suggestions { get; private set; } = Array.Empty<Suggestion>();
+    public IReadOnlyList<SuggestionPreview> Suggestions { get; private set; } = Array.Empty<SuggestionPreview>();
 
 
 
@@ -74,7 +74,8 @@ public class IndexModel : PageModel
         UserName = userName;
 
         TradeDecks = await DecksForIndex(userId)
-            .ToSeekListAsync(seek, _pageSize, backtrack, cancel);
+            .SeekBy(d => d.Id, seek, _pageSize, backtrack)
+            .ToSeekListAsync(cancel);
 
         Suggestions = await SuggestionsForIndex(userId).ToListAsync(cancel);
 
@@ -82,50 +83,50 @@ public class IndexModel : PageModel
     }
 
 
-    public IQueryable<Deck> DecksForIndex(string userId)
+    public IQueryable<DeckTradePreview> DecksForIndex(string userId)
     {
         return _dbContext.Decks
-            .Where(d => d.OwnerId == userId)
+            .Where(d => d.OwnerId == userId
+                && (d.TradesFrom.Any() || d.TradesTo.Any() || d.Wants.Any()))
 
-            .Where(d => d.TradesFrom.Any()
-                || d.TradesTo.Any()
-                || d.Wants.Any())
+            .Select(d => new DeckTradePreview
+            {
+                Id = d.Id,
+                Name = d.Name,
+                Color = d.Color,
 
-            .Include(d => d.TradesFrom
-                .OrderBy(t => t.Id)
-                .Take(1))
-
-            .Include(d => d.TradesTo
-                .OrderBy(t => t.Id)
-                .Take(1))
-
-            .Include(d => d.Wants
-                .OrderBy(w => w.Id)
-                .Take(1))
+                SentTrades = d.TradesTo.Any(),
+                ReceivedTrades = d.TradesFrom.Any(),
+                WantsCards = d.Wants.Any()
+            })
 
             .OrderBy(d => d.Name)
-                .ThenBy(d => d.Id)
-
-            .AsSplitQuery()
-            .AsNoTrackingWithIdentityResolution();
+                .ThenBy(d => d.Id);
     }
 
 
-    private IQueryable<Suggestion> SuggestionsForIndex(string userId)
+    private IQueryable<SuggestionPreview> SuggestionsForIndex(string userId)
     {
         return _dbContext.Suggestions
             .Where(s => s.ReceiverId == userId)
+            .Select(s => new SuggestionPreview
+            {
+                Id = s.Id,
+                SentAt = s.SentAt,
 
-            .Include(s => s.Card)
-            .Include(s => s.To)
+                CardId = s.CardId,
+                CardName = s.Card.Name,
+                CardManaCost = s.Card.ManaCost,
+                
+                ToName = s.To == null ? null : s.To.Name,
+                Comment = s.Comment
+            })
 
             .OrderByDescending(s => s.SentAt)
-                .ThenBy(s => s.Card.Name)
+                .ThenBy(s => s.CardName)
                 .ThenBy(s => s.Id)
 
-            .Take(_pageSize)
-
-            .AsNoTrackingWithIdentityResolution();
+            .Take(_pageSize);
     }
 
 

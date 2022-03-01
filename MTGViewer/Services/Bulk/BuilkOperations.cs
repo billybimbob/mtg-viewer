@@ -298,19 +298,19 @@ public class BulkOperations
 
 
     public async Task MergeAsync(
-        IDictionary<string, int> multiAdditions,
+        IDictionary<string, int> multiverseAdditions,
         CancellationToken cancel = default)
     {
-        if (!multiAdditions.Any())
+        if (!multiverseAdditions.Any())
         {
             return;
         }
 
-        multiAdditions = new SortedList<string, int>(multiAdditions);
+        multiverseAdditions = new SortedList<string, int>(multiverseAdditions);
 
-        var dbCards = await ExistingCardsAsync(multiAdditions.Keys, cancel);
+        var dbCards = await ExistingCardsAsync(multiverseAdditions.Keys, cancel);
 
-        var newMultiverse = multiAdditions.Keys
+        var newMultiverse = multiverseAdditions.Keys
             .Except(dbCards.Select(c => c.MultiverseId))
             .ToList();
 
@@ -327,9 +327,9 @@ public class BulkOperations
         }
 
         var requests = allCards
-            .IntersectBy(multiAdditions.Keys, c => c.MultiverseId)
+            .IntersectBy(multiverseAdditions.Keys, c => c.MultiverseId)
             .Select(card => 
-                new CardRequest(card, multiAdditions[card.MultiverseId]));
+                new CardRequest(card, multiverseAdditions[card.MultiverseId]));
 
         await _dbContext.AddCardsAsync(requests, cancel);
 
