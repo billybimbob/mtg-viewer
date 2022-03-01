@@ -33,13 +33,13 @@ internal abstract class AddHandler
         CardRequests = requests;
     }
 
-    protected abstract IEnumerable<BoxAssignment<CardRequest>> GetAssignments();
+    protected abstract IEnumerable<StorageAssignment<CardRequest>> GetAssignments();
 
     public void AddCopies()
     {
-        foreach ((CardRequest request, int numCopies, Box box) in GetAssignments())
+        foreach ((CardRequest request, int numCopies, Storage storage) in GetAssignments())
         {
-            TreasuryContext.AddCopies(request.Card, numCopies, box);
+            TreasuryContext.AddCopies(request.Card, numCopies, storage);
             request.NumCopies -= numCopies;
         }
     }
@@ -48,14 +48,14 @@ internal abstract class AddHandler
 
 internal class ExactAdd : AddHandler
 {
-    private ILookup<string, Box>? _exactMatches;
+    private ILookup<string, Storage>? _exactMatches;
 
     public ExactAdd(TreasuryContext treasuryContext, IEnumerable<CardRequest> requests)
         : base(treasuryContext, requests)
     { }
 
 
-    protected override IEnumerable<BoxAssignment<CardRequest>> GetAssignments()
+    protected override IEnumerable<StorageAssignment<CardRequest>> GetAssignments()
     {
         if (CardRequests.All(cr => cr.NumCopies == 0))
         {
@@ -77,20 +77,20 @@ internal class ExactAdd : AddHandler
     }
 
 
-    private IEnumerable<BoxAssignment<CardRequest>> FitToBoxes(CardRequest request)
+    private IEnumerable<StorageAssignment<CardRequest>> FitToBoxes(CardRequest request)
     {
         _exactMatches ??= AddLookup();
 
         var (card, numCopies) = request;
 
         var possibleBoxes = _exactMatches[card.Id];
-        var boxSpace = TreasuryContext.BoxSpace;
+        var boxSpace = TreasuryContext.StorageSpace;
 
         return Assignment.FitToBoxes(request, numCopies, possibleBoxes, boxSpace);
     }
 
 
-    private ILookup<string, Box> AddLookup()
+    private ILookup<string, Storage> AddLookup()
     {
         var (available, _, _, boxSpace) = TreasuryContext;
 
@@ -104,14 +104,14 @@ internal class ExactAdd : AddHandler
 
 internal class ApproximateAdd : AddHandler
 {
-    private ILookup<string, Box>? _approxMatches;
+    private ILookup<string, Storage>? _approxMatches;
 
     public ApproximateAdd(TreasuryContext treasuryContext, IEnumerable<CardRequest> requests)
         : base(treasuryContext, requests)
     { }
 
 
-    protected override IEnumerable<BoxAssignment<CardRequest>> GetAssignments()
+    protected override IEnumerable<StorageAssignment<CardRequest>> GetAssignments()
     {
         if (CardRequests.All(cr => cr.NumCopies == 0))
         {
@@ -133,20 +133,20 @@ internal class ApproximateAdd : AddHandler
     }
 
 
-    private IEnumerable<BoxAssignment<CardRequest>> FitToBoxes(CardRequest request)
+    private IEnumerable<StorageAssignment<CardRequest>> FitToBoxes(CardRequest request)
     {
         _approxMatches ??= AddLookup();
 
         var (card, numCopies) = request;
 
         var possibleBoxes = _approxMatches[card.Name];
-        var boxSpace = TreasuryContext.BoxSpace;
+        var boxSpace = TreasuryContext.StorageSpace;
 
         return Assignment.FitToBoxes(request, numCopies, possibleBoxes, boxSpace);
     }
 
 
-    private ILookup<string, Box> AddLookup()
+    private ILookup<string, Storage> AddLookup()
     {
         var (available, _, _, boxSpace) = TreasuryContext;
 
@@ -167,7 +167,7 @@ internal class GuessAdd : AddHandler
     { }
 
 
-    protected override IEnumerable<BoxAssignment<CardRequest>> GetAssignments()
+    protected override IEnumerable<StorageAssignment<CardRequest>> GetAssignments()
     {
         if (CardRequests.All(cr => cr.NumCopies == 0))
         {
@@ -199,7 +199,7 @@ internal class GuessAdd : AddHandler
     }
 
 
-    private IEnumerable<BoxAssignment<CardRequest>> FitToBoxes(CardRequest request)
+    private IEnumerable<StorageAssignment<CardRequest>> FitToBoxes(CardRequest request)
     {
         var (card, numCopies) = request;
         var (available, _, excess, boxSpace) = TreasuryContext;
@@ -209,6 +209,7 @@ internal class GuessAdd : AddHandler
         var bestBoxes = _boxSearch
             .FindBestBoxes(card)
             .Union(available)
+            .Cast<Storage>()
             .Concat(excess);
 
         return Assignment.FitToBoxes(request, numCopies, bestBoxes, boxSpace);

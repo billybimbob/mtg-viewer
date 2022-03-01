@@ -28,17 +28,17 @@ internal abstract class TakeHandler
         ExchangeContext = exchangeContext;
     }
 
-    protected abstract IEnumerable<BoxAssignment<Card>> GetAssignments();
+    protected abstract IEnumerable<StorageAssignment<Card>> GetAssignments();
 
     public void ApplyTakes()
     {
-        foreach ((Card card, int numCopies, Box box) in GetAssignments())
+        foreach ((Card card, int numCopies, Storage target) in GetAssignments())
         {
-            ExchangeContext.TakeCopies(card, numCopies, box);
+            ExchangeContext.TakeCopies(card, numCopies, target);
         }
     }
 
-    protected static IEnumerable<BoxAssignment<TSource>> TakeFromBoxes<TSource>(
+    protected static IEnumerable<StorageAssignment<TSource>> TakeFromStorage<TSource>(
         TSource source,
         int cardsToTake,
         IEnumerable<Amount> boxAmounts)
@@ -56,7 +56,7 @@ internal abstract class TakeHandler
                 continue;
             }
 
-            yield return new BoxAssignment<TSource>(source, takeCopies, box);
+            yield return new StorageAssignment<TSource>(source, takeCopies, box);
 
             cardsToTake -= takeCopies;
             if (cardsToTake == 0)
@@ -76,7 +76,7 @@ internal class ExactTake : TakeHandler
     { }
 
 
-    protected override IEnumerable<BoxAssignment<Card>> GetAssignments()
+    protected override IEnumerable<StorageAssignment<Card>> GetAssignments()
     {
         var wants = ExchangeContext.Deck.Wants;
 
@@ -88,7 +88,7 @@ internal class ExactTake : TakeHandler
 
         foreach (var want in wants)
         {
-            foreach (var assignment in TakeFromBoxes(want))
+            foreach (var assignment in TakeFromStorage(want))
             {
                 yield return assignment;
             }
@@ -96,13 +96,13 @@ internal class ExactTake : TakeHandler
     }
 
 
-    private IEnumerable<BoxAssignment<Card>> TakeFromBoxes(Want want)
+    private IEnumerable<StorageAssignment<Card>> TakeFromStorage(Want want)
     {
         _exactTake ??= TakeLookup();
 
         var idPositions = _exactTake[want.CardId];
 
-        return TakeFromBoxes(want.Card, want.NumCopies, idPositions);
+        return TakeFromStorage(want.Card, want.NumCopies, idPositions);
     }
 
     // take assignments should take from smaller dup stacks first
@@ -116,7 +116,7 @@ internal class ExactTake : TakeHandler
             .Select(w => w.CardId)
             .Distinct();
 
-        var boxSpace = TreasuryContext.BoxSpace;
+        var storageSpace = TreasuryContext.StorageSpace;
 
         // TODO: account for changing NumCopies while iter
         return targets
@@ -127,7 +127,8 @@ internal class ExactTake : TakeHandler
             .OrderBy(a => a.NumCopies)
                 .ThenBy(a => a.Location switch
                 {
-                    Box box => box.Capacity - boxSpace.GetValueOrDefault(box),
+                    Box box => box.Capacity - storageSpace.GetValueOrDefault(box),
+                    Excess excess => - storageSpace.GetValueOrDefault(excess),
                     _ => throw new ArgumentException(nameof(targets))
                 })
             
@@ -145,7 +146,7 @@ internal class ApproximateTake : TakeHandler
     { }
 
 
-    protected override IEnumerable<BoxAssignment<Card>> GetAssignments()
+    protected override IEnumerable<StorageAssignment<Card>> GetAssignments()
     {
         var wants = ExchangeContext.Deck.Wants;
 
@@ -161,7 +162,7 @@ internal class ApproximateTake : TakeHandler
                 continue;
             }
 
-            foreach (var assignment in TakeFromBoxes(want))
+            foreach (var assignment in TakeFromStorage(want))
             {
                 yield return assignment;
             }
@@ -169,13 +170,13 @@ internal class ApproximateTake : TakeHandler
     }
 
 
-    private IEnumerable<BoxAssignment<Card>> TakeFromBoxes(Want want)
+    private IEnumerable<StorageAssignment<Card>> TakeFromStorage(Want want)
     {
         _approxLookup ??= TakeLookup();
 
         var namePositions = _approxLookup[want.Card.Name];
 
-        return TakeFromBoxes(want.Card, want.NumCopies, namePositions);
+        return TakeFromStorage(want.Card, want.NumCopies, namePositions);
     }
 
     // take assignments should take from smaller dup stacks first
@@ -189,7 +190,7 @@ internal class ApproximateTake : TakeHandler
             .Select(w => w.Card.Name)
             .Distinct();
 
-        var boxSpace = TreasuryContext.BoxSpace;
+        var storageSpace = TreasuryContext.StorageSpace;
 
         // TODO: account for changing NumCopies while iter
         return targets
@@ -201,7 +202,8 @@ internal class ApproximateTake : TakeHandler
             .OrderBy(a => a.NumCopies)
                 .ThenBy(a => a.Location switch
                 {
-                    Box box => box.Capacity - boxSpace.GetValueOrDefault(box),
+                    Box box => box.Capacity - storageSpace.GetValueOrDefault(box),
+                    Excess excess => - storageSpace.GetValueOrDefault(excess),
                     _ => throw new ArgumentException(nameof(targets))
                 })
 

@@ -24,7 +24,7 @@ public class DetailsModel : PageModel
     }
 
 
-    public Seek<int> Seek { get; private set; }
+    public Seek Seek { get; private set; }
 
     public Box Box { get; private set; } = default!;
 
@@ -56,7 +56,7 @@ public class DetailsModel : PageModel
         }
 
         NumberOfCards = await _dbContext.Boxes
-            .Where(b => b.Id == id && !b.IsExcess)
+            .Where(b => b.Id == id)
             .SelectMany(b => b.Cards)
             .SumAsync(a => a.NumCopies, cancel);
 
@@ -119,7 +119,6 @@ public class DetailsModel : PageModel
     {
         return _dbContext.Amounts
             .Where(a => a.Location is Box
-                && !(a.Location as Box)!.IsExcess
                 && a.LocationId == boxId)
 
             .Include(a => a.Card)

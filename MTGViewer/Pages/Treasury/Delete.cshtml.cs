@@ -52,7 +52,7 @@ public class DeleteModel : PageModel
                 .ThenInclude(a => a.Card)
 
             .AsNoTrackingWithIdentityResolution()
-            .SingleOrDefaultAsync(b => !b.IsExcess && b.Id == id, cancel);
+            .SingleOrDefaultAsync(b => b.Id == id, cancel);
 
         if (box == default)
         {
@@ -62,7 +62,7 @@ public class DeleteModel : PageModel
         Box = box;
 
         NumberOfCards = await _dbContext.Boxes
-            .Where(b => b.Id == id && !b.IsExcess)
+            .Where(b => b.Id == id)
             .SelectMany(b => b.Cards)
             .SumAsync(a => a.NumCopies, cancel);
 
@@ -77,7 +77,7 @@ public class DeleteModel : PageModel
             .Include(b => b.Cards) // unbounded, keep eye on
                 .ThenInclude(a => a.Card)
 
-            .SingleOrDefaultAsync(b => !b.IsExcess && b.Id == id, cancel);
+            .SingleOrDefaultAsync(b => b.Id == id, cancel);
 
         if (box == default)
         {

@@ -5,25 +5,25 @@ using System.Linq;
 namespace MTGViewer.Data.Internal;
 
 
-internal readonly record struct BoxAssignment<TSource>(TSource Source, int NumCopies, Box Box);
+internal readonly record struct StorageAssignment<TSource>(TSource Source, int NumCopies, Storage Target);
 
 
 internal static class Assignment
 {
-    public static IEnumerable<BoxAssignment<TSource>> FitToBoxes<TSource>(
+    public static IEnumerable<StorageAssignment<TSource>> FitToBoxes<TSource>(
         TSource source,
         int copiesToAssign,
-        IEnumerable<Box> boxes,
-        IReadOnlyDictionary<Box, int> boxSpace)
+        IEnumerable<Storage> storageOptions,
+        IReadOnlyDictionary<Storage, int> storageSpace)
     {
-        foreach (var box in boxes)
+        foreach (var storage in storageOptions)
         {
-            if (box.IsExcess)
+            if (storage is not Box box)
             {
                 continue;
             }
 
-            int spaceUsed = boxSpace.GetValueOrDefault(box);
+            int spaceUsed = storageSpace.GetValueOrDefault(storage);
             int remainingSpace = Math.Max(0, box.Capacity - spaceUsed);
 
             int newCopies = Math.Min(copiesToAssign, remainingSpace);
@@ -32,7 +32,7 @@ internal static class Assignment
                 continue;
             }
 
-            yield return new BoxAssignment<TSource>(source, newCopies, box);
+            yield return new StorageAssignment<TSource>(source, newCopies, storage);
 
             copiesToAssign -= newCopies;
             if (copiesToAssign == 0)
@@ -42,9 +42,9 @@ internal static class Assignment
         }
         
         if (copiesToAssign > 0
-            && boxes.FirstOrDefault(b => b.IsExcess) is Box firstExcess)
+            && storageOptions.OfType<Storage>().FirstOrDefault() is Excess firstExcess)
         {
-            yield return new BoxAssignment<TSource>(source, copiesToAssign, firstExcess);
+            yield return new StorageAssignment<TSource>(source, copiesToAssign, firstExcess);
         }
     }
 
@@ -52,10 +52,10 @@ internal static class Assignment
     // add assignments should add to larger dup stacks
     // in boxes with more available space
 
-    public static ILookup<string, Box> ExactAddLookup(
+    public static ILookup<string, Storage> ExactAddLookup(
         IEnumerable<Amount> targets, 
         IEnumerable<Card> cards,
-        IReadOnlyDictionary<Box, int> boxSpace)
+        IReadOnlyDictionary<Storage, int> storageSpace)
     {
         var cardIds = cards
             .Select(c => c.Id)
@@ -70,19 +70,20 @@ internal static class Assignment
             .OrderByDescending(a => a.NumCopies)
                 .ThenByDescending(a => a.Location switch
                 {
-                    Box box => box.Capacity - boxSpace.GetValueOrDefault(box),
+                    Box box => box.Capacity - storageSpace.GetValueOrDefault(box),
+                    Excess excess => - storageSpace.GetValueOrDefault(excess),
                     _ => throw new ArgumentException(nameof(targets))
                 })            
 
             // lookup group orders should preserve NumCopies order
-            .ToLookup(a => a.CardId, a => (Box)a.Location);
+            .ToLookup(a => a.CardId, a => (Storage)a.Location);
     }
 
 
-    public static ILookup<string, Box> ApproxAddLookup(
+    public static ILookup<string, Storage> ApproxAddLookup(
         IEnumerable<Amount> targets, 
         IEnumerable<Card> cards,
-        IReadOnlyDictionary<Box, int> boxSpace)
+        IReadOnlyDictionary<Storage, int> storageSpace)
     {
         var cardNames = cards
             .Select(c => c.Name)
@@ -98,11 +99,12 @@ internal static class Assignment
             .OrderByDescending(a => a.NumCopies)
                 .ThenByDescending(a => a.Location switch
                 {
-                    Box box => box.Capacity - boxSpace.GetValueOrDefault(box),
+                    Box box => box.Capacity - storageSpace.GetValueOrDefault(box),
+                    Excess excess => - storageSpace.GetValueOrDefault(excess),
                     _ => throw new ArgumentException(nameof(targets))
                 })
             
-            .ToLookup(a => a.Card.Name, a => (Box)a.Location);
+            .ToLookup(a => a.Card.Name, a => (Storage)a.Location);
     }
 
 }

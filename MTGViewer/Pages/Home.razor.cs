@@ -68,7 +68,7 @@ public partial class Home : ComponentBase, IDisposable
 
             _randomContext = await RandomCardsContext.CreateAsync(dbContext, loadLimit, cancelToken);
 
-            _recentChanges = await RecentTransactionsAsync(dbContext, cancelToken);
+            _recentChanges = await RecentTransactionsAsync(dbContext, loadLimit, cancelToken);
 
             _currentTime = DateTime.UtcNow;
         }
@@ -91,7 +91,7 @@ public partial class Home : ComponentBase, IDisposable
 
 
 
-    public static string CardNames(IEnumerable<ChangePreview> changes)
+    public static string CardNames(IEnumerable<RecentChange> changes)
     {
         var cardNames = changes
             .GroupBy(c => c.CardName, (name, _) => name);
@@ -259,30 +259,32 @@ public partial class Home : ComponentBase, IDisposable
 
     private static Task<List<TransactionPreview>> RecentTransactionsAsync(
         CardDbContext dbContext,
+        int limit,
         CancellationToken cancel)
     {
         return dbContext.Transactions
             .Where(t => t.Changes
-                .Any(c => c.To is Deck && c.From is Box
-                    || c.To is Box && (c.From == null || c.From is Deck)))
+                .Any(c => c.From is Box || c.To is Box))
 
-            .OrderByDescending(t => t.AppliedAt)
-                .ThenBy(t => t.Id)
-
-            .Take(ChunkSize)
             .Select(t => new TransactionPreview
             {
                 AppliedAt = t.AppliedAt,
                 Total = t.Changes.Sum(c => c.Amount),
+
                 Changes = t.Changes
+                    .Where(c => c.From is Box || c.To is Box)
                     .OrderBy(c => c.Card.Name)
-                    .Select(c => new ChangePreview
+                    .Take(limit)
+                    .Select(c => new RecentChange
                     {
                         ToBox = c.To is Box,
                         FromBox = c.From is Box,
                         CardName = c.Card.Name
                     }),
             })
+
+            .OrderByDescending(t => t.AppliedAt)
+            .Take(ChunkSize)
             .ToListAsync(cancel);
     }
 

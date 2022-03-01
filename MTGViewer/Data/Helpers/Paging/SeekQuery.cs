@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 namespace System.Paging;
 
 
-public class SeekQuery<TEntity, TKey> where TKey : IEquatable<TKey>
+public class SeekQuery<TEntity, TKey>
 {
     private readonly SeekInfo _seekInfo;
 
@@ -37,7 +37,7 @@ public class SeekQuery<TEntity, TKey> where TKey : IEquatable<TKey>
     private static ExpressionVisitor RemoveSeekOffset => _lookAhead ??= new();
 
 
-    public async Task<SeekList<TEntity, TKey>> ToSeekListAsync(CancellationToken cancel = default)
+    public async Task<SeekList<TEntity>> ToSeekListAsync(CancellationToken cancel = default)
     {
         var items = await _query
             .ToListAsync(cancel)
@@ -51,9 +51,9 @@ public class SeekQuery<TEntity, TKey> where TKey : IEquatable<TKey>
             .AnyAsync(cancel)
             .ConfigureAwait(false);
 
-        var seek = new Seek<TKey>(items.Select(_getKey), direction, hasOrigin, lookAhead);
+        var seek = new Seek(items.Select(_getKey), direction, hasOrigin, lookAhead);
 
-        return new SeekList<TEntity, TKey>(seek, items);
+        return new SeekList<TEntity>(seek, items);
     }
 
 

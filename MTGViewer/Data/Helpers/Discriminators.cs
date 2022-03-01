@@ -11,9 +11,10 @@ public enum SaveResult
 internal enum LocationType
 {
     Invalid,
-    Box,
-    Unclaimed,
     Deck,
+    Unclaimed,
+    Box,
+    Excess,
 }
 
 

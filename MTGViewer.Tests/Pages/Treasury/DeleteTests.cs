@@ -68,7 +68,7 @@ public class DeleteTests : IAsyncLifetime
     [Fact]
     public async Task OnPost_RandomBox_DeleteSuccess()
     {
-        var randomBox = await _dbContext.Boxes.FirstAsync(b => !b.IsExcess);
+        var randomBox = await _dbContext.Boxes.FirstAsync();
 
         var result = await _deleteModel.OnPostAsync(randomBox.Id, default);
 
@@ -83,7 +83,7 @@ public class DeleteTests : IAsyncLifetime
     public async Task OnPost_WithCards_CardsPreserved()
     {
         var boxWithCards = await _dbContext.Boxes
-            .FirstAsync(b => !b.IsExcess && b.Cards.Any());
+            .FirstAsync(b => b.Cards.Any());
 
         int treasuryCardsBefore = await _dbContext.Amounts
             .Where(a => a.Location is Box)

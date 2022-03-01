@@ -246,7 +246,11 @@
                                     <a asp-page="/Decks/Details" asp-route-id="@location.Id"> @location.Name </a>
                                     break;
 
-                                case Box box when box.IsExcess:
+                                case Unclaimed when canChangeTreasury:
+                                    <a asp-page="/Unowned/Index" asp-route-id="@location.Id"> @location.Name </a>
+                                    break;
+
+                                case Excess:
                                     <a asp-page="/Treasury/Excess" asp-route-cardId="@Model.Card.Id" >
                                         @location.Name </a>
                                     break;
@@ -254,10 +258,6 @@
                                 case Box:
                                     <a asp-page="/Treasury/Details" asp-route-id="@location.Id" asp-route-cardId="@Model.Card.Id">
                                         @location.Name </a>
-                                    break;
-
-                                case Unclaimed when canChangeTreasury:
-                                    <a asp-page="/Unowned/Index" asp-route-id="@location.Id"> @location.Name </a>
                                     break;
 
                                 default:

@@ -23,139 +23,132 @@
 
 <partial name="_TimeZonePartial" for="TimeZone"/>
 
-<div class="row">
-    <div class="col">
 
-        <div class="table-responsive-md">
-            <table class="table table-bordered">
-                <thead>
-                    <tr>
-                        <th scope="col"> @Html.DisplayNameForInnerType((Transaction t) => t.AppliedAt) </th>
-                        <th scope="col"> @Html.DisplayNameForInnerType((Change c) => c.From) </th>
-                        <th scope="col"> @Html.DisplayNameForInnerType((Change c) => c.To) </th>
-                        <th scope="col"> @Html.DisplayNameForInnerType((Change c) => c.Card) </th>
-                        <th scope="col"> @Html.DisplayNameForInnerType((Change c) => c.Amount) </th>
-                        <th scope="col"></th>
-                    </tr>
-                </thead>
-                @if (!Model.Transfers.Any())
+<div class="table-responsive-md">
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th scope="col"> @Html.DisplayNameForInnerType((Transaction t) => t.AppliedAt) </th>
+                <th scope="col"> @Html.DisplayNameForInnerType((Change c) => c.From) </th>
+                <th scope="col"> @Html.DisplayNameForInnerType((Change c) => c.To) </th>
+                <th scope="col"> @Html.DisplayNameForInnerType((Change c) => c.Card) </th>
+                <th scope="col"> @Html.DisplayNameForInnerType((Change c) => c.Amount) </th>
+                <th scope="col"></th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (!Model.Transfers.Any())
+            {
+                <tr>
+                    <td> -- </td>
+                    <td> -- </td>
+                    <td> -- </td>
+                    <td> -- </td>
+                    <td> -- </td>
+                    <td> -- </td>
+                </tr>
+            }
+            @foreach (var (transaction, to, from, changes) in Model.Transfers)
+            {
+                <tr>
+                    @if (Model.IsFirstTransfer(transaction, to, from))
+                    {
+                        <th scope="rowgroup" rowspan="@transaction.Changes.Count">
+                            @transaction.AppliedAt
+                        </th>
+                    }
+
+                    <td rowspan="@changes.Count">
+                        @switch (from)
+                        {
+                            case Deck when from.Id != Model.Deck.Id:
+                                <a asp-page="Details" asp-route-id="@from.Id"> @from.Name </a>
+                                break;
+
+                            case Unclaimed when canChangeTreasury:
+                                <a asp-page="/Unowned/Index" asp-route-id="@from.Id"> @from.Name </a>
+                                break;
+
+                            case Excess:
+                                <a asp-page="/Treasury/Excess" asp-route-id="@from.Id"> @from.Name </a>
+                                break;
+
+                            case Box:
+                                <a asp-page="/Treasury/Details" asp-route-id="@from.Id"> @from.Name </a>
+                                break;
+
+                            case null:
+                                <i> Added </i>
+                                break;
+                            
+                            default:
+                                @from.Name
+                                break;
+                        }
+                    </td>
+
+                    <td rowspan="@changes.Count">
+                        @switch (to)
+                        {
+                            case Deck when to.Id != Model.Deck.Id:
+                                <a asp-page="Details" asp-route-id="@to.Id"> @to.Name </a>
+                                break;
+
+                            case Unclaimed when canChangeTreasury:
+                                <a asp-page="/Unowned/Index" asp-route-id="@to.Id"> @to.Name </a>
+                                break;
+
+                            case Excess:
+                                <a asp-page="/Treasury/Excess"> @to.Name </a>
+                                break;
+
+                            case Box:
+                                <a asp-page="/Treasury/Details" asp-route-id="@to.Id"> @to.Name </a>
+                                break;
+                            
+                            default:
+                                @to.Name
+                                break;
+                        }
+                    </td>
+
+                    <td> 
+                        <component type="typeof(HoverCard)" render-mode="Static"
+                            param-Target="changes[0].Card"/>
+                    </td>
+                    <td> @changes[0].Amount </td>
+
+                    @if (Model.IsFirstTransfer(transaction, to, from))
+                    {
+                        <td rowspan="@transaction.Changes.Count" class="text-center">
+                            @if (canChangeTreasury)
+                            {
+                                <form method="POST">
+                                    <input type="hidden" name="transactionId" value="@transaction.Id"/>
+                                    <button title="Remove Record" type="submit" class="btn btn-danger"> &times; </button>
+                                </form>
+                            }
+                            else
+                            {
+                                <button type="button" class="btn btn-danger" disabled> &times; </button>
+                            }
+                        </td>
+                    }
+                </tr>
+
+                @foreach (var change in changes.Skip(1))
                 {
                     <tr>
-                        <td> -- </td>
-                        <td> -- </td>
-                        <td> -- </td>
-                        <td> -- </td>
-                        <td> -- </td>
-                        <td> -- </td>
+                        <td>
+                            <component type="typeof(HoverCard)" render-mode="Static"
+                                param-Target="change.Card" />
+                        </td>
+                        <td> @change.Amount </td>
                     </tr>
                 }
-                <tbody>
-                    @foreach (var transfer in Model.Transfers)
-                    {
-                        var (transaction, to, from, changes) = transfer;
-                        var first = changes.First();
-
-                        <tr>
-                            @if (Model.IsFirstTransfer(transfer))
-                            {
-                                <th scope="rowgroup" rowspan="@transaction.Changes.Count">
-                                    @transaction.AppliedAt
-                                </th>
-                            }
-
-                            <td rowspan="@changes.Count">
-                                @switch (from)
-                                {
-                                    case Deck when from.Id != Model.Deck.Id:
-                                        <a asp-page="Details" asp-route-id="@from.Id"> @from.Name </a>
-                                        break;
-
-                                    case Box box when box.IsExcess:
-                                        <a asp-page="/Treasury/Excess" asp-route-id="@from.Id"> @from.Name </a>
-                                        break;
-
-                                    case Box:
-                                        <a asp-page="/Treasury/Details" asp-route-id="@from.Id"> @from.Name </a>
-                                        break;
-
-                                    case Unclaimed when canChangeTreasury:
-                                        <a asp-page="/Unowned/Index" asp-route-id="@from.Id"> @from.Name </a>
-                                        break;
-
-                                    case null:
-                                        <i> Added </i>
-                                        break;
-                                    
-                                    default:
-                                        @from.Name
-                                        break;
-                                }
-                            </td>
-
-                            <td rowspan="@changes.Count">
-                                @switch (to)
-                                {
-                                    case Deck when to.Id != Model.Deck.Id:
-                                        <a asp-page="Details" asp-route-id="@to.Id"> @to.Name </a>
-                                        break;
-
-                                    case Box box when box.IsExcess:
-                                        <a asp-page="/Treasury/Excess"> @to.Name </a>
-                                        break;
-
-                                    case Box:
-                                        <a asp-page="/Treasury/Details" asp-route-id="@to.Id"> @to.Name </a>
-                                        break;
-
-                                    case Unclaimed when canChangeTreasury:
-                                        <a asp-page="/Unowned/Index" asp-route-id="@to.Id"> @to.Name </a>
-                                        break;
-                                    
-                                    default:
-                                        @to.Name
-                                        break;
-                                }
-                            </td>
-
-                            <td> 
-                                <component type="typeof(HoverCard)" render-mode="Static"
-                                    param-Target="first.Card"/>
-                            </td>
-                            <td> @first.Amount </td>
-
-                            @if (Model.IsFirstTransfer(transfer))
-                            {
-                                <td rowspan="@transaction.Changes.Count" class="text-center">
-                                    @if (canChangeTreasury)
-                                    {
-                                        <form method="POST">
-                                            <input type="hidden" name="transactionId" value="@transaction.Id"/>
-                                            <button title="Remove Record" type="submit" class="btn btn-danger"> &times; </button>
-                                        </form>
-                                    }
-                                    else
-                                    {
-                                        <button type="button" class="btn btn-danger" disabled> &times; </button>
-                                    }
-                                </td>
-                            }
-                        </tr>
-
-                        @foreach (var change in changes.Skip(1))
-                        {
-                            <tr>
-                                <td>
-                                    <component type="typeof(HoverCard)" render-mode="Static"
-                                        param-Target="change.Card" />
-                                </td>
-                                <td> @change.Amount </td>
-                            </tr>
-                        }
-                    }
-                </tbody>
-            </table>
-        </div>
-
-        <component type="typeof(SeekPaging<int>)" render-mode="Static" param-Seek="Model.Seek" />
-    </div>
+            }
+        </tbody>
+    </table>
 </div>
+
+<partial name="_SeekPagingPartial" for="Seek"/>

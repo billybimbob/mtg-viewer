@@ -249,11 +249,9 @@ public class TreasuryExtensionTests : IAsyncLifetime
         await _testGen.AddExcessAsync(extraSpace);
 
         int oldAvailable = await _dbContext.Boxes
-            .Where(b => !b.IsExcess)
             .SumAsync(b => b.Cards.Sum(a => a.NumCopies));
 
-        int oldExcess = await _dbContext.Boxes
-            .Where(b => b.IsExcess)
+        int oldExcess = await _dbContext.Excess
             .SumAsync(b => b.Cards.Sum(a => a.NumCopies));
 
         var bin = await _dbContext.Bins.LastAsync();
@@ -271,11 +269,9 @@ public class TreasuryExtensionTests : IAsyncLifetime
         await _dbContext.SaveChangesAsync();
 
         int newAvailable = await _dbContext.Boxes
-            .Where(b => !b.IsExcess)
             .SumAsync(b => b.Cards.Sum(a => a.NumCopies));
 
-        int newExcess = await _dbContext.Boxes
-            .Where(b => b.IsExcess)
+        int newExcess = await _dbContext.Excess
             .SumAsync(b => b.Cards.Sum(a => a.NumCopies));
 
         Assert.Equal(extraSpace, newAvailable - oldAvailable);
@@ -291,11 +287,9 @@ public class TreasuryExtensionTests : IAsyncLifetime
         await _testGen.AddExcessAsync(extraSpace);
 
         int oldAvailable = await _dbContext.Boxes
-            .Where(b => !b.IsExcess)
             .SumAsync(b => b.Cards.Sum(a => a.NumCopies));
 
-        int oldExcess = await _dbContext.Boxes
-            .Where(b => b.IsExcess)
+        int oldExcess = await _dbContext.Excess
             .SumAsync(b => b.Cards.Sum(a => a.NumCopies));
 
         var higherBox = await _dbContext.Boxes.FirstAsync();
@@ -307,11 +301,9 @@ public class TreasuryExtensionTests : IAsyncLifetime
         await _dbContext.SaveChangesAsync();
 
         int newAvailable = await _dbContext.Boxes
-            .Where(b => !b.IsExcess)
             .SumAsync(b => b.Cards.Sum(a => a.NumCopies));
 
-        int newExcess = await _dbContext.Boxes
-            .Where(b => b.IsExcess)
+        int newExcess = await _dbContext.Excess
             .SumAsync(b => b.Cards.Sum(a => a.NumCopies));
 
         Assert.Equal(extraSpace, newAvailable - oldAvailable);
@@ -327,11 +319,9 @@ public class TreasuryExtensionTests : IAsyncLifetime
         await _testGen.AddExcessAsync(extraSpace);
 
         int oldAvailable = await _dbContext.Boxes
-            .Where(b => !b.IsExcess)
             .SumAsync(b => b.Cards.Sum(a => a.NumCopies));
 
-        int oldExcess = await _dbContext.Boxes
-            .Where(b => b.IsExcess)
+        int oldExcess = await _dbContext.Excess
             .SumAsync(b => b.Cards.Sum(a => a.NumCopies));
 
         var lowerBox = await _dbContext.Boxes.FirstAsync();
@@ -343,11 +333,9 @@ public class TreasuryExtensionTests : IAsyncLifetime
         await _dbContext.SaveChangesAsync();
 
         int newAvailable = await _dbContext.Boxes
-            .Where(b => !b.IsExcess)
             .SumAsync(b => b.Cards.Sum(a => a.NumCopies));
 
-        int newExcess = await _dbContext.Boxes
-            .Where(b => b.IsExcess)
+        int newExcess = await _dbContext.Excess
             .SumAsync(b => b.Cards.Sum(a => a.NumCopies));
 
         Assert.Equal(extraSpace, oldAvailable - newAvailable);

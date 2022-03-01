@@ -24,7 +24,7 @@ public class ExcessModel : PageModel
     }
 
 
-    public SeekList<Card, string> Cards { get; private set; } = SeekList<Card, string>.Empty;
+    public SeekList<Card> Cards { get; private set; } = SeekList<Card>.Empty;
 
     public bool HasExcess =>
         Cards.Any()
@@ -83,12 +83,10 @@ public class ExcessModel : PageModel
     {
         return _dbContext.Cards
             .Where(c => c.Amounts
-                .Any(a => a.Location is Box
-                    && (a.Location as Box)!.IsExcess))
+                .Any(a => a.Location is Excess))
 
             .Include(c => c.Amounts // unbounded, keep eye on
-                .Where(a => a.Location is Box 
-                    && (a.Location as Box)!.IsExcess))
+                .Where(a => a.Location is Excess))
             
             .OrderBy(c => c.Name)
                 .ThenBy(c => c.SetName)

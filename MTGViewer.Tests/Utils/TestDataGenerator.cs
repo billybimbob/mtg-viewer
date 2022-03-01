@@ -616,11 +616,9 @@ public class TestDataGenerator
     public async Task AddExcessAsync(int excessSpace)
     {
         int capacity = await _dbContext.Boxes
-            .Where(b => !b.IsExcess)
             .SumAsync(b => b.Capacity);
 
         int availAmounts = await _dbContext.Boxes
-            .Where(b => !b.IsExcess)
             .SelectMany(b => b.Cards)
             .SumAsync(a => a.NumCopies);
 
@@ -634,7 +632,6 @@ public class TestDataGenerator
         if (availAmounts < capacity)
         {
             var boxes = await _dbContext.Boxes
-                .Where(b => !b.IsExcess)
                 .Include(b => b.Cards)
                 .ToListAsync();
 
@@ -663,19 +660,14 @@ public class TestDataGenerator
             }
         }
 
-        if (await _dbContext.Boxes.AnyAsync(b => b.IsExcess))
+        if (await _dbContext.Excess.AnyAsync())
         {
             return;
         }
 
-        var excess = new Box
+        var excess = new Excess
         {
             Name = "Excess",
-            Capacity = 0,
-            Bin = new Bin
-            {
-                Name = "Excess Bin"
-            }
         };
 
         var excessCard = new Amount
@@ -685,7 +677,7 @@ public class TestDataGenerator
             NumCopies = excessSpace
         };
 
-        _dbContext.Boxes.Attach(excess);
+        _dbContext.Excess.Attach(excess);
         _dbContext.Amounts.Attach(excessCard);
 
         await _dbContext.SaveChangesAsync();

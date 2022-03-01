@@ -85,43 +85,38 @@ public class Deck : Owned
 }
 
 
+public abstract class Storage : Location
+{ }
+
+
+public class Excess : Storage
+{
+    public static Excess Create()
+    {
+        return new Excess
+        {
+            Name = "Excess",
+        };
+    }
+}
+
+
 [Index(
-    nameof(IsExcess),
     nameof(Type),
     nameof(Id),
     nameof(BinId))]
-public class Box : Location
+public class Box : Storage
 {
     [JsonIgnore]
     public int BinId { get; init; }
     public Bin Bin { get; set; } = default!;
 
-    // min is 0 to account for other loc types, should be min 10
 
-    [Range(0, 10_000)]
+    [Range(10, 10_000)]
     public int Capacity { get; set; }
 
     [StringLength(40)]
     public string? Appearance { get; set; }
-
-    public bool IsExcess
-    {
-        get => Capacity == 0;
-        private set { }
-    }
-
-    public static Box CreateExcess()
-    {
-        return new Box
-        {
-            Name = "Excess",
-            Capacity = 0,
-            Bin = new Bin
-            {
-                Name = "Excess"
-            }
-        };
-    }
 }
 
 

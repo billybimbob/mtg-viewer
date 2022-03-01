@@ -42,25 +42,13 @@
             <a asp-page="Reset" class="btn btn-danger" role="button"> Reset </a>
         </div>
     }
+
     <div class="col-auto btn-group pr-2" role="group" aria-label="Treasury Miscellaneous">
 
         <a asp-page="History" class="btn btn-secondary" role="button"> History </a>
-
         @if (Model.HasExcess)
         {
             <a asp-page="Excess" class="btn btn-secondary" role="button"> Excess </a>
-        }
-
-        @if (Model.HasUnclaimed && isSignedIn)
-        {
-            @if (canChangeTreasury)
-            {
-                <a asp-page="/Unowned/Index" class="btn btn-secondary" role="button"> Unclaimed Decks </a>
-            }
-            else
-            {
-                <button class="btn btn-secondary" type="button" disabled> Unclaimed Decks </button>
-            }
         }
     </div>
 </div>
@@ -89,10 +77,10 @@
             <tbody>
                 @foreach (var box in bin.Boxes)
                 {
-                    var firstAmount = box.Cards.FirstOrDefault();
-                    int boxSpan = Math.Max(1, box.Cards.Count);
+                    var firstCard = box.Cards.FirstOrDefault();
+                    int boxSpan = Math.Max(1, box.Cards.Count());
 
-                    if (Model.HasMoreCards(box))
+                    if (box.HasMoreCards)
                     {
                         boxSpan += 1;
                     }
@@ -103,21 +91,21 @@
                                 @box.Name </a>
                         </th>
 
-                        @if (firstAmount != default)
+                        @if (firstCard != default)
                         {
                             <td>
                                 <a asp-page="/Cards/Details"
-                                    asp-route-id="@firstAmount.CardId" asp-route-returnurl="@returnUrl">
-                                    @firstAmount.Card.Name </a>
+                                    asp-route-id="@firstCard.CardId" asp-route-returnurl="@returnUrl">
+                                    @firstCard.CardName </a>
                             </td>
 
                             <td> 
                                 <div class="ms-group">
-                                    @MtgSymbols.Format(firstAmount.Card.ManaCost).ToHtmlString() 
+                                    @MtgSymbols.Format(firstCard.CardManaCost).ToHtmlString() 
                                 </div>
                             </td>
-                            <td> @firstAmount.Card.SetName </td>
-                            <td> @firstAmount.NumCopies </td>
+                            <td> @firstCard.CardSetName </td>
+                            <td> @firstCard.NumCopies </td>
                         }
                         else
                         {
@@ -127,28 +115,28 @@
                             <td></td>
                         }
 
-                        <td rowspan="@boxSpan"> @Model.TotalCards(box) / @box.Capacity </td>
+                        <td rowspan="@boxSpan"> @box.TotalCards / @box.Capacity </td>
                     </tr>
 
-                    @foreach (var amount in box.Cards.Skip(1))
+                    @foreach (var card in box.Cards.Skip(1))
                     {
                         <tr>
                             <td>
                                 <a asp-page="/Cards/Details"
-                                    asp-route-id="@amount.CardId" asp-route-returnurl="@returnUrl">
-                                    @amount.Card.Name </a>
+                                    asp-route-id="@card.CardId" asp-route-returnurl="@returnUrl">
+                                    @card.CardName </a>
                             </td>
                             <td> 
                                 <div class="ms-group">
-                                    @MtgSymbols.Format(amount.Card.ManaCost).ToHtmlString()
+                                    @MtgSymbols.Format(card.CardManaCost).ToHtmlString()
                                 </div>
                             </td>
-                            <td> @amount.Card.SetName </td>
-                            <td> @amount.NumCopies </td>
+                            <td> @card.CardSetName </td>
+                            <td> @card.NumCopies </td>
                         </tr>
                     }
 
-                    @if (Model.HasMoreCards(box))
+                    @if (box.HasMoreCards)
                     {
                         <tr>
                             <td> ... </td>
@@ -163,4 +151,4 @@
     </div>
 }
 
-<component type="typeof(SeekPaging<int>)" render-mode="Static" param-Seek="Model.Seek" />
+<partial name="_SeekPagingPartial" for="Seek"/>

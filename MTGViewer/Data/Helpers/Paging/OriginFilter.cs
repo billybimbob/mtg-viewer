@@ -127,11 +127,17 @@ internal sealed class OriginFilter<TEntity, TOrigin>
 
         while (source is MethodCallExpression orderBy)
         {
-            if (IsOrderedMethod(orderBy)
-                && orderBy.Arguments.ElementAtOrDefault(1) is UnaryExpression quote
-                && quote.Operand is LambdaExpression lambda
-                && lambda.Body is MemberExpression
-                && OrderVisitor.Visit(lambda.Body) is MemberExpression propertyOrder
+            source = IsOrderBy(orderBy) ? null : orderBy.Arguments.ElementAtOrDefault(0);
+
+            if (!IsOrderedMethod(orderBy)
+                || orderBy.Arguments.ElementAtOrDefault(1) is not UnaryExpression quote
+                || quote.Operand is not LambdaExpression lambda
+                || lambda.Body is not MemberExpression)
+            {
+                continue;
+            }
+
+            if (OrderVisitor.Visit(lambda.Body) is MemberExpression propertyOrder
                 && IsOriginProperty(propertyOrder))
             {
                 var ordering = IsDescending(orderBy)
@@ -140,8 +146,12 @@ internal sealed class OriginFilter<TEntity, TOrigin>
 
                 yield return new KeyOrder(propertyOrder, ordering);
             }
-
-            source = IsOrderBy(orderBy) ? null : orderBy.Arguments.ElementAtOrDefault(0);
+            else
+            {
+                // TODO: parse projection and use it as a property translation map
+                throw new InvalidOperationException(
+                    "Ordering method found, but cannot be used as a filter. Orderings must come after a projection");
+            }
         }
     }
 

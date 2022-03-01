@@ -38,7 +38,7 @@ public class SeekBuilder<TEntity, TKey>
     }
 
 
-    public async Task<SeekList<TEntity, TKey>> ToSeekListAsync(CancellationToken cancel = default)
+    public async Task<SeekList<TEntity>> ToSeekListAsync(CancellationToken cancel = default)
     {
         var origin = await GetOriginAsync(cancel).ConfigureAwait(false);
 

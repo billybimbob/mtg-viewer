@@ -29,7 +29,7 @@ public class HistoryModel : PageModel
     private readonly IAuthorizationService _authorization;
     private readonly ILogger<HistoryModel> _logger;
 
-    private readonly HashSet<(int, int, int?)> _firstTransfers = new();
+    private HashSet<(int, int, int?)>? _firstTransfer;
 
     public HistoryModel(
         PageSizes pageSizes,
@@ -58,7 +58,7 @@ public class HistoryModel : PageModel
     public IReadOnlyList<Transfer> Transfers { get; private set; } =
         Array.Empty<Transfer>();
 
-    public Seek<int> Seek { get; private set; }
+    public Seek Seek { get; private set; }
 
     public TimeZoneInfo TimeZone { get; private set; } = TimeZoneInfo.Utc;
 
@@ -81,13 +81,10 @@ public class HistoryModel : PageModel
             .SeekBy(c => c.Id, seek, _pageSize, backtrack)
             .ToSeekListAsync(cancel);
 
-        var firstTransfers = changes
+        _firstTransfer = changes
+            .DistinctBy(c => c.TransactionId)
             .Select(c => (c.TransactionId, c.ToId, c.FromId))
-            .GroupBy(tft => tft.TransactionId,
-                (_, tfts) => tfts.First());
-
-        _firstTransfers.UnionWith(firstTransfers);
-
+            .ToHashSet();
 
         Deck = deck;
 
@@ -161,10 +158,9 @@ public class HistoryModel : PageModel
     }
 
 
-    public bool IsFirstTransfer(Transfer transfer)
+    public bool IsFirstTransfer(Transaction transaction, Location to, Location? from)
     {
-        var transferKey = (transfer.Transaction.Id, transfer.To.Id, transfer.From?.Id);
-        return _firstTransfers.Contains(transferKey);
+        return _firstTransfer?.Contains((transaction.Id, to.Id, from?.Id)) ?? false;
     }
 
 

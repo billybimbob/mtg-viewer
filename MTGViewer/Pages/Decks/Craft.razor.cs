@@ -252,6 +252,7 @@ public partial class Craft : OwningComponentBase
         CancellationToken cancel)
     {
         return dbContext.Decks
+            .Include(d => d.Owner)
             .Include(d => d.Cards) // unbounded: keep eye on
                 .ThenInclude(a => a.Card)
 
@@ -978,6 +979,8 @@ public partial class Craft : OwningComponentBase
     private static void PrepareChanges(CardDbContext dbContext, DeckContext deckContext)
     {
         var deck = deckContext.Deck;
+
+        dbContext.Users.Attach(deck.Owner);
 
         if (deckContext.IsNewDeck)
         {

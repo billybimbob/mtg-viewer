@@ -38,7 +38,9 @@ public class IndexModel : PageModel
 
     public string UserName { get; private set; } = string.Empty;
 
-    public SeekList<DeckPreview, int> Decks { get; private set; } = SeekList<DeckPreview, int>.Empty;
+    public SeekList<DeckPreview> Decks { get; private set; } = SeekList<DeckPreview>.Empty;
+
+    public bool HasUnclaimed { get; private set; }
 
 
     public async Task<IActionResult> OnGetAsync(
@@ -68,6 +70,7 @@ public class IndexModel : PageModel
 
         UserName = userName;
         Decks = decks;
+        HasUnclaimed =  await _dbContext.Unclaimed.AnyAsync(cancel);
 
         return Page();
     }
@@ -77,10 +80,6 @@ public class IndexModel : PageModel
     {
         return _dbContext.Decks
             .Where(d => d.OwnerId == userId)
-
-            .OrderBy(d => d.Name)
-                .ThenBy(d => d.Id)
-
             .Select(d => new DeckPreview
             {
                 Id = d.Id,
@@ -91,23 +90,9 @@ public class IndexModel : PageModel
                 HasWants = d.Wants.Any(),
                 HasReturns = d.GiveBacks.Any(),
                 HasTradesTo = d.TradesTo.Any(),
-            });
-    }
+            })
 
-
-    public BuildState GetDeckState(DeckPreview deck)
-    {
-        if (deck.HasTradesTo)
-        {
-            return BuildState.Requesting;
-        }
-        else if (deck.HasWants || deck.HasReturns)
-        {
-            return BuildState.Theorycraft;
-        }
-        else
-        {
-            return BuildState.Built;
-        }
+            .OrderBy(d => d.Name)
+                .ThenBy(d => d.Id);
     }
 }

@@ -26,6 +26,15 @@ public static partial class TreasuryExtensions
     }
 
 
+    private static IQueryable<Excess> ExistingExcess(CardDbContext dbContext)
+    {
+        return dbContext.Excess
+            .Include(e => e.Cards
+                .OrderBy(a => a.NumCopies))
+                .ThenInclude(a => a.Card)
+            .OrderBy(e => e.Id);
+    }
+
 
     public static Task AddCardsAsync(
         this CardDbContext dbContext, 
@@ -57,7 +66,9 @@ public static partial class TreasuryExtensions
 
         AttachCardRequests(dbContext, adding);
 
-        await OrderedBoxes(dbContext).LoadAsync(cancel); 
+        await OrderedBoxes(dbContext).LoadAsync(cancel);
+
+        await ExistingExcess(dbContext).LoadAsync(cancel);
 
         AddMissingExcess(dbContext);
 
@@ -120,6 +131,8 @@ public static partial class TreasuryExtensions
 
         await OrderedBoxes(dbContext).LoadAsync(cancel);
 
+        await ExistingExcess(dbContext).LoadAsync(cancel);
+
         AddMissingExcess(dbContext);
 
         var treasuryContext = new TreasuryContext(dbContext);
@@ -152,6 +165,8 @@ public static partial class TreasuryExtensions
         }
 
         await OrderedBoxes(dbContext).LoadAsync(cancel);
+
+        await ExistingExcess(dbContext).LoadAsync(cancel);
 
         AddMissingExcess(dbContext);
 
@@ -189,11 +204,11 @@ public static partial class TreasuryExtensions
 
     private static void AddMissingExcess(CardDbContext dbContext)
     {
-        if (!dbContext.Boxes.Local.Any(b => b.IsExcess))
+        if (!dbContext.Excess.Local.Any())
         {
-            var excessBox = Box.CreateExcess();
+            var excessBox = Excess.Create();
 
-            dbContext.Boxes.Add(excessBox);
+            dbContext.Excess.Add(excessBox);
         }
     }
 

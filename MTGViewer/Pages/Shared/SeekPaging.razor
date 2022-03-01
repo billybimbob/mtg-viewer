@@ -1,5 +1,3 @@
-@typeparam TEntity where TEntity : IEquatable<TEntity>
-
 @inject NavigationManager Nav
 
 @if (HasPrevious || HasNext)
@@ -69,16 +67,14 @@
 @code 
 {
     [Parameter]
-    public Seek<TEntity> Seek { get; set; }
+    public Seek Seek { get; set; }
 
     [Parameter]
-    public EventCallback<TEntity> ChangePage { get; set; }
+    public EventCallback<object> ChangePage { get; set; }
 
-    public bool HasPrevious =>
-        Seek.Previous is TEntity previous && !previous.Equals(default);
+    public bool HasPrevious => Seek.Previous is not null;
 
-    public bool HasNext =>
-        Seek.Next is TEntity next && !next.Equals(default);
+    public bool HasNext => Seek.Next is not null;
 
 
     private bool _isBusy;
@@ -129,7 +125,7 @@
 
     public async Task PreviousPageAsync()
     {
-        if (_isBusy || Seek.Previous is not TEntity current)
+        if (_isBusy || Seek.Previous is not object current)
         {
             return;
         }
@@ -149,7 +145,7 @@
 
     public async Task NextPageAsync()
     {
-        if (_isBusy || Seek.Next is not TEntity next)
+        if (_isBusy || Seek.Next is not object next)
         {
             return;
         }

@@ -32,13 +32,13 @@ internal abstract class ReturnHandler
         ExchangeContext = exchangeContext;
     }
 
-    protected abstract IEnumerable<BoxAssignment<Card>> GetAssignments();
+    protected abstract IEnumerable<StorageAssignment<Card>> GetAssignments();
 
     public void ApplyReturns()
     {
-        foreach ((Card card, int numCopies, Box box) in GetAssignments())
+        foreach ((Card card, int numCopies, Storage storage) in GetAssignments())
         {
-            ExchangeContext.ReturnCopies(card, numCopies, box);
+            ExchangeContext.ReturnCopies(card, numCopies, storage);
         }
     }
 }
@@ -46,13 +46,13 @@ internal abstract class ReturnHandler
 
 internal class ExactReturn : ReturnHandler
 {
-    private ILookup<string, Box>? _exactMatch;
+    private ILookup<string, Storage>? _exactMatch;
 
     public ExactReturn(ExchangeContext exchangeContext) : base(exchangeContext)
     { }
 
 
-    protected override IEnumerable<BoxAssignment<Card>> GetAssignments()
+    protected override IEnumerable<StorageAssignment<Card>> GetAssignments()
     {
         var giveBacks = ExchangeContext.Deck.GiveBacks;
 
@@ -71,17 +71,17 @@ internal class ExactReturn : ReturnHandler
     }
 
 
-    private IEnumerable<BoxAssignment<Card>> FitToBoxes(GiveBack giveBack)
+    private IEnumerable<StorageAssignment<Card>> FitToBoxes(GiveBack giveBack)
     {
         _exactMatch ??= AddLookup();
 
         var bestBoxes = _exactMatch[giveBack.CardId];
 
         return Assignment.FitToBoxes(
-            giveBack.Card, giveBack.NumCopies, bestBoxes, TreasuryContext.BoxSpace);
+            giveBack.Card, giveBack.NumCopies, bestBoxes, TreasuryContext.StorageSpace);
     }
 
-    private ILookup<string, Box> AddLookup()
+    private ILookup<string, Storage> AddLookup()
     {
         var (available, _, _, boxSpace) = TreasuryContext;
         var availableAmounts = available.SelectMany(b => b.Cards);
@@ -96,13 +96,13 @@ internal class ExactReturn : ReturnHandler
 
 internal class ApproximateReturn : ReturnHandler
 {
-    private ILookup<string, Box>? _approxMatch;
+    private ILookup<string, Storage>? _approxMatch;
 
     public ApproximateReturn(ExchangeContext exchangeContext) : base(exchangeContext)
     { }
 
 
-    protected override IEnumerable<BoxAssignment<Card>> GetAssignments()
+    protected override IEnumerable<StorageAssignment<Card>> GetAssignments()
     {
         var giveBacks = ExchangeContext.Deck.GiveBacks;
 
@@ -126,22 +126,22 @@ internal class ApproximateReturn : ReturnHandler
     }
 
 
-    private IEnumerable<BoxAssignment<Card>> FitToBoxes(GiveBack giveBack)
+    private IEnumerable<StorageAssignment<Card>> FitToBoxes(GiveBack giveBack)
     {
         _approxMatch ??= AddLookup();
 
         var bestBoxes = _approxMatch[giveBack.Card.Name];
 
         return Assignment.FitToBoxes(
-            giveBack.Card, giveBack.NumCopies, bestBoxes, TreasuryContext.BoxSpace);
+            giveBack.Card, giveBack.NumCopies, bestBoxes, TreasuryContext.StorageSpace);
     }
 
-    private ILookup<string, Box> AddLookup()
+    private ILookup<string, Storage> AddLookup()
     {
         var availableAmounts = TreasuryContext.Available.SelectMany(b => b.Cards);
         var giveCards = ExchangeContext.Deck.GiveBacks.Select(w => w.Card);
 
-        var boxSpace = TreasuryContext.BoxSpace;
+        var boxSpace = TreasuryContext.StorageSpace;
 
         // TODO: account for changing NumCopies while iter
         return Assignment.ApproxAddLookup(availableAmounts, giveCards, boxSpace);
@@ -157,7 +157,7 @@ internal class GuessReturn : ReturnHandler
     { }
 
 
-    protected override IEnumerable<BoxAssignment<Card>> GetAssignments()
+    protected override IEnumerable<StorageAssignment<Card>> GetAssignments()
     {
         var giveBacks = ExchangeContext.Deck.GiveBacks;
 
@@ -191,18 +191,19 @@ internal class GuessReturn : ReturnHandler
     }
 
 
-    private IEnumerable<BoxAssignment<Card>> FitToBoxes(GiveBack giveBack)
+    private IEnumerable<StorageAssignment<Card>> FitToBoxes(GiveBack giveBack)
     {
         var (available, _, excess, boxSpace) = TreasuryContext;
 
         _boxSearch ??= new BoxSearcher(available);
 
-        var bestBoxes = _boxSearch
+        var bestTargets = _boxSearch
             .FindBestBoxes(giveBack.Card)
             .Union(available)
+            .Cast<Storage>()
             .Concat(excess);
         
         return Assignment.FitToBoxes(
-            giveBack.Card, giveBack.NumCopies, bestBoxes, boxSpace);
+            giveBack.Card, giveBack.NumCopies, bestTargets, boxSpace);
     }
 }

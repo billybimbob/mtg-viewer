@@ -78,7 +78,6 @@ public partial class Adjust : ComponentBase, IDisposable
     private static Task<Bin[]> BinOptionsAsync(CardDbContext dbContext, CancellationToken cancel)
     {
         return dbContext.Bins
-            .Where(b => !b.Boxes.Any(box => box.IsExcess))
             .OrderBy(b => b.Name)
             .AsNoTracking()
             .ToArrayAsync(cancel);
@@ -134,7 +133,7 @@ public partial class Adjust : ComponentBase, IDisposable
 
         return await dbContext.Boxes
             .Include(b => b.Bin)
-            .SingleOrDefaultAsync(b => !b.IsExcess && b.Id == BoxId, cancel);;
+            .SingleOrDefaultAsync(b => b.Id == BoxId, cancel);;
     }
     
 

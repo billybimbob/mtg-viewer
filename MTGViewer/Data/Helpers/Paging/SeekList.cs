@@ -12,11 +12,10 @@ public enum SeekDirection
 }
 
 
-public readonly record struct Seek<TKey>(TKey? Previous, TKey? Next)
-    where TKey : IEquatable<TKey>
+public readonly record struct Seek(object? Previous, object? Next)
 {
     public Seek(
-        IEnumerable<TKey> items,
+        IEnumerable items,
         SeekDirection direction,
         bool hasOrigin,
         bool lookAhead) : this(default, default)
@@ -24,33 +23,32 @@ public readonly record struct Seek<TKey>(TKey? Previous, TKey? Next)
         if (direction is SeekDirection.Forward)
         {
             Previous = hasOrigin
-                ? items.FirstOrDefault()
+                ? items.OfType<object>().FirstOrDefault()
                 : default;
 
             Next = lookAhead
-                ? items.LastOrDefault()
+                ? items.OfType<object>().LastOrDefault()
                 : default;
         }
         else
         {
             Previous = lookAhead
-                ? items.FirstOrDefault()
+                ? items.OfType<object>().FirstOrDefault()
                 : default;
 
             Next = hasOrigin
-                ? items.LastOrDefault()
+                ? items.OfType<object>().LastOrDefault()
                 : default;
         }
     }
 }
 
 
-public class SeekList<TEntity, TKey> : IReadOnlyList<TEntity>
-    where TKey : IEquatable<TKey>
+public class SeekList<TEntity> : IReadOnlyList<TEntity>
 {
     private readonly IReadOnlyList<TEntity> _items;
 
-    public SeekList(Seek<TKey> seek, IReadOnlyList<TEntity> items)
+    public SeekList(Seek seek, IReadOnlyList<TEntity> items)
     {
         ArgumentNullException.ThrowIfNull(items);
 
@@ -59,7 +57,7 @@ public class SeekList<TEntity, TKey> : IReadOnlyList<TEntity>
         _items = items;
     }
 
-    public Seek<TKey> Seek { get; }
+    public Seek Seek { get; }
 
     public int Count => _items.Count;
 
@@ -71,6 +69,6 @@ public class SeekList<TEntity, TKey> : IReadOnlyList<TEntity>
     public IEnumerator<TEntity> GetEnumerator() => _items.GetEnumerator();
 
 
-    private static SeekList<TEntity, TKey>? _empty;
-    public static SeekList<TEntity, TKey> Empty => _empty ??= new(default, Array.Empty<TEntity>());
+    private static SeekList<TEntity>? _empty;
+    public static SeekList<TEntity> Empty => _empty ??= new(default, Array.Empty<TEntity>());
 }

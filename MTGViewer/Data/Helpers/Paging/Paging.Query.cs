@@ -170,11 +170,10 @@ public static partial class PagingExtensions
     }
     
 
-    public static Task<SeekList<TEntity, TKey>> ToSeekListAsync<TEntity, TKey>(
+    public static Task<SeekList<TEntity>> ToSeekListAsync<TEntity, TKey>(
         this IQueryable<TEntity> source,
         Func<TEntity, TKey> key,
         CancellationToken cancel = default)
-        where TKey : IEquatable<TKey>
     {
         ArgumentNullException.ThrowIfNull(source);
 

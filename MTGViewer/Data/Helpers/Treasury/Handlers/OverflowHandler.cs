@@ -27,13 +27,13 @@ internal abstract class OverflowHandler
         TreasuryContext = treasuryContext;
     }
 
-    protected abstract IEnumerable<BoxAssignment<Amount>> GetAssignments();
+    protected abstract IEnumerable<StorageAssignment<Amount>> GetAssignments();
 
     public void TransferOverflow()
     {
-        foreach ((Amount source, int numCopies, Box box) in GetAssignments())
+        foreach ((Amount source, int numCopies, Storage storage) in GetAssignments())
         {
-            TreasuryContext.TransferCopies(source.Card, numCopies, box, source.Location);
+            TreasuryContext.TransferCopies(source.Card, numCopies, storage, source.Location);
         }
     }
 }
@@ -41,14 +41,14 @@ internal abstract class OverflowHandler
 
 internal class ExactOverflow: OverflowHandler
 {
-    private ILookup<string, Box>? _exactMatches;
+    private ILookup<string, Storage>? _exactMatches;
 
     public ExactOverflow(TreasuryContext treasuryContext)
         : base(treasuryContext)
     { }
 
 
-    protected override IEnumerable<BoxAssignment<Amount>> GetAssignments()
+    protected override IEnumerable<StorageAssignment<Amount>> GetAssignments()
     {
         var (available, overflowBoxes, _, _) = TreasuryContext;
 
@@ -69,7 +69,7 @@ internal class ExactOverflow: OverflowHandler
     }
 
 
-    private IEnumerable<BoxAssignment<Amount>> OverflowAssignment(Amount source)
+    private IEnumerable<StorageAssignment<Amount>> OverflowAssignment(Amount source)
     {
         _exactMatches ??= AddLookup();
 
@@ -77,20 +77,20 @@ internal class ExactOverflow: OverflowHandler
 
         if (!bestBoxes.Any())
         {
-            return Enumerable.Empty<BoxAssignment<Amount>>();
+            return Enumerable.Empty<StorageAssignment<Amount>>();
         }
 
         if (source.Location is not Box sourceBox)
         {
-            return Enumerable.Empty<BoxAssignment<Amount>>();
+            return Enumerable.Empty<StorageAssignment<Amount>>();
         }
 
-        var boxSpace = TreasuryContext.BoxSpace;
+        var boxSpace = TreasuryContext.StorageSpace;
 
         int copiesAbove = boxSpace.GetValueOrDefault(sourceBox) - sourceBox.Capacity;
         if (copiesAbove <= 0)
         {
-            return Enumerable.Empty<BoxAssignment<Amount>>();
+            return Enumerable.Empty<StorageAssignment<Amount>>();
         }
 
         int minTransfer = Math.Min(source.NumCopies, copiesAbove);
@@ -99,7 +99,7 @@ internal class ExactOverflow: OverflowHandler
     }
 
 
-    private ILookup<string, Box> AddLookup()
+    private ILookup<string, Storage> AddLookup()
     {
         var (available, overflowBoxes, _, boxSpace) = TreasuryContext;
 
@@ -116,14 +116,14 @@ internal class ExactOverflow: OverflowHandler
 
 internal class ApproximateOverflow : OverflowHandler
 {
-    private ILookup<string, Box>? _approxMatches;
+    private ILookup<string, Storage>? _approxMatches;
 
     public ApproximateOverflow(TreasuryContext treasuryContext)
         : base(treasuryContext)
     { }
 
 
-    protected override IEnumerable<BoxAssignment<Amount>> GetAssignments()
+    protected override IEnumerable<StorageAssignment<Amount>> GetAssignments()
     {
         var overflowBoxes = TreasuryContext.Overflow;
 
@@ -144,21 +144,21 @@ internal class ApproximateOverflow : OverflowHandler
     }
 
 
-    private IEnumerable<BoxAssignment<Amount>> OverflowAssignment(Amount source)
+    private IEnumerable<StorageAssignment<Amount>> OverflowAssignment(Amount source)
     {
         _approxMatches ??= AddLookup();
 
         if (source.Location is not Box sourceBox)
         {
-            return Enumerable.Empty<BoxAssignment<Amount>>();
+            return Enumerable.Empty<StorageAssignment<Amount>>();
         }
 
-        var boxSpace = TreasuryContext.BoxSpace;
+        var boxSpace = TreasuryContext.StorageSpace;
 
         int copiesAbove = boxSpace.GetValueOrDefault(sourceBox) - sourceBox.Capacity;
         if (copiesAbove <= 0)
         {
-            return Enumerable.Empty<BoxAssignment<Amount>>();
+            return Enumerable.Empty<StorageAssignment<Amount>>();
         }
 
         var bestBoxes = _approxMatches[source.Card.Name]
@@ -171,7 +171,7 @@ internal class ApproximateOverflow : OverflowHandler
     }
 
 
-    private ILookup<string, Box> AddLookup()
+    private ILookup<string, Storage> AddLookup()
     {
         var (available, overflowBoxes, _, boxSpace) = TreasuryContext;
 

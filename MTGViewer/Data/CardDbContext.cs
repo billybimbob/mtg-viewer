@@ -20,6 +20,7 @@ public class CardDbContext : DbContext
 
     public DbSet<Deck> Decks => Set<Deck>();
     public DbSet<Unclaimed> Unclaimed => Set<Unclaimed>();
+    public DbSet<Excess> Excess => Set<Excess>();
 
     public DbSet<Box> Boxes => Set<Box>();
     public DbSet<Bin> Bins => Set<Bin>();
@@ -77,10 +78,14 @@ internal class LocationConfiguration : IEntityTypeConfiguration<Location>
         builder
             .HasDiscriminator(l => l.Type)
                 .HasValue<Location>(LocationType.Invalid)
+
                 .HasValue<Owned>(LocationType.Invalid)
-                .HasValue<Unclaimed>(LocationType.Unclaimed)
                 .HasValue<Deck>(LocationType.Deck)
-                .HasValue<Box>(LocationType.Box);
+                .HasValue<Unclaimed>(LocationType.Unclaimed)
+
+                .HasValue<Storage>(LocationType.Invalid)
+                .HasValue<Box>(LocationType.Box)
+                .HasValue<Excess>(LocationType.Excess);
 
         builder
             .HasMany(l => l.Cards)
@@ -132,10 +137,6 @@ internal class BoxConfiguration : IEntityTypeConfiguration<Box>
             .HasOne(b => b.Bin)
             .WithMany(b => b.Boxes)
             .OnDelete(DeleteBehavior.Restrict);
-
-        builder
-            .Property(b => b.IsExcess)
-            .HasDefaultValue(false);
     }
 }
 
