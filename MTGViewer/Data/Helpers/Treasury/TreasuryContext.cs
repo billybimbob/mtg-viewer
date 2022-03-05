@@ -33,8 +33,7 @@ internal sealed class TreasuryContext
         _storageSpace = boxes
             .Cast<Storage>()
             .Concat(excess)
-            .ToDictionary(
-                s => s, s => s.Cards.Sum(a => a.NumCopies));
+            .ToDictionary(s => s, s => s.Cards.Sum(a => a.NumCopies));
 
         _available = boxes
             .Where(b => _storageSpace.GetValueOrDefault(b) < b.Capacity)
@@ -55,9 +54,6 @@ internal sealed class TreasuryContext
             .ToDictionary(
                 a => (a.CardId, (Storage)a.Location));
 
-        _changes = dbContext.Changes.Local
-            .ToDictionary(c => (c.CardId, c.To, c.From));
-
         if (dbContext.Transactions.Local.FirstOrDefault() is Transaction transaction)
         {
             _transaction = transaction;
@@ -67,6 +63,10 @@ internal sealed class TreasuryContext
             _transaction = new();
             _dbContext.Transactions.Attach(_transaction);
         }
+
+        _changes = dbContext.Changes.Local
+            .Where(c => c.TransactionId == _transaction.Id)
+            .ToDictionary(c => (c.CardId, c.To, c.From));
     }
 
     public IReadOnlyCollection<Box> Available => _available;

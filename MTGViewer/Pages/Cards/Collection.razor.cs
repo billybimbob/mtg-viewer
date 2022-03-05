@@ -32,7 +32,7 @@ public partial class Collection : ComponentBase, IDisposable
 
     public FilterContext Filters => _filters;
 
-    public OffsetList<CardPreview> Cards => _loader.Cards ?? OffsetList<CardPreview>.Empty;
+    public OffsetList<CardPreview> Cards => _cards ?? OffsetList<CardPreview>.Empty;
 
 
 
@@ -40,8 +40,8 @@ public partial class Collection : ComponentBase, IDisposable
 
     private bool _isBusy;
     private readonly CancellationTokenSource _cancel = new();
-    private readonly Loader _loader = new();
     private readonly FilterContext _filters = new();
+    private OffsetList<CardPreview>? _cards;
 
 
     protected override async Task OnInitializedAsync()
@@ -55,9 +55,13 @@ public partial class Collection : ComponentBase, IDisposable
 
         try
         {
+            var cancelToken = _cancel.Token;
+
+            await using var dbContext = await DbFactory.CreateDbContextAsync(cancelToken);
+
             _filters.PageSize = PageSizes.GetComponentSize<Collection>();
 
-            await _loader.LoadCardsAsync(DbFactory, _filters, _cancel.Token);
+            _cards = await FilteredCardsAsync(dbContext, _filters, cancelToken);
 
             _filters.SetLoadContext(new LoadContext(this));
         }
@@ -263,7 +267,11 @@ public partial class Collection : ComponentBase, IDisposable
 
         try
         {
-            await _loader.LoadCardsAsync(DbFactory, _filters, _cancel.Token);
+            var cancelToken = _cancel.Token;
+
+            await using var dbContext = await DbFactory.CreateDbContextAsync(cancelToken);
+
+            _cards = await FilteredCardsAsync(dbContext, _filters, cancelToken);
         }
         catch (OperationCanceledException ex)
         {
@@ -278,25 +286,6 @@ public partial class Collection : ComponentBase, IDisposable
             _isBusy = false;
 
             StateHasChanged();
-        }
-    }
-
-
-    private sealed class Loader
-    {
-        private OffsetList<CardPreview>? _pagedCards;
-
-        public OffsetList<CardPreview>? Cards => _pagedCards;
-
-
-        public async Task LoadCardsAsync(
-            IDbContextFactory<CardDbContext> dbFactory, 
-            FilterContext filters,
-            CancellationToken cancel)
-        {
-            await using var dbContext = await dbFactory.CreateDbContextAsync(cancel);
-
-            _pagedCards = await FilteredCardsAsync(dbContext, filters, cancel);
         }
     }
 
@@ -321,7 +310,8 @@ public partial class Collection : ComponentBase, IDisposable
 
         if (pickedColors is not Color.None)
         {
-            cards = cards.Where(c => (c.Color & pickedColors) == pickedColors);
+            cards = cards
+                .Where(c => (c.Color & pickedColors) == pickedColors);
         }
 
         int pageSize = filters.PageSize;

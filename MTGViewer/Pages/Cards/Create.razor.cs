@@ -262,6 +262,7 @@ public partial class Create : OwningComponentBase
         var q = _search.Query;
 
         var types = q.Type?.Split() ?? Enumerable.Empty<string>();
+
         int page = _matchPage == default ? 0 : _matchPage.Current + 1;
 
         return search

@@ -6,6 +6,8 @@ using MTGViewer.Data.Concurrency;
 
 namespace MTGViewer.Data;
 
+
+[Index(nameof(CardId), nameof(ReceiverId), nameof(ToId), IsUnique = true)]
 public class Suggestion
 {
     [Key]
@@ -46,10 +48,7 @@ public class Suggestion
 /// by the owner of the To deck, and the owner of the 
 /// From deck accepts or denies the trade
 /// </remarks>
-[Index(
-    nameof(FromId),
-    nameof(ToId),
-    nameof(CardId), IsUnique = true)]
+[Index(nameof(ToId), nameof(FromId), nameof(CardId), IsUnique = true)]
 public class Trade : Concurrent
 {
     [JsonIgnore]
@@ -62,17 +61,17 @@ public class Trade : Concurrent
 
 
     [JsonIgnore]
-    public int FromId { get; init; }
-
-    [Display(Name = "From Deck")]
-    public Deck From { get; init; } = default!;
-
-
-    [JsonIgnore]
     public int ToId { get; init; }
 
     [Display(Name = "To Deck")]
     public Deck To { get; init; } = default!;
+
+
+    [JsonIgnore]
+    public int FromId { get; init; }
+
+    [Display(Name = "From Deck")]
+    public Deck From { get; init; } = default!;
 
 
     [Range(1, 4_096)]

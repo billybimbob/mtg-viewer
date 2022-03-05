@@ -43,7 +43,7 @@
     <div class="col-8 col-sm-7 col-md-6 col-lg-4">
         <form method="POST">
             @{ int maxCopies = Model.Card.Amounts
-                .Where(a => a.Location is Box)
+                .Where(a => a.Location is Box or Excess)
                 .Sum(a => a.NumCopies); }
 
             <div class="form-group">

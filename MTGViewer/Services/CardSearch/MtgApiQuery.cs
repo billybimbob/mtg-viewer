@@ -100,6 +100,7 @@ public sealed class MtgApiQuery : IMTGQuery
         const BindingFlags binds = BindingFlags.IgnoreCase | BindingFlags.Instance | BindingFlags.Public;
 
         var property = typeof(CardQueryParameter).GetProperty(name, binds);
+
         if (property == null || property.PropertyType != typeof(string))
         {
             throw new ArgumentException(nameof(name));
@@ -118,7 +119,7 @@ public sealed class MtgApiQuery : IMTGQuery
 
     internal async ValueTask<OffsetList<Card>> SearchAsync(
         MtgCardSearch values,
-        CancellationToken cancel = default)
+        CancellationToken cancel)
     {
         if (values.IsEmpty)
         {
@@ -176,17 +177,17 @@ public sealed class MtgApiQuery : IMTGQuery
 
         _loadProgress.Ticks += chunks.Count;
 
-        foreach (var multiChunk in chunks)
+        foreach (var multiverseChunk in chunks)
         {
-            if (!multiChunk.Any())
+            if (!multiverseChunk.Any())
             {
                 continue;
             }
 
-            var multiArg = string.Join(Or, multiChunk);
+            var multiverseArgs = string.Join(Or, multiverseChunk);
 
             var response = await _cardService
-                .Where(c => c.MultiverseId, multiArg)
+                .Where(c => c.MultiverseId, multiverseArgs)
                 .Where(c => c.PageSize, Limit)
                 .AllAsync();
 

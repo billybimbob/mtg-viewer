@@ -114,7 +114,8 @@ public class ExchangeModel : PageModel
             .ToArray();
 
         return _dbContext.Amounts
-            .Where(a => a.Location is Box && wantNames.Contains(a.Card.Name))
+            .Where(a => (a.Location is Box || a.Location is Excess)
+                && wantNames.Contains(a.Card.Name))
             .AnyAsync(cancel);
     }
 

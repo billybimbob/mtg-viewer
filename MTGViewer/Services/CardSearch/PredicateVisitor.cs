@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
+using Microsoft.EntityFrameworkCore.Query;
 
 namespace MTGViewer.Services;
 
@@ -28,12 +29,12 @@ internal class PredicateVisitor : ExpressionVisitor
 
     protected override Expression VisitParameter(ParameterExpression node)
     {
-        if (node.Type != typeof(CardQuery))
+        if (node.Type == typeof(CardQuery))
         {
-            return Expression.Empty();
+            return node;
         }
 
-        return base.VisitParameter(node);
+        return Expression.Empty();
     }
 
 
@@ -169,7 +170,7 @@ internal class PredicateVisitor : ExpressionVisitor
             return CallQuery(propertyName, Visit(node.Arguments[0]));
         }
 
-        if (node.Method == ExpressionConstants.EnumerableAny.MakeGenericMethod(typeof(string))
+        if (node.Method == QueryableMethods.AnyWithPredicate.MakeGenericMethod(typeof(string))
             && Visit(node.Arguments[1]) is MethodCallExpression innerQuery
             && innerQuery.Method == MtgApiQuery.QueryMethod
             && innerQuery.Arguments[1] is ConstantExpression innerProperty

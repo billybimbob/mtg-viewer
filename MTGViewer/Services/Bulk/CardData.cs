@@ -22,6 +22,7 @@ public sealed class CardData
     public IReadOnlyList<Unclaimed> Unclaimed { get; set; } = Array.Empty<Unclaimed>();
 
     public IReadOnlyList<Bin> Bins { get; set; } = Array.Empty<Bin>();
+    public IReadOnlyList<Excess> Excess { get; set; } = Array.Empty<Excess>();
 
     public IReadOnlyList<Transaction> Transactions { get; set; } = Array.Empty<Transaction>();
     public IReadOnlyList<Suggestion> Suggestions { get; set; } = Array.Empty<Suggestion>();
@@ -40,6 +41,7 @@ public sealed class CardStream
     public IAsyncEnumerable<Unclaimed> Unclaimed { get; set; } = AsyncEnumerable.Empty<Unclaimed>();
 
     public IAsyncEnumerable<Bin> Bins { get; set; } = AsyncEnumerable.Empty<Bin>();
+    public IAsyncEnumerable<Excess> Excess { get; set; } = AsyncEnumerable.Empty<Excess>();
 
     public IAsyncEnumerable<Transaction> Transactions { get; set; } = AsyncEnumerable.Empty<Transaction>();
     public IAsyncEnumerable<Suggestion> Suggestions { get; set; } = AsyncEnumerable.Empty<Suggestion>();
@@ -85,6 +87,12 @@ public sealed class CardStream
 
                 .OrderBy(b => b.Id)
                 .AsSplitQuery()
+                .AsAsyncEnumerable(),
+
+            Excess = dbContext.Excess
+                .Include(e => e.Cards
+                    .OrderBy(a => a.Id))
+                .OrderBy(e => e.Id)
                 .AsAsyncEnumerable(),
 
             Suggestions = dbContext.Suggestions
@@ -145,7 +153,9 @@ public sealed class CardStream
         {
             Cards = dbContext.Cards
                 .Where(c => c.Amounts
-                    .Any(a => a.Location is Box || a.Location is Unclaimed))
+                    .Any(a => a.Location is Box
+                        || a.Location is Excess
+                        || a.Location is Unclaimed))
                 .Include(c => c.Flip)
                 .OrderBy(c => c.Id)
                 .AsAsyncEnumerable(),
@@ -169,7 +179,13 @@ public sealed class CardStream
 
                 .OrderBy(b => b.Id)
                 .AsSplitQuery()
-                .AsAsyncEnumerable()
+                .AsAsyncEnumerable(),
+
+            Excess = dbContext.Excess
+                .Include(e => e.Cards
+                    .OrderBy(a => a.Id))
+                .OrderBy(e => e.Id)
+                .AsAsyncEnumerable(),
         };
     }
 
@@ -233,6 +249,12 @@ public sealed class CardStream
 
                 .OrderBy(b => b.Id)
                 .AsSplitQuery()
+                .AsAsyncEnumerable(),
+
+            Excess = dbContext.Excess
+                .Include(e => e.Cards
+                    .OrderBy(a => a.Id))
+                .OrderBy(e => e.Id)
                 .AsAsyncEnumerable(),
 
             Transactions = dbContext.Transactions

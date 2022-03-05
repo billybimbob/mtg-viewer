@@ -28,13 +28,15 @@ internal class MtgTypeParameter : IMtgParameter
             var types = values
                 .Select(Validate)
                 .OfType<string>()
+                .Concat(_types)
                 .ToArray();
 
             return new MtgTypeParameter(types);
         }
         else if (Validate(value?.ToString()) is string valid)
         {
-            return new MtgTypeParameter(valid.Split());
+            return new MtgTypeParameter(
+                valid.Split().Concat(_types).ToArray());
         }
 
         return this;
@@ -52,7 +54,7 @@ internal class MtgTypeParameter : IMtgParameter
 
     public void Apply(ICardService cards)
     {
-        if (_types is null)
+        if (!_types.Any())
         {
             return;
         }

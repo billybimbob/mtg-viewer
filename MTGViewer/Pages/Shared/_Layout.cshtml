@@ -61,6 +61,13 @@
         </nav>
     </header>
     <div class="container">
+        <noscript>
+            <div class="alert alert-warning" role="alert">
+                <h4>Javascript Disabled</h4>
+                <p class="mb-0">Certain pages require javascript in order to function, and instead will be blank</p>
+            </div>
+        </noscript>
+
         @if (TempData.TryGetValue("PostMessage", out var postMessage))
         {
             <div class="alert alert-secondary alert-dismissible fade show" role="alert">

@@ -9,12 +9,9 @@ using MTGViewer.Data.Concurrency;
 namespace MTGViewer.Data;
 
 
-[Index(nameof(Type), nameof(CardId))]
-[Index(nameof(Type), nameof(LocationId))]
-[Index(
-    nameof(Type),
-    nameof(CardId),
-    nameof(LocationId), IsUnique = true)]
+[Index(nameof(Type), nameof(LocationId), nameof(CardId), IsUnique = true)]
+[Index(nameof(LocationId), nameof(Type))]
+[Index(nameof(CardId), nameof(Type))]
 public abstract class Quantity : Concurrent
 {
     [Key]

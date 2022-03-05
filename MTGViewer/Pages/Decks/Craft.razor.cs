@@ -303,29 +303,13 @@ public partial class Craft : OwningComponentBase
                 .ThenBy(c => c.SetName)
                 .ThenBy(c => c.Id)
 
+            .Select(c =>
+                new CardTotal(c, c.Amounts
+                    .Where(a => a.Location is Box || a.Location is Excess)
+                    .Sum(a => a.NumCopies)))
+
             .PageBy(pageIndex, pageSize)
-            .Select(c => new CardTotal(c, c.Amounts.Sum(a => a.NumCopies)))
             .ToOffsetListAsync(cancel);
-    }
-
-
-    private static Task<Dictionary<string, int>> BoxAmountsAsync(
-        CardDbContext dbContext,
-        IEnumerable<Card> cards,
-        CancellationToken cancel)
-    {
-        var cardIds = cards
-            .Select(c => c.Id)
-            .ToArray();
-
-        return dbContext.Amounts
-            .Where(a => a.Location is Box && cardIds.Contains(a.CardId))
-            .GroupBy(a => a.CardId,
-                (CardId, amounts) => 
-                    new { CardId, Total = amounts.Sum(a => a.NumCopies) })
-
-            .ToDictionaryAsync(
-                ct => ct.CardId, ct => ct.Total, cancel);
     }
 
     #endregion

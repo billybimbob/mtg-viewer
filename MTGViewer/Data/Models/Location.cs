@@ -10,6 +10,8 @@ using MTGViewer.Data.Internal;
 namespace MTGViewer.Data;
 
 
+[Index(nameof(Type), nameof(Id))]
+[Index(nameof(Name), nameof(Id))] // could be updated often
 public abstract class Location : Concurrent
 {
     [Key]
@@ -46,9 +48,7 @@ public class Unclaimed : Owned
 }
 
 
-[Index(
-    nameof(Type),
-    nameof(OwnerId))]
+[Index(nameof(OwnerId), nameof(Type), nameof(Id))]
 public class Deck : Owned
 {
     [JsonIgnore]
@@ -101,10 +101,7 @@ public class Excess : Storage
 }
 
 
-[Index(
-    nameof(Type),
-    nameof(Id),
-    nameof(BinId))]
+[Index(nameof(BinId), nameof(Type), nameof(Id))]
 public class Box : Storage
 {
     [JsonIgnore]

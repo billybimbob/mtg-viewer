@@ -6,9 +6,12 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MTGViewer.Data;
 
-[Index(nameof(Color), nameof(Name), nameof(SetName), nameof(Id))]
-[Index(nameof(Name), nameof(SetName), nameof(Id))]
-[Index(nameof(MultiverseId))]
+
+[Index(nameof(MultiverseId), IsUnique = true)]
+[Index(nameof(ManaValue), nameof(Name), nameof(SetName), nameof(Id))]
+[Index(nameof(Rarity), nameof(Name), nameof(SetName), nameof(Id))]
+[Index(nameof(SetName), nameof(Name), nameof(Id))]
+[Index(nameof(Name), nameof(Id))]
 public class Card
 {
     [Key]

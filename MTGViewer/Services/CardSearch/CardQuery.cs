@@ -14,7 +14,7 @@ public class CardQuery
     [StringLength(50)]
     public string? Name { get; set; }
 
-    [Display(Name = "Converted Mana Cost")]
+    [Display(Name = "Mana Value")]
     [Range(0, 1_000_000)]
     public int? Cmc { get; set; }
 
