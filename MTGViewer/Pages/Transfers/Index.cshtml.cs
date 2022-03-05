@@ -74,7 +74,8 @@ public class IndexModel : PageModel
         UserName = userName;
 
         TradeDecks = await DecksForIndex(userId)
-            .SeekBy(d => d.Id, seek, _pageSize, backtrack)
+            .SeekBy(_pageSize, backtrack)
+            .WithOrigin<Deck>(seek)
             .ToSeekListAsync(cancel);
 
         Suggestions = await SuggestionsForIndex(userId).ToListAsync(cancel);
@@ -89,6 +90,9 @@ public class IndexModel : PageModel
             .Where(d => d.OwnerId == userId
                 && (d.TradesFrom.Any() || d.TradesTo.Any() || d.Wants.Any()))
 
+            .OrderBy(d => d.Name)
+                .ThenBy(d => d.Id)
+
             .Select(d => new DeckTradePreview
             {
                 Id = d.Id,
@@ -98,10 +102,7 @@ public class IndexModel : PageModel
                 SentTrades = d.TradesTo.Any(),
                 ReceivedTrades = d.TradesFrom.Any(),
                 WantsCards = d.Wants.Any()
-            })
-
-            .OrderBy(d => d.Name)
-                .ThenBy(d => d.Id);
+            });
     }
 
 

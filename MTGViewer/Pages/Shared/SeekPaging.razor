@@ -1,4 +1,5 @@
 @inject NavigationManager Nav
+@using System.Paging.Query
 
 @if (HasPrevious || HasNext)
 {
@@ -105,8 +106,21 @@
 
     protected override void OnParametersSet()
     {
-        _previous["seek"] = Seek.Previous;
-        _next["seek"] = Seek.Next;
+        _previous["seek"] = GetKey(Seek.Previous);
+        _next["seek"] = GetKey(Seek.Next);
+    }
+
+
+    private object? GetKey(object? value)
+    {
+        if (value is null)
+        {
+            return null;
+        }
+
+        var keyProperty = ExpressionHelpers.GetKeyProperty(value.GetType());
+
+        return keyProperty?.GetValue(value);
     }
 
 
@@ -125,7 +139,7 @@
 
     public async Task PreviousPageAsync()
     {
-        if (_isBusy || Seek.Previous is not object current)
+        if (_isBusy || GetKey(Seek.Previous) is not object current)
         {
             return;
         }
@@ -145,7 +159,7 @@
 
     public async Task NextPageAsync()
     {
-        if (_isBusy || Seek.Next is not object next)
+        if (_isBusy || GetKey(Seek.Next) is not object next)
         {
             return;
         }

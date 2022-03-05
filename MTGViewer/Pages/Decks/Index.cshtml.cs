@@ -65,7 +65,8 @@ public class IndexModel : PageModel
         }
 
         var decks = await DecksForIndex(userId)
-            .SeekBy(d => d.Id, seek, _pageSize, backtrack)
+            .SeekBy(_pageSize, backtrack)
+            .WithOrigin<Deck>(seek)
             .ToSeekListAsync(cancel);
 
         UserName = userName;
@@ -80,6 +81,10 @@ public class IndexModel : PageModel
     {
         return _dbContext.Decks
             .Where(d => d.OwnerId == userId)
+
+            .OrderBy(d => d.Name)
+                .ThenBy(d => d.Id)
+
             .Select(d => new DeckPreview
             {
                 Id = d.Id,
@@ -90,9 +95,6 @@ public class IndexModel : PageModel
                 HasWants = d.Wants.Any(),
                 HasReturns = d.GiveBacks.Any(),
                 HasTradesTo = d.TradesTo.Any(),
-            })
-
-            .OrderBy(d => d.Name)
-                .ThenBy(d => d.Id);
+            });
     }
 }

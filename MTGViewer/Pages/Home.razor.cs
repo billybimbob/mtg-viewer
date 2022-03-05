@@ -31,7 +31,7 @@ public partial class Home : ComponentBase, IDisposable
 
     public IReadOnlyList<CardImage> RandomCards => _randomContext?.Cards ?? Array.Empty<CardImage>();
 
-    public IReadOnlyList<TransactionPreview> RecentChanges => _recentChanges;
+    public IReadOnlyList<RecentTransaction> RecentChanges => _recentChanges;
 
     public bool IsEmptyCollection => !_randomContext?.Cards.Any() ?? false;
 
@@ -47,7 +47,7 @@ public partial class Home : ComponentBase, IDisposable
     private DateTime _currentTime;
 
     private RandomCardsContext? _randomContext;
-    private IReadOnlyList<TransactionPreview> _recentChanges = Array.Empty<TransactionPreview>();
+    private IReadOnlyList<RecentTransaction> _recentChanges = Array.Empty<RecentTransaction>();
 
 
     protected override async Task OnInitializedAsync()
@@ -100,7 +100,7 @@ public partial class Home : ComponentBase, IDisposable
     }
 
 
-    public string ElapsedTime(TransactionPreview transaction)
+    public string ElapsedTime(RecentTransaction transaction)
     {
         var elapsed = _currentTime - transaction.AppliedAt;
 
@@ -257,28 +257,31 @@ public partial class Home : ComponentBase, IDisposable
     }
 
 
-    private static Task<List<TransactionPreview>> RecentTransactionsAsync(
+    private static Task<List<RecentTransaction>> RecentTransactionsAsync(
         CardDbContext dbContext,
         int limit,
         CancellationToken cancel)
     {
         return dbContext.Transactions
             .Where(t => t.Changes
-                .Any(c => c.From is Box || c.To is Box))
+                .Any(c => c.From is Box || c.To is Box 
+                    || c.From is Excess || c.To is Excess))
 
-            .Select(t => new TransactionPreview
+            .Select(t => new RecentTransaction
             {
                 AppliedAt = t.AppliedAt,
                 Total = t.Changes.Sum(c => c.Amount),
 
                 Changes = t.Changes
-                    .Where(c => c.From is Box || c.To is Box)
+                    .Where(c => c.From is Box || c.To is Box
+                        || c.From is Excess || c.To is Excess)
+
                     .OrderBy(c => c.Card.Name)
                     .Take(limit)
                     .Select(c => new RecentChange
                     {
-                        ToBox = c.To is Box,
-                        FromBox = c.From is Box,
+                        ToStorage = c.To is Box || c.To is Excess,
+                        FromStorage = c.From is Box || c.From is Excess,
                         CardName = c.Card.Name
                     }),
             })

@@ -47,7 +47,8 @@ public class DetailsModel : PageModel
         }
 
         var cards = await BoxCards(id)
-            .SeekBy(b => b.Id, seek, _pageSize, backtrack)
+            .SeekBy(_pageSize, backtrack)
+            .WithOrigin<Amount>(seek)
             .ToSeekListAsync(cancel);
 
         if (!cards.Any())
@@ -60,7 +61,7 @@ public class DetailsModel : PageModel
             .SelectMany(b => b.Cards)
             .SumAsync(a => a.NumCopies, cancel);
 
-        Seek = cards.Seek;
+        Seek = (Seek)cards.Seek;
 
         Box = (Box)cards.First().Location;
 
@@ -106,7 +107,7 @@ public class DetailsModel : PageModel
         }
 
         return await boxCards
-            .Before(card, a => a.Card)
+            .BeforeBy(card, a => a.Card)
             .Select(a => a.Id)
 
             .AsAsyncEnumerable()
@@ -118,8 +119,7 @@ public class DetailsModel : PageModel
     private IQueryable<Amount> BoxCards(int boxId)
     {
         return _dbContext.Amounts
-            .Where(a => a.Location is Box
-                && a.LocationId == boxId)
+            .Where(a => a.Location is Box && a.LocationId == boxId)
 
             .Include(a => a.Card)
             .Include(a => a.Location)

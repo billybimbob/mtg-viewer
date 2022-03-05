@@ -44,7 +44,8 @@ public class ExcessModel : PageModel
         }
 
         Cards = await ExcessCards()
-            .SeekBy(c => c.Id, seek, _pageSize, backtrack)
+            .SeekBy(_pageSize, backtrack)
+            .WithOrigin<Card>(seek)
             .ToSeekListAsync(cancel);
 
         return Page();
@@ -58,9 +59,9 @@ public class ExcessModel : PageModel
             return default;
         }
 
-        var excessCards = ExcessCards();
-
-        var card = await excessCards
+        var card = await _dbContext.Cards
+            .Where(c => c.Amounts
+                .Any(a => a.Location is Excess))
             .OrderBy(c => c.Id)
             .SingleOrDefaultAsync(c => c.Id == id, cancel);
 
@@ -69,7 +70,7 @@ public class ExcessModel : PageModel
             return default;
         }
 
-        return await excessCards
+        return await ExcessCards()
             .Before(card)
             .Select(c => c.Id)
 
@@ -85,6 +86,10 @@ public class ExcessModel : PageModel
             .Where(c => c.Amounts
                 .Any(a => a.Location is Excess))
 
+            .OrderBy(c => c.Name)
+                .ThenBy(c => c.SetName)
+                .ThenBy(c => c.Id)
+
             .Select(c => new CardPreview
             {
                 Id = c.Id,
@@ -98,10 +103,6 @@ public class ExcessModel : PageModel
                 Total = c.Amounts
                     .Where(a => a.Location is Excess)
                     .Sum(a => a.NumCopies)
-            })
-
-            .OrderBy(c => c.Name)
-                .ThenBy(c => c.SetName)
-                .ThenBy(c => c.Id);
+            });
     }
 }

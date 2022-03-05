@@ -2,56 +2,41 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Reflection;
 
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Query;
 
-namespace System.Paging;
+namespace System.Paging.Query;
 
-
-public class SeekQuery<TEntity, TKey>
+internal static class SeekExecute<TEntity> where TEntity : class
 {
-    private readonly SeekInfo _seekInfo;
-
-    private readonly IQueryable<TEntity> _query;
-    private readonly Func<TEntity, TKey> _getKey;
-
-    public SeekQuery(IQueryable<TEntity> query, Func<TEntity, TKey> getKey)
+    public static async Task<SeekList<TEntity>> ToSeekListAsync(
+        IQueryable<TEntity> query,
+        CancellationToken cancel = default)
     {
-        if (GetSeekInfo.Visit(query.Expression)
+        if (GetSeekInfoVisitor.Instance.Visit(query.Expression)
             is not ConstantExpression constant
             || constant.Value is not SeekInfo seekInfo)
         {
             throw new ArgumentException($"{nameof(query)} must have a \"Take\"");
         }
 
-        _seekInfo = seekInfo;
-        _query = query;
-        _getKey = getKey;
-    }
-
-
-    private static GetSeekInfoVisitor? _getSeekInfo;
-    private static ExpressionVisitor GetSeekInfo => _getSeekInfo ??= new();
-
-    private static RemoveSeekOffsetVisitor? _lookAhead;
-    private static ExpressionVisitor RemoveSeekOffset => _lookAhead ??= new();
-
-
-    public async Task<SeekList<TEntity>> ToSeekListAsync(CancellationToken cancel = default)
-    {
-        var items = await _query
+        var items = await query
             .ToListAsync(cancel)
             .ConfigureAwait(false);
 
-        (SeekDirection direction, bool hasOrigin, int size) = _seekInfo;
+        (SeekDirection direction, bool hasOrigin, int size) = seekInfo;
 
-        bool lookAhead = await _query
-            .Visit(RemoveSeekOffset)
+        var withoutOffset = query.Provider
+            .CreateQuery<TEntity>(RemoveSeekOffsetVisitor.Instance.Visit(query.Expression));
+
+        bool lookAhead = await withoutOffset
             .Skip(size)
             .AnyAsync(cancel)
             .ConfigureAwait(false);
 
-        var seek = new Seek(items.Select(_getKey), direction, hasOrigin, lookAhead);
+        var seek = new Seek<TEntity>(items, direction, hasOrigin, lookAhead);
 
         return new SeekList<TEntity>(seek, items);
     }
@@ -62,25 +47,28 @@ public class SeekQuery<TEntity, TKey>
 
     private class GetSeekInfoVisitor : ExpressionVisitor
     {
+        private static GetSeekInfoVisitor? _instance;
+        public static ExpressionVisitor Instance => _instance ??= new();
+
         protected override Expression VisitMethodCall(MethodCallExpression node)
         {
-            if (node.Arguments.ElementAtOrDefault(0) is not Expression parent)
+            if (node.Arguments.ElementAtOrDefault(0) is not Expression parent
+                || !node.Method.IsGenericMethod
+                || node.Method.GetGenericMethodDefinition() is not MethodInfo method)
             {
                 return node;
             }
 
-            if (node.Method == ExpressionConstants.QueryableWhere.MakeGenericMethod(typeof(TEntity))
-                && node.Arguments.ElementAtOrDefault(1) is UnaryExpression quote
-                && quote.NodeType is ExpressionType.Quote
-                && OriginFilterVisitor.Instance.Visit(quote.Operand)
-                is not DefaultExpression)
+            if (method == QueryableMethods.Where
+                && node.Arguments.ElementAtOrDefault(1) is var filter
+                && OriginFilterVisitor.Instance.Visit(filter) is not DefaultExpression)
             {
                 return ExpressionConstants.Null;
             }
 
             var visitedParent = Visit(parent);
 
-            if (node.Method == ExpressionConstants.QueryableTake.MakeGenericMethod(typeof(TEntity))
+            if (method == QueryableMethods.Take
                 && node.Arguments.ElementAtOrDefault(1) is ConstantExpression takeBy
                 && takeBy.Value is int take)
             {
@@ -91,32 +79,36 @@ public class SeekQuery<TEntity, TKey>
                     new SeekInfo(SeekDirection.Forward, hasOrigin, take));
             }
 
-            if (node.Method != ExpressionConstants.QueryableReverse.MakeGenericMethod(typeof(TEntity)))
-            {
-                return visitedParent;
-            }
-
-            if (visitedParent is ConstantExpression innerTake
+            if (method == QueryableMethods.Reverse
+                && visitedParent is ConstantExpression innerTake
                 && innerTake.Value is SeekInfo seekInfo)
             {
                 return Expression.Constant(
                     seekInfo with { Direction = SeekDirection.Backwards });
             }
 
-            return node;
+            return visitedParent;
         }
     }
 
 
     private class OriginFilterVisitor : ExpressionVisitor
     {
-        protected override Expression VisitLambda<TFunc>(Expression<TFunc> node)
+        private static OriginFilterVisitor? _instance;
+        public static ExpressionVisitor Instance => _instance ??= new();
+
+        protected override Expression VisitUnary(UnaryExpression node)
         {
-            if (node.Parameters.ElementAtOrDefault(0)?.Type != typeof(TEntity))
+            if (node.NodeType is not ExpressionType.Quote)
             {
-                return Expression.Empty();
+                return node;
             }
 
+            return Visit(node.Operand);
+        }
+
+        protected override Expression VisitLambda<TFunc>(Expression<TFunc> node)
+        {
             if (node.Body is not BinaryExpression or MethodCallExpression)
             {
                 return Expression.Empty();
@@ -146,9 +138,7 @@ public class SeekQuery<TEntity, TKey>
 
         private bool IsValidBooleanChild(Expression operand)
         {
-            return operand is MemberExpression
-                or ConstantExpression
-                or BinaryExpression
+            return operand is MemberExpression or ConstantExpression or BinaryExpression
                 && Visit(operand) is not DefaultExpression;
         }
 
@@ -161,55 +151,64 @@ public class SeekQuery<TEntity, TKey>
 
             return Expression.Empty();
         }
-
-
-        private static OriginFilterVisitor? _instance;
-        public static ExpressionVisitor Instance => _instance ??= new();
     }
 
 
     private class RemoveSeekOffsetVisitor : ExpressionVisitor
     {
-        private static ReversedLookAheadVisitor? _reverseVisitor;
-        private static ExpressionVisitor ReverseVisitor => _reverseVisitor ??= new();
+        private static RemoveSeekOffsetVisitor? _instance;
+        public static ExpressionVisitor Instance => _instance ??= new();
+
 
         protected override Expression VisitMethodCall(MethodCallExpression node)
         {
-            if (node.Arguments.ElementAtOrDefault(0) is not Expression parent)
+            if (node.Arguments.ElementAtOrDefault(0) is not Expression parent
+                || !node.Method.IsGenericMethod
+                || node.Method.GetGenericMethodDefinition() is not MethodInfo method)
+
             {
                 return node;
             }
 
-            if (node.Method == ExpressionConstants.QueryableTake.MakeGenericMethod(typeof(TEntity)))
+            if (method == QueryableMethods.Take)
             {
                 return Visit(parent);
             }
 
-            if (node.Method == ExpressionConstants.QueryableReverse.MakeGenericMethod(typeof(TEntity)))
+            if (method == QueryableMethods.Reverse)
             {
-                return ReverseVisitor.Visit(parent);
+                return ReversedLookAheadVisitor.Instance.Visit(parent);
             }
 
-            return base.VisitMethodCall(node);
+            return node.Update(
+                node.Object,
+                node.Arguments.Skip(1).Prepend(Visit(parent)));
         }
     }
 
 
     private class ReversedLookAheadVisitor : ExpressionVisitor
     {
+        private static ReversedLookAheadVisitor? _instance;
+        public static ExpressionVisitor Instance => _instance ??= new();
+
         protected override Expression VisitMethodCall(MethodCallExpression node)
         {
-            if (node.Arguments.ElementAtOrDefault(0) is not Expression parent)
+            if (node.Arguments.ElementAtOrDefault(0) is not Expression parent
+                || !node.Method.IsGenericMethod
+                || node.Method.GetGenericMethodDefinition() is not MethodInfo method)
             {
                 return node;
             }
 
-            if (node.Method == ExpressionConstants.QueryableTake.MakeGenericMethod(typeof(TEntity)))
+            if (method == QueryableMethods.Take)
             {
                 return Visit(parent);
             }
 
-            return base.VisitMethodCall(node);
+            return node.Update(
+                node.Object,
+                node.Arguments.Skip(1).Prepend(Visit(parent)));
         }
     }
 

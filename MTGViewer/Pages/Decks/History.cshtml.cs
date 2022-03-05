@@ -78,7 +78,8 @@ public class HistoryModel : PageModel
         }
 
         var changes = await ChangesForHistory(id)
-            .SeekBy(c => c.Id, seek, _pageSize, backtrack)
+            .SeekBy(_pageSize, backtrack)
+            .WithOrigin<Change>(seek)
             .ToSeekListAsync(cancel);
 
         _firstTransfer = changes
@@ -95,7 +96,7 @@ public class HistoryModel : PageModel
                         tft.Transaction, tft.To, tft.From, changeGroup.ToList()))
             .ToList();
 
-        Seek = changes.Seek;
+        Seek = (Seek)changes.Seek;
 
         UpdateTimeZone(tz);
 

@@ -7,6 +7,7 @@
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Identity
 @using MTGViewer.Areas.Identity.Data
+@using MTGViewer.Data.Internal
 
 @inject IAuthorizationService AuthorizationService
 @inject SignInManager<CardUser> SignInManager
@@ -58,27 +59,27 @@
                 <tr>
                     @if (Model.IsFirstTransfer(transaction, to, from))
                     {
-                        <th scope="rowgroup" rowspan="@transaction.Changes.Count">
+                        <th scope="rowgroup" rowspan="@Model.GetTransactionCount(transaction)">
                             @TimeZoneInfo.ConvertTimeFromUtc(transaction.AppliedAt, Model.TimeZone)
                         </th>
                     }
 
                     <td rowspan="@changes.Count">
-                        @switch (from)
+                        @switch (from?.Type)
                         {
-                            case Deck:
+                            case LocationType.Deck:
                                 <a asp-page="/Decks/Details" asp-route-id="@from.Id"> @from.Name </a>
                                 break;
 
-                            case Unclaimed when canChangeTreasury:
+                            case LocationType.Unclaimed when canChangeTreasury:
                                 <a asp-page="/Unowned/Index" asp-route-id="@from.Id"> @from.Name </a>
                                 break;
 
-                            case Excess:
+                            case LocationType.Excess:
                                 <a asp-page="Excess" asp-route-id="@from.Id"> @from.Name </a>
                                 break;
 
-                            case Box:
+                            case LocationType.Box:
                                 <a asp-page="Details" asp-route-id="@from.Id"> @from.Name </a>
                                 break;
 
@@ -93,21 +94,21 @@
                     </td>
                     
                     <td rowspan="@changes.Count">
-                        @switch (to)
+                        @switch (to.Type)
                         {
-                            case Deck:
+                            case LocationType.Deck:
                                 <a asp-page="/Decks/Details" asp-route-id="@to.Id"> @to.Name </a>
                                 break;
 
-                            case Unclaimed when canChangeTreasury:
+                            case LocationType.Unclaimed when canChangeTreasury:
                                 <a asp-page="/Unowned/Index" asp-route-id="@to.Id"> @to.Name </a>
                                 break;
 
-                            case Excess:
+                            case LocationType.Excess:
                                 <a asp-page="Excess"> @to.Name </a>
                                 break;
 
-                            case Box:
+                            case LocationType.Box:
                                 <a asp-page="Details" asp-route-id="@to.Id"> @to.Name </a>
                                 break;
                             
@@ -119,7 +120,7 @@
 
                     <td>
                         <component type="typeof(HoverCard)" render-mode="Static"
-                            param-Target="changes[0].Card"/>
+                            param-Preview="changes[0].Card"/>
                     </td>
 
                     <td> @changes[0].Amount </td>
@@ -127,8 +128,8 @@
                     @if (isSignedIn
                         && Model.IsFirstTransfer(transaction, to, from))
                     {
-                        <td rowspan="@transaction.Changes.Count" class="text-center">
-                            @if (!Model.IsShared(transaction))
+                        <td rowspan="@Model.GetTransactionCount(transaction)" class="text-center">
+                            @if (!transaction.IsShared)
                             { }
                             else if (canChangeTreasury)
                             {
@@ -150,7 +151,7 @@
                     <tr>
                         <td> 
                             <component type="typeof(HoverCard)" render-mode="Static"
-                                param-Target="change.Card"/>
+                                param-Preview="change.Card"/>
                         </td>
                         <td> @change.Amount </td>
                     </tr>

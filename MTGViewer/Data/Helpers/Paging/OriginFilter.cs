@@ -3,11 +3,12 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
+using Microsoft.EntityFrameworkCore.Query;
 
-namespace System.Paging;
+namespace System.Paging.Query;
 
 
-internal sealed class OriginFilter
+internal static class OriginFilter
 {
     public static Expression<Func<TEntity, bool>> Create<TEntity>(
         IQueryable<TEntity> query,
@@ -77,11 +78,6 @@ internal sealed class OriginFilter<TEntity, TOrigin>
     private static ExpressionVisitor OrderVisitor => _orderByVisitor ??= new(Parameter);
 
 
-    private static ChainEquality? _chainEquality;
-    private static IEqualityComparer<MemberExpression> CommonParent => _chainEquality ??= new();
-
-
-
 
     internal Expression<Func<TEntity, bool>> BuildExpression()
     {
@@ -127,20 +123,12 @@ internal sealed class OriginFilter<TEntity, TOrigin>
 
         while (source is MethodCallExpression orderBy)
         {
-            source = IsOrderBy(orderBy) ? null : orderBy.Arguments.ElementAtOrDefault(0);
+            source = ExpressionHelpers.IsOrderBy(orderBy) ? null : orderBy.Arguments.ElementAtOrDefault(0);
 
-            if (!IsOrderedMethod(orderBy)
-                || orderBy.Arguments.ElementAtOrDefault(1) is not UnaryExpression quote
-                || quote.Operand is not LambdaExpression lambda
-                || lambda.Body is not MemberExpression)
-            {
-                continue;
-            }
-
-            if (OrderVisitor.Visit(lambda.Body) is MemberExpression propertyOrder
+            if (OrderVisitor.Visit(orderBy) is MemberExpression propertyOrder
                 && IsOriginProperty(propertyOrder))
             {
-                var ordering = IsDescending(orderBy)
+                var ordering = ExpressionHelpers.IsDescending(orderBy)
                     ? Ordering.Descending
                     : Ordering.Ascending;
 
@@ -160,24 +148,9 @@ internal sealed class OriginFilter<TEntity, TOrigin>
 
         while (source is MethodCallExpression orderBy)
         {
-            source = IsOrderBy(orderBy) ? null : orderBy.Arguments.ElementAtOrDefault(0);
+            source = ExpressionHelpers.IsOrderBy(orderBy) ? null : orderBy.Arguments.ElementAtOrDefault(0);
 
-            if (!IsOrderedMethod(orderBy)
-                || orderBy.Arguments.ElementAtOrDefault(1) is not UnaryExpression quote
-                || quote.Operand is not LambdaExpression lambda)
-            {
-                continue;
-            }
-
-            if (lambda.Body is MemberExpression
-                && OrderVisitor.Visit(lambda.Body) is MemberExpression propertyOrder)
-            {
-                lastProperty = propertyOrder;
-                continue;
-            }
-            
-            if (lambda.Body is not BinaryExpression
-                || OrderVisitor.Visit(lambda.Body) is not MemberExpression nullOrder)
+            if (OrderVisitor.Visit(orderBy) is not MemberExpression nullOrder)
             {
                 continue;
             }
@@ -187,21 +160,25 @@ internal sealed class OriginFilter<TEntity, TOrigin>
 
             // null check ordering by itself it not unique enough
 
-            if (IsOriginProperty(nullOrder) && IsDescendant(lastProperty, nullOrder))
+            if (!IsOriginProperty(nullOrder) || !ExpressionHelpers.IsDescendant(lastProperty, nullOrder))
             {
-                var ordering = IsDescending(orderBy)
-                    ? NullOrder.First
-                    : NullOrder.Last;
-
-                yield return new NullCheck(nullOrder, ordering);
+                lastProperty = nullOrder;
+                continue;
             }
+
+            var ordering = ExpressionHelpers.IsDescending(orderBy)
+                ? NullOrder.First
+                : NullOrder.Last;
+
+            yield return new NullCheck(nullOrder, ordering);
         }
     }
 
 
     private bool IsOriginProperty(MemberExpression entityProperty)
     {
-        return _selectOrigin is null || IsDescendant(entityProperty, _selectOrigin);
+        return _selectOrigin is not null && ExpressionHelpers.IsDescendant(entityProperty, _selectOrigin)
+            || ExpressionHelpers.IsDescendant(entityProperty, Origin);
     }
 
 
@@ -234,22 +211,30 @@ internal sealed class OriginFilter<TEntity, TOrigin>
     }
 
 
+    private ConstantExpression? _originExpression;
+    private ConstantExpression Origin => _originExpression ??= Expression.Constant(_origin);
+
     private ExpressionVisitor? _replaceOrigin;
 
     private Expression ReplaceWithOrigin(Expression node)
     {
-        _replaceOrigin ??= new ReplaceEntity(_origin);
+        _replaceOrigin ??= new ReplaceEntity(Origin);
 
-        return _replaceOrigin.Visit(node);
+        var replaced = _replaceOrigin.Visit(node);
+
+        return replaced;
     }
 
 
-    private IReadOnlyDictionary<MemberExpression, NullOrder>? _nullOrders;
+    private IReadOnlyDictionary<Expression, NullOrder>? _nullOrders;
 
     private NullOrder GetNullOrder(MemberExpression node)
     {
         _nullOrders ??= NullProperties()
-            .ToDictionary(nc => nc.Key, nc => nc.Ordering, CommonParent);
+            .ToDictionary(
+                nc => nc.Key as Expression,
+                nc => nc.Ordering,
+                ExpressionEqualityComparer.Instance);
 
         return _nullOrders.GetValueOrDefault(node);
     }
@@ -455,9 +440,9 @@ internal sealed class OriginFilter<TEntity, TOrigin>
     {
         private readonly ConstantExpression _newEntity;
 
-        public ReplaceEntity(TOrigin newEntity)
+        public ReplaceEntity(ConstantExpression newEntity)
         {
-            _newEntity = Expression.Constant(newEntity);
+            _newEntity = newEntity;
         }
 
         protected override Expression VisitMember(MemberExpression node)
@@ -473,47 +458,6 @@ internal sealed class OriginFilter<TEntity, TOrigin>
     }
 
 
-    private sealed class ChainEquality : EqualityComparer<MemberExpression>
-    {
-        // recursive equality, keep an eye on perf
-
-        public override bool Equals(MemberExpression? m1, MemberExpression? m2)
-        {
-            if (m1 is null && m2 is null)
-            {
-                return true;
-            }
-
-            if (m1 is null || m2 is null || !m1.Member.Equals(m2.Member))
-            {
-                return false;
-            }
-
-            if (m1.Expression is MemberExpression chain1
-                && m2.Expression is MemberExpression chain2)
-            {
-                return Equals(chain1, chain2);
-            }
-            else
-            {
-                return m1.Expression == m2.Expression;
-            }
-        }
-
-        public override int GetHashCode(MemberExpression node)
-        {
-            int hash = node.Member.GetHashCode();
-
-            if (node.Expression is MemberExpression chain)
-            {
-                hash ^= GetHashCode(chain);
-            }
-
-            return hash;
-        }
-    }
-
-
     private class OrderByVisitor : ExpressionVisitor
     {
         private readonly ParameterExpression _parameter;
@@ -521,6 +465,36 @@ internal sealed class OriginFilter<TEntity, TOrigin>
         public OrderByVisitor(ParameterExpression parameter)
         {
             _parameter = parameter;
+        }
+
+        protected override Expression VisitUnary(UnaryExpression node)
+        {
+            if (node.NodeType is not ExpressionType.Quote)
+            {
+                return node;
+            }
+
+            return Visit(node.Operand);
+        }
+
+        protected override Expression VisitLambda<TFunc>(Expression<TFunc> node)
+        {
+            if (node.Parameters.ElementAtOrDefault(0)?.Type != typeof(TOrigin))
+            {
+                return node;
+            }
+
+            return Visit(node.Body);
+        }
+
+        protected override Expression VisitMethodCall(MethodCallExpression node)
+        {
+            if (ExpressionHelpers.IsOrderedMethod(node))
+            {
+                return Visit(node);
+            }
+
+            return node;
         }
 
         protected override Expression VisitMember(MemberExpression node)
@@ -538,7 +512,7 @@ internal sealed class OriginFilter<TEntity, TOrigin>
         {
             if (node.NodeType is not ExpressionType.Equal)
             {
-                return base.VisitBinary(node);
+                return node;
             }
 
             if (IsNull(node.Right) && Visit(node.Left) is MemberExpression left)
@@ -551,7 +525,7 @@ internal sealed class OriginFilter<TEntity, TOrigin>
                 return right;
             }
 
-            return base.VisitBinary(node);
+            return node;
         }
 
         private bool IsNull(Expression node)
@@ -564,53 +538,9 @@ internal sealed class OriginFilter<TEntity, TOrigin>
     #endregion
 
 
-    #region Method helpers
-
-    private static bool IsOrderBy(MethodCallExpression orderBy)
-    {
-        return orderBy.Method.Name 
-            is nameof(Queryable.OrderBy)
-                or nameof(Queryable.OrderByDescending);
-    }
-
-    private static bool IsOrderedMethod(MethodCallExpression orderBy)
-    {
-        return orderBy.Method.Name 
-            is nameof(Queryable.OrderBy)
-                or nameof(Queryable.ThenBy)
-                or nameof(Queryable.OrderByDescending)
-                or nameof(Queryable.ThenByDescending);
-    }
-
-    private static bool IsDescending(MethodCallExpression orderBy)
-    {
-        return orderBy.Method.Name
-            is nameof(Queryable.OrderByDescending)
-                or nameof(Queryable.ThenByDescending);
-    }
-
-
-    private static IEnumerable<MemberExpression> GetLineage(MemberExpression? member)
-    {
-        while (member is not null)
-        {
-            yield return member;
-            member = member.Expression as MemberExpression;
-        }
-    }
-
-    private static bool IsDescendant(MemberExpression? node, MemberExpression possibleAncestor)
-    {
-        return GetLineage(node)
-            // could be a slow way to do this, possible On^2
-            .Any(m => CommonParent.Equals(m, possibleAncestor));
-    }
-
     private static bool IsComparable(Type type)
     {
         return type.IsAssignableTo(typeof(IComparable))
             || type.IsAssignableTo(typeof(IComparable<>).MakeGenericType(type));
     }
-
-    #endregion
 }
