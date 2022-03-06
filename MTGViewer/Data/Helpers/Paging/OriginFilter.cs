@@ -14,8 +14,9 @@ internal static class OriginFilter
         IQueryable<TEntity> query,
         TEntity origin,
         SeekDirection direction)
+        where TEntity : notnull
     {
-        return new OriginFilter<TEntity, TEntity>(query, origin, direction, null)
+        return new OriginFilter<TEntity>(query, origin, direction, null)
             .BuildExpression();
     }
 
@@ -25,26 +26,27 @@ internal static class OriginFilter
         TOrigin origin,
         SeekDirection direction,
         Expression<Func<TEntity, TOrigin>> selector)
+        where TOrigin : notnull
     {
-        return new OriginFilter<TEntity, TOrigin>(query, origin, direction, selector)
+        return new OriginFilter<TEntity>(query, origin, direction, selector)
             .BuildExpression();
     }
 }
 
 
-internal sealed class OriginFilter<TEntity, TOrigin>
+internal sealed class OriginFilter<TEntity>
 { 
     private readonly IQueryable<TEntity> _query;
-    private readonly TOrigin _origin;
+    private readonly object _origin;
     private readonly SeekDirection _direction;
     private readonly MemberExpression? _selectOrigin;
 
 
     internal OriginFilter(
         IQueryable<TEntity> query, 
-        TOrigin origin, 
+        object origin, 
         SeekDirection direction, 
-        Expression<Func<TEntity, TOrigin>>? selector)
+        LambdaExpression? selector)
     {
         ArgumentNullException.ThrowIfNull(origin);
 
@@ -52,9 +54,9 @@ internal sealed class OriginFilter<TEntity, TOrigin>
         _origin = origin;
         _direction = direction;
 
-        _selectOrigin = GetOriginSelector(selector);
+        _selectOrigin = OrderVisitor.Visit(selector) as MemberExpression;
 
-        if (_selectOrigin is null && typeof(TEntity) != typeof(TOrigin))
+        if (_selectOrigin is null && typeof(TEntity) != origin.GetType())
         {
             throw new ArgumentException(nameof(selector));
         }
@@ -74,8 +76,9 @@ internal sealed class OriginFilter<TEntity, TOrigin>
                 typeof(TEntity).Name[0].ToString().ToLower());
 
 
-    private static OrderByVisitor? _orderByVisitor;
-    private static ExpressionVisitor OrderVisitor => _orderByVisitor ??= new(Parameter);
+    private OrderByVisitor? _orderByVisitor;
+    private ExpressionVisitor OrderVisitor =>
+        _orderByVisitor ??= new(Parameter, _origin.GetType());
 
 
 
@@ -101,18 +104,6 @@ internal sealed class OriginFilter<TEntity, TOrigin>
         }
 
         return Expression.Lambda<Func<TEntity, bool>>(filter, Parameter);
-    }
-
-
-    private static MemberExpression? GetOriginSelector(Expression<Func<TEntity, TOrigin>>? selector)
-    {
-        if (selector?.Body is MemberExpression s
-            && OrderVisitor.Visit(s) is MemberExpression getOrigin)
-        {
-            return getOrigin;
-        }
-
-        return null;
     }
 
 
@@ -203,7 +194,6 @@ internal sealed class OriginFilter<TEntity, TOrigin>
     }
     
 
-
     private bool IsGreaterThan(Ordering ordering)
     {
         return _direction is SeekDirection.Forward && ordering is Ordering.Ascending
@@ -212,7 +202,8 @@ internal sealed class OriginFilter<TEntity, TOrigin>
 
 
     private ConstantExpression? _originExpression;
-    private ConstantExpression Origin => _originExpression ??= Expression.Constant(_origin);
+    private ConstantExpression Origin =>
+        _originExpression ??= Expression.Constant(_origin);
 
     private ExpressionVisitor? _replaceOrigin;
 
@@ -447,7 +438,7 @@ internal sealed class OriginFilter<TEntity, TOrigin>
 
         protected override Expression VisitMember(MemberExpression node)
         {
-            if (node.Expression?.Type == typeof(TOrigin)
+            if (node.Expression?.Type == _newEntity.Type
                 && node.Member is PropertyInfo property)
             {
                 return Expression.Property(_newEntity, property);
@@ -461,10 +452,35 @@ internal sealed class OriginFilter<TEntity, TOrigin>
     private class OrderByVisitor : ExpressionVisitor
     {
         private readonly ParameterExpression _parameter;
+        private readonly Type _originType;
 
-        public OrderByVisitor(ParameterExpression parameter)
+        public OrderByVisitor(ParameterExpression parameter, Type originType)
         {
             _parameter = parameter;
+            _originType = originType;
+        }
+
+        protected override Expression VisitLambda<TFunc>(Expression<TFunc> node)
+        {
+            var firstType = node.Parameters.ElementAtOrDefault(0)?.Type;
+
+            if (firstType == _parameter.Type || firstType == _originType)
+            {
+                return Visit(node.Body);
+            }
+
+            return node;
+        }
+
+        protected override Expression VisitMethodCall(MethodCallExpression node)
+        {
+            if (ExpressionHelpers.IsOrderedMethod(node)
+                && node.Arguments.ElementAtOrDefault(1) is Expression parent)
+            {
+                return Visit(parent);
+            }
+
+            return node;
         }
 
         protected override Expression VisitUnary(UnaryExpression node)
@@ -475,26 +491,6 @@ internal sealed class OriginFilter<TEntity, TOrigin>
             }
 
             return Visit(node.Operand);
-        }
-
-        protected override Expression VisitLambda<TFunc>(Expression<TFunc> node)
-        {
-            if (node.Parameters.ElementAtOrDefault(0)?.Type != typeof(TOrigin))
-            {
-                return node;
-            }
-
-            return Visit(node.Body);
-        }
-
-        protected override Expression VisitMethodCall(MethodCallExpression node)
-        {
-            if (ExpressionHelpers.IsOrderedMethod(node))
-            {
-                return Visit(node);
-            }
-
-            return node;
         }
 
         protected override Expression VisitMember(MemberExpression node)

@@ -114,14 +114,15 @@ public class SeekBuilder<TEntity, TOrigin>
             throw new ArgumentException(nameof(parameter));
         }
 
+        var findId = FindById.Visit(_query.Expression);
         var lambdaId = Expression.Lambda(key, parameter);
 
-        var findId = Expression.Call(
+        var orderedId = Expression.Call(
             QueryableMethods.OrderBy.MakeGenericMethod(typeof(TOrigin), key.Type),
             FindById.Visit(_query.Expression),
-            lambdaId);
+            Expression.Quote(lambdaId));
 
-        var originQuery = _query.Provider.CreateQuery<TOrigin>(findId);
+        var originQuery = _query.Provider.CreateQuery<TOrigin>(orderedId);
 
         foreach (var include in FindById.Include)
         {
@@ -209,6 +210,17 @@ public class SeekBuilder<TEntity, TOrigin>
                 && node.Arguments.ElementAtOrDefault(1) is Expression ordering)
             {
                 return Visit(ordering);
+            }
+
+            return node;
+        }
+
+
+        protected override Expression VisitUnary(UnaryExpression node)
+        {
+            if (node.NodeType is ExpressionType.Quote)
+            {
+                return Visit(node.Operand);
             }
 
             return node;

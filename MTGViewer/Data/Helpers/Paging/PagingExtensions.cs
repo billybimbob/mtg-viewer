@@ -62,6 +62,7 @@ public static class PagingExtensions
     public static IQueryable<TEntity> After<TEntity, TOrigin>(
         this IQueryable<TEntity> source,
         TOrigin origin)
+        where TOrigin : notnull
     {
         ArgumentNullException.ThrowIfNull(source);
         ArgumentNullException.ThrowIfNull(origin);
@@ -85,6 +86,7 @@ public static class PagingExtensions
         this IQueryable<TEntity> source,
         TOrigin origin,
         Expression<Func<TEntity, TOrigin>> selector)
+        where TOrigin : notnull
     {
         ArgumentNullException.ThrowIfNull(source);
         ArgumentNullException.ThrowIfNull(origin);
@@ -99,6 +101,7 @@ public static class PagingExtensions
     public static IQueryable<TEntity> Before<TEntity, TOrigin>(
         this IQueryable<TEntity> source,
         TOrigin origin)
+        where TOrigin : notnull
     {
         ArgumentNullException.ThrowIfNull(source);
         ArgumentNullException.ThrowIfNull(origin);
@@ -124,6 +127,7 @@ public static class PagingExtensions
         this IQueryable<TEntity> source,
         TOrigin origin,
         Expression<Func<TEntity, TOrigin>> selector)
+        where TOrigin : notnull
     {
         ArgumentNullException.ThrowIfNull(source);
         ArgumentNullException.ThrowIfNull(origin);
@@ -168,6 +172,7 @@ public static class PagingExtensions
         TEntity? origin,
         int pageSize,
         SeekDirection direction)
+        where TEntity : notnull
     {
         if (origin is null)
         {
