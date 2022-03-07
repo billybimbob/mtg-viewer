@@ -23,6 +23,7 @@ public class SeekBuilder<TEntity, TOrigin>
     private readonly bool _backtrack;
 
     private readonly object? _key;
+    private FindByIdVisitor? _findById;
 
 
     public SeekBuilder(IQueryable<TEntity> query, int pageSize, bool backtrack)
@@ -48,10 +49,6 @@ public class SeekBuilder<TEntity, TOrigin>
     {
         _key = key;
     }
-
-
-    private FindByIdVisitor? _findById;
-    private FindByIdVisitor FindById => _findById ??= new(_root);
 
 
     public SeekBuilder<TEntity, TNewOrigin> WithOrigin<TNewOrigin>(object? key)
@@ -114,17 +111,23 @@ public class SeekBuilder<TEntity, TOrigin>
             throw new ArgumentException(nameof(parameter));
         }
 
-        var findId = FindById.Visit(_query.Expression);
+        // var findOrdering = new FindOrderingVisitor(_root);
+
+        // findOrdering.Visit(_query.Expression);
+
+        _findById ??= new(_root);
+
+        var findId = _findById.Visit(_query.Expression);
         var lambdaId = Expression.Lambda(key, parameter);
 
         var orderedId = Expression.Call(
             QueryableMethods.OrderBy.MakeGenericMethod(typeof(TOrigin), key.Type),
-            FindById.Visit(_query.Expression),
+            findId,
             Expression.Quote(lambdaId));
 
         var originQuery = _query.Provider.CreateQuery<TOrigin>(orderedId);
 
-        foreach (var include in FindById.Include)
+        foreach (var include in _findById.Include)
         {
             originQuery = originQuery.Include(include);
         }
@@ -150,7 +153,7 @@ public class SeekBuilder<TEntity, TOrigin>
 
 
         [return: NotNullIfNotNull("node")]
-        public override Expression? Visit(Expression? node)
+        public new Expression? Visit(Expression? node)
         {
             _include.Clear();
 
@@ -176,8 +179,6 @@ public class SeekBuilder<TEntity, TOrigin>
                     node.Arguments.Skip(1).Prepend(visitedParent));
             }
 
-            // todo: add include statements
-
             if (_findInclude.Visit(node) is ConstantExpression constant
                 && constant.Value is string includeChain)
             {
@@ -191,6 +192,100 @@ public class SeekBuilder<TEntity, TOrigin>
         }
     }
 
+
+    private class FindOrderingVisitor : ExpressionVisitor
+    {
+        private readonly QueryRootExpression _root;
+        private readonly HashSet<MemberExpression> _orderings;
+
+        private readonly ParameterExpression _parameter;
+
+        public FindOrderingVisitor(QueryRootExpression root)
+        {
+            _root = root;
+            _orderings = new(ExpressionEqualityComparer.Instance);
+
+            var rootType = _root.EntityType.ClrType;
+
+            _parameter = Expression.Parameter(
+                rootType,
+                rootType.Name[0].ToString().ToLower());
+        }
+
+
+        [return: NotNullIfNotNull("node")]
+        public new Expression? Visit(Expression? node)
+        {
+            _orderings.Clear();
+
+            base.Visit(node);
+
+            return ProjectOrigin();
+        }
+
+
+        private LambdaExpression ProjectOrigin()
+        {
+            var orderObject = _root.EntityType.ClrType; // todo: create anonymous class
+
+            var newObj = Expression.New(orderObject.GetConstructor(Type.EmptyTypes)!);
+
+            var orderProperties = _orderings
+                .ToDictionary(m => m, m => m.Member);
+
+            var binds = _orderings
+                .Select(m => Expression.Bind(orderProperties[m], m));
+
+            return Expression.Lambda(
+                Expression.MemberInit(newObj, binds), _parameter);
+        }
+
+
+        protected override Expression VisitMethodCall(MethodCallExpression node)
+        {
+            if (ExpressionHelpers.IsOrderedMethod(node)
+                && base.Visit(node.Arguments.ElementAtOrDefault(1))
+                is MemberExpression ordering)
+            {
+                _orderings.Add(ordering);
+            }
+
+            base.Visit(node.Arguments.ElementAtOrDefault(0));
+
+            return node;
+        }
+
+        protected override Expression VisitUnary(UnaryExpression node)
+        {
+            if (node.NodeType is ExpressionType.Quote)
+            {
+                return base.Visit(node.Operand);
+            }
+
+            return node;
+        }
+
+        protected override Expression VisitLambda<TFunc>(Expression<TFunc> node)
+        {
+            if (node.Parameters.Count == 1
+                && node.Parameters[0].Type == _parameter.Type)
+            {
+                return base.Visit(node.Body);
+            }
+
+            return node;
+        }
+
+        protected override Expression VisitParameter(ParameterExpression node)
+        {
+            if (node.Type == _parameter.Type)
+            {
+                return _parameter;
+            }
+
+            return node;
+        }
+    }
 
 
     private class FindIncludeVisitor : ExpressionVisitor

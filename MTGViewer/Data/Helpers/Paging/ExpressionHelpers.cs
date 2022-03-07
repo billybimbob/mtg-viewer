@@ -47,26 +47,27 @@ public static class ExpressionHelpers
     }
 
 
-    public static bool IsDescendant(MemberExpression? node, MemberExpression possibleAncestor)
+    public static string GetLineageName(MemberExpression member)
     {
-        var equalExpression = ExpressionEqualityComparer.Instance;
+        var memberNames = GetLineage(member)
+            .Reverse()
+            .Select(m => m.Member.Name);
 
-        return GetLineage(node)
-            .Any(m => equalExpression.Equals(m, possibleAncestor));
+        return string.Join(string.Empty, memberNames);
     }
 
 
-    public static bool IsDescendant(MemberExpression? node, ConstantExpression possibleAncestor)
+    public static bool IsDescendant(MemberExpression? node, MemberExpression possibleAncestor)
     {
-        var root = node?.Expression;
-
-        while (root is MemberExpression member)
+        if (node is null)
         {
-            root = member.Expression;
+            return false;
         }
 
-        return root is ParameterExpression p
-            && p.Type == possibleAncestor.Type;
+        var nodeName = GetLineageName(node);
+        var ancestor = GetLineageName(possibleAncestor);
+
+        return nodeName.StartsWith(ancestor);
     }
 
 
