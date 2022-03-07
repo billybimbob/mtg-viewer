@@ -174,7 +174,7 @@ public partial class Craft : OwningComponentBase
     private async Task<Deck?> FetchDeckOrRedirectAsync(
         CardDbContext dbContext, string userId, CancellationToken cancel)
     {
-        var deck = await CraftingDeckAsync(dbContext, DeckId, userId, cancel);
+        var deck = await CraftingDeckAsync.Invoke(dbContext, DeckId, userId, cancel);
 
         if (deck is null || deck.OwnerId != userId)
         {
@@ -245,31 +245,27 @@ public partial class Craft : OwningComponentBase
 
     #region Queries
 
-    private static Task<Deck?> CraftingDeckAsync(
-        CardDbContext dbContext,
-        int deckId,
-        string userId,
-        CancellationToken cancel)
-    {
-        return dbContext.Decks
-            .Include(d => d.Owner)
-            .Include(d => d.Cards) // unbounded: keep eye on
-                .ThenInclude(a => a.Card)
+    private static readonly Func<CardDbContext, int, string, CancellationToken, Task<Deck?>> CraftingDeckAsync
+        = EF.CompileAsyncQuery(
+            (CardDbContext dbContext, int deckId, string userId, CancellationToken _) =>
 
-            .Include(d => d.Wants) // unbounded: keep eye on
-                .ThenInclude(a => a.Card)
+            dbContext.Decks
+                .Include(d => d.Owner)
+                .Include(d => d.Cards) // unbounded: keep eye on
+                    .ThenInclude(a => a.Card)
 
-            .Include(d => d.GiveBacks) // unbounded: keep eye on
-                .ThenInclude(a => a.Card)
+                .Include(d => d.Wants) // unbounded: keep eye on
+                    .ThenInclude(a => a.Card)
 
-            .Include(d => d.TradesTo
-                .OrderBy(t => t.Id)
-                .Take(1))
+                .Include(d => d.GiveBacks) // unbounded: keep eye on
+                    .ThenInclude(a => a.Card)
 
-            .AsSplitQuery()
-            .SingleOrDefaultAsync(d =>
-                d.Id == deckId && d.OwnerId == userId, cancel);
-    }
+                .Include(d => d.TradesTo
+                    .OrderBy(t => t.Id)
+                    .Take(1))
+
+                .AsSplitQuery()
+                .SingleOrDefault(d => d.Id == deckId && d.OwnerId == userId));
 
 
     private static Task<OffsetList<CardTotal>> FilteredCardsAsync(

@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using System.Paging;
 using System.Threading;
@@ -60,12 +61,7 @@ public class ExcessModel : PageModel
             return default;
         }
 
-        var card = await _dbContext.Cards
-            .Where(c => c.Amounts
-                .Any(a => a.Location is Excess))
-            .OrderBy(c => c.Id)
-            .SingleOrDefaultAsync(c => c.Id == id, cancel);
-
+        var card = await CardJumpAsync.Invoke(_dbContext, id, cancel);;
         if (card is null)
         {
             return default;
@@ -106,4 +102,14 @@ public class ExcessModel : PageModel
                     .Sum(a => a.NumCopies)
             });
     }
+
+
+    private static readonly Func<CardDbContext, string, CancellationToken, Task<Card?>> CardJumpAsync
+
+        = EF.CompileAsyncQuery((CardDbContext dbContext, string cardId, CancellationToken _) =>
+            dbContext.Cards
+                .Where(c => c.Amounts
+                    .Any(a => a.Location is Excess))
+                .OrderBy(c => c.Id)
+                .SingleOrDefault(c => c.Id == cardId));
 }

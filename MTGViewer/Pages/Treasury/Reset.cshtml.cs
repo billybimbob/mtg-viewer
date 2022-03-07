@@ -54,19 +54,37 @@ public class ResetModel : PageModel
     {
         var userId = _userManager.GetUserId(User);
 
-        ResetRequested = await _dbContext.Users
-            .Where(u => u.Id == userId)
-            .Select(u => u.ResetRequested)
-            .SingleOrDefaultAsync(cancel);
+        // ResetRequested = await _dbContext.Users
+        //     .Where(u => u.Id == userId)
+        //     .Select(u => u.ResetRequested)
+        //     .SingleOrDefaultAsync(cancel);
 
-        Remaining = await RemainingRequestsAsync(cancel);
+        ResetRequested = await IsResetRequestedAsync.Invoke(_dbContext, userId, cancel);
+
+        Remaining = await RemainingRequestsAsync.Invoke(_dbContext, cancel);
     }
 
 
-    private Task<int> RemainingRequestsAsync(CancellationToken cancel)
-    {
-        return _dbContext.Users.CountAsync(u => !u.ResetRequested, cancel);
-    }
+    private static readonly Func<CardDbContext, string, CancellationToken, Task<bool>> IsResetRequestedAsync
+
+        = EF.CompileAsyncQuery((CardDbContext dbContext, string userId, CancellationToken _) =>
+            dbContext.Users
+                .Where(u => u.Id == userId)
+                .Select(u => u.ResetRequested)
+                .SingleOrDefault());
+
+
+    private static readonly Func<CardDbContext, CancellationToken, Task<int>> RemainingRequestsAsync
+
+        = EF.CompileAsyncQuery((CardDbContext dbContext, CancellationToken _) =>
+            dbContext.Users
+                .Count(u => !u.ResetRequested));
+
+
+    // private Task<int> RemainingRequestsAsync(CancellationToken cancel)
+    // {
+    //     return _dbContext.Users.CountAsync(u => !u.ResetRequested, cancel);
+    // }
 
 
     public async Task<IActionResult> OnPostAsync(CancellationToken cancel)
@@ -164,7 +182,7 @@ public class ResetModel : PageModel
 
             await _signManager.RefreshSignInAsync(cardUser);
 
-            int remaining = await RemainingRequestsAsync(cancel);
+            int remaining = await RemainingRequestsAsync.Invoke(_dbContext, cancel);
 
             PostMessage = $"Reset request applied, but waiting on {remaining} more users to apply the reset";
         }

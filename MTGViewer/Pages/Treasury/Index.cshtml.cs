@@ -53,9 +53,10 @@ public class IndexModel : PageModel
 
         Seek = (Seek)boxes.Seek;
 
-        HasExcess = await _dbContext.Amounts
-            .AnyAsync(a => a.Location is Excess, cancel);
+        HasExcess = await HasExcessAsync.Invoke(_dbContext, cancel);
 
+        // HasExcess = await _dbContext.Amounts
+        //     .AnyAsync(a => a.Location is Excess, cancel);
     }
 
 
@@ -96,4 +97,10 @@ public class IndexModel : PageModel
                     })
             });
     }
+
+
+    private static readonly Func<CardDbContext, CancellationToken, Task<bool>> HasExcessAsync
+        = EF.CompileAsyncQuery((CardDbContext dbContext, CancellationToken _) =>
+            dbContext.Amounts
+                .Any(a => a.Location is Excess));
 }

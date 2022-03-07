@@ -34,8 +34,7 @@ public class DetailsModel : PageModel
 
     public async Task<IActionResult> OnGetAsync(string id, bool flip, string? returnUrl, CancellationToken cancel)
     {
-        var card = await CardForDetails(id, flip).SingleOrDefaultAsync(cancel);
-
+        var card = await GetCardAsync(id, flip, cancel);
         if (card == default)
         {
             return NotFound();
@@ -45,7 +44,9 @@ public class DetailsModel : PageModel
 
         Card = card;
 
-        CardAlts = await CardAlternatives(card).ToListAsync(cancel);
+        CardAlts = await CardAlternatives
+            .Invoke(_dbContext, card.Id, card.Name)
+            .ToListAsync(cancel);
 
         if (Url.IsLocalUrl(returnUrl))
         {
@@ -56,27 +57,73 @@ public class DetailsModel : PageModel
     }
 
 
-    private IQueryable<Card> CardForDetails(string cardId, bool flip)
-    {
-        var cards = _dbContext.Cards
-            .Where(c => c.Id == cardId)
-            .Include(c => c.Amounts
-                .OrderBy(a => a.Location.Name))
-                .ThenInclude(a => a.Location)
-            .OrderBy(c => c.Id)
-            .AsNoTrackingWithIdentityResolution();
+    // private IQueryable<Card> CardForDetails(string cardId, bool flip)
+    // {
+    //     var cards = _dbContext.Cards
+    //         .Where(c => c.Id == cardId)
+    //         .Include(c => c.Amounts
+    //             .OrderBy(a => a.Location.Name))
+    //             .ThenInclude(a => a.Location)
+    //         .OrderBy(c => c.Id)
+    //         .AsNoTrackingWithIdentityResolution();
 
-        return flip ? cards.Include(c => c.Flip) : cards;
-    }
-    
+    //     return flip ? cards.Include(c => c.Flip) : cards;
+    // }
 
-    private IQueryable<CardAlt> CardAlternatives(Card card)
+
+    private Task<Card?> GetCardAsync(string cardId, bool flip, CancellationToken cancel)
     {
-        return _dbContext.Cards
-            .Where(c => c.Id != card.Id && c.Name == card.Name)
-            .OrderBy(c => c.SetName)
-            .Select(c => new CardAlt(c.Id, c.Name, c.SetName));
+        return flip
+            ? CardWithFlipAsync.Invoke(_dbContext, cardId, cancel)
+            : CardWithoutFlipAsync.Invoke(_dbContext, cardId, cancel);
     }
+
+
+    private static readonly Func<CardDbContext, string, CancellationToken, Task<Card?>> CardWithoutFlipAsync
+
+        = EF.CompileAsyncQuery((CardDbContext dbContext, string cardId, CancellationToken _) =>
+            dbContext.Cards
+                .Where(c => c.Id == cardId)
+                .Include(c => c.Amounts
+                    .OrderBy(a => a.Location.Name))
+                    .ThenInclude(a => a.Location)
+                .OrderBy(c => c.Id)
+
+                .AsNoTrackingWithIdentityResolution()
+                .SingleOrDefault());
+
+
+    private static readonly Func<CardDbContext, string, CancellationToken, Task<Card?>> CardWithFlipAsync
+
+        = EF.CompileAsyncQuery((CardDbContext dbContext, string cardId, CancellationToken _) =>
+            dbContext.Cards
+                .Where(c => c.Id == cardId)
+                .Include(c => c.Flip)
+                .Include(c => c.Amounts
+                    .OrderBy(a => a.Location.Name))
+                    .ThenInclude(a => a.Location)
+                .OrderBy(c => c.Id)
+
+                .AsNoTrackingWithIdentityResolution()
+                .SingleOrDefault());
+
+
+    // private IQueryable<CardAlt> CardAlternatives(Card card)
+    // {
+    //     return _dbContext.Cards
+    //         .Where(c => c.Id != card.Id && c.Name == card.Name)
+    //         .OrderBy(c => c.SetName)
+    //         .Select(c => new CardAlt(c.Id, c.Name, c.SetName));
+    // }
+
+
+    private static readonly Func<CardDbContext, string, string, IAsyncEnumerable<CardAlt>> CardAlternatives
+
+        = EF.CompileAsyncQuery((CardDbContext dbContext, string cardId, string cardName) =>
+            dbContext.Cards
+                .Where(c => c.Id != cardId && c.Name == cardName)
+                .OrderBy(c => c.SetName)
+                .Select(c => new CardAlt(c.Id, c.Name, c.SetName)));
 
 
     private void MergeExcessAmounts(Card card)

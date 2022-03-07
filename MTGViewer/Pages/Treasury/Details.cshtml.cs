@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using System.Paging;
 using System.Threading;
@@ -57,10 +58,7 @@ public class DetailsModel : PageModel
             return await EmptyBoxAsync(id, cancel);
         }
 
-        NumberOfCards = await _dbContext.Boxes
-            .Where(b => b.Id == id)
-            .SelectMany(b => b.Cards)
-            .SumAsync(a => a.NumCopies, cancel);
+        NumberOfCards = await NumberOfCardsAsync.Invoke(_dbContext, id, cancel);
 
         Seek = (Seek)cards.Seek;
 
@@ -72,9 +70,7 @@ public class DetailsModel : PageModel
 
     private async Task<IActionResult> EmptyBoxAsync(int id, CancellationToken cancel)
     {
-        var box = await _dbContext.Boxes
-            .Include(b => b.Bin)
-            .SingleOrDefaultAsync(b => b.Id == id, cancel);
+        var box = await BoxAsync.Invoke(_dbContext, id, cancel);
 
         if (box == default)
         {
@@ -87,6 +83,13 @@ public class DetailsModel : PageModel
     }
 
 
+    private static readonly Func<CardDbContext, int, CancellationToken, Task<Box?>> BoxAsync
+        = EF.CompileAsyncQuery((CardDbContext dbContext, int boxId, CancellationToken _) =>
+            dbContext.Boxes
+                .Include(b => b.Bin)
+                .SingleOrDefault(b => b.Id == boxId));
+
+
     private async Task<int?> GetCardJumpAsync(string? cardId, int boxId, CancellationToken cancel)
     {
         if (cardId is null)
@@ -94,21 +97,14 @@ public class DetailsModel : PageModel
             return null;
         }
 
-        var boxCards = BoxCards(boxId);
-
-        var card = await boxCards
-            .Where(a => a.CardId == cardId)
-            .OrderBy(a => a.Id)
-            .Select(a => a.Card)
-            .SingleOrDefaultAsync(cancel);
-
+        var card = await CardJumpAsync.Invoke(_dbContext, cardId, boxId, cancel);
         if (card is null)
         {
             return null;
         }
 
-        return await boxCards
-            .BeforeBy(card, a => a.Card)
+        return await BoxCards(boxId)
+            .Before(card)
             .Select(a => a.Id)
 
             .AsAsyncEnumerable()
@@ -133,4 +129,23 @@ public class DetailsModel : PageModel
 
             .AsNoTrackingWithIdentityResolution();
     }
+
+
+    private static readonly Func<CardDbContext, string, int, CancellationToken, Task<Amount?>> CardJumpAsync
+        = EF.CompileAsyncQuery((CardDbContext dbContext, string cardId, int boxId, CancellationToken _) =>
+
+            dbContext.Amounts
+                .Include(a => a.Card)
+                .OrderBy(a => a.Id)
+                .SingleOrDefault(a =>
+                    a.Location is Box && a.LocationId == boxId && a.CardId == cardId));
+
+
+    private static readonly Func<CardDbContext, int, CancellationToken, Task<int>> NumberOfCardsAsync
+        = EF.CompileAsyncQuery((CardDbContext dbContext, int boxId, CancellationToken _) =>
+
+            dbContext.Boxes
+                .Where(b => b.Id == boxId)
+                .SelectMany(b => b.Cards)
+                .Sum(a => a.NumCopies));
 }

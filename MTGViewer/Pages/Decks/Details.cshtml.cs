@@ -36,8 +36,9 @@ public class DetailsModel : PageModel
 
     public async Task<IActionResult> OnGetAsync(int id, CancellationToken cancel)
     {
-        var deck = await DeckForViewer(id).SingleOrDefaultAsync(cancel);
+        // var deck = await DeckForViewer(id).SingleOrDefaultAsync(cancel);
 
+        var deck = await DeckAsync.Invoke(_dbContext, id, cancel);
         if (deck == default)
         {
             return NotFound();
@@ -55,29 +56,56 @@ public class DetailsModel : PageModel
     }
 
 
-    private IQueryable<Deck> DeckForViewer(int deckId)
-    {
-        return _dbContext.Decks
-            .Where(d => d.Id == deckId)
+    // private IQueryable<Deck> DeckForViewer(int deckId)
+    // {
+    //     return _dbContext.Decks
+    //         .Where(d => d.Id == deckId)
 
-            .Include(d => d.Owner)
+    //         .Include(d => d.Owner)
 
-            .Include(d => d.Cards) // unbounded: keep eye on
-                .ThenInclude(a => a.Card)
+    //         .Include(d => d.Cards) // unbounded: keep eye on
+    //             .ThenInclude(a => a.Card)
 
-            .Include(d => d.Wants) // unbounded: keep eye on
-                .ThenInclude(w => w.Card)
+    //         .Include(d => d.Wants) // unbounded: keep eye on
+    //             .ThenInclude(w => w.Card)
 
-            .Include(d => d.GiveBacks) // unbounded: keep eye on
-                .ThenInclude(g => g.Card)
+    //         .Include(d => d.GiveBacks) // unbounded: keep eye on
+    //             .ThenInclude(g => g.Card)
 
-            .Include(d => d.TradesTo
-                .OrderBy(t => t.Id)
-                .Take(1))
+    //         .Include(d => d.TradesTo
+    //             .OrderBy(t => t.Id)
+    //             .Take(1))
 
-            .AsSplitQuery()
-            .AsNoTrackingWithIdentityResolution();
-    }
+    //         .AsSplitQuery()
+    //         .AsNoTrackingWithIdentityResolution();
+    // }
+
+
+    private static readonly Func<CardDbContext, int, CancellationToken, Task<Deck?>> DeckAsync
+
+        = EF.CompileAsyncQuery((CardDbContext dbContext, int deckId, CancellationToken _) =>
+
+            dbContext.Decks
+                .Where(d => d.Id == deckId)
+
+                .Include(d => d.Owner)
+
+                .Include(d => d.Cards) // unbounded: keep eye on
+                    .ThenInclude(a => a.Card)
+
+                .Include(d => d.Wants) // unbounded: keep eye on
+                    .ThenInclude(w => w.Card)
+
+                .Include(d => d.GiveBacks) // unbounded: keep eye on
+                    .ThenInclude(g => g.Card)
+
+                .Include(d => d.TradesTo
+                    .OrderBy(t => t.Id)
+                    .Take(1))
+
+                .AsSplitQuery()
+                .AsNoTrackingWithIdentityResolution()
+                .SingleOrDefault());
 
 
     private IEnumerable<QuantityGroup> DeckCardGroups(Deck deck)

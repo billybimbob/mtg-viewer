@@ -82,19 +82,19 @@ public static class PagingExtensions
     }
 
 
-    public static IQueryable<TEntity> AfterBy<TEntity, TOrigin>(
-        this IQueryable<TEntity> source,
-        TOrigin origin,
-        Expression<Func<TEntity, TOrigin>> selector)
-        where TOrigin : notnull
-    {
-        ArgumentNullException.ThrowIfNull(source);
-        ArgumentNullException.ThrowIfNull(origin);
+    // public static IQueryable<TEntity> AfterBy<TEntity, TOrigin>(
+    //     this IQueryable<TEntity> source,
+    //     TOrigin origin,
+    //     Expression<Func<TEntity, TOrigin>> selector)
+    //     where TOrigin : notnull
+    // {
+    //     ArgumentNullException.ThrowIfNull(source);
+    //     ArgumentNullException.ThrowIfNull(origin);
 
-        var seekCondition = OriginFilter.Build(source, origin, SeekDirection.Forward, selector);
+    //     var seekCondition = OriginFilter.Build(source, origin, SeekDirection.Forward, selector);
 
-        return source.Where(seekCondition);
-    }
+    //     return source.Where(seekCondition);
+    // }
 
 
 
@@ -123,22 +123,22 @@ public static class PagingExtensions
     }
 
 
-    public static IQueryable<TEntity> BeforeBy<TEntity, TOrigin>(
-        this IQueryable<TEntity> source,
-        TOrigin origin,
-        Expression<Func<TEntity, TOrigin>> selector)
-        where TOrigin : notnull
-    {
-        ArgumentNullException.ThrowIfNull(source);
-        ArgumentNullException.ThrowIfNull(origin);
+    // public static IQueryable<TEntity> BeforeBy<TEntity, TOrigin>(
+    //     this IQueryable<TEntity> source,
+    //     TOrigin origin,
+    //     Expression<Func<TEntity, TOrigin>> selector)
+    //     where TOrigin : notnull
+    // {
+    //     ArgumentNullException.ThrowIfNull(source);
+    //     ArgumentNullException.ThrowIfNull(origin);
 
-        var seekCondition = OriginFilter.Build(source, origin, SeekDirection.Backwards, selector);
+    //     var seekCondition = OriginFilter.Build(source, origin, SeekDirection.Backwards, selector);
 
-        return source
-            .Reverse()
-            .Where(seekCondition)
-            .Reverse();
-    }
+    //     return source
+    //         .Reverse()
+    //         .Where(seekCondition)
+    //         .Reverse();
+    // }
 
 
     public static IQueryable<TEntity> SeekOrigin<TEntity, TOrigin>(

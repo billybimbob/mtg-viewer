@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using System.Paging;
 using System.Threading;
@@ -54,11 +55,7 @@ public class IndexModel : PageModel
             return NotFound();
         }
 
-        var userName = await _dbContext.Users
-            .Where(u => u.Id == userId)
-            .Select(u => u.Name)
-            .SingleOrDefaultAsync(cancel);
-
+        var userName = await UserNameAsync.Invoke(_dbContext, userId, cancel);
         if (userName is null)
         {
             return NotFound();
@@ -72,7 +69,9 @@ public class IndexModel : PageModel
 
         UserName = userName;
         Decks = decks;
-        HasUnclaimed =  await _dbContext.Unclaimed.AnyAsync(cancel);
+
+        HasUnclaimed = await HasUnclaimedAsync.Invoke(_dbContext, cancel);
+        // HasUnclaimed =  await _dbContext.Unclaimed.AnyAsync(cancel);
 
         return Page();
     }
@@ -98,4 +97,17 @@ public class IndexModel : PageModel
                 HasTradesTo = d.TradesTo.Any(),
             });
     }
+
+
+    private static readonly Func<CardDbContext, string, CancellationToken, Task<string?>> UserNameAsync
+        = EF.CompileAsyncQuery((CardDbContext dbContext, string userId, CancellationToken _) =>
+            dbContext.Users
+                .Where(u => u.Id == userId)
+                .Select(u => u.Name)
+                .SingleOrDefault());
+
+
+    private static readonly Func<CardDbContext, CancellationToken, Task<bool>> HasUnclaimedAsync
+        = EF.CompileAsyncQuery(
+            (CardDbContext dbContext, CancellationToken _) => dbContext.Unclaimed.Any());
 }
