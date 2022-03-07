@@ -79,7 +79,8 @@ public class HistoryModel : PageModel
 
         var changes = await ChangesForHistory(id)
             .SeekBy(_pageSize, backtrack)
-            .WithOrigin<Change>(seek)
+            .WithOrigin<Change>()
+            .WithKey(seek)
             .ToSeekListAsync(cancel);
 
         _firstTransfer = changes

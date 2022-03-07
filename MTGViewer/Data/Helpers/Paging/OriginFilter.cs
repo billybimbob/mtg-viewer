@@ -10,7 +10,7 @@ namespace System.Paging.Query;
 
 internal static class OriginFilter
 {
-    public static Expression<Func<TEntity, bool>> Create<TEntity>(
+    public static Expression<Func<TEntity, bool>> Build<TEntity>(
         IQueryable<TEntity> query,
         TEntity origin,
         SeekDirection direction)
@@ -22,7 +22,7 @@ internal static class OriginFilter
     }
 
 
-    public static Expression<Func<TEntity, bool>> Create<TEntity, TOrigin>(
+    public static Expression<Func<TEntity, bool>> Build<TEntity, TOrigin>(
         IQueryable<TEntity> query,
         TOrigin origin,
         SeekDirection direction,

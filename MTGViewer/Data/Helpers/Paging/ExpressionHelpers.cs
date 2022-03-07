@@ -67,7 +67,9 @@ public static class ExpressionHelpers
         var nodeName = GetLineageName(node);
         var ancestor = GetLineageName(possibleAncestor);
 
-        return nodeName.StartsWith(ancestor);
+        const StringComparison ordinal = StringComparison.Ordinal;
+
+        return nodeName.StartsWith(ancestor, ordinal);
     }
 
 

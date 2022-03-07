@@ -37,7 +37,8 @@ public class IndexModel : PageModel
     {
         var boxes = await BoxesForViewing()
             .SeekBy(_pageSize, backtrack)
-            .WithOrigin<Box>(seek)
+            .WithOrigin<Box>()
+            .WithKey(seek)
             .ToSeekListAsync(cancel);
 
         Bins = boxes

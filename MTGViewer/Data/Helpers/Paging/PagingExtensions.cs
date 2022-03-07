@@ -71,7 +71,7 @@ public static class PagingExtensions
 
         ArgumentNullException.ThrowIfNull(originSource, nameof(source));
 
-        var seekCondition = OriginFilter.Create(originSource, origin, SeekDirection.Forward);
+        var seekCondition = OriginFilter.Build(originSource, origin, SeekDirection.Forward);
 
         var withSeek = originSource
             .Where(seekCondition);
@@ -91,7 +91,7 @@ public static class PagingExtensions
         ArgumentNullException.ThrowIfNull(source);
         ArgumentNullException.ThrowIfNull(origin);
 
-        var seekCondition = OriginFilter.Create(source, origin, SeekDirection.Forward, selector);
+        var seekCondition = OriginFilter.Build(source, origin, SeekDirection.Forward, selector);
 
         return source.Where(seekCondition);
     }
@@ -110,7 +110,7 @@ public static class PagingExtensions
 
         ArgumentNullException.ThrowIfNull(originSource, nameof(origin));
 
-        var seekCondition = OriginFilter.Create(originSource, origin, SeekDirection.Backwards);
+        var seekCondition = OriginFilter.Build(originSource, origin, SeekDirection.Backwards);
 
         var withSeek = originSource
             .Reverse()
@@ -132,7 +132,7 @@ public static class PagingExtensions
         ArgumentNullException.ThrowIfNull(source);
         ArgumentNullException.ThrowIfNull(origin);
 
-        var seekCondition = OriginFilter.Create(source, origin, SeekDirection.Backwards, selector);
+        var seekCondition = OriginFilter.Build(source, origin, SeekDirection.Backwards, selector);
 
         return source
             .Reverse()
@@ -185,7 +185,7 @@ public static class PagingExtensions
                     .Reverse();
         }
 
-        var seekCondition = OriginFilter.Create(source, origin, direction);
+        var seekCondition = OriginFilter.Build(source, origin, direction);
 
         return direction is SeekDirection.Forward
             ? source
@@ -205,7 +205,7 @@ public static class PagingExtensions
         bool backtrack)
         where TEntity : class
     {
-        return new SeekBuilder<TEntity, TEntity>(source, pageSize, backtrack);
+        return new SeekBuilder<TEntity, TEntity, TEntity>(source, pageSize, backtrack, null);
     }
 
 
@@ -218,5 +218,4 @@ public static class PagingExtensions
 
         return SeekExecute<TEntity>.ToSeekListAsync(source, cancel);
     }
-
 }

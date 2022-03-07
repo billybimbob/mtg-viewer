@@ -45,7 +45,8 @@ public class ExcessModel : PageModel
 
         Cards = await ExcessCards()
             .SeekBy(_pageSize, backtrack)
-            .WithOrigin<Card>(seek)
+            .WithOrigin<Card>()
+            .WithKey(seek)
             .ToSeekListAsync(cancel);
 
         return Page();

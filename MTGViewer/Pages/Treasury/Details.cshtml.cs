@@ -48,7 +48,8 @@ public class DetailsModel : PageModel
 
         var cards = await BoxCards(id)
             .SeekBy(_pageSize, backtrack)
-            .WithOrigin<Amount>(seek)
+            .WithOrigin<Amount>()
+            .WithKey(seek)
             .ToSeekListAsync(cancel);
 
         if (!cards.Any())

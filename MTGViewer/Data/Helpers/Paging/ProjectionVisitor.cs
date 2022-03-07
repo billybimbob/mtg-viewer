@@ -5,17 +5,23 @@ using Microsoft.EntityFrameworkCore.Query;
 
 namespace System.Paging.Query;
 
-internal class FindSelect<TSource, TResult> : ExpressionVisitor
+internal class FindSelect : ExpressionVisitor
 {
-    private static MethodInfo? _selectMethod;
-    private static FindSelect<TSource, TResult>? _instance;
+    private readonly Type _source;
+    private readonly Type _result;
 
-    public static ExpressionVisitor Instance => _instance ??= new();
+    public FindSelect(Type source, Type result)
+    {
+        _source = source;
+        _result = result;
+    }
+
+    private MethodInfo? _selectMethod;
 
 
     protected override Expression VisitMethodCall(MethodCallExpression node)
     {
-        if (typeof(TSource) == typeof(TResult))
+        if (_source == _result)
         {
             return node;
         }
@@ -25,33 +31,44 @@ internal class FindSelect<TSource, TResult> : ExpressionVisitor
             return node;
         }
 
-        _selectMethod ??= QueryableMethods.Select
-            .MakeGenericMethod(typeof(TSource), typeof(TResult));
+        _selectMethod ??= QueryableMethods.Select.MakeGenericMethod(_source, _result);
 
-        if (node.Method == _selectMethod
-            && node.Arguments.ElementAtOrDefault(1) is UnaryExpression unary
-            && unary.NodeType is ExpressionType.Quote
-            && unary.Operand is Expression<Func<TSource, TResult>> selector)
+        if (node.Method == _selectMethod && node.Arguments.Count == 2)
         {
-            return selector;
+            return Visit(node.Arguments[1]);
         }
 
         return Visit(parent);
     }
+
+    protected override Expression VisitUnary(UnaryExpression node)
+    {
+        if (node.NodeType is ExpressionType.Quote)
+        {
+            return node.Operand;
+        }
+
+        return node;
+    }
 }
 
 
-internal class RemoveSelect<TSource, TResult> : ExpressionVisitor
+internal class RemoveSelect : ExpressionVisitor
 {
-    private static MethodInfo? _selectMethod;
-    private static RemoveSelect<TSource, TResult>? _instance;
+    private readonly Type _source;
+    private readonly Type _result;
 
-    public static ExpressionVisitor Instance => _instance ??= new();
+    public RemoveSelect(Type source, Type result)
+    {
+        _source = source;
+        _result = result;
+    }
 
+    private MethodInfo? _selectMethod;
 
     protected override Expression VisitMethodCall(MethodCallExpression node)
     {
-        if (typeof(TSource) == typeof(TResult))
+        if (_source == _result)
         {
             return node;
         }
@@ -61,8 +78,7 @@ internal class RemoveSelect<TSource, TResult> : ExpressionVisitor
             return node;
         }
 
-        _selectMethod ??= QueryableMethods.Select
-            .MakeGenericMethod(typeof(TSource), typeof(TResult));
+        _selectMethod ??= QueryableMethods.Select.MakeGenericMethod(_source, _result);
 
         var method = node.Method;
         if (method.IsGenericMethod && method == _selectMethod)
@@ -84,12 +100,12 @@ internal static class SelectQueries
 
     internal static SelectQuery<TSource, TResult> GetSelectQuery<TSource, TResult>(IQueryable<TResult> source)
     {
-        var removeSelect = RemoveSelect<TSource, TResult>.Instance
+        var removeSelect = new RemoveSelect(typeof(TSource), typeof(TResult))
             .Visit(source.Expression);
 
         var query = source.Provider.CreateQuery<TSource>(removeSelect);
 
-        var selector = FindSelect<TSource, TResult>.Instance
+        var selector = new FindSelect(typeof(TSource), typeof(TResult))
             .Visit(source.Expression) as Expression<Func<TSource, TResult>>;
 
         return new (query, selector);

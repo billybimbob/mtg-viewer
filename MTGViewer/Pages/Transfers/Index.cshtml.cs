@@ -75,7 +75,8 @@ public class IndexModel : PageModel
 
         TradeDecks = await DecksForIndex(userId)
             .SeekBy(_pageSize, backtrack)
-            .WithOrigin<Deck>(seek)
+            .WithOrigin<Deck>()
+            .WithKey(seek)
             .ToSeekListAsync(cancel);
 
         Suggestions = await SuggestionsForIndex(userId).ToListAsync(cancel);
