@@ -24,7 +24,7 @@ public class IdentityHostingStartup : IHostingStartup
             var config = context.Configuration;
             var databaseOptions = DatabaseOptions.Bind(config);
 
-            string connString = databaseOptions.GetConnectionString(config, DatabaseContext.User);
+            string connString = databaseOptions.GetConnectionString(DatabaseContext.User);
 
             services.AddDbContext<UserDbContext>(options =>
             {

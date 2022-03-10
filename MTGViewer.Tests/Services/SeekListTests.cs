@@ -1,8 +1,9 @@
 using System;
 using System.Linq;
+using System.Paging;
 using System.Threading.Tasks;
-using Xunit;
 using Microsoft.EntityFrameworkCore;
+using Xunit;
 
 using MTGViewer.Data;
 using MTGViewer.Tests.Utils;
@@ -34,7 +35,8 @@ public class SeekListTests : IAsyncLifetime
         int pageSize = Math.Min(10, await cards.CountAsync() / 2);
 
         var seekList = await cards
-            .SeekBy(c => c.Id, null as string, pageSize, false)
+            .SeekBy(null as string, SeekDirection.Forward)
+            .Take(pageSize)
             .ToSeekListAsync();
 
         var firstCards = await cards
@@ -58,7 +60,8 @@ public class SeekListTests : IAsyncLifetime
         int pageSize = Math.Min(10, await cards.CountAsync() / 2);
 
         var seekList = await cards
-            .SeekBy(c => c.Id, null as string, pageSize, false)
+            .SeekBy(null as string, SeekDirection.Forward)
+            .Take(pageSize)
             .ToSeekListAsync();
 
         var firstCards = await cards
@@ -86,8 +89,9 @@ public class SeekListTests : IAsyncLifetime
             .FirstAsync();
 
         Task SeekListAsync() => cards
-            .SeekBy(seek, pageSize, false)
-            .ToSeekListAsync(c => c.Id);
+            .SeekOrigin(seek, SeekDirection.Forward)
+            .Take(pageSize)
+            .ToSeekListAsync();
 
         await Assert.ThrowsAsync<InvalidOperationException>(SeekListAsync);
     }
@@ -105,8 +109,9 @@ public class SeekListTests : IAsyncLifetime
             .FirstAsync();
 
         var seekList = await cards
-            .SeekBy(seek, pageSize, false)
-            .ToSeekListAsync(c => c.Id);
+            .SeekOrigin(seek, SeekDirection.Forward)
+            .Take(pageSize)
+            .ToSeekListAsync();
 
         Assert.NotNull(seekList.Seek.Previous);
 
@@ -127,8 +132,9 @@ public class SeekListTests : IAsyncLifetime
             .FirstAsync();
 
         var seekList = await cards
-            .SeekBy(seek, pageSize, true)
-            .ToSeekListAsync(c => c.Id);
+            .SeekOrigin(seek, SeekDirection.Backwards)
+            .Take(pageSize)
+            .ToSeekListAsync();
 
         Assert.Null(seekList.Seek.Previous);
 
@@ -152,8 +158,9 @@ public class SeekListTests : IAsyncLifetime
             .FirstAsync();
 
         var seekList = await cards
-            .SeekBy(seek, pageSize, false)
-            .ToSeekListAsync(c => c.Id);
+            .SeekOrigin(seek, SeekDirection.Forward)
+            .Take(pageSize)
+            .ToSeekListAsync();
 
         Assert.NotNull(seekList.Seek.Previous);
 
@@ -178,8 +185,9 @@ public class SeekListTests : IAsyncLifetime
             .FirstAsync();
 
         var seekList = await cards
-            .SeekBy(seek, pageSize, true)
-            .ToSeekListAsync(c => c.Id);
+            .SeekOrigin(seek, SeekDirection.Backwards)
+            .Take(pageSize)
+            .ToSeekListAsync();
 
         Assert.NotNull(seekList.Seek.Previous);
 
@@ -207,8 +215,9 @@ public class SeekListTests : IAsyncLifetime
             .FirstAsync();
 
         var seekList = await cards
-            .SeekBy(seek, pageSize, false)
-            .ToSeekListAsync(c => c.Id);
+            .SeekOrigin(seek, SeekDirection.Forward)
+            .Take(pageSize)
+            .ToSeekListAsync();
 
         Assert.NotNull(seekList.Seek.Previous);
 
@@ -291,8 +300,9 @@ public class SeekListTests : IAsyncLifetime
             .FirstAsync();
 
         var seekList = await changes
-            .SeekBy(seek, pageSize, false)
-            .ToSeekListAsync(c => c.Id);
+            .SeekOrigin(seek, SeekDirection.Forward)
+            .Take(pageSize)
+            .ToSeekListAsync();
 
         Assert.NotNull(seekList.Seek.Previous);
 

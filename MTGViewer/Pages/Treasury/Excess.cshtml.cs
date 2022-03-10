@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using System.Paging;
 using System.Threading;
@@ -34,7 +35,7 @@ public class ExcessModel : PageModel
 
     public async Task<IActionResult> OnGetAsync(
         string? seek, 
-        bool backtrack, 
+        SeekDirection direction,
         string? cardId,
         CancellationToken cancel)
     {
@@ -44,7 +45,9 @@ public class ExcessModel : PageModel
         }
 
         Cards = await ExcessCards()
-            .SeekBy(c => c.Id, seek, _pageSize, backtrack)
+            .SeekBy(seek, direction)
+            .UseSource<Card>()
+            .Take(_pageSize)
             .ToSeekListAsync(cancel);
 
         return Page();
@@ -58,18 +61,14 @@ public class ExcessModel : PageModel
             return default;
         }
 
-        var excessCards = ExcessCards();
-
-        var card = await excessCards
-            .OrderBy(c => c.Id)
-            .SingleOrDefaultAsync(c => c.Id == id, cancel);
-
+        var card = await CardJumpAsync.Invoke(_dbContext, id, cancel);
         if (card is null)
         {
             return default;
         }
 
-        return await excessCards
+        return await ExcessCards()
+            .WithSelect<Card, CardPreview>()
             .Before(card)
             .Select(c => c.Id)
 
@@ -85,6 +84,10 @@ public class ExcessModel : PageModel
             .Where(c => c.Amounts
                 .Any(a => a.Location is Excess))
 
+            .OrderBy(c => c.Name)
+                .ThenBy(c => c.SetName)
+                .ThenBy(c => c.Id)
+
             .Select(c => new CardPreview
             {
                 Id = c.Id,
@@ -98,10 +101,16 @@ public class ExcessModel : PageModel
                 Total = c.Amounts
                     .Where(a => a.Location is Excess)
                     .Sum(a => a.NumCopies)
-            })
-
-            .OrderBy(c => c.Name)
-                .ThenBy(c => c.SetName)
-                .ThenBy(c => c.Id);
+            });
     }
+
+
+    private static readonly Func<CardDbContext, string, CancellationToken, Task<Card?>> CardJumpAsync
+
+        = EF.CompileAsyncQuery((CardDbContext dbContext, string cardId, CancellationToken _) =>
+            dbContext.Cards
+                .Where(c => c.Amounts
+                    .Any(a => a.Location is Excess))
+                .OrderBy(c => c.Id)
+                .SingleOrDefault(c => c.Id == cardId));
 }

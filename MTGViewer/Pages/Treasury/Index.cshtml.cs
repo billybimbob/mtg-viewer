@@ -33,22 +33,30 @@ public class IndexModel : PageModel
     public bool HasExcess { get; private set; }
 
 
-    public async Task OnGetAsync(int? seek, bool backtrack, CancellationToken cancel)
+    public async Task OnGetAsync(int? seek, SeekDirection direction, CancellationToken cancel)
     {
         var boxes = await BoxesForViewing()
-            .SeekBy(b => b.Id, seek, _pageSize, backtrack)
+            .SeekBy(seek, direction)
+            .UseSource<Box>()
+            .Take(_pageSize)
             .ToSeekListAsync(cancel);
 
         Bins = boxes
-            .GroupBy(b => (Name: b.BinName, Id: b.BinId),
-                (bin, boxes) => new BinPreview(bin.Id, bin.Name, boxes))
+            .GroupBy(b => (b.BinName, b.BinId),
+                (b, boxPreviews) => new BinPreview
+                {
+                    Id = b.BinId,
+                    Name = b.BinName,
+                    Boxes = boxPreviews
+                })
             .ToList();
 
-        Seek = boxes.Seek;
+        Seek = (Seek)boxes.Seek;
 
-        HasExcess = await _dbContext.Amounts
-            .AnyAsync(a => a.Location is Excess, cancel);
+        HasExcess = await HasExcessAsync.Invoke(_dbContext, cancel);
 
+        // HasExcess = await _dbContext.Amounts
+        //     .AnyAsync(a => a.Location is Excess, cancel);
     }
 
 
@@ -56,11 +64,10 @@ public class IndexModel : PageModel
     {
         return _dbContext.Boxes
 
-            .Include(b => b.Cards
-                .OrderBy(a => a.Card.Name)
-                    .ThenBy(a => a.Card.SetName)
-                    .ThenBy(a => a.NumCopies)
-                .Take(_pageSize))
+            .OrderBy(b => b.Bin.Name)
+                .ThenBy(b => b.BinId)
+                .ThenBy(b => b.Name)
+                .ThenBy(b => b.Id)
 
             .Select(b => new BoxPreview
             {
@@ -74,6 +81,11 @@ public class IndexModel : PageModel
                 TotalCards = b.Cards.Sum(a => a.NumCopies),
 
                 Cards = b.Cards
+                    .OrderBy(a => a.Card.Name)
+                        .ThenBy(a => a.Card.SetName)
+                        .ThenBy(a => a.NumCopies)
+
+                    .Take(_pageSize)
                     .Select(a => new BoxCard
                     {
                         CardId = a.CardId,
@@ -83,17 +95,12 @@ public class IndexModel : PageModel
 
                         NumCopies = a.NumCopies
                     })
-                    .OrderBy(a => a.CardName)
-                        .ThenBy(a => a.CardSetName)
-                        .ThenBy(a => a.NumCopies)
-                    .Take(_pageSize)
-            })
-
-            .OrderBy(b => b.BinName)
-                .ThenBy(b => b.BinId)
-                .ThenBy(b => b.Name)
-                .ThenBy(b => b.Id)
-
-            .AsNoTrackingWithIdentityResolution();
+            });
     }
+
+
+    private static readonly Func<CardDbContext, CancellationToken, Task<bool>> HasExcessAsync
+        = EF.CompileAsyncQuery((CardDbContext dbContext, CancellationToken _) =>
+            dbContext.Amounts
+                .Any(a => a.Location is Excess));
 }

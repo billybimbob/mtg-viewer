@@ -1,4 +1,5 @@
 @model Seek
+@using System.Paging.Query
 
 @if (HasPrevious || HasNext)
 {
@@ -8,13 +9,15 @@
             {
                 <li class="page-item">
                     <a title="First Page" class="page-link"
-                        asp-route-seek="@null" asp-route-backtrack="@false">
+                        asp-route-seek="@null"
+                        asp-route-direction="@SeekDirection.Forward">
                         First </a>
                 </li>
 
                 <li class="page-item">
                     <a title="Previous Page" class="page-link"
-                        asp-route-seek="@Model.Previous" asp-route-backtrack="@true">
+                        asp-route-seek="@PreviousKey"
+                        asp-route-direction="@SeekDirection.Backwards">
                         Previous </a>
                 </li>
             }
@@ -33,13 +36,15 @@
             {
                 <li class="page-item ">
                     <a title="Next Page" class="page-link"
-                        asp-route-seek="@Model.Next" asp-route-backtrack="@false">
+                        asp-route-seek="@NextKey"
+                        asp-route-direction="@SeekDirection.Forward">
                         Next </a>
                 </li>
 
                 <li class="page-item">
                     <a title="Last Page" class="page-link"
-                        asp-route-seek="@null" asp-route-backtrack="@true">
+                        asp-route-seek="@null"
+                        asp-route-direction="@SeekDirection.Backwards">
                         Last </a>
                 </li>
             }
@@ -63,4 +68,21 @@
     public bool HasPrevious => Model.Previous is not null;
 
     public bool HasNext => Model.Next is not null;
+
+
+    public object? PreviousKey => GetKey(Model.Previous);
+
+    public object? NextKey => GetKey(Model.Next);
+
+    private object? GetKey(object? value)
+    {
+        if (value is null)
+        {
+            return null;
+        }
+
+        var keyProperty = ExpressionHelpers.GetKeyProperty(value.GetType());
+
+        return keyProperty?.GetValue(value);
+    }
 }

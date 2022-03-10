@@ -31,7 +31,7 @@ public partial class Home : ComponentBase, IDisposable
 
     public IReadOnlyList<CardImage> RandomCards => _randomContext?.Cards ?? Array.Empty<CardImage>();
 
-    public IReadOnlyList<TransactionPreview> RecentChanges => _recentChanges;
+    public IReadOnlyList<RecentTransaction> RecentChanges => _recentChanges;
 
     public bool IsEmptyCollection => !_randomContext?.Cards.Any() ?? false;
 
@@ -47,7 +47,7 @@ public partial class Home : ComponentBase, IDisposable
     private DateTime _currentTime;
 
     private RandomCardsContext? _randomContext;
-    private IReadOnlyList<TransactionPreview> _recentChanges = Array.Empty<TransactionPreview>();
+    private IReadOnlyList<RecentTransaction> _recentChanges = Array.Empty<RecentTransaction>();
 
 
     protected override async Task OnInitializedAsync()
@@ -100,7 +100,7 @@ public partial class Home : ComponentBase, IDisposable
     }
 
 
-    public string ElapsedTime(TransactionPreview transaction)
+    public string ElapsedTime(RecentTransaction transaction)
     {
         var elapsed = _currentTime - transaction.AppliedAt;
 
@@ -151,7 +151,6 @@ public partial class Home : ComponentBase, IDisposable
 
         _randomContext.LoadedImages.Add(cardId);
     }
-
 
 
 
@@ -220,15 +219,18 @@ public partial class Home : ComponentBase, IDisposable
         int limit,
         CancellationToken cancel)
     {
-        return dbContext.Cards
-            .Select(c => c.Id)
-            .OrderBy(_ => EF.Functions.Random())
-            .Take(limit)
-
-            .AsAsyncEnumerable()
+        return ShuffleOrder(dbContext, limit)
             .Chunk(ChunkSize)
             .ToListAsync(cancel);
     }
+
+
+    private static readonly Func<CardDbContext, int, IAsyncEnumerable<string>> ShuffleOrder
+        = EF.CompileAsyncQuery((CardDbContext dbContext, int limit) =>
+            dbContext.Cards
+                .Select(c => c.Id)
+                .OrderBy(_ => EF.Functions.Random())
+                .Take(limit));
 
 
     private static ValueTask<List<CardImage>> CardChunkAsync(
@@ -236,15 +238,7 @@ public partial class Home : ComponentBase, IDisposable
         string[] chunk,
         CancellationToken cancel)
     {
-        var chunkPreview = dbContext.Cards
-            .Where(c => chunk.Contains(c.Id))
-            .Select(c => new CardImage
-            {
-                Id = c.Id,
-                Name = c.Name,
-                ImageUrl = c.ImageUrl
-            })
-            .AsAsyncEnumerable();
+        var chunkPreview = CardChunk.Invoke(dbContext, chunk);
 
         // preserve order of chunk
         return chunk
@@ -257,36 +251,59 @@ public partial class Home : ComponentBase, IDisposable
     }
 
 
-    private static Task<List<TransactionPreview>> RecentTransactionsAsync(
+    private static readonly Func<CardDbContext, string[], IAsyncEnumerable<CardImage>> CardChunk
+
+        = EF.CompileAsyncQuery((CardDbContext dbContext, string[] chunk) =>
+            dbContext.Cards
+                .Where(c => chunk.Contains(c.Id))
+                .Select(c => new CardImage
+                {
+                    Id = c.Id,
+                    Name = c.Name,
+                    ImageUrl = c.ImageUrl
+                }));
+
+
+    private static ValueTask<List<RecentTransaction>> RecentTransactionsAsync(
         CardDbContext dbContext,
         int limit,
         CancellationToken cancel)
     {
-        return dbContext.Transactions
-            .Where(t => t.Changes
-                .Any(c => c.From is Box || c.To is Box))
-
-            .Select(t => new TransactionPreview
-            {
-                AppliedAt = t.AppliedAt,
-                Total = t.Changes.Sum(c => c.Amount),
-
-                Changes = t.Changes
-                    .Where(c => c.From is Box || c.To is Box)
-                    .OrderBy(c => c.Card.Name)
-                    .Take(limit)
-                    .Select(c => new RecentChange
-                    {
-                        ToBox = c.To is Box,
-                        FromBox = c.From is Box,
-                        CardName = c.Card.Name
-                    }),
-            })
-
-            .OrderByDescending(t => t.AppliedAt)
-            .Take(ChunkSize)
+        return RecentTransactions
+            .Invoke(dbContext, limit)
             .ToListAsync(cancel);
     }
+
+
+    private static readonly Func<CardDbContext, int, IAsyncEnumerable<RecentTransaction>> RecentTransactions
+        = EF.CompileAsyncQuery((CardDbContext dbContext, int limit) =>
+
+            dbContext.Transactions
+                .Where(t => t.Changes
+                    .Any(c => c.From is Box || c.To is Box
+                        || c.From is Excess || c.To is Excess))
+
+                .OrderByDescending(t => t.AppliedAt)
+                .Take(ChunkSize)
+
+                .Select(t => new RecentTransaction
+                {
+                    AppliedAt = t.AppliedAt,
+                    Total = t.Changes.Sum(c => c.Amount),
+
+                    Changes = t.Changes
+                        .Where(c => c.From is Box || c.To is Box
+                            || c.From is Excess || c.To is Excess)
+
+                        .OrderBy(c => c.Card.Name)
+                        .Take(limit)
+                        .Select(c => new RecentChange
+                        {
+                            ToStorage = c.To is Box || c.To is Excess,
+                            FromStorage = c.From is Box || c.From is Excess,
+                            CardName = c.Card.Name
+                        }),
+                }));
 
     #endregion
 }

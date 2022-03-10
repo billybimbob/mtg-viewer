@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -61,13 +62,20 @@ public class DeleteModel : PageModel
 
         Box = box;
 
-        NumberOfCards = await _dbContext.Boxes
-            .Where(b => b.Id == id)
-            .SelectMany(b => b.Cards)
-            .SumAsync(a => a.NumCopies, cancel);
+        NumberOfCards = await NumberOfCardsAsync.Invoke(_dbContext, id, cancel);
 
         return Page();
     }
+
+
+    private static readonly Func<CardDbContext, int, CancellationToken, Task<int>> NumberOfCardsAsync
+
+        = EF.CompileAsyncQuery((CardDbContext dbContext, int boxId, CancellationToken _) =>
+            dbContext.Boxes
+                .Where(b => b.Id == boxId)
+                .SelectMany(b => b.Cards)
+                .Sum(a => a.NumCopies));
+
 
 
     public async Task<IActionResult> OnPostAsync(int id, CancellationToken cancel)

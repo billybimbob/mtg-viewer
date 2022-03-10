@@ -3,60 +3,104 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
+using Microsoft.EntityFrameworkCore.Query;
 
-namespace System.Paging;
+namespace System.Paging.Query;
 
 
-internal sealed class OriginFilter
+internal static class OriginFilter
 {
-    public static Expression<Func<TEntity, bool>> Create<TEntity>(
+    public static Expression<Func<TEntity, bool>> Build<TEntity>(
         IQueryable<TEntity> query,
         TEntity origin,
         SeekDirection direction)
+        where TEntity : notnull
     {
-        return new OriginFilter<TEntity, TEntity>(query, origin, direction, null)
-            .BuildExpression();
+        var translator = new OriginTranslator<TEntity, TEntity>(origin, null);
+
+        return OriginFilter<TEntity, TEntity>.Build(query, translator, direction);
     }
 
 
-    public static Expression<Func<TEntity, bool>> Create<TEntity, TOrigin>(
+    public static Expression<Func<TEntity, bool>> Build<TEntity, TOrigin>(
         IQueryable<TEntity> query,
         TOrigin origin,
         SeekDirection direction,
         Expression<Func<TEntity, TOrigin>> selector)
+        where TOrigin : notnull
     {
-        return new OriginFilter<TEntity, TOrigin>(query, origin, direction, selector)
-            .BuildExpression();
+        var translator = new OriginTranslator<TOrigin, TEntity>(origin, selector);
+
+        return OriginFilter<TOrigin, TEntity>.Build(query, translator, direction);
     }
 }
 
 
-internal sealed class OriginFilter<TEntity, TOrigin>
+internal sealed class OriginFilter<TOrigin, TEntity>
 { 
+    internal static Expression<Func<TEntity, bool>> Build(
+        IQueryable<TEntity> query,
+        OriginTranslator<TOrigin, TEntity> origin,
+        SeekDirection direction)
+    {
+        var builder = new OriginFilter<TOrigin, TEntity>(query, origin, direction);
+
+        if (!builder.OrderKeys.Any())
+        {
+            throw new InvalidOperationException("There are no properties to filter by");
+        }
+
+        var firstKey = builder.OrderKeys.First();
+
+        var otherKeys = builder.OrderKeys
+            .Select((key, i) => (key, i))
+            .Skip(1);
+
+        var filter = builder.CompareTo(firstKey);
+
+        foreach ((KeyOrder key, int before) in otherKeys)
+        {
+            var comparison = builder.CompareTo(key, builder.OrderKeys.Take(before));
+
+            if (comparison is null)
+            {
+                continue;
+            }
+
+            if (filter is null)
+            {
+                filter = comparison;
+                continue;
+            }
+
+            filter = Expression.OrElse(filter, comparison);
+        }
+
+        if (filter is null)
+        {
+            throw new InvalidOperationException(
+                "The given origin and orderings could not be compared");
+        }
+
+        return Expression.Lambda<Func<TEntity, bool>>(filter, Parameter);
+    }
+
+
     private readonly IQueryable<TEntity> _query;
-    private readonly TOrigin _origin;
+    private readonly OriginTranslator<TOrigin, TEntity> _origin;
     private readonly SeekDirection _direction;
-    private readonly MemberExpression? _selectOrigin;
 
 
-    internal OriginFilter(
-        IQueryable<TEntity> query, 
-        TOrigin origin, 
-        SeekDirection direction, 
-        Expression<Func<TEntity, TOrigin>>? selector)
+    private OriginFilter(
+        IQueryable<TEntity> query,
+        OriginTranslator<TOrigin, TEntity> origin, 
+        SeekDirection direction)
     {
         ArgumentNullException.ThrowIfNull(origin);
 
         _query = query;
         _origin = origin;
         _direction = direction;
-
-        _selectOrigin = GetOriginSelector(selector);
-
-        if (_selectOrigin is null && typeof(TEntity) != typeof(TOrigin))
-        {
-            throw new ArgumentException(nameof(selector));
-        }
     }
 
 
@@ -77,49 +121,6 @@ internal sealed class OriginFilter<TEntity, TOrigin>
     private static ExpressionVisitor OrderVisitor => _orderByVisitor ??= new(Parameter);
 
 
-    private static ChainEquality? _chainEquality;
-    private static IEqualityComparer<MemberExpression> CommonParent => _chainEquality ??= new();
-
-
-
-
-    internal Expression<Func<TEntity, bool>> BuildExpression()
-    {
-        if (!OrderKeys.Any())
-        {
-            throw new InvalidOperationException("There are no properties to filter by");
-        }
-
-        var firstKey = OrderKeys.First();
-
-        var otherKeys = OrderKeys
-            .Select((key, i) => (key, i))
-            .Skip(1);
-
-        var filter = CompareTo(firstKey);
-
-        foreach ((KeyOrder key, int before) in otherKeys)
-        {
-            filter = Expression.OrElse(
-                filter, CompareTo(key, OrderKeys.Take(before)));
-        }
-
-        return Expression.Lambda<Func<TEntity, bool>>(filter, Parameter);
-    }
-
-
-    private static MemberExpression? GetOriginSelector(Expression<Func<TEntity, TOrigin>>? selector)
-    {
-        if (selector?.Body is MemberExpression s
-            && OrderVisitor.Visit(s) is MemberExpression getOrigin)
-        {
-            return getOrigin;
-        }
-
-        return null;
-    }
-
-
     private IEnumerable<KeyOrder> OrderProperties()
     {
         // get only top level expressions
@@ -127,20 +128,12 @@ internal sealed class OriginFilter<TEntity, TOrigin>
 
         while (source is MethodCallExpression orderBy)
         {
-            source = IsOrderBy(orderBy) ? null : orderBy.Arguments.ElementAtOrDefault(0);
+            source = ExpressionHelpers.IsOrderBy(orderBy) ? null : orderBy.Arguments.ElementAtOrDefault(0);
 
-            if (!IsOrderedMethod(orderBy)
-                || orderBy.Arguments.ElementAtOrDefault(1) is not UnaryExpression quote
-                || quote.Operand is not LambdaExpression lambda
-                || lambda.Body is not MemberExpression)
+            if (OrderVisitor.Visit(orderBy) is MemberExpression propertyOrder
+                && _origin.TryRegister(propertyOrder))
             {
-                continue;
-            }
-
-            if (OrderVisitor.Visit(lambda.Body) is MemberExpression propertyOrder
-                && IsOriginProperty(propertyOrder))
-            {
-                var ordering = IsDescending(orderBy)
+                var ordering = ExpressionHelpers.IsDescending(orderBy)
                     ? Ordering.Descending
                     : Ordering.Ascending;
 
@@ -160,24 +153,10 @@ internal sealed class OriginFilter<TEntity, TOrigin>
 
         while (source is MethodCallExpression orderBy)
         {
-            source = IsOrderBy(orderBy) ? null : orderBy.Arguments.ElementAtOrDefault(0);
+            source = ExpressionHelpers.IsOrderBy(orderBy) ? null : orderBy.Arguments.ElementAtOrDefault(0);
 
-            if (!IsOrderedMethod(orderBy)
-                || orderBy.Arguments.ElementAtOrDefault(1) is not UnaryExpression quote
-                || quote.Operand is not LambdaExpression lambda)
-            {
-                continue;
-            }
-
-            if (lambda.Body is MemberExpression
-                && OrderVisitor.Visit(lambda.Body) is MemberExpression propertyOrder)
-            {
-                lastProperty = propertyOrder;
-                continue;
-            }
-            
-            if (lambda.Body is not BinaryExpression
-                || OrderVisitor.Visit(lambda.Body) is not MemberExpression nullOrder)
+            if (OrderVisitor.Visit(orderBy) is not MemberExpression nullOrder
+                || !_origin.TryRegister(nullOrder))
             {
                 continue;
             }
@@ -187,31 +166,48 @@ internal sealed class OriginFilter<TEntity, TOrigin>
 
             // null check ordering by itself it not unique enough
 
-            if (IsOriginProperty(nullOrder) && IsDescendant(lastProperty, nullOrder))
+            if (ExpressionHelpers.IsDescendant(lastProperty, nullOrder))
             {
-                var ordering = IsDescending(orderBy)
+                var ordering = ExpressionHelpers.IsDescending(orderBy)
                     ? NullOrder.First
                     : NullOrder.Last;
 
                 yield return new NullCheck(nullOrder, ordering);
             }
+            else
+            {
+                lastProperty = nullOrder;
+            }
         }
     }
 
 
-    private bool IsOriginProperty(MemberExpression entityProperty)
+    private IReadOnlyDictionary<Expression, NullOrder>? _nullOrders;
+
+    private NullOrder GetNullOrder(MemberExpression node)
     {
-        return _selectOrigin is null || IsDescendant(entityProperty, _selectOrigin);
+        _nullOrders ??= NullProperties()
+            .ToDictionary(
+                nc => (Expression)nc.Key,
+                nc => nc.Ordering,
+                ExpressionEqualityComparer.Instance);
+
+        return _nullOrders.GetValueOrDefault(node);
     }
 
 
-    private BinaryExpression CompareTo(KeyOrder keyOrder, IEnumerable<KeyOrder>? beforeKeys = null)
+    private BinaryExpression? CompareTo(KeyOrder keyOrder, IEnumerable<KeyOrder>? beforeKeys = null)
     {
         var (parameter, ordering) = keyOrder;
 
         var comparison = IsGreaterThan(ordering)
             ? GreaterThan(parameter)
             : LessThan(parameter);
+
+        if (comparison is null)
+        {
+            return null;
+        }
 
         var equalKeys = beforeKeys
             ?.Select(k => k.Key)
@@ -226,7 +222,6 @@ internal sealed class OriginFilter<TEntity, TOrigin>
     }
     
 
-
     private bool IsGreaterThan(Ordering ordering)
     {
         return _direction is SeekDirection.Forward && ordering is Ordering.Ascending
@@ -234,199 +229,199 @@ internal sealed class OriginFilter<TEntity, TOrigin>
     }
 
 
-    private ExpressionVisitor? _replaceOrigin;
 
-    private Expression ReplaceWithOrigin(Expression node)
+    private BinaryExpression? GreaterThan(MemberExpression parameter)
     {
-        _replaceOrigin ??= new ReplaceEntity(_origin);
+        var origin = _origin.Translate(parameter);
 
-        return _replaceOrigin.Visit(node);
-    }
+        var greaterThan = (parameter.Type, GetNullOrder(parameter)) switch
+        {
+            _ when _origin.IsChainNull(parameter) => null,
 
+            (Type t, _) when t is { IsValueType: true } && IsComparable(t) =>
+                Expression.GreaterThan(parameter, origin),
 
-    private IReadOnlyDictionary<MemberExpression, NullOrder>? _nullOrders;
+            (Type t, _) when t == typeof(string) =>
+                Expression.GreaterThan(
+                    Expression.Call(parameter, ExpressionConstants.StringCompare, origin),
+                    ExpressionConstants.Zero),
 
-    private NullOrder GetNullOrder(MemberExpression node)
-    {
-        _nullOrders ??= NullProperties()
-            .ToDictionary(nc => nc.Key, nc => nc.Ordering, CommonParent);
+            (_, NullOrder.First) => OnlyOriginNull(parameter),
+            (_, NullOrder.Last) => OnlyParameterNull(parameter),
+            (_, NullOrder.None) or _ => null
+        };
 
-        return _nullOrders.GetValueOrDefault(node);
-    }
-
-
-
-    private BinaryExpression GreaterThan(MemberExpression parameter)
-    {
         if (CheckParent(parameter) is not MemberExpression parent)
         {
-            return GreaterThan(parameter, GetNullOrder(parameter));
+            return greaterThan;
         }
 
-        return Expression.OrElse(
-            GreaterThan(parent),
-            Expression.AndAlso(
-                NotNull(parent),
-                GreaterThan(parameter, GetNullOrder(parameter))));
-    }
-
-
-    private BinaryExpression GreaterThan(MemberExpression parameter, NullOrder nullOrder)
-    {
-        if (parameter.Type.IsValueType && IsComparable(parameter.Type))
+        return (GreaterThan(parent), greaterThan) switch
         {
-            return Expression.GreaterThan(parameter, ReplaceWithOrigin(parameter));
-        }
+            (BinaryExpression parentGreater, null) => parentGreater,
 
-        if (parameter.Type == typeof(string))
-        {
-            return Expression.GreaterThan(
-                Expression.Call(parameter, ExpressionConstants.StringCompare, ReplaceWithOrigin(parameter)),
-                ExpressionConstants.Zero);
-        }
+            (Expression parentGreater, not null) =>
+                Expression.OrElse(parentGreater, greaterThan),
 
-        return nullOrder switch
-        {
-            NullOrder.First => OnlyOriginNull(parameter),
-            NullOrder.Last => OnlyParameterNull(parameter),
-            NullOrder.None or _ =>
-                throw new ArgumentException(
-                    $"{nameof(parameter)} with type {parameter.Type} cannot be compared")
+            (_, not null) => greaterThan,
+            _ => null
         };
     }
 
 
-
-    private BinaryExpression LessThan(MemberExpression parameter)
+    private BinaryExpression? LessThan(MemberExpression parameter)
     {
+        var origin = _origin.Translate(parameter);
+
+        var lessThan = (parameter.Type, GetNullOrder(parameter)) switch
+        {
+            _ when _origin.IsChainNull(parameter) => null,
+
+            (Type t, _) when t is { IsValueType: true } && IsComparable(t) =>
+                Expression.LessThan(parameter, origin),
+
+            (Type t, _) when t == typeof(string) => 
+                Expression.LessThan(
+                    Expression.Call(parameter, ExpressionConstants.StringCompare, origin),
+                    ExpressionConstants.Zero),
+
+            (_, NullOrder.First) => OnlyParameterNull(parameter),
+            (_, NullOrder.Last) => OnlyOriginNull(parameter),
+            (_, NullOrder.None) or _ => null
+        };
+
         if (CheckParent(parameter) is not MemberExpression parent)
         {
-            return LessThan(parameter, GetNullOrder(parameter));
+            return lessThan;
         }
 
-        return Expression.OrElse(
-            LessThan(parent),
-            Expression.AndAlso(
-                NotNull(parent),
-                LessThan(parameter, GetNullOrder(parameter))));
-    }
-
-
-    private BinaryExpression LessThan(MemberExpression parameter, NullOrder nullOrder)
-    {
-        if (parameter.Type.IsValueType && IsComparable(parameter.Type))
+        return (LessThan(parent), lessThan) switch
         {
-            return Expression.LessThan(parameter, ReplaceWithOrigin(parameter));
-        }
+            (BinaryExpression parentLess, null) => parentLess,
 
-        if (parameter.Type == typeof(string))
-        {
-            return Expression.LessThan(
-                Expression.Call(parameter, ExpressionConstants.StringCompare, ReplaceWithOrigin(parameter)),
-                ExpressionConstants.Zero);
-        }
+            (Expression parentLess, not null) =>
+                Expression.OrElse(parentLess, lessThan),
 
-        return nullOrder switch
-        {
-            NullOrder.First => OnlyParameterNull(parameter),
-            NullOrder.Last => OnlyOriginNull(parameter),
-            NullOrder.None or _ =>
-                throw new ArgumentException(
-                    $"{nameof(parameter)} with type {parameter.Type} cannot be compared")
+            (_, not null) => lessThan,
+            _ => null
         };
     }
 
 
     private MemberExpression? CheckParent(MemberExpression node)
     {
-        return node.Expression
-            is MemberExpression chain && GetNullOrder(chain) is not NullOrder.None
-            ? chain : null;
+        return node.Expression is MemberExpression chain
+            && GetNullOrder(chain) is not NullOrder.None
+            ? chain
+            : null;
     }
 
 
-    private BinaryExpression OnlyOriginNull(MemberExpression parameter)
+    private BinaryExpression? OnlyOriginNull(MemberExpression parameter)
     {
-        return Expression.AndAlso(
-            Expression.NotEqual(parameter, ExpressionConstants.Null),
-            Expression.Equal(ReplaceWithOrigin(parameter), ExpressionConstants.Null));
+        if (!_origin.IsChainNull(parameter))
+        {
+            return null;
+        }
+
+        return Expression.NotEqual(parameter, ExpressionConstants.Null);
     }
 
 
-    private BinaryExpression OnlyParameterNull(MemberExpression parameter)
+    private BinaryExpression? OnlyParameterNull(MemberExpression parameter)
     {
-        return Expression.AndAlso(
-            Expression.Equal(parameter, ExpressionConstants.Null),
-            Expression.NotEqual(ReplaceWithOrigin(parameter), ExpressionConstants.Null));
+        if (_origin.IsChainNull(parameter))
+        {
+            return null;
+        }
+
+        return Expression.Equal(parameter, ExpressionConstants.Null);
     }
 
 
 
     private BinaryExpression? EqualTo(IEnumerable<MemberExpression> parameters)
     {
-        if (parameters.FirstOrDefault() is not MemberExpression firstKey)
+        var equals = parameters
+            .Select(EqualTo)
+            .OfType<BinaryExpression>();
+
+        if (!equals.Any())
         {
             return null;
         }
 
-        return parameters
-            .Skip(1)
-            .Select(EqualTo)
-            .Aggregate(EqualTo(firstKey), Expression.AndAlso);
+        return equals.Aggregate(Expression.AndAlso);
     }
 
 
-    private BinaryExpression EqualTo(MemberExpression parameter)
+    private BinaryExpression? EqualTo(MemberExpression parameter)
     {
-        var equalTo = Expression.Equal(
-            parameter,
-            ReplaceWithOrigin(parameter));
+        var origin = _origin.Translate(parameter);
+        bool sameType = parameter.Type == origin.Type;
 
-        if (CheckParent(parameter) is MemberExpression parent)
+        if (!sameType && GetNullOrder(parameter) is NullOrder.None)
         {
-            return Expression.OrElse(
-                BothNull(parent),
+            return null;
+        }
+
+        return (sameType, BothIsNull(parameter), BothNotNull(parameter)) switch
+        {
+            (true, Expression isNull, Expression notNull) =>
+                Expression.OrElse(
+                    isNull,
+                    Expression.AndAlso(
+                        notNull,
+                        Expression.Equal(parameter, origin))),
+
+            (true, _, Expression notNull) =>
                 Expression.AndAlso(
-                    NotNull(parent), equalTo));
-        }
+                    notNull,
+                    Expression.Equal(parameter, origin)),
 
-        return equalTo;
+            (true, _, _) => Expression.Equal(parameter, origin),
+
+            (_, Expression isNull, Expression notNull) =>
+                Expression.OrElse(isNull, notNull),
+
+            (_, BinaryExpression isNull, _) => isNull,
+
+            (_, _, BinaryExpression notNull) => notNull,
+
+            _ => null
+        };
     }
 
 
-    private BinaryExpression NotNull(MemberExpression parameter)
+    private BinaryExpression? BothNotNull(MemberExpression parameter)
     {
-        var bothNotNull = Expression.AndAlso(
-            Expression.NotEqual(parameter, ExpressionConstants.Null),
-            Expression.NotEqual(ReplaceWithOrigin(parameter), ExpressionConstants.Null));
-
-        // only do first chain for perf, keep eye on
-
-        if (CheckParent(parameter) is MemberExpression parent)
+        if (_origin.IsNonNull(parameter))
         {
-            return Expression.AndAlso(
-                NotNull(parent), bothNotNull);
+            return null;
         }
 
-        return bothNotNull;
+        if (_origin.IsChainNull(parameter))
+        {
+            return null;
+        }
+
+        return Expression.NotEqual(parameter, ExpressionConstants.Null);
     }
 
 
-    private BinaryExpression BothNull(MemberExpression parameter)
+    private BinaryExpression? BothIsNull(MemberExpression parameter)
     {
-        var bothNull = Expression.AndAlso(
-            Expression.Equal(parameter, ExpressionConstants.Null),
-            Expression.Equal(ReplaceWithOrigin(parameter), ExpressionConstants.Null));
-
-        // only do first chain for perf, keep eye on
-
-        if (CheckParent(parameter) is MemberExpression parent)
+        if (_origin.IsNonNull(parameter))
         {
-            return Expression.OrElse(
-                BothNull(parent), bothNull);
+            return null;
         }
 
-        return bothNull;
+        if (!_origin.IsChainNull(parameter))
+        {
+            return null;
+        }
+
+        return Expression.Equal(parameter, ExpressionConstants.Null);
     }
 
 
@@ -451,69 +446,6 @@ internal sealed class OriginFilter<TEntity, TOrigin>
     }
 
 
-    private class ReplaceEntity : ExpressionVisitor
-    {
-        private readonly ConstantExpression _newEntity;
-
-        public ReplaceEntity(TOrigin newEntity)
-        {
-            _newEntity = Expression.Constant(newEntity);
-        }
-
-        protected override Expression VisitMember(MemberExpression node)
-        {
-            if (node.Expression?.Type == typeof(TOrigin)
-                && node.Member is PropertyInfo property)
-            {
-                return Expression.Property(_newEntity, property);
-            }
-
-            return base.VisitMember(node);
-        }
-    }
-
-
-    private sealed class ChainEquality : EqualityComparer<MemberExpression>
-    {
-        // recursive equality, keep an eye on perf
-
-        public override bool Equals(MemberExpression? m1, MemberExpression? m2)
-        {
-            if (m1 is null && m2 is null)
-            {
-                return true;
-            }
-
-            if (m1 is null || m2 is null || !m1.Member.Equals(m2.Member))
-            {
-                return false;
-            }
-
-            if (m1.Expression is MemberExpression chain1
-                && m2.Expression is MemberExpression chain2)
-            {
-                return Equals(chain1, chain2);
-            }
-            else
-            {
-                return m1.Expression == m2.Expression;
-            }
-        }
-
-        public override int GetHashCode(MemberExpression node)
-        {
-            int hash = node.Member.GetHashCode();
-
-            if (node.Expression is MemberExpression chain)
-            {
-                hash ^= GetHashCode(chain);
-            }
-
-            return hash;
-        }
-    }
-
-
     private class OrderByVisitor : ExpressionVisitor
     {
         private readonly ParameterExpression _parameter;
@@ -521,6 +453,36 @@ internal sealed class OriginFilter<TEntity, TOrigin>
         public OrderByVisitor(ParameterExpression parameter)
         {
             _parameter = parameter;
+        }
+
+        protected override Expression VisitMethodCall(MethodCallExpression node)
+        {
+            if (ExpressionHelpers.IsOrderedMethod(node) && node.Arguments.Count == 2)
+            {
+                return Visit(node.Arguments[1]);
+            }
+
+            return node;
+        }
+
+        protected override Expression VisitLambda<TFunc>(Expression<TFunc> node)
+        {
+            if (node.Parameters.Count == 1 && node.Parameters[0].Type == _parameter.Type)
+            {
+                return Visit(node.Body);
+            }
+
+            return node;
+        }
+
+        protected override Expression VisitUnary(UnaryExpression node)
+        {
+            if (node.NodeType is not ExpressionType.Quote)
+            {
+                return node;
+            }
+
+            return Visit(node.Operand);
         }
 
         protected override Expression VisitMember(MemberExpression node)
@@ -538,7 +500,7 @@ internal sealed class OriginFilter<TEntity, TOrigin>
         {
             if (node.NodeType is not ExpressionType.Equal)
             {
-                return base.VisitBinary(node);
+                return node;
             }
 
             if (IsNull(node.Right) && Visit(node.Left) is MemberExpression left)
@@ -551,7 +513,7 @@ internal sealed class OriginFilter<TEntity, TOrigin>
                 return right;
             }
 
-            return base.VisitBinary(node);
+            return node;
         }
 
         private bool IsNull(Expression node)
@@ -564,53 +526,9 @@ internal sealed class OriginFilter<TEntity, TOrigin>
     #endregion
 
 
-    #region Method helpers
-
-    private static bool IsOrderBy(MethodCallExpression orderBy)
-    {
-        return orderBy.Method.Name 
-            is nameof(Queryable.OrderBy)
-                or nameof(Queryable.OrderByDescending);
-    }
-
-    private static bool IsOrderedMethod(MethodCallExpression orderBy)
-    {
-        return orderBy.Method.Name 
-            is nameof(Queryable.OrderBy)
-                or nameof(Queryable.ThenBy)
-                or nameof(Queryable.OrderByDescending)
-                or nameof(Queryable.ThenByDescending);
-    }
-
-    private static bool IsDescending(MethodCallExpression orderBy)
-    {
-        return orderBy.Method.Name
-            is nameof(Queryable.OrderByDescending)
-                or nameof(Queryable.ThenByDescending);
-    }
-
-
-    private static IEnumerable<MemberExpression> GetLineage(MemberExpression? member)
-    {
-        while (member is not null)
-        {
-            yield return member;
-            member = member.Expression as MemberExpression;
-        }
-    }
-
-    private static bool IsDescendant(MemberExpression? node, MemberExpression possibleAncestor)
-    {
-        return GetLineage(node)
-            // could be a slow way to do this, possible On^2
-            .Any(m => CommonParent.Equals(m, possibleAncestor));
-    }
-
     private static bool IsComparable(Type type)
     {
         return type.IsAssignableTo(typeof(IComparable))
             || type.IsAssignableTo(typeof(IComparable<>).MakeGenericType(type));
     }
-
-    #endregion
 }

@@ -29,7 +29,8 @@ public class HistoryModel : PageModel
     private readonly IAuthorizationService _authorization;
     private readonly ILogger<HistoryModel> _logger;
 
-    private HashSet<(int, int, int?)>? _firstTransfer;
+    private IReadOnlyCollection<(int, int, int?)>? _firstTransfer;
+    private IReadOnlyDictionary<int, int>? _transactionCount;
 
     public HistoryModel(
         PageSizes pageSizes,
@@ -55,8 +56,7 @@ public class HistoryModel : PageModel
 
     public Deck Deck { get; private set; } = default!;
 
-    public IReadOnlyList<Transfer> Transfers { get; private set; } =
-        Array.Empty<Transfer>();
+    public IReadOnlyList<TransferPreview> Transfers { get; private set; } = Array.Empty<TransferPreview>();
 
     public Seek Seek { get; private set; }
 
@@ -66,7 +66,7 @@ public class HistoryModel : PageModel
     public async Task<IActionResult> OnGetAsync(
         int id, 
         int? seek,
-        bool backtrack,
+        SeekDirection direction,
         string? tz,
         CancellationToken cancel)
     {
@@ -78,24 +78,29 @@ public class HistoryModel : PageModel
         }
 
         var changes = await ChangesForHistory(id)
-            .SeekBy(c => c.Id, seek, _pageSize, backtrack)
+            .SeekBy(seek, direction)
+            .UseSource<Change>()
+            .Take(_pageSize)
             .ToSeekListAsync(cancel);
 
-        _firstTransfer = changes
-            .DistinctBy(c => c.TransactionId)
-            .Select(c => (c.TransactionId, c.ToId, c.FromId))
-            .ToHashSet();
+        _transactionCount = changes
+            .GroupBy(c => c.Transaction.Id)
+            .ToDictionary(g => g.Key, g => g.Count());
 
         Deck = deck;
 
         Transfers = changes
             .GroupBy(c => (c.Transaction, c.To, c.From),
-                (tft, changeGroup) =>
-                    new Transfer(
-                        tft.Transaction, tft.To, tft.From, changeGroup.ToList()))
+                (tft, cs) => new TransferPreview(
+                    tft.Transaction, tft.To, tft.From, cs.ToList()))
             .ToList();
 
-        Seek = changes.Seek;
+        _firstTransfer = Transfers
+            .GroupBy(t => t.Transaction.Id, (_, ts) => ts.First())
+            .Select(tr => (tr.Transaction.Id, tr.To.Id, tr.From?.Id))
+            .ToHashSet();
+
+        Seek = (Seek)changes.Seek;
 
         UpdateTimeZone(tz);
 
@@ -112,15 +117,10 @@ public class HistoryModel : PageModel
     }
 
 
-    private IQueryable<Change> ChangesForHistory(int deckId)
+    private IQueryable<ChangePreview> ChangesForHistory(int deckId)
     {
         return _dbContext.Changes
             .Where(c => c.ToId == deckId || c.FromId == deckId)
-
-            .Include(c => c.Transaction)
-            .Include(c => c.From)
-            .Include(c => c.To)
-            .Include(c => c.Card)
 
             .OrderByDescending(c => c.Transaction.AppliedAt)
                 .ThenByDescending(c => c.From == null)
@@ -128,7 +128,47 @@ public class HistoryModel : PageModel
                 .ThenBy(c => c.To.Name)
                     .ThenBy(c => c.Card.Name)
                     .ThenBy(c => c.Amount)
-                    .ThenBy(c => c.Id);
+                    .ThenBy(c => c.Id)
+                    
+            .Select(c => new ChangePreview
+            {
+                Id = c.Id,
+                Amount = c.Amount,
+
+                Transaction = new TransactionPreview
+                {
+                    Id = c.TransactionId,
+                    AppliedAt = c.Transaction.AppliedAt
+                },
+
+                To = new LocationPreview
+                {
+                    Id = c.ToId,
+                    Name = c.To.Name,
+                    Type = c.To.Type
+                },
+
+                From = c.From == null
+                    ? null
+                    : new LocationPreview
+                    {
+                        Id = c.From.Id,
+                        Name = c.From.Name,
+                        Type = c.From.Type
+                    },
+
+                Card = new CardPreview
+                {
+                    Id = c.CardId,
+                    Name = c.Card.Name,
+                    ManaCost = c.Card.ManaCost,
+
+                    SetName = c.Card.SetName,
+                    Rarity = c.Card.Rarity,
+                    ImageUrl = c.Card.ImageUrl
+                }
+            });
+            ;
     }
 
 
@@ -158,7 +198,16 @@ public class HistoryModel : PageModel
     }
 
 
-    public bool IsFirstTransfer(Transaction transaction, Location to, Location? from)
+    public int GetTransactionCount(TransactionPreview transaction)
+    {
+        return _transactionCount?.GetValueOrDefault(transaction.Id) ?? 0;
+    }
+
+
+    public bool IsFirstTransfer(
+        TransactionPreview transaction,
+        LocationPreview to,
+        LocationPreview? from)
     {
         return _firstTransfer?.Contains((transaction.Id, to.Id, from?.Id)) ?? false;
     }

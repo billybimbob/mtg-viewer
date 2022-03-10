@@ -1,27 +1,11 @@
 using System.Collections.Generic;
-using System.Paging;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore;
 
 namespace System.Linq;
 
-public static partial class PagingExtensions
+public static class LinqExtensions
 {
-    public static OffsetList<TEntity> ToOffsetList<TEntity>(
-        this IEnumerable<TEntity> source,
-        int? pageIndex,
-        int pageSize)
-    {
-        var query = source
-            .AsQueryable()
-            .PageBy(pageIndex, pageSize);
-
-        return new OffsetQuery<TEntity>(query)
-            .ToOffsetList();
-    }
-
-
     public static IAsyncEnumerable<TSource[]> Chunk<TSource>(
         this IAsyncEnumerable<TSource> source,
         int size)
@@ -65,5 +49,4 @@ public static partial class PagingExtensions
             }
         }
     }
-
 }

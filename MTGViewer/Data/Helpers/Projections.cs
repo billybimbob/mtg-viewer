@@ -1,11 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using MTGViewer.Data.Internal;
 
 namespace MTGViewer.Data;
 
 
-public class CardImage
+public record CardImage
 {
     public string Id { get; init; } = default!;
     public string Name { get; init; } = default!;
@@ -13,7 +14,7 @@ public class CardImage
 }
 
 
-public class CardPreview
+public record CardPreview
 {
     public string Id { get; init; } = default!;
     public string Name { get; init; } = default!;
@@ -30,7 +31,7 @@ public class CardPreview
 public record CardTotal(Card Card, int Total);
 
 
-public class TransactionPreview
+public class RecentTransaction
 {
     public DateTime AppliedAt { get; init; }
     public IEnumerable<RecentChange> Changes { get; init; } = Enumerable.Empty<RecentChange>();
@@ -38,10 +39,10 @@ public class TransactionPreview
 }
 
 
-public class RecentChange
+public record RecentChange
 {
-    public bool ToBox { get; init; }
-    public bool FromBox { get; init; }
+    public bool ToStorage { get; init; }
+    public bool FromStorage { get; init; }
     public string CardName { get; init; } = default!;
 }
 
@@ -55,7 +56,7 @@ public enum BuildState
 }
 
 
-public class DeckPreview
+public record DeckPreview
 {
     public int Id { get; init; }
     public string Name { get; init; } = default!;
@@ -76,7 +77,7 @@ public class DeckPreview
 
 
 
-public class DeckTradePreview
+public record DeckTradePreview
 {
     public int Id { get; init; }
     public string Name { get; init; } = default!;
@@ -88,7 +89,7 @@ public class DeckTradePreview
 }
 
 
-public class SuggestionPreview
+public record SuggestionPreview
 {
     public int Id { get; init; }
     public DateTime SentAt { get; init; }
@@ -103,7 +104,12 @@ public class SuggestionPreview
 
 
 
-public record BinPreview(int Id, string Name, IEnumerable<BoxPreview> Boxes);
+public class BinPreview
+{
+    public int Id { get; init; }
+    public string Name { get; init; } = default!;
+    public IEnumerable<BoxPreview> Boxes { get; init; } = Enumerable.Empty<BoxPreview>();
+}
 
 
 public class BoxPreview
@@ -123,7 +129,7 @@ public class BoxPreview
 }
 
 
-public class BoxCard
+public record BoxCard
 {
     public string CardId { get; init; } = default!;
     public string CardName { get; init; } = default!;
@@ -135,40 +141,46 @@ public class BoxCard
 }
 
 
-// public class HistoryPreview
-// {
-//     public int Id { get; init; }
-//     public DateTime AppliedAt { get; init; }
-//     public bool IsShared { get; init; }
-// }
+
+public record TransferPreview(
+    TransactionPreview Transaction,
+    LocationPreview To,
+    LocationPreview? From,
+    IReadOnlyList<ChangePreview> Changes);
 
 
-// public record TransferPreview(
-//     HistoryPreview Transaction,
-//     LocationPreview To,
-//     LocationPreview? From,
-//     IReadOnlyList<ChangePreview> Changes);
+public record TransactionPreview
+{
+    public int Id { get; init; }
+    public DateTime AppliedAt { get; init; }
+    public bool IsShared { get; init; }
+}
 
 
-// public class ChangePreview
-// {
-//     public int Id { get; init; }
-//     public HistoryPreview Transaction { get; init; } = default!;
+public class ChangePreview
+{
+    public int Id { get; init; }
+    public int Amount { get; init; }
+    public TransactionPreview Transaction { get; init; } = default!;
 
-//     public LocationPreview? From { get; init; } = default!;
-//     public LocationPreview To { get; init; } = default!;
+    public LocationPreview To { get; init; } = default!;
+    public LocationPreview? From { get; init; }
 
-//     public int Amount { get; init; }
-//     public CardPreview Card { get; init; } = default!;
-
-//     public bool IsShared => To.Type is LocationType.Box
-//         && (From?.Type ?? LocationType.Box) is LocationType.Box;
-// }
+    public CardPreview Card { get; init; } = default!;
+}
 
 
-// public class LocationPreview
-// {
-//     public int Id { get; init; }
-//     public string Name { get; init; } = default!;
-//     internal LocationType Type { get; init; }
-// }
+public record LocationPreview
+{
+    public int Id { get; init; }
+    public string Name { get; init; } = default!;
+    internal LocationType Type { get; init; }
+}
+
+
+public class DeckColors
+{
+    public int Id { get; init; }
+    public IEnumerable<Color> CardColors { get; init; } = Enumerable.Empty<Color>();
+    public IEnumerable<Color> WantColors { get; init; } = Enumerable.Empty<Color>();
+}
