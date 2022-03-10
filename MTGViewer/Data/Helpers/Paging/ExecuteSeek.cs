@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Threading;
@@ -19,22 +20,24 @@ internal static class ExecuteSeek<TEntity> where TEntity : class
             is not ConstantExpression constant
             || constant.Value is not SeekInfo seekInfo)
         {
-            throw new ArgumentException($"{nameof(query)} must have a \"Take\"");
+            throw new ArgumentException($"{nameof(query)} missing seek values");
         }
 
         var items = await query
             .ToListAsync(cancel)
             .ConfigureAwait(false);
 
-        (SeekDirection direction, bool hasOrigin, int size) = seekInfo;
+        (SeekDirection direction, bool hasOrigin, int? size) = seekInfo;
 
         var withoutOffset = query.Provider
             .CreateQuery<TEntity>(RemoveSeekOffsetVisitor.Instance.Visit(query.Expression));
 
-        bool lookAhead = await withoutOffset
-            .Skip(size)
-            .AnyAsync(cancel)
-            .ConfigureAwait(false);
+        bool lookAhead = size is not int s
+            ? false
+            : await withoutOffset
+                .Skip(s)
+                .AnyAsync(cancel)
+                .ConfigureAwait(false);
 
         var seek = new Seek<TEntity>(items, direction, hasOrigin, lookAhead);
 
@@ -42,13 +45,26 @@ internal static class ExecuteSeek<TEntity> where TEntity : class
     }
 
 
-    private record SeekInfo(SeekDirection Direction, bool HasOrigin, int Size);
+    private record SeekInfo(SeekDirection Direction, bool HasOrigin, int? Size);
 
 
     private class GetSeekInfoVisitor : ExpressionVisitor
     {
         private static GetSeekInfoVisitor? _instance;
         public static ExpressionVisitor Instance => _instance ??= new();
+
+
+        [return: NotNullIfNotNull("node")]
+        public override Expression? Visit(Expression? node)
+        {
+            if (node is QueryRootExpression)
+            {
+                return Expression.Constant(
+                    new SeekInfo(SeekDirection.Forward, false, null));
+            }
+
+            return base.Visit(node);
+        }
 
         protected override Expression VisitMethodCall(MethodCallExpression node)
         {
@@ -63,31 +79,31 @@ internal static class ExecuteSeek<TEntity> where TEntity : class
                 && node.Arguments.ElementAtOrDefault(1) is var filter
                 && OriginFilterVisitor.Instance.Visit(filter) is not DefaultExpression)
             {
-                return ExpressionConstants.Null;
+                return Expression.Constant(
+                    new SeekInfo(SeekDirection.Forward, true, null));
             }
 
-            var visitedParent = Visit(parent);
+            if (Visit(parent) is not ConstantExpression seekParent
+                || seekParent.Value is not SeekInfo seekInfo)
+            {
+                return node;
+            }
 
             if (method == QueryableMethods.Take
                 && node.Arguments.ElementAtOrDefault(1) is ConstantExpression takeBy
                 && takeBy.Value is int take)
             {
-                bool hasOrigin = visitedParent
-                    is ConstantExpression origin && origin.Value is null;
-
                 return Expression.Constant(
-                    new SeekInfo(SeekDirection.Forward, hasOrigin, take));
+                    seekInfo with { Size = take });
             }
 
-            if (method == QueryableMethods.Reverse
-                && visitedParent is ConstantExpression innerTake
-                && innerTake.Value is SeekInfo seekInfo)
+            if (method == QueryableMethods.Reverse)
             {
                 return Expression.Constant(
                     seekInfo with { Direction = SeekDirection.Backwards });
             }
 
-            return visitedParent;
+            return seekParent;
         }
     }
 
@@ -170,14 +186,14 @@ internal static class ExecuteSeek<TEntity> where TEntity : class
                 return node;
             }
 
-            if (method == QueryableMethods.Take)
-            {
-                return Visit(parent);
-            }
-
             if (method == QueryableMethods.Reverse)
             {
                 return ReversedLookAheadVisitor.Instance.Visit(parent);
+            }
+
+            if (method == QueryableMethods.Take)
+            {
+                return parent;
             }
 
             return node.Update(
@@ -203,7 +219,7 @@ internal static class ExecuteSeek<TEntity> where TEntity : class
 
             if (method == QueryableMethods.Take)
             {
-                return Visit(parent);
+                return parent;
             }
 
             return node.Update(

@@ -83,23 +83,23 @@
 
     private static readonly Dictionary<string, object?> _first = new()
     {
-        ["backtrack"] = null,
+        ["direction"] = SeekDirection.Forward,
         ["seek"] = null
     };
 
     private readonly Dictionary<string, object?> _previous = new()
     {
-        ["backtrack"] = true
+        ["direction"] = SeekDirection.Backwards,
     };
 
     private readonly Dictionary<string, object?> _next = new()
     {
-        ["backtrack"] = null
+        ["direction"] = SeekDirection.Forward,
     };
 
     private static readonly Dictionary<string, object?> _last = new()
     {
-        ["backtrack"] = true,
+        ["direction"] = SeekDirection.Backwards,
         ["seek"] = null
     };
 

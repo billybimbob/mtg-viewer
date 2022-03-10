@@ -9,13 +9,15 @@
             {
                 <li class="page-item">
                     <a title="First Page" class="page-link"
-                        asp-route-seek="@null" asp-route-backtrack="@false">
+                        asp-route-seek="@null"
+                        asp-route-direction="@SeekDirection.Forward">
                         First </a>
                 </li>
 
                 <li class="page-item">
                     <a title="Previous Page" class="page-link"
-                        asp-route-seek="@PreviousKey" asp-route-backtrack="@true">
+                        asp-route-seek="@PreviousKey"
+                        asp-route-direction="@SeekDirection.Backwards">
                         Previous </a>
                 </li>
             }
@@ -34,13 +36,15 @@
             {
                 <li class="page-item ">
                     <a title="Next Page" class="page-link"
-                        asp-route-seek="@NextKey" asp-route-backtrack="@false">
+                        asp-route-seek="@NextKey"
+                        asp-route-direction="@SeekDirection.Forward">
                         Next </a>
                 </li>
 
                 <li class="page-item">
                     <a title="Last Page" class="page-link"
-                        asp-route-seek="@null" asp-route-backtrack="@true">
+                        asp-route-seek="@null"
+                        asp-route-direction="@SeekDirection.Backwards">
                         Last </a>
                 </li>
             }

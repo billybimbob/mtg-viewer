@@ -38,6 +38,7 @@ public class DetailsModel : PageModel
     public async Task<IActionResult> OnGetAsync(
         int id, 
         int? seek,
+        SeekDirection direction,
         bool backtrack,
         string? cardId,
         CancellationToken cancel)
@@ -48,9 +49,8 @@ public class DetailsModel : PageModel
         }
 
         var cards = await BoxCards(id)
-            .SeekBy(_pageSize, backtrack)
-            .WithSource<Amount>()
-            .WithKey(seek)
+            .SeekBy(seek, direction)
+            .Take(_pageSize)
             .ToSeekListAsync(cancel);
 
         if (!cards.Any())

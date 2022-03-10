@@ -33,12 +33,12 @@ public class IndexModel : PageModel
     public bool HasExcess { get; private set; }
 
 
-    public async Task OnGetAsync(int? seek, bool backtrack, CancellationToken cancel)
+    public async Task OnGetAsync(int? seek, SeekDirection direction, CancellationToken cancel)
     {
         var boxes = await BoxesForViewing()
-            .SeekBy(_pageSize, backtrack)
-            .WithSource<Box>()
-            .WithKey(seek)
+            .SeekBy(seek, direction)
+            .UseSource<Box>()
+            .Take(_pageSize)
             .ToSeekListAsync(cancel);
 
         Bins = boxes

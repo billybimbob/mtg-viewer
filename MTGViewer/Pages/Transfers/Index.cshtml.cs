@@ -50,10 +50,7 @@ public class IndexModel : PageModel
 
 
 
-    public async Task<IActionResult> OnGetAsync(
-        int? seek,
-        bool backtrack,
-        CancellationToken cancel)
+    public async Task<IActionResult> OnGetAsync(int? seek, SeekDirection direction, CancellationToken cancel)
     {
         var userId = _userManager.GetUserId(User);
         if (userId is null)
@@ -74,9 +71,9 @@ public class IndexModel : PageModel
         UserName = userName;
 
         TradeDecks = await DecksForIndex(userId)
-            .SeekBy(_pageSize, backtrack)
-            .WithSource<Deck>()
-            .WithKey(seek)
+            .SeekBy(seek, direction)
+            .UseSource<Deck>()
+            .Take(_pageSize)
             .ToSeekListAsync(cancel);
 
         Suggestions = await SuggestionsForIndex(userId).ToListAsync(cancel);
@@ -111,6 +108,12 @@ public class IndexModel : PageModel
     {
         return _dbContext.Suggestions
             .Where(s => s.ReceiverId == userId)
+
+            .OrderByDescending(s => s.SentAt)
+                .ThenBy(s => s.Card.Name)
+                .ThenBy(s => s.Id)
+
+            .Take(_pageSize)
             .Select(s => new SuggestionPreview
             {
                 Id = s.Id,
@@ -122,13 +125,7 @@ public class IndexModel : PageModel
                 
                 ToName = s.To == null ? null : s.To.Name,
                 Comment = s.Comment
-            })
-
-            .OrderByDescending(s => s.SentAt)
-                .ThenBy(s => s.CardName)
-                .ThenBy(s => s.Id)
-
-            .Take(_pageSize);
+            });
     }
 
 

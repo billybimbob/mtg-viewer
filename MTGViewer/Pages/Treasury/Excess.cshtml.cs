@@ -35,7 +35,7 @@ public class ExcessModel : PageModel
 
     public async Task<IActionResult> OnGetAsync(
         string? seek, 
-        bool backtrack, 
+        SeekDirection direction,
         string? cardId,
         CancellationToken cancel)
     {
@@ -45,9 +45,9 @@ public class ExcessModel : PageModel
         }
 
         Cards = await ExcessCards()
-            .SeekBy(_pageSize, backtrack)
-            .WithSource<Card>()
-            .WithKey(seek)
+            .SeekBy(seek, direction)
+            .UseSource<Card>()
+            .Take(_pageSize)
             .ToSeekListAsync(cancel);
 
         return Page();

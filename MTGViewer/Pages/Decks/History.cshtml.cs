@@ -66,7 +66,7 @@ public class HistoryModel : PageModel
     public async Task<IActionResult> OnGetAsync(
         int id, 
         int? seek,
-        bool backtrack,
+        SeekDirection direction,
         string? tz,
         CancellationToken cancel)
     {
@@ -78,9 +78,9 @@ public class HistoryModel : PageModel
         }
 
         var changes = await ChangesForHistory(id)
-            .SeekBy(_pageSize, backtrack)
-            .WithSource<Change>()
-            .WithKey(seek)
+            .SeekBy(seek, direction)
+            .UseSource<Change>()
+            .Take(_pageSize)
             .ToSeekListAsync(cancel);
 
         _transactionCount = changes

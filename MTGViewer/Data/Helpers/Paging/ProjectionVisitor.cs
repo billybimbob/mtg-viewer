@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
@@ -128,17 +129,30 @@ internal class InsertTakeVisitor<TEntity> : ExpressionVisitor
         _count = count;
     }
 
+    [return: NotNullIfNotNull("node")]
+    public override Expression? Visit(Expression? node)
+    {
+        if (node is QueryRootExpression root
+            && root.EntityType.ClrType == typeof(TEntity))
+        {
+            return Expression.Call(
+                null,
+                QueryableMethods.Take.MakeGenericMethod(typeof(TEntity)),
+                root,
+                Expression.Constant(_count));
+        }
+
+        return base.Visit(node);
+    }
+
     protected override Expression VisitMethodCall(MethodCallExpression node)
     {
-        bool correctEntity = node.Method.GetGenericArguments()
-            is var generics
-            && generics.Length == 1 
-            && generics[0] == typeof(TEntity);
+        bool validMethodCall = IsValidMethod(node);
 
-        if (!correctEntity && node.Arguments.ElementAtOrDefault(0)
+        if (!validMethodCall && node.Arguments.ElementAtOrDefault(0)
             is Expression parent)
         {
-            var visitedParent = Visit(parent);
+            var visitedParent = base.Visit(parent);
 
             return node.Update(
                 node.Object,
@@ -147,23 +161,34 @@ internal class InsertTakeVisitor<TEntity> : ExpressionVisitor
                     .Prepend(visitedParent));
         }
 
+        if (!validMethodCall)
+        {
+            return node;
+        }
+
         _reverseTake ??= new(_count);
 
-        if (correctEntity && _reverseTake.Visit(node) is MethodCallExpression inserted)
+        if (_reverseTake.Visit(node) is MethodCallExpression inserted)
         {
             return inserted;
         }
 
-        if (correctEntity)
-        {
-            return Expression.Call(
-                null,
-                QueryableMethods.Take.MakeGenericMethod(typeof(TEntity)),
-                node,
-                Expression.Constant(_count));
-        }
+        return Expression.Call(
+            null,
+            QueryableMethods.Take.MakeGenericMethod(typeof(TEntity)),
+            node,
+            Expression.Constant(_count));
+    }
 
-        return node;
+
+    private bool IsValidMethod(MethodCallExpression node)
+    {
+        var generics = node.Method.GetGenericArguments();
+
+        bool correctType = generics.ElementAtOrDefault(0) == typeof(TEntity);
+
+        return correctType && generics.Length == 1
+            || correctType && ExpressionHelpers.IsOrderedMethod(node);
     }
     
 

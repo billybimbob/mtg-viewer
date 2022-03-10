@@ -59,17 +59,12 @@ public class HistoryModel : PageModel
     public TimeZoneInfo TimeZone { get; private set; } = TimeZoneInfo.Utc;
 
 
-    public async Task OnGetAsync(
-        int? seek,
-        bool backtrack,
-        string? tz, 
-        CancellationToken cancel)
+    public async Task OnGetAsync(int? seek, SeekDirection direction, string? tz, CancellationToken cancel)
     {
         var changes = await ChangesForHistory()
-            .SeekBy(_pageSize, backtrack)
-            .WithKey(seek)
-            .WithSource<Change>()
-            // .WithOriginAsSource()
+            .SeekBy(seek, direction)
+            .UseSource<Change>()
+            .Take(_pageSize)
             .ToSeekListAsync(cancel);
 
         _transactionCount = changes

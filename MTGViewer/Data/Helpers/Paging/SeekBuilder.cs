@@ -9,101 +9,175 @@ using Microsoft.EntityFrameworkCore.Query;
 
 namespace System.Paging.Query;
 
-internal sealed class ResultNullSeek<TEntity> : ISeekBuilder<TEntity>
+internal sealed class EntityOriginSeek<TEntity, TRefKey, TValueKey> : ISeekable<TEntity>
     where TEntity : class
-{
-    private readonly IQueryable<TEntity> _query;
-    private readonly int _pageSize;
-    private readonly bool _backtrack;
-
-    internal ResultNullSeek(
-        IQueryable<TEntity> query,
-        int pageSize,
-        bool backtrack)
-    {
-        ArgumentNullException.ThrowIfNull(query);
-
-        _query = query;
-        _pageSize = pageSize;
-        _backtrack = backtrack;
-    }
-
-
-    public ISeekBuilder<TEntity> WithSource<TSource>() where TSource : class
-    {
-        // use ValueTuple as a placeholder type
-
-        if (typeof(TSource) == typeof(TEntity))
-        {
-            return this;
-        }
-
-        return new ResultOriginSeek<TSource, TEntity, object, ValueTuple>(
-            _query, _pageSize, _backtrack, null, null);
-    }
-
-
-    public ISeekBuilder<TEntity> WithOriginAsSource()
-    {
-        // use ValueTuple as a placeholder type
-
-        return new SourceOriginSeek<TEntity, TEntity, object, ValueTuple>(
-            _query, _pageSize, _backtrack, null, null);
-    }
-
-
-    public ISeekBuilder<TEntity> WithKey<TKey>(TKey? key) where TKey : class
-    {
-        // use ValueTuple as a placeholder type
-
-        return new EntityOriginSeek<TEntity, TKey, ValueTuple>(
-            _query, _pageSize, _backtrack, key, null);
-    }
-
-
-    public ISeekBuilder<TEntity> WithKey<TKey>(TKey? key) where TKey : struct
-    {
-        return new EntityOriginSeek<TEntity, object, TKey>(
-            _query, _pageSize, _backtrack, null, key);
-    }
-
-
-    public async ValueTask<SeekList<TEntity>> ToSeekListAsync(CancellationToken cancel = default)
-    {
-        return await _query
-            .SeekOrigin(null as TEntity, _pageSize, _backtrack)
-            .ToSeekListAsync(cancel)
-            .ConfigureAwait(false);
-    }
-}
-
-
-
-internal sealed class SourceOriginSeek<TSource, TResult, TRefKey, TValueKey> : ISeekBuilder<TResult>
-    where TSource : class
-    where TResult : class
     where TRefKey : class
     where TValueKey : struct
-{   
-    private readonly IQueryable<TResult> _query;
-    private readonly int _pageSize;
-    private readonly bool _backtrack;
+{
+    private readonly IQueryable<TEntity> _query;
+    private readonly SeekDirection _direction;
+    private readonly int? _take;
 
     private readonly TRefKey? _referenceKey;
     private readonly TValueKey? _valueKey;
 
-    internal SourceOriginSeek(
-        IQueryable<TResult> query,
-        int pageSize,
-        bool backtrack,
+    internal EntityOriginSeek(
+        IQueryable<TEntity> query,
+        SeekDirection direction,
+        int? take,
         TRefKey? refKey,
         TValueKey? valueKey)
     {
         ArgumentNullException.ThrowIfNull(query);
 
         _query = query;
-        _pageSize = pageSize;
-        _backtrack = backtrack;
+        _take = take;
+        _direction = direction;
+
+        _referenceKey = refKey;
+        _valueKey = valueKey;
+    }
+
+    private QueryRootExpression? _root;
+    private QueryRootExpression Root =>
+        _root ??= SeekHelpers.GetRoot<TEntity>(_query.Expression);
+
+
+    private FindByIdVisitor? _findById;
+    private FindByIdVisitor FindById => _findById ??= new(Root);
+
+
+    public ISeekable<TEntity> UseSource<TSource>()
+        where TSource : class
+    {
+        if (typeof(TSource) == typeof(TEntity))
+        {
+            return this;
+        }
+
+        return new ResultOriginSeek<TSource, TEntity, TRefKey, TValueKey>(
+            _query, _direction, _take, _referenceKey, _valueKey);
+    }
+
+
+    public ISeekable<TEntity> UseSourceOrigin()
+    {
+        return new SourceOriginSeek<TEntity, TEntity, TRefKey, TValueKey>(
+            _query, _direction, _take, _referenceKey, _valueKey);
+    }
+
+
+    public ISeekable<TEntity> Take(int count)
+    {
+        return new EntityOriginSeek<TEntity, TRefKey, TValueKey>(
+            _query, _direction, count, _referenceKey, _valueKey);
+    }
+
+
+    public async ValueTask<SeekList<TEntity>> ToSeekListAsync(CancellationToken cancel = default)
+    {
+        var origin = await GetOriginAsync(cancel).ConfigureAwait(false);
+
+        return await SeekQuery(origin)
+            .ToSeekListAsync(cancel)
+            .ConfigureAwait(false);
+    }
+
+
+    private IQueryable<TEntity> SeekQuery(TEntity? origin)
+    {
+        var query = _query.SeekOrigin(origin, _direction);
+
+        return _take is int count
+            ? query.Take(count)
+            : query;
+    }
+
+
+    private async ValueTask<TEntity?> GetOriginAsync(CancellationToken cancel)
+    {
+        if (_referenceKey is TEntity keyOrigin)
+        {
+            return keyOrigin;
+        }
+
+        if (_valueKey is TValueKey valueKey)
+        {
+            return await GetOriginQuery(valueKey)
+                .SingleOrDefaultAsync(cancel)
+                .ConfigureAwait(false);
+        }
+
+        if (_referenceKey is TRefKey refKey)
+        {
+            return await GetOriginQuery(refKey)
+                .SingleOrDefaultAsync(cancel)
+                .ConfigureAwait(false);
+        }
+
+        return null;
+    }
+
+
+    private IQueryable<TEntity> GetOriginQuery<TKey>(TKey key)
+    {
+        var entityParameter = Expression.Parameter(
+            typeof(TEntity), typeof(TEntity).Name[0].ToString().ToLower());
+
+        var getKey = SeekHelpers.GetKeyInfo<TKey>(Root);
+
+        var propertyId = Expression.Property(entityParameter, getKey);
+
+        var orderId = Expression.Lambda<Func<TEntity, TKey>>(
+            propertyId,
+            entityParameter);
+
+        var equalId = Expression.Lambda<Func<TEntity, bool>>(
+            Expression.Equal(propertyId, Expression.Constant(key)),
+            entityParameter);
+
+        var originQuery = _query.Provider
+            .CreateQuery<TEntity>(FindById.Visit(_query.Expression))
+            .Where(equalId)
+            .OrderBy(orderId)
+            .AsNoTracking();
+
+        foreach (var include in FindById.Include)
+        {
+            originQuery = originQuery.Include(include);
+        }
+
+        return originQuery;
+    }
+}
+
+
+
+internal sealed class SourceOriginSeek<TSource, TResult, TRefKey, TValueKey> : ISeekable<TResult>
+    where TSource : class
+    where TResult : class
+    where TRefKey : class
+    where TValueKey : struct
+{   
+    private readonly IQueryable<TResult> _query;
+    private readonly SeekDirection _direction;
+    private readonly int? _take;
+
+    private readonly TRefKey? _referenceKey;
+    private readonly TValueKey? _valueKey;
+
+    internal SourceOriginSeek(
+        IQueryable<TResult> query,
+        SeekDirection direction,
+        int? take,
+        TRefKey? refKey,
+        TValueKey? valueKey)
+    {
+        ArgumentNullException.ThrowIfNull(query);
+
+        _query = query;
+        _take = take;
+        _direction = direction;
 
         _referenceKey = refKey;
         _valueKey = valueKey;
@@ -119,7 +193,7 @@ internal sealed class SourceOriginSeek<TSource, TResult, TRefKey, TValueKey> : I
     private FindByIdVisitor FindById => _findById ??= new(Root);
 
 
-    public ISeekBuilder<TResult> WithSource<TNewSource>() where TNewSource : class
+    public ISeekable<TResult> UseSource<TNewSource>() where TNewSource : class
     {
         if (typeof(TNewSource) == typeof(TSource))
         {
@@ -127,29 +201,20 @@ internal sealed class SourceOriginSeek<TSource, TResult, TRefKey, TValueKey> : I
         }
 
         return new SourceOriginSeek<TNewSource, TResult, TRefKey, TValueKey>(
-            _query, _pageSize, _backtrack, _referenceKey, _valueKey);
+            _query, _direction, _take, _referenceKey, _valueKey);
     }
 
 
-    public ISeekBuilder<TResult> WithOriginAsSource()
+    public ISeekable<TResult> UseSourceOrigin()
     {
         return this;
     }
 
 
-    public ISeekBuilder<TResult> WithKey<TKey>(TKey? key) where TKey : class
+    public ISeekable<TResult> Take(int count)
     {
-        // use ValueTuple as a placeholder type
-
-        return new SourceOriginSeek<TSource, TResult, TKey, TValueKey>(
-            _query, _pageSize, _backtrack, key, null);
-    }
-
-
-    public ISeekBuilder<TResult> WithKey<TKey>(TKey? key) where TKey : struct
-    {
-        return new SourceOriginSeek<TSource, TResult, TRefKey, TKey>(
-            _query, _pageSize, _backtrack, null, key);
+        return new SourceOriginSeek<TSource, TResult, TRefKey, TValueKey>(
+            _query, _direction, count, _referenceKey, _valueKey);
     }
 
 
@@ -157,11 +222,21 @@ internal sealed class SourceOriginSeek<TSource, TResult, TRefKey, TValueKey> : I
     {
         var origin = await GetOriginAsync(cancel).ConfigureAwait(false);
 
-        return await _query
-            .WithSelect<TSource, TResult>()
-            .SeekOrigin(origin, _pageSize, _backtrack)
+        return await SeekQuery(origin)
             .ToSeekListAsync(cancel)
             .ConfigureAwait(false);
+    }
+
+
+    private IQueryable<TResult> SeekQuery(TSource? origin)
+    {
+        var query = _query
+            .WithSelect<TSource, TResult>()
+            .SeekOrigin(origin, _direction);
+
+        return _take is int count
+            ? query.Take(count)
+            : query;
     }
     
 
@@ -224,31 +299,31 @@ internal sealed class SourceOriginSeek<TSource, TResult, TRefKey, TValueKey> : I
 
 
 
-internal sealed class ResultOriginSeek<TSource, TResult, TRefKey, TValueKey> : ISeekBuilder<TResult>
+internal sealed class ResultOriginSeek<TSource, TResult, TRefKey, TValueKey> : ISeekable<TResult>
     where TSource : class
     where TResult : class
     where TRefKey : class
     where TValueKey : struct
 {
     private readonly IQueryable<TResult> _query;
-    private readonly int _pageSize;
-    private readonly bool _backtrack;
+    private readonly SeekDirection _direction;
+    private readonly int? _take;
 
     private readonly TRefKey? _referenceKey;
     private readonly TValueKey? _valueKey;
 
     internal ResultOriginSeek(
         IQueryable<TResult> query,
-        int pageSize,
-        bool backtrack,
+        SeekDirection direction,
+        int? take,
         TRefKey? refKey,
         TValueKey? valueKey)
     {
         ArgumentNullException.ThrowIfNull(query);
 
         _query = query;
-        _pageSize = pageSize;
-        _backtrack = backtrack;
+        _take = take;
+        _direction = direction;
 
         _referenceKey = refKey;
         _valueKey = valueKey;
@@ -269,7 +344,7 @@ internal sealed class ResultOriginSeek<TSource, TResult, TRefKey, TValueKey> : I
 
 
 
-    public ISeekBuilder<TResult> WithSource<TNewSource>()
+    public ISeekable<TResult> UseSource<TNewSource>()
         where TNewSource : class
     {
         if (typeof(TNewSource) == typeof(TSource))
@@ -278,48 +353,43 @@ internal sealed class ResultOriginSeek<TSource, TResult, TRefKey, TValueKey> : I
         }
 
         return new ResultOriginSeek<TNewSource, TResult, TRefKey, TValueKey>(
-            _query, _pageSize, _backtrack, _referenceKey, _valueKey);
+            _query, _direction, _take, _referenceKey, _valueKey);
     }
 
 
-    public ISeekBuilder<TResult> WithOriginAsSource()
+    public ISeekable<TResult> UseSourceOrigin()
     {
         return new SourceOriginSeek<TSource, TResult, TRefKey, TValueKey>(
-            _query, _pageSize, _backtrack, _referenceKey, _valueKey);
+            _query, _direction, _take, _referenceKey, _valueKey);
     }
 
 
-    public ISeekBuilder<TResult> WithKey<TKey>(TKey? key) where TKey : class
+    public ISeekable<TResult> Take(int count)
     {
-        return new ResultOriginSeek<TSource, TResult, TKey, TValueKey>(
-            _query, _pageSize, _backtrack, key, null);
-    }
-
-
-    public ISeekBuilder<TResult> WithKey<TKey>(TKey? key) where TKey : struct
-    {
-        return new ResultOriginSeek<TSource, TResult, TRefKey, TKey>(
-            _query, _pageSize, _backtrack, null, key);
+        return new ResultOriginSeek<TSource, TResult, TRefKey, TValueKey>(
+            _query, _direction, count, _referenceKey, _valueKey);
     }
 
 
     public async ValueTask<SeekList<TResult>> ToSeekListAsync(CancellationToken cancel = default)
     {
-        bool hasSelector = FindSelect<TSource, TResult>.Instance
-            .Visit(_query.Expression) is Expression<Func<TSource, TResult>>;
-
         var origin = await GetOriginAsync(cancel).ConfigureAwait(false);
 
-        var query = hasSelector
-            ? _query
-                .WithSelect<TSource, TResult>()
-                .SeekOrigin(origin, _pageSize, _backtrack)
-            : _query
-                .SeekOrigin(origin, _pageSize, _backtrack);
-
-        return await query
+        return await SeekQuery(origin)
             .ToSeekListAsync(cancel)
             .ConfigureAwait(false);
+    }
+
+
+    private IQueryable<TResult> SeekQuery(TResult? origin)
+    {
+        var query = _query
+            .WithSelect<TSource, TResult>()
+            .SeekOrigin(origin, _direction);
+
+        return _take is int count
+            ? query.Take(count)
+            : query;
     }
 
 
@@ -372,148 +442,6 @@ internal sealed class ResultOriginSeek<TSource, TResult, TRefKey, TValueKey> : I
             .Select(SelectResult.Selector);
     }
 
-}
-
-
-
-internal sealed class EntityOriginSeek<TEntity, TRefKey, TValueKey> : ISeekBuilder<TEntity>
-    where TEntity : class
-    where TRefKey : class
-    where TValueKey : struct
-{
-    private readonly IQueryable<TEntity> _query;
-    private readonly int _pageSize;
-    private readonly bool _backtrack;
-
-    private readonly TRefKey? _referenceKey;
-    private readonly TValueKey? _valueKey;
-
-    internal EntityOriginSeek(
-        IQueryable<TEntity> query,
-        int pageSize,
-        bool backtrack,
-        TRefKey? refKey,
-        TValueKey? valueKey)
-    {
-        ArgumentNullException.ThrowIfNull(query);
-
-        _query = query;
-        _pageSize = pageSize;
-        _backtrack = backtrack;
-
-        _referenceKey = refKey;
-        _valueKey = valueKey;
-    }
-
-    private QueryRootExpression? _root;
-    private QueryRootExpression Root =>
-        _root ??= SeekHelpers.GetRoot<TEntity>(_query.Expression);
-
-
-    private FindByIdVisitor? _findById;
-    private FindByIdVisitor FindById => _findById ??= new(Root);
-
-
-    public ISeekBuilder<TEntity> WithSource<TSource>()
-        where TSource : class
-    {
-        if (typeof(TSource) == typeof(TEntity))
-        {
-            return this;
-        }
-
-        return new ResultOriginSeek<TSource, TEntity, TRefKey, TValueKey>(
-            _query, _pageSize, _backtrack, _referenceKey, _valueKey);
-    }
-
-
-    public ISeekBuilder<TEntity> WithOriginAsSource()
-    {
-        return new SourceOriginSeek<TEntity, TEntity, TRefKey, TValueKey>(
-            _query, _pageSize, _backtrack, _referenceKey, _valueKey);
-    }
-
-
-    public ISeekBuilder<TEntity> WithKey<TKey>(TKey? key) where TKey : class
-    {
-        return new EntityOriginSeek<TEntity, TKey, TValueKey>(
-            _query, _pageSize, _backtrack, key, null);
-    }
-
-
-    public ISeekBuilder<TEntity> WithKey<TKey>(TKey? key) where TKey : struct
-    {
-        return new EntityOriginSeek<TEntity, TRefKey, TKey>(
-            _query, _pageSize, _backtrack, null, key);
-    }
-
-
-    public async ValueTask<SeekList<TEntity>> ToSeekListAsync(CancellationToken cancel = default)
-    {
-        var origin = await GetOriginAsync(cancel).ConfigureAwait(false);
-
-        return await _query
-            .SeekOrigin(origin, _pageSize, _backtrack)
-            .ToSeekListAsync(cancel)
-            .ConfigureAwait(false);
-    }
-
-
-    private async ValueTask<TEntity?> GetOriginAsync(CancellationToken cancel)
-    {
-        if (_referenceKey is TEntity keyOrigin)
-        {
-            return keyOrigin;
-        }
-
-        if (_valueKey is TValueKey valueKey)
-        {
-            return await GetOriginQuery(valueKey)
-                .SingleOrDefaultAsync(cancel)
-                .ConfigureAwait(false);
-        }
-
-        if (_referenceKey is TRefKey refKey)
-        {
-            return await GetOriginQuery(refKey)
-                .SingleOrDefaultAsync(cancel)
-                .ConfigureAwait(false);
-        }
-
-        return null;
-    }
-
-
-    private IQueryable<TEntity> GetOriginQuery<TKey>(TKey key)
-    {
-        var entityParameter = Expression.Parameter(
-            typeof(TEntity), typeof(TEntity).Name[0].ToString().ToLower());
-
-        var getKey = SeekHelpers.GetKeyInfo<TKey>(Root);
-
-        var propertyId = Expression.Property(entityParameter, getKey);
-
-        var orderId = Expression.Lambda<Func<TEntity, TKey>>(
-            propertyId,
-            entityParameter);
-
-        var equalId = Expression.Lambda<Func<TEntity, bool>>(
-            Expression.Equal(propertyId, Expression.Constant(key)),
-            entityParameter);
-
-        var originQuery = _query.Provider
-            .CreateQuery<TEntity>(FindById.Visit(_query.Expression))
-            .Where(equalId)
-            .OrderBy(orderId)
-            .AsNoTracking();
-
-        foreach (var include in FindById.Include)
-        {
-            originQuery = originQuery.Include(include);
-        }
-
-        return originQuery;
-    }
 }
 
 

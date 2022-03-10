@@ -35,7 +35,8 @@ public class SeekListTests : IAsyncLifetime
         int pageSize = Math.Min(10, await cards.CountAsync() / 2);
 
         var seekList = await cards
-            .SeekBy(pageSize, false)
+            .SeekBy(null as string, SeekDirection.Forward)
+            .Take(pageSize)
             .ToSeekListAsync();
 
         var firstCards = await cards
@@ -59,7 +60,8 @@ public class SeekListTests : IAsyncLifetime
         int pageSize = Math.Min(10, await cards.CountAsync() / 2);
 
         var seekList = await cards
-            .SeekBy(pageSize, false)
+            .SeekBy(null as string, SeekDirection.Forward)
+            .Take(pageSize)
             .ToSeekListAsync();
 
         var firstCards = await cards
@@ -87,7 +89,8 @@ public class SeekListTests : IAsyncLifetime
             .FirstAsync();
 
         Task SeekListAsync() => cards
-            .SeekOrigin(seek, pageSize, false)
+            .SeekOrigin(seek, SeekDirection.Forward)
+            .Take(pageSize)
             .ToSeekListAsync();
 
         await Assert.ThrowsAsync<InvalidOperationException>(SeekListAsync);
@@ -106,7 +109,8 @@ public class SeekListTests : IAsyncLifetime
             .FirstAsync();
 
         var seekList = await cards
-            .SeekOrigin(seek, pageSize, false)
+            .SeekOrigin(seek, SeekDirection.Forward)
+            .Take(pageSize)
             .ToSeekListAsync();
 
         Assert.NotNull(seekList.Seek.Previous);
@@ -128,7 +132,8 @@ public class SeekListTests : IAsyncLifetime
             .FirstAsync();
 
         var seekList = await cards
-            .SeekOrigin(seek, pageSize, true)
+            .SeekOrigin(seek, SeekDirection.Backwards)
+            .Take(pageSize)
             .ToSeekListAsync();
 
         Assert.Null(seekList.Seek.Previous);
@@ -153,7 +158,8 @@ public class SeekListTests : IAsyncLifetime
             .FirstAsync();
 
         var seekList = await cards
-            .SeekOrigin(seek, pageSize, false)
+            .SeekOrigin(seek, SeekDirection.Forward)
+            .Take(pageSize)
             .ToSeekListAsync();
 
         Assert.NotNull(seekList.Seek.Previous);
@@ -179,7 +185,8 @@ public class SeekListTests : IAsyncLifetime
             .FirstAsync();
 
         var seekList = await cards
-            .SeekOrigin(seek, pageSize, true)
+            .SeekOrigin(seek, SeekDirection.Backwards)
+            .Take(pageSize)
             .ToSeekListAsync();
 
         Assert.NotNull(seekList.Seek.Previous);
@@ -208,7 +215,8 @@ public class SeekListTests : IAsyncLifetime
             .FirstAsync();
 
         var seekList = await cards
-            .SeekOrigin(seek, pageSize, false)
+            .SeekOrigin(seek, SeekDirection.Forward)
+            .Take(pageSize)
             .ToSeekListAsync();
 
         Assert.NotNull(seekList.Seek.Previous);
@@ -292,7 +300,8 @@ public class SeekListTests : IAsyncLifetime
             .FirstAsync();
 
         var seekList = await changes
-            .SeekOrigin(seek, pageSize, false)
+            .SeekOrigin(seek, SeekDirection.Forward)
+            .Take(pageSize)
             .ToSeekListAsync();
 
         Assert.NotNull(seekList.Seek.Previous);

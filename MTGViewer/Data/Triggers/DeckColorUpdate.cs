@@ -115,6 +115,7 @@ public class DeckColorUpdate : IBeforeSaveTrigger<Deck>
                     CardColors = d.Cards.Select(a => a.Card.Color),
                     WantColors = d.Wants.Select(w => w.Card.Color)
                 })
+                .AsSplitQuery()
                 .SingleOrDefault());
 
 

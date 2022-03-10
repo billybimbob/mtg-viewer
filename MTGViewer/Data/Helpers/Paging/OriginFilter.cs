@@ -236,9 +236,9 @@ internal sealed class OriginFilter<TOrigin, TEntity>
 
         var greaterThan = (parameter.Type, GetNullOrder(parameter)) switch
         {
-            _ when _origin.IsNull(parameter) => null,
+            _ when _origin.IsChainNull(parameter) => null,
 
-            (Type { IsValueType: true }, _) =>
+            (Type t, _) when t is { IsValueType: true } && IsComparable(t) =>
                 Expression.GreaterThan(parameter, origin),
 
             (Type t, _) when t == typeof(string) =>
@@ -275,9 +275,9 @@ internal sealed class OriginFilter<TOrigin, TEntity>
 
         var lessThan = (parameter.Type, GetNullOrder(parameter)) switch
         {
-            _ when _origin.IsNull(parameter) => null,
+            _ when _origin.IsChainNull(parameter) => null,
 
-            (Type { IsValueType: true }, _) =>
+            (Type t, _) when t is { IsValueType: true } && IsComparable(t) =>
                 Expression.LessThan(parameter, origin),
 
             (Type t, _) when t == typeof(string) => 
@@ -319,7 +319,7 @@ internal sealed class OriginFilter<TOrigin, TEntity>
 
     private BinaryExpression? OnlyOriginNull(MemberExpression parameter)
     {
-        if (!_origin.IsNull(parameter))
+        if (!_origin.IsChainNull(parameter))
         {
             return null;
         }
@@ -330,7 +330,7 @@ internal sealed class OriginFilter<TOrigin, TEntity>
 
     private BinaryExpression? OnlyParameterNull(MemberExpression parameter)
     {
-        if (_origin.IsNull(parameter))
+        if (_origin.IsChainNull(parameter))
         {
             return null;
         }
@@ -395,12 +395,12 @@ internal sealed class OriginFilter<TOrigin, TEntity>
 
     private BinaryExpression? BothNotNull(MemberExpression parameter)
     {
-        if (parameter.Type.IsValueType)
+        if (_origin.IsNonNull(parameter))
         {
             return null;
         }
 
-        if (_origin.IsNull(parameter))
+        if (_origin.IsChainNull(parameter))
         {
             return null;
         }
@@ -411,12 +411,12 @@ internal sealed class OriginFilter<TOrigin, TEntity>
 
     private BinaryExpression? BothIsNull(MemberExpression parameter)
     {
-        if (parameter.Type.IsValueType)
+        if (_origin.IsNonNull(parameter))
         {
             return null;
         }
 
-        if (!_origin.IsNull(parameter))
+        if (!_origin.IsChainNull(parameter))
         {
             return null;
         }
