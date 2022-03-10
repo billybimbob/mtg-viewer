@@ -63,7 +63,7 @@ public class IndexModel : PageModel
 
         var decks = await DecksForIndex(userId)
             .SeekBy(_pageSize, backtrack)
-            .WithOrigin<Deck>()
+            .WithSource<Deck>()
             .WithKey(seek)
             .ToSeekListAsync(cancel);
 

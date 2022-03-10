@@ -12,7 +12,7 @@ public static class CardStorageExtensions
     public static IServiceCollection AddCardStorage(this IServiceCollection services, IConfiguration config)
     {
         var databaseOptions = DatabaseOptions.Bind(config);
-        string connString = databaseOptions.GetConnectionString(config, DatabaseContext.Card);
+        string connString = databaseOptions.GetConnectionString(DatabaseContext.Card);
 
         switch (databaseOptions.Provider)
         {
@@ -24,6 +24,7 @@ public static class CardStorageExtensions
                     .UseEnumCheckConstraints()
 
                     .UseTriggers(triggers => triggers
+                        .AddTrigger<DeckColorUpdate>()
                         .AddTrigger<ImmutableCard>()));
 
                 break;
@@ -36,6 +37,7 @@ public static class CardStorageExtensions
                     .UseEnumCheckConstraints()
 
                     .UseTriggers(triggers => triggers
+                        .AddTrigger<DeckColorUpdate>()
                         .AddTrigger<ImmutableCard>()));
                 break;
 
@@ -48,6 +50,7 @@ public static class CardStorageExtensions
                     .UseEnumCheckConstraints()
 
                     .UseTriggers(triggers => triggers
+                        .AddTrigger<DeckColorUpdate>()
                         .AddTrigger<ImmutableCard>()
                         .AddTrigger<LiteTokenUpdate>()));
                 break;

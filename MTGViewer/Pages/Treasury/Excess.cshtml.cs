@@ -46,7 +46,7 @@ public class ExcessModel : PageModel
 
         Cards = await ExcessCards()
             .SeekBy(_pageSize, backtrack)
-            .WithOrigin<Card>()
+            .WithSource<Card>()
             .WithKey(seek)
             .ToSeekListAsync(cancel);
 
@@ -61,13 +61,14 @@ public class ExcessModel : PageModel
             return default;
         }
 
-        var card = await CardJumpAsync.Invoke(_dbContext, id, cancel);;
+        var card = await CardJumpAsync.Invoke(_dbContext, id, cancel);
         if (card is null)
         {
             return default;
         }
 
         return await ExcessCards()
+            .WithSelect<Card, CardPreview>()
             .Before(card)
             .Select(c => c.Id)
 

@@ -133,7 +133,7 @@ public partial class Adjust : ComponentBase, IDisposable
 
         return await dbContext.Boxes
             .Include(b => b.Bin)
-            .SingleOrDefaultAsync(b => b.Id == BoxId, cancel);;
+            .SingleOrDefaultAsync(b => b.Id == BoxId, cancel);
     }
     
 

@@ -299,10 +299,12 @@ public partial class Craft : OwningComponentBase
                 .ThenBy(c => c.SetName)
                 .ThenBy(c => c.Id)
 
-            .Select(c =>
-                new CardTotal(c, c.Amounts
-                    .Where(a => a.Location is Box || a.Location is Excess)
-                    .Sum(a => a.NumCopies)))
+            .Select(card =>
+                new CardTotal(
+                    card,
+                    card.Amounts
+                        .Where(a => a.Location is Box || a.Location is Excess)
+                        .Sum(a => a.NumCopies)))
 
             .PageBy(pageIndex, pageSize)
             .ToOffsetListAsync(cancel);
@@ -974,8 +976,6 @@ public partial class Craft : OwningComponentBase
         PrepareQuantity(deckContext, dbContext.Amounts);
         PrepareQuantity(deckContext, dbContext.Wants);
         PrepareQuantity(deckContext, dbContext.GiveBacks);
-
-        deck.UpdateColors();
     }
 
 

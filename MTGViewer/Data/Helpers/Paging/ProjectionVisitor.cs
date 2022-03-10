@@ -5,33 +5,22 @@ using Microsoft.EntityFrameworkCore.Query;
 
 namespace System.Paging.Query;
 
-internal class FindSelect : ExpressionVisitor
+internal class FindSelect<TSource, TResult> : ExpressionVisitor
 {
-    private readonly Type _source;
-    private readonly Type _result;
+    private static FindSelect<TSource, TResult>? _instance;
+    private static MethodInfo? _selectMethod;
 
-    public FindSelect(Type source, Type result)
-    {
-        _source = source;
-        _result = result;
-    }
-
-    private MethodInfo? _selectMethod;
+    public static ExpressionVisitor Instance => _instance ??= new();
 
 
     protected override Expression VisitMethodCall(MethodCallExpression node)
     {
-        if (_source == _result)
-        {
-            return node;
-        }
-
         if (node.Arguments.ElementAtOrDefault(0) is not Expression parent)
         {
             return node;
         }
 
-        _selectMethod ??= QueryableMethods.Select.MakeGenericMethod(_source, _result);
+        _selectMethod ??= QueryableMethods.Select.MakeGenericMethod(typeof(TSource), typeof(TResult));
 
         if (node.Method == _selectMethod && node.Arguments.Count == 2)
         {
@@ -53,35 +42,24 @@ internal class FindSelect : ExpressionVisitor
 }
 
 
-internal class RemoveSelect : ExpressionVisitor
+internal class RemoveSelect<TSource, TResult> : ExpressionVisitor
 {
-    private readonly Type _source;
-    private readonly Type _result;
+    private static RemoveSelect<TSource, TResult>? _instance;
+    private static MethodInfo? _selectMethod;
 
-    public RemoveSelect(Type source, Type result)
-    {
-        _source = source;
-        _result = result;
-    }
+    public static ExpressionVisitor Instance => _instance ??= new();
 
-    private MethodInfo? _selectMethod;
 
     protected override Expression VisitMethodCall(MethodCallExpression node)
     {
-        if (_source == _result)
-        {
-            return node;
-        }
-
         if (node.Arguments.ElementAtOrDefault(0) is not Expression parent)
         {
             return node;
         }
 
-        _selectMethod ??= QueryableMethods.Select.MakeGenericMethod(_source, _result);
+        _selectMethod ??= QueryableMethods.Select.MakeGenericMethod(typeof(TSource), typeof(TResult));
 
-        var method = node.Method;
-        if (method.IsGenericMethod && method == _selectMethod)
+        if (node.Method == _selectMethod)
         {
             return parent;
         }
@@ -91,22 +69,27 @@ internal class RemoveSelect : ExpressionVisitor
 }
 
 
+internal record SelectResult<TSource, TResult>(
+    IQueryable<TSource> Query,
+    Expression<Func<TSource, TResult>> Selector);
+
+
 internal static class SelectQueries
 {
-    internal readonly record struct SelectQuery<TSource, TResult>(
-        IQueryable<TSource>? Query,
-        Expression<Func<TSource, TResult>>? Selector);
-
-
-    internal static SelectQuery<TSource, TResult> GetSelectQuery<TSource, TResult>(IQueryable<TResult> source)
+    internal static SelectResult<TSource, TResult> GetSelectQuery<TSource, TResult>(IQueryable<TResult> source)
     {
-        var removeSelect = new RemoveSelect(typeof(TSource), typeof(TResult))
-            .Visit(source.Expression);
+        var removeSelect = RemoveSelect<TSource, TResult>.Instance.Visit(source.Expression);
 
         var query = source.Provider.CreateQuery<TSource>(removeSelect);
 
-        var selector = new FindSelect(typeof(TSource), typeof(TResult))
-            .Visit(source.Expression) as Expression<Func<TSource, TResult>>;
+        var selector = FindSelect<TSource, TResult>.Instance.Visit(source.Expression)
+            as Expression<Func<TSource, TResult>>;
+
+        if (selector is null)
+        {
+            throw new InvalidOperationException(
+                $"Select from {typeof(TSource).Name} to {typeof(TResult).Name} could not be found");
+        }
 
         return new (query, selector);
     }
@@ -131,5 +114,120 @@ internal class FindRootQuery : ExpressionVisitor
         }
 
         return Visit(parent);
+    }
+}
+
+
+internal class InsertTakeVisitor<TEntity> : ExpressionVisitor
+{
+    private readonly int _count;
+    private InsertReverseTakeVisitor? _reverseTake;
+
+    public InsertTakeVisitor(int count)
+    {
+        _count = count;
+    }
+
+    protected override Expression VisitMethodCall(MethodCallExpression node)
+    {
+        bool correctEntity = node.Method.GetGenericArguments()
+            is var generics
+            && generics.Length == 1 
+            && generics[0] == typeof(TEntity);
+
+        if (!correctEntity && node.Arguments.ElementAtOrDefault(0)
+            is Expression parent)
+        {
+            var visitedParent = Visit(parent);
+
+            return node.Update(
+                node.Object,
+                node.Arguments
+                    .Skip(1)
+                    .Prepend(visitedParent));
+        }
+
+        _reverseTake ??= new(_count);
+
+        if (correctEntity && _reverseTake.Visit(node) is MethodCallExpression inserted)
+        {
+            return inserted;
+        }
+
+        if (correctEntity)
+        {
+            return Expression.Call(
+                null,
+                QueryableMethods.Take.MakeGenericMethod(typeof(TEntity)),
+                node,
+                Expression.Constant(_count));
+        }
+
+        return node;
+    }
+    
+
+    private class InsertReverseTakeVisitor : ExpressionVisitor
+    {
+        private readonly int _count;
+        public InsertReverseTakeVisitor(int count)
+        {
+            _count = count;
+        }
+
+        protected override Expression VisitMethodCall(MethodCallExpression node)
+        {
+            if (node.Arguments.ElementAtOrDefault(0) is not Expression parent)
+            {
+                return ExpressionConstants.Null;
+            }
+
+            if (node.Method == QueryableMethods.Reverse.MakeGenericMethod(typeof(TEntity))
+                && FindSecondReverseVisitor.Instance.Visit(node) is ConstantExpression second
+                && second.Value is null)
+            {
+                var take = Expression.Call(
+                    null,
+                    QueryableMethods.Take.MakeGenericMethod(typeof(TEntity)),
+                    parent,
+                    Expression.Constant(_count));
+
+                return node.Update(
+                    node.Object,
+                    node.Arguments
+                        .Skip(1)
+                        .Prepend(take));
+            }
+
+            return Visit(parent);
+        }
+    }
+
+
+    private class FindSecondReverseVisitor : ExpressionVisitor
+    {
+        private static FindSecondReverseVisitor? _instance;
+        public static ExpressionVisitor Instance => _instance ??= new();
+
+        protected override Expression VisitMethodCall(MethodCallExpression node)
+        {
+            if (node.Arguments.ElementAtOrDefault(0) is not Expression parent)
+            {
+                return node;
+            }
+
+            if (node.Method == QueryableMethods.Reverse.MakeGenericMethod(typeof(TEntity)))
+            {
+                return ExpressionConstants.Null;
+            }
+
+            if (node.Method.IsGenericMethod
+                && node.Method.GetGenericArguments()[0] == typeof(TEntity))
+            {
+                return Visit(parent);
+            }
+
+            return node;
+        }
     }
 }

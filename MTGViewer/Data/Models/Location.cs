@@ -55,6 +55,8 @@ public class Deck : Owned
     public string OwnerId { get; init; } = default!;
     public UserRef Owner { get; init; } = default!;
 
+    public Color Color { get; set; }
+
 
     [Display(Name = "Give Backs")]
     public List<GiveBack> GiveBacks { get; init; } = new();
@@ -66,22 +68,6 @@ public class Deck : Owned
 
     [Display(Name = "Trades From")]
     public List<Trade> TradesFrom { get; init; } = new();
-
-
-    public Color Color { get; private set; }
-
-    public void UpdateColors()
-    {
-        var amountColors = Cards
-            .Select(a => a.Card.Color);
-
-        var wantColors = Wants
-            .Select(w => w.Card.Color);
-
-        Color = amountColors
-            .Concat(wantColors)
-            .Aggregate(Color.None, (color, card) => color | card);
-    }
 }
 
 

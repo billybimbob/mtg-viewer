@@ -1,9 +1,10 @@
+using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 
 namespace MTGViewer.Services;
 
-internal enum DatabaseContext
+public enum DatabaseContext
 {
     Card,
     User
@@ -21,32 +22,41 @@ public sealed class DatabaseOptions
     public string? CardRedirect { get; set; }
     public string? UserRedirect { get; set; }
 
+    private IConfiguration? Configuration { get; init; }
 
     public static DatabaseOptions Bind(IConfiguration configuration)
     {
-        var options = new DatabaseOptions();
+        var options = new DatabaseOptions
+        {
+            Configuration = configuration
+        };
 
         configuration.GetSection(nameof(DatabaseOptions)).Bind(options);
 
         return options;
     }
 
-    internal string GetConnectionString(IConfiguration configuration, DatabaseContext context)
+    public string GetConnectionString(DatabaseContext context)
     {
+        if (Configuration is null)
+        {
+            throw new InvalidOperationException("Configuration is missing");
+        }
+
         if (context is DatabaseContext.Card && CardRedirect is null)
         {
-            return configuration.GetConnectionString(Provider ?? Sqlite);
+            return Configuration.GetConnectionString(Provider ?? Sqlite);
         }
 
         if (context is DatabaseContext.User && CardRedirect is null && UserRedirect is null)
         {
-            return configuration.GetConnectionString(Provider ?? Sqlite);
+            return Configuration.GetConnectionString(Provider ?? Sqlite);
         }
 
         string? redirect = context is DatabaseContext.Card
             ? CardRedirect
             : UserRedirect ?? CardRedirect;
 
-        return configuration[redirect];
+        return Configuration[redirect];
     }
 }

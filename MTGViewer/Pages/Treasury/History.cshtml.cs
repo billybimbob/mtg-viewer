@@ -67,8 +67,9 @@ public class HistoryModel : PageModel
     {
         var changes = await ChangesForHistory()
             .SeekBy(_pageSize, backtrack)
-            .WithOrigin<Change>()
             .WithKey(seek)
+            .WithSource<Change>()
+            // .WithOriginAsSource()
             .ToSeekListAsync(cancel);
 
         _transactionCount = changes

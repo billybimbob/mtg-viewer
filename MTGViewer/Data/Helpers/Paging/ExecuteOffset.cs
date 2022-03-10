@@ -10,7 +10,7 @@ using Microsoft.EntityFrameworkCore.Query;
 namespace System.Paging.Query;
 
 
-internal static class OffsetExecute<TEntity>
+internal static class ExecuteOffset<TEntity>
 {
     private static GetPageInfoVisitor? _getPageInfo;
     private static ExpressionVisitor GetPageInfo => _getPageInfo ??= new();

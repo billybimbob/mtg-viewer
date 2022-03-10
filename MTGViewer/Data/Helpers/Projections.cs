@@ -176,3 +176,11 @@ public record LocationPreview
     public string Name { get; init; } = default!;
     internal LocationType Type { get; init; }
 }
+
+
+public class DeckColors
+{
+    public int Id { get; init; }
+    public IEnumerable<Color> CardColors { get; init; } = Enumerable.Empty<Color>();
+    public IEnumerable<Color> WantColors { get; init; } = Enumerable.Empty<Color>();
+}

@@ -5,8 +5,6 @@ using EntityFrameworkCore.Triggered;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
-using MTGViewer.Services;
-
 namespace MTGViewer.Data.Triggers;
 
 public class ImmutableCard : IBeforeSaveTrigger<Card>
@@ -14,10 +12,7 @@ public class ImmutableCard : IBeforeSaveTrigger<Card>
     private readonly CardDbContext _dbContext;
     private readonly ILogger<ImmutableCard> _logger;
 
-    public ImmutableCard(
-        CardDbContext dbContext,
-        PageSizes pageSizes,
-        ILogger<ImmutableCard> logger)
+    public ImmutableCard(CardDbContext dbContext, ILogger<ImmutableCard> logger)
     {
         _dbContext = dbContext;
         _logger = logger;

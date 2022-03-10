@@ -154,7 +154,6 @@ public partial class Home : ComponentBase, IDisposable
 
 
 
-
     private class RandomCardsContext
     {
         private readonly List<CardImage> _cards;
@@ -270,7 +269,9 @@ public partial class Home : ComponentBase, IDisposable
         int limit,
         CancellationToken cancel)
     {
-        return RecentTransactions(dbContext, limit).ToListAsync(cancel);
+        return RecentTransactions
+            .Invoke(dbContext, limit)
+            .ToListAsync(cancel);
     }
 
 

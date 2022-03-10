@@ -10,12 +10,12 @@ namespace System.Paging.Query;
 
 internal class FindByIdVisitor : ExpressionVisitor
 {
-    private readonly FindIncludeVisitor _findInclude;
+    private readonly FindIncludeVisitor? _findInclude;
     private readonly HashSet<string> _include;
 
-    public FindByIdVisitor(QueryRootExpression root)
+    public FindByIdVisitor(QueryRootExpression? root = null)
     {
-        _findInclude = new(root);
+        _findInclude = root is null ? null : new(root);
         _include = new();
     }
 
@@ -50,7 +50,7 @@ internal class FindByIdVisitor : ExpressionVisitor
                 node.Arguments.Skip(1).Prepend(visitedParent));
         }
 
-        if (_findInclude.Visit(node) is ConstantExpression constant
+        if (_findInclude?.Visit(node) is ConstantExpression constant
             && constant.Value is string includeChain)
         {
             const StringComparison ordinal = StringComparison.Ordinal;

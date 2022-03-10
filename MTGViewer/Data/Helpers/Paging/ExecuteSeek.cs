@@ -9,7 +9,7 @@ using Microsoft.EntityFrameworkCore.Query;
 
 namespace System.Paging.Query;
 
-internal static class SeekExecute<TEntity> where TEntity : class
+internal static class ExecuteSeek<TEntity> where TEntity : class
 {
     public static async Task<SeekList<TEntity>> ToSeekListAsync(
         IQueryable<TEntity> query,

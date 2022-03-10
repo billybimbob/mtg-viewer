@@ -197,7 +197,5 @@ public class ExchangeModel : PageModel
                 (_, trade) => trade);
 
         _dbContext.Trades.RemoveRange(emptyTrades);
-
-        deck.UpdateColors();
     }
 }
