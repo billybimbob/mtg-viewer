@@ -69,8 +69,8 @@ public sealed class MtgApiQuery : IMTGQuery
     {
         if (PredicateConverter.Visit(predicate) is MethodCallExpression call
             && call.Method == QueryMethod
-            && call.Arguments.ElementAtOrDefault(1) is ConstantExpression property
-            && call.Arguments.ElementAtOrDefault(2) is ConstantExpression arg
+            && call.Arguments[1] is ConstantExpression property
+            && call.Arguments[2] is ConstantExpression arg
             && property.Value is string propertyName)
         {
             QueryProperty(parameters, propertyName, arg.Value);

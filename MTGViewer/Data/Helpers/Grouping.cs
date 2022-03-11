@@ -270,6 +270,33 @@ public class QuantityGroup : IEnumerable<Quantity>
         }
     }
 
+    public TQuantity? GetQuantity<TQuantity>()
+        where TQuantity : Quantity
+    {
+        return Amount as TQuantity
+            ?? Want as TQuantity
+            ?? GiveBack as TQuantity;
+    }
+
+    public void AddQuantity<TQuantity>(TQuantity quantity)
+        where TQuantity : Quantity
+    {
+        switch (quantity)
+        {
+            case Amount amount:
+                Amount = amount;
+                break;
+
+            case Want want:
+                Want = want;
+                break;
+
+            case GiveBack giveBack:
+                GiveBack = giveBack;
+                break;
+        }
+    }
+
 
     private void CheckGroup()
     {
@@ -473,15 +500,6 @@ public class QuantityNameGroup : IEnumerable<QuantityGroup>
     public IEnumerator<QuantityGroup> GetEnumerator() =>
         _quantityGroups.GetEnumerator();
 }
-
-
-
-public record Transfer(
-    Transaction Transaction,
-    Location To,
-    Location? From,
-    IReadOnlyList<Change> Changes);
-
 
 
 /// <summary>Group of trades with either the same To or From deck</summary>

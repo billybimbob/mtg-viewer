@@ -8,11 +8,10 @@ namespace System.Paging.Query;
 
 public sealed class OriginTranslator<TOrigin, TEntity>
 {
-    private readonly Dictionary<MemberExpression, Expression> _translations;
-    private readonly Dictionary<MemberExpression, bool> _nulls;
+    private const StringComparison Ordinal = StringComparison.Ordinal;
 
-    private readonly Dictionary<MemberExpression, bool> _isNullable;
-    private readonly NullabilityInfoContext _nullability;
+    private readonly Dictionary<MemberExpression, MemberExpression> _translations;
+    private readonly Dictionary<MemberExpression, bool> _nulls;
 
     private readonly ConstantExpression _origin;
     private readonly MemberExpression? _selector;
@@ -24,53 +23,32 @@ public sealed class OriginTranslator<TOrigin, TEntity>
         _translations = new(ExpressionEqualityComparer.Instance);
         _nulls = new(ExpressionEqualityComparer.Instance);
 
-        _isNullable = new(ExpressionEqualityComparer.Instance);
-        _nullability = new();
-
         var visitSelect = SelectorVisitor.Instance.Visit(selector);
 
         _origin = Expression.Constant(origin);
+
         _selector = visitSelect as MemberExpression;
         _projection = visitSelect as MemberInitExpression;
     }
 
 
-    public Expression Translate(MemberExpression member)
+    public MemberExpression? Translate(MemberExpression member)
     {
-        if (IsChainNull(member))
+        if (IsNull(member))
         {
-            return ExpressionConstants.Null;
+            return null;
         }
 
         if (!_translations.TryGetValue(member, out var translation))
         {
-            throw new ArgumentException(nameof(member));
+            return null;
         }
 
         return translation;
     }
 
 
-    public bool IsNonNull(MemberExpression member)
-    {
-        if (_isNullable.TryGetValue(member, out bool nullable))
-        {
-            return nullable;
-        }
-
-        if (member.Member is not PropertyInfo property)
-        {
-            return false;
-        }
-
-        var nullInfo = _nullability.Create(property);
-
-        return _isNullable[member] = nullInfo.ReadState
-            is NullabilityState.NotNull;
-    }
-
-
-    public bool IsChainNull(MemberExpression member)
+    private bool IsNull(MemberExpression member)
     {
         if (_nulls.TryGetValue(member, out bool isNull))
         {
@@ -97,6 +75,43 @@ public sealed class OriginTranslator<TOrigin, TEntity>
         }
 
         return _nulls[member] = reference is null;
+    }
+
+
+    public bool IsParentNull(MemberExpression member)
+    {
+        var chain = member.Expression as MemberExpression;
+        if (chain is null)
+        {
+            return false;
+        }
+
+        if (_nulls.TryGetValue(chain, out bool isNull))
+        {
+            return isNull;
+        }
+
+        if (!_translations.TryGetValue(member, out var translation))
+        {
+            return true;
+        }
+
+        using var e = ExpressionHelpers
+            .GetLineage(translation as MemberExpression)
+            .Skip(1)
+            .Reverse()
+            .GetEnumerator();
+
+        var reference = _origin.Value;
+
+        while (reference is not null
+            && e.MoveNext()
+            && e.Current.Member is PropertyInfo originProperty)
+        {
+            reference = originProperty.GetValue(reference);
+        }
+
+        return _nulls[chain] = reference is null;
     }
 
 
@@ -133,53 +148,100 @@ public sealed class OriginTranslator<TOrigin, TEntity>
             return false;
         }
 
-        var registration = new Registration(member);
+        int target = ExpressionHelpers
+            .GetLineage(member)
+            .Count();
 
-        if (registration.Count == 0)
+        if (target == 0)
         {
             return false;
         }
 
-        return TryAddFromMemberInit(registration, 0, _origin, _projection);
+        var registration = new Registration(member);
+
+        var translation = new Translation(_origin, target);
+
+        return TryAddFromMemberInit(registration, translation, _projection);
     }
 
 
-    private record Registration
+    private class Registration
     {
         public MemberExpression Expression { get; }
-        public int Count { get; }
         public string LineageName { get; }
 
         public Registration(MemberExpression member)
         {
             Expression = member;
+            LineageName = ExpressionHelpers.GetLineageName(member);
+        }
+    }
 
-            Count = ExpressionHelpers
-                .GetLineage(member)
-                .Count();
 
-            LineageName = ExpressionHelpers
-                .GetLineageName(member);
+    private readonly struct Translation
+    {
+        public Expression? Expression { get; }
+        public int Progress { get; }
+        public int Target { get; }
+
+        public bool IsFinished => Progress == Target;
+
+        public Translation(Expression expression, int target)
+        {
+            Expression = expression;
+            Target = target;
+            Progress = 0;
+        }
+
+        private Translation(Expression expression, int target, int progress)
+            : this(expression, target)
+        {
+            Progress = progress;
+        }
+
+        public Translation MakeAccess(MemberInfo member)
+        {
+            var access = Expression.MakeMemberAccess(Expression, member);
+
+            return new Translation(access, Target, Progress + 1);
+        }
+
+        public string? GetName()
+        {
+            if (Expression is not MemberExpression m)
+            {
+                return null;
+            }
+
+            return ExpressionHelpers.GetLineageName(m);
         }
     }
 
 
     private bool TryAddFromMemberInit(
         Registration registration,
-        int current,
-        Expression caller,
+        Translation translation,
         MemberInitExpression memberInit)
     {
-        if (registration.Count == current)
+        if (translation
+            is { IsFinished: true, Expression: MemberExpression m }
+            && string.Equals(
+                translation.GetName(),
+                registration.LineageName, Ordinal))
         {
-            _translations.Add(registration.Expression, caller);
+            _translations.Add(registration.Expression, m);
             return true;
+        }
+
+        if (translation.IsFinished)
+        {
+            return false;
         }
 
         foreach (var binding in memberInit.Bindings)
         {
             if (binding is MemberAssignment assignment
-                && TryAddFromAssignment(registration, current, caller, assignment))
+                && TryAddFromAssignment(registration, translation, assignment))
             {
                 return true;
             }
@@ -191,35 +253,30 @@ public sealed class OriginTranslator<TOrigin, TEntity>
 
     private bool TryAddFromAssignment(
         Registration registration,
-        int current,
-        Expression caller,
+        Translation translation,
         MemberAssignment assignment)
     {
-        var access = Expression.MakeMemberAccess(caller, assignment.Member);
-        current++;
+        translation = translation.MakeAccess(assignment.Member);
 
         return assignment.Expression switch
         {
-            MemberExpression => TryAddFromMember(registration, current, access),
-            MemberInitExpression i => TryAddFromMemberInit(registration, current, access, i), 
-            ConditionalExpression c => TryAddFromConditional(registration, current, access, c),
+            MemberExpression => TryAddFromMember(registration, translation),
+            MemberInitExpression i => TryAddFromMemberInit(registration, translation, i), 
+            ConditionalExpression c => TryAddFromConditional(registration, translation, c),
             _ => false
         };
     }
 
 
-    private bool TryAddFromMember(
-        Registration registration,
-        int current,
-        MemberExpression caller)
+    private bool TryAddFromMember(Registration registration, Translation translation)
     {
-        const StringComparison ordinal = StringComparison.Ordinal;
-
-        string callerLineage = ExpressionHelpers.GetLineageName(caller);
-
-        if (callerLineage.Equals(registration.LineageName, ordinal))
+        if (translation.Expression
+            is MemberExpression m
+            && string.Equals(
+                translation.GetName(),
+                registration.LineageName, Ordinal))
         {
-            _translations.Add(registration.Expression, caller);
+            _translations.Add(registration.Expression, m);
 
             return true;
         }
@@ -230,24 +287,23 @@ public sealed class OriginTranslator<TOrigin, TEntity>
 
     private bool TryAddFromConditional(
         Registration registration,
-        int current,
-        MemberExpression caller,
+        Translation translation,
         ConditionalExpression condition)
     {
         if (condition.IfTrue is MemberInitExpression trueInit)
         {
-            return TryAddFromMemberInit(registration, current, caller, trueInit);
+            return TryAddFromMemberInit(registration, translation, trueInit);
         }
 
         if (condition.IfFalse is MemberInitExpression falseInit)
         {
-            return TryAddFromMemberInit(registration, current, caller, falseInit);
+            return TryAddFromMemberInit(registration, translation, falseInit);
         }
 
         if (condition.IfTrue is MemberExpression
             || condition.IfFalse is MemberExpression)
         {
-            return TryAddFromMember(registration, current, caller);
+            return TryAddFromMember(registration, translation);
         }
 
         return false;

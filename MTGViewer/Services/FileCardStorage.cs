@@ -70,7 +70,9 @@ public class FileCardStorage
 
         var utf8Stream = new MemoryStream();
 
-        await JsonSerializer.SerializeAsync(utf8Stream, stream, serializeOptions, cancel);
+        var data = await CardData.FromStreamAsync(stream, cancel);
+
+        await JsonSerializer.SerializeAsync(utf8Stream, data, serializeOptions, cancel);
 
         utf8Stream.Position = 0;
 

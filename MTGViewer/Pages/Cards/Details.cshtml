@@ -109,10 +109,10 @@
             @if (Model.Card.Flip is not null)
             {
                 <dt class="col-md-3 col-5">
-                    @Html.DisplayNameFor(m => m.Card.ManaValue)
+                    @Html.DisplayNameFor(m => m.Card.Flip!.ManaValue)
                 </dt>
                 <dd class="col-md-9 col-7">
-                    @(Model.Card.Flip.Cmc?.ToString() ?? "--")
+                    @(Model.Card.Flip.ManaValue?.ToString() ?? "--")
                 </dd>
 
                 <dt class="col-md-3 col-5">
@@ -123,28 +123,28 @@
                 </dd>
 
                 <dt class="col-md-3 col-5">
-                    @Html.DisplayNameFor(m => m.Card.Power)
+                    @Html.DisplayNameFor(m => m.Card.Flip!.Power)
                 </dt>
                 <dd class="col-md-9 col-7">
                     @(Model.Card.Flip.Power ?? "--")
                 </dd>
 
                 <dt class="col-md-3 col-5">
-                    @Html.DisplayNameFor(m => m.Card.Toughness)
+                    @Html.DisplayNameFor(m => m.Card.Flip!.Toughness)
                 </dt>
                 <dd class="col-md-9 col-7">
                     @(Model.Card.Flip.Toughness ?? "--")
                 </dd>
 
                 <dt class="col-md-3 col-5">
-                    @Html.DisplayNameFor(m => m.Card.Loyalty)
+                    @Html.DisplayNameFor(m => m.Card.Flip!.Loyalty)
                 </dt>
                 <dd class="col-md-9 col-7">
                     @(Model.Card.Flip.Loyalty ?? "--")
                 </dd>
 
                 <dt class="col-md-3 col-5">
-                    @Html.DisplayNameFor(m => m.Card.Artist)
+                    @Html.DisplayNameFor(m => m.Card.Flip!.Artist)
                 </dt>
                 <dd class="col-md-9 col-7">
                     @Model.Card.Flip.Artist

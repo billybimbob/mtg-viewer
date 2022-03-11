@@ -7,13 +7,12 @@ namespace MTGViewer.Filters;
 
 public class OperationCancelledFilter : ExceptionFilterAttribute
 {
-    private readonly ILogger _logger;
+    private readonly ILogger<OperationCancelledFilter> _logger;
 
-    public OperationCancelledFilter(ILoggerFactory loggerFactory)
+    public OperationCancelledFilter(ILogger<OperationCancelledFilter> logger)
     {
-        _logger = loggerFactory.CreateLogger<OperationCancelledFilter>();
+        _logger = logger;
     }
-
 
     public override void OnException(ExceptionContext context)
     {

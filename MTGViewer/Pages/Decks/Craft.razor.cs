@@ -674,7 +674,7 @@ public partial class Craft : OwningComponentBase
             {
                 if (value < 0
                     || value == _pageIndex
-                    || value >= Offset().Total)
+                    || value >= GetOffset().Total)
                 {
                     return;
                 }
@@ -712,7 +712,7 @@ public partial class Craft : OwningComponentBase
             _groups.Values.Where(qg => qg.Total > 0);
 
 
-        public Offset Offset()
+        public Offset GetOffset()
         {
             int totalActive = ActiveCards().Count();
 
@@ -798,7 +798,7 @@ public partial class Craft : OwningComponentBase
                 return false;
             }
 
-            quantity = GetQuantity<TQuantity>(group)!;
+            quantity = group.GetQuantity<TQuantity>()!;
 
             return quantity != null;
         }
@@ -815,7 +815,7 @@ public partial class Craft : OwningComponentBase
                 return;
             }
 
-            if (GetQuantity<TQuantity>(group) is not null)
+            if (group.GetQuantity<TQuantity>() is not null)
             {
                 return;
             }
@@ -823,32 +823,22 @@ public partial class Craft : OwningComponentBase
             switch (quantity)
             {
                 case Amount amount:
-                    group.Amount = amount;
                     Deck.Cards.Add(amount);
                     break;
 
                 case Want want:
-                    group.Want = want;
                     Deck.Wants.Add(want);
                     break;
 
                 case GiveBack giveBack:
-                    group.GiveBack = giveBack;
                     Deck.GiveBacks.Add(giveBack);
                     break;
 
                 default:
                     throw new ArgumentException(nameof(quantity));
             }
-        }
 
-
-        private TQuantity? GetQuantity<TQuantity>(QuantityGroup group)
-            where TQuantity : Quantity
-        {
-            return group.Amount as TQuantity
-                ?? group.Want as TQuantity
-                ?? group.GiveBack as TQuantity;
+            group.AddQuantity(quantity);
         }
 
 

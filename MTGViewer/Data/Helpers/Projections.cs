@@ -6,7 +6,7 @@ using MTGViewer.Data.Internal;
 namespace MTGViewer.Data;
 
 
-public record CardImage
+public sealed record CardImage
 {
     public string Id { get; init; } = default!;
     public string Name { get; init; } = default!;
@@ -14,7 +14,7 @@ public record CardImage
 }
 
 
-public record CardPreview
+public sealed record CardPreview
 {
     public string Id { get; init; } = default!;
     public string Name { get; init; } = default!;
@@ -28,10 +28,10 @@ public record CardPreview
 }
 
 
-public record CardTotal(Card Card, int Total);
+public sealed record CardTotal(Card Card, int Total);
 
 
-public class RecentTransaction
+public sealed class RecentTransaction
 {
     public DateTime AppliedAt { get; init; }
     public IEnumerable<RecentChange> Changes { get; init; } = Enumerable.Empty<RecentChange>();
@@ -39,7 +39,7 @@ public class RecentTransaction
 }
 
 
-public record RecentChange
+public sealed record RecentChange
 {
     public bool ToStorage { get; init; }
     public bool FromStorage { get; init; }
@@ -56,7 +56,7 @@ public enum BuildState
 }
 
 
-public record DeckPreview
+public sealed record DeckPreview
 {
     public int Id { get; init; }
     public string Name { get; init; } = default!;
@@ -77,7 +77,7 @@ public record DeckPreview
 
 
 
-public record DeckTradePreview
+public sealed record DeckTradePreview
 {
     public int Id { get; init; }
     public string Name { get; init; } = default!;
@@ -89,7 +89,7 @@ public record DeckTradePreview
 }
 
 
-public record SuggestionPreview
+public sealed record SuggestionPreview
 {
     public int Id { get; init; }
     public DateTime SentAt { get; init; }
@@ -104,7 +104,7 @@ public record SuggestionPreview
 
 
 
-public class BinPreview
+public sealed class BinPreview
 {
     public int Id { get; init; }
     public string Name { get; init; } = default!;
@@ -112,7 +112,7 @@ public class BinPreview
 }
 
 
-public class BoxPreview
+public sealed class BoxPreview
 {
     public int Id { get; init; }
     public string Name { get; init; } = default!;
@@ -129,7 +129,7 @@ public class BoxPreview
 }
 
 
-public record BoxCard
+public sealed record BoxCard
 {
     public string CardId { get; init; } = default!;
     public string CardName { get; init; } = default!;
@@ -142,14 +142,32 @@ public record BoxCard
 
 
 
-public record TransferPreview(
+public sealed record TransferPreview(
     TransactionPreview Transaction,
     LocationPreview To,
     LocationPreview? From,
-    IReadOnlyList<ChangePreview> Changes);
+    IReadOnlyList<ChangePreview> Changes)
+{
+    public bool Equals(TransferPreview? transfer)
+    {
+        return transfer is var (transaction, to, from, changes)
+            && transaction == Transaction
+            && to == To
+            && from == From
+            && changes.SequenceEqual(Changes);
+    }
+
+    public override int GetHashCode()
+    {
+        return Transaction.GetHashCode()
+            ^ To.GetHashCode()
+            ^ From?.GetHashCode() ?? 0
+            ^ Changes.Aggregate(0, (hash, c) => hash ^ c.GetHashCode());
+    }
+}
 
 
-public record TransactionPreview
+public sealed record TransactionPreview
 {
     public int Id { get; init; }
     public DateTime AppliedAt { get; init; }
@@ -157,7 +175,7 @@ public record TransactionPreview
 }
 
 
-public class ChangePreview
+public sealed record ChangePreview
 {
     public int Id { get; init; }
     public int Amount { get; init; }
@@ -170,7 +188,7 @@ public class ChangePreview
 }
 
 
-public record LocationPreview
+public sealed record LocationPreview
 {
     public int Id { get; init; }
     public string Name { get; init; } = default!;
@@ -178,7 +196,7 @@ public record LocationPreview
 }
 
 
-public class DeckColors
+public sealed class DeckColors
 {
     public int Id { get; init; }
     public IEnumerable<Color> CardColors { get; init; } = Enumerable.Empty<Color>();

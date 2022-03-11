@@ -218,7 +218,7 @@ public sealed class MtgApiFlipQuery
         {
             MultiverseId = iFlip.MultiverseId,
             ManaCost = iFlip.ManaCost,
-            Cmc = iFlip.Cmc,
+            ManaValue = iFlip.Cmc,
 
             Type = iFlip.Type,
             Text = iFlip.Text,

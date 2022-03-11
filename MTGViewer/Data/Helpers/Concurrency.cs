@@ -14,7 +14,7 @@ namespace MTGViewer.Data.Concurrency;
 public abstract class Concurrent
 {
     [ConcurrencyCheck]
-    internal Guid LiteToken { get; set; } = Guid.NewGuid();
+    internal Guid LiteToken { get; set; }
 
     [Timestamp]
     internal byte[] SqlToken { get; set; } = Array.Empty<byte>();

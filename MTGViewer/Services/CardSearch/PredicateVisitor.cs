@@ -1,15 +1,13 @@
 using System.Collections.Generic;
-using System.Linq;
 using System.Linq.Expressions;
-using Microsoft.EntityFrameworkCore.Query;
+using System.Reflection;
 
 namespace MTGViewer.Services;
 
 internal class PredicateVisitor : ExpressionVisitor
 {
     private Expression _parent;
-    private ParameterExpression? _parameter;
-    private Dictionary<string, Expression> _propertyNames;
+    private Dictionary<string, ConstantExpression> _propertyNames;
 
     public PredicateVisitor(MtgApiQuery parent)
     {
@@ -25,90 +23,36 @@ internal class PredicateVisitor : ExpressionVisitor
                 ExpressionConstants.Null,
                 typeof(IDictionary<,>).MakeGenericType(typeof(string), typeof(IMtgParameter)));
 
-
-
-    protected override Expression VisitParameter(ParameterExpression node)
-    {
-        if (node.Type == typeof(CardQuery))
-        {
-            return node;
-        }
-
-        return Expression.Empty();
-    }
+    private AllPredicateVisitor? _allVisitor;
+    private ExpressionVisitor AllPredicate => _allVisitor ??= new(_propertyNames);
 
 
     protected override Expression VisitLambda<T>(Expression<T> node)
     {
-        if (Visit(node.Parameters.ElementAtOrDefault(0)) is ParameterExpression p)
-        {
-            _parameter = p;
-        }
-
         return Visit(node.Body);
-    }
-
-
-    protected override Expression VisitConstant(ConstantExpression node)
-    {
-        if (node.Type == typeof(object))
-        {
-            return node;
-        }
-
-        return Expression.Constant(node.Value, typeof(object));
-    }
-
-
-    protected override Expression VisitUnary(UnaryExpression node)
-    {
-        if (node.Operand is not LambdaExpression lambda)
-        {
-            var operand = Visit(node.Operand);
-
-            if (operand is DefaultExpression
-                || operand is ConstantExpression && operand.Type == typeof(string))
-            {
-                return operand;
-            }
-
-            lambda = Expression.Lambda(node.Operand);
-        }
-
-        var value = lambda
-            .Compile()
-            .DynamicInvoke();
-
-        return Expression.Constant(value, typeof(object));
-    }
-
-
-    protected override Expression VisitDefault(DefaultExpression node)
-    {
-        return ExpressionConstants.Null;
     }
 
 
     protected override Expression VisitMember(MemberExpression node)
     {
-        return Visit(node.Expression) switch
+        return (Visit(node.Expression), node.Member) switch
         {
-            ParameterExpression p when p == _parameter => GetOrCreateProperty(node),
+            (ParameterExpression, _) => GetOrCreatePropertyName(node),
 
-            ConstantExpression c when c.Type == typeof(string) =>
-                Expression.Constant($"{c.Value}.{node.Member.Name}"),
+            (ConstantExpression { Value: object o }, PropertyInfo info) =>
+                Expression.Constant(
+                    info.GetValue(o), typeof(object)),
 
-            ConstantExpression
-                or UnaryExpression => Expression.Quote(Expression.Lambda(node)),
-
-            DefaultExpression d => d,
+            (ConstantExpression { Value: object o }, FieldInfo info) =>
+                Expression.Constant(
+                    info.GetValue(o), typeof(object)),
 
             _ => node
         };
     }
 
 
-    private Expression GetOrCreateProperty(MemberExpression property)
+    private ConstantExpression GetOrCreatePropertyName(MemberExpression property)
     {
         string propertyName = property.Member.Name;
 
@@ -121,11 +65,44 @@ internal class PredicateVisitor : ExpressionVisitor
     }
 
 
+    protected override Expression VisitParameter(ParameterExpression node)
+    {
+        if (node.Type == typeof(CardQuery))
+        {
+            return node;
+        }
+
+        return ExpressionConstants.Null;
+    }
+
+
+    protected override Expression VisitUnary(UnaryExpression node)
+    {
+        if (node.NodeType is ExpressionType.Convert)
+        {
+            return Visit(node.Operand);
+        }
+
+        return node;
+    }
+
+
+    protected override Expression VisitConstant(ConstantExpression node)
+    {
+        return Expression.Constant(node.Value, typeof(object));
+    }
+
+
     protected override Expression VisitBinary(BinaryExpression node)
     {
         if (node.NodeType is ExpressionType.Coalesce)
         {
-            return Expression.Quote(Expression.Lambda(node));
+            var eval = Expression
+                .Lambda(node)
+                .Compile()
+                .DynamicInvoke();
+
+            return Expression.Constant(eval, typeof(object));
         }
 
         if (node.NodeType is not ExpressionType.Equal)
@@ -138,66 +115,138 @@ internal class PredicateVisitor : ExpressionVisitor
 
         // only the card query will have a non-object constant
 
-        if (left is ConstantExpression lProperty && lProperty.Type == typeof(string))
+        if (left.Type == typeof(string))
         {
-            return CallQuery(lProperty, right);
+            return CallQuery(left, right);
         }
 
-        if (right is ConstantExpression rProperty && rProperty.Type == typeof(string))
+        if (right.Type == typeof(string))
         {
-            return CallQuery(rProperty, left);
+            return CallQuery(right, left);
         }
 
         return node;
     }
     
 
-    private MethodCallExpression CallQuery(ConstantExpression propertyName, Expression value)
+    private MethodCallExpression CallQuery(Expression propertyName, Expression value)
     {
         return Expression.Call(
             _parent,
             MtgApiQuery.QueryMethod,
-            NullDictionary, propertyName, Visit(value));
+            NullDictionary, propertyName, value);
     }
 
 
     protected override Expression VisitMethodCall(MethodCallExpression node)
     {
         if (node.Method == ExpressionConstants.StringContains
-            && Visit(node.Object) is ConstantExpression propertyName
-            && propertyName.Type == typeof(string))
+            && Visit(node.Object) is Expression propertyName)
         {
             return CallQuery(propertyName, Visit(node.Arguments[0]));
         }
 
-        if (node.Method == QueryableMethods.AnyWithPredicate.MakeGenericMethod(typeof(string))
-            && Visit(node.Arguments[1]) is MethodCallExpression innerQuery
-            && innerQuery.Method == MtgApiQuery.QueryMethod
-            && innerQuery.Arguments[1] is ConstantExpression innerProperty
-            && innerProperty.Type == typeof(string))
+        if (node.Method == ExpressionConstants.All.MakeGenericMethod(typeof(string)))
         {
-            return CallQuery(innerProperty, Visit(node.Arguments[0]));
-        }
+            var visitPredicate = AllPredicate.Visit(node.Arguments[1]);
 
-        var caller = Visit(node.Object);
-        var args = Visit(node.Arguments);
-
-        if (!args.OfType<DefaultExpression>().Any())
-        {
-            caller = caller switch
-            {
-                ConstantExpression c
-                    when node.Object is not null && c.Type != node.Object.Type =>
-                    Expression.Constant(c.Value, node.Object.Type),
-
-                null or UnaryExpression or _ => caller,
-            };
-
-            return Expression.Quote(
-                Expression.Lambda(
-                    Expression.Call(caller, node.Method, args)));
+            return CallQuery(visitPredicate, Visit(node.Arguments[0]));
         }
 
         return node;
+    }
+
+
+    private class AllPredicateVisitor : ExpressionVisitor
+    {
+        private Dictionary<string, ConstantExpression> _propertyNames;
+
+        public AllPredicateVisitor(Dictionary<string, ConstantExpression> propertyNames)
+        {
+            _propertyNames = propertyNames;
+        }
+
+        protected override Expression VisitLambda<T>(Expression<T> node)
+        {
+            return Visit(node.Body);
+        }
+
+
+        protected override Expression VisitMember(MemberExpression node)
+        {
+            if (Visit(node.Expression) is ParameterExpression)
+            {
+                return GetOrCreatePropertyName(node);
+            };
+
+            return node;
+        }
+
+
+        private ConstantExpression GetOrCreatePropertyName(MemberExpression property)
+        {
+            string propertyName = property.Member.Name;
+
+            if (_propertyNames.TryGetValue(propertyName, out var name))
+            {
+                return name;
+            }
+
+            return _propertyNames[propertyName] = Expression.Constant(propertyName);
+        }
+
+
+        protected override Expression VisitParameter(ParameterExpression node)
+        {
+            if (node.Type == typeof(CardQuery))
+            {
+                return node;
+            }
+
+            return ExpressionConstants.Null;
+        }
+
+
+        protected override Expression VisitUnary(UnaryExpression node)
+        {
+            if (node.NodeType is ExpressionType.Convert)
+            {
+                return Visit(node.Operand);
+            }
+
+            return node;
+        }
+
+
+        protected override Expression VisitConstant(ConstantExpression node)
+        {
+            return Expression.Constant(node.Value, typeof(object));
+        }
+
+
+        protected override Expression VisitBinary(BinaryExpression node)
+        {
+            if (node.NodeType is not ExpressionType.Equal)
+            {
+                return node;
+            }
+
+            var left = Visit(node.Left);
+            var right = Visit(node.Right);
+
+            // only the card query will have a non-object constant
+
+            if (left.Type == typeof(string))
+            {
+                return left;
+            }
+
+            if (right.Type == typeof(string))
+            {
+                return right;
+            }
+
+            return node;
+        }
     }
 }
