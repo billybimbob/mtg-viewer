@@ -112,7 +112,7 @@
                     </td>
                     <td> @card.SetName </td>
                     <td> @card.Rarity </td>
-                    <td> @card.Total </td>
+                    <td> @card.Copies </td>
 
                     <AuthorizeView Policy="@CardPolicies.ChangeTreasury">
                         <td>
@@ -137,9 +137,9 @@
     public RenderFragment Direction<T>(Expression<Func<Card, T>> property)
     {
         bool invalid = IsBusy
-            || Filters.OrderBy == null
-            || property.Body is not MemberExpression memberExpr
-            || memberExpr.Member.Name != Filters.OrderBy;
+            || Filters.OrderBy is null
+            || property is not { Body: MemberExpression { Member.Name: string name } }
+            || name != Filters.OrderBy;
 
         return Filters.IsReversed switch
         {
@@ -164,8 +164,8 @@
         {
             return string.Empty;
         }
-        else if (property.Body is MemberExpression memberExpr
-            && memberExpr.Member.Name == Filters.OrderBy)
+        else if (property is { Body: MemberExpression { Member.Name: string name }}
+            && name == Filters.OrderBy)
         {
             return "clickable btn-link font-weight-bold";
         }

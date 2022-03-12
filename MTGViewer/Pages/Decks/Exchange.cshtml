@@ -10,162 +10,112 @@
 
 @if (Model.HasPendings)
 {
-    <div class="alert alert-secondary" role="alert">
+    <section class="alert alert-secondary" role="alert">
         <h5 class="alert-heading">Proceed Below to Exchange with the Treasury</h5>
         <p>Alternatively, wanted cards can be obtained from other players</p>
 
-        <a asp-page="/Transfers/Request"
-            asp-route-id="@Model.Deck.Id"
-            class="btn btn-secondary" role="button">
-            Player Request </a>
-    </div>
+        <div class="btn-group" role="group">
+            <a asp-page="Details"
+                asp-route-id="@Model.Deck.Id"
+                class="btn btn-secondary" role="button">
+                Details </a>
+
+            <a asp-page="/Transfers/Request"
+                asp-route-id="@Model.Deck.Id"
+                class="btn btn-secondary" role="button">
+                Player Request </a>
+        </div>
+    </section>
 }
-else if (Model.Deck.Wants.Any())
+else if (Model.Deck.WantTotal > 0)
 {
     <section class="alert alert-secondary" role="alert">
         <h5 class="alert-heading">The Treasury Lacks Wanted Cards</h5>
         <p>Wanted cards can also be obtained by requesting from other players.</p>
 
-        <a asp-page="/Transfers/Request"
-            asp-route-id="@Model.Deck.Id"
-            class="btn btn-secondary" role="button">
-            Player Request </a>
+        <div class="btn-group" role="group">
+            <a asp-page="Details"
+                asp-route-id="@Model.Deck.Id"
+                class="btn btn-secondary" role="button">
+                Details </a>
+
+            <a asp-page="/Transfers/Request"
+                asp-route-id="@Model.Deck.Id"
+                class="btn btn-secondary" role="button">
+                Player Request </a>
+        </div>
     </section>
 }
 else
 {
-    <div class="alert alert-warning" role="alert">
+    <section class="alert alert-warning" role="alert">
         <h5 class="alert-heading">There are no pending changes for the deck</h5>
-    </div>
+
+        <a asp-page="Details"
+            asp-route-id="@Model.Deck.Id"
+            class="btn btn-secondary" role="button">
+            Details </a>
+    </section>
 }
 
+<div class="table-responsive-md">
+    <table class="table mt-2">
+        <thead>
+            <tr>
+                <th scope="col"> @Html.DisplayNameForInnerType((Amount ca) => ca.Card) </th>
+                <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.ManaCost) </th>
+                <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.SetName) </th>
+                <th scope="col"> Current Cards </th>
+                <th scope="col"> Wanted Cards </th>
+                <th scope="col"> Returning Cards </th>
+            </tr>
+        </thead>
 
-@if (Model.Deck.Cards.Any())
-{
-    <div class="row">
-        <div class="col">
-            <h3>Current Cards</h3>
+        <tbody>
+            @foreach (var card in Model.Cards)
+            {
+                <tr>
+                    <td>
+                        <a asp-page="/Cards/Details" asp-route-id="@card.Id">
+                            @card.Name </a>
+                    </td>
+                    <td>
+                        <div class="ms-group">
+                            @MtgSymbols.Format(card.ManaCost).ToHtmlString()
+                        </div>
+                    </td>
+                    <td>@card.SetName</td>
 
-            <div class="table-responsive-md">
-                <table class="table mt-2">
-                    <thead>
-                        <tr>
-                            <th>@Html.DisplayNameForInnerType((Card c) => c.Name)</th>
-                            <th>@Html.DisplayNameForInnerType((Card c) => c.ManaCost)</th>
-                            <th>@Html.DisplayNameForInnerType((Card c) => c.SetName)</th>
-                            <th>@Html.DisplayNameForInnerType((Amount ca) => ca.NumCopies)</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var amount in Model.Deck.Cards)
-                        {
-                            var card = amount.Card;
-                            <tr>
-                                <td>
-                                    <a asp-page="/Cards/Details" asp-route-id="@card.Id"
-                                        title="@card.Name Details">
-                                        @card.Name </a>
-                                </td>
-                                <td>
-                                    <div class="ms-group">
-                                        @MtgSymbols.Format(card.ManaCost).ToHtmlString()
-                                    </div>
-                                </td>
-
-                                <td>@card.SetName</td>
-                                <td>@amount.NumCopies</td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-}
-
-<div class="row">
-
-    @if (Model.Deck.Wants.Any())
-    {
-        <div class="col">
-            <h3>Wanted From Treasury</h3>
-
-            <div class="table-responsive-md">
-                <table class="table mt-2">
-                    <thead>
-                        <tr>
-                            <th>@Html.DisplayNameForInnerType((Card c) => c.Name)</th>
-                            <th>@Html.DisplayNameForInnerType((Card c) => c.ManaCost)</th>
-                            <th>@Html.DisplayNameForInnerType((Card c) => c.SetName)</th>
-                            <th>@Html.DisplayNameForInnerType((Quantity q) => q.NumCopies)</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var want in Model.Deck.Wants)
-                        {
-                            var card = want.Card;
-                            <tr>
-                                <td>
-                                    <a asp-page="/Cards/Details" asp-route-id="@card.Id"
-                                        title="@card.Name Details">
-                                        @card.Name </a>
-                                </td>
-                                <td>
-                                    <div class="ms-group">
-                                        @MtgSymbols.Format(card.ManaCost).ToHtmlString()
-                                    </div>
-                                </td>
-
-                                <td>@card.SetName</td>
-                                <td>@want.NumCopies</td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    }
-
-    @if (Model.Deck.GiveBacks.Any())
-    {
-        <div class="col">
-            <h3>Returning To Treasury</h3>
-
-            <div class="table-responsive-md">
-                <table class="table mt-2">
-                    <thead>
-                        <tr>
-                            <th>@Html.DisplayNameForInnerType((Card c) => c.Name)</th>
-                            <th>@Html.DisplayNameForInnerType((Card c) => c.ManaCost)</th>
-                            <th>@Html.DisplayNameForInnerType((Card c) => c.SetName)</th>
-                            <th>@Html.DisplayNameForInnerType((Quantity q) => q.NumCopies)</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var giveBack in Model.Deck.GiveBacks)
-                        {
-                            var card = giveBack.Card;
-                            <tr>
-                                <td>
-                                    <a asp-page="/Cards/Details" asp-route-id="@card.Id">
-                                        @card.Name </a>
-                                </td>
-                                <td>
-                                    <div class="ms-group">
-                                        @MtgSymbols.Format(card.ManaCost).ToHtmlString()
-                                    </div>
-                                </td>
-
-                                <td>@card.SetName</td>
-                                <td>@giveBack.NumCopies</td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    }
+                    <td>@card.Held</td>
+                    <td>@card.Want</td>
+                    <td>@card.Returning</td>
+                </tr>
+            }
+                @if (Model.Deck.AmountTotal > Model.Cards.Sum(c => c.Held)
+                    || Model.Deck.WantTotal > Model.Cards.Sum(c => c.Want)
+                    || Model.Deck.GiveBackTotal > Model.Cards.Sum(c => c.Returning))
+                {
+                    <tr>
+                        <td> ... </td>
+                        <td> ... </td>
+                        <td> ... </td>
+                        <td> ... </td>
+                        <td> ... </td>
+                        <td> ... </td>
+                    </tr>
+                }
+                <tr>
+                    <th> Total </th>
+                    <td> -- </td>
+                    <td> -- </td>
+                    <td> <strong>@Model.Deck.AmountTotal</strong> </td>
+                    <td> <strong>@Model.Deck.WantTotal</strong> </td>
+                    <td> <strong>@Model.Deck.GiveBackTotal</strong> </td>
+                </tr>
+        </tbody>
+    </table>
 </div>
+
 
 @if (Model.HasPendings)
 {

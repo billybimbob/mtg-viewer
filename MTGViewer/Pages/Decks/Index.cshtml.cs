@@ -90,7 +90,7 @@ public class IndexModel : PageModel
                 Id = d.Id,
                 Name = d.Name,
                 Color = d.Color,
-                CardTotal = d.Cards.Sum(a => a.NumCopies),
+                CardTotal = d.Cards.Sum(a => a.Copies),
 
                 HasWants = d.Wants.Any(),
                 HasReturns = d.GiveBacks.Any(),

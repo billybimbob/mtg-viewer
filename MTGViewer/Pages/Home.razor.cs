@@ -144,12 +144,10 @@ public partial class Home : ComponentBase, IDisposable
 
     public void CardImageLoaded(CardImage card)
     {
-        if (_randomContext is null || card?.Id is not string cardId)
+        if (_randomContext is not null && card?.Id is string cardId)
         {
-            return;
+            _randomContext.LoadedImages.Add(cardId);
         }
-
-        _randomContext.LoadedImages.Add(cardId);
     }
 
 

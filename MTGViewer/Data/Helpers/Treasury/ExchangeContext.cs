@@ -32,7 +32,7 @@ internal class ExchangeContext
     {
         var wants = GetPossibleWants(card).ToList();
 
-        if (wants.Sum(w => w.NumCopies) < numCopies)
+        if (wants.Sum(w => w.Copies) < numCopies)
         {
             throw new ArgumentException(nameof(numCopies));
         }
@@ -43,14 +43,14 @@ internal class ExchangeContext
         while (wantCopies > 0 && e.MoveNext())
         {
             var want = e.Current;
-            int minTransfer = Math.Min(wantCopies, want.NumCopies);
+            int minTransfer = Math.Min(wantCopies, want.Copies);
 
-            want.NumCopies -= minTransfer;
+            want.Copies -= minTransfer;
             wantCopies -= minTransfer;
         }
 
         var amount = GetOrAddAmount(card);
-        amount.NumCopies += numCopies;
+        amount.Copies += numCopies;
 
         TreasuryContext.TransferCopies(card, numCopies, Deck, storage);
     }
@@ -61,11 +61,11 @@ internal class ExchangeContext
         var approxWants = Deck.Wants
             .Where(w => w.CardId != card.Id 
                 && w.Card.Name == card.Name
-                && w.NumCopies > 0);
+                && w.Copies > 0);
 
-        if (_deckCards.TryGetValue(card.Id, out var group)
-            && group.Want is Want exactWant
-            && exactWant.NumCopies > 0)
+        if (_deckCards.GetValueOrDefault(card.Id)
+            is { Want: Want exactWant }
+            && exactWant.Copies > 0)
         {
             return approxWants.Prepend(exactWant);
         }
@@ -77,7 +77,7 @@ internal class ExchangeContext
     private Amount GetOrAddAmount(Card card)
     {
         if (_deckCards.TryGetValue(card.Id, out var group)
-            && group.Amount is Amount amount)
+            && group is { Amount: Amount amount })
         {
             return amount;
         }
@@ -106,17 +106,16 @@ internal class ExchangeContext
 
     public void ReturnCopies(Card card, int numCopies, Storage storage)
     {
-        if (!_deckCards.TryGetValue(card.Id, out var group)
-            || group.GiveBack is not GiveBack give
-            || give.NumCopies < numCopies
-            || group.Amount is not Amount amount
-            || amount.NumCopies < numCopies)
+        if (_deckCards.GetValueOrDefault(card.Id)
+            is not { GiveBack: GiveBack give, Amount: Amount amount }
+            || give.Copies < numCopies
+            || amount.Copies < numCopies)
         {
             throw new ArgumentException($"{nameof(card)} and {nameof(numCopies)}");
         }
 
-        give.NumCopies -= numCopies;
-        amount.NumCopies -= numCopies;
+        give.Copies -= numCopies;
+        amount.Copies -= numCopies;
 
         TreasuryContext.TransferCopies(card, numCopies, storage, Deck);
     }

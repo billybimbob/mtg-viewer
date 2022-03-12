@@ -26,7 +26,6 @@ public static class CardStorageExtensions
                     .UseTriggers(triggers => triggers
                         .AddTrigger<DeckColorUpdate>()
                         .AddTrigger<ImmutableCard>()));
-
                 break;
 
             case DatabaseOptions.Postgresql:

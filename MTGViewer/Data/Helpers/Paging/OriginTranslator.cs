@@ -80,8 +80,7 @@ public sealed class OriginTranslator<TOrigin, TEntity>
 
     public bool IsParentNull(MemberExpression member)
     {
-        var chain = member.Expression as MemberExpression;
-        if (chain is null)
+        if (member is not MemberExpression chain)
         {
             return false;
         }
@@ -223,8 +222,7 @@ public sealed class OriginTranslator<TOrigin, TEntity>
         Translation translation,
         MemberInitExpression memberInit)
     {
-        if (translation
-            is { IsFinished: true, Expression: MemberExpression m }
+        if (translation is { IsFinished: true, Expression: MemberExpression m }
             && string.Equals(
                 translation.GetName(),
                 registration.LineageName, Ordinal))
@@ -270,8 +268,7 @@ public sealed class OriginTranslator<TOrigin, TEntity>
 
     private bool TryAddFromMember(Registration registration, Translation translation)
     {
-        if (translation.Expression
-            is MemberExpression m
+        if (translation.Expression is MemberExpression m
             && string.Equals(
                 translation.GetName(),
                 registration.LineageName, Ordinal))

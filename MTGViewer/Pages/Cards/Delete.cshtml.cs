@@ -83,7 +83,7 @@ public class DeleteModel : PageModel
         return _dbContext.Cards
             .Where(c => c.Id == cardId)
             .Include(c => c.Amounts
-                .OrderBy(a => a.NumCopies))
+                .OrderBy(a => a.Copies))
                 .ThenInclude(a => a.Location)
             .OrderBy(c => c.Id);
     }
@@ -108,7 +108,7 @@ public class DeleteModel : PageModel
         var storageAmounts = card.Amounts
             .Where(a => a.Location is Box or Excess);
 
-        int maxCopies = storageAmounts.Sum(a => a.NumCopies);
+        int maxCopies = storageAmounts.Sum(a => a.Copies);
 
         if (!ModelState.IsValid
             || maxCopies == 0 
@@ -128,7 +128,7 @@ public class DeleteModel : PageModel
         await _dbContext.UpdateBoxesAsync(cancel);
 
         _dbContext.Amounts.RemoveRange(
-            card.Amounts.Where(a => a.NumCopies == 0));
+            card.Amounts.Where(a => a.Copies == 0));
 
         bool allRemoved = maxCopies == Input.RemoveCopies
             && !card.Amounts
@@ -169,9 +169,9 @@ public class DeleteModel : PageModel
         while (removeCopies > 0 && e.MoveNext())
         {
             var amount = e.Current;
-            int minRemove = Math.Min(removeCopies, amount.NumCopies);
+            int minRemove = Math.Min(removeCopies, amount.Copies);
 
-            amount.NumCopies -= minRemove;
+            amount.Copies -= minRemove;
             removeCopies -= minRemove;
         }
     }

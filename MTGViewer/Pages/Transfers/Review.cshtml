@@ -91,7 +91,7 @@
                     <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.Name) </th>
                     <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.ManaCost) </th>
                     <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.SetName) </th>
-                    <th scope="col"> @Html.DisplayNameForInnerType((Amount ca) => ca.NumCopies) </th>
+                    <th scope="col"> @Html.DisplayNameForInnerType((Amount ca) => ca.Copies) </th>
                 </tr>
             </thead>
             <tbody>
@@ -110,7 +110,7 @@
                             </div>
                         </td>
                         <td> @card.SetName </td>
-                        <td> @amount.NumCopies </td>
+                        <td> @amount.Copies </td>
                     </tr>
                 }
             </tbody>

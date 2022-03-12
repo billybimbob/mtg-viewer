@@ -6,7 +6,6 @@ namespace MTGViewer.Data.Internal;
 
 internal sealed class BoxSearcher
 {
-    private readonly CardNameComparer _cardComparer;
     private readonly List<Box> _sortedBoxes;
 
     private readonly List<Card> _sortedCards;
@@ -18,8 +17,6 @@ internal sealed class BoxSearcher
 
     public BoxSearcher(IReadOnlyCollection<Box> boxes)
     {
-        _cardComparer = new CardNameComparer();
-
         _sortedBoxes = boxes
             .OrderBy(b => b.Id)
             .ToList();
@@ -77,7 +74,7 @@ internal sealed class BoxSearcher
 
             checked
             {
-                amountSum += amount.NumCopies;
+                amountSum += amount.Copies;
             }
         }
     }
@@ -85,7 +82,7 @@ internal sealed class BoxSearcher
 
     public IEnumerable<Box> FindBestBoxes(Card card)
     {
-        int cardSearch = _sortedCards.BinarySearch(card, _cardComparer);
+        int cardSearch = _sortedCards.BinarySearch(card, CardNameComparer.Instance);
 
         int cardIndex = cardSearch >= 0
             ? _firstCards.GetValueOrDefault( _sortedCards[cardSearch].Id )

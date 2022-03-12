@@ -32,7 +32,7 @@ public class DetailsModel : PageModel
     public int NumberOfCards { get; private set; }
 
     public bool HasMore =>
-        Box is null ? false : Box.Cards.Sum(a => a.NumCopies) < NumberOfCards;
+        Box is null ? false : Box.Cards.Sum(a => a.Copies) < NumberOfCards;
 
 
     public async Task<IActionResult> OnGetAsync(
@@ -124,7 +124,7 @@ public class DetailsModel : PageModel
 
             .OrderBy(a => a.Card.Name)
                 .ThenBy(a => a.Card.SetName)
-                .ThenBy(a => a.NumCopies)
+                .ThenBy(a => a.Copies)
                 .ThenBy(a => a.Id)
 
             .AsNoTrackingWithIdentityResolution();
@@ -147,5 +147,5 @@ public class DetailsModel : PageModel
             dbContext.Boxes
                 .Where(b => b.Id == boxId)
                 .SelectMany(b => b.Cards)
-                .Sum(a => a.NumCopies));
+                .Sum(a => a.Copies));
 }

@@ -48,26 +48,26 @@ public class ExchangeTests : IAsyncLifetime
     private IQueryable<int> NumCopies(Want request) =>
         _dbContext.Wants
             .Where(w => w.Id == request.Id)
-            .Select(w => w.NumCopies);
+            .Select(w => w.Copies);
 
 
     private IQueryable<int> NumCopies(GiveBack request) =>
         _dbContext.GiveBacks
             .Where(g => g.Id == request.Id)
-            .Select(g => g.NumCopies);
+            .Select(g => g.Copies);
 
 
     private IQueryable<int> ActualNumCopies(Quantity quantity) =>
         _dbContext.Amounts
             .Where(a => a.LocationId == quantity.LocationId
                 && a.CardId == quantity.CardId)
-            .Select(a => a.NumCopies);
+            .Select(a => a.Copies);
 
 
     private IQueryable<int> BoxNumCopies(Quantity quantity) =>
         _dbContext.Amounts
             .Where(a => a.Location is Box && a.CardId == quantity.CardId)
-            .Select(a => a.NumCopies);
+            .Select(a => a.Copies);
 
 
     private IQueryable<int> ChangeAmount(Quantity quantity) =>
@@ -115,7 +115,7 @@ public class ExchangeTests : IAsyncLifetime
     {
         // Arrange
         var want = await _testGen.GetWantAsync();
-        var targetAmount = want.NumCopies;
+        var targetAmount = want.Copies;
         var deckOwnerId = await OwnerId(want).SingleAsync();
 
         await _pageFactory.AddModelContextAsync(_exchangeModel, deckOwnerId);
@@ -153,7 +153,7 @@ public class ExchangeTests : IAsyncLifetime
         var targetMod = 2;
         var request = await _testGen.GetWantAsync(targetMod);
 
-        var targetLimit = request.NumCopies - targetMod;
+        var targetLimit = request.Copies - targetMod;
         var deckOwnerId = await OwnerId(request).SingleAsync();
 
         await _pageFactory.AddModelContextAsync(_exchangeModel, deckOwnerId);
@@ -191,7 +191,7 @@ public class ExchangeTests : IAsyncLifetime
     {
         // Arrange
         var request = await _testGen.GetGiveBackAsync(targetMod);
-        var returnAmount = request.NumCopies;
+        var returnAmount = request.Copies;
         var deckOwnerId = await OwnerId(request).SingleAsync();
 
         await _pageFactory.AddModelContextAsync(_exchangeModel, deckOwnerId);
@@ -290,7 +290,7 @@ public class ExchangeTests : IAsyncLifetime
         var boxAfter = await BoxNumCopies(request).SumAsync();
         var actualAfter = await ActualNumCopies(request).SingleAsync();
 
-        Assert.IsType<RedirectToPageResult>(result);
+        Assert.IsType<NotFoundResult>(result);
         Assert.Equal(boxBefore, boxAfter);
         Assert.Equal(actualBefore, actualAfter);
     }
@@ -304,8 +304,8 @@ public class ExchangeTests : IAsyncLifetime
 
         await _pageFactory.AddModelContextAsync(_exchangeModel, deckOwnerId);
 
-        var wantTarget = want.NumCopies;
-        var giveTarget = give.NumCopies;
+        var wantTarget = want.Copies;
+        var giveTarget = give.Copies;
 
         var actualWantBefore = await ActualNumCopies(want).SingleOrDefaultAsync();
         var actualGiveBefore = await ActualNumCopies(give).SingleAsync();

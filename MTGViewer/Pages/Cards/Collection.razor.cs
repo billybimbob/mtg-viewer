@@ -32,7 +32,7 @@ public partial class Collection : ComponentBase, IDisposable
 
     public FilterContext Filters => _filters;
 
-    public OffsetList<CardPreview> Cards => _cards ?? OffsetList<CardPreview>.Empty;
+    public OffsetList<CardCopies> Cards => _cards ?? OffsetList<CardCopies>.Empty;
 
 
 
@@ -41,7 +41,7 @@ public partial class Collection : ComponentBase, IDisposable
     private bool _isBusy;
     private readonly CancellationTokenSource _cancel = new();
     private readonly FilterContext _filters = new();
-    private OffsetList<CardPreview>? _cards;
+    private OffsetList<CardCopies>? _cards;
 
 
     protected override async Task OnInitializedAsync()
@@ -152,13 +152,11 @@ public partial class Collection : ComponentBase, IDisposable
 
         public void Reorder<T>(Expression<Func<Card, T>> property)
         {
-            if ((property.Body as MemberExpression)?.Member.Name
-                is not string newOrder)
+            if (property is { Body: MemberExpression { Member.Name: string newOrder }})
             {
-                return;
+                OrderBy = newOrder;
             }
 
-            OrderBy = newOrder;
         }
 
         private int _pageSize = 1;
@@ -290,7 +288,7 @@ public partial class Collection : ComponentBase, IDisposable
     }
 
 
-    private static Task<OffsetList<CardPreview>> FilteredCardsAsync(
+    private static Task<OffsetList<CardCopies>> FilteredCardsAsync(
         CardDbContext dbContext,
         FilterContext filters,
         CancellationToken cancel)
@@ -319,7 +317,7 @@ public partial class Collection : ComponentBase, IDisposable
 
         return CardsOrdered(cards, filters)
             .PageBy(pageIndex, pageSize)
-            .Select(c => new CardPreview
+            .Select(c => new CardCopies
             {
                 Id = c.Id,
                 Name = c.Name,
@@ -327,7 +325,7 @@ public partial class Collection : ComponentBase, IDisposable
                 ManaCost = c.ManaCost,
                 Rarity = c.Rarity,
                 ImageUrl = c.ImageUrl,
-                Total = c.Amounts.Sum(c => c.NumCopies)
+                Copies = c.Amounts.Sum(c => c.Copies)
             })
             .ToOffsetListAsync(cancel);
     }
@@ -365,7 +363,7 @@ public partial class Collection : ComponentBase, IDisposable
                     .ThenBy(c => c.Id),
 
             nameof(Card.Amounts) => 
-                PrimaryOrder(c => c.Amounts.Sum(a => a.NumCopies))
+                PrimaryOrder(c => c.Amounts.Sum(a => a.Copies))
                     .ThenBy(c => c.Name)
                     .ThenBy(c => c.SetName)
                     .ThenBy(c => c.Id),

@@ -144,7 +144,7 @@ public class RequestTests : IAsyncLifetime
             {
                 Card = requestCard,
                 Location = loc,
-                NumCopies = 2
+                Copies = 2
             })
             .ToList();
 

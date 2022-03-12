@@ -33,7 +33,7 @@ internal sealed class TreasuryContext
         _storageSpace = boxes
             .Cast<Storage>()
             .Concat(excess)
-            .ToDictionary(s => s, s => s.Cards.Sum(a => a.NumCopies));
+            .ToDictionary(s => s, s => s.Cards.Sum(a => a.Copies));
 
         _available = boxes
             .Where(b => _storageSpace.GetValueOrDefault(b) < b.Capacity)
@@ -155,13 +155,13 @@ internal sealed class TreasuryContext
             _amounts.Add(index, amount);
         }
 
-        int newCopies = checked(amount.NumCopies + numCopies);
+        int newCopies = checked(amount.Copies + numCopies);
         if (newCopies < 0)
         {
             throw new ArgumentException(nameof(numCopies));
         }
 
-        amount.NumCopies = newCopies;
+        amount.Copies = newCopies;
     }
 
 

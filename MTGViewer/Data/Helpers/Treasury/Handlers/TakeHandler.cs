@@ -50,7 +50,7 @@ internal abstract class TakeHandler
                 continue;
             }
 
-            int takeCopies = Math.Min(cardsToTake, amount.NumCopies);
+            int takeCopies = Math.Min(cardsToTake, amount.Copies);
             if (takeCopies == 0)
             {
                 continue;
@@ -80,7 +80,7 @@ internal class ExactTake : TakeHandler
     {
         var wants = ExchangeContext.Deck.Wants;
 
-        if (wants.All(w => w.NumCopies == 0))
+        if (wants.All(w => w.Copies == 0))
         {
             yield break;
         }
@@ -102,7 +102,7 @@ internal class ExactTake : TakeHandler
 
         var idPositions = _exactTake[want.CardId];
 
-        return TakeFromStorage(want.Card, want.NumCopies, idPositions);
+        return TakeFromStorage(want.Card, want.Copies, idPositions);
     }
 
     // take assignments should take from smaller dup stacks first
@@ -124,7 +124,7 @@ internal class ExactTake : TakeHandler
                 a => a.CardId, cid => cid,
                 (target, _) => target)
 
-            .OrderBy(a => a.NumCopies)
+            .OrderBy(a => a.Copies)
                 .ThenBy(a => a.Location switch
                 {
                     Box box => box.Capacity - storageSpace.GetValueOrDefault(box),
@@ -150,14 +150,14 @@ internal class ApproximateTake : TakeHandler
     {
         var wants = ExchangeContext.Deck.Wants;
 
-        if (wants.All(w => w.NumCopies == 0))
+        if (wants.All(w => w.Copies == 0))
         {
             yield break;
         }
 
         foreach (var want in wants)
         {
-            if (want.NumCopies == 0)
+            if (want.Copies == 0)
             {
                 continue;
             }
@@ -176,7 +176,7 @@ internal class ApproximateTake : TakeHandler
 
         var namePositions = _approxLookup[want.Card.Name];
 
-        return TakeFromStorage(want.Card, want.NumCopies, namePositions);
+        return TakeFromStorage(want.Card, want.Copies, namePositions);
     }
 
     // take assignments should take from smaller dup stacks first
@@ -199,7 +199,7 @@ internal class ApproximateTake : TakeHandler
                 (target, _) => target)
 
             // lookup group orders should preserve NumCopies order
-            .OrderBy(a => a.NumCopies)
+            .OrderBy(a => a.Copies)
                 .ThenBy(a => a.Location switch
                 {
                     Box box => box.Capacity - storageSpace.GetValueOrDefault(box),

@@ -69,11 +69,10 @@ public sealed class MtgApiQuery : IMTGQuery
     {
         if (PredicateConverter.Visit(predicate) is MethodCallExpression call
             && call.Method == QueryMethod
-            && call.Arguments[1] is ConstantExpression property
-            && call.Arguments[2] is ConstantExpression arg
-            && property.Value is string propertyName)
+            && call.Arguments[1] is ConstantExpression { Value: string propertyName }
+            && call.Arguments[2] is ConstantExpression { Value: var value })
         {
-            QueryProperty(parameters, propertyName, arg.Value);
+            QueryProperty(parameters, propertyName, value);
         }
         else
         {
@@ -161,9 +160,16 @@ public sealed class MtgApiQuery : IMTGQuery
     }
 
 
+
+    public IAsyncEnumerable<Card> Collection(IEnumerable<string> multiverseIds)
+    {
+        return GetCollection(multiverseIds);
+    }
+
     
-    public async ValueTask<IReadOnlyList<Card>> CollectionAsync(
+    private async IAsyncEnumerable<Card> GetCollection(
         IEnumerable<string> multiverseIds,
+        [System.Runtime.CompilerServices.EnumeratorCancellation]
         CancellationToken cancel = default)
     {
         cancel.ThrowIfCancellationRequested();
@@ -172,8 +178,6 @@ public sealed class MtgApiQuery : IMTGQuery
             .Distinct()
             .Chunk(Limit)
             .ToList();
-
-        var cards = new List<Card>();
 
         _loadProgress.Ticks += chunks.Count;
 
@@ -195,12 +199,13 @@ public sealed class MtgApiQuery : IMTGQuery
 
             var validated = await _flipQuery.GetCardsAsync(response, cancel);
 
-            cards.AddRange(validated);
-            
+            foreach (var card in validated)
+            {
+                yield return card;
+            }
+
             _loadProgress.AddProgress();
         }
-
-        return cards;
     }
 
 

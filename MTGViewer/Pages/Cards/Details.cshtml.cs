@@ -44,7 +44,7 @@ public class DetailsModel : PageModel
 
         Card = card;
 
-        CardAlts = await CardAlternatives
+        CardAlts = await CardAlternatives // unbounded: keep eye on
             .Invoke(_dbContext, card.Id, card.Name)
             .ToListAsync(cancel);
 
@@ -55,20 +55,6 @@ public class DetailsModel : PageModel
 
         return Page();
     }
-
-
-    // private IQueryable<Card> CardForDetails(string cardId, bool flip)
-    // {
-    //     var cards = _dbContext.Cards
-    //         .Where(c => c.Id == cardId)
-    //         .Include(c => c.Amounts
-    //             .OrderBy(a => a.Location.Name))
-    //             .ThenInclude(a => a.Location)
-    //         .OrderBy(c => c.Id)
-    //         .AsNoTrackingWithIdentityResolution();
-
-    //     return flip ? cards.Include(c => c.Flip) : cards;
-    // }
 
 
     private Task<Card?> GetCardAsync(string cardId, bool flip, CancellationToken cancel)
@@ -108,15 +94,6 @@ public class DetailsModel : PageModel
                 .SingleOrDefault());
 
 
-    // private IQueryable<CardAlt> CardAlternatives(Card card)
-    // {
-    //     return _dbContext.Cards
-    //         .Where(c => c.Id != card.Id && c.Name == card.Name)
-    //         .OrderBy(c => c.SetName)
-    //         .Select(c => new CardAlt(c.Id, c.Name, c.SetName));
-    // }
-
-
     private static readonly Func<CardDbContext, string, string, IAsyncEnumerable<CardAlt>> CardAlternatives
 
         = EF.CompileAsyncQuery((CardDbContext dbContext, string cardId, string cardName) =>
@@ -140,12 +117,12 @@ public class DetailsModel : PageModel
         {
             Card = card,
             Location = Excess.Create(),
-            NumCopies = 0
+            Copies = 0
         };
 
         foreach (var excess in excessAmounts)
         {
-            mergedExcess.NumCopies += excess.NumCopies;
+            mergedExcess.Copies += excess.Copies;
         }
 
         var mergedAmounts = card.Amounts

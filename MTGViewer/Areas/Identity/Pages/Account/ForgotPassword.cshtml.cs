@@ -34,7 +34,7 @@ public class ForgotPasswordModel : PageModel
 
     public async Task<IActionResult> OnPostAsync()
     {
-        if ( Input is null || !ModelState.IsValid)
+        if (Input is null || !ModelState.IsValid)
         {
             return Page();
         }

@@ -231,11 +231,11 @@ public class ReferenceManagerTests : IAsyncLifetime
         int userCards = await _dbContext.Amounts
             .Where(a => a.Location is Deck
                 && (a.Location as Deck)!.OwnerId == user.Id)
-            .SumAsync(a => a.NumCopies);
+            .SumAsync(a => a.Copies);
 
         int treasuryBefore = await _dbContext.Amounts
             .Where(a => a.Location is Box)
-            .SumAsync(a => a.NumCopies);
+            .SumAsync(a => a.Copies);
 
         var result = await _userManager.DeleteAsync(user);
 
@@ -245,7 +245,7 @@ public class ReferenceManagerTests : IAsyncLifetime
 
         int treasuryAfter = await _dbContext.Amounts
             .Where(a => a.Location is Box)
-            .SumAsync(a => a.NumCopies);
+            .SumAsync(a => a.Copies);
 
         Assert.True(result.Succeeded);
 

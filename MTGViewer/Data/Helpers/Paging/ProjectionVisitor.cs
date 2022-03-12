@@ -132,13 +132,13 @@ internal class InsertTakeVisitor<TEntity> : ExpressionVisitor
     [return: NotNullIfNotNull("node")]
     public override Expression? Visit(Expression? node)
     {
-        if (node is QueryRootExpression root
-            && root.EntityType.ClrType == typeof(TEntity))
+        if (node is QueryRootExpression { EntityType.ClrType: Type t }
+            && t == typeof(TEntity))
         {
             return Expression.Call(
                 null,
                 QueryableMethods.Take.MakeGenericMethod(typeof(TEntity)),
-                root,
+                node,
                 Expression.Constant(_count));
         }
 
@@ -149,10 +149,10 @@ internal class InsertTakeVisitor<TEntity> : ExpressionVisitor
     {
         bool validMethodCall = IsValidMethod(node);
 
-        if (!validMethodCall && node.Arguments.ElementAtOrDefault(0)
-            is Expression parent)
+        if (!validMethodCall
+            && node.Arguments.ElementAtOrDefault(0) is Expression parent)
         {
-            var visitedParent = base.Visit(parent);
+            var visitedParent = Visit(parent);
 
             return node.Update(
                 node.Object,
@@ -208,8 +208,8 @@ internal class InsertTakeVisitor<TEntity> : ExpressionVisitor
             }
 
             if (node.Method == QueryableMethods.Reverse.MakeGenericMethod(typeof(TEntity))
-                && FindSecondReverseVisitor.Instance.Visit(node) is ConstantExpression second
-                && second.Value is null)
+                && FindSecondReverseVisitor.Instance.Visit(node)
+                    is ConstantExpression { Value: null })
             {
                 var take = Expression.Call(
                     null,

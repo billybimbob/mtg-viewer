@@ -14,6 +14,7 @@ using Microsoft.Extensions.Logging;
 
 using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
+using MTGViewer.Services;
 
 namespace MTGViewer.Pages.Decks;
 
@@ -23,16 +24,20 @@ public class DeleteModel : PageModel
 {
     private readonly UserManager<CardUser> _userManager;
     private readonly CardDbContext _dbContext;
+    private readonly int _pageSize;
 
     private readonly ILogger<DeleteModel> _logger;
 
     public DeleteModel(
         UserManager<CardUser> userManager,
         CardDbContext dbContext,
+        PageSizes pageSizes,
         ILogger<DeleteModel> logger)
     {
         _userManager = userManager;
         _dbContext = dbContext;
+        _pageSize = pageSizes.GetPageModelSize<DeleteModel>();
+
         _logger = logger;
     }
 
@@ -40,96 +45,125 @@ public class DeleteModel : PageModel
     [TempData]
     public string? PostMesssage { get; set; }
 
-    public Deck Deck { get; private set; } = default!;
+    public DeckDetails Deck { get; private set; } = default!;
 
-    public IReadOnlyList<QuantityNameGroup> NameGroups { get; private set; } = Array.Empty<QuantityNameGroup>();
-
-    public IReadOnlyList<Trade> Trades { get; private set; } = Array.Empty<Trade>();
+    public IReadOnlyList<DeckLink> Cards { get; private set; } = Array.Empty<DeckLink>();
 
 
     public async Task<IActionResult> OnGetAsync(int id, CancellationToken cancel)
     {
-        var deck = await DeckForDelete(id)
-            .AsNoTrackingWithIdentityResolution()
-            .SingleOrDefaultAsync(cancel);
+        var userId = _userManager.GetUserId(User);
+
+        if (userId == default)
+        {
+            return NotFound();
+        }
+
+        var deck = await DeckDetailsAsync.Invoke(_dbContext, id, userId, cancel);
 
         if (deck == default)
         {
             return NotFound();
         }
 
-        var deckTrades = deck.TradesTo
-            .Concat(deck.TradesFrom)
-            .OrderBy(t => t.Card.Name)
-            .ToList();
+        var cards = await DeckCardsAsync
+            .Invoke(_dbContext, id, _pageSize)
+            .ToListAsync(cancel);
 
         Deck = deck;
-
-        NameGroups = DeckNameGroup(deck).ToList();
-
-        Trades = deckTrades;
+        Cards = cards;
 
         return Page();
     }
 
 
-    private IQueryable<Deck> DeckForDelete(int deckId)
-    {
-        var userId = _userManager.GetUserId(User);
+    private static readonly Func<CardDbContext, int, string, CancellationToken, Task<DeckDetails?>> DeckDetailsAsync
 
-        return _dbContext.Decks
-            .Where(d => d.Id == deckId && d.OwnerId == userId)
+        = EF.CompileAsyncQuery((CardDbContext dbContext, int deckId, string userId, CancellationToken _) =>
+            dbContext.Decks
+                .Where(d => d.Id == deckId && d.OwnerId == userId)
+                .Select(d => new DeckDetails
+                {
+                    Id = d.Id,
+                    Name = d.Name,
+                    Color = d.Color,
 
-            .Include(d => d.Cards) // unbounded: keep eye on
-                .ThenInclude(da => da.Card)
+                    Owner = new OwnerPreview
+                    {
+                        Id = d.OwnerId,
+                        Name = d.Owner.Name
+                    },
 
-            .Include(d => d.Wants) // unbounded: keep eye on
-                .ThenInclude(w => w.Card)
+                    AmountTotal = d.Cards.Sum(a => a.Copies),
+                    WantTotal = d.Wants.Sum(w => w.Copies),
+                    GiveBackTotal = d.GiveBacks.Sum(g => g.Copies),
 
-            .Include(d => d.GiveBacks) // unbounded: keep eye on
-                .ThenInclude(g => g.Card)
-
-            .Include(d => d.TradesTo) // unbounded: keep eye on
-                .ThenInclude(t => t.Card)
-            .Include(d => d.TradesTo)
-                .ThenInclude(t => t.From)
-
-            .Include(d => d.TradesFrom) // unbounded: keep eye on
-                .ThenInclude(t => t.Card)
-            .Include(d => d.TradesFrom)
-                .ThenInclude(t => t.To)
-
-            .AsSplitQuery();
-    }
+                    AnyTrades = d.TradesTo.Any() || d.TradesFrom.Any()
+                })
+                .SingleOrDefault());
 
 
-    private IEnumerable<QuantityNameGroup> DeckNameGroup(Deck deck)
-    {
-        var amountsByName = deck.Cards
-            .ToLookup(a => a.Card.Name);
+    private static readonly Func<CardDbContext, int, int, IAsyncEnumerable<DeckLink>> DeckCardsAsync
+        = EF.CompileAsyncQuery((CardDbContext dbContext, int id, int limit) =>
 
-        var wantsByName = deck.Wants
-            .ToLookup(w => w.Card.Name);
+            dbContext.Cards
+                .Where(c => c.Amounts.Any(a => a.LocationId == id)
+                    || c.Wants.Any(w => w.LocationId == id)
+                    || c.GiveBacks.Any(g => g.LocationId == id))
 
-        var givesByName = deck.GiveBacks
-            .ToLookup(g => g.Card.Name);
+                .OrderBy(c => c.Name)
+                    .ThenBy(c => c.SetName)
+                    .ThenBy(c => c.Id)
 
-        var cardNames = amountsByName.Select(an => an.Key)
-            .Union(wantsByName.Select(wn => wn.Key))
-            .Union(givesByName.Select(gn => gn.Key))
-            .OrderBy(cn => cn);
+                .Take(limit)
+                .Select(c => new DeckLink
+                {
+                    Id = c.Id,
+                    Name = c.Name,
 
-        return cardNames.Select(cn =>
-            new QuantityNameGroup(
-                amountsByName[cn], wantsByName[cn], givesByName[cn] ));
-    }
+                    SetName = c.SetName,
+                    ManaCost = c.ManaCost,
+
+                    Held = c.Amounts
+                        .Where(a => a.LocationId == id)
+                        .Sum(a => a.Copies),
+
+                    Want = c.Wants
+                        .Where(w => w.LocationId == id)
+                        .Sum(w => w.Copies),
+
+                    Returning = c.GiveBacks
+                        .Where(g => g.LocationId == id)
+                        .Sum(g => g.Copies),
+                }));
+
+
+    private static readonly Func<CardDbContext, int, string, CancellationToken, Task<Deck?>> DeckForDeleteAsync
+        = EF.CompileAsyncQuery((CardDbContext dbContext, int deckId, string userId, CancellationToken _) =>
+            dbContext.Decks
+                .Include(d => d.Cards) // unbounded: keep eye on
+                    .ThenInclude(da => da.Card)
+
+                .Include(d => d.Wants) // unbounded: keep eye on
+                .Include(d => d.GiveBacks) // unbounded: keep eye on
+
+                .Include(d => d.TradesTo) // unbounded: keep eye on
+                .Include(d => d.TradesFrom) // unbounded: keep eye on
+
+                .AsSplitQuery()
+                .SingleOrDefault(d => d.Id == deckId && d.OwnerId == userId));
 
 
 
     public async Task<IActionResult> OnPostAsync(int id, string? returnUrl, CancellationToken cancel)
     {
-        var deck = await DeckForDelete(id)
-            .SingleOrDefaultAsync(cancel);
+        var userId = _userManager.GetUserId(User);
+        if (userId is null)
+        {
+            return NotFound();
+        }
+
+        var deck = await DeckForDeleteAsync.Invoke(_dbContext, id, userId, cancel);
 
         if (deck == default)
         {
@@ -141,7 +175,7 @@ public class DeleteModel : PageModel
             _dbContext.Amounts.RemoveRange(deck.Cards);
 
             var returningCards = deck.Cards
-                .Select(a => new CardRequest(a.Card, a.NumCopies));
+                .Select(a => new CardRequest(a.Card, a.Copies));
 
             // just add since deck is being deleted
             await _dbContext.AddCardsAsync(returningCards, cancel);

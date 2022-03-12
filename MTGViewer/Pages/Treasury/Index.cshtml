@@ -70,7 +70,7 @@
                     <th scope="col"> @Html.DisplayNameForInnerType((Amount a) => a.Card) </th>
                     <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.ManaCost) </th>
                     <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.SetName) </th>
-                    <th scope="col"> @Html.DisplayNameForInnerType((Amount a) => a.NumCopies) </th>
+                    <th scope="col"> @Html.DisplayNameForInnerType((Amount a) => a.Copies) </th>
                     <th scope="col"> @Html.DisplayNameForInnerType((Box b) => b.Capacity) </th>
                 </tr>
             </thead>
@@ -95,17 +95,17 @@
                         {
                             <td>
                                 <a asp-page="/Cards/Details"
-                                    asp-route-id="@firstCard.CardId" asp-route-returnurl="@returnUrl">
-                                    @firstCard.CardName </a>
+                                    asp-route-id="@firstCard.Id" asp-route-returnurl="@returnUrl">
+                                    @firstCard.Name </a>
                             </td>
 
                             <td> 
                                 <div class="ms-group">
-                                    @MtgSymbols.Format(firstCard.CardManaCost).ToHtmlString() 
+                                    @MtgSymbols.Format(firstCard.ManaCost).ToHtmlString() 
                                 </div>
                             </td>
-                            <td> @firstCard.CardSetName </td>
-                            <td> @firstCard.NumCopies </td>
+                            <td> @firstCard.SetName </td>
+                            <td> @firstCard.Copies </td>
                         }
                         else
                         {
@@ -123,16 +123,16 @@
                         <tr>
                             <td>
                                 <a asp-page="/Cards/Details"
-                                    asp-route-id="@card.CardId" asp-route-returnurl="@returnUrl">
-                                    @card.CardName </a>
+                                    asp-route-id="@card.Id" asp-route-returnurl="@returnUrl">
+                                    @card.Name </a>
                             </td>
                             <td> 
                                 <div class="ms-group">
-                                    @MtgSymbols.Format(card.CardManaCost).ToHtmlString()
+                                    @MtgSymbols.Format(card.ManaCost).ToHtmlString()
                                 </div>
                             </td>
-                            <td> @card.CardSetName </td>
-                            <td> @card.NumCopies </td>
+                            <td> @card.SetName </td>
+                            <td> @card.Copies </td>
                         </tr>
                     }
 

@@ -35,13 +35,13 @@ internal class FindByIdVisitor : ExpressionVisitor
     protected override Expression VisitMethodCall(MethodCallExpression node)
     {
         if (node.Arguments.ElementAtOrDefault(0) is not Expression parent
-            || !node.Method.IsGenericMethod
-            || node.Method.GetGenericMethodDefinition() is not MethodInfo method)
+            || node is { Method.IsGenericMethod: false })
         {
             return node;
         }
 
         var visitedParent = base.Visit(parent);
+        var method = node.Method.GetGenericMethodDefinition();
 
         if (method == QueryableMethods.Where)
         {
@@ -50,8 +50,7 @@ internal class FindByIdVisitor : ExpressionVisitor
                 node.Arguments.Skip(1).Prepend(visitedParent));
         }
 
-        if (_findInclude?.Visit(node) is ConstantExpression constant
-            && constant.Value is string includeChain)
+        if (_findInclude?.Visit(node) is ConstantExpression { Value: string includeChain })
         {
             const StringComparison ordinal = StringComparison.Ordinal;
 
@@ -142,7 +141,7 @@ internal class FindIncludeVisitor : ExpressionVisitor
         var longestChain = e.Current;
         var nav = _root.EntityType.FindNavigation(longestChain.Member);
 
-        if (nav is null || nav.IsCollection)
+        if (nav is null or { IsCollection: true })
         {
             return null;
         }
@@ -151,7 +150,7 @@ internal class FindIncludeVisitor : ExpressionVisitor
         {
             nav = nav.TargetEntityType.FindNavigation(e.Current.Member);
 
-            if (nav is null || nav.IsCollection)
+            if (nav is null or { IsCollection: true })
             {
                 break;
             }

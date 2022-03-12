@@ -84,7 +84,7 @@ public class ReviewTests : IAsyncLifetime
 
         // Assert
         Assert.IsType<RedirectToPageResult>(result);
-        Assert.Equal(fromBefore.NumCopies, fromAfter.NumCopies);
+        Assert.Equal(fromBefore.Copies, fromAfter.Copies);
         Assert.Contains(trade.Id, tradeAfter);
     }
 
@@ -107,7 +107,7 @@ public class ReviewTests : IAsyncLifetime
 
         // Assert
         Assert.IsType<RedirectToPageResult>(result);
-        Assert.Equal(fromBefore.NumCopies, fromAfter.NumCopies);
+        Assert.Equal(fromBefore.Copies, fromAfter.Copies);
         Assert.Contains(trade.Id, tradesAfter);
     }
 
@@ -128,8 +128,8 @@ public class ReviewTests : IAsyncLifetime
             amount = trade.Amount;
         }
 
-        var toAmount = ToTarget(trade).Select(a => a.NumCopies);
-        var fromAmount = FromTarget(trade).Select(a => a.NumCopies);
+        var toAmount = ToTarget(trade).Select(a => a.Copies);
+        var fromAmount = FromTarget(trade).Select(a => a.Copies);
 
         // Act
         var toBefore = await toAmount.SingleOrDefaultAsync();
@@ -161,13 +161,13 @@ public class ReviewTests : IAsyncLifetime
         var trade = await TradesInSet.FirstAsync();
 
         var fromAmountTracked = await FromTarget(trade).AsTracking().SingleAsync();
-        fromAmountTracked.NumCopies = 0;
+        fromAmountTracked.Copies = 0;
 
         await _dbContext.SaveChangesAsync();
         _dbContext.ChangeTracker.Clear();
 
-        var toAmount = ToTarget(trade).Select(a => a.NumCopies);
-        var fromAmount = FromTarget(trade).Select(a => a.NumCopies);
+        var toAmount = ToTarget(trade).Select(a => a.Copies);
+        var fromAmount = FromTarget(trade).Select(a => a.Copies);
         var tradeSet = TradesInSet.Select(t => t.Id);
 
         // Act
@@ -202,7 +202,7 @@ public class ReviewTests : IAsyncLifetime
 
         await _pageFactory.AddModelContextAsync(_reviewModel, trade.To.OwnerId);
 
-        var fromAmount = FromTarget(trade).Select(a => a.NumCopies);
+        var fromAmount = FromTarget(trade).Select(a => a.Copies);
 
         // Act
         var fromBefore = await fromAmount.SingleAsync();
@@ -228,7 +228,7 @@ public class ReviewTests : IAsyncLifetime
         var trade = await TradesInSet.AsNoTracking().FirstAsync();
         var wrongTradeId = 0;
 
-        var fromAmount = FromTarget(trade).Select(a => a.NumCopies);
+        var fromAmount = FromTarget(trade).Select(a => a.Copies);
 
         // Act
         var fromBefore = await fromAmount.SingleAsync();
@@ -253,7 +253,7 @@ public class ReviewTests : IAsyncLifetime
 
         var trade = await TradesInSet.AsNoTracking().FirstAsync();
 
-        var fromAmount = FromTarget(trade).Select(a => a.NumCopies);
+        var fromAmount = FromTarget(trade).Select(a => a.Copies);
 
         // Act
         var fromBefore = await fromAmount.SingleAsync();

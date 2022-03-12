@@ -48,20 +48,20 @@ public class CardNameGroup : IEnumerable<Amount>
 
     public int NumCopies
     {
-        get => _amounts.Sum(a => a.NumCopies);
+        get => _amounts.Sum(a => a.Copies);
         set
         {
             var lastCycle = _amounts.Last!.Value;
             int change = NumCopies - value;
 
-            while (change < 0 || change > 0 && lastCycle.NumCopies > 0)
+            while (change < 0 || change > 0 && lastCycle.Copies > 0)
             {
-                int mod = Math.Min(change, First.NumCopies);
+                int mod = Math.Min(change, First.Copies);
 
-                First.NumCopies -= mod;
+                First.Copies -= mod;
                 change -= mod;
 
-                if (First.NumCopies == 0)
+                if (First.Copies == 0)
                 {
                     // cycle amount
                     var firstLink = _amounts.First!;
@@ -122,18 +122,18 @@ public class WantNameGroup : IEnumerable<Want>
 
     public int NumCopies
     {
-        get => _wants.Sum(w => w.NumCopies);
+        get => _wants.Sum(w => w.Copies);
         set
         {
             int change = NumCopies - value;
-            while (change < 0 || change > 0 && First.NumCopies > 0)
+            while (change < 0 || change > 0 && First.Copies > 0)
             {
-                int mod = Math.Min(change, First.NumCopies);
+                int mod = Math.Min(change, First.Copies);
 
-                First.NumCopies -= mod;
+                First.Copies -= mod;
                 change -= mod;
 
-                if (First.NumCopies == 0)
+                if (First.Copies == 0)
                 {
                     // cycle amount
                     var firstLink = _wants.First!;
@@ -404,14 +404,14 @@ public class QuantityGroup : IEnumerable<Quantity>
 
 
     public int NumCopies =>
-        (Amount?.NumCopies ?? 0)
-            + (Want?.NumCopies ?? 0)
-            - (GiveBack?.NumCopies ?? 0);
+        (Amount?.Copies ?? 0)
+            + (Want?.Copies ?? 0)
+            - (GiveBack?.Copies ?? 0);
 
     public int Total =>
-        (Amount?.NumCopies ?? 0)
-            + (Want?.NumCopies ?? 0)
-            + (GiveBack?.NumCopies ?? 0);
+        (Amount?.Copies ?? 0)
+            + (Want?.Copies ?? 0)
+            + (GiveBack?.Copies ?? 0);
 }
 
 
@@ -481,10 +481,10 @@ public class QuantityNameGroup : IEnumerable<QuantityGroup>
         this.Sum(rg => rg.NumCopies);
 
     public int InDeck =>
-        this.Sum(rg => rg.Amount?.NumCopies ?? 0);
+        this.Sum(rg => rg.Amount?.Copies ?? 0);
 
     public int Requests =>
-        this.Sum(rg => rg.Want?.NumCopies ?? 0) - this.Sum(rg => rg.GiveBack?.NumCopies ?? 0);
+        this.Sum(rg => rg.Want?.Copies ?? 0) - this.Sum(rg => rg.GiveBack?.Copies ?? 0);
 
 
     public IEnumerable<string> CardIds =>

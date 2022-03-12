@@ -32,81 +32,67 @@
     <table class="table mt-2">
         <thead>
             <tr>
-                <th scope="col"> Card Name </th>
-                <th scope="col"> Mana Cost </th>
-                <th scope="col"> Set </th>
-                <th scope="col"> Deck Amount </th>
-                <th scope="col"> Requests </th>
+                <th scope="col"> @Html.DisplayNameForInnerType((Amount ca) => ca.Card) </th>
+                <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.ManaCost) </th>
+                <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.SetName) </th>
+                <th scope="col"> Cards In Deck </th>
+                <th scope="col"> Wanted Cards </th>
+                <th scope="col"> Return Requests </th>
             </tr>
         </thead>
 
         <tbody>
-            @if (!Model.NameGroups.Any())
+            @foreach (var card in Model.Cards)
             {
-                <tr>
-                    <td> -- </td>
-                    <td> -- </td>
-                    <td> -- </td>
-                    <td> -- </td>
-                    <td> -- </td>
-                </tr>
-            }
-            @foreach (var nameGroup in Model.NameGroups)
-            {
-                var card = nameGroup.Cards.First();
                 <tr>
                     <td>
                         <a asp-page="/Cards/Details" asp-route-id="@card.Id">
-                            @nameGroup.Name </a>
+                            @card.Name </a>
                     </td>
                     <td>
                         <div class="ms-group">
                             @MtgSymbols.Format(card.ManaCost).ToHtmlString()
                         </div>
                     </td>
-
                     <td>@card.SetName</td>
-                    <td>@nameGroup.InDeck</td>
-                    <td>@nameGroup.Requests</td>
+
+                    <td>@card.Held</td>
+                    <td>@card.Want</td>
+                    <td>@card.Returning</td>
                 </tr>
             }
+                @if (Model.Deck.AmountTotal > Model.Cards.Sum(c => c.Held)
+                    || Model.Deck.WantTotal > Model.Cards.Sum(c => c.Want)
+                    || Model.Deck.GiveBackTotal > Model.Cards.Sum(c => c.Returning))
+                {
+                    <tr>
+                        <td> ... </td>
+                        <td> ... </td>
+                        <td> ... </td>
+                        <td> ... </td>
+                        <td> ... </td>
+                        <td> ... </td>
+                    </tr>
+                }
+                <tr>
+                    <th> Total </th>
+                    <td> -- </td>
+                    <td> -- </td>
+                    <td> <strong>@Model.Deck.AmountTotal</strong> </td>
+                    <td> <strong>@Model.Deck.WantTotal</strong> </td>
+                    <td> <strong>@Model.Deck.GiveBackTotal</strong> </td>
+                </tr>
         </tbody>
     </table>
 </div>
 
 
-@if (Model.Trades.Any())
+@if (Model.Deck.AnyTrades)
 {
-    <div class="my-3">
-        <h3>The following trades will also be deleted</h3>
-
-        <div class="table-responsive-md">
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th scope="col"> @Html.DisplayNameForInnerType((Trade t) => t.To) </th>
-                        <th scope="col"> @Html.DisplayNameForInnerType((Trade t) => t.From) </th>
-                        <th scope="col"> @Html.DisplayNameForInnerType((Trade t) => t.Card) </th>
-                        <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.ManaCost) </th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach(var trade in Model.Trades)
-                    {
-                        <tr>
-                            <td> @trade.To.Name </td>
-                            <td> @trade.From.Name </td>
-                            <td> @trade.Card.Name </td>
-
-                            <td>
-                                <div class="ms-group">
-                                    @MtgSymbols.Format(trade.Card.ManaCost).ToHtmlString()
-                                </div>
-                            </td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        </div>
+    <div class="mt-2 alert alert-danger" role="alert">
+        <h5 class="alert-heading">Active Trades</h5>
+        <p> 
+            The currently active trades for @Model.Deck.Name will also be deleted.
+        </p>
     </div>
 }

@@ -2,7 +2,6 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Reflection;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Query;
@@ -22,8 +21,7 @@ internal static class ExecuteOffset<TEntity>
     public static OffsetList<TEntity> ToOffsetList(IQueryable<TEntity> query)
     {
         if (GetPageInfo.Visit(query.Expression)
-            is not ConstantExpression constant
-            || constant.Value is not PageInfo pageInfo)
+            is not ConstantExpression { Value: PageInfo pageInfo })
         {
             throw new ArgumentException(
                 $"{nameof(query)} must have a \"Skip\" followed by a \"Take\"");
@@ -48,8 +46,7 @@ internal static class ExecuteOffset<TEntity>
         CancellationToken cancel = default)
     {
         if (GetPageInfo.Visit(query.Expression)
-            is not ConstantExpression constant
-            || constant.Value is not PageInfo pageInfo)
+            is not ConstantExpression { Value: PageInfo pageInfo })
         {
             throw new ArgumentException(
                 $"{nameof(query)} must have a \"Skip\" followed by a \"Take\"");
@@ -82,11 +79,12 @@ internal static class ExecuteOffset<TEntity>
         protected override Expression VisitMethodCall(MethodCallExpression node)
         {
             if (node.Arguments.ElementAtOrDefault(0) is not Expression parent
-                || !node.Method.IsGenericMethod
-                || node.Method.GetGenericMethodDefinition() is not MethodInfo method)
+                || node is { Method.IsGenericMethod: false })
             {
                 return node;
             }
+
+            var method = node.Method.GetGenericMethodDefinition();
 
             if (method == QueryableMethods.Skip
                 && node.Arguments.ElementAtOrDefault(1) is ConstantExpression skip)
@@ -97,11 +95,11 @@ internal static class ExecuteOffset<TEntity>
             var visitedParent = Visit(parent);
 
             if (method == QueryableMethods.Take
-                && visitedParent is ConstantExpression innerSkip
-                && node.Arguments.ElementAtOrDefault(1) is ConstantExpression take
+                && visitedParent
+                    is ConstantExpression { Value: int skipBy }
 
-                && innerSkip.Value is int skipBy
-                && take.Value is int pageSize)
+                && node.Arguments.ElementAtOrDefault(1)
+                    is ConstantExpression { Value: int pageSize })
             {
                 return Expression.Constant(new PageInfo(skipBy / pageSize, pageSize));
             }
@@ -116,12 +114,12 @@ internal static class ExecuteOffset<TEntity>
         protected override Expression VisitMethodCall(MethodCallExpression node)
         {
             if (node.Arguments.ElementAtOrDefault(0) is not Expression parent
-                || !node.Method.IsGenericMethod
-                || node.Method.GetGenericMethodDefinition() is not MethodInfo method)
-
+                || node is { Method.IsGenericMethod: false })
             {
                 return node;
             }
+
+            var method = node.Method.GetGenericMethodDefinition();
 
             if (method == QueryableMethods.Take)
             {

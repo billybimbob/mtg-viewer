@@ -185,7 +185,7 @@ public class RequestModel : PageModel
                 async (target, wantMatches, cancel) =>
                     // intentionally leave wants unbounded by target since
                     // that cap will be handled later
-                    (target, amount: await wantMatches.SumAsync(w => w.NumCopies, cancel)));
+                    (target, amount: await wantMatches.SumAsync(w => w.Copies, cancel)));
 
         return requestMatches
             .Select(ta => new Trade

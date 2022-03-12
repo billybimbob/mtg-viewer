@@ -105,11 +105,11 @@ public class DeleteTests : IAsyncLifetime
 
         await _pageFactory.AddModelContextAsync(_deleteModel, deck.OwnerId);
 
-        var deckCardTotal = await DeckCards(deck).SumAsync(a => a.NumCopies);
+        var deckCardTotal = await DeckCards(deck).SumAsync(a => a.Copies);
 
         var boxTotal = _dbContext.Amounts
             .Where(a => a.Location is Box)
-            .Select(a => a.NumCopies);
+            .Select(a => a.Copies);
 
         // Act
         var boxBefore = await boxTotal.SumAsync();

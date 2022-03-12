@@ -28,7 +28,7 @@ else
                     <th scope="col"> @Html.DisplayNameForInnerType((Amount a) => a.Card) </th>
                     <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.ManaCost) </th>
                     <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.SetName) </th>
-                    <th scope="col"> @Html.DisplayNameForInnerType((Amount a) => a.NumCopies) </th>
+                    <th scope="col"> @Html.DisplayNameForInnerType((Amount a) => a.Copies) </th>
                 </tr>
             </thead>
             <tbody>
@@ -45,7 +45,7 @@ else
                             </div>
                         </td>
                         <td> @card.SetName </td>
-                        <td> @card.Total </td>
+                        <td> @card.Copies </td>
                     </tr>
                 }
             </tbody>

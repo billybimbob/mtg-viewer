@@ -143,9 +143,12 @@ public class MTGQueryTests
             .Select(id => id.ToString())
             .ToArray();
 
-        var cards = await _mtgQuery.CollectionAsync(multiverseIds);
+        var cardNames = await _mtgQuery
+            .Collection(multiverseIds)
+            .Select(c => c.Name)
+            .ToListAsync();
 
-        Assert.Contains(TestName, cards.Select(c => c.Name));
-        Assert.Equal(multiverseIds.Length, cards.Count);
+        Assert.Contains(TestName, cardNames);
+        Assert.Equal(multiverseIds.Length, cardNames.Count);
     }
 }

@@ -147,7 +147,7 @@ public class CardDataGenerator
             deck.Cards.Add(new Amount
             {
                 Card = card,
-                NumCopies = _random.Next(1, 6)
+                Copies = _random.Next(1, 6)
             });
         }
     }
@@ -173,7 +173,7 @@ public class CardDataGenerator
             box.Cards.Add(new Amount
             {
                 Card = card,
-                NumCopies = numCopies
+                Copies = numCopies
             });
 
             boxSpace[box] = space + numCopies;

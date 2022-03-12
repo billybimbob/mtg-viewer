@@ -16,8 +16,8 @@ public class Suggestion
 
 
     [JsonIgnore]
-    public string CardId { get; init; } = default!;
     public Card Card { get; init; } = default!;
+    public string CardId { get; init; } = default!;
 
 
     [JsonIgnore]
@@ -56,8 +56,8 @@ public class Trade : Concurrent
 
 
     [JsonIgnore]
-    public string CardId { get; init; } = default!;
     public Card Card { get; init; } = default!;
+    public string CardId { get; init; } = default!;
 
 
     [JsonIgnore]

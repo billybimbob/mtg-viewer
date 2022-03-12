@@ -1,6 +1,6 @@
 using System;
 using System.Linq;
-using System.Collections.Generic;
+using System.Paging;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -11,6 +11,7 @@ using Microsoft.EntityFrameworkCore;
 
 using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
+using MTGViewer.Services;
 
 namespace MTGViewer.Pages.Decks;
 
@@ -19,117 +20,114 @@ public class DetailsModel : PageModel
 {
     private readonly UserManager<CardUser> _userManager;
     private readonly CardDbContext _dbContext;
+    private readonly int _pageSize;
 
-    public DetailsModel(UserManager<CardUser> userManager, CardDbContext dbContext)
+    public DetailsModel(
+        UserManager<CardUser> userManager, 
+        CardDbContext dbContext,
+        PageSizes pageSizes)
     {
         _userManager = userManager;
         _dbContext = dbContext;
+        _pageSize = pageSizes.GetPageModelSize<DetailsModel>();
     }
 
 
     public bool IsOwner { get; private set; }
 
-    public Deck Deck { get; private set; } = default!;
+    public DeckDetails Deck { get; private set; } = default!;
 
-    public IReadOnlyList<QuantityGroup> Cards { get; private set; } = Array.Empty<QuantityGroup>();
+    public SeekList<DeckCopies> Cards { get; private set; } = SeekList<DeckCopies>.Empty;
 
 
-    public async Task<IActionResult> OnGetAsync(int id, CancellationToken cancel)
+    public async Task<IActionResult> OnGetAsync(
+        int id,
+        string? seek,
+        SeekDirection direction,
+        CancellationToken cancel)
     {
-        // var deck = await DeckForViewer(id).SingleOrDefaultAsync(cancel);
+        var deck = await DeckDetailsAsync.Invoke(_dbContext, id, cancel);
 
-        var deck = await DeckAsync.Invoke(_dbContext, id, cancel);
         if (deck == default)
         {
             return NotFound();
         }
 
+        var cards = await DeckCards(id)
+            .SeekBy(seek, direction)
+            .UseSource<Card>()
+            .Take(_pageSize)
+            .ToSeekListAsync(cancel);
+
         var userId = _userManager.GetUserId(User);
 
-        IsOwner = deck.OwnerId == userId;
-
+        IsOwner = deck.Owner.Id == userId;
         Deck = deck;
-
-        Cards = DeckCardGroups(deck).ToList();
+        Cards = cards;
 
         return Page();
     }
 
 
-    // private IQueryable<Deck> DeckForViewer(int deckId)
-    // {
-    //     return _dbContext.Decks
-    //         .Where(d => d.Id == deckId)
-
-    //         .Include(d => d.Owner)
-
-    //         .Include(d => d.Cards) // unbounded: keep eye on
-    //             .ThenInclude(a => a.Card)
-
-    //         .Include(d => d.Wants) // unbounded: keep eye on
-    //             .ThenInclude(w => w.Card)
-
-    //         .Include(d => d.GiveBacks) // unbounded: keep eye on
-    //             .ThenInclude(g => g.Card)
-
-    //         .Include(d => d.TradesTo
-    //             .OrderBy(t => t.Id)
-    //             .Take(1))
-
-    //         .AsSplitQuery()
-    //         .AsNoTrackingWithIdentityResolution();
-    // }
-
-
-    private static readonly Func<CardDbContext, int, CancellationToken, Task<Deck?>> DeckAsync
-
+    private static readonly Func<CardDbContext, int, CancellationToken, Task<DeckDetails?>> DeckDetailsAsync
         = EF.CompileAsyncQuery((CardDbContext dbContext, int deckId, CancellationToken _) =>
-
             dbContext.Decks
                 .Where(d => d.Id == deckId)
+                .Select(d => new DeckDetails
+                {
+                    Id = d.Id,
+                    Name = d.Name,
+                    Color = d.Color,
 
-                .Include(d => d.Owner)
+                    Owner = new OwnerPreview
+                    {
+                        Id = d.OwnerId,
+                        Name = d.Owner.Name
+                    },
 
-                .Include(d => d.Cards) // unbounded: keep eye on
-                    .ThenInclude(a => a.Card)
+                    AmountTotal = d.Cards.Sum(a => a.Copies),
+                    WantTotal = d.Wants.Sum(w => w.Copies),
+                    GiveBackTotal = d.GiveBacks.Sum(g => g.Copies),
 
-                .Include(d => d.Wants) // unbounded: keep eye on
-                    .ThenInclude(w => w.Card)
-
-                .Include(d => d.GiveBacks) // unbounded: keep eye on
-                    .ThenInclude(g => g.Card)
-
-                .Include(d => d.TradesTo
-                    .OrderBy(t => t.Id)
-                    .Take(1))
-
-                .AsSplitQuery()
-                .AsNoTrackingWithIdentityResolution()
+                    AnyTrades = d.TradesTo.Any()
+                })
                 .SingleOrDefault());
 
 
-    private IEnumerable<QuantityGroup> DeckCardGroups(Deck deck)
+    private IQueryable<DeckCopies> DeckCards(int deckId)
     {
-        var amountsById = deck.Cards
-            .ToDictionary(a => a.CardId);
+        return _dbContext.Cards
+            .Where(c => c.Amounts.Any(a => a.LocationId == deckId)
+                || c.Wants.Any(w => w.LocationId == deckId)
+                || c.GiveBacks.Any(g => g.LocationId == deckId))
 
-        var wantsById = deck.Wants
-            .ToDictionary(w => w.CardId);
+            .OrderBy(c => c.Name)
+                .ThenBy(c => c.SetName)
+                .ThenBy(c => c.Id)
 
-        var givesById = deck.GiveBacks
-            .ToDictionary(g => g.CardId);
+            .Select(c => new DeckCopies
+            {
+                Id = c.Id,
+                Name = c.Name,
 
-        var cardIds = amountsById.Keys
-            .Union(wantsById.Keys)
-            .Union(givesById.Keys);
+                SetName = c.SetName,
+                ManaCost = c.ManaCost,
 
-        return cardIds
-            .Select(cid =>
-                new QuantityGroup(
-                    amountsById.GetValueOrDefault(cid),
-                    wantsById.GetValueOrDefault(cid),
-                    givesById.GetValueOrDefault(cid) ))
+                Rarity = c.Rarity,
+                ImageUrl = c.ImageUrl,
 
-            .OrderBy(rg => rg.Card.Name);
+                Held = c.Amounts
+                    .Where(a => a.LocationId == deckId)
+                    .Sum(a => a.Copies),
+
+                Want = c.Wants
+                    .Where(w => w.LocationId == deckId)
+                    .Sum(w => w.Copies),
+
+                Returning = c.GiveBacks
+                    .Where(g => g.LocationId == deckId)
+                    .Sum(g => g.Copies),
+            });
     }
+
 }

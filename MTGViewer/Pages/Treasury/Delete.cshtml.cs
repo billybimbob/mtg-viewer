@@ -35,46 +35,44 @@ public class DeleteModel : PageModel
     public int NumberOfCards { get; private set; }
 
     public bool HasMore =>
-        Box is null ? false : Box.Cards.Sum(a => a.NumCopies) < NumberOfCards;
+        Box?.Cards.Sum(a => a.Copies) < NumberOfCards;
 
 
     public async Task<IActionResult> OnGetAsync(int id, CancellationToken cancel)
     {
-        var box = await _dbContext.Boxes
-            .Include(b => b.Bin)
-
-            // unbounded, keep eye on
-            .Include(b => b.Cards
-                .OrderBy(a => a.Card.Name)
-                    .ThenBy(a => a.Card.SetName)
-                    .ThenBy(a => a.NumCopies)
-                    .ThenBy(a => a.Id)
-                    .Take(_pageSize))
-                .ThenInclude(a => a.Card)
-
-            .AsNoTrackingWithIdentityResolution()
-            .SingleOrDefaultAsync(b => b.Id == id, cancel);
-
+        var box = await BoxToDeleteAsync.Invoke(_dbContext, id, _pageSize, cancel);
         if (box == default)
         {
             return NotFound();
         }
 
         Box = box;
-
         NumberOfCards = await NumberOfCardsAsync.Invoke(_dbContext, id, cancel);
 
         return Page();
     }
 
 
-    private static readonly Func<CardDbContext, int, CancellationToken, Task<int>> NumberOfCardsAsync
+    private static readonly Func<CardDbContext, int, int, CancellationToken, Task<Box?>> BoxToDeleteAsync
+        = EF.CompileAsyncQuery((CardDbContext dbContext, int boxId, int pageSize, CancellationToken _) =>
+            dbContext.Boxes
+                .Include(d => d.Cards
+                    .OrderBy(a => a.Card.Name)
+                        .ThenBy(a => a.Card.SetName)
+                        .ThenBy(a => a.Copies)
+                        .ThenBy(a => a.Id)
+                        .Take(pageSize))
+                    .ThenInclude(a => a.Card)
+                .AsNoTrackingWithIdentityResolution()
+                .SingleOrDefault(d => d.Id == boxId));
 
+
+    private static readonly Func<CardDbContext, int, CancellationToken, Task<int>> NumberOfCardsAsync
         = EF.CompileAsyncQuery((CardDbContext dbContext, int boxId, CancellationToken _) =>
             dbContext.Boxes
                 .Where(b => b.Id == boxId)
                 .SelectMany(b => b.Cards)
-                .Sum(a => a.NumCopies));
+                .Sum(a => a.Copies));
 
 
 
@@ -84,7 +82,6 @@ public class DeleteModel : PageModel
             .Include(b => b.Bin)
             .Include(b => b.Cards) // unbounded, keep eye on
                 .ThenInclude(a => a.Card)
-
             .SingleOrDefaultAsync(b => b.Id == id, cancel);
 
         if (box == default)
@@ -106,7 +103,7 @@ public class DeleteModel : PageModel
         // removing box before ensures that box will not be a return target
 
         var cardReturns = box.Cards
-            .Select(a => new CardRequest(a.Card, a.NumCopies));
+            .Select(a => new CardRequest(a.Card, a.Copies));
 
         await _dbContext.AddCardsAsync(cardReturns, cancel);
 

@@ -93,7 +93,7 @@ internal class ExactOverflow: OverflowHandler
             return Enumerable.Empty<StorageAssignment<Amount>>();
         }
 
-        int minTransfer = Math.Min(source.NumCopies, copiesAbove);
+        int minTransfer = Math.Min(source.Copies, copiesAbove);
 
         return Assignment.FitToBoxes(source, minTransfer, bestBoxes, storageSpace);
     }
@@ -165,7 +165,7 @@ internal class ApproximateOverflow : OverflowHandler
             .Union(available)
             .Concat(excessStorage);
 
-        int minTransfer = Math.Min(source.NumCopies, copiesAbove);
+        int minTransfer = Math.Min(source.Copies, copiesAbove);
 
         return Assignment.FitToBoxes(source, minTransfer, bestBoxes, storageSpace);
     }

@@ -17,8 +17,8 @@ public class Change
 
 
     [JsonIgnore]
-    public string CardId { get; init; } = default!;
     public Card Card { get; init; } = default!;
+    public string CardId { get; init; } = default!;
 
 
     [Range(1, 4_096)]

@@ -48,7 +48,8 @@ public sealed class DatabaseOptions
             return Configuration.GetConnectionString(Provider ?? Sqlite);
         }
 
-        if (context is DatabaseContext.User && CardRedirect is null && UserRedirect is null)
+        if (context is DatabaseContext.User
+            && this is { CardRedirect: null, UserRedirect: null })
         {
             return Configuration.GetConnectionString(Provider ?? Sqlite);
         }

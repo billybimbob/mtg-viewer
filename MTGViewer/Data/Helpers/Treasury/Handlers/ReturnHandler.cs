@@ -56,7 +56,7 @@ internal class ExactReturn : ReturnHandler
     {
         var giveBacks = ExchangeContext.Deck.GiveBacks;
 
-        if (!TreasuryContext.Available.Any() || giveBacks.All(g => g.NumCopies == 0))
+        if (!TreasuryContext.Available.Any() || giveBacks.All(g => g.Copies == 0))
         {
             yield break;
         }
@@ -79,7 +79,7 @@ internal class ExactReturn : ReturnHandler
         var storageSpace = TreasuryContext.StorageSpace;
 
         return Assignment.FitToBoxes(
-            giveBack.Card, giveBack.NumCopies, bestBoxes, storageSpace);
+            giveBack.Card, giveBack.Copies, bestBoxes, storageSpace);
     }
 
     private ILookup<string, Storage> AddLookup()
@@ -107,14 +107,14 @@ internal class ApproximateReturn : ReturnHandler
     {
         var giveBacks = ExchangeContext.Deck.GiveBacks;
 
-        if (!TreasuryContext.Available.Any() || giveBacks.All(g => g.NumCopies == 0))
+        if (!TreasuryContext.Available.Any() || giveBacks.All(g => g.Copies == 0))
         {
             yield break;
         }
 
         foreach (var giveBack in giveBacks)
         {
-            if (giveBack.NumCopies == 0)
+            if (giveBack.Copies == 0)
             {
                 continue;
             }
@@ -135,7 +135,7 @@ internal class ApproximateReturn : ReturnHandler
         var storageSpace = TreasuryContext.StorageSpace;
 
         return Assignment.FitToBoxes(
-            giveBack.Card, giveBack.NumCopies, bestBoxes, storageSpace);
+            giveBack.Card, giveBack.Copies, bestBoxes, storageSpace);
     }
 
     private ILookup<string, Storage> AddLookup()
@@ -163,7 +163,7 @@ internal class GuessReturn : ReturnHandler
     {
         var giveBacks = ExchangeContext.Deck.GiveBacks;
 
-        if (giveBacks.All(g => g.NumCopies == 0))
+        if (giveBacks.All(g => g.Copies == 0))
         {
             yield break;
         }
@@ -174,13 +174,13 @@ internal class GuessReturn : ReturnHandler
         // keep eye on
 
         var orderedGiveBacks = giveBacks
-            .OrderByDescending(g => g.NumCopies)
+            .OrderByDescending(g => g.Copies)
                 .ThenByDescending(g => g.Card.Name)
                     .ThenByDescending(g => g.Card.SetName);
 
         foreach (var giveBack in orderedGiveBacks)
         {
-            if (giveBack.NumCopies == 0)
+            if (giveBack.Copies == 0)
             {
                 continue;
             }
@@ -206,6 +206,6 @@ internal class GuessReturn : ReturnHandler
             .Concat(excess);
         
         return Assignment.FitToBoxes(
-            giveBack.Card, giveBack.NumCopies, bestTargets, storageSpace);
+            giveBack.Card, giveBack.Copies, bestTargets, storageSpace);
     }
 }

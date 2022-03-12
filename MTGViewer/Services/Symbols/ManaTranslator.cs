@@ -26,7 +26,7 @@ public class ManaTranslator : ISymbolTranslator
 
         direction = direction switch
         {
-            _ when direction is null => "zero",
+            null => "zero",
             "+" => "up",
             "−" => "down",
             _ => throw new ArgumentException("Unexpected loyalty group")

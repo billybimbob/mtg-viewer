@@ -143,7 +143,7 @@ public class TestDataGenerator
             {
                 Card = c,
                 Location = newDeck,
-                NumCopies = _random.Next(1, 3)
+                Copies = _random.Next(1, 3)
             });
 
         _dbContext.Decks.Attach(newDeck);
@@ -211,7 +211,7 @@ public class TestDataGenerator
             {
                 Card = card,
                 Location = newDeck,
-                NumCopies = _random.Next(1, 3)
+                Copies = _random.Next(1, 3)
             })
             .ToList();
 
@@ -282,7 +282,7 @@ public class TestDataGenerator
                 Card = tradeCard,
                 To = to,
                 From = from,
-                Amount = toRequest.NumCopies
+                Amount = toRequest.Copies
             });
         }
 
@@ -358,7 +358,7 @@ public class TestDataGenerator
                 Card = tradeCard,
                 To = to,
                 From = from,
-                Amount = toRequest.NumCopies
+                Amount = toRequest.Copies
             });
         }
 
@@ -385,7 +385,7 @@ public class TestDataGenerator
             _dbContext.Amounts.Attach(cardAmount);
         }
 
-        cardAmount.NumCopies = amount;
+        cardAmount.Copies = amount;
 
         return cardAmount;
     }
@@ -408,7 +408,7 @@ public class TestDataGenerator
             _dbContext.Wants.Attach(want);
         }
 
-        want.NumCopies = amount;
+        want.Copies = amount;
 
         return want;
     }
@@ -431,7 +431,7 @@ public class TestDataGenerator
             _dbContext.GiveBacks.Attach(give);
         }
 
-        give.NumCopies = amount;
+        give.Copies = amount;
 
         return give;
     }
@@ -444,14 +444,14 @@ public class TestDataGenerator
             .FirstAsync();
 
         var takeTarget = await _dbContext.Amounts
-            .Where(a => a.Location is Box && a.NumCopies > 0)
+            .Where(a => a.Location is Box && a.Copies > 0)
             .Select(a => a.Card)
             .AsNoTracking()
             .FirstAsync();
 
         var targetCap = await _dbContext.Amounts
             .Where(a => a.Location is Box && a.CardId == takeTarget.Id)
-            .Select(a => a.NumCopies)
+            .Select(a => a.Copies)
             .SumAsync();
 
         int limit = Math.Max(1, targetCap + targetMod);
@@ -473,9 +473,9 @@ public class TestDataGenerator
             .AsNoTracking()
             .FirstAsync(a => a.Location is Deck
                 && !(a.Location as Deck)!.TradesTo.Any()
-                && a.NumCopies > 0);
+                && a.Copies > 0);
 
-        int limit = Math.Max(1, returnTarget.NumCopies + targetMod);
+        int limit = Math.Max(1, returnTarget.Copies + targetMod);
 
         var give = await FindGiveBackAsync(
             returnTarget.Card, (Deck)returnTarget.Location, limit);
@@ -493,13 +493,13 @@ public class TestDataGenerator
             .Include(a => a.Card)
             .Include(a => a.Location)
             .AsNoTracking()
-            .FirstAsync(a => a.Location is Deck && a.NumCopies > 0);
+            .FirstAsync(a => a.Location is Deck && a.Copies > 0);
 
         var deckTarget = (Deck)returnTarget.Location;
 
         var takeTarget = await _dbContext.Amounts
             .Where(a => a.Location is Box 
-                && a.NumCopies > 0
+                && a.Copies > 0
                 && a.CardId != returnTarget.CardId)
             .Select(a => a.Card)
             .AsNoTracking()
@@ -507,11 +507,11 @@ public class TestDataGenerator
 
         var targetCap = await _dbContext.Amounts
             .Where(a => a.Location is Box && a.CardId == takeTarget.Id)
-            .Select(a => a.NumCopies)
+            .Select(a => a.Copies)
             .SumAsync();
 
         var deckGive = await FindGiveBackAsync(
-            returnTarget.Card, deckTarget, returnTarget.NumCopies);
+            returnTarget.Card, deckTarget, returnTarget.Copies);
 
         var deckWant = await FindWantAsync(
             takeTarget, deckTarget, targetCap);
@@ -590,7 +590,7 @@ public class TestDataGenerator
             {
                 Card = card,
                 Location = unclaimed,
-                NumCopies = _random.Next(1, 5)
+                Copies = _random.Next(1, 5)
             });
 
         var wants = targetCards
@@ -599,7 +599,7 @@ public class TestDataGenerator
             {
                 Card = card,
                 Location = unclaimed,
-                NumCopies = _random.Next(1, 5)
+                Copies = _random.Next(1, 5)
             });
 
         _dbContext.Unclaimed.Attach(unclaimed);
@@ -620,7 +620,7 @@ public class TestDataGenerator
 
         int availAmounts = await _dbContext.Boxes
             .SelectMany(b => b.Cards)
-            .SumAsync(a => a.NumCopies);
+            .SumAsync(a => a.Copies);
 
         if (availAmounts > capacity)
         {
@@ -637,7 +637,7 @@ public class TestDataGenerator
 
             foreach (var box in boxes)
             {
-                int remaining = box.Capacity - box.Cards.Sum(a => a.NumCopies);
+                int remaining = box.Capacity - box.Cards.Sum(a => a.Copies);
                 if (remaining <= 0)
                 {
                     continue;
@@ -645,7 +645,7 @@ public class TestDataGenerator
 
                 if (box.Cards.FirstOrDefault() is Amount amount)
                 {
-                    amount.NumCopies += remaining;
+                    amount.Copies += remaining;
                     continue;
                 }
 
@@ -653,7 +653,7 @@ public class TestDataGenerator
                 {
                     Card = card,
                     Location = box,
-                    NumCopies = remaining
+                    Copies = remaining
                 };
 
                 _dbContext.Amounts.Attach(amount);
@@ -674,7 +674,7 @@ public class TestDataGenerator
         {
             Card = card,
             Location = excess,
-            NumCopies = excessSpace
+            Copies = excessSpace
         };
 
         _dbContext.Excess.Attach(excess);
@@ -729,7 +729,7 @@ public class TestDataGenerator
             {
                 Card = c,
                 Location = deck,
-                NumCopies = _random.Next(4)
+                Copies = _random.Next(4)
             });
 
         deck.Cards.AddRange(amounts);

@@ -213,6 +213,17 @@ public class HistoryModel : PageModel
     }
 
 
+    private static readonly Func<CardDbContext, int, CancellationToken, Task<Transaction?>> TransactionAsync
+
+        = EF.CompileAsyncQuery((CardDbContext dbContext, int transactionId, CancellationToken _) =>
+            dbContext.Transactions
+                .Include(t => t.Changes) // unbounded: keep eye on
+                    .ThenInclude(c => c.To)
+                .Include(t => t.Changes)
+                    .ThenInclude(c => c.From)
+
+                .SingleOrDefault(t => t.Id == transactionId));
+
 
     public async Task<IActionResult> OnPostAsync(int transactionId, CancellationToken cancel)
     {
@@ -223,13 +234,7 @@ public class HistoryModel : PageModel
             return Forbid();
         }
 
-        var transaction = await _dbContext.Transactions
-            .Include(t => t.Changes) // unbounded: keep eye on
-                .ThenInclude(c => c.To)
-            .Include(t => t.Changes)
-                .ThenInclude(c => c.From)
-
-            .SingleOrDefaultAsync(t => t.Id == transactionId, cancel);
+        var transaction = await TransactionAsync.Invoke(_dbContext, transactionId, cancel);
 
         if (transaction == default || IsInvalidTransaction(transaction))
         {

@@ -17,8 +17,7 @@ internal static class ExecuteSeek<TEntity> where TEntity : class
         CancellationToken cancel = default)
     {
         if (GetSeekInfoVisitor.Instance.Visit(query.Expression)
-            is not ConstantExpression constant
-            || constant.Value is not SeekInfo seekInfo)
+            is not ConstantExpression { Value: SeekInfo seekInfo })
         {
             throw new ArgumentException($"{nameof(query)} missing seek values");
         }
@@ -69,11 +68,12 @@ internal static class ExecuteSeek<TEntity> where TEntity : class
         protected override Expression VisitMethodCall(MethodCallExpression node)
         {
             if (node.Arguments.ElementAtOrDefault(0) is not Expression parent
-                || !node.Method.IsGenericMethod
-                || node.Method.GetGenericMethodDefinition() is not MethodInfo method)
+                || node is { Method.IsGenericMethod: false })
             {
                 return node;
             }
+
+            var method = node.Method.GetGenericMethodDefinition();
 
             if (method == QueryableMethods.Where
                 && node.Arguments.ElementAtOrDefault(1) is var filter
@@ -84,14 +84,13 @@ internal static class ExecuteSeek<TEntity> where TEntity : class
             }
 
             if (Visit(parent) is not ConstantExpression seekParent
-                || seekParent.Value is not SeekInfo seekInfo)
+                || seekParent is not { Value: SeekInfo seekInfo })
             {
                 return node;
             }
 
             if (method == QueryableMethods.Take
-                && node.Arguments.ElementAtOrDefault(1) is ConstantExpression takeBy
-                && takeBy.Value is int take)
+                && node.Arguments.ElementAtOrDefault(1) is ConstantExpression { Value: int take })
             {
                 return Expression.Constant(
                     seekInfo with { Size = take });
@@ -179,12 +178,12 @@ internal static class ExecuteSeek<TEntity> where TEntity : class
         protected override Expression VisitMethodCall(MethodCallExpression node)
         {
             if (node.Arguments.ElementAtOrDefault(0) is not Expression parent
-                || !node.Method.IsGenericMethod
-                || node.Method.GetGenericMethodDefinition() is not MethodInfo method)
-
+                || node is { Method.IsGenericMethod: false })
             {
                 return node;
             }
+
+            var method = node.Method.GetGenericMethodDefinition();
 
             if (method == QueryableMethods.Reverse)
             {
@@ -211,11 +210,12 @@ internal static class ExecuteSeek<TEntity> where TEntity : class
         protected override Expression VisitMethodCall(MethodCallExpression node)
         {
             if (node.Arguments.ElementAtOrDefault(0) is not Expression parent
-                || !node.Method.IsGenericMethod
-                || node.Method.GetGenericMethodDefinition() is not MethodInfo method)
+                || node is { Method.IsGenericMethod: false })
             {
                 return node;
             }
+
+            var method = node.Method.GetGenericMethodDefinition();
 
             if (method == QueryableMethods.Take)
             {

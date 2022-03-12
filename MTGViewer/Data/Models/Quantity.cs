@@ -23,8 +23,8 @@ public abstract class Quantity : Concurrent
 
 
     [JsonIgnore]
-    public string CardId { get; init; } = default!;
     public Card Card { get; init; } = default!;
+    public string CardId { get; init; } = default!;
 
 
     [JsonIgnore]
@@ -33,9 +33,9 @@ public abstract class Quantity : Concurrent
 
     // limit is kind of arbitrary
 
-    [Display(Name = "Copies")]
+    [Display(Name = "Number of Copies")]
     [Range(1, 4_096)]
-    public int NumCopies { get; set; }
+    public int Copies { get; set; }
 }
 
 

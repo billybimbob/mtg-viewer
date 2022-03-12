@@ -42,7 +42,8 @@ internal static class Assignment
         }
         
         if (copiesToAssign > 0
-            && storageOptions.OfType<Excess>().FirstOrDefault() is Excess firstExcess)
+            && storageOptions.OfType<Excess>().FirstOrDefault()
+            is Excess firstExcess)
         {
             yield return new StorageAssignment<TSource>(source, copiesToAssign, firstExcess);
         }
@@ -67,7 +68,7 @@ internal static class Assignment
                 a => a.CardId, cid => cid,
                 (target, _) => target)
 
-            .OrderByDescending(a => a.NumCopies)
+            .OrderByDescending(a => a.Copies)
                 .ThenByDescending(a => a.Location switch
                 {
                     Box box => box.Capacity - storageSpace.GetValueOrDefault(box),
@@ -96,7 +97,7 @@ internal static class Assignment
                 (target, _) => target)
 
             // lookup group orders should preserve NumCopies order
-            .OrderByDescending(a => a.NumCopies)
+            .OrderByDescending(a => a.Copies)
                 .ThenByDescending(a => a.Location switch
                 {
                     Box box => box.Capacity - storageSpace.GetValueOrDefault(box),

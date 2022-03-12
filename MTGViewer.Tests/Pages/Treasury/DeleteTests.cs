@@ -87,7 +87,7 @@ public class DeleteTests : IAsyncLifetime
 
         int treasuryCardsBefore = await _dbContext.Amounts
             .Where(a => a.Location is Box)
-            .SumAsync(a => a.NumCopies);
+            .SumAsync(a => a.Copies);
 
         var result = await _deleteModel.OnPostAsync(boxWithCards.Id, default);
 
@@ -95,7 +95,7 @@ public class DeleteTests : IAsyncLifetime
 
         int treasuryCardsAfter = await _dbContext.Amounts
             .Where(a => a.Location is Box)
-            .SumAsync(a => a.NumCopies);
+            .SumAsync(a => a.Copies);
 
         Assert.IsType<RedirectToPageResult>(result);
 

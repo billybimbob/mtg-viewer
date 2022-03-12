@@ -54,49 +54,13 @@ public class BulkOperations
     public CardStream GetSeedStream() => CardStream.All(_dbContext, _userManager);
 
 
-    // public async Task SeedAsync(CardStream data, CancellationToken cancel = default)
-    // {
-    //     await AddRangeAsync(data.Cards, _dbContext.Cards, cancel);
-    //     await AddRangeAsync(data.Refs, _dbContext.Users, cancel);
-
-    //     await AddRangeAsync(data.Bins, _dbContext.Bins, cancel);
-
-    //     await AddRangeAsync(data.Decks, _dbContext.Decks, cancel);
-    //     await AddRangeAsync(data.Unclaimed, _dbContext.Unclaimed, cancel);
-
-    //     await AddRangeAsync(data.Transactions, _dbContext.Transactions, cancel);
-    //     await AddRangeAsync(data.Suggestions, _dbContext.Suggestions, cancel);
-
-    //     await _dbContext.SaveChangesAsync(cancel);
-
-    //     await foreach (var user in data.Users.WithCancellation(cancel))
-    //     {
-    //         var result = await AddUserAsync(user, cancel);
-    //         if (!result.Succeeded)
-    //         {
-    //             string errors = string.Join(',', result.Errors);
-    //             throw new InvalidOperationException(errors);
-    //         }
-    //     }
-    // }
-
-
-    // private static async ValueTask AddRangeAsync<TEntity>(
-    //     IAsyncEnumerable<TEntity> data, 
-    //     DbSet<TEntity> dbSet,
-    //     CancellationToken cancel) where TEntity : class
-    // {
-    //     await foreach (var entity in data.WithCancellation(cancel))
-    //     {
-    //         dbSet.Add(entity);
-    //     }
-    // }
-
 
     public async Task SeedAsync(CardData data, CancellationToken cancel = default)
     {
         _dbContext.Users.AddRange(data.Refs);
         _dbContext.Cards.AddRange(data.Cards);
+
+        // ignore card ids, just assume it will be empty
 
         _dbContext.Bins.AddRange(data.Bins);
         _dbContext.Decks.AddRange(data.Decks);
@@ -191,69 +155,84 @@ public class BulkOperations
 
     private async Task<bool> MergeCardsAsync(CardData data, CancellationToken cancel)
     {
-        var dbCardIds = await ExistingCardsAsync(data, cancel);
+        var dbCards = await ExistingCardsAsync(data, cancel);
+
+        var newMultiverseIds = data.Cards
+            .Select(c => c.MultiverseId)
+            .Union(data.CardIds
+                .Select(c => c.MultiverseId))
+
+            .Except(dbCards
+                .Select(c => c.MultiverseId));
+
+        var validCards = _mtgQuery
+            .Collection(newMultiverseIds)
+            .WithCancellation(cancel);
 
         // existing cards will be left unmodified, so they don't 
         // need to be validated
 
-        var newMultiIds = data.Cards
-            .ExceptBy(dbCardIds, c => c.Id)
-            .Where(c => c.MultiverseId is not null)
-            .Select(c => c.MultiverseId);
+        var dataCardTable = data.Cards.ToDictionary(c => c.Id);
 
-        var validCards = await _mtgQuery.CollectionAsync(newMultiIds, cancel);
+        bool hasNewCards = false;
 
-        var cardPairs = validCards
-            .Join(data.Cards,
-                v => v.Id, c => c.Id,
-                (valid, card) => (card, valid));
-
-        bool anyNewCards = false;
-
-        foreach (var (card, valid) in cardPairs)
+        await foreach (var card in validCards)
         {
-            var addEntry = _dbContext.Cards.Add(card);
+            hasNewCards = true;
 
-            addEntry.CurrentValues.SetValues(valid);
-
-            anyNewCards = true;
+            if (dataCardTable.TryGetValue(card.Id, out var conflict))
+            {
+                _dbContext.Cards
+                    .Add(conflict).CurrentValues
+                    .SetValues(card);
+            }
+            else
+            {
+                _dbContext.Cards.Add(card);
+            }
         }
 
-        var existingCards = data.Cards.Except(_dbContext.Cards.Local);
+        var missingDbCards = dbCards
+            .Where(c => !dataCardTable.ContainsKey(c.Id));
 
-        _dbContext.Cards.AttachRange(existingCards);
+        _dbContext.Cards.AttachRange(missingDbCards);
 
-        return anyNewCards;
+        return hasNewCards;
     }
 
 
-    private Task<List<string>> ExistingCardsAsync(
+    private async ValueTask<List<Card>> ExistingCardsAsync(
         CardData data,
         CancellationToken cancel)
     {
-        if (data.Cards.Count < _pageSizes.Limit)
+        if (data.Cards.Count + data.CardIds.Count < _pageSizes.Limit)
         {
             var cardIds = data.Cards
                 .Select(c => c.Id)
+                .Union(data.CardIds
+                    .Select(c => c.Id))
                 .ToArray();
 
-            return _dbContext.Cards
-                .Select(c => c.Id)
-                .Where(cid => cardIds.Contains(cid))
+            return await _dbContext.Cards
+                .Where(c => cardIds.Contains(c.Id))
+                .AsNoTracking()
                 .ToListAsync(cancel);
         }
         else
         {
             var cardIds = data.Cards
                 .Select(c => c.Id)
+                .Union(data.CardIds
+                    .Select(c => c.Id))
                 .ToAsyncEnumerable();
 
-            return _dbContext.Cards
-                .Select(c => c.Id)
+            return await _dbContext.Cards
+                .AsNoTracking()
                 .AsAsyncEnumerable()
-                .Intersect(cardIds)
-                .ToListAsync(cancel)
-                .AsTask();
+                .Join(cardIds,
+                    c => c.Id, cid => cid,
+                    (card, _) => card)
+                .ToListAsync(cancel);
         }
     }
 
@@ -267,18 +246,18 @@ public class BulkOperations
             .SelectMany(b => b.Cards,
                 (box, a) => new Change
                 {
-                    Card = a.Card,
+                    CardId = a.CardId,
                     To = box,
-                    Amount = a.NumCopies
+                    Amount = a.Copies
                 });
 
         var deckChanges = unclaimed
             .SelectMany(u => u.Cards,
                 (unclaimed, a) => new Change
                 {
-                    Card = a.Card,
+                    CardId = a.CardId,
                     To = unclaimed,
-                    Amount = a.NumCopies
+                    Amount = a.Copies
                 });
 
         var changes = boxChanges
@@ -305,31 +284,36 @@ public class BulkOperations
         {
             return;
         }
-
+        
         multiverseAdditions = new SortedList<string, int>(multiverseAdditions);
 
         var dbCards = await ExistingCardsAsync(multiverseAdditions.Keys, cancel);
-
-        var newMultiverse = multiverseAdditions.Keys
-            .Except(dbCards.Select(c => c.MultiverseId))
-            .ToList();
 
         var allCards = dbCards;
 
         _loadProgress.Ticks = 2;
 
+        var newMultiverse = multiverseAdditions.Keys
+            .Except(dbCards.Select(c => c.MultiverseId))
+            .ToList();
+
         if (newMultiverse.Any())
         {
-            var newCards = await _mtgQuery.CollectionAsync(newMultiverse, cancel);
+            var newCards = _mtgQuery
+                .Collection(newMultiverse)
+                .WithCancellation(cancel);
 
-            allCards.AddRange(newCards);
-            _dbContext.Cards.AddRange(newCards);
+            await foreach (var card in newCards)
+            {
+                allCards.Add(card);
+                _dbContext.Cards.Add(card);
+            }
         }
 
         var requests = allCards
-            .IntersectBy(multiverseAdditions.Keys, c => c.MultiverseId)
-            .Select(card => 
-                new CardRequest(card, multiverseAdditions[card.MultiverseId]));
+            .Join( multiverseAdditions,
+                c => c.MultiverseId, kv => kv.Key,
+                (card, kv) => new CardRequest(card, kv.Value));
 
         await _dbContext.AddCardsAsync(requests, cancel);
 
@@ -341,13 +325,13 @@ public class BulkOperations
     }
 
 
-    private Task<List<Card>> ExistingCardsAsync(
+    private async ValueTask<List<Card>> ExistingCardsAsync(
         IEnumerable<string> multiverseIds, 
         CancellationToken cancel)
     {
         if (multiverseIds.Count() < _pageSizes.Limit)
         {
-            return _dbContext.Cards
+            return await _dbContext.Cards
                 .Where(c => multiverseIds.Contains(c.MultiverseId))
                 .ToListAsync(cancel);
         }
@@ -356,21 +340,20 @@ public class BulkOperations
             var asyncMultiverse = multiverseIds
                 .ToAsyncEnumerable();
 
-            return _dbContext.Cards
+            return await _dbContext.Cards
                 .AsAsyncEnumerable()
                 .Join( asyncMultiverse,
                     c => c.MultiverseId,
                     mid => mid,
                     (card, _) => card)
-                .ToListAsync(cancel)
-                .AsTask();
+                .ToListAsync(cancel);
         }
     }
 
 
     public async Task ResetAsync(CancellationToken cancel = default)
     {
-        var data = GetDefaultStream();
+        var data = CardStream.Reset(_dbContext);
 
         _loadProgress.Ticks = 7;
 

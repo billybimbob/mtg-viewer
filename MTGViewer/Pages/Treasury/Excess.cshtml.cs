@@ -25,12 +25,10 @@ public class ExcessModel : PageModel
     }
 
 
-    public SeekList<CardPreview> Cards { get; private set; } = SeekList<CardPreview>.Empty;
+    public SeekList<CardCopies> Cards { get; private set; } = SeekList<CardCopies>.Empty;
 
     public bool HasExcess =>
-        Cards.Any()
-            || Cards.Seek.Previous is not null
-            || Cards.Seek.Next is not null;
+        Cards.Any() || Cards.Seek is not { Previous: null, Next: null };
 
 
     public async Task<IActionResult> OnGetAsync(
@@ -78,7 +76,7 @@ public class ExcessModel : PageModel
     }
 
 
-    private IQueryable<CardPreview> ExcessCards()
+    private IQueryable<CardCopies> ExcessCards()
     {
         return _dbContext.Cards
             .Where(c => c.Amounts
@@ -88,7 +86,7 @@ public class ExcessModel : PageModel
                 .ThenBy(c => c.SetName)
                 .ThenBy(c => c.Id)
 
-            .Select(c => new CardPreview
+            .Select(c => new CardCopies
             {
                 Id = c.Id,
                 Name = c.Name,
@@ -98,9 +96,9 @@ public class ExcessModel : PageModel
                 Rarity = c.Rarity,
                 ImageUrl = c.ImageUrl,
 
-                Total = c.Amounts
+                Copies = c.Amounts
                     .Where(a => a.Location is Excess)
-                    .Sum(a => a.NumCopies)
+                    .Sum(a => a.Copies)
             });
     }
 

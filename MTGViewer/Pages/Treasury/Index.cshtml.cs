@@ -42,21 +42,14 @@ public class IndexModel : PageModel
             .ToSeekListAsync(cancel);
 
         Bins = boxes
-            .GroupBy(b => (b.BinName, b.BinId),
-                (b, boxPreviews) => new BinPreview
-                {
-                    Id = b.BinId,
-                    Name = b.BinName,
-                    Boxes = boxPreviews
-                })
+            .GroupBy(b => b.Bin,
+                (bin, boxPreviews) =>
+                    bin with { Boxes = boxPreviews })
             .ToList();
 
         Seek = (Seek)boxes.Seek;
 
         HasExcess = await HasExcessAsync.Invoke(_dbContext, cancel);
-
-        // HasExcess = await _dbContext.Amounts
-        //     .AnyAsync(a => a.Location is Excess, cancel);
     }
 
 
@@ -73,27 +66,30 @@ public class IndexModel : PageModel
             {
                 Id = b.Id,
                 Name = b.Name,
-
-                BinId = b.BinId,
-                BinName = b.Bin.Name,
+                Bin = new BinPreview
+                {
+                    Id = b.BinId,
+                    Name = b.Bin.Name
+                },
 
                 Capacity = b.Capacity,
-                TotalCards = b.Cards.Sum(a => a.NumCopies),
+                TotalCards = b.Cards.Sum(a => a.Copies),
 
                 Cards = b.Cards
                     .OrderBy(a => a.Card.Name)
                         .ThenBy(a => a.Card.SetName)
-                        .ThenBy(a => a.NumCopies)
+                        .ThenBy(a => a.Copies)
 
                     .Take(_pageSize)
-                    .Select(a => new BoxCard
+                    .Select(a => new StorageLink
                     {
-                        CardId = a.CardId,
-                        CardName = a.Card.Name,
-                        CardManaCost = a.Card.ManaCost,
-                        CardSetName = a.Card.SetName,
+                        Id = a.CardId,
+                        Name = a.Card.Name,
 
-                        NumCopies = a.NumCopies
+                        SetName = a.Card.SetName,
+                        ManaCost = a.Card.ManaCost,
+
+                        Copies = a.Copies
                     })
             });
     }

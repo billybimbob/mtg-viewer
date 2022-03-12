@@ -231,7 +231,7 @@ public class IndexModel : PageModel
         }
 
         var cardReturns = unclaimed.Cards
-            .Select(a => new CardRequest(a.Card, a.NumCopies));
+            .Select(a => new CardRequest(a.Card, a.Copies));
 
         _dbContext.Amounts.RemoveRange(unclaimed.Cards);
         _dbContext.Unclaimed.Remove(unclaimed);

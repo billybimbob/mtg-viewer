@@ -227,8 +227,9 @@ internal sealed class OriginFilter<TOrigin, TEntity>
 
     private bool IsGreaterThan(Ordering ordering)
     {
-        return _direction is SeekDirection.Forward && ordering is Ordering.Ascending
-            || _direction is SeekDirection.Backwards && ordering is Ordering.Descending;
+        return (_direction, ordering)
+            is (SeekDirection.Forward, Ordering.Ascending)
+            or (SeekDirection.Backwards, Ordering.Descending);
     }
 
 
@@ -369,8 +370,8 @@ internal sealed class OriginFilter<TOrigin, TEntity>
 
         protected override Expression VisitMember(MemberExpression node)
         {
-            if (node.Expression?.Type == typeof(TEntity)
-                && node.Member is PropertyInfo property)
+            if (node is { Expression.Type: var type, Member: PropertyInfo property }
+                && type == typeof(TEntity))
             {
                 return Expression.Property(Parameter, property);
             }
@@ -400,8 +401,7 @@ internal sealed class OriginFilter<TOrigin, TEntity>
 
         private bool IsNull(Expression node)
         {
-            return node is ConstantExpression constant
-                && constant.Value is null;
+            return node is ConstantExpression { Value: null };
         }
     }
 

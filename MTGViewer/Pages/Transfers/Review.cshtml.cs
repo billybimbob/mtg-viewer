@@ -102,7 +102,7 @@ public class ReviewModel : PageModel
                 (trade, actuals) => (trade, actuals))
             .SelectMany(
                 ta => ta.actuals.DefaultIfEmpty(),
-                (ta, actual) => (ta.trade, actual?.NumCopies ?? 0));
+                (ta, actual) => (ta.trade, actual?.Copies ?? 0));
 
         foreach (var (trade, cap) in tradesWithCapAmount)
         {
@@ -245,13 +245,13 @@ public class ReviewModel : PageModel
 
         var (trade, toWants, fromAmount) = acceptRequest;
 
-        if (fromAmount.NumCopies == 0)
+        if (fromAmount.Copies == 0)
         {
             _dbContext.Amounts.Remove(fromAmount);
         }
 
         var finishedWants = toWants
-            ?.Where(w => w.NumCopies == 0) ?? Enumerable.Empty<Want>();
+            ?.Where(w => w.Copies == 0) ?? Enumerable.Empty<Want>();
 
         _dbContext.Wants.RemoveRange(finishedWants);
         _dbContext.Trades.Remove(trade);
@@ -274,15 +274,15 @@ public class ReviewModel : PageModel
 
         int change = new [] {
             acceptAmount, trade.Amount,
-            toWants.NumCopies, fromAmount.NumCopies }.Min();
+            toWants.NumCopies, fromAmount.Copies }.Min();
 
         if (exactWant != default)
         {
-            int exactChange = Math.Min(change, exactWant.NumCopies);
+            int exactChange = Math.Min(change, exactWant.Copies);
             int nonExactChange = change - exactChange;
 
             // exactRequest mod is also reflected in toWants
-            exactWant.NumCopies -= exactChange;
+            exactWant.Copies -= exactChange;
             toWants.NumCopies -= nonExactChange;
         }
         else
@@ -290,9 +290,9 @@ public class ReviewModel : PageModel
             toWants.NumCopies -= change;
         }
 
-        toAmount.NumCopies += change;
-        fromAmount.NumCopies -= change;
-        fromWant.NumCopies += change;
+        toAmount.Copies += change;
+        fromAmount.Copies -= change;
+        fromWant.Copies += change;
 
         var newChange = new Change
         {
@@ -321,7 +321,7 @@ public class ReviewModel : PageModel
             {
                 Card = trade.Card,
                 Location = trade.To,
-                NumCopies = 0
+                Copies = 0
             };
 
             _dbContext.Amounts.Attach(toAmount);
@@ -336,7 +336,7 @@ public class ReviewModel : PageModel
             {
                 Card = trade.Card,
                 Location = trade.From,
-                NumCopies = 0
+                Copies = 0
             };
 
             _dbContext.Wants.Attach(fromWant);

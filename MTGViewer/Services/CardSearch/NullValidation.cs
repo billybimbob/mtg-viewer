@@ -27,14 +27,15 @@ public class NullValidation<TEntity> : IValidatableObject where TEntity : notnul
         }
 
         const BindingFlags publicProperties = BindingFlags.Instance | BindingFlags.Public;
+        const NullabilityState nullable = NullabilityState.Nullable;
+
         var nullCheck = new NullabilityInfoContext();
 
         foreach (var property in typeof(TEntity).GetProperties(publicProperties))
         {
             var nullInfo = nullCheck.Create(property);
 
-            if (nullInfo.ReadState is NullabilityState.Nullable
-                && nullInfo.WriteState is NullabilityState.Nullable)
+            if (nullInfo is { ReadState: nullable, WriteState: nullable })
             {
                 continue;
             }

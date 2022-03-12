@@ -93,8 +93,10 @@ public class HistoryModel : PageModel
         return _dbContext.Changes
             .Where(c => c.From is Box
                 || c.From is Excess
+                || c.From is Unclaimed
                 || c.To is Box
-                || c.To is Excess)
+                || c.To is Excess
+                || c.To is Unclaimed)
 
             .OrderByDescending(c => c.Transaction.AppliedAt)
                 .ThenByDescending(c => c.From == null)
@@ -113,10 +115,14 @@ public class HistoryModel : PageModel
                 {
                     Id = c.TransactionId,
                     AppliedAt = c.Transaction.AppliedAt,
-
                     IsShared = c.Transaction.Changes
-                        .All(ch => (ch.To is Box || ch.To is Excess)
-                            && (ch.From == null || ch.From is Box || ch.From is Excess))
+                        .All(ch => (ch.To is Box 
+                            || ch.To is Excess 
+                            || ch.To is Unclaimed)
+                            && (ch.From == null 
+                            || ch.From is Box 
+                            || ch.From is Excess 
+                            || ch.From is Unclaimed))
                 },
 
                 To = new LocationPreview
@@ -190,6 +196,22 @@ public class HistoryModel : PageModel
     }
 
 
+    private static readonly Func<CardDbContext, int, CancellationToken, Task<Transaction?>> SharedTransactionAsync
+        = EF.CompileAsyncQuery((CardDbContext dbContext, int id, CancellationToken _) =>
+            dbContext.Transactions
+                .Where(t => t.Changes
+                    .All(c => (c.To is Box
+                        || c.To is Excess
+                        || c.To is Unclaimed)
+                        && (c.From == null
+                        || c.From is Box
+                        || c.From is Excess
+                        || c.From is Unclaimed)))
+                .Include(t => t.Changes) // unbounded, keep eye on
+                .OrderBy(t => t.Id)
+                .SingleOrDefault(t => t.Id == id));
+
+
     public async Task<IActionResult> OnPostAsync(int transactionId, CancellationToken cancel)
     {
         if (!_signInManager.IsSignedIn(User))
@@ -203,14 +225,7 @@ public class HistoryModel : PageModel
             return Forbid();
         }
 
-        var transaction = await _dbContext.Transactions
-            .Where(t => t.Changes
-                .All(c => (c.To is Box || c.To is Excess)
-                    && (c.From == null || c.From is Box || c.From is Excess)))
-
-            .Include(t => t.Changes) // unbounded, keep eye on
-            .OrderBy(t => t.Id)
-            .SingleOrDefaultAsync(t => t.Id == transactionId, cancel);
+        var transaction = await SharedTransactionAsync.Invoke(_dbContext, transactionId, cancel);
 
         if (transaction == default)
         {

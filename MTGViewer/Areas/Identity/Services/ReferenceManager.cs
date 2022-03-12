@@ -173,7 +173,7 @@ public class ReferenceManager
         var returnRequests = userCards
             .GroupBy(a => a.Card,
                 (card, amounts) => 
-                    new CardRequest(card, amounts.Sum(a => a.NumCopies)) );
+                    new CardRequest(card, amounts.Sum(a => a.Copies)) );
 
         await _dbContext.AddCardsAsync(returnRequests, cancel);
     }

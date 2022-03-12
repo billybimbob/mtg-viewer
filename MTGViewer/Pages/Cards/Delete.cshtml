@@ -44,7 +44,7 @@
         <form method="POST">
             @{ int maxCopies = Model.Card.Amounts
                 .Where(a => a.Location is Box or Excess)
-                .Sum(a => a.NumCopies); }
+                .Sum(a => a.Copies); }
 
             <div class="form-group">
                 <label asp-for="Input!.RemoveCopies" class="control-label"></label>

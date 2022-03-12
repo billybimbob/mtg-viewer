@@ -20,7 +20,7 @@ public static partial class TreasuryExtensions
 
         return dbContext.Boxes
             .Include(b => b.Cards
-                .OrderBy(a => a.NumCopies))
+                .OrderBy(a => a.Copies))
                 .ThenInclude(a => a.Card)
             .OrderBy(b => b.Id);
     }
@@ -30,7 +30,7 @@ public static partial class TreasuryExtensions
     {
         return dbContext.Excess
             .Include(e => e.Cards
-                .OrderBy(a => a.NumCopies))
+                .OrderBy(a => a.Copies))
                 .ThenInclude(a => a.Card)
             .OrderBy(e => e.Id);
     }
@@ -198,7 +198,7 @@ public static partial class TreasuryExtensions
             .Entries<Amount>()
             .All(e => e.State is EntityState.Detached
                 || e.State is not EntityState.Added
-                    && !e.Property(a => a.NumCopies).IsModified);
+                    && !e.Property(a => a.Copies).IsModified);
     }
 
 
@@ -216,13 +216,13 @@ public static partial class TreasuryExtensions
     private static void RemoveEmpty(CardDbContext dbContext)
     {
         var emptyAmounts = dbContext.Amounts.Local
-            .Where(a => a.NumCopies == 0);
+            .Where(a => a.Copies == 0);
 
         var emptyWants = dbContext.Wants.Local
-            .Where(w => w.NumCopies == 0);
+            .Where(w => w.Copies == 0);
 
         var emptyGiveBacks = dbContext.GiveBacks.Local
-            .Where(g => g.NumCopies == 0);
+            .Where(g => g.Copies == 0);
 
         var emptyTransactions = dbContext.Transactions.Local
             .Where(t => !t.Changes.Any());

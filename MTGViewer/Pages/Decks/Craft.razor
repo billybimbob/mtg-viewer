@@ -114,7 +114,7 @@ else
             }
             @foreach ((Card card, int available) in Treasury)
             {
-                int wantTotal = card.Wants.Sum(w => w.NumCopies);
+                int wantTotal = card.Wants.Sum(w => w.Copies);
 
                 <button type="button" title="Add @card.Name"
                     class="list-group-item list-group-item-action px-2"
@@ -164,13 +164,13 @@ else
 
                         <div class="col-3">
                             <span title="@card.Name Held" class="badge badge-pill badge-primary"> 
-                                @(group.Amount?.NumCopies ?? 0) </span>
+                                @(group.Amount?.Copies ?? 0) </span>
 
                             <span title="@card.Name Returning" class="badge badge-pill badge-danger"> 
-                                @(group.GiveBack?.NumCopies ?? 0) </span>
+                                @(group.GiveBack?.Copies ?? 0) </span>
 
                             <span title="@card.Name Wanted" class="badge badge-pill badge-secondary">
-                                @(group.Want?.NumCopies ?? 0) </span>
+                                @(group.Want?.Copies ?? 0) </span>
                         </div>
                     </div>
                 </button>
@@ -184,13 +184,13 @@ else
                         @{ var allDeckCards = AllDeckCards(); }
 
                         <span title="Total Held" class="badge badge-pill badge-primary"> 
-                            @allDeckCards.Sum(qg => qg.Amount?.NumCopies ?? 0) </span>
+                            @allDeckCards.Sum(qg => qg.Amount?.Copies ?? 0) </span>
 
                         <span title="Total Returning" class="badge badge-pill badge-danger"> 
-                            @allDeckCards.Sum(qg => qg.GiveBack?.NumCopies ?? 0) </span>
+                            @allDeckCards.Sum(qg => qg.GiveBack?.Copies ?? 0) </span>
 
                         <span title="Total Wanted" class="badge badge-pill badge-secondary">
-                            @allDeckCards.Sum(qg => qg.Want?.NumCopies ?? 0) </span>
+                            @allDeckCards.Sum(qg => qg.Want?.Copies ?? 0) </span>
                     </div>
                 </div>
             </div>

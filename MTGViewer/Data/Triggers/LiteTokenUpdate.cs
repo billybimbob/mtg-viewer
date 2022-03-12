@@ -20,7 +20,7 @@ public class LiteTokenUpdate : IBeforeSaveTrigger<Concurrent>
 
     public Task BeforeSave(ITriggerContext<Concurrent> trigContext, CancellationToken cancel)
     {
-        if (trigContext.ChangeType is ChangeType.Added or ChangeType.Modified)
+        if (trigContext is { ChangeType: ChangeType.Added or ChangeType.Modified })
         {
             trigContext.Entity.LiteToken = Guid.NewGuid();
         }

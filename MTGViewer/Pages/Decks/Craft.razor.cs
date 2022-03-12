@@ -66,7 +66,7 @@ public partial class Craft : OwningComponentBase
     private bool _isBusy;
     private readonly CancellationTokenSource _cancel = new();
 
-    private readonly SortedSet<Card> _cards = new(new CardNameComparer());
+    private readonly SortedSet<Card> _cards = new(CardNameComparer.Instance);
 
     private DeckContext? _deckContext;
 
@@ -175,18 +175,9 @@ public partial class Craft : OwningComponentBase
         CardDbContext dbContext, string userId, CancellationToken cancel)
     {
         var deck = await CraftingDeckAsync.Invoke(dbContext, DeckId, userId, cancel);
-
-        if (deck is null || deck.OwnerId != userId)
+        if (deck is null)
         {
             NavManager.NavigateTo("/Decks", true);
-
-            return null;
-        }
-
-        if (deck.TradesTo.Any())
-        {
-            NavManager.NavigateTo($"/Decks/Details/{DeckId}", true);
-
             return null;
         }
 
@@ -260,12 +251,10 @@ public partial class Craft : OwningComponentBase
                 .Include(d => d.GiveBacks) // unbounded: keep eye on
                     .ThenInclude(a => a.Card)
 
-                .Include(d => d.TradesTo
-                    .OrderBy(t => t.Id)
-                    .Take(1))
-
                 .AsSplitQuery()
-                .SingleOrDefault(d => d.Id == deckId && d.OwnerId == userId));
+                .SingleOrDefault(d => d.Id == deckId
+                    && d.OwnerId == userId
+                    && !d.TradesTo.Any()));
 
 
     private static Task<OffsetList<CardTotal>> FilteredCardsAsync(
@@ -304,7 +293,7 @@ public partial class Craft : OwningComponentBase
                     card,
                     card.Amounts
                         .Where(a => a.Location is Box || a.Location is Excess)
-                        .Sum(a => a.NumCopies)))
+                        .Sum(a => a.Copies)))
 
             .PageBy(pageIndex, pageSize)
             .ToOffsetListAsync(cancel);
@@ -564,9 +553,9 @@ public partial class Craft : OwningComponentBase
         Result = SaveResult.None;
 
         if (_deckContext.TryGetQuantity(card, out GiveBack giveBack)
-            && giveBack.NumCopies > 0)
+            && giveBack.Copies > 0)
         {
-            giveBack.NumCopies -= 1;
+            giveBack.Copies -= 1;
             return;
         }
 
@@ -585,7 +574,7 @@ public partial class Craft : OwningComponentBase
             {
                 Card = card,
                 Location = _deckContext.Deck,
-                NumCopies = 0,
+                Copies = 0,
             };
 
             dbContext.Wants.Attach(want);
@@ -594,13 +583,13 @@ public partial class Craft : OwningComponentBase
 
         }
 
-        if (want.NumCopies >= PageSizes.Limit)
+        if (want.Copies >= PageSizes.Limit)
         {
             Logger.LogWarning("deck want failed since at limit");
             return;
         }
 
-        want.NumCopies += 1;
+        want.Copies += 1;
     }
 
 
@@ -614,9 +603,9 @@ public partial class Craft : OwningComponentBase
         Result = SaveResult.None;
 
         if (_deckContext.TryGetQuantity(card, out Want want)
-            && want.NumCopies > 0)
+            && want.Copies > 0)
         {
-            want.NumCopies -= 1;
+            want.Copies -= 1;
             return;
         }
 
@@ -634,7 +623,7 @@ public partial class Craft : OwningComponentBase
             {
                 Card = card,
                 LocationId = _deckContext.Deck.Id,
-                NumCopies = 0
+                Copies = 0
             };
 
             dbContext.GiveBacks.Attach(giveBack);
@@ -642,14 +631,14 @@ public partial class Craft : OwningComponentBase
             _deckContext.AddQuantity(giveBack);
         }
 
-        int actualRemain = amount.NumCopies - giveBack.NumCopies;
+        int actualRemain = amount.Copies - giveBack.Copies;
         if (actualRemain == 0)
         {
             Logger.LogError($"there are no more of {card.Id} to remove");
             return;
         }
 
-        giveBack.NumCopies += 1;
+        giveBack.Copies += 1;
     }
 
 
@@ -727,8 +716,8 @@ public partial class Craft : OwningComponentBase
         public bool IsModified(Quantity quantity)
         {
             return _originalCopies.TryGetValue(quantity, out int numCopies)
-                ? quantity.NumCopies != numCopies
-                : quantity.NumCopies != 0;
+                ? quantity.Copies != numCopies
+                : quantity.Copies != 0;
         }
 
 
@@ -848,7 +837,7 @@ public partial class Craft : OwningComponentBase
 
             AddQuantity(quantity);
 
-            _originalCopies.Add(quantity, quantity.NumCopies);
+            _originalCopies.Add(quantity, quantity.Copies);
         }
 
 
@@ -866,7 +855,7 @@ public partial class Craft : OwningComponentBase
 
             foreach (var quantity in allQuantities)
             {
-                _originalCopies[quantity] = quantity.NumCopies;
+                _originalCopies[quantity] = quantity.Copies;
             }
         }
 
@@ -976,7 +965,7 @@ public partial class Craft : OwningComponentBase
     {
         foreach (var quantity in deckContext.GetQuantities<TQuantity>())
         {
-            bool isEmpty = quantity.NumCopies == 0;
+            bool isEmpty = quantity.Copies == 0;
 
             if (deckContext.IsAdded(quantity) && !isEmpty)
             {
@@ -1124,7 +1113,7 @@ public partial class Craft : OwningComponentBase
             }
             else
             {
-                removedQuantity.NumCopies = 0;
+                removedQuantity.Copies = 0;
             }
         }
     }
@@ -1159,7 +1148,7 @@ public partial class Craft : OwningComponentBase
 
             if (!deckContext.IsModified(localQuantity))
             {
-                localQuantity.NumCopies = dbQuantity.NumCopies;
+                localQuantity.Copies = dbQuantity.Copies;
             }
 
             dbContext.MatchToken(localQuantity, dbQuantity);
@@ -1211,7 +1200,7 @@ public partial class Craft : OwningComponentBase
                 Id = dbQuantity.Id,
                 Card = card,
                 Location = deckContext.Deck,
-                NumCopies = dbQuantity.NumCopies
+                Copies = dbQuantity.Copies
             };
 
             // attach for nav fixup
@@ -1255,10 +1244,10 @@ public partial class Craft : OwningComponentBase
                 continue;
             }
 
-            var currentReturn = cardGroup.GiveBack.NumCopies;
-            var capAmount = cardGroup.Amount?.NumCopies ?? currentReturn;
+            var currentReturn = cardGroup.GiveBack.Copies;
+            var capAmount = cardGroup.Amount?.Copies ?? currentReturn;
 
-            cardGroup.GiveBack.NumCopies = Math.Min(currentReturn, capAmount);
+            cardGroup.GiveBack.Copies = Math.Min(currentReturn, capAmount);
         }
     }
 

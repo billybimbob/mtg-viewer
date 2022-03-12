@@ -75,13 +75,13 @@ public class DeleteTests : IAsyncLifetime
 
         int oldCopies = await _dbContext.Amounts
             .Where(a => a.CardId == cardId && a.Location is Box)
-            .SumAsync(a => a.NumCopies);
+            .SumAsync(a => a.Copies);
 
         var result = await _deleteModel.OnPostAsync(cardId, null, default);
 
         int newCopies = await _dbContext.Amounts
             .Where(a => a.CardId == cardId && a.Location is Box)
-            .SumAsync(a => a.NumCopies);
+            .SumAsync(a => a.Copies);
 
         Assert.IsType<RedirectResult>(result);
         Assert.Equal(oldCopies, newCopies);
@@ -95,13 +95,13 @@ public class DeleteTests : IAsyncLifetime
     public async Task OnPost_ValidAmount_Lowers(int amount)
     {
         var cardId = await _dbContext.Amounts
-            .Where(a => a.NumCopies > 0 && a.Location is Box)
+            .Where(a => a.Copies > 0 && a.Location is Box)
             .Select(a => a.CardId)
             .FirstAsync();
 
         int oldCopies = await _dbContext.Amounts
             .Where(a => a.CardId == cardId && a.Location is Box)
-            .SumAsync(a => a.NumCopies);
+            .SumAsync(a => a.Copies);
 
         amount = Math.Min(amount, oldCopies);
 
@@ -114,7 +114,7 @@ public class DeleteTests : IAsyncLifetime
 
         int newCopies = await _dbContext.Amounts
             .Where(a => a.CardId == cardId && a.Location is Box)
-            .SumAsync(a => a.NumCopies);
+            .SumAsync(a => a.Copies);
 
         Assert.IsType<RedirectResult>(result);
         Assert.Equal(amount, oldCopies - newCopies);
@@ -125,7 +125,7 @@ public class DeleteTests : IAsyncLifetime
     public async Task OnPost_MaxAmount_RemoveCard()
     {
         var cardId = await _dbContext.Amounts
-            .Where(a => a.NumCopies > 0 && a.Location is Box)
+            .Where(a => a.Copies > 0 && a.Location is Box)
             .Select(a => a.CardId)
             .FirstAsync();
 
@@ -140,7 +140,7 @@ public class DeleteTests : IAsyncLifetime
 
         int oldCopies = await _dbContext.Amounts
             .Where(a => a.CardId == cardId && a.Location is Box)
-            .SumAsync(a => a.NumCopies);
+            .SumAsync(a => a.Copies);
 
         _deleteModel.Input = new DeleteModel.InputModel
         {
@@ -151,7 +151,7 @@ public class DeleteTests : IAsyncLifetime
 
         int newCopies = await _dbContext.Amounts
             .Where(a => a.CardId == cardId && a.Location is Box)
-            .SumAsync(a => a.NumCopies);
+            .SumAsync(a => a.Copies);
 
         bool cardRemains = await _dbContext.Cards
             .AnyAsync(c => c.Id == cardId);
@@ -166,7 +166,7 @@ public class DeleteTests : IAsyncLifetime
     public async Task OnPost_MaxAmountWithDeck_CardRemains()
     {
         var cardId = await _dbContext.Amounts
-            .Where(a => a.NumCopies > 0 && a.Location is Box)
+            .Where(a => a.Copies > 0 && a.Location is Box)
             .Select(a => a.CardId)
             .FirstAsync();
 
@@ -181,7 +181,7 @@ public class DeleteTests : IAsyncLifetime
             {
                 CardId = cardId,
                 Location = deck,
-                NumCopies = 4
+                Copies = 4
             });
 
             await _dbContext.SaveChangesAsync();
@@ -190,7 +190,7 @@ public class DeleteTests : IAsyncLifetime
 
         int oldCopies = await _dbContext.Amounts
             .Where(a => a.CardId == cardId && a.Location is Box)
-            .SumAsync(a => a.NumCopies);
+            .SumAsync(a => a.Copies);
 
         _deleteModel.Input = new DeleteModel.InputModel
         {
@@ -201,7 +201,7 @@ public class DeleteTests : IAsyncLifetime
 
         int newCopies = await _dbContext.Amounts
             .Where(a => a.CardId == cardId && a.Location is Box)
-            .SumAsync(a => a.NumCopies);
+            .SumAsync(a => a.Copies);
 
         bool cardRemains = await _dbContext.Cards
             .AnyAsync(c => c.Id == cardId);
@@ -234,7 +234,7 @@ public class DeleteTests : IAsyncLifetime
 
         int removeCopies = await _dbContext.Amounts
             .Where(a => a.CardId == cardId)
-            .SumAsync(a => a.NumCopies);
+            .SumAsync(a => a.Copies);
 
         _deleteModel.Input = new DeleteModel.InputModel
         {
@@ -243,21 +243,21 @@ public class DeleteTests : IAsyncLifetime
 
         int boxesOld = await _dbContext.Boxes
             .SelectMany(b => b.Cards)
-            .SumAsync(a => a.NumCopies);
+            .SumAsync(a => a.Copies);
 
         int excessOld = await _dbContext.Excess
             .SelectMany(b => b.Cards)
-            .SumAsync(a => a.NumCopies);
+            .SumAsync(a => a.Copies);
 
         var result = await _deleteModel.OnPostAsync(cardId, null, default);
 
         int boxesNew = await _dbContext.Boxes
             .SelectMany(b => b.Cards)
-            .SumAsync(a => a.NumCopies);
+            .SumAsync(a => a.Copies);
 
         int excessNew = await _dbContext.Excess
             .SelectMany(b => b.Cards)
-            .SumAsync(a => a.NumCopies);
+            .SumAsync(a => a.Copies);
 
         Assert.IsType<RedirectResult>(result);
         Assert.Equal(removeCopies, boxesOld - boxesNew + excessOld - excessNew);

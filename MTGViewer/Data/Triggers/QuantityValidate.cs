@@ -35,9 +35,9 @@ public class QuantityValidate : IBeforeSaveTrigger<Quantity>, IAfterSaveTrigger<
 
         var quantity = trigContext.Entity;
 
-        if (quantity.NumCopies > _pageSizes.Limit)
+        if (quantity.Copies > _pageSizes.Limit)
         {
-            quantity.NumCopies = _pageSizes.Limit;
+            quantity.Copies = _pageSizes.Limit;
         }
 
         return Task.CompletedTask;
@@ -53,7 +53,7 @@ public class QuantityValidate : IBeforeSaveTrigger<Quantity>, IAfterSaveTrigger<
 
         var quantity = trigContext.Entity;
 
-        if (quantity.NumCopies > 0)
+        if (quantity.Copies > 0)
         {
             return;
         }
