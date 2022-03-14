@@ -40,7 +40,7 @@ public class DetailsModel : PageModel
             return NotFound();
         }
 
-        MergeExcessAmounts(card);
+        MergeExcessHolds(card);
 
         Card = card;
 
@@ -71,9 +71,9 @@ public class DetailsModel : PageModel
             dbContext.Cards
                 .Where(c => c.Id == cardId)
 
-                .Include(c => c.Amounts
-                    .OrderBy(a => a.Location.Name))
-                    .ThenInclude(a => a.Location)
+                .Include(c => c.Holds
+                    .OrderBy(h => h.Location.Name))
+                    .ThenInclude(h => h.Location)
 
                 .OrderBy(c => c.Id)
                 .AsNoTrackingWithIdentityResolution()
@@ -87,9 +87,9 @@ public class DetailsModel : PageModel
                 .Where(c => c.Id == cardId)
 
                 .Include(c => c.Flip)
-                .Include(c => c.Amounts
-                    .OrderBy(a => a.Location.Name))
-                    .ThenInclude(a => a.Location)
+                .Include(c => c.Holds
+                    .OrderBy(h => h.Location.Name))
+                    .ThenInclude(h => h.Location)
 
                 .OrderBy(c => c.Id)
                 .AsNoTrackingWithIdentityResolution()
@@ -105,34 +105,34 @@ public class DetailsModel : PageModel
                 .Select(c => new CardAlt(c.Id, c.Name, c.SetName)));
 
 
-    private void MergeExcessAmounts(Card card)
+    private void MergeExcessHolds(Card card)
     {
-        var excessAmounts = card.Amounts
-            .Where(a => a.Location is Excess);
+        var excessHolds = card.Holds
+            .Where(h => h.Location is Excess);
 
-        if (!excessAmounts.Any())
+        if (!excessHolds.Any())
         {
             return;
         }
 
-        var mergedExcess = new Amount
+        var mergedExcess = new Hold
         {
             Card = card,
             Location = Excess.Create(),
             Copies = 0
         };
 
-        foreach (var excess in excessAmounts)
+        foreach (var excess in excessHolds)
         {
             mergedExcess.Copies += excess.Copies;
         }
 
-        var mergedAmounts = card.Amounts
-            .Except(excessAmounts)
+        var mergedHolds = card.Holds
+            .Except(excessHolds)
             .Prepend(mergedExcess)
             .ToList();
 
-        card.Amounts.Clear();
-        card.Amounts.AddRange(mergedAmounts);
+        card.Holds.Clear();
+        card.Holds.AddRange(mergedHolds);
     }
 }

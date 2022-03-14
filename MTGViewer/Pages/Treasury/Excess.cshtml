@@ -25,10 +25,10 @@ else
         <table class="table table-bordered">
             <thead>
                 <tr>
-                    <th scope="col"> @Html.DisplayNameForInnerType((Amount a) => a.Card) </th>
+                    <th scope="col"> @Html.DisplayNameForInnerType((Hold h) => h.Card) </th>
                     <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.ManaCost) </th>
                     <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.SetName) </th>
-                    <th scope="col"> @Html.DisplayNameForInnerType((Amount a) => a.Copies) </th>
+                    <th scope="col"> @Html.DisplayNameForInnerType((Hold h) => h.Copies) </th>
                 </tr>
             </thead>
             <tbody>
@@ -45,7 +45,7 @@ else
                             </div>
                         </td>
                         <td> @card.SetName </td>
-                        <td> @card.Copies </td>
+                        <td> @card.Held </td>
                     </tr>
                 }
             </tbody>

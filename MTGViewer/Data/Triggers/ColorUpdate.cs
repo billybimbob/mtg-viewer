@@ -32,11 +32,11 @@ public class ColorUpdate : IBeforeSaveTrigger<TheoryCraft>
         var theory = trigContext.Entity;
 
         if (trigContext.ChangeType is ChangeType.Added
-            && (theory.Cards.Any(a => a.Card is null)
+            && (theory.Holds.Any(h => h.Card is null)
                 || theory.Wants.Any(w => w.Card is null)))
         {
-            var cardIds = theory.Cards.Select(a => a.CardId)
-                .Union(theory.Wants.Select(w => w.CardId))
+            var cardIds = theory.Holds.Select(h => h.CardId)
+                .Union(theory.Wants.Select(h => h.CardId))
                 .ToArray();
 
             theory.Color = await CardColors
@@ -52,7 +52,7 @@ public class ColorUpdate : IBeforeSaveTrigger<TheoryCraft>
             return;
         }
 
-        if (theory.Cards.Any() && theory.Cards.All(a => a.Card is not null)
+        if (theory.Holds.Any() && theory.Holds.All(h => h.Card is not null)
             || theory.Wants.Any() && theory.Wants.All(w => w.Card is not null))
         {
             theory.Color = GetColor(theory);
@@ -61,9 +61,9 @@ public class ColorUpdate : IBeforeSaveTrigger<TheoryCraft>
 
         var theoryEntry = _dbContext.Entry(theory);
 
-        if (theory.Cards.Any(a => a.Card is null)
+        if (theory.Holds.Any(h => h.Card is null)
             || theory.Wants.Any(w => w.Card is null)
-            || !theoryEntry.Collection(d => d.Cards).IsLoaded
+            || !theoryEntry.Collection(d => d.Holds).IsLoaded
             || !theoryEntry.Collection(d => d.Wants).IsLoaded)
         {
             var deckColors = await DeckColorsAsync.Invoke(_dbContext, theory.Id, cancel)
@@ -79,13 +79,13 @@ public class ColorUpdate : IBeforeSaveTrigger<TheoryCraft>
 
     private static Color GetColor(TheoryCraft theory)
     {
-        var amountColors = theory.Cards
-            .Select(a => a.Card.Color);
+        var holdColors = theory.Holds
+            .Select(h => h.Card.Color);
 
         var wantColors = theory.Wants
             .Select(w => w.Card.Color);
 
-        return amountColors
+        return holdColors
             .Concat(wantColors)
             .Aggregate(Color.None, (color, card) => color | card);
     }
@@ -98,7 +98,7 @@ public class ColorUpdate : IBeforeSaveTrigger<TheoryCraft>
             return Color.None;
         }
 
-        return colors.CardColors
+        return colors.HoldColors
             .Concat(colors.WantColors)
             .Aggregate(Color.None, (color, card) => color | card);
     }
@@ -112,7 +112,7 @@ public class ColorUpdate : IBeforeSaveTrigger<TheoryCraft>
                 .Select(d => new TheoryColors
                 {
                     Id = d.Id,
-                    CardColors = d.Cards.Select(a => a.Card.Color),
+                    HoldColors = d.Holds.Select(h => h.Card.Color),
                     WantColors = d.Wants.Select(w => w.Card.Color)
                 })
                 .AsSplitQuery()
@@ -127,7 +127,7 @@ public class ColorUpdate : IBeforeSaveTrigger<TheoryCraft>
                 .Select(u => new TheoryColors
                 {
                     Id = u.Id,
-                    CardColors = u.Cards.Select(a => a.Card.Color),
+                    HoldColors = u.Holds.Select(h => h.Card.Color),
                     WantColors = u.Wants.Select(w => w.Card.Color)
                 })
                 .AsSplitQuery()

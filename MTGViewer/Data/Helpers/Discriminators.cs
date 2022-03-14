@@ -21,7 +21,7 @@ internal enum LocationType
 internal enum QuantityType
 {
     Invalid,
-    Amount,
+    Hold,
     Want,
     GiveBack,
 }

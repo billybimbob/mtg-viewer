@@ -59,7 +59,7 @@ public static class CardStorageExtensions
             .GetRequiredService<IDbContextFactory<CardDbContext>>()
             .CreateDbContext());
 
-        services.AddHostedService<CardSetup>();
+        services.AddHostedService<CardSeed>();
 
         return services;
     }

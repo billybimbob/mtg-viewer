@@ -37,7 +37,7 @@ public class DetailsModel : PageModel
 
     public DeckDetails Deck { get; private set; } = default!;
 
-    public SeekList<DeckCopies> Cards { get; private set; } = SeekList<DeckCopies>.Empty;
+    public SeekList<DeckCopy> Cards { get; private set; } = SeekList<DeckCopy>.Empty;
 
 
     public async Task<IActionResult> OnGetAsync(
@@ -85,7 +85,7 @@ public class DetailsModel : PageModel
                         Name = d.Owner.Name
                     },
 
-                    AmountCopies = d.Cards.Sum(a => a.Copies),
+                    HeldCopies = d.Holds.Sum(h => h.Copies),
                     WantCopies = d.Wants.Sum(w => w.Copies),
                     ReturnCopies = d.GiveBacks.Sum(g => g.Copies),
 
@@ -94,10 +94,10 @@ public class DetailsModel : PageModel
                 .SingleOrDefault());
 
 
-    private IQueryable<DeckCopies> DeckCards(int deckId)
+    private IQueryable<DeckCopy> DeckCards(int deckId)
     {
         return _dbContext.Cards
-            .Where(c => c.Amounts.Any(a => a.LocationId == deckId)
+            .Where(c => c.Holds.Any(h => h.LocationId == deckId)
                 || c.Wants.Any(w => w.LocationId == deckId)
                 || c.GiveBacks.Any(g => g.LocationId == deckId))
 
@@ -105,7 +105,7 @@ public class DetailsModel : PageModel
                 .ThenBy(c => c.SetName)
                 .ThenBy(c => c.Id)
 
-            .Select(c => new DeckCopies
+            .Select(c => new DeckCopy
             {
                 Id = c.Id,
                 Name = c.Name,
@@ -116,9 +116,9 @@ public class DetailsModel : PageModel
                 Rarity = c.Rarity,
                 ImageUrl = c.ImageUrl,
 
-                Held = c.Amounts
-                    .Where(a => a.LocationId == deckId)
-                    .Sum(a => a.Copies),
+                Held = c.Holds
+                    .Where(h => h.LocationId == deckId)
+                    .Sum(h => h.Copies),
 
                 Want = c.Wants
                     .Where(w => w.LocationId == deckId)

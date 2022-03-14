@@ -54,7 +54,7 @@ internal static class Assignment
     // in boxes with more available space
 
     public static ILookup<string, Storage> ExactAddLookup(
-        IEnumerable<Amount> targets, 
+        IEnumerable<Hold> targets, 
         IEnumerable<Card> cards,
         IReadOnlyDictionary<Storage, int> storageSpace)
     {
@@ -65,11 +65,11 @@ internal static class Assignment
         // TODO: account for changing NumCopies while iter
         return targets
             .Join( cardIds,
-                a => a.CardId, cid => cid,
+                h => h.CardId, cid => cid,
                 (target, _) => target)
 
-            .OrderByDescending(a => a.Copies)
-                .ThenByDescending(a => a.Location switch
+            .OrderByDescending(h => h.Copies)
+                .ThenByDescending(h => h.Location switch
                 {
                     Box box => box.Capacity - storageSpace.GetValueOrDefault(box),
                     Excess excess => -storageSpace.GetValueOrDefault(excess),
@@ -77,12 +77,12 @@ internal static class Assignment
                 })            
 
             // lookup group orders should preserve NumCopies order
-            .ToLookup(a => a.CardId, a => (Storage)a.Location);
+            .ToLookup(h => h.CardId, h => (Storage)h.Location);
     }
 
 
     public static ILookup<string, Storage> ApproxAddLookup(
-        IEnumerable<Amount> targets, 
+        IEnumerable<Hold> targets, 
         IEnumerable<Card> cards,
         IReadOnlyDictionary<Storage, int> storageSpace)
     {
@@ -93,19 +93,19 @@ internal static class Assignment
         // TODO: account for changing NumCopies while iter
         return targets
             .Join( cardNames,
-                a => a.Card.Name, cn => cn,
+                h => h.Card.Name, cn => cn,
                 (target, _) => target)
 
             // lookup group orders should preserve NumCopies order
-            .OrderByDescending(a => a.Copies)
-                .ThenByDescending(a => a.Location switch
+            .OrderByDescending(h => h.Copies)
+                .ThenByDescending(h => h.Location switch
                 {
                     Box box => box.Capacity - storageSpace.GetValueOrDefault(box),
                     Excess excess => -storageSpace.GetValueOrDefault(excess),
                     _ => throw new ArgumentException(nameof(targets))
                 })
             
-            .ToLookup(a => a.Card.Name, a => (Storage)a.Location);
+            .ToLookup(h => h.Card.Name, h => (Storage)h.Location);
     }
 
 }

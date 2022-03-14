@@ -122,7 +122,12 @@ public class ReferenceManager
         }
 
         var reference = await _dbContext.Users
+            .Include(u => u.Decks)
+                .ThenInclude(d => d.Holds)
+                .ThenInclude(h => h.Card)
+
             .OrderBy(u => u.Id)
+            .AsSplitQuery()
             .SingleOrDefaultAsync(u => u.Id == user.Id, cancel);
 
         if (reference is null)
@@ -149,31 +154,24 @@ public class ReferenceManager
 
     private async Task ReturnUserDecksAsync(UserRef reference, CancellationToken cancel)
     {
-        var userDecks = await _dbContext.Decks
-            .Where(d => d.OwnerId == reference.Id)
-            .Include(d => d.Cards)
-                .ThenInclude(a => a.Card)
-            .ToListAsync(cancel);
-
-
-        if (!userDecks.Any())
+        if (!reference.Decks.Any())
         {
             _dbContext.Users.Remove(reference);
             return;
         }
 
-        var userCards = userDecks
-            .SelectMany(d => d.Cards)
+        var userHolds = reference.Decks
+            .SelectMany(d => d.Holds)
             .ToList();
 
-        _dbContext.Amounts.RemoveRange(userCards);
-        _dbContext.Decks.RemoveRange(userDecks);
+        _dbContext.Holds.RemoveRange(userHolds);
+        _dbContext.Decks.RemoveRange(reference.Decks);
         _dbContext.Users.Remove(reference);
 
-        var returnRequests = userCards
-            .GroupBy(a => a.Card,
-                (card, amounts) => 
-                    new CardRequest(card, amounts.Sum(a => a.Copies)) );
+        var returnRequests = userHolds
+            .GroupBy(h => h.Card,
+                (card, holds) => 
+                    new CardRequest(card, holds.Sum(h => h.Copies)) );
 
         await _dbContext.AddCardsAsync(returnRequests, cancel);
     }

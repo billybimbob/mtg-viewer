@@ -348,12 +348,12 @@ public partial class Create : OwningComponentBase
             return;
         }
 
-        var addedAmounts = _matches
+        var addedCopies = _matches
             .Where(m => m.NumCopies > 0 && m.NumCopies <= PageSizes.Limit)
             .Select(m => new CardRequest(m.Card, m.NumCopies))
             .ToList();
 
-        if (!addedAmounts.Any())
+        if (!addedCopies.Any())
         {
             return;
         }
@@ -367,9 +367,9 @@ public partial class Create : OwningComponentBase
 
             await using var dbContext = await DbFactory.CreateDbContextAsync(cancelToken);
 
-            await AddNewCardsAsync(dbContext, addedAmounts, PageSizes.Limit, cancelToken);
+            await AddNewCardsAsync(dbContext, addedCopies, PageSizes.Limit, cancelToken);
 
-            await dbContext.AddCardsAsync(addedAmounts, cancelToken);
+            await dbContext.AddCardsAsync(addedCopies, cancelToken);
 
             await dbContext.SaveChangesAsync(cancelToken);
 

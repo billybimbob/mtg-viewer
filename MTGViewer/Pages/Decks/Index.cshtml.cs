@@ -91,7 +91,7 @@ public class IndexModel : PageModel
                 Name = d.Name,
                 Color = d.Color,
 
-                AmountCopies = d.Cards.Sum(a => a.Copies),
+                HeldCopies = d.Holds.Sum(h => h.Copies),
                 WantCopies = d.Wants.Sum(w => w.Copies),
 
                 HasReturns = d.GiveBacks.Any(),

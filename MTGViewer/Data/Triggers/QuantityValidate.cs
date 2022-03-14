@@ -60,9 +60,9 @@ public class QuantityValidate : IBeforeSaveTrigger<Quantity>, IAfterSaveTrigger<
 
         if (_dbContext.Entry(quantity).State == EntityState.Detached)
         {
-            if (quantity is Amount amount)
+            if (quantity is Hold hold)
             {
-                _dbContext.Amounts.Attach(amount);
+                _dbContext.Holds.Attach(hold);
             }
             else if (quantity is Want want)
             {

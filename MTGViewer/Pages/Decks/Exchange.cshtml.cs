@@ -47,7 +47,7 @@ public class ExchangeModel : PageModel
 
     public ExchangePreview Deck { get; private set; } = default!;
 
-    public OffsetList<CardCopies> Matches { get; private set; } = OffsetList<CardCopies>.Empty;
+    public OffsetList<LocationCopy> Matches { get; private set; } = OffsetList<LocationCopy>.Empty;
 
 
     public async Task<IActionResult> OnGetAsync(int id, int? offset, CancellationToken cancel)
@@ -100,7 +100,7 @@ public class ExchangeModel : PageModel
                             .ThenBy(g => g.Id)
 
                         .Take(limit)
-                        .Select(g => new CardCopies
+                        .Select(g => new LocationCopy
                         {
                             Id = g.CardId,
                             Name = g.Card.Name,
@@ -110,27 +110,31 @@ public class ExchangeModel : PageModel
                             Rarity = g.Card.Rarity,
                             ImageUrl = g.Card.ImageUrl,
 
-                            Copies = g.Copies
+                            Held = g.Copies
                         })
                 })
                 .SingleOrDefault());
 
 
-    private IQueryable<CardCopies> WantTargets(ExchangePreview deck)
+    private IQueryable<LocationCopy> WantTargets(ExchangePreview deck)
     {
         var deckWants = _dbContext.Wants
             .Where(w => w.LocationId == deck.Id)
             .Select(w => w.Card.Name)
             .Distinct();
 
-        var totalMatches = _dbContext.Amounts
-            .Where(a => a.Location is Box || a.Location is Excess)
+        var totalMatches = _dbContext.Holds
+            .Where(h => h.Location is Box || h.Location is Excess)
             .Join( deckWants,
-                a => a.Card.Name, name => name, (amount, _) => amount)
-
-            .GroupBy(a => a.CardId,
-                (CardId, amounts) =>
-                    new { CardId, Copies = amounts.Sum(a => a.Copies) });
+                h => h.Card.Name, name => name,
+                (hold, _) => hold)
+            .GroupBy(
+                hold => hold.CardId,
+                (CardId, holds) => new
+                { 
+                    CardId,
+                    Copies = holds.Sum(h => h.Copies)
+                });
 
         return _dbContext.Cards
             .OrderBy(c => c.Name)
@@ -140,7 +144,7 @@ public class ExchangeModel : PageModel
             .Join( totalMatches,
                 c => c.Id,
                 total => total.CardId,
-                (c, total) => new CardCopies
+                (c, total) => new LocationCopy
                 {
                     Id = c.Id,
                     Name = c.Name,
@@ -150,7 +154,7 @@ public class ExchangeModel : PageModel
                     Rarity = c.Rarity,
                     ImageUrl = c.ImageUrl,
 
-                    Copies = total.Copies
+                    Held = total.Copies
                 });
     }
 
@@ -158,8 +162,8 @@ public class ExchangeModel : PageModel
     private static readonly Func<CardDbContext, int, string, CancellationToken, Task<Deck?>> DeckForExchangeAsync
         = EF.CompileAsyncQuery((CardDbContext dbContext, int deckId, string userId, CancellationToken _) =>
             dbContext.Decks
-                .Include(d => d.Cards) // unbounded: keep eye one
-                    .ThenInclude(a => a.Card)
+                .Include(d => d.Holds) // unbounded: keep eye one
+                    .ThenInclude(h => h.Card)
 
                 .Include(d => d.Wants) // unbounded: keep eye one
                     .ThenInclude(w => w.Card)
@@ -234,9 +238,9 @@ public class ExchangeModel : PageModel
         }
 
         bool lackReturns = deck.GiveBacks
-            .GroupJoin(deck.Cards,
-                g => g.CardId, a => a.CardId,
-                (give, amounts) => give.Copies > amounts.Sum(a => a.Copies))
+            .GroupJoin(deck.Holds,
+                g => g.CardId, h => h.CardId,
+                (give, holds) => give.Copies > holds.Sum(h => h.Copies))
             .Any(gt => gt);
 
         if (lackReturns)
@@ -246,10 +250,11 @@ public class ExchangeModel : PageModel
 
         await _dbContext.ExchangeAsync(deck, cancel);
 
-        var emptyTrades = deck.Cards
-            .Where(a => a.Copies == 0)
+        var emptyTrades = deck.Holds
+            .Where(h => h.Copies == 0)
             .Join(deck.TradesFrom,
-                a => a.CardId, t => t.CardId,
+                h => h.CardId,
+                t => t.CardId,
                 (_, trade) => trade);
 
         _dbContext.Trades.RemoveRange(emptyTrades);

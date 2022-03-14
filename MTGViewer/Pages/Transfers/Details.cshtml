@@ -33,7 +33,7 @@
                 <th scope="col"> Trade With </th>
                 <th scope="col"> @Html.DisplayNameForInnerType((Trade t) => t.From) </th>
                 <th scope="col"> Deck Color </th>
-                <th scope="col"> @Html.DisplayNameForInnerType((Trade t) => t.Amount) </th>
+                <th scope="col"> @Html.DisplayNameForInnerType((Trade t) => t.Copies) </th>
             </tr>
         </thead>
         <tbody>
@@ -78,7 +78,7 @@
     <table class="table">
         <thead>
             <tr>
-                <th scope="col"> @Html.DisplayNameForInnerType((Amount ca) => ca.Card) </th>
+                <th scope="col"> @Html.DisplayNameForInnerType((Hold ca) => ca.Card) </th>
                 <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.ManaCost) </th>
                 <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.SetName) </th>
                 <th scope="col"> Held </th>
@@ -103,7 +103,7 @@
                     <td> @card.Want </td>
                 </tr>
             }
-            @if (Model.Deck.AmountCopies > Model.Cards.Sum(dl => dl.Held)
+            @if (Model.Deck.HeldCopies > Model.Cards.Sum(dl => dl.Held)
                 || Model.Deck.WantCopies > Model.Cards.Sum(dl => dl.Want))
             {
                 <tr>

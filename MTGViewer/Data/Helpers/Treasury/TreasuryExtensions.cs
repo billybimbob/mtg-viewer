@@ -19,9 +19,9 @@ public static partial class TreasuryExtensions
         // unbounded: keep eye on
 
         return dbContext.Boxes
-            .Include(b => b.Cards
-                .OrderBy(a => a.Copies))
-                .ThenInclude(a => a.Card)
+            .Include(b => b.Holds
+                .OrderBy(h => h.Copies))
+                .ThenInclude(h => h.Card)
             .OrderBy(b => b.Id);
     }
 
@@ -29,9 +29,9 @@ public static partial class TreasuryExtensions
     private static IQueryable<Excess> ExistingExcess(CardDbContext dbContext)
     {
         return dbContext.Excess
-            .Include(e => e.Cards
-                .OrderBy(a => a.Copies))
-                .ThenInclude(a => a.Card)
+            .Include(e => e.Holds
+                .OrderBy(h => h.Copies))
+                .ThenInclude(h => h.Card)
             .OrderBy(e => e.Id);
     }
 
@@ -159,7 +159,7 @@ public static partial class TreasuryExtensions
     {
         ArgumentNullException.ThrowIfNull(dbContext);
 
-        if (AreBoxesUnchanged(dbContext) && AreAmountsUnchanged(dbContext))
+        if (AreBoxesUnchanged(dbContext) && AreHoldsUnchanged(dbContext))
         {
             return;
         }
@@ -192,13 +192,13 @@ public static partial class TreasuryExtensions
     }
 
 
-    private static bool AreAmountsUnchanged(CardDbContext dbContext)
+    private static bool AreHoldsUnchanged(CardDbContext dbContext)
     {
         return dbContext.ChangeTracker
-            .Entries<Amount>()
+            .Entries<Hold>()
             .All(e => e.State is EntityState.Detached
                 || e.State is not EntityState.Added
-                    && !e.Property(a => a.Copies).IsModified);
+                    && !e.Property(h => h.Copies).IsModified);
     }
 
 
@@ -215,8 +215,8 @@ public static partial class TreasuryExtensions
 
     private static void RemoveEmpty(CardDbContext dbContext)
     {
-        var emptyAmounts = dbContext.Amounts.Local
-            .Where(a => a.Copies == 0);
+        var emptyHolds = dbContext.Holds.Local
+            .Where(h => h.Copies == 0);
 
         var emptyWants = dbContext.Wants.Local
             .Where(w => w.Copies == 0);
@@ -227,7 +227,7 @@ public static partial class TreasuryExtensions
         var emptyTransactions = dbContext.Transactions.Local
             .Where(t => !t.Changes.Any());
 
-        dbContext.Amounts.RemoveRange(emptyAmounts);
+        dbContext.Holds.RemoveRange(emptyHolds);
         dbContext.Wants.RemoveRange(emptyWants);
         dbContext.GiveBacks.RemoveRange(emptyGiveBacks);
 

@@ -43,28 +43,28 @@
     <table class="table">
         <thead>
             <tr>
-                <th scope="col"> @Html.DisplayNameForInnerType((Amount a) => a.Card) </th>
+                <th scope="col"> @Html.DisplayNameForInnerType((Hold h) => h.Card) </th>
                 <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.ManaCost) </th>
                 <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.SetName) </th>
-                <th scope="col"> @Html.DisplayNameForInnerType((Amount a) => a.Copies) </th>
+                <th scope="col"> @Html.DisplayNameForInnerType((Hold h) => h.Copies) </th>
             </tr>
         </thead>
         <tbody>
-            @foreach (var amount in Model.Cards)
+            @foreach (var quantity in Model.Cards)
             {
                 var returnUrl = $"{Request.Path}{Request.QueryString}";
                 <tr>
                     <td>
                         <component type="typeof(HoverCard)" render-mode="Static"
-                            param-Preview="amount.Card" param-ReturnUrl="returnUrl" />
+                            param-Preview="quantity.Card" param-ReturnUrl="returnUrl" />
                     </td>
                     <td> 
                         <div class="ms-group">
-                            @MtgSymbols.Format(amount.Card.ManaCost).ToHtmlString() 
+                            @MtgSymbols.Format(quantity.Card.ManaCost).ToHtmlString() 
                         </div>
                     </td>
-                    <td> @amount.Card.SetName </td>
-                    <td> @amount.Copies </td>
+                    <td> @quantity.Card.SetName </td>
+                    <td> @quantity.Copies </td>
                 </tr>
             }
             <tr>
@@ -72,7 +72,7 @@
                 <td> -- </td>
                 <td> -- </td>
                 <td class="font-weight-bold">
-                    @Model.Box.TotalCards / @Model.Box.Capacity
+                    @Model.Box.TotalHolds / @Model.Box.Capacity
                 </td>
             </tr>
         </tbody>

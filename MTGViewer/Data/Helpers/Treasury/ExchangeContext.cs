@@ -49,8 +49,8 @@ internal class ExchangeContext
             wantCopies -= minTransfer;
         }
 
-        var amount = GetOrAddAmount(card);
-        amount.Copies += numCopies;
+        var hold = GetOrAddHold(card);
+        hold.Copies += numCopies;
 
         TreasuryContext.TransferCopies(card, numCopies, Deck, storage);
     }
@@ -74,48 +74,48 @@ internal class ExchangeContext
     }
 
 
-    private Amount GetOrAddAmount(Card card)
+    private Hold GetOrAddHold(Card card)
     {
         if (_deckCards.TryGetValue(card.Id, out var group)
-            && group is { Amount: Amount amount })
+            && group is { Hold: Hold hold })
         {
-            return amount;
+            return hold;
         }
 
-        amount = new Amount
+        hold = new Hold
         {
             Card = card,
             Location = Deck
         };
 
-        _dbContext.Amounts.Attach(amount);
+        _dbContext.Holds.Attach(hold);
 
         if (group is not null)
         {
-            group.Amount = amount;
+            group.Hold = hold;
         }
         else
         {
-            group = new(amount);
+            group = new(hold);
             _deckCards.Add(card.Id, group);
         }
 
-        return amount;
+        return hold;
     }
 
 
     public void ReturnCopies(Card card, int numCopies, Storage storage)
     {
         if (_deckCards.GetValueOrDefault(card.Id)
-            is not { GiveBack: GiveBack give, Amount: Amount amount }
+            is not { GiveBack: GiveBack give, Hold: Hold hold }
             || give.Copies < numCopies
-            || amount.Copies < numCopies)
+            || hold.Copies < numCopies)
         {
             throw new ArgumentException($"{nameof(card)} and {nameof(numCopies)}");
         }
 
         give.Copies -= numCopies;
-        amount.Copies -= numCopies;
+        hold.Copies -= numCopies;
 
         TreasuryContext.TransferCopies(card, numCopies, storage, Deck);
     }

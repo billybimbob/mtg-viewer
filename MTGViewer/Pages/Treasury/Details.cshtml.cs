@@ -29,7 +29,7 @@ public class DetailsModel : PageModel
 
     public BoxPreview Box { get; private set; } = default!;
 
-    public SeekList<AmountPreview> Cards { get; private set; } = SeekList<AmountPreview>.Empty;
+    public SeekList<QuantityPreview> Cards { get; private set; } = SeekList<QuantityPreview>.Empty;
 
 
     public async Task<IActionResult> OnGetAsync(
@@ -54,7 +54,7 @@ public class DetailsModel : PageModel
 
         var cards = await BoxCards(box)
             .SeekBy(seek, direction)
-            .OrderBy<Amount>()
+            .OrderBy<Hold>()
             .Take(_pageSize)
             .ToSeekListAsync(cancel);
 
@@ -83,7 +83,7 @@ public class DetailsModel : PageModel
                     Appearance = b.Appearance,
                     Capacity = b.Capacity,
 
-                    TotalCards = b.Cards.Sum(a => a.Copies)
+                    TotalHolds = b.Holds.Sum(h => h.Copies)
                 })
                 .SingleOrDefault(b => b.Id == boxId));
 
@@ -95,15 +95,15 @@ public class DetailsModel : PageModel
             return null;
         }
 
-        var amount = await CardJumpAsync.Invoke(_dbContext, cardId, box.Id, cancel);
-        if (amount is null)
+        var hold = await CardJumpAsync.Invoke(_dbContext, cardId, box.Id, cancel);
+        if (hold is null)
         {
             return null;
         }
 
         return await BoxCards(box)
-            .WithSelect<Amount, AmountPreview>()
-            .Before(amount)
+            .WithSelect<Hold, QuantityPreview>()
+            .Before(hold)
             .Select(c => c.Id)
 
             .AsAsyncEnumerable()
@@ -112,56 +112,42 @@ public class DetailsModel : PageModel
     }
 
 
-    private IQueryable<AmountPreview> BoxCards(BoxPreview box)
+    private IQueryable<QuantityPreview> BoxCards(BoxPreview box)
     {
-        return _dbContext.Amounts
-            .Where(a => a.LocationId == box.Id)
+        return _dbContext.Holds
+            .Where(h => h.LocationId == box.Id)
 
-            .OrderBy(a => a.Card.Name)
-                .ThenBy(a => a.Card.SetName)
-                .ThenBy(a => a.Copies)
-                .ThenBy(a => a.Id)
+            .OrderBy(h => h.Card.Name)
+                .ThenBy(h => h.Card.SetName)
+                .ThenBy(h => h.Copies)
+                .ThenBy(h => h.Id)
             
-            .Select(a => new AmountPreview
+            .Select(h => new QuantityPreview
             {
-                Id = a.Id,
-                Copies = a.Copies,
+                Id = h.Id,
+                Copies = h.Copies,
 
                 Card = new CardPreview
                 {
-                    Id = a.CardId,
-                    Name = a.Card.Name,
-                    SetName = a.Card.SetName,
-                    ManaCost = a.Card.ManaCost,
+                    Id = h.CardId,
+                    Name = h.Card.Name,
+                    SetName = h.Card.SetName,
+                    ManaCost = h.Card.ManaCost,
 
-                    Rarity = a.Card.Rarity,
-                    ImageUrl = a.Card.ImageUrl
+                    Rarity = h.Card.Rarity,
+                    ImageUrl = h.Card.ImageUrl
                 },
             });
     }
 
 
-    private static readonly Func<CardDbContext, string, int, CancellationToken, Task<AmountPreview?>> CardJumpAsync
+    private static readonly Func<CardDbContext, string, int, CancellationToken, Task<Hold?>> CardJumpAsync
+
         = EF.CompileAsyncQuery((CardDbContext dbContext, string cardId, int boxId, CancellationToken _) =>
-            dbContext.Amounts
-                .Where(a => a.Location is Box && a.LocationId == boxId && a.CardId == cardId)
-                .OrderBy(a => a.Id)
-
-                .Select(a => new AmountPreview
-                {
-                    Id = a.Id,
-                    Copies = a.Copies,
-
-                    Card = new CardPreview
-                    {
-                        Id = a.CardId,
-                        Name = a.Card.Name,
-                        SetName = a.Card.SetName,
-                        ManaCost = a.Card.ManaCost,
-
-                        Rarity = a.Card.Rarity,
-                        ImageUrl = a.Card.ImageUrl
-                    }
-                })
+            dbContext.Holds
+                .Where(h => h.Location is Box
+                    && h.LocationId == boxId && h.CardId == cardId)
+                .Include(h => h.Card)
+                .OrderBy(h => h.Id)
                 .SingleOrDefault());
 }

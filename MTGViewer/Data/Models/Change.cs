@@ -8,7 +8,7 @@ namespace MTGViewer.Data;
 
 
 [Index(nameof(TransactionId), nameof(FromId), nameof(ToId), nameof(CardId), IsUnique = true)]
-[Index(nameof(Amount), nameof(Id), nameof(TransactionId), nameof(FromId), nameof(ToId), nameof(CardId))]
+[Index(nameof(Copies), nameof(Id), nameof(TransactionId), nameof(FromId), nameof(ToId), nameof(CardId))]
 public class Change
 {
     [Key]
@@ -22,7 +22,7 @@ public class Change
 
 
     [Range(1, 4_096)]
-    public int Amount { get; set; }
+    public int Copies { get; set; }
 
 
     [JsonIgnore]

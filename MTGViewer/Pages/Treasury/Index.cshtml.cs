@@ -75,23 +75,23 @@ public class IndexModel : PageModel
 
                 Appearance = b.Appearance,
                 Capacity = b.Capacity,
-                TotalCards = b.Cards.Sum(a => a.Copies),
+                TotalHolds = b.Holds.Sum(h => h.Copies),
 
-                Cards = b.Cards
-                    .OrderBy(a => a.Card.Name)
-                        .ThenBy(a => a.Card.SetName)
-                        .ThenBy(a => a.Copies)
+                Cards = b.Holds
+                    .OrderBy(h => h.Card.Name)
+                        .ThenBy(h => h.Card.SetName)
+                        .ThenBy(h => h.Copies)
 
                     .Take(_pageSize)
-                    .Select(a => new StorageLink
+                    .Select(h => new LocationLink
                     {
-                        Id = a.CardId,
-                        Name = a.Card.Name,
+                        Id = h.CardId,
+                        Name = h.Card.Name,
 
-                        SetName = a.Card.SetName,
-                        ManaCost = a.Card.ManaCost,
+                        SetName = h.Card.SetName,
+                        ManaCost = h.Card.ManaCost,
 
-                        Copies = a.Copies
+                        Held = h.Copies
                     })
             });
     }
@@ -99,6 +99,6 @@ public class IndexModel : PageModel
 
     private static readonly Func<CardDbContext, CancellationToken, Task<bool>> HasExcessAsync
         = EF.CompileAsyncQuery((CardDbContext dbContext, CancellationToken _) =>
-            dbContext.Amounts
-                .Any(a => a.Location is Excess));
+            dbContext.Holds
+                .Any(h => h.Location is Excess));
 }

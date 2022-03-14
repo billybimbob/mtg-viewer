@@ -22,7 +22,7 @@
                 <th scope="col"> Requested By </th>
                 <th scope="col"> @Html.DisplayNameForInnerType((Trade t) => t.To) </th>
                 <th scope="col"> Deck Color </th>
-                <th scope="col"> @Html.DisplayNameForInnerType((Trade t) => t.Amount) </th>
+                <th scope="col"> @Html.DisplayNameForInnerType((Trade t) => t.Copies) </th>
                 <th scope="col"></th>
             </tr>
         </thead>
@@ -53,11 +53,11 @@
                             <select title="trade amount" name="amount" 
                                 class="form-control form-control-sm">
 
-                                @for (int i = 1; i < trade.Amount; ++i)
+                                @for (int i = 1; i < trade.Copies; ++i)
                                 {
                                     <option>@i</option>
                                 }
-                                <option selected>@trade.Amount</option>
+                                <option selected>@trade.Copies</option>
                             </select>
                         </td>
                         <td>
@@ -80,7 +80,7 @@
     </table>
 
 
-@if (Model.Deck.Cards.Any())
+@if (Model.Deck.Holds.Any())
 {
     <h2>Current Cards</h2>
 
@@ -91,13 +91,13 @@
                     <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.Name) </th>
                     <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.ManaCost) </th>
                     <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.SetName) </th>
-                    <th scope="col"> @Html.DisplayNameForInnerType((Amount ca) => ca.Copies) </th>
+                    <th scope="col"> @Html.DisplayNameForInnerType((Hold ca) => ca.Copies) </th>
                 </tr>
             </thead>
             <tbody>
-                @foreach (var amount in Model.Deck.Cards)
+                @foreach (var hold in Model.Deck.Holds)
                 {
-                    var card = amount.Card;
+                    var card = hold.Card;
                     <tr>
                         <td>
                             <a asp-page="/Cards/Details" asp-route-id="@card.Id">
@@ -110,7 +110,7 @@
                             </div>
                         </td>
                         <td> @card.SetName </td>
-                        <td> @amount.Copies </td>
+                        <td> @hold.Copies </td>
                     </tr>
                 }
             </tbody>

@@ -101,8 +101,8 @@ public class IndexModel : PageModel
     private IQueryable<Unclaimed> UnclaimedForViewing()
     {
         return _dbContext.Unclaimed
-            .Include(u => u.Cards)
-                .ThenInclude(a => a.Card)
+            .Include(u => u.Holds)
+                .ThenInclude(h => h.Card)
 
             .Include(u => u.Wants)
                 .ThenInclude(w => w.Card)
@@ -117,19 +117,19 @@ public class IndexModel : PageModel
 
     private IReadOnlyList<QuantityNameGroup> UnclaimedNameGroup(Unclaimed unclaimed)
     {
-        var amountsByName = unclaimed.Cards
-            .ToLookup(a => a.Card.Name);
+        var holdByName = unclaimed.Holds
+            .ToLookup(h => h.Card.Name);
 
         var wantsByName = unclaimed.Wants
             .ToLookup(w => w.Card.Name);
 
-        var cardNames = amountsByName.Select(an => an.Key)
+        var cardNames = holdByName.Select(an => an.Key)
             .Union(wantsByName.Select(wn => wn.Key))
             .OrderBy(cn => cn);
 
         return cardNames
             .Select(cn =>
-                new QuantityNameGroup( amountsByName[cn], wantsByName[cn] ))
+                new QuantityNameGroup( holdByName[cn], wantsByName[cn] ))
             .ToArray();
     }
 
@@ -168,7 +168,7 @@ public class IndexModel : PageModel
         }
 
         var unclaimed = await _dbContext.Unclaimed
-            .Include(u => u.Cards)
+            .Include(u => u.Holds)
             .Include(u => u.Wants)
             .AsSplitQuery()
             .SingleOrDefaultAsync(u => u.Id == id, cancel);
@@ -186,10 +186,10 @@ public class IndexModel : PageModel
 
         _dbContext.Decks.Attach(claimed);
 
-        claimed.Cards.AddRange(unclaimed.Cards);
+        claimed.Holds.AddRange(unclaimed.Holds);
         claimed.Wants.AddRange(unclaimed.Wants);
 
-        unclaimed.Cards.Clear();
+        unclaimed.Holds.Clear();
         unclaimed.Wants.Clear();
 
         _dbContext.Unclaimed.Remove(unclaimed);
@@ -219,8 +219,8 @@ public class IndexModel : PageModel
         }
 
         var unclaimed = await _dbContext.Unclaimed
-            .Include(u => u.Cards)
-                .ThenInclude(a => a.Card)
+            .Include(u => u.Holds)
+                .ThenInclude(h => h.Card)
             .Include(u => u.Wants)
             .AsSplitQuery()
             .SingleOrDefaultAsync(u => u.Id == id, cancel);
@@ -230,10 +230,10 @@ public class IndexModel : PageModel
             return NotFound();
         }
 
-        var cardReturns = unclaimed.Cards
-            .Select(a => new CardRequest(a.Card, a.Copies));
+        var cardReturns = unclaimed.Holds
+            .Select(h => new CardRequest(h.Card, h.Copies));
 
-        _dbContext.Amounts.RemoveRange(unclaimed.Cards);
+        _dbContext.Holds.RemoveRange(unclaimed.Holds);
         _dbContext.Unclaimed.Remove(unclaimed);
 
         await _dbContext.AddCardsAsync(cardReturns, cancel);

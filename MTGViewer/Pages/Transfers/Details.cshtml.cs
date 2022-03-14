@@ -108,7 +108,7 @@ public class DetailsModel : PageModel
                         Name = d.Owner.Name
                     },
 
-                    AmountCopies = d.Cards.Sum(a => a.Copies),
+                    HeldCopies = d.Holds.Sum(h => h.Copies),
                     WantCopies = d.Wants.Sum(w => w.Copies),
 
                     HasTrades = d.TradesTo.Any()
@@ -128,40 +128,40 @@ public class DetailsModel : PageModel
 
         return deckTrades
             // left join, where each match is unique because
-            // each amount is unique by Location and Card
-            .GroupJoin( _dbContext.Amounts,
+            // each hold is unique by Location and Card
+            .GroupJoin( _dbContext.Holds,
                 t => new { LocationId = t.FromId, t.CardId },
-                a => new { a.LocationId, a.CardId },
-                (Trade, Amounts) => new { Trade, Amounts })
+                h => new { h.LocationId, h.CardId },
+                (Trade, Holds) => new { Trade, Holds })
 
-            .SelectMany(ta => ta.Amounts.DefaultIfEmpty(),
-                (ta, a) => new TradePreview
+            .SelectMany(th => th.Holds.DefaultIfEmpty(),
+                (th, h) => new TradePreview
                 {
                     Card = new CardPreview
                     {
-                        Id = ta.Trade.CardId,
-                        Name = ta.Trade.Card.Name,
-                        SetName = ta.Trade.Card.SetName,
+                        Id = th.Trade.CardId,
+                        Name = th.Trade.Card.Name,
+                        SetName = th.Trade.Card.SetName,
 
-                        ManaCost = ta.Trade.Card.ManaCost,
-                        Rarity = ta.Trade.Card.Rarity,
-                        ImageUrl = ta.Trade.Card.ImageUrl,
+                        ManaCost = th.Trade.Card.ManaCost,
+                        Rarity = th.Trade.Card.Rarity,
+                        ImageUrl = th.Trade.Card.ImageUrl,
                     },
 
                     Target = new DeckDetails
                     {
-                        Id = ta.Trade.FromId,
-                        Name = ta.Trade.From.Name,
-                        Color = ta.Trade.From.Color,
+                        Id = th.Trade.FromId,
+                        Name = th.Trade.From.Name,
+                        Color = th.Trade.From.Color,
 
                         Owner = new OwnerPreview
                         {
-                            Id = ta.Trade.From.OwnerId,
-                            Name = ta.Trade.From.Owner.Name
+                            Id = th.Trade.From.OwnerId,
+                            Name = th.Trade.From.Owner.Name
                         }
                     },
 
-                    Copies = a == null ? 0 : a.Copies
+                    Copies = h == null ? 0 : h.Copies
                 });
     }
 
@@ -170,7 +170,7 @@ public class DetailsModel : PageModel
         = EF.CompileAsyncQuery((CardDbContext dbContext, int id, int limit) =>
 
             dbContext.Cards
-                .Where(c => c.Amounts.Any(a => a.LocationId == id)
+                .Where(c => c.Holds.Any(h => h.LocationId == id)
                     || c.Wants.Any(w => w.LocationId == id))
 
                 .OrderBy(c => c.Name)
@@ -185,9 +185,9 @@ public class DetailsModel : PageModel
                     SetName = c.SetName,
                     ManaCost = c.ManaCost,
 
-                    Held = c.Amounts
-                        .Where(a => a.LocationId == id)
-                        .Sum(a => a.Copies),
+                    Held = c.Holds
+                        .Where(h => h.LocationId == id)
+                        .Sum(h => h.Copies),
 
                     Want = c.Wants
                         .Where(w => w.LocationId == id)

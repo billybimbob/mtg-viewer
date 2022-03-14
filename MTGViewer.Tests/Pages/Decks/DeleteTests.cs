@@ -45,9 +45,10 @@ public class DeleteTests : IAsyncLifetime
             .AsNoTracking();
 
 
-    private IQueryable<Amount> DeckCards(Deck deck) =>
-        _dbContext.Amounts
-            .Where(a => a.LocationId == deck.Id)
+    private IQueryable<Hold> DeckHolds(Deck deck) =>
+        _dbContext.Decks
+            .Where(d => d.Id == deck.Id)
+            .SelectMany(d => d.Holds)
             .AsNoTracking();
 
 
@@ -105,11 +106,11 @@ public class DeleteTests : IAsyncLifetime
 
         await _pageFactory.AddModelContextAsync(_deleteModel, deck.OwnerId);
 
-        var deckCardTotal = await DeckCards(deck).SumAsync(a => a.Copies);
+        var deckCardTotal = await DeckHolds(deck).SumAsync(h => h.Copies);
 
-        var boxTotal = _dbContext.Amounts
-            .Where(a => a.Location is Box)
-            .Select(a => a.Copies);
+        var boxTotal = _dbContext.Holds
+            .Where(h => h.Location is Box)
+            .Select(h => h.Copies);
 
         // Act
         var boxBefore = await boxTotal.SumAsync();

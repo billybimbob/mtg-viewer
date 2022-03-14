@@ -12,12 +12,12 @@ using MTGViewer.Data;
 
 namespace MTGViewer.Services;
 
-internal class CardSetup : IHostedService
+internal class CardSeed : IHostedService
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly IWebHostEnvironment _env;
 
-    public CardSetup(IServiceProvider serviceProvider, IWebHostEnvironment env)
+    public CardSeed(IServiceProvider serviceProvider, IWebHostEnvironment env)
     {
         _serviceProvider = serviceProvider;
         _env = env;
@@ -26,21 +26,17 @@ internal class CardSetup : IHostedService
 
     public async Task StartAsync(CancellationToken cancel)
     {
-        await using var scope = _serviceProvider.CreateAsyncScope();
-        var scopeProvider = scope.ServiceProvider;
-
-        // migrate all here so that no concurrent migrations occur
-
-        var userContext = scopeProvider.GetRequiredService<UserDbContext>();
-        await userContext.Database.MigrateAsync(cancel);
-
-        var dbContext = scopeProvider.GetRequiredService<CardDbContext>();
-        await dbContext.Database.MigrateAsync(cancel);
-
         if (_env.IsProduction())
         {
             return;
         }
+
+        await using var scope = _serviceProvider.CreateAsyncScope();
+
+        var scopeProvider = scope.ServiceProvider;
+
+        var userContext = scopeProvider.GetRequiredService<UserDbContext>();
+        var dbContext = scopeProvider.GetRequiredService<CardDbContext>();
 
         bool notEmpty = await dbContext.Cards.AnyAsync(cancel)
             || await userContext.Users.AnyAsync(cancel);

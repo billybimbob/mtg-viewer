@@ -164,7 +164,7 @@ else
 
                         <div class="col-3">
                             <span title="@card.Name Held" class="badge badge-pill badge-primary"> 
-                                @(group.Amount?.Copies ?? 0) </span>
+                                @(group.Hold?.Copies ?? 0) </span>
 
                             <span title="@card.Name Returning" class="badge badge-pill badge-danger"> 
                                 @(group.GiveBack?.Copies ?? 0) </span>
@@ -184,7 +184,7 @@ else
                         @{ var allDeckCards = AllDeckCards(); }
 
                         <span title="Total Held" class="badge badge-pill badge-primary"> 
-                            @allDeckCards.Sum(qg => qg.Amount?.Copies ?? 0) </span>
+                            @allDeckCards.Sum(qg => qg.Hold?.Copies ?? 0) </span>
 
                         <span title="Total Returning" class="badge badge-pill badge-danger"> 
                             @allDeckCards.Sum(qg => qg.GiveBack?.Copies ?? 0) </span>

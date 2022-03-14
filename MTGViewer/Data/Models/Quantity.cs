@@ -39,7 +39,7 @@ public abstract class Quantity : Concurrent
 }
 
 
-public class Amount : Quantity
+public class Hold : Quantity
 { }
 
 

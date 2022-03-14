@@ -66,7 +66,6 @@ public class BulkOperations
         _dbContext.Decks.AddRange(data.Decks);
 
         _dbContext.Suggestions.AddRange(data.Suggestions);
-        _dbContext.Trades.AddRange(data.Trades);
 
         _loadProgress.Ticks = data.Users.Count + 1;
 
@@ -131,7 +130,7 @@ public class BulkOperations
         }
 
         // TODO: merge to existing bins, boxes, and decks
-        // merging may have issue with card amount/want conflicts
+        // merging may have issue with card hold/want conflicts
 
         _dbContext.Bins.AddRange(data.Bins);
         _dbContext.Unclaimed.AddRange(unclaimed);
@@ -243,21 +242,21 @@ public class BulkOperations
     {
         var boxChanges = bins
             .SelectMany(b => b.Boxes)
-            .SelectMany(b => b.Cards,
-                (box, a) => new Change
+            .SelectMany(b => b.Holds,
+                (box, h) => new Change
                 {
-                    CardId = a.CardId,
+                    CardId = h.CardId,
                     To = box,
-                    Amount = a.Copies
+                    Copies = h.Copies
                 });
 
         var deckChanges = unclaimed
-            .SelectMany(u => u.Cards,
-                (unclaimed, a) => new Change
+            .SelectMany(u => u.Holds,
+                (unclaimed, h) => new Change
                 {
-                    CardId = a.CardId,
+                    CardId = h.CardId,
                     To = unclaimed,
-                    Amount = a.Copies
+                    Copies = h.Copies
                 });
 
         var changes = boxChanges
@@ -366,7 +365,7 @@ public class BulkOperations
 
         await foreach (var deck in data.Decks.WithCancellation(cancel))
         {
-            _dbContext.Amounts.RemoveRange(deck.Cards);
+            _dbContext.Holds.RemoveRange(deck.Holds);
             _dbContext.Wants.RemoveRange(deck.Wants);
             _dbContext.GiveBacks.RemoveRange(deck.GiveBacks);
 
@@ -377,7 +376,7 @@ public class BulkOperations
 
         await foreach (var unclaimed in data.Unclaimed.WithCancellation(cancel))
         {
-            _dbContext.Amounts.RemoveRange(unclaimed.Cards);
+            _dbContext.Holds.RemoveRange(unclaimed.Holds);
             _dbContext.Wants.RemoveRange(unclaimed.Wants);
             
             _dbContext.Unclaimed.Remove(unclaimed);
@@ -387,9 +386,9 @@ public class BulkOperations
 
         await foreach (var bin in data.Bins.WithCancellation(cancel))
         {
-            var binCards = bin.Boxes.SelectMany(b => b.Cards);
+            var binCards = bin.Boxes.SelectMany(b => b.Holds);
 
-            _dbContext.Amounts.RemoveRange(binCards);
+            _dbContext.Holds.RemoveRange(binCards);
             _dbContext.Boxes.RemoveRange(bin.Boxes);
             _dbContext.Bins.Remove(bin);
         }

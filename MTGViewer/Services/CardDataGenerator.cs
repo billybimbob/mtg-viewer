@@ -47,11 +47,12 @@ public class CardDataGenerator
         var decks = GetDecks(userRefs);
         var bin = GetBin();
 
-        AddBoxAmounts(cards, bin);
-        AddDeckAmounts(cards, decks);
+        AddBoxHolds(cards, bin);
+        AddDeckHolds(cards, decks);
 
         var suggestions = GetSuggestions(userRefs, cards, decks);
-        var trades = GetTrades(userRefs, cards, decks);
+
+        AddTrades(userRefs, cards, decks);
 
         var data = new CardData
         {
@@ -63,7 +64,6 @@ public class CardDataGenerator
             Bins = new[] { bin },
 
             Suggestions = suggestions,
-            Trades = trades
         };
 
         await _bulkOperations.SeedAsync(data, cancel);
@@ -140,11 +140,11 @@ public class CardDataGenerator
     }
 
 
-    private void AddDeckAmounts(IEnumerable<Card> cards, IEnumerable<Deck> decks)
+    private void AddDeckHolds(IEnumerable<Card> cards, IEnumerable<Deck> decks)
     {
         foreach (var (card, deck) in cards.Zip(decks))
         {
-            deck.Cards.Add(new Amount
+            deck.Holds.Add(new Hold
             {
                 Card = card,
                 Copies = _random.Next(1, 6)
@@ -153,7 +153,7 @@ public class CardDataGenerator
     }
 
 
-    private void AddBoxAmounts(IEnumerable<Card> cards, Bin bin)
+    private void AddBoxHolds(IEnumerable<Card> cards, Bin bin)
     {
         var boxes = bin.Boxes;
         var boxSpace = boxes.ToDictionary(b => b, _ => 0);
@@ -170,7 +170,7 @@ public class CardDataGenerator
                 continue;
             }
 
-            box.Cards.Add(new Amount
+            box.Holds.Add(new Hold
             {
                 Card = card,
                 Copies = numCopies
@@ -181,25 +181,25 @@ public class CardDataGenerator
     }
 
 
-    private IReadOnlyList<Trade> GetTrades(
+    private void AddTrades(
         IEnumerable<UserRef> users,
         IEnumerable<Card> cards,
         IEnumerable<Deck> decks)
     {
         var tradeFrom = decks.First();
         var tradeTo = decks.First(d => d != tradeFrom);
-        var card = tradeFrom.Cards.First().Card;
+        var card = tradeFrom.Holds.First().Card;
 
-        return new List<Trade>()
+        var trade = new Trade
         {
-            new Trade
-            {
-                Card = card,
-                To = tradeTo,
-                From = tradeFrom,
-                Amount = _random.Next(5)
-            }
+            Card = card,
+            To = tradeTo,
+            From = tradeFrom,
+            Copies = _random.Next(5)
         };
+
+        tradeTo.TradesTo.Add(trade);
+        tradeFrom.TradesFrom.Add(trade);
     }
 
 

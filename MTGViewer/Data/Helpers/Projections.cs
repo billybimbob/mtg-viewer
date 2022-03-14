@@ -8,7 +8,7 @@ namespace MTGViewer.Data;
 
 #region Card Projections
 
-public sealed record CardTotal(Card Card, int Total);
+public sealed record HeldCard(Card Card, int Copies);
 
 
 public record CardImage
@@ -27,15 +27,14 @@ public record CardPreview : CardImage
 }
 
 
-public record CardCopies : CardPreview
+public record LocationCopy : CardPreview
 {
-    public int Copies { get; init; }
+    public int Held { get; init; }
 }
 
 
-public sealed record DeckCopies : CardPreview
+public sealed record DeckCopy : LocationCopy
 {
-    public int Held { get; init; }
     public int Want { get; init; }
     public int Returning { get; init; }
 }
@@ -50,12 +49,6 @@ public record CardLink
 }
 
 
-public sealed record StorageLink : CardLink
-{
-    public int Copies { get; init; }
-}
-
-
 public sealed record DeleteLink : CardLink
 {
     public bool HasDeckCopies { get; init; }
@@ -63,9 +56,14 @@ public sealed record DeleteLink : CardLink
 }
 
 
-public sealed record DeckLink : CardLink
+public record LocationLink : CardLink
 {
     public int Held { get; init; }
+}
+
+
+public sealed record DeckLink : LocationLink
+{
     public int Want { get; init; }
     public int Returning { get; init; }
 }
@@ -135,7 +133,7 @@ public sealed record TransactionPreview
 public sealed record ChangePreview
 {
     public int Id { get; init; }
-    public int Amount { get; init; }
+    public int Copies { get; init; }
     public TransactionPreview Transaction { get; init; } = default!;
 
     public LocationPreview To { get; init; } = default!;
@@ -172,7 +170,7 @@ public sealed record DeckPreview
     public string Name { get; init; } = default!;
     public Color Color { get; init; }
 
-    public int AmountCopies { get; init; }
+    public int HeldCopies { get; init; }
     public int WantCopies { get; init; }
 
     public bool HasReturns { get; init; }
@@ -190,7 +188,7 @@ public sealed record DeckPreview
 public sealed class TheoryColors
 {
     public int Id { get; init; }
-    public IEnumerable<Color> CardColors { get; init; } = Enumerable.Empty<Color>();
+    public IEnumerable<Color> HoldColors { get; init; } = Enumerable.Empty<Color>();
     public IEnumerable<Color> WantColors { get; init; } = Enumerable.Empty<Color>();
 }
 
@@ -203,7 +201,7 @@ public sealed record DeckDetails
     public string Name { get; init; } = default!;
     public Color Color { get; init; }
 
-    public int AmountCopies { get; init; }
+    public int HeldCopies { get; init; }
     public int WantCopies { get; init; }
     public int ReturnCopies { get; init; }
 
@@ -221,7 +219,7 @@ public sealed record OwnerPreview
 public sealed record UnclaimedDetails
 {
     public int Id { get; init; }
-    public int AmountCopies { get; init; }
+    public int HeldCopies { get; init; }
     public int WantCopies { get; init; }
 }
 
@@ -273,7 +271,8 @@ public sealed record ExchangePreview
     public int Id { get; init; }
     public string Name { get; init; } = default!;
     public bool HasWants { get; init; }
-    public IEnumerable<CardCopies> GiveBacks { get; init; } = Enumerable.Empty<CardCopies>();
+    public IEnumerable<LocationCopy> GiveBacks { get; init; } = Enumerable.Empty<LocationCopy>();
+
 
     public bool Equals(ExchangePreview? exchange)
     {
@@ -292,7 +291,7 @@ public sealed record ExchangePreview
 }
 
 
-public sealed record AmountPreview
+public sealed record QuantityPreview
 {
     public int Id { get; init; }
     public CardPreview Card { get; init; } = default!;
@@ -312,11 +311,11 @@ public sealed class BoxPreview
 
     public string? Appearance { get; init; }
     public int Capacity { get; init; }
-    public int TotalCards { get; init; }
+    public int TotalHolds { get; init; }
 
-    public IEnumerable<StorageLink> Cards { get; init; } = Enumerable.Empty<StorageLink>();
+    public IEnumerable<LocationLink> Cards { get; init; } = Enumerable.Empty<LocationLink>();
 
-    public bool HasMoreCards => TotalCards > Cards.Sum(s => s.Copies);
+    public bool HasMoreCards => TotalHolds > Cards.Sum(s => s.Held);
 }
 
 

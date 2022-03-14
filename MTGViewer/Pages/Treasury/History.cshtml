@@ -31,7 +31,7 @@
                 <th scope="col"> @Html.DisplayNameForInnerType((Change c) => c.From) </th>
                 <th scope="col"> @Html.DisplayNameForInnerType((Change c) => c.To) </th>
                 <th scope="col"> @Html.DisplayNameForInnerType((Change c) => c.Card) </th>
-                <th scope="col"> @Html.DisplayNameForInnerType((Change c) => c.Amount) </th>
+                <th scope="col"> @Html.DisplayNameForInnerType((Change c) => c.Copies) </th>
 
                 @if (isSignedIn)
                 {
@@ -123,7 +123,7 @@
                             param-Preview="changes[0].Card"/>
                     </td>
 
-                    <td> @changes[0].Amount </td>
+                    <td> @changes[0].Copies </td>
 
                     @if (isSignedIn
                         && Model.IsFirstTransfer(transaction, to, from))
@@ -153,7 +153,7 @@
                             <component type="typeof(HoverCard)" render-mode="Static"
                                 param-Preview="change.Card"/>
                         </td>
-                        <td> @change.Amount </td>
+                        <td> @change.Copies </td>
                     </tr>
                 }
             }

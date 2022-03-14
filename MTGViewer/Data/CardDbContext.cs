@@ -25,7 +25,7 @@ public class CardDbContext : DbContext
     public DbSet<Box> Boxes => Set<Box>();
     public DbSet<Bin> Bins => Set<Bin>();
 
-    public DbSet<Amount> Amounts => Set<Amount>();
+    public DbSet<Hold> Holds => Set<Hold>();
     public DbSet<Want> Wants => Set<Want>();
     public DbSet<GiveBack> GiveBacks => Set<GiveBack>();
 
@@ -88,8 +88,8 @@ internal class LocationConfiguration : IEntityTypeConfiguration<Location>
                 .HasValue<Excess>(LocationType.Excess);
 
         builder
-            .HasMany(l => l.Cards)
-            .WithOne(a => a.Location)
+            .HasMany(l => l.Holds)
+            .WithOne(h => h.Location)
             .OnDelete(DeleteBehavior.Restrict);
     }
 }
@@ -147,8 +147,9 @@ internal class QuantityConfiguration : IEntityTypeConfiguration<Quantity>
     {
         builder
             .HasDiscriminator(q => q.Type)
+
             .HasValue<Quantity>(QuantityType.Invalid)
-            .HasValue<Amount>(QuantityType.Amount)
+            .HasValue<Hold>(QuantityType.Hold)
             .HasValue<Want>(QuantityType.Want)
             .HasValue<GiveBack>(QuantityType.GiveBack);
     }

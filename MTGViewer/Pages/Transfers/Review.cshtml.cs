@@ -72,11 +72,11 @@ public class ReviewModel : PageModel
 
             .Include(d => d.Owner)
 
-            .Include(d => d.Cards)
-                .ThenInclude(a => a.Card)
+            .Include(d => d.Holds)
+                .ThenInclude(h => h.Card)
 
-            .Include(d => d.Cards // unbounded: keep eye on
-                .OrderBy(a => a.Card.Name))
+            .Include(d => d.Holds // unbounded: keep eye on
+                .OrderBy(h => h.Card.Name))
 
             .Include(d => d.TradesFrom)
                 .ThenInclude(t => t.Card)
@@ -95,22 +95,22 @@ public class ReviewModel : PageModel
 
     private void CapFromTrades(Deck deck)
     {
-        var tradesWithCapAmount = deck.TradesFrom
-            .GroupJoin( deck.Cards,
+        var tradesWithCap = deck.TradesFrom
+            .GroupJoin( deck.Holds,
                 t => t.CardId,
-                a => a.CardId,
+                h => h.CardId,
                 (trade, actuals) => (trade, actuals))
             .SelectMany(
                 ta => ta.actuals.DefaultIfEmpty(),
                 (ta, actual) => (ta.trade, actual?.Copies ?? 0));
 
-        foreach (var (trade, cap) in tradesWithCapAmount)
+        foreach (var (trade, cap) in tradesWithCap)
         {
             // modifications are not saved
-            trade.Amount = Math.Min(trade.Amount, cap);
+            trade.Copies = Math.Min(trade.Copies, cap);
         }
 
-        deck.TradesFrom.RemoveAll(t => t.Amount == 0);
+        deck.TradesFrom.RemoveAll(t => t.Copies == 0);
     }
 
 
@@ -118,10 +118,10 @@ public class ReviewModel : PageModel
     private record AcceptRequest(
         Trade Trade,
         WantNameGroup? ToWants,
-        Amount FromAmount);
+        Hold FromHold);
 
     private record AcceptTargets(
-        Amount ToAmount,
+        Hold ToHold,
         Want FromWant);
 
 
@@ -191,16 +191,16 @@ public class ReviewModel : PageModel
         return _dbContext.Trades
             .Where(t => t.Id == id && t.From.OwnerId == userId)
 
-            .Include(t => t.To.Cards
-                .Where(a => a.CardId == tradeCard.Id)
+            .Include(t => t.To.Holds
+                .Where(h => h.CardId == tradeCard.Id)
                 .Take(1))
 
             .Include(t => t.To.Wants // unbounded: keep eye on
                 .Where(w => w.Card.Name == tradeCard.Name))
                 .ThenInclude(w => w.Card)
 
-            .Include(t => t.From.Cards
-                .Where(a => a.CardId == tradeCard.Id)
+            .Include(t => t.From.Holds
+                .Where(h => h.CardId == tradeCard.Id)
                 .Take(1))
 
             .Include(t => t.From.Wants
@@ -214,8 +214,8 @@ public class ReviewModel : PageModel
 
     private AcceptRequest? GetAcceptRequest(Trade trade)
     {
-        var tradeValid = trade.From.Cards
-            .Select(a => a.CardId)
+        var tradeValid = trade.From.Holds
+            .Select(h => h.CardId)
             .Contains(trade.CardId);
 
         if (!tradeValid)
@@ -232,8 +232,8 @@ public class ReviewModel : PageModel
             ToWants: toWants.Any()
                 ? new WantNameGroup(toWants) : default,
 
-            FromAmount: trade.From.Cards
-                .Single(a => a.CardId == trade.CardId));
+            FromHold: trade.From.Holds
+                .Single(h => h.CardId == trade.CardId));
     }
 
 
@@ -241,13 +241,13 @@ public class ReviewModel : PageModel
     {
         int acceptAmount = Math.Max(amount, 1);
 
-        ModifyAmountsAndRequests(acceptRequest, acceptAmount);
+        ModifyHoldsAndWants(acceptRequest, acceptAmount);
 
-        var (trade, toWants, fromAmount) = acceptRequest;
+        var (trade, toWants, fromHold) = acceptRequest;
 
-        if (fromAmount.Copies == 0)
+        if (fromHold.Copies == 0)
         {
-            _dbContext.Amounts.Remove(fromAmount);
+            _dbContext.Holds.Remove(fromHold);
         }
 
         var finishedWants = toWants
@@ -258,23 +258,23 @@ public class ReviewModel : PageModel
     }
 
 
-    private void ModifyAmountsAndRequests(AcceptRequest acceptRequest, int acceptAmount)
+    private void ModifyHoldsAndWants(AcceptRequest acceptRequest, int acceptAmount)
     {
-        var (trade, toWants, fromAmount) = acceptRequest;
+        var (trade, toWants, fromHold) = acceptRequest;
 
         if (toWants == default)
         {
             return;
         }
 
-        var (toAmount, fromWant) = GetAcceptTargets(acceptRequest);
+        var (toHold, fromWant) = GetAcceptTargets(acceptRequest);
 
         var exactWant = toWants
             .SingleOrDefault(w => w.CardId == trade.CardId);
 
         int change = new [] {
-            acceptAmount, trade.Amount,
-            toWants.NumCopies, fromAmount.Copies }.Min();
+            acceptAmount, trade.Copies,
+            toWants.NumCopies, fromHold.Copies }.Min();
 
         if (exactWant != default)
         {
@@ -290,17 +290,17 @@ public class ReviewModel : PageModel
             toWants.NumCopies -= change;
         }
 
-        toAmount.Copies += change;
-        fromAmount.Copies -= change;
+        toHold.Copies += change;
+        fromHold.Copies -= change;
         fromWant.Copies += change;
 
         var newChange = new Change
         {
             Card = trade.Card,
-            From = fromAmount.Location,
-            To = toAmount.Location,
+            From = fromHold.Location,
+            To = toHold.Location,
 
-            Amount = change,
+            Copies = change,
             Transaction = new()
         };
 
@@ -312,19 +312,19 @@ public class ReviewModel : PageModel
     {
         var trade = request.Trade;
 
-        var toAmount = trade.To.Cards
-            .SingleOrDefault(a => a.CardId == trade.CardId);
+        var toHold = trade.To.Holds
+            .SingleOrDefault(h => h.CardId == trade.CardId);
 
-        if (toAmount is null)
+        if (toHold is null)
         {
-            toAmount = new()
+            toHold = new Hold
             {
                 Card = trade.Card,
                 Location = trade.To,
                 Copies = 0
             };
 
-            _dbContext.Amounts.Attach(toAmount);
+            _dbContext.Holds.Attach(toHold);
         }
 
         var fromWant = trade.From.Wants
@@ -342,16 +342,16 @@ public class ReviewModel : PageModel
             _dbContext.Wants.Attach(fromWant);
         }
 
-        return new AcceptTargets(toAmount, fromWant);
+        return new AcceptTargets(toHold, fromWant);
     }
 
 
 
     private async Task UpdateOtherTradesAsync(AcceptRequest acceptRequest, CancellationToken cancel)
     {
-        var (trade, toTakes, _) = acceptRequest;
+        var (trade, toWants, _) = acceptRequest;
 
-        if (toTakes == default)
+        if (toWants == default)
         {
             return;
         }
@@ -372,7 +372,7 @@ public class ReviewModel : PageModel
             return;
         }
 
-        if (toTakes.NumCopies == 0)
+        if (toWants.NumCopies == 0)
         {
             _dbContext.Trades.RemoveRange(remainingTrades);
             return;
@@ -380,7 +380,7 @@ public class ReviewModel : PageModel
 
         foreach (var remaining in remainingTrades)
         {
-            remaining.Amount = toTakes.NumCopies;
+            remaining.Copies = toWants.NumCopies;
         }
     }
 

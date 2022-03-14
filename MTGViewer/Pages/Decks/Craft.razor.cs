@@ -50,7 +50,7 @@ public partial class Craft : OwningComponentBase
 
     public bool IsBusy => _isBusy;
 
-    public OffsetList<CardTotal> Treasury => _pagedCards ?? OffsetList<CardTotal>.Empty;
+    public OffsetList<HeldCard> Treasury => _pagedCards ?? OffsetList<HeldCard>.Empty;
 
     public string DeckName =>
         _deckContext?.Deck.Name is string name && !string.IsNullOrWhiteSpace(name) 
@@ -71,7 +71,7 @@ public partial class Craft : OwningComponentBase
     private DeckContext? _deckContext;
 
     private readonly TreasuryFilters _treasuryFilters = new();
-    private OffsetList<CardTotal>? _pagedCards;
+    private OffsetList<HeldCard>? _pagedCards;
 
 
     protected override async Task OnInitializedAsync()
@@ -242,14 +242,14 @@ public partial class Craft : OwningComponentBase
 
             dbContext.Decks
                 .Include(d => d.Owner)
-                .Include(d => d.Cards) // unbounded: keep eye on
-                    .ThenInclude(a => a.Card)
+                .Include(d => d.Holds) // unbounded: keep eye on
+                    .ThenInclude(h => h.Card)
 
                 .Include(d => d.Wants) // unbounded: keep eye on
-                    .ThenInclude(a => a.Card)
+                    .ThenInclude(w => w.Card)
 
                 .Include(d => d.GiveBacks) // unbounded: keep eye on
-                    .ThenInclude(a => a.Card)
+                    .ThenInclude(g => g.Card)
 
                 .AsSplitQuery()
                 .SingleOrDefault(d => d.Id == deckId
@@ -257,7 +257,7 @@ public partial class Craft : OwningComponentBase
                     && !d.TradesTo.Any()));
 
 
-    private static Task<OffsetList<CardTotal>> FilteredCardsAsync(
+    private static Task<OffsetList<HeldCard>> FilteredCardsAsync(
         CardDbContext dbContext,
         TreasuryFilters filters,
         CancellationToken cancel)
@@ -289,11 +289,11 @@ public partial class Craft : OwningComponentBase
                 .ThenBy(c => c.Id)
 
             .Select(card =>
-                new CardTotal(
+                new HeldCard(
                     card,
-                    card.Amounts
-                        .Where(a => a.Location is Box || a.Location is Excess)
-                        .Sum(a => a.Copies)))
+                    card.Holds
+                        .Where(h => h.Location is Box || h.Location is Excess)
+                        .Sum(h => h.Copies)))
 
             .PageBy(pageIndex, pageSize)
             .ToOffsetListAsync(cancel);
@@ -609,7 +609,7 @@ public partial class Craft : OwningComponentBase
             return;
         }
 
-        if (!_deckContext.TryGetQuantity(card, out Amount amount))
+        if (!_deckContext.TryGetQuantity(card, out Hold hold))
         {
             Logger.LogError($"card {card.Id} is not in the deck");
             return;
@@ -631,7 +631,7 @@ public partial class Craft : OwningComponentBase
             _deckContext.AddQuantity(giveBack);
         }
 
-        int actualRemain = amount.Copies - giveBack.Copies;
+        int actualRemain = hold.Copies - giveBack.Copies;
         if (actualRemain == 0)
         {
             Logger.LogError($"there are no more of {card.Id} to remove");
@@ -756,9 +756,9 @@ public partial class Craft : OwningComponentBase
         {
             var quantityType = typeof(TQuantity);
 
-            if (quantityType == typeof(Amount))
+            if (quantityType == typeof(Hold))
             {
-                return Deck.Cards.OfType<TQuantity>();
+                return Deck.Holds.OfType<TQuantity>();
             }
             else if (quantityType == typeof(Want))
             {
@@ -811,8 +811,8 @@ public partial class Craft : OwningComponentBase
 
             switch (quantity)
             {
-                case Amount amount:
-                    Deck.Cards.Add(amount);
+                case Hold hold:
+                    Deck.Holds.Add(hold);
                     break;
 
                 case Want want:
@@ -952,7 +952,7 @@ public partial class Craft : OwningComponentBase
             dbContext.Decks.Attach(deck).State = EntityState.Modified;
         }
 
-        PrepareQuantity(deckContext, dbContext.Amounts);
+        PrepareQuantity(deckContext, dbContext.Holds);
         PrepareQuantity(deckContext, dbContext.Wants);
         PrepareQuantity(deckContext, dbContext.GiveBacks);
     }
@@ -1012,10 +1012,10 @@ public partial class Craft : OwningComponentBase
         try
         {
             dbDeck = await dbContext.Decks
-                .Include(d => d.Cards) // unbounded: keep eye on
-                    .ThenInclude(a => a.Card)
+                .Include(d => d.Holds) // unbounded: keep eye on
+                    .ThenInclude(h => h.Card)
                 .Include(d => d.Wants) // unbounded: keep eye on
-                    .ThenInclude(a => a.Card)
+                    .ThenInclude(w => w.Card)
                 .Include(d => d.GiveBacks) // unbounded: keep eye on
                     .ThenInclude(g => g.Card)
 
@@ -1063,7 +1063,7 @@ public partial class Craft : OwningComponentBase
             .Select(cg => cg.CardId)
             .ToList();
 
-        var amountConflicts = ex.Entries<Amount>()
+        var holdConflicts = ex.Entries<Hold>()
             .IntersectBy(cardIds, e => e.Entity.CardId);
 
         var wantConflicts = ex.Entries<Want>()
@@ -1072,7 +1072,7 @@ public partial class Craft : OwningComponentBase
         var giveConflicts = ex.Entries<GiveBack>()
             .IntersectBy(cardIds, e => e.Entity.CardId);
 
-        return !amountConflicts.Any()
+        return !holdConflicts.Any()
             && !wantConflicts.Any()
             && !giveConflicts.Any();
     }
@@ -1080,7 +1080,7 @@ public partial class Craft : OwningComponentBase
 
     private static void MergeDbRemoves(DeckContext deckContext, Deck dbDeck)
     {
-        MergeRemovedQuantity(deckContext, dbDeck.Cards);
+        MergeRemovedQuantity(deckContext, dbDeck.Holds);
 
         MergeRemovedQuantity(deckContext, dbDeck.Wants);
 
@@ -1125,7 +1125,7 @@ public partial class Craft : OwningComponentBase
         DeckContext deckContext,
         Deck dbDeck)
     {
-        MergeQuantityConflict(dbContext, deckContext, dbDeck.Cards);
+        MergeQuantityConflict(dbContext, deckContext, dbDeck.Holds);
 
         MergeQuantityConflict(dbContext, deckContext, dbDeck.Wants);
 
@@ -1161,7 +1161,7 @@ public partial class Craft : OwningComponentBase
         DeckContext deckContext, 
         Deck dbDeck)
     {
-        MergeNewQuantity(deckContext, dbContext, dbDeck.Cards);
+        MergeNewQuantity(deckContext, dbContext, dbDeck.Holds);
 
         MergeNewQuantity(deckContext, dbContext, dbDeck.Wants);
 
@@ -1189,7 +1189,7 @@ public partial class Craft : OwningComponentBase
             {
                 card = dbQuantity.Card;
 
-                card.Amounts.Clear();
+                card.Holds.Clear();
                 card.Wants.Clear();
 
                 dbContext.Cards.Attach(card);
@@ -1217,8 +1217,8 @@ public partial class Craft : OwningComponentBase
     {
         switch (quantity)
         {
-            case Amount amount:
-                dbContext.Amounts.Attach(amount);
+            case Hold hold:
+                dbContext.Holds.Attach(hold);
                 break;
 
             case Want want:
@@ -1245,9 +1245,9 @@ public partial class Craft : OwningComponentBase
             }
 
             var currentReturn = cardGroup.GiveBack.Copies;
-            var capAmount = cardGroup.Amount?.Copies ?? currentReturn;
+            var copiesCap = cardGroup.Hold?.Copies ?? currentReturn;
 
-            cardGroup.GiveBack.Copies = Math.Min(currentReturn, capAmount);
+            cardGroup.GiveBack.Copies = Math.Min(currentReturn, copiesCap);
         }
     }
 

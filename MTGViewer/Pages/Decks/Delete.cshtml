@@ -32,7 +32,7 @@
     <table class="table mt-2">
         <thead>
             <tr>
-                <th scope="col"> @Html.DisplayNameForInnerType((Amount ca) => ca.Card) </th>
+                <th scope="col"> @Html.DisplayNameForInnerType((Hold ca) => ca.Card) </th>
                 <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.ManaCost) </th>
                 <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.SetName) </th>
                 <th scope="col"> Held </th>
@@ -61,7 +61,7 @@
                     <td>@card.Returning</td>
                 </tr>
             }
-                @if (Model.Deck.AmountCopies > Model.Cards.Sum(c => c.Held)
+                @if (Model.Deck.HeldCopies > Model.Cards.Sum(c => c.Held)
                     || Model.Deck.WantCopies > Model.Cards.Sum(c => c.Want)
                     || Model.Deck.ReturnCopies > Model.Cards.Sum(c => c.Returning))
                 {
@@ -78,7 +78,7 @@
                     <th> Total </th>
                     <td> -- </td>
                     <td> -- </td>
-                    <td> <strong>@Model.Deck.AmountCopies</strong> </td>
+                    <td> <strong>@Model.Deck.HeldCopies</strong> </td>
                     <td> <strong>@Model.Deck.WantCopies</strong> </td>
                     <td> <strong>@Model.Deck.ReturnCopies</strong> </td>
                 </tr>

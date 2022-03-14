@@ -53,7 +53,7 @@
     <table class="table">
         <thead>
             <tr>
-                <th scope="col"> @Html.DisplayNameForInnerType((Amount ca) => ca.Card) </th>
+                <th scope="col"> @Html.DisplayNameForInnerType((Hold ca) => ca.Card) </th>
                 <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.ManaCost) </th>
                 <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.SetName) </th>
                 <th scope="col"> Held </th>
@@ -85,7 +85,7 @@
                 <th> Total </th>
                 <td> -- </td>
                 <td> -- </td>
-                <td> <strong>@Model.Deck.AmountCopies</strong> </td>
+                <td> <strong>@Model.Deck.HeldCopies</strong> </td>
                 <td> <strong>@Model.Deck.WantCopies</strong> </td>
                 <td> <strong>@Model.Deck.ReturnCopies</strong> </td>
             </tr>

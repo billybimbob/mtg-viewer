@@ -25,7 +25,7 @@ public class ExcessModel : PageModel
     }
 
 
-    public SeekList<CardCopies> Cards { get; private set; } = SeekList<CardCopies>.Empty;
+    public SeekList<LocationCopy> Cards { get; private set; } = SeekList<LocationCopy>.Empty;
 
     public bool HasExcess =>
         Cards.Any() || Cards.Seek is not { Previous: null, Next: null };
@@ -66,7 +66,7 @@ public class ExcessModel : PageModel
         }
 
         return await ExcessCards()
-            .WithSelect<Card, CardCopies>()
+            .WithSelect<Card, LocationCopy>()
             .Before(card)
             .Select(c => c.Id)
 
@@ -76,17 +76,17 @@ public class ExcessModel : PageModel
     }
 
 
-    private IQueryable<CardCopies> ExcessCards()
+    private IQueryable<LocationCopy> ExcessCards()
     {
         return _dbContext.Cards
-            .Where(c => c.Amounts
-                .Any(a => a.Location is Excess))
+            .Where(c => c.Holds
+                .Any(h => h.Location is Excess))
 
             .OrderBy(c => c.Name)
                 .ThenBy(c => c.SetName)
                 .ThenBy(c => c.Id)
 
-            .Select(c => new CardCopies
+            .Select(c => new LocationCopy
             {
                 Id = c.Id,
                 Name = c.Name,
@@ -96,9 +96,9 @@ public class ExcessModel : PageModel
                 Rarity = c.Rarity,
                 ImageUrl = c.ImageUrl,
 
-                Copies = c.Amounts
-                    .Where(a => a.Location is Excess)
-                    .Sum(a => a.Copies)
+                Held = c.Holds
+                    .Where(h => h.Location is Excess)
+                    .Sum(h => h.Copies)
             });
     }
 
@@ -107,8 +107,8 @@ public class ExcessModel : PageModel
 
         = EF.CompileAsyncQuery((CardDbContext dbContext, string cardId, CancellationToken _) =>
             dbContext.Cards
-                .Where(c => c.Amounts
-                    .Any(a => a.Location is Excess))
+                .Where(c => c.Holds
+                    .Any(h => h.Location is Excess))
                 .OrderBy(c => c.Id)
                 .SingleOrDefault(c => c.Id == cardId));
 }

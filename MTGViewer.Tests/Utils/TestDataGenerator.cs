@@ -138,8 +138,8 @@ public class TestDataGenerator
             Owner = owner
         };
 
-        var deckAmounts = deckCards
-            .Select(c => new Amount
+        var deckHolds = deckCards
+            .Select(c => new Hold
             {
                 Card = c,
                 Location = newDeck,
@@ -147,7 +147,7 @@ public class TestDataGenerator
             });
 
         _dbContext.Decks.Attach(newDeck);
-        _dbContext.Amounts.AttachRange(deckAmounts);
+        _dbContext.Holds.AttachRange(deckHolds);
 
         await _dbContext.SaveChangesAsync();
         _dbContext.ChangeTracker.Clear();
@@ -163,8 +163,8 @@ public class TestDataGenerator
 
         var cardOptions = await _dbContext.Decks
             .Where(d => d.OwnerId != owner.Id)
-            .SelectMany(d => d.Cards)
-            .Select(a => a.Card)
+            .SelectMany(d => d.Holds)
+            .Select(h => h.Card)
             .Distinct()
             .ToListAsync();
 
@@ -181,14 +181,14 @@ public class TestDataGenerator
                 new Deck { Name = "Source #2", Owner = nonOwner }
             };
 
-            var amounts = decks
-                .Select(deck => new Amount
+            var holds = decks
+                .Select(deck => new Hold
                 {
                     Card = card,
                     Location = deck
                 });
 
-            _dbContext.Amounts.AttachRange(amounts);
+            _dbContext.Holds.AttachRange(holds);
             cardOptions.Add(card);
         }
 
@@ -263,26 +263,26 @@ public class TestDataGenerator
         var (to, froms) = await GetTradeOptionsAsync(proposer, receiver);
 
         var cards = await _dbContext.Cards.ToListAsync();
-        var amountTrades = _random.Next(1, cards.Count / 2);
+        int tradeCount = _random.Next(1, cards.Count / 2);
 
         var trades = new List<Trade>();
 
-        foreach(var tradeCard in cards.Take(amountTrades))
+        foreach(var tradeCard in cards.Take(tradeCount))
         {
             var from = froms[_random.Next(froms.Count)];
 
-            int actualAmount = _random.Next(1, 3);
-            int requestAmount = _random.Next(1, actualAmount);
+            int holdCopies = _random.Next(1, 3);
+            int wantCopies = _random.Next(1, holdCopies);
 
-            var fromAmount = await FindAmountAsync(tradeCard, from, actualAmount);
-            var toRequest = await FindWantAsync(tradeCard, to, requestAmount);
+            var fromHold = await FindHoldAsync(tradeCard, from, holdCopies);
+            var toWant = await FindWantAsync(tradeCard, to, wantCopies);
 
             trades.Add(new()
             {
                 Card = tradeCard,
                 To = to,
                 From = from,
-                Amount = toRequest.Copies
+                Copies = toWant.Copies
             });
         }
 
@@ -297,8 +297,8 @@ public class TestDataGenerator
         UserRef optionsUser)
     {
         var source = await _dbContext.Decks
-            .Include(d => d.Cards)
-                .ThenInclude(a => a.Card)
+            .Include(d => d.Holds)
+                .ThenInclude(h => h.Card)
             .FirstOrDefaultAsync(l => l.OwnerId == sourceUser.Id);
 
         if (source == default)
@@ -339,26 +339,26 @@ public class TestDataGenerator
         var (from, tos) = await GetTradeOptionsAsync(receiver, proposer);
 
         var cards = await _dbContext.Cards.ToListAsync();
-        var amountTrades = _random.Next(1, cards.Count / 2);
+        var tradeCount = _random.Next(1, cards.Count / 2);
 
         var trades = new List<Trade>();
 
-        foreach(var tradeCard in cards.Take(amountTrades))
+        foreach(var tradeCard in cards.Take(tradeCount))
         {
             var to = tos[_random.Next(tos.Count)];
 
-            int actualAmount = _random.Next(1, 3);
-            int requestAmount = _random.Next(1, actualAmount);
+            int holdCopies = _random.Next(1, 3);
+            int wantCopies = _random.Next(1, holdCopies);
 
-            var fromAmount = await FindAmountAsync(tradeCard, from, actualAmount);
-            var toRequest = await FindWantAsync(tradeCard, to, requestAmount);
+            var fromHold = await FindHoldAsync(tradeCard, from, holdCopies);
+            var toWant = await FindWantAsync(tradeCard, to, wantCopies);
 
             trades.Add(new()
             {
                 Card = tradeCard,
                 To = to,
                 From = from,
-                Amount = toRequest.Copies
+                Copies = toWant.Copies
             });
         }
 
@@ -368,30 +368,30 @@ public class TestDataGenerator
     }
 
 
-    private async Task<Amount> FindAmountAsync(Card card, Location location, int amount)
+    private async Task<Hold> FindHoldAsync(Card card, Location location, int copies)
     {
-        var cardAmount = await _dbContext.Amounts
-            .SingleOrDefaultAsync(a =>
-                a.LocationId == location.Id && a.CardId == card.Id);
+        var hold = await _dbContext.Holds
+            .SingleOrDefaultAsync(h =>
+                h.LocationId == location.Id && h.CardId == card.Id);
 
-        if (cardAmount == default)
+        if (hold == default)
         {
-            cardAmount = new()
+            hold = new()
             {
                 Card = card,
                 Location = location
             };
 
-            _dbContext.Amounts.Attach(cardAmount);
+            _dbContext.Holds.Attach(hold);
         }
 
-        cardAmount.Copies = amount;
+        hold.Copies = copies;
 
-        return cardAmount;
+        return hold;
     }
 
 
-    private async Task<Want> FindWantAsync(Card card, Deck target, int amount)
+    private async Task<Want> FindWantAsync(Card card, Deck target, int copies)
     {
         var want = await _dbContext.Wants
             .SingleOrDefaultAsync(w => 
@@ -408,13 +408,13 @@ public class TestDataGenerator
             _dbContext.Wants.Attach(want);
         }
 
-        want.Copies = amount;
+        want.Copies = copies;
 
         return want;
     }
 
 
-    private async Task<GiveBack> FindGiveBackAsync(Card card, Deck target, int amount)
+    private async Task<GiveBack> FindGiveBackAsync(Card card, Deck target, int copies)
     {
         var give = await _dbContext.GiveBacks
             .SingleOrDefaultAsync(g => 
@@ -431,7 +431,7 @@ public class TestDataGenerator
             _dbContext.GiveBacks.Attach(give);
         }
 
-        give.Copies = amount;
+        give.Copies = copies;
 
         return give;
     }
@@ -443,15 +443,15 @@ public class TestDataGenerator
             .AsNoTracking()
             .FirstAsync();
 
-        var takeTarget = await _dbContext.Amounts
-            .Where(a => a.Location is Box && a.Copies > 0)
-            .Select(a => a.Card)
+        var takeTarget = await _dbContext.Holds
+            .Where(h => h.Location is Box && h.Copies > 0)
+            .Select(h => h.Card)
             .AsNoTracking()
             .FirstAsync();
 
-        var targetCap = await _dbContext.Amounts
-            .Where(a => a.Location is Box && a.CardId == takeTarget.Id)
-            .Select(a => a.Copies)
+        var targetCap = await _dbContext.Holds
+            .Where(h => h.Location is Box && h.CardId == takeTarget.Id)
+            .Select(h => h.Copies)
             .SumAsync();
 
         int limit = Math.Max(1, targetCap + targetMod);
@@ -467,13 +467,15 @@ public class TestDataGenerator
 
     public async Task<GiveBack> GetGiveBackAsync(int targetMod = 0)
     {
-        var returnTarget = await _dbContext.Amounts
-            .Include(a => a.Card)
-            .Include(a => a.Location)
+        var returnTarget = await _dbContext.Decks
+            .Where(d => !d.TradesTo.Any())
+            .SelectMany(d => d.Holds)
+
+            .Include(h => h.Card)
+            .Include(h => h.Location)
+
             .AsNoTracking()
-            .FirstAsync(a => a.Location is Deck
-                && !(a.Location as Deck)!.TradesTo.Any()
-                && a.Copies > 0);
+            .FirstAsync(h => h.Copies > 0);
 
         int limit = Math.Max(1, returnTarget.Copies + targetMod);
 
@@ -489,25 +491,25 @@ public class TestDataGenerator
 
     public async Task<(Want, GiveBack)> GetMixedRequestDeckAsync()
     {
-        var returnTarget = await _dbContext.Amounts
-            .Include(a => a.Card)
-            .Include(a => a.Location)
+        var returnTarget = await _dbContext.Holds
+            .Include(h => h.Card)
+            .Include(h => h.Location)
             .AsNoTracking()
-            .FirstAsync(a => a.Location is Deck && a.Copies > 0);
+            .FirstAsync(h => h.Location is Deck && h.Copies > 0);
 
         var deckTarget = (Deck)returnTarget.Location;
 
-        var takeTarget = await _dbContext.Amounts
-            .Where(a => a.Location is Box 
-                && a.Copies > 0
-                && a.CardId != returnTarget.CardId)
-            .Select(a => a.Card)
+        var takeTarget = await _dbContext.Holds
+            .Where(h => h.Location is Box 
+                && h.Copies > 0
+                && h.CardId != returnTarget.CardId)
+            .Select(h => h.Card)
             .AsNoTracking()
             .FirstAsync();
 
-        var targetCap = await _dbContext.Amounts
-            .Where(a => a.Location is Box && a.CardId == takeTarget.Id)
-            .Select(a => a.Copies)
+        var targetCap = await _dbContext.Holds
+            .Where(h => h.Location is Box && h.CardId == takeTarget.Id)
+            .Select(h => h.Copies)
             .SumAsync();
 
         var deckGive = await FindGiveBackAsync(
@@ -549,7 +551,7 @@ public class TestDataGenerator
                 Card = card,
                 To = deck,
                 From = boxes[_random.Next(boxes.Count)],
-                Amount = _random.Next(1, 3),
+                Copies = _random.Next(1, 3),
                 Transaction = transaction
             });
 
@@ -584,9 +586,9 @@ public class TestDataGenerator
             Name = "Test Unclaimed"
         };
 
-        var amounts = targetCards
+        var holds = targetCards
             .Take(_random.Next(1, targetCards.Count))
-            .Select(card => new Amount
+            .Select(card => new Hold
             {
                 Card = card,
                 Location = unclaimed,
@@ -603,7 +605,7 @@ public class TestDataGenerator
             });
 
         _dbContext.Unclaimed.Attach(unclaimed);
-        _dbContext.Amounts.AttachRange(amounts);
+        _dbContext.Holds.AttachRange(holds);
         _dbContext.Wants.AttachRange(wants);
 
         await _dbContext.SaveChangesAsync();
@@ -618,45 +620,45 @@ public class TestDataGenerator
         int capacity = await _dbContext.Boxes
             .SumAsync(b => b.Capacity);
 
-        int availAmounts = await _dbContext.Boxes
-            .SelectMany(b => b.Cards)
-            .SumAsync(a => a.Copies);
+        int availableHolds = await _dbContext.Boxes
+            .SelectMany(b => b.Holds)
+            .SumAsync(h => h.Copies);
 
-        if (availAmounts > capacity)
+        if (availableHolds > capacity)
         {
             throw new InvalidOperationException("There are too many cards not in excess");
         }
 
         var card = await _dbContext.Cards.FirstAsync();
 
-        if (availAmounts < capacity)
+        if (availableHolds < capacity)
         {
             var boxes = await _dbContext.Boxes
-                .Include(b => b.Cards)
+                .Include(b => b.Holds)
                 .ToListAsync();
 
             foreach (var box in boxes)
             {
-                int remaining = box.Capacity - box.Cards.Sum(a => a.Copies);
+                int remaining = box.Capacity - box.Holds.Sum(h => h.Copies);
                 if (remaining <= 0)
                 {
                     continue;
                 }
 
-                if (box.Cards.FirstOrDefault() is Amount amount)
+                if (box.Holds.FirstOrDefault() is Hold hold)
                 {
-                    amount.Copies += remaining;
+                    hold.Copies += remaining;
                     continue;
                 }
 
-                amount = new Amount
+                hold = new Hold
                 {
                     Card = card,
                     Location = box,
                     Copies = remaining
                 };
 
-                _dbContext.Amounts.Attach(amount);
+                _dbContext.Holds.Attach(hold);
             }
         }
 
@@ -670,7 +672,7 @@ public class TestDataGenerator
             Name = "Excess",
         };
 
-        var excessCard = new Amount
+        var excessCard = new Hold
         {
             Card = card,
             Location = excess,
@@ -678,7 +680,7 @@ public class TestDataGenerator
         };
 
         _dbContext.Excess.Attach(excess);
-        _dbContext.Amounts.Attach(excessCard);
+        _dbContext.Holds.Attach(excessCard);
 
         await _dbContext.SaveChangesAsync();
 
@@ -724,15 +726,15 @@ public class TestDataGenerator
             Owner = user
         };
 
-        var amounts = card
-            .Select(c => new Amount
+        var holds = card
+            .Select(c => new Hold
             {
                 Card = c,
                 Location = deck,
                 Copies = _random.Next(4)
             });
 
-        deck.Cards.AddRange(amounts);
+        deck.Holds.AddRange(holds);
 
         _dbContext.Decks.Attach(deck);
 

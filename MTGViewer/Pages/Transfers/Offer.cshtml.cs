@@ -115,78 +115,18 @@ public class OfferModel : PageModel
     private IQueryable<Deck> DecksForSuggest(CardPreview card, UserRef receiver)
     {
         var userDecks = _dbContext.Decks
-            .Where(l => l.OwnerId == receiver.Id)
-            .OrderBy(d => d.Name)
-            .AsQueryable();
+            .Where(d => d.OwnerId == receiver.Id
+                && !d.Holds.Any(h => h.Card.Name == card.Name)
+                && !d.Wants.Any(w => w.Card.Name == card.Name
+                && !d.TradesTo.Any(t => t.Card.Name == card.Name)))
 
-        userDecks = DecksWithoutAmounts(userDecks, card, receiver);
-        userDecks = DecksWithoutWants(userDecks, card, receiver);
+            .OrderBy(d => d.Name);
 
-        userDecks = DecksWithoutSuggests(userDecks, card, receiver);
-        userDecks = DecksWithoutTrades(userDecks, card, receiver);
-
-        return userDecks;
-    }
-
-
-    private IQueryable<Deck> DecksWithoutAmounts(
-        IQueryable<Deck> decks,
-        CardPreview card,
-        UserRef receiver)
-    {
-        var userCardAmounts = _dbContext.Amounts
-            .Where(a => a.Card.Name == card.Name
-                && a.Location is Deck
-                && (a.Location as Deck)!.OwnerId == receiver.Id);
-
-        return decks 
-            .GroupJoin( userCardAmounts,
-                deck => deck.Id,
-                amount => amount.LocationId,
-                (Deck, Amounts) => new { Deck, Amounts })
-            .SelectMany(
-                das => das.Amounts.DefaultIfEmpty(),
-                (das, Amount) => new { das.Deck, Amount })
-
-            .Where(da => da.Amount == default)
-            .Select(da => da.Deck);
-    }
-
-
-    private IQueryable<Deck> DecksWithoutWants(
-        IQueryable<Deck> decks,
-        CardPreview card,
-        UserRef receiver)
-    {
-        var wantsWithCard = _dbContext.Wants
-            .Where(w => w.Card.Name == card.Name
-                && w.Location is Deck
-                && (w.Location as Deck)!.OwnerId == receiver.Id);
-
-        return decks
-            .GroupJoin( wantsWithCard,
-                deck => deck.Id,
-                want => want.LocationId,
-                (Deck, Wants) => new { Deck, Wants })
-            .SelectMany(
-                dws => dws.Wants.DefaultIfEmpty(),
-                (dws, Want) => new { dws.Deck, Want })
-            
-            .Where(dw => dw.Want == default)
-            .Select(dw => dw.Deck);
-    }
-
-
-    private IQueryable<Deck> DecksWithoutSuggests(
-        IQueryable<Deck> decks,
-        CardPreview card,
-        UserRef receiver)
-    {
         var suggestsWithCard = _dbContext.Suggestions
             .Where(s => s.Card.Name == card.Name 
                 && s.ReceiverId == receiver.Id);
 
-        return decks
+        return userDecks
             .GroupJoin( suggestsWithCard,
                 deck => deck.Id,
                 suggest => suggest.ToId,
@@ -197,28 +137,6 @@ public class OfferModel : PageModel
 
             .Where(ds => ds.Suggest == default)
             .Select(ds => ds.Deck);
-    }
-
-
-    private IQueryable<Deck> DecksWithoutTrades(
-        IQueryable<Deck> decks,
-        CardPreview card,
-        UserRef receiver)
-    {
-        var tradesWithCard = _dbContext.Trades
-            .Where(t => t.Card.Name == card.Name && t.To.OwnerId == receiver.Id);
-
-        return decks
-            .GroupJoin( tradesWithCard,
-                deck => deck.Id,
-                transfer => transfer.ToId,
-                (Deck, Trades) => new { Deck, Trades })
-            .SelectMany(
-                dts => dts.Trades.DefaultIfEmpty(),
-                (dts, Trade) => new { dts.Deck, Trade })
-
-            .Where(dt => dt.Trade == default)
-            .Select(dt => dt.Deck);
     }
 
 
@@ -315,10 +233,10 @@ public class OfferModel : PageModel
         }
 
         await _dbContext.Entry(suggestion.To!)
-            .Collection(t => t.Cards)
+            .Collection(t => t.Holds)
             .LoadAsync(cancel);
 
-        var suggestInDeck = suggestion.To!.Cards
+        var suggestInDeck = suggestion.To!.Holds
             .Select(c => c.CardId)
             .Contains(suggestion.CardId);
 

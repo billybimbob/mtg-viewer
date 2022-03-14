@@ -208,7 +208,7 @@ else
             class="btn btn-secondary"
             @onclick="AddNewCardsAsync" 
             disabled="@(CannotAdd() || IsBusy)">
-            Add Cards/Amounts </button>
+            Add Cards/Copies </button>
     </div>
 
     <div class="row align-items-center my-3">
@@ -239,7 +239,7 @@ else
                     <th scope="col"> @DisplayName(c => c.ManaCost) </th>
                     <th scope="col"> @DisplayName(c => c.SetName) </th>
                     <th scope="col"> @DisplayName(c => c.Rarity) </th>
-                    <th scope="col"> Amount </th>
+                    <th scope="col"> Copies </th>
                 </tr>
             </thead>
             <tbody>
@@ -259,7 +259,7 @@ else
                             <td> @card.Rarity </td>
                             <td>
                                 <input @bind="match.NumCopies"
-                                    title="@card.Name Amount" 
+                                    title="@card.Name Copies" 
                                     type="number" min="0" max="@PageSizes.Limit"
                                     class="form-control w-50" />
                             </td>

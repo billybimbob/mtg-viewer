@@ -127,13 +127,13 @@ public class HistoryModel : PageModel
                 .ThenBy(c => c.From!.Name)
                 .ThenBy(c => c.To.Name)
                     .ThenBy(c => c.Card.Name)
-                    .ThenBy(c => c.Amount)
+                    .ThenBy(c => c.Copies)
                     .ThenBy(c => c.Id)
                     
             .Select(c => new ChangePreview
             {
                 Id = c.Id,
-                Amount = c.Amount,
+                Copies = c.Copies,
 
                 Transaction = new TransactionPreview
                 {

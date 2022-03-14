@@ -228,14 +228,14 @@ public class ReferenceManagerTests : IAsyncLifetime
 
         await _testGen.AddUserCardsAsync(userRef);
 
-        int userCards = await _dbContext.Amounts
-            .Where(a => a.Location is Deck
-                && (a.Location as Deck)!.OwnerId == user.Id)
-            .SumAsync(a => a.Copies);
+        int userCards = await _dbContext.Holds
+            .Where(h => h.Location is Deck
+                && (h.Location as Deck)!.OwnerId == user.Id)
+            .SumAsync(h => h.Copies);
 
-        int treasuryBefore = await _dbContext.Amounts
-            .Where(a => a.Location is Box)
-            .SumAsync(a => a.Copies);
+        int treasuryBefore = await _dbContext.Holds
+            .Where(h => h.Location is Box)
+            .SumAsync(h => h.Copies);
 
         var result = await _userManager.DeleteAsync(user);
 
@@ -243,9 +243,9 @@ public class ReferenceManagerTests : IAsyncLifetime
         bool success = await _referenceManager.DeleteReferenceAsync(user);
         bool afterDelete = await _dbContext.Users.AnyAsync(u => u.Id == user.Id);
 
-        int treasuryAfter = await _dbContext.Amounts
-            .Where(a => a.Location is Box)
-            .SumAsync(a => a.Copies);
+        int treasuryAfter = await _dbContext.Holds
+            .Where(h => h.Location is Box)
+            .SumAsync(h => h.Copies);
 
         Assert.True(result.Succeeded);
 

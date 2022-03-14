@@ -87,12 +87,12 @@ public class DeleteModel : PageModel
                     SetName = c.SetName,
                     ManaCost = c.ManaCost,
 
-                    HasDeckCopies = c.Amounts
-                        .Any(a => a.Location is Deck || a.Location is Unclaimed),
+                    HasDeckCopies = c.Holds
+                        .Any(h => h.Location is Deck || h.Location is Unclaimed),
 
-                    StorageCopies = c.Amounts
-                        .Where(a => a.Location is Box || a.Location is Excess)
-                        .Sum(a => a.Copies)
+                    StorageCopies = c.Holds
+                        .Where(h => h.Location is Box || h.Location is Excess)
+                        .Sum(h => h.Copies)
                 })
                 .SingleOrDefault());
 
@@ -101,8 +101,8 @@ public class DeleteModel : PageModel
         = EF.CompileAsyncQuery((CardDbContext dbContext, string cardId, CancellationToken _) =>
             dbContext.Cards
                 .Include(c => c.Flip)
-                .Include(c => c.Amounts)
-                    .ThenInclude(a => a.Location)
+                .Include(c => c.Holds)
+                    .ThenInclude(h => h.Location)
 
                 .OrderBy(c => c.Id)
                 .SingleOrDefault(c => c.Id == cardId));
@@ -117,12 +117,12 @@ public class DeleteModel : PageModel
             SetName = card.SetName,
             ManaCost = card.ManaCost,
 
-            HasDeckCopies = card.Amounts
-                .Any(a => a.Location is Deck || a.Location is Unclaimed),
+            HasDeckCopies = card.Holds
+                .Any(h => h.Location is Deck || h.Location is Unclaimed),
 
-            StorageCopies = card.Amounts
-                .Where(a => a.Location is Box || a.Location is Excess)
-                .Sum(a => a.Copies)
+            StorageCopies = card.Holds
+                .Where(h => h.Location is Box || h.Location is Excess)
+                .Sum(h => h.Copies)
         };
     }
 
@@ -142,10 +142,10 @@ public class DeleteModel : PageModel
             return NotFound();
         }
 
-        var storageAmounts = card.Amounts
-            .Where(a => a.Location is Box or Excess);
+        var storageHolds = card.Holds
+            .Where(h => h.Location is Box or Excess);
 
-        int maxCopies = storageAmounts.Sum(a => a.Copies);
+        int maxCopies = storageHolds.Sum(h => h.Copies);
 
         if (!ModelState.IsValid
             || maxCopies == 0 
@@ -155,21 +155,21 @@ public class DeleteModel : PageModel
 
             ModelState.AddModelError(
                 $"{nameof(InputModel)}.{nameof(InputModel.RemoveCopies)}",
-                "Amount of remove copies is invalid");
+                "Number of copies to remove is invalid");
 
             return Page();
         }
 
-        RemoveCopies(storageAmounts, Input.RemoveCopies);
+        RemoveCopies(storageHolds, Input.RemoveCopies);
 
         await _dbContext.UpdateBoxesAsync(cancel);
 
-        _dbContext.Amounts.RemoveRange(
-            card.Amounts.Where(a => a.Copies == 0));
+        _dbContext.Holds.RemoveRange(
+            card.Holds.Where(h => h.Copies == 0));
 
         bool allRemoved = maxCopies == Input.RemoveCopies
-            && !card.Amounts
-                .Except(storageAmounts)
+            && !card.Holds
+                .Except(storageHolds)
                 .Any();
 
         if (allRemoved)
@@ -199,16 +199,16 @@ public class DeleteModel : PageModel
     }
 
 
-    private static void RemoveCopies(IEnumerable<Amount> amounts, int removeCopies)
+    private static void RemoveCopies(IEnumerable<Hold> holds, int removeCopies)
     {
-        using var e = amounts.GetEnumerator();
+        using var e = holds.GetEnumerator();
 
         while (removeCopies > 0 && e.MoveNext())
         {
-            var amount = e.Current;
-            int minRemove = Math.Min(removeCopies, amount.Copies);
+            var hold = e.Current;
+            int minRemove = Math.Min(removeCopies, hold.Copies);
 
-            amount.Copies -= minRemove;
+            hold.Copies -= minRemove;
             removeCopies -= minRemove;
         }
     }

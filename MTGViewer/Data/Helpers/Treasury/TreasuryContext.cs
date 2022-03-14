@@ -13,7 +13,7 @@ internal sealed class TreasuryContext
     private readonly HashSet<Box> _overflow;
     private readonly IReadOnlyList<Excess> _excess;
 
-    private readonly Dictionary<(string, Storage), Amount> _amounts;
+    private readonly Dictionary<(string, Storage), Hold> _holds;
     private readonly Dictionary<(string, Location, Location?), Change> _changes;
 
     private readonly Transaction _transaction;
@@ -33,7 +33,7 @@ internal sealed class TreasuryContext
         _storageSpace = boxes
             .Cast<Storage>()
             .Concat(excess)
-            .ToDictionary(s => s, s => s.Cards.Sum(a => a.Copies));
+            .ToDictionary(s => s, s => s.Holds.Sum(h => h.Copies));
 
         _available = boxes
             .Where(b => _storageSpace.GetValueOrDefault(b) < b.Capacity)
@@ -45,11 +45,11 @@ internal sealed class TreasuryContext
 
         _excess = excess.ToList();
 
-        _amounts = boxes
-            .SelectMany(b => b.Cards)
+        _holds = boxes
+            .SelectMany(b => b.Holds)
             .Concat(excess
-                .SelectMany(e => e.Cards))
-            .Where(a => a.Location is Storage)
+                .SelectMany(e => e.Holds))
+            .Where(h => h.Location is Storage)
 
             .ToDictionary(
                 a => (a.CardId, (Storage)a.Location));
@@ -75,7 +75,7 @@ internal sealed class TreasuryContext
     public IReadOnlyList<Excess> Excess => _excess;
     public IReadOnlyDictionary<Storage, int> StorageSpace => _storageSpace;
 
-    public IReadOnlyCollection<Amount> Amounts => _amounts.Values;
+    public IReadOnlyCollection<Hold> Holds => _holds.Values;
 
 
     public void Deconstruct(
@@ -93,7 +93,7 @@ internal sealed class TreasuryContext
 
     public void AddCopies(Card card, int numCopies, Storage storage)
     {
-        UpdateAmount(card, numCopies, storage);
+        UpdateHold(card, numCopies, storage);
         UpdateChange(card, numCopies, storage, null);
         UpdateStorageSpace(storage, numCopies);
     }
@@ -106,12 +106,12 @@ internal sealed class TreasuryContext
             return;
         }
 
-        UpdateAmount(card, numCopies, to);
+        UpdateHold(card, numCopies, to);
         UpdateStorageSpace(to, numCopies);
 
         if (from is Storage fromStorage)
         {
-            UpdateAmount(card, -numCopies, fromStorage);
+            UpdateHold(card, -numCopies, fromStorage);
             UpdateStorageSpace(fromStorage, -numCopies);
         }
 
@@ -130,42 +130,42 @@ internal sealed class TreasuryContext
 
         if (to is Storage toStorage)
         {
-            UpdateAmount(card, numCopies, toStorage);
+            UpdateHold(card, numCopies, toStorage);
             UpdateStorageSpace(toStorage, numCopies);
         }
 
-        UpdateAmount(card, -numCopies, from);
+        UpdateHold(card, -numCopies, from);
         UpdateStorageSpace(from, -numCopies);
     }
 
 
-    private void UpdateAmount(Card card, int numCopies, Storage storage)
+    private void UpdateHold(Card card, int numCopies, Storage storage)
     {
         var index = (card.Id, storage);
 
-        if (!_amounts.TryGetValue(index, out var amount))
+        if (!_holds.TryGetValue(index, out var hold))
         {
-            amount = new Amount
+            hold = new Hold
             {
                 Card = card,
                 Location = storage
             };
 
-            _dbContext.Amounts.Attach(amount);
-            _amounts.Add(index, amount);
+            _dbContext.Holds.Attach(hold);
+            _holds.Add(index, hold);
         }
 
-        int newCopies = checked(amount.Copies + numCopies);
+        int newCopies = checked(hold.Copies + numCopies);
         if (newCopies < 0)
         {
             throw new ArgumentException(nameof(numCopies));
         }
 
-        amount.Copies = newCopies;
+        hold.Copies = newCopies;
     }
 
 
-    private void UpdateChange(Card card, int amount, Location to, Location? from)
+    private void UpdateChange(Card card, int copies, Location to, Location? from)
     {
         var changeIndex = (card.Id, to, from);
 
@@ -183,13 +183,13 @@ internal sealed class TreasuryContext
             _changes.Add(changeIndex, change);
         }
 
-        int newAmount = checked(change.Amount + amount);
-        if (newAmount < 0)
+        int newCopies = checked(change.Copies + copies);
+        if (newCopies < 0)
         {
-            throw new ArgumentException(nameof(amount));
+            throw new ArgumentException(nameof(copies));
         }
 
-        change.Amount = newAmount;
+        change.Copies = newCopies;
     }
 
 

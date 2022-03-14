@@ -5,53 +5,53 @@ using System.Linq;
 
 namespace MTGViewer.Data;
 
-/// <summary>Group of amounts with the same card name</summary>
-public class AmountNameGroup : IEnumerable<Amount>
+/// <summary>Group of holds with the same card name</summary>
+public class HoldNameGroup : IEnumerable<Hold>
 {
-    public AmountNameGroup(IEnumerable<Amount> amounts)
+    public HoldNameGroup(IEnumerable<Hold> holds)
     {
-        _amounts = new(amounts);
+        _holds = new(holds);
 
-        if (!_amounts.Any())
+        if (!_holds.Any())
         {
-            throw new ArgumentException("The amounts are empty");
+            throw new ArgumentException($"{nameof(holds)} is empty");
         }
 
-        if (_amounts.Any(a => a.Card.Name != Name))
+        if (_holds.Any(h => h.Card.Name != Name))
         {
             throw new ArgumentException("All cards do not match the name");
         }
 
-        if (_amounts.Any(a => a.Card.ManaCost != ManaCost))
+        if (_holds.Any(h => h.Card.ManaCost != ManaCost))
         {
             throw new ArgumentException("All cards do not match the mana cost");
         }
     }
 
-    public AmountNameGroup(params Amount[] amounts)
-        : this(amounts.AsEnumerable())
+    public HoldNameGroup(params Hold[] holds)
+        : this(holds.AsEnumerable())
     { }
 
 
-    // guranteed >= 1 CardAmounts in linkedlist
-    private readonly LinkedList<Amount> _amounts;
+    // guranteed >= 1 Holds in linkedlist
+    private readonly LinkedList<Hold> _holds;
 
 
-    private Amount First => _amounts.First!.Value;
+    private Hold First => _holds.First!.Value;
 
     public string Name => First.Card.Name;
     public string? ManaCost => First.Card.ManaCost;
 
-    public IEnumerable<string> CardIds => _amounts.Select(a => a.CardId);
-    public IEnumerable<Card> Cards => _amounts.Select(a => a.Card);
+    public IEnumerable<string> CardIds => _holds.Select(h => h.CardId);
+    public IEnumerable<Card> Cards => _holds.Select(h => h.Card);
 
 
     public int NumCopies
     {
-        get => _amounts.Sum(a => a.Copies);
+        get => _holds.Sum(h => h.Copies);
         set
         {
-            var lastCycle = _amounts.Last!.Value;
+            var lastCycle = _holds.Last!.Value;
             int change = NumCopies - value;
 
             while (change < 0 || change > 0 && lastCycle.Copies > 0)
@@ -63,10 +63,10 @@ public class AmountNameGroup : IEnumerable<Amount>
 
                 if (First.Copies == 0)
                 {
-                    // cycle amount
-                    var firstLink = _amounts.First!;
-                    _amounts.Remove(firstLink);
-                    _amounts.AddLast(firstLink);
+                    // cycle hold
+                    var firstLink = _holds.First!;
+                    _holds.Remove(firstLink);
+                    _holds.AddLast(firstLink);
                 }
             }
         }
@@ -74,7 +74,7 @@ public class AmountNameGroup : IEnumerable<Amount>
 
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
-    public IEnumerator<Amount> GetEnumerator() => _amounts.GetEnumerator();
+    public IEnumerator<Hold> GetEnumerator() => _holds.GetEnumerator();
 }
 
 
@@ -107,7 +107,7 @@ public class WantNameGroup : IEnumerable<Want>
     { }
 
 
-    // guranteed >= 1 CardAmounts in linkedlist
+    // guranteed >= 1 Want in linkedlist
     private readonly LinkedList<Want> _wants;
 
 
@@ -135,7 +135,6 @@ public class WantNameGroup : IEnumerable<Want>
 
                 if (First.Copies == 0)
                 {
-                    // cycle amount
                     var firstLink = _wants.First!;
                     _wants.Remove(firstLink);
                     _wants.AddLast(firstLink);
@@ -152,22 +151,22 @@ public class WantNameGroup : IEnumerable<Want>
 
 
 /// <summary>
-/// Group of quantities (amount, want, and give back) with the same deck and 
+/// Group of quantities (hold, want, and give back) with the same deck and 
 /// exact same card
 /// </summary>
 public class QuantityGroup : IEnumerable<Quantity>
 {
-    public QuantityGroup(Amount? amount, Want? want, GiveBack? giveBack)
+    public QuantityGroup(Hold? hold, Want? want, GiveBack? giveBack)
     {
-        _amount = amount;
+        _hold = hold;
         _want = want;
         _giveBack = giveBack;
 
         CheckGroup();
     }
 
-    public QuantityGroup(Amount amount)
-        : this(amount, null, null)
+    public QuantityGroup(Hold hold)
+        : this(hold, null, null)
     { }
 
     public QuantityGroup(Want want)
@@ -182,8 +181,8 @@ public class QuantityGroup : IEnumerable<Quantity>
     {
         switch(quantity)
         {
-            case Amount amount:
-                _amount = amount;
+            case Hold hold:
+                _hold = hold;
                 break;
 
             case Want want:
@@ -200,39 +199,39 @@ public class QuantityGroup : IEnumerable<Quantity>
 
     public static IEnumerable<QuantityGroup> FromDeck(Deck deck)
     {
-        var amountsById = deck.Cards.ToDictionary(a => a.CardId);
+        var holdsById = deck.Holds.ToDictionary(h => h.CardId);
         var takesById = deck.Wants.ToDictionary(w => w.CardId);
         var givesById = deck.GiveBacks.ToDictionary(g => g.CardId);
 
-        var cardIds = amountsById.Keys
+        var cardIds = holdsById.Keys
             .Union(takesById.Keys)
             .Union(givesById.Keys);
 
         return cardIds.Select(cid =>
             new QuantityGroup(
-                amountsById.GetValueOrDefault(cid),
+                holdsById.GetValueOrDefault(cid),
                 takesById.GetValueOrDefault(cid),
                 givesById.GetValueOrDefault(cid) ));
     }
 
 
     // Guaranteed to not all be null
-    private Amount? _amount;
+    private Hold? _hold;
     private Want? _want;
     private GiveBack? _giveBack;
 
 
-    public Amount? Amount
+    public Hold? Hold
     {
-        get => _amount;
+        get => _hold;
         set
         {
             if (value is null)
             {
-                throw new ArgumentException("Amount is not a valid actual amount");
+                throw new ArgumentNullException();
             }
 
-            _amount = value;
+            _hold = value;
 
             CheckGroup();
         }
@@ -245,7 +244,7 @@ public class QuantityGroup : IEnumerable<Quantity>
         {
             if (value is null)
             {
-                throw new ArgumentException("Amount is not a valid take amount");
+                throw new ArgumentNullException();
             }
 
             _want = value;
@@ -261,7 +260,7 @@ public class QuantityGroup : IEnumerable<Quantity>
         {
             if (value is null)
             {
-                throw new ArgumentException("Amount is not a valid return amount");
+                throw new ArgumentNullException();
             }
 
             _giveBack = value;
@@ -273,7 +272,7 @@ public class QuantityGroup : IEnumerable<Quantity>
     public TQuantity? GetQuantity<TQuantity>()
         where TQuantity : Quantity
     {
-        return Amount as TQuantity
+        return Hold as TQuantity
             ?? Want as TQuantity
             ?? GiveBack as TQuantity;
     }
@@ -283,8 +282,8 @@ public class QuantityGroup : IEnumerable<Quantity>
     {
         switch (quantity)
         {
-            case Amount amount:
-                Amount = amount;
+            case Hold hold:
+                Hold = hold;
                 break;
 
             case Want want:
@@ -300,7 +299,7 @@ public class QuantityGroup : IEnumerable<Quantity>
 
     private void CheckGroup()
     {
-        var nullCount = (Amount is null ? 0 : 1)
+        var nullCount = (Hold is null ? 0 : 1)
             + (Want is null ? 0 : 1)
             + (GiveBack is null ? 0 : 1);
 
@@ -326,8 +325,8 @@ public class QuantityGroup : IEnumerable<Quantity>
         var cardId = CardId;
         var locationId = LocationId;
 
-        var sameActIds = Amount == null
-            || Amount.CardId == cardId && Amount.LocationId == locationId;
+        var sameHoldIds = Hold == null
+            || Hold.CardId == cardId && Hold.LocationId == locationId;
 
         var sameTakeIds = Want == null 
             || Want.CardId == cardId && Want.LocationId == locationId;
@@ -335,7 +334,7 @@ public class QuantityGroup : IEnumerable<Quantity>
         var sameRetIds = GiveBack == null 
             || GiveBack.CardId == cardId && GiveBack.LocationId == locationId;
 
-        return sameActIds && sameTakeIds && sameRetIds;
+        return sameHoldIds && sameTakeIds && sameRetIds;
     }
 
     private bool HasSameReferences()
@@ -343,8 +342,8 @@ public class QuantityGroup : IEnumerable<Quantity>
         var card = Card;
         var location = Location;
 
-        var sameActRefs = Amount == null 
-            || Amount.Card == card && Amount.Location == location;
+        var sameActRefs = Hold == null 
+            || Hold.Card == card && Hold.Location == location;
 
         var sameTakeRefs = Want == null 
             || Want.Card == card && Want.Location == location;
@@ -360,9 +359,9 @@ public class QuantityGroup : IEnumerable<Quantity>
 
     public IEnumerator<Quantity> GetEnumerator()
     {
-        if (Amount is not null)
+        if (Hold is not null)
         {
-            yield return Amount;
+            yield return Hold;
         }
 
         if (Want is not null)
@@ -378,38 +377,38 @@ public class QuantityGroup : IEnumerable<Quantity>
 
 
     public string CardId =>
-        Amount?.CardId
+        Hold?.CardId
             ?? Want?.CardId
             ?? GiveBack?.CardId
             ?? Card.Id;
 
     public Card Card =>
-        Amount?.Card
+        Hold?.Card
             ?? Want?.Card
             ?? GiveBack?.Card
             ?? default!;
 
 
     public int LocationId =>
-        Amount?.LocationId
+        Hold?.LocationId
             ?? Want?.LocationId
             ?? GiveBack?.LocationId
             ?? Location.Id;
 
     public Location Location =>
-        Amount?.Location
+        Hold?.Location
             ?? Want?.Location
             ?? GiveBack?.Location
             ?? default!;
 
 
     public int NumCopies =>
-        (Amount?.Copies ?? 0)
+        (Hold?.Copies ?? 0)
             + (Want?.Copies ?? 0)
             - (GiveBack?.Copies ?? 0);
 
     public int Total =>
-        (Amount?.Copies ?? 0)
+        (Hold?.Copies ?? 0)
             + (Want?.Copies ?? 0)
             + (GiveBack?.Copies ?? 0);
 }
@@ -422,23 +421,23 @@ public class QuantityGroup : IEnumerable<Quantity>
 public class QuantityNameGroup : IEnumerable<QuantityGroup>
 {
     public QuantityNameGroup(
-        IEnumerable<Amount> amounts, 
+        IEnumerable<Hold> holds, 
         IEnumerable<Want> wants,
         IEnumerable<GiveBack>? giveBacks = null)
     {
         // do a full outer join
-        var amountTable = amounts.ToDictionary(a => a.CardId ?? a.Card.Id);
+        var holdTable = holds.ToDictionary(h => h.CardId ?? h.Card.Id);
         var wantTable = wants.ToDictionary(w => w.CardId ?? w.Card.Id);
         var giveTable = giveBacks?.ToDictionary(g => g.CardId ?? g.Card.Id);
 
-        var allCardIds = amountTable.Keys
+        var allCardIds = holdTable.Keys
             .Union(wantTable.Keys)
             .Union(giveTable?.Keys ?? Enumerable.Empty<string>());
 
         _quantityGroups = allCardIds
             .Select(cid =>
                 new QuantityGroup(
-                    amountTable.GetValueOrDefault(cid),
+                    holdTable.GetValueOrDefault(cid),
                     wantTable.GetValueOrDefault(cid),
                     giveTable?.GetValueOrDefault(cid) ))
             .ToList();
@@ -481,7 +480,7 @@ public class QuantityNameGroup : IEnumerable<QuantityGroup>
         this.Sum(rg => rg.NumCopies);
 
     public int InDeck =>
-        this.Sum(rg => rg.Amount?.Copies ?? 0);
+        this.Sum(rg => rg.Hold?.Copies ?? 0);
 
     public int Requests =>
         this.Sum(rg => rg.Want?.Copies ?? 0) - this.Sum(rg => rg.GiveBack?.Copies ?? 0);

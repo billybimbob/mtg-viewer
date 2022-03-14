@@ -48,7 +48,7 @@ public class CreateModel : PageModel
 
     public DeckDetails Deck { get; private set; } = default!;
 
-    public OffsetList<CardCopies> Requests { get; private set; } = OffsetList<CardCopies>.Empty;
+    public OffsetList<LocationCopy> Requests { get; private set; } = OffsetList<LocationCopy>.Empty;
 
     public IReadOnlyList<DeckLink> Cards { get; private set; } = Array.Empty<DeckLink>();
 
@@ -117,7 +117,7 @@ public class CreateModel : PageModel
                         Name = d.Owner.Name
                     },
 
-                    AmountCopies = d.Cards.Sum(a => a.Copies),
+                    HeldCopies = d.Holds.Sum(h => h.Copies),
                     WantCopies = d.Wants.Sum(w => w.Copies),
 
                     HasTrades = d.TradesTo.Any()
@@ -125,7 +125,7 @@ public class CreateModel : PageModel
                 .SingleOrDefault());
 
 
-    private IQueryable<CardCopies> RequestMatches(DeckDetails deck)
+    private IQueryable<LocationCopy> RequestMatches(DeckDetails deck)
     {
         var deckWants = _dbContext.Wants
             .Where(w => w.LocationId == deck.Id)
@@ -136,7 +136,7 @@ public class CreateModel : PageModel
         var possibleTargets = _dbContext.Users
             .Where(u => u.Id != deck.Owner.Id && !u.ResetRequested)
             .SelectMany(u => u.Decks)
-            .SelectMany(d => d.Cards, (_, a) => a.Card.Name)
+            .SelectMany(d => d.Holds, (_, h) => h.Card.Name)
             .Distinct();
 
         var wantMatches = deckWants
@@ -150,7 +150,7 @@ public class CreateModel : PageModel
 
         return wantMatches
             .Where(wn => wn.Name != default)
-            .Select(wn => new CardCopies
+            .Select(wn => new LocationCopy
             {
                 Id = wn.Want.CardId,
                 Name = wn.Want.Card.Name,
@@ -160,7 +160,7 @@ public class CreateModel : PageModel
                 Rarity = wn.Want.Card.Rarity,
                 ImageUrl = wn.Want.Card.ImageUrl,
 
-                Copies = wn.Want.Copies
+                Held = wn.Want.Copies
             });
     }
 
@@ -169,7 +169,7 @@ public class CreateModel : PageModel
         = EF.CompileAsyncQuery((CardDbContext dbContext, int id, int limit) =>
 
             dbContext.Cards
-                .Where(c => c.Amounts.Any(a => a.LocationId == id)
+                .Where(c => c.Holds.Any(h => h.LocationId == id)
                     || c.Wants.Any(w => w.LocationId == id))
 
                 .OrderBy(c => c.Name)
@@ -184,9 +184,9 @@ public class CreateModel : PageModel
                     SetName = c.SetName,
                     ManaCost = c.ManaCost,
 
-                    Held = c.Amounts
-                        .Where(a => a.LocationId == id)
-                        .Sum(a => a.Copies),
+                    Held = c.Holds
+                        .Where(h => h.LocationId == id)
+                        .Sum(h => h.Copies),
 
                     Want = c.Wants
                         .Where(w => w.LocationId == id)
@@ -207,21 +207,21 @@ public class CreateModel : PageModel
         return _dbContext.Users
             .Where(u => u.Id != deck.Owner.Id && !u.ResetRequested)
             .SelectMany(u => u.Decks)
-            .SelectMany(d => d.Cards)
-            .OrderBy(a => a.Id)
+            .SelectMany(d => d.Holds)
+            .OrderBy(h => h.Id)
 
             // intentionally leave wants unbounded by target since
             // that cap will be handled later
 
             .Join( wantNames,
-                a => a.Card.Name,
+                h => h.Card.Name,
                 want => want.Name,
                 (target, want) => new Trade
                 {
                     ToId = deck.Id,
                     FromId = target.LocationId,
                     Card = target.Card,
-                    Amount = want.Copies
+                    Copies = want.Copies
                 });
     }
 

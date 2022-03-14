@@ -65,22 +65,22 @@ public class DeleteModel : PageModel
 
                     Appearance = b.Appearance,
                     Capacity = b.Capacity,
-                    TotalCards = b.Cards.Sum(a => a.Copies),
+                    TotalHolds = b.Holds.Sum(h => h.Copies),
 
-                    Cards = b.Cards
-                        .OrderBy(a => a.Card.Name)
-                            .ThenBy(a => a.Card.SetName)
-                            .ThenBy(a => a.Copies)
-                            .ThenBy(a => a.Id)
+                    Cards = b.Holds
+                        .OrderBy(h => h.Card.Name)
+                            .ThenBy(h => h.Card.SetName)
+                            .ThenBy(h => h.Copies)
+                            .ThenBy(h => h.Id)
 
                         .Take(pageSize)
-                        .Select(a => new StorageLink
+                        .Select(h => new LocationLink
                         {
-                            Id = a.CardId,
-                            Name = a.Card.Name,
-                            SetName = a.Card.SetName,
-                            ManaCost = a.Card.ManaCost,
-                            Copies = a.Copies
+                            Id = h.CardId,
+                            Name = h.Card.Name,
+                            SetName = h.Card.SetName,
+                            ManaCost = h.Card.ManaCost,
+                            Held = h.Copies
                         })
                 })
                 .SingleOrDefault(d => d.Id == boxId));
@@ -91,8 +91,8 @@ public class DeleteModel : PageModel
     {
         var box = await _dbContext.Boxes
             .Include(b => b.Bin)
-            .Include(b => b.Cards) // unbounded, keep eye on
-                .ThenInclude(a => a.Card)
+            .Include(b => b.Holds) // unbounded, keep eye on
+                .ThenInclude(h => h.Card)
             .SingleOrDefaultAsync(b => b.Id == id, cancel);
 
         if (box == default)
@@ -103,7 +103,7 @@ public class DeleteModel : PageModel
         bool isSingleBin = await _dbContext.Boxes
             .AllAsync(b => b.Id == box.Id || b.BinId != box.BinId, cancel);
 
-        _dbContext.Amounts.RemoveRange(box.Cards);
+        _dbContext.Holds.RemoveRange(box.Holds);
         _dbContext.Boxes.Remove(box); 
 
         if (isSingleBin)
@@ -113,8 +113,8 @@ public class DeleteModel : PageModel
 
         // removing box before ensures that box will not be a return target
 
-        var cardReturns = box.Cards
-            .Select(a => new CardRequest(a.Card, a.Copies));
+        var cardReturns = box.Holds
+            .Select(h => new CardRequest(h.Card, h.Copies));
 
         await _dbContext.AddCardsAsync(cardReturns, cancel);
 

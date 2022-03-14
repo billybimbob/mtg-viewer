@@ -45,35 +45,35 @@ public class ExchangeTests : IAsyncLifetime
             .Select(d => d.OwnerId);
 
 
-    private IQueryable<int> NumCopies(Want request) =>
+    private IQueryable<int> Copies(Want want) =>
         _dbContext.Wants
-            .Where(w => w.Id == request.Id)
+            .Where(w => w.Id == want.Id)
             .Select(w => w.Copies);
 
 
-    private IQueryable<int> NumCopies(GiveBack request) =>
+    private IQueryable<int> Copies(GiveBack give) =>
         _dbContext.GiveBacks
-            .Where(g => g.Id == request.Id)
+            .Where(g => g.Id == give.Id)
             .Select(g => g.Copies);
 
 
-    private IQueryable<int> ActualNumCopies(Quantity quantity) =>
-        _dbContext.Amounts
-            .Where(a => a.LocationId == quantity.LocationId
-                && a.CardId == quantity.CardId)
-            .Select(a => a.Copies);
+    private IQueryable<int> HoldCopies(Quantity quantity) =>
+        _dbContext.Holds
+            .Where(h => h.LocationId == quantity.LocationId
+                && h.CardId == quantity.CardId)
+            .Select(h => h.Copies);
 
 
-    private IQueryable<int> BoxNumCopies(Quantity quantity) =>
-        _dbContext.Amounts
-            .Where(a => a.Location is Box && a.CardId == quantity.CardId)
-            .Select(a => a.Copies);
+    private IQueryable<int> BoxCardCopies(Quantity quantity) =>
+        _dbContext.Holds
+            .Where(h => h.Location is Box && h.CardId == quantity.CardId)
+            .Select(h => h.Copies);
 
 
-    private IQueryable<int> ChangeAmount(Quantity quantity) =>
+    private IQueryable<int> ChangeCopies(Quantity quantity) =>
         _dbContext.Changes
             .Where(c => c.ToId == quantity.LocationId || c.FromId == quantity.LocationId)
-            .Select(c => c.Amount);
+            .Select(c => c.Copies);
 
 
 
@@ -115,34 +115,34 @@ public class ExchangeTests : IAsyncLifetime
     {
         // Arrange
         var want = await _testGen.GetWantAsync();
-        var targetAmount = want.Copies;
+        var targetCopies = want.Copies;
         var deckOwnerId = await OwnerId(want).SingleAsync();
 
         await _pageFactory.AddModelContextAsync(_exchangeModel, deckOwnerId);
 
         // Act
-        var wantBefore = await NumCopies(want).SingleAsync();
-        var actualBefore = await ActualNumCopies(want).SingleOrDefaultAsync();
+        var wantBefore = await Copies(want).SingleAsync();
+        var holdBefore = await HoldCopies(want).SingleOrDefaultAsync();
 
-        var boxBefore = await BoxNumCopies(want).SumAsync();
-        var changeBefore = await ChangeAmount(want).SumAsync();
+        var boxBefore = await BoxCardCopies(want).SumAsync();
+        var changeBefore = await ChangeCopies(want).SumAsync();
 
         var result = await _exchangeModel.OnPostAsync(want.LocationId, default);
 
-        var wantAfter = await NumCopies(want).SingleOrDefaultAsync();
-        var actualAfter = await ActualNumCopies(want).SingleAsync();
+        var wantAfter = await Copies(want).SingleOrDefaultAsync();
+        var holdAfter = await HoldCopies(want).SingleAsync();
 
-        var boxAfter = await BoxNumCopies(want).SumAsync();
-        var changeAfter = await ChangeAmount(want).SumAsync();
+        var boxAfter = await BoxCardCopies(want).SumAsync();
+        var changeAfter = await ChangeCopies(want).SumAsync();
 
         // Assert
         Assert.IsType<RedirectToPageResult>(result);
 
-        Assert.Equal(targetAmount, wantBefore - wantAfter);
-        Assert.Equal(targetAmount, actualAfter - actualBefore);
+        Assert.Equal(targetCopies, wantBefore - wantAfter);
+        Assert.Equal(targetCopies, holdAfter - holdBefore);
 
-        Assert.Equal(targetAmount, boxBefore - boxAfter);
-        Assert.Equal(targetAmount, changeAfter - changeBefore);
+        Assert.Equal(targetCopies, boxBefore - boxAfter);
+        Assert.Equal(targetCopies, changeAfter - changeBefore);
     }
 
 
@@ -151,33 +151,33 @@ public class ExchangeTests : IAsyncLifetime
     {
         // Arrange
         var targetMod = 2;
-        var request = await _testGen.GetWantAsync(targetMod);
+        var want = await _testGen.GetWantAsync(targetMod);
 
-        var targetLimit = request.Copies - targetMod;
-        var deckOwnerId = await OwnerId(request).SingleAsync();
+        var targetLimit = want.Copies - targetMod;
+        var deckOwnerId = await OwnerId(want).SingleAsync();
 
         await _pageFactory.AddModelContextAsync(_exchangeModel, deckOwnerId);
 
         // Act
-        var wantBefore = await NumCopies(request).SingleAsync();
-        var actualBefore = await ActualNumCopies(request).SingleOrDefaultAsync();
+        int wantBefore = await Copies(want).SingleAsync();
+        int holdBefore = await HoldCopies(want).SingleOrDefaultAsync();
 
-        var boxBefore = await BoxNumCopies(request).SumAsync();
-        var changeBefore = await ChangeAmount(request).SumAsync();
+        int boxBefore = await BoxCardCopies(want).SumAsync();
+        int changeBefore = await ChangeCopies(want).SumAsync();
 
-        var result = await _exchangeModel.OnPostAsync(request.LocationId, default);
+        var result = await _exchangeModel.OnPostAsync(want.LocationId, default);
 
-        var wantAFter = await NumCopies(request).SingleAsync();
-        var actualAfter = await ActualNumCopies(request).SingleAsync();
+        int wantAFter = await Copies(want).SingleAsync();
+        int holdAfter = await HoldCopies(want).SingleAsync();
 
-        var boxAfter = await BoxNumCopies(request).SumAsync();
-        var changeAfter = await ChangeAmount(request).SumAsync();
+        int boxAfter = await BoxCardCopies(want).SumAsync();
+        int changeAfter = await ChangeCopies(want).SumAsync();
 
         // Assert
         Assert.IsType<RedirectToPageResult>(result);
 
         Assert.Equal(targetLimit, wantBefore - wantAFter);
-        Assert.Equal(targetLimit, actualAfter - actualBefore);
+        Assert.Equal(targetLimit, holdAfter - holdBefore);
 
         Assert.Equal(targetLimit, boxBefore - boxAfter);
         Assert.Equal(targetLimit, changeAfter - changeBefore);
@@ -191,34 +191,34 @@ public class ExchangeTests : IAsyncLifetime
     {
         // Arrange
         var request = await _testGen.GetGiveBackAsync(targetMod);
-        var returnAmount = request.Copies;
+        int returnCopies = request.Copies;
         var deckOwnerId = await OwnerId(request).SingleAsync();
 
         await _pageFactory.AddModelContextAsync(_exchangeModel, deckOwnerId);
 
         // Act
-        var giveBefore = await NumCopies(request).SingleAsync();
-        var actualBefore = await ActualNumCopies(request).SingleAsync();
+        int giveBefore = await Copies(request).SingleAsync();
+        int holdBefore = await HoldCopies(request).SingleAsync();
 
-        var boxBefore = await BoxNumCopies(request).SumAsync();
-        var changeBefore = await ChangeAmount(request).SumAsync();
+        int boxBefore = await BoxCardCopies(request).SumAsync();
+        int changeBefore = await ChangeCopies(request).SumAsync();
 
         var result = await _exchangeModel.OnPostAsync(request.LocationId, default);
 
-        var giveAfter = await NumCopies(request).SingleOrDefaultAsync();
-        var actualAfter = await ActualNumCopies(request).SingleOrDefaultAsync();
+        int giveAfter = await Copies(request).SingleOrDefaultAsync();
+        int holdAfter = await HoldCopies(request).SingleOrDefaultAsync();
 
-        var boxAfter = await BoxNumCopies(request).SumAsync();
-        var changeAfter = await ChangeAmount(request).SumAsync();
+        int boxAfter = await BoxCardCopies(request).SumAsync();
+        int changeAfter = await ChangeCopies(request).SumAsync();
 
         // Assert
         Assert.IsType<RedirectToPageResult>(result);
 
-        Assert.Equal(returnAmount, giveBefore - giveAfter);
-        Assert.Equal(returnAmount, actualBefore - actualAfter);
+        Assert.Equal(returnCopies, giveBefore - giveAfter);
+        Assert.Equal(returnCopies, holdBefore - holdAfter);
 
-        Assert.Equal(returnAmount, boxAfter - boxBefore);
-        Assert.Equal(returnAmount, changeAfter - changeBefore);
+        Assert.Equal(returnCopies, boxAfter - boxBefore);
+        Assert.Equal(returnCopies, changeAfter - changeBefore);
     }
 
 
@@ -226,30 +226,30 @@ public class ExchangeTests : IAsyncLifetime
     public async Task OnPost_InsufficientGive_NoChange()
     {
         // Arrange
-        var request = await _testGen.GetGiveBackAsync(2);
-        var deckOwnerId = await OwnerId(request).SingleAsync();
+        var giveBack = await _testGen.GetGiveBackAsync(2);
+        var deckOwnerId = await OwnerId(giveBack).SingleAsync();
 
         await _pageFactory.AddModelContextAsync(_exchangeModel, deckOwnerId);
 
         // Act
-        var giveBefore = await NumCopies(request).SingleAsync();
-        var actualBefore = await ActualNumCopies(request).SingleAsync();
+        int giveBefore = await Copies(giveBack).SingleAsync();
+        int holdBefore = await HoldCopies(giveBack).SingleAsync();
 
-        var boxBefore = await BoxNumCopies(request).SumAsync();
-        var changeBefore = await ChangeAmount(request).SumAsync();
+        var boxBefore = await BoxCardCopies(giveBack).SumAsync();
+        var changeBefore = await ChangeCopies(giveBack).SumAsync();
 
-        var result = await _exchangeModel.OnPostAsync(request.LocationId, default);
+        var result = await _exchangeModel.OnPostAsync(giveBack.LocationId, default);
 
-        var giveAfter = await NumCopies(request).SingleAsync();
-        var actualAfter = await ActualNumCopies(request).SingleAsync();
+        int giveAfter = await Copies(giveBack).SingleAsync();
+        int holdAfter = await HoldCopies(giveBack).SingleAsync();
 
-        var boxAfter = await BoxNumCopies(request).SumAsync();
-        var changeAfter = await ChangeAmount(request).SumAsync();
+        var boxAfter = await BoxCardCopies(giveBack).SumAsync();
+        var changeAfter = await ChangeCopies(giveBack).SumAsync();
 
         // Assert
         Assert.IsType<RedirectToPageResult>(result);
         Assert.Equal(giveBefore, giveAfter);
-        Assert.Equal(actualBefore, actualAfter);
+        Assert.Equal(holdBefore, holdAfter);
 
         Assert.Equal(boxBefore, boxAfter);
         Assert.Equal(changeBefore, changeAfter);
@@ -259,21 +259,21 @@ public class ExchangeTests : IAsyncLifetime
     [Fact]
     public async Task OnPost_TradeActive_NoChange()
     {
-        var request = await _testGen.GetGiveBackAsync(2);
-        var deckOwnerId = await OwnerId(request).SingleAsync();
+        var giveBack = await _testGen.GetGiveBackAsync(2);
+        var deckOwnerId = await OwnerId(giveBack).SingleAsync();
 
-        var tradeTarget = await _dbContext.Amounts
-            .Where(a => a.Location is Deck
-                && (a.Location as Deck)!.OwnerId != deckOwnerId)
-            .Select(a => a.Location)
+        var tradeTarget = await _dbContext.Holds
+            .Where(h => h.Location is Deck
+                && (h.Location as Deck)!.OwnerId != deckOwnerId)
+            .Select(h => h.Location)
             .FirstAsync();
 
         var activeTrade = new Trade
         {
-            Card = request.Card,
-            To = (Deck)request.Location,
+            Card = giveBack.Card,
+            To = (Deck)giveBack.Location,
             From = (Deck)tradeTarget,
-            Amount = 3
+            Copies = 3
         };
 
         _dbContext.Trades.Attach(activeTrade);
@@ -282,17 +282,17 @@ public class ExchangeTests : IAsyncLifetime
 
         await _pageFactory.AddModelContextAsync(_exchangeModel, deckOwnerId);
 
-        var boxBefore = await BoxNumCopies(request).SumAsync();
-        var actualBefore = await ActualNumCopies(request).SingleAsync();
+        int boxBefore = await BoxCardCopies(giveBack).SumAsync();
+        int holdBefore = await HoldCopies(giveBack).SingleAsync();
 
-        var result = await _exchangeModel.OnPostAsync(request.LocationId, default);
+        var result = await _exchangeModel.OnPostAsync(giveBack.LocationId, default);
 
-        var boxAfter = await BoxNumCopies(request).SumAsync();
-        var actualAfter = await ActualNumCopies(request).SingleAsync();
+        int boxAfter = await BoxCardCopies(giveBack).SumAsync();
+        int holdAfter = await HoldCopies(giveBack).SingleAsync();
 
         Assert.IsType<NotFoundResult>(result);
         Assert.Equal(boxBefore, boxAfter);
-        Assert.Equal(actualBefore, actualAfter);
+        Assert.Equal(holdBefore, holdAfter);
     }
 
 
@@ -304,21 +304,21 @@ public class ExchangeTests : IAsyncLifetime
 
         await _pageFactory.AddModelContextAsync(_exchangeModel, deckOwnerId);
 
-        var wantTarget = want.Copies;
-        var giveTarget = give.Copies;
+        int wantTarget = want.Copies;
+        int giveTarget = give.Copies;
 
-        var actualWantBefore = await ActualNumCopies(want).SingleOrDefaultAsync();
-        var actualGiveBefore = await ActualNumCopies(give).SingleAsync();
+        int holdWantBefore = await HoldCopies(want).SingleOrDefaultAsync();
+        int holdGiveBefore = await HoldCopies(give).SingleAsync();
 
         var result = await _exchangeModel.OnPostAsync(want.LocationId, default);
 
-        var actualWantAfter = await ActualNumCopies(want).SingleAsync();
-        var actualGiveAfter = await ActualNumCopies(give).SingleOrDefaultAsync();
+        int holdWantAfter = await HoldCopies(want).SingleAsync();
+        int holdGiveAfter = await HoldCopies(give).SingleOrDefaultAsync();
 
         Assert.IsType<RedirectToPageResult>(result);
 
         Assert.Equal(want.LocationId, give.LocationId);
-        Assert.Equal(wantTarget, actualWantAfter - actualWantBefore);
-        Assert.Equal(giveTarget, actualGiveBefore - actualGiveAfter);
+        Assert.Equal(wantTarget, holdWantAfter - holdWantBefore);
+        Assert.Equal(giveTarget, holdGiveBefore - holdGiveAfter);
     }
 }

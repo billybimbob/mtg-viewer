@@ -235,9 +235,9 @@
             </dt>
             <dd class="col-md-9 col-12">
                 <ul class="list-group list-group-horizontal-md d-flex py-1">
-                    @foreach(var cardAmount in Model.Card.Amounts)
+                    @foreach(var hold in Model.Card.Holds)
                     {
-                        var location = cardAmount.Location;
+                        var location = hold.Location;
 
                         <li class="list-group-item col-md-4 d-flex justify-content-between align-items-center">
                             @switch (location)
@@ -266,7 +266,7 @@
                             }
 
                             <span class="ml-1 badge badge-secondary badge-pill">
-                                @cardAmount.Copies
+                                @hold.Copies
                             </span>
                         </li>
                     }

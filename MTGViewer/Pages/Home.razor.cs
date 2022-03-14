@@ -278,7 +278,7 @@ public partial class Home : ComponentBase, IDisposable
                 .Select(t => new RecentTransaction
                 {
                     AppliedAt = t.AppliedAt,
-                    Total = t.Changes.Sum(c => c.Amount),
+                    Total = t.Changes.Sum(c => c.Copies),
 
                     Changes = t.Changes
                         .Where(c => c.From is Box || c.To is Box

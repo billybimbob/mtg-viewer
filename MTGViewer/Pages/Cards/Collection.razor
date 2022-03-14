@@ -87,10 +87,10 @@
 
                 <th scope="col" 
                     title="Order By Number of Copies"
-                    @onclick="() => Filters.Reorder(c => c.Amounts)" 
-                    class="@HeaderClass(c => c.Amounts)">
+                    @onclick="() => Filters.Reorder(c => c.Holds)" 
+                    class="@HeaderClass(c => c.Holds)">
                     Total Copies
-                    @Direction(c => c.Amounts)
+                    @Direction(c => c.Holds)
                 </th>
 
                 <AuthorizeView Policy="@CardPolicies.ChangeTreasury">
@@ -112,7 +112,7 @@
                     </td>
                     <td> @card.SetName </td>
                     <td> @card.Rarity </td>
-                    <td> @card.Copies </td>
+                    <td> @card.Held </td>
 
                     <AuthorizeView Policy="@CardPolicies.ChangeTreasury">
                         <td>

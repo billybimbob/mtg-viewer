@@ -139,8 +139,8 @@ public class CreateTests : IAsyncLifetime
             })
             .ToList();
 
-        var amounts = extraLocations
-            .Select(loc => new Amount
+        var holds = extraLocations
+            .Select(loc => new Hold
             {
                 Card = requestCard,
                 Location = loc,
@@ -149,7 +149,7 @@ public class CreateTests : IAsyncLifetime
             .ToList();
 
         _dbContext.Decks.AttachRange(extraLocations);
-        _dbContext.Amounts.AttachRange(amounts);
+        _dbContext.Holds.AttachRange(holds);
 
         await _dbContext.SaveChangesAsync();
         _dbContext.ChangeTracker.Clear();

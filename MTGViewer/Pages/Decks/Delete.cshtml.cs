@@ -94,7 +94,7 @@ public class DeleteModel : PageModel
                         Name = d.Owner.Name
                     },
 
-                    AmountCopies = d.Cards.Sum(a => a.Copies),
+                    HeldCopies = d.Holds.Sum(h => h.Copies),
                     WantCopies = d.Wants.Sum(w => w.Copies),
                     ReturnCopies = d.GiveBacks.Sum(g => g.Copies),
 
@@ -107,7 +107,7 @@ public class DeleteModel : PageModel
         = EF.CompileAsyncQuery((CardDbContext dbContext, int id, int limit) =>
 
             dbContext.Cards
-                .Where(c => c.Amounts.Any(a => a.LocationId == id)
+                .Where(c => c.Holds.Any(h => h.LocationId == id)
                     || c.Wants.Any(w => w.LocationId == id)
                     || c.GiveBacks.Any(g => g.LocationId == id))
 
@@ -124,9 +124,9 @@ public class DeleteModel : PageModel
                     SetName = c.SetName,
                     ManaCost = c.ManaCost,
 
-                    Held = c.Amounts
-                        .Where(a => a.LocationId == id)
-                        .Sum(a => a.Copies),
+                    Held = c.Holds
+                        .Where(h => h.LocationId == id)
+                        .Sum(h => h.Copies),
 
                     Want = c.Wants
                         .Where(w => w.LocationId == id)
@@ -141,8 +141,8 @@ public class DeleteModel : PageModel
     private static readonly Func<CardDbContext, int, string, CancellationToken, Task<Deck?>> DeckForDeleteAsync
         = EF.CompileAsyncQuery((CardDbContext dbContext, int deckId, string userId, CancellationToken _) =>
             dbContext.Decks
-                .Include(d => d.Cards) // unbounded: keep eye on
-                    .ThenInclude(da => da.Card)
+                .Include(d => d.Holds) // unbounded: keep eye on
+                    .ThenInclude(h => h.Card)
 
                 .Include(d => d.Wants) // unbounded: keep eye on
                 .Include(d => d.GiveBacks) // unbounded: keep eye on
@@ -170,12 +170,12 @@ public class DeleteModel : PageModel
             return RedirectToPage("Index");
         }
 
-        if (deck.Cards.Any())
+        if (deck.Holds.Any())
         {
-            _dbContext.Amounts.RemoveRange(deck.Cards);
+            _dbContext.Holds.RemoveRange(deck.Holds);
 
-            var returningCards = deck.Cards
-                .Select(a => new CardRequest(a.Card, a.Copies));
+            var returningCards = deck.Holds
+                .Select(h => new CardRequest(h.Card, h.Copies));
 
             // just add since deck is being deleted
             await _dbContext.AddCardsAsync(returningCards, cancel);

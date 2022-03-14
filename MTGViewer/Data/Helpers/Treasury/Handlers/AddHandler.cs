@@ -94,7 +94,7 @@ internal class ExactAdd : AddHandler
     {
         var (available, _, _, storageSpace) = TreasuryContext;
 
-        var availableCards = available.SelectMany(b => b.Cards);
+        var availableCards = available.SelectMany(b => b.Holds);
         var cardRequests = CardRequests.Select(cr => cr.Card);
 
         return Assignment.ExactAddLookup(availableCards, cardRequests, storageSpace);
@@ -150,7 +150,7 @@ internal class ApproximateAdd : AddHandler
     {
         var (available, _, _, storageSpace) = TreasuryContext;
 
-        var availableCards = available.SelectMany(b => b.Cards);
+        var availableCards = available.SelectMany(b => b.Holds);
         var cardRequests = CardRequests.Select(cr => cr.Card);
 
         return Assignment.ApproxAddLookup(availableCards, cardRequests, storageSpace);
@@ -175,7 +175,7 @@ internal class GuessAdd : AddHandler
         }
 
         // descending so that the first added cards do not shift down the 
-        // positioning of the sorted card amounts
+        // positioning of the sorted card holds
         // each of the returned cards should have less effect on following returns
         // keep eye on
 

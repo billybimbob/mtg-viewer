@@ -67,10 +67,10 @@
             <thead>
                 <tr>
                     <th scope="col"> Box </th>
-                    <th scope="col"> @Html.DisplayNameForInnerType((Amount a) => a.Card) </th>
+                    <th scope="col"> @Html.DisplayNameForInnerType((Hold h) => h.Card) </th>
                     <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.ManaCost) </th>
                     <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.SetName) </th>
-                    <th scope="col"> @Html.DisplayNameForInnerType((Amount a) => a.Copies) </th>
+                    <th scope="col"> @Html.DisplayNameForInnerType((Hold h) => h.Copies) </th>
                     <th scope="col"> @Html.DisplayNameForInnerType((Box b) => b.Capacity) </th>
                 </tr>
             </thead>
@@ -105,7 +105,7 @@
                                 </div>
                             </td>
                             <td> @firstCard.SetName </td>
-                            <td> @firstCard.Copies </td>
+                            <td> @firstCard.Held </td>
                         }
                         else
                         {
@@ -115,7 +115,7 @@
                             <td></td>
                         }
 
-                        <td rowspan="@boxSpan"> @box.TotalCards / @box.Capacity </td>
+                        <td rowspan="@boxSpan"> @box.TotalHolds / @box.Capacity </td>
                     </tr>
 
                     @foreach (var card in box.Cards.Skip(1))
@@ -132,7 +132,7 @@
                                 </div>
                             </td>
                             <td> @card.SetName </td>
-                            <td> @card.Copies </td>
+                            <td> @card.Held </td>
                         </tr>
                     }
 

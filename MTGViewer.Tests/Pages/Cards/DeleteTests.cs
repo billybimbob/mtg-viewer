@@ -64,24 +64,24 @@ public class DeleteTests : IAsyncLifetime
     [InlineData(-1)]
     [InlineData(0)]
     [InlineData(-100)]
-    public async Task OnPost_NegativeAmount_NoChange(int amount)
+    public async Task OnPost_NegativeCopies_NoChange(int copies)
     {
         var cardId = await _dbContext.Cards.Select(c => c.Id).FirstAsync();
 
         _deleteModel.Input = new DeleteModel.InputModel
         {
-            RemoveCopies = amount
+            RemoveCopies = copies
         };
 
-        int oldCopies = await _dbContext.Amounts
-            .Where(a => a.CardId == cardId && a.Location is Box)
-            .SumAsync(a => a.Copies);
+        int oldCopies = await _dbContext.Holds
+            .Where(h => h.CardId == cardId && h.Location is Box)
+            .SumAsync(h => h.Copies);
 
         var result = await _deleteModel.OnPostAsync(cardId, null, default);
 
-        int newCopies = await _dbContext.Amounts
-            .Where(a => a.CardId == cardId && a.Location is Box)
-            .SumAsync(a => a.Copies);
+        int newCopies = await _dbContext.Holds
+            .Where(h => h.CardId == cardId && h.Location is Box)
+            .SumAsync(h => h.Copies);
 
         Assert.IsType<RedirectResult>(result);
         Assert.Equal(oldCopies, newCopies);
@@ -92,55 +92,55 @@ public class DeleteTests : IAsyncLifetime
     [InlineData(1)]
     [InlineData(5)]
     [InlineData(20)]
-    public async Task OnPost_ValidAmount_Lowers(int amount)
+    public async Task OnPost_ValidCopies_Lowers(int copies)
     {
-        var cardId = await _dbContext.Amounts
-            .Where(a => a.Copies > 0 && a.Location is Box)
-            .Select(a => a.CardId)
+        var cardId = await _dbContext.Holds
+            .Where(h => h.Copies > 0 && h.Location is Box)
+            .Select(h => h.CardId)
             .FirstAsync();
 
-        int oldCopies = await _dbContext.Amounts
-            .Where(a => a.CardId == cardId && a.Location is Box)
-            .SumAsync(a => a.Copies);
+        int oldCopies = await _dbContext.Holds
+            .Where(h => h.CardId == cardId && h.Location is Box)
+            .SumAsync(h => h.Copies);
 
-        amount = Math.Min(amount, oldCopies);
+        copies = Math.Min(copies, oldCopies);
 
         _deleteModel.Input = new DeleteModel.InputModel
         {
-            RemoveCopies = amount
+            RemoveCopies = copies
         };
 
         var result = await _deleteModel.OnPostAsync(cardId, null, default);
 
-        int newCopies = await _dbContext.Amounts
-            .Where(a => a.CardId == cardId && a.Location is Box)
-            .SumAsync(a => a.Copies);
+        int newCopies = await _dbContext.Holds
+            .Where(h => h.CardId == cardId && h.Location is Box)
+            .SumAsync(h => h.Copies);
 
         Assert.IsType<RedirectResult>(result);
-        Assert.Equal(amount, oldCopies - newCopies);
+        Assert.Equal(copies, oldCopies - newCopies);
     }
 
 
     [Fact]
-    public async Task OnPost_MaxAmount_RemoveCard()
+    public async Task OnPost_MaxCopies_RemoveCard()
     {
-        var cardId = await _dbContext.Amounts
-            .Where(a => a.Copies > 0 && a.Location is Box)
-            .Select(a => a.CardId)
+        var cardId = await _dbContext.Holds
+            .Where(h => h.Copies > 0 && h.Location is Box)
+            .Select(h => h.CardId)
             .FirstAsync();
 
-        var deckAmounts = await _dbContext.Amounts
-            .Where(a => a.Location is Deck && a.CardId == cardId)
+        var deckHolds = await _dbContext.Holds
+            .Where(h => h.Location is Deck && h.CardId == cardId)
             .ToListAsync();
 
-        _dbContext.Amounts.RemoveRange(deckAmounts);
+        _dbContext.Holds.RemoveRange(deckHolds);
 
         await _dbContext.SaveChangesAsync();
         _dbContext.ChangeTracker.Clear();
 
-        int oldCopies = await _dbContext.Amounts
-            .Where(a => a.CardId == cardId && a.Location is Box)
-            .SumAsync(a => a.Copies);
+        int oldCopies = await _dbContext.Holds
+            .Where(h => h.CardId == cardId && h.Location is Box)
+            .SumAsync(h => h.Copies);
 
         _deleteModel.Input = new DeleteModel.InputModel
         {
@@ -149,9 +149,9 @@ public class DeleteTests : IAsyncLifetime
 
         var result = await _deleteModel.OnPostAsync(cardId, null, default);
 
-        int newCopies = await _dbContext.Amounts
-            .Where(a => a.CardId == cardId && a.Location is Box)
-            .SumAsync(a => a.Copies);
+        int newCopies = await _dbContext.Holds
+            .Where(h => h.CardId == cardId && h.Location is Box)
+            .SumAsync(h => h.Copies);
 
         bool cardRemains = await _dbContext.Cards
             .AnyAsync(c => c.Id == cardId);
@@ -163,21 +163,21 @@ public class DeleteTests : IAsyncLifetime
 
 
     [Fact]
-    public async Task OnPost_MaxAmountWithDeck_CardRemains()
+    public async Task OnPost_MaxCopiesWithDeck_CardRemains()
     {
-        var cardId = await _dbContext.Amounts
-            .Where(a => a.Copies > 0 && a.Location is Box)
-            .Select(a => a.CardId)
+        var cardId = await _dbContext.Holds
+            .Where(h => h.Copies > 0 && h.Location is Box)
+            .Select(h => h.CardId)
             .FirstAsync();
 
-        bool hasDeckAmounts = await _dbContext.Amounts
-            .AnyAsync(a => a.Location is Deck && a.CardId == cardId);
+        bool hasDeckHolds = await _dbContext.Holds
+            .AnyAsync(h => h.Location is Deck && h.CardId == cardId);
 
-        if (!hasDeckAmounts)
+        if (!hasDeckHolds)
         {
             var deck = await _dbContext.Decks.FirstAsync();
 
-            _dbContext.Amounts.Add(new Amount
+            _dbContext.Holds.Add(new Hold
             {
                 CardId = cardId,
                 Location = deck,
@@ -188,9 +188,9 @@ public class DeleteTests : IAsyncLifetime
             _dbContext.ChangeTracker.Clear();
         }
 
-        int oldCopies = await _dbContext.Amounts
-            .Where(a => a.CardId == cardId && a.Location is Box)
-            .SumAsync(a => a.Copies);
+        int oldCopies = await _dbContext.Holds
+            .Where(h => h.CardId == cardId && h.Location is Box)
+            .SumAsync(h => h.Copies);
 
         _deleteModel.Input = new DeleteModel.InputModel
         {
@@ -199,9 +199,9 @@ public class DeleteTests : IAsyncLifetime
 
         var result = await _deleteModel.OnPostAsync(cardId, null, default);
 
-        int newCopies = await _dbContext.Amounts
-            .Where(a => a.CardId == cardId && a.Location is Box)
-            .SumAsync(a => a.Copies);
+        int newCopies = await _dbContext.Holds
+            .Where(h => h.CardId == cardId && h.Location is Box)
+            .SumAsync(h => h.Copies);
 
         bool cardRemains = await _dbContext.Cards
             .AnyAsync(c => c.Id == cardId);
@@ -218,23 +218,23 @@ public class DeleteTests : IAsyncLifetime
         await _testGen.AddExcessAsync(15);
 
         var cardId = await _dbContext.Cards
-            .Where(c => c.Amounts
-                .Any(a => a.Location is Excess))
+            .Where(c => c.Holds
+                .Any(h => h.Location is Excess))
             .Select(c => c.Id)
             .FirstAsync();
 
-        var deckAmounts = await _dbContext.Amounts
-            .Where(a => a.Location is Deck && a.CardId == cardId)
+        var deckHolds = await _dbContext.Holds
+            .Where(h => h.Location is Deck && h.CardId == cardId)
             .ToListAsync();
 
-        _dbContext.Amounts.RemoveRange(deckAmounts);
+        _dbContext.Holds.RemoveRange(deckHolds);
 
         await _dbContext.SaveChangesAsync();
         _dbContext.ChangeTracker.Clear();
 
-        int removeCopies = await _dbContext.Amounts
-            .Where(a => a.CardId == cardId)
-            .SumAsync(a => a.Copies);
+        int removeCopies = await _dbContext.Holds
+            .Where(h => h.CardId == cardId)
+            .SumAsync(h => h.Copies);
 
         _deleteModel.Input = new DeleteModel.InputModel
         {
@@ -242,22 +242,22 @@ public class DeleteTests : IAsyncLifetime
         };
 
         int boxesOld = await _dbContext.Boxes
-            .SelectMany(b => b.Cards)
-            .SumAsync(a => a.Copies);
+            .SelectMany(b => b.Holds)
+            .SumAsync(h => h.Copies);
 
         int excessOld = await _dbContext.Excess
-            .SelectMany(b => b.Cards)
-            .SumAsync(a => a.Copies);
+            .SelectMany(b => b.Holds)
+            .SumAsync(h => h.Copies);
 
         var result = await _deleteModel.OnPostAsync(cardId, null, default);
 
         int boxesNew = await _dbContext.Boxes
-            .SelectMany(b => b.Cards)
-            .SumAsync(a => a.Copies);
+            .SelectMany(b => b.Holds)
+            .SumAsync(h => h.Copies);
 
         int excessNew = await _dbContext.Excess
-            .SelectMany(b => b.Cards)
-            .SumAsync(a => a.Copies);
+            .SelectMany(b => b.Holds)
+            .SumAsync(h => h.Copies);
 
         Assert.IsType<RedirectResult>(result);
         Assert.Equal(removeCopies, boxesOld - boxesNew + excessOld - excessNew);

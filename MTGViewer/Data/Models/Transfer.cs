@@ -75,5 +75,5 @@ public class Trade : Concurrent
 
 
     [Range(1, 4_096)]
-    public int Amount { get; set; }
+    public int Copies { get; set; }
 }

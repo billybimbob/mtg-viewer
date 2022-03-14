@@ -62,7 +62,7 @@ public class Card
 
 
     [JsonIgnore]
-    public List<Amount> Amounts { get; } = new();
+    public List<Hold> Holds { get; } = new();
 
     [JsonIgnore]
     public List<Want> Wants { get; } = new();

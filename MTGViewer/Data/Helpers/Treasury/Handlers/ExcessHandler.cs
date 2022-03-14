@@ -26,11 +26,11 @@ internal abstract class ExcessHandler
         TreasuryContext = treasuryContext;
     }
 
-    protected abstract IEnumerable<StorageAssignment<Amount>> GetAssignments();
+    protected abstract IEnumerable<StorageAssignment<Hold>> GetAssignments();
 
     public void TransferExcess()
     {
-        foreach ((Amount source, int numCopies, Storage target) in GetAssignments())
+        foreach ((Hold source, int numCopies, Storage target) in GetAssignments())
         {
             TreasuryContext.TransferCopies(source.Card, numCopies, target, source.Location);
         }
@@ -46,17 +46,17 @@ internal class ExactExcess : ExcessHandler
     { }
 
 
-    protected override IEnumerable<StorageAssignment<Amount>> GetAssignments()
+    protected override IEnumerable<StorageAssignment<Hold>> GetAssignments()
     {
         var (available, _, excessStorage, _) = TreasuryContext;
-        var excessAmounts = excessStorage.SelectMany(b => b.Cards);
+        var excessHolds = excessStorage.SelectMany(b => b.Holds);
 
-        if (!available.Any() || excessAmounts.All(a => a.Copies == 0))
+        if (!available.Any() || excessHolds.All(h => h.Copies == 0))
         {
             yield break;
         }
 
-        foreach (var excess in excessAmounts)
+        foreach (var excess in excessHolds)
         {
             foreach (var assignment in FitToBoxes(excess))
             {
@@ -66,7 +66,7 @@ internal class ExactExcess : ExcessHandler
     }
 
 
-    private IEnumerable<StorageAssignment<Amount>> FitToBoxes(Amount excess)
+    private IEnumerable<StorageAssignment<Hold>> FitToBoxes(Hold excess)
     {
         _exactMatches ??= AddLookup();
 
@@ -80,14 +80,14 @@ internal class ExactExcess : ExcessHandler
     {
         var (available, _, excessStorage, storageSpace) = TreasuryContext;
 
-        var availableAmounts = available.SelectMany(b => b.Cards);
+        var availableHolds = available.SelectMany(b => b.Holds);
 
         var excessCards = excessStorage
-            .SelectMany(b => b.Cards)
-            .Select(a => a.Card);
+            .SelectMany(b => b.Holds)
+            .Select(h => h.Card);
 
         // TODO: account for changing NumCopies while iter
-        return Assignment.ExactAddLookup(availableAmounts, excessCards, storageSpace);
+        return Assignment.ExactAddLookup(availableHolds, excessCards, storageSpace);
     }
 }
 
@@ -100,17 +100,17 @@ internal class ApproximateExcess : ExcessHandler
     { }
 
 
-    protected override IEnumerable<StorageAssignment<Amount>> GetAssignments()
+    protected override IEnumerable<StorageAssignment<Hold>> GetAssignments()
     {
         var (available, _, excessStorage, _) = TreasuryContext;
-        var excessAmounts = excessStorage.SelectMany(b => b.Cards);
+        var excessHolds = excessStorage.SelectMany(b => b.Holds);
 
-        if (!available.Any() || excessAmounts.All(a => a.Copies == 0))
+        if (!available.Any() || excessHolds.All(h => h.Copies == 0))
         {
             yield break;
         }
 
-        foreach (var excess in excessAmounts)
+        foreach (var excess in excessHolds)
         {
             foreach (var assignment in FitToBoxes(excess))
             {
@@ -120,7 +120,7 @@ internal class ApproximateExcess : ExcessHandler
     }
 
 
-    private IEnumerable<StorageAssignment<Amount>> FitToBoxes(Amount excess)
+    private IEnumerable<StorageAssignment<Hold>> FitToBoxes(Hold excess)
     {
         _approxMatches ??= AddLookup();
 
@@ -134,13 +134,13 @@ internal class ApproximateExcess : ExcessHandler
     {
         var (available, _, excessStorage, storageSpace) = TreasuryContext;
 
-        var availableAmounts = available.SelectMany(b => b.Cards);
+        var availableHolds = available.SelectMany(b => b.Holds);
 
         var excessCards = excessStorage
-            .SelectMany(b => b.Cards)
-            .Select(a => a.Card);
+            .SelectMany(b => b.Holds)
+            .Select(h => h.Card);
 
         // TODO: account for changing NumCopies while iter
-        return Assignment.ApproxAddLookup(availableAmounts, excessCards, storageSpace);
+        return Assignment.ApproxAddLookup(availableHolds, excessCards, storageSpace);
     }
 }

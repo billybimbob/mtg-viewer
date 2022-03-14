@@ -28,13 +28,13 @@ public class TreasuryExtensionTests : IAsyncLifetime
 
 
     private Task<int> GetTotalCopiesAsync() =>
-        _dbContext.Amounts.SumAsync(amt => amt.Copies);
+        _dbContext.Holds.SumAsync(amt => amt.Copies);
 
 
     private async Task RemoveCardCopiesAsync(Card card)
     {
-        var boxCards = await _dbContext.Amounts
-            .Where(a => a.Location is Box && a.Card.Name == card.Name)
+        var boxCards = await _dbContext.Holds
+            .Where(h => h.Location is Box && h.Card.Name == card.Name)
             .ToListAsync();
 
         _dbContext.RemoveRange(boxCards);
@@ -112,21 +112,21 @@ public class TreasuryExtensionTests : IAsyncLifetime
     [Fact]
     public async Task AddCards_NewCard_OnlyNew()
     {
-        const int amount = 2;
+        const int copies = 2;
 
-        var card = await _dbContext.Amounts
-            .Where(a => a.Location is Box)
-            .Select(a => a.Card)
+        var card = await _dbContext.Holds
+            .Where(h => h.Location is Box)
+            .Select(h => h.Card)
             .FirstAsync();
 
         await RemoveCardCopiesAsync(card);
 
         int totalBefore = await GetTotalCopiesAsync();
 
-        await _dbContext.AddCardsAsync(card, amount);
+        await _dbContext.AddCardsAsync(card, copies);
 
         bool noModified = _dbContext.ChangeTracker
-            .Entries<Amount>()
+            .Entries<Hold>()
             .All(e => e.State is not EntityState.Modified);
 
         await _dbContext.SaveChangesAsync();
@@ -134,22 +134,22 @@ public class TreasuryExtensionTests : IAsyncLifetime
         int totalAfter = await GetTotalCopiesAsync();
 
         Assert.True(noModified);
-        Assert.Equal(amount, totalAfter - totalBefore);
+        Assert.Equal(copies, totalAfter - totalBefore);
     }
 
 
     [Fact]
     public async Task AddCards_ExistingWithCapcity_OnlyExisting()
     {
-        var card = await _dbContext.Amounts
-            .Where(a => a.Location is Box)
-            .Select(a => a.Card)
+        var card = await _dbContext.Holds
+            .Where(h => h.Location is Box)
+            .Select(h => h.Card)
             .AsNoTracking()
             .FirstAsync();
 
         int remainingSpace = await _dbContext.Boxes
-            .Where(b => b.Cards.Any(amt => amt.CardId == card.Id))
-            .Select(b => b.Capacity - b.Cards.Sum(amt => amt.Copies))
+            .Where(b => b.Holds.Any(amt => amt.CardId == card.Id))
+            .Select(b => b.Capacity - b.Holds.Sum(amt => amt.Copies))
             .SumAsync();
 
         int totalBefore = await GetTotalCopiesAsync();
@@ -157,7 +157,7 @@ public class TreasuryExtensionTests : IAsyncLifetime
         await _dbContext.AddCardsAsync(card, remainingSpace);
 
         bool noAdded = _dbContext.ChangeTracker
-            .Entries<Amount>()
+            .Entries<Hold>()
             .All(e => e.State is not EntityState.Added);
 
         await _dbContext.SaveChangesAsync();
@@ -172,30 +172,30 @@ public class TreasuryExtensionTests : IAsyncLifetime
     [Fact]
     public async Task AddCards_ExistingLackCapacity_MixDeposits()
     {
-        const int modAmount = 5;
+        const int modCopies = 5;
 
-        var card = await _dbContext.Amounts
-            .Where(a => a.Location is Box)
-            .Select(a => a.Card)
+        var card = await _dbContext.Holds
+            .Where(h => h.Location is Box)
+            .Select(h => h.Card)
             .AsNoTracking()
             .FirstAsync();
 
         int remainingSpace = await _dbContext.Boxes
-            .Where(b => b.Cards.Any(amt => amt.CardId == card.Id))
-            .Select(b => b.Capacity - b.Cards.Sum(amt => amt.Copies))
+            .Where(b => b.Holds.Any(amt => amt.CardId == card.Id))
+            .Select(b => b.Capacity - b.Holds.Sum(amt => amt.Copies))
             .SumAsync();
 
-        int requestAmount = remainingSpace + modAmount;
+        int requestCopies = remainingSpace + modCopies;
         int totalBefore = await GetTotalCopiesAsync();
 
-        await _dbContext.AddCardsAsync(card, requestAmount);
+        await _dbContext.AddCardsAsync(card, requestCopies);
 
         bool allAdded = _dbContext.ChangeTracker
-            .Entries<Amount>()
+            .Entries<Hold>()
             .All(e => e.State is EntityState.Added);
 
         bool allModified = _dbContext.ChangeTracker
-            .Entries<Amount>()
+            .Entries<Hold>()
             .All(e => e.State is EntityState.Modified);
 
         await _dbContext.SaveChangesAsync();
@@ -203,7 +203,7 @@ public class TreasuryExtensionTests : IAsyncLifetime
         int totalAfter = await GetTotalCopiesAsync();
 
         Assert.True(!allAdded && !allModified);
-        Assert.Equal(requestAmount, totalAfter - totalBefore);
+        Assert.Equal(requestCopies, totalAfter - totalBefore);
     }
 
 
@@ -249,10 +249,10 @@ public class TreasuryExtensionTests : IAsyncLifetime
         await _testGen.AddExcessAsync(extraSpace);
 
         int oldAvailable = await _dbContext.Boxes
-            .SumAsync(b => b.Cards.Sum(a => a.Copies));
+            .SumAsync(b => b.Holds.Sum(h => h.Copies));
 
         int oldExcess = await _dbContext.Excess
-            .SumAsync(b => b.Cards.Sum(a => a.Copies));
+            .SumAsync(b => b.Holds.Sum(h => h.Copies));
 
         var bin = await _dbContext.Bins.LastAsync();
         var newBox = new Box
@@ -269,10 +269,10 @@ public class TreasuryExtensionTests : IAsyncLifetime
         await _dbContext.SaveChangesAsync();
 
         int newAvailable = await _dbContext.Boxes
-            .SumAsync(b => b.Cards.Sum(a => a.Copies));
+            .SumAsync(b => b.Holds.Sum(h => h.Copies));
 
         int newExcess = await _dbContext.Excess
-            .SumAsync(b => b.Cards.Sum(a => a.Copies));
+            .SumAsync(b => b.Holds.Sum(h => h.Copies));
 
         Assert.Equal(extraSpace, newAvailable - oldAvailable);
         Assert.Equal(extraSpace, oldExcess - newExcess);
@@ -287,10 +287,10 @@ public class TreasuryExtensionTests : IAsyncLifetime
         await _testGen.AddExcessAsync(extraSpace);
 
         int oldAvailable = await _dbContext.Boxes
-            .SumAsync(b => b.Cards.Sum(a => a.Copies));
+            .SumAsync(b => b.Holds.Sum(h => h.Copies));
 
         int oldExcess = await _dbContext.Excess
-            .SumAsync(b => b.Cards.Sum(a => a.Copies));
+            .SumAsync(b => b.Holds.Sum(h => h.Copies));
 
         var higherBox = await _dbContext.Boxes.FirstAsync();
 
@@ -301,10 +301,10 @@ public class TreasuryExtensionTests : IAsyncLifetime
         await _dbContext.SaveChangesAsync();
 
         int newAvailable = await _dbContext.Boxes
-            .SumAsync(b => b.Cards.Sum(a => a.Copies));
+            .SumAsync(b => b.Holds.Sum(h => h.Copies));
 
         int newExcess = await _dbContext.Excess
-            .SumAsync(b => b.Cards.Sum(a => a.Copies));
+            .SumAsync(b => b.Holds.Sum(h => h.Copies));
 
         Assert.Equal(extraSpace, newAvailable - oldAvailable);
         Assert.Equal(extraSpace, oldExcess - newExcess);
@@ -319,10 +319,10 @@ public class TreasuryExtensionTests : IAsyncLifetime
         await _testGen.AddExcessAsync(extraSpace);
 
         int oldAvailable = await _dbContext.Boxes
-            .SumAsync(b => b.Cards.Sum(a => a.Copies));
+            .SumAsync(b => b.Holds.Sum(h => h.Copies));
 
         int oldExcess = await _dbContext.Excess
-            .SumAsync(b => b.Cards.Sum(a => a.Copies));
+            .SumAsync(b => b.Holds.Sum(h => h.Copies));
 
         var lowerBox = await _dbContext.Boxes.FirstAsync();
 
@@ -333,10 +333,10 @@ public class TreasuryExtensionTests : IAsyncLifetime
         await _dbContext.SaveChangesAsync();
 
         int newAvailable = await _dbContext.Boxes
-            .SumAsync(b => b.Cards.Sum(a => a.Copies));
+            .SumAsync(b => b.Holds.Sum(h => h.Copies));
 
         int newExcess = await _dbContext.Excess
-            .SumAsync(b => b.Cards.Sum(a => a.Copies));
+            .SumAsync(b => b.Holds.Sum(h => h.Copies));
 
         Assert.Equal(extraSpace, oldAvailable - newAvailable);
         Assert.Equal(extraSpace, newExcess - oldExcess);

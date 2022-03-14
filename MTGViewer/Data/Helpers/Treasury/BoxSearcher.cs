@@ -21,20 +21,20 @@ internal sealed class BoxSearcher
             .OrderBy(b => b.Id)
             .ToList();
 
-        var sortedAmounts = _sortedBoxes
-            .SelectMany(b => b.Cards)
-            .OrderBy(a => a.Card.Name)
-                .ThenBy(a => a.Card.SetName)
+        var sortedHolds = _sortedBoxes
+            .SelectMany(b => b.Holds)
+            .OrderBy(h => h.Card.Name)
+                .ThenBy(h => h.Card.SetName)
             .ToList();
 
-        _sortedCards = sortedAmounts
-            .Select(a => a.Card)
+        _sortedCards = sortedHolds
+            .Select(h => h.Card)
             .ToList();
 
         _firstCards = GetFirstCards(_sortedCards);
 
         _boxBoundaries = GetBoxBoundaries(_sortedBoxes).ToList();
-        _addPositions = GetAddPositions(sortedAmounts).ToList();
+        _addPositions = GetAddPositions(sortedHolds).ToList();
     }
 
 
@@ -64,17 +64,17 @@ internal sealed class BoxSearcher
         }
     }
 
-    private static IEnumerable<int> GetAddPositions(IEnumerable<Amount> boxAmounts)
+    private static IEnumerable<int> GetAddPositions(IEnumerable<Hold> boxHolds)
     {
-        int amountSum = 0;
+        int holdTotal = 0;
 
-        foreach (Amount amount in boxAmounts)
+        foreach (Hold hold in boxHolds)
         {
-            yield return amountSum;
+            yield return holdTotal;
 
             checked
             {
-                amountSum += amount.Copies;
+                holdTotal += hold.Copies;
             }
         }
     }

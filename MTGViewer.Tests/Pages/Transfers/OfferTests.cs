@@ -46,7 +46,7 @@ public class SuggestTests : IAsyncLifetime
 
         var receiverCards = await _dbContext.Decks
             .Where(d => d.OwnerId == receiverId)
-            .SelectMany(d => d.Cards, (_, amt) => amt.CardId)
+            .SelectMany(d => d.Holds, (_, amt) => amt.CardId)
             .ToArrayAsync();
 
         var cardId = await _dbContext.Cards
@@ -107,7 +107,7 @@ public class SuggestTests : IAsyncLifetime
 
         var receiverCards = await _dbContext.Decks
             .Where(d => d.OwnerId == receiverId)
-            .SelectMany(d => d.Cards, (_, amt) => amt.CardId)
+            .SelectMany(d => d.Holds, (_, amt) => amt.CardId)
             .ToArrayAsync();
 
         var cardId = await _dbContext.Cards
@@ -138,10 +138,10 @@ public class SuggestTests : IAsyncLifetime
     [Fact]
     public async Task OnPostSuggest_WithInvalidTo_NoChange()
     {
-        var target = await _dbContext.Amounts
-            .Include(a => a.Location)
+        var target = await _dbContext.Holds
+            .Include(h => h.Location)
             .AsNoTracking()
-            .FirstAsync(a => a.Location is Deck);
+            .FirstAsync(h => h.Location is Deck);
 
         var receiverId = ((Deck)target.Location).OwnerId;
 
@@ -178,7 +178,7 @@ public class SuggestTests : IAsyncLifetime
 
         var receiverCards = await _dbContext.Decks
             .Where(d => d.OwnerId == receiverId)
-            .SelectMany(d => d.Cards, (_, amt) => amt.CardId)
+            .SelectMany(d => d.Holds, (_, amt) => amt.CardId)
             .ToArrayAsync();
 
         var cardId = await _dbContext.Cards
@@ -241,7 +241,7 @@ public class SuggestTests : IAsyncLifetime
 
         var receiverCards = await _dbContext.Decks
             .Where(d => d.OwnerId == receiverId)
-            .SelectMany(d => d.Cards, (_, amt) => amt.CardId)
+            .SelectMany(d => d.Holds, (_, amt) => amt.CardId)
             .ToArrayAsync();
 
         var cardId = await _dbContext.Cards
@@ -281,7 +281,7 @@ public class SuggestTests : IAsyncLifetime
 
         var receiverCards = await _dbContext.Decks
             .Where(d => d.OwnerId == receiverId)
-            .SelectMany(d => d.Cards, (_, amt) => amt.CardId)
+            .SelectMany(d => d.Holds, (_, amt) => amt.CardId)
             .ToArrayAsync();
 
         var cardId = await _dbContext.Cards
@@ -314,16 +314,16 @@ public class SuggestTests : IAsyncLifetime
     [Fact]
     public async Task OnPost_WithTo_NewSuggestion()
     {
-        var target = await _dbContext.Amounts
-            .Include(a => a.Location)
+        var target = await _dbContext.Holds
+            .Include(h => h.Location)
             .AsNoTracking()
-            .FirstAsync(a => a.Location is Deck);
+            .FirstAsync(h => h.Location is Deck);
 
         var receiverId = (target.Location as Deck)!.OwnerId;
 
         var receiverCards = await _dbContext.Decks
             .Where(d => d.OwnerId == receiverId)
-            .SelectMany(d => d.Cards, (_, amt) => amt.CardId)
+            .SelectMany(d => d.Holds, (_, amt) => amt.CardId)
             .ToArrayAsync();
 
         var cardId = await _dbContext.Cards

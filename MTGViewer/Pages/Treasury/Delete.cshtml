@@ -31,10 +31,10 @@
     <table class="table">
         <thead>
             <tr>
-                <th scope="col"> @Html.DisplayNameForInnerType((Amount a) => a.Card) </th>
+                <th scope="col"> @Html.DisplayNameForInnerType((Hold h) => h.Card) </th>
                 <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.ManaCost) </th>
                 <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.SetName) </th>
-                <th scope="col"> @Html.DisplayNameForInnerType((Amount a) => a.Copies) </th>
+                <th scope="col"> @Html.DisplayNameForInnerType((Hold h) => h.Copies) </th>
             </tr>
         </thead>
         <tbody>
@@ -51,7 +51,7 @@
                         </div>
                     </td>
                     <td> @card.SetName </td>
-                    <td> @card.Copies </td>
+                    <td> @card.Held </td>
                 </tr>
             }
             @if (Model.Box.HasMoreCards)
@@ -68,7 +68,7 @@
                 <td> -- </td>
                 <td> -- </td>
                 <td class="font-weight-bold">
-                    @Model.Box.TotalCards / @Model.Box.Capacity
+                    @Model.Box.TotalHolds / @Model.Box.Capacity
                 </td>
             </tr>
         </tbody>

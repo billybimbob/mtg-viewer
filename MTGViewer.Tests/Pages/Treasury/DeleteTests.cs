@@ -83,19 +83,19 @@ public class DeleteTests : IAsyncLifetime
     public async Task OnPost_WithCards_CardsPreserved()
     {
         var boxWithCards = await _dbContext.Boxes
-            .FirstAsync(b => b.Cards.Any());
+            .FirstAsync(b => b.Holds.Any());
 
-        int treasuryCardsBefore = await _dbContext.Amounts
-            .Where(a => a.Location is Box)
-            .SumAsync(a => a.Copies);
+        int treasuryCardsBefore = await _dbContext.Holds
+            .Where(h => h.Location is Box)
+            .SumAsync(h => h.Copies);
 
         var result = await _deleteModel.OnPostAsync(boxWithCards.Id, default);
 
         bool isDeleted = await _dbContext.Boxes.AllAsync(b => b.Id != boxWithCards.Id);
 
-        int treasuryCardsAfter = await _dbContext.Amounts
-            .Where(a => a.Location is Box)
-            .SumAsync(a => a.Copies);
+        int treasuryCardsAfter = await _dbContext.Holds
+            .Where(h => h.Location is Box)
+            .SumAsync(h => h.Copies);
 
         Assert.IsType<RedirectToPageResult>(result);
 

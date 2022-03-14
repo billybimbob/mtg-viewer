@@ -55,15 +55,15 @@ public class ReviewTests : IAsyncLifetime
             .AsNoTracking();
 
 
-    private IQueryable<Amount> ToTarget(Trade trade) =>
-        _dbContext.Amounts
-            .Where(a => a.CardId == trade.CardId && a.LocationId == trade.ToId)
+    private IQueryable<Hold> ToTarget(Trade trade) =>
+        _dbContext.Holds
+            .Where(h => h.CardId == trade.CardId && h.LocationId == trade.ToId)
             .AsNoTracking();
 
 
-    private IQueryable<Amount> FromTarget(Trade trade) =>
-        _dbContext.Amounts
-            .Where(a => a.CardId == trade.CardId && a.LocationId == _trades.TargetId)
+    private IQueryable<Hold> FromTarget(Trade trade) =>
+        _dbContext.Holds
+            .Where(h => h.CardId == trade.CardId && h.LocationId == _trades.TargetId)
             .AsNoTracking();
 
 
@@ -77,7 +77,7 @@ public class ReviewTests : IAsyncLifetime
 
         // Act
         var fromBefore = await FromTarget(trade).SingleAsync();
-        var result = await _reviewModel.OnPostAcceptAsync(trade.Id, trade.Amount, default);
+        var result = await _reviewModel.OnPostAcceptAsync(trade.Id, trade.Copies, default);
 
         var fromAfter = await FromTarget(trade).SingleAsync();
         var tradeAfter = await TradesInSet.Select(t => t.Id).ToListAsync();
@@ -100,7 +100,7 @@ public class ReviewTests : IAsyncLifetime
 
         // Act
         var fromBefore = await FromTarget(trade).SingleAsync();
-        var result = await _reviewModel.OnPostAcceptAsync(wrongTradeId, trade.Amount, default);
+        var result = await _reviewModel.OnPostAcceptAsync(wrongTradeId, trade.Copies, default);
 
         var fromAfter = await FromTarget(trade).SingleAsync();
         var tradesAfter = await TradesInSet.Select(t => t.Id).ToListAsync();
@@ -116,69 +116,69 @@ public class ReviewTests : IAsyncLifetime
     [InlineData(-1)]
     [InlineData(1)]
     [InlineData(5)]
-    public async Task OnPostAccept_ValidTrade_AmountsAndRequestsChanged(int amount)
+    public async Task OnPostAccept_ValidTrade_HoldsAndRequestsChanged(int copies)
     {
         // Arrange
         await _pageFactory.AddModelContextAsync(_reviewModel, _trades.Target.OwnerId);
 
         var trade = await TradesInSet.FirstAsync();
 
-        if (amount <= 0)
+        if (copies <= 0)
         {
-            amount = trade.Amount;
+            copies = trade.Copies;
         }
 
-        var toAmount = ToTarget(trade).Select(a => a.Copies);
-        var fromAmount = FromTarget(trade).Select(a => a.Copies);
+        var toCopies = ToTarget(trade).Select(h => h.Copies);
+        var fromCopies = FromTarget(trade).Select(h => h.Copies);
 
         // Act
-        var toBefore = await toAmount.SingleOrDefaultAsync();
-        var fromBefore = await fromAmount.SingleAsync();
+        var toBefore = await toCopies.SingleOrDefaultAsync();
+        var fromBefore = await fromCopies.SingleAsync();
 
-        var result = await _reviewModel.OnPostAcceptAsync(trade.Id, amount, default);
+        var result = await _reviewModel.OnPostAcceptAsync(trade.Id, copies, default);
 
-        var toAfter = await toAmount.SingleAsync();
-        var fromAfter = await fromAmount.SingleOrDefaultAsync();
+        var toAfter = await toCopies.SingleAsync();
+        var fromAfter = await fromCopies.SingleOrDefaultAsync();
 
         var tradeAfter = await TradesInSet.Select(t => t.Id).ToListAsync();
 
         // Assert
         Assert.IsType<RedirectToPageResult>(result);
 
-        Assert.Equal(trade.Amount, toAfter - toBefore);
-        Assert.Equal(trade.Amount, fromBefore - fromAfter);
+        Assert.Equal(trade.Copies, toAfter - toBefore);
+        Assert.Equal(trade.Copies, fromBefore - fromAfter);
 
         Assert.DoesNotContain(trade.Id, tradeAfter);
     }
 
 
     [Fact]
-    public async Task OnPostAccept_LackAmount_OnlyRemovesTrade()
+    public async Task OnPostAccept_LackCopies_OnlyRemovesTrade()
     {
         // Arrange
         await _pageFactory.AddModelContextAsync(_reviewModel, _trades.Target.OwnerId);
 
         var trade = await TradesInSet.FirstAsync();
 
-        var fromAmountTracked = await FromTarget(trade).AsTracking().SingleAsync();
-        fromAmountTracked.Copies = 0;
+        var fromHold = await FromTarget(trade).AsTracking().SingleAsync();
+        fromHold.Copies = 0;
 
         await _dbContext.SaveChangesAsync();
         _dbContext.ChangeTracker.Clear();
 
-        var toAmount = ToTarget(trade).Select(a => a.Copies);
-        var fromAmount = FromTarget(trade).Select(a => a.Copies);
+        var toCopies = ToTarget(trade).Select(h => h.Copies);
+        var fromCopies = FromTarget(trade).Select(h => h.Copies);
         var tradeSet = TradesInSet.Select(t => t.Id);
 
         // Act
-        var toBefore = await toAmount.SingleOrDefaultAsync();
-        var fromBefore = await fromAmount.SingleAsync();
+        var toBefore = await toCopies.SingleOrDefaultAsync();
+        var fromBefore = await fromCopies.SingleAsync();
         var tradesBefore = await tradeSet.ToListAsync();
 
-        var result = await _reviewModel.OnPostAcceptAsync(trade.Id, trade.Amount, default);
+        var result = await _reviewModel.OnPostAcceptAsync(trade.Id, trade.Copies, default);
 
-        var toAfter = await toAmount.SingleAsync();
-        var fromAfter = await fromAmount.SingleOrDefaultAsync();
+        var toAfter = await toCopies.SingleAsync();
+        var fromAfter = await fromCopies.SingleOrDefaultAsync();
         var tradesAfter = await tradeSet.ToListAsync();
 
         var tradesFinished = tradesBefore.Except(tradesAfter);
@@ -202,13 +202,13 @@ public class ReviewTests : IAsyncLifetime
 
         await _pageFactory.AddModelContextAsync(_reviewModel, trade.To.OwnerId);
 
-        var fromAmount = FromTarget(trade).Select(a => a.Copies);
+        var fromCopies = FromTarget(trade).Select(h => h.Copies);
 
         // Act
-        var fromBefore = await fromAmount.SingleAsync();
+        var fromBefore = await fromCopies.SingleAsync();
         var result = await _reviewModel.OnPostRejectAsync(trade.Id, default);
 
-        var fromAfter = await fromAmount.SingleOrDefaultAsync();
+        var fromAfter = await fromCopies.SingleOrDefaultAsync();
         var tradesAfter = await TradesInSet.Select(t => t.Id).ToListAsync();
 
         // Assert
@@ -228,13 +228,13 @@ public class ReviewTests : IAsyncLifetime
         var trade = await TradesInSet.AsNoTracking().FirstAsync();
         var wrongTradeId = 0;
 
-        var fromAmount = FromTarget(trade).Select(a => a.Copies);
+        var fromCopies = FromTarget(trade).Select(h => h.Copies);
 
         // Act
-        var fromBefore = await fromAmount.SingleAsync();
+        var fromBefore = await fromCopies.SingleAsync();
         var result = await _reviewModel.OnPostRejectAsync(wrongTradeId, default);
 
-        var fromAfter = await fromAmount.SingleOrDefaultAsync();
+        var fromAfter = await fromCopies.SingleOrDefaultAsync();
         var tradesAfter = await TradesInSet.Select(t => t.Id).ToListAsync();
 
         // Assert
@@ -253,13 +253,13 @@ public class ReviewTests : IAsyncLifetime
 
         var trade = await TradesInSet.AsNoTracking().FirstAsync();
 
-        var fromAmount = FromTarget(trade).Select(a => a.Copies);
+        var fromCopies = FromTarget(trade).Select(h => h.Copies);
 
         // Act
-        var fromBefore = await fromAmount.SingleAsync();
+        var fromBefore = await fromCopies.SingleAsync();
         var result = await _reviewModel.OnPostRejectAsync(trade.Id, default);
 
-        var fromAfter = await fromAmount.SingleAsync();
+        var fromAfter = await fromCopies.SingleAsync();
         var tradesAfter = await TradesInSet.Select(t => t.Id).ToListAsync();
 
         // Assert

@@ -24,7 +24,7 @@ public abstract class Location : Concurrent
     [StringLength(20, MinimumLength = 1)]
     public string Name { get; set; } = default!;
 
-    public List<Amount> Cards { get; init; } = new();
+    public List<Hold> Holds { get; init; } = new();
 }
 
 
@@ -41,7 +41,7 @@ public class Unclaimed : TheoryCraft
     {
         var unclaimed = new Unclaimed { Name = deck.Name };
 
-        unclaimed.Cards.AddRange(deck.Cards);
+        unclaimed.Holds.AddRange(deck.Holds);
         unclaimed.Wants.AddRange(deck.Wants);
 
         return unclaimed;

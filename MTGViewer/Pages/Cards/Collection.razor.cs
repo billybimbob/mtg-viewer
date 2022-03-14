@@ -32,7 +32,7 @@ public partial class Collection : ComponentBase, IDisposable
 
     public FilterContext Filters => _filters;
 
-    public OffsetList<CardCopies> Cards => _cards ?? OffsetList<CardCopies>.Empty;
+    public OffsetList<LocationCopy> Cards => _cards ?? OffsetList<LocationCopy>.Empty;
 
 
 
@@ -41,7 +41,7 @@ public partial class Collection : ComponentBase, IDisposable
     private bool _isBusy;
     private readonly CancellationTokenSource _cancel = new();
     private readonly FilterContext _filters = new();
-    private OffsetList<CardCopies>? _cards;
+    private OffsetList<LocationCopy>? _cards;
 
 
     protected override async Task OnInitializedAsync()
@@ -288,7 +288,7 @@ public partial class Collection : ComponentBase, IDisposable
     }
 
 
-    private static Task<OffsetList<CardCopies>> FilteredCardsAsync(
+    private static Task<OffsetList<LocationCopy>> FilteredCardsAsync(
         CardDbContext dbContext,
         FilterContext filters,
         CancellationToken cancel)
@@ -317,7 +317,7 @@ public partial class Collection : ComponentBase, IDisposable
 
         return CardsOrdered(cards, filters)
             .PageBy(pageIndex, pageSize)
-            .Select(c => new CardCopies
+            .Select(c => new LocationCopy
             {
                 Id = c.Id,
                 Name = c.Name,
@@ -325,7 +325,7 @@ public partial class Collection : ComponentBase, IDisposable
                 ManaCost = c.ManaCost,
                 Rarity = c.Rarity,
                 ImageUrl = c.ImageUrl,
-                Copies = c.Amounts.Sum(c => c.Copies)
+                Held = c.Holds.Sum(c => c.Copies)
             })
             .ToOffsetListAsync(cancel);
     }
@@ -338,7 +338,7 @@ public partial class Collection : ComponentBase, IDisposable
             nameof(Card.ManaCost) => true,
             nameof(Card.SetName) => true,
             nameof(Card.Rarity) => false,
-            nameof(Card.Amounts) => false,
+            nameof(Card.Holds) => false,
             _ => true
         };
 
@@ -362,8 +362,8 @@ public partial class Collection : ComponentBase, IDisposable
                     .ThenBy(c => c.Name)
                     .ThenBy(c => c.Id),
 
-            nameof(Card.Amounts) => 
-                PrimaryOrder(c => c.Amounts.Sum(a => a.Copies))
+            nameof(Card.Holds) => 
+                PrimaryOrder(c => c.Holds.Sum(h => h.Copies))
                     .ThenBy(c => c.Name)
                     .ThenBy(c => c.SetName)
                     .ThenBy(c => c.Id),

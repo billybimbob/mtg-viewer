@@ -22,8 +22,11 @@ public record CardRequest(Card Card, int NumCopies)
         set => _numCopies = NotNegativeOrThrow(value);
     }
 
-    private static Card CardOrThrow(Card card) =>
-        card ?? throw new ArgumentNullException(nameof(Card));
+    private static Card CardOrThrow(Card card)
+    {
+        ArgumentNullException.ThrowIfNull(card);
+        return card;
+    }
 
     private static int NotNegativeOrThrow(int copies) =>
         copies >= 0 ? copies : throw new ArgumentException(nameof(NumCopies));

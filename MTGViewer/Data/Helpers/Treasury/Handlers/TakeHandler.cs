@@ -41,16 +41,16 @@ internal abstract class TakeHandler
     protected static IEnumerable<StorageAssignment<TSource>> TakeFromStorage<TSource>(
         TSource source,
         int cardsToTake,
-        IEnumerable<Amount> boxAmounts)
+        IEnumerable<Hold> boxHolds)
     {
-        foreach (var amount in boxAmounts)
+        foreach (var hold in boxHolds)
         {
-            if (amount.Location is not Box box)
+            if (hold.Location is not Box box)
             {
                 continue;
             }
 
-            int takeCopies = Math.Min(cardsToTake, amount.Copies);
+            int takeCopies = Math.Min(cardsToTake, hold.Copies);
             if (takeCopies == 0)
             {
                 continue;
@@ -70,7 +70,7 @@ internal abstract class TakeHandler
 
 internal class ExactTake : TakeHandler
 {
-    private ILookup<string, Amount>? _exactTake;
+    private ILookup<string, Hold>? _exactTake;
 
     public ExactTake(ExchangeContext exchangeContext) : base(exchangeContext)
     { }
@@ -108,9 +108,9 @@ internal class ExactTake : TakeHandler
     // take assignments should take from smaller dup stacks first
     // in boxes with less available space
 
-    private ILookup<string, Amount> TakeLookup()
+    private ILookup<string, Hold> TakeLookup()
     {
-        var targets = TreasuryContext.Amounts;
+        var targets = TreasuryContext.Holds;
 
         var cardIds = ExchangeContext.Deck.Wants
             .Select(w => w.CardId)
@@ -121,11 +121,11 @@ internal class ExactTake : TakeHandler
         // TODO: account for changing NumCopies while iter
         return targets
             .Join( cardIds,
-                a => a.CardId, cid => cid,
+                h => h.CardId, cid => cid,
                 (target, _) => target)
 
-            .OrderBy(a => a.Copies)
-                .ThenBy(a => a.Location switch
+            .OrderBy(h => h.Copies)
+                .ThenBy(h => h.Location switch
                 {
                     Box box => box.Capacity - storageSpace.GetValueOrDefault(box),
                     Excess excess => -storageSpace.GetValueOrDefault(excess),
@@ -133,14 +133,14 @@ internal class ExactTake : TakeHandler
                 })
             
             // lookup group orders should preserve NumCopies order
-            .ToLookup(a => a.CardId);
+            .ToLookup(h => h.CardId);
     }
 }
 
 
 internal class ApproximateTake : TakeHandler
 {
-    private ILookup<string, Amount>? _approxLookup;
+    private ILookup<string, Hold>? _approxLookup;
 
     public ApproximateTake(ExchangeContext exchangeContext) : base(exchangeContext)
     { }
@@ -182,9 +182,9 @@ internal class ApproximateTake : TakeHandler
     // take assignments should take from smaller dup stacks first
     // in boxes with less available space
 
-    private ILookup<string, Amount> TakeLookup()
+    private ILookup<string, Hold> TakeLookup()
     {
-        var targets = TreasuryContext.Amounts;
+        var targets = TreasuryContext.Holds;
 
         var cardNames = ExchangeContext.Deck.Wants
             .Select(w => w.Card.Name)
@@ -195,18 +195,18 @@ internal class ApproximateTake : TakeHandler
         // TODO: account for changing NumCopies while iter
         return targets
             .Join(cardNames,
-                a => a.Card.Name, cn => cn,
+                h => h.Card.Name, cn => cn,
                 (target, _) => target)
 
             // lookup group orders should preserve NumCopies order
-            .OrderBy(a => a.Copies)
-                .ThenBy(a => a.Location switch
+            .OrderBy(h => h.Copies)
+                .ThenBy(h => h.Location switch
                 {
                     Box box => box.Capacity - storageSpace.GetValueOrDefault(box),
                     Excess excess => -storageSpace.GetValueOrDefault(excess),
                     _ => throw new ArgumentException(nameof(targets))
                 })
 
-            .ToLookup(a => a.Card.Name);
+            .ToLookup(h => h.Card.Name);
     }
 }

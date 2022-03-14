@@ -29,7 +29,6 @@ public sealed class CardData
 
     public IReadOnlyList<Transaction> Transactions { get; set; } = Array.Empty<Transaction>();
     public IReadOnlyList<Suggestion> Suggestions { get; set; } = Array.Empty<Suggestion>();
-    public IReadOnlyList<Trade> Trades { get; set; } = Array.Empty<Trade>();
 
 
     // possible memory issue?
@@ -76,10 +75,6 @@ public sealed class CardData
 
             Suggestions = await stream.Suggestions
                 .ToListAsync(cancel)
-                .ConfigureAwait(false),
-
-            Trades = await stream.Trades
-                .ToListAsync(cancel)
                 .ConfigureAwait(false)
         };
     }
@@ -102,7 +97,6 @@ public sealed class CardStream
 
     public IAsyncEnumerable<Transaction> Transactions { get; set; } = AsyncEnumerable.Empty<Transaction>();
     public IAsyncEnumerable<Suggestion> Suggestions { get; set; } = AsyncEnumerable.Empty<Suggestion>();
-    public IAsyncEnumerable<Trade> Trades { get; set; } = AsyncEnumerable.Empty<Trade>();
 
 
     public static CardStream Default(CardDbContext dbContext)
@@ -121,8 +115,8 @@ public sealed class CardStream
                 .AsAsyncEnumerable(),
 
             Decks = dbContext.Decks
-                .Include(d => d.Cards
-                    .OrderBy(a => a.Id))
+                .Include(d => d.Holds
+                    .OrderBy(h => h.Id))
 
                 .Include(d => d.Wants
                     .OrderBy(w => w.Id))
@@ -132,8 +126,8 @@ public sealed class CardStream
                 .AsAsyncEnumerable(),
 
             Unclaimed = dbContext.Unclaimed
-                .Include(u => u.Cards
-                    .OrderBy(a => a.Id))
+                .Include(u => u.Holds
+                    .OrderBy(h => h.Id))
 
                 .Include(u => u.Wants
                     .OrderBy(w => w.Id))
@@ -145,15 +139,15 @@ public sealed class CardStream
             Bins = dbContext.Bins
                 .Include(b => b.Boxes
                     .OrderBy(b => b.Id))
-                    .ThenInclude(b => b.Cards)
+                    .ThenInclude(b => b.Holds)
 
                 .OrderBy(b => b.Id)
                 .AsSplitQuery()
                 .AsAsyncEnumerable(),
 
             Excess = dbContext.Excess
-                .Include(e => e.Cards
-                    .OrderBy(a => a.Id))
+                .Include(e => e.Holds
+                    .OrderBy(h => h.Id))
                 .OrderBy(e => e.Id)
                 .AsAsyncEnumerable(),
 
@@ -173,9 +167,9 @@ public sealed class CardStream
         {
             CardIds = dbContext.Cards
                 .Where(c =>
-                    c.Amounts
-                        .Any(a => a.Location is Deck
-                            && (a.Location as Deck)!.OwnerId == userId)
+                    c.Holds
+                        .Any(h => h.Location is Deck
+                            && (h.Location as Deck)!.OwnerId == userId)
                     || c.Wants
                         .Any(w => w.Location is Deck
                             && (w.Location as Deck)!.OwnerId == userId)
@@ -193,8 +187,8 @@ public sealed class CardStream
             Decks = dbContext.Decks
                 .Where(d => d.OwnerId == userId)
 
-                .Include(d => d.Cards
-                    .OrderBy(a => a.Id))
+                .Include(d => d.Holds
+                    .OrderBy(h => h.Id))
 
                 .Include(d => d.Wants
                     .OrderBy(w => w.Id))
@@ -218,10 +212,10 @@ public sealed class CardStream
         return new CardStream
         {
             CardIds = dbContext.Cards
-                .Where(c => c.Amounts
-                    .Any(a => a.Location is Box
-                        || a.Location is Excess
-                        || a.Location is Unclaimed))
+                .Where(c => c.Holds
+                    .Any(h => h.Location is Box
+                        || h.Location is Excess
+                        || h.Location is Unclaimed))
 
                 .OrderBy(c => c.Id)
                 .Select(c => new CardId
@@ -232,8 +226,8 @@ public sealed class CardStream
                 .AsAsyncEnumerable(),
 
             Unclaimed = dbContext.Unclaimed
-                .Include(u => u.Cards
-                    .OrderBy(a => a.Id))
+                .Include(u => u.Holds
+                    .OrderBy(h => h.Id))
 
                 .Include(u => u.Wants
                     .OrderBy(w => w.Id))
@@ -245,16 +239,16 @@ public sealed class CardStream
             Bins = dbContext.Bins
                 .Include(b => b.Boxes
                     .OrderBy(b => b.Id))
-                    .ThenInclude(b => b.Cards
-                        .OrderBy(a => a.Id))
+                    .ThenInclude(b => b.Holds
+                        .OrderBy(h => h.Id))
 
                 .OrderBy(b => b.Id)
                 .AsSplitQuery()
                 .AsAsyncEnumerable(),
 
             Excess = dbContext.Excess
-                .Include(e => e.Cards
-                    .OrderBy(a => a.Id))
+                .Include(e => e.Holds
+                    .OrderBy(h => h.Id))
                 .OrderBy(e => e.Id)
                 .AsAsyncEnumerable(),
         };
@@ -271,8 +265,8 @@ public sealed class CardStream
                 .AsAsyncEnumerable(),
 
             Decks = dbContext.Decks
-                .Include(d => d.Cards
-                    .OrderBy(a => a.Id))
+                .Include(d => d.Holds
+                    .OrderBy(h => h.Id))
 
                 .Include(d => d.Wants
                     .OrderBy(w => w.Id))
@@ -282,8 +276,8 @@ public sealed class CardStream
                 .AsAsyncEnumerable(),
 
             Unclaimed = dbContext.Unclaimed
-                .Include(u => u.Cards
-                    .OrderBy(a => a.Id))
+                .Include(u => u.Holds
+                    .OrderBy(h => h.Id))
 
                 .Include(u => u.Wants
                     .OrderBy(w => w.Id))
@@ -295,15 +289,15 @@ public sealed class CardStream
             Bins = dbContext.Bins
                 .Include(b => b.Boxes
                     .OrderBy(b => b.Id))
-                    .ThenInclude(b => b.Cards)
+                    .ThenInclude(b => b.Holds)
 
                 .OrderBy(b => b.Id)
                 .AsSplitQuery()
                 .AsAsyncEnumerable(),
 
             Excess = dbContext.Excess
-                .Include(e => e.Cards
-                    .OrderBy(a => a.Id))
+                .Include(e => e.Holds
+                    .OrderBy(h => h.Id))
                 .OrderBy(e => e.Id)
                 .AsAsyncEnumerable(),
 
@@ -335,8 +329,8 @@ public sealed class CardStream
                 .AsAsyncEnumerable(),
 
             Decks = dbContext.Decks
-                .Include(d => d.Cards
-                    .OrderBy(a => a.Id))
+                .Include(d => d.Holds
+                    .OrderBy(h => h.Id))
 
                 .Include(d => d.Wants
                     .OrderBy(w => w.Id))
@@ -355,8 +349,8 @@ public sealed class CardStream
                 .AsAsyncEnumerable(),
 
             Unclaimed = dbContext.Unclaimed
-                .Include(u => u.Cards
-                    .OrderBy(a => a.Id))
+                .Include(u => u.Holds
+                    .OrderBy(h => h.Id))
 
                 .Include(u => u.Wants
                     .OrderBy(w => w.Id))
@@ -368,16 +362,16 @@ public sealed class CardStream
             Bins = dbContext.Bins
                 .Include(b => b.Boxes
                     .OrderBy(b => b.Id))
-                    .ThenInclude(b => b.Cards
-                        .OrderBy(a => a.Id))
+                    .ThenInclude(b => b.Holds
+                        .OrderBy(h => h.Id))
 
                 .OrderBy(b => b.Id)
                 .AsSplitQuery()
                 .AsAsyncEnumerable(),
 
             Excess = dbContext.Excess
-                .Include(e => e.Cards
-                    .OrderBy(a => a.Id))
+                .Include(e => e.Holds
+                    .OrderBy(h => h.Id))
                 .OrderBy(e => e.Id)
                 .AsAsyncEnumerable(),
 
