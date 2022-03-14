@@ -9,15 +9,13 @@
 <h1>Requests for @Model.Deck.Name</h1>
 <hr />
 
-@if (Model.TargetsExist)
+@if (Model.Requests.Any())
 {
     <div class="alert alert-secondary" role="alert">
-        <h5 class="alert-heading">Are you sure you want to send requests for the cards below?</h5>
-        <p>While a request is active, <strong>you cannot edit @Model.Deck.Name</strong></p>
-        <hr>
+        <h5 class="alert-heading"> Send Request Confirmation </h5>
         <p>
-            Requests target cards currently held by other players, meaning
-            that <strong>some cards below may not create a trade request</strong>.
+            Are you sure you want to send requests listed below?  While a 
+            request is active, <strong>you cannot edit @Model.Deck.Name</strong>
         </p>
 
         <form method="POST">
@@ -29,81 +27,55 @@
 else
 {
     <div class="alert alert-warning" role="alert">
-        There are no possible decks to requests to
+        <h5 class="alert-heading">Missing Trade Targets</h5>
+        <p> There are no possible decks to requests to. </p>
+
+        <a asp-page="/Decks/Details" asp-route-id="@Model.Deck.Id"
+            class="btn btn-secondary" role="button">
+            Details </a>
     </div>
 }
 
-
-<h2>Cards to Request</h2>
 
 <div class="table-responsive-md">
     <table class="table">
         <thead>
             <tr>
-                <th scope="col"> @Html.DisplayNameForInnerType((Amount ca) => ca.Card) </th>
+                <th scope="col"> Matched @Html.DisplayNameForInnerType((Want w) => w.Card) </th>
                 <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.ManaCost) </th>
-                <th scope="col"> @Html.DisplayNameForInnerType((Amount ca) => ca.Copies) </th>
+                <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.SetName) </th>
+                <th scope="col"> Request Amount </th>
             </tr>
         </thead>
         <tbody>
-            @foreach (var cardGroup in Model.Requests)
+            @if (!Model.Requests.Any())
             {
-                var card = cardGroup.Cards.First();
+                <tr>
+                    <td> -- </td>
+                    <td> -- </td>
+                    <td> -- </td>
+                    <td> -- </td>
+                </tr>
+            }
+            @foreach (var card in Model.Requests)
+            {
                 <tr>
                     <td>
-                        <a asp-page="/Cards/Details" asp-route-id="@card.Id"
-                            title="@card.Name Details">
-                            @card.Name </a>
+                        <component type="typeof(HoverCard)" render-mode="Static"
+                            param-Preview="card" />
                     </td>
-
                     <td> 
                         <div class="ms-group">
                             @MtgSymbols.Format(card.ManaCost).ToHtmlString()
                         </div>
                     </td>
-                    <td> @cardGroup.NumCopies </td>
+                    <td> @card.SetName </td>
+                    <td> @card.Copies </td>
                 </tr>
             } 
         </tbody>
     </table>
 </div>
 
+<partial name="_OffsetPagingPartial" for="Requests.Offset"/>
 
-@if (Model.Deck.Cards.Any())
-{
-    <h2>Current Cards</h2>
-
-    <div class="table-responsive-md">
-        <table class="table">
-            <thead>
-                <tr>
-                    <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.Name) </th>
-                    <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.ManaCost) </th>
-                    <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.SetName) </th>
-                    <th scope="col"> @Html.DisplayNameForInnerType((Amount ca) => ca.Copies) </th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var amount in Model.Deck.Cards)
-                {
-                    var card = amount.Card;
-                    <tr>
-                        <td>
-                            <a asp-page="/Cards/Details" asp-route-id="@card.Id"
-                                title="@card.Name Details">
-                                @card.Name </a>
-                        </td>
-
-                        <td> 
-                            <div class="ms-group">
-                                @MtgSymbols.Format(card.ManaCost).ToHtmlString() 
-                            </div>
-                        </td>
-                        <td> @card.SetName </td>
-                        <td> @amount.Copies </td>
-                    </tr>
-                }
-            </tbody>
-        </table>
-    </div>
-}

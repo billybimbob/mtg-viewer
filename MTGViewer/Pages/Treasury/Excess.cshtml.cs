@@ -44,7 +44,7 @@ public class ExcessModel : PageModel
 
         Cards = await ExcessCards()
             .SeekBy(seek, direction)
-            .UseSource<Card>()
+            .OrderBy<Card>()
             .Take(_pageSize)
             .ToSeekListAsync(cancel);
 
@@ -66,7 +66,7 @@ public class ExcessModel : PageModel
         }
 
         return await ExcessCards()
-            .WithSelect<Card, CardPreview>()
+            .WithSelect<Card, CardCopies>()
             .Before(card)
             .Select(c => c.Id)
 

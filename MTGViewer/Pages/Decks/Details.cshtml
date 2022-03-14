@@ -21,7 +21,7 @@
 @if (Model.IsOwner)
 {
     <div class="btn-group mb-3" role="group">
-        @if (Model.Deck.AnyTrades || !canChangeTreasury)
+        @if (Model.Deck.HasTrades || !canChangeTreasury)
         {
             <button class="btn btn-secondary" type="button" disabled> Edit </button>
         }
@@ -56,9 +56,9 @@
                 <th scope="col"> @Html.DisplayNameForInnerType((Amount ca) => ca.Card) </th>
                 <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.ManaCost) </th>
                 <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.SetName) </th>
-                <th scope="col"> Cards In Deck </th>
-                <th scope="col"> Wanted Cards </th>
-                <th scope="col"> Return Requests </th>
+                <th scope="col"> Held </th>
+                <th scope="col"> Wanted </th>
+                <th scope="col"> Returning </th>
             </tr>
         </thead>
         <tbody>
@@ -85,9 +85,9 @@
                 <th> Total </th>
                 <td> -- </td>
                 <td> -- </td>
-                <td> <strong>@Model.Deck.AmountTotal</strong> </td>
-                <td> <strong>@Model.Deck.WantTotal</strong> </td>
-                <td> <strong>@Model.Deck.GiveBackTotal</strong> </td>
+                <td> <strong>@Model.Deck.AmountCopies</strong> </td>
+                <td> <strong>@Model.Deck.WantCopies</strong> </td>
+                <td> <strong>@Model.Deck.ReturnCopies</strong> </td>
             </tr>
         </tbody>
     </table>

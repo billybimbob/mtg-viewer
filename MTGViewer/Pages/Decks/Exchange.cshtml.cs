@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Paging;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -44,14 +45,12 @@ public class ExchangeModel : PageModel
     [TempData]
     public string? PostMessage { get; set; }
 
-    public DeckDetails Deck { get; private set; } = default!;
+    public ExchangePreview Deck { get; private set; } = default!;
 
-    public IReadOnlyList<DeckLink> Cards { get; private set; } = Array.Empty<DeckLink>();
-
-    public bool HasPendings { get; private set; }
+    public OffsetList<CardCopies> Matches { get; private set; } = OffsetList<CardCopies>.Empty;
 
 
-    public async Task<IActionResult> OnGetAsync(int id, CancellationToken cancel)
+    public async Task<IActionResult> OnGetAsync(int id, int? offset, CancellationToken cancel)
     {
         var userId = _userManager.GetUserId(User);
         if (userId == default)
@@ -59,106 +58,100 @@ public class ExchangeModel : PageModel
             return NotFound();
         }
 
-        var deck = await DeckDetailsAsync.Invoke(_dbContext, id, userId, cancel);
+        var deck = await ExchangePreviewAsync
+            .Invoke(_dbContext, id, userId, _pageSize, cancel);
+
         if (deck == default)
         {
             return NotFound();
         }
 
+        var matches = await WantTargets(deck)
+            .PageBy(offset, _pageSize)
+            .ToOffsetListAsync(cancel);
+
+        if (!matches.Any())
+        {
+            return RedirectToPage(new { offset = null as int? });
+        }
+
         Deck = deck;
-
-        Cards = await DeckCardsAsync
-            .Invoke(_dbContext, id, _pageSize)
-            .ToListAsync(cancel);
-
-        HasPendings = await HasPendingsAsync(deck, cancel);
+        Matches = matches;
 
         return Page();
     }
 
 
-    private static readonly Func<CardDbContext, int, string, CancellationToken, Task<DeckDetails?>> DeckDetailsAsync
+    private static readonly Func<CardDbContext, int, string, int, CancellationToken, Task<ExchangePreview?>> ExchangePreviewAsync
+        = EF.CompileAsyncQuery(
+            (CardDbContext dbContext, int deckId, string userId, int limit, CancellationToken _) =>
 
-        = EF.CompileAsyncQuery((CardDbContext dbContext, int deckId, string userId, CancellationToken _) =>
             dbContext.Decks
                 .Where(d => d.Id == deckId && d.OwnerId == userId && !d.TradesTo.Any())
-                .Select(d => new DeckDetails
+                .Select(d => new ExchangePreview
                 {
                     Id = d.Id,
                     Name = d.Name,
-                    Color = d.Color,
+                    HasWants = d.Wants.Any(),
 
-                    Owner = new OwnerPreview
-                    {
-                        Id = d.OwnerId,
-                        Name = d.Owner.Name
-                    },
+                    GiveBacks = d.GiveBacks
+                        .OrderBy(g => g.Card.Name)
+                            .ThenBy(g => g.Card.SetName)
+                            .ThenBy(g => g.Id)
 
-                    AmountTotal = d.Cards.Sum(a => a.Copies),
-                    WantTotal = d.Wants.Sum(w => w.Copies),
-                    GiveBackTotal = d.GiveBacks.Sum(g => g.Copies),
+                        .Take(limit)
+                        .Select(g => new CardCopies
+                        {
+                            Id = g.CardId,
+                            Name = g.Card.Name,
+                            ManaCost = g.Card.ManaCost,
 
-                    AnyTrades = d.TradesTo.Any() || d.TradesFrom.Any()
+                            SetName = g.Card.SetName,
+                            Rarity = g.Card.Rarity,
+                            ImageUrl = g.Card.ImageUrl,
+
+                            Copies = g.Copies
+                        })
                 })
                 .SingleOrDefault());
 
 
-    private static readonly Func<CardDbContext, int, int, IAsyncEnumerable<DeckLink>> DeckCardsAsync
-        = EF.CompileAsyncQuery((CardDbContext dbContext, int id, int limit) =>
+    private IQueryable<CardCopies> WantTargets(ExchangePreview deck)
+    {
+        var deckWants = _dbContext.Wants
+            .Where(w => w.LocationId == deck.Id)
+            .Select(w => w.Card.Name)
+            .Distinct();
 
-            dbContext.Cards
-                .Where(c => c.Amounts.Any(a => a.LocationId == id)
-                    || c.Wants.Any(w => w.LocationId == id)
-                    || c.GiveBacks.Any(g => g.LocationId == id))
+        var totalMatches = _dbContext.Amounts
+            .Where(a => a.Location is Box || a.Location is Excess)
+            .Join( deckWants,
+                a => a.Card.Name, name => name, (amount, _) => amount)
 
-                .OrderBy(c => c.Name)
-                    .ThenBy(c => c.SetName)
-                    .ThenBy(c => c.Id)
+            .GroupBy(a => a.CardId,
+                (CardId, amounts) =>
+                    new { CardId, Copies = amounts.Sum(a => a.Copies) });
 
-                .Take(limit)
-                .Select(c => new DeckLink
+        return _dbContext.Cards
+            .OrderBy(c => c.Name)
+                .ThenBy(c => c.SetName)
+                .ThenBy(c => c.Id)
+
+            .Join( totalMatches,
+                c => c.Id,
+                total => total.CardId,
+                (c, total) => new CardCopies
                 {
                     Id = c.Id,
                     Name = c.Name,
-
                     SetName = c.SetName,
+
                     ManaCost = c.ManaCost,
+                    Rarity = c.Rarity,
+                    ImageUrl = c.ImageUrl,
 
-                    Held = c.Amounts
-                        .Where(a => a.LocationId == id)
-                        .Sum(a => a.Copies),
-
-                    Want = c.Wants
-                        .Where(w => w.LocationId == id)
-                        .Sum(w => w.Copies),
-
-                    Returning = c.GiveBacks
-                        .Where(g => g.LocationId == id)
-                        .Sum(g => g.Copies),
-                }));
-
-
-    private async ValueTask<bool> HasPendingsAsync(DeckDetails deck, CancellationToken cancel)
-    {
-        if (deck.GiveBackTotal > 0)
-        {
-            return true;
-        }
-
-        if (deck.WantTotal == 0)
-        {
-            return false;
-        }
-
-        var wants = _dbContext.Wants
-            .Where(w => w.LocationId == deck.Id)
-            .Select(w => w.Card.Name);
-
-        return await _dbContext.Amounts
-            .Where(a => (a.Location is Box || a.Location is Excess))
-            .Select(a => a.Card.Name)
-            .Join(wants, a => a, w => w, (_, _) => true)
-            .AnyAsync(cancel);
+                    Copies = total.Copies
+                });
     }
 
 
@@ -175,8 +168,8 @@ public class ExchangeModel : PageModel
                     .ThenInclude(g => g.Card)
 
                 .Include(d => d.TradesFrom) // unbounded, keep eye on
-                .OrderBy(d => d.Id)
 
+                .OrderBy(d => d.Id)
                 .AsSplitQuery()
                 .SingleOrDefault(d =>
                     d.Id == deckId && d.OwnerId == userId && !d.TradesTo.Any()));

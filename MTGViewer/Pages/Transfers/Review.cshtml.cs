@@ -191,21 +191,21 @@ public class ReviewModel : PageModel
         return _dbContext.Trades
             .Where(t => t.Id == id && t.From.OwnerId == userId)
 
-            .Include(t => t.To.Cards // unbounded: keep eye on
-                .Where(a => a.CardId == tradeCard.Id))
-                .ThenInclude(a => a.Card)
+            .Include(t => t.To.Cards
+                .Where(a => a.CardId == tradeCard.Id)
+                .Take(1))
 
             .Include(t => t.To.Wants // unbounded: keep eye on
                 .Where(w => w.Card.Name == tradeCard.Name))
                 .ThenInclude(w => w.Card)
 
-            .Include(t => t.From.Cards // unbounded: keep eye on
-                .Where(a => a.CardId == tradeCard.Id))
-                .ThenInclude(a => a.Card)
+            .Include(t => t.From.Cards
+                .Where(a => a.CardId == tradeCard.Id)
+                .Take(1))
 
-            .Include(t => t.From.Wants // unbounded: keep eye on
-                .Where(w => w.CardId == tradeCard.Id))
-                .ThenInclude(w => w.Card)
+            .Include(t => t.From.Wants
+                .Where(w => w.CardId == tradeCard.Id)
+                .Take(1))
 
             .AsSplitQuery();
     }

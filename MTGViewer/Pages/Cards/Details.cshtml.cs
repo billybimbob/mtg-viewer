@@ -70,11 +70,12 @@ public class DetailsModel : PageModel
         = EF.CompileAsyncQuery((CardDbContext dbContext, string cardId, CancellationToken _) =>
             dbContext.Cards
                 .Where(c => c.Id == cardId)
+
                 .Include(c => c.Amounts
                     .OrderBy(a => a.Location.Name))
                     .ThenInclude(a => a.Location)
-                .OrderBy(c => c.Id)
 
+                .OrderBy(c => c.Id)
                 .AsNoTrackingWithIdentityResolution()
                 .SingleOrDefault());
 
@@ -84,12 +85,13 @@ public class DetailsModel : PageModel
         = EF.CompileAsyncQuery((CardDbContext dbContext, string cardId, CancellationToken _) =>
             dbContext.Cards
                 .Where(c => c.Id == cardId)
+
                 .Include(c => c.Flip)
                 .Include(c => c.Amounts
                     .OrderBy(a => a.Location.Name))
                     .ThenInclude(a => a.Location)
-                .OrderBy(c => c.Id)
 
+                .OrderBy(c => c.Id)
                 .AsNoTrackingWithIdentityResolution()
                 .SingleOrDefault());
 

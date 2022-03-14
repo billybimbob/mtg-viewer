@@ -63,7 +63,7 @@ public class HistoryModel : PageModel
     {
         var changes = await ChangesForHistory()
             .SeekBy(seek, direction)
-            .UseSource<Change>()
+            .OrderBy<Change>()
             .Take(_pageSize)
             .ToSeekListAsync(cancel);
 

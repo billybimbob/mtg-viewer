@@ -55,7 +55,7 @@ public class DetailsModel : PageModel
 
         var cards = await DeckCards(id)
             .SeekBy(seek, direction)
-            .UseSource<Card>()
+            .OrderBy<Card>()
             .Take(_pageSize)
             .ToSeekListAsync(cancel);
 
@@ -85,11 +85,11 @@ public class DetailsModel : PageModel
                         Name = d.Owner.Name
                     },
 
-                    AmountTotal = d.Cards.Sum(a => a.Copies),
-                    WantTotal = d.Wants.Sum(w => w.Copies),
-                    GiveBackTotal = d.GiveBacks.Sum(g => g.Copies),
+                    AmountCopies = d.Cards.Sum(a => a.Copies),
+                    WantCopies = d.Wants.Sum(w => w.Copies),
+                    ReturnCopies = d.GiveBacks.Sum(g => g.Copies),
 
-                    AnyTrades = d.TradesTo.Any()
+                    HasTrades = d.TradesTo.Any()
                 })
                 .SingleOrDefault());
 

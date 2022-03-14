@@ -1,4 +1,7 @@
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
+
 using MTGViewer.Areas.Identity.Data;
 
 namespace MTGViewer.Data;
@@ -21,4 +24,7 @@ public class UserRef
     public string Name { get; set; } = default!;
 
     public bool ResetRequested { get; set;  }
+
+    [JsonIgnore]
+    public List<Deck> Decks { get; init; } = new();
 }

@@ -15,9 +15,6 @@
 
 <hr />
 
-@{ bool inDeck = Model.Card.Amounts
-    .Any(a => a.Location is Deck || a.Location is Unclaimed); }
-
 <section class="row">
     <div class="col col-sm-10 col-md-8">
         <p>
@@ -29,7 +26,7 @@
             held in Decks are left unaffected.
         </p>
 
-        @if (!inDeck)
+        @if (!Model.Card.HasDeckCopies)
         {
             <p>
                 Deleting the max amount of copies may also <strong>delete @Model.Card.Name</strong>. 
@@ -42,21 +39,18 @@
 <section class="row">
     <div class="col-8 col-sm-7 col-md-6 col-lg-4">
         <form method="POST">
-            @{ int maxCopies = Model.Card.Amounts
-                .Where(a => a.Location is Box or Excess)
-                .Sum(a => a.Copies); }
-
             <div class="form-group">
                 <label asp-for="Input!.RemoveCopies" class="control-label"></label>
-                <input asp-for="Input!.RemoveCopies" class="form-control" min="1" max="@maxCopies" />
+                <input asp-for="Input!.RemoveCopies" class="form-control" min="1" max="@Model.Card.StorageCopies" />
                 <span asp-validation-for="Input!.RemoveCopies" class="text-danger"></span>
 
-                <p> There are @maxCopies possible copies to remove </p>
+                <p> There are @Model.Card.StorageCopies possible copies to remove </p>
             </div>
 
             <div class="btn-group" role="group">
                 <a asp-page="Details"
-                    asp-route-id="@Model.Card.Id" asp-route-returnurl="@Model.ReturnUrl"
+                    asp-route-id="@Model.Card.Id" 
+                    asp-route-returnurl="@Model.ReturnUrl"
                     class="btn btn-secondary" role="button">
                     Cancel </a>
 

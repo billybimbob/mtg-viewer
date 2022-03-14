@@ -2,9 +2,9 @@
 @model Treasury.DeleteModel
 @{
     ViewData["Title"] = $"{Model.Box.Name} - Delete";
-    ViewData["HasMore"] = Model.HasMore;
-    ViewData[nameof(Box.Cards)] = Model.NumberOfCards;
 }
+@inject SymbolFormatter MtgSymbols
+
 
 <h1> Delete @Model.Box.Name </h1>
 
@@ -27,4 +27,56 @@
     </form>
 </div>
 
-<partial name="_BoxPartial" for="Box"/>
+<div class="table-responsive-md">
+    <table class="table">
+        <thead>
+            <tr>
+                <th scope="col"> @Html.DisplayNameForInnerType((Amount a) => a.Card) </th>
+                <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.ManaCost) </th>
+                <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.SetName) </th>
+                <th scope="col"> @Html.DisplayNameForInnerType((Amount a) => a.Copies) </th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var card in Model.Box.Cards)
+            {
+                <tr>
+                    <td>
+                        <a asp-page="/Cards/Details" asp-route-id="@card.Id">
+                            @card.Name </a>
+                    </td>
+                    <td> 
+                        <div class="ms-group">
+                            @MtgSymbols.Format(card.ManaCost).ToHtmlString() 
+                        </div>
+                    </td>
+                    <td> @card.SetName </td>
+                    <td> @card.Copies </td>
+                </tr>
+            }
+            @if (Model.Box.HasMoreCards)
+            {
+                <tr>
+                    <td> ... </td>
+                    <td> ... </td>
+                    <td> ... </td>
+                    <td> ... </td>
+                </tr>
+            }
+            <tr>
+                <th> Total </th>
+                <td> -- </td>
+                <td> -- </td>
+                <td class="font-weight-bold">
+                    @Model.Box.TotalCards / @Model.Box.Capacity
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(Model.Box.Appearance))
+{
+    <h4> @Html.DisplayNameFor(b => b.Box.Appearance) </h4>
+    <p> @Html.DisplayFor(b => b.Box.Appearance) </p>
+}

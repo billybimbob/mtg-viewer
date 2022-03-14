@@ -147,7 +147,7 @@ internal class InsertTakeVisitor<TEntity> : ExpressionVisitor
 
     protected override Expression VisitMethodCall(MethodCallExpression node)
     {
-        bool validMethodCall = IsValidMethod(node);
+        bool validMethodCall = IsValidMethod(node) || IsSelectMethod(node);
 
         if (!validMethodCall
             && node.Arguments.ElementAtOrDefault(0) is Expression parent)
@@ -189,6 +189,16 @@ internal class InsertTakeVisitor<TEntity> : ExpressionVisitor
 
         return correctType && generics.Length == 1
             || correctType && ExpressionHelpers.IsOrderedMethod(node);
+    }
+
+
+    private bool IsSelectMethod(MethodCallExpression node)
+    {
+        var generics = node.Method.GetGenericArguments();
+
+        return node is { Method.IsGenericMethod: true }
+            && node.Method.GetGenericMethodDefinition() == QueryableMethods.Select
+            && generics.ElementAtOrDefault(1) == typeof(TEntity);
     }
     
 

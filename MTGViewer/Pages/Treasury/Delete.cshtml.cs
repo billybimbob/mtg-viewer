@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -30,49 +31,59 @@ public class DeleteModel : PageModel
     [TempData]
     public string? PostMessage { get; set; }
 
-    public Box Box { get; private set; } = default!;
-
-    public int NumberOfCards { get; private set; }
-
-    public bool HasMore =>
-        Box?.Cards.Sum(a => a.Copies) < NumberOfCards;
+    public BoxPreview Box { get; private set; } = default!;
 
 
     public async Task<IActionResult> OnGetAsync(int id, CancellationToken cancel)
     {
         var box = await BoxToDeleteAsync.Invoke(_dbContext, id, _pageSize, cancel);
+
         if (box == default)
         {
             return NotFound();
         }
 
         Box = box;
-        NumberOfCards = await NumberOfCardsAsync.Invoke(_dbContext, id, cancel);
 
         return Page();
     }
 
 
-    private static readonly Func<CardDbContext, int, int, CancellationToken, Task<Box?>> BoxToDeleteAsync
+    private static readonly Func<CardDbContext, int, int, CancellationToken, Task<BoxPreview?>> BoxToDeleteAsync
         = EF.CompileAsyncQuery((CardDbContext dbContext, int boxId, int pageSize, CancellationToken _) =>
             dbContext.Boxes
-                .Include(d => d.Cards
-                    .OrderBy(a => a.Card.Name)
-                        .ThenBy(a => a.Card.SetName)
-                        .ThenBy(a => a.Copies)
-                        .ThenBy(a => a.Id)
-                        .Take(pageSize))
-                    .ThenInclude(a => a.Card)
-                .AsNoTrackingWithIdentityResolution()
+                .Select(b => new BoxPreview
+                {
+                    Id = b.Id,
+                    Name = b.Name,
+
+                    Bin = new BinPreview
+                    {
+                        Id = b.BinId,
+                        Name = b.Bin.Name
+                    },
+
+                    Appearance = b.Appearance,
+                    Capacity = b.Capacity,
+                    TotalCards = b.Cards.Sum(a => a.Copies),
+
+                    Cards = b.Cards
+                        .OrderBy(a => a.Card.Name)
+                            .ThenBy(a => a.Card.SetName)
+                            .ThenBy(a => a.Copies)
+                            .ThenBy(a => a.Id)
+
+                        .Take(pageSize)
+                        .Select(a => new StorageLink
+                        {
+                            Id = a.CardId,
+                            Name = a.Card.Name,
+                            SetName = a.Card.SetName,
+                            ManaCost = a.Card.ManaCost,
+                            Copies = a.Copies
+                        })
+                })
                 .SingleOrDefault(d => d.Id == boxId));
-
-
-    private static readonly Func<CardDbContext, int, CancellationToken, Task<int>> NumberOfCardsAsync
-        = EF.CompileAsyncQuery((CardDbContext dbContext, int boxId, CancellationToken _) =>
-            dbContext.Boxes
-                .Where(b => b.Id == boxId)
-                .SelectMany(b => b.Cards)
-                .Sum(a => a.Copies));
 
 
 

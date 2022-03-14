@@ -5,9 +5,9 @@ namespace System.Paging.Query;
 
 public interface ISeekable<TEntity> where TEntity : class
 {
-    ISeekable<TEntity> UseSource<TSource>() where TSource : class;
+    ISeekable<TEntity> OrderBy<TSource>() where TSource : class;
 
-    ISeekable<TEntity> UseSourceOrigin();
+    // ISeekable<TEntity> UseSourceOrigin();
 
     ISeekable<TEntity> Take(int count);
 

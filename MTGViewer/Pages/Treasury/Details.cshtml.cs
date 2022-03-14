@@ -27,12 +27,9 @@ public class DetailsModel : PageModel
 
     public Seek Seek { get; private set; }
 
-    public Box Box { get; private set; } = default!;
+    public BoxPreview Box { get; private set; } = default!;
 
-    public int NumberOfCards { get; private set; }
-
-    public bool HasMore =>
-        Box is null ? false : Box.Cards.Sum(a => a.Copies) < NumberOfCards;
+    public SeekList<AmountPreview> Cards { get; private set; } = SeekList<AmountPreview>.Empty;
 
 
     public async Task<IActionResult> OnGetAsync(
@@ -43,33 +40,6 @@ public class DetailsModel : PageModel
         string? cardId,
         CancellationToken cancel)
     {
-        if (await GetCardJumpAsync(cardId, id, cancel) is int cardJump)
-        {
-            return RedirectToPage(new { seek = cardJump });
-        }
-
-        var cards = await BoxCards(id)
-            .SeekBy(seek, direction)
-            .Take(_pageSize)
-            .ToSeekListAsync(cancel);
-
-        if (!cards.Any())
-        {
-            return await EmptyBoxAsync(id, cancel);
-        }
-
-        NumberOfCards = await NumberOfCardsAsync.Invoke(_dbContext, id, cancel);
-
-        Seek = (Seek)cards.Seek;
-
-        Box = (Box)cards.First().Location;
-
-        return Page();
-    }
-
-
-    private async Task<IActionResult> EmptyBoxAsync(int id, CancellationToken cancel)
-    {
         var box = await BoxAsync.Invoke(_dbContext, id, cancel);
 
         if (box == default)
@@ -77,35 +47,64 @@ public class DetailsModel : PageModel
             return NotFound();
         }
 
+        if (await GetCardJumpAsync(cardId, box, cancel) is int cardJump)
+        {
+            return RedirectToPage(new { seek = cardJump });
+        }
+
+        var cards = await BoxCards(box)
+            .SeekBy(seek, direction)
+            .OrderBy<Amount>()
+            .Take(_pageSize)
+            .ToSeekListAsync(cancel);
+
         Box = box;
+        Cards = cards;
+        Seek = (Seek)cards.Seek;
 
         return Page();
     }
 
 
-    private static readonly Func<CardDbContext, int, CancellationToken, Task<Box?>> BoxAsync
+    private static readonly Func<CardDbContext, int, CancellationToken, Task<BoxPreview?>> BoxAsync
         = EF.CompileAsyncQuery((CardDbContext dbContext, int boxId, CancellationToken _) =>
             dbContext.Boxes
-                .Include(b => b.Bin)
+                .Select(b => new BoxPreview
+                {
+                    Id = b.Id,
+                    Name = b.Name,
+
+                    Bin = new BinPreview
+                    {
+                        Id = b.BinId,
+                        Name = b.Bin.Name
+                    },
+
+                    Appearance = b.Appearance,
+                    Capacity = b.Capacity,
+
+                    TotalCards = b.Cards.Sum(a => a.Copies)
+                })
                 .SingleOrDefault(b => b.Id == boxId));
 
 
-    private async Task<int?> GetCardJumpAsync(string? cardId, int boxId, CancellationToken cancel)
+    private async Task<int?> GetCardJumpAsync(string? cardId, BoxPreview box, CancellationToken cancel)
     {
         if (cardId is null)
         {
             return null;
         }
 
-        var card = await CardJumpAsync.Invoke(_dbContext, cardId, boxId, cancel);
-        if (card is null)
+        var amount = await CardJumpAsync.Invoke(_dbContext, cardId, box.Id, cancel);
+        if (amount is null)
         {
             return null;
         }
 
-        return await BoxCards(boxId)
-            .Before(card)
-            .Select(a => a.Id)
+        return await BoxCards(box)
+            .WithSelect<Amount, AmountPreview>()
+            .Before(amount)
+            .Select(c => c.Id)
 
             .AsAsyncEnumerable()
             .Where((id, i) => i % _pageSize == _pageSize - 1)
@@ -113,39 +112,56 @@ public class DetailsModel : PageModel
     }
 
 
-    private IQueryable<Amount> BoxCards(int boxId)
+    private IQueryable<AmountPreview> BoxCards(BoxPreview box)
     {
         return _dbContext.Amounts
-            .Where(a => a.Location is Box && a.LocationId == boxId)
-
-            .Include(a => a.Card)
-            .Include(a => a.Location)
-                .ThenInclude(l => (l as Box)!.Bin)
+            .Where(a => a.LocationId == box.Id)
 
             .OrderBy(a => a.Card.Name)
                 .ThenBy(a => a.Card.SetName)
                 .ThenBy(a => a.Copies)
                 .ThenBy(a => a.Id)
+            
+            .Select(a => new AmountPreview
+            {
+                Id = a.Id,
+                Copies = a.Copies,
 
-            .AsNoTrackingWithIdentityResolution();
+                Card = new CardPreview
+                {
+                    Id = a.CardId,
+                    Name = a.Card.Name,
+                    SetName = a.Card.SetName,
+                    ManaCost = a.Card.ManaCost,
+
+                    Rarity = a.Card.Rarity,
+                    ImageUrl = a.Card.ImageUrl
+                },
+            });
     }
 
 
-    private static readonly Func<CardDbContext, string, int, CancellationToken, Task<Amount?>> CardJumpAsync
+    private static readonly Func<CardDbContext, string, int, CancellationToken, Task<AmountPreview?>> CardJumpAsync
         = EF.CompileAsyncQuery((CardDbContext dbContext, string cardId, int boxId, CancellationToken _) =>
-
             dbContext.Amounts
-                .Include(a => a.Card)
+                .Where(a => a.Location is Box && a.LocationId == boxId && a.CardId == cardId)
                 .OrderBy(a => a.Id)
-                .SingleOrDefault(a =>
-                    a.Location is Box && a.LocationId == boxId && a.CardId == cardId));
 
+                .Select(a => new AmountPreview
+                {
+                    Id = a.Id,
+                    Copies = a.Copies,
 
-    private static readonly Func<CardDbContext, int, CancellationToken, Task<int>> NumberOfCardsAsync
-        = EF.CompileAsyncQuery((CardDbContext dbContext, int boxId, CancellationToken _) =>
+                    Card = new CardPreview
+                    {
+                        Id = a.CardId,
+                        Name = a.Card.Name,
+                        SetName = a.Card.SetName,
+                        ManaCost = a.Card.ManaCost,
 
-            dbContext.Boxes
-                .Where(b => b.Id == boxId)
-                .SelectMany(b => b.Cards)
-                .Sum(a => a.Copies));
+                        Rarity = a.Card.Rarity,
+                        ImageUrl = a.Card.ImageUrl
+                    }
+                })
+                .SingleOrDefault());
 }

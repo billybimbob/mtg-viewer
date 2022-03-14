@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Paging;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -14,6 +15,7 @@ using Microsoft.Extensions.Logging;
 
 using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
+using MTGViewer.Services;
 
 namespace MTGViewer.Pages.Transfers;
 
@@ -24,13 +26,19 @@ public class RequestModel : PageModel
 {
     private CardDbContext _dbContext;
     private UserManager<CardUser> _userManager;
+    private readonly int _pageSize;
+
     private ILogger<RequestModel> _logger;
 
     public RequestModel(
-        CardDbContext dbContext, UserManager<CardUser> userManager, ILogger<RequestModel> logger)
+        CardDbContext dbContext, 
+        UserManager<CardUser> userManager, 
+        PageSizes pageSizes,
+        ILogger<RequestModel> logger)
     {
         _dbContext = dbContext;
         _userManager = userManager;
+        _pageSize = pageSizes.GetPageModelSize<RequestModel>();
         _logger = logger;
     }
 
@@ -38,162 +46,194 @@ public class RequestModel : PageModel
     [TempData]
     public string? PostMessage { get; set; }
 
-    public bool TargetsExist { get; private set; }
+    public DeckRequest Deck { get; private set; } = default!;
 
-    public Deck Deck { get; private set; } = default!;
-
-    public IReadOnlyList<WantNameGroup> Requests { get; private set; } = Array.Empty<WantNameGroup>();
+    public OffsetList<CardCopies> Requests { get; private set; } = OffsetList<CardCopies>.Empty;
 
 
-    public async Task<IActionResult> OnGetAsync(int id, CancellationToken cancel)
+    public async Task<IActionResult> OnGetAsync(int id, int? offset, CancellationToken cancel)
     {
-        var deck = await DeckForRequest(id)
-            .AsNoTrackingWithIdentityResolution()
-            .SingleOrDefaultAsync(cancel);
+        var userId = _userManager.GetUserId(User);
+
+        if (userId is null)
+        {
+            return Challenge();
+        }
+
+        var deck = await DeckRequestAsync.Invoke(_dbContext, id, userId, cancel);
 
         if (deck == default)
         {
             return NotFound();
         }
 
-        if (!deck.Wants.Any())
-        {
-            PostMessage = "There are no possible requests";
-            return RedirectToPage("Index");
-        }
-
-        if (deck.TradesTo.Any())
+        if (deck.SentTrades)
         {
             return RedirectToPage("Status", new { id });
         }
 
+        // offset paging used since the amount of pages is unlikely 
+        // to be that high
 
-        TargetsExist = await TakeTargets(deck).AnyAsync(cancel);
+        var requests = await RequestMatches(deck)
+            .PageBy(offset, _pageSize)
+            .ToOffsetListAsync(cancel);
+
+        if (!requests.Any() && offset is not null)
+        {
+            return RedirectToPage(new { offset = null as int? });
+        }
 
         Deck = deck;
-
-        Requests = deck.Wants
-            .GroupBy(w => w.Card.Name,
-                (_, wants) => new WantNameGroup(wants))
-            .ToList();
+        Requests = requests;
 
         return Page();
     }
 
 
-    private IQueryable<Deck> DeckForRequest(int deckId)
+    private static readonly Func<CardDbContext, int, string, CancellationToken, Task<DeckRequest?>> DeckRequestAsync
+
+        = EF.CompileAsyncQuery((CardDbContext dbContext, int deckId, string userId, CancellationToken _) =>
+            dbContext.Decks
+                .Where(d => d.Id == deckId
+                    && d.OwnerId == userId
+                    && d.Wants.Any())
+
+                .Select(d => new DeckRequest
+                {
+                    Id = d.Id,
+                    Name = d.Name,
+
+                    Owner = new OwnerPreview
+                    {
+                        Id = d.OwnerId,
+                        Name = d.Owner.Name
+                    },
+
+                    SentTrades = d.TradesTo.Any()
+                })
+                .SingleOrDefault());
+
+
+    private IQueryable<CardCopies> RequestMatches(DeckRequest deck)
     {
-        var userId = _userManager.GetUserId(User);
+        var deckWants = _dbContext.Wants
+            .Where(w => w.LocationId == deck.Id)
+            .OrderBy(w => w.Card.Name)
+                .ThenBy(w => w.Card.SetName)
+                .ThenBy(w => w.Id);
 
-        return _dbContext.Decks
-            .Where(d => d.Id == deckId && d.OwnerId == userId)
+        var possibleTargets = _dbContext.Users
+            .Where(u => u.Id != deck.Owner.Id && !u.ResetRequested)
+            .SelectMany(u => u.Decks)
+            .SelectMany(d => d.Cards, (_, a) => a.Card.Name)
+            .Distinct();
 
-            .Include(d => d.Cards // unbounded: keep eye on
-                .OrderBy(a => a.Card.Name))
-                .ThenInclude(a => a.Card)
+        var wantMatches = deckWants
+            // left join
+            .GroupJoin( possibleTargets,
+                w => w.Card.Name, name => name,
+                (Want, Names) => new { Want, Names })
+            .SelectMany(
+                wn => wn.Names.DefaultIfEmpty(),
+                (wn, Name) => new { wn.Want, HasMatch = Name != default });
 
-            .Include(d => d.Wants // unbounded: keep eye on
-                .OrderBy(w => w.Card.Name))
-                .ThenInclude(w => w.Card)
+        return wantMatches
+            .Where(wh => wh.HasMatch)
+            .Select(wh => new CardCopies
+            {
+                Id = wh.Want.CardId,
+                Name = wh.Want.Card.Name,
+                SetName = wh.Want.Card.SetName,
 
-            .Include(d => d.TradesTo
-                .OrderBy(t => t.Id)
-                .Take(1))
+                ManaCost = wh.Want.Card.ManaCost,
+                Rarity = wh.Want.Card.Rarity,
+                ImageUrl = wh.Want.Card.ImageUrl,
 
-            .AsSplitQuery();
+                Copies = wh.Want.Copies
+            });
     }
 
 
-    private IQueryable<Amount> TakeTargets(Deck deck)
+    private IQueryable<Trade> TradeRequests(DeckRequest deck)
     {
-        var takeNames = deck.Wants
-            .Select(w => w.Card.Name)
-            .Distinct()
-            .ToArray();
+        var wantNames = _dbContext.Wants
+            .Where(w => w.LocationId == deck.Id)
+            .GroupBy(w => w.Card.Name,
+                (Name, wants) =>
+                    new { Name, Copies = wants.Sum(w => w.Copies) });
 
-        return _dbContext.Amounts
-            .Where(a => a.Location is Deck
-                && (a.Location as Deck)!.OwnerId != deck.OwnerId
-                && !(a.Location as Deck)!.Owner.ResetRequested
-                && takeNames.Contains(a.Card.Name))
+        // TODO: prioritize requesting from exact card matches
 
-            .Include(a => a.Card)
-            .Include(a => a.Location);
+        return _dbContext.Users
+            .Where(u => u.Id != deck.Owner.Id && !u.ResetRequested)
+            .SelectMany(u => u.Decks)
+            .SelectMany(d => d.Cards)
+            .OrderBy(a => a.Id)
+
+            // intentionally leave wants unbounded by target since
+            // that cap will be handled later
+
+            .Join( wantNames,
+                a => a.Card.Name,
+                want => want.Name,
+                (target, want) => new Trade
+                {
+                    ToId = deck.Id,
+                    FromId = target.LocationId,
+                    Card = target.Card,
+                    Amount = want.Copies
+                });
     }
 
 
 
     public async Task<IActionResult> OnPostAsync(int id, CancellationToken cancel)
     {
-        var deck = await DeckForRequest(id).SingleOrDefaultAsync(cancel);
+        var userId = _userManager.GetUserId(User);
+
+        if (userId is null)
+        {
+            return Challenge();
+        }
+
+        var deck = await DeckRequestAsync.Invoke(_dbContext, id, userId, cancel);
 
         if (deck == default)
         {
             return NotFound();
         }
 
-        if (deck.TradesTo.Any())
+        if (deck.SentTrades)
         {
             PostMessage = "Request is already sent";
-            return RedirectToPage("Index");
+            return RedirectToPage("Status", new { id });
         }
 
-        if (!deck.Wants.Any())
-        {
-            PostMessage = "There are no specified requested cards";
-            return RedirectToPage("Index");
-        }
+        var trades = await TradeRequests(deck).ToListAsync(cancel);
 
-        var trades = await TradeMatches(deck).ToListAsync(cancel);
         if (!trades.Any())
         {
             PostMessage = "There are no possible decks to trade with";
             return RedirectToPage("Index");
         }
 
-        _dbContext.Trades.AddRange(trades);
+        _dbContext.Trades.AttachRange(trades);
 
         try
         {
             await _dbContext.SaveChangesAsync(cancel);
 
             PostMessage = "Request was successfully sent";
+
             return RedirectToPage("Status", new { id });
         }
         catch (DbUpdateException)
         {
             PostMessage = "Ran into issue while trying to send request";
+
             return RedirectToPage("Index");
         }
     }
 
-
-    private IAsyncEnumerable<Trade> TradeMatches(Deck deck)
-    {
-        // TODO: figure out how to query more on server
-        // TODO: prioritize requesting from exact card matches
-
-        var wants = deck.Wants.ToAsyncEnumerable();
-
-        var requestMatches = TakeTargets(deck)
-            .AsAsyncEnumerable()
-            .GroupJoinAwaitWithCancellation(
-                wants,
-                (target, _) => ValueTask.FromResult(target.Card.Name),
-                (want, _) => ValueTask.FromResult(want.Card.Name),
-
-                async (target, wantMatches, cancel) =>
-                    // intentionally leave wants unbounded by target since
-                    // that cap will be handled later
-                    (target, amount: await wantMatches.SumAsync(w => w.Copies, cancel)));
-
-        return requestMatches
-            .Select(ta => new Trade
-            {
-                Card = ta.target.Card,
-                To = deck,
-                From = (Deck) ta.target.Location,
-                Amount = ta.amount
-            });
-    }
 }

@@ -45,7 +45,6 @@ public record CardLink
 {
     public string Id { get; init; } = default!;
     public string Name { get; init; } = default!;
-
     public string SetName { get; init; } = default!;
     public string? ManaCost { get; init; } = default!;
 }
@@ -54,6 +53,13 @@ public record CardLink
 public sealed record StorageLink : CardLink
 {
     public int Copies { get; init; }
+}
+
+
+public sealed record DeleteLink : CardLink
+{
+    public bool HasDeckCopies { get; init; }
+    public int StorageCopies { get; init; }
 }
 
 
@@ -165,16 +171,17 @@ public sealed record DeckPreview
     public int Id { get; init; }
     public string Name { get; init; } = default!;
     public Color Color { get; init; }
-    public int CardTotal { get; init; }
 
-    public bool HasWants { get; init; }
+    public int AmountCopies { get; init; }
+    public int WantCopies { get; init; }
+
     public bool HasReturns { get; init; }
-    public bool HasTradesTo { get; init; }
+    public bool HasTrades { get; init; }
 
     public BuildState BuildState => this switch
     {
-        { HasTradesTo: true } => BuildState.Requesting,
-        { HasWants: true } or { HasReturns: true } => BuildState.Theorycraft,
+        { HasTrades: true } => BuildState.Requesting,
+        { WantCopies: >0 } or { HasReturns: true } => BuildState.Theorycraft,
         _ => BuildState.Built
     };
 }
@@ -196,11 +203,11 @@ public sealed record DeckDetails
     public string Name { get; init; } = default!;
     public Color Color { get; init; } = default!;
 
-    public int AmountTotal { get; init; }
-    public int WantTotal { get; init; }
-    public int GiveBackTotal { get; init; }
+    public int AmountCopies { get; init; }
+    public int WantCopies { get; init; }
+    public int ReturnCopies { get; init; }
 
-    public bool AnyTrades { get; init; }
+    public bool HasTrades { get; init; }
 }
 
 
@@ -223,6 +230,17 @@ public sealed record DeckTradePreview
 }
 
 
+public sealed record DeckRequest
+{
+    public int Id { get; init; }
+    public string Name { get; init; } = default!;
+
+    public OwnerPreview Owner { get; init; } = default!;
+
+    public bool SentTrades { get; init;  }
+}
+
+
 public sealed record SuggestionPreview
 {
     public int Id { get; init; }
@@ -236,7 +254,59 @@ public sealed record SuggestionPreview
     public string? Comment { get; init; }
 }
 
+
+public sealed record TradePreview
+{
+    public CardPreview Card { get; init; } = default!;
+    public DeckTarget Target { get; init; } = default!;
+    public int Copies { get; init; }
+}
+
+
+public sealed record DeckTarget
+{
+    public int Id { get; init; }
+    public string Name { get; init; } = default!;
+    public Color Color { get; init; }
+
+    public OwnerPreview Owner { get; init; } = default!;
+}
+
+
 #endregion
+
+
+
+public sealed record ExchangePreview
+{
+    public int Id { get; init; }
+    public string Name { get; init; } = default!;
+    public bool HasWants { get; init; }
+    public IEnumerable<CardCopies> GiveBacks { get; init; } = Enumerable.Empty<CardCopies>();
+
+    public bool Equals(ExchangePreview? exchange)
+    {
+        return exchange is not null
+            && exchange.Id == Id
+            && exchange.Name == Name
+            && exchange.GiveBacks.SequenceEqual(GiveBacks);
+    }
+
+    public override int GetHashCode()
+    {
+        return Id.GetHashCode()
+            ^ Name.GetHashCode()
+            ^ GiveBacks.Aggregate(0, (hash, g) => hash ^ g.GetHashCode());
+    }
+}
+
+
+public sealed record AmountPreview
+{
+    public int Id { get; init; }
+    public CardPreview Card { get; init; } = default!;
+    public int Copies { get; init; }
+}
 
 
 
@@ -249,6 +319,7 @@ public sealed class BoxPreview
 
     public BinPreview Bin { get; init; } = default!;
 
+    public string? Appearance { get; init; }
     public int Capacity { get; init; }
     public int TotalCards { get; init; }
 

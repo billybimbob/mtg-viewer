@@ -37,7 +37,7 @@ public class IndexModel : PageModel
     {
         var boxes = await BoxesForViewing()
             .SeekBy(seek, direction)
-            .UseSource<Box>()
+            .OrderBy<Box>()
             .Take(_pageSize)
             .ToSeekListAsync(cancel);
 
@@ -66,12 +66,14 @@ public class IndexModel : PageModel
             {
                 Id = b.Id,
                 Name = b.Name,
+
                 Bin = new BinPreview
                 {
                     Id = b.BinId,
                     Name = b.Bin.Name
                 },
 
+                Appearance = b.Appearance,
                 Capacity = b.Capacity,
                 TotalCards = b.Cards.Sum(a => a.Copies),
 

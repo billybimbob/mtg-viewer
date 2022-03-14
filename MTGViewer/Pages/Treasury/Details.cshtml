@@ -2,8 +2,6 @@
 @model Treasury.DetailsModel
 @{
     ViewData["Title"] = $"{Model.Box.Name} - Details";
-    ViewData["ReturnUrl"] = $"{Request.Path}{Request.QueryString}";
-    ViewData[nameof(Box.Cards)] = Model.NumberOfCards;
 }
 
 @using Microsoft.AspNetCore.Authorization
@@ -12,6 +10,7 @@
 
 @inject IAuthorizationService AuthorizationService
 @inject SignInManager<CardUser> SignInManager
+@inject SymbolFormatter MtgSymbols
 
 
 <h1> @Model.Box.Name - @Model.Box.Bin.Name </h1>
@@ -40,5 +39,50 @@
     </div>
 }
 
-<partial name="_BoxPartial", for="Box"/>
+<div class="table-responsive-md">
+    <table class="table">
+        <thead>
+            <tr>
+                <th scope="col"> @Html.DisplayNameForInnerType((Amount a) => a.Card) </th>
+                <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.ManaCost) </th>
+                <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.SetName) </th>
+                <th scope="col"> @Html.DisplayNameForInnerType((Amount a) => a.Copies) </th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var amount in Model.Cards)
+            {
+                var returnUrl = $"{Request.Path}{Request.QueryString}";
+                <tr>
+                    <td>
+                        <component type="typeof(HoverCard)" render-mode="Static"
+                            param-Preview="amount.Card" param-ReturnUrl="returnUrl" />
+                    </td>
+                    <td> 
+                        <div class="ms-group">
+                            @MtgSymbols.Format(amount.Card.ManaCost).ToHtmlString() 
+                        </div>
+                    </td>
+                    <td> @amount.Card.SetName </td>
+                    <td> @amount.Copies </td>
+                </tr>
+            }
+            <tr>
+                <th> Total </th>
+                <td> -- </td>
+                <td> -- </td>
+                <td class="font-weight-bold">
+                    @Model.Box.TotalCards / @Model.Box.Capacity
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(Model.Box.Appearance))
+{
+    <h4> @Html.DisplayNameFor(m => m.Box.Appearance) </h4>
+    <p> @Html.DisplayFor(m => m.Box.Appearance) </p>
+}
+
 <partial name="_SeekPagingPartial" for="Seek"/>

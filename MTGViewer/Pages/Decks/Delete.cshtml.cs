@@ -66,7 +66,7 @@ public class DeleteModel : PageModel
             return NotFound();
         }
 
-        var cards = await DeckCardsAsync
+        var cards = await DeckCards
             .Invoke(_dbContext, id, _pageSize)
             .ToListAsync(cancel);
 
@@ -94,16 +94,16 @@ public class DeleteModel : PageModel
                         Name = d.Owner.Name
                     },
 
-                    AmountTotal = d.Cards.Sum(a => a.Copies),
-                    WantTotal = d.Wants.Sum(w => w.Copies),
-                    GiveBackTotal = d.GiveBacks.Sum(g => g.Copies),
+                    AmountCopies = d.Cards.Sum(a => a.Copies),
+                    WantCopies = d.Wants.Sum(w => w.Copies),
+                    ReturnCopies = d.GiveBacks.Sum(g => g.Copies),
 
-                    AnyTrades = d.TradesTo.Any() || d.TradesFrom.Any()
+                    HasTrades = d.TradesTo.Any() || d.TradesFrom.Any()
                 })
                 .SingleOrDefault());
 
 
-    private static readonly Func<CardDbContext, int, int, IAsyncEnumerable<DeckLink>> DeckCardsAsync
+    private static readonly Func<CardDbContext, int, int, IAsyncEnumerable<DeckLink>> DeckCards
         = EF.CompileAsyncQuery((CardDbContext dbContext, int id, int limit) =>
 
             dbContext.Cards

@@ -47,7 +47,7 @@ internal sealed class EntityOriginSeek<TEntity, TRefKey, TValueKey> : ISeekable<
     private FindByIdVisitor FindById => _findById ??= new(Root);
 
 
-    public ISeekable<TEntity> UseSource<TSource>()
+    public ISeekable<TEntity> OrderBy<TSource>()
         where TSource : class
     {
         if (typeof(TSource) == typeof(TEntity))
@@ -60,11 +60,11 @@ internal sealed class EntityOriginSeek<TEntity, TRefKey, TValueKey> : ISeekable<
     }
 
 
-    public ISeekable<TEntity> UseSourceOrigin()
-    {
-        return new SourceOriginSeek<TEntity, TEntity, TRefKey, TValueKey>(
-            _query, _direction, _take, _referenceKey, _valueKey);
-    }
+    // public ISeekable<TEntity> UseSourceOrigin()
+    // {
+    //     return new SourceOriginSeek<TEntity, TEntity, TRefKey, TValueKey>(
+    //         _query, _direction, _take, _referenceKey, _valueKey);
+    // }
 
 
     public ISeekable<TEntity> Take(int count)
@@ -153,152 +153,6 @@ internal sealed class EntityOriginSeek<TEntity, TRefKey, TValueKey> : ISeekable<
 
 
 
-internal sealed class SourceOriginSeek<TSource, TResult, TRefKey, TValueKey> : ISeekable<TResult>
-    where TSource : class
-    where TResult : class
-    where TRefKey : class
-    where TValueKey : struct
-{   
-    private readonly IQueryable<TResult> _query;
-    private readonly SeekDirection _direction;
-    private readonly int? _take;
-
-    private readonly TRefKey? _referenceKey;
-    private readonly TValueKey? _valueKey;
-
-    internal SourceOriginSeek(
-        IQueryable<TResult> query,
-        SeekDirection direction,
-        int? take,
-        TRefKey? refKey,
-        TValueKey? valueKey)
-    {
-        ArgumentNullException.ThrowIfNull(query);
-
-        _query = query;
-        _take = take;
-        _direction = direction;
-
-        _referenceKey = refKey;
-        _valueKey = valueKey;
-    }
-
-
-    private QueryRootExpression? _root;
-    private QueryRootExpression Root =>
-        _root ??= SeekHelpers.GetRoot<TSource>(_query.Expression);
-
-
-    private FindByIdVisitor? _findById;
-    private FindByIdVisitor FindById => _findById ??= new(Root);
-
-
-    public ISeekable<TResult> UseSource<TNewSource>() where TNewSource : class
-    {
-        if (typeof(TNewSource) == typeof(TSource))
-        {
-            return this;
-        }
-
-        return new SourceOriginSeek<TNewSource, TResult, TRefKey, TValueKey>(
-            _query, _direction, _take, _referenceKey, _valueKey);
-    }
-
-
-    public ISeekable<TResult> UseSourceOrigin()
-    {
-        return this;
-    }
-
-
-    public ISeekable<TResult> Take(int count)
-    {
-        return new SourceOriginSeek<TSource, TResult, TRefKey, TValueKey>(
-            _query, _direction, count, _referenceKey, _valueKey);
-    }
-
-
-    public async ValueTask<SeekList<TResult>> ToSeekListAsync(CancellationToken cancel = default)
-    {
-        var origin = await GetOriginAsync(cancel).ConfigureAwait(false);
-
-        return await SeekQuery(origin)
-            .ToSeekListAsync(cancel)
-            .ConfigureAwait(false);
-    }
-
-
-    private IQueryable<TResult> SeekQuery(TSource? origin)
-    {
-        var query = _query
-            .WithSelect<TSource, TResult>()
-            .SeekOrigin(origin, _direction);
-
-        return _take is int count
-            ? query.Take(count)
-            : query;
-    }
-    
-
-    private async ValueTask<TSource?> GetOriginAsync(CancellationToken cancel)
-    {
-        if (_referenceKey is TSource keyOrigin)
-        {
-            return keyOrigin;
-        }
-
-        if (_valueKey is TValueKey valueKey)
-        {
-            return await GetOriginQuery(valueKey)
-                .SingleOrDefaultAsync(cancel)
-                .ConfigureAwait(false);
-        }
-
-        if (_referenceKey is TRefKey refKey)
-        {
-            return await GetOriginQuery(refKey)
-                .SingleOrDefaultAsync(cancel)
-                .ConfigureAwait(false);
-        }
-
-        return null;
-    }
-
-
-    private IQueryable<TSource> GetOriginQuery<TKey>(TKey key)
-    {
-        var entityParameter = Expression.Parameter(
-            typeof(TSource), typeof(TSource).Name[0].ToString().ToLower());
-
-        var getKey = SeekHelpers.GetKeyInfo<TKey>(Root);
-
-        var propertyId = Expression.Property(entityParameter, getKey);
-
-        var orderId = Expression.Lambda<Func<TSource, TKey>>(
-            propertyId,
-            entityParameter);
-
-        var equalId = Expression.Lambda<Func<TSource, bool>>(
-            Expression.Equal(propertyId, Expression.Constant(key)),
-            entityParameter);
-
-        var originQuery = _query.Provider
-            .CreateQuery<TSource>(FindById.Visit(_query.Expression))
-            .Where(equalId)
-            .OrderBy(orderId)
-            .AsNoTracking();
-
-        foreach (var include in FindById.Include)
-        {
-            originQuery = originQuery.Include(include);
-        }
-
-        return originQuery;
-    }
-}
-
-
-
 internal sealed class ResultOriginSeek<TSource, TResult, TRefKey, TValueKey> : ISeekable<TResult>
     where TSource : class
     where TResult : class
@@ -344,7 +198,7 @@ internal sealed class ResultOriginSeek<TSource, TResult, TRefKey, TValueKey> : I
 
 
 
-    public ISeekable<TResult> UseSource<TNewSource>()
+    public ISeekable<TResult> OrderBy<TNewSource>()
         where TNewSource : class
     {
         if (typeof(TNewSource) == typeof(TSource))
@@ -357,11 +211,11 @@ internal sealed class ResultOriginSeek<TSource, TResult, TRefKey, TValueKey> : I
     }
 
 
-    public ISeekable<TResult> UseSourceOrigin()
-    {
-        return new SourceOriginSeek<TSource, TResult, TRefKey, TValueKey>(
-            _query, _direction, _take, _referenceKey, _valueKey);
-    }
+    // public ISeekable<TResult> UseSourceOrigin()
+    // {
+    //     return new SourceOriginSeek<TSource, TResult, TRefKey, TValueKey>(
+    //         _query, _direction, _take, _referenceKey, _valueKey);
+    // }
 
 
     public ISeekable<TResult> Take(int count)
@@ -443,6 +297,152 @@ internal sealed class ResultOriginSeek<TSource, TResult, TRefKey, TValueKey> : I
     }
 
 }
+
+
+
+// internal sealed class SourceOriginSeek<TSource, TResult, TRefKey, TValueKey> : ISeekable<TResult>
+//     where TSource : class
+//     where TResult : class
+//     where TRefKey : class
+//     where TValueKey : struct
+// {   
+//     private readonly IQueryable<TResult> _query;
+//     private readonly SeekDirection _direction;
+//     private readonly int? _take;
+
+//     private readonly TRefKey? _referenceKey;
+//     private readonly TValueKey? _valueKey;
+
+//     internal SourceOriginSeek(
+//         IQueryable<TResult> query,
+//         SeekDirection direction,
+//         int? take,
+//         TRefKey? refKey,
+//         TValueKey? valueKey)
+//     {
+//         ArgumentNullException.ThrowIfNull(query);
+
+//         _query = query;
+//         _take = take;
+//         _direction = direction;
+
+//         _referenceKey = refKey;
+//         _valueKey = valueKey;
+//     }
+
+
+//     private QueryRootExpression? _root;
+//     private QueryRootExpression Root =>
+//         _root ??= SeekHelpers.GetRoot<TSource>(_query.Expression);
+
+
+//     private FindByIdVisitor? _findById;
+//     private FindByIdVisitor FindById => _findById ??= new(Root);
+
+
+//     public ISeekable<TResult> OrderBy<TNewSource>() where TNewSource : class
+//     {
+//         if (typeof(TNewSource) == typeof(TSource))
+//         {
+//             return this;
+//         }
+
+//         return new SourceOriginSeek<TNewSource, TResult, TRefKey, TValueKey>(
+//             _query, _direction, _take, _referenceKey, _valueKey);
+//     }
+
+
+//     public ISeekable<TResult> UseSourceOrigin()
+//     {
+//         return this;
+//     }
+
+
+//     public ISeekable<TResult> Take(int count)
+//     {
+//         return new SourceOriginSeek<TSource, TResult, TRefKey, TValueKey>(
+//             _query, _direction, count, _referenceKey, _valueKey);
+//     }
+
+
+//     public async ValueTask<SeekList<TResult>> ToSeekListAsync(CancellationToken cancel = default)
+//     {
+//         var origin = await GetOriginAsync(cancel).ConfigureAwait(false);
+
+//         return await SeekQuery(origin)
+//             .ToSeekListAsync(cancel)
+//             .ConfigureAwait(false);
+//     }
+
+
+//     private IQueryable<TResult> SeekQuery(TSource? origin)
+//     {
+//         var query = _query
+//             .WithSelect<TSource, TResult>()
+//             .SeekOrigin(origin, _direction);
+
+//         return _take is int count
+//             ? query.Take(count)
+//             : query;
+//     }
+    
+
+//     private async ValueTask<TSource?> GetOriginAsync(CancellationToken cancel)
+//     {
+//         if (_referenceKey is TSource keyOrigin)
+//         {
+//             return keyOrigin;
+//         }
+
+//         if (_valueKey is TValueKey valueKey)
+//         {
+//             return await GetOriginQuery(valueKey)
+//                 .SingleOrDefaultAsync(cancel)
+//                 .ConfigureAwait(false);
+//         }
+
+//         if (_referenceKey is TRefKey refKey)
+//         {
+//             return await GetOriginQuery(refKey)
+//                 .SingleOrDefaultAsync(cancel)
+//                 .ConfigureAwait(false);
+//         }
+
+//         return null;
+//     }
+
+
+//     private IQueryable<TSource> GetOriginQuery<TKey>(TKey key)
+//     {
+//         var entityParameter = Expression.Parameter(
+//             typeof(TSource), typeof(TSource).Name[0].ToString().ToLower());
+
+//         var getKey = SeekHelpers.GetKeyInfo<TKey>(Root);
+
+//         var propertyId = Expression.Property(entityParameter, getKey);
+
+//         var orderId = Expression.Lambda<Func<TSource, TKey>>(
+//             propertyId,
+//             entityParameter);
+
+//         var equalId = Expression.Lambda<Func<TSource, bool>>(
+//             Expression.Equal(propertyId, Expression.Constant(key)),
+//             entityParameter);
+
+//         var originQuery = _query.Provider
+//             .CreateQuery<TSource>(FindById.Visit(_query.Expression))
+//             .Where(equalId)
+//             .OrderBy(orderId)
+//             .AsNoTracking();
+
+//         foreach (var include in FindById.Include)
+//         {
+//             originQuery = originQuery.Include(include);
+//         }
+
+//         return originQuery;
+//     }
+// }
 
 
 

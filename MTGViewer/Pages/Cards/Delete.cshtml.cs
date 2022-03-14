@@ -43,7 +43,7 @@ public class DeleteModel : PageModel
     [TempData]
     public string? PostMessage { get; set; }
 
-    public Card Card { get; private set; } = default!;
+    public DeleteLink Card { get; private set; } = default!;
 
     public string? ReturnUrl { get; private set; }
 
@@ -58,9 +58,7 @@ public class DeleteModel : PageModel
             return NotFound();
         }
 
-        var card = await CardForDelete(id)
-            .AsNoTrackingWithIdentityResolution()
-            .SingleOrDefaultAsync(cancel);
+        var card = await DeleteLinkAsync.Invoke(_dbContext, id, cancel);
 
         if (card == default)
         {
@@ -78,15 +76,56 @@ public class DeleteModel : PageModel
     }
 
 
-    private IQueryable<Card> CardForDelete(string cardId)
+    private static readonly Func<CardDbContext, string, CancellationToken, Task<DeleteLink?>> DeleteLinkAsync
+        = EF.CompileAsyncQuery((CardDbContext dbContext, string cardId, CancellationToken _) =>
+            dbContext.Cards
+                .Where(c => c.Id == cardId)
+                .Select(c => new DeleteLink
+                {
+                    Id = c.Id,
+                    Name = c.Name,
+                    SetName = c.SetName,
+                    ManaCost = c.ManaCost,
+
+                    HasDeckCopies = c.Amounts
+                        .Any(a => a.Location is Deck || a.Location is Unclaimed),
+
+                    StorageCopies = c.Amounts
+                        .Where(a => a.Location is Box || a.Location is Excess)
+                        .Sum(a => a.Copies)
+                })
+                .SingleOrDefault());
+
+
+    private static readonly Func<CardDbContext, string, CancellationToken, Task<Card?>> CardDeleteAsync
+        = EF.CompileAsyncQuery((CardDbContext dbContext, string cardId, CancellationToken _) =>
+            dbContext.Cards
+                .Include(c => c.Flip)
+                .Include(c => c.Amounts)
+                    .ThenInclude(a => a.Location)
+
+                .OrderBy(c => c.Id)
+                .SingleOrDefault(c => c.Id == cardId));
+
+
+    private static DeleteLink CardAsDeleteLink(Card card)
     {
-        return _dbContext.Cards
-            .Where(c => c.Id == cardId)
-            .Include(c => c.Amounts
-                .OrderBy(a => a.Copies))
-                .ThenInclude(a => a.Location)
-            .OrderBy(c => c.Id);
+        return new DeleteLink
+        {
+            Id = card.Id,
+            Name = card.Name,
+            SetName = card.SetName,
+            ManaCost = card.ManaCost,
+
+            HasDeckCopies = card.Amounts
+                .Any(a => a.Location is Deck || a.Location is Unclaimed),
+
+            StorageCopies = card.Amounts
+                .Where(a => a.Location is Box || a.Location is Excess)
+                .Sum(a => a.Copies)
+        };
     }
+
 
 
     public async Task<IActionResult> OnPostAsync(string id, string? returnUrl, CancellationToken cancel)
@@ -96,9 +135,7 @@ public class DeleteModel : PageModel
             return NotFound();
         }
 
-        var card = await CardForDelete(id)
-            .Include(c => c.Flip)
-            .SingleOrDefaultAsync(cancel);
+        var card = await CardDeleteAsync.Invoke(_dbContext, id, cancel);
 
         if (card is null)
         {
@@ -114,7 +151,7 @@ public class DeleteModel : PageModel
             || maxCopies == 0 
             || maxCopies < Input.RemoveCopies)
         {
-            Card = card;
+            Card = CardAsDeleteLink(card);
 
             ModelState.AddModelError(
                 $"{nameof(InputModel)}.{nameof(InputModel.RemoveCopies)}",

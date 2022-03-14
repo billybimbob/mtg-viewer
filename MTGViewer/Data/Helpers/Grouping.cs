@@ -6,9 +6,9 @@ using System.Linq;
 namespace MTGViewer.Data;
 
 /// <summary>Group of amounts with the same card name</summary>
-public class CardNameGroup : IEnumerable<Amount>
+public class AmountNameGroup : IEnumerable<Amount>
 {
-    public CardNameGroup(IEnumerable<Amount> amounts)
+    public AmountNameGroup(IEnumerable<Amount> amounts)
     {
         _amounts = new(amounts);
 
@@ -28,7 +28,7 @@ public class CardNameGroup : IEnumerable<Amount>
         }
     }
 
-    public CardNameGroup(params Amount[] amounts)
+    public AmountNameGroup(params Amount[] amounts)
         : this(amounts.AsEnumerable())
     { }
 

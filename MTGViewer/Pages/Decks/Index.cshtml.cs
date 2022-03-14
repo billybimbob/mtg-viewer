@@ -52,18 +52,18 @@ public class IndexModel : PageModel
         var userId = _userManager.GetUserId(User);
         if (userId is null)
         {
-            return NotFound();
+            return Challenge();
         }
 
-        var userName = await UserNameAsync.Invoke(_dbContext, userId, cancel);
+        var userName = _userManager.GetDisplayName(User);
         if (userName is null)
         {
             return NotFound();
         }
 
-        var decks = await DecksForIndex(userId)
+        var decks = await DeckPreviews(userId)
             .SeekBy(seek, direction)
-            .UseSource<Deck>()
+            .OrderBy<Deck>()
             .Take(_pageSize)
             .ToSeekListAsync(cancel);
 
@@ -77,7 +77,7 @@ public class IndexModel : PageModel
     }
 
 
-    private IQueryable<DeckPreview> DecksForIndex(string userId)
+    private IQueryable<DeckPreview> DeckPreviews(string userId)
     {
         return _dbContext.Decks
             .Where(d => d.OwnerId == userId)
@@ -90,21 +90,14 @@ public class IndexModel : PageModel
                 Id = d.Id,
                 Name = d.Name,
                 Color = d.Color,
-                CardTotal = d.Cards.Sum(a => a.Copies),
 
-                HasWants = d.Wants.Any(),
+                AmountCopies = d.Cards.Sum(a => a.Copies),
+                WantCopies = d.Wants.Sum(w => w.Copies),
+
                 HasReturns = d.GiveBacks.Any(),
-                HasTradesTo = d.TradesTo.Any(),
+                HasTrades = d.TradesTo.Any(),
             });
     }
-
-
-    private static readonly Func<CardDbContext, string, CancellationToken, Task<string?>> UserNameAsync
-        = EF.CompileAsyncQuery((CardDbContext dbContext, string userId, CancellationToken _) =>
-            dbContext.Users
-                .Where(u => u.Id == userId)
-                .Select(u => u.Name)
-                .SingleOrDefault());
 
 
     private static readonly Func<CardDbContext, CancellationToken, Task<bool>> HasUnclaimedAsync

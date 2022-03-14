@@ -55,14 +55,10 @@ public class IndexModel : PageModel
         var userId = _userManager.GetUserId(User);
         if (userId is null)
         {
-            return NotFound();
+            return Challenge();
         }
 
-        var userName = await _dbContext.Users
-            .Where(u => u.Id == userId)
-            .Select(u => u.Name)
-            .SingleOrDefaultAsync(cancel);
-
+        var userName = _userManager.GetDisplayName(User);
         if (userName is null)
         {
             return NotFound();
@@ -70,9 +66,9 @@ public class IndexModel : PageModel
 
         UserName = userName;
 
-        TradeDecks = await DecksForIndex(userId)
+        TradeDecks = await DeckTradePreviews(userId)
             .SeekBy(seek, direction)
-            .UseSource<Deck>()
+            .OrderBy<Deck>()
             .Take(_pageSize)
             .ToSeekListAsync(cancel);
 
@@ -82,7 +78,7 @@ public class IndexModel : PageModel
     }
 
 
-    public IQueryable<DeckTradePreview> DecksForIndex(string userId)
+    public IQueryable<DeckTradePreview> DeckTradePreviews(string userId)
     {
         return _dbContext.Decks
             .Where(d => d.OwnerId == userId

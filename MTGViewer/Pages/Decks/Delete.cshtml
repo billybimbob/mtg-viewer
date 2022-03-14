@@ -35,9 +35,9 @@
                 <th scope="col"> @Html.DisplayNameForInnerType((Amount ca) => ca.Card) </th>
                 <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.ManaCost) </th>
                 <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.SetName) </th>
-                <th scope="col"> Cards In Deck </th>
-                <th scope="col"> Wanted Cards </th>
-                <th scope="col"> Return Requests </th>
+                <th scope="col"> Held </th>
+                <th scope="col"> Wanted </th>
+                <th scope="col"> Returning </th>
             </tr>
         </thead>
 
@@ -61,9 +61,9 @@
                     <td>@card.Returning</td>
                 </tr>
             }
-                @if (Model.Deck.AmountTotal > Model.Cards.Sum(c => c.Held)
-                    || Model.Deck.WantTotal > Model.Cards.Sum(c => c.Want)
-                    || Model.Deck.GiveBackTotal > Model.Cards.Sum(c => c.Returning))
+                @if (Model.Deck.AmountCopies > Model.Cards.Sum(c => c.Held)
+                    || Model.Deck.WantCopies > Model.Cards.Sum(c => c.Want)
+                    || Model.Deck.ReturnCopies > Model.Cards.Sum(c => c.Returning))
                 {
                     <tr>
                         <td> ... </td>
@@ -78,16 +78,16 @@
                     <th> Total </th>
                     <td> -- </td>
                     <td> -- </td>
-                    <td> <strong>@Model.Deck.AmountTotal</strong> </td>
-                    <td> <strong>@Model.Deck.WantTotal</strong> </td>
-                    <td> <strong>@Model.Deck.GiveBackTotal</strong> </td>
+                    <td> <strong>@Model.Deck.AmountCopies</strong> </td>
+                    <td> <strong>@Model.Deck.WantCopies</strong> </td>
+                    <td> <strong>@Model.Deck.ReturnCopies</strong> </td>
                 </tr>
         </tbody>
     </table>
 </div>
 
 
-@if (Model.Deck.AnyTrades)
+@if (Model.Deck.HasTrades)
 {
     <div class="mt-2 alert alert-danger" role="alert">
         <h5 class="alert-heading">Active Trades</h5>

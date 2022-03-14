@@ -4,11 +4,14 @@
     ViewData["Title"] = $"{Model.Deck.Name} - Exchange";
 }
 @inject SymbolFormatter MtgSymbols
+@using MTGViewer.Data.Internal
+
+@{ bool hasPendings = Model.Deck.GiveBacks.Any() || Model.Matches.Any(); }
 
 
 <h1>@Model.Deck.Name Treasury Exchange</h1>
 
-@if (Model.HasPendings)
+@if (hasPendings)
 {
     <section class="alert alert-secondary" role="alert">
         <h5 class="alert-heading">Proceed Below to Exchange with the Treasury</h5>
@@ -27,7 +30,7 @@
         </div>
     </section>
 }
-else if (Model.Deck.WantTotal > 0)
+else if (Model.Deck.HasWants)
 {
     <section class="alert alert-secondary" role="alert">
         <h5 class="alert-heading">The Treasury Lacks Wanted Cards</h5>
@@ -58,66 +61,105 @@ else
     </section>
 }
 
-<div class="table-responsive-md">
-    <table class="table mt-2">
-        <thead>
-            <tr>
-                <th scope="col"> @Html.DisplayNameForInnerType((Amount ca) => ca.Card) </th>
-                <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.ManaCost) </th>
-                <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.SetName) </th>
-                <th scope="col"> Current Cards </th>
-                <th scope="col"> Wanted Cards </th>
-                <th scope="col"> Returning Cards </th>
-            </tr>
-        </thead>
 
-        <tbody>
-            @foreach (var card in Model.Cards)
-            {
-                <tr>
-                    <td>
-                        <a asp-page="/Cards/Details" asp-route-id="@card.Id">
-                            @card.Name </a>
-                    </td>
-                    <td>
-                        <div class="ms-group">
-                            @MtgSymbols.Format(card.ManaCost).ToHtmlString()
-                        </div>
-                    </td>
-                    <td>@card.SetName</td>
+<h3> Wanted Card Matches </h3>
 
-                    <td>@card.Held</td>
-                    <td>@card.Want</td>
-                    <td>@card.Returning</td>
-                </tr>
-            }
-                @if (Model.Deck.AmountTotal > Model.Cards.Sum(c => c.Held)
-                    || Model.Deck.WantTotal > Model.Cards.Sum(c => c.Want)
-                    || Model.Deck.GiveBackTotal > Model.Cards.Sum(c => c.Returning))
-                {
+<section class="row">
+    <div class="col">
+        <div class="table-responsive-md">
+            <table class="table mt-2">
+                <thead>
                     <tr>
-                        <td> ... </td>
-                        <td> ... </td>
-                        <td> ... </td>
-                        <td> ... </td>
-                        <td> ... </td>
-                        <td> ... </td>
+                        <th scope="col"> @Html.DisplayNameForInnerType((Want w) => w.Card) </th>
+                        <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.ManaCost) </th>
+                        <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.SetName) </th>
+                        <th scope="col"> @Html.DisplayNameForInnerType((Want w) => w.Copies) </th>
                     </tr>
-                }
-                <tr>
-                    <th> Total </th>
-                    <td> -- </td>
-                    <td> -- </td>
-                    <td> <strong>@Model.Deck.AmountTotal</strong> </td>
-                    <td> <strong>@Model.Deck.WantTotal</strong> </td>
-                    <td> <strong>@Model.Deck.GiveBackTotal</strong> </td>
-                </tr>
-        </tbody>
-    </table>
-</div>
+                </thead>
+
+                <tbody>
+                    @if (!Model.Matches.Any())
+                    {
+                        <tr>
+                            <td> -- </td>
+                            <td> -- </td>
+                            <td> -- </td>
+                            <td> -- </td>
+                        </tr>
+                    }
+                    @foreach (var card in Model.Matches)
+                    {
+                        <tr>
+                            <td>
+                                <component type="@typeof(HoverCard)" render-mode="Static"
+                                    param-Preview="@card" />
+                            </td>
+                            <td>
+                                <div class="ms-group">
+                                    @MtgSymbols.Format(card.ManaCost).ToHtmlString()
+                                </div>
+                            </td>
+                            <td> @card.SetName </td>
+                            <td> @card.Copies </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+
+<partial name="_OffsetPagingPartial" for="Matches.Offset"/>
 
 
-@if (Model.HasPendings)
+<h3> Returning Cards </h3>
+
+<section class="row">
+    <div class="col">
+        <div class="table-responsive-md">
+            <table class="table mt-2">
+                <thead>
+                    <tr>
+                        <th scope="col"> @Html.DisplayNameForInnerType((GiveBack g) => g.Card) </th>
+                        <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.ManaCost) </th>
+                        <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.SetName) </th>
+                        <th scope="col"> @Html.DisplayNameForInnerType((GiveBack g) => g.Copies) </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!Model.Deck.GiveBacks.Any())
+                    {
+                        <tr>
+                            <td> -- </td>
+                            <td> -- </td>
+                            <td> -- </td>
+                            <td> -- </td>
+                        </tr>
+                    }
+                    @foreach (var card in Model.Deck.GiveBacks)
+                    {
+                        <tr>
+                            <td>
+                                <component type="@typeof(HoverCard)" render-mode="Static"
+                                    param-Preview="@card" />
+                            </td>
+                            <td>
+                                <div class="ms-group">
+                                    @MtgSymbols.Format(card.ManaCost).ToHtmlString()
+                                </div>
+                            </td>
+                            <td>@card.SetName</td>
+                            <td>@card.Copies</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+
+
+@if (hasPendings)
 {
     <div class="mt-2 alert alert-danger" role="alert">
         <h5 class="alert-heading">Treasury Confirmation</h5>
