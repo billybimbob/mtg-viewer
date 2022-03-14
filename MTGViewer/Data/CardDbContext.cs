@@ -79,7 +79,7 @@ internal class LocationConfiguration : IEntityTypeConfiguration<Location>
             .HasDiscriminator(l => l.Type)
                 .HasValue<Location>(LocationType.Invalid)
 
-                .HasValue<Owned>(LocationType.Invalid)
+                .HasValue<TheoryCraft>(LocationType.Invalid)
                 .HasValue<Deck>(LocationType.Deck)
                 .HasValue<Unclaimed>(LocationType.Unclaimed)
 
@@ -95,13 +95,13 @@ internal class LocationConfiguration : IEntityTypeConfiguration<Location>
 }
 
 
-internal class OwnedConfiguration : IEntityTypeConfiguration<Owned>
+internal class OwnedConfiguration : IEntityTypeConfiguration<TheoryCraft>
 {
-    public void Configure(EntityTypeBuilder<Owned> builder)
+    public void Configure(EntityTypeBuilder<TheoryCraft> builder)
     {
         builder
             .HasMany(o => o.Wants)
-            .WithOne(w => (Owned)w.Location)
+            .WithOne(w => (TheoryCraft)w.Location)
             .OnDelete(DeleteBehavior.Cascade);
     }
 }
@@ -146,7 +146,7 @@ internal class QuantityConfiguration : IEntityTypeConfiguration<Quantity>
     public void Configure(EntityTypeBuilder<Quantity> builder)
     {
         builder
-            .HasDiscriminator(cq => cq.Type)
+            .HasDiscriminator(q => q.Type)
             .HasValue<Quantity>(QuantityType.Invalid)
             .HasValue<Amount>(QuantityType.Amount)
             .HasValue<Want>(QuantityType.Want)

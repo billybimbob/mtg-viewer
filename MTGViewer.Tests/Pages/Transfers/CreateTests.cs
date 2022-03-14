@@ -13,22 +13,22 @@ using MTGViewer.Tests.Utils;
 namespace MTGViewer.Tests.Pages.Transfers;
 
 
-public class RequestTests : IAsyncLifetime
+public class CreateTests : IAsyncLifetime
 {
-    private readonly RequestModel _requestModel;
+    private readonly CreateModel _createModel;
     private readonly CardDbContext _dbContext;
     private readonly PageContextFactory _pageFactory;
 
     private readonly TestDataGenerator _testGen;
     private Deck _requestDeck = default!;
 
-    public RequestTests(
-        RequestModel requestModel,
+    public CreateTests(
+        CreateModel createModel,
         CardDbContext dbContext,
         PageContextFactory pageFactory,
         TestDataGenerator testGen)
     {
-        _requestModel = requestModel;
+        _createModel = createModel;
         _dbContext = dbContext;
         _pageFactory = pageFactory;
         _testGen = testGen;
@@ -55,13 +55,13 @@ public class RequestTests : IAsyncLifetime
     {
         // Arrange
         var wrongUser = await _dbContext.Users.FirstAsync(u => u.Id != _requestDeck.OwnerId);
-        await _pageFactory.AddModelContextAsync(_requestModel, wrongUser.Id);
+        await _pageFactory.AddModelContextAsync(_createModel, wrongUser.Id);
 
         var allTradeIds = AllTrades.Select(t => t.Id);
 
         // Act
         var tradesBefore = await allTradeIds.ToListAsync();
-        var result = await _requestModel.OnPostAsync(_requestDeck.Id, default);
+        var result = await _createModel.OnPostAsync(_requestDeck.Id, default);
         var tradesAfter = await allTradeIds.ToListAsync();
 
         // // Assert
@@ -74,7 +74,7 @@ public class RequestTests : IAsyncLifetime
     public async Task OnPost_InvalidDeck_NoChange()
     {
         // Arrange
-        await _pageFactory.AddModelContextAsync(_requestModel, _requestDeck.OwnerId);
+        await _pageFactory.AddModelContextAsync(_createModel, _requestDeck.OwnerId);
 
         var allTradeIds = AllTrades.Select(t => t.Id);
         var wrongDeck = await _dbContext.Decks
@@ -83,7 +83,7 @@ public class RequestTests : IAsyncLifetime
 
         // Act
         var tradesBefore = await allTradeIds.ToListAsync();
-        var result = await _requestModel.OnPostAsync(wrongDeck.Id, default);
+        var result = await _createModel.OnPostAsync(wrongDeck.Id, default);
         var tradesAfter = await allTradeIds.ToListAsync();
 
         // // Assert
@@ -96,12 +96,12 @@ public class RequestTests : IAsyncLifetime
     public async Task OnPost_ValidDeck_Requests()
     {
         // Arrange
-        await _pageFactory.AddModelContextAsync(_requestModel, _requestDeck.OwnerId);
+        await _pageFactory.AddModelContextAsync(_createModel, _requestDeck.OwnerId);
 
         // Act
         var tradesBefore = await AllTrades.Select(t => t.Id).ToListAsync();
 
-        var result = await _requestModel.OnPostAsync(_requestDeck.Id, default);
+        var result = await _createModel.OnPostAsync(_requestDeck.Id, default);
         var tradesAfter = await AllTrades.ToListAsync();
 
         var addedTrades = tradesAfter.ExceptBy(tradesBefore, t => t.Id);
@@ -119,7 +119,7 @@ public class RequestTests : IAsyncLifetime
     public async Task OnPost_MultipleSources_RequestsAll()
     {
         // Arrange
-        await _pageFactory.AddModelContextAsync(_requestModel, _requestDeck.OwnerId);
+        await _pageFactory.AddModelContextAsync(_createModel, _requestDeck.OwnerId);
 
         var requestCard = await _dbContext.Wants
             .Where(w => w.LocationId == _requestDeck.Id)
@@ -157,7 +157,7 @@ public class RequestTests : IAsyncLifetime
         // Act
         var tradesBefore = await AllTrades.Select(t => t.Id).ToListAsync();
 
-        var result = await _requestModel.OnPostAsync(_requestDeck.Id, default);
+        var result = await _createModel.OnPostAsync(_requestDeck.Id, default);
         var tradesAfter = await AllTrades.ToListAsync();
 
         var addedTrades = tradesAfter.ExceptBy(tradesBefore, t => t.Id);

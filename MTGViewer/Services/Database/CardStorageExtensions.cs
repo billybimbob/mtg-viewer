@@ -24,7 +24,7 @@ public static class CardStorageExtensions
                     .UseEnumCheckConstraints()
 
                     .UseTriggers(triggers => triggers
-                        .AddTrigger<DeckColorUpdate>()
+                        .AddTrigger<ColorUpdate>()
                         .AddTrigger<ImmutableCard>()));
                 break;
 
@@ -36,7 +36,7 @@ public static class CardStorageExtensions
                     .UseEnumCheckConstraints()
 
                     .UseTriggers(triggers => triggers
-                        .AddTrigger<DeckColorUpdate>()
+                        .AddTrigger<ColorUpdate>()
                         .AddTrigger<ImmutableCard>()));
                 break;
 
@@ -49,7 +49,7 @@ public static class CardStorageExtensions
                     .UseEnumCheckConstraints()
 
                     .UseTriggers(triggers => triggers
-                        .AddTrigger<DeckColorUpdate>()
+                        .AddTrigger<ColorUpdate>()
                         .AddTrigger<ImmutableCard>()
                         .AddTrigger<LiteTokenUpdate>()));
                 break;

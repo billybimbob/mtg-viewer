@@ -1,6 +1,6 @@
 using System;
-using System.Collections.Generic;
 using System.Linq;
+using System.Paging;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -12,22 +12,27 @@ using Microsoft.EntityFrameworkCore;
 
 using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
+using MTGViewer.Services;
 
 namespace MTGViewer.Pages.Transfers;
 
 
 [Authorize]
 [Authorize(Policy = CardPolicies.ChangeTreasury)]
-public class SuggestUserModel : PageModel
+public class OfferModel : PageModel
 {
     private readonly CardDbContext _dbContext;
     private readonly UserManager<CardUser> _userManager;
+    private readonly int _pageSize;
 
-    public SuggestUserModel(
-        CardDbContext dbContext, UserManager<CardUser> userManager)
+    public OfferModel(
+        CardDbContext dbContext, 
+        UserManager<CardUser> userManager,
+        PageSizes pageSizes)
     {
         _dbContext = dbContext;
         _userManager = userManager;
+        _pageSize = pageSizes.GetPageModelSize<OfferModel>();
     }
 
 
@@ -35,26 +40,24 @@ public class SuggestUserModel : PageModel
     public string? PostMessage { get; set; }
 
 
-    public Card Card { get; private set; } = default!;
+    public CardPreview Card { get; private set; } = default!;
 
     public UserRef Receiver { get; private set; } = default!;
 
-    public IReadOnlyList<Deck> Decks { get; private set; } = Array.Empty<Deck>();
+    public OffsetList<Deck> Decks { get; private set; } = OffsetList<Deck>.Empty;
 
 
     [BindProperty]
     public Suggestion? Suggestion { get; set; }
 
 
-    public async Task<IActionResult> OnGetAsync(string id, string receiverId, CancellationToken cancel)
+    public async Task<IActionResult> OnGetAsync(
+        string id, 
+        string receiverId,
+        int? offset,
+        CancellationToken cancel)
     {
-        if (id == default || receiverId == null)
-        {
-            return NotFound();
-        }
-
-        var card = await _dbContext.Cards
-            .SingleOrDefaultAsync(c => c.Id == id, cancel);
+        var card = await CardAsync.Invoke(_dbContext, id, cancel);
 
         if (card is null)
         {
@@ -75,23 +78,46 @@ public class SuggestUserModel : PageModel
             return NotFound();
         }
 
+        var decks = await DecksForSuggest(card, receiver)
+            .PageBy(offset, _pageSize)
+            .ToOffsetListAsync(cancel);
+
+        if (decks.Offset.Current > decks.Offset.Total)
+        {
+            return RedirectToPage(new { offset = null as int? });
+        }
+
         Card = card;
-
         Receiver = receiver;
-
-        Decks = await DecksForSuggest(card, receiver)
-            .ToListAsync(cancel);
+        Decks = decks;
 
         return Page();
     }
 
 
-    private IQueryable<Deck> DecksForSuggest(Card card, UserRef receiver)
-    {
-        IQueryable<Deck> userDecks;
 
-        userDecks = _dbContext.Decks
-            .Where(l => l.OwnerId == receiver.Id);
+    private static readonly Func<CardDbContext, string, CancellationToken, Task<CardPreview?>> CardAsync
+        = EF.CompileAsyncQuery((CardDbContext dbContext, string cardId, CancellationToken _) =>
+            dbContext.Cards
+                .Select(c => new CardPreview
+                {
+                    Id = c.Id,
+                    Name = c.Name,
+                    SetName = c.SetName,
+
+                    ManaCost = c.ManaCost,
+                    Rarity = c.Rarity,
+                    ImageUrl = c.ImageUrl
+                })
+                .SingleOrDefault(c => c.Id == cardId));
+
+
+    private IQueryable<Deck> DecksForSuggest(CardPreview card, UserRef receiver)
+    {
+        var userDecks = _dbContext.Decks
+            .Where(l => l.OwnerId == receiver.Id)
+            .OrderBy(d => d.Name)
+            .AsQueryable();
 
         userDecks = DecksWithoutAmounts(userDecks, card, receiver);
         userDecks = DecksWithoutWants(userDecks, card, receiver);
@@ -99,15 +125,14 @@ public class SuggestUserModel : PageModel
         userDecks = DecksWithoutSuggests(userDecks, card, receiver);
         userDecks = DecksWithoutTrades(userDecks, card, receiver);
 
-        // unbounded, keep eye on
-        return userDecks
-            .OrderBy(d => d.Name)
-            .AsNoTrackingWithIdentityResolution();
+        return userDecks;
     }
 
 
     private IQueryable<Deck> DecksWithoutAmounts(
-        IQueryable<Deck> decks, Card card, UserRef receiver)
+        IQueryable<Deck> decks,
+        CardPreview card,
+        UserRef receiver)
     {
         var userCardAmounts = _dbContext.Amounts
             .Where(a => a.Card.Name == card.Name
@@ -118,18 +143,20 @@ public class SuggestUserModel : PageModel
             .GroupJoin( userCardAmounts,
                 deck => deck.Id,
                 amount => amount.LocationId,
-                (deck, amounts) => new { deck, amounts })
+                (Deck, Amounts) => new { Deck, Amounts })
             .SelectMany(
-                das => das.amounts.DefaultIfEmpty(),
-                (das, amount) => new { das.deck, amount })
+                das => das.Amounts.DefaultIfEmpty(),
+                (das, Amount) => new { das.Deck, Amount })
 
-            .Where(da => da.amount == default)
-            .Select(da => da.deck);
+            .Where(da => da.Amount == default)
+            .Select(da => da.Deck);
     }
 
 
     private IQueryable<Deck> DecksWithoutWants(
-        IQueryable<Deck> decks, Card card, UserRef receiver)
+        IQueryable<Deck> decks,
+        CardPreview card,
+        UserRef receiver)
     {
         var wantsWithCard = _dbContext.Wants
             .Where(w => w.Card.Name == card.Name
@@ -140,18 +167,20 @@ public class SuggestUserModel : PageModel
             .GroupJoin( wantsWithCard,
                 deck => deck.Id,
                 want => want.LocationId,
-                (deck, wants) => new { deck, wants })
+                (Deck, Wants) => new { Deck, Wants })
             .SelectMany(
-                dws => dws.wants.DefaultIfEmpty(),
-                (dws, want) => new { dws.deck, want })
+                dws => dws.Wants.DefaultIfEmpty(),
+                (dws, Want) => new { dws.Deck, Want })
             
-            .Where(dw => dw.want == default)
-            .Select(dw => dw.deck);
+            .Where(dw => dw.Want == default)
+            .Select(dw => dw.Deck);
     }
 
 
     private IQueryable<Deck> DecksWithoutSuggests(
-        IQueryable<Deck> decks, Card card, UserRef receiver)
+        IQueryable<Deck> decks,
+        CardPreview card,
+        UserRef receiver)
     {
         var suggestsWithCard = _dbContext.Suggestions
             .Where(s => s.Card.Name == card.Name 
@@ -161,18 +190,20 @@ public class SuggestUserModel : PageModel
             .GroupJoin( suggestsWithCard,
                 deck => deck.Id,
                 suggest => suggest.ToId,
-                (deck, suggests) => new { deck, suggests })
+                (Deck, Suggests) => new { Deck, Suggests })
             .SelectMany(
-                dts => dts.suggests.DefaultIfEmpty(),
-                (dts, suggest) => new { dts.deck, suggest })
+                dts => dts.Suggests.DefaultIfEmpty(),
+                (dts, Suggest) => new { dts.Deck, Suggest })
 
-            .Where(dt => dt.suggest == default)
-            .Select(dt => dt.deck);
+            .Where(ds => ds.Suggest == default)
+            .Select(ds => ds.Deck);
     }
 
 
     private IQueryable<Deck> DecksWithoutTrades(
-        IQueryable<Deck> decks, Card card, UserRef receiver)
+        IQueryable<Deck> decks,
+        CardPreview card,
+        UserRef receiver)
     {
         var tradesWithCard = _dbContext.Trades
             .Where(t => t.Card.Name == card.Name && t.To.OwnerId == receiver.Id);
@@ -181,13 +212,13 @@ public class SuggestUserModel : PageModel
             .GroupJoin( tradesWithCard,
                 deck => deck.Id,
                 transfer => transfer.ToId,
-                (deck, trades) => new { deck, trades })
+                (Deck, Trades) => new { Deck, Trades })
             .SelectMany(
-                dts => dts.trades.DefaultIfEmpty(),
-                (dts, trade) => new { dts.deck, trade })
+                dts => dts.Trades.DefaultIfEmpty(),
+                (dts, Trade) => new { dts.Deck, Trade })
 
-            .Where(dt => dt.trade == default)
-            .Select(dt => dt.deck);
+            .Where(dt => dt.Trade == default)
+            .Select(dt => dt.Deck);
     }
 
 

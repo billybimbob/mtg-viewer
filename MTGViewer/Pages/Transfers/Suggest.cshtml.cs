@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using System.Paging;
 using System.Threading;
@@ -35,42 +36,61 @@ public class SuggestModel : PageModel
     }
 
 
-    public Card Card { get; private set; } = default!;
+    public CardPreview Card { get; private set; } = default!;
 
     public OffsetList<UserRef> Users { get; private set; } = OffsetList<UserRef>.Empty;
 
 
     public async Task<IActionResult> OnGetAsync(string id, int? offset, CancellationToken cancel)
     {
-        if (id == default)
-        {
-            return NotFound();
-        }
-
-        var card = await _dbContext.Cards
-            .SingleOrDefaultAsync(c => c.Id == id, cancel);
+        var card = await CardAsync.Invoke(_dbContext, id, cancel);
 
         if (card is null)
         {
             return NotFound();
         }
 
-        Card = card;
-
-        Users = await UsersForSuggest(card)
+        var users = await UsersForSuggest(card)
             .PageBy(offset, _pageSize)
             .ToOffsetListAsync(cancel);
+
+        if (users.Offset.Current > users.Offset.Total)
+        {
+            return RedirectToPage(new { offset = null as int? });
+        }
+
+        Card = card;
+        Users = users;
 
         return Page();
     }
 
 
-    public IQueryable<UserRef> UsersForSuggest(Card card)
+    private static readonly Func<CardDbContext, string, CancellationToken, Task<CardPreview?>> CardAsync
+        = EF.CompileAsyncQuery((CardDbContext dbContext, string cardId, CancellationToken _) =>
+            dbContext.Cards
+                .Select(c => new CardPreview
+                {
+                    Id = c.Id,
+                    Name = c.Name,
+                    SetName = c.SetName,
+
+                    ManaCost = c.ManaCost,
+                    Rarity = c.Rarity,
+                    ImageUrl = c.ImageUrl
+                })
+                .SingleOrDefault(c => c.Id == cardId));
+
+
+    private IQueryable<UserRef> UsersForSuggest(CardPreview card)
     {
         var proposerId = _userManager.GetUserId(User);
 
         var nonProposers = _dbContext.Users
-            .Where(u => u.Id != proposerId);
+            .Where(u => u.Id != proposerId)
+            .OrderBy(u => u.Name)
+                .ThenBy(u => u.Id)
+            .AsNoTracking();
 
         var cardSuggests = _dbContext.Suggestions
             .Where(s => s.Card.Name == card.Name && s.ReceiverId != proposerId);
@@ -79,20 +99,14 @@ public class SuggestModel : PageModel
             .GroupJoin( cardSuggests,
                 user => user.Id,
                 suggest => suggest.ReceiverId,
-                (user, suggests) =>
-                    new { user, suggests })
+                (User, Suggests) => new { User, Suggests })
+
             .SelectMany(
-                uss => uss.suggests.DefaultIfEmpty(),
-                (uss, suggest) =>
-                    new { uss.user, suggest })
+                uss => uss.Suggests.DefaultIfEmpty(),
+                (uss, Suggest) => new { uss.User, Suggest })
 
-            .Where(us => us.suggest == default)
-            .Select(us => us.user)
-
-            .OrderBy(u => u.Name)
-                .ThenBy(u => u.Id)
-
-            .AsNoTracking();
+            .Where(us => us.Suggest == default)
+            .Select(us => us.User);
     }
 
 
@@ -103,6 +117,6 @@ public class SuggestModel : PageModel
             return RedirectToPage();
         }
 
-        return RedirectToPage("SuggestUser", new { id, receiverId });
+        return RedirectToPage("Offer", new { id, receiverId });
     }
 }

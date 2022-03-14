@@ -70,7 +70,7 @@ public class ExchangeModel : PageModel
             .PageBy(offset, _pageSize)
             .ToOffsetListAsync(cancel);
 
-        if (!matches.Any())
+        if (matches.Offset.Current > matches.Offset.Total)
         {
             return RedirectToPage(new { offset = null as int? });
         }

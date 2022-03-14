@@ -22,23 +22,23 @@ namespace MTGViewer.Pages.Transfers;
 
 [Authorize]
 [Authorize(CardPolicies.ChangeTreasury)]
-public class RequestModel : PageModel
+public class CreateModel : PageModel
 {
     private CardDbContext _dbContext;
     private UserManager<CardUser> _userManager;
     private readonly int _pageSize;
 
-    private ILogger<RequestModel> _logger;
+    private ILogger<CreateModel> _logger;
 
-    public RequestModel(
+    public CreateModel(
         CardDbContext dbContext, 
         UserManager<CardUser> userManager, 
         PageSizes pageSizes,
-        ILogger<RequestModel> logger)
+        ILogger<CreateModel> logger)
     {
         _dbContext = dbContext;
         _userManager = userManager;
-        _pageSize = pageSizes.GetPageModelSize<RequestModel>();
+        _pageSize = pageSizes.GetPageModelSize<CreateModel>();
         _logger = logger;
     }
 
@@ -46,9 +46,11 @@ public class RequestModel : PageModel
     [TempData]
     public string? PostMessage { get; set; }
 
-    public DeckRequest Deck { get; private set; } = default!;
+    public DeckDetails Deck { get; private set; } = default!;
 
     public OffsetList<CardCopies> Requests { get; private set; } = OffsetList<CardCopies>.Empty;
+
+    public IReadOnlyList<DeckLink> Cards { get; private set; } = Array.Empty<DeckLink>();
 
 
     public async Task<IActionResult> OnGetAsync(int id, int? offset, CancellationToken cancel)
@@ -60,16 +62,16 @@ public class RequestModel : PageModel
             return Challenge();
         }
 
-        var deck = await DeckRequestAsync.Invoke(_dbContext, id, userId, cancel);
+        var deck = await DeckAsync.Invoke(_dbContext, id, userId, cancel);
 
         if (deck == default)
         {
             return NotFound();
         }
 
-        if (deck.SentTrades)
+        if (deck.HasTrades)
         {
-            return RedirectToPage("Status", new { id });
+            return RedirectToPage("Details", new { id });
         }
 
         // offset paging used since the amount of pages is unlikely 
@@ -79,7 +81,7 @@ public class RequestModel : PageModel
             .PageBy(offset, _pageSize)
             .ToOffsetListAsync(cancel);
 
-        if (!requests.Any() && offset is not null)
+        if (requests.Offset.Current > requests.Offset.Total)
         {
             return RedirectToPage(new { offset = null as int? });
         }
@@ -87,11 +89,15 @@ public class RequestModel : PageModel
         Deck = deck;
         Requests = requests;
 
+        Cards = await DeckCards
+            .Invoke(_dbContext, id, _pageSize)
+            .ToListAsync();
+
         return Page();
     }
 
 
-    private static readonly Func<CardDbContext, int, string, CancellationToken, Task<DeckRequest?>> DeckRequestAsync
+    private static readonly Func<CardDbContext, int, string, CancellationToken, Task<DeckDetails?>> DeckAsync
 
         = EF.CompileAsyncQuery((CardDbContext dbContext, int deckId, string userId, CancellationToken _) =>
             dbContext.Decks
@@ -99,10 +105,11 @@ public class RequestModel : PageModel
                     && d.OwnerId == userId
                     && d.Wants.Any())
 
-                .Select(d => new DeckRequest
+                .Select(d => new DeckDetails
                 {
                     Id = d.Id,
                     Name = d.Name,
+                    Color = d.Color,
 
                     Owner = new OwnerPreview
                     {
@@ -110,12 +117,15 @@ public class RequestModel : PageModel
                         Name = d.Owner.Name
                     },
 
-                    SentTrades = d.TradesTo.Any()
+                    AmountCopies = d.Cards.Sum(a => a.Copies),
+                    WantCopies = d.Wants.Sum(w => w.Copies),
+
+                    HasTrades = d.TradesTo.Any()
                 })
                 .SingleOrDefault());
 
 
-    private IQueryable<CardCopies> RequestMatches(DeckRequest deck)
+    private IQueryable<CardCopies> RequestMatches(DeckDetails deck)
     {
         var deckWants = _dbContext.Wants
             .Where(w => w.LocationId == deck.Id)
@@ -136,26 +146,55 @@ public class RequestModel : PageModel
                 (Want, Names) => new { Want, Names })
             .SelectMany(
                 wn => wn.Names.DefaultIfEmpty(),
-                (wn, Name) => new { wn.Want, HasMatch = Name != default });
+                (wn, Name) => new { wn.Want, Name });
 
         return wantMatches
-            .Where(wh => wh.HasMatch)
-            .Select(wh => new CardCopies
+            .Where(wn => wn.Name != default)
+            .Select(wn => new CardCopies
             {
-                Id = wh.Want.CardId,
-                Name = wh.Want.Card.Name,
-                SetName = wh.Want.Card.SetName,
+                Id = wn.Want.CardId,
+                Name = wn.Want.Card.Name,
+                SetName = wn.Want.Card.SetName,
 
-                ManaCost = wh.Want.Card.ManaCost,
-                Rarity = wh.Want.Card.Rarity,
-                ImageUrl = wh.Want.Card.ImageUrl,
+                ManaCost = wn.Want.Card.ManaCost,
+                Rarity = wn.Want.Card.Rarity,
+                ImageUrl = wn.Want.Card.ImageUrl,
 
-                Copies = wh.Want.Copies
+                Copies = wn.Want.Copies
             });
     }
 
 
-    private IQueryable<Trade> TradeRequests(DeckRequest deck)
+    private static readonly Func<CardDbContext, int, int, IAsyncEnumerable<DeckLink>> DeckCards
+        = EF.CompileAsyncQuery((CardDbContext dbContext, int id, int limit) =>
+
+            dbContext.Cards
+                .Where(c => c.Amounts.Any(a => a.LocationId == id)
+                    || c.Wants.Any(w => w.LocationId == id))
+
+                .OrderBy(c => c.Name)
+                    .ThenBy(c => c.SetName)
+                    .ThenBy(c => c.Id)
+
+                .Take(limit)
+                .Select(c => new DeckLink
+                {
+                    Id = c.Id,
+                    Name = c.Name,
+                    SetName = c.SetName,
+                    ManaCost = c.ManaCost,
+
+                    Held = c.Amounts
+                        .Where(a => a.LocationId == id)
+                        .Sum(a => a.Copies),
+
+                    Want = c.Wants
+                        .Where(w => w.LocationId == id)
+                        .Sum(w => w.Copies)
+                }));
+
+
+    private IQueryable<Trade> TradeRequests(DeckDetails deck)
     {
         var wantNames = _dbContext.Wants
             .Where(w => w.LocationId == deck.Id)
@@ -197,17 +236,18 @@ public class RequestModel : PageModel
             return Challenge();
         }
 
-        var deck = await DeckRequestAsync.Invoke(_dbContext, id, userId, cancel);
+        var deck = await DeckAsync.Invoke(_dbContext, id, userId, cancel);
 
         if (deck == default)
         {
             return NotFound();
         }
 
-        if (deck.SentTrades)
+        if (deck.HasTrades)
         {
             PostMessage = "Request is already sent";
-            return RedirectToPage("Status", new { id });
+
+            return RedirectToPage("Details", new { id });
         }
 
         var trades = await TradeRequests(deck).ToListAsync(cancel);
@@ -215,6 +255,7 @@ public class RequestModel : PageModel
         if (!trades.Any())
         {
             PostMessage = "There are no possible decks to trade with";
+
             return RedirectToPage("Index");
         }
 
@@ -226,7 +267,7 @@ public class RequestModel : PageModel
 
             PostMessage = "Request was successfully sent";
 
-            return RedirectToPage("Status", new { id });
+            return RedirectToPage("Details", new { id });
         }
         catch (DbUpdateException)
         {

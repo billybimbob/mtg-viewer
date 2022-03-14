@@ -156,7 +156,7 @@ public sealed record LocationPreview
 
 
 
-#region Deck Projections
+#region Theory Craft Projections
 
 public enum BuildState
 {
@@ -187,7 +187,7 @@ public sealed record DeckPreview
 }
 
 
-public sealed class DeckColors
+public sealed class TheoryColors
 {
     public int Id { get; init; }
     public IEnumerable<Color> CardColors { get; init; } = Enumerable.Empty<Color>();
@@ -201,7 +201,7 @@ public sealed record DeckDetails
     public OwnerPreview Owner { get; init; } = default!;
 
     public string Name { get; init; } = default!;
-    public Color Color { get; init; } = default!;
+    public Color Color { get; init; }
 
     public int AmountCopies { get; init; }
     public int WantCopies { get; init; }
@@ -218,7 +218,20 @@ public sealed record OwnerPreview
 }
 
 
-public sealed record DeckTradePreview
+public sealed record UnclaimedDetails
+{
+    public int Id { get; init; }
+    public int AmountCopies { get; init; }
+    public int WantCopies { get; init; }
+}
+
+#endregion
+
+
+
+#region Transfer Projections
+
+public sealed record TradeDeckPreview
 {
     public int Id { get; init; }
     public string Name { get; init; } = default!;
@@ -227,17 +240,6 @@ public sealed record DeckTradePreview
     public bool SentTrades { get; init; }
     public bool ReceivedTrades { get; init; }
     public bool WantsCards { get; init; }
-}
-
-
-public sealed record DeckRequest
-{
-    public int Id { get; init; }
-    public string Name { get; init; } = default!;
-
-    public OwnerPreview Owner { get; init; } = default!;
-
-    public bool SentTrades { get; init;  }
 }
 
 
@@ -258,20 +260,9 @@ public sealed record SuggestionPreview
 public sealed record TradePreview
 {
     public CardPreview Card { get; init; } = default!;
-    public DeckTarget Target { get; init; } = default!;
+    public DeckDetails Target { get; init; } = default!;
     public int Copies { get; init; }
 }
-
-
-public sealed record DeckTarget
-{
-    public int Id { get; init; }
-    public string Name { get; init; } = default!;
-    public Color Color { get; init; }
-
-    public OwnerPreview Owner { get; init; } = default!;
-}
-
 
 #endregion
 

@@ -207,6 +207,7 @@ public class HistoryModel : PageModel
                         || c.From is Box
                         || c.From is Excess
                         || c.From is Unclaimed)))
+
                 .Include(t => t.Changes) // unbounded, keep eye on
                 .OrderBy(t => t.Id)
                 .SingleOrDefault(t => t.Id == id));

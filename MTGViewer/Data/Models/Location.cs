@@ -28,13 +28,14 @@ public abstract class Location : Concurrent
 }
 
 
-public abstract class Owned : Location
+public abstract class TheoryCraft : Location
 {
+    public Color Color { get; set; }
     public List<Want> Wants { get; init; } = new();
 }
 
 
-public class Unclaimed : Owned
+public class Unclaimed : TheoryCraft
 {
     public static explicit operator Unclaimed(Deck deck)
     {
@@ -49,13 +50,11 @@ public class Unclaimed : Owned
 
 
 [Index(nameof(OwnerId), nameof(Type), nameof(Id))]
-public class Deck : Owned
+public class Deck : TheoryCraft
 {
     [JsonIgnore]
     public string OwnerId { get; init; } = default!;
     public UserRef Owner { get; init; } = default!;
-
-    public Color Color { get; set; }
 
 
     [Display(Name = "Give Backs")]

@@ -74,7 +74,7 @@
                     <td>
                         @if (deck.BuildState is BuildState.Requesting && canChangeTreasury)
                         {
-                            <a asp-page="/Transfers/Status" asp-route-deckid="@deck.Id">
+                            <a asp-page="/Transfers/Details" asp-route-id="@deck.Id">
                                 @deck.BuildState.ToString() </a>
                         }
                         else if (deck.BuildState is BuildState.Theorycraft && canChangeTreasury)

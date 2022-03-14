@@ -15,7 +15,7 @@ namespace MTGViewer.Tests.Pages.Transfers;
 
 public class StatusTests : IAsyncLifetime
 {
-    private readonly StatusModel _statusModel;
+    private readonly DetailsModel _detailsModel;
     private readonly CardDbContext _dbContext;
     private readonly PageContextFactory _pageFactory;
 
@@ -23,12 +23,12 @@ public class StatusTests : IAsyncLifetime
     private TradeSet _trades = default!;
 
     public StatusTests(
-        StatusModel statusModel,
+        DetailsModel detailsModel,
         CardDbContext dbContext,
         PageContextFactory pageFactory,
         TestDataGenerator testGen)
     {
-        _statusModel = statusModel;
+        _detailsModel = detailsModel;
         _dbContext = dbContext;
         _pageFactory = pageFactory;
         _testGen = testGen;
@@ -62,11 +62,11 @@ public class StatusTests : IAsyncLifetime
         var trade = await TradesInSet.Include(t => t.From).FirstAsync();
         var tradeSet = TradesInSet.Select(t => t.Id);
 
-        await _pageFactory.AddModelContextAsync(_statusModel, trade.From.OwnerId);
+        await _pageFactory.AddModelContextAsync(_detailsModel, trade.From.OwnerId);
 
         // Act
         var tradesBefore = await tradeSet.ToListAsync();
-        var result = await _statusModel.OnPostAsync(_trades.TargetId, default);
+        var result = await _detailsModel.OnPostAsync(_trades.TargetId, default);
         var tradesAfter = await tradeSet.ToListAsync();
 
         // Assert
@@ -80,14 +80,14 @@ public class StatusTests : IAsyncLifetime
     public async Task OnPost_InvalidTrade_NoChange()
     {
         // Arrange
-        await _pageFactory.AddModelContextAsync(_statusModel, _trades.Target.OwnerId);
+        await _pageFactory.AddModelContextAsync(_detailsModel, _trades.Target.OwnerId);
 
         var trade = await TradesInSet.FirstAsync();
         var tradeSet = TradesInSet.Select(t => t.Id);
 
         // Act
         var tradesBefore = await tradeSet.ToListAsync();
-        var result = await _statusModel.OnPostAsync(trade.FromId, default);
+        var result = await _detailsModel.OnPostAsync(trade.FromId, default);
         var tradesAfter = await tradeSet.ToListAsync();
 
         // Assert
@@ -101,13 +101,13 @@ public class StatusTests : IAsyncLifetime
     public async Task OnPost_ValidTrade_RemovesTrade()
     {
         // Arrange
-        await _pageFactory.AddModelContextAsync(_statusModel, _trades.Target.OwnerId);
+        await _pageFactory.AddModelContextAsync(_detailsModel, _trades.Target.OwnerId);
 
         var tradeSet = TradesInSet.Select(t => t.Id);
 
         // Act
         var tradesBefore = await tradeSet.ToListAsync();
-        var result = await _statusModel.OnPostAsync(_trades.TargetId, default);
+        var result = await _detailsModel.OnPostAsync(_trades.TargetId, default);
         var tradesAfter = await tradeSet.ToListAsync();
 
         // Assert

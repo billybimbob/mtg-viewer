@@ -68,7 +68,9 @@ public partial class Home : ComponentBase, IDisposable
 
             _randomContext = await RandomCardsContext.CreateAsync(dbContext, loadLimit, cancelToken);
 
-            _recentChanges = await RecentTransactionsAsync(dbContext, loadLimit, cancelToken);
+            _recentChanges = await RecentTransactions
+                .Invoke(dbContext, loadLimit)
+                .ToListAsync(cancelToken);
 
             _currentTime = DateTime.UtcNow;
         }
@@ -260,17 +262,6 @@ public partial class Home : ComponentBase, IDisposable
                     Name = c.Name,
                     ImageUrl = c.ImageUrl
                 }));
-
-
-    private static ValueTask<List<RecentTransaction>> RecentTransactionsAsync(
-        CardDbContext dbContext,
-        int limit,
-        CancellationToken cancel)
-    {
-        return RecentTransactions
-            .Invoke(dbContext, limit)
-            .ToListAsync(cancel);
-    }
 
 
     private static readonly Func<CardDbContext, int, IAsyncEnumerable<RecentTransaction>> RecentTransactions

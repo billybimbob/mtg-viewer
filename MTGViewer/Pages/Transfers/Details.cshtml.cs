@@ -20,20 +20,20 @@ namespace MTGViewer.Pages.Transfers;
 
 [Authorize]
 [Authorize(Policy = CardPolicies.ChangeTreasury)]
-public class StatusModel : PageModel
+public class DetailsModel : PageModel
 {
     private readonly UserManager<CardUser> _userManager;
     private readonly CardDbContext _dbContext;
     private readonly int _pageSize;
 
-    public StatusModel(
+    public DetailsModel(
         UserManager<CardUser> userManager,
         CardDbContext dbContext,
         PageSizes pageSizes)
     {
         _userManager = userManager;
         _dbContext = dbContext;
-        _pageSize = pageSizes.GetPageModelSize<StatusModel>();
+        _pageSize = pageSizes.GetPageModelSize<DetailsModel>();
     }
 
 
@@ -49,12 +49,8 @@ public class StatusModel : PageModel
 
     public async Task<IActionResult> OnGetAsync(int id, int? offset, CancellationToken cancel)
     {
-        if (id == default)
-        {
-            return NotFound();
-        }
-
         var userId = _userManager.GetUserId(User);
+
         if (userId is null)
         {
             return Challenge();
@@ -69,20 +65,19 @@ public class StatusModel : PageModel
 
         if (!deck.HasTrades)
         {
-            return RedirectToPage("Request", new { id });
+            return RedirectToPage("Create", new { id });
         }
 
         var trades = await CappedTrades(deck)
             .PageBy(offset, _pageSize)
             .ToOffsetListAsync(cancel);
 
-        if (!trades.Any())
+        if (trades.Offset.Current > trades.Offset.Total)
         {
             return RedirectToPage(new { offset = null as int? });
         }
 
         Deck = deck;
-
         Trades = trades;
 
         Cards = await DeckCards
@@ -115,9 +110,60 @@ public class StatusModel : PageModel
 
                     AmountCopies = d.Cards.Sum(a => a.Copies),
                     WantCopies = d.Wants.Sum(w => w.Copies),
+
                     HasTrades = d.TradesTo.Any()
                 })
                 .SingleOrDefault());
+
+
+    private IQueryable<TradePreview> CappedTrades(DeckDetails deck)
+    {
+        var deckTrades = _dbContext.Decks
+            .Where(d => d.Id == deck.Id)
+            .SelectMany(d => d.TradesTo)
+
+            .OrderBy(t => t.Card.Name)
+                .ThenBy(t => t.Card.SetName)
+                .ThenBy(t => t.Id);
+
+        return deckTrades
+            // left join, where each match is unique because
+            // each amount is unique by Location and Card
+            .GroupJoin( _dbContext.Amounts,
+                t => new { LocationId = t.FromId, t.CardId },
+                a => new { a.LocationId, a.CardId },
+                (Trade, Amounts) => new { Trade, Amounts })
+
+            .SelectMany(ta => ta.Amounts.DefaultIfEmpty(),
+                (ta, a) => new TradePreview
+                {
+                    Card = new CardPreview
+                    {
+                        Id = ta.Trade.CardId,
+                        Name = ta.Trade.Card.Name,
+                        SetName = ta.Trade.Card.SetName,
+
+                        ManaCost = ta.Trade.Card.ManaCost,
+                        Rarity = ta.Trade.Card.Rarity,
+                        ImageUrl = ta.Trade.Card.ImageUrl,
+                    },
+
+                    Target = new DeckDetails
+                    {
+                        Id = ta.Trade.FromId,
+                        Name = ta.Trade.From.Name,
+                        Color = ta.Trade.From.Color,
+
+                        Owner = new OwnerPreview
+                        {
+                            Id = ta.Trade.From.OwnerId,
+                            Name = ta.Trade.From.Owner.Name
+                        }
+                    },
+
+                    Copies = a == null ? 0 : a.Copies
+                });
+    }
 
 
     private static readonly Func<CardDbContext, int, int, IAsyncEnumerable<DeckLink>> DeckCards
@@ -147,55 +193,6 @@ public class StatusModel : PageModel
                         .Where(w => w.LocationId == id)
                         .Sum(w => w.Copies)
                 }));
-
-
-    private IQueryable<TradePreview> CappedTrades(DeckDetails deck)
-    {
-        var deckTrades = _dbContext.Decks
-            .Where(d => d.Id == deck.Id)
-            .SelectMany(d => d.TradesTo)
-
-            .OrderBy(t => t.Card.Name)
-                .ThenBy(t => t.Card.SetName)
-                .ThenBy(t => t.Id);
-
-        return deckTrades
-            // left join, where each match is unique
-            .GroupJoin( _dbContext.Amounts,
-                t => new { LocationId = t.FromId, t.CardId },
-                a => new { a.LocationId, a.CardId },
-                (Trade, Amounts) => new { Trade, Amounts })
-
-            .SelectMany(ta => ta.Amounts.DefaultIfEmpty(),
-                (ta, a) => new TradePreview
-                {
-                    Card = new CardPreview
-                    {
-                        Id = ta.Trade.CardId,
-                        Name = ta.Trade.Card.Name,
-                        SetName = ta.Trade.Card.SetName,
-
-                        ManaCost = ta.Trade.Card.ManaCost,
-                        Rarity = ta.Trade.Card.Rarity,
-                        ImageUrl = ta.Trade.Card.ImageUrl,
-                    },
-
-                    Target = new DeckTarget
-                    {
-                        Id = ta.Trade.FromId,
-                        Name = ta.Trade.From.Name,
-                        Color = ta.Trade.From.Color,
-
-                        Owner = new OwnerPreview
-                        {
-                            Id = ta.Trade.From.OwnerId,
-                            Name = ta.Trade.From.Owner.Name
-                        }
-                    },
-
-                    Copies = a == null ? 0 : a.Copies
-                });
-    }
 
 
 

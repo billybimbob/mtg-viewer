@@ -57,13 +57,13 @@
                             <td>
                                 @if (deck.SentTrades && canChangeTreasury)
                                 {
-                                    <a asp-page="Status" asp-route-id="@deck.Id"
+                                    <a asp-page="Details" asp-route-id="@deck.Id"
                                         title="@deck.Name Trade Status">
                                         Sent </a>
                                 }
                                 else if (deck.WantsCards && canChangeTreasury)
                                 {
-                                    <a asp-page="Request" asp-route-id="@deck.Id"
+                                    <a asp-page="Create" asp-route-id="@deck.Id"
                                         title="@deck.Name Card Requests">
                                         Possible </a>
                                 }

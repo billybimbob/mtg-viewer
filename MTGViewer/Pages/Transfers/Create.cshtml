@@ -1,5 +1,5 @@
 @page "{id:int}"
-@model Transfers.RequestModel
+@model Transfers.CreateModel
 @{
     ViewData["Title"] = $"{Model.Deck.Name} - Requests";
 }
@@ -28,11 +28,7 @@ else
 {
     <div class="alert alert-warning" role="alert">
         <h5 class="alert-heading">Missing Trade Targets</h5>
-        <p> There are no possible decks to requests to. </p>
-
-        <a asp-page="/Decks/Details" asp-route-id="@Model.Deck.Id"
-            class="btn btn-secondary" role="button">
-            Details </a>
+        <p class="mb-0"> There are no possible decks to requests to. </p>
     </div>
 }
 
@@ -79,3 +75,53 @@ else
 
 <partial name="_OffsetPagingPartial" for="Requests.Offset"/>
 
+
+<h3>
+    <a asp-page="/Decks/Details" asp-route-id="@Model.Deck.Id">
+        Current Cards
+    </a>
+</h3>
+
+<div class="table-responsive-md">
+    <table class="table">
+        <thead>
+            <tr>
+                <th scope="col"> @Html.DisplayNameForInnerType((Amount ca) => ca.Card) </th>
+                <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.ManaCost) </th>
+                <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.SetName) </th>
+                <th scope="col"> Held </th>
+                <th scope="col"> Wanted </th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var card in Model.Cards)
+            {
+                <tr>
+                    <td>
+                        <a asp-page="/Cards/Details" asp-route-id="@card.Id">
+                            @card.Name </a>
+                    </td>
+                    <td> 
+                        <div class="ms-group">
+                            @MtgSymbols.Format(card.ManaCost).ToHtmlString() 
+                        </div>
+                    </td>
+                    <td> @card.SetName </td>
+                    <td> @card.Held </td>
+                    <td> @card.Want </td>
+                </tr>
+            }
+            @if (Model.Deck.AmountCopies > Model.Cards.Sum(dl => dl.Held)
+                || Model.Deck.WantCopies > Model.Cards.Sum(dl => dl.Want))
+            {
+                <tr>
+                    <td> ... </td>
+                    <td> ... </td>
+                    <td> ... </td>
+                    <td> ... </td>
+                    <td> ... </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

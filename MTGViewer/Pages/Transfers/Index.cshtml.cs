@@ -44,7 +44,7 @@ public class IndexModel : PageModel
 
     public string UserName { get; private set; } = string.Empty;
 
-    public SeekList<DeckTradePreview> TradeDecks { get; private set; } = SeekList<DeckTradePreview>.Empty;
+    public SeekList<TradeDeckPreview> TradeDecks { get; private set; } = SeekList<TradeDeckPreview>.Empty;
 
     public IReadOnlyList<SuggestionPreview> Suggestions { get; private set; } = Array.Empty<SuggestionPreview>();
 
@@ -66,19 +66,21 @@ public class IndexModel : PageModel
 
         UserName = userName;
 
-        TradeDecks = await DeckTradePreviews(userId)
+        TradeDecks = await TradeDeckPreviews(userId)
             .SeekBy(seek, direction)
             .OrderBy<Deck>()
             .Take(_pageSize)
             .ToSeekListAsync(cancel);
 
-        Suggestions = await SuggestionsForIndex(userId).ToListAsync(cancel);
+        Suggestions = await SuggestionPreviews
+            .Invoke(_dbContext, userId, _pageSize)
+            .ToListAsync(cancel);
 
         return Page();
     }
 
 
-    public IQueryable<DeckTradePreview> DeckTradePreviews(string userId)
+    public IQueryable<TradeDeckPreview> TradeDeckPreviews(string userId)
     {
         return _dbContext.Decks
             .Where(d => d.OwnerId == userId
@@ -87,7 +89,7 @@ public class IndexModel : PageModel
             .OrderBy(d => d.Name)
                 .ThenBy(d => d.Id)
 
-            .Select(d => new DeckTradePreview
+            .Select(d => new TradeDeckPreview
             {
                 Id = d.Id,
                 Name = d.Name,
@@ -100,29 +102,29 @@ public class IndexModel : PageModel
     }
 
 
-    private IQueryable<SuggestionPreview> SuggestionsForIndex(string userId)
-    {
-        return _dbContext.Suggestions
-            .Where(s => s.ReceiverId == userId)
+    private static readonly Func<CardDbContext, string, int, IAsyncEnumerable<SuggestionPreview>> SuggestionPreviews
+        = EF.CompileAsyncQuery((CardDbContext dbContext, string userId, int limit) =>
 
-            .OrderByDescending(s => s.SentAt)
-                .ThenBy(s => s.Card.Name)
-                .ThenBy(s => s.Id)
+            dbContext.Suggestions
+                .Where(s => s.ReceiverId == userId)
 
-            .Take(_pageSize)
-            .Select(s => new SuggestionPreview
-            {
-                Id = s.Id,
-                SentAt = s.SentAt,
+                .OrderByDescending(s => s.SentAt)
+                    .ThenBy(s => s.Card.Name)
+                    .ThenBy(s => s.Id)
 
-                CardId = s.CardId,
-                CardName = s.Card.Name,
-                CardManaCost = s.Card.ManaCost,
-                
-                ToName = s.To == null ? null : s.To.Name,
-                Comment = s.Comment
-            });
-    }
+                .Take(limit)
+                .Select(s => new SuggestionPreview
+                {
+                    Id = s.Id,
+                    SentAt = s.SentAt,
+
+                    CardId = s.CardId,
+                    CardName = s.Card.Name,
+                    CardManaCost = s.Card.ManaCost,
+                    
+                    ToName = s.To == null ? null : s.To.Name,
+                    Comment = s.Comment
+                }));
 
 
 
