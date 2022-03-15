@@ -219,6 +219,9 @@ public sealed record OwnerPreview
 public sealed record UnclaimedDetails
 {
     public int Id { get; init; }
+    public string Name { get; init; } = default!;
+    public Color Color { get; init; }
+
     public int HeldCopies { get; init; }
     public int WantCopies { get; init; }
 }

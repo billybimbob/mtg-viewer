@@ -49,6 +49,9 @@
     </div>
 }
 
+
+@{ string returnUrl = $"{Request.Path}{Request.QueryString}"; }
+
 <div class="table-responsive-md">
     <table class="table">
         <thead>
@@ -67,7 +70,7 @@
                 <tr>
                     <td>
                         <component type="typeof(HoverCard)" render-mode="Static"
-                            param-Preview="card" />
+                            param-Preview="card" param-ReturnUrl="returnUrl" />
                     </td>
                     <td> 
                         <div class="ms-group">

@@ -39,6 +39,9 @@
     </div>
 }
 
+
+@{ string returnUrl = $"{Request.Path}{Request.QueryString}"; }
+
 <div class="table-responsive-md">
     <table class="table">
         <thead>
@@ -52,7 +55,6 @@
         <tbody>
             @foreach (var quantity in Model.Cards)
             {
-                var returnUrl = $"{Request.Path}{Request.QueryString}";
                 <tr>
                     <td>
                         <component type="typeof(HoverCard)" render-mode="Static"
@@ -85,4 +87,4 @@
     <p> @Html.DisplayFor(m => m.Box.Appearance) </p>
 }
 
-<partial name="_SeekPagingPartial" for="Seek"/>
+<partial name="_SeekPagingPartial" model="(Seek)Model.Cards.Seek"/>

@@ -4,6 +4,7 @@
     ViewData["Title"] = "Unclaimed Decks";
 }
 @inject SymbolFormatter MtgSymbols
+@inject CardText CardText
 
 
 <h1>Unclaimed Decks</h1>
@@ -13,8 +14,7 @@
         <thead>
             <tr>
                 <th scope="col"> @Html.DisplayNameForInnerType((Unclaimed u) => u.Name)</th>
-                <th scope="col"> Card @Html.DisplayNameForInnerType((Card c) => c.Name) </th>
-                <th scope="col"> Card @Html.DisplayNameForInnerType((Card c) => c.ManaCost) </th>
+                <th scope="col"> @Html.DisplayNameForInnerType((Unclaimed u) => u.Color) </th>
                 <th scope="col"> Owned Copies </th>
                 <th scope="col"> Want Copies </th>
                 <th scope="col"></th>
@@ -23,38 +23,23 @@
         <tbody>
             @foreach (var unclaimed in Model.Unclaimed)
             {
-                var groups = Model.GetQuantityGroup(unclaimed.Id);
-                int groupSpan = Math.Max(1, groups.Count);
-
                 <tr>
-                    <th scope="row" rowspan="@groupSpan"> @unclaimed.Name </th>
+                    <th scope="row">
+                        <a asp-page="Details" asp-route-id="@unclaimed.Id">
+                            @unclaimed.Name </a>
+                    </th>
 
-                    @if (groups.Any())
-                    {
-                        var first = groups.First();
-                        var card = first.Cards.First();
+                    <td>
+                        <div class="ms-group">
+                            @MtgSymbols.Format(CardText.ColorString(unclaimed.Color)).ToHtmlString()
+                        </div>
+                    </td>
 
-                        <td> 
-                            <component type="typeof(HoverCard)" render-mode="Static" param-Target="card" />
-                        </td>
-                        <td> 
-                            <div class="ms-group">
-                                @MtgSymbols.Format(card.ManaCost).ToHtmlString() 
-                            </div>
-                        </td>
-                        <td> @first.InDeck </td>
-                        <td> @first.Requests </td>
-                    }
-                    else
-                    {
-                        <td> -- </td>
-                        <td> -- </td>
-                        <td> -- </td>
-                        <td> -- </td>
-                    }
+                    <td> @unclaimed.HeldCopies </td>
+                    <td> @unclaimed.WantCopies </td>
 
-                    <td rowspan="@groupSpan">
-                        <form method="POST" asp-page-handler="Remove">
+                    <td>
+                        <form method="POST">
                             <input type="hidden" name="id" value="@unclaimed.Id"/>
 
                             <div class="btn-group" role="group">
@@ -63,33 +48,17 @@
                                     type="submit" class="btn btn-secondary"
                                     value="Claim" />
 
-                                <button title="Remove @unclaimed.Name" type="submit" class="btn btn-danger">
+                                <button title="Remove @unclaimed.Name"
+                                    asp-page-handler="Remove"
+                                    type="submit" class="btn btn-danger">
                                     &times; </button>
                             </div>
                         </form>
                     </td>
                 </tr>
-
-                @foreach (var group in groups.Skip(1))
-                {
-                    var card = group.Cards.First();
-
-                    <tr>
-                        <td> 
-                            <component type="typeof(HoverCard)" render-mode="Static" param-Target="card" />
-                        </td>
-                        <td> 
-                            <div class="ms-group">
-                                @MtgSymbols.Format(card.ManaCost).ToHtmlString()
-                            </div>
-                        </td>
-                        <td> @group.InDeck </td>
-                        <td> @group.Requests </td>
-                    </tr>
-                }
             }
         </tbody>
     </table>
 </div>
 
-<partial name="_OffsetPagingPartial" for="Unclaimed.Offset"/>
+<partial name="_SeekPagingPartial" model="(Seek)Model.Unclaimed.Seek"/>

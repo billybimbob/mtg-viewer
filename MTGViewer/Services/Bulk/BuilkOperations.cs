@@ -115,6 +115,8 @@ public class BulkOperations
     {
         _loadProgress.Ticks = 2;
 
+        bool hasNewCards = await MergeCardsAsync(data, cancel);
+
         var unclaimed = data.Decks
             .Select(d => (Unclaimed)d)
             .Concat(data.Unclaimed)
@@ -122,9 +124,8 @@ public class BulkOperations
 
         var transaction = MergeTransaction(data.Bins, unclaimed);
 
-        bool hasNewCards = await MergeCardsAsync(data, cancel);
-
-        if (transaction is null && !hasNewCards)
+        if ((transaction, hasNewCards, unclaimed.Any())
+            is (null, false, false))
         {
             return;
         }
@@ -191,10 +192,12 @@ public class BulkOperations
             }
         }
 
-        var missingDbCards = dbCards
-            .Where(c => !dataCardTable.ContainsKey(c.Id));
+        var missingCards = dataCardTable.Values
+            .UnionBy(dbCards, c => c.Id)
+            .ExceptBy(_dbContext.Cards.Local
+                .Select(c => c.Id), c => c.Id);
 
-        _dbContext.Cards.AttachRange(missingDbCards);
+        _dbContext.Cards.AttachRange(missingCards);
 
         return hasNewCards;
     }

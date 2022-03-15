@@ -15,6 +15,7 @@
 
 @{ 
     bool hasAlts = Model.CardAlts.Any();
+
     bool hasFlip = FlipQuery.HasFlip(Model.Card.Name);
 
     bool isSignedIn = SignInManager.IsSignedIn(User);
@@ -26,7 +27,11 @@
 
 <div class="row"> 
     <h1 class="h1 col-auto"> @Model.Card.Name </h1> 
-    @{ var manaCost = Model.Card.Flip is not null ? Model.Card.Flip.ManaCost : Model.Card.ManaCost; }
+
+    @{ var manaCost = Model.Card.Flip is not null
+            ? Model.Card.Flip.ManaCost
+            : Model.Card.ManaCost; }
+
     @if (manaCost is not null)
     {
         <div class="h5 m-0 pl-sm-0 pb-2 pb-sm-0 col-sm-auto col-12 d-flex align-items-center">
@@ -84,196 +89,213 @@
 <hr />
 <div class="row">
 
-    <div class="col-lg-3 col-12 pb-4 d-flex justify-content-center justify-content-lg-start align-items-center">
-        @{ var imageUrl = Model.Card.Flip is not null ? Model.Card.Flip.ImageUrl : Model.Card.ImageUrl; }
+    <div class="col pb-4 d-flex justify-content-center justify-content-lg-start align-items-center">
+
+        @{ var imageUrl = Model.Card.Flip is not null 
+            ? Model.Card.Flip.ImageUrl
+            : Model.Card.ImageUrl; }
+
         <img class="card-img" alt="@Model.Card.Name" src="@imageUrl.WithHttps()"/>
     </div>
 
-    <div class="col">
+    <div class="col-lg-9 col-12">
         <dl class="row m-0">
                 
-            <dt class="col-md-3 col-5">
+            <dt class="col-md-2 col-5">
                 @Html.DisplayNameFor(m => m.Card.Rarity)
             </dt>
-            <dd class="col-md-9 col-7">
+            <dd class="col-md-10 col-7">
                 @Html.DisplayFor(m => m.Card.Rarity)
             </dd>
 
-            <dt class="col-md-3 col-5">
+            <dt class="col-md-2 col-5">
                 @Html.DisplayNameFor(m => m.Card.SetName)
             </dt>
-            <dd class="col-md-9 col-7">
+            <dd class="col-md-10 col-7">
                 @Html.DisplayFor(m => m.Card.SetName)
             </dd>
 
             @if (Model.Card.Flip is not null)
             {
-                <dt class="col-md-3 col-5">
+                <dt class="col-md-2 col-5">
                     @Html.DisplayNameFor(m => m.Card.Flip!.ManaValue)
                 </dt>
-                <dd class="col-md-9 col-7">
+                <dd class="col-md-10 col-7">
                     @(Model.Card.Flip.ManaValue?.ToString() ?? "--")
                 </dd>
 
-                <dt class="col-md-3 col-5">
+                <dt class="col-md-2 col-5">
                     @Html.DisplayNameFor(m => m.Card.Flip!.Type)
                 </dt>
-                <dd class="col-md-9 col-7">
+                <dd class="col-md-10 col-7">
                     @Model.Card.Flip.Type
                 </dd>
 
-                <dt class="col-md-3 col-5">
+                <dt class="col-md-2 col-5">
                     @Html.DisplayNameFor(m => m.Card.Flip!.Power)
                 </dt>
-                <dd class="col-md-9 col-7">
+                <dd class="col-md-10 col-7">
                     @(Model.Card.Flip.Power ?? "--")
                 </dd>
 
-                <dt class="col-md-3 col-5">
+                <dt class="col-md-2 col-5">
                     @Html.DisplayNameFor(m => m.Card.Flip!.Toughness)
                 </dt>
-                <dd class="col-md-9 col-7">
+                <dd class="col-md-10 col-7">
                     @(Model.Card.Flip.Toughness ?? "--")
                 </dd>
 
-                <dt class="col-md-3 col-5">
+                <dt class="col-md-2 col-5">
                     @Html.DisplayNameFor(m => m.Card.Flip!.Loyalty)
                 </dt>
-                <dd class="col-md-9 col-7">
+                <dd class="col-md-10 col-7">
                     @(Model.Card.Flip.Loyalty ?? "--")
                 </dd>
 
-                <dt class="col-md-3 col-5">
+                <dt class="col-md-2 col-5">
                     @Html.DisplayNameFor(m => m.Card.Flip!.Artist)
                 </dt>
-                <dd class="col-md-9 col-7">
+                <dd class="col-md-10 col-7">
                     @Model.Card.Flip.Artist
                 </dd>
             }
             else
             {
-                <dt class="col-md-3 col-5">
+                <dt class="col-md-2 col-5">
                     @Html.DisplayNameFor(m => m.Card.ManaValue)
                 </dt>
-                <dd class="col-md-9 col-7">
+                <dd class="col-md-10 col-7">
                     @(Model.Card.ManaValue?.ToString() ?? "--")
                 </dd>
 
-                <dt class="col-md-3 col-5">
+                <dt class="col-md-2 col-5">
                     @Html.DisplayNameFor(m => m.Card.Type)
                 </dt>
-                <dd class="col-md-9 col-7">
+                <dd class="col-md-10 col-7">
                     @Model.Card.Type
                 </dd>
 
-                <dt class="col-md-3 col-5">
+                <dt class="col-md-2 col-5">
                     @Html.DisplayNameFor(m => m.Card.Power)
                 </dt>
-                <dd class="col-md-9 col-7">
+                <dd class="col-md-10 col-7">
                     @(Model.Card.Power ?? "--")
                 </dd>
 
-                <dt class="col-md-3 col-5">
+                <dt class="col-md-2 col-5">
                     @Html.DisplayNameFor(m => m.Card.Toughness)
                 </dt>
-                <dd class="col-md-9 col-7">
+                <dd class="col-md-10 col-7">
                     @(Model.Card.Toughness ?? "--")
                 </dd>
 
-                <dt class="col-md-3 col-5">
+                <dt class="col-md-2 col-5">
                     @Html.DisplayNameFor(m => m.Card.Loyalty)
                 </dt>
-                <dd class="col-md-9 col-7">
+                <dd class="col-md-10 col-7">
                     @(Model.Card.Loyalty ?? "--")
                 </dd>
 
-                <dt class="col-md-3 col-5">
+                <dt class="col-md-2 col-5">
                     @Html.DisplayNameFor(m => m.Card.Artist)
                 </dt>
-                <dd class="col-md-9 col-7">
+                <dd class="col-md-10 col-7">
                     @Model.Card.Artist
                 </dd>
             }
 
             @{ var text = Model.Card.Flip is not null ? Model.Card.Flip.Text : Model.Card.Text; }
 
-            <dt class="col-md-3 col-5">
+            <dt class="col-md-2 col-5">
                 @Html.DisplayNameFor(m => m.Card.Text)
             </dt>
 
             @if (text == null)
             {
-                <dd class="col-md-9 col-7"> -- </dd>
+                <dd class="col-md-10 col-7"> -- </dd>
             }
             else
             {
-                <dd class="col-md-9 col-12">
+                <dd class="col-md-10 col-12">
                     <span class="multiline">@MtgSymbols.Format(text).ToHtmlString()</span>
                 </dd>
             }
 
             @{ var flavor = Model.Card.Flip is not null ? Model.Card.Flip.Flavor : Model.Card.Flavor; }
 
-            <dt class="col-md-3 col-5">
+            <dt class="col-md-2 col-5">
                 @Html.DisplayNameFor(m => m.Card.Flavor)
             </dt>
 
             @if (flavor == null)
             {
-                <dd class="col-md-9 col-7"> -- </dd>
+                <dd class="col-md-10 col-7"> -- </dd>
             }
             else
             {
-                <dd class="col-md-9 col-12">
+                <dd class="col-md-10 col-12">
                     <span class="multiline">@flavor</span>
                 </dd>
             }
-
-
-            <dt class="col-md-3 col-5 align-self-center">
-                Location of Copies
-            </dt>
-            <dd class="col-md-9 col-12">
-                <ul class="list-group list-group-horizontal-md d-flex py-1">
-                    @foreach(var hold in Model.Card.Holds)
-                    {
-                        var location = hold.Location;
-
-                        <li class="list-group-item col-md-4 d-flex justify-content-between align-items-center">
-                            @switch (location)
-                            {
-                                case Deck:
-                                    <a asp-page="/Decks/Details" asp-route-id="@location.Id"> @location.Name </a>
-                                    break;
-
-                                case Unclaimed when canChangeTreasury:
-                                    <a asp-page="/Unowned/Index" asp-route-id="@location.Id"> @location.Name </a>
-                                    break;
-
-                                case Excess:
-                                    <a asp-page="/Treasury/Excess" asp-route-cardId="@Model.Card.Id" >
-                                        @location.Name </a>
-                                    break;
-
-                                case Box:
-                                    <a asp-page="/Treasury/Details" asp-route-id="@location.Id" asp-route-cardId="@Model.Card.Id">
-                                        @location.Name </a>
-                                    break;
-
-                                default:
-                                    @location.Name
-                                    break;
-                            }
-
-                            <span class="ml-1 badge badge-secondary badge-pill">
-                                @hold.Copies
-                            </span>
-                        </li>
-                    }
-                </ul>
-            </dd>
-
         </dl>
     </div>
+</div>
 
+<hr>
+<div class="row py-3">
+    <h4 class="col-12 mb-3"> Location of Copies </h4>
+
+    <section class="col-lg-10 col">
+        <div class="row m-0">
+            @{
+                string breakpoints = "col-12 col-sm-10 col-md-6 col-lg-4 col-xl-3";
+                string item = "loc-item d-flex justify-content-between align-items-center";
+                string listClass = $"{breakpoints} {item}";
+            }
+
+            @foreach(var hold in Model.Card.Holds)
+            {
+                @switch (hold.Location)
+                {
+                    case Deck deck:
+                        <a asp-page="/Decks/Details" asp-route-id="@deck.Id" class="@listClass">
+                            @deck.Name
+                            <span class="ml-1 badge badge-secondary badge-pill"> @hold.Copies </span>
+                        </a>
+                        break;
+
+                    case Unclaimed unclaimed when canChangeTreasury:
+                        <a asp-page="/Unowned/Details" asp-route-id="@unclaimed.Id" class="@listClass">
+                            @unclaimed.Name
+                            <span class="ml-1 badge badge-secondary badge-pill"> @hold.Copies </span>
+                        </a>
+                        break;
+
+                    case Excess excess:
+                        <a asp-page="/Treasury/Excess" asp-route-cardId="@Model.Card.Id" class="listClass">
+                            @excess.Name
+                            <span class="ml-1 badge badge-secondary badge-pill"> @hold.Copies </span>
+                        </a>
+                        break;
+
+                    case Box box:
+                        <a asp-page="/Treasury/Details" asp-route-id="@box.Id" asp-route-cardId="@Model.Card.Id" class="@listClass">
+                            @box.Name 
+                            <span class="ml-1 badge badge-secondary badge-pill"> @hold.Copies </span>
+                        </a>
+                        break;
+
+                    case Location location:
+                        <div class="@listClass">
+                            @location.Name
+                            <span class="ml-1 badge badge-secondary badge-pill"> @hold.Copies </span>
+                        </div>
+                        break;
+
+                    default:
+                        break; 
+                }
+            }
+        </div>
+    </section>
 </div>

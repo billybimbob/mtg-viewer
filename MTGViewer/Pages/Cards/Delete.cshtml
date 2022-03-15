@@ -48,11 +48,18 @@
             </div>
 
             <div class="btn-group" role="group">
-                <a asp-page="Details"
-                    asp-route-id="@Model.Card.Id" 
-                    asp-route-returnurl="@Model.ReturnUrl"
-                    class="btn btn-secondary" role="button">
-                    Cancel </a>
+                @if (Model.ReturnUrl is not null)
+                {
+                    <a href="@Model.ReturnUrl"
+                        class="btn btn-secondary" role="button">
+                        Cancel </a>
+                }
+                else
+                {
+                    <a asp-page="Details" asp-route-id="@Model.Card.Id" 
+                        class="btn btn-secondary" role="button">
+                        Cancel </a>
+                }
 
                 <input type="submit" value="Remove" class="btn btn-danger" />
             </div>

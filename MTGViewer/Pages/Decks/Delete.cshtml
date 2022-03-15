@@ -28,6 +28,16 @@
     </form>
 </div>
 
+@if (Model.Deck.HasTrades)
+{
+    <div class="mt-2 alert alert-danger" role="alert">
+        <h5 class="alert-heading">Active Trades</h5>
+        <p class="mb-0"> 
+            The are currently active trades for @Model.Deck.Name will also be deleted.
+        </p>
+    </div>
+}
+
 <div class="table-responsive-md">
     <table class="table mt-2">
         <thead>
@@ -85,14 +95,3 @@
         </tbody>
     </table>
 </div>
-
-
-@if (Model.Deck.HasTrades)
-{
-    <div class="mt-2 alert alert-danger" role="alert">
-        <h5 class="alert-heading">Active Trades</h5>
-        <p> 
-            The currently active trades for @Model.Deck.Name will also be deleted.
-        </p>
-    </div>
-}

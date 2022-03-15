@@ -1,5 +1,3 @@
-using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Paging;
 using System.Threading;
@@ -32,8 +30,6 @@ public class IndexModel : PageModel
 
     private readonly ILogger<IndexModel> _logger;
 
-    private Dictionary<int, IReadOnlyList<QuantityNameGroup>>? _unclaimedCards;
-
     public IndexModel(
         CardDbContext dbContext, 
         PageSizes pageSizes,
@@ -50,207 +46,53 @@ public class IndexModel : PageModel
         _logger = logger;
     }
 
-    [TempData]
-    public string? PostMessage { get; set; }
 
-    public OffsetList<Unclaimed> Unclaimed { get; private set; } = OffsetList<Unclaimed>.Empty;
+    public SeekList<UnclaimedDetails> Unclaimed { get; private set; } = SeekList<UnclaimedDetails>.Empty;
 
 
-    public async Task<IActionResult> OnGetAsync(int? id, int? offset, CancellationToken cancel)
+    public async Task<IActionResult> OnGetAsync(
+        int? id,
+        int? seek,
+        SeekDirection direction,
+        CancellationToken cancel)
     {
-        if (await GetUnclaimedPageAsync(id, cancel) is int unclaimedPage)
-        {
-            return RedirectToPage(new { offset = unclaimedPage });
-        }
-
-        Unclaimed = await UnclaimedForViewing()
-            .PageBy(offset, _pageSize)
-            .ToOffsetListAsync(cancel);
-
-        _unclaimedCards = Unclaimed
-            .ToDictionary(u => u.Id, UnclaimedNameGroup);
+        Unclaimed = await UnclaimedDecks()
+            .SeekBy(seek, direction)
+            .OrderBy<Unclaimed>()
+            .Take(_pageSize)
+            .ToSeekListAsync(cancel);
 
         return Page();
     }
 
 
-    private async Task<int?> GetUnclaimedPageAsync(int? id, CancellationToken cancel)
-    {
-        if (id is not int unclaimedId)
-        {
-            return null;
-        }
-
-        var name = await _dbContext.Unclaimed
-            .Where(u => u.Id == unclaimedId)
-            .Select(u => u.Name)
-            .SingleOrDefaultAsync(cancel);
-
-        if (name == default)
-        {
-            return null;
-        }
-
-        int position = await _dbContext.Unclaimed
-            .CountAsync(u => u.Name.CompareTo(name) < 0, cancel);
-
-        return position / _pageSize;
-    }
-
-
-    private IQueryable<Unclaimed> UnclaimedForViewing()
+    private IQueryable<UnclaimedDetails> UnclaimedDecks()
     {
         return _dbContext.Unclaimed
-            .Include(u => u.Holds)
-                .ThenInclude(h => h.Card)
-
-            .Include(u => u.Wants)
-                .ThenInclude(w => w.Card)
-
             .OrderBy(u => u.Name)
                 .ThenBy(u => u.Id)
 
-            .AsSplitQuery()
-            .AsNoTrackingWithIdentityResolution();
+            .Select(u => new UnclaimedDetails
+            {
+                Id = u.Id,
+                Name = u.Name,
+                Color = u.Color,
+
+                HeldCopies = u.Holds.Sum(h => h.Copies),
+                WantCopies = u.Wants.Sum(w => w.Copies)
+            });
     }
 
 
-    private IReadOnlyList<QuantityNameGroup> UnclaimedNameGroup(Unclaimed unclaimed)
+    public IActionResult OnPostClaim(int id)
     {
-        var holdByName = unclaimed.Holds
-            .ToLookup(h => h.Card.Name);
-
-        var wantsByName = unclaimed.Wants
-            .ToLookup(w => w.Card.Name);
-
-        var cardNames = holdByName.Select(an => an.Key)
-            .Union(wantsByName.Select(wn => wn.Key))
-            .OrderBy(cn => cn);
-
-        return cardNames
-            .Select(cn =>
-                new QuantityNameGroup( holdByName[cn], wantsByName[cn] ))
-            .ToArray();
+        return RedirectToPagePreserveMethod("Details", "Claim", new { id });
     }
 
 
-    public IReadOnlyList<QuantityNameGroup> GetQuantityGroup(int id)
+    public IActionResult OnPostRemove(int id)
     {
-        if (_unclaimedCards?.GetValueOrDefault(id) is IReadOnlyList<QuantityNameGroup> cards)
-        {
-            return cards;
-        }
-
-        return Array.Empty<QuantityNameGroup>();
+        return RedirectToPagePreserveMethod("Details", "Remove", new { id });
     }
 
-    
-    public async Task<IActionResult> OnPostClaimAsync(int id, CancellationToken cancel)
-    {
-        if (!_signInManager.IsSignedIn(User))
-        {
-            return NotFound();
-        }
-
-        var userId = _userManager.GetUserId(User);
-
-        if (userId == null)
-        {
-            return NotFound();
-        }
-
-        var user = await _dbContext.Users
-            .SingleOrDefaultAsync(u => u.Id == userId, cancel);
-        
-        if (user == default)
-        {
-            return NotFound();
-        }
-
-        var unclaimed = await _dbContext.Unclaimed
-            .Include(u => u.Holds)
-            .Include(u => u.Wants)
-            .AsSplitQuery()
-            .SingleOrDefaultAsync(u => u.Id == id, cancel);
-
-        if (unclaimed == default)
-        {
-            return NotFound();
-        }
-
-        var claimed = new Deck
-        {
-            Name = unclaimed.Name,
-            Owner = user
-        };
-
-        _dbContext.Decks.Attach(claimed);
-
-        claimed.Holds.AddRange(unclaimed.Holds);
-        claimed.Wants.AddRange(unclaimed.Wants);
-
-        unclaimed.Holds.Clear();
-        unclaimed.Wants.Clear();
-
-        _dbContext.Unclaimed.Remove(unclaimed);
-
-        try
-        {
-            await _dbContext.SaveChangesAsync(cancel);
-
-            PostMessage = "Successfully claimed Deck";
-        }
-        catch (DbUpdateException e)
-        {
-            _logger.LogError($"ran into issue {e}");
-
-            PostMessage = "Ran into issue claiming Unclaimed Deck";
-        }
-
-        return RedirectToPage();
-    }
-
-
-    public async Task<IActionResult> OnPostRemoveAsync(int id, CancellationToken cancel)
-    {
-        if (!_signInManager.IsSignedIn(User))
-        {
-            return NotFound();
-        }
-
-        var unclaimed = await _dbContext.Unclaimed
-            .Include(u => u.Holds)
-                .ThenInclude(h => h.Card)
-            .Include(u => u.Wants)
-            .AsSplitQuery()
-            .SingleOrDefaultAsync(u => u.Id == id, cancel);
-
-        if (unclaimed == default)
-        {
-            return NotFound();
-        }
-
-        var cardReturns = unclaimed.Holds
-            .Select(h => new CardRequest(h.Card, h.Copies));
-
-        _dbContext.Holds.RemoveRange(unclaimed.Holds);
-        _dbContext.Unclaimed.Remove(unclaimed);
-
-        await _dbContext.AddCardsAsync(cardReturns, cancel);
-
-        try
-        {
-            await _dbContext.SaveChangesAsync(cancel);
-
-            PostMessage = "Successfully removed Unclaimed Deck";
-        }
-        catch (DbUpdateException e)
-        {
-            _logger.LogError($"ran into error {e}");
-
-            PostMessage = "Ran into issue removing Unclaimed Deck";
-        }
-
-        return RedirectToPage();
-    }
 }

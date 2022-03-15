@@ -17,8 +17,6 @@
         .AuthorizeAsync(User, CardPolicies.ChangeTreasury)).Succeeded;
 
     bool isSignedIn = SignInManager.IsSignedIn(User);
-
-    string returnUrl = $"{Request.Path}{Request.QueryString}";
 }
 
 <h1>Treasury</h1>
@@ -57,6 +55,9 @@
 {
     <h3> There are no Boxes in the Collection </h3>
 }
+
+
+@{ string returnUrl = $"{Request.Path}{Request.QueryString}"; }
 
 @foreach (var bin in Model.Bins)
 {

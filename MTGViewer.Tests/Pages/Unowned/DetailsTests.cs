@@ -2,12 +2,10 @@ using System.Linq;
 using System.Threading.Tasks;
 
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
 using Xunit;
 
-using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
 using MTGViewer.Pages.Unowned;
 using MTGViewer.Tests.Utils;
@@ -16,19 +14,19 @@ namespace MTGViewer.Tests.Pages.Unowned;
 
 public class IndexTests : IAsyncLifetime
 {
-    private readonly IndexModel _indexModel;
+    private readonly DetailsModel _detailsModel;
     private readonly CardDbContext _dbContext;
     private readonly PageContextFactory _pageFactory;
     private readonly TestDataGenerator _testGen;
     private Unclaimed _unclaimed = default!;
 
     public IndexTests(
-        IndexModel indexModel,
+        DetailsModel indexModel,
         CardDbContext dbContext,
         PageContextFactory pageFactory,
         TestDataGenerator testGen)
     {
-        _indexModel = indexModel;
+        _detailsModel = indexModel;
         _dbContext = dbContext;
         _pageFactory = pageFactory;
         _testGen = testGen;
@@ -49,13 +47,13 @@ public class IndexTests : IAsyncLifetime
     [Fact]
     public async Task OnPostClaim_NoUser_NoChange()
     {
-        _pageFactory.AddModelContext(_indexModel);
+        _pageFactory.AddModelContext(_detailsModel);
 
         bool unclaimedBefore = await _dbContext.Unclaimed
             .Select(u => u.Id)
             .ContainsAsync(_unclaimed.Id);
 
-        var result = await _indexModel.OnPostClaimAsync(_unclaimed.Id, default);
+        var result = await _detailsModel.OnPostClaimAsync(_unclaimed.Id, default);
 
         bool unclaimedAfter = await _dbContext.Unclaimed
             .Select(u => u.Id)
@@ -75,7 +73,7 @@ public class IndexTests : IAsyncLifetime
             .Select(u => u.Id)
             .FirstAsync();
 
-        await _pageFactory.AddModelContextAsync(_indexModel, userId);
+        await _pageFactory.AddModelContextAsync(_detailsModel, userId);
 
         bool unclaimedBefore = await _dbContext.Unclaimed
             .Select(u => u.Id)
@@ -85,7 +83,7 @@ public class IndexTests : IAsyncLifetime
             .Where(d => d.OwnerId == userId)
             .CountAsync();
 
-        var result = await _indexModel.OnPostClaimAsync(_unclaimed.Id, default);
+        var result = await _detailsModel.OnPostClaimAsync(_unclaimed.Id, default);
 
         bool unclaimedAfter = await _dbContext.Unclaimed
             .Select(u => u.Id)
@@ -104,16 +102,16 @@ public class IndexTests : IAsyncLifetime
     }
 
 
-    [Fact]
+    [Fact(Skip = "Middleware will handle auth")]
     public async Task OnPostRemove_NoUser_NoChange()
     {
-        _pageFactory.AddModelContext(_indexModel);
+        _pageFactory.AddModelContext(_detailsModel);
 
         bool unclaimedBefore = await _dbContext.Unclaimed
             .Select(u => u.Id)
             .ContainsAsync(_unclaimed.Id);
 
-        var result = await _indexModel.OnPostRemoveAsync(_unclaimed.Id, default);
+        var result = await _detailsModel.OnPostRemoveAsync(_unclaimed.Id, default);
 
         bool unclaimedAfter = await _dbContext.Unclaimed
             .Select(u => u.Id)
@@ -133,13 +131,13 @@ public class IndexTests : IAsyncLifetime
             .Select(u => u.Id)
             .FirstAsync();
 
-        await _pageFactory.AddModelContextAsync(_indexModel, userId);
+        await _pageFactory.AddModelContextAsync(_detailsModel, userId);
 
         bool unclaimedBefore = await _dbContext.Unclaimed
             .Select(u => u.Id)
             .ContainsAsync(_unclaimed.Id);
 
-        var result = await _indexModel.OnPostRemoveAsync(_unclaimed.Id, default);
+        var result = await _detailsModel.OnPostRemoveAsync(_unclaimed.Id, default);
 
         bool unclaimedAfter = await _dbContext.Unclaimed
             .Select(u => u.Id)

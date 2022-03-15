@@ -25,8 +25,6 @@ public class DetailsModel : PageModel
     }
 
 
-    public Seek Seek { get; private set; }
-
     public BoxPreview Box { get; private set; } = default!;
 
     public SeekList<QuantityPreview> Cards { get; private set; } = SeekList<QuantityPreview>.Empty;
@@ -60,7 +58,6 @@ public class DetailsModel : PageModel
 
         Box = box;
         Cards = cards;
-        Seek = (Seek)cards.Seek;
 
         return Page();
     }

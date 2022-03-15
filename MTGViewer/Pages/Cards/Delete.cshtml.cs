@@ -53,11 +53,6 @@ public class DeleteModel : PageModel
 
     public async Task<IActionResult> OnGetAsync(string id, string? returnUrl, CancellationToken cancel)
     {
-        if (id is null)
-        {
-            return NotFound();
-        }
-
         var card = await DeleteLinkAsync.Invoke(_dbContext, id, cancel);
 
         if (card == default)

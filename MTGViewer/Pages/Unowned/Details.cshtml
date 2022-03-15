@@ -1,0 +1,70 @@
+@page "{id:int}"
+@model Unowned.DetailsModel
+@{
+    ViewData["Title"] = $"{Model.Unclaimed.Name} - Details";
+}
+
+@inject SymbolFormatter MtgSymbols
+
+
+<h1> @Model.Unclaimed.Name </h1>
+
+<form method="POST">
+    <input type="hidden" asp-for="Unclaimed.Id" />
+
+    <div class="btn-group mb-3" role="group">
+        <input title="Claim @Model.Unclaimed.Name"
+            asp-page-handler="Claim"
+            type="submit" class="btn btn-secondary"
+            value="Claim" />
+
+        <input title="Remove @Model.Unclaimed.Name"
+            asp-page-handler="Remove"
+            type="submit" class="btn btn-danger"
+            value="Remove" />
+    </div>
+</form>
+
+
+<div class="table-responsive-md">
+    <table class="table">
+        <thead>
+            <tr>
+                <th scope="col"> @Html.DisplayNameForInnerType((Hold h) => h.Card) </th>
+                <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.ManaCost) </th>
+                <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.SetName) </th>
+                <th scope="col"> Held </th>
+                <th scope="col"> Wanted </th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var card in Model.Cards)
+            {
+                <tr>
+                    <td>
+                        <component type="typeof(HoverCard)" render-mode="Static"
+                            param-Preview="card" />
+                    </td>
+                    <td> 
+                        <div class="ms-group">
+                            @MtgSymbols.Format(card.ManaCost).ToHtmlString() 
+                        </div>
+                    </td>
+
+                    <td> @card.SetName </td>
+                    <td> @card.Held </td>
+                    <td> @card.Want </td>
+                </tr>
+            }
+            <tr>
+                <th> Total </th>
+                <td> -- </td>
+                <td> -- </td>
+                <td> <strong>@Model.Unclaimed.HeldCopies</strong> </td>
+                <td> <strong>@Model.Unclaimed.WantCopies</strong> </td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<partial name="_SeekPagingPartial" model="(Seek)Model.Cards.Seek" />

@@ -35,6 +35,7 @@ public class DetailsModel : PageModel
     public async Task<IActionResult> OnGetAsync(string id, bool flip, string? returnUrl, CancellationToken cancel)
     {
         var card = await GetCardAsync(id, flip, cancel);
+
         if (card == default)
         {
             return NotFound();
@@ -44,7 +45,7 @@ public class DetailsModel : PageModel
 
         Card = card;
 
-        CardAlts = await CardAlternatives // unbounded: keep eye on
+        CardAlts = await CardAlternatives
             .Invoke(_dbContext, card.Id, card.Name)
             .ToListAsync(cancel);
 
@@ -100,6 +101,7 @@ public class DetailsModel : PageModel
 
         = EF.CompileAsyncQuery((CardDbContext dbContext, string cardId, string cardName) =>
             dbContext.Cards
+                // unbounded: keep eye on
                 .Where(c => c.Id != cardId && c.Name == cardName)
                 .OrderBy(c => c.SetName)
                 .Select(c => new CardAlt(c.Id, c.Name, c.SetName)));

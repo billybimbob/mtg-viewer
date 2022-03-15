@@ -153,8 +153,14 @@ body {
 .card-img {
   box-shadow: 0 4px 10px 0 rgba(33, 33, 33, 0.15);
   border-radius: .55rem;
-  max-width: 100%;
-  height: auto;
+  max-width: 300px;
+  /* height: auto; */
+}
+
+.loc-item {
+  position: relative;
+  padding: .75rem 1.25rem;
+  border: 1px solid rgba(0,0,0,.125);
 }
 
 .loading {
@@ -164,8 +170,8 @@ body {
 .placeholder {
   box-shadow: 0 4px 10px 0 rgba(33, 33, 33, 0.15);
   border-radius: .55rem;
-  height: 23rem;
   width: 100%;
+  padding-top: 133.33%;
   position: relative;
   overflow: hidden;
 }

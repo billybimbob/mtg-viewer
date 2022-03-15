@@ -52,7 +52,7 @@ internal sealed class TreasuryContext
             .Where(h => h.Location is Storage)
 
             .ToDictionary(
-                a => (a.CardId, (Storage)a.Location));
+                h => (h.CardId, (Storage)h.Location));
 
         if (dbContext.Transactions.Local.FirstOrDefault() is Transaction transaction)
         {
