@@ -79,7 +79,7 @@ public class LoadingProgress
         Current += progress;
         ProgressUpdate?.Invoke(Current);
 
-        _logger.LogInformation($"percent updated to {Current}");
+        _logger.LogInformation("Percent updated to {Current}", Current);
     }
 
 
@@ -91,6 +91,6 @@ public class LoadingProgress
         Current = 0;
         ProgressUpdate?.Invoke(Current);
 
-        _logger.LogInformation($"progress reset");
+        _logger.LogInformation($"Progress reset");
     }
 }

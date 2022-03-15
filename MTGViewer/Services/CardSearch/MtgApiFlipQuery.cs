@@ -151,7 +151,7 @@ public sealed class MtgApiFlipQuery
     {
         if (!result.IsSuccess)
         {
-            _logger.LogError(result.Exception.ToString());
+            _logger.LogError("{Error}", result.Exception);
             return null;
         }
 
@@ -204,7 +204,7 @@ public sealed class MtgApiFlipQuery
 
         if (!Validator.TryValidateObject(nullCheck, validationContext, null))
         {
-            _logger.LogError($"{card?.Id} was found, but failed validation");
+            _logger.LogError("{Card} was found, but failed validation", card?.Id);
             return null;
         }
 
@@ -237,7 +237,7 @@ public sealed class MtgApiFlipQuery
 
         if (!Validator.TryValidateObject(nullCheck, validationContext, null))
         {
-            _logger.LogError($"{iFlip?.Id} was found, but failed validation");
+            _logger.LogError("{Flip} was found, but failed validation", iFlip?.Id);
             return null;
         }
 

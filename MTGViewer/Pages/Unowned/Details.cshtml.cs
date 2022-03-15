@@ -174,7 +174,7 @@ public class DetailsModel : PageModel
         }
         catch (DbUpdateException e)
         {
-            _logger.LogError($"ran into issue {e}");
+            _logger.LogError("Ran into issue {Error}", e);
 
             PostMessage = "Ran into issue claiming Unclaimed Deck";
         }
@@ -213,7 +213,7 @@ public class DetailsModel : PageModel
         }
         catch (DbUpdateException e)
         {
-            _logger.LogError($"ran into error {e}");
+            _logger.LogError("Ran into error {Error}", e);
 
             PostMessage = "Ran into issue removing Unclaimed Deck";
         }

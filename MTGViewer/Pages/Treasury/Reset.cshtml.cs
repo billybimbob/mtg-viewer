@@ -124,7 +124,7 @@ public class ResetModel : PageModel
         }
         catch (DbUpdateException e)
         {
-            _logger.LogError(e.ToString());
+            _logger.LogError("{Error}", e);
 
             PostMessage = "Ran into error canceling reset request";
         }
@@ -175,7 +175,7 @@ public class ResetModel : PageModel
         }
         catch (DbUpdateException e)
         {
-            _logger.LogError(e.ToString());
+            _logger.LogError("{Error}", e);
 
             PostMessage = "Ran into issue requesting for card data resets";
         }

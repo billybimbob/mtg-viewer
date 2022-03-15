@@ -66,7 +66,7 @@ namespace MTGViewer.Areas.Identity.Services
             }
             catch (DbUpdateException e)
             {
-                _logger.LogError(e.ToString());
+                _logger.LogError("{Error}", e);
             }
         }
 

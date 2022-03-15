@@ -104,7 +104,7 @@ public class ReferenceManager
         }
         catch (DbUpdateException e)
         {
-            _logger.LogError(e.ToString());
+            _logger.LogError("{Error}", e);
 
             return false;
         }
@@ -145,7 +145,7 @@ public class ReferenceManager
         }
         catch (DbUpdateException e)
         {
-            _logger.LogError(e.ToString());
+            _logger.LogError("{Error}", e);
 
             return false;
         }

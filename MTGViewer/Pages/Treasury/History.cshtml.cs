@@ -176,7 +176,7 @@ public class HistoryModel : PageModel
         }
         catch (Exception e)
         {
-            _logger.LogError(e.ToString());
+            _logger.LogError("{Error}", e);
         }
     }
 
@@ -244,7 +244,7 @@ public class HistoryModel : PageModel
         }
         catch (DbUpdateException e)
         {
-            _logger.LogError($"ran into error while removing the transaction {e}");
+            _logger.LogError("Ran into error while removing the transaction {Error}", e);
 
             PostMessage = "Ran into issue while removing transaction";
         }

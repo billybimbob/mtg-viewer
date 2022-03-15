@@ -213,7 +213,7 @@ public class ExchangeModel : PageModel
         }
         catch (DbUpdateException e)
         {
-            _logger.LogError($"ran into db error {e}");
+            _logger.LogError("Ran into db error {Error}", e);
 
             PostMessage = "Ran into issue while trying to exchange";
         }

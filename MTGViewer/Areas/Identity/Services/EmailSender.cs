@@ -60,6 +60,6 @@ public class EmailSender : IEmailSender
 
         var result = await client.SendEmailAsync(msg);
 
-        _logger.LogInformation($"email with response code {result.StatusCode}");
+        _logger.LogInformation("Email with response code {StatusCode}", result.StatusCode);
     }
 }

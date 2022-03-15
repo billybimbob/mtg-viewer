@@ -18,7 +18,7 @@ public class OperationCancelledFilter : ExceptionFilterAttribute
     {
         if (context.Exception is OperationCanceledException)
         {
-            _logger.LogInformation("Request was cancelled");
+            _logger.LogInformation("Request was cancelled {Cancel}", context.Exception);
 
             context.ExceptionHandled = true;
             context.Result = new StatusCodeResult(499);

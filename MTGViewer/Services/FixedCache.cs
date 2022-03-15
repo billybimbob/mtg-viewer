@@ -34,7 +34,6 @@ public class FixedCache
             }
 
             _cache.Set(key, value, _options);
-            // _logger.LogInformation($"there are {(_cache as MemoryCache)?.Count} entries in the cache");
         }
     }
 

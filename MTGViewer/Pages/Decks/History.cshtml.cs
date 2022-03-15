@@ -193,7 +193,7 @@ public class HistoryModel : PageModel
         }
         catch (Exception e)
         {
-            _logger.LogError(e.ToString());
+            _logger.LogError("{Error}", e);
         }
     }
 
@@ -252,7 +252,7 @@ public class HistoryModel : PageModel
         }
         catch (DbUpdateException e)
         {
-            _logger.LogError($"issue removing changes {e}");
+            _logger.LogError("Issue removing changes {Error}", e);
         }
 
         return RedirectToPage();
