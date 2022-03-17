@@ -39,13 +39,11 @@ public class OfferModel : PageModel
     [TempData]
     public string? PostMessage { get; set; }
 
-
     public CardPreview Card { get; private set; } = default!;
 
     public UserRef Receiver { get; private set; } = default!;
 
     public OffsetList<Deck> Decks { get; private set; } = OffsetList<Deck>.Empty;
-
 
     [BindProperty]
     public Suggestion? Suggestion { get; set; }
@@ -131,6 +129,7 @@ public class OfferModel : PageModel
                 deck => deck.Id,
                 suggest => suggest.ToId,
                 (Deck, Suggests) => new { Deck, Suggests })
+
             .SelectMany(
                 dts => dts.Suggests.DefaultIfEmpty(),
                 (dts, Suggest) => new { dts.Deck, Suggest })

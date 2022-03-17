@@ -94,10 +94,11 @@ public static class PagingExtensions
 
 
 
-    public static ISelectableQueryable<TEntity, TEntity> After<TEntity>(
+    public static ISelectableQueryable<TEntity, TEntity> After<TEntity, TOrigin>(
         this IQueryable<TEntity> source,
-        TEntity origin)
+        TOrigin origin)
         where TEntity : notnull
+        where TOrigin : TEntity
     {
         ArgumentNullException.ThrowIfNull(source);
         ArgumentNullException.ThrowIfNull(origin);
@@ -149,10 +150,11 @@ public static class PagingExtensions
 
 
 
-    public static ISelectableQueryable<TEntity, TEntity> Before<TEntity>(
+    public static ISelectableQueryable<TEntity, TEntity> Before<TEntity, TOrigin>(
         this IQueryable<TEntity> source,
-        TEntity origin)
+        TOrigin origin)
         where TEntity : notnull
+        where TOrigin : TEntity
     {
         ArgumentNullException.ThrowIfNull(source);
         ArgumentNullException.ThrowIfNull(origin);
@@ -208,19 +210,6 @@ public static class PagingExtensions
             .Select(selector)
             .WithSelect<TSource, TResult>();
     }
-
-
-    // public static IQueryable<TEntity> SeekSize<TEntity>(
-    //     this IQueryable<TEntity> source,
-    //     int size)
-    // {
-    //     ArgumentNullException.ThrowIfNull(source);
-
-    //     var insertVisitor = new InsertTakeVisitor<TEntity>(size);
-
-    //     return source.Provider
-    //         .CreateQuery<TEntity>(insertVisitor.Visit(source.Expression));
-    // }
 
 
     public static IQueryable<TResult> Take<TSource, TResult>(

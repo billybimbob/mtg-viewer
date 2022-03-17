@@ -39,7 +39,7 @@ public class ColorUpdate : IBeforeSaveTrigger<TheoryCraft>
                 .Union(theory.Wants.Select(h => h.CardId))
                 .ToArray();
 
-            theory.Color = await CardColors
+            theory.Color = await CardColorsAsync
                 .Invoke(_dbContext, cardIds)
                 .AggregateAsync(Color.None, (color, card) => color | card, cancel);
 
@@ -134,7 +134,7 @@ public class ColorUpdate : IBeforeSaveTrigger<TheoryCraft>
                 .SingleOrDefault());
 
 
-    private static readonly Func<CardDbContext, string[], IAsyncEnumerable<Color>> CardColors
+    private static readonly Func<CardDbContext, string[], IAsyncEnumerable<Color>> CardColorsAsync
 
         = EF.CompileAsyncQuery((CardDbContext dbContext, string[] cardIds) =>
             dbContext.Cards

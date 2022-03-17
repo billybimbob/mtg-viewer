@@ -13,7 +13,7 @@ public interface IMTGQuery
 {
     IMTGCardSearch Where(Expression<Func<CardQuery, bool>> predicate);
 
-    IAsyncEnumerable<Card> Collection(IEnumerable<string> multiverseIds);
+    IAsyncEnumerable<Card> CollectionAsync(IEnumerable<string> multiverseIds);
 
     ValueTask<Card?> FindAsync(string id, CancellationToken cancel = default);
 }

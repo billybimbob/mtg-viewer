@@ -158,7 +158,7 @@ public sealed class OriginTranslator<TOrigin, TEntity>
 
         var registration = new Registration(member);
 
-        var translation = new Translation(_origin, target);
+        var translation = new Translation { Expression = _origin, Target = target };
 
         return TryAddFromMemberInit(registration, translation, _projection);
     }
@@ -179,9 +179,9 @@ public sealed class OriginTranslator<TOrigin, TEntity>
 
     private readonly struct Translation
     {
-        public Expression? Expression { get; }
-        public int Progress { get; }
-        public int Target { get; }
+        public Expression? Expression { get; init; }
+        public int Progress { get; init; }
+        public int Target { get; init; }
 
         public bool IsFinished => Progress == Target;
 
@@ -192,17 +192,16 @@ public sealed class OriginTranslator<TOrigin, TEntity>
             Progress = 0;
         }
 
-        private Translation(Expression expression, int target, int progress)
-            : this(expression, target)
-        {
-            Progress = progress;
-        }
-
         public Translation MakeAccess(MemberInfo member)
         {
             var access = Expression.MakeMemberAccess(Expression, member);
 
-            return new Translation(access, Target, Progress + 1);
+            return this with
+            {
+                Expression = access,
+                Target = Target,
+                Progress = Progress + 1
+            };
         }
 
         public string? GetName()

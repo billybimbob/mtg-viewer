@@ -66,7 +66,7 @@ public class DeleteModel : PageModel
             return NotFound();
         }
 
-        var cards = await DeckCards
+        var cards = await DeckCardsAsync
             .Invoke(_dbContext, id, _pageSize)
             .ToListAsync(cancel);
 
@@ -103,7 +103,7 @@ public class DeleteModel : PageModel
                 .SingleOrDefault());
 
 
-    private static readonly Func<CardDbContext, int, int, IAsyncEnumerable<DeckLink>> DeckCards
+    private static readonly Func<CardDbContext, int, int, IAsyncEnumerable<DeckLink>> DeckCardsAsync
         = EF.CompileAsyncQuery((CardDbContext dbContext, int id, int limit) =>
 
             dbContext.Cards

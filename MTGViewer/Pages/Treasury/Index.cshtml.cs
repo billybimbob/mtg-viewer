@@ -75,7 +75,7 @@ public class IndexModel : PageModel
 
                 Appearance = b.Appearance,
                 Capacity = b.Capacity,
-                TotalHolds = b.Holds.Sum(h => h.Copies),
+                Held = b.Holds.Sum(h => h.Copies),
 
                 Cards = b.Holds
                     .OrderBy(h => h.Card.Name)

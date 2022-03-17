@@ -25,23 +25,15 @@ public readonly record struct Seek<T>(T? Previous, T? Next)
     {
         if (direction is SeekDirection.Forward)
         {
-            Previous = hasOrigin
-                ? items.FirstOrDefault()
-                : default;
+            Previous = hasOrigin ? items.FirstOrDefault() : default;
 
-            Next = lookAhead
-                ? items.LastOrDefault()
-                : default;
+            Next = lookAhead ? items.LastOrDefault() : default;
         }
         else
         {
-            Previous = lookAhead
-                ? items.FirstOrDefault()
-                : default;
+            Previous = lookAhead ? items.FirstOrDefault() : default;
 
-            Next = hasOrigin
-                ? items.LastOrDefault()
-                : default;
+            Next = hasOrigin ? items.LastOrDefault() : default;
         }
     }
 

@@ -21,7 +21,6 @@
                 class="btn btn-secondary" role="button">
                 Cancel </a>
 
-            <input type="hidden" asp-for="Box.Id" class="sr-only"/>
             <input type="submit" value="Delete" class="btn btn-danger" />
         </div>
     </form>
@@ -68,7 +67,7 @@
                 <td> -- </td>
                 <td> -- </td>
                 <td class="font-weight-bold">
-                    @Model.Box.TotalHolds / @Model.Box.Capacity
+                    @Model.Box.Held / @Model.Box.Capacity
                 </td>
             </tr>
         </tbody>

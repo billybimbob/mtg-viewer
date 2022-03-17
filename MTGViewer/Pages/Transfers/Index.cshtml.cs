@@ -72,7 +72,7 @@ public class IndexModel : PageModel
             .Take(_pageSize)
             .ToSeekListAsync(cancel);
 
-        Suggestions = await SuggestionPreviews
+        Suggestions = await SuggestionsAsync
             .Invoke(_dbContext, userId, _pageSize)
             .ToListAsync(cancel);
 
@@ -96,13 +96,16 @@ public class IndexModel : PageModel
                 Color = d.Color,
 
                 SentTrades = d.TradesTo.Any(),
-                ReceivedTrades = d.TradesFrom.Any(),
+
+                // trades are only valid if the From target (Hold) exists
+                ReceivedTrades = d.TradesFrom.Any() && d.Holds.Any(),
+
                 WantsCards = d.Wants.Any()
             });
     }
 
 
-    private static readonly Func<CardDbContext, string, int, IAsyncEnumerable<SuggestionPreview>> SuggestionPreviews
+    private static readonly Func<CardDbContext, string, int, IAsyncEnumerable<SuggestionPreview>> SuggestionsAsync
         = EF.CompileAsyncQuery((CardDbContext dbContext, string userId, int limit) =>
 
             dbContext.Suggestions

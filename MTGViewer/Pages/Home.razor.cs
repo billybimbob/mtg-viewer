@@ -35,9 +35,6 @@ public partial class Home : ComponentBase, IDisposable
 
     public bool IsEmptyCollection => !_randomContext?.Cards.Any() ?? false;
 
-    public bool IsImageLoaded(CardImage card) =>
-        _randomContext?.LoadedImages.Contains(card.Id) ?? false;
-
 
     private const int ChunkSize = 4;
 
@@ -68,7 +65,7 @@ public partial class Home : ComponentBase, IDisposable
 
             _randomContext = await RandomCardsContext.CreateAsync(dbContext, loadLimit, cancelToken);
 
-            _recentChanges = await RecentTransactions
+            _recentChanges = await RecentTransactionsAsync
                 .Invoke(dbContext, loadLimit)
                 .ToListAsync(cancelToken);
 
@@ -91,6 +88,12 @@ public partial class Home : ComponentBase, IDisposable
         _cancel.Dispose();
     }
 
+
+
+    public bool IsImageLoaded(CardImage card)
+    {
+        return _randomContext?.LoadedImages.Contains(card.Id) ?? false;
+    }
 
 
     public static string CardNames(IEnumerable<RecentChange> changes)
@@ -175,12 +178,16 @@ public partial class Home : ComponentBase, IDisposable
         }
 
 
-        public static async Task<RandomCardsContext> CreateAsync(
+        public static async ValueTask<RandomCardsContext> CreateAsync(
             CardDbContext dbContext, 
             int loadLimit, 
             CancellationToken cancel)
         {
-            var loadOrder = await ShuffleOrderAsync(dbContext, loadLimit, cancel);
+            var loadOrder = await ShuffleOrderAsync
+                .Invoke(dbContext, loadLimit)
+                .Chunk(ChunkSize)
+                .ToListAsync(cancel);
+
             var randomContext = new RandomCardsContext(loadOrder);
 
             if (randomContext.HasMore)
@@ -195,16 +202,16 @@ public partial class Home : ComponentBase, IDisposable
         {
             ArgumentNullException.ThrowIfNull(dbContext);
 
-            var nextChunk = HasMore 
+            var chunk = HasMore 
                 ? _loadOrder[_cards.Count / ChunkSize] 
                 : null;
 
-            if (nextChunk is null)
+            if (chunk is null)
             {
                 throw new InvalidOperationException("Cannot load any more chunks");
             }
 
-            var newCards = await CardChunkAsync(dbContext, nextChunk, cancel);
+            var newCards = await CardChunkAsync(dbContext, chunk).ToListAsync(cancel);
 
             _cards.AddRange(newCards);
         }
@@ -214,18 +221,8 @@ public partial class Home : ComponentBase, IDisposable
 
     #region Database Queries
 
-    private static ValueTask<List<string[]>> ShuffleOrderAsync(
-        CardDbContext dbContext,
-        int limit,
-        CancellationToken cancel)
-    {
-        return ShuffleOrder(dbContext, limit)
-            .Chunk(ChunkSize)
-            .ToListAsync(cancel);
-    }
 
-
-    private static readonly Func<CardDbContext, int, IAsyncEnumerable<string>> ShuffleOrder
+    private static readonly Func<CardDbContext, int, IAsyncEnumerable<string>> ShuffleOrderAsync
         = EF.CompileAsyncQuery((CardDbContext dbContext, int limit) =>
             dbContext.Cards
                 .Select(c => c.Id)
@@ -233,64 +230,56 @@ public partial class Home : ComponentBase, IDisposable
                 .Take(limit));
 
 
-    private static ValueTask<List<CardImage>> CardChunkAsync(
-        CardDbContext dbContext, 
-        string[] chunk,
-        CancellationToken cancel)
+    private static IAsyncEnumerable<CardImage> CardChunkAsync(CardDbContext dbContext, string[] chunk)
     {
-        var chunkPreview = CardChunk.Invoke(dbContext, chunk);
+        var dbChunk = dbContext.Cards
+            .Where(c => chunk.Contains(c.Id))
+            .Select(c => new CardImage
+            {
+                Id = c.Id,
+                Name = c.Name,
+                ImageUrl = c.ImageUrl
+            })
+            .AsAsyncEnumerable();
 
         // preserve order of chunk
         return chunk
             .ToAsyncEnumerable()
-            .Join(chunkPreview,
-                cid => cid,
-                c => c.Id,
-                (_, preview) => preview)
-            .ToListAsync(cancel);
+            .Join( dbChunk,
+                cid => cid, c => c.Id,
+                (_, preview) => preview);
     }
 
 
-    private static readonly Func<CardDbContext, string[], IAsyncEnumerable<CardImage>> CardChunk
-
-        = EF.CompileAsyncQuery((CardDbContext dbContext, string[] chunk) =>
-            dbContext.Cards
-                .Where(c => chunk.Contains(c.Id))
-                .Select(c => new CardImage
-                {
-                    Id = c.Id,
-                    Name = c.Name,
-                    ImageUrl = c.ImageUrl
-                }));
-
-
-    private static readonly Func<CardDbContext, int, IAsyncEnumerable<RecentTransaction>> RecentTransactions
+    private static readonly Func<CardDbContext, int, IAsyncEnumerable<RecentTransaction>> RecentTransactionsAsync
         = EF.CompileAsyncQuery((CardDbContext dbContext, int limit) =>
-
             dbContext.Transactions
                 .Where(t => t.Changes
-                    .Any(c => c.From is Box || c.To is Box
-                        || c.From is Excess || c.To is Excess))
+                    .Any(c => c.From is Box
+                        || c.From is Excess 
+                        || c.To is Box
+                        || c.To is Excess))
 
                 .OrderByDescending(t => t.AppliedAt)
                 .Take(ChunkSize)
-
                 .Select(t => new RecentTransaction
                 {
                     AppliedAt = t.AppliedAt,
-                    Total = t.Changes.Sum(c => c.Copies),
+                    Copies = t.Changes.Sum(c => c.Copies),
 
                     Changes = t.Changes
-                        .Where(c => c.From is Box || c.To is Box
-                            || c.From is Excess || c.To is Excess)
+                        .Where(c => c.From is Box
+                            || c.From is Excess
+                            || c.To is Box
+                            || c.To is Excess)
 
                         .OrderBy(c => c.Card.Name)
                         .Take(limit)
                         .Select(c => new RecentChange
                         {
-                            ToStorage = c.To is Box || c.To is Excess,
                             FromStorage = c.From is Box || c.From is Excess,
-                            CardName = c.Card.Name
+                            ToStorage = c.To is Box || c.To is Excess,
+                            CardName = c.Card.Name,
                         }),
                 }));
 

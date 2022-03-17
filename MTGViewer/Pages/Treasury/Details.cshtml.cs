@@ -80,7 +80,7 @@ public class DetailsModel : PageModel
                     Appearance = b.Appearance,
                     Capacity = b.Capacity,
 
-                    TotalHolds = b.Holds.Sum(h => h.Copies)
+                    Held = b.Holds.Sum(h => h.Copies)
                 })
                 .SingleOrDefault(b => b.Id == boxId));
 
@@ -107,6 +107,16 @@ public class DetailsModel : PageModel
             .Where((id, i) => i % _pageSize == _pageSize - 1)
             .LastOrDefaultAsync(cancel);
     }
+
+
+    private static readonly Func<CardDbContext, string, int, CancellationToken, Task<Hold?>> CardJumpAsync
+
+        = EF.CompileAsyncQuery((CardDbContext dbContext, string cardId, int boxId, CancellationToken _) =>
+            dbContext.Boxes
+                .SelectMany(b => b.Holds)
+                .Include(h => h.Card)
+                .OrderBy(h => h.Id)
+                .SingleOrDefault(h =>h.LocationId == boxId && h.CardId == cardId));
 
 
     private IQueryable<QuantityPreview> BoxCards(BoxPreview box)
@@ -136,15 +146,4 @@ public class DetailsModel : PageModel
                 },
             });
     }
-
-
-    private static readonly Func<CardDbContext, string, int, CancellationToken, Task<Hold?>> CardJumpAsync
-
-        = EF.CompileAsyncQuery((CardDbContext dbContext, string cardId, int boxId, CancellationToken _) =>
-            dbContext.Holds
-                .Where(h => h.Location is Box
-                    && h.LocationId == boxId && h.CardId == cardId)
-                .Include(h => h.Card)
-                .OrderBy(h => h.Id)
-                .SingleOrDefault());
 }

@@ -23,11 +23,9 @@ public class DetailsModel : PageModel
     }
 
 
-    public record CardAlt(string Id, string Name, string SetName);
-
     public Card Card { get; private set; } = default!;
 
-    public IReadOnlyList<CardAlt> CardAlts { get; private set; } = Array.Empty<CardAlt>();
+    public IReadOnlyList<CardLink> Alternatives { get; private set; } = Array.Empty<CardLink>();
 
     public string? ReturnUrl { get; private set; }
 
@@ -45,7 +43,7 @@ public class DetailsModel : PageModel
 
         Card = card;
 
-        CardAlts = await CardAlternatives
+        Alternatives = await CardAlternativesAsync
             .Invoke(_dbContext, card.Id, card.Name)
             .ToListAsync(cancel);
 
@@ -97,14 +95,19 @@ public class DetailsModel : PageModel
                 .SingleOrDefault());
 
 
-    private static readonly Func<CardDbContext, string, string, IAsyncEnumerable<CardAlt>> CardAlternatives
+    private static readonly Func<CardDbContext, string, string, IAsyncEnumerable<CardLink>> CardAlternativesAsync
 
         = EF.CompileAsyncQuery((CardDbContext dbContext, string cardId, string cardName) =>
             dbContext.Cards
                 // unbounded: keep eye on
                 .Where(c => c.Id != cardId && c.Name == cardName)
                 .OrderBy(c => c.SetName)
-                .Select(c => new CardAlt(c.Id, c.Name, c.SetName)));
+                .Select(c => new CardLink
+                {
+                    Id = c.Id,
+                    Name = c.Name,
+                    SetName = c.SetName
+                }));
 
 
     private void MergeExcessHolds(Card card)
@@ -131,7 +134,7 @@ public class DetailsModel : PageModel
 
         var mergedHolds = card.Holds
             .Except(excessHolds)
-            .Prepend(mergedExcess)
+            .Append(mergedExcess)
             .ToList();
 
         card.Holds.Clear();

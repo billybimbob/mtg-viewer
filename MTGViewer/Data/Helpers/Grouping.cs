@@ -46,13 +46,13 @@ public class HoldNameGroup : IEnumerable<Hold>
     public IEnumerable<Card> Cards => _holds.Select(h => h.Card);
 
 
-    public int NumCopies
+    public int Copies
     {
         get => _holds.Sum(h => h.Copies);
         set
         {
             var lastCycle = _holds.Last!.Value;
-            int change = NumCopies - value;
+            int change = Copies - value;
 
             while (change < 0 || change > 0 && lastCycle.Copies > 0)
             {
@@ -120,12 +120,12 @@ public class WantNameGroup : IEnumerable<Want>
     public IEnumerable<Card> Cards => _wants.Select(w => w.Card);
 
 
-    public int NumCopies
+    public int Copies
     {
         get => _wants.Sum(w => w.Copies);
         set
         {
-            int change = NumCopies - value;
+            int change = Copies - value;
             while (change < 0 || change > 0 && First.Copies > 0)
             {
                 int mod = Math.Min(change, First.Copies);
@@ -413,92 +413,6 @@ public class QuantityGroup : IEnumerable<Quantity>
             + (GiveBack?.Copies ?? 0);
 }
 
-
-
-/// <summary>
-/// Group of quantities with the same deck and same card name
-/// </summary>
-public class QuantityNameGroup : IEnumerable<QuantityGroup>
-{
-    public QuantityNameGroup(
-        IEnumerable<Hold> holds, 
-        IEnumerable<Want> wants,
-        IEnumerable<GiveBack>? giveBacks = null)
-    {
-        // do a full outer join
-        var holdTable = holds.ToDictionary(h => h.CardId ?? h.Card.Id);
-        var wantTable = wants.ToDictionary(w => w.CardId ?? w.Card.Id);
-        var giveTable = giveBacks?.ToDictionary(g => g.CardId ?? g.Card.Id);
-
-        var allCardIds = holdTable.Keys
-            .Union(wantTable.Keys)
-            .Union(giveTable?.Keys ?? Enumerable.Empty<string>());
-
-        _quantityGroups = allCardIds
-            .Select(cid =>
-                new QuantityGroup(
-                    holdTable.GetValueOrDefault(cid),
-                    wantTable.GetValueOrDefault(cid),
-                    giveTable?.GetValueOrDefault(cid) ))
-            .ToList();
-
-        CheckGroups();
-    }
-
-
-    private readonly IReadOnlyList<QuantityGroup> _quantityGroups;
-
-    private void CheckGroups()
-    {
-        var name = Name;
-        var locationId = LocationId;
-        var location = Location;
-
-        var valuesSame = this.All(rg =>
-            rg.Card.Name == name 
-                && rg.LocationId == locationId
-                && rg.Location == location);
-
-        if (!valuesSame)
-        {
-            throw new ArgumentException(
-                "Pairs do not reference the same location or card");
-        }
-    }
-
-
-    public string Name =>
-        this.First().Card.Name;
-
-    public Location Location =>
-        this.First().Location;
-
-    public int LocationId =>
-        this.First().LocationId;
-
-    public int NumCopies =>
-        this.Sum(rg => rg.NumCopies);
-
-    public int InDeck =>
-        this.Sum(rg => rg.Hold?.Copies ?? 0);
-
-    public int Requests =>
-        this.Sum(rg => rg.Want?.Copies ?? 0) - this.Sum(rg => rg.GiveBack?.Copies ?? 0);
-
-
-    public IEnumerable<string> CardIds =>
-        this.Select(da => da.CardId);
-
-    public IEnumerable<Card> Cards =>
-        this.Select(da => da.Card);
-
-
-    IEnumerator IEnumerable.GetEnumerator() => 
-        GetEnumerator();
-
-    public IEnumerator<QuantityGroup> GetEnumerator() =>
-        _quantityGroups.GetEnumerator();
-}
 
 
 /// <summary>Group of trades with either the same To or From deck</summary>

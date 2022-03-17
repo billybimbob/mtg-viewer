@@ -71,7 +71,7 @@ public class CreateModel : PageModel
 
         if (deck.HasTrades)
         {
-            return RedirectToPage("Details", new { id });
+            return RedirectToPage("Details", new { deck.Id });
         }
 
         // offset paging used since the amount of pages is unlikely 
@@ -89,7 +89,7 @@ public class CreateModel : PageModel
         Deck = deck;
         Requests = requests;
 
-        Cards = await DeckCards
+        Cards = await DeckCardsAsync
             .Invoke(_dbContext, id, _pageSize)
             .ToListAsync();
 
@@ -139,33 +139,25 @@ public class CreateModel : PageModel
             .SelectMany(d => d.Holds, (_, h) => h.Card.Name)
             .Distinct();
 
-        var wantMatches = deckWants
-            // left join
-            .GroupJoin( possibleTargets,
-                w => w.Card.Name, name => name,
-                (Want, Names) => new { Want, Names })
-            .SelectMany(
-                wn => wn.Names.DefaultIfEmpty(),
-                (wn, Name) => new { wn.Want, Name });
-
-        return wantMatches
-            .Where(wn => wn.Name != default)
-            .Select(wn => new LocationCopy
+        return deckWants.Join( possibleTargets,
+            w => w.Card.Name,
+            name => name,
+            (w, _) => new LocationCopy
             {
-                Id = wn.Want.CardId,
-                Name = wn.Want.Card.Name,
-                SetName = wn.Want.Card.SetName,
+                Id = w.CardId,
+                Name = w.Card.Name,
+                SetName = w.Card.SetName,
 
-                ManaCost = wn.Want.Card.ManaCost,
-                Rarity = wn.Want.Card.Rarity,
-                ImageUrl = wn.Want.Card.ImageUrl,
+                ManaCost = w.Card.ManaCost,
+                Rarity = w.Card.Rarity,
+                ImageUrl = w.Card.ImageUrl,
 
-                Held = wn.Want.Copies
+                Held = w.Copies
             });
     }
 
 
-    private static readonly Func<CardDbContext, int, int, IAsyncEnumerable<DeckLink>> DeckCards
+    private static readonly Func<CardDbContext, int, int, IAsyncEnumerable<DeckLink>> DeckCardsAsync
         = EF.CompileAsyncQuery((CardDbContext dbContext, int id, int limit) =>
 
             dbContext.Cards

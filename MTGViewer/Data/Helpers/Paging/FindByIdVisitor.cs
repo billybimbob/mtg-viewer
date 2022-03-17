@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Linq.Expressions;
-using System.Reflection;
+using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Query;
 
 namespace System.Paging.Query;
@@ -13,9 +13,9 @@ internal class FindByIdVisitor : ExpressionVisitor
     private readonly FindIncludeVisitor? _findInclude;
     private readonly HashSet<string> _include;
 
-    public FindByIdVisitor(QueryRootExpression? root = null)
+    public FindByIdVisitor(IReadOnlyEntityType? entity = null)
     {
-        _findInclude = root is null ? null : new(root);
+        _findInclude = entity is null ? null : new(entity);
         _include = new();
     }
 
@@ -65,18 +65,18 @@ internal class FindByIdVisitor : ExpressionVisitor
 
 internal class FindIncludeVisitor : ExpressionVisitor
 {
-    private readonly QueryRootExpression _root;
+    private readonly IReadOnlyEntityType _entity;
 
-    public FindIncludeVisitor(QueryRootExpression root)
+    public FindIncludeVisitor(IReadOnlyEntityType entity)
     {
-        _root = root;
+        _entity = entity;
     }
 
 
     protected override Expression VisitMethodCall(MethodCallExpression node)
     {
         if (ExpressionHelpers.IsOrderedMethod(node)
-            && node.Method.GetGenericArguments().FirstOrDefault() == _root.EntityType.ClrType
+            && node.Method.GetGenericArguments().FirstOrDefault() == _entity.ClrType
             && node.Arguments.Count == 2
             && node.Arguments[1] is Expression ordering)
         {
@@ -101,7 +101,7 @@ internal class FindIncludeVisitor : ExpressionVisitor
     protected override Expression VisitLambda<TFunc>(Expression<TFunc> node)
     {
         if (node.Parameters.Count == 1
-            && node.Parameters[0].Type == _root.EntityType.ClrType)
+            && node.Parameters[0].Type == _entity.ClrType)
         {
             return Visit(node.Body);
         }
@@ -139,7 +139,7 @@ internal class FindIncludeVisitor : ExpressionVisitor
         }
 
         var longestChain = e.Current;
-        var nav = _root.EntityType.FindNavigation(longestChain.Member);
+        var nav = _entity.FindNavigation(longestChain.Member);
 
         if (nav is null or { IsCollection: true })
         {

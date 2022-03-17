@@ -86,6 +86,14 @@
             </tr>
         </thead>
         <tbody>
+            @if (!Model.Cards.Any())
+            {
+                <td> -- </td>
+                <td> -- </td>
+                <td> -- </td>
+                <td> -- </td>
+                <td> -- </td>
+            }
             @foreach (var card in Model.Cards)
             {
                 <tr>

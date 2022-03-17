@@ -17,13 +17,13 @@
                 Cards from our collection!  </a>
         </h3>
 
-        <div class="row row-cols-md-4 row-cols-2 justify-content-center mx-n1">
+        <div class="row row-cols-lg-4 row-cols-2 justify-content-around m-0">
             @foreach (var card in RandomCards)
             {
                 bool imageLoaded = IsImageLoaded(card);
-                string loading = imageLoaded ? string.Empty : "loading";
+                string loading = imageLoaded ? string.Empty : "d-none";
 
-                <a href="/Cards/Details/@card.Id" class="col p-1"
+                <a href="/Cards/Details/@card.Id" class="home-link"
                     title="@card.Name Details"
                     aria-label="@card.Id details">
 
@@ -97,7 +97,7 @@
                                     }
                                 </div>
                                 <span class="badge badge-secondary badge-pill">
-                                    @transaction.Total 
+                                    @transaction.Copies 
                                 </span>
                             </div>
                         </div>

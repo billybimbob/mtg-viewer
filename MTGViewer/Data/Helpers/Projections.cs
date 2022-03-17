@@ -19,11 +19,16 @@ public record CardImage
 }
 
 
-public record CardPreview : CardImage
+public record CardPreview
 {
+    public string Id { get; init; } = default!;
+    public string Name { get; init; } = default!;
     public string? ManaCost { get; init; }
+
     public string SetName { get; init; } = default!;
     public Rarity Rarity { get; init; }
+
+    public string ImageUrl { get; init; } = default!;
 }
 
 
@@ -85,7 +90,7 @@ public sealed class RecentTransaction
 {
     public DateTime AppliedAt { get; init; }
     public IEnumerable<RecentChange> Changes { get; init; } = Enumerable.Empty<RecentChange>();
-    public int Total { get; init; }
+    public int Copies { get; init; }
 }
 
 
@@ -260,6 +265,7 @@ public sealed record SuggestionPreview
 
 public sealed record TradePreview
 {
+    public int Id { get; init; }
     public CardPreview Card { get; init; } = default!;
     public DeckDetails Target { get; init; } = default!;
     public int Copies { get; init; }
@@ -314,11 +320,11 @@ public sealed class BoxPreview
 
     public string? Appearance { get; init; }
     public int Capacity { get; init; }
-    public int TotalHolds { get; init; }
+    public int Held { get; init; }
 
     public IEnumerable<LocationLink> Cards { get; init; } = Enumerable.Empty<LocationLink>();
 
-    public bool HasMoreCards => TotalHolds > Cards.Sum(s => s.Held);
+    public bool HasMoreCards => Held > Cards.Sum(s => s.Held);
 }
 
 

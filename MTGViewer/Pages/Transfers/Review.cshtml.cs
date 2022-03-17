@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
+using System.Paging;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -12,6 +14,7 @@ using Microsoft.EntityFrameworkCore;
 
 using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
+using MTGViewer.Services;
 
 namespace MTGViewer.Pages.Transfers;
 
@@ -22,96 +25,177 @@ public class ReviewModel : PageModel
 {
     private readonly CardDbContext _dbContext;
     private readonly UserManager<CardUser> _userManager;
+    private readonly int _pageSize;
 
-    public ReviewModel(CardDbContext dbContext, UserManager<CardUser> userManager)
+    public ReviewModel(
+        CardDbContext dbContext,
+        UserManager<CardUser> userManager,
+        PageSizes pageSizes)
     {
         _dbContext = dbContext;
         _userManager = userManager;
+        _pageSize = pageSizes.GetPageModelSize<ReviewModel>();
     }
 
 
     [TempData]
     public string? PostMessage { get; set; }
 
-    public Deck Deck { get; private set; } = default!;
+    public DeckDetails Deck { get; private set; } = default!;
+
+    public OffsetList<TradePreview> Trades { get; private set; } = OffsetList<TradePreview>.Empty;
+
+    public IReadOnlyList<LocationLink> Cards { get; private set; } = Array.Empty<LocationLink>();
 
 
-    public async Task<IActionResult> OnGetAsync(int id, CancellationToken cancel)
+    public async Task<IActionResult> OnGetAsync(int id, int? offset, CancellationToken cancel)
     {
-        if (id == default)
+        var userId = _userManager.GetUserId(User);
+
+        if (userId is null)
+        {
+            return Challenge();
+        }
+
+        var deck = await DeckAsync.Invoke(_dbContext, id, userId, cancel);
+
+        if (deck is null)
         {
             return NotFound();
         }
 
-        var deck = await DeckForReview(id).SingleOrDefaultAsync(cancel);
-
-        if (deck == default)
-        {
-            return NotFound();
-        }
-
-        if (!deck.TradesFrom.Any())
+        if (!deck.HasTrades)
         {
             return RedirectToPage("Index");
         }
 
-        CapFromTrades(deck);
+        var cards = await DeckCardsAsync
+            .Invoke(_dbContext, deck.Id, _pageSize)
+            .ToListAsync(cancel);
+
+        if (!cards.Any())
+        {
+            return RedirectToPage("Index");
+        }
+
+        var trades = await ActiveTrades(deck)
+            .PageBy(offset, _pageSize)
+            .ToOffsetListAsync(cancel);
+
+        if (trades.Offset.Current > trades.Offset.Total)
+        {
+            return RedirectToPage(new { offset = null as int? });
+        }
 
         Deck = deck;
+        Trades = trades;
+        Cards = cards;
 
         return Page();
     }
 
 
-    private IQueryable<Deck> DeckForReview(int deckId)
+    private static readonly Func<CardDbContext, int, string, CancellationToken, Task<DeckDetails?>> DeckAsync
+
+        = EF.CompileAsyncQuery((CardDbContext dbContext, int deckId, string userId, CancellationToken _) =>
+            dbContext.Decks
+                .Where(d => d.Id == deckId
+                    && d.OwnerId == userId
+                    && d.TradesFrom.Any())
+
+                .Select(d => new DeckDetails
+                {
+                    Id = d.Id,
+                    Name = d.Name,
+                    Color = d.Color,
+
+                    Owner = new OwnerPreview
+                    {
+                        Id = d.OwnerId,
+                        Name = d.Owner.Name
+                    },
+
+                    HeldCopies = d.Holds.Sum(h => h.Copies),
+                    HasTrades = d.TradesFrom.Any()
+                })
+
+                .SingleOrDefault());
+    
+
+    private IQueryable<TradePreview> ActiveTrades(DeckDetails deck)
     {
-        var userId = _userManager.GetUserId(User);
+        var deckHolds = _dbContext.Decks
+            .Where(d => d.Id == deck.Id)
+            .SelectMany(d => d.Holds)
 
-        return _dbContext.Decks
-            .Where(d => d.Id == deckId && d.OwnerId == userId)
+            .OrderBy(h => h.Card.Name)
+                .ThenBy(h => h.Card.SetName)
+                .ThenBy(h => h.Id);
 
-            .Include(d => d.Owner)
+        var receivedTrades = _dbContext.Decks
+            .Where(d => d.Id == deck.Id)
+            .SelectMany(d => d.TradesFrom);
 
-            .Include(d => d.Holds)
-                .ThenInclude(h => h.Card)
+        // each join should be one-to-one because
+        // holds are unique by Location and Card
 
-            .Include(d => d.Holds // unbounded: keep eye on
-                .OrderBy(h => h.Card.Name))
+        return deckHolds.Join( receivedTrades,
+            h => h.CardId,
+            t => t.CardId,
+            (h, t) => new TradePreview
+            {
+                Id = t.Id,
 
-            .Include(d => d.TradesFrom)
-                .ThenInclude(t => t.Card)
+                Card = new CardPreview
+                {
+                    Id = h.CardId,
+                    Name = h.Card.Name,
+                    SetName = h.Card.SetName,
 
-            .Include(d => d.TradesFrom)
-                .ThenInclude(t => t.To.Owner)
+                    ManaCost = h.Card.ManaCost,
+                    Rarity = h.Card.Rarity,
+                    ImageUrl = h.Card.ImageUrl,
+                },
 
-            .Include(d => d.TradesFrom // unbounded: keep eye on, possibly limit
-                .OrderBy(t => t.To.Owner.Name)
-                    .ThenBy(t => t.Card.Name))
+                Target = new DeckDetails
+                {
+                    Id = t.ToId,
+                    Name = t.To.Name,
+                    Color = t.To.Color,
 
-            .AsSplitQuery()
-            .AsNoTrackingWithIdentityResolution();
+                    Owner = new OwnerPreview
+                    {
+                        Id = t.To.OwnerId,
+                        Name = t.To.Owner.Name
+                    }
+                },
+
+                Copies = h.Copies < t.Copies ? h.Copies : t.Copies
+            });
     }
 
 
-    private void CapFromTrades(Deck deck)
-    {
-        var tradesWithCap = deck.TradesFrom
-            .GroupJoin( deck.Holds,
-                t => t.CardId,
-                h => h.CardId,
-                (trade, actuals) => (trade, actuals))
-            .SelectMany(
-                ta => ta.actuals.DefaultIfEmpty(),
-                (ta, actual) => (ta.trade, actual?.Copies ?? 0));
+    private static readonly Func<CardDbContext, int, int, IAsyncEnumerable<LocationLink>> DeckCardsAsync
+        = EF.CompileAsyncQuery((CardDbContext dbContext, int id, int limit) =>
 
-        foreach (var (trade, cap) in tradesWithCap)
-        {
-            // modifications are not saved
-            trade.Copies = Math.Min(trade.Copies, cap);
-        }
+            dbContext.Decks
+                .Where(d => d.Id == id)
+                .SelectMany(d => d.Holds)
 
-        deck.TradesFrom.RemoveAll(t => t.Copies == 0);
-    }
+                .OrderBy(h => h.Card.Name)
+                    .ThenBy(h => h.Card.SetName)
+                    .ThenBy(h => h.CardId)
+
+                .Take(limit)
+                .Select(h => new LocationLink
+                {
+                    Id = h.CardId,
+                    Name = h.Card.Name,
+                    SetName = h.Card.SetName,
+                    ManaCost = h.Card.ManaCost,
+
+                    Held = h.Copies
+                }));
 
 
 
@@ -132,6 +216,7 @@ public class ReviewModel : PageModel
         if (trade == null)
         {
             PostMessage = "Trade could not be found";
+
             return RedirectToPage();
         }
 
@@ -140,6 +225,7 @@ public class ReviewModel : PageModel
         if (acceptRequest == null)
         {
             PostMessage = "Source Deck lacks the cards to complete the trade";
+
             return RedirectToPage();
         }
 
@@ -274,7 +360,7 @@ public class ReviewModel : PageModel
 
         int change = new [] {
             acceptAmount, trade.Copies,
-            toWants.NumCopies, fromHold.Copies }.Min();
+            toWants.Copies, fromHold.Copies }.Min();
 
         if (exactWant != default)
         {
@@ -283,11 +369,11 @@ public class ReviewModel : PageModel
 
             // exactRequest mod is also reflected in toWants
             exactWant.Copies -= exactChange;
-            toWants.NumCopies -= nonExactChange;
+            toWants.Copies -= nonExactChange;
         }
         else
         {
-            toWants.NumCopies -= change;
+            toWants.Copies -= change;
         }
 
         toHold.Copies += change;
@@ -372,7 +458,7 @@ public class ReviewModel : PageModel
             return;
         }
 
-        if (toWants.NumCopies == 0)
+        if (toWants.Copies == 0)
         {
             _dbContext.Trades.RemoveRange(remainingTrades);
             return;
@@ -380,7 +466,7 @@ public class ReviewModel : PageModel
 
         foreach (var remaining in remainingTrades)
         {
-            remaining.Copies = toWants.NumCopies;
+            remaining.Copies = toWants.Copies;
         }
     }
 

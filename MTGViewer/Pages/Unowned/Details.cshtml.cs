@@ -170,13 +170,13 @@ public class DetailsModel : PageModel
         {
             await _dbContext.SaveChangesAsync(cancel);
 
-            PostMessage = "Successfully claimed Deck";
+            PostMessage = $"Successfully claimed {claimed.Name}";
         }
         catch (DbUpdateException e)
         {
             _logger.LogError("Ran into issue {Error}", e);
 
-            PostMessage = "Ran into issue claiming Unclaimed Deck";
+            PostMessage = $"Ran into issue claiming {unclaimed.Name}";
         }
 
         return RedirectToPage("Index");
@@ -209,13 +209,13 @@ public class DetailsModel : PageModel
         {
             await _dbContext.SaveChangesAsync(cancel);
 
-            PostMessage = "Successfully removed Unclaimed Deck";
+            PostMessage = $"Successfully removed {unclaimed.Name}";
         }
         catch (DbUpdateException e)
         {
             _logger.LogError("Ran into error {Error}", e);
 
-            PostMessage = "Ran into issue removing Unclaimed Deck";
+            PostMessage = $"Ran into issue removing {unclaimed.Name}";
         }
 
         return RedirectToPage("Index");

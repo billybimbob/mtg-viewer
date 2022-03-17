@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using System.Reflection;
 
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Query;
 
 namespace System.Paging.Query;
@@ -38,13 +39,13 @@ internal sealed class EntityOriginSeek<TEntity, TRefKey, TValueKey> : ISeekable<
         _valueKey = valueKey;
     }
 
-    private QueryRootExpression? _root;
-    private QueryRootExpression Root =>
-        _root ??= SeekHelpers.GetRoot<TEntity>(_query.Expression);
+    private IEntityType? _entityType;
+    private IEntityType EntityType =>
+        _entityType ??= SeekHelpers.GetEntityType<TEntity>(_query.Expression);
 
 
     private FindByIdVisitor? _findById;
-    private FindByIdVisitor FindById => _findById ??= new(Root);
+    private FindByIdVisitor FindById => _findById ??= new(EntityType);
 
 
     public ISeekable<TEntity> OrderBy<TSource>()
@@ -124,7 +125,7 @@ internal sealed class EntityOriginSeek<TEntity, TRefKey, TValueKey> : ISeekable<
         var entityParameter = Expression.Parameter(
             typeof(TEntity), typeof(TEntity).Name[0].ToString().ToLower());
 
-        var getKey = SeekHelpers.GetKeyInfo<TKey>(Root);
+        var getKey = SeekHelpers.GetKeyInfo<TKey>(EntityType);
 
         var propertyId = Expression.Property(entityParameter, getKey);
 
@@ -183,9 +184,9 @@ internal sealed class ResultOriginSeek<TSource, TResult, TRefKey, TValueKey> : I
         _valueKey = valueKey;
     }
 
-    private QueryRootExpression? _root;
-    private QueryRootExpression Root =>
-        _root ??= SeekHelpers.GetRoot<TSource>(_query.Expression);
+    private IEntityType? _entityType;
+    private IEntityType EntityType =>
+        _entityType ??= SeekHelpers.GetEntityType<TSource>(_query.Expression);
 
 
     private FindByIdVisitor? _findById;
@@ -277,7 +278,7 @@ internal sealed class ResultOriginSeek<TSource, TResult, TRefKey, TValueKey> : I
         var entityParameter = Expression.Parameter(
             typeof(TSource), typeof(TSource).Name[0].ToString().ToLower());
 
-        var getKey = SeekHelpers.GetKeyInfo<TKey>(Root);
+        var getKey = SeekHelpers.GetKeyInfo<TKey>(EntityType);
 
         var propertyId = Expression.Property(entityParameter, getKey);
 
@@ -448,22 +449,38 @@ internal sealed class ResultOriginSeek<TSource, TResult, TRefKey, TValueKey> : I
 
 internal static class SeekHelpers
 {
-    internal static QueryRootExpression GetRoot<TEntity>(Expression expression)
+    internal static IEntityType GetEntityType<TEntity>(Expression expression)
+        where TEntity : class
     {
         if (FindRootQuery.Instance.Visit(expression)
-            is not QueryRootExpression root
-            || root.EntityType.ClrType != typeof(TEntity))
+            is not QueryRootExpression { EntityType: var entity })
         {
-            throw new InvalidOperationException("Entity is not the correct type");
+            throw new ArgumentException("Expression does not have a query root", nameof(expression));
         }
 
-        return root;
+        if (entity.ClrType == typeof(TEntity))
+        {
+            return entity;
+        }
+
+        var navEntity = entity
+            .GetNavigations()
+            .Where(n => n.ClrType == typeof(TEntity))
+            .Select(n => n.TargetEntityType)
+            .FirstOrDefault();
+
+        if (navEntity is null)
+        {
+            throw new InvalidOperationException($"Type {typeof(TEntity).Name} could not be found");
+        }
+
+        return navEntity;
     }
 
 
-    internal static PropertyInfo GetKeyInfo<TKey>(QueryRootExpression root)
+    internal static PropertyInfo GetKeyInfo<TKey>(IEntityType entity)
     {
-        var entityId = root.EntityType.FindPrimaryKey();
+        var entityId = entity.FindPrimaryKey();
 
         if (typeof(TKey) != entityId?.GetKeyType())
         {

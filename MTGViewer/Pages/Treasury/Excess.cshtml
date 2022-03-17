@@ -7,50 +7,40 @@
 
 <h1> Excess </h1>
 
-@if (!Model.HasExcess)
-{
-    <p>
-        All available cards can fit in the given Boxes, listed
-        <a asp-page="Index">here</a>.
-    </p>
-}
-else
-{
-    <p>
-        Cards listed below cannot fit in actual boxes, so they have no 
-        physical-backed storage.
-    </p>
+<p>
+    Cards listed below cannot fit in actual boxes, so they have no 
+    physical-backed storage.
+</p>
 
-    <div class="table-responsive-md">
-        <table class="table table-bordered">
-            <thead>
+<div class="table-responsive-md">
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th scope="col"> @Html.DisplayNameForInnerType((Hold h) => h.Card) </th>
+                <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.ManaCost) </th>
+                <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.SetName) </th>
+                <th scope="col"> @Html.DisplayNameForInnerType((Hold h) => h.Copies) </th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var card in Model.Cards)
+            {
                 <tr>
-                    <th scope="col"> @Html.DisplayNameForInnerType((Hold h) => h.Card) </th>
-                    <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.ManaCost) </th>
-                    <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.SetName) </th>
-                    <th scope="col"> @Html.DisplayNameForInnerType((Hold h) => h.Copies) </th>
+                    <td>
+                        <a asp-page="/Cards/Details" asp-route-id="@card.Id">
+                            @card.Name </a>
+                    </td>
+                    <td> 
+                        <div class="ms-group">
+                            @MtgSymbols.Format(card.ManaCost).ToHtmlString() 
+                        </div>
+                    </td>
+                    <td> @card.SetName </td>
+                    <td> @card.Held </td>
                 </tr>
-            </thead>
-            <tbody>
-                @foreach (var card in Model.Cards)
-                {
-                    <tr>
-                        <td>
-                            <a asp-page="/Cards/Details" asp-route-id="@card.Id">
-                                @card.Name </a>
-                        </td>
-                        <td> 
-                            <div class="ms-group">
-                                @MtgSymbols.Format(card.ManaCost).ToHtmlString() 
-                            </div>
-                        </td>
-                        <td> @card.SetName </td>
-                        <td> @card.Held </td>
-                    </tr>
-                }
-            </tbody>
-        </table>
-    </div>
-}
+            }
+        </tbody>
+    </table>
+</div>
 
 <partial name="_SeekPagingPartial" model="(Seek)Model.Cards.Seek"/>

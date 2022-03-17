@@ -124,8 +124,7 @@
                         <td rowspan="@Model.GetTransactionCount(transaction)" class="text-center">
                             @if (canChangeTreasury)
                             {
-                                <form method="POST">
-                                    <input type="hidden" name="transactionId" value="@transaction.Id"/>
+                                <form method="POST" asp-route-transactionId="@transaction.Id">
                                     <button title="Remove Record" type="submit" class="btn btn-danger"> &times; </button>
                                 </form>
                             }

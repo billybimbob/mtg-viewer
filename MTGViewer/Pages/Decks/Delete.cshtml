@@ -22,7 +22,6 @@
                 class="btn btn-secondary" role="button">
                 Cancel </a>
 
-            <input type="hidden" asp-for="Deck.Id" class="sr-only"/>
             <input type="submit" value="Delete" class="btn btn-danger" />
         </div>
     </form>
@@ -33,7 +32,7 @@
     <div class="mt-2 alert alert-danger" role="alert">
         <h5 class="alert-heading">Active Trades</h5>
         <p class="mb-0"> 
-            The are currently active trades for @Model.Deck.Name will also be deleted.
+            There are currently active trades for @Model.Deck.Name that will also be deleted.
         </p>
     </div>
 }

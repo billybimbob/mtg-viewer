@@ -144,7 +144,7 @@ public class MTGQueryTests
             .ToArray();
 
         var cardNames = await _mtgQuery
-            .Collection(multiverseIds)
+            .CollectionAsync(multiverseIds)
             .Select(c => c.Name)
             .ToListAsync();
 

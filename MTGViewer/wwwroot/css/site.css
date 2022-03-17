@@ -163,15 +163,17 @@ body {
   border: 1px solid rgba(0,0,0,.125);
 }
 
-.loading {
-  display: none;
+.home-link {
+  max-width: 300px;
+  width: 100%;
+  padding: .4rem .25rem;
 }
 
 .placeholder {
   box-shadow: 0 4px 10px 0 rgba(33, 33, 33, 0.15);
   border-radius: .55rem;
   width: 100%;
-  padding-top: 133.33%;
+  padding-top: 139.33%;
   position: relative;
   overflow: hidden;
 }

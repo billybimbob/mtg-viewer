@@ -21,35 +21,37 @@
                 <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.SetName) </th>
                 <th scope="col"> Requested By </th>
                 <th scope="col"> @Html.DisplayNameForInnerType((Trade t) => t.To) </th>
-                <th scope="col"> Deck Color </th>
+                <th scope="col"> @Html.DisplayNameForInnerType((Deck d) => d.Color) </th>
                 <th scope="col"> @Html.DisplayNameForInnerType((Trade t) => t.Copies) </th>
                 <th scope="col"></th>
             </tr>
         </thead>
         <tbody>
-            @foreach (var trade in Model.Deck.TradesFrom)
+            @foreach (var trade in Model.Trades)
             {
                 <tr>
                     <td>
-                        <a asp-page="/Cards/Details" asp-route-id="@trade.CardId">
-                            @trade.Card.Name </a>
+                        <component type="typeof(HoverCard)" render-mode="Static"
+                            param-Preview="trade.Card" />
                     </td>
 
                     <td> @trade.Card.SetName </td>
-                    <td> @trade.To.Owner.Name </td>
+                    <td> @trade.Target.Owner.Name </td>
                     <td>
-                        <a asp-page="/Decks/Details" asp-route-id="@trade.ToId">
-                        @trade.To.Name </a>
+                        <a asp-page="/Decks/Details" asp-route-id="@trade.Target.Id">
+                            @trade.Target.Name </a>
                     </td>
 
                     <td> 
                         <div class="ms-group">
-                            @MtgSymbols.Format(CardText.ColorString(trade.To.Color)).ToHtmlString() 
+                            @MtgSymbols.Format(CardText.ColorString(trade.Target.Color)).ToHtmlString() 
                         </div>
                     </td>
 
-                    <form method="POST">
-                        <td>
+                    <td>
+                        <form method="POST" id="review-action">
+                            <input type="hidden" name="tradeId" value="@trade.Id" />
+
                             <select title="trade amount" name="amount" 
                                 class="form-control form-control-sm">
 
@@ -59,61 +61,70 @@
                                 }
                                 <option selected>@trade.Copies</option>
                             </select>
-                        </td>
-                        <td>
-                            <input type="hidden" name="tradeId" asp-for="@trade.Id" />
+                        </form>
 
-                            <input type="submit"
-                                asp-page-handler="Accept"
-                                class="btn btn-secondary mb-3"
-                                value="Accept" />
+                    </td>
+                    <td class="btn-group">
+                        <button type="submit" asp-page-handler="Accept"
+                            form="review-action" class="btn btn-secondary">
+                            Accept </button>
 
-                            <input type="submit"
-                                asp-page-handler="Reject"
-                                class="btn btn-secondary mb-3"
-                                value="Reject" />
-                        </td>
-                    </form>
+                        <button type="submit" asp-page-handler="Reject"
+                            form="review-action" class="btn btn-danger" >
+                            &times; </button>
+                    </td>
                 </tr>
             }
         </tbody>
     </table>
+</div>
+
+<partial name="_OffsetPagingPartial" for="Trades.Offset"/>
 
 
-@if (Model.Deck.Holds.Any())
-{
-    <h2>Current Cards</h2>
+<h3>
+    <a asp-page="/Decks/Details" asp-route-id="@Model.Deck.Id">
+        Current Cards
+    </a>
+</h3>
 
-    <div class="table-responsive-md">
-        <table class="table">
-            <thead>
+<div class="table-responsive-md">
+    <table class="table">
+        <thead>
+            <tr>
+                <th scope="col"> @Html.DisplayNameForInnerType((Hold ca) => ca.Card) </th>
+                <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.ManaCost) </th>
+                <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.SetName) </th>
+                <th scope="col"> Held </th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var card in Model.Cards)
+            {
                 <tr>
-                    <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.Name) </th>
-                    <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.ManaCost) </th>
-                    <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.SetName) </th>
-                    <th scope="col"> @Html.DisplayNameForInnerType((Hold ca) => ca.Copies) </th>
+                    <td>
+                        <a asp-page="/Cards/Details" asp-route-id="@card.Id">
+                            @card.Name </a>
+                    </td>
+                    <td> 
+                        <div class="ms-group">
+                            @MtgSymbols.Format(card.ManaCost).ToHtmlString() 
+                        </div>
+                    </td>
+                    <td> @card.SetName </td>
+                    <td> @card.Held </td>
                 </tr>
-            </thead>
-            <tbody>
-                @foreach (var hold in Model.Deck.Holds)
-                {
-                    var card = hold.Card;
-                    <tr>
-                        <td>
-                            <a asp-page="/Cards/Details" asp-route-id="@card.Id">
-                                @card.Name </a>
-                        </td>
-
-                        <td> 
-                            <div class="ms-group">
-                                @MtgSymbols.Format(card.ManaCost).ToHtmlString() 
-                            </div>
-                        </td>
-                        <td> @card.SetName </td>
-                        <td> @hold.Copies </td>
-                    </tr>
-                }
-            </tbody>
-        </table>
-    </div>
-}
+            }
+            @if (Model.Deck.HeldCopies > Model.Cards.Sum(dl => dl.Held))
+            {
+                <tr>
+                    <td> ... </td>
+                    <td> ... </td>
+                    <td> ... </td>
+                    <td> ... </td>
+                    <td> ... </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

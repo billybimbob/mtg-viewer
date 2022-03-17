@@ -5,21 +5,8 @@ namespace System.Paging;
 
 public readonly record struct Offset(int Current, int Total)
 {
-    private readonly int _current = Math.Max(Current, 0);
-    private readonly int _total = Math.Max(Total, 0);
-
-
-    public int Current
-    {
-        get => _current; 
-        init => _current = Math.Max(value, 0);
-    }
-
-    public int Total
-    {
-        get => _total;
-        init => _total = Math.Max(value, 0);
-    }
+    public int Current { get; init; } = Math.Max(Current, 0);
+    public int Total { get; init; } = Math.Max(Total, 0);
 
     public bool HasPrevious => Current > 0;
     public bool HasNext => Current < Total - 1;
@@ -28,6 +15,7 @@ public readonly record struct Offset(int Current, int Total)
     public Offset(int currentPage, int totalItems, int pageSize) 
         : this(currentPage, TotalPages(totalItems, pageSize))
     { }
+
 
     private static int TotalPages(int totalItems, int pageSize)
     {

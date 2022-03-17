@@ -166,7 +166,7 @@ public class BulkOperations
                 .Select(c => c.MultiverseId));
 
         var validCards = _mtgQuery
-            .Collection(newMultiverseIds)
+            .CollectionAsync(newMultiverseIds)
             .WithCancellation(cancel);
 
         // existing cards will be left unmodified, so they don't 
@@ -302,7 +302,7 @@ public class BulkOperations
         if (newMultiverse.Any())
         {
             var newCards = _mtgQuery
-                .Collection(newMultiverse)
+                .CollectionAsync(newMultiverse)
                 .WithCancellation(cancel);
 
             await foreach (var card in newCards)

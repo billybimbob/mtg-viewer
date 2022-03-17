@@ -10,8 +10,6 @@
 <h1> @Model.Unclaimed.Name </h1>
 
 <form method="POST">
-    <input type="hidden" asp-for="Unclaimed.Id" />
-
     <div class="btn-group mb-3" role="group">
         <input title="Claim @Model.Unclaimed.Name"
             asp-page-handler="Claim"

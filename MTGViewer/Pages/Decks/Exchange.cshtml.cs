@@ -143,8 +143,8 @@ public class ExchangeModel : PageModel
 
             .Join( totalMatches,
                 c => c.Id,
-                total => total.CardId,
-                (c, total) => new LocationCopy
+                t => t.CardId,
+                (c, t) => new LocationCopy
                 {
                     Id = c.Id,
                     Name = c.Name,
@@ -154,7 +154,7 @@ public class ExchangeModel : PageModel
                     Rarity = c.Rarity,
                     ImageUrl = c.ImageUrl,
 
-                    Held = total.Copies
+                    Held = t.Copies
                 });
     }
 

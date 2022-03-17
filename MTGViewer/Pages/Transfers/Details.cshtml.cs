@@ -65,10 +65,10 @@ public class DetailsModel : PageModel
 
         if (!deck.HasTrades)
         {
-            return RedirectToPage("Create", new { id });
+            return RedirectToPage("Create", new { deck.Id });
         }
 
-        var trades = await CappedTrades(deck)
+        var trades = await ActiveTrades(deck)
             .PageBy(offset, _pageSize)
             .ToOffsetListAsync(cancel);
 
@@ -80,8 +80,8 @@ public class DetailsModel : PageModel
         Deck = deck;
         Trades = trades;
 
-        Cards = await DeckCards
-            .Invoke(_dbContext, id, _pageSize)
+        Cards = await DeckCardsAsync
+            .Invoke(_dbContext, deck.Id, _pageSize)
             .ToListAsync();
 
         return Page();
@@ -92,9 +92,8 @@ public class DetailsModel : PageModel
 
         = EF.CompileAsyncQuery((CardDbContext dbContext, int deckId, string userId, CancellationToken _) =>
             dbContext.Decks
-                .Where(d => d.Id == deckId
-                    && d.OwnerId == userId
-                    && d.Wants.Any())
+                .Where(d =>
+                    d.Id == deckId && d.OwnerId == userId && d.Wants.Any())
 
                 .Select(d => new DeckDetails
                 {
@@ -113,10 +112,11 @@ public class DetailsModel : PageModel
 
                     HasTrades = d.TradesTo.Any()
                 })
+
                 .SingleOrDefault());
 
 
-    private IQueryable<TradePreview> CappedTrades(DeckDetails deck)
+    private IQueryable<TradePreview> ActiveTrades(DeckDetails deck)
     {
         var deckTrades = _dbContext.Decks
             .Where(d => d.Id == deck.Id)
@@ -127,46 +127,46 @@ public class DetailsModel : PageModel
                 .ThenBy(t => t.Id);
 
         return deckTrades
-            // left join, where each match is unique because
-            // each hold is unique by Location and Card
-            .GroupJoin( _dbContext.Holds,
+            // each join should be one-to-one match because
+            // holds are unique by Location and Card
+
+            .Join( _dbContext.Holds,
                 t => new { LocationId = t.FromId, t.CardId },
                 h => new { h.LocationId, h.CardId },
-                (Trade, Holds) => new { Trade, Holds })
-
-            .SelectMany(th => th.Holds.DefaultIfEmpty(),
-                (th, h) => new TradePreview
+                (t, h) => new TradePreview
                 {
+                    Id = t.Id,
+
                     Card = new CardPreview
                     {
-                        Id = th.Trade.CardId,
-                        Name = th.Trade.Card.Name,
-                        SetName = th.Trade.Card.SetName,
+                        Id = t.CardId,
+                        Name = t.Card.Name,
+                        SetName = t.Card.SetName,
 
-                        ManaCost = th.Trade.Card.ManaCost,
-                        Rarity = th.Trade.Card.Rarity,
-                        ImageUrl = th.Trade.Card.ImageUrl,
+                        ManaCost = t.Card.ManaCost,
+                        Rarity = t.Card.Rarity,
+                        ImageUrl = t.Card.ImageUrl,
                     },
 
                     Target = new DeckDetails
                     {
-                        Id = th.Trade.FromId,
-                        Name = th.Trade.From.Name,
-                        Color = th.Trade.From.Color,
+                        Id = t.FromId,
+                        Name = t.From.Name,
+                        Color = t.From.Color,
 
                         Owner = new OwnerPreview
                         {
-                            Id = th.Trade.From.OwnerId,
-                            Name = th.Trade.From.Owner.Name
+                            Id = t.From.OwnerId,
+                            Name = t.From.Owner.Name
                         }
                     },
 
-                    Copies = h == null ? 0 : h.Copies
+                    Copies = t.Copies > h.Copies ? t.Copies : h.Copies
                 });
     }
 
 
-    private static readonly Func<CardDbContext, int, int, IAsyncEnumerable<DeckLink>> DeckCards
+    private static readonly Func<CardDbContext, int, int, IAsyncEnumerable<DeckLink>> DeckCardsAsync
         = EF.CompileAsyncQuery((CardDbContext dbContext, int id, int limit) =>
 
             dbContext.Cards
@@ -211,7 +211,7 @@ public class DetailsModel : PageModel
         var trades = await _dbContext.Decks
             .Where(d => d.Id == id && d.OwnerId == userId)
             .SelectMany(d => d.TradesTo)
-            .ToListAsync(cancel);
+            .ToListAsync(cancel); // unbounded, keep eye on
 
         if (!trades.Any())
         {

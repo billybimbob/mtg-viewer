@@ -96,7 +96,9 @@ public class DeleteModel : PageModel
         = EF.CompileAsyncQuery((CardDbContext dbContext, string cardId, CancellationToken _) =>
             dbContext.Cards
                 .Include(c => c.Flip)
-                .Include(c => c.Holds)
+                .Include(c => c.Holds
+                    // the smaller copies should be first
+                    .OrderBy(h => h.Copies))
                     .ThenInclude(h => h.Location)
 
                 .OrderBy(c => c.Id)
