@@ -1,7 +1,7 @@
 @page "{id:int}"
 @model Transfers.CreateModel
 @{
-    ViewData["Title"] = $"{Model.Deck.Name} - Requests";
+    ViewData["Title"] = $"{Model.Deck.Name} - Requests ({Model.Requests.Offset})";
 }
 @inject SymbolFormatter MtgSymbols
 

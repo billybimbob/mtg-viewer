@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Paging;
@@ -10,6 +11,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 using MTGViewer.Data;
+using MTGViewer.Pages.Shared;
 using MTGViewer.Services;
 
 namespace MTGViewer.Pages.Cards;
@@ -17,6 +19,31 @@ namespace MTGViewer.Pages.Cards;
 
 public partial class Collection : ComponentBase, IDisposable
 {
+    [Parameter]
+    [SupplyParameterFromQuery]
+    public string? SearchName { get; set; }
+
+    [Parameter]
+    [SupplyParameterFromQuery]
+    public int PickedColors { get; set; }
+
+    [Parameter]
+    [SupplyParameterFromQuery]
+    public string? OrderBy { get; set; }
+
+    [Parameter]
+    [SupplyParameterFromQuery]
+    public bool Reversed { get; set; }
+
+    [Parameter]
+    [SupplyParameterFromQuery]
+    public int Offset { get; set; }
+
+    [Parameter]
+    [SupplyParameterFromQuery]
+    public int Size { get; set; }
+
+
     [Inject]
     protected IDbContextFactory<CardDbContext> DbFactory { get; set; } = default!;
 
@@ -24,8 +51,14 @@ public partial class Collection : ComponentBase, IDisposable
     protected PageSizes PageSizes { get; set; } = default!;
 
     [Inject]
+    protected NavigationManager Nav { get; set; } = default!;
+
+    [Inject]
     protected ILogger<Collection> Logger { get; set; } = default!;
 
+
+    public event EventHandler? ParametersChanged;
+    public event EventHandler? CardsLoaded;
 
     public bool IsBusy => _isBusy;
 
@@ -37,11 +70,21 @@ public partial class Collection : ComponentBase, IDisposable
 
     private bool _isBusy;
     private readonly CancellationTokenSource _cancel = new();
+
     private readonly FilterContext _filters = new();
+    private readonly Dictionary<string, object?> _newFilters = new(3);
+
     private OffsetList<LocationCopy>? _cards;
 
 
-    protected override async Task OnInitializedAsync()
+    protected override void OnInitialized()
+    {
+        ParametersChanged += _filters.OnParametersChanged;
+        CardsLoaded += _filters.OnCardsLoaded;
+    }
+
+
+    protected async override Task OnParametersSetAsync()
     {
         if (_isBusy)
         {
@@ -52,23 +95,28 @@ public partial class Collection : ComponentBase, IDisposable
 
         try
         {
-            var cancelToken = _cancel.Token;
+            ParametersChanged?.Invoke(this, EventArgs.Empty);
 
-            await using var dbContext = await DbFactory.CreateDbContextAsync(cancelToken);
+            var token = _cancel.Token;
+            await using var dbContext = await DbFactory.CreateDbContextAsync(token);
 
-            _filters.PageSize = PageSizes.GetComponentSize<Collection>();
+            _cards = await FilteredCardsAsync(dbContext, _filters, token);
 
-            _cards = await FilteredCardsAsync(dbContext, _filters, cancelToken);
+            if (_cards is { Count: 0, Offset.Current: >0})
+            {
+                Nav.NavigateTo(
+                    Nav.GetUriWithQueryParameter(nameof(Offset), null as bool?), replace: true);
+                return;
+            }
 
-            _filters.SetLoadContext(new LoadContext(this));
+            CardsLoaded?.Invoke(this, EventArgs.Empty);
+
+            _filters.FilterChanged -= OnFilterChanged;
+            _filters.FilterChanged += OnFilterChanged;
         }
         catch (OperationCanceledException ex)
         {
             Logger.LogWarning("{Error}", ex);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError("{Error}", ex);
         }
         finally
         {
@@ -79,174 +127,19 @@ public partial class Collection : ComponentBase, IDisposable
 
     public void Dispose()
     {
+        ParametersChanged -= _filters.OnParametersChanged;
+        CardsLoaded -= _filters.OnCardsLoaded;
+
+        _filters.FilterChanged -= OnFilterChanged;
+
         _cancel.Cancel();
         _cancel.Dispose();
     }
 
 
-
-    public sealed class FilterContext
+    private async void OnFilterChanged(object? sender, FilterEventArgs args)
     {
-        private LoadContext _loadContext;
-        internal void SetLoadContext(LoadContext loadContext)
-        {
-            _loadContext = loadContext;
-        }
-
-        private string? _searchName;
-        public string? SearchName
-        {
-            get => _searchName;
-            set
-            {
-                if (_loadContext.IsBusy)
-                {
-                    return;
-                }
-
-                if (_pageIndex > 0)
-                {
-                    _pageIndex = 0;
-                }
-
-                _searchName = value;
-                
-                _loadContext.LoadCardsAsync();
-            }
-        }
-
-        public bool IsReversed { get; private set; }
-
-        private string _orderBy = nameof(Card.Name);
-        public string OrderBy
-        {
-            get => _orderBy;
-            private set
-            {
-                if (_loadContext.IsBusy)
-                {
-                    return;
-                }
-
-                if (value != _orderBy && _pageIndex > 0)
-                {
-                    _pageIndex = 0;
-                }
-
-                IsReversed = value == _orderBy && !IsReversed;
-                _orderBy = value;
-
-                _loadContext.LoadCardsAsync();
-            }
-        }
-
-        public void Reorder<T>(Expression<Func<Card, T>> property)
-        {
-            if (property is { Body: MemberExpression { Member.Name: string newOrder }})
-            {
-                OrderBy = newOrder;
-            }
-
-        }
-
-        private int _pageSize = 1;
-        public int PageSize
-        {
-            get => _pageSize;
-            set
-            {
-                if (_loadContext.IsBusy
-                    || value <= 0
-                    || value == _pageSize)
-                {
-                    return;
-                }
-
-                if (_pageIndex > 0)
-                {
-                    _pageIndex = 0;
-                }
-
-                _pageSize = value;
-                _loadContext.LoadCardsAsync();
-            }
-        }
-
-        private int _pageIndex;
-        public int PageIndex
-        {
-            get => _pageIndex;
-            set
-            {
-                if (_loadContext.IsBusy
-                    || value < 0
-                    || value == _pageIndex
-                    || value >= _loadContext.MaxPage)
-                {
-                    return;
-                }
-
-                _pageIndex = value;
-
-                _loadContext.LoadCardsAsync();
-            }
-        }
-
-        private Color _pickedColors;
-        public Color PickedColors => _pickedColors;
-
-        public void ToggleColor(Color color)
-        {
-            if (_loadContext.IsBusy)
-            {
-                return;
-            }
-
-            if (_pickedColors.HasFlag(color))
-            {
-                _pickedColors &= ~color;
-            }
-            else
-            {
-                _pickedColors |= color;
-            }
-
-            if (_pageIndex > 0)
-            {
-                _pageIndex = 0;
-            }
-
-            _loadContext.LoadCardsAsync();
-        }
-    }
-
-
-    internal readonly struct LoadContext
-    {
-        private readonly Collection? _parent;
-
-        public LoadContext(Collection parent)
-        {
-            _parent = parent;
-        }
-
-        public int MaxPage =>
-            _parent?.Cards.Offset.Total ?? 0;
-
-        public bool IsBusy => _parent?.IsBusy ?? false;
-
-        public Task LoadCardsAsync()
-        {
-            return _parent is null
-                ? Task.CompletedTask
-                : _parent.LoadCardsAsync();
-        }
-    }
-
-
-    private async Task LoadCardsAsync()
-    {
-        if (_isBusy)
+        if (_isBusy || sender is not FilterContext filter)
         {
             return;
         }
@@ -255,15 +148,19 @@ public partial class Collection : ComponentBase, IDisposable
 
         try
         {
-            var cancelToken = _cancel.Token;
+            filter.FilterChanged -= OnFilterChanged;
 
-            await using var dbContext = await DbFactory.CreateDbContextAsync(cancelToken);
+            await Task.Yield();
 
-            _cards = await FilteredCardsAsync(dbContext, _filters, cancelToken);
-        }
-        catch (OperationCanceledException ex)
-        {
-            Logger.LogWarning("{Error}", ex);
+            _newFilters.Clear();
+
+            foreach (var (name, value) in args.Changes)
+            {
+                _newFilters.Add(name, value);
+            }
+
+            Nav.NavigateTo(
+                Nav.GetUriWithQueryParameters(_newFilters), replace: true);
         }
         catch (Exception ex)
         {
@@ -272,10 +169,178 @@ public partial class Collection : ComponentBase, IDisposable
         finally
         {
             _isBusy = false;
-
-            StateHasChanged();
         }
     }
+
+
+    public sealed class FilterEventArgs : EventArgs
+    {
+        private readonly KeyValuePair<string, object?>[] _changes;
+
+        public FilterEventArgs(params KeyValuePair<string, object?>[] changes)
+        {
+            _changes = changes;
+        }
+
+        public IEnumerable<KeyValuePair<string, object?>> Changes => _changes;
+    }
+
+
+    public sealed class FilterContext
+    {
+        public event EventHandler<FilterEventArgs>? FilterChanged;
+
+        private string? _searchName;
+        public string? SearchName
+        {
+            get => _searchName;
+            set
+            {
+                value = ValidatedSearchName(value);
+
+                if (value == _searchName)
+                {
+                    return;
+                }
+
+                var args = new FilterEventArgs(
+                    KeyValuePair.Create(nameof(Collection.SearchName), (object?)value),
+                    KeyValuePair.Create(nameof(Collection.Offset), (object?)null));
+
+                FilterChanged?.Invoke(this, args);
+            }
+        }
+
+        private string? ValidatedSearchName(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                value = null;
+            }
+
+            if (value?.Length > CardFilter.SearchNameLimit || value == _searchName)
+            {
+                return _searchName;
+            }
+
+            return value;
+        }
+
+
+        private const string DefaultOrder = nameof(Card.Name);
+
+        public bool IsReversed { get; private set; }
+
+        public string OrderBy { get; private set; } = DefaultOrder;
+
+
+        public void Reorder<T>(Expression<Func<Card, T>> property)
+        {
+            if (property is not { Body: MemberExpression { Member.Name: string value }})
+            {
+                return;
+            }
+
+            object? newReversed = value == OrderBy && !IsReversed ? true : null;
+
+            var args = new FilterEventArgs(
+                KeyValuePair.Create(nameof(Collection.Reversed), newReversed),
+                KeyValuePair.Create(nameof(Collection.OrderBy), (object?)value),
+                KeyValuePair.Create(nameof(Collection.Offset), (object?)null));
+
+            FilterChanged?.Invoke(this, args);
+        }
+
+
+        private int _maxPage;
+        public int PageSize { get; private set; }
+
+
+        private int _pageIndex;
+        public int PageIndex
+        {
+            get => _pageIndex;
+            set
+            {
+                value = ValidatedPageIndex(value);
+
+                if (value == _pageIndex)
+                {
+                    return;
+                }
+
+                object? offset = value == default ? null : value;
+
+                var args = new FilterEventArgs(
+                    KeyValuePair.Create(nameof(Collection.Offset), offset),
+                    KeyValuePair.Create(nameof(Collection.Size), (object?)_maxPage));
+
+                FilterChanged?.Invoke(this, args);
+            }
+        }
+
+        private int ValidatedPageIndex(int value)
+        {
+            if (value >= 0 && value != _pageIndex && value < _maxPage)
+            {
+                return value;
+            }
+
+            return _pageIndex;
+        }
+
+
+        public Color PickedColors { get; private set; }
+
+        public void ToggleColor(Color value)
+        {
+            value = PickedColors.HasFlag(value)
+                ? PickedColors & ~value
+                : PickedColors | value;
+
+            var newValues = new FilterEventArgs(
+                KeyValuePair.Create(nameof(Collection.PickedColors), (object?)(int)value),
+                KeyValuePair.Create(nameof(Collection.Offset), (object?)null));
+
+            FilterChanged?.Invoke(this, newValues);
+        }
+
+
+        public void OnParametersChanged(object? sender, EventArgs _)
+        {
+            if (sender is not Collection parameters)
+            {
+                return;
+            }
+
+            if (PageSize == 0)
+            {
+                PageSize = parameters.PageSizes.GetComponentSize<Collection>();
+            }
+
+            IsReversed = parameters.Reversed;
+            OrderBy = parameters.OrderBy ?? DefaultOrder;
+
+            PickedColors = (Color)parameters.PickedColors;
+
+            _maxPage = Math.Max(parameters.Size, 0);
+
+            _pageIndex = ValidatedPageIndex(parameters.Offset);
+            _searchName = ValidatedSearchName(parameters.SearchName);
+        }
+
+
+        public void OnCardsLoaded(object? sender, EventArgs _)
+        {
+            if (sender is not Collection parameters)
+            {
+                return;
+            }
+
+            _maxPage = parameters.Cards.Offset.Total;
+        }
+    }
+
 
 
     private static Task<OffsetList<LocationCopy>> FilteredCardsAsync(
@@ -325,7 +390,7 @@ public partial class Collection : ComponentBase, IDisposable
     {
         bool isAscending = filters.OrderBy switch
         {
-            nameof(Card.ManaCost) => true,
+            nameof(Card.ManaCost) => false,
             nameof(Card.SetName) => true,
             nameof(Card.Rarity) => false,
             nameof(Card.Holds) => false,

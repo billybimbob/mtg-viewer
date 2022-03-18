@@ -3,18 +3,21 @@
 @if (Offset.HasMultiple)
 {
     (int start, int end) = GetBounds();
+    string disabled = IsDisabled ? "disabled" : string.Empty;
 
     <nav>
         <ul class="pagination justify-content-center">
 
             @if (start > 0)
             {
-                <li class="page-item">
+                <li class="page-item @disabled">
                     <button title="To First Page"
                         @onclick="() => ChangePageAsync(0)" 
+                        disabled="@IsDisabled"
                         class="page-link"> 
                         1 </button>
                 </li>
+
                 <li class="page-item disabled">
                     <span class="page-link"> ... </span>
                 </li>
@@ -23,24 +26,26 @@
             @for (int i = start; i < end; ++i)
             {
                 int offset = i;
-                string activePage = offset == Offset.Current ? "active" : "";
 
-                <li class="page-item @activePage">
-                    @if (offset != Offset.Current)
-                    {
-                        <button title="To Page @(offset + 1)"
-                            @onclick="() => ChangePageAsync(offset)"
-                            class="page-link">
-                            @(offset + 1) </button>
-                    }
-                    else
-                    {
+                @if (offset == Offset.Current)
+                {
+                    <li class="page-item active">
                         <span class="page-link">
                             @(offset + 1)
                             <span class="sr-only">(current)</span>
                         </span>
-                    }
-                </li>
+                    </li>
+                }
+                else
+                {
+                    <li class="page-item @disabled">
+                        <button title="To Page @(offset + 1)"
+                            @onclick="() => ChangePageAsync(offset)"
+                            disabled="@IsDisabled"
+                            class="page-link">
+                            @(offset + 1) </button>
+                    </li>
+                }
             }
 
             @if (end < Offset.Total - 1)
@@ -52,9 +57,10 @@
 
             @if (end < Offset.Total)
             {
-                <li class="page-item">
+                <li class="page-item @disabled">
                     <button title="To Last Page"
                         @onclick="() => ChangePageAsync(Offset.Total - 1)" 
+                        disabled="@IsDisabled"
                         class="page-link"> 
                         @Offset.Total </button>
                 </li>
@@ -74,6 +80,9 @@
 
     [Parameter]
     public int PageSize { get; set; }
+
+    [Parameter]
+    public bool IsDisabled { get; set; }
 
 
     private bool _isBusy;

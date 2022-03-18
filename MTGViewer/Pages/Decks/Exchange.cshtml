@@ -1,10 +1,9 @@
 @page "{id:int}"
 @model Decks.ExchangeModel
 @{
-    ViewData["Title"] = $"{Model.Deck.Name} - Exchange";
+    ViewData["Title"] = $"{Model.Deck.Name} - Exchange ({Model.Matches.Offset})";
 }
 @inject SymbolFormatter MtgSymbols
-@using MTGViewer.Data.Internal
 
 @{ bool hasPendings = Model.Deck.GiveBacks.Any() || Model.Matches.Any(); }
 

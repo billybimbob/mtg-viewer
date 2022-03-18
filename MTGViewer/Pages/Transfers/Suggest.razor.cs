@@ -64,7 +64,7 @@ public partial class Suggest : OwningComponentBase
 
         _cursor = new DeckCursor(pageSize);
 
-        Suggestion.SetLoader(new ReceiverLoader(this));
+        Suggestion.ReceiverChanged += OnReceiverChange;
     }
 
 
@@ -92,6 +92,7 @@ public partial class Suggest : OwningComponentBase
             if (Suggestion.Card is null)
             {
                 Logger.LogError("Card {CardId} is not valid", CardId);
+
                 Nav.NavigateTo("/Cards/Index", forceLoad: true, replace: true);
                 return;
             }
@@ -100,10 +101,10 @@ public partial class Suggest : OwningComponentBase
 
             if ((ReceiverId, Suggestion) is (not null, { Receiver: null }))
             {
-                var noReceiverUri = Nav.GetUriWithQueryParameter(nameof(ReceiverId), null as string);
-
                 Logger.LogError("User {ReceiverId} is not valid", ReceiverId);
-                Nav.NavigateTo(noReceiverUri, replace: true);
+
+                Nav.NavigateTo(
+                    Nav.GetUriWithQueryParameter(nameof(ReceiverId), null as string), replace: true);
                 return;
             }
         }
@@ -122,6 +123,8 @@ public partial class Suggest : OwningComponentBase
     {
         if (disposing)
         {
+            Suggestion.ReceiverChanged -= OnReceiverChange;
+
             _cancel.Cancel();
             _cancel.Dispose();
         }
@@ -204,7 +207,7 @@ public partial class Suggest : OwningComponentBase
     }
 
 
-    private void ReceiverSelected(string? receiverId)
+    private async void OnReceiverChange(object? sender, ReceiverEventArgs args)
     {
         if (_isBusy || Suggestion.Card is null)
         {
@@ -215,10 +218,15 @@ public partial class Suggest : OwningComponentBase
 
         try
         {
-            var receiverUri = Nav.GetUriWithQueryParameter(nameof(ReceiverId), receiverId);
-            bool replace = receiverId is null;
+            await Task.Yield();
 
-            Nav.NavigateTo(receiverUri, replace: replace);
+            Nav.NavigateTo(
+                Nav.GetUriWithQueryParameter(nameof(ReceiverId), args.ReceiverId),
+                replace: true);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError("{Error}", ex);
         }
         finally
         {
@@ -338,7 +346,7 @@ public partial class Suggest : OwningComponentBase
 
             await dbContext.SaveChangesAsync(token);
 
-            Nav.NavigateTo("/Cards", true);
+            Nav.NavigateTo("/Cards", forceLoad: true);
         }
         catch (DbUpdateException ex)
         {
@@ -383,22 +391,6 @@ public partial class Suggest : OwningComponentBase
                 TotalDecks = total,
                 LoadedDecks = 0
             };
-        }
-    }
-
-
-    internal readonly struct ReceiverLoader
-    {
-        private readonly Suggest? _parent;
-
-        public ReceiverLoader(Suggest parent)
-        {
-            _parent = parent;
-        }
-
-        public void ReceiverSelected(string? receiverId)
-        {
-            _parent?.ReceiverSelected(receiverId);
         }
     }
 

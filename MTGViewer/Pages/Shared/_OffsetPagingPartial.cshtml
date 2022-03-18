@@ -20,23 +20,24 @@
             @for (int i = start; i < end; ++i)
             {
                 int pageIndex = i;
-                string activePage = pageIndex == Model.Current ? "active" : "";
 
-                <li class="page-item @activePage">
-                    @if (pageIndex != Model.Current)
-                    {
-                        <a asp-route-offset="@pageIndex"
-                            class="page-link">
-                            @(pageIndex + 1) </a>
-                    }
-                    else
-                    {
+                @if (pageIndex == Model.Current)
+                {
+                    <li class="page-item active">
                         <span class="page-link">
                             @(pageIndex + 1)
                             <span class="sr-only">(current)</span>
                         </span>
-                    }
-                </li>
+                    </li>
+                }
+                else
+                {
+                    <li class="page-item">
+                        <a asp-route-offset="@pageIndex"
+                            class="page-link">
+                            @(pageIndex + 1) </a>
+                    </li>
+                }
             }
 
             @if (end < Model.Total - 1)

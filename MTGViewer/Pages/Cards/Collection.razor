@@ -4,7 +4,7 @@
 @inject SymbolFormatter MtgSymbols
 
 
-<PageTitle> Card Collection </PageTitle>
+<PageTitle> Card Collection (@Cards.Offset) </PageTitle>
 
 <h1>Card Collection</h1>
 
@@ -99,7 +99,7 @@
     </table>
 </div>
 
-<OffsetPaging Offset="Cards.Offset" PageSelected="SetPage"> </OffsetPaging>
+<OffsetPaging Offset="Cards.Offset" PageSelected="SetPage" IsDisabled="IsBusy" />
 
 
 @code
@@ -122,10 +122,6 @@
 
     public static string DisplayName<T>(Expression<Func<Card, T>> property) =>
         EntityExtensions.DisplayName(property);
-
-
-    public string ColorActive(Color color) =>
-        Filters.PickedColors.HasFlag(color) ? "active" : string.Empty;
 
 
     public string HeaderClass<T>(Expression<Func<Card, T>> property)

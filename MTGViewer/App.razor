@@ -1,7 +1,7 @@
 @using Microsoft.AspNetCore.Components.Routing
 
 <CascadingAuthenticationState>
-    <Router AppAssembly="@typeof(App).Assembly">
+    <Router AppAssembly="@typeof(App).Assembly" @ref="_router">
         <Found Context="routeData">
             <AuthorizeRouteView Resource="@routeData" RouteData="@routeData">
                 <NotAuthorized>
@@ -16,3 +16,22 @@
         </NotFound>
     </Router>
 </CascadingAuthenticationState>
+
+@code
+{
+    private Router? _router;
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        base.OnAfterRender(firstRender);
+    }
+
+    
+
+    private Task OnNavigateAsync(NavigationContext args)
+    {
+        args.CancellationToken.ThrowIfCancellationRequested();
+
+        return Task.CompletedTask;
+    }
+}

@@ -5,24 +5,16 @@
 {
     <nav>
         <ul class="pagination justify-content-center">
-            @if (!HasPrevious)
-            {
-                <li class="page-item disabled">
-                    <span title="First Page" class="page-link disabled"> First </span>
-                </li>
-
-                <li class="page-item disabled">
-                    <span title="Previous Page" class="page-link disabled"> Previous </span>
-                </li>
-            }
-            else if (ChangePage.HasDelegate)
+            @if (HasPrevious && ChangePage.HasDelegate)
             {
                 <li class="page-item">
-                    <button title="Previous Page" @onclick="PreviousPageAsync" class="page-link">
-                        Previous </button>
+                    <button title="Previous Page" class="page-link"
+                        @onclick="PreviousPageAsync" disabled="@IsDisabled">
+                        Previous
+                    </button>
                 </li>
             }
-            else
+            else if (HasPrevious && !IsDisabled)
             {
                 <li class="page-item">
                     <a title="First Page" href="@FirstUrl()" class="page-link"> First </a>
@@ -32,25 +24,27 @@
                     <a title="Previous Page" href="@PreviousUrl()" class="page-link"> Previous </a>
                 </li>
             }
-
-            @if (!HasNext)
+            else
             {
                 <li class="page-item disabled">
-                    <span title="Next Page" class="page-link"> Next </span>
+                    <span title="First Page" class="page-link disabled"> First </span>
                 </li>
 
                 <li class="page-item disabled">
-                    <span title="Next Page" class="page-link"> Last </span>
+                    <span title="Previous Page" class="page-link disabled"> Previous </span>
                 </li>
             }
-            else if (ChangePage.HasDelegate)
+
+            @if (HasNext && ChangePage.HasDelegate)
             {
                 <li class="page-item ">
-                    <button title="Next Page" @onclick="NextPageAsync" class="page-link">
-                        Next </button>
+                    <button title="Next Page" class="page-link"
+                        @onclick="NextPageAsync" disabled="@IsDisabled">
+                        Next
+                    </button>
                 </li>
             }
-            else
+            else if (HasNext && !IsDisabled)
             {
                 <li class="page-item ">
                     <a title="Next Page" href="@NextUrl()" class="page-link"> Next </a>
@@ -58,6 +52,16 @@
 
                 <li class="page-item">
                     <a title="Last Page" href="@LastUrl()" class="page-link"> Last </a>
+                </li>
+            }
+            else
+            {
+                <li class="page-item disabled">
+                    <span title="Next Page" class="page-link"> Next </span>
+                </li>
+
+                <li class="page-item disabled">
+                    <span title="Next Page" class="page-link"> Last </span>
                 </li>
             }
         </ul>
@@ -72,6 +76,9 @@
 
     [Parameter]
     public EventCallback<object> ChangePage { get; set; }
+
+    [Parameter]
+    public bool IsDisabled { get; set; }
 
     public bool HasPrevious => Seek.Previous is not null;
 

@@ -162,15 +162,28 @@ else if (IsBusy)
 
 @code
 {
+    public sealed class ReceiverEventArgs : EventArgs
+    {
+        public string? ReceiverId { get; }
+        
+        public ReceiverEventArgs(string? receiverId)
+        {
+            ReceiverId = receiverId;
+        }
+    }
+
+
     public sealed class SuggestionDto
     {
+        public event EventHandler<ReceiverEventArgs>? ReceiverChanged;
+
         private readonly List<Deck> _deckOptions = new();
         private readonly List<UserRef> _userOptions = new();
-
         private UserRef? _receiver;
-        private ReceiverLoader _loader;
+
 
         public IReadOnlyList<UserRef> UserOptions => _userOptions;
+
         public IReadOnlyList<Deck> DeckOptions => _deckOptions;
 
 
@@ -192,7 +205,7 @@ else if (IsBusy)
                     _userOptions.Clear();
                 }
 
-                _loader.ReceiverSelected(value);
+                ReceiverChanged?.Invoke(this, new ReceiverEventArgs(value));
             }
         }
 
@@ -229,9 +242,6 @@ else if (IsBusy)
         [StringLength(80)]
         [Display(Name = "Add Comment")]
         public string? Comment { get; set; }
-
-
-        internal void SetLoader(ReceiverLoader loader) => _loader = loader;
 
 
         public async Task AddDecksAsync(IAsyncEnumerable<Deck> decks, CancellationToken cancel)

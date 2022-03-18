@@ -63,6 +63,9 @@ public partial class Craft : OwningComponentBase
     public SaveResult Result { get; set; }
 
 
+    public event EventHandler? TreasuryLoaded;
+
+
     private bool _isBusy;
     private readonly CancellationTokenSource _cancel = new();
 
@@ -89,7 +92,10 @@ public partial class Craft : OwningComponentBase
 
             await ApplyFiltersAsync(_treasuryFilters, _cancel.Token);
 
-            _treasuryFilters.SetLoader(new TreasuryLoader(this));
+            _treasuryFilters.FilterChanged += OnFilterChange;
+
+            TreasuryLoaded += _treasuryFilters.OnTreasuryLoaded;
+            TreasuryLoaded?.Invoke(this, EventArgs.Empty);
         }
         catch (OperationCanceledException ex)
         {
@@ -213,6 +219,10 @@ public partial class Craft : OwningComponentBase
     {
         if (disposing)
         {
+            _treasuryFilters.FilterChanged -= OnFilterChange;
+
+            TreasuryLoaded -= _treasuryFilters.OnTreasuryLoaded;
+
             _cancel.Cancel();
             _cancel.Dispose();
         }
@@ -305,21 +315,31 @@ public partial class Craft : OwningComponentBase
 
     #region Treasury Operations
 
-    public string ActiveColor(Color color) =>
-        _treasuryFilters.PickedColors.HasFlag(color) ? "active" : string.Empty;
-
-    public void ToggleColor(Color color) => _treasuryFilters.ToggleColor(color);
-
     public void ChangeTreasuryPage(int pageIndex) => _treasuryFilters.PageIndex = pageIndex;
 
 
     private sealed class TreasuryFilters
     {
-        private TreasuryLoader _loader;
-        internal void SetLoader(TreasuryLoader treasuryLoader)
+        public event EventHandler FilterChanged;
+
+        private bool _pendingChanges;
+        private int _maxPage;
+
+        public TreasuryFilters()
         {
-            _loader = treasuryLoader;
+            FilterChanged += (_, _) => _pendingChanges = true;
         }
+
+
+        public void OnTreasuryLoaded(object? sender, EventArgs _)
+        {
+            if (sender is Craft parameters)
+            {
+                _pendingChanges = false;
+                _maxPage = parameters.Treasury.Offset.Total;
+            }
+        }
+
 
         private int _pageSize;
         public int PageSize
@@ -327,20 +347,14 @@ public partial class Craft : OwningComponentBase
             get => _pageSize;
             set
             {
-                if (_loader.IsBusy
+                if (_pendingChanges
                     || value <= 0
                     || value == _pageSize)
                 {
                     return;
                 }
 
-                if (_pageIndex > 0)
-                {
-                    _pageIndex = 0;
-                }
-
                 _pageSize = value;
-                _loader.LoadCardsAsync();
             }
         }
 
@@ -350,17 +364,17 @@ public partial class Craft : OwningComponentBase
             get => _pageIndex;
             set
             {
-                if (_loader.IsBusy
+                if (_pendingChanges
                     || value < 0
                     || value == _pageIndex
-                    || value >= _loader.MaxPage)
+                    || value >= _maxPage)
                 {
                     return;
                 }
 
                 _pageIndex = value;
 
-                _loader.LoadCardsAsync();
+                FilterChanged?.Invoke(this, EventArgs.Empty);
             }
         }
 
@@ -370,7 +384,7 @@ public partial class Craft : OwningComponentBase
             get => _searchName;
             set
             {
-                if (_loader.IsBusy)
+                if (_pendingChanges)
                 {
                     return;
                 }
@@ -382,27 +396,26 @@ public partial class Craft : OwningComponentBase
 
                 _searchName = value;
 
-                _loader.LoadCardsAsync();
+                FilterChanged?.Invoke(this, EventArgs.Empty);
             }
         }
 
-        private Color _pickedColors;
-        public Color PickedColors => _pickedColors;
+        public Color PickedColors { get; private set; }
 
         public void ToggleColor(Color color)
         {
-            if (_loader.IsBusy)
+            if (_pendingChanges)
             {
                 return;
             }
 
-            if (_pickedColors.HasFlag(color))
+            if (PickedColors.HasFlag(color))
             {
-                _pickedColors &= ~color;
+                PickedColors &= ~color;
             }
             else
             {
-                _pickedColors |= color;
+                PickedColors |= color;
             }
 
             if (_pageIndex > 0)
@@ -410,36 +423,15 @@ public partial class Craft : OwningComponentBase
                 _pageIndex = 0;
             }
 
-            _loader.LoadCardsAsync();
+            FilterChanged?.Invoke(this, EventArgs.Empty);
         }
     }
 
 
-    internal readonly struct TreasuryLoader
+
+    private async void OnFilterChange(object? sender, EventArgs _)
     {
-        private readonly Craft? _parent;
-
-        public TreasuryLoader(Craft parent)
-        {
-            _parent = parent;
-        }
-
-        public int MaxPage => _parent?.Treasury.Offset.Total ?? 0;
-
-        public bool IsBusy => _parent?.IsBusy ?? false;
-
-        public Task LoadCardsAsync()
-        {
-            return _parent is null
-                ? Task.CompletedTask
-                : _parent.LoadCardsAsync();
-        }
-    }
-
-
-    private async Task LoadCardsAsync()
-    {
-        if (_isBusy)
+        if (_isBusy || sender is not TreasuryFilters)
         {
             return;
         }
@@ -449,6 +441,8 @@ public partial class Craft : OwningComponentBase
         try
         {
             await ApplyFiltersAsync(_treasuryFilters, _cancel.Token);
+
+            TreasuryLoaded?.Invoke(this, EventArgs.Empty);
         }
         catch (OperationCanceledException ex)
         {
@@ -481,8 +475,7 @@ public partial class Craft : OwningComponentBase
 
         return _cards
             .Join( _deckContext.ActiveCards(),
-                c => c.Id,
-                qg => qg.CardId,
+                c => c.Id, qg => qg.CardId,
                 (_, group) => group)
             .ToOffsetList(
                 _deckContext.PageIndex,
