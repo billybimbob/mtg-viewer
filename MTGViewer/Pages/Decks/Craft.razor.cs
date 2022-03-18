@@ -52,6 +52,8 @@ public partial class Craft : OwningComponentBase
 
     public OffsetList<HeldCard> Treasury => _pagedCards ?? OffsetList<HeldCard>.Empty;
 
+    private TreasuryFilters Filters => _treasuryFilters;
+
     public string DeckName =>
         _deckContext?.Deck.Name is string name && !string.IsNullOrWhiteSpace(name) 
             ? name : "New Deck";
@@ -60,8 +62,6 @@ public partial class Craft : OwningComponentBase
 
     public SaveResult Result { get; set; }
 
-
-    private const int SearchNameLimit = 40;
 
     private bool _isBusy;
     private readonly CancellationTokenSource _cancel = new();
@@ -93,11 +93,11 @@ public partial class Craft : OwningComponentBase
         }
         catch (OperationCanceledException ex)
         {
-            Logger.LogError(ex.ToString());
+            Logger.LogWarning("{Error}", ex);
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex.ToString());
+            Logger.LogError("{Error}", ex);
         }
         finally
         {
@@ -143,11 +143,11 @@ public partial class Craft : OwningComponentBase
         }
         catch (OperationCanceledException ex)
         {
-            Logger.LogError(ex.ToString());
+            Logger.LogWarning("{Error}", ex);
         }
         catch (NavigationException ex)
         {
-            Logger.LogWarning(ex.ToString());
+            Logger.LogError("{Error}", ex);
         }
 
         finally
@@ -177,7 +177,7 @@ public partial class Craft : OwningComponentBase
         var deck = await CraftingDeckAsync.Invoke(dbContext, DeckId, userId, cancel);
         if (deck is null)
         {
-            NavManager.NavigateTo("/Decks", true);
+            NavManager.NavigateTo("/Decks", forceLoad: true, replace: true);
             return null;
         }
 
@@ -370,14 +370,7 @@ public partial class Craft : OwningComponentBase
             get => _searchName;
             set
             {
-                if (string.IsNullOrWhiteSpace(value))
-                {
-                    value = null;
-                }
-
-                if (_loader.IsBusy
-                    || value?.Length > SearchNameLimit
-                    || value == _searchName)
+                if (_loader.IsBusy)
                 {
                     return;
                 }
@@ -459,11 +452,11 @@ public partial class Craft : OwningComponentBase
         }
         catch (OperationCanceledException ex)
         {
-            Logger.LogError(ex.ToString());
+            Logger.LogWarning("{Error}", ex);
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex.ToString());
+            Logger.LogError("{Error}", ex);
         }
         finally
         {
@@ -561,7 +554,7 @@ public partial class Craft : OwningComponentBase
 
         if (_deckContext.Groups.Count >= PageSizes.Limit)
         {
-            Logger.LogWarning("deck want failed since at limit");
+            Logger.LogWarning("Deck want failed since at limit");
             return;
         }
 
@@ -585,7 +578,7 @@ public partial class Craft : OwningComponentBase
 
         if (want.Copies >= PageSizes.Limit)
         {
-            Logger.LogWarning("deck want failed since at limit");
+            Logger.LogWarning("Deck want failed since at limit");
             return;
         }
 
@@ -611,7 +604,7 @@ public partial class Craft : OwningComponentBase
 
         if (!_deckContext.TryGetQuantity(card, out Hold hold))
         {
-            Logger.LogError($"card {card.Id} is not in the deck");
+            Logger.LogError("Card {Card} is not in the deck", card);
             return;
         }
 
@@ -634,7 +627,7 @@ public partial class Craft : OwningComponentBase
         int actualRemain = hold.Copies - giveBack.Copies;
         if (actualRemain == 0)
         {
-            Logger.LogError($"there are no more of {card.Id} to remove");
+            Logger.LogError("There are no more of {Card} to remove", card);
             return;
         }
 
@@ -896,11 +889,13 @@ public partial class Craft : OwningComponentBase
         }
         catch (OperationCanceledException ex)
         {
-            Logger.LogError(ex.ToString());
+            Logger.LogWarning("{Error}", ex);
+
+            Result = SaveResult.Error;
         }
         catch (DbUpdateException ex)
         {
-            Logger.LogError(ex.ToString());
+            Logger.LogError("{Error}", ex);
 
             Result = SaveResult.Error;
         }

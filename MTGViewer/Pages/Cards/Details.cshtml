@@ -62,19 +62,6 @@
             </div>
         }
 
-        @if (isSignedIn && canChangeTreasury)
-        {
-            <a asp-page="Delete" 
-                asp-route-id="@Model.Card.Id" asp-route-returnurl="@Model.ReturnUrl"
-                title="Delete @Model.Card.Name" class="btn btn-danger" role="button">
-                Delete </a>
-        }
-        else if (isSignedIn)
-        {
-            <button type="button" class="btn btn-danger" disabled>
-                Delete </button>
-        }
-
         @if (hasFlip)
         {
             bool flip = Model.Card.Flip is null;
@@ -83,13 +70,32 @@
                 role="button" asp-route-flip="@flip">
                 Flip </a>
         }
+
+        @if (isSignedIn && canChangeTreasury)
+        {
+            <a href="/Transfers/Suggest/@Model.Card.Id"
+                title="Sugest @Model.Card.Name" class="btn btn-secondary" role="button">
+                Suggest </a>
+
+            <a asp-page="Delete" 
+                asp-route-id="@Model.Card.Id" asp-route-returnurl="@Model.ReturnUrl"
+                title="Delete @Model.Card.Name" class="btn btn-danger" role="button">
+                Delete </a>
+        }
+        else if (isSignedIn)
+        {
+            <button type="button" class="btn btn-secondary" disabled>
+                Suggest </button>
+
+            <button type="button" class="btn btn-danger" disabled>
+                Delete </button>
+        }
     </div>
 }
 
 <hr />
 <div class="row">
-    <div class="col pb-4 d-flex justify-content-center justify-content-lg-start align-items-center">
-
+    <div class="col pb-4 d-flex justify-content-center align-items-center">
         @{ var imageUrl = Model.Card.Flip is not null 
             ? Model.Card.Flip.ImageUrl
             : Model.Card.ImageUrl; }

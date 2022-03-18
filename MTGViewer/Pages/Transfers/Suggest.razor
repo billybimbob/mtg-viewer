@@ -1,0 +1,264 @@
+@page "/Transfers/Suggest/{CardId}"
+@inherits OwningComponentBase
+
+@using System.ComponentModel.DataAnnotations
+@using MTGViewer.Data.Internal
+
+@inject SymbolFormatter MtgSymbols
+@inject CardText CardText
+
+
+@switch ((Suggestion.Card, Suggestion.Receiver))
+{
+    case (Card card, UserRef receiver):
+        <PageTitle> @card.Name - Suggest @receiver.Name </PageTitle>
+        <h1>
+            Suggest
+            <a href="/Cards/Details/@card.Id"> @card.Name </a> 
+            To @receiver.Name </h1>
+        break;
+
+    case (Card card, _):
+        <PageTitle> @card.Name - Suggest </PageTitle>
+        <h1> Suggest <a href="/Cards/Details/@card.Id"> @card.Name </a> </h1>
+        break;
+
+    default:
+        <PageTitle> Suggest Card To User </PageTitle>
+        <h1> Suggest Card to User </h1>
+        break;
+}
+
+<hr>
+
+@if (Suggestion.Receiver is not null)
+{
+    <form class="row" @onsubmit="SendSuggestionAsync">
+
+        <div class="form-group col-12 col-md-9 col-lg-6">
+            <label for="@SuggestionDto.PropertyId(s => s.To)">
+                @Suggestion.DisplayName(s => s.To)
+            </label>
+
+            <div class="list-group list-group-flush">
+                @{ string nullActive = Suggestion.ToId == null ? "list-group-item-secondary" : string.Empty; }
+
+                <button type="button" title="No Specific Deck"
+                    class="list-group-item list-group-item-action @nullActive"
+                    @onclick="() => Suggestion.ToId = null">
+                    No Deck
+                </button>
+
+                @foreach (var deck in Suggestion.DeckOptions)
+                {
+                    string active = Suggestion.ToId == deck.Id ? "list-group-item-secondary" : string.Empty;
+
+                    <button type="button" title="Pick @deck.Name"
+                        class="list-group-item list-group-item-action @active" 
+                        @onclick="() => Suggestion.ToId = deck.Id">
+
+                        <div class="d-flex align-items-center justify-content-between">
+                            <div> @deck.Name </div>
+                            <div>
+                                @MtgSymbols.Format(CardText.ColorString(deck.Color)).ToMarkupString()
+                            </div>
+                        </div>
+                    </button>
+                }
+            </div>
+        </div>
+
+        <div class="form-group col-12 col-md-9 col-lg-5">
+            <label for="@SuggestionDto.PropertyId(s => s.Comment)">
+                @Suggestion.DisplayName(s => s.Comment)
+            </label>
+
+            <textarea @bind="Suggestion.Comment"
+                id="@SuggestionDto.PropertyId(s => s.Comment)"
+                class="form-control" />
+        </div>
+
+        <div class="col-12">
+            <div class="btn-group" role="group">
+                <button class="btn btn-secondary" type="button"
+                    title="Choose A Different User"
+                    @onclick="() => Suggestion.ReceiverId = null" disabled="@IsBusy">
+                    Pick User
+                </button>
+
+                <button class="btn btn-secondary" type="button"
+                    title="View Selected Deck Details"
+                    @onclick="ViewDeckDetails"
+                    disabled="@(IsBusy || !HasDetails)">
+                    Deck Details
+                </button>
+
+                <button class="btn btn-secondary" type="button"
+                    title="Load More Decks"
+                    @onclick="LoadDeckPageAsync" disabled="@(IsBusy || !HasMore)">
+                    Load More
+                </button>
+
+                <button class="btn btn-secondary"
+                    title="Create and Send the Suggestion"
+                    type="submit" disabled="@IsBusy">
+                    @if (IsBusy)
+                    {
+                        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"> </span>
+                    }
+                    Send
+                </button>
+            </div>
+        </div>
+    </form>
+}
+else if (Suggestion.Card is Card card)
+{
+    @if (!Suggestion.UserOptions.Any() && !IsBusy)
+    {
+        <div class="alert alert-warning" role="alert">
+            There are no users to suggest to for @card.Name.
+        </div>
+    }
+
+    <div class="row">
+        <div class="col pb-4 d-flex justify-content-md-start justify-content-center align-items-center">
+            <img class="card-img" alt="@card.Name" src="@card.ImageUrl.WithHttps()"/>
+        </div>
+
+        <div class="col-lg-8 col-md-6 col-12 pt-md-2">
+            <section class="row">
+                <h4 class="col-12"> Send To User </h4>
+
+                <div class="col-lg-9 col-12">
+                    <p> Suggestions can be used to message deck building ideas to other users.
+                        They also do not have any effect on held copies. </p>
+                </div>
+
+                <div class="form-group col-lg-6 col">
+                    <select @bind="Suggestion.ReceiverId"
+                        disabled="@IsBusy"
+                        title="Suggest to User" class="form-control">
+
+                        <option value="@(null as string)"> Choose a User </option>
+
+                        @foreach (var user in Suggestion.UserOptions)
+                        {
+                            <option value="@user.Id"> @user.Name </option>
+                        }
+                    </select>
+                </div>
+            </section>
+        </div>
+    </div>
+}
+else if (IsBusy)
+{
+    <div class="spinner-grow" style="width: 3rem; height: 3rem;" role="status">
+        <span class="sr-only">Loading...</span>
+    </div>
+}
+
+
+@code
+{
+    public sealed class SuggestionDto
+    {
+        private readonly List<Deck> _deckOptions = new();
+        private readonly List<UserRef> _userOptions = new();
+
+        private UserRef? _receiver;
+        private ReceiverLoader _loader;
+
+        public IReadOnlyList<UserRef> UserOptions => _userOptions;
+        public IReadOnlyList<Deck> DeckOptions => _deckOptions;
+
+
+        public Card? Card { get; set; }
+
+        public string? ReceiverId
+        {
+            get => Receiver?.Id;
+            set
+            {
+                if (ReceiverId == value)
+                {
+                    return;
+                }
+
+                if (value is null)
+                {
+                    // clear to get an updated listed of user options
+                    _userOptions.Clear();
+                }
+
+                _loader.ReceiverSelected(value);
+            }
+        }
+
+        public UserRef? Receiver
+        {
+            get => _receiver;
+            set
+            {
+                if (_receiver != value)
+                {
+                    _deckOptions.Clear();
+                    _receiver = value;
+                }
+            }
+        }
+
+
+        [Display(Name = "Suggest To A Specific Deck")]
+        public Deck? To { get; private set; }
+
+        public int? ToId
+        {
+            get => To?.Id;
+            set
+            {
+                if (ToId != value)
+                {
+                    To = DeckOptions.SingleOrDefault(d =>
+                        d.Id == value && d.OwnerId == Receiver?.Id);
+                }
+            }
+        }
+
+        [StringLength(80)]
+        [Display(Name = "Add Comment")]
+        public string? Comment { get; set; }
+
+
+        internal void SetLoader(ReceiverLoader loader) => _loader = loader;
+
+
+        public async Task AddDecksAsync(IAsyncEnumerable<Deck> decks, CancellationToken cancel)
+        {
+            await foreach (var deck in decks.WithCancellation(cancel))
+            {
+                _deckOptions.Add(deck);
+            }
+        }
+
+
+        public async Task AddUsersAsync(IAsyncEnumerable<UserRef> users, CancellationToken cancel)
+        {
+            await foreach (var user in users.WithCancellation(cancel))
+            {
+                _userOptions.Add(user);
+            }
+        }
+
+        public static string PropertyId<T>(Expression<Func<SuggestionDto, T>> property)
+        {
+            if (property.Body is not MemberExpression { Member.Name: string name })
+            {
+                return string.Empty;
+            }
+
+            return $"{nameof(SuggestionDto)}-{name}";
+        }
+    }
+}

@@ -4,8 +4,8 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
-using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Components;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -62,11 +62,11 @@ public partial class Adjust : ComponentBase, IDisposable
 
             await using var dbContext = await DbFactory.CreateDbContextAsync(cancelToken);
 
-            _bins = await BinOptionsAsync(dbContext, cancelToken);
+            _bins = await BinsAsync(dbContext).ToArrayAsync(cancelToken);
         }
         catch (OperationCanceledException e)
         {
-            Logger.LogWarning(e.ToString());
+            Logger.LogWarning("{Error}", e);
         }
         finally
         {
@@ -75,13 +75,11 @@ public partial class Adjust : ComponentBase, IDisposable
     }
 
 
-    private static Task<Bin[]> BinOptionsAsync(CardDbContext dbContext, CancellationToken cancel)
-    {
-        return dbContext.Bins
-            .OrderBy(b => b.Name)
-            .AsNoTracking()
-            .ToArrayAsync(cancel);
-    }
+    private static Func<CardDbContext, IAsyncEnumerable<Bin>> BinsAsync
+        = EF.CompileAsyncQuery((CardDbContext dbContext) =>
+            dbContext.Bins
+                .OrderBy(b => b.Name)
+                .AsNoTracking());
 
 
     protected override async Task OnParametersSetAsync()
@@ -116,7 +114,7 @@ public partial class Adjust : ComponentBase, IDisposable
         }
         catch (OperationCanceledException e)
         {
-            Logger.LogWarning(e.ToString());
+            Logger.LogWarning("{Error}", e);
         }
         finally
         {
@@ -169,13 +167,13 @@ public partial class Adjust : ComponentBase, IDisposable
         {
             Result = SaveResult.Error;
 
-            Logger.LogError(e.ToString());
+            Logger.LogError("{Error}", e);
         }
         catch (OperationCanceledException e)
         {
             Result = SaveResult.Error;
 
-            Logger.LogWarning(e.ToString());
+            Logger.LogWarning("{Error}", e);
         }
         finally
         {
@@ -281,8 +279,8 @@ public partial class Adjust : ComponentBase, IDisposable
             return null;
         }
 
-        dbContext.Entry(bin)
-            .CurrentValues.SetValues(binDto);
+        dbContext.Entry(bin).CurrentValues
+            .SetValues(binDto);
 
         return bin;
     }
@@ -292,7 +290,7 @@ public partial class Adjust : ComponentBase, IDisposable
     {
         if (!Box.Bin.IsEdit)
         {
-            _bins = await BinOptionsAsync(dbContext, cancel);
+            _bins = await BinsAsync(dbContext).ToArrayAsync(cancel);
 
             Box.Bin.Update(null);
         }

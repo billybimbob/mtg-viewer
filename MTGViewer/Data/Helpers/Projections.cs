@@ -11,7 +11,7 @@ namespace MTGViewer.Data;
 public sealed record HeldCard(Card Card, int Copies);
 
 
-public record CardImage
+public sealed record CardImage
 {
     public string Id { get; init; } = default!;
     public string Name { get; init; } = default!;
@@ -351,3 +351,10 @@ public sealed record BinPreview
 }
 
 #endregion
+
+
+public sealed record UserPreview
+{
+    public string Id { get; init; } = default!;
+    public string Name { get; init; } = default!;
+}

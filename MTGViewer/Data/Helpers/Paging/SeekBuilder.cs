@@ -487,7 +487,8 @@ internal static class SeekHelpers
             throw new ArgumentException($"key is the not correct key type");
         }
 
-        if (entityId?.Properties.FirstOrDefault()?.PropertyInfo is not PropertyInfo getKey)
+        if (entityId?.Properties.FirstOrDefault()
+            is not { PropertyInfo: PropertyInfo getKey })
         {
             throw new NotSupportedException("Only single primary keys are supported");
         }

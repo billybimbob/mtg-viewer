@@ -192,9 +192,15 @@
             _chosenImport = null;
             _result = SaveResult.Success;
         }
+        catch (OperationCanceledException e)
+        {
+            _result = SaveResult.Error;
+
+            Logger.LogWarning("{Error}", e);
+        }
         catch (Exception e)
         {
-            Logger.LogError(e.ToString());
+            Logger.LogError("{Error}", e);
 
             _result = SaveResult.Error;
         }

@@ -39,6 +39,7 @@ public partial class Create : OwningComponentBase
 
 
     public CardQuery Query => _search.Query;
+    public EditContext? SearchEdit => _searchEdit;
 
     public string? MatchName
     {
@@ -50,8 +51,6 @@ public partial class Create : OwningComponentBase
 
     public SaveResult Result { get; set; }
 
-
-    private const int SearchNameLimit = 40;
 
     private bool _isBusy;
     private readonly CancellationTokenSource _cancel = new();
@@ -99,25 +98,7 @@ public partial class Create : OwningComponentBase
     {
         public CardQuery Query { get; } = new();
 
-        private string? _matchName;
-        public string? MatchName
-        {
-            get => _matchName;
-            set
-            {
-                if (string.IsNullOrWhiteSpace(value))
-                {
-                    value = null;
-                }
-
-                if (value == _matchName || value?.Length > SearchNameLimit)
-                {
-                    return;
-                }
-
-                _matchName = value;
-            }
-        }
+        public string? MatchName { get; set; }
 
         public void ToggleColor(Color toggle)
         {
@@ -248,7 +229,7 @@ public partial class Create : OwningComponentBase
         }
         catch (OperationCanceledException ex)
         {
-            Logger.LogError(ex.ToString());
+            Logger.LogWarning("{Error}", ex);
         }
         finally
         {
@@ -377,19 +358,13 @@ public partial class Create : OwningComponentBase
         }
         catch (DbUpdateException e)
         {
-            Logger.LogError($"failed to add new cards {e}");
-
-            Result = SaveResult.Error;
-        }
-        catch (InvalidOperationException e)
-        {
-            Logger.LogError($"failed to add new cards {e}");
+            Logger.LogError("Failed to add new cards {Error}", e);
 
             Result = SaveResult.Error;
         }
         catch (OperationCanceledException e)
         {
-            Logger.LogError($"cancel error: {e}");
+            Logger.LogWarning("{Error}", e);
 
             Result = SaveResult.Error;
         }

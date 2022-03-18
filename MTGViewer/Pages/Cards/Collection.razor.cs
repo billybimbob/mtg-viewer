@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Paging;
@@ -36,8 +35,6 @@ public partial class Collection : ComponentBase, IDisposable
 
 
 
-    private const int SearchNameLimit = 40;
-
     private bool _isBusy;
     private readonly CancellationTokenSource _cancel = new();
     private readonly FilterContext _filters = new();
@@ -67,11 +64,11 @@ public partial class Collection : ComponentBase, IDisposable
         }
         catch (OperationCanceledException ex)
         {
-            Logger.LogError(ex.ToString());
+            Logger.LogWarning("{Error}", ex);
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex.ToString());
+            Logger.LogError("{Error}", ex);
         }
         finally
         {
@@ -102,14 +99,7 @@ public partial class Collection : ComponentBase, IDisposable
             get => _searchName;
             set
             {
-                if (string.IsNullOrWhiteSpace(value))
-                {
-                    value = null;
-                }
-
-                if (_loadContext.IsBusy
-                    || value?.Length > SearchNameLimit
-                    || value == _searchName)
+                if (_loadContext.IsBusy)
                 {
                     return;
                 }
@@ -273,11 +263,11 @@ public partial class Collection : ComponentBase, IDisposable
         }
         catch (OperationCanceledException ex)
         {
-            Logger.LogError(ex.ToString());
+            Logger.LogWarning("{Error}", ex);
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex.ToString());
+            Logger.LogError("{Error}", ex);
         }
         finally
         {

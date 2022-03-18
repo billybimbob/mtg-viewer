@@ -73,7 +73,7 @@ public partial class Home : ComponentBase, IDisposable
         }
         catch (OperationCanceledException ex)
         {
-            Logger.LogError(ex.ToString());
+            Logger.LogWarning("{Error}", ex);
         }
         finally
         {
@@ -138,7 +138,7 @@ public partial class Home : ComponentBase, IDisposable
         }
         catch (OperationCanceledException ex)
         {
-            Logger.LogError(ex.ToString());
+            Logger.LogWarning("{Error}", ex);
         }
         finally
         {

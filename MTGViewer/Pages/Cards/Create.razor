@@ -20,7 +20,7 @@
 @if (!Matches.Any())
 {
     <hr />
-    <EditForm EditContext="@_searchEdit" OnValidSubmit="@SearchForCardAsync">
+    <EditForm OnValidSubmit="@SearchForCardAsync" EditContext="@SearchEdit">
         <DataAnnotationsValidator />
         <div class="row">
 
@@ -42,7 +42,7 @@
                         <dt class="col-12 col-lg-2"> @Query.DisplayName(c => c.Colors) </dt>
                         <dd class="col-12 col-lg-10">
                             <p>
-                                The color identity of the card. Color identity is affected
+                                The color identity of the card. Color identity is affected by
                                 a card's mana cost, but also mana abilities costs and text
                                 effects. Multiple colors can be specified, where the searched 
                                 must have <i>all</i> selected colors.
@@ -211,25 +211,9 @@ else
             Add Cards/Copies </button>
     </div>
 
-    <div class="row align-items-center my-3">
-
-        <div class="col-12 col-md-4">
-            <input class="form-control" placeholder="Name" @bind="MatchName" />
-        </div>
-
-        <div class="col-auto btn-group pt-2 pt-md-0" role="group" aria-label="Color Buttons">
-            @foreach (var (color, symbol) in Symbol.Colors)
-            {
-                <button title="@color filter"
-                    type="button"
-                    class="btn btn-outline-secondary border-0 rounded @ActiveColor(color)"
-                    @onclick="() => ToggleColor(color)">
-
-                    <i class="ms ms-@symbol.ToLower() ms-cost"></i>
-                </button>
-            }
-        </div>
-    </div>
+    <CardFilter @bind-SearchName="MatchName"
+        Color="Query.Colors"
+        ColorChanged="ToggleColor"/>
 
     <div class="table-responsive-md">
         <table class="table">
