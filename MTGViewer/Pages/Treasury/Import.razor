@@ -21,7 +21,7 @@
     <ProgressBar Percent="PercentProgress" />
 }
 
-<SavePrompt @bind-Result="_result">
+<SavePrompt @bind-Result="Result">
     <SuccessMessage>
         Successfully added card data.
     </SuccessMessage>
@@ -78,25 +78,20 @@
 
 @code
 {
-    public bool IsBusy => _isBusy;
-    public bool IsCancelled => _isCancelRaised;
+    internal bool HasNoFile => _chosenImport == null;
 
-    public string FileError => _fileError;
-    public bool HasNoFile => _chosenImport == null;
+    internal SaveResult Result { get; set; }
+    internal string FileError { get; private set; } = string.Empty;
 
-    public Percent PercentProgress => _percentProgress;
+    internal bool IsBusy { get; private set;}
+    internal bool IsCancelled { get; private set; }
+
+    internal Percent PercentProgress { get; private set; }
 
 
     private const long _2_MB = 2_097_152;
     
     private CancellationTokenSource? _cancel = new();
-
-    private bool _isBusy;
-    private bool _isCancelRaised;
-    private SaveResult _result;
-    private Percent _percentProgress;
-
-    private string _fileError = string.Empty;
     private IBrowserFile? _chosenImport;
 
 
@@ -113,11 +108,11 @@
     }
     
 
-    public void FileChosen(InputFileChangeEventArgs args)
+    internal void FileChosen(InputFileChangeEventArgs args)
     {
         if (args.FileCount > 1)
         {
-            _fileError = "Too many files selected";
+            FileError = "Too many files selected";
             return;
         }
 
@@ -126,7 +121,7 @@
 
         if (ext != ".json" && ext != ".csv")
         {
-            _fileError = "File is not the correct type";
+            FileError = "File is not the correct type";
             return;
         }
 
@@ -137,24 +132,24 @@
             && content != "application/vnd.ms-excel"
             && content != "text/csv")
         {
-            _fileError = "File is not the correct type";
+            FileError = "File is not the correct type";
             return;
         }
 
         if (file.Size > _2_MB)
         {
-            _fileError = "File is too large";
+            FileError = "File is too large";
             return;
         }
 
-        _fileError = string.Empty;
+        FileError = string.Empty;
         _chosenImport = file;
     }
 
 
-    public async Task UploadAsync()
+    internal async Task UploadAsync()
     {
-        if (_isBusy || _chosenImport is null)
+        if (IsBusy || _chosenImport is null)
         {
             return;
         }
@@ -166,9 +161,9 @@
 
         var loadingProgress = ScopedServices.GetRequiredService<LoadingProgress>();
 
-        _isBusy = true;
-        _result = SaveResult.None;
-        _percentProgress = 0;
+        IsBusy = true;
+        Result = SaveResult.None;
+        PercentProgress = 0;
 
         loadingProgress.ProgressUpdate += UploadProgress;
 
@@ -190,11 +185,11 @@
             }
 
             _chosenImport = null;
-            _result = SaveResult.Success;
+            Result = SaveResult.Success;
         }
         catch (OperationCanceledException e)
         {
-            _result = SaveResult.Error;
+            Result = SaveResult.Error;
 
             Logger.LogWarning("{Error}", e);
         }
@@ -202,36 +197,36 @@
         {
             Logger.LogError("{Error}", e);
 
-            _result = SaveResult.Error;
+            Result = SaveResult.Error;
         }
         finally
         {
             loadingProgress.ProgressUpdate -= UploadProgress;
 
-            _isCancelRaised = false;
-            _isBusy = false;
+            IsCancelled = false;
+            IsBusy = false;
         }
     }
 
 
     private void UploadProgress(Percent percent)
     {
-        if (percent <= _percentProgress)
+        if (percent <= PercentProgress)
         {
             return;
         }
 
-        _percentProgress = percent;
+        PercentProgress = percent;
 
         StateHasChanged();
     }
 
 
-    public void CancelUpload()
+    internal void CancelUpload()
     {
-        if (!_isBusy
+        if (!IsBusy
             || HasNoFile 
-            || _isCancelRaised
+            || IsCancelled
             || _cancel is null)
         {
             return;
@@ -241,6 +236,6 @@
         _cancel.Dispose();
         _cancel = new();
 
-        _isCancelRaised = true;
+        IsCancelled = true;
     }
 }

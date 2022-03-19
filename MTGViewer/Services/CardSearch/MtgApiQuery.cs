@@ -17,7 +17,7 @@ public sealed class MtgApiQuery : IMTGQuery
 {
     internal const char Or = '|';
     internal const char And = ',';
-    private const int Limit = 100;
+    internal const int Limit = 100;
 
     public static readonly MethodInfo QueryMethod =
         typeof(MtgApiQuery)

@@ -77,6 +77,10 @@
                 title="Sugest @Model.Card.Name" class="btn btn-secondary" role="button">
                 Suggest </a>
 
+            <a href="@Model.GetCreateCardUri()"
+                title="Add More @Model.Card.Name" class="btn btn-secondary" role="button">
+                Add More </a>
+
             <a asp-page="Delete" 
                 asp-route-id="@Model.Card.Id" asp-route-returnurl="@Model.ReturnUrl"
                 title="Delete @Model.Card.Name" class="btn btn-danger" role="button">

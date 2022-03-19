@@ -81,7 +81,7 @@ internal class MtgPageSizeParameter : IMtgParameter
 
     public IMtgParameter Accept(object? value)
     {
-        if (value is int pageSize and >0)
+        if (value is int pageSize and >0 and <= MtgApiQuery.Limit)
         {
             return new MtgPageSizeParameter(pageSize);
         }
@@ -173,6 +173,41 @@ internal class MtgColorParameter : IMtgParameter
 }
 
 
+internal class MtgRarityParameter : IMtgParameter
+{
+    public MtgRarityParameter() : this(null)
+    { }
+    
+    private MtgRarityParameter(Rarity? rarity)
+    {
+        _rarity = rarity;
+    }
+
+    private readonly Rarity? _rarity;
+    public bool IsEmpty => _rarity is null;
+
+    public IMtgParameter Accept(object? value)
+    {
+        if (value is Rarity rarity)
+        {
+            return new MtgRarityParameter(rarity);
+        }
+
+        return this;
+    }
+
+    public void Apply(ICardService cards)
+    {
+        if (_rarity is not Rarity rarity)
+        {
+            return;
+        }
+
+        cards.Where(q => q.Rarity, rarity.ToString());
+    }
+}
+
+
 internal class MtgDefaultParameter : IMtgParameter
 {
     public MtgDefaultParameter(Expression<Func<CardQueryParameter, string>> property)
@@ -243,6 +278,7 @@ public static class CardQueryParameters
         _base ??= new()
         {
             [nameof(CardQuery.Colors)] = new MtgColorParameter(),
+            [nameof(CardQuery.Rarity)] = new MtgRarityParameter(),
             [nameof(CardQuery.Type)] = new MtgTypeParameter(),
             [nameof(CardQuery.Page)] = new MtgPageParameter(),
             [nameof(CardQuery.PageSize)] = new MtgPageSizeParameter()

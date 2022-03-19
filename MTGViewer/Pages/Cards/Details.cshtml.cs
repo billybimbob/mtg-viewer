@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
 
 using MTGViewer.Data;
@@ -53,6 +54,24 @@ public class DetailsModel : PageModel
         }
 
         return Page();
+    }
+
+
+    public string GetCreateCardUri()
+    {
+        return QueryHelpers.AddQueryString(
+            "/Cards/Create",
+            CardParameters().Cast<KeyValuePair<string, string?>>());
+    }
+
+
+    private IEnumerable<KeyValuePair<string, string>> CardParameters()
+    {
+        yield return KeyValuePair.Create(nameof(Create.Name), (string)Card.Name);
+
+        yield return KeyValuePair.Create(nameof(Create.Colors), ((int)Card.Color).ToString());
+
+        yield return KeyValuePair.Create(nameof(Create.Types), Card.Type);
     }
 
 

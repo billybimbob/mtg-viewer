@@ -4,12 +4,12 @@ using MTGViewer.Data;
 
 namespace MTGViewer.Services;
 
-public class CardQuery
+public sealed record CardQuery
 {
     public string? Id { get; set; }
 
-    // [Display(Name = "Multiverse Id")]
-    // public string? MultiverseId { get; set; }
+    [Display(Name = "Multiverse Id")]
+    public string? MultiverseId { get; set; }
 
     [StringLength(50)]
     public string? Name { get; set; }
@@ -20,8 +20,7 @@ public class CardQuery
 
     public Color Colors { get; set; }
 
-    [StringLength(10)]
-    public string? Rarity { get; set; }
+    public Rarity? Rarity { get; set; }
 
     [Display(Name = "Set Name")]
     [StringLength(30)]

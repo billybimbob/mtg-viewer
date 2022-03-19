@@ -99,7 +99,7 @@
     </table>
 </div>
 
-<OffsetPaging Offset="Cards.Offset" PageSelected="SetPage" IsDisabled="IsBusy" />
+<OffsetPaging Offset="Cards.Offset" PageSelected="Filters.SetPage" IsDisabled="IsBusy" />
 
 
 @code
@@ -140,6 +140,4 @@
             return "clickable btn-link";
         }
     }
-
-    public void SetPage(int pageIndex) => Filters.PageIndex = pageIndex;
 }

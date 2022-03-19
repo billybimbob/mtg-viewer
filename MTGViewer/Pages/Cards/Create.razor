@@ -17,10 +17,10 @@
     </ErrorMessage>
 </SavePrompt>
 
-@if (!Matches.Any())
+@if (!Matches.Any() && IsFromForm)
 {
     <hr />
-    <EditForm OnValidSubmit="@SearchForCardAsync" EditContext="@SearchEdit">
+    <EditForm OnValidSubmit="@SubmitSearchAsync" EditContext="@SearchEdit">
         <DataAnnotationsValidator />
         <div class="row">
 
@@ -89,12 +89,14 @@
 
                 <div class="form-group">
                     <InputText @bind-Value="Query.Name" 
+                        disabled="@IsBusy"
                         placeholder="@Query.DisplayName(c => c.Name)" 
                         class="form-control" />
                 </div>
 
                 <div class="form-group">
                     <InputNumber @bind-Value="Query.Cmc" min="0"
+                        disabled="@IsBusy"
                         placeholder="@Query.DisplayName(c => c.Cmc)" 
                         class="form-control" />
                 </div>
@@ -103,7 +105,7 @@
                     @foreach (var (color, symbol) in Symbol.Colors)
                     {
                         <button title="toggle @color"
-                            type="button"
+                            disabled="@IsBusy" type="button"
                             class="btn btn-outline-secondary border-0 rounded @ActiveColor(color)"
                             @onclick="() => ToggleColor(color)">
                             <i class="ms ms-@symbol.ToLower() ms-cost"></i>
@@ -113,14 +115,18 @@
 
                 <div class="form-group">
                     <InputText @bind-Value="Query.SetName" 
+                        disabled="@IsBusy"
                         placeholder="@Query.DisplayName(c => c.SetName)" 
                         class="form-control" />
                 </div>
 
                 <div class="form-group">
-                    <InputSelect @bind-Value="Query.Rarity" title="rarity-input" class="form-control">
-                        <option value=""> Choose Rarity </option>
-                        @foreach (var rarity in Enum.GetNames<Rarity>())
+                    <InputSelect @bind-Value="Query.Rarity"
+                        title="rarity-input" disabled="@IsBusy" class="form-control">
+
+                        <option value="@(null as Rarity?)"> Choose Rarity </option>
+
+                        @foreach (var rarity in Enum.GetValues<Rarity>())
                         {
                             <option value="@rarity">@rarity</option>
                         }
@@ -129,52 +135,54 @@
 
                 <div class="form-group">
                     <InputText @bind-Value="Query.Type"
+                        disabled="@IsBusy"
                         placeholder="@Query.DisplayName(c => c.Type)"
                         class="form-control" />
                 </div>
 
                 <div class="form-group">
                     <InputText @bind-Value="Query.Power" 
+                        disabled="@IsBusy"
                         placeholder="@Query.DisplayName(c => c.Power)" 
                         class="form-control" />
                 </div>
 
                 <div class="form-group">
                     <InputText @bind-Value="Query.Toughness" 
+                        disabled="@IsBusy"
                         placeholder="@Query.DisplayName(c => c.Toughness)" 
                         class="form-control" />
                 </div>
 
                 <div class="form-group">
                     <InputText @bind-Value="Query.Loyalty" 
+                        disabled="@IsBusy"
                         placeholder="@Query.DisplayName(c => c.Loyalty)" 
                         class="form-control" />
                 </div>
 
                 <div class="form-group">
                     <InputTextArea @bind-Value="Query.Text" 
+                        disabled="@IsBusy"
                         placeholder="@Query.DisplayName(c => c.Text)" 
                         class="form-control" />
                 </div>
 
                 <div class="form-group">
                     <InputTextArea @bind-Value="Query.Flavor" 
+                        disabled="@IsBusy"
                         placeholder="@Query.DisplayName(c => c.Flavor)" 
                         class="form-control" />
                 </div>
 
                 <div class="form-group">
                     <InputText @bind-Value="Query.Artist" 
+                        disabled="@IsBusy"
                         placeholder="@Query.DisplayName(c => c.Artist)" 
                         class="form-control" />
                 </div>
 
                 <div class="btn-group" role="group">
-
-                    <button type="button" class="btn btn-danger" 
-                        @onclick="Reset" title="Reset All Fields"
-                        disabled="@IsBusy">
-                        Reset </button>
 
                     <button type="submit" class="btn btn-secondary" 
                         title="Search For Card" disabled="@IsBusy">
@@ -197,23 +205,21 @@
 }
 else
 {
-    <div class="btn-group" role="group">
-        <button title="Reset Button" type="button"
-            @onclick="Reset" 
+    <div class="btn-group pb-2" role="group">
+        <button title="Reset Search Arguments"
+            type="button"
+            @onclick="ResetAsync" 
             disabled="@IsBusy"
             class="btn btn-danger">
             Reset </button>
 
-        <button title="Add Button" type="button"
+        <button title="Add Selected Cards"
+            type="button"
             class="btn btn-secondary"
             @onclick="AddNewCardsAsync" 
             disabled="@(CannotAdd() || IsBusy)">
             Add Cards/Copies </button>
     </div>
-
-    <CardFilter @bind-SearchName="MatchName"
-        Color="Query.Colors"
-        ColorChanged="ToggleColor"/>
 
     <div class="table-responsive-md">
         <table class="table">
@@ -229,58 +235,61 @@ else
             <tbody>
                 @foreach (var match in Matches)
                 {
-                    @if (MatchPassesFilters(match))
-                    {
-                        var card = match.Card;
-                        <tr>
-                            <td> 
-                                <HoverCard Target="card">
-                                    <span class="btn-link">@card.Name</span> 
-                                </HoverCard> 
-                            </td>
-                            <td> @MtgSymbols.Format(card.ManaCost).ToMarkupString() </td>
-                            <td> @card.SetName </td>
-                            <td> @card.Rarity </td>
-                            <td>
-                                <input @bind="match.NumCopies"
-                                    title="@card.Name Copies" 
-                                    type="number" min="0" max="@PageSizes.Limit"
-                                    class="form-control w-50" />
-                            </td>
-                        </tr>
-                    }
+                    var card = match.Card;
+                    <tr>
+                        <td> 
+                            <HoverCard Target="card">
+                                <span class="btn-link">@card.Name</span> 
+                            </HoverCard> 
+                        </td>
+                        <td>
+                            <div class="ms-group">
+                                @MtgSymbols.Format(card.ManaCost).ToMarkupString()
+                            </div>
+                        </td>
+                        <td> @card.SetName </td>
+                        <td> @card.Rarity </td>
+                        <td>
+                            <input @bind="match.NumCopies"
+                                title="@card.Name Copies" 
+                                type="number" min="0" max="@PageSizes.Limit"
+                                class="form-control amt-input" />
+                        </td>
+                    </tr>
                 }
             </tbody>
         </table>
     </div>
 
-    <button title="More Results" type="button"
-        class="btn btn-secondary"
-        @onclick="SearchForCardAsync" 
-        disabled="@(HasNoNext || IsBusy)" >
-        @if (IsBusy)
-        {
-            <text>
-                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"> </span>
-                Loading...
-            </text>
-        }
-        else
-        {
-            <text> Load More </text>
-        }
-    </button>
+    <div class="btn-group pb-3">
+        <button title="More Results" type="button"
+            class="btn btn-secondary"
+            @onclick="LoadMoreCardsAsync" 
+            disabled="@(HasNoNext || IsBusy)" >
+            @if (IsBusy)
+            {
+                <text>
+                    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"> </span>
+                    Loading...
+                </text>
+            }
+            else
+            {
+                <text> Load More </text>
+            }
+        </button>
+    </div>
 }
 
 
 @code
 {
-    public static string DisplayName<T>(Expression<Func<Card, T>> property) =>
+    internal static string DisplayName<T>(Expression<Func<Card, T>> property) =>
         EntityExtensions.DisplayName(property);
 
-    public string ActiveColor(Color color) =>
+    internal string ActiveColor(Color color) =>
         Query.Colors.HasFlag(color) ? "active" : string.Empty;
 
-    public bool CannotAdd() =>
+    internal bool CannotAdd() =>
         !Matches.Any() || Matches.All(m => m.NumCopies == 0);
 }

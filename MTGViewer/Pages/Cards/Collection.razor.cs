@@ -21,15 +21,15 @@ public partial class Collection : ComponentBase, IDisposable
 {
     [Parameter]
     [SupplyParameterFromQuery]
-    public string? SearchName { get; set; }
+    public string? Search { get; set; }
 
     [Parameter]
     [SupplyParameterFromQuery]
-    public int PickedColors { get; set; }
+    public int Colors { get; set; }
 
     [Parameter]
     [SupplyParameterFromQuery]
-    public string? OrderBy { get; set; }
+    public string? Order { get; set; }
 
     [Parameter]
     [SupplyParameterFromQuery]
@@ -37,7 +37,7 @@ public partial class Collection : ComponentBase, IDisposable
 
     [Parameter]
     [SupplyParameterFromQuery]
-    public int Offset { get; set; }
+    public int Page { get; set; }
 
     [Parameter]
     [SupplyParameterFromQuery]
@@ -57,41 +57,36 @@ public partial class Collection : ComponentBase, IDisposable
     protected ILogger<Collection> Logger { get; set; } = default!;
 
 
-    public event EventHandler? ParametersChanged;
-    public event EventHandler? CardsLoaded;
-
-    public bool IsBusy => _isBusy;
-
-    public FilterContext Filters => _filters;
-
-    public OffsetList<LocationCopy> Cards => _cards ?? OffsetList<LocationCopy>.Empty;
+    internal event EventHandler? ParametersChanged;
+    internal event EventHandler? CardsLoaded;
 
 
+    internal FilterContext Filters { get; } = new();
 
-    private bool _isBusy;
+    internal OffsetList<LocationCopy> Cards { get; private set; } = OffsetList<LocationCopy>.Empty;
+
+    internal bool IsBusy { get; private set; }
+
+
     private readonly CancellationTokenSource _cancel = new();
-
-    private readonly FilterContext _filters = new();
     private readonly Dictionary<string, object?> _newFilters = new(3);
-
-    private OffsetList<LocationCopy>? _cards;
 
 
     protected override void OnInitialized()
     {
-        ParametersChanged += _filters.OnParametersChanged;
-        CardsLoaded += _filters.OnCardsLoaded;
+        ParametersChanged += Filters.OnParametersChanged;
+        CardsLoaded += Filters.OnCardsLoaded;
     }
 
 
     protected async override Task OnParametersSetAsync()
     {
-        if (_isBusy)
+        if (IsBusy)
         {
             return;
         }
 
-        _isBusy = true;
+        IsBusy = true;
 
         try
         {
@@ -100,19 +95,19 @@ public partial class Collection : ComponentBase, IDisposable
             var token = _cancel.Token;
             await using var dbContext = await DbFactory.CreateDbContextAsync(token);
 
-            _cards = await FilteredCardsAsync(dbContext, _filters, token);
+            Cards = await FilteredCardsAsync(dbContext, Filters, token);
 
-            if (_cards is { Count: 0, Offset.Current: >0})
+            if (Cards is { Count: 0, Offset.Current: >0})
             {
                 Nav.NavigateTo(
-                    Nav.GetUriWithQueryParameter(nameof(Offset), null as bool?), replace: true);
+                    Nav.GetUriWithQueryParameter(nameof(Page), null as bool?), replace: true);
                 return;
             }
 
             CardsLoaded?.Invoke(this, EventArgs.Empty);
 
-            _filters.FilterChanged -= OnFilterChanged;
-            _filters.FilterChanged += OnFilterChanged;
+            Filters.FilterChanged -= OnFilterChanged;
+            Filters.FilterChanged += OnFilterChanged;
         }
         catch (OperationCanceledException ex)
         {
@@ -120,17 +115,17 @@ public partial class Collection : ComponentBase, IDisposable
         }
         finally
         {
-            _isBusy = false;
+            IsBusy = false;
         }
     }
 
 
     public void Dispose()
     {
-        ParametersChanged -= _filters.OnParametersChanged;
-        CardsLoaded -= _filters.OnCardsLoaded;
+        ParametersChanged -= Filters.OnParametersChanged;
+        CardsLoaded -= Filters.OnCardsLoaded;
 
-        _filters.FilterChanged -= OnFilterChanged;
+        Filters.FilterChanged -= OnFilterChanged;
 
         _cancel.Cancel();
         _cancel.Dispose();
@@ -139,12 +134,12 @@ public partial class Collection : ComponentBase, IDisposable
 
     private async void OnFilterChanged(object? sender, FilterEventArgs args)
     {
-        if (_isBusy || sender is not FilterContext filter)
+        if (IsBusy || sender is not FilterContext filter)
         {
             return;
         }
 
-        _isBusy = true;
+        IsBusy = true;
 
         try
         {
@@ -168,12 +163,13 @@ public partial class Collection : ComponentBase, IDisposable
         }
         finally
         {
-            _isBusy = false;
+            IsBusy = false;
         }
     }
 
 
-    public sealed class FilterEventArgs : EventArgs
+
+    internal sealed class FilterEventArgs : EventArgs
     {
         private readonly KeyValuePair<string, object?>[] _changes;
 
@@ -186,7 +182,7 @@ public partial class Collection : ComponentBase, IDisposable
     }
 
 
-    public sealed class FilterContext
+    internal sealed class FilterContext
     {
         public event EventHandler<FilterEventArgs>? FilterChanged;
 
@@ -204,8 +200,8 @@ public partial class Collection : ComponentBase, IDisposable
                 }
 
                 var args = new FilterEventArgs(
-                    KeyValuePair.Create(nameof(Collection.SearchName), (object?)value),
-                    KeyValuePair.Create(nameof(Collection.Offset), (object?)null));
+                    KeyValuePair.Create(nameof(Collection.Search), (object?)value),
+                    KeyValuePair.Create(nameof(Collection.Page), (object?)null));
 
                 FilterChanged?.Invoke(this, args);
             }
@@ -231,8 +227,22 @@ public partial class Collection : ComponentBase, IDisposable
 
         public bool IsReversed { get; private set; }
 
-        public string OrderBy { get; private set; } = DefaultOrder;
+        private string _orderBy = DefaultOrder;
+        public string OrderBy
+        {
+            get => _orderBy;
+            private set
+            {
+                bool isValid = value
+                    is nameof(Card.Name)
+                    or nameof(Card.ManaCost)
+                    or nameof(Card.SetName)
+                    or nameof(Card.Rarity)
+                    or nameof(Card.Holds);
 
+                _orderBy = isValid ? value : DefaultOrder;
+            }
+        }
 
         public void Reorder<T>(Expression<Func<Card, T>> property)
         {
@@ -241,12 +251,12 @@ public partial class Collection : ComponentBase, IDisposable
                 return;
             }
 
-            object? newReversed = value == OrderBy && !IsReversed ? true : null;
+            object? reversed = value == _orderBy && !IsReversed ? true : null;
 
             var args = new FilterEventArgs(
-                KeyValuePair.Create(nameof(Collection.Reversed), newReversed),
-                KeyValuePair.Create(nameof(Collection.OrderBy), (object?)value),
-                KeyValuePair.Create(nameof(Collection.Offset), (object?)null));
+                KeyValuePair.Create(nameof(Collection.Reversed), reversed),
+                KeyValuePair.Create(nameof(Collection.Order), (object?)value),
+                KeyValuePair.Create(nameof(Collection.Page), (object?)null));
 
             FilterChanged?.Invoke(this, args);
         }
@@ -255,38 +265,40 @@ public partial class Collection : ComponentBase, IDisposable
         private int _maxPage;
         public int PageSize { get; private set; }
 
-
         private int _pageIndex;
         public int PageIndex
         {
             get => _pageIndex;
-            set
+            private set
             {
-                value = ValidatedPageIndex(value);
-
-                if (value == _pageIndex)
+                if (IsValidPageIndex(value))
                 {
-                    return;
+                    _pageIndex = value;
                 }
-
-                object? offset = value == default ? null : value;
-
-                var args = new FilterEventArgs(
-                    KeyValuePair.Create(nameof(Collection.Offset), offset),
-                    KeyValuePair.Create(nameof(Collection.Size), (object?)_maxPage));
-
-                FilterChanged?.Invoke(this, args);
             }
         }
 
-        private int ValidatedPageIndex(int value)
+        public void SetPage(int value)
         {
-            if (value >= 0 && value != _pageIndex && value < _maxPage)
+            if (!IsValidPageIndex(value))
             {
-                return value;
+                return;
             }
 
-            return _pageIndex;
+            object? offset = value == default ? null : value;
+
+            var args = new FilterEventArgs(
+                KeyValuePair.Create(nameof(Collection.Page), offset),
+                KeyValuePair.Create(nameof(Collection.Size), (object?)_maxPage));
+
+            FilterChanged?.Invoke(this, args);
+        }
+
+        private bool IsValidPageIndex(int value)
+        {
+            return value >= 0
+                && value != _pageIndex
+                && value < _maxPage;
         }
 
 
@@ -299,8 +311,8 @@ public partial class Collection : ComponentBase, IDisposable
                 : PickedColors | value;
 
             var newValues = new FilterEventArgs(
-                KeyValuePair.Create(nameof(Collection.PickedColors), (object?)(int)value),
-                KeyValuePair.Create(nameof(Collection.Offset), (object?)null));
+                KeyValuePair.Create(nameof(Collection.Colors), (object?)(int)value),
+                KeyValuePair.Create(nameof(Collection.Page), (object?)null));
 
             FilterChanged?.Invoke(this, newValues);
         }
@@ -313,20 +325,19 @@ public partial class Collection : ComponentBase, IDisposable
                 return;
             }
 
+            _maxPage = Math.Max(parameters.Size, 0);
+            _searchName = ValidatedSearchName(parameters.Search);
+
+            PickedColors = (Color)parameters.Colors;
+
             if (PageSize == 0)
             {
                 PageSize = parameters.PageSizes.GetComponentSize<Collection>();
             }
 
+            PageIndex = parameters.Page;
             IsReversed = parameters.Reversed;
-            OrderBy = parameters.OrderBy ?? DefaultOrder;
-
-            PickedColors = (Color)parameters.PickedColors;
-
-            _maxPage = Math.Max(parameters.Size, 0);
-
-            _pageIndex = ValidatedPageIndex(parameters.Offset);
-            _searchName = ValidatedSearchName(parameters.SearchName);
+            OrderBy = parameters.Order ?? DefaultOrder;
         }
 
 

@@ -25,36 +25,31 @@ public partial class Home : ComponentBase, IDisposable
     protected ILogger<Home> Logger { get; set; } = default!;
 
 
-    public bool IsBusy => _isBusy;
+    internal bool IsEmptyCollection => !_randomContext?.Cards.Any() ?? false;
+    internal bool IsFullyLoaded => !_randomContext?.HasMore ?? true;
 
-    public bool IsFullyLoaded => !_randomContext?.HasMore ?? true;
+    internal IReadOnlyList<CardImage> RandomCards => _randomContext?.Cards ?? Array.Empty<CardImage>();
+    internal IReadOnlyList<RecentTransaction> RecentChanges => _recentChanges;
 
-    public IReadOnlyList<CardImage> RandomCards => _randomContext?.Cards ?? Array.Empty<CardImage>();
-
-    public IReadOnlyList<RecentTransaction> RecentChanges => _recentChanges;
-
-    public bool IsEmptyCollection => !_randomContext?.Cards.Any() ?? false;
+    internal bool IsBusy { get; private set; }
 
 
     private const int ChunkSize = 4;
-
     private readonly CancellationTokenSource _cancel = new();
 
-    private bool _isBusy;
-    private DateTime _currentTime;
-
+    private RecentTransaction[] _recentChanges = Array.Empty<RecentTransaction>();
     private RandomCardsContext? _randomContext;
-    private IReadOnlyList<RecentTransaction> _recentChanges = Array.Empty<RecentTransaction>();
+    private DateTime _currentTime;
 
 
     protected override async Task OnInitializedAsync()
     {
-        if (_isBusy)
+        if (IsBusy)
         {
             return;
         }
 
-        _isBusy = true;
+        IsBusy = true;
 
         try
         {
@@ -67,7 +62,7 @@ public partial class Home : ComponentBase, IDisposable
 
             _recentChanges = await RecentTransactionsAsync
                 .Invoke(dbContext, loadLimit)
-                .ToListAsync(cancelToken);
+                .ToArrayAsync(cancelToken);
 
             _currentTime = DateTime.UtcNow;
         }
@@ -77,7 +72,7 @@ public partial class Home : ComponentBase, IDisposable
         }
         finally
         {
-            _isBusy = false;
+            IsBusy = false;
         }
     }
 
@@ -89,14 +84,13 @@ public partial class Home : ComponentBase, IDisposable
     }
 
 
-
-    public bool IsImageLoaded(CardImage card)
+    internal bool IsImageLoaded(CardImage card)
     {
         return _randomContext?.LoadedImages.Contains(card.Id) ?? false;
     }
 
 
-    public static string CardNames(IEnumerable<RecentChange> changes)
+    internal static string CardNames(IEnumerable<RecentChange> changes)
     {
         var cardNames = changes
             .GroupBy(c => c.CardName, (name, _) => name);
@@ -105,7 +99,7 @@ public partial class Home : ComponentBase, IDisposable
     }
 
 
-    public string ElapsedTime(RecentTransaction transaction)
+    internal string ElapsedTime(RecentTransaction transaction)
     {
         var elapsed = _currentTime - transaction.AppliedAt;
 
@@ -119,14 +113,14 @@ public partial class Home : ComponentBase, IDisposable
     }
 
 
-    public async Task LoadMoreCardsAsync()
+    internal async Task LoadMoreCardsAsync()
     {
-        if (_isBusy || _randomContext is null || !_randomContext.HasMore)
+        if (IsBusy || _randomContext is null || !_randomContext.HasMore)
         {
             return;
         }
 
-        _isBusy = true;
+        IsBusy = true;
         
         try
         {
@@ -142,12 +136,12 @@ public partial class Home : ComponentBase, IDisposable
         }
         finally
         {
-            _isBusy = false;
+            IsBusy = false;
         }
     }
 
 
-    public void CardImageLoaded(CardImage card)
+    internal void CardImageLoaded(CardImage card)
     {
         if (_randomContext is not null && card?.Id is string cardId)
         {

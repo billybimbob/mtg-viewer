@@ -29,32 +29,24 @@ public partial class Adjust : ComponentBase, IDisposable
     [Inject]
     protected ILogger<Adjust> Logger { get; set; } = default!;
 
+    internal IReadOnlyList<Bin> Bins => _bins;
+    internal BoxDto Box { get; } = new();
 
-    public bool IsBusy => _dbBusy;
-
-    public IReadOnlyList<Bin> Bins => _bins;
-
-    public BoxDto Box { get; } = new();
-
-    public SaveResult Result { get; set; }
-
+    internal bool IsBusy { get; private set; }
+    internal SaveResult Result { get; set; }
 
     private readonly CancellationTokenSource _cancel = new();
-
-    private bool _dbBusy;
-
     private Bin[] _bins = Array.Empty<Bin>();
-
 
 
     protected override async Task OnInitializedAsync()
     {
-        if (_dbBusy)
+        if (IsBusy)
         {
             return;
         }
 
-        _dbBusy = true;
+        IsBusy = true;
 
         try
         {
@@ -70,7 +62,7 @@ public partial class Adjust : ComponentBase, IDisposable
         }
         finally
         {
-            _dbBusy = false;
+            IsBusy = false;
         }
     }
 
@@ -84,7 +76,7 @@ public partial class Adjust : ComponentBase, IDisposable
 
     protected override async Task OnParametersSetAsync()
     {
-        if (_dbBusy)
+        if (IsBusy)
         {
             return;
         }
@@ -94,7 +86,7 @@ public partial class Adjust : ComponentBase, IDisposable
             return;
         }
 
-        _dbBusy = true;
+        IsBusy = true;
 
         try
         {
@@ -118,7 +110,7 @@ public partial class Adjust : ComponentBase, IDisposable
         }
         finally
         {
-            _dbBusy = false;
+            IsBusy = false;
         }
     }
 
@@ -142,16 +134,16 @@ public partial class Adjust : ComponentBase, IDisposable
     }
 
 
-    public async Task ValidBoxSubmittedAsync()
+    internal async Task ValidBoxSubmittedAsync()
     {
-        if (_dbBusy || Box.Name is null || Box.Bin.Name is null)
+        if (IsBusy || Box.Name is null || Box.Bin.Name is null)
         {
             return;
         }
 
         Result = SaveResult.None;
 
-        _dbBusy = true;
+        IsBusy = true;
 
         try
         {
@@ -177,7 +169,7 @@ public partial class Adjust : ComponentBase, IDisposable
         }
         finally
         {
-            _dbBusy = false;
+            IsBusy = false;
         }
     }
 
@@ -308,7 +300,7 @@ public partial class Adjust : ComponentBase, IDisposable
     }
 
 
-    public void BinSelected(ChangeEventArgs args)
+    internal void BinSelected(ChangeEventArgs args)
     {
         if (int.TryParse(args.Value?.ToString(), out int id)
             && _bins.SingleOrDefault(b => b.Id == id) is var bin)
