@@ -74,12 +74,12 @@ public static class TestFactory
             userValidators,
             pwdValidators,
             new UpperInvariantLookupNormalizer(),
-            new IdentityErrorDescriber(), 
+            new IdentityErrorDescriber(),
             provider,
             Mock.Of<ILogger<UserManager<CardUser>>>());
 
         validator
-            .Setup(v => 
+            .Setup(v =>
                 v.ValidateAsync(userManager, It.IsAny<CardUser>()))
             .Returns(Task.FromResult(IdentityResult.Success))
             .Verifiable();
@@ -90,7 +90,6 @@ public static class TestFactory
 
     public static SignInManager<CardUser> CardSignInManager(IServiceProvider provider)
     {
-        var store = provider.GetRequiredService<UserStore<CardUser>>();
         var userManager = provider.GetRequiredService<UserManager<CardUser>>();
 
         var claimsFactory = provider.GetRequiredService<IUserClaimsPrincipalFactory<CardUser>>();

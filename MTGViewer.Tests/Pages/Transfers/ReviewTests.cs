@@ -44,7 +44,7 @@ public class ReviewTests : IAsyncLifetime
     public Task DisposeAsync() => _testGen.ClearAsync();
 
 
-    private IQueryable<Trade> TradesInSet => 
+    private IQueryable<Trade> TradesInSet =>
         _dbContext.Trades
             .Join(_dbContext.Wants,
                 trade => trade.ToId,
@@ -91,7 +91,7 @@ public class ReviewTests : IAsyncLifetime
 
     [Fact]
     public async Task OnPostAccept_InvalidTrade_NoChange()
-    {            
+    {
         // Arrange
         await _pageFactory.AddModelContextAsync(_reviewModel, _trades.Target.OwnerId);
 

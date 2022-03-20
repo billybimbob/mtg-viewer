@@ -140,7 +140,7 @@ public class ResetModel : PageModel
 
         bool allRequested = await _dbContext.Users
             .Where(u => u.Id != user.Id)
-            .AllAsync(u => u.ResetRequested);
+            .AllAsync(u => u.ResetRequested, cancel);
 
         try
         {

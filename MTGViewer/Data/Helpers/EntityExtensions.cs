@@ -5,9 +5,9 @@ using System.Reflection;
 
 namespace MTGViewer.Data.Internal;
 
-public static class EntityExtensions
+internal static class EntityExtensions
 {
-    public static string DisplayName<TEntity, TProperty>(Expression<Func<TEntity, TProperty>> property)
+    internal static string DisplayName<TEntity, TProperty>(Expression<Func<TEntity, TProperty>> property)
         where TEntity : class
     {
         var memberExpr = property.Body as MemberExpression;
@@ -16,15 +16,15 @@ public static class EntityExtensions
     }
 
 
-    public static string DisplayName<TEntity, TProperty>(
-        this TEntity entity, Expression<Func<TEntity, TProperty>> property)
+    internal static string DisplayName<TEntity, TProperty>(
+        this TEntity _, Expression<Func<TEntity, TProperty>> property)
         where TEntity : class
     {
         return DisplayName(property);
     }
 
 
-    public static string DisplayName<TEntity>(this TEntity entity, string property)
+    internal static string DisplayName<TEntity>(this TEntity _, string property)
     {
         var member = typeof(TEntity).GetProperty(property);
 

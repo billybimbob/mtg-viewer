@@ -23,16 +23,16 @@ public sealed class MtgApiQuery : IMTGQuery
         typeof(MtgApiQuery)
             .GetMethod(
                 nameof(MtgApiQuery.QueryProperty),
-                BindingFlags.Instance | BindingFlags.NonPublic,
+                BindingFlags.Static | BindingFlags.NonPublic,
                 new[]
-                { 
+                {
                     typeof(IDictionary<,>).MakeGenericType(typeof(string), typeof(IMtgParameter)),
                     typeof(string),
                     typeof(object)
                 })!;
 
     private PredicateVisitor? _predicateConverter;
-    private ExpressionVisitor PredicateConverter => _predicateConverter ??= new(this);
+    private ExpressionVisitor PredicateConverter => _predicateConverter ??= new();
 
     private readonly ICardService _cardService;
     private readonly MtgApiFlipQuery _flipQuery;
@@ -83,7 +83,7 @@ public sealed class MtgApiQuery : IMTGQuery
     }
 
 
-    private void QueryProperty(IDictionary<string, IMtgParameter> parameters, string name, object? value)
+    private static void QueryProperty(IDictionary<string, IMtgParameter> parameters, string name, object? value)
     {
         if (!parameters.TryGetValue(name, out var parameter))
         {
@@ -94,7 +94,7 @@ public sealed class MtgApiQuery : IMTGQuery
     }
 
 
-    private Expression<Func<CardQueryParameter, string>> GetParameter(string name)
+    private static Expression<Func<CardQueryParameter, string>> GetParameter(string name)
     {
         const BindingFlags binds = BindingFlags.IgnoreCase | BindingFlags.Instance | BindingFlags.Public;
 
@@ -102,7 +102,7 @@ public sealed class MtgApiQuery : IMTGQuery
 
         if (property == null || property.PropertyType != typeof(string))
         {
-            throw new ArgumentException(nameof(name));
+            throw new ArgumentException("The parameter property does not exist or is not a string type", nameof(name));
         }
 
         var param = Expression.Parameter(

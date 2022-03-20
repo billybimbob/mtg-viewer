@@ -77,7 +77,7 @@ public class TreasuryExtensionTests : IAsyncLifetime
 
         await Assert.ThrowsAsync<ArgumentNullException>(AddAsync);
     }
-    
+
 
     [Fact]
     public async Task AddCards_WithNullCardRequest_NoChange()
@@ -235,7 +235,7 @@ public class TreasuryExtensionTests : IAsyncLifetime
     {
         const CardDbContext nullDbContext = null!;
 
-        Task UpdateAsync() => nullDbContext.UpdateBoxesAsync();
+        static Task UpdateAsync() => nullDbContext.UpdateBoxesAsync();
 
         await Assert.ThrowsAsync<ArgumentNullException>(UpdateAsync);
     }

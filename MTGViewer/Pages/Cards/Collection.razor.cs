@@ -17,7 +17,7 @@ using MTGViewer.Services;
 namespace MTGViewer.Pages.Cards;
 
 
-public partial class Collection : ComponentBase, IDisposable
+public sealed partial class Collection : ComponentBase, IDisposable
 {
     [Parameter]
     [SupplyParameterFromQuery]
@@ -45,19 +45,20 @@ public partial class Collection : ComponentBase, IDisposable
 
 
     [Inject]
-    protected IDbContextFactory<CardDbContext> DbFactory { get; set; } = default!;
+    internal IDbContextFactory<CardDbContext> DbFactory { get; set; } = default!;
 
     [Inject]
-    protected PageSizes PageSizes { get; set; } = default!;
+    internal PageSizes PageSizes { get; set; } = default!;
 
     [Inject]
-    protected NavigationManager Nav { get; set; } = default!;
+    internal NavigationManager Nav { get; set; } = default!;
 
     [Inject]
-    protected ILogger<Collection> Logger { get; set; } = default!;
+    internal ILogger<Collection> Logger { get; set; } = default!;
 
 
     internal event EventHandler? ParametersChanged;
+
     internal event EventHandler? CardsLoaded;
 
 
@@ -97,7 +98,7 @@ public partial class Collection : ComponentBase, IDisposable
 
             Cards = await FilteredCardsAsync(dbContext, Filters, token);
 
-            if (Cards is { Count: 0, Offset.Current: >0})
+            if (Cards is { Count: 0, Offset.Current: > 0 })
             {
                 Nav.NavigateTo(
                     Nav.GetUriWithQueryParameter(nameof(Page), null as int?), replace: true);
@@ -250,7 +251,7 @@ public partial class Collection : ComponentBase, IDisposable
 
         public void Reorder<T>(Expression<Func<Card, T>> property)
         {
-            if (property is not { Body: MemberExpression { Member.Name: string value }})
+            if (property is not { Body: MemberExpression { Member.Name: string value } })
             {
                 return;
             }
@@ -421,7 +422,7 @@ public partial class Collection : ComponentBase, IDisposable
 
         return filters.OrderBy switch
         {
-            nameof(Card.ManaCost) => 
+            nameof(Card.ManaCost) =>
                 PrimaryOrder(c => c.ManaValue)
                     .ThenBy(c => c.Name)
                     .ThenBy(c => c.SetName)
@@ -432,13 +433,13 @@ public partial class Collection : ComponentBase, IDisposable
                     .ThenBy(c => c.Name)
                     .ThenBy(c => c.Id),
 
-            nameof(Card.Holds) => 
+            nameof(Card.Holds) =>
                 PrimaryOrder(c => c.Holds.Sum(h => h.Copies))
                     .ThenBy(c => c.Name)
                     .ThenBy(c => c.SetName)
                     .ThenBy(c => c.Id),
 
-            nameof(Card.Rarity) => 
+            nameof(Card.Rarity) =>
                 PrimaryOrder(c => c.Rarity)
                     .ThenBy(c => c.Name)
                     .ThenBy(c => c.SetName)

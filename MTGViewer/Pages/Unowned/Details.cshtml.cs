@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Paging;
 using System.Threading;
@@ -133,7 +132,7 @@ public class DetailsModel : PageModel
 
         var user = await _dbContext.Users
             .SingleOrDefaultAsync(u => u.Id == userId, cancel);
-        
+
         if (user == default)
         {
             return NotFound();

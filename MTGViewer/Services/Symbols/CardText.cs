@@ -52,8 +52,8 @@ public class CardText : ISymbolFinder, ISymbolTranslator
             {
                 var direction = m.Groups[Direction];
 
-                var directionValue = direction.Success 
-                    ? direction.Value 
+                var directionValue = direction.Success
+                    ? direction.Value
                     : null;
 
                 var loyalty = m.Groups[nameof(Loyalty)];
@@ -91,7 +91,7 @@ public class CardText : ISymbolFinder, ISymbolTranslator
                     {
                         var hasNext = si.saga != sagas[^1];
 
-                        var start = si.index; 
+                        var start = si.index;
                         var end = hasNext
                             ? si.index + si.saga.Length + separator.Length
                             : m.Index + m.Length;
@@ -103,13 +103,13 @@ public class CardText : ISymbolFinder, ISymbolTranslator
     }
 
 
-    private IReadOnlyList<int> SagaIndices(string[] sagas, int start, string separator)
+    private static IReadOnlyList<int> SagaIndices(string[] sagas, int start, string separator)
     {
         var indices = new List<int> { start };
 
         foreach (var saga in sagas.SkipLast(1))
         {
-            indices.Add( indices[^1] + saga.Length + separator.Length );
+            indices.Add(indices[^1] + saga.Length + separator.Length);
         }
 
         return indices;
@@ -133,7 +133,7 @@ public class CardText : ISymbolFinder, ISymbolTranslator
 
     public string LoyaltyString(LoyaltySymbol symbol)
     {
-        var (_, direction, loyalty) = symbol;
+        var (_, direction, _) = symbol;
 
         return $"[{direction}{symbol}]";
     }

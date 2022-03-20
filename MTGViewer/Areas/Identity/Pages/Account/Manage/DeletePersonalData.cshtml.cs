@@ -118,7 +118,7 @@ public class DeletePersonalDataModel : PageModel
     {
         bool allRequested = await _referenceManager.References
             .Where(u => u.Id != userId)
-            .AllAsync(u => u.ResetRequested);
+            .AllAsync(u => u.ResetRequested, cancel);
 
         if (!allRequested)
         {

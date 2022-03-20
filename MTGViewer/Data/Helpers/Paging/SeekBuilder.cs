@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Threading;
@@ -386,7 +387,7 @@ internal sealed class ResultOriginSeek<TSource, TResult, TRefKey, TValueKey> : I
 //             ? query.Take(count)
 //             : query;
 //     }
-    
+
 
 //     private async Task<TSource?> GetOriginAsync(CancellationToken cancel)
 //     {
@@ -455,7 +456,7 @@ internal static class SeekHelpers
         if (FindRootQuery.Instance.Visit(expression)
             is not QueryRootExpression { EntityType: var entity })
         {
-            throw new ArgumentException("Expression does not have a query root", nameof(expression));
+            throw new ArgumentException("Missing a query root", nameof(expression));
         }
 
         if (entity.ClrType == typeof(TEntity))
@@ -484,11 +485,11 @@ internal static class SeekHelpers
 
         if (typeof(TKey) != entityId?.GetKeyType())
         {
-            throw new ArgumentException($"key is the not correct key type");
+            throw new ArgumentException($"{typeof(TKey).Name} is the not correct key type");
         }
 
-        if (entityId?.Properties.FirstOrDefault()
-            is not { PropertyInfo: PropertyInfo getKey })
+        if (entityId is not { Properties.Count: 1, Properties: IReadOnlyList<IProperty> properties }
+            || properties[0].PropertyInfo is not PropertyInfo getKey)
         {
             throw new NotSupportedException("Only single primary keys are supported");
         }

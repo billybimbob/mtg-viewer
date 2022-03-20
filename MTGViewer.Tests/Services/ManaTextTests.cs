@@ -7,7 +7,7 @@ namespace MTGViewer.Tests.Services;
 public class ManaTextTests
 {
     private readonly SymbolFormatter _manaText;
-    
+
     public ManaTextTests(CardText cardText, ManaTranslator manaTranslator)
     {
         _manaText = cardText.ComposeWith(manaTranslator);

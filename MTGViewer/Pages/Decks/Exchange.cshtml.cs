@@ -125,13 +125,13 @@ public class ExchangeModel : PageModel
 
         var totalMatches = _dbContext.Holds
             .Where(h => h.Location is Box || h.Location is Excess)
-            .Join( deckWants,
+            .Join(deckWants,
                 h => h.Card.Name, name => name,
                 (hold, _) => hold)
             .GroupBy(
                 hold => hold.CardId,
                 (CardId, holds) => new
-                { 
+                {
                     CardId,
                     Copies = holds.Sum(h => h.Copies)
                 });
@@ -141,7 +141,7 @@ public class ExchangeModel : PageModel
                 .ThenBy(c => c.SetName)
                 .ThenBy(c => c.Id)
 
-            .Join( totalMatches,
+            .Join(totalMatches,
                 c => c.Id,
                 t => t.CardId,
                 (c, t) => new LocationCopy
@@ -202,7 +202,7 @@ public class ExchangeModel : PageModel
         {
             await _dbContext.SaveChangesAsync(cancel);
 
-            if  (deck.Wants.Any() || deck.GiveBacks.Any())
+            if (deck.Wants.Any() || deck.GiveBacks.Any())
             {
                 PostMessage = "Successfully exchanged requests, but not all could be fullfilled";
             }

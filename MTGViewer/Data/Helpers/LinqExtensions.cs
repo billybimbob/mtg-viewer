@@ -15,8 +15,8 @@ public static class LinqExtensions
         return CoreChunk(source, size);
 
         static async IAsyncEnumerable<TSource[]> CoreChunk(
-            IAsyncEnumerable<TSource> source, 
-            int size, 
+            IAsyncEnumerable<TSource> source,
+            int size,
             [System.Runtime.CompilerServices.EnumeratorCancellation]
             CancellationToken cancel = default)
         {

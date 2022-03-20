@@ -170,8 +170,8 @@ public class ReferenceManager
 
         var returnRequests = userHolds
             .GroupBy(h => h.Card,
-                (card, holds) => 
-                    new CardRequest(card, holds.Sum(h => h.Copies)) );
+                (card, holds) =>
+                    new CardRequest(card, holds.Sum(h => h.Copies)));
 
         await _dbContext.AddCardsAsync(returnRequests, cancel);
     }
@@ -208,6 +208,6 @@ public class ReferenceManager
 
         await _dbContext.SaveChangesAsync(cancel);
 
-        await transaction.CommitAsync();
+        await transaction.CommitAsync(cancel);
     }
 }

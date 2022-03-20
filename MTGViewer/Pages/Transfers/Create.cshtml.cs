@@ -24,15 +24,15 @@ namespace MTGViewer.Pages.Transfers;
 [Authorize(CardPolicies.ChangeTreasury)]
 public class CreateModel : PageModel
 {
-    private CardDbContext _dbContext;
-    private UserManager<CardUser> _userManager;
+    private readonly CardDbContext _dbContext;
+    private readonly UserManager<CardUser> _userManager;
     private readonly int _pageSize;
 
-    private ILogger<CreateModel> _logger;
+    private readonly ILogger<CreateModel> _logger;
 
     public CreateModel(
-        CardDbContext dbContext, 
-        UserManager<CardUser> userManager, 
+        CardDbContext dbContext,
+        UserManager<CardUser> userManager,
         PageSizes pageSizes,
         ILogger<CreateModel> logger)
     {
@@ -91,7 +91,7 @@ public class CreateModel : PageModel
 
         Cards = await DeckCardsAsync
             .Invoke(_dbContext, id, _pageSize)
-            .ToListAsync();
+            .ToListAsync(cancel);
 
         return Page();
     }
@@ -139,7 +139,7 @@ public class CreateModel : PageModel
             .SelectMany(d => d.Holds, (_, h) => h.Card.Name)
             .Distinct();
 
-        return deckWants.Join( possibleTargets,
+        return deckWants.Join(possibleTargets,
             w => w.Card.Name,
             name => name,
             (w, _) => new LocationCopy
@@ -205,7 +205,7 @@ public class CreateModel : PageModel
             // intentionally leave wants unbounded by target since
             // that cap will be handled later
 
-            .Join( wantNames,
+            .Join(wantNames,
                 h => h.Card.Name,
                 want => want.Name,
                 (target, want) => new Trade

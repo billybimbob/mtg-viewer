@@ -1,7 +1,5 @@
 using System.ComponentModel.DataAnnotations;
 using System.Threading.Tasks;
-
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -19,8 +17,8 @@ public class LoginModel : PageModel
     private readonly ILogger<LoginModel> _logger;
 
     public LoginModel(
-        UserManager<CardUser> userManager, 
-        SignInManager<CardUser> signInManager, 
+        UserManager<CardUser> userManager,
+        SignInManager<CardUser> signInManager,
         ILogger<LoginModel> logger)
     {
         _signInManager = signInManager;
@@ -91,9 +89,9 @@ public class LoginModel : PageModel
         // This doesn't count login failures towards account lockout
         // To enable password failures to trigger account lockout, set lockoutOnFailure: true
         var result = await _signInManager.PasswordSignInAsync(
-            Input.Email, 
-            Input.Password, 
-            Input.RememberMe, 
+            Input.Email,
+            Input.Password,
+            Input.RememberMe,
             lockoutOnFailure: false);
 
         if (result.Succeeded)

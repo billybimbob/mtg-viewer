@@ -219,7 +219,7 @@ public partial class Create : OwningComponentBase
         }
 
         var idField = edit.Field(nameof(CardQuery.Id));
-        var noMatch = new []{ "No matches were found" };
+        var noMatch = new[] { "No matches were found" };
 
         _resultErrors.Add(idField, noMatch);
         edit.NotifyValidationStateChanged();
@@ -355,15 +355,15 @@ public partial class Create : OwningComponentBase
 
         public int Limit { get; }
 
-        private int _numCopies;
-        public int NumCopies
+        private int _copies;
+        public int Copies
         {
-            get => _numCopies;
+            get => _copies;
             set
             {
                 if (value >= 0 && value <= Limit)
                 {
-                    _numCopies = value;
+                    _copies = value;
                 }
             }
         }
@@ -413,7 +413,7 @@ public partial class Create : OwningComponentBase
             .Where(c => c.Text!.Contains(Query.Text ?? string.Empty))
             .Where(c => c.Flavor!.Contains(Query.Flavor ?? string.Empty))
             .Where(c => c.Artist == Query.Artist)
-            .Where(c => c.Page == page) ;
+            .Where(c => c.Page == page);
     }
 
 
@@ -443,7 +443,7 @@ public partial class Create : OwningComponentBase
 
     internal async Task LoadMoreCardsAsync()
     {
-        if (IsBusy || _matchPage is Offset { Total: >0, HasNext: false })
+        if (IsBusy || _matchPage is Offset { Total: > 0, HasNext: false })
         {
             return;
         }
@@ -473,8 +473,8 @@ public partial class Create : OwningComponentBase
         }
 
         var addedCopies = _matches
-            .Where(m => m.NumCopies > 0 && m.NumCopies <= PageSizes.Limit)
-            .Select(m => new CardRequest(m.Card, m.NumCopies))
+            .Where(m => m.Copies > 0 && m.Copies <= PageSizes.Limit)
+            .Select(m => new CardRequest(m.Card, m.Copies))
             .ToList();
 
         if (!addedCopies.Any())

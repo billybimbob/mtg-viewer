@@ -3,7 +3,6 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Reflection;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Query;
@@ -19,7 +18,7 @@ internal static class ExecuteSeek<TEntity> where TEntity : class
         if (GetSeekInfoVisitor.Instance.Visit(query.Expression)
             is not ConstantExpression { Value: SeekInfo seekInfo })
         {
-            throw new ArgumentException($"{nameof(query)} missing seek values");
+            throw new ArgumentException("Missing seek values", nameof(query));
         }
 
         var items = await query
@@ -31,9 +30,8 @@ internal static class ExecuteSeek<TEntity> where TEntity : class
         var withoutOffset = query.Provider
             .CreateQuery<TEntity>(RemoveSeekOffsetVisitor.Instance.Visit(query.Expression));
 
-        bool lookAhead = size is not int s
-            ? false
-            : await withoutOffset
+        bool lookAhead = size is int s
+            && await withoutOffset
                 .Skip(s)
                 .AnyAsync(cancel)
                 .ConfigureAwait(false);

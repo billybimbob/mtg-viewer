@@ -164,9 +164,11 @@ public partial class Suggest : OwningComponentBase
         Suggestion.Receiver = Suggestion.UserOptions
             .SingleOrDefault(u => u.Id == ReceiverId);
 
-        if (Suggestion is not {
-            Card.Name: string name,
-            Receiver.Id: string id })
+        if (Suggestion is not
+            {
+                Card.Name: string name,
+                Receiver.Id: string id
+            })
         {
             return;
         }
@@ -293,9 +295,11 @@ public partial class Suggest : OwningComponentBase
             return cursor;
         }
 
-        if (suggestion is not {
-            Card.Name: string cardName,
-            Receiver.Id: string receiverId })
+        if (suggestion is not
+            {
+                Card.Name: string cardName,
+                Receiver.Id: string receiverId
+            })
         {
             return cursor;
         }
@@ -409,7 +413,7 @@ public partial class Suggest : OwningComponentBase
             .Where(s => s.Card.Name == card.Name && s.ReceiverId != proposerId);
 
         return nonProposers
-            .GroupJoin( cardSuggests,
+            .GroupJoin(cardSuggests,
                 user => user.Id,
                 suggest => suggest.ReceiverId,
                 (User, Suggests) => new { User, Suggests })
@@ -439,7 +443,7 @@ public partial class Suggest : OwningComponentBase
                 .ThenBy(d => d.Id);
 
         var suggestsWithCard = dbContext.Suggestions
-            .Where(s => s.Card.Name == cardName 
+            .Where(s => s.Card.Name == cardName
                 && s.ReceiverId == receiverId);
 
         return userDecks

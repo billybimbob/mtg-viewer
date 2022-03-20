@@ -116,12 +116,12 @@ public class HistoryModel : PageModel
                     Id = c.TransactionId,
                     AppliedAt = c.Transaction.AppliedAt,
                     IsShared = c.Transaction.Changes
-                        .All(ch => (ch.To is Box 
-                            || ch.To is Excess 
+                        .All(ch => (ch.To is Box
+                            || ch.To is Excess
                             || ch.To is Unclaimed)
-                            && (ch.From == null 
-                            || ch.From is Box 
-                            || ch.From is Excess 
+                            && (ch.From == null
+                            || ch.From is Box
+                            || ch.From is Excess
                             || ch.From is Unclaimed))
                 },
 
@@ -188,7 +188,7 @@ public class HistoryModel : PageModel
 
 
     public bool IsFirstTransfer(
-        TransactionPreview transaction, 
+        TransactionPreview transaction,
         LocationPreview to,
         LocationPreview? from)
     {

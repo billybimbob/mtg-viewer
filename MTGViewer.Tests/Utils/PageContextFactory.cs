@@ -42,11 +42,11 @@ public class PageContextFactory
                 It.IsAny<ActionContext>(),
                 It.IsAny<ValidationStateDictionary>(),
                 It.IsAny<string>(),
-                It.IsAny<object>() ));
+                It.IsAny<object>()));
 
         requestServices
             .Setup(p => p.GetService(
-                It.Is<Type>(t => t == typeof(IObjectModelValidator)) ))
+                It.Is<Type>(t => t == typeof(IObjectModelValidator))))
             .Returns(objectValidate.Object);
 
         var httpContext = new DefaultHttpContext
@@ -62,9 +62,9 @@ public class PageContextFactory
         var modelState = new ModelStateDictionary();
 
         var actionContext = new ActionContext(
-            httpContext, 
-            new RouteData(), 
-            new PageActionDescriptor(), 
+            httpContext,
+            new RouteData(),
+            new PageActionDescriptor(),
             modelState);
 
         var modelMetadataProvider = new EmptyModelMetadataProvider();

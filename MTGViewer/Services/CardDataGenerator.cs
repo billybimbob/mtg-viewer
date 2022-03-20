@@ -50,9 +50,9 @@ public class CardDataGenerator
         AddBoxHolds(cards, bin);
         AddDeckHolds(cards, decks);
 
-        var suggestions = GetSuggestions(userRefs, cards, decks);
+        var suggestions = GetSuggestions(cards, decks);
 
-        AddTrades(userRefs, cards, decks);
+        AddTrades(decks);
 
         var data = new CardData
         {
@@ -70,7 +70,7 @@ public class CardDataGenerator
     }
 
 
-    private IReadOnlyList<CardUser> GetUsers() => new List<CardUser>()
+    private static IReadOnlyList<CardUser> GetUsers() => new List<CardUser>()
     {
         new CardUser
         {
@@ -110,7 +110,7 @@ public class CardDataGenerator
     }
 
 
-    private Bin GetBin() => new Bin
+    private Bin GetBin() => new()
     {
         // just use same bin for now
         Name = "Bin #1",
@@ -133,7 +133,7 @@ public class CardDataGenerator
                 .Range(0, _random.Next(2, 4))
                 .Select(i => new Deck
                 {
-                    Name = $"Deck #{i+1}",
+                    Name = $"Deck #{i + 1}",
                     Owner = u
                 }))
             .ToList();
@@ -163,9 +163,9 @@ public class CardDataGenerator
             var box = boxes[_random.Next(boxes.Count)];
 
             int space = boxSpace.GetValueOrDefault(box);
-            int numCopies = _random.Next(1, 6);
+            int copies = _random.Next(1, 6);
 
-            if (space + numCopies > box.Capacity)
+            if (space + copies > box.Capacity)
             {
                 continue;
             }
@@ -173,18 +173,15 @@ public class CardDataGenerator
             box.Holds.Add(new Hold
             {
                 Card = card,
-                Copies = numCopies
+                Copies = copies
             });
 
-            boxSpace[box] = space + numCopies;
+            boxSpace[box] = space + copies;
         }
     }
 
 
-    private void AddTrades(
-        IEnumerable<UserRef> users,
-        IEnumerable<Card> cards,
-        IEnumerable<Deck> decks)
+    private void AddTrades(IEnumerable<Deck> decks)
     {
         var tradeFrom = decks.First();
         var tradeTo = decks.First(d => d != tradeFrom);
@@ -203,8 +200,7 @@ public class CardDataGenerator
     }
 
 
-    private IReadOnlyList<Suggestion> GetSuggestions(
-        IEnumerable<UserRef> users,
+    private static IReadOnlyList<Suggestion> GetSuggestions(
         IEnumerable<Card> cards,
         IEnumerable<Deck> decks)
     {

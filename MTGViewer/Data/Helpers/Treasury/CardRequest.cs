@@ -5,10 +5,10 @@ namespace MTGViewer.Data;
 /// <summary>
 /// Requests to either take or return  a <see cref="Data.Card"/> to the Treasury
 /// </summary>
-public record CardRequest(Card Card, int NumCopies)
+public record CardRequest(Card Card, int Copies)
 {
     private Card _card = CardOrThrow(Card);
-    private int _numCopies = NotNegativeOrThrow(NumCopies);
+    private int _copies = NotNegativeOrThrow(Copies);
 
     public Card Card
     {
@@ -16,10 +16,10 @@ public record CardRequest(Card Card, int NumCopies)
         init => _card = CardOrThrow(value);
     }
 
-    public int NumCopies
+    public int Copies
     {
-        get => _numCopies;
-        set => _numCopies = NotNegativeOrThrow(value);
+        get => _copies;
+        set => _copies = NotNegativeOrThrow(value);
     }
 
     private static Card CardOrThrow(Card card)
@@ -29,5 +29,7 @@ public record CardRequest(Card Card, int NumCopies)
     }
 
     private static int NotNegativeOrThrow(int copies) =>
-        copies >= 0 ? copies : throw new ArgumentException(nameof(NumCopies));
+        copies >= 0
+            ? copies
+            : throw new ArgumentException("Copies is negative", nameof(copies));
 }

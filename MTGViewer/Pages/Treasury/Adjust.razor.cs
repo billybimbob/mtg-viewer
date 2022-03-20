@@ -18,19 +18,19 @@ namespace MTGViewer.Pages.Treasury;
 
 [Authorize]
 [Authorize(Policy = CardPolicies.ChangeTreasury)]
-public partial class Adjust : ComponentBase, IDisposable
+public sealed partial class Adjust : ComponentBase, IDisposable
 {
     [Parameter]
     public int BoxId { get; set; }
 
     [Inject]
-    protected IDbContextFactory<CardDbContext> DbFactory { get; set; } = default!;
+    internal IDbContextFactory<CardDbContext> DbFactory { get; set; } = default!;
 
     [Inject]
-    protected NavigationManager Nav { get; set; } = default!;
+    internal NavigationManager Nav { get; set; } = default!;
 
     [Inject]
-    protected ILogger<Adjust> Logger { get; set; } = default!;
+    internal ILogger<Adjust> Logger { get; set; } = default!;
 
 
     internal IReadOnlyList<Bin> Bins => _bins;
@@ -74,7 +74,7 @@ public partial class Adjust : ComponentBase, IDisposable
     }
 
 
-    private static Func<CardDbContext, IAsyncEnumerable<Bin>> BinsAsync
+    private static readonly Func<CardDbContext, IAsyncEnumerable<Bin>> BinsAsync
         = EF.CompileAsyncQuery((CardDbContext dbContext) =>
             dbContext.Bins
                 .OrderBy(b => b.Name)
@@ -135,7 +135,7 @@ public partial class Adjust : ComponentBase, IDisposable
             .Include(b => b.Bin)
             .SingleOrDefaultAsync(b => b.Id == BoxId, cancel);
     }
-    
+
 
     public void Dispose()
     {
@@ -185,7 +185,7 @@ public partial class Adjust : ComponentBase, IDisposable
 
 
     private static async Task ApplyBoxChangesAsync(
-        CardDbContext dbContext, 
+        CardDbContext dbContext,
         BoxDto changes,
         CancellationToken cancel)
     {
@@ -204,8 +204,8 @@ public partial class Adjust : ComponentBase, IDisposable
         var oldBin = box.Bin;
         box.Bin = bin;
 
-        if (changes.IsEdit 
-            && oldBin != bin 
+        if (changes.IsEdit
+            && oldBin != bin
             && !oldBin.Boxes.Any(b => b.Id != box.Id))
         {
             dbContext.Bins.Remove(oldBin);
@@ -226,7 +226,7 @@ public partial class Adjust : ComponentBase, IDisposable
         }
 
         Box? box;
-        
+
         if (boxDto.IsEdit)
         {
             box = await dbContext.Boxes

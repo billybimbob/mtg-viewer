@@ -27,8 +27,8 @@ public class IndexModel : PageModel
     private readonly IAuthorizationService _authorizations;
 
     public IndexModel(
-        PageSizes pageSizes, 
-        UserManager<CardUser> userManager, 
+        PageSizes pageSizes,
+        UserManager<CardUser> userManager,
         CardDbContext dbContext,
         IAuthorizationService authorizations)
     {
@@ -124,7 +124,7 @@ public class IndexModel : PageModel
                     CardId = s.CardId,
                     CardName = s.Card.Name,
                     CardManaCost = s.Card.ManaCost,
-                    
+
                     ToName = s.To == null ? null : s.To.Name,
                     Comment = s.Comment
                 }));

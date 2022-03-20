@@ -22,12 +22,12 @@ public static class PagingExtensions
 
         if (index < 0)
         {
-            throw new ArgumentException(nameof(index));
+            throw new ArgumentException("Index is negative", nameof(index));
         }
 
         if (pageSize <= 0)
         {
-            throw new ArgumentException(nameof(pageSize));
+            throw new ArgumentException("Page size is not a positive nonzero value", nameof(pageSize));
         }
 
         int pageIndex = index ?? 0;
@@ -36,7 +36,7 @@ public static class PagingExtensions
             .Skip(pageIndex * pageSize)
             .Take(pageSize);
     }
-    
+
 
     public static OffsetList<TEntity> ToOffsetList<TEntity>(
         this IEnumerable<TEntity> source,
@@ -65,7 +65,8 @@ public static class PagingExtensions
     private sealed class SelectableQueryable<TSource, TResult>
         : ISelectableQueryable<TSource, TResult>, IAsyncEnumerable<TResult>
     {
-        private IQueryable<TResult> _query;
+        private readonly IQueryable<TResult> _query;
+
         public SelectableQueryable(IQueryable<TResult> query)
         {
             ArgumentNullException.ThrowIfNull(query);
@@ -256,7 +257,7 @@ public static class PagingExtensions
 
     public static ISelectableQueryable<TSource, TResult> SeekOrigin<TSource, TResult>(
         this ISelectableQueryable<TSource, TResult> source,
-        TSource? origin, 
+        TSource? origin,
         SeekDirection direction)
         where TSource : class
         where TResult : class
@@ -274,7 +275,7 @@ public static class PagingExtensions
 
     public static ISelectableQueryable<TSource, TResult> SeekOrigin<TSource, TResult>(
         this ISelectableQueryable<TSource, TResult> source,
-        TResult? origin, 
+        TResult? origin,
         SeekDirection direction)
         where TSource : class
         where TResult : class

@@ -14,17 +14,17 @@ public class HoldNameGroup : IEnumerable<Hold>
 
         if (!_holds.Any())
         {
-            throw new ArgumentException($"{nameof(holds)} is empty");
+            throw new ArgumentException($"{nameof(holds)} is empty", nameof(holds));
         }
 
         if (_holds.Any(h => h.Card.Name != Name))
         {
-            throw new ArgumentException("All cards do not match the name");
+            throw new ArgumentException("All cards do not match the name", nameof(holds));
         }
 
         if (_holds.Any(h => h.Card.ManaCost != ManaCost))
         {
-            throw new ArgumentException("All cards do not match the mana cost");
+            throw new ArgumentException("All cards do not match the mana cost", nameof(holds));
         }
     }
 
@@ -88,17 +88,17 @@ public class WantNameGroup : IEnumerable<Want>
 
         if (!_wants.Any())
         {
-            throw new ArgumentException("The exchanges are empty");
+            throw new ArgumentException("The exchanges are empty", nameof(wants));
         }
 
         if (_wants.Any(w => w.Card.Name != Name))
         {
-            throw new ArgumentException("All exchanges do not match the name");
+            throw new ArgumentException("All exchanges do not match the name", nameof(wants));
         }
 
         if (_wants.Any(w => w.Card.ManaCost != ManaCost))
         {
-            throw new ArgumentException("All exchanges do not match the mana cost");
+            throw new ArgumentException("All exchanges do not match the mana cost", nameof(wants));
         }
     }
 
@@ -179,7 +179,7 @@ public class QuantityGroup : IEnumerable<Quantity>
 
     public QuantityGroup(Quantity quantity)
     {
-        switch(quantity)
+        switch (quantity)
         {
             case Hold hold:
                 _hold = hold;
@@ -211,7 +211,7 @@ public class QuantityGroup : IEnumerable<Quantity>
             new QuantityGroup(
                 holdsById.GetValueOrDefault(cid),
                 takesById.GetValueOrDefault(cid),
-                givesById.GetValueOrDefault(cid) ));
+                givesById.GetValueOrDefault(cid)));
     }
 
 
@@ -228,7 +228,7 @@ public class QuantityGroup : IEnumerable<Quantity>
         {
             if (value is null)
             {
-                throw new ArgumentNullException();
+                throw new ArgumentNullException(nameof(Hold));
             }
 
             _hold = value;
@@ -244,7 +244,7 @@ public class QuantityGroup : IEnumerable<Quantity>
         {
             if (value is null)
             {
-                throw new ArgumentNullException();
+                throw new ArgumentNullException(nameof(Want));
             }
 
             _want = value;
@@ -260,7 +260,7 @@ public class QuantityGroup : IEnumerable<Quantity>
         {
             if (value is null)
             {
-                throw new ArgumentNullException();
+                throw new ArgumentNullException(nameof(GiveBack));
             }
 
             _giveBack = value;
@@ -328,10 +328,10 @@ public class QuantityGroup : IEnumerable<Quantity>
         var sameHoldIds = Hold == null
             || Hold.CardId == cardId && Hold.LocationId == locationId;
 
-        var sameTakeIds = Want == null 
+        var sameTakeIds = Want == null
             || Want.CardId == cardId && Want.LocationId == locationId;
 
-        var sameRetIds = GiveBack == null 
+        var sameRetIds = GiveBack == null
             || GiveBack.CardId == cardId && GiveBack.LocationId == locationId;
 
         return sameHoldIds && sameTakeIds && sameRetIds;
@@ -342,13 +342,13 @@ public class QuantityGroup : IEnumerable<Quantity>
         var card = Card;
         var location = Location;
 
-        var sameActRefs = Hold == null 
+        var sameActRefs = Hold == null
             || Hold.Card == card && Hold.Location == location;
 
-        var sameTakeRefs = Want == null 
+        var sameTakeRefs = Want == null
             || Want.Card == card && Want.Location == location;
 
-        var sameRetRefs = GiveBack == null 
+        var sameRetRefs = GiveBack == null
             || GiveBack.Card == card && GiveBack.Location == location;
 
         return sameActRefs && sameTakeRefs && sameRetRefs;
@@ -402,7 +402,7 @@ public class QuantityGroup : IEnumerable<Quantity>
             ?? default!;
 
 
-    public int NumCopies =>
+    public int Copies =>
         (Hold?.Copies ?? 0)
             + (Want?.Copies ?? 0)
             - (GiveBack?.Copies ?? 0);
@@ -428,26 +428,26 @@ public class TradeSet : IEnumerable<Trade>
 
         if (!_trades.Any())
         {
-            throw new ArgumentException("The trade group is empty");
+            throw new ArgumentException("The trade group is empty", nameof(trades));
         }
 
         _first = _trades.First();
 
         if (useToTarget
-            && _first.To != null 
+            && _first.To != null
             && _trades.All(t => t.To == _first.To))
         {
             _useToTarget = true;
         }
         else if (!useToTarget
-            && _first.From != null 
+            && _first.From != null
             && _trades.All(t => t.From == _first.From))
         {
             _useToTarget = false;
         }
         else
         {
-            throw new ArgumentException("All trade destinations are not the same");
+            throw new ArgumentException("All trade destinations are not the same", nameof(trades));
         }
     }
 

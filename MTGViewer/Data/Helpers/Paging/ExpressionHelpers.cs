@@ -4,15 +4,13 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 
-using Microsoft.EntityFrameworkCore.Query;
-
 namespace System.Paging.Query;
 
-public static class ExpressionHelpers
+internal static class ExpressionHelpers
 {
     public static bool IsOrderBy(MethodCallExpression orderBy)
     {
-        return orderBy.Method.Name 
+        return orderBy.Method.Name
             is nameof(Queryable.OrderBy)
                 or nameof(Queryable.OrderByDescending);
     }
@@ -20,7 +18,7 @@ public static class ExpressionHelpers
 
     public static bool IsOrderedMethod(MethodCallExpression orderBy)
     {
-        return orderBy.Method.Name 
+        return orderBy.Method.Name
             is nameof(Queryable.OrderBy)
                 or nameof(Queryable.ThenBy)
                 or nameof(Queryable.OrderByDescending)
@@ -83,7 +81,7 @@ public static class ExpressionHelpers
     {
         if (!IsEntityType(entityType))
         {
-            throw new ArgumentException(nameof(entityType));
+            throw new ArgumentException("The type is a value or generic type", nameof(entityType));
         }
 
         const string id = "Id";
@@ -131,7 +129,7 @@ public static class ExpressionHelpers
         throw new ArgumentException($"type {entityType.Name} is invalid");
     }
 
-    
+
     private static bool IsEntityType(Type type)
     {
         return !type.IsValueType && !type.IsGenericType;

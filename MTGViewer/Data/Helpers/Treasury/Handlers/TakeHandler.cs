@@ -32,9 +32,9 @@ internal abstract class TakeHandler
 
     public void ApplyTakes()
     {
-        foreach ((Card card, int numCopies, Storage target) in GetAssignments())
+        foreach ((Card card, int copies, Storage target) in GetAssignments())
         {
-            ExchangeContext.TakeCopies(card, numCopies, target);
+            ExchangeContext.TakeCopies(card, copies, target);
         }
     }
 
@@ -118,9 +118,9 @@ internal class ExactTake : TakeHandler
 
         var storageSpace = TreasuryContext.StorageSpace;
 
-        // TODO: account for changing NumCopies while iter
+        // TODO: account for changing Copies while iter
         return targets
-            .Join( cardIds,
+            .Join(cardIds,
                 h => h.CardId, cid => cid,
                 (target, _) => target)
 
@@ -129,10 +129,10 @@ internal class ExactTake : TakeHandler
                 {
                     Box box => box.Capacity - storageSpace.GetValueOrDefault(box),
                     Excess excess => -storageSpace.GetValueOrDefault(excess),
-                    _ => throw new ArgumentException(nameof(targets))
+                    _ => throw new ArgumentException($"Location is unexpected type {h.Location.GetType().Name}", nameof(targets))
                 })
-            
-            // lookup group orders should preserve NumCopies order
+
+            // lookup group orders should preserve Copies order
             .ToLookup(h => h.CardId);
     }
 }
@@ -192,19 +192,19 @@ internal class ApproximateTake : TakeHandler
 
         var storageSpace = TreasuryContext.StorageSpace;
 
-        // TODO: account for changing NumCopies while iter
+        // TODO: account for changing Copies while iter
         return targets
             .Join(cardNames,
                 h => h.Card.Name, cn => cn,
                 (target, _) => target)
 
-            // lookup group orders should preserve NumCopies order
+            // lookup group orders should preserve Copies order
             .OrderBy(h => h.Copies)
                 .ThenBy(h => h.Location switch
                 {
                     Box box => box.Capacity - storageSpace.GetValueOrDefault(box),
                     Excess excess => -storageSpace.GetValueOrDefault(excess),
-                    _ => throw new ArgumentException(nameof(targets))
+                    _ => throw new ArgumentException($"Location is unexpected type {h.Location.GetType().Name}", nameof(targets))
                 })
 
             .ToLookup(h => h.Card.Name);

@@ -25,7 +25,7 @@ internal sealed class TreasuryContext
 
         if (!excess.Any())
         {
-            throw new ArgumentException("There are no excess boxes");
+            throw new InvalidOperationException("There are no excess boxes");
         }
 
         _dbContext = dbContext;
@@ -91,55 +91,55 @@ internal sealed class TreasuryContext
     }
 
 
-    public void AddCopies(Card card, int numCopies, Storage storage)
+    public void AddCopies(Card card, int copies, Storage storage)
     {
-        UpdateHold(card, numCopies, storage);
-        UpdateChange(card, numCopies, storage, null);
-        UpdateStorageSpace(storage, numCopies);
+        UpdateHold(card, copies, storage);
+        UpdateChange(card, copies, storage, null);
+        UpdateStorageSpace(storage, copies);
     }
 
 
-    public void TransferCopies(Card card, int numCopies, Storage to, Location from)
+    public void TransferCopies(Card card, int copies, Storage to, Location from)
     {
         if (to == from)
         {
             return;
         }
 
-        UpdateHold(card, numCopies, to);
-        UpdateStorageSpace(to, numCopies);
+        UpdateHold(card, copies, to);
+        UpdateStorageSpace(to, copies);
 
         if (from is Storage fromStorage)
         {
-            UpdateHold(card, -numCopies, fromStorage);
-            UpdateStorageSpace(fromStorage, -numCopies);
+            UpdateHold(card, -copies, fromStorage);
+            UpdateStorageSpace(fromStorage, -copies);
         }
 
-        UpdateChange(card, numCopies, to, from);
+        UpdateChange(card, copies, to, from);
     }
 
 
-    public void TransferCopies(Card card, int numCopies, Location to, Storage from)
+    public void TransferCopies(Card card, int copies, Location to, Storage from)
     {
         if (to == from)
         {
             return;
         }
 
-        UpdateChange(card, numCopies, to, from);
+        UpdateChange(card, copies, to, from);
 
         if (to is Storage toStorage)
         {
-            UpdateHold(card, numCopies, toStorage);
-            UpdateStorageSpace(toStorage, numCopies);
+            UpdateHold(card, copies, toStorage);
+            UpdateStorageSpace(toStorage, copies);
         }
 
-        UpdateHold(card, -numCopies, from);
-        UpdateStorageSpace(from, -numCopies);
+        UpdateHold(card, -copies, from);
+        UpdateStorageSpace(from, -copies);
     }
 
 
-    private void UpdateHold(Card card, int numCopies, Storage storage)
+    private void UpdateHold(Card card, int copies, Storage storage)
     {
         var index = (card.Id, storage);
 
@@ -155,10 +155,10 @@ internal sealed class TreasuryContext
             _holds.Add(index, hold);
         }
 
-        int newCopies = checked(hold.Copies + numCopies);
+        int newCopies = checked(hold.Copies + copies);
         if (newCopies < 0)
         {
-            throw new ArgumentException(nameof(numCopies));
+            throw new ArgumentException("Amount of removed copies is too high", nameof(copies));
         }
 
         hold.Copies = newCopies;
@@ -186,28 +186,28 @@ internal sealed class TreasuryContext
         int newCopies = checked(change.Copies + copies);
         if (newCopies < 0)
         {
-            throw new ArgumentException(nameof(copies));
+            throw new ArgumentException("Amount of add copies is too low", nameof(copies));
         }
 
         change.Copies = newCopies;
     }
 
 
-    private void UpdateStorageSpace(Storage storage, int numCopies)
+    private void UpdateStorageSpace(Storage storage, int copies)
     {
         if (!_storageSpace.TryGetValue(storage, out int boxSize))
         {
-            throw new ArgumentException(nameof(storage));
+            throw new ArgumentException("Specified Storage's space is unknown", nameof(storage));
         }
 
         checked
         {
-            boxSize += numCopies;
+            boxSize += copies;
         }
 
         if (boxSize < 0)
         {
-            throw new ArgumentException(nameof(numCopies));
+            throw new ArgumentException("Amount of removed copies is too high", nameof(copies));
         }
 
         _storageSpace[storage] = boxSize;
@@ -235,7 +235,7 @@ internal sealed class TreasuryContext
             {
                 _overflow.Remove(box);
             }
-            
+
             if (boxSize < box.Capacity)
             {
                 _available.Add(box);

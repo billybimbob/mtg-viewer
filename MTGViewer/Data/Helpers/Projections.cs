@@ -184,7 +184,7 @@ public sealed record DeckPreview
     public BuildState BuildState => this switch
     {
         { HasTrades: true } => BuildState.Requesting,
-        { WantCopies: >0 } or { HasReturns: true } => BuildState.Theorycraft,
+        { WantCopies: > 0 } or { HasReturns: true } => BuildState.Theorycraft,
         _ => BuildState.Built
     };
 }

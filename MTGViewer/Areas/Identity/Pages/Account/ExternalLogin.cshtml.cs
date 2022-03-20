@@ -2,7 +2,6 @@ using System.Threading.Tasks;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.Extensions.Logging;
@@ -19,10 +18,7 @@ public class ExternalLoginModel : PageModel
 
     public ExternalLoginModel(
         SignInManager<CardUser> signInManager,
-        UserManager<CardUser> userManager,
-        IUserStore<CardUser> userStore,
-        ILogger<ExternalLoginModel> logger,
-        IEmailSender emailSender)
+        ILogger<ExternalLoginModel> logger)
     {
         _signInManager = signInManager;
         _logger = logger;
@@ -32,13 +28,13 @@ public class ExternalLoginModel : PageModel
     [TempData]
     public string? ErrorMessage { get; set; }
 
-    
+
     public IActionResult OnGet() => RedirectToPage("./Login");
 
 
     public async Task<IActionResult> OnGetCallbackAsync(string? returnUrl = null, string? remoteError = null)
     {
-        returnUrl = returnUrl ?? Url.Content("~/");
+        returnUrl ??= Url.Content("~/");
         if (remoteError != null)
         {
             ErrorMessage = $"Error from external provider: {remoteError}";

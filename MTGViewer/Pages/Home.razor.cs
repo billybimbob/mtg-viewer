@@ -13,16 +13,16 @@ using MTGViewer.Services;
 
 namespace MTGViewer.Pages;
 
-public partial class Home : ComponentBase, IDisposable
+public sealed partial class Home : ComponentBase, IDisposable
 {
     [Inject]
-    protected IDbContextFactory<CardDbContext> DbFactory { get; set; } = default!;
+    internal IDbContextFactory<CardDbContext> DbFactory { get; set; } = default!;
 
     [Inject]
-    protected PageSizes PageSizes { get; set; } = default!;
+    internal PageSizes PageSizes { get; set; } = default!;
 
     [Inject]
-    protected ILogger<Home> Logger { get; set; } = default!;
+    internal ILogger<Home> Logger { get; set; } = default!;
 
 
     internal bool IsFirstLoad => IsBusy && _randomContext is null;
@@ -110,9 +110,9 @@ public partial class Home : ComponentBase, IDisposable
 
         return elapsed switch
         {
-            { Days: >0 } => $"{elapsed.Days} days ago",
-            { Hours: >0 } => $"{elapsed.Hours} hours ago",
-            { Minutes: >0 } => $"{elapsed.Minutes} min ago",
+            { Days: > 0 } => $"{elapsed.Days} days ago",
+            { Hours: > 0 } => $"{elapsed.Hours} hours ago",
+            { Minutes: > 0 } => $"{elapsed.Minutes} min ago",
             _ => $"{elapsed.Seconds} sec ago"
         };
     }
@@ -126,7 +126,7 @@ public partial class Home : ComponentBase, IDisposable
         }
 
         IsBusy = true;
-        
+
         try
         {
             var token = _cancel.Token;
@@ -178,8 +178,8 @@ public partial class Home : ComponentBase, IDisposable
 
 
         public static async Task<RandomCardsContext> CreateAsync(
-            CardDbContext dbContext, 
-            int loadLimit, 
+            CardDbContext dbContext,
+            int loadLimit,
             CancellationToken cancel)
         {
             var loadOrder = await ShuffleOrderAsync
@@ -201,8 +201,8 @@ public partial class Home : ComponentBase, IDisposable
         {
             ArgumentNullException.ThrowIfNull(dbContext);
 
-            var chunk = HasMore 
-                ? _loadOrder[_cards.Count / ChunkSize] 
+            var chunk = HasMore
+                ? _loadOrder[_cards.Count / ChunkSize]
                 : null;
 
             if (chunk is null)
@@ -244,7 +244,7 @@ public partial class Home : ComponentBase, IDisposable
         // preserve order of chunk
         return chunk
             .ToAsyncEnumerable()
-            .Join( dbChunk,
+            .Join(dbChunk,
                 cid => cid, c => c.Id,
                 (_, preview) => preview);
     }
@@ -255,7 +255,7 @@ public partial class Home : ComponentBase, IDisposable
             dbContext.Transactions
                 .Where(t => t.Changes
                     .Any(c => c.From is Box
-                        || c.From is Excess 
+                        || c.From is Excess
                         || c.To is Box
                         || c.To is Excess))
 

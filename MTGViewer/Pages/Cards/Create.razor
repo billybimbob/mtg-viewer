@@ -247,7 +247,7 @@ else
                         <td> @card.SetName </td>
                         <td> @card.Rarity </td>
                         <td>
-                            <input @bind="match.NumCopies"
+                            <input @bind="match.Copies"
                                 title="@card.Name Copies" 
                                 type="number" min="0" max="@match.Limit"
                                 class="form-control amt-input" />
@@ -288,5 +288,5 @@ else
         Query.Colors.HasFlag(color) ? "active" : string.Empty;
 
     internal bool CannotAdd() =>
-        !Matches.Any() || Matches.All(m => m.NumCopies == 0);
+        !Matches.Any() || Matches.All(m => m.Copies == 0);
 }

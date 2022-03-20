@@ -82,7 +82,7 @@ public class DetailsModel : PageModel
 
         Cards = await DeckCardsAsync
             .Invoke(_dbContext, deck.Id, _pageSize)
-            .ToListAsync();
+            .ToListAsync(cancel);
 
         return Page();
     }
@@ -130,7 +130,7 @@ public class DetailsModel : PageModel
             // each join should be one-to-one match because
             // holds are unique by Location and Card
 
-            .Join( _dbContext.Holds,
+            .Join(_dbContext.Holds,
                 t => new { LocationId = t.FromId, t.CardId },
                 h => new { h.LocationId, h.CardId },
                 (t, h) => new TradePreview

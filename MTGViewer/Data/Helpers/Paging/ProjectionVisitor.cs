@@ -79,20 +79,19 @@ internal static class SelectQueries
 {
     internal static SelectResult<TSource, TResult> GetSelectQuery<TSource, TResult>(IQueryable<TResult> source)
     {
+        var selector = FindSelect<TSource, TResult>.Instance.Visit(source.Expression) switch
+        {
+            Expression<Func<TSource, TResult>> e => e,
+
+            _ => throw new InvalidOperationException(
+                $"Select from {typeof(TSource).Name} to {typeof(TResult).Name} could not be found")
+        };
+
         var removeSelect = RemoveSelect<TSource, TResult>.Instance.Visit(source.Expression);
 
         var query = source.Provider.CreateQuery<TSource>(removeSelect);
 
-        var selector = FindSelect<TSource, TResult>.Instance.Visit(source.Expression)
-            as Expression<Func<TSource, TResult>>;
-
-        if (selector is null)
-        {
-            throw new InvalidOperationException(
-                $"Select from {typeof(TSource).Name} to {typeof(TResult).Name} could not be found");
-        }
-
-        return new (query, selector);
+        return new(query, selector);
     }
 }
 
@@ -181,7 +180,7 @@ internal class InsertTakeVisitor<TEntity> : ExpressionVisitor
     }
 
 
-    private bool IsValidMethod(MethodCallExpression node)
+    private static bool IsValidMethod(MethodCallExpression node)
     {
         var generics = node.Method.GetGenericArguments();
 
@@ -192,7 +191,7 @@ internal class InsertTakeVisitor<TEntity> : ExpressionVisitor
     }
 
 
-    private bool IsSelectMethod(MethodCallExpression node)
+    private static bool IsSelectMethod(MethodCallExpression node)
     {
         var generics = node.Method.GetGenericArguments();
 
@@ -200,7 +199,7 @@ internal class InsertTakeVisitor<TEntity> : ExpressionVisitor
             && node.Method.GetGenericMethodDefinition() == QueryableMethods.Select
             && generics.ElementAtOrDefault(1) == typeof(TEntity);
     }
-    
+
 
     private class InsertReverseTakeVisitor : ExpressionVisitor
     {

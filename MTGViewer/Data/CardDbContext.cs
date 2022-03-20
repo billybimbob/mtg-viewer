@@ -205,7 +205,7 @@ internal class SuggestionConfiguration : IEntityTypeConfiguration<Suggestion>
         _database = database;
     }
 
-    
+
     public void Configure(EntityTypeBuilder<Suggestion> builder)
     {
         builder

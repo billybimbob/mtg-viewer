@@ -7,7 +7,7 @@ namespace MTGViewer.Services;
 
 public class PageSizes
 {
-    private static readonly string[] PagesNamespace = new[] 
+    private static readonly string[] PagesNamespace = new[]
     {
         nameof(MTGViewer), nameof(MTGViewer.Pages)
     };

@@ -78,7 +78,7 @@ public class EmailVerification
 
     public async Task<bool> SendEmailChangeAsync(CardUser user, string newEmail)
     {
-        var httpContext = _httpAccessor.HttpContext;        
+        var httpContext = _httpAccessor.HttpContext;
         if (httpContext is null)
         {
             return false;

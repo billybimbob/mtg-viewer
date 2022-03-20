@@ -28,17 +28,17 @@ internal class ExchangeContext
     public Deck Deck { get; }
 
 
-    public void TakeCopies(Card card, int numCopies, Storage storage)
+    public void TakeCopies(Card card, int copies, Storage storage)
     {
         var wants = GetPossibleWants(card).ToList();
 
-        if (wants.Sum(w => w.Copies) < numCopies)
+        if (wants.Sum(w => w.Copies) < copies)
         {
-            throw new ArgumentException(nameof(numCopies));
+            throw new ArgumentException("Amount of taken copies is too high", nameof(copies));
         }
 
         using var e = wants.GetEnumerator();
-        int wantCopies = numCopies;
+        int wantCopies = copies;
 
         while (wantCopies > 0 && e.MoveNext())
         {
@@ -50,16 +50,16 @@ internal class ExchangeContext
         }
 
         var hold = GetOrAddHold(card);
-        hold.Copies += numCopies;
+        hold.Copies += copies;
 
-        TreasuryContext.TransferCopies(card, numCopies, Deck, storage);
+        TreasuryContext.TransferCopies(card, copies, Deck, storage);
     }
 
 
     private IEnumerable<Want> GetPossibleWants(Card card)
     {
         var approxWants = Deck.Wants
-            .Where(w => w.CardId != card.Id 
+            .Where(w => w.CardId != card.Id
                 && w.Card.Name == card.Name
                 && w.Copies > 0);
 
@@ -104,19 +104,22 @@ internal class ExchangeContext
     }
 
 
-    public void ReturnCopies(Card card, int numCopies, Storage storage)
+    public void ReturnCopies(Card card, int copies, Storage storage)
     {
         if (_deckCards.GetValueOrDefault(card.Id)
-            is not { GiveBack: GiveBack give, Hold: Hold hold }
-            || give.Copies < numCopies
-            || hold.Copies < numCopies)
+            is not { GiveBack: GiveBack give, Hold: Hold hold })
         {
-            throw new ArgumentException($"{nameof(card)} and {nameof(numCopies)}");
+            throw new ArgumentException("Card cannot be found", nameof(card));
         }
 
-        give.Copies -= numCopies;
-        hold.Copies -= numCopies;
+        if (give.Copies < copies || hold.Copies < copies)
+        {
+            throw new ArgumentException("Copy amount is too high", nameof(copies));
+        }
 
-        TreasuryContext.TransferCopies(card, numCopies, storage, Deck);
+        give.Copies -= copies;
+        hold.Copies -= copies;
+
+        TreasuryContext.TransferCopies(card, copies, storage, Deck);
     }
 }

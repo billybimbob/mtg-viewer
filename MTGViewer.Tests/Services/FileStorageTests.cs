@@ -24,7 +24,7 @@ public class FileStorageTests : IClassFixture<TempFileName>, IAsyncLifetime
         CardDbContext dbContext,
         CardDataGenerator cardGen,
         TestDataGenerator testGen,
-        FileCardStorage fileStorage, 
+        FileCardStorage fileStorage,
         TempFileName tempFile)
     {
         _dbContext = dbContext;

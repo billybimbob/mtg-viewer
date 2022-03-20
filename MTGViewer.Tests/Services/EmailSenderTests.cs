@@ -34,7 +34,7 @@ namespace MTGViewer.Tests.Services
         {
             const string subject = "Test html email";
             const string google = "google.com";
-            
+
             string message = $"Test if this email <a href='{HtmlEncoder.Default.Encode(google)}'>with a link</a> will send";
 
             await _emailSender.SendEmailAsync(_authOptions.SenderEmail, subject, message);

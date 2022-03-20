@@ -31,10 +31,9 @@ public class DetailsModel : PageModel
 
 
     public async Task<IActionResult> OnGetAsync(
-        int id, 
+        int id,
         int? seek,
         SeekDirection direction,
-        bool backtrack,
         string? cardId,
         CancellationToken cancel)
     {
@@ -116,7 +115,7 @@ public class DetailsModel : PageModel
                 .SelectMany(b => b.Holds)
                 .Include(h => h.Card)
                 .OrderBy(h => h.Id)
-                .SingleOrDefault(h =>h.LocationId == boxId && h.CardId == cardId));
+                .SingleOrDefault(h => h.LocationId == boxId && h.CardId == cardId));
 
 
     private IQueryable<QuantityPreview> BoxCards(BoxPreview box)
@@ -128,7 +127,7 @@ public class DetailsModel : PageModel
                 .ThenBy(h => h.Card.SetName)
                 .ThenBy(h => h.Copies)
                 .ThenBy(h => h.Id)
-            
+
             .Select(h => new QuantityPreview
             {
                 Id = h.Id,

@@ -27,7 +27,7 @@ public class BulkOperations
 
 
     public BulkOperations(
-        IOptions<SeedSettings> seedOptions, 
+        IOptions<SeedSettings> seedOptions,
         PageSizes pageSizes,
         LoadingProgress loadProgress,
         CardDbContext dbContext,
@@ -87,11 +87,11 @@ public class BulkOperations
         var created = string.IsNullOrWhiteSpace(_seedSettings.Password)
             ? await _userManager.CreateAsync(user)
             : await _userManager.CreateAsync(user, _seedSettings.Password);
-        
+
         cancel.ThrowIfCancellationRequested();
 
         var providers = await _userManager.GetValidTwoFactorProvidersAsync(user);
-        
+
         cancel.ThrowIfCancellationRequested();
 
         if (!providers.Any())
@@ -241,7 +241,7 @@ public class BulkOperations
 
 
     private static Transaction? MergeTransaction(
-        IReadOnlyList<Bin> bins, 
+        IReadOnlyList<Bin> bins,
         IReadOnlyList<Unclaimed> unclaimed)
     {
         var boxChanges = bins
@@ -287,7 +287,7 @@ public class BulkOperations
         {
             return;
         }
-        
+
         multiverseAdditions = new SortedList<string, int>(multiverseAdditions);
 
         var dbCards = await ExistingCardsAsync(multiverseAdditions.Keys, cancel);
@@ -314,7 +314,7 @@ public class BulkOperations
         }
 
         var requests = allCards
-            .Join( multiverseAdditions,
+            .Join(multiverseAdditions,
                 c => c.MultiverseId, kv => kv.Key,
                 (card, kv) => new CardRequest(card, kv.Value));
 
@@ -329,7 +329,7 @@ public class BulkOperations
 
 
     private Task<List<Card>> ExistingCardsAsync(
-        IEnumerable<string> multiverseIds, 
+        IEnumerable<string> multiverseIds,
         CancellationToken cancel)
     {
         if (multiverseIds.Count() < _pageSizes.Limit)
@@ -345,7 +345,7 @@ public class BulkOperations
 
             return _dbContext.Cards
                 .AsAsyncEnumerable()
-                .Join( asyncMultiverse,
+                .Join(asyncMultiverse,
                     c => c.MultiverseId,
                     mid => mid,
                     (card, _) => card)
@@ -383,7 +383,7 @@ public class BulkOperations
         {
             _dbContext.Holds.RemoveRange(unclaimed.Holds);
             _dbContext.Wants.RemoveRange(unclaimed.Wants);
-            
+
             _dbContext.Unclaimed.Remove(unclaimed);
         }
 

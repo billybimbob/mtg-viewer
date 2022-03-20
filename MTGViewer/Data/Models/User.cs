@@ -23,7 +23,7 @@ public class UserRef
     [StringLength(256, MinimumLength = 1)]
     public string Name { get; set; } = default!;
 
-    public bool ResetRequested { get; set;  }
+    public bool ResetRequested { get; set; }
 
     [JsonIgnore]
     public List<Deck> Decks { get; init; } = new();

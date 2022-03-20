@@ -3,8 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-
-using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
 using MTGViewer.Areas.Identity.Data;
@@ -20,7 +18,6 @@ public class TestDataGenerator
 
     private readonly CardDbContext _dbContext;
     private readonly UserDbContext _userContext;
-    private readonly UserManager<CardUser> _userManager;
 
     private readonly FileCardStorage _fileStorage;
     private readonly CardDataGenerator _cardGen;
@@ -29,15 +26,13 @@ public class TestDataGenerator
 
 
     public TestDataGenerator(
-        CardDbContext dbContext, 
+        CardDbContext dbContext,
         UserDbContext userContext,
-        UserManager<CardUser> userManager,
         FileCardStorage jsonStorage,
         CardDataGenerator cardGen)
     {
         _dbContext = dbContext;
         _userContext = userContext;
-        _userManager = userManager;
 
         _fileStorage = jsonStorage;
         _cardGen = cardGen;
@@ -230,7 +225,7 @@ public class TestDataGenerator
     {
         var users = await _dbContext.Users
             .ToListAsync();
-        
+
         var partipants = users
             .Select(user => (user, key: _random.Next(users.Count)))
             .OrderBy(uk => uk.key)
@@ -257,7 +252,7 @@ public class TestDataGenerator
 
 
     private async Task<IReadOnlyList<Trade>> CreateToTradesAsync(
-        UserRef proposer, 
+        UserRef proposer,
         UserRef receiver)
     {
         var (to, froms) = await GetTradeOptionsAsync(proposer, receiver);
@@ -267,14 +262,15 @@ public class TestDataGenerator
 
         var trades = new List<Trade>();
 
-        foreach(var tradeCard in cards.Take(tradeCount))
+        foreach (var tradeCard in cards.Take(tradeCount))
         {
             var from = froms[_random.Next(froms.Count)];
 
             int holdCopies = _random.Next(1, 3);
             int wantCopies = _random.Next(1, holdCopies);
 
-            var fromHold = await FindHoldAsync(tradeCard, from, holdCopies);
+            await FindHoldAsync(tradeCard, from, holdCopies);
+
             var toWant = await FindWantAsync(tradeCard, to, wantCopies);
 
             trades.Add(new()
@@ -293,7 +289,7 @@ public class TestDataGenerator
 
 
     private async Task<TradeOptions> GetTradeOptionsAsync(
-        UserRef sourceUser, 
+        UserRef sourceUser,
         UserRef optionsUser)
     {
         var source = await _dbContext.Decks
@@ -333,7 +329,7 @@ public class TestDataGenerator
 
 
     private async Task<IReadOnlyList<Trade>> CreateFromTradesAsync(
-        UserRef proposer, 
+        UserRef proposer,
         UserRef receiver)
     {
         var (from, tos) = await GetTradeOptionsAsync(receiver, proposer);
@@ -343,14 +339,15 @@ public class TestDataGenerator
 
         var trades = new List<Trade>();
 
-        foreach(var tradeCard in cards.Take(tradeCount))
+        foreach (var tradeCard in cards.Take(tradeCount))
         {
             var to = tos[_random.Next(tos.Count)];
 
             int holdCopies = _random.Next(1, 3);
             int wantCopies = _random.Next(1, holdCopies);
 
-            var fromHold = await FindHoldAsync(tradeCard, from, holdCopies);
+            await FindHoldAsync(tradeCard, from, holdCopies);
+
             var toWant = await FindWantAsync(tradeCard, to, wantCopies);
 
             trades.Add(new()
@@ -394,7 +391,7 @@ public class TestDataGenerator
     private async Task<Want> FindWantAsync(Card card, Deck target, int copies)
     {
         var want = await _dbContext.Wants
-            .SingleOrDefaultAsync(w => 
+            .SingleOrDefaultAsync(w =>
                 w.LocationId == target.Id && w.CardId == card.Id);
 
         if (want == default)
@@ -417,7 +414,7 @@ public class TestDataGenerator
     private async Task<GiveBack> FindGiveBackAsync(Card card, Deck target, int copies)
     {
         var give = await _dbContext.GiveBacks
-            .SingleOrDefaultAsync(g => 
+            .SingleOrDefaultAsync(g =>
                 g.LocationId == target.Id && g.CardId == card.Id);
 
         if (give == default)
@@ -500,7 +497,7 @@ public class TestDataGenerator
         var deckTarget = (Deck)returnTarget.Location;
 
         var takeTarget = await _dbContext.Holds
-            .Where(h => h.Location is Box 
+            .Where(h => h.Location is Box
                 && h.Copies > 0
                 && h.CardId != returnTarget.CardId)
             .Select(h => h.Card)

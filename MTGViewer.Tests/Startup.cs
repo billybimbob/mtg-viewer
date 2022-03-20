@@ -33,7 +33,7 @@ public class Startup
     {
         var config = context.Configuration;
         var databaseOptions = DatabaseOptions.Bind(config);
-        
+
         services
             .AddRazorPageModels()
             .AddScoped<PageContextFactory>()
@@ -50,7 +50,7 @@ public class Startup
                     .AddDbContext<CardDbContext>(TestFactory.SqliteInMemory)
                     .AddDbContext<UserDbContext>(TestFactory.SqliteInMemory);
                 break;
-            
+
             case DatabaseOptions.InMemory:
             default:
                 services

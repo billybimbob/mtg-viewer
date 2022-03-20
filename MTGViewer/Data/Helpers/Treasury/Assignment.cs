@@ -5,7 +5,7 @@ using System.Linq;
 namespace MTGViewer.Data.Internal;
 
 
-internal readonly record struct StorageAssignment<TSource>(TSource Source, int NumCopies, Storage Target);
+internal readonly record struct StorageAssignment<TSource>(TSource Source, int Copies, Storage Target);
 
 
 internal static class Assignment
@@ -40,7 +40,7 @@ internal static class Assignment
                 yield break;
             }
         }
-        
+
         if (copiesToAssign > 0
             && storageOptions.OfType<Excess>().FirstOrDefault()
             is Excess firstExcess)
@@ -54,7 +54,7 @@ internal static class Assignment
     // in boxes with more available space
 
     public static ILookup<string, Storage> ExactAddLookup(
-        IEnumerable<Hold> targets, 
+        IEnumerable<Hold> targets,
         IEnumerable<Card> cards,
         IReadOnlyDictionary<Storage, int> storageSpace)
     {
@@ -62,9 +62,9 @@ internal static class Assignment
             .Select(c => c.Id)
             .Distinct();
 
-        // TODO: account for changing NumCopies while iter
+        // TODO: account for changing Copies while iter
         return targets
-            .Join( cardIds,
+            .Join(cardIds,
                 h => h.CardId, cid => cid,
                 (target, _) => target)
 
@@ -73,16 +73,16 @@ internal static class Assignment
                 {
                     Box box => box.Capacity - storageSpace.GetValueOrDefault(box),
                     Excess excess => -storageSpace.GetValueOrDefault(excess),
-                    _ => throw new ArgumentException(nameof(targets))
-                })            
+                    _ => throw new ArgumentException($"Location is unexpected type {h.Location.GetType().Name}", nameof(targets))
+                })
 
-            // lookup group orders should preserve NumCopies order
+            // lookup group orders should preserve Copies order
             .ToLookup(h => h.CardId, h => (Storage)h.Location);
     }
 
 
     public static ILookup<string, Storage> ApproxAddLookup(
-        IEnumerable<Hold> targets, 
+        IEnumerable<Hold> targets,
         IEnumerable<Card> cards,
         IReadOnlyDictionary<Storage, int> storageSpace)
     {
@@ -90,21 +90,21 @@ internal static class Assignment
             .Select(c => c.Name)
             .Distinct();
 
-        // TODO: account for changing NumCopies while iter
+        // TODO: account for changing Copies while iter
         return targets
-            .Join( cardNames,
+            .Join(cardNames,
                 h => h.Card.Name, cn => cn,
                 (target, _) => target)
 
-            // lookup group orders should preserve NumCopies order
+            // lookup group orders should preserve Copies order
             .OrderByDescending(h => h.Copies)
                 .ThenByDescending(h => h.Location switch
                 {
                     Box box => box.Capacity - storageSpace.GetValueOrDefault(box),
                     Excess excess => -storageSpace.GetValueOrDefault(excess),
-                    _ => throw new ArgumentException(nameof(targets))
+                    _ => throw new ArgumentException($"Location is unexpected type {h.Location.GetType().Name}", nameof(targets))
                 })
-            
+
             .ToLookup(h => h.Card.Name, h => (Storage)h.Location);
     }
 

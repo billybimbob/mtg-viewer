@@ -42,7 +42,7 @@ internal sealed class BoxSearcher
     {
         return sortedCards
             .Select((card, index) => (card, index))
-            .GroupBy(ci => ci.card.Id, 
+            .GroupBy(ci => ci.card.Id,
                 (id, cis) => (id, cis.First().index))
 
             .ToDictionary(
@@ -85,7 +85,7 @@ internal sealed class BoxSearcher
         int cardSearch = _sortedCards.BinarySearch(card, CardNameComparer.Instance);
 
         int cardIndex = cardSearch >= 0
-            ? _firstCards.GetValueOrDefault( _sortedCards[cardSearch].Id )
+            ? _firstCards.GetValueOrDefault(_sortedCards[cardSearch].Id)
             : ~cardSearch;
 
         int addPosition = _addPositions.ElementAtOrDefault(cardIndex);

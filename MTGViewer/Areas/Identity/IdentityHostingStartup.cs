@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity.UI.Services;
 
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 using MTGViewer.Data;
@@ -19,8 +18,8 @@ public class IdentityHostingStartup : IHostingStartup
 {
     public void Configure(IWebHostBuilder builder)
     {
-        builder.ConfigureServices((context, services) => {
-
+        builder.ConfigureServices((context, services) =>
+        {
             var config = context.Configuration;
             var databaseOptions = DatabaseOptions.Bind(config);
 
@@ -33,7 +32,7 @@ public class IdentityHostingStartup : IHostingStartup
                     case DatabaseOptions.SqlServer:
                         options.UseSqlServer(connString);
                         break;
-                    
+
                     case DatabaseOptions.Postgresql:
                         options.UseNpgsql(connString.ToNpgsqlConnectionString());
                         break;

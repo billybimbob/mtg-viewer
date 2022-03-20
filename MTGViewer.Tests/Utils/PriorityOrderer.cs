@@ -38,7 +38,7 @@ public class PriorityOrderer : ITestCaseOrderer
 
         var sorted = sortedMethods.Keys
             .SelectMany(priority => sortedMethods[priority]
-                .OrderBy(testCase => testCase.TestMethod.Method.Name ));
+                .OrderBy(testCase => testCase.TestMethod.Method.Name));
 
         foreach (TTestCase testCase in sorted)
         {

@@ -50,23 +50,23 @@ public class SymbolFormatter : ISymbolFinder, ISymbolTranslator
     }
 
 
-    public IReadOnlyList<ManaSymbol> FindMana(string? mtgText) => 
+    public IReadOnlyList<ManaSymbol> FindMana(string? mtgText) =>
         _finder.FindMana(mtgText);
 
-    public IReadOnlyList<LoyaltySymbol> FindLoyalties(string? mtgText) => 
+    public IReadOnlyList<LoyaltySymbol> FindLoyalties(string? mtgText) =>
         _finder.FindLoyalties(mtgText);
 
-    public IReadOnlyList<SagaSymbol> FindSagas(string? mtgText) => 
+    public IReadOnlyList<SagaSymbol> FindSagas(string? mtgText) =>
         _finder.FindSagas(mtgText);
 
 
-    public string ManaString(ManaSymbol symbol) => 
+    public string ManaString(ManaSymbol symbol) =>
         _translator.ManaString(symbol);
 
-    public string LoyaltyString(LoyaltySymbol symbol) => 
+    public string LoyaltyString(LoyaltySymbol symbol) =>
         _translator.LoyaltyString(symbol);
 
-    public string SagaString(SagaSymbol symbol) => 
+    public string SagaString(SagaSymbol symbol) =>
         _translator.SagaString(symbol);
 }
 

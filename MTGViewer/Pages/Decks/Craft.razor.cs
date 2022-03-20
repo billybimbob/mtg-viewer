@@ -49,7 +49,7 @@ public partial class Craft : OwningComponentBase
 
 
     internal string DeckName =>
-        _deckContext?.Deck.Name is string name && !string.IsNullOrWhiteSpace(name) 
+        _deckContext?.Deck.Name is string name && !string.IsNullOrWhiteSpace(name)
             ? name : "New Deck";
 
     internal EditContext? DeckEdit => _deckContext?.EditContext;
@@ -198,7 +198,7 @@ public partial class Craft : OwningComponentBase
 
         if (user == null)
         {
-            throw new ArgumentException(nameof(userId));
+            throw new ArgumentException("User cannot be found", nameof(userId));
         }
 
         var userDeckCount = await dbContext.Decks
@@ -473,7 +473,7 @@ public partial class Craft : OwningComponentBase
         }
 
         return _cards
-            .Join( _deckContext.ActiveCards(),
+            .Join(_deckContext.ActiveCards(),
                 c => c.Id, qg => qg.CardId,
                 (_, group) => group)
             .ToOffsetList(
@@ -700,9 +700,7 @@ public partial class Craft : OwningComponentBase
 
         public bool IsModified(Quantity quantity)
         {
-            return _originalCopies.TryGetValue(quantity, out int numCopies)
-                ? quantity.Copies != numCopies
-                : quantity.Copies != 0;
+            return quantity.Copies != _originalCopies.GetValueOrDefault(quantity);
         }
 
 
@@ -809,7 +807,7 @@ public partial class Craft : OwningComponentBase
                     break;
 
                 default:
-                    throw new ArgumentException(nameof(quantity));
+                    throw new ArgumentException($"Unexpected Quantity type {quantity.GetType().Name}", nameof(quantity));
             }
 
             group.AddQuantity(quantity);
@@ -1121,7 +1119,7 @@ public partial class Craft : OwningComponentBase
 
 
     private static void MergeQuantityConflict<TQuantity>(
-        CardDbContext dbContext, 
+        CardDbContext dbContext,
         DeckContext deckContext,
         IEnumerable<TQuantity> dbQuantities)
         where TQuantity : Quantity
@@ -1144,8 +1142,8 @@ public partial class Craft : OwningComponentBase
 
 
     private static void MergeDbAdditions(
-        CardDbContext dbContext, 
-        DeckContext deckContext, 
+        CardDbContext dbContext,
+        DeckContext deckContext,
         Deck dbDeck)
     {
         MergeNewQuantity(deckContext, dbContext, dbDeck.Holds);
@@ -1157,7 +1155,7 @@ public partial class Craft : OwningComponentBase
 
 
     private static void MergeNewQuantity<TQuantity>(
-        DeckContext deckContext, 
+        DeckContext deckContext,
         CardDbContext dbContext,
         IReadOnlyList<TQuantity> dbQuantities)
         where TQuantity : Quantity, new()
@@ -1217,14 +1215,14 @@ public partial class Craft : OwningComponentBase
                 break;
 
             default:
-                throw new ArgumentException(typeof(TQuantity).Name);
+                throw new ArgumentException($"Unexpected Quantity type {typeof(TQuantity).Name}", nameof(quantity));
         }
     }
 
 
     private static void CapGiveBacks(IEnumerable<QuantityGroup> deckCards)
     {
-        foreach(var cardGroup in deckCards)
+        foreach (var cardGroup in deckCards)
         {
             if (cardGroup.GiveBack is null)
             {

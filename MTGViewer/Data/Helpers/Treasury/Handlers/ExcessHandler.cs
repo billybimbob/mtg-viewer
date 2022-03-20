@@ -30,9 +30,9 @@ internal abstract class ExcessHandler
 
     public void TransferExcess()
     {
-        foreach ((Hold source, int numCopies, Storage target) in GetAssignments())
+        foreach ((Hold source, int copies, Storage target) in GetAssignments())
         {
-            TreasuryContext.TransferCopies(source.Card, numCopies, target, source.Location);
+            TreasuryContext.TransferCopies(source.Card, copies, target, source.Location);
         }
     }
 }
@@ -86,7 +86,7 @@ internal class ExactExcess : ExcessHandler
             .SelectMany(b => b.Holds)
             .Select(h => h.Card);
 
-        // TODO: account for changing NumCopies while iter
+        // TODO: account for changing Copies while iter
         return Assignment.ExactAddLookup(availableHolds, excessCards, storageSpace);
     }
 }
@@ -140,7 +140,7 @@ internal class ApproximateExcess : ExcessHandler
             .SelectMany(b => b.Holds)
             .Select(h => h.Card);
 
-        // TODO: account for changing NumCopies while iter
+        // TODO: account for changing Copies while iter
         return Assignment.ApproxAddLookup(availableHolds, excessCards, storageSpace);
     }
 }

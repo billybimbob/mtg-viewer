@@ -262,7 +262,7 @@ public class ReferenceManagerTests : IAsyncLifetime
     {
         var allUsers = _dbContext.Users.AsAsyncEnumerable();
 
-        await foreach(var user in allUsers)
+        await foreach (var user in allUsers)
         {
             user.ResetRequested = true;
         }

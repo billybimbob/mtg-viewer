@@ -14,16 +14,13 @@ public class ExternalLoginsModel : PageModel
 {
     private readonly UserManager<CardUser> _userManager;
     private readonly SignInManager<CardUser> _signInManager;
-    private readonly IUserStore<CardUser> _userStore;
 
     public ExternalLoginsModel(
         UserManager<CardUser> userManager,
-        SignInManager<CardUser> signInManager,
-        IUserStore<CardUser> userStore)
+        SignInManager<CardUser> signInManager)
     {
         _userManager = userManager;
         _signInManager = signInManager;
-        _userStore = userStore;
     }
 
     [TempData]

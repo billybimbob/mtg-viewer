@@ -45,7 +45,7 @@ public class IndexModel : PageModel
 
 
     public async Task<IActionResult> OnGetAsync(
-        int? seek, 
+        int? seek,
         SeekDirection direction,
         CancellationToken cancel)
     {

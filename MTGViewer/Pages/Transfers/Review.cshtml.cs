@@ -120,7 +120,7 @@ public class ReviewModel : PageModel
                 })
 
                 .SingleOrDefault());
-    
+
 
     private IQueryable<TradePreview> ActiveTrades(DeckDetails deck)
     {
@@ -139,7 +139,7 @@ public class ReviewModel : PageModel
         // each join should be one-to-one because
         // holds are unique by Location and Card
 
-        return deckHolds.Join( receivedTrades,
+        return deckHolds.Join(receivedTrades,
             h => h.CardId,
             t => t.CardId,
             (h, t) => new TradePreview
@@ -298,7 +298,7 @@ public class ReviewModel : PageModel
 
 
 
-    private AcceptRequest? GetAcceptRequest(Trade trade)
+    private static AcceptRequest? GetAcceptRequest(Trade trade)
     {
         var tradeValid = trade.From.Holds
             .Select(h => h.CardId)
@@ -358,7 +358,7 @@ public class ReviewModel : PageModel
         var exactWant = toWants
             .SingleOrDefault(w => w.CardId == trade.CardId);
 
-        int change = new [] {
+        int change = new[] {
             acceptAmount, trade.Copies,
             toWants.Copies, fromHold.Copies }.Min();
 
@@ -488,7 +488,7 @@ public class ReviewModel : PageModel
         }
 
         var deckTrade = await _dbContext.Trades
-            .SingleOrDefaultAsync(t => 
+            .SingleOrDefaultAsync(t =>
                 t.Id == tradeId && t.From.OwnerId == userId, cancel);
 
         if (deckTrade == default)

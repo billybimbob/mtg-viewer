@@ -37,7 +37,7 @@ internal static class OriginFilter
 
 
 internal sealed class OriginFilter<TOrigin, TEntity>
-{ 
+{
     internal static Expression<Func<TEntity, bool>> Build(
         IQueryable<TEntity> query,
         OriginTranslator<TOrigin, TEntity> origin,
@@ -50,7 +50,7 @@ internal sealed class OriginFilter<TOrigin, TEntity>
             throw new InvalidOperationException("There are no properties to filter by");
         }
 
-        var firstKey = builder.OrderKeys.First();
+        var firstKey = builder.OrderKeys[0];
 
         var otherKeys = builder.OrderKeys
             .Select((key, i) => (key, i))
@@ -93,7 +93,7 @@ internal sealed class OriginFilter<TOrigin, TEntity>
 
     private OriginFilter(
         IQueryable<TEntity> query,
-        OriginTranslator<TOrigin, TEntity> origin, 
+        OriginTranslator<TOrigin, TEntity> origin,
         SeekDirection direction)
     {
         ArgumentNullException.ThrowIfNull(origin);
@@ -108,7 +108,7 @@ internal sealed class OriginFilter<TOrigin, TEntity>
     private static ParameterExpression Parameter =>
         _parameter ??=
             Expression.Parameter(
-                typeof(TEntity), 
+                typeof(TEntity),
                 typeof(TEntity).Name[0].ToString().ToLower());
 
 
@@ -223,7 +223,7 @@ internal sealed class OriginFilter<TOrigin, TEntity>
 
         return comparison;
     }
-    
+
 
     private bool IsGreaterThan(Ordering ordering)
     {
@@ -263,12 +263,12 @@ internal sealed class OriginFilter<TOrigin, TEntity>
             (MemberExpression o, _) when IsValueComparable(o.Type) =>
                 Expression.LessThan(parameter, o),
 
-            (MemberExpression o, _) when o.Type == typeof(string) => 
+            (MemberExpression o, _) when o.Type == typeof(string) =>
                 Expression.LessThan(
                     Expression.Call(parameter, ExpressionConstants.StringCompare, o),
                     ExpressionConstants.Zero),
 
-            (null, NullOrder.After) => 
+            (null, NullOrder.After) =>
                 Expression.NotEqual(parameter, ExpressionConstants.Null),
 
             (not null, NullOrder.Before) =>
@@ -378,7 +378,7 @@ internal sealed class OriginFilter<TOrigin, TEntity>
 
             return base.VisitMember(node);
         }
-        
+
         protected override Expression VisitBinary(BinaryExpression node)
         {
             if (node.NodeType is not ExpressionType.Equal)
@@ -399,7 +399,7 @@ internal sealed class OriginFilter<TOrigin, TEntity>
             return node;
         }
 
-        private bool IsNull(Expression node)
+        private static bool IsNull(Expression node)
         {
             return node is ConstantExpression { Value: null };
         }

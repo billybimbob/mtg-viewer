@@ -37,14 +37,14 @@ public static partial class TreasuryExtensions
 
 
     public static Task AddCardsAsync(
-        this CardDbContext dbContext, 
-        Card card, 
-        int numCopies,
+        this CardDbContext dbContext,
+        Card card,
+        int copies,
         CancellationToken cancel = default)
     {
         ArgumentNullException.ThrowIfNull(dbContext);
 
-        var request = new []{ new CardRequest(card, numCopies) };
+        var request = new[] { new CardRequest(card, copies) };
 
         return dbContext.AddCardsAsync(request, cancel);
     }
@@ -52,12 +52,12 @@ public static partial class TreasuryExtensions
 
     public static async Task AddCardsAsync(
         this CardDbContext dbContext,
-        IEnumerable<CardRequest> adding, 
+        IEnumerable<CardRequest> adding,
         CancellationToken cancel = default)
     {
         ArgumentNullException.ThrowIfNull(dbContext);
 
-        adding = AsAddRequests(adding); 
+        adding = AsAddRequests(adding);
 
         if (!adding.Any())
         {
@@ -92,14 +92,14 @@ public static partial class TreasuryExtensions
                 cr => cr.Card.Id,
                 (_, requests) => requests.First() with
                 {
-                    NumCopies = requests.Sum(req => req.NumCopies)
+                    Copies = requests.Sum(req => req.Copies)
                 })
             .ToList();
     }
 
 
     private static void AttachCardRequests(
-        CardDbContext dbContext, 
+        CardDbContext dbContext,
         IEnumerable<CardRequest> requests)
     {
         var detachedCards = requests
@@ -115,8 +115,8 @@ public static partial class TreasuryExtensions
 
 
     public static async Task ExchangeAsync(
-        this CardDbContext dbContext, 
-        Deck deck, 
+        this CardDbContext dbContext,
+        Deck deck,
         CancellationToken cancel = default)
     {
         ArgumentNullException.ThrowIfNull(dbContext);

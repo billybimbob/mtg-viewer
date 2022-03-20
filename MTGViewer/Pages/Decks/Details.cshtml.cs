@@ -23,7 +23,7 @@ public class DetailsModel : PageModel
     private readonly int _pageSize;
 
     public DetailsModel(
-        UserManager<CardUser> userManager, 
+        UserManager<CardUser> userManager,
         CardDbContext dbContext,
         PageSizes pageSizes)
     {

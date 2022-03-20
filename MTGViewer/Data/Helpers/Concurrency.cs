@@ -27,7 +27,7 @@ internal static class ConcurrencyExtensions
 {
     public static ModelBuilder SelectConcurrencyToken(this ModelBuilder builder, DatabaseFacade database)
     {
-        foreach(var concurrentType in GetConcurrentTypes())
+        foreach (var concurrentType in GetConcurrentTypes())
         {
             builder.Entity(concurrentType)
                 .AddConcurrentProperty(database);
@@ -132,12 +132,6 @@ internal static class ConcurrencyExtensions
         context.MatchToken(
             current,
             context.Entry(dbValues).CurrentValues);
-    }
-
-
-    public static void MatchToken<E>(this DbSet<E> dbSet, E current, E dbValues)
-        where E : Concurrent
-    {
     }
 
 

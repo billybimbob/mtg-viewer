@@ -22,7 +22,7 @@ public static class MTGSymbolExtensions
                 options.DefaultTranslator = optionsBuilder.DefaultTranslator!;
             });
 
-        foreach(var handler in optionsBuilder.SymbolHandlers)
+        foreach (var handler in optionsBuilder.SymbolHandlers)
         {
             services.AddScoped(handler);
         }
@@ -103,7 +103,7 @@ public class SymbolOptionsBuilder
     }
 
 
-    public SymbolOptionsBuilder AddFinder<TFinder>(bool isDefault = false) 
+    public SymbolOptionsBuilder AddFinder<TFinder>(bool isDefault = false)
         where TFinder : ISymbolFinder
     {
         return AddFinder(typeof(TFinder), isDefault);
@@ -129,7 +129,7 @@ public class SymbolOptionsBuilder
     }
 
 
-    public SymbolOptionsBuilder AddTranslator<TTranslator>(bool isDefault = false) 
+    public SymbolOptionsBuilder AddTranslator<TTranslator>(bool isDefault = false)
         where TTranslator : ISymbolTranslator
     {
         return AddTranslator(typeof(TTranslator), isDefault);
@@ -138,8 +138,8 @@ public class SymbolOptionsBuilder
 
     public SymbolOptionsBuilder AddFormatter(Type formatter, bool isDefault = false)
     {
-        if ( !formatter.IsAssignableTo(typeof(ISymbolFinder))
-            || !formatter.IsAssignableTo(typeof(ISymbolTranslator)) )
+        if (!formatter.IsAssignableTo(typeof(ISymbolFinder))
+            || !formatter.IsAssignableTo(typeof(ISymbolTranslator)))
         {
             throw new ArgumentException(
                 $"Give type {formatter} is not a valid formatter");

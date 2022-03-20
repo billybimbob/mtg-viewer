@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -20,7 +19,7 @@ namespace MTGViewer.Pages.Treasury;
 public class DeleteModel : PageModel
 {
     private readonly CardDbContext _dbContext;
-    private int _pageSize;
+    private readonly int _pageSize;
 
     public DeleteModel(CardDbContext dbContext, PageSizes pageSizes)
     {
@@ -104,7 +103,7 @@ public class DeleteModel : PageModel
             .AllAsync(b => b.Id == box.Id || b.BinId != box.BinId, cancel);
 
         _dbContext.Holds.RemoveRange(box.Holds);
-        _dbContext.Boxes.Remove(box); 
+        _dbContext.Boxes.Remove(box);
 
         if (isSingleBin)
         {

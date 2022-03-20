@@ -44,7 +44,7 @@ public class StatusTests : IAsyncLifetime
     public Task DisposeAsync() => _testGen.ClearAsync();
 
 
-    private IQueryable<Trade> TradesInSet => 
+    private IQueryable<Trade> TradesInSet =>
         _dbContext.Trades
             .Join(_dbContext.Wants,
                 trade => trade.ToId,
@@ -115,7 +115,7 @@ public class StatusTests : IAsyncLifetime
 
         Assert.NotEqual(tradesBefore, tradesAfter);
 
-        Assert.All(tradesBefore, tId => 
+        Assert.All(tradesBefore, tId =>
             Assert.DoesNotContain(tId, tradesAfter));
     }
 }

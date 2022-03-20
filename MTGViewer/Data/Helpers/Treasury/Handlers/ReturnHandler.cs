@@ -36,9 +36,9 @@ internal abstract class ReturnHandler
 
     public void ApplyReturns()
     {
-        foreach ((Card card, int numCopies, Storage storage) in GetAssignments())
+        foreach ((Card card, int copies, Storage storage) in GetAssignments())
         {
-            ExchangeContext.ReturnCopies(card, numCopies, storage);
+            ExchangeContext.ReturnCopies(card, copies, storage);
         }
     }
 }
@@ -89,7 +89,7 @@ internal class ExactReturn : ReturnHandler
 
         var giveCards = ExchangeContext.Deck.GiveBacks.Select(w => w.Card);
 
-        // TODO: account for changing NumCopies while iter
+        // TODO: account for changing Copies while iter
         return Assignment.ExactAddLookup(availableHolds, giveCards, storageSpace);
     }
 }
@@ -145,7 +145,7 @@ internal class ApproximateReturn : ReturnHandler
 
         var storageSpace = TreasuryContext.StorageSpace;
 
-        // TODO: account for changing NumCopies while iter
+        // TODO: account for changing Copies while iter
         return Assignment.ApproxAddLookup(availableHolds, giveCards, storageSpace);
     }
 }
@@ -204,7 +204,7 @@ internal class GuessReturn : ReturnHandler
             .Union(available)
             .Cast<Storage>()
             .Concat(excess);
-        
+
         return Assignment.FitToBoxes(
             giveBack.Card, giveBack.Copies, bestTargets, storageSpace);
     }

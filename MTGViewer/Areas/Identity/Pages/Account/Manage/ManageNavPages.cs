@@ -1,7 +1,7 @@
 using System;
 using Microsoft.AspNetCore.Mvc.Rendering;
 
-namespace  MTGViewer.Areas.Identity.Pages.Account.Manage
+namespace MTGViewer.Areas.Identity.Pages.Account.Manage
 {
     public static class ManageNavPages
     {

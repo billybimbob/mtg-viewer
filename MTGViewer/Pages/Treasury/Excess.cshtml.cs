@@ -32,7 +32,7 @@ public class ExcessModel : PageModel
 
 
     public async Task<IActionResult> OnGetAsync(
-        string? seek, 
+        string? seek,
         SeekDirection direction,
         string? cardId,
         CancellationToken cancel)

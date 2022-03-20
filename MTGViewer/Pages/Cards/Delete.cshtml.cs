@@ -145,7 +145,7 @@ public class DeleteModel : PageModel
         int maxCopies = storageHolds.Sum(h => h.Copies);
 
         if (!ModelState.IsValid
-            || maxCopies == 0 
+            || maxCopies == 0
             || maxCopies < Input.RemoveCopies)
         {
             Card = CardAsDeleteLink(card);

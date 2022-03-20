@@ -99,10 +99,10 @@ public class DeleteTests : IAsyncLifetime
     [InlineData(0)]
     [InlineData(5)]
     [InlineData(10)]
-    public async Task OnPost_ValidDeck_ReturnsCards(int numCopies)
+    public async Task OnPost_ValidDeck_ReturnsCards(int copies)
     {
         // Arrange
-        var deck = await _testGen.CreateDeckAsync(numCopies);
+        var deck = await _testGen.CreateDeckAsync(copies);
 
         await _pageFactory.AddModelContextAsync(_deleteModel, deck.OwnerId);
 

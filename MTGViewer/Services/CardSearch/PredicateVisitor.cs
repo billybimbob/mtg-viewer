@@ -6,12 +6,10 @@ namespace MTGViewer.Services;
 
 internal class PredicateVisitor : ExpressionVisitor
 {
-    private Expression _parent;
-    private Dictionary<string, ConstantExpression> _propertyNames;
+    private readonly Dictionary<string, ConstantExpression> _propertyNames;
 
-    public PredicateVisitor(MtgApiQuery parent)
+    public PredicateVisitor()
     {
-        _parent = Expression.Constant(parent);
         _propertyNames = new();
     }
 
@@ -127,12 +125,12 @@ internal class PredicateVisitor : ExpressionVisitor
 
         return node;
     }
-    
 
-    private MethodCallExpression CallQuery(Expression propertyName, Expression value)
+
+    private static MethodCallExpression CallQuery(Expression propertyName, Expression value)
     {
         return Expression.Call(
-            _parent,
+            null,
             MtgApiQuery.QueryMethod,
             NullDictionary, propertyName, value);
     }
@@ -159,7 +157,7 @@ internal class PredicateVisitor : ExpressionVisitor
 
     private class AllPredicateVisitor : ExpressionVisitor
     {
-        private Dictionary<string, ConstantExpression> _propertyNames;
+        private readonly Dictionary<string, ConstantExpression> _propertyNames;
 
         public AllPredicateVisitor(Dictionary<string, ConstantExpression> propertyNames)
         {

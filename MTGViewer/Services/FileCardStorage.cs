@@ -25,7 +25,7 @@ public class FileCardStorage
 
     public FileCardStorage(
         IOptions<SeedSettings> seedOptions,
-        BulkOperations bulkOperations, 
+        BulkOperations bulkOperations,
         LoadingProgress loadProgress)
     {
         _defaultFilename = Path.ChangeExtension(seedOptions.Value.JsonPath, ".json");
@@ -58,9 +58,9 @@ public class FileCardStorage
     }
 
 
-    private async Task<Stream> SerializeAsync(CardStream stream, CancellationToken cancel)
+    private static async Task<Stream> SerializeAsync(CardStream stream, CancellationToken cancel)
     {
-        var serializeOptions = new JsonSerializerOptions 
+        var serializeOptions = new JsonSerializerOptions
         {
             ReferenceHandler = ReferenceHandler.Preserve
         };
@@ -107,13 +107,13 @@ public class FileCardStorage
         var deserializeOptions = new JsonSerializerOptions
         {
             ReferenceHandler = ReferenceHandler.Preserve,
-            PropertyNameCaseInsensitive = true 
+            PropertyNameCaseInsensitive = true
         };
 
         var data = await JsonSerializer.DeserializeAsync<CardData>(reader, deserializeOptions, cancel);
         if (data is null)
         {
-            throw new ArgumentException(nameof(path));
+            throw new ArgumentException("Json file format is not valid", nameof(path));
         }
 
         _loadProgress.AddProgress(10); // percent is a guess, TODO: more informed value
@@ -134,7 +134,7 @@ public class FileCardStorage
         var data = await JsonSerializer.DeserializeAsync<CardData>(jsonStream, deserializeOptions, cancel);
         if (data is null)
         {
-            throw new ArgumentException(nameof(jsonStream));
+            throw new ArgumentException("Json file format is not valid", nameof(jsonStream));
         }
 
         _loadProgress.AddProgress(10); // percent is a guess, TODO: more informed value
@@ -164,8 +164,8 @@ public class FileCardStorage
     }
 
 
-    private Task<Dictionary<string, int>> CsvAdditionsAsync(
-        CsvReader csv, 
+    private static Task<Dictionary<string, int>> CsvAdditionsAsync(
+        CsvReader csv,
         CancellationToken cancel)
     {
         return csv
@@ -174,14 +174,14 @@ public class FileCardStorage
 
             .GroupByAwaitWithCancellation(
                 MultiverseIdAsync,
-                async (multiverseId, ccs, cnl) => 
+                async (multiverseId, ccs, cnl) =>
                     (multiverseId, quantity: await ccs.SumAsync(cc => cc.Quantity, cnl)))
 
             .ToDictionaryAsync(
                 cc => cc.multiverseId, cc => cc.quantity, cancel)
             .AsTask();
 
-        ValueTask<string> MultiverseIdAsync(CsvCard card, CancellationToken _)
+        static ValueTask<string> MultiverseIdAsync(CsvCard card, CancellationToken _)
         {
             return ValueTask.FromResult(card.MultiverseID);
         }

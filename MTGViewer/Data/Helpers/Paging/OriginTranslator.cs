@@ -125,7 +125,7 @@ public sealed class OriginTranslator<TOrigin, TEntity>
         {
             return true;
         }
-        
+
         if (TryAddFromProjection(member))
         {
             return true;
@@ -258,7 +258,7 @@ public sealed class OriginTranslator<TOrigin, TEntity>
         return assignment.Expression switch
         {
             MemberExpression => TryAddFromMember(registration, translation),
-            MemberInitExpression i => TryAddFromMemberInit(registration, translation, i), 
+            MemberInitExpression i => TryAddFromMemberInit(registration, translation, i),
             ConditionalExpression c => TryAddFromConditional(registration, translation, c),
             _ => false
         };

@@ -4,11 +4,8 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 using MTGViewer.Areas.Identity.Data;
@@ -24,25 +21,15 @@ public class IndexModel : PageModel
 {
     private readonly int _pageSize;
     private readonly CardDbContext _dbContext;
-
-    private readonly SignInManager<CardUser> _signInManager;
-    private readonly UserManager<CardUser> _userManager;
-
     private readonly ILogger<IndexModel> _logger;
 
     public IndexModel(
-        CardDbContext dbContext, 
+        CardDbContext dbContext,
         PageSizes pageSizes,
-        SignInManager<CardUser> signInManager,
-        UserManager<CardUser> userManager,
         ILogger<IndexModel> logger)
     {
         _pageSize = pageSizes.GetPageModelSize<IndexModel>();
         _dbContext = dbContext;
-
-        _signInManager = signInManager;
-        _userManager = userManager;
-
         _logger = logger;
     }
 
@@ -51,7 +38,6 @@ public class IndexModel : PageModel
 
 
     public async Task<IActionResult> OnGetAsync(
-        int? id,
         int? seek,
         SeekDirection direction,
         CancellationToken cancel)

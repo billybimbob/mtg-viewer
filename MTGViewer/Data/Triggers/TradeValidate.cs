@@ -9,12 +9,10 @@ namespace MTGViewer.Data.Triggers;
 
 public class TradeValidate : IBeforeSaveTrigger<Trade>
 {
-    private readonly CardDbContext _dbContext;
     private readonly ILogger<TradeValidate> _logger;
 
-    public TradeValidate(CardDbContext dbContext, ILogger<TradeValidate> logger)
+    public TradeValidate(ILogger<TradeValidate> logger)
     {
-        _dbContext = dbContext;
         _logger = logger;
     }
 

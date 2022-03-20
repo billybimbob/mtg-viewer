@@ -43,9 +43,9 @@ public class ApproveConfirmationModel : PageModel
         var token = Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(code));
 
         bool validToken = await _userManager.VerifyUserTokenAsync(
-            user, 
-            TokenOptions.DefaultProvider, 
-            EmailVerification.Approval, 
+            user,
+            TokenOptions.DefaultProvider,
+            EmailVerification.Approval,
             token);
 
         if (!validToken)

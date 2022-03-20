@@ -76,7 +76,7 @@ public class QuantityValidate : IBeforeSaveTrigger<Quantity>, IAfterSaveTrigger<
 
         await _dbContext.Entry(quantity)
             .Reference(q => q.Location)
-            .LoadAsync();
+            .LoadAsync(cancel);
 
         _dbContext.Entry(quantity).State = EntityState.Deleted;
 

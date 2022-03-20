@@ -33,7 +33,7 @@ public class DeleteTests : IAsyncLifetime
     public Task InitializeAsync() => _testGen.SeedAsync();
 
     public Task DisposeAsync() => _testGen.ClearAsync();
-    
+
 
     [Fact]
     public async Task OnPost_NullInput_NotFound()

@@ -38,12 +38,12 @@ public class MTGQueryTests
     }
 
 
-    private string GetName() => TestName;
+    private static string GetName() => TestName;
 
 
     [Fact(Skip = "Calls external api")]
     public async Task Search_NameParamCall_ReturnsSameName()
-    { 
+    {
         var cards = await _mtgQuery
             .Where(c => c.Name == GetName())
             .SearchAsync();
@@ -61,7 +61,7 @@ public class MTGQueryTests
             .Where(c => c.Name == SplitName)
             .SearchAsync();
 
-        var first = cards.FirstOrDefault();
+        var first = cards[0];
 
         Assert.NotNull(first);
         Assert.NotNull(first!.Flip);

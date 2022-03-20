@@ -13,20 +13,17 @@ namespace MTGViewer.Areas.Identity.Pages.Account.Manage;
 public class EmailModel : PageModel
 {
     private readonly UserManager<CardUser> _userManager;
-    private readonly SignInManager<CardUser> _signInManager;
     private readonly EmailVerification _emailVerify;
 
     public EmailModel(
         UserManager<CardUser> userManager,
-        SignInManager<CardUser> signInManager,
         EmailVerification emailVerify)
     {
         _userManager = userManager;
-        _signInManager = signInManager;
         _emailVerify = emailVerify;
     }
 
-    
+
     public string Email { get; set; } = default!;
 
     public bool IsEmailConfirmed { get; set; }
@@ -38,7 +35,7 @@ public class EmailModel : PageModel
     [BindProperty]
     public InputModel? Input { get; set; }
 
-    
+
     public class InputModel
     {
         [Required]

@@ -33,7 +33,7 @@ public class CardTextTests
     public void FindMana_ManaCost_ManaSymbolArray()
     {
         var manaCost = "{3}{W}{W}";
-        var manaSymbols = new [] { "3", "W", "W" };
+        var manaSymbols = new[] { "3", "W", "W" };
 
         var parsedMana = _cardText.FindMana(manaCost).Select(m => m.Value);
 
@@ -44,7 +44,7 @@ public class CardTextTests
     [Fact]
     public void ManaString_ManaSymbolArray_ManaCost()
     {
-        var symbolArray = new [] { "3", "W", "W" };
+        var symbolArray = new[] { "3", "W", "W" };
         var manaCost = "{3}{W}{W}";
 
         var translation = symbolArray.Select(_cardText.ManaString);
@@ -123,8 +123,8 @@ public class CardTextTests
     [Fact]
     public void SagaString_MultipleSymbols_MultipleSagas()
     {
-        var symbols = new SagaSymbol[] 
-        { 
+        var symbols = new SagaSymbol[]
+        {
             new(default, "I", true), new(default, "II", false)
         };
 

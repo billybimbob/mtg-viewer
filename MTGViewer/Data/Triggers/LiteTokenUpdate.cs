@@ -8,7 +8,7 @@ using MTGViewer.Data.Concurrency;
 
 namespace MTGViewer.Data.Triggers;
 
-public class LiteTokenUpdate : IBeforeSaveTrigger<Concurrent> 
+public class LiteTokenUpdate : IBeforeSaveTrigger<Concurrent>
 {
     private readonly ILogger<LiteTokenUpdate> _logger;
 

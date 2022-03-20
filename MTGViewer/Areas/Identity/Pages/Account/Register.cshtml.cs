@@ -18,20 +18,17 @@ public class RegisterModel : PageModel
 {
     private readonly ReferenceManager _referenceManager;
     private readonly UserManager<CardUser> _userManager;
-    private readonly SignInManager<CardUser> _signInManager;
     private readonly EmailVerification _emailVerify;
     private readonly ILogger<RegisterModel> _logger;
 
     public RegisterModel(
         ReferenceManager referenceManager,
         UserManager<CardUser> userManager,
-        SignInManager<CardUser> signInManager,
         EmailVerification emailVerify,
         ILogger<RegisterModel> logger)
     {
         _referenceManager = referenceManager;
         _userManager = userManager;
-        _signInManager = signInManager;
         _emailVerify = emailVerify;
         _logger = logger;
     }

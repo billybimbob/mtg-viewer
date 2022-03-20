@@ -16,7 +16,7 @@ public class FixedCache
         _logger = logger;
         _cache = cache;
         _options = new()
-        { 
+        {
             Size = 1,
             // TODO: add config expire
             AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(5)

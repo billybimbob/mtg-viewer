@@ -134,7 +134,7 @@ else
 
                 <button type="button" title="Remove @card.Name"
                     class="list-group-item list-group-item-action px-2"
-                    disabled="@(group.NumCopies <= 0)"
+                    disabled="@(group.Copies <= 0)"
                     @onclick="() => RemoveCardFromDeck(card)">
 
                     <div class="row">

@@ -34,7 +34,7 @@ public static class StringExtensions
             Username = urlValues["user"].Value,
             Password = urlValues["password"].Value,
             Host = urlValues["host"].Value,
-            Port = int.Parse( urlValues["port"].Value ),
+            Port = int.Parse(urlValues["port"].Value),
             Database = urlValues["database"].Value,
             SslMode = SslMode.Prefer
         };

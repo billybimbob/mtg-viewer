@@ -24,7 +24,7 @@ internal static class ExecuteOffset<TEntity>
             is not ConstantExpression { Value: PageInfo pageInfo })
         {
             throw new ArgumentException(
-                $"{nameof(query)} must have a \"Skip\" followed by a \"Take\"");
+                "Missing expected \"Skip\" followed by a \"Take\"", nameof(query));
         }
 
         var withoutOffset = query.Provider
@@ -49,7 +49,7 @@ internal static class ExecuteOffset<TEntity>
             is not ConstantExpression { Value: PageInfo pageInfo })
         {
             throw new ArgumentException(
-                $"{nameof(query)} must have a \"Skip\" followed by a \"Take\"");
+                "Missing expected \"Skip\" followed by a \"Take\"", nameof(query));
         }
 
         var withoutOffset = query.Provider

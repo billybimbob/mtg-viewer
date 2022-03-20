@@ -6,7 +6,6 @@ using Microsoft.EntityFrameworkCore;
 using Xunit;
 
 using MTGViewer.Data;
-using MTGViewer.Services;
 using MTGViewer.Pages.Treasury;
 using MTGViewer.Tests.Utils;
 
@@ -21,8 +20,7 @@ public class ExportTests : IAsyncLifetime
 
     public ExportTests(
         ExportModel exportModel,
-        CardDbContext dbContext, 
-        BulkOperations bulkOperations,
+        CardDbContext dbContext,
         TestDataGenerator testGen,
         PageContextFactory pageContext)
     {

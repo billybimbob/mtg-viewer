@@ -55,7 +55,7 @@ public sealed class MtgApiFlipQuery
 
         return GetValidatedCard(iCard, flip);
     }
-    
+
 
     private async Task<Flip?> GetFlipAsync(ICard card, CancellationToken cancel)
     {
@@ -83,7 +83,7 @@ public sealed class MtgApiFlipQuery
 
 
     public async ValueTask<IReadOnlyList<Card>> GetCardsAsync(
-        IOperationResult<List<ICard>> result, 
+        IOperationResult<List<ICard>> result,
         CancellationToken cancel)
     {
         if (LoggedUnwrap(result)
@@ -100,7 +100,7 @@ public sealed class MtgApiFlipQuery
                 (_, cards) => new Queue<ICard>(cards))
 
             .ToAsyncEnumerable()
-            .SelectAwaitWithCancellation( CardWithFlipAsync )
+            .SelectAwaitWithCancellation(CardWithFlipAsync)
             .OfType<Card>()
             .ToListAsync(cancel);
     }
@@ -132,7 +132,7 @@ public sealed class MtgApiFlipQuery
 
 
     private async ValueTask<Flip?> GetFlipAsync(ICard card, Queue<ICard> cardGroup, CancellationToken cancel)
-    { 
+    {
         if (cardGroup.TryDequeue(out var iFlip)
             && GetValidatedFlip(iFlip) is Flip groupFlip)
         {

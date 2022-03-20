@@ -34,7 +34,7 @@ public class HistoryModel : PageModel
 
     public HistoryModel(
         PageSizes pageSizes,
-        CardDbContext dbContext, 
+        CardDbContext dbContext,
         UserManager<CardUser> userManager,
         IAuthorizationService authorization,
         ILogger<HistoryModel> logger)
@@ -64,7 +64,7 @@ public class HistoryModel : PageModel
 
 
     public async Task<IActionResult> OnGetAsync(
-        int id, 
+        int id,
         int? seek,
         SeekDirection direction,
         string? tz,
@@ -129,7 +129,7 @@ public class HistoryModel : PageModel
                     .ThenBy(c => c.Card.Name)
                     .ThenBy(c => c.Copies)
                     .ThenBy(c => c.Id)
-                    
+
             .Select(c => new ChangePreview
             {
                 Id = c.Id,
@@ -168,7 +168,7 @@ public class HistoryModel : PageModel
                     ImageUrl = c.Card.ImageUrl
                 }
             });
-            ;
+        ;
     }
 
 

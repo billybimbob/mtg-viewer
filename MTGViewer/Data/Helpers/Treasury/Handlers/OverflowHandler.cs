@@ -31,15 +31,15 @@ internal abstract class OverflowHandler
 
     public void TransferOverflow()
     {
-        foreach ((Hold source, int numCopies, Storage storage) in GetAssignments())
+        foreach ((Hold source, int copies, Storage storage) in GetAssignments())
         {
-            TreasuryContext.TransferCopies(source.Card, numCopies, storage, source.Location);
+            TreasuryContext.TransferCopies(source.Card, copies, storage, source.Location);
         }
     }
 }
 
 
-internal class ExactOverflow: OverflowHandler
+internal class ExactOverflow : OverflowHandler
 {
     private ILookup<string, Storage>? _exactMatches;
 

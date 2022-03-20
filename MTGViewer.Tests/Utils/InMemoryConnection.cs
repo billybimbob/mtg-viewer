@@ -16,7 +16,7 @@ public sealed class InMemoryConnection : IAsyncDisposable, IDisposable
         return conn;
     });
 
-    private readonly Lazy<string> _database = new(() => 
+    private readonly Lazy<string> _database = new(() =>
         "Test-Database-" + Guid.NewGuid());
 
 

@@ -81,7 +81,7 @@ internal class MtgPageSizeParameter : IMtgParameter
 
     public IMtgParameter Accept(object? value)
     {
-        if (value is int pageSize and >0 and <= MtgApiQuery.Limit)
+        if (value is int pageSize and > 0 and <= MtgApiQuery.Limit)
         {
             return new MtgPageSizeParameter(pageSize);
         }
@@ -114,7 +114,7 @@ internal class MtgPageParameter : IMtgParameter
 
     public IMtgParameter Accept(object? value)
     {
-        if (value is int page and >1)
+        if (value is int page and > 1)
         {
             return new MtgPageParameter(page);
         }
@@ -136,7 +136,7 @@ internal class MtgColorParameter : IMtgParameter
 {
     public MtgColorParameter() : this(Color.None)
     { }
-    
+
     private MtgColorParameter(Color color)
     {
         _color = color;
@@ -177,7 +177,7 @@ internal class MtgRarityParameter : IMtgParameter
 {
     public MtgRarityParameter() : this(null)
     { }
-    
+
     private MtgRarityParameter(Rarity? rarity)
     {
         _rarity = rarity;

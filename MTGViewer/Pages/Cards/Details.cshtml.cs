@@ -129,7 +129,7 @@ public class DetailsModel : PageModel
                 }));
 
 
-    private void MergeExcessHolds(Card card)
+    private static void MergeExcessHolds(Card card)
     {
         var excessHolds = card.Holds
             .Where(h => h.Location is Excess);

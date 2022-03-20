@@ -64,7 +64,7 @@ public static class SymbolExtensions
 
         var currentSymbols = symbolStrings
             .Where(ss => ss.Count > 0)
-            .Select(ss => 
+            .Select(ss =>
             {
                 var symbol = ss.GetEnumerator();
                 symbol.MoveNext();
