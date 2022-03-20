@@ -39,7 +39,7 @@ internal class MtgCardSearch : IMTGCardSearch
             .QueryFromPredicate(_parameters.ToBuilder(), predicate);
     }
 
-    public ValueTask<OffsetList<Card>> SearchAsync(CancellationToken cancel = default)
+    public Task<OffsetList<Card>> SearchAsync(CancellationToken cancel = default)
     {
         return _provider.SearchAsync(this, cancel);
     }

@@ -57,7 +57,7 @@ public sealed class MtgApiFlipQuery
     }
     
 
-    private async ValueTask<Flip?> GetFlipAsync(ICard card, CancellationToken cancel)
+    private async Task<Flip?> GetFlipAsync(ICard card, CancellationToken cancel)
     {
         var colors = card.ColorIdentity ?? Enumerable.Empty<string>();
 

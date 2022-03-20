@@ -22,8 +22,8 @@
     <hr />
     <EditForm OnValidSubmit="@SubmitSearchAsync" EditContext="@SearchEdit">
         <DataAnnotationsValidator />
-        <div class="row">
 
+        <div class="row">
             <div class="col-md order-md-last">
                 <ValidationSummary role="alert"/>
                 <section>
@@ -89,14 +89,12 @@
 
                 <div class="form-group">
                     <InputText @bind-Value="Query.Name" 
-                        disabled="@IsBusy"
                         placeholder="@Query.DisplayName(c => c.Name)" 
                         class="form-control" />
                 </div>
 
                 <div class="form-group">
                     <InputNumber @bind-Value="Query.Cmc" min="0"
-                        disabled="@IsBusy"
                         placeholder="@Query.DisplayName(c => c.Cmc)" 
                         class="form-control" />
                 </div>
@@ -115,14 +113,13 @@
 
                 <div class="form-group">
                     <InputText @bind-Value="Query.SetName" 
-                        disabled="@IsBusy"
                         placeholder="@Query.DisplayName(c => c.SetName)" 
                         class="form-control" />
                 </div>
 
                 <div class="form-group">
                     <InputSelect @bind-Value="Query.Rarity"
-                        title="rarity-input" disabled="@IsBusy" class="form-control">
+                        title="rarity-input" class="form-control">
 
                         <option value="@(null as Rarity?)"> Choose Rarity </option>
 
@@ -135,49 +132,42 @@
 
                 <div class="form-group">
                     <InputText @bind-Value="Query.Type"
-                        disabled="@IsBusy"
                         placeholder="@Query.DisplayName(c => c.Type)"
                         class="form-control" />
                 </div>
 
                 <div class="form-group">
                     <InputText @bind-Value="Query.Power" 
-                        disabled="@IsBusy"
                         placeholder="@Query.DisplayName(c => c.Power)" 
                         class="form-control" />
                 </div>
 
                 <div class="form-group">
                     <InputText @bind-Value="Query.Toughness" 
-                        disabled="@IsBusy"
                         placeholder="@Query.DisplayName(c => c.Toughness)" 
                         class="form-control" />
                 </div>
 
                 <div class="form-group">
                     <InputText @bind-Value="Query.Loyalty" 
-                        disabled="@IsBusy"
                         placeholder="@Query.DisplayName(c => c.Loyalty)" 
                         class="form-control" />
                 </div>
 
                 <div class="form-group">
                     <InputTextArea @bind-Value="Query.Text" 
-                        disabled="@IsBusy"
                         placeholder="@Query.DisplayName(c => c.Text)" 
                         class="form-control" />
                 </div>
 
                 <div class="form-group">
                     <InputTextArea @bind-Value="Query.Flavor" 
-                        disabled="@IsBusy"
                         placeholder="@Query.DisplayName(c => c.Flavor)" 
                         class="form-control" />
                 </div>
 
                 <div class="form-group">
                     <InputText @bind-Value="Query.Artist" 
-                        disabled="@IsBusy"
                         placeholder="@Query.DisplayName(c => c.Artist)" 
                         class="form-control" />
                 </div>
@@ -239,7 +229,14 @@ else
                     <tr>
                         <td> 
                             <HoverCard Target="card">
-                                <span class="btn-link">@card.Name</span> 
+                                @if (match.HasDetails)
+                                {
+                                    <a href="/Cards/Details/@card.Id"> @card.Name </a>
+                                }
+                                else
+                                {
+                                    <span class="btn-link"> @card.Name </span> 
+                                }
                             </HoverCard> 
                         </td>
                         <td>
@@ -252,7 +249,7 @@ else
                         <td>
                             <input @bind="match.NumCopies"
                                 title="@card.Name Copies" 
-                                type="number" min="0" max="@PageSizes.Limit"
+                                type="number" min="0" max="@match.Limit"
                                 class="form-control amt-input" />
                         </td>
                     </tr>

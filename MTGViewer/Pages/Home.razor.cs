@@ -25,16 +25,21 @@ public partial class Home : ComponentBase, IDisposable
     protected ILogger<Home> Logger { get; set; } = default!;
 
 
-    internal bool IsEmptyCollection => !_randomContext?.Cards.Any() ?? false;
-    internal bool IsFullyLoaded => !_randomContext?.HasMore ?? true;
+    internal bool IsFirstLoad => IsBusy && _randomContext is null;
+
+    internal bool IsEmptyCollection => _randomContext is { Cards.Count: 0 };
+
+    internal bool IsFullyLoaded => _randomContext is null or { HasMore: false };
 
     internal IReadOnlyList<CardImage> RandomCards => _randomContext?.Cards ?? Array.Empty<CardImage>();
+
     internal IReadOnlyList<RecentTransaction> RecentChanges => _recentChanges;
 
     internal bool IsBusy { get; private set; }
 
 
     private const int ChunkSize = 4;
+
     private readonly CancellationTokenSource _cancel = new();
 
     private RecentTransaction[] _recentChanges = Array.Empty<RecentTransaction>();
@@ -53,16 +58,16 @@ public partial class Home : ComponentBase, IDisposable
 
         try
         {
-            var cancelToken = _cancel.Token;
+            var token = _cancel.Token;
             int loadLimit = PageSizes.Limit;
 
-            await using var dbContext = await DbFactory.CreateDbContextAsync(cancelToken);
+            await using var dbContext = await DbFactory.CreateDbContextAsync(token);
 
-            _randomContext = await RandomCardsContext.CreateAsync(dbContext, loadLimit, cancelToken);
+            _randomContext = await RandomCardsContext.CreateAsync(dbContext, loadLimit, token);
 
             _recentChanges = await RecentTransactionsAsync
                 .Invoke(dbContext, loadLimit)
-                .ToArrayAsync(cancelToken);
+                .ToArrayAsync(token);
 
             _currentTime = DateTime.UtcNow;
         }
@@ -115,7 +120,7 @@ public partial class Home : ComponentBase, IDisposable
 
     internal async Task LoadMoreCardsAsync()
     {
-        if (IsBusy || _randomContext is null || !_randomContext.HasMore)
+        if (IsBusy || _randomContext is null or { HasMore: false })
         {
             return;
         }
@@ -124,11 +129,11 @@ public partial class Home : ComponentBase, IDisposable
         
         try
         {
-            var cancelToken = _cancel.Token;
+            var token = _cancel.Token;
 
-            await using var dbContext = await DbFactory.CreateDbContextAsync(cancelToken);
+            await using var dbContext = await DbFactory.CreateDbContextAsync(token);
 
-            await _randomContext.LoadNextChunkAsync(dbContext, cancelToken);
+            await _randomContext.LoadNextChunkAsync(dbContext, token);
         }
         catch (OperationCanceledException ex)
         {
@@ -172,7 +177,7 @@ public partial class Home : ComponentBase, IDisposable
         }
 
 
-        public static async ValueTask<RandomCardsContext> CreateAsync(
+        public static async Task<RandomCardsContext> CreateAsync(
             CardDbContext dbContext, 
             int loadLimit, 
             CancellationToken cancel)

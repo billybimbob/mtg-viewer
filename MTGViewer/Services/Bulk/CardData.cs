@@ -33,7 +33,7 @@ public sealed class CardData
 
     // possible memory issue?
 
-    public static async ValueTask<CardData> FromStreamAsync(CardStream stream, CancellationToken cancel = default)
+    public static async Task<CardData> FromStreamAsync(CardStream stream, CancellationToken cancel = default)
     {
         return new CardData
         {

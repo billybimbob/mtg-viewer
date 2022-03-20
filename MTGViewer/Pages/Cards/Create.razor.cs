@@ -31,10 +31,6 @@ public partial class Create : OwningComponentBase
 
     [Parameter]
     [SupplyParameterFromQuery]
-    public string? MultiverseId { get; set; }
-
-    [Parameter]
-    [SupplyParameterFromQuery]
     public int? Cmc { get; set; }
 
     [Parameter]
@@ -51,7 +47,7 @@ public partial class Create : OwningComponentBase
 
     [Parameter]
     [SupplyParameterFromQuery]
-    public string[]? Types { get; set; }
+    public string? Types { get; set; }
 
     [Parameter]
     [SupplyParameterFromQuery]
@@ -259,17 +255,12 @@ public partial class Create : OwningComponentBase
             return false;
         }
 
-        var types = Types is { Length: > 0 }
-            ? string.Join(' ', Types)
-            : null;
-
         Query.Name = Name;
-        Query.MultiverseId = MultiverseId;
         Query.Cmc = Cmc;
         Query.Colors = (Color)Colors;
         Query.Rarity = (Rarity?)Rarity;
         Query.SetName = Set;
-        Query.Type = types;
+        Query.Type = Types;
         Query.Artist = Artist;
         Query.Power = Power;
         Query.Toughness = Toughness;
@@ -290,12 +281,11 @@ public partial class Create : OwningComponentBase
         var parameters = new Dictionary<string, object?>
         {
             [nameof(Name)] = query.Name,
-            [nameof(MultiverseId)] = query.MultiverseId,
             [nameof(Cmc)] = query.Cmc,
             [nameof(Colors)] = color,
             [nameof(Rarity)] = (int?)query.Rarity,
             [nameof(Set)] = query.SetName,
-            [nameof(Types)] = query.Type?.Split(),
+            [nameof(Types)] = query.Type,
             [nameof(Artist)] = query.Artist,
             [nameof(Power)] = query.Power,
             [nameof(Loyalty)] = query.Loyalty,
@@ -352,24 +342,26 @@ public partial class Create : OwningComponentBase
 
     internal sealed class MatchInput
     {
-        private readonly int _limit;
-        private int _numCopies;
-
-        public MatchInput(Card card, int limit)
+        public MatchInput(Card card, bool hasDetails, int limit)
         {
             Card = card;
-
-            _limit = limit;
+            HasDetails = hasDetails;
+            Limit = limit;
         }
 
         public Card Card { get; }
 
+        public bool HasDetails { get; }
+
+        public int Limit { get; }
+
+        private int _numCopies;
         public int NumCopies
         {
             get => _numCopies;
             set
             {
-                if (value >= 0 && value <= _limit)
+                if (value >= 0 && value <= Limit)
                 {
                     _numCopies = value;
                 }
@@ -384,11 +376,12 @@ public partial class Create : OwningComponentBase
 
         var result = await ApplyQuery(mtgQuery).SearchAsync(cancel);
 
-        int limit = PageSizes.Limit;
-        var newMatches = result.Select(c => new MatchInput(c, limit));
+        if (result.Any())
+        {
+            await AddNewMatchesAsync(result, cancel);
 
-        _matches.AddRange(newMatches);
-        _matchPage = result.Offset;
+            _matchPage = result.Offset;
+        }
 
         if (!_matches.Any())
         {
@@ -421,6 +414,30 @@ public partial class Create : OwningComponentBase
             .Where(c => c.Flavor!.Contains(Query.Flavor ?? string.Empty))
             .Where(c => c.Artist == Query.Artist)
             .Where(c => c.Page == page) ;
+    }
+
+
+    private async Task AddNewMatchesAsync(IEnumerable<Card> cards, CancellationToken cancel)
+    {
+        var matchIds = cards
+            .Select(c => c.Id)
+            .ToArray();
+
+        await using var dbContext = await DbFactory.CreateDbContextAsync(cancel);
+
+        var existingIds = await dbContext.Cards
+            .OrderBy(c => c.Id)
+            .Select(c => c.Id)
+            .Where(cid => matchIds.Contains(cid))
+            .AsAsyncEnumerable()
+            .ToHashSetAsync(cancel);
+
+        int limit = PageSizes.Limit;
+
+        var newMatches = cards
+            .Select(c => new MatchInput(c, existingIds.Contains(c.Id), limit));
+
+        _matches.AddRange(newMatches);
     }
 
 
@@ -470,17 +487,19 @@ public partial class Create : OwningComponentBase
 
         try
         {
-            var cancelToken = _cancel.Token;
+            var token = _cancel.Token;
 
-            await using var dbContext = await DbFactory.CreateDbContextAsync(cancelToken);
+            await using var dbContext = await DbFactory.CreateDbContextAsync(token);
 
-            await AddNewCardsAsync(dbContext, addedCopies, PageSizes.Limit, cancelToken);
+            await AddNewCardsAsync(dbContext, addedCopies, PageSizes.Limit, token);
 
-            await dbContext.AddCardsAsync(addedCopies, cancelToken);
+            await dbContext.AddCardsAsync(addedCopies, token);
 
-            await dbContext.SaveChangesAsync(cancelToken);
+            await dbContext.SaveChangesAsync(token);
 
             Result = SaveResult.Success;
+
+            NavigateToQuery(_empty);
         }
         catch (DbUpdateException e)
         {
@@ -497,8 +516,6 @@ public partial class Create : OwningComponentBase
         finally
         {
             IsBusy = false;
-
-            await ResetAsync();
         }
     }
 
@@ -526,7 +543,7 @@ public partial class Create : OwningComponentBase
     }
 
 
-    private static async ValueTask<List<string>> ExistingCardIdsAsync(
+    private static Task<List<string>> ExistingCardIdsAsync(
         CardDbContext dbContext,
         IReadOnlyList<Card> cards,
         int limit,
@@ -538,11 +555,12 @@ public partial class Create : OwningComponentBase
                 .Select(c => c.Id)
                 .ToAsyncEnumerable();
 
-            return await dbContext.Cards
+            return dbContext.Cards
                 .Select(c => c.Id)
                 .AsAsyncEnumerable()
                 .Intersect(cardIds)
-                .ToListAsync(cancel);
+                .ToListAsync(cancel)
+                .AsTask();
         }
         else
         {
@@ -550,7 +568,7 @@ public partial class Create : OwningComponentBase
                 .Select(c => c.Id)
                 .ToArray();
 
-            return await dbContext.Cards
+            return dbContext.Cards
                 .Select(c => c.Id)
                 .Where(cid => cardIds.Contains(cid))
                 .ToListAsync(cancel);

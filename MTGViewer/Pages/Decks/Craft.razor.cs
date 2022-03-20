@@ -117,20 +117,21 @@ public partial class Craft : OwningComponentBase
 
         try
         {
-            var userId = await GetUserIdAsync();
+            var token = _cancel.Token;
+            var userId = await GetUserIdAsync(token);
+
             if (userId is null)
             {
                 return;
             }
 
-            var cancelToken = _cancel.Token;
-            await using var dbContext = await DbFactory.CreateDbContextAsync(cancelToken);
+            await using var dbContext = await DbFactory.CreateDbContextAsync(token);
 
             dbContext.Cards.AttachRange(_cards);
 
             var deckResult = DeckId == default
-                ? await CreateDeckAsync(dbContext, userId, cancelToken)
-                : await FetchDeckOrRedirectAsync(dbContext, userId, cancelToken);
+                ? await CreateDeckAsync(dbContext, userId, token)
+                : await FetchDeckOrRedirectAsync(dbContext, userId, token);
 
             if (deckResult is null)
             {
@@ -157,17 +158,21 @@ public partial class Craft : OwningComponentBase
     }
 
 
-    private async Task<string?> GetUserIdAsync()
+    private async Task<string?> GetUserIdAsync(CancellationToken cancel)
     {
-        if (AuthState is null)
-        {
-            return null;
-        }
-
-        var userManager = ScopedServices.GetRequiredService<UserManager<CardUser>>();
         var authState = await AuthState;
 
-        return userManager.GetUserId(authState.User);
+        cancel.ThrowIfCancellationRequested();
+
+        var userManager = ScopedServices.GetRequiredService<UserManager<CardUser>>();
+        var userId = userManager.GetUserId(authState.User);
+
+        if (userId is null)
+        {
+            Logger.LogWarning("User {User} is missing", authState.User);
+        }
+
+        return userId;
     }
 
 
@@ -867,12 +872,12 @@ public partial class Craft : OwningComponentBase
 
         try
         {
-            var cancelToken = _cancel.Token;
-            await using var dbContext = await DbFactory.CreateDbContextAsync(cancelToken);
+            var token = _cancel.Token;
+            await using var dbContext = await DbFactory.CreateDbContextAsync(token);
 
             dbContext.Cards.AttachRange(_cards);
 
-            Result = await SaveOrConcurrentRecoverAsync(dbContext, _deckContext, cancelToken);
+            Result = await SaveOrConcurrentRecoverAsync(dbContext, _deckContext, token);
         }
         catch (OperationCanceledException ex)
         {

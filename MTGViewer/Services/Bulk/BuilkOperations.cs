@@ -203,7 +203,7 @@ public class BulkOperations
     }
 
 
-    private async ValueTask<List<Card>> ExistingCardsAsync(
+    private Task<List<Card>> ExistingCardsAsync(
         CardData data,
         CancellationToken cancel)
     {
@@ -215,7 +215,7 @@ public class BulkOperations
                     .Select(c => c.Id))
                 .ToArray();
 
-            return await _dbContext.Cards
+            return _dbContext.Cards
                 .Where(c => cardIds.Contains(c.Id))
                 .AsNoTracking()
                 .ToListAsync(cancel);
@@ -228,13 +228,14 @@ public class BulkOperations
                     .Select(c => c.Id))
                 .ToAsyncEnumerable();
 
-            return await _dbContext.Cards
+            return _dbContext.Cards
                 .AsNoTracking()
                 .AsAsyncEnumerable()
                 .Join(cardIds,
                     c => c.Id, cid => cid,
                     (card, _) => card)
-                .ToListAsync(cancel);
+                .ToListAsync(cancel)
+                .AsTask();
         }
     }
 
@@ -327,13 +328,13 @@ public class BulkOperations
     }
 
 
-    private async ValueTask<List<Card>> ExistingCardsAsync(
+    private Task<List<Card>> ExistingCardsAsync(
         IEnumerable<string> multiverseIds, 
         CancellationToken cancel)
     {
         if (multiverseIds.Count() < _pageSizes.Limit)
         {
-            return await _dbContext.Cards
+            return _dbContext.Cards
                 .Where(c => multiverseIds.Contains(c.MultiverseId))
                 .ToListAsync(cancel);
         }
@@ -342,13 +343,14 @@ public class BulkOperations
             var asyncMultiverse = multiverseIds
                 .ToAsyncEnumerable();
 
-            return await _dbContext.Cards
+            return _dbContext.Cards
                 .AsAsyncEnumerable()
                 .Join( asyncMultiverse,
                     c => c.MultiverseId,
                     mid => mid,
                     (card, _) => card)
-                .ToListAsync(cancel);
+                .ToListAsync(cancel)
+                .AsTask();
         }
     }
 

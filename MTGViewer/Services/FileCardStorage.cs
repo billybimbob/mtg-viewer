@@ -34,7 +34,7 @@ public class FileCardStorage
     }
 
 
-    public ValueTask<Stream> GetUserBackupAsync(string userId, CancellationToken cancel = default)
+    public Task<Stream> GetUserBackupAsync(string userId, CancellationToken cancel = default)
     {
         var stream = _bulkOperations.GetUserStream(userId);
 
@@ -42,7 +42,7 @@ public class FileCardStorage
     }
 
 
-    public ValueTask<Stream> GetTreasuryBackupAsync(CancellationToken cancel = default)
+    public Task<Stream> GetTreasuryBackupAsync(CancellationToken cancel = default)
     {
         var stream = _bulkOperations.GetTreasuryStream();
 
@@ -50,7 +50,7 @@ public class FileCardStorage
     }
 
 
-    public ValueTask<Stream> GetDefaultBackupAsync(CancellationToken cancel = default)
+    public Task<Stream> GetDefaultBackupAsync(CancellationToken cancel = default)
     {
         var stream = _bulkOperations.GetDefaultStream();
 
@@ -58,7 +58,7 @@ public class FileCardStorage
     }
 
 
-    private async ValueTask<Stream> SerializeAsync(CardStream stream, CancellationToken cancel)
+    private async Task<Stream> SerializeAsync(CardStream stream, CancellationToken cancel)
     {
         var serializeOptions = new JsonSerializerOptions 
         {
@@ -164,7 +164,7 @@ public class FileCardStorage
     }
 
 
-    private ValueTask<Dictionary<string, int>> CsvAdditionsAsync(
+    private Task<Dictionary<string, int>> CsvAdditionsAsync(
         CsvReader csv, 
         CancellationToken cancel)
     {
@@ -178,7 +178,8 @@ public class FileCardStorage
                     (multiverseId, quantity: await ccs.SumAsync(cc => cc.Quantity, cnl)))
 
             .ToDictionaryAsync(
-                cc => cc.multiverseId, cc => cc.quantity, cancel);
+                cc => cc.multiverseId, cc => cc.quantity, cancel)
+            .AsTask();
 
         ValueTask<string> MultiverseIdAsync(CsvCard card, CancellationToken _)
         {

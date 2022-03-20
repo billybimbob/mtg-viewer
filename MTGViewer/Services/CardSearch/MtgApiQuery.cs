@@ -116,7 +116,7 @@ public sealed class MtgApiQuery : IMTGQuery
 
 
 
-    internal async ValueTask<OffsetList<Card>> SearchAsync(
+    internal async Task<OffsetList<Card>> SearchAsync(
         MtgCardSearch values,
         CancellationToken cancel)
     {
@@ -210,7 +210,7 @@ public sealed class MtgApiQuery : IMTGQuery
 
 
 
-    public async ValueTask<Card?> FindAsync(string id, CancellationToken cancel = default)
+    public async Task<Card?> FindAsync(string id, CancellationToken cancel = default)
     {
         if (string.IsNullOrWhiteSpace(id))
         {

@@ -100,7 +100,7 @@ public partial class Collection : ComponentBase, IDisposable
             if (Cards is { Count: 0, Offset.Current: >0})
             {
                 Nav.NavigateTo(
-                    Nav.GetUriWithQueryParameter(nameof(Page), null as bool?), replace: true);
+                    Nav.GetUriWithQueryParameter(nameof(Page), null as int?), replace: true);
                 return;
             }
 
@@ -144,6 +144,10 @@ public partial class Collection : ComponentBase, IDisposable
         try
         {
             filter.FilterChanged -= OnFilterChanged;
+
+            // rerender should trigger at the Yield
+            // NavigateTo should trigger the OnParametersSet event
+            // and another render will occur after OnParameterSet
 
             await Task.Yield();
 
@@ -200,8 +204,8 @@ public partial class Collection : ComponentBase, IDisposable
                 }
 
                 var args = new FilterEventArgs(
-                    KeyValuePair.Create(nameof(Collection.Search), (object?)value),
-                    KeyValuePair.Create(nameof(Collection.Page), (object?)null));
+                    KeyValuePair.Create(nameof(Collection.Search), value as object),
+                    KeyValuePair.Create(nameof(Collection.Page), null as object));
 
                 FilterChanged?.Invoke(this, args);
             }
@@ -256,7 +260,7 @@ public partial class Collection : ComponentBase, IDisposable
             var args = new FilterEventArgs(
                 KeyValuePair.Create(nameof(Collection.Reversed), reversed),
                 KeyValuePair.Create(nameof(Collection.Order), (object?)value),
-                KeyValuePair.Create(nameof(Collection.Page), (object?)null));
+                KeyValuePair.Create(nameof(Collection.Page), null as object));
 
             FilterChanged?.Invoke(this, args);
         }
@@ -312,7 +316,7 @@ public partial class Collection : ComponentBase, IDisposable
 
             var newValues = new FilterEventArgs(
                 KeyValuePair.Create(nameof(Collection.Colors), (object?)(int)value),
-                KeyValuePair.Create(nameof(Collection.Page), (object?)null));
+                KeyValuePair.Create(nameof(Collection.Page), null as object));
 
             FilterChanged?.Invoke(this, newValues);
         }

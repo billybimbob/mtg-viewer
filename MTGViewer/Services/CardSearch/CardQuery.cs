@@ -8,8 +8,8 @@ public sealed record CardQuery
 {
     public string? Id { get; set; }
 
-    [Display(Name = "Multiverse Id")]
-    public string? MultiverseId { get; set; }
+    // [Display(Name = "Multiverse Id")]
+    // public string? MultiverseId { get; set; }
 
     [StringLength(50)]
     public string? Name { get; set; }

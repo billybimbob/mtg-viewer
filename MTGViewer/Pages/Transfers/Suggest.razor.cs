@@ -31,7 +31,7 @@ public partial class Suggest : OwningComponentBase
     public string? ReceiverId { get; set; }
 
     [CascadingParameter]
-    public Task<AuthenticationState?> AuthState { get; set; } = default!;
+    protected Task<AuthenticationState> AuthState { get; set; } = default!;
 
 
     [Inject]
@@ -46,16 +46,16 @@ public partial class Suggest : OwningComponentBase
     [Inject]
     protected ILogger<Suggest> Logger { get; set; } = default!;
 
+    internal bool HasMore => _cursor.HasMore;
 
-    public bool IsBusy => _isBusy;
-    public bool HasMore => _cursor.HasMore;
-    public bool HasDetails => Suggestion.ToId is not null;
+    internal bool HasDetails => Suggestion.ToId is not null;
 
-    public SuggestionDto Suggestion { get; } = new();
+    internal SuggestionDto Suggestion { get; } = new();
+
+    internal bool IsBusy { get; private set; }
 
     private readonly CancellationTokenSource _cancel = new();
     private DeckCursor _cursor;
-    private bool _isBusy;
 
 
     protected override void OnInitialized()
@@ -70,12 +70,12 @@ public partial class Suggest : OwningComponentBase
 
     protected override async Task OnParametersSetAsync()
     {
-        if (_isBusy)
+        if (IsBusy)
         {
             return;
         }
 
-        _isBusy = true;
+        IsBusy = true;
 
         try
         {
@@ -114,7 +114,7 @@ public partial class Suggest : OwningComponentBase
         }
         finally
         {
-            _isBusy = false;
+            IsBusy = false;
         }
     }
 
@@ -136,11 +136,6 @@ public partial class Suggest : OwningComponentBase
     private async ValueTask<string?> GetUserIdAsync(CancellationToken cancel)
     {
         var authState = await AuthState;
-        if (authState is null)
-        {
-            Logger.LogWarning("User is missing");
-            return null;
-        }
 
         cancel.ThrowIfCancellationRequested();
 
@@ -209,15 +204,19 @@ public partial class Suggest : OwningComponentBase
 
     private async void OnReceiverChange(object? sender, ReceiverEventArgs args)
     {
-        if (_isBusy || Suggestion.Card is null)
+        if (IsBusy || Suggestion.Card is null)
         {
             return;
         }
 
-        _isBusy = true;
+        IsBusy = true;
 
         try
         {
+            // rerender should trigger at the Yield
+            // NavigateTo should trigger the OnParametersSet event
+            // and another render will occur after OnParameterSet
+
             await Task.Yield();
 
             Nav.NavigateTo(
@@ -230,19 +229,19 @@ public partial class Suggest : OwningComponentBase
         }
         finally
         {
-            _isBusy = false;
+            IsBusy = false;
         }
     }
 
 
     public void ViewDeckDetails()
     {
-        if (_isBusy || Suggestion.ToId is not int deckId)
+        if (IsBusy || Suggestion.ToId is not int deckId)
         {
             return;
         }
 
-        _isBusy = true;
+        IsBusy = true;
 
         try
         {
@@ -250,19 +249,19 @@ public partial class Suggest : OwningComponentBase
         }
         finally
         {
-            _isBusy = false;
+            IsBusy = false;
         }
     }
 
 
     public async Task LoadDeckPageAsync()
     {
-        if (_isBusy)
+        if (IsBusy)
         {
             return;
         }
 
-        _isBusy = true;
+        IsBusy = true;
 
         try
         {
@@ -278,7 +277,7 @@ public partial class Suggest : OwningComponentBase
         }
         finally
         {
-            _isBusy = false;
+            IsBusy = false;
         }
     }
 
@@ -315,7 +314,7 @@ public partial class Suggest : OwningComponentBase
 
     public async Task SendSuggestionAsync()
     {
-        if (_isBusy)
+        if (IsBusy)
         {
             return;
         }
@@ -326,7 +325,7 @@ public partial class Suggest : OwningComponentBase
             return;
         }
 
-        _isBusy = true;
+        IsBusy = true;
 
         try
         {
@@ -358,7 +357,7 @@ public partial class Suggest : OwningComponentBase
         }
         finally
         {
-            _isBusy = false;
+            IsBusy = false;
         }
     }
 

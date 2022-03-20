@@ -75,7 +75,7 @@ internal sealed class EntityOriginSeek<TEntity, TRefKey, TValueKey> : ISeekable<
     }
 
 
-    public async ValueTask<SeekList<TEntity>> ToSeekListAsync(CancellationToken cancel = default)
+    public async Task<SeekList<TEntity>> ToSeekListAsync(CancellationToken cancel = default)
     {
         var origin = await GetOriginAsync(cancel).ConfigureAwait(false);
 
@@ -95,7 +95,7 @@ internal sealed class EntityOriginSeek<TEntity, TRefKey, TValueKey> : ISeekable<
     }
 
 
-    private async ValueTask<TEntity?> GetOriginAsync(CancellationToken cancel)
+    private async Task<TEntity?> GetOriginAsync(CancellationToken cancel)
     {
         if (_referenceKey is TEntity keyOrigin)
         {
@@ -226,7 +226,7 @@ internal sealed class ResultOriginSeek<TSource, TResult, TRefKey, TValueKey> : I
     }
 
 
-    public async ValueTask<SeekList<TResult>> ToSeekListAsync(CancellationToken cancel = default)
+    public async Task<SeekList<TResult>> ToSeekListAsync(CancellationToken cancel = default)
     {
         var origin = await GetOriginAsync(cancel).ConfigureAwait(false);
 
@@ -248,7 +248,7 @@ internal sealed class ResultOriginSeek<TSource, TResult, TRefKey, TValueKey> : I
     }
 
 
-    private async ValueTask<TResult?> GetOriginAsync(CancellationToken cancel)
+    private async Task<TResult?> GetOriginAsync(CancellationToken cancel)
     {
         if (_referenceKey is TResult keyOrigin)
         {
@@ -366,7 +366,7 @@ internal sealed class ResultOriginSeek<TSource, TResult, TRefKey, TValueKey> : I
 //     }
 
 
-//     public async ValueTask<SeekList<TResult>> ToSeekListAsync(CancellationToken cancel = default)
+//     public async Task<SeekList<TResult>> ToSeekListAsync(CancellationToken cancel = default)
 //     {
 //         var origin = await GetOriginAsync(cancel).ConfigureAwait(false);
 
@@ -388,7 +388,7 @@ internal sealed class ResultOriginSeek<TSource, TResult, TRefKey, TValueKey> : I
 //     }
     
 
-//     private async ValueTask<TSource?> GetOriginAsync(CancellationToken cancel)
+//     private async Task<TSource?> GetOriginAsync(CancellationToken cancel)
 //     {
 //         if (_referenceKey is TSource keyOrigin)
 //         {

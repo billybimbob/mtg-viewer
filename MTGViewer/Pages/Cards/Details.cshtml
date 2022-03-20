@@ -78,21 +78,24 @@
                 Suggest </a>
 
             <a href="@Model.GetCreateCardUri()"
-                title="Add More @Model.Card.Name" class="btn btn-secondary" role="button">
-                Add More </a>
+                title="Add Copies of @Model.Card.Name" class="btn btn-secondary" role="button">
+                Add </a>
 
             <a asp-page="Delete" 
                 asp-route-id="@Model.Card.Id" asp-route-returnurl="@Model.ReturnUrl"
-                title="Delete @Model.Card.Name" class="btn btn-danger" role="button">
-                Delete </a>
+                title="Remove Copies of @Model.Card.Name" class="btn btn-danger" role="button">
+                Remove </a>
         }
         else if (isSignedIn)
         {
             <button type="button" class="btn btn-secondary" disabled>
                 Suggest </button>
 
+            <button type="button" class="btn btn-secondary" disabled>
+                Add </button>
+
             <button type="button" class="btn btn-danger" disabled>
-                Delete </button>
+                Remove </button>
         }
     </div>
 }

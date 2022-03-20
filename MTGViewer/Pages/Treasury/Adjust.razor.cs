@@ -27,13 +27,20 @@ public partial class Adjust : ComponentBase, IDisposable
     protected IDbContextFactory<CardDbContext> DbFactory { get; set; } = default!;
 
     [Inject]
+    protected NavigationManager Nav { get; set; } = default!;
+
+    [Inject]
     protected ILogger<Adjust> Logger { get; set; } = default!;
 
+
     internal IReadOnlyList<Bin> Bins => _bins;
+
     internal BoxDto Box { get; } = new();
 
     internal bool IsBusy { get; private set; }
+
     internal SaveResult Result { get; set; }
+
 
     private readonly CancellationTokenSource _cancel = new();
     private Bin[] _bins = Array.Empty<Bin>();
@@ -50,11 +57,11 @@ public partial class Adjust : ComponentBase, IDisposable
 
         try
         {
-            var cancelToken = _cancel.Token;
+            var token = _cancel.Token;
 
-            await using var dbContext = await DbFactory.CreateDbContextAsync(cancelToken);
+            await using var dbContext = await DbFactory.CreateDbContextAsync(token);
 
-            _bins = await BinsAsync(dbContext).ToArrayAsync(cancelToken);
+            _bins = await BinsAsync(dbContext).ToArrayAsync(token);
         }
         catch (OperationCanceledException e)
         {
@@ -76,12 +83,7 @@ public partial class Adjust : ComponentBase, IDisposable
 
     protected override async Task OnParametersSetAsync()
     {
-        if (IsBusy)
-        {
-            return;
-        }
-        
-        if (BoxId == default)
+        if (IsBusy || BoxId == default)
         {
             return;
         }
@@ -92,17 +94,25 @@ public partial class Adjust : ComponentBase, IDisposable
         {
             var box = await GetBoxAsync(_cancel.Token);
 
-            if (box != null)
+            if (box is null)
             {
-                Box.Id = box.Id;
-                Box.Name = box.Name;
+                Logger.LogError("Box {BoxId} is not valid", BoxId);
 
-                Box.Appearance = box.Appearance;
-                Box.Capacity = box.Capacity;
+                Nav.NavigateTo(
+                    Nav.GetUriWithQueryParameter(nameof(BoxId), null as int?), replace: true);
 
-                Box.Bin.Id = box.Bin.Id;
-                Box.Bin.Name = box.Bin.Name;
+                return;
             }
+
+            Box.Id = box.Id;
+            Box.Name = box.Name;
+
+            Box.Appearance = box.Appearance;
+            Box.Capacity = box.Capacity;
+
+            Box.Bin.Id = box.Bin.Id;
+            Box.Bin.Name = box.Bin.Name;
+
         }
         catch (OperationCanceledException e)
         {

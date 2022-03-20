@@ -11,5 +11,5 @@ public interface ISeekable<TEntity> where TEntity : class
 
     ISeekable<TEntity> Take(int count);
 
-    ValueTask<SeekList<TEntity>> ToSeekListAsync(CancellationToken cancel = default);
+    Task<SeekList<TEntity>> ToSeekListAsync(CancellationToken cancel = default);
 }

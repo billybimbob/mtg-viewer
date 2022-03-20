@@ -154,7 +154,7 @@
             return;
         }
 
-        if (_cancel?.Token is not CancellationToken cancelToken)
+        if (_cancel?.Token is not CancellationToken token)
         {
             return;
         }
@@ -171,16 +171,16 @@
         {
             var fileStorage = ScopedServices.GetRequiredService<FileCardStorage>();
 
-            await using var fileStream = _chosenImport.OpenReadStream(_2_MB, cancelToken);
+            await using var fileStream = _chosenImport.OpenReadStream(_2_MB, token);
 
             switch (Path.GetExtension(_chosenImport.Name).ToLowerInvariant())
             {
                 case ".json":
-                    await fileStorage.JsonAddAsync(fileStream, cancelToken);
+                    await fileStorage.JsonAddAsync(fileStream, token);
                     break;
 
                 case ".csv":
-                    await fileStorage.CsvAddAsync(fileStream, cancelToken);
+                    await fileStorage.CsvAddAsync(fileStream, token);
                     break;
             }
 
