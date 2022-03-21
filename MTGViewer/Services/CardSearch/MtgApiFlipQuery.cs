@@ -92,6 +92,14 @@ public sealed class MtgApiFlipQuery
             return Array.Empty<Card>();
         }
 
+        var missingMultiverseId = iCards
+            .Where(c => c.MultiverseId is null);
+
+        foreach (var missing in missingMultiverseId)
+        {
+            _logger.LogError("{Card} was found, but is missing multiverseId", missing.Name);
+        }
+
         return await iCards
             .Where(c => c.MultiverseId is not null)
             .OrderBy(c => c.MultiverseId)

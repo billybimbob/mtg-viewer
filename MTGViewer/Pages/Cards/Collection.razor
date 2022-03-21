@@ -8,8 +8,8 @@
 
 <h1>Card Collection</h1>
 
-<AuthorizeView>
-    <div class="btn-group" role="group">
+<div class="btn-group" role="group">
+    <AuthorizeView>
         <AuthorizeView Policy="@CardPolicies.ChangeTreasury">
             <Authorized Context="treasuryPolicy">
                 <a class="btn btn-secondary" href="/Cards/Create" role="button">Add Card</a>
@@ -18,8 +18,9 @@
                 <button class="btn btn-secondary" role="button" disabled>Add Card</button>
             </NotAuthorized>
         </AuthorizeView>
-    </div>
-</AuthorizeView>
+    </AuthorizeView>
+    <a class="btn btn-secondary" href="/Cards/Statistics" role="button"> Statistics </a>
+</div>
 
 <CardFilter @bind-SearchName="Filters.SearchName"
     Color="Filters.PickedColors"

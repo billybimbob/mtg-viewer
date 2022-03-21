@@ -376,11 +376,11 @@ public partial class Create : OwningComponentBase
 
         var result = await ApplyQuery(mtgQuery).SearchAsync(cancel);
 
+        _matchPage = result.Offset;
+
         if (result.Any())
         {
             await AddNewMatchesAsync(result, cancel);
-
-            _matchPage = result.Offset;
         }
 
         if (!_matches.Any())

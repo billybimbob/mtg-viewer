@@ -1,18 +1,16 @@
 
 <div class="form-row align-items-center my-3">
     <div class="col-12 col-md-4">
-        <input class="form-control" 
-            placeholder="Card Name" 
-            disabled="@IsDisabled"
-            @bind="Search" />
+        <input class="form-control" placeholder="Card Name"
+            disabled="@IsDisabled" @bind="Search" />
     </div>
 
     <div class="col-auto btn-group pt-2 pt-md-0" role="group" aria-label="Color Buttons">
         @foreach (var (color, symbol) in Symbol.Colors)
         {
-            <button title="@color filter"
+            <button title="Filter By @color"
                 type="button"
-                class="btn btn-outline-secondary border-0 rounded @ColorActive(color)"
+                class="btn btn-outline-secondary ms-filter @ColorActive(color)"
                 disabled="@IsDisabled"
                 @onclick="() => ColorChanged.InvokeAsync(color)">
 

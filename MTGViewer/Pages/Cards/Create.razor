@@ -6,7 +6,7 @@
 
 <PageTitle> Add Cards </PageTitle>
 
-<h1>Add New Card(s)</h1>
+<h1>Add Card(s)</h1>
 
 <SavePrompt @bind-Result="Result">
     <SuccessMessage>
@@ -99,12 +99,12 @@
                         class="form-control" />
                 </div>
 
-                <div class="form-group">
+                <div class="form-group btn-group">
                     @foreach (var (color, symbol) in Symbol.Colors)
                     {
-                        <button title="toggle @color"
+                        <button title="Toggle @color"
                             disabled="@IsBusy" type="button"
-                            class="btn btn-outline-secondary border-0 rounded @ActiveColor(color)"
+                            class="btn btn-outline-secondary ms-filter @ActiveColor(color)"
                             @onclick="() => ToggleColor(color)">
                             <i class="ms ms-@symbol.ToLower() ms-cost"></i>
                         </button>

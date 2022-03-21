@@ -7,9 +7,13 @@
     {
         <text> Edit @Box.Name </text>
     }
-    else
+    else if (IsFormReady)
     {
         <text> Add New Box </text>
+    }
+    else
+    {
+        <text> Treasury Adjustment </text>
     }
 </PageTitle>
 
@@ -18,9 +22,13 @@
     {
         <text> Edit <a href="/Treasury/Details/@Box.Id"> @Box.Name </a> </text>
     }
-    else
+    else if (IsFormReady)
     {
         <text> Add New Box </text>
+    }
+    else
+    {
+        <text> Treasury Adjustment </text>
     }
 </h1>
 <hr />
@@ -49,99 +57,110 @@
     </ErrorMessage>
 </SavePrompt>
 
-<EditForm Model="@Box" OnValidSubmit="ValidBoxSubmittedAsync">
-    <ObjectGraphDataAnnotationsValidator />
+@if (IsFormReady)
+{
+    <EditForm Model="@Box" OnValidSubmit="ValidBoxSubmittedAsync">
+        <ObjectGraphDataAnnotationsValidator />
 
-    <div class="row">
-        <div class="col-12 col-md-8 col-lg-5 order-lg-last">
-            <ValidationSummary role="alert" />
+        <div class="row">
+            <div class="col-12 col-md-8 col-lg-5 order-lg-last">
+                <ValidationSummary role="alert" />
+            </div>
+
+            <div class="col col-md-8 col-lg-4">
+                <div class="form-group">
+                    <label for="@BoxDto.PropertyId(b => b.Name)">
+                        @Box.DisplayName(b => b.Name)
+                    </label>
+                    <InputText @bind-Value="Box.Name" 
+                        id="@BoxDto.PropertyId(b => b.Name)" class="form-control" />
+                </div>
+
+                <div class="form-group">
+                    <label for="@BoxDto.PropertyId(b => b.Bin)">
+                        @Box.DisplayName(b => b.Bin)
+                    </label>
+                    <select @onchange="BinSelected" id="@BoxDto.PropertyId(b => b.Bin)" class="form-control">
+                        <option value="0" selected="@(!Box.Bin.IsEdit)"> Create New </option>
+
+                        @foreach (var bin in Bins)
+                        {
+                            <option value="@bin.Id" selected="@(bin.Id == Box.Bin.Id)"> @bin.Name </option>
+                        }
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="@BinDto.PropertyId(b => b.Name)">
+                        @if (!Box.Bin.IsEdit)
+                        {
+                            <text>
+                                New @Box.DisplayName(b => b.Bin) @Box.Bin.DisplayName(b => b.Name)
+                            </text>
+                        }
+                        else if (Box.IsEdit)
+                        {
+                            <text>
+                                Change @Box.Bin.Name's @Box.Bin.DisplayName(b => b.Name)
+                            </text>
+                        }
+                        else
+                        {
+                            <text>
+                                @Box.DisplayName(b => b.Bin) @Box.Bin.DisplayName(b => b.Name)
+                            </text>
+                        }
+                    </label>
+                    <InputText @bind-Value="@Box.Bin.Name"
+                        readonly="@(!Box.IsEdit && Box.Bin.IsEdit)"
+                        id="@BinDto.PropertyId(b => b.Name)" class="form-control" />
+                </div>
+
+                <div class="form-group">
+                    <label for="@BoxDto.PropertyId(b => b.Appearance)">
+                        @Box.DisplayName(b => b.Appearance)
+                    </label>
+                    <InputTextArea @bind-Value="Box.Appearance"
+                        id="@BoxDto.PropertyId(b => b.Appearance)" class="form-control" />
+                </div>
+
+
+                <div class="form-group">
+                    <label for="@BoxDto.PropertyId(b => b.Capacity)">
+                        @Box.DisplayName(b => b.Capacity)
+                    </label>
+                    <InputNumber @bind-Value="Box.Capacity" min=0
+                        id="@BoxDto.PropertyId(b => b.Capacity)" class="form-control" />
+                </div>
+
+                <div class="btn-group" role="group">
+                    <button class="btn btn-secondary" type="submit" disabled="@IsBusy">
+                        @if (IsBusy)
+                        {
+                            <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"> </span>
+                        }
+                        @if (Box.IsEdit)
+                        {
+                            <text> Update </text>
+                        }
+                        else
+                        {
+                            <text> Add </text>
+                        }
+                    </button>
+                </div>
+            </div>
         </div>
-
-        <div class="col col-md-8 col-lg-4">
-            <div class="form-group">
-                <label for="@BoxDto.PropertyId(b => b.Name)">
-                    @Box.DisplayName(b => b.Name)
-                </label>
-                <InputText @bind-Value="Box.Name" 
-                    id="@BoxDto.PropertyId(b => b.Name)" class="form-control" />
-            </div>
-
-            <div class="form-group">
-                <label for="@BoxDto.PropertyId(b => b.Bin)">
-                    @Box.DisplayName(b => b.Bin)
-                </label>
-                <select @onchange="BinSelected" id="@BoxDto.PropertyId(b => b.Bin)" class="form-control">
-                    <option value="0" selected="@(!Box.Bin.IsEdit)"> Create New </option>
-
-                    @foreach (var bin in Bins)
-                    {
-                        <option value="@bin.Id" selected="@(bin.Id == Box.Bin.Id)"> @bin.Name </option>
-                    }
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label for="@BinDto.PropertyId(b => b.Name)">
-                    @if (!Box.Bin.IsEdit)
-                    {
-                        <text>
-                            New @Box.DisplayName(b => b.Bin) @Box.Bin.DisplayName(b => b.Name)
-                        </text>
-                    }
-                    else if (Box.IsEdit)
-                    {
-                        <text>
-                            Change @Box.Bin.Name's @Box.Bin.DisplayName(b => b.Name)
-                        </text>
-                    }
-                    else
-                    {
-                        <text>
-                            @Box.DisplayName(b => b.Bin) @Box.Bin.DisplayName(b => b.Name)
-                        </text>
-                    }
-                </label>
-                <InputText @bind-Value="@Box.Bin.Name"
-                    readonly="@(!Box.IsEdit && Box.Bin.IsEdit)"
-                    id="@BinDto.PropertyId(b => b.Name)" class="form-control" />
-            </div>
-
-            <div class="form-group">
-                <label for="@BoxDto.PropertyId(b => b.Appearance)">
-                    @Box.DisplayName(b => b.Appearance)
-                </label>
-                <InputTextArea @bind-Value="Box.Appearance"
-                    id="@BoxDto.PropertyId(b => b.Appearance)" class="form-control" />
-            </div>
-
-
-            <div class="form-group">
-                <label for="@BoxDto.PropertyId(b => b.Capacity)">
-                    @Box.DisplayName(b => b.Capacity)
-                </label>
-                <InputNumber @bind-Value="Box.Capacity" min=0
-                    id="@BoxDto.PropertyId(b => b.Capacity)" class="form-control" />
-            </div>
-
-            <div class="btn-group" role="group">
-                <button class="btn btn-secondary" type="submit" disabled="@IsBusy">
-                    @if (IsBusy)
-                    {
-                        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"> </span>
-                    }
-                    @if (Box.IsEdit)
-                    {
-                        <text> Update </text>
-                    }
-                    else
-                    {
-                        <text> Add </text>
-                    }
-                </button>
-            </div>
+    </EditForm>
+}
+else
+{
+    <div class="d-flex justify-content-center">
+        <div class="spinner-grow" style="width: 3rem; height: 3rem;" role="status">
+            <span class="sr-only">Loading...</span>
         </div>
     </div>
-</EditForm>
+}
 
 
 @code

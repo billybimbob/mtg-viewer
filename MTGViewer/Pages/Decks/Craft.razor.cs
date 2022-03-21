@@ -158,7 +158,7 @@ public partial class Craft : OwningComponentBase
     }
 
 
-    private async Task<string?> GetUserIdAsync(CancellationToken cancel)
+    private async ValueTask<string?> GetUserIdAsync(CancellationToken cancel)
     {
         var authState = await AuthState;
 

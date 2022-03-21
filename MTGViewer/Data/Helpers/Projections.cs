@@ -83,6 +83,22 @@ public sealed record CardId
 #endregion
 
 
+public sealed class Statistics
+{
+    public IReadOnlyDictionary<Rarity, int> RarityTotal { get; init; } = default!;
+    public IReadOnlyDictionary<Color, int> ColorTotal { get; init; } = default!;
+
+    public IReadOnlyDictionary<string, int> TypeTotal { get; init; } = default!;
+    public IReadOnlyDictionary<int, int> ManaValueTotal { get; init; } = default!;
+
+    // either rarity or mana value sum could be used
+    public int TotalCards => RarityTotal.Values.Sum();
+
+    public float AverageManaValue =>
+        ManaValueTotal.Sum(kv => kv.Key * (float)kv.Value) / TotalCards;
+}
+
+
 
 #region Change Projections
 

@@ -39,6 +39,8 @@ public sealed partial class Adjust : ComponentBase, IDisposable
 
     internal bool IsBusy { get; private set; }
 
+    internal bool IsFormReady { get; private set; }
+
     internal SaveResult Result { get; set; }
 
 
@@ -83,15 +85,22 @@ public sealed partial class Adjust : ComponentBase, IDisposable
 
     protected override async Task OnParametersSetAsync()
     {
-        if (IsBusy || BoxId == default)
+        if (IsBusy)
         {
             return;
         }
 
         IsBusy = true;
+        IsFormReady = false;
 
         try
         {
+            if (BoxId == default)
+            {
+                IsFormReady = true;
+                return;
+            }
+
             var box = await GetBoxAsync(_cancel.Token);
 
             if (box is null)
@@ -100,7 +109,6 @@ public sealed partial class Adjust : ComponentBase, IDisposable
 
                 Nav.NavigateTo(
                     Nav.GetUriWithQueryParameter(nameof(BoxId), null as int?), replace: true);
-
                 return;
             }
 
@@ -113,6 +121,7 @@ public sealed partial class Adjust : ComponentBase, IDisposable
             Box.Bin.Id = box.Bin.Id;
             Box.Bin.Name = box.Bin.Name;
 
+            IsFormReady = true;
         }
         catch (OperationCanceledException e)
         {
