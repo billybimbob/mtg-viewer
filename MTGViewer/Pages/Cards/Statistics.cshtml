@@ -8,12 +8,13 @@
 
 
 <h1> Collection Statistics </h1>
+<hr>
 
 <div class="row">
     <section class="col-md col-12">
         <h3> By Rarity </h3>
-        <div class="table-responsive-md">
-            <table class="table mb-3">
+        <div class="table-responsive-md pb-4">
+            <table class="table">
                 <thead>
                     <tr>
                         <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.Rarity) </th>
@@ -28,12 +29,12 @@
                         {
                             <tr>
                                 <td> @rarity </td>
-                                <td> @Model.Statistics.RarityTotal.GetValueOrDefault(rarity) </td>
+                                <td> @Model.Statistics.Rarities.GetValueOrDefault(rarity) </td>
                             </tr>
                         }
                     }
                     @{
-                        int uniqueRarities = Model.Statistics.RarityTotal
+                        int uniqueRarities = Model.Statistics.Rarities
                             .Where(kv => kv.Key is Rarity.Special or Rarity.Bonus)
                             .Sum(kv => kv.Value);
                     }
@@ -46,7 +47,7 @@
                     }
                     <tr>
                         <th scope="col"> Total </th>
-                        <td> <strong>@Model.Statistics.TotalCards</strong> </td>
+                        <td> <strong>@Model.Statistics.Copies</strong> </td>
                     </tr>
                 </tbody>
             </table>
@@ -55,8 +56,8 @@
 
     <section class="col-md col-12">
         <h3> By Color </h3>
-        <div class="table-responsive-md">
-            <table class="table mb-3">
+        <div class="table-responsive-md pb-4">
+            <table class="table">
                 <thead>
                     <tr>
                         <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.Color) </th>
@@ -78,7 +79,7 @@
                                 <td> @color </td>
                                 <td> @MtgSymbols.Format(CardText.ColorString(color)).ToHtmlString() </td>
                             }
-                            <td> @Model.Statistics.ColorTotal.GetValueOrDefault(color) </td>
+                            <td> @Model.Statistics.Colors.GetValueOrDefault(color) </td>
                         </tr>
                     }
                 </tbody>
@@ -91,8 +92,8 @@
 <div class="row">
     <section class="col-md col-12">
         <h3> By Type </h3>
-        <div class="table-responsive-md">
-            <table class="table mb-3">
+        <div class="table-responsive-md pb-4">
+            <table class="table">
                 <thead>
                     <tr>
                         <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.Type) </th>
@@ -104,7 +105,7 @@
                     {
                         <tr>
                             <td> @type </td>
-                            <td> @Model.Statistics.TypeTotal.GetValueOrDefault(type) </td>
+                            <td> @Model.Statistics.Types.GetValueOrDefault(type) </td>
                         </tr>
                     }
                 </tbody>
@@ -114,8 +115,8 @@
 
     <section class="col-md col-12">
         <h3> By Mana Value </h3>
-        <div class="table-responsive-md">
-            <table class="table mb-3">
+        <div class="table-responsive-md pb-4">
+            <table class="table">
                 <thead>
                     <tr>
                         <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.ManaValue) </th>
@@ -127,19 +128,19 @@
                     {
                         <tr>
                             <td> @i </td>
-                            <td> @Model.Statistics.ManaValueTotal.GetValueOrDefault(i) </td>
+                            <td> @Model.Statistics.ManaValues.GetValueOrDefault(i) </td>
                         </tr>
                     }
                     <tr>
                         <td> 7+ </td>
                         <td>
-                            @(Model.Statistics.ManaValueTotal
+                            @(Model.Statistics.ManaValues
                                 .Where(kv => kv.Key > 6)
                                 .Sum(kv => kv.Value))
                         </td>
                     </tr>
                     <tr>
-                        <td> <strong>@MathF.Round(Model.Statistics.AverageManaValue, 2)</strong> </td>
+                        <td> <strong>@MathF.Round(Model.Statistics.ManaValueAvg, 2)</strong> </td>
                         <th scope="row"> Average </th>
                     </tr>
                 </tbody>

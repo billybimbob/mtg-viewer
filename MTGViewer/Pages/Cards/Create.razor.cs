@@ -73,6 +73,10 @@ public partial class Create : OwningComponentBase
     [SupplyParameterFromQuery]
     public string? Flavor { get; set; }
 
+    [Parameter]
+    [SupplyParameterFromQuery]
+    public string? ReturnUrl { get; set; }
+
 
     [Inject]
     protected IDbContextFactory<CardDbContext> DbFactory { get; set; } = default!;
@@ -94,6 +98,7 @@ public partial class Create : OwningComponentBase
     internal CardQuery Query { get; } = new();
 
     internal EditContext? SearchEdit { get; private set; }
+
 
     internal bool IsBusy { get; private set; }
 
@@ -499,7 +504,15 @@ public partial class Create : OwningComponentBase
 
             Result = SaveResult.Success;
 
-            NavigateToQuery(_empty);
+            if (ReturnUrl is not null)
+            {
+                // should be safe from open redirection
+                Nav.NavigateTo(ReturnUrl, forceLoad: true);
+            }
+            else
+            {
+                NavigateToQuery(_empty);
+            }
         }
         catch (DbUpdateException e)
         {

@@ -85,17 +85,17 @@ public sealed record CardId
 
 public sealed class Statistics
 {
-    public IReadOnlyDictionary<Rarity, int> RarityTotal { get; init; } = default!;
-    public IReadOnlyDictionary<Color, int> ColorTotal { get; init; } = default!;
+    public IReadOnlyDictionary<Rarity, int> Rarities { get; init; } = default!;
+    public IReadOnlyDictionary<Color, int> Colors { get; init; } = default!;
 
-    public IReadOnlyDictionary<string, int> TypeTotal { get; init; } = default!;
-    public IReadOnlyDictionary<int, int> ManaValueTotal { get; init; } = default!;
+    public IReadOnlyDictionary<string, int> Types { get; init; } = default!;
+    public IReadOnlyDictionary<int, int> ManaValues { get; init; } = default!;
 
     // either rarity or mana value sum could be used
-    public int TotalCards => RarityTotal.Values.Sum();
+    public int Copies => Rarities.Values.Sum();
 
-    public float AverageManaValue =>
-        ManaValueTotal.Sum(kv => kv.Key * (float)kv.Value) / TotalCards;
+    public float ManaValueAvg =>
+        ManaValues.Sum(kv => kv.Key * (float)kv.Value) / Copies;
 }
 
 

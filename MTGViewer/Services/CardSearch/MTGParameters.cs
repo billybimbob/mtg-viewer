@@ -164,11 +164,11 @@ internal class MtgColorParameter : IMtgParameter
 
         var colorNames = Enum.GetValues<Color>()
             .Where(c => c is not Color.None && _color.HasFlag(c))
-            .Select(c => c.ToString().ToLower());
+            .Select(c => Symbol.Colors[c]);
 
         var colors = string.Join(MtgApiQuery.And, colorNames);
 
-        cards.Where(q => q.Colors, colors);
+        cards.Where(q => q.ColorIdentity, colors);
     }
 }
 

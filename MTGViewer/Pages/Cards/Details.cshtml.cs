@@ -59,19 +59,19 @@ public class DetailsModel : PageModel
 
     public string GetCreateCardUri()
     {
-        return QueryHelpers.AddQueryString(
-            "/Cards/Create",
-            CardParameters().Cast<KeyValuePair<string, string?>>());
+        return QueryHelpers.AddQueryString("/Cards/Create", GetCardParameters());
     }
 
 
-    private IEnumerable<KeyValuePair<string, string>> CardParameters()
+    private IEnumerable<KeyValuePair<string, string?>> GetCardParameters()
     {
-        yield return KeyValuePair.Create(nameof(Create.Name), (string)Card.Name);
+        yield return KeyValuePair.Create(nameof(Create.Name), (string?)Card.Name);
 
-        yield return KeyValuePair.Create(nameof(Create.Colors), ((int)Card.Color).ToString());
+        yield return KeyValuePair.Create(nameof(Create.Colors), ((int?)Card.Color)?.ToString());
 
-        yield return KeyValuePair.Create(nameof(Create.Types), Card.Type);
+        yield return KeyValuePair.Create(nameof(Create.Cmc), Card.ManaValue?.ToString());
+
+        yield return KeyValuePair.Create(nameof(Create.ReturnUrl), ReturnUrl);
     }
 
 
