@@ -224,29 +224,7 @@ public class ExchangeModel : PageModel
 
     private async Task ApplyChangesAsync(Deck deck, CancellationToken cancel)
     {
-        // TODO: add better fix for possible overlap of returning a card 
-        // with the same name as a wanted card
-        // potential fix could be to transfer returning cards
-        // straight to wanted cards
-
-        var wantCards = deck.Wants.Select(w => w.CardId);
-        var giveCards = deck.GiveBacks.Select(g => g.CardId);
-
-        if (wantCards.Intersect(giveCards).Any())
-        {
-            return;
-        }
-
-        bool lackReturns = deck.GiveBacks
-            .GroupJoin(deck.Holds,
-                g => g.CardId, h => h.CardId,
-                (give, holds) => give.Copies > holds.Sum(h => h.Copies))
-            .Any(gt => gt);
-
-        if (lackReturns)
-        {
-            return;
-        }
+        ApplyExchangeOverlap(deck);
 
         await _dbContext.ExchangeAsync(deck, cancel);
 
@@ -258,5 +236,35 @@ public class ExchangeModel : PageModel
                 (_, trade) => trade);
 
         _dbContext.Trades.RemoveRange(emptyTrades);
+    }
+
+
+    private void ApplyExchangeOverlap(Deck deck)
+    {
+        var exactMatches = deck.Wants
+            .Join(deck.GiveBacks,
+                w => w.CardId, g => g.CardId,
+                (want, give) => (want, give));
+
+        foreach (var (want, give) in exactMatches)
+        {
+            int match = Math.Min(want.Copies, give.Copies);
+
+            want.Copies -= match;
+            give.Copies -= match;
+        }
+
+        var nameMatches = deck.Wants
+            .Join(deck.GiveBacks,
+                w => w.Card.Name, g => g.Card.Name,
+                (want, give) => (want, give));
+
+        foreach (var (want, give) in exactMatches)
+        {
+            int match = Math.Min(want.Copies, give.Copies);
+
+            want.Copies -= match;
+            give.Copies -= match;
+        }
     }
 }

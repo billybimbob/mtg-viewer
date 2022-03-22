@@ -146,7 +146,7 @@ public sealed partial class Collection : ComponentBase, IDisposable
         {
             filter.FilterChanged -= OnFilterChanged;
 
-            // rerender should trigger at the Yield
+            // render should trigger at the Yield
             // NavigateTo should trigger the OnParametersSet event
             // and another render will occur after OnParameterSet
 

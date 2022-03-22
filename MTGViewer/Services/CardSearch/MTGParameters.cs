@@ -101,7 +101,7 @@ internal class MtgPageSizeParameter : IMtgParameter
 
 internal class MtgPageParameter : IMtgParameter
 {
-    public MtgPageParameter() : this(1)
+    public MtgPageParameter() : this(0)
     { }
 
     private MtgPageParameter(int page)
@@ -110,11 +110,11 @@ internal class MtgPageParameter : IMtgParameter
     }
 
     public int Page { get; }
-    public bool IsEmpty => Page <= 1;
+    public bool IsEmpty => Page == 0;
 
     public IMtgParameter Accept(object? value)
     {
-        if (value is int page and > 1)
+        if (value is int page and > 0)
         {
             return new MtgPageParameter(page);
         }
@@ -124,9 +124,10 @@ internal class MtgPageParameter : IMtgParameter
 
     public void Apply(ICardService cards)
     {
-        if (Page > 1)
+        if (Page > 0)
         {
-            cards.Where(q => q.Page, Page);
+            // query starts at index 1 instead of 0
+            cards.Where(q => q.Page, Page + 1);
         }
     }
 }

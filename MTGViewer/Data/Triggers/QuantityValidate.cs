@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -9,18 +10,13 @@ using MTGViewer.Services;
 
 namespace MTGViewer.Data.Triggers;
 
-public class QuantityValidate : IBeforeSaveTrigger<Quantity>, IAfterSaveTrigger<Quantity>
+public class QuantityValidate : IBeforeSaveTrigger<Quantity>
 {
-    private readonly CardDbContext _dbContext;
     private readonly PageSizes _pageSizes;
     private readonly ILogger<QuantityValidate> _logger;
 
-    public QuantityValidate(
-        CardDbContext dbContext,
-        PageSizes pageSizes,
-        ILogger<QuantityValidate> logger)
+    public QuantityValidate(PageSizes pageSizes, ILogger<QuantityValidate> logger)
     {
-        _dbContext = dbContext;
         _pageSizes = pageSizes;
         _logger = logger;
     }
@@ -28,7 +24,7 @@ public class QuantityValidate : IBeforeSaveTrigger<Quantity>, IAfterSaveTrigger<
 
     public Task BeforeSave(ITriggerContext<Quantity> trigContext, CancellationToken cancel)
     {
-        if (trigContext.ChangeType == ChangeType.Deleted)
+        if (trigContext.ChangeType is ChangeType.Deleted)
         {
             return Task.CompletedTask;
         }
@@ -37,56 +33,48 @@ public class QuantityValidate : IBeforeSaveTrigger<Quantity>, IAfterSaveTrigger<
 
         if (quantity.Copies > _pageSizes.Limit)
         {
+            _logger.LogWarning(
+                "Quantity {Id} has Copies {Copies} amount above limit", quantity.Id, quantity.Copies);
+
             quantity.Copies = _pageSizes.Limit;
+        }
+
+        if (quantity is GiveBack giveBack)
+        {
+            CheckGiveBack(giveBack);
+            return Task.CompletedTask;
+        }
+
+        if (quantity is Want
+            && quantity.Location is not TheoryCraft and not null)
+        {
+            throw new DbUpdateException("Want can only have a TheoryCraft type");
         }
 
         return Task.CompletedTask;
     }
 
 
-    public async Task AfterSave(ITriggerContext<Quantity> trigContext, CancellationToken cancel)
+    private void CheckGiveBack(GiveBack giveBack)
     {
-        if (trigContext.ChangeType == ChangeType.Deleted)
+        if (giveBack.Location is not Deck deck)
         {
-            return;
+            throw new DbUpdateException("GiveBack can only have a Deck type, and must be loaded");
         }
 
-        var quantity = trigContext.Entity;
+        var hold = deck.Holds.FirstOrDefault(h => h.CardId == giveBack.CardId);
 
-        if (quantity.Copies > 0)
+        if (hold is null || hold.Copies == 0)
         {
-            return;
+            throw new DbUpdateException("GiveBack is lacking the required Hold amount");
         }
 
-        if (_dbContext.Entry(quantity).State == EntityState.Detached)
+        if (hold.Copies < giveBack.Copies)
         {
-            if (quantity is Hold hold)
-            {
-                _dbContext.Holds.Attach(hold);
-            }
-            else if (quantity is Want want)
-            {
-                _dbContext.Wants.Attach(want);
-            }
-            else if (quantity is GiveBack give)
-            {
-                _dbContext.GiveBacks.Attach(give);
-            }
-        }
+            _logger.LogWarning(
+                "GiveBack {Id} Copies {Copies} is too high", giveBack.Id, giveBack.Copies);
 
-        await _dbContext.Entry(quantity)
-            .Reference(q => q.Location)
-            .LoadAsync(cancel);
-
-        _dbContext.Entry(quantity).State = EntityState.Deleted;
-
-        try
-        {
-            await _dbContext.SaveChangesAsync(cancel);
-        }
-        catch (DbUpdateException e)
-        {
-            _logger.LogError("{Error}", e);
+            giveBack.Copies = hold.Copies;
         }
     }
 }

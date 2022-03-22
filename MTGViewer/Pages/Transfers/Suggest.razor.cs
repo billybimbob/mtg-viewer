@@ -215,7 +215,7 @@ public partial class Suggest : OwningComponentBase
 
         try
         {
-            // rerender should trigger at the Yield
+            // render should trigger at the Yield
             // NavigateTo should trigger the OnParametersSet event
             // and another render will occur after OnParameterSet
 

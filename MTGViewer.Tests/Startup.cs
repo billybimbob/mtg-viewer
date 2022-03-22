@@ -10,6 +10,7 @@ using MtgApiManager.Lib.Service;
 using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Areas.Identity.Services;
 using MTGViewer.Data;
+using MTGViewer.Data.Triggers;
 using MTGViewer.Services;
 using MTGViewer.Tests.Utils;
 
@@ -38,6 +39,13 @@ public class Startup
             .AddRazorPageModels()
             .AddScoped<PageContextFactory>()
             .AddSingleton<PageSizes>();
+
+        services
+            .AddTransient<ColorUpdate>()
+            .AddTransient<ImmutableCard>()
+            .AddTransient<LiteTokenUpdate>()
+            .AddTransient<QuantityValidate>()
+            .AddTransient<TradeValidate>();
 
         services
             .AddScoped<InMemoryConnection>()

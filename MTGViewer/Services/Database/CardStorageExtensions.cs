@@ -25,7 +25,9 @@ public static class CardStorageExtensions
 
                     .UseTriggers(triggers => triggers
                         .AddTrigger<ColorUpdate>()
-                        .AddTrigger<ImmutableCard>()));
+                        .AddTrigger<ImmutableCard>()
+                        .AddTrigger<QuantityValidate>()
+                        .AddTrigger<TradeValidate>()));
                 break;
 
             case DatabaseOptions.Postgresql:
@@ -37,7 +39,9 @@ public static class CardStorageExtensions
 
                     .UseTriggers(triggers => triggers
                         .AddTrigger<ColorUpdate>()
-                        .AddTrigger<ImmutableCard>()));
+                        .AddTrigger<ImmutableCard>()
+                        .AddTrigger<QuantityValidate>()
+                        .AddTrigger<TradeValidate>()));
                 break;
 
             case DatabaseOptions.Sqlite:
@@ -51,7 +55,9 @@ public static class CardStorageExtensions
                     .UseTriggers(triggers => triggers
                         .AddTrigger<ColorUpdate>()
                         .AddTrigger<ImmutableCard>()
-                        .AddTrigger<LiteTokenUpdate>()));
+                        .AddTrigger<LiteTokenUpdate>()
+                        .AddTrigger<QuantityValidate>()
+                        .AddTrigger<TradeValidate>()));
                 break;
         }
 

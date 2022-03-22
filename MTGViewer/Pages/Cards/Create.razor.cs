@@ -504,6 +504,8 @@ public partial class Create : OwningComponentBase
 
             Result = SaveResult.Success;
 
+            StateHasChanged();
+
             if (ReturnUrl is not null)
             {
                 // should be safe from open redirection

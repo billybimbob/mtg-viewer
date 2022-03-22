@@ -16,20 +16,19 @@ public class TradeValidate : IBeforeSaveTrigger<Trade>
         _logger = logger;
     }
 
-
     public Task BeforeSave(ITriggerContext<Trade> trigContext, CancellationToken cancel)
     {
-        if (trigContext.ChangeType == ChangeType.Deleted)
+        if (trigContext.ChangeType is ChangeType.Deleted)
         {
             return Task.CompletedTask;
         }
 
-        var exchange = trigContext.Entity;
+        var trade = trigContext.Entity;
 
-        if (exchange.ToId == exchange.FromId && exchange.To == exchange.From)
+        if (trade.ToId == trade.FromId)
         {
-            throw new DbUpdateException
-                ("Trade cannot have the same location for both 'To' and 'From'");
+            throw new DbUpdateException(
+                "Trade cannot have the same location for both 'To' and 'From'");
         }
 
         return Task.CompletedTask;

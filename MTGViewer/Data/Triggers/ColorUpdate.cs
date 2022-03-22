@@ -31,50 +31,56 @@ public class ColorUpdate : IBeforeSaveTrigger<TheoryCraft>
 
         var theory = trigContext.Entity;
 
-        if (trigContext.ChangeType is ChangeType.Added
-            && (theory.Holds.Any(h => h.Card is null)
-                || theory.Wants.Any(w => w.Card is null)))
-        {
-            var cardIds = theory.Holds.Select(h => h.CardId)
-                .Union(theory.Wants.Select(h => h.CardId))
-                .ToArray();
-
-            theory.Color = await CardColorsAsync
-                .Invoke(_dbContext, cardIds)
-                .AggregateAsync(Color.None, (color, card) => color | card, cancel);
-
-            return;
-        }
-
         if (trigContext.ChangeType is ChangeType.Added)
         {
-            theory.Color = GetColor(theory);
+            await SetAddedColorAsync(theory, cancel);
             return;
         }
 
-        if (theory.Holds.Any() && theory.Holds.All(h => h.Card is not null)
-            || theory.Wants.Any() && theory.Wants.All(w => w.Card is not null))
+        if (IsFullyLoaded(theory))
         {
             theory.Color = GetColor(theory);
             return;
         }
 
+        var deckColors
+            =  await DeckColorsAsync.Invoke(_dbContext, theory.Id, cancel)
+            ?? await UnclaimedColorsAsync.Invoke(_dbContext, theory.Id, cancel);
+
+        theory.Color = GetColor(deckColors);
+    }
+
+
+
+    private async Task SetAddedColorAsync(TheoryCraft theory, CancellationToken cancel)
+    {
+        if (theory.Holds.All(h => h.Card is not null)
+            && theory.Wants.All(w => w.Card is not null))
+        {
+            theory.Color = GetColor(theory);
+            return;
+        }
+
+        var cardIds = theory.Holds.Select(h => h.CardId)
+            .Union(theory.Wants.Select(h => h.CardId))
+            .ToArray();
+
+        theory.Color = await CardColorsAsync
+            .Invoke(_dbContext, cardIds)
+            .AggregateAsync(Color.None, (color, card) => color | card, cancel);
+    }
+
+
+    private bool IsFullyLoaded(TheoryCraft theory)
+    {
         var theoryEntry = _dbContext.Entry(theory);
 
-        if (theory.Holds.Any(h => h.Card is null)
-            || theory.Wants.Any(w => w.Card is null)
-            || !theoryEntry.Collection(d => d.Holds).IsLoaded
-            || !theoryEntry.Collection(d => d.Wants).IsLoaded)
-        {
-            var deckColors = await DeckColorsAsync.Invoke(_dbContext, theory.Id, cancel)
-                ?? await UnclaimedColorsAsync.Invoke(_dbContext, theory.Id, cancel);
-
-            theory.Color = GetColor(deckColors);
-            return;
-        }
-
-        theory.Color = GetColor(theory);
+        return theory.Holds.All(h => h.Card is not null)
+            && theory.Wants.All(w => w.Card is not null)
+            && theoryEntry.Collection(d => d.Holds) is { IsLoaded: true }
+            && theoryEntry.Collection(d => d.Wants) is { IsLoaded: true };
     }
+
 
 
     private static Color GetColor(TheoryCraft theory)

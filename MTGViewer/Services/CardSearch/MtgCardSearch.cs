@@ -25,12 +25,18 @@ internal class MtgCardSearch : IMTGCardSearch
 
     public IReadOnlyDictionary<string, IMtgParameter> Parameters => _parameters;
 
-    public int Page =>
-        (_parameters.GetValueOrDefault(nameof(CardQuery.Page)) as MtgPageParameter)
-        ?.Page ?? 0;
+    public int Page
+    {
+        get
+        {
+            var pageParameter = _parameters.GetValueOrDefault(nameof(CardQuery.Page)) as MtgPageParameter;
+            
+            return pageParameter?.Page ?? 0;
+        }
+    }
 
 
-    public bool IsEmpty => _parameters.Values.All(p => p.IsEmpty);
+public bool IsEmpty => _parameters.Values.All(p => p.IsEmpty);
 
 
     public IMTGCardSearch Where(Expression<Func<CardQuery, bool>> predicate)
