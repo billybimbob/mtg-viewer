@@ -54,6 +54,9 @@ public sealed partial class Collection : ComponentBase, IDisposable
     internal NavigationManager Nav { get; set; } = default!;
 
     [Inject]
+    internal PersistentComponentState ApplicationState { get; set; } = default!;
+
+    [Inject]
     internal ILogger<Collection> Logger { get; set; } = default!;
 
 
@@ -62,19 +65,26 @@ public sealed partial class Collection : ComponentBase, IDisposable
     internal event EventHandler? CardsLoaded;
 
 
+    internal bool IsLoading => _isBusy || !_isInteractive;
+
     internal FilterContext Filters { get; } = new();
 
     internal OffsetList<LocationCopy> Cards { get; private set; } = OffsetList<LocationCopy>.Empty;
 
-    internal bool IsBusy { get; private set; }
-
 
     private readonly CancellationTokenSource _cancel = new();
-    private readonly Dictionary<string, object?> _newFilters = new(3);
+    private readonly Dictionary<string, object?> _newFilters = new(4);
+
+    private PersistingComponentStateSubscription _persistSubscription;
+
+    private bool _isBusy;
+    private bool _isInteractive;
 
 
     protected override void OnInitialized()
     {
+        _persistSubscription = ApplicationState.RegisterOnPersisting(PersistCardData);
+
         ParametersChanged += Filters.OnParametersChanged;
         CardsLoaded += Filters.OnCardsLoaded;
     }
@@ -82,26 +92,21 @@ public sealed partial class Collection : ComponentBase, IDisposable
 
     protected async override Task OnParametersSetAsync()
     {
-        if (IsBusy)
-        {
-            return;
-        }
-
-        IsBusy = true;
+        _isBusy = true;
 
         try
         {
             ParametersChanged?.Invoke(this, EventArgs.Empty);
 
-            var token = _cancel.Token;
-            await using var dbContext = await DbFactory.CreateDbContextAsync(token);
-
-            Cards = await FilteredCardsAsync(dbContext, Filters, token);
+            await LoadCardDataAsync(_cancel.Token);
 
             if (Cards is { Count: 0, Offset.Current: > 0 })
             {
+                Logger.LogWarning("Invalid offset {Offset} was given", Cards.Offset.Current);
+
                 Nav.NavigateTo(
                     Nav.GetUriWithQueryParameter(nameof(Page), null as int?), replace: true);
+
                 return;
             }
 
@@ -110,66 +115,102 @@ public sealed partial class Collection : ComponentBase, IDisposable
             Filters.FilterChanged -= OnFilterChanged;
             Filters.FilterChanged += OnFilterChanged;
         }
+
         catch (OperationCanceledException ex)
         {
             Logger.LogWarning("{Error}", ex);
         }
+        catch (NavigationException ex)
+        {
+            Logger.LogWarning("Navigation {Warning}", ex);
+        }
         finally
         {
-            IsBusy = false;
+            _isBusy = false;
         }
     }
 
 
-    public void Dispose()
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _isInteractive = true;
+
+            StateHasChanged();
+        }
+    }
+
+
+    void IDisposable.Dispose()
     {
         ParametersChanged -= Filters.OnParametersChanged;
         CardsLoaded -= Filters.OnCardsLoaded;
 
         Filters.FilterChanged -= OnFilterChanged;
 
+        _persistSubscription.Dispose();
+
         _cancel.Cancel();
         _cancel.Dispose();
     }
 
 
-    private async void OnFilterChanged(object? sender, FilterEventArgs args)
+    private Task PersistCardData()
     {
-        if (IsBusy || sender is not FilterContext filter)
+        ApplicationState.PersistAsJson(nameof(Cards), Cards as IReadOnlyList<LocationCopy>);
+
+        ApplicationState.PersistAsJson(nameof(Cards.Offset), Cards.Offset);
+
+        return Task.CompletedTask;
+    }
+
+
+    private async Task LoadCardDataAsync(CancellationToken cancel)
+    {
+        IReadOnlyList<LocationCopy>? cards;
+
+        Offset offset;
+
+        if (ApplicationState.TryTakeFromJson(nameof(Cards), out cards)
+            && ApplicationState.TryTakeFromJson(nameof(Offset), out offset)
+            && cards is not null)
+        {
+            // persisted state should match set filters
+            // TODO: find way to check filters are consistent
+
+            Cards = new OffsetList<LocationCopy>(offset, cards);
+            return;
+        }
+
+        await using var dbContext = await DbFactory.CreateDbContextAsync(cancel);
+
+        Cards = await FilteredCardsAsync(dbContext, Filters, cancel);
+    }
+
+
+    private void OnFilterChanged(object? sender, FilterEventArgs args)
+    {
+        if (_isBusy || sender is not FilterContext filter)
         {
             return;
         }
 
-        IsBusy = true;
+        _isBusy = true;
 
-        try
+        filter.FilterChanged -= OnFilterChanged;
+
+        _newFilters.Clear();
+
+        foreach (var (name, value) in args.Changes)
         {
-            filter.FilterChanged -= OnFilterChanged;
-
-            // render should trigger at the Yield
-            // NavigateTo should trigger the OnParametersSet event
-            // and another render will occur after OnParameterSet
-
-            await Task.Yield();
-
-            _newFilters.Clear();
-
-            foreach (var (name, value) in args.Changes)
-            {
-                _newFilters.Add(name, value);
-            }
-
-            Nav.NavigateTo(
-                Nav.GetUriWithQueryParameters(_newFilters), replace: true);
+            _newFilters.Add(name, value);
         }
-        catch (Exception ex)
-        {
-            Logger.LogError("{Error}", ex);
-        }
-        finally
-        {
-            IsBusy = false;
-        }
+
+        // triggers on ParameterSet, where IsBusy set to false
+
+        Nav.NavigateTo(
+            Nav.GetUriWithQueryParameters(_newFilters), replace: true);
     }
 
 
@@ -206,7 +247,8 @@ public sealed partial class Collection : ComponentBase, IDisposable
 
                 var args = new FilterEventArgs(
                     KeyValuePair.Create(nameof(Collection.Search), value as object),
-                    KeyValuePair.Create(nameof(Collection.Page), null as object));
+                    KeyValuePair.Create(nameof(Collection.Page), null as object),
+                    KeyValuePair.Create(nameof(Collection.Size), null as object));
 
                 FilterChanged?.Invoke(this, args);
             }
@@ -261,7 +303,8 @@ public sealed partial class Collection : ComponentBase, IDisposable
             var args = new FilterEventArgs(
                 KeyValuePair.Create(nameof(Collection.Reversed), reversed),
                 KeyValuePair.Create(nameof(Collection.Order), (object?)value),
-                KeyValuePair.Create(nameof(Collection.Page), null as object));
+                KeyValuePair.Create(nameof(Collection.Page), null as object),
+                KeyValuePair.Create(nameof(Collection.Size), null as object));
 
             FilterChanged?.Invoke(this, args);
         }
@@ -317,7 +360,8 @@ public sealed partial class Collection : ComponentBase, IDisposable
 
             var newValues = new FilterEventArgs(
                 KeyValuePair.Create(nameof(Collection.Colors), (object?)(int)value),
-                KeyValuePair.Create(nameof(Collection.Page), null as object));
+                KeyValuePair.Create(nameof(Collection.Page), null as object),
+                KeyValuePair.Create(nameof(Collection.Size), null as object));
 
             FilterChanged?.Invoke(this, newValues);
         }
@@ -330,7 +374,11 @@ public sealed partial class Collection : ComponentBase, IDisposable
                 return;
             }
 
-            _maxPage = Math.Max(parameters.Size, 0);
+            if (parameters.Size > 0)
+            {
+                _maxPage = parameters.Size;
+            }
+
             _searchName = ValidatedSearchName(parameters.Search);
 
             PickedColors = (Color)parameters.Colors;

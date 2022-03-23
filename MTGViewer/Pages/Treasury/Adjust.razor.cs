@@ -27,17 +27,20 @@ public sealed partial class Adjust : ComponentBase, IDisposable
     internal IDbContextFactory<CardDbContext> DbFactory { get; set; } = default!;
 
     [Inject]
+    internal PersistentComponentState ApplicationState { get; init; } = default!;
+
+    [Inject]
     internal NavigationManager Nav { get; set; } = default!;
 
     [Inject]
     internal ILogger<Adjust> Logger { get; set; } = default!;
 
 
-    internal IReadOnlyList<Bin> Bins => _bins;
+    internal bool IsLoading => _isBusy || !_isInteractive;
+
+    internal IReadOnlyList<BinDto> Bins => _bins;
 
     internal BoxDto Box { get; } = new();
-
-    internal bool IsBusy { get; private set; }
 
     internal bool IsFormReady { get; private set; }
 
@@ -45,20 +48,30 @@ public sealed partial class Adjust : ComponentBase, IDisposable
 
 
     private readonly CancellationTokenSource _cancel = new();
-    private Bin[] _bins = Array.Empty<Bin>();
+
+    private bool _isBusy;
+    private bool _isInteractive;
+
+    private PersistingComponentStateSubscription _persistSubscription;
+    private BinDto[] _bins = Array.Empty<BinDto>();
 
 
     protected override async Task OnInitializedAsync()
     {
-        if (IsBusy)
-        {
-            return;
-        }
+        _persistSubscription = ApplicationState.RegisterOnPersisting(PersistBoxData);
 
-        IsBusy = true;
+        _isBusy = true;
 
         try
         {
+            var cachedBins = GetValueOrDefault<BinDto[]>(nameof(_bins));
+
+            if (cachedBins is not null)
+            {
+                _bins = cachedBins;
+                return;
+            }
+
             var token = _cancel.Token;
 
             await using var dbContext = await DbFactory.CreateDbContextAsync(token);
@@ -71,30 +84,19 @@ public sealed partial class Adjust : ComponentBase, IDisposable
         }
         finally
         {
-            IsBusy = false;
+            _isBusy = false;
         }
     }
 
 
-    private static readonly Func<CardDbContext, IAsyncEnumerable<Bin>> BinsAsync
-        = EF.CompileAsyncQuery((CardDbContext dbContext) =>
-            dbContext.Bins
-                .OrderBy(b => b.Name)
-                .AsNoTracking());
-
-
     protected override async Task OnParametersSetAsync()
     {
-        if (IsBusy)
-        {
-            return;
-        }
-
-        IsBusy = true;
-        IsFormReady = false;
+        _isBusy = true;
 
         try
         {
+            IsFormReady = false;
+
             if (BoxId == default)
             {
                 IsFormReady = true;
@@ -109,6 +111,7 @@ public sealed partial class Adjust : ComponentBase, IDisposable
 
                 Nav.NavigateTo(
                     Nav.GetUriWithQueryParameter(nameof(BoxId), null as int?), replace: true);
+
                 return;
             }
 
@@ -127,50 +130,127 @@ public sealed partial class Adjust : ComponentBase, IDisposable
         {
             Logger.LogWarning("{Error}", e);
         }
+        catch (NavigationException e)
+        {
+            Logger.LogWarning("Navigation {Warning}", e);
+        }
         finally
         {
-            IsBusy = false;
+            _isBusy = false;
         }
     }
 
 
-    private async Task<Box?> GetBoxAsync(CancellationToken cancel)
+    protected override void OnAfterRender(bool firstRender)
     {
-        await using var dbContext = await DbFactory.CreateDbContextAsync(cancel);
+        if (firstRender)
+        {
+            _isInteractive = true;
 
-        dbContext.Bins.AttachRange(_bins);
-
-        return await dbContext.Boxes
-            .Include(b => b.Bin)
-            .SingleOrDefaultAsync(b => b.Id == BoxId, cancel);
+            StateHasChanged();
+        }
     }
 
 
-    public void Dispose()
+    void IDisposable.Dispose()
     {
+        _persistSubscription.Dispose();
+
         _cancel.Cancel();
         _cancel.Dispose();
     }
 
 
+
+    private Task PersistBoxData()
+    {
+        ApplicationState.PersistAsJson(nameof(_bins), _bins);
+
+        ApplicationState.PersistAsJson(nameof(Box), Box);
+
+        return Task.CompletedTask;
+    }
+
+
+    private TData? GetValueOrDefault<TData>(string key)
+    {
+        if (ApplicationState.TryTakeFromJson(key, out TData? data))
+        {
+            return data;
+        }
+
+        return default;
+    }
+
+
+    private static readonly Func<CardDbContext, IAsyncEnumerable<BinDto>> BinsAsync =
+        EF.CompileAsyncQuery((CardDbContext dbContext) =>
+            dbContext.Bins
+                .OrderBy(b => b.Name)
+                .Select(b => new BinDto
+                {
+                    Id = b.Id,
+                    Name = b.Name
+                }));
+
+
+    private async Task<BoxDto?> GetBoxAsync(CancellationToken cancel)
+    {
+        var cachedBox = GetValueOrDefault<BoxDto>(nameof(Box));
+
+        if (cachedBox is not null)
+        {
+            return cachedBox;
+        }
+
+        await using var dbContext = await DbFactory.CreateDbContextAsync(cancel);
+
+        return await dbContext.Boxes
+            .Where(b => b.Id == BoxId)
+            .Select(b => new BoxDto
+            {
+                Id = b.Id,
+                Name = b.Name,
+
+                Appearance = b.Appearance,
+                Capacity = b.Capacity,
+
+                Bin = new BinDto
+                {
+                    Id = b.BinId,
+                    Name = b.Bin.Name
+                }
+            })
+            .SingleOrDefaultAsync(cancel);
+    }
+
+
+
+    internal void BinSelected(ChangeEventArgs args)
+    {
+        if (int.TryParse(args.Value?.ToString(), out int id)
+            && _bins.SingleOrDefault(b => b.Id == id) is var bin)
+        {
+            Box.Bin.Update(bin);
+        }
+    }
+
+
+
     internal async Task ValidBoxSubmittedAsync()
     {
-        if (IsBusy || Box.Name is null || Box.Bin.Name is null)
+        if (_isBusy || Box.Name is null || Box.Bin.Name is null)
         {
             return;
         }
 
-        Result = SaveResult.None;
-
-        IsBusy = true;
+        _isBusy = true;
 
         try
         {
-            await using var dbContext = await DbFactory.CreateDbContextAsync(_cancel.Token);
+            Result = SaveResult.None;
 
-            await ApplyBoxChangesAsync(dbContext, Box, _cancel.Token);
-
-            await ResetAsync(dbContext, _cancel.Token);
+            await ApplyBoxChangesAsync(_cancel.Token);
 
             Result = SaveResult.Success;
         }
@@ -188,23 +268,22 @@ public sealed partial class Adjust : ComponentBase, IDisposable
         }
         finally
         {
-            IsBusy = false;
+            _isBusy = false;
         }
     }
 
 
-    private static async Task ApplyBoxChangesAsync(
-        CardDbContext dbContext,
-        BoxDto changes,
-        CancellationToken cancel)
+    private async Task ApplyBoxChangesAsync(CancellationToken cancel)
     {
-        var box = await GetBoxAsync(dbContext, changes, cancel);
+        await using var dbContext = await DbFactory.CreateDbContextAsync(cancel);
+
+        var box = await GetBoxAsync(dbContext, Box, cancel);
         if (box is null)
         {
             return;
         }
 
-        var bin = await GetBinAsync(dbContext, changes.Bin, cancel);
+        var bin = await GetBinAsync(dbContext, Box.Bin, cancel);
         if (bin is null)
         {
             return;
@@ -213,7 +292,7 @@ public sealed partial class Adjust : ComponentBase, IDisposable
         var oldBin = box.Bin;
         box.Bin = bin;
 
-        if (changes.IsEdit
+        if (Box.IsEdit
             && oldBin != bin
             && !oldBin.Boxes.Any(b => b.Id != box.Id))
         {
@@ -223,11 +302,25 @@ public sealed partial class Adjust : ComponentBase, IDisposable
         await dbContext.UpdateBoxesAsync(cancel);
 
         await dbContext.SaveChangesAsync(cancel);
+
+        // refresh bin list
+        _bins = await BinsAsync(dbContext).ToArrayAsync(cancel);
+
+        if (Box.IsEdit)
+        {
+            return;
+        }
+
+        Nav.NavigateTo(
+            Nav.GetUriWithQueryParameter(nameof(BoxId), box.Id),
+            replace: true);
     }
 
 
     private static async Task<Box?> GetBoxAsync(
-        CardDbContext dbContext, BoxDto boxDto, CancellationToken cancel)
+        CardDbContext dbContext,
+        BoxDto boxDto,
+        CancellationToken cancel)
     {
         if (boxDto.Name is null)
         {
@@ -282,6 +375,7 @@ public sealed partial class Adjust : ComponentBase, IDisposable
         else
         {
             bin = new Bin();
+
             dbContext.Bins.Add(bin);
         }
 
@@ -290,41 +384,8 @@ public sealed partial class Adjust : ComponentBase, IDisposable
             return null;
         }
 
-        dbContext.Entry(bin).CurrentValues
-            .SetValues(binDto);
+        dbContext.Entry(bin).CurrentValues.SetValues(binDto);
 
         return bin;
-    }
-
-
-    private async Task ResetAsync(CardDbContext dbContext, CancellationToken cancel)
-    {
-        if (!Box.Bin.IsEdit)
-        {
-            _bins = await BinsAsync(dbContext).ToArrayAsync(cancel);
-
-            Box.Bin.Update(null);
-        }
-
-        if (Box.IsEdit)
-        {
-            return;
-        }
-
-        Box.Id = 0;
-        Box.Name = null;
-
-        Box.Appearance = null;
-        Box.Capacity = 0;
-    }
-
-
-    internal void BinSelected(ChangeEventArgs args)
-    {
-        if (int.TryParse(args.Value?.ToString(), out int id)
-            && _bins.SingleOrDefault(b => b.Id == id) is var bin)
-        {
-            Box.Bin.Update(bin);
-        }
     }
 }

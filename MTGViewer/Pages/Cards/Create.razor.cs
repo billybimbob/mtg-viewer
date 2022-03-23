@@ -85,6 +85,9 @@ public partial class Create : OwningComponentBase
     protected NavigationManager Nav { get; set; } = default!;
 
     [Inject]
+    protected PersistentComponentState ApplicationState { get; set; } = default!;
+
+    [Inject]
     protected PageSizes PageSizes { get; set; } = default!;
 
     [Inject]
@@ -95,12 +98,15 @@ public partial class Create : OwningComponentBase
 
     internal bool HasNoNext => !_matchPage.HasNext;
 
+    internal bool IsLoading => _isBusy || !_isInteractive;
+
+    internal bool IsEmpty => Query == _empty;
+
+
     internal CardQuery Query { get; } = new();
 
     internal EditContext? SearchEdit { get; private set; }
 
-
-    internal bool IsBusy { get; private set; }
 
     internal bool IsFromForm { get; private set; }
 
@@ -113,16 +119,22 @@ public partial class Create : OwningComponentBase
     private readonly CancellationTokenSource _cancel = new();
     private readonly List<MatchInput> _matches = new();
 
+    private bool _isBusy;
+    private bool _isInteractive;
+
+    private PersistingComponentStateSubscription _persistSubscription;
+
     private ValidationMessageStore? _resultErrors;
     private Offset _matchPage;
 
 
     protected override void OnInitialized()
     {
+        _persistSubscription = ApplicationState.RegisterOnPersisting(PersistMatches);
+
         var edit = new EditContext(Query);
         _resultErrors = new(edit);
 
-        edit.OnValidationRequested += ClearErrors;
         edit.OnFieldChanged += ClearErrors;
 
         SearchEdit = edit;
@@ -131,21 +143,17 @@ public partial class Create : OwningComponentBase
 
     protected override async Task OnParametersSetAsync()
     {
-        if (IsBusy)
-        {
-            return;
-        }
-
-        _matches.Clear();
-        _matchPage = default;
-
-        Result = SaveResult.None;
-        IsBusy = true;
+        _isBusy = true;
 
         try
         {
+            _matches.Clear();
+            _matchPage = default;
+
             if (!ValidateParameters())
             {
+                Logger.LogWarning("Given search parameters were invalid");
+
                 NavigateToQuery(_empty);
                 return;
             }
@@ -156,15 +164,30 @@ public partial class Create : OwningComponentBase
                 return;
             }
 
-            await SearchForCardAsync(_cancel.Token);
+            await LoadCardMatchesAsync(_cancel.Token);
         }
         catch (OperationCanceledException ex)
         {
             Logger.LogWarning("{Error}", ex);
         }
+        catch (NavigationException ex)
+        {
+            Logger.LogWarning("Navigation {Warning}", ex);
+        }
         finally
         {
-            IsBusy = false;
+            _isBusy = false;
+        }
+    }
+
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _isInteractive = true;
+
+            StateHasChanged();
         }
     }
 
@@ -173,9 +196,10 @@ public partial class Create : OwningComponentBase
     {
         if (disposing)
         {
+            _persistSubscription.Dispose();
+
             if (SearchEdit is EditContext edit)
             {
-                edit.OnValidationRequested -= ClearErrors;
                 edit.OnFieldChanged -= ClearErrors;
             }
 
@@ -188,15 +212,51 @@ public partial class Create : OwningComponentBase
 
 
 
-    private void ClearErrors(object? sender, ValidationRequestedEventArgs args)
+    private Task PersistMatches()
     {
-        if (SearchEdit is not EditContext edit || _resultErrors is null)
+        var cards = _matches.Select(m => m.Card);
+
+        var inDbCards = _matches
+            .Where(m => m.HasDetails)
+            .Select(m => m.Card.Id)
+            .ToHashSet();
+
+        ApplicationState.PersistAsJson(nameof(_matches), cards);
+
+        ApplicationState.PersistAsJson(nameof(MatchInput.HasDetails), inDbCards);
+
+        ApplicationState.PersistAsJson(nameof(_matchPage), _matchPage);
+
+        return Task.CompletedTask;
+    }
+
+
+    private async Task LoadCardMatchesAsync(CancellationToken cancel)
+    {
+        IEnumerable<Card>? cards;
+
+        HashSet<string>? inDbCards;
+
+        Offset offset;
+
+        if (_matches.Any()
+            || !ApplicationState.TryTakeFromJson(nameof(_matches), out cards)
+            || !ApplicationState.TryTakeFromJson(nameof(MatchInput.HasDetails), out inDbCards)
+            || !ApplicationState.TryTakeFromJson(nameof(_matchPage), out offset)
+            || inDbCards is null
+            || cards is null)
         {
+            await SearchForCardAsync(cancel);
             return;
         }
 
-        _resultErrors.Clear();
-        edit.NotifyValidationStateChanged();
+        int limit = PageSizes.Limit;
+
+        var matches = cards
+            .Select(c => new MatchInput(c, inDbCards.Contains(c.Id), limit));
+
+        _matches.AddRange(matches);
+        _matchPage = offset;
     }
 
 
@@ -303,45 +363,33 @@ public partial class Create : OwningComponentBase
     }
 
 
-    internal async Task ResetAsync()
+    internal void Reset()
     {
-        if (IsBusy)
+        if (_isBusy)
         {
             return;
         }
 
-        IsBusy = true;
+        _isBusy = true;
 
-        try
-        {
-            await Task.Yield();
-            NavigateToQuery(_empty);
-        }
-        finally
-        {
-            IsBusy = false;
-        }
+        Result = SaveResult.None;
+
+        NavigateToQuery(_empty);
     }
 
 
-    internal async Task SubmitSearchAsync()
+    internal void SubmitSearch()
     {
-        if (IsBusy)
+        if (_isBusy)
         {
             return;
         }
 
-        IsBusy = true;
+        _isBusy = true;
 
-        try
-        {
-            await Task.Yield();
-            NavigateToQuery(Query);
-        }
-        finally
-        {
-            IsBusy = false;
-        }
+        Result = SaveResult.None;
+
+        NavigateToQuery(Query);
     }
 
 
@@ -383,10 +431,7 @@ public partial class Create : OwningComponentBase
 
         _matchPage = result.Offset;
 
-        if (result.Any())
-        {
-            await AddNewMatchesAsync(result, cancel);
-        }
+        await AddNewMatchesAsync(result, cancel);
 
         if (!_matches.Any())
         {
@@ -424,6 +469,11 @@ public partial class Create : OwningComponentBase
 
     private async Task AddNewMatchesAsync(IEnumerable<Card> cards, CancellationToken cancel)
     {
+        if (!cards.Any())
+        {
+            return;
+        }
+
         var matchIds = cards
             .Select(c => c.Id)
             .ToArray();
@@ -448,12 +498,12 @@ public partial class Create : OwningComponentBase
 
     internal async Task LoadMoreCardsAsync()
     {
-        if (IsBusy || _matchPage is Offset { Total: > 0, HasNext: false })
+        if (_isBusy || _matchPage is Offset { Total: > 0, HasNext: false })
         {
             return;
         }
 
-        IsBusy = true;
+        _isBusy = true;
 
         try
         {
@@ -465,14 +515,14 @@ public partial class Create : OwningComponentBase
         }
         finally
         {
-            IsBusy = false;
+            _isBusy = false;
         }
     }
 
 
     internal async Task AddNewCardsAsync()
     {
-        if (IsBusy)
+        if (_isBusy)
         {
             return;
         }
@@ -487,11 +537,12 @@ public partial class Create : OwningComponentBase
             return;
         }
 
-        Result = SaveResult.None;
-        IsBusy = true;
+        _isBusy = true;
 
         try
         {
+            Result = SaveResult.None;
+
             var token = _cancel.Token;
 
             await using var dbContext = await DbFactory.CreateDbContextAsync(token);
@@ -503,8 +554,6 @@ public partial class Create : OwningComponentBase
             await dbContext.SaveChangesAsync(token);
 
             Result = SaveResult.Success;
-
-            StateHasChanged();
 
             if (ReturnUrl is not null)
             {
@@ -521,16 +570,16 @@ public partial class Create : OwningComponentBase
             Logger.LogError("Failed to add new cards {Error}", e);
 
             Result = SaveResult.Error;
+
+            _isBusy = false;
         }
         catch (OperationCanceledException e)
         {
             Logger.LogWarning("{Error}", e);
 
             Result = SaveResult.Error;
-        }
-        finally
-        {
-            IsBusy = false;
+
+            _isBusy = false;
         }
     }
 

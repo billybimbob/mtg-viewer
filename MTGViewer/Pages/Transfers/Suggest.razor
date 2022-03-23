@@ -10,7 +10,7 @@
 
 @switch ((Suggestion.Card, Suggestion.Receiver))
 {
-    case (Card card, UserRef receiver):
+    case (Card card, UserPreview receiver):
         <PageTitle> @card.Name - Suggest @receiver.Name </PageTitle>
         <h1>
             Suggest
@@ -82,27 +82,27 @@
             <div class="btn-group" role="group">
                 <button class="btn btn-secondary" type="button"
                     title="Choose A Different User"
-                    @onclick="() => Suggestion.ReceiverId = null" disabled="@IsBusy">
+                    @onclick="() => Suggestion.ReceiverId = null" disabled="@IsLoading">
                     Pick User
                 </button>
 
                 <button class="btn btn-secondary" type="button"
                     title="View Selected Deck Details"
                     @onclick="ViewDeckDetails"
-                    disabled="@(IsBusy || !HasDetails)">
+                    disabled="@(IsLoading || !HasDetails)">
                     Deck Details
                 </button>
 
                 <button class="btn btn-secondary" type="button"
                     title="Load More Decks"
-                    @onclick="LoadDeckPageAsync" disabled="@(IsBusy || !HasMore)">
+                    @onclick="LoadMoreDecksAsync" disabled="@(IsLoading || !HasMore)">
                     Load More
                 </button>
 
                 <button class="btn btn-secondary"
                     title="Create and Send the Suggestion"
-                    type="submit" disabled="@IsBusy">
-                    @if (IsBusy)
+                    type="submit" disabled="@IsLoading">
+                    @if (IsLoading)
                     {
                         <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"> </span>
                     }
@@ -114,7 +114,7 @@
 }
 else if (Suggestion.Card is Card card)
 {
-    @if (!Suggestion.UserOptions.Any() && !IsBusy)
+    @if (IsMissingUsers)
     {
         <div class="alert alert-warning" role="alert">
             There are no users to suggest to for @card.Name.
@@ -137,7 +137,7 @@ else if (Suggestion.Card is Card card)
 
                 <div class="form-group col-lg-6 col">
                     <select @bind="Suggestion.ReceiverId"
-                        disabled="@IsBusy"
+                        disabled="@IsLoading"
                         title="Suggest to User" class="form-control">
 
                         <option value="@(null as string)"> Choose a User </option>
@@ -152,7 +152,7 @@ else if (Suggestion.Card is Card card)
         </div>
     </div>
 }
-else if (IsBusy)
+else if (IsLoading)
 {
     <div class="d-flex justify-content-center">
         <div class="spinner-grow" style="width: 3rem; height: 3rem;" role="status">
@@ -179,14 +179,14 @@ else if (IsBusy)
     {
         public event EventHandler<ReceiverEventArgs>? ReceiverChanged;
 
-        private readonly List<Deck> _deckOptions = new();
-        private readonly List<UserRef> _userOptions = new();
-        private UserRef? _receiver;
+        private readonly List<DeckPreview> _deckOptions = new();
+        private readonly List<UserPreview> _userOptions = new();
+        private UserPreview? _receiver;
 
 
-        public IReadOnlyList<UserRef> UserOptions => _userOptions;
+        public IReadOnlyList<UserPreview> UserOptions => _userOptions;
 
-        public IReadOnlyList<Deck> DeckOptions => _deckOptions;
+        public IReadOnlyList<DeckPreview> DeckOptions => _deckOptions;
 
 
         public Card? Card { get; set; }
@@ -211,7 +211,7 @@ else if (IsBusy)
             }
         }
 
-        public UserRef? Receiver
+        public UserPreview? Receiver
         {
             get => _receiver;
             set
@@ -226,7 +226,7 @@ else if (IsBusy)
 
 
         [Display(Name = "Suggest To A Specific Deck")]
-        public Deck? To { get; private set; }
+        public DeckPreview? To { get; private set; }
 
         public int? ToId
         {
@@ -235,8 +235,7 @@ else if (IsBusy)
             {
                 if (ToId != value)
                 {
-                    To = DeckOptions.SingleOrDefault(d =>
-                        d.Id == value && d.OwnerId == Receiver?.Id);
+                    To = DeckOptions.SingleOrDefault(d => d.Id == value);
                 }
             }
         }
@@ -246,7 +245,7 @@ else if (IsBusy)
         public string? Comment { get; set; }
 
 
-        public async Task AddDecksAsync(IAsyncEnumerable<Deck> decks, CancellationToken cancel)
+        public async Task AddDecksAsync(IAsyncEnumerable<DeckPreview> decks, CancellationToken cancel)
         {
             await foreach (var deck in decks.WithCancellation(cancel))
             {
@@ -255,7 +254,7 @@ else if (IsBusy)
         }
 
 
-        public async Task AddUsersAsync(IAsyncEnumerable<UserRef> users, CancellationToken cancel)
+        public async Task AddUsersAsync(IAsyncEnumerable<UserPreview> users, CancellationToken cancel)
         {
             await foreach (var user in users.WithCancellation(cancel))
             {

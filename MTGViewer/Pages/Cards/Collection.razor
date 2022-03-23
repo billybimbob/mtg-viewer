@@ -8,7 +8,7 @@
 
 <h1>Card Collection</h1>
 
-<div class="btn-group" role="group">
+<div class="btn-group mb-3" role="group">
     <AuthorizeView>
         <AuthorizeView Policy="@CardPolicies.ChangeTreasury">
             <Authorized Context="treasuryPolicy">
@@ -25,8 +25,8 @@
 <CardFilter @bind-SearchName="Filters.SearchName"
     Color="Filters.PickedColors"
     ColorChanged="Filters.ToggleColor"
-    IsDisabled="@IsBusy" >
-    @if (IsBusy)
+    IsDisabled="@IsLoading" >
+    @if (IsLoading)
     {
         <div class="spinner-grow text-secondary p-2" role="status">
             <span class="sr-only">Loading...</span>
@@ -81,7 +81,7 @@
         </thead>
 
         <tbody>
-            @if (!IsBusy && !Cards.Any())
+            @if (!IsLoading && !Cards.Any())
             {
                 <tr>
                     <td> -- </td>
@@ -110,23 +110,22 @@
     </table>
 </div>
 
-<OffsetPaging Offset="Cards.Offset" PageSelected="Filters.SetPage" IsDisabled="IsBusy" />
+<OffsetPaging Offset="Cards.Offset" PageSelected="Filters.SetPage" IsDisabled="IsLoading" />
 
 
 @code
 {
-    internal RenderFragment Direction<T>(Expression<Func<Card, T>> property)
+    internal string Direction<T>(Expression<Func<Card, T>> property)
     {
-        bool invalid = IsBusy
-            || Filters.OrderBy is null
+        bool invalid = Filters.OrderBy is null
             || property is not { Body: MemberExpression { Member.Name: string name } }
             || name != Filters.OrderBy;
 
         return Filters.IsReversed switch
         {
-            _ when invalid => @<text></text>,
-            true => @<text>&#9650;</text>,
-            false => @<text>&#9660;</text>
+            _ when invalid => string.Empty,
+            true => "\u25B2",
+            false => "\u25BC"
         };
     }
 
@@ -137,18 +136,25 @@
 
     internal string HeaderClass<T>(Expression<Func<Card, T>> property)
     {
-        if (IsBusy)
+        bool isMatch = property
+            is { Body: MemberExpression { Member.Name: string name }}
+            && name == Filters.OrderBy;
+
+        if (isMatch && IsLoading)
         {
-            return string.Empty;
+            return "font-weight-bold";
         }
-        else if (property is { Body: MemberExpression { Member.Name: string name }}
-            && name == Filters.OrderBy)
+        else if (isMatch)
         {
             return "clickable btn-link font-weight-bold";
         }
-        else
+        else if (!IsLoading)
         {
             return "clickable btn-link";
+        }
+        else
+        {
+            return string.Empty;
         }
     }
 }

@@ -26,7 +26,7 @@
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="6.0.2" />
-    <PackageReference Include="MtgApiManager.Lib" Version="2.3.2" />
+    <PackageReference Include="MtgApiManager.Lib" Version="2.3.3" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="6.0.3" />
     <PackageReference Include="SendGrid" Version="9.26.0" />
     <PackageReference Include="System.Linq.Async" Version="6.0.1" />

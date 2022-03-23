@@ -33,9 +33,9 @@ else
 <div class="btn-group mb-3" role="group">
     <button title="Save Deck" type="button"
         class="btn btn-secondary" 
-        disabled="@(IsBusy || CannotSave())"
+        disabled="@(IsLoading || CannotSave())"
         @onclick="CommitChangesAsync">
-        @if (IsBusy)
+        @if (IsLoading)
         {
             <text>
                 <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"> </span>
@@ -79,7 +79,7 @@ else
 <CardFilter @bind-SearchName="Filters.SearchName"
     Color="Filters.PickedColors"
     ColorChanged="Filters.ToggleColor"
-    IsDisabled="IsBusy" />
+    IsDisabled="IsLoading" />
 
 <div class="row">
     <section class="col-12 col-lg-7">
@@ -118,7 +118,7 @@ else
             }
         </div>
 
-        <OffsetPaging Offset="Treasury.Offset" PageSelected="ChangeTreasuryPage" IsDisabled="IsBusy" />
+        <OffsetPaging Offset="Treasury.Offset" PageSelected="ChangeTreasuryPage" IsDisabled="IsLoading" />
     </section>
 
 
@@ -180,6 +180,6 @@ else
             </div>
         </div>
 
-        <OffsetPaging Offset="deckCards.Offset" PageSelected="ChangeDeckPage" IsDisabled="IsBusy" />
+        <OffsetPaging Offset="deckCards.Offset" PageSelected="ChangeDeckPage" IsDisabled="IsLoading" />
     </section>
 </div>

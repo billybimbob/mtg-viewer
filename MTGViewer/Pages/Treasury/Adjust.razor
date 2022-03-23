@@ -80,7 +80,9 @@
                     <label for="@BoxDto.PropertyId(b => b.Bin)">
                         @Box.DisplayName(b => b.Bin)
                     </label>
-                    <select @onchange="BinSelected" id="@BoxDto.PropertyId(b => b.Bin)" class="form-control">
+                    <select @onchange="BinSelected" disabled="@IsLoading"
+                        id="@BoxDto.PropertyId(b => b.Bin)" class="form-control">
+
                         <option value="0" selected="@(!Box.Bin.IsEdit)"> Create New </option>
 
                         @foreach (var bin in Bins)
@@ -134,8 +136,8 @@
                 </div>
 
                 <div class="btn-group" role="group">
-                    <button class="btn btn-secondary" type="submit" disabled="@IsBusy">
-                        @if (IsBusy)
+                    <button class="btn btn-secondary" type="submit" disabled="@IsLoading">
+                        @if (IsLoading)
                         {
                             <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"> </span>
                         }
@@ -187,7 +189,7 @@ else
         public int Capacity { get; set; }
 
         [ValidateComplexType]
-        public BinDto Bin { get; }
+        public BinDto Bin { get; init; }
 
 
         public static string PropertyId<T>(Expression<Func<BoxDto, T>> property)
@@ -204,13 +206,21 @@ else
 
     internal sealed class BinDto
     {
-        private BoxDto _box;
+        private readonly BoxDto? _box;
         private string? _name;
+
+        public BinDto()
+        {
+            _box = null;
+        }
 
         public BinDto(BoxDto box)
         {
             _box = box;
         }
+
+
+        public bool IsEdit => Id != default;
 
         public int Id { get; set; }
 
@@ -221,27 +231,18 @@ else
             get => _name;
             set
             {
-                if (_box.IsEdit || !IsEdit)
+                if (_box is null || _box.IsEdit || !IsEdit)
                 {
                     _name = value;
                 }
             }
         }
 
-        public bool IsEdit => Id != default;
 
-        public void Update(Bin? bin)
+        public void Update(BinDto? bin)
         {
-            if (bin == default)
-            {
-                Id = default;
-                _name = null;
-            }
-            else
-            {
-                Id = bin.Id;
-                _name = bin?.Name;
-            }
+            Id = bin?.Id ?? default;
+            _name = bin?.Name;
         }
 
 

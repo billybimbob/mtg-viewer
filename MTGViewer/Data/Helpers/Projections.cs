@@ -102,11 +102,27 @@ public sealed class Statistics
 
 #region Change Projections
 
-public sealed class RecentTransaction
+public sealed record RecentTransaction
 {
     public DateTime AppliedAt { get; init; }
     public IEnumerable<RecentChange> Changes { get; init; } = Enumerable.Empty<RecentChange>();
     public int Copies { get; init; }
+
+
+    public bool Equals(RecentTransaction? transfer)
+    {
+        return transfer is not null
+            && transfer.AppliedAt == AppliedAt
+            && transfer.Copies== Copies
+            && transfer.Changes.SequenceEqual(Changes);
+    }
+
+    public override int GetHashCode()
+    {
+        return AppliedAt.GetHashCode()
+            ^ Copies.GetHashCode()
+            ^ Changes.Aggregate(0, (hash, c) => hash ^ c.GetHashCode());
+    }
 }
 
 

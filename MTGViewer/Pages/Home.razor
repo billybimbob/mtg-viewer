@@ -52,8 +52,8 @@
         <div class="pt-3 d-flex justify-content-center">
             <button title="More Cards" type="button" class="btn btn-secondary"
                 @onclick="LoadMoreCardsAsync" 
-                disabled="@(IsBusy || IsFullyLoaded)" >
-                @if (IsBusy)
+                disabled="@IsLoading" >
+                @if (IsLoading)
                 {
                     <text>
                         <span class="spinner-border spinner-border-sm"

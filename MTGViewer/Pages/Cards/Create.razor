@@ -20,7 +20,7 @@
 @if (!Matches.Any() && IsFromForm)
 {
     <hr />
-    <EditForm OnValidSubmit="@SubmitSearchAsync" EditContext="@SearchEdit">
+    <EditForm OnValidSubmit="@SubmitSearch" EditContext="@SearchEdit">
         <DataAnnotationsValidator />
 
         <div class="row">
@@ -103,7 +103,7 @@
                     @foreach (var (color, symbol) in Symbol.Colors)
                     {
                         <button title="Toggle @color"
-                            disabled="@IsBusy" type="button"
+                            disabled="@IsLoading" type="button"
                             class="btn btn-outline-secondary ms-filter @ActiveColor(color)"
                             @onclick="() => ToggleColor(color)">
                             <i class="ms ms-@symbol.ToLower() ms-cost"></i>
@@ -175,8 +175,8 @@
                 <div class="btn-group" role="group">
 
                     <button type="submit" class="btn btn-secondary" 
-                        title="Search For Card" disabled="@IsBusy">
-                        @if (IsBusy)
+                        title="Search For Card" disabled="@(IsEmpty || IsLoading)">
+                        @if (IsLoading)
                         {
                             <text>
                                 <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"> </span>
@@ -198,8 +198,8 @@ else
     <div class="btn-group pb-2" role="group">
         <button title="Reset Search Arguments"
             type="button"
-            @onclick="ResetAsync" 
-            disabled="@IsBusy"
+            @onclick="Reset" 
+            disabled="@IsLoading"
             class="btn btn-danger">
             Reset </button>
 
@@ -207,7 +207,7 @@ else
             type="button"
             class="btn btn-secondary"
             @onclick="AddNewCardsAsync" 
-            disabled="@(CannotAdd() || IsBusy)">
+            disabled="@(CannotAdd() || IsLoading)">
             Add Cards/Copies </button>
     </div>
 
@@ -262,8 +262,8 @@ else
         <button title="More Results" type="button"
             class="btn btn-secondary"
             @onclick="LoadMoreCardsAsync" 
-            disabled="@(HasNoNext || IsBusy)" >
-            @if (IsBusy)
+            disabled="@(HasNoNext || IsLoading)" >
+            @if (IsLoading)
             {
                 <text>
                     <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"> </span>

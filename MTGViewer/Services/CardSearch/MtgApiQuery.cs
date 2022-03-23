@@ -143,6 +143,10 @@ public sealed class MtgApiQuery : IMTGQuery
 
     private ICardService ApplyParameters(MtgCardSearch values)
     {
+        const string requiredAttributes = "multiverseId,imageUrl";
+
+        _cardService.Where(c => c.Contains, requiredAttributes);
+
         foreach (var parameter in values.Parameters.Values)
         {
             parameter.Apply(_cardService);

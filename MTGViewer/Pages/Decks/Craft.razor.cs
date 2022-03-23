@@ -39,14 +39,19 @@ public partial class Craft : OwningComponentBase
     protected IDbContextFactory<CardDbContext> DbFactory { get; set; } = default!;
 
     [Inject]
+    protected PersistentComponentState ApplicationState { get; set; } = default!;
+
+    [Inject]
     protected PageSizes PageSizes { get; set; } = default!;
 
     [Inject]
-    protected NavigationManager NavManager { get; set; } = default!;
+    protected NavigationManager Nav { get; set; } = default!;
 
     [Inject]
     protected ILogger<Craft> Logger { get; set; } = default!;
 
+
+    internal bool IsLoading => _isBusy || !_isInteractive;
 
     internal string DeckName =>
         _deckContext?.Deck.Name is string name && !string.IsNullOrWhiteSpace(name)
@@ -56,9 +61,8 @@ public partial class Craft : OwningComponentBase
 
     internal TreasuryFilters Filters { get; } = new();
 
-    internal OffsetList<HeldCard> Treasury { get; private set; } = OffsetList<HeldCard>.Empty;
 
-    internal bool IsBusy { get; private set; }
+    internal OffsetList<HeldCard> Treasury { get; private set; } = OffsetList<HeldCard>.Empty;
 
     internal SaveResult Result { get; set; }
 
@@ -68,23 +72,24 @@ public partial class Craft : OwningComponentBase
     private readonly CancellationTokenSource _cancel = new();
     private readonly SortedSet<Card> _cards = new(CardNameComparer.Instance);
 
+    private PersistingComponentStateSubscription _persistSubscription;
+
+    private bool _isBusy;
+    private bool _isInteractive;
     private DeckContext? _deckContext;
 
 
     protected override async Task OnInitializedAsync()
     {
-        if (IsBusy)
-        {
-            return;
-        }
+        _persistSubscription = ApplicationState.RegisterOnPersisting(PersistCardData);
 
-        IsBusy = true;
+        _isBusy = true;
 
         try
         {
             Filters.PageSize = PageSizes.GetComponentSize<Craft>();
 
-            await ApplyFiltersAsync(Filters, _cancel.Token);
+            await LoadCardDataAsync(_cancel.Token);
 
             Filters.FilterChanged += OnFilterChange;
 
@@ -101,60 +106,112 @@ public partial class Craft : OwningComponentBase
         }
         finally
         {
-            IsBusy = false;
+            _isBusy = false;
         }
     }
 
 
-    protected override async Task OnParametersSetAsync()
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (IsBusy)
+        if (!firstRender)
         {
             return;
         }
 
-        IsBusy = true;
+        _isBusy = true;
 
         try
         {
-            var token = _cancel.Token;
-            var userId = await GetUserIdAsync(token);
+            await LoadDeckDataAsync(_cancel.Token);
 
-            if (userId is null)
-            {
-                return;
-            }
+            _isBusy = false;
+            _isInteractive = true;
 
-            await using var dbContext = await DbFactory.CreateDbContextAsync(token);
-
-            dbContext.Cards.AttachRange(_cards);
-
-            var deckResult = DeckId == default
-                ? await CreateDeckAsync(dbContext, userId, token)
-                : await FetchDeckOrRedirectAsync(dbContext, userId, token);
-
-            if (deckResult is null)
-            {
-                return;
-            }
-
-            _deckContext = new(deckResult, Filters.PageSize);
-
-            _cards.UnionWith(dbContext.Cards.Local);
+            StateHasChanged();
         }
         catch (OperationCanceledException ex)
         {
             Logger.LogWarning("{Error}", ex);
         }
-        catch (NavigationException ex)
+    }
+
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
         {
-            Logger.LogError("{Error}", ex);
+            _persistSubscription.Dispose();
+
+            Filters.FilterChanged -= OnFilterChange;
+
+            TreasuryLoaded -= Filters.OnTreasuryLoaded;
+
+            _cancel.Cancel();
+            _cancel.Dispose();
         }
 
-        finally
+        base.Dispose(disposing);
+    }
+
+
+
+    private Task PersistCardData()
+    {
+        ApplicationState.PersistAsJson(nameof(Treasury), Treasury as IReadOnlyList<HeldCard>);
+
+        ApplicationState.PersistAsJson(nameof(Offset.Total), Treasury.Offset.Total);
+
+        return Task.CompletedTask;
+    }
+
+
+    private async Task LoadCardDataAsync(CancellationToken cancel)
+    {
+        IReadOnlyList<HeldCard>? heldCards;
+
+        if (!ApplicationState.TryTakeFromJson(nameof(Treasury), out heldCards)
+            || !ApplicationState.TryTakeFromJson(nameof(Offset.Total), out int totalPages)
+            || heldCards is null)
         {
-            IsBusy = false;
+            await ApplyFiltersAsync(Filters, _cancel.Token);
+            return;
         }
+
+        // only the first page will be persisted;
+        var offset = new Offset(0, totalPages);
+
+        Treasury = new OffsetList<HeldCard>(offset, heldCards);
+
+        _cards.UnionWith(heldCards.Select(c => c.Card));
+    }
+
+
+
+    private async Task LoadDeckDataAsync(CancellationToken cancel)
+    {
+        var userId = await GetUserIdAsync(cancel);
+
+        if (userId is null)
+        {
+            return;
+        }
+
+        await using var dbContext = await DbFactory.CreateDbContextAsync(cancel);
+
+        dbContext.Cards.AttachRange(_cards);
+
+        var deckResult = DeckId == default
+            ? await CreateDeckAsync(dbContext, userId, cancel)
+            : await FetchDeckOrRedirectAsync(dbContext, userId, cancel);
+
+        if (deckResult is null)
+        {
+            return;
+        }
+
+        _deckContext = new(deckResult, Filters.PageSize);
+
+        _cards.UnionWith(dbContext.Cards.Local);
     }
 
 
@@ -182,7 +239,7 @@ public partial class Craft : OwningComponentBase
         var deck = await CraftingDeckAsync.Invoke(dbContext, DeckId, userId, cancel);
         if (deck is null)
         {
-            NavManager.NavigateTo("/Decks", forceLoad: true, replace: true);
+            Nav.NavigateTo("/Decks", forceLoad: true, replace: true);
             return null;
         }
 
@@ -213,34 +270,6 @@ public partial class Craft : OwningComponentBase
         return newLoc;
     }
 
-
-    protected override void Dispose(bool disposing)
-    {
-        if (disposing)
-        {
-            Filters.FilterChanged -= OnFilterChange;
-
-            TreasuryLoaded -= Filters.OnTreasuryLoaded;
-
-            _cancel.Cancel();
-            _cancel.Dispose();
-        }
-
-        base.Dispose(disposing);
-    }
-
-
-
-    private async Task ApplyFiltersAsync(TreasuryFilters filters, CancellationToken cancel)
-    {
-        await using var dbContext = await DbFactory.CreateDbContextAsync(cancel);
-
-        dbContext.Cards.AttachRange(_cards);
-
-        Treasury = await FilteredCardsAsync(dbContext, filters, cancel);
-
-        _cards.UnionWith(Treasury.Select(c => c.Card));
-    }
 
 
     #region Queries
@@ -309,6 +338,19 @@ public partial class Craft : OwningComponentBase
     }
 
     #endregion
+
+
+
+    private async Task ApplyFiltersAsync(TreasuryFilters filters, CancellationToken cancel)
+    {
+        await using var dbContext = await DbFactory.CreateDbContextAsync(cancel);
+
+        dbContext.Cards.AttachRange(_cards);
+
+        Treasury = await FilteredCardsAsync(dbContext, filters, cancel);
+
+        _cards.UnionWith(Treasury.Select(c => c.Card));
+    }
 
 
 
@@ -430,12 +472,12 @@ public partial class Craft : OwningComponentBase
 
     private async void OnFilterChange(object? sender, EventArgs _)
     {
-        if (IsBusy || sender is not TreasuryFilters)
+        if (_isBusy || sender is not TreasuryFilters)
         {
             return;
         }
 
-        IsBusy = true;
+        _isBusy = true;
 
         try
         {
@@ -453,7 +495,7 @@ public partial class Craft : OwningComponentBase
         }
         finally
         {
-            IsBusy = false;
+            _isBusy = false;
 
             StateHasChanged();
         }
@@ -859,14 +901,14 @@ public partial class Craft : OwningComponentBase
 
     public async Task CommitChangesAsync()
     {
-        if (IsBusy
+        if (_isBusy
             || _deckContext is null
             || !_deckContext.CanSave())
         {
             return;
         }
 
-        IsBusy = true;
+        _isBusy = true;
 
         try
         {
@@ -891,7 +933,7 @@ public partial class Craft : OwningComponentBase
         }
         finally
         {
-            IsBusy = false;
+            _isBusy = false;
         }
     }
 

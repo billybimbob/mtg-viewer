@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -19,28 +20,37 @@ public sealed partial class Home : ComponentBase, IDisposable
     internal IDbContextFactory<CardDbContext> DbFactory { get; set; } = default!;
 
     [Inject]
+    internal PersistentComponentState ApplicationState { get; set; } = default!;
+
+    [Inject]
     internal PageSizes PageSizes { get; set; } = default!;
 
     [Inject]
     internal ILogger<Home> Logger { get; set; } = default!;
 
 
-    internal bool IsFirstLoad => IsBusy && _randomContext is null;
+    internal bool IsFirstLoad => _isBusy && _randomContext is null;
+
+    internal bool IsLoading => _isBusy || !_isInteractive;
 
     internal bool IsEmptyCollection => _randomContext is { Cards.Count: 0 };
 
     internal bool IsFullyLoaded => _randomContext is null or { HasMore: false };
 
+
     internal IReadOnlyList<CardImage> RandomCards => _randomContext?.Cards ?? Array.Empty<CardImage>();
 
     internal IReadOnlyList<RecentTransaction> RecentChanges => _recentChanges;
-
-    internal bool IsBusy { get; private set; }
 
 
     private const int ChunkSize = 4;
 
     private readonly CancellationTokenSource _cancel = new();
+
+    private bool _isBusy;
+    private bool _isInteractive;
+
+    private PersistingComponentStateSubscription _persistSubscription;
 
     private RecentTransaction[] _recentChanges = Array.Empty<RecentTransaction>();
     private RandomCardsContext? _randomContext;
@@ -49,25 +59,29 @@ public sealed partial class Home : ComponentBase, IDisposable
 
     protected override async Task OnInitializedAsync()
     {
-        if (IsBusy)
-        {
-            return;
-        }
+        _persistSubscription = ApplicationState.RegisterOnPersisting(PersistCardData);
 
-        IsBusy = true;
+        _isBusy = true;
 
         try
         {
+            var cachedLoad = GetValueOrDefault<List<string[]>>(nameof(_randomContext.Order));
+            var cachedCards = GetValueOrDefault<List<CardImage>>(nameof(_randomContext.Cards));
+
+            var cachedChanges = GetValueOrDefault<RecentTransaction[]>(nameof(_recentChanges));
+
+            int limit = PageSizes.Limit;
             var token = _cancel.Token;
-            int loadLimit = PageSizes.Limit;
 
             await using var dbContext = await DbFactory.CreateDbContextAsync(token);
 
-            _randomContext = await RandomCardsContext.CreateAsync(dbContext, loadLimit, token);
+            _randomContext = await RandomCardsContext.CreateAsync(cachedLoad, cachedCards, dbContext, limit, token);
 
-            _recentChanges = await RecentTransactionsAsync
-                .Invoke(dbContext, loadLimit)
-                .ToArrayAsync(token);
+            _recentChanges = cachedChanges is not null
+                ? cachedChanges
+                : await RecentTransactionsAsync
+                    .Invoke(dbContext, limit)
+                    .ToArrayAsync(token);
 
             _currentTime = DateTime.UtcNow;
         }
@@ -77,20 +91,60 @@ public sealed partial class Home : ComponentBase, IDisposable
         }
         finally
         {
-            IsBusy = false;
+            _isBusy = false;
         }
     }
 
 
-    public void Dispose()
+    protected override void OnAfterRender(bool firstRender)
     {
+        if (firstRender)
+        {
+            _isInteractive = true;
+
+            StateHasChanged();
+        }
+    }
+
+
+    void IDisposable.Dispose()
+    {
+        _persistSubscription.Dispose();
+
         _cancel.Cancel();
         _cancel.Dispose();
     }
 
 
+    private Task PersistCardData()
+    {
+        ApplicationState.PersistAsJson(nameof(_randomContext.Order), _randomContext?.Order);
+        ApplicationState.PersistAsJson(nameof(_randomContext.Cards), _randomContext?.Cards);
+
+        ApplicationState.PersistAsJson(nameof(_recentChanges), _recentChanges);
+
+        return Task.CompletedTask;
+    }
+
+
+    private TData? GetValueOrDefault<TData>(string key)
+    {
+        if (ApplicationState.TryTakeFromJson<TData>(key, out var data))
+        {
+            return data;
+        }
+
+        return default;
+    }
+
+
     internal bool IsImageLoaded(CardImage card)
     {
+        if (!_isInteractive)
+        {
+            return true;
+        }
+
         return _randomContext?.LoadedImages.Contains(card.Id) ?? false;
     }
 
@@ -120,12 +174,12 @@ public sealed partial class Home : ComponentBase, IDisposable
 
     internal async Task LoadMoreCardsAsync()
     {
-        if (IsBusy || _randomContext is null or { HasMore: false })
+        if (_isBusy || _randomContext is null or { HasMore: false })
         {
             return;
         }
 
-        IsBusy = true;
+        _isBusy = true;
 
         try
         {
@@ -141,7 +195,7 @@ public sealed partial class Home : ComponentBase, IDisposable
         }
         finally
         {
-            IsBusy = false;
+            _isBusy = false;
         }
     }
 
@@ -160,36 +214,51 @@ public sealed partial class Home : ComponentBase, IDisposable
     {
         private readonly List<CardImage> _cards;
         private readonly HashSet<string> _imageLoaded;
-        private readonly IReadOnlyList<string[]> _loadOrder;
         private readonly int _limit;
 
+        public IReadOnlyList<string[]> Order { get; }
+
         public ICollection<string> LoadedImages => _imageLoaded;
+
         public IReadOnlyList<CardImage> Cards => _cards;
+
         public bool HasMore => _cards.Count < _limit;
 
 
-        private RandomCardsContext(IReadOnlyList<string[]> loadOrder)
+        private RandomCardsContext(IReadOnlyList<string[]> loadOrder, List<CardImage> cards)
         {
-            _cards = new();
+            Order = loadOrder;
+            _cards = cards;
+
+            _limit = Order.Sum(chunk => chunk.Length);
             _imageLoaded = new();
-            _loadOrder = loadOrder;
-            _limit = _loadOrder.Sum(chunk => chunk.Length);
         }
+
+        private RandomCardsContext(IReadOnlyList<string[]> loadOrder)
+            : this(loadOrder, new())
+        { }
 
 
         public static async Task<RandomCardsContext> CreateAsync(
+            IReadOnlyList<string[]>? loadOrder,
+            List<CardImage>? cards,
             CardDbContext dbContext,
-            int loadLimit,
+            int limit,
             CancellationToken cancel)
         {
-            var loadOrder = await ShuffleOrderAsync
-                .Invoke(dbContext, loadLimit)
-                .Chunk(ChunkSize)
-                .ToListAsync(cancel);
+            if (loadOrder is null)
+            {
+                loadOrder = await ShuffleOrderAsync
+                    .Invoke(dbContext, limit)
+                    .Chunk(ChunkSize)
+                    .ToListAsync(cancel);
+            }
 
-            var randomContext = new RandomCardsContext(loadOrder);
+            var randomContext = AreValidCards(loadOrder, cards)
+                ? new RandomCardsContext(loadOrder, cards)
+                : new RandomCardsContext(loadOrder);
 
-            if (randomContext.HasMore)
+            if (randomContext is { Cards.Count: 0, HasMore: true })
             {
                 await randomContext.LoadNextChunkAsync(dbContext, cancel);
             }
@@ -197,13 +266,31 @@ public sealed partial class Home : ComponentBase, IDisposable
             return randomContext;
         }
 
+
+        private static bool AreValidCards(
+            IReadOnlyList<string[]> loadOrder,
+            [NotNullWhen(returnValue: true)] List<CardImage>? cards)
+        {
+            if (cards is null)
+            {
+                return false;
+            }
+
+            var expectedOrder = loadOrder
+                .SelectMany(chunk => chunk)
+                .Take(cards.Count);
+
+            return cards
+                .Select(c => c.Id)
+                .SequenceEqual(expectedOrder);
+        }
+
+
         public async Task LoadNextChunkAsync(CardDbContext dbContext, CancellationToken cancel)
         {
             ArgumentNullException.ThrowIfNull(dbContext);
 
-            var chunk = HasMore
-                ? _loadOrder[_cards.Count / ChunkSize]
-                : null;
+            var chunk = Order.ElementAtOrDefault(_cards.Count / ChunkSize);
 
             if (chunk is null)
             {
