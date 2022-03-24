@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -64,9 +65,7 @@ public sealed partial class Adjust : ComponentBase, IDisposable
 
         try
         {
-            var cachedBins = GetValueOrDefault<BinDto[]>(nameof(_bins));
-
-            if (cachedBins is not null)
+            if (TryGetData(nameof(_bins), out BinDto[]? cachedBins))
             {
                 _bins = cachedBins;
                 return;
@@ -172,14 +171,15 @@ public sealed partial class Adjust : ComponentBase, IDisposable
     }
 
 
-    private TData? GetValueOrDefault<TData>(string key)
+    private bool TryGetData<TData>(string key, [NotNullWhen(true)] out TData? data)
     {
-        if (ApplicationState.TryTakeFromJson(key, out TData? data))
+        if (ApplicationState.TryTakeFromJson(key, out data!)
+            && data is not null)
         {
-            return data;
+            return true;
         }
 
-        return default;
+        return false;
     }
 
 
@@ -196,9 +196,7 @@ public sealed partial class Adjust : ComponentBase, IDisposable
 
     private async Task<BoxDto?> GetBoxAsync(CancellationToken cancel)
     {
-        var cachedBox = GetValueOrDefault<BoxDto>(nameof(Box));
-
-        if (cachedBox is not null)
+        if (TryGetData(nameof(Box), out BoxDto? cachedBox))
         {
             return cachedBox;
         }

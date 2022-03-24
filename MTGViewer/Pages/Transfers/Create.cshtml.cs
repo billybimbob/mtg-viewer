@@ -83,6 +83,8 @@ public class CreateModel : PageModel
 
         if (requests.Offset.Current > requests.Offset.Total)
         {
+            _logger.LogWarning("Invalid page offset {Offset}", offset);
+
             return RedirectToPage(new { offset = null as int? });
         }
 

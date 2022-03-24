@@ -43,13 +43,14 @@ public class ColorUpdate : IBeforeSaveTrigger<TheoryCraft>
             return;
         }
 
+        _logger.LogWarning("Theorycraft {TheoryId} not fully loaded", theory.Id);
+
         var deckColors
-            =  await DeckColorsAsync.Invoke(_dbContext, theory.Id, cancel)
+            = await DeckColorsAsync.Invoke(_dbContext, theory.Id, cancel)
             ?? await UnclaimedColorsAsync.Invoke(_dbContext, theory.Id, cancel);
 
-        theory.Color = GetColor(deckColors);
+        theory.Color = GetColor(deckColors, theory);
     }
-
 
 
     private async Task SetAddedColorAsync(TheoryCraft theory, CancellationToken cancel)
@@ -61,26 +62,41 @@ public class ColorUpdate : IBeforeSaveTrigger<TheoryCraft>
             return;
         }
 
+        _logger.LogWarning("Theorycraft {TheoryId} not fully loaded", theory.Id);
+
         var cardIds = theory.Holds.Select(h => h.CardId)
             .Union(theory.Wants.Select(h => h.CardId))
             .ToArray();
 
+        var localColors = theory.Holds
+            .Select(h => h.Card)
+            .Concat(theory.Wants
+                .Select(w => w.Card))
+
+            .OfType<Card>()
+            .GroupBy(c => c.Color, (color, _) => color)
+            .ToAsyncEnumerable();
+
         theory.Color = await CardColorsAsync
             .Invoke(_dbContext, cardIds)
+            .Union(localColors)
             .AggregateAsync(Color.None, (color, card) => color | card, cancel);
     }
 
 
     private bool IsFullyLoaded(TheoryCraft theory)
     {
-        var theoryEntry = _dbContext.Entry(theory);
+        var entry = _dbContext.Entry(theory);
 
         return theory.Holds.All(h => h.Card is not null)
             && theory.Wants.All(w => w.Card is not null)
-            && theoryEntry.Collection(d => d.Holds) is { IsLoaded: true }
-            && theoryEntry.Collection(d => d.Wants) is { IsLoaded: true };
-    }
 
+            && entry.Collection(t => t.Holds)
+                is not { IsLoaded: false, IsModified: true }
+
+            && entry.Collection(t => t.Wants)
+                is not { IsLoaded: false, IsModified: true };
+    }
 
 
     private static Color GetColor(TheoryCraft theory)
@@ -97,15 +113,25 @@ public class ColorUpdate : IBeforeSaveTrigger<TheoryCraft>
     }
 
 
-    private static Color GetColor(TheoryColors? colors)
+    private static Color GetColor(TheoryColors? colors, TheoryCraft theory)
     {
         if (colors is null)
         {
             return Color.None;
         }
 
+        var holdColors = theory.Holds
+            .Select(h => h.Card?.Color)
+            .OfType<Color>();
+
+        var wantColors = theory.Wants
+            .Select(h => h.Card?.Color)
+            .OfType<Color>();
+
         return colors.HoldColors
-            .Concat(colors.WantColors)
+            .Union(colors.WantColors)
+            .Union(holdColors)
+            .Union(wantColors)
             .Aggregate(Color.None, (color, card) => color | card);
     }
 

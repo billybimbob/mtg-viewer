@@ -102,28 +102,6 @@ public class IndexTests : IAsyncLifetime
     }
 
 
-    [Fact(Skip = "Middleware will handle auth")]
-    public async Task OnPostRemove_NoUser_NoChange()
-    {
-        _pageFactory.AddModelContext(_detailsModel);
-
-        bool unclaimedBefore = await _dbContext.Unclaimed
-            .Select(u => u.Id)
-            .ContainsAsync(_unclaimed.Id);
-
-        var result = await _detailsModel.OnPostRemoveAsync(_unclaimed.Id, default);
-
-        bool unclaimedAfter = await _dbContext.Unclaimed
-            .Select(u => u.Id)
-            .ContainsAsync(_unclaimed.Id);
-
-        Assert.IsType<NotFoundResult>(result);
-
-        Assert.True(unclaimedBefore);
-        Assert.True(unclaimedAfter);
-    }
-
-
     [Fact]
     public async Task OnPostRemove_WithUser_NoChange()
     {

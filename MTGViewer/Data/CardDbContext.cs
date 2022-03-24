@@ -101,7 +101,7 @@ internal class OwnedConfiguration : IEntityTypeConfiguration<TheoryCraft>
     {
         builder
             .HasMany(o => o.Wants)
-            .WithOne(w => (TheoryCraft)w.Location)
+            .WithOne(w => w.Location)
             .OnDelete(DeleteBehavior.Cascade);
     }
 }
@@ -113,7 +113,7 @@ internal class DeckConfiguration : IEntityTypeConfiguration<Deck>
     {
         builder
             .HasMany(d => d.GiveBacks)
-            .WithOne(g => (Deck)g.Location)
+            .WithOne(g => g.Location)
             .OnDelete(DeleteBehavior.Cascade);
 
         builder

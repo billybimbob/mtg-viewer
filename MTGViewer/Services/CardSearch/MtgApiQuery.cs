@@ -31,8 +31,6 @@ public sealed class MtgApiQuery : IMTGQuery
                     typeof(object)
                 })!;
 
-    private PredicateVisitor? _predicateConverter;
-    private ExpressionVisitor PredicateConverter => _predicateConverter ??= new();
 
     private readonly ICardService _cardService;
     private readonly MtgApiFlipQuery _flipQuery;
@@ -53,7 +51,6 @@ public sealed class MtgApiQuery : IMTGQuery
     }
 
 
-
     public IMTGCardSearch Where(Expression<Func<CardQuery, bool>> predicate)
     {
         var parameters = CardQueryParameters.Base
@@ -67,7 +64,7 @@ public sealed class MtgApiQuery : IMTGQuery
         IDictionary<string, IMtgParameter> parameters,
         Expression<Func<CardQuery, bool>> predicate)
     {
-        if (PredicateConverter.Visit(predicate) is MethodCallExpression call
+        if (PredicateVisitor.Instance.Visit(predicate) is MethodCallExpression call
             && call.Method == QueryMethod
             && call.Arguments[1] is ConstantExpression { Value: string propertyName }
             && call.Arguments[2] is ConstantExpression { Value: var value })
@@ -145,22 +142,23 @@ public sealed class MtgApiQuery : IMTGQuery
     {
         const string requiredAttributes = "multiverseId,imageUrl";
 
-        _cardService.Where(c => c.Contains, requiredAttributes);
+        var cards = _cardService.Where(c => c.Contains, requiredAttributes);
 
         foreach (var parameter in values.Parameters.Values)
         {
-            parameter.Apply(_cardService);
+            cards = parameter.Apply(cards);
         }
 
-        // _cardService.Where(c => c.OrderBy, "name") get error code 500 with this
+        // cards = cards.Where(c => c.OrderBy, "name") get error code 500 with this
 
-        if (values.Parameters.GetValueOrDefault(nameof(CardQuery.PageSize))
-            ?.IsEmpty ?? true)
+        const string pageSize = nameof(CardQuery.PageSize);
+
+        if (values.Parameters.GetValueOrDefault(pageSize)?.IsEmpty ?? true)
         {
-            return _cardService.Where(c => c.PageSize, _pageSize);
+            return cards.Where(c => c.PageSize, _pageSize);
         }
 
-        return _cardService;
+        return cards;
     }
 
 

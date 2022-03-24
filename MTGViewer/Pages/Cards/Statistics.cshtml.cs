@@ -86,7 +86,7 @@ public class StatisticsModel : PageModel
     }
 
 
-    private ColorCopies GetColorCopies(IReadOnlyList<ColorCopies> dbColors, Color color)
+    private static ColorCopies GetColorCopies(IReadOnlyList<ColorCopies> dbColors, Color color)
     {
         int copies = color is Color.None
             ? dbColors
@@ -124,7 +124,7 @@ public class StatisticsModel : PageModel
                 || c.Type.Contains("Sorcery"))
 
             .GroupBy(
-                c => c.Type.IndexOf(longDash) >= 0
+                c => c.Type.Contains(longDash)
                     ? c.Type.Substring(0, c.Type.IndexOf(longDash))
                     : c.Type,
                 (type, cs) => new TypeCopies

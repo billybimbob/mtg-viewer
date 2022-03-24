@@ -39,24 +39,11 @@ public class QuantityValidate : IBeforeSaveTrigger<Quantity>
             quantity.Copies = _pageSizes.Limit;
         }
 
-        if (quantity is GiveBack giveBack)
+        if (quantity is not GiveBack giveBack)
         {
-            CheckGiveBack(giveBack);
             return Task.CompletedTask;
         }
 
-        if (quantity is Want
-            && quantity.Location is not TheoryCraft and not null)
-        {
-            throw new DbUpdateException("Want can only have a TheoryCraft type");
-        }
-
-        return Task.CompletedTask;
-    }
-
-
-    private void CheckGiveBack(GiveBack giveBack)
-    {
         if (giveBack.Location is not Deck deck)
         {
             throw new DbUpdateException("GiveBack can only have a Deck type, and must be loaded");
@@ -76,5 +63,7 @@ public class QuantityValidate : IBeforeSaveTrigger<Quantity>
 
             giveBack.Copies = hold.Copies;
         }
+
+        return Task.CompletedTask;
     }
 }

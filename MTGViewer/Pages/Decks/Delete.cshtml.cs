@@ -10,7 +10,6 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 
 using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
@@ -26,19 +25,14 @@ public class DeleteModel : PageModel
     private readonly CardDbContext _dbContext;
     private readonly int _pageSize;
 
-    private readonly ILogger<DeleteModel> _logger;
-
     public DeleteModel(
         UserManager<CardUser> userManager,
         CardDbContext dbContext,
-        PageSizes pageSizes,
-        ILogger<DeleteModel> logger)
+        PageSizes pageSizes)
     {
         _userManager = userManager;
         _dbContext = dbContext;
         _pageSize = pageSizes.GetPageModelSize<DeleteModel>();
-
-        _logger = logger;
     }
 
 

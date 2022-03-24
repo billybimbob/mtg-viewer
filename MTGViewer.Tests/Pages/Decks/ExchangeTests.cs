@@ -222,40 +222,6 @@ public class ExchangeTests : IAsyncLifetime
     }
 
 
-    [Fact(Skip = "Invariant handled by TradeValidate trigger")]
-    public async Task OnPost_InsufficientGive_NoChange()
-    {
-        // Arrange
-        var giveBack = await _testGen.GetGiveBackAsync(2);
-        var deckOwnerId = await OwnerId(giveBack).SingleAsync();
-
-        await _pageFactory.AddModelContextAsync(_exchangeModel, deckOwnerId);
-
-        // Act
-        int giveBefore = await Copies(giveBack).SingleAsync();
-        int holdBefore = await HoldCopies(giveBack).SingleAsync();
-
-        var boxBefore = await BoxCardCopies(giveBack).SumAsync();
-        var changeBefore = await ChangeCopies(giveBack).SumAsync();
-
-        var result = await _exchangeModel.OnPostAsync(giveBack.LocationId, default);
-
-        int giveAfter = await Copies(giveBack).SingleAsync();
-        int holdAfter = await HoldCopies(giveBack).SingleAsync();
-
-        var boxAfter = await BoxCardCopies(giveBack).SumAsync();
-        var changeAfter = await ChangeCopies(giveBack).SumAsync();
-
-        // Assert
-        Assert.IsType<RedirectToPageResult>(result);
-        Assert.Equal(giveBefore, giveAfter);
-        Assert.Equal(holdBefore, holdAfter);
-
-        Assert.Equal(boxBefore, boxAfter);
-        Assert.Equal(changeBefore, changeAfter);
-    }
-
-
     [Fact]
     public async Task OnPost_TradeActive_NoChange()
     {

@@ -21,17 +21,20 @@ public class ImmutableCard : IBeforeSaveTrigger<Card>
 
     public Task BeforeSave(ITriggerContext<Card> trigContext, CancellationToken cancel)
     {
-        if (trigContext is { ChangeType: not ChangeType.Modified })
+        if (trigContext.ChangeType is not ChangeType.Modified)
         {
             return Task.CompletedTask;
         }
 
-        if (trigContext is not { UnmodifiedEntity: Card original })
+        var card = trigContext.Entity;
+
+        _logger.LogWarning("Card {CardId} is marked for modification", card.Id);
+
+        if (trigContext.UnmodifiedEntity is not Card original)
         {
             throw new DbUpdateException("Card cannot be changed");
         }
 
-        var card = trigContext.Entity;
         var cardEntry = _dbContext.Entry(card);
 
         cardEntry.CurrentValues.SetValues(original);

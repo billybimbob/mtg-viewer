@@ -6,12 +6,8 @@ namespace MTGViewer.Services;
 
 internal class PredicateVisitor : ExpressionVisitor
 {
-    private readonly Dictionary<string, ConstantExpression> _propertyNames;
-
-    public PredicateVisitor()
-    {
-        _propertyNames = new();
-    }
+    private static PredicateVisitor? _instance;
+    public static PredicateVisitor Instance => _instance ??= new();
 
 
     private static UnaryExpression? _nullDictionary;
@@ -20,6 +16,9 @@ internal class PredicateVisitor : ExpressionVisitor
             Expression.Convert(
                 ExpressionConstants.Null,
                 typeof(IDictionary<,>).MakeGenericType(typeof(string), typeof(IMtgParameter)));
+
+
+    private readonly Dictionary<string, ConstantExpression> _propertyNames = new();
 
     private AllPredicateVisitor? _allVisitor;
     private ExpressionVisitor AllPredicate => _allVisitor ??= new(_propertyNames);

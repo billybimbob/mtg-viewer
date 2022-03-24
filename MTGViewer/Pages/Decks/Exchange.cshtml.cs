@@ -239,7 +239,7 @@ public class ExchangeModel : PageModel
     }
 
 
-    private void ApplyExchangeOverlap(Deck deck)
+    private static void ApplyExchangeOverlap(Deck deck)
     {
         var exactMatches = deck.Wants
             .Join(deck.GiveBacks,

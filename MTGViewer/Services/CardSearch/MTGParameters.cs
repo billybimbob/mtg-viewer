@@ -52,16 +52,16 @@ internal class MtgTypeParameter : IMtgParameter
         return value.Trim();
     }
 
-    public void Apply(ICardService cards)
+    public ICardService Apply(ICardService cards)
     {
         if (!_types.Any())
         {
-            return;
+            return cards;
         }
 
         var types = string.Join(MtgApiQuery.And, _types);
 
-        cards.Where(q => q.Type, types);
+        return cards.Where(q => q.Type, types);
     }
 }
 
@@ -89,12 +89,14 @@ internal class MtgPageSizeParameter : IMtgParameter
         return this;
     }
 
-    public void Apply(ICardService cards)
+    public ICardService Apply(ICardService cards)
     {
         if (_pageSize > 0)
         {
-            cards.Where(q => q.PageSize, _pageSize);
+            return cards.Where(q => q.PageSize, _pageSize);
         }
+
+        return cards;
     }
 }
 
@@ -122,13 +124,15 @@ internal class MtgPageParameter : IMtgParameter
         return this;
     }
 
-    public void Apply(ICardService cards)
+    public ICardService Apply(ICardService cards)
     {
         if (Page > 0)
         {
             // query starts at index 1 instead of 0
-            cards.Where(q => q.Page, Page + 1);
+            return cards.Where(q => q.Page, Page + 1);
         }
+
+        return cards;
     }
 }
 
@@ -156,11 +160,11 @@ internal class MtgColorParameter : IMtgParameter
         return this;
     }
 
-    public void Apply(ICardService cards)
+    public ICardService Apply(ICardService cards)
     {
         if (_color is Color.None)
         {
-            return;
+            return cards;
         }
 
         var colorNames = Enum.GetValues<Color>()
@@ -169,7 +173,7 @@ internal class MtgColorParameter : IMtgParameter
 
         var colors = string.Join(MtgApiQuery.And, colorNames);
 
-        cards.Where(q => q.ColorIdentity, colors);
+        return cards.Where(q => q.ColorIdentity, colors);
     }
 }
 
@@ -197,14 +201,14 @@ internal class MtgRarityParameter : IMtgParameter
         return this;
     }
 
-    public void Apply(ICardService cards)
+    public ICardService Apply(ICardService cards)
     {
         if (_rarity is not Rarity rarity)
         {
-            return;
+            return cards;
         }
 
-        cards.Where(q => q.Rarity, rarity.ToString());
+        return cards.Where(q => q.Rarity, rarity.ToString());
     }
 }
 
@@ -262,12 +266,14 @@ internal class MtgDefaultParameter : IMtgParameter
         return true;
     }
 
-    public void Apply(ICardService cards)
+    public ICardService Apply(ICardService cards)
     {
         if (_value is not null)
         {
-            cards.Where(_property, _value);
+            return cards.Where(_property, _value);
         }
+
+        return cards;
     }
 }
 

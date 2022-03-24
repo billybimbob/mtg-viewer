@@ -2,7 +2,6 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Microsoft.Extensions.Logging;
 using MTGViewer.Areas.Identity.Data;
 
 namespace MTGViewer.Areas.Identity.Pages.Account.Manage;
@@ -10,14 +9,10 @@ namespace MTGViewer.Areas.Identity.Pages.Account.Manage;
 public class PersonalDataModel : PageModel
 {
     private readonly UserManager<CardUser> _userManager;
-    private readonly ILogger<PersonalDataModel> _logger;
 
-    public PersonalDataModel(
-        UserManager<CardUser> userManager,
-        ILogger<PersonalDataModel> logger)
+    public PersonalDataModel(UserManager<CardUser> userManager)
     {
         _userManager = userManager;
-        _logger = logger;
     }
 
     public async Task<IActionResult> OnGetAsync()

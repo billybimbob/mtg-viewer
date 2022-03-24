@@ -88,12 +88,6 @@ public class Startup
                 .AddTranslator<ManaTranslator>());
 
         services
-            .AddSingleton<FixedCache>()
-            .AddMemoryCache(options =>
-                // should auto evict from limit
-                options.SizeLimit = config.GetValue("CacheLimit", 100L));
-
-        services
             .AddSingleton<IMtgServiceProvider, MtgServiceProvider>()
             .AddScoped<ICardService>(provider => provider
                 .GetRequiredService<IMtgServiceProvider>()

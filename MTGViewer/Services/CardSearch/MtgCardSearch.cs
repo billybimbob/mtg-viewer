@@ -25,6 +25,8 @@ internal class MtgCardSearch : IMTGCardSearch
 
     public IReadOnlyDictionary<string, IMtgParameter> Parameters => _parameters;
 
+    public bool IsEmpty => _parameters.Values.All(p => p.IsEmpty);
+
     public int Page
     {
         get
@@ -34,9 +36,6 @@ internal class MtgCardSearch : IMTGCardSearch
             return pageParameter?.Page ?? 0;
         }
     }
-
-
-public bool IsEmpty => _parameters.Values.All(p => p.IsEmpty);
 
 
     public IMTGCardSearch Where(Expression<Func<CardQuery, bool>> predicate)

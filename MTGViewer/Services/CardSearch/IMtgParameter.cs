@@ -8,5 +8,5 @@ internal interface IMtgParameter
 
     IMtgParameter Accept(object? value);
 
-    void Apply(ICardService cards);
+    ICardService Apply(ICardService cards);
 }

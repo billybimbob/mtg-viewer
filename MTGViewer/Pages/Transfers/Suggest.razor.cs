@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Paging;
 using System.Threading;
@@ -118,8 +119,6 @@ public partial class Suggest : OwningComponentBase
 
                 Nav.NavigateTo(
                     Nav.GetUriWithQueryParameter(nameof(ReceiverId), null as string), replace: true);
-
-                return;
             }
         }
         catch (OperationCanceledException ex)
@@ -178,10 +177,21 @@ public partial class Suggest : OwningComponentBase
     }
 
 
+    private bool TryGetData<TData>(string key, [NotNullWhen(true)] out TData? data)
+    {
+        if (ApplicationState.TryTakeFromJson(key, out data!)
+            && data is not null)
+        {
+            return true;
+        }
+
+        return false;
+    }
+
+
     private async Task LoadCardAsync(CardDbContext dbContext, CancellationToken cancel)
     {
-        if (ApplicationState.TryTakeFromJson(nameof(Suggestion.Card), out Card? card)
-            && card is not null)
+        if (TryGetData(nameof(Suggestion.Card), out Card? card))
         {
             Suggestion.Card = card;
             return;
@@ -206,24 +216,23 @@ public partial class Suggest : OwningComponentBase
     }
 
 
-    private async Task LoadUserOptionsAsync(
-        CardDbContext dbContext,
-        CancellationToken cancel)
+    private async Task LoadUserOptionsAsync(CardDbContext dbContext, CancellationToken cancel)
     {
         if (Suggestion.Card is not Card card)
         {
             return;
         }
 
-        if (ApplicationState.TryTakeFromJson(
-            nameof(Suggestion.UserOptions), out IAsyncEnumerable<UserPreview>? users)
-            && users is not null)
+        const string key = nameof(Suggestion.UserOptions);
+
+        if (TryGetData(key, out IAsyncEnumerable<UserPreview>? users))
         {
             await Suggestion.AddUsersAsync(users, cancel);
             return;
         }
 
         var userId = await GetUserIdAsync(cancel);
+
         if (userId is null)
         {
             return;
@@ -243,6 +252,7 @@ public partial class Suggest : OwningComponentBase
         cancel.ThrowIfCancellationRequested();
 
         var userManager = ScopedServices.GetRequiredService<UserManager<CardUser>>();
+
         var userId = userManager.GetUserId(authState.User);
 
         if (userId is null)
@@ -257,25 +267,17 @@ public partial class Suggest : OwningComponentBase
     private async Task LoadReceiverDecksAsync(CardDbContext dbContext, CancellationToken cancel)
     {
         if (Suggestion is not
-            {
-                Card.Name: string name,
-                Receiver.Id: string id
-            })
+            { Card.Name: string name, Receiver.Id: string id })
         {
             return;
         }
 
-        int deckCount;
-
-        if (!ApplicationState.TryTakeFromJson(nameof(_cursor.TotalDecks), out deckCount))
+        if (!TryGetData(nameof(_cursor.TotalDecks), out int deckCount))
         {
             deckCount = await DecksForSuggest(dbContext, name, id).CountAsync(cancel);
         }
 
-        IEnumerable<DeckPreview>? decks;
-
-        if (ApplicationState.TryTakeFromJson(nameof(Suggestion.DeckOptions), out decks)
-            && decks is not null)
+        if (TryGetData(nameof(Suggestion.DeckOptions), out IEnumerable<DeckPreview>? decks))
         {
             await Suggestion.AddDecksAsync(decks.ToAsyncEnumerable(), cancel);
         }
@@ -367,10 +369,7 @@ public partial class Suggest : OwningComponentBase
         }
 
         if (suggestion is not
-            {
-                Card.Name: string cardName,
-                Receiver.Id: string receiverId
-            })
+            { Card.Name: string cardName, Receiver.Id: string receiverId })
         {
             return cursor;
         }
@@ -394,8 +393,8 @@ public partial class Suggest : OwningComponentBase
             return;
         }
 
-        if (Suggestion
-            is not { Card: not null, Receiver: not null })
+        if (Suggestion is not
+            { Card.Id: string cardId, Receiver.Id: string receiverId })
         {
             return;
         }
@@ -410,8 +409,8 @@ public partial class Suggest : OwningComponentBase
 
             var suggestion = new Suggestion
             {
-                CardId = Suggestion.Card.Id,
-                ReceiverId = Suggestion.Receiver.Id,
+                CardId = cardId,
+                ReceiverId = receiverId,
                 ToId = Suggestion.ToId,
                 Comment = Suggestion.Comment
             };

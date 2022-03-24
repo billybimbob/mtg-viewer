@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Paging;
 using System.Threading;
@@ -165,15 +166,24 @@ public partial class Craft : OwningComponentBase
     }
 
 
+    private bool TryGetData<TData>(string key, [NotNullWhen(true)] out TData? data)
+    {
+        if (ApplicationState.TryTakeFromJson(key, out data!)
+            && data is not null)
+        {
+            return true;
+        }
+
+        return false;
+    }
+
+
     private async Task LoadCardDataAsync(CancellationToken cancel)
     {
-        IReadOnlyList<HeldCard>? heldCards;
-
-        if (!ApplicationState.TryTakeFromJson(nameof(Treasury), out heldCards)
-            || !ApplicationState.TryTakeFromJson(nameof(Offset.Total), out int totalPages)
-            || heldCards is null)
+        if (!TryGetData(nameof(Treasury), out IReadOnlyList<HeldCard>? heldCards)
+            || !TryGetData(nameof(Offset.Total), out int totalPages))
         {
-            await ApplyFiltersAsync(Filters, _cancel.Token);
+            await ApplyFiltersAsync(Filters, cancel);
             return;
         }
 

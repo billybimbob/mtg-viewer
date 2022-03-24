@@ -29,7 +29,7 @@ public abstract class Quantity : Concurrent
 
     [JsonIgnore]
     public int LocationId { get; init; }
-    public Location Location { get; init; } = default!;
+    public virtual Location Location { get; init; } = default!;
 
     // limit is kind of arbitrary
 
@@ -44,8 +44,12 @@ public class Hold : Quantity
 
 
 public class Want : Quantity
-{ }
+{
+    public override TheoryCraft Location => (TheoryCraft)base.Location;
+}
 
 
 public class GiveBack : Quantity
-{ }
+{
+    public override Deck Location => (Deck)base.Location;
+}

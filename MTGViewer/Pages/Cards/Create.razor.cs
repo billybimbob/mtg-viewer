@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Paging;
 using System.Threading;
@@ -231,20 +232,24 @@ public partial class Create : OwningComponentBase
     }
 
 
+    private bool TryGetData<TData>(string key, [NotNullWhen(true)] out TData? data)
+    {
+        if (ApplicationState.TryTakeFromJson(key, out data!)
+            && data is not null)
+        {
+            return true;
+        }
+
+        return false;
+    }
+
+
     private async Task LoadCardMatchesAsync(CancellationToken cancel)
     {
-        IEnumerable<Card>? cards;
-
-        HashSet<string>? inDbCards;
-
-        Offset offset;
-
         if (_matches.Any()
-            || !ApplicationState.TryTakeFromJson(nameof(_matches), out cards)
-            || !ApplicationState.TryTakeFromJson(nameof(MatchInput.HasDetails), out inDbCards)
-            || !ApplicationState.TryTakeFromJson(nameof(_matchPage), out offset)
-            || inDbCards is null
-            || cards is null)
+            || !TryGetData(nameof(_matches), out IEnumerable<Card>? cards)
+            || !TryGetData(nameof(MatchInput.HasDetails), out HashSet<string>? inDbCards)
+            || !TryGetData(nameof(_matchPage), out Offset offset))
         {
             await SearchForCardAsync(cancel);
             return;

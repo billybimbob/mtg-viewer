@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Paging;
@@ -115,7 +116,6 @@ public sealed partial class Collection : ComponentBase, IDisposable
             Filters.FilterChanged -= OnFilterChanged;
             Filters.FilterChanged += OnFilterChanged;
         }
-
         catch (OperationCanceledException ex)
         {
             Logger.LogWarning("{Error}", ex);
@@ -166,15 +166,22 @@ public sealed partial class Collection : ComponentBase, IDisposable
     }
 
 
+    private bool TryGetData<TData>(string key, [NotNullWhen(true)] out TData? data)
+    {
+        if (ApplicationState.TryTakeFromJson(key, out data!)
+            && data is not null)
+        {
+            return true;
+        }
+
+        return false;
+    }
+
+
     private async Task LoadCardDataAsync(CancellationToken cancel)
     {
-        IReadOnlyList<LocationCopy>? cards;
-
-        Offset offset;
-
-        if (ApplicationState.TryTakeFromJson(nameof(Cards), out cards)
-            && ApplicationState.TryTakeFromJson(nameof(Offset), out offset)
-            && cards is not null)
+        if (TryGetData(nameof(Cards), out IReadOnlyList<LocationCopy>? cards)
+            && TryGetData(nameof(Offset), out Offset offset))
         {
             // persisted state should match set filters
             // TODO: find way to check filters are consistent

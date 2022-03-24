@@ -6,7 +6,6 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Microsoft.Extensions.Logging;
 
 using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
@@ -21,16 +20,13 @@ public class IndexModel : PageModel
 {
     private readonly int _pageSize;
     private readonly CardDbContext _dbContext;
-    private readonly ILogger<IndexModel> _logger;
 
     public IndexModel(
         CardDbContext dbContext,
-        PageSizes pageSizes,
-        ILogger<IndexModel> logger)
+        PageSizes pageSizes)
     {
         _pageSize = pageSizes.GetPageModelSize<IndexModel>();
         _dbContext = dbContext;
-        _logger = logger;
     }
 
 
