@@ -18,6 +18,8 @@ public class CardDbContext : DbContext
 
     public DbSet<Card> Cards => Set<Card>();
 
+    public DbSet<Location> Locations => Set<Location>();
+
     public DbSet<Deck> Decks => Set<Deck>();
     public DbSet<Unclaimed> Unclaimed => Set<Unclaimed>();
     public DbSet<Excess> Excess => Set<Excess>();

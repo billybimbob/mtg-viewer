@@ -57,7 +57,7 @@
     <div class="col-10 col-sm-6 col-lg-4">
         <form method="POST">
             <div class="form-group">
-                <select asp-for="BackupType" class="form-control">
+                <select asp-for="BackupType" title="Pick Backup Type" class="form-control">
                     @foreach (var backup in Enum.GetValues<ExportModel.DataScope>())
                     {
                         <option value="@backup"> @backup.ToString() </option>

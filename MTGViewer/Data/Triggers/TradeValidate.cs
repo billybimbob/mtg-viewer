@@ -16,7 +16,7 @@ public class TradeValidate : IBeforeSaveTrigger<Trade>
 
         var trade = trigContext.Entity;
 
-        if (trade.ToId == trade.FromId)
+        if (trade.ToId == trade.FromId && trade.To == trade.From)
         {
             throw new DbUpdateException(
                 "Trade cannot have the same location for both 'To' and 'From'");

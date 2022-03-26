@@ -41,11 +41,11 @@ internal abstract class TakeHandler
     protected static IEnumerable<StorageAssignment<TSource>> TakeFromStorage<TSource>(
         TSource source,
         int cardsToTake,
-        IEnumerable<Hold> boxHolds)
+        IEnumerable<Hold> storageHolds)
     {
-        foreach (var hold in boxHolds)
+        foreach (var hold in storageHolds)
         {
-            if (hold.Location is not Box box)
+            if (hold.Location is not Storage storage)
             {
                 continue;
             }
@@ -56,7 +56,7 @@ internal abstract class TakeHandler
                 continue;
             }
 
-            yield return new StorageAssignment<TSource>(source, takeCopies, box);
+            yield return new StorageAssignment<TSource>(source, takeCopies, storage);
 
             cardsToTake -= takeCopies;
             if (cardsToTake == 0)
@@ -116,7 +116,7 @@ internal class ExactTake : TakeHandler
             .Select(w => w.CardId)
             .Distinct();
 
-        var storageSpace = TreasuryContext.StorageSpace;
+        var storageSpaces = TreasuryContext.StorageSpaces;
 
         // TODO: account for changing Copies while iter
         return targets
@@ -124,13 +124,8 @@ internal class ExactTake : TakeHandler
                 h => h.CardId, cid => cid,
                 (target, _) => target)
 
-            .OrderBy(h => h.Copies)
-                .ThenBy(h => h.Location switch
-                {
-                    Box box => box.Capacity - storageSpace.GetValueOrDefault(box),
-                    Excess excess => -storageSpace.GetValueOrDefault(excess),
-                    _ => throw new ArgumentException($"Location is unexpected type {h.Location.GetType().Name}", nameof(targets))
-                })
+            .OrderByDescending(h => h.Location is Box)
+                .ThenBy(h => h.Copies)
 
             // lookup group orders should preserve Copies order
             .ToLookup(h => h.CardId);
@@ -190,7 +185,7 @@ internal class ApproximateTake : TakeHandler
             .Select(w => w.Card.Name)
             .Distinct();
 
-        var storageSpace = TreasuryContext.StorageSpace;
+        var storageSpaces = TreasuryContext.StorageSpaces;
 
         // TODO: account for changing Copies while iter
         return targets
@@ -198,15 +193,10 @@ internal class ApproximateTake : TakeHandler
                 h => h.Card.Name, cn => cn,
                 (target, _) => target)
 
-            // lookup group orders should preserve Copies order
-            .OrderBy(h => h.Copies)
-                .ThenBy(h => h.Location switch
-                {
-                    Box box => box.Capacity - storageSpace.GetValueOrDefault(box),
-                    Excess excess => -storageSpace.GetValueOrDefault(excess),
-                    _ => throw new ArgumentException($"Location is unexpected type {h.Location.GetType().Name}", nameof(targets))
-                })
+            .OrderByDescending(h => h.Location is Box)
+                .ThenBy(h => h.Copies)
 
+            // lookup group orders should preserve Copies order
             .ToLookup(h => h.Card.Name);
     }
 }

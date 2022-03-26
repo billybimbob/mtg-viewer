@@ -3,36 +3,95 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-
 using Microsoft.EntityFrameworkCore;
-
 using MTGViewer.Data.Internal;
 
 namespace MTGViewer.Data;
 
+
+internal sealed record StorageSpace
+{
+    public int Id { get; init; }
+
+    public string Name { get; init; } = default!;
+
+    public int Held { get; set; }
+
+    public int? Capacity { get; init; }
+
+    public bool HasSpace => Held < Capacity || Capacity is null;
+
+    public int? Remaining => Capacity - Held;
+}
+
+
 public static partial class TreasuryExtensions
 {
-    private static IQueryable<Box> OrderedBoxes(CardDbContext dbContext)
+    private static IQueryable<StorageSpace> StorageSpaces(CardDbContext dbContext)
+    {
+        return dbContext.Locations
+            .Where(l => l is Box || l is Excess)
+            .OrderBy(l => l.Id)
+
+            .Select(l => new StorageSpace
+            {
+                Id = l.Id,
+                Name = l.Name,
+                Held = l.Holds.Sum(h => h.Copies),
+                Capacity = l is Box ? (l as Box)!.Capacity : null
+            });
+    }
+
+
+    private static IQueryable<Location> MatchingStorage(CardDbContext dbContext, string[] cardNames)
+    {
+        return dbContext.Locations
+            .Where(l => l is Excess
+                || l is Box && l.Holds.Any(h => cardNames.Contains(h.Card.Name)))
+
+            .Include(l => l.Holds
+                .Where(h => cardNames.Contains(h.Card.Name))
+                .OrderBy(h => h.Card.Name)
+                    .ThenByDescending(h => h.Copies))
+                .ThenInclude(h => h.Card)
+
+            .OrderBy(l => l.Id);
+    }
+
+
+    private static IQueryable<Location> ArrangingStorage(CardDbContext dbContext, int[] modified)
+    {
+        // modified locations won't be overridden
+
+        return dbContext.Locations
+            .Where(l => modified.Contains(l.Id)
+                || l is Excess
+                || l is Box && (l as Box)!.Capacity < l.Holds.Sum(h => h.Copies))
+
+            .Include(l => l.Holds
+                .OrderBy(h => h.Card.Name)
+                    .ThenByDescending(h => h.Copies))
+                .ThenInclude(h => h.Card)
+
+            .OrderBy(l => l.Id);
+    }
+    
+
+    private static IQueryable<Location> EntireStorage(CardDbContext dbContext)
     {
         // loading all shared cards, could be memory inefficient
         // TODO: find more efficient way to determining card position
         // unbounded: keep eye on
 
-        return dbContext.Boxes
-            .Include(b => b.Holds
-                .OrderBy(h => h.Copies))
-                .ThenInclude(h => h.Card)
-            .OrderBy(b => b.Id);
-    }
+        return dbContext.Locations
+            .Where(l => l is Excess || l is Box)
 
-
-    private static IQueryable<Excess> ExistingExcess(CardDbContext dbContext)
-    {
-        return dbContext.Excess
-            .Include(e => e.Holds
-                .OrderBy(h => h.Copies))
+            .Include(l => l.Holds
+                .OrderBy(h => h.Card.Name)
+                    .ThenByDescending(h => h.Copies))
                 .ThenInclude(h => h.Card)
-            .OrderBy(e => e.Id);
+
+            .OrderBy(l => l.Id);
     }
 
 
@@ -66,17 +125,31 @@ public static partial class TreasuryExtensions
 
         AttachCardRequests(dbContext, adding);
 
-        await OrderedBoxes(dbContext).LoadAsync(cancel);
+        var storageSpaces = await StorageSpaces(dbContext)
+            .ToDictionaryAsync(
+                s => (LocationIndex)s, cancel);
 
-        await ExistingExcess(dbContext).LoadAsync(cancel);
+        var cardNames = adding
+            .Select(cr => cr.Card.Name)
+            .Distinct()
+            .ToArray();
+
+        await MatchingStorage(dbContext, cardNames).LoadAsync(cancel);
 
         AddMissingExcess(dbContext);
 
-        var treasuryContext = new TreasuryContext(dbContext);
+        var treasuryContext = new TreasuryContext(dbContext, storageSpaces);
 
         treasuryContext.AddExact(adding);
         treasuryContext.AddApproximate(adding);
-        treasuryContext.AddGuess(adding);
+
+        if (adding.Any(cr => cr.Copies > 0))
+        {
+            await EntireStorage(dbContext).LoadAsync(cancel);
+
+            treasuryContext.Refresh();
+            treasuryContext.AddGuess(adding);
+        }
 
         RemoveEmpty(dbContext);
     }
@@ -129,24 +202,56 @@ public static partial class TreasuryExtensions
             dbContext.Decks.Attach(deck);
         }
 
-        await OrderedBoxes(dbContext).LoadAsync(cancel);
+        var storageSpaces = await StorageSpaces(dbContext)
+            .ToDictionaryAsync(
+                s => (LocationIndex)s, cancel);
 
-        await ExistingExcess(dbContext).LoadAsync(cancel);
+        var cardNames = deck.Wants
+            .Select(w => w.Card.Name)
+            .Union(deck.GiveBacks
+                .Select(g => g.Card.Name))
+            .ToArray();
+
+        await MatchingStorage(dbContext, cardNames).LoadAsync(cancel);
 
         AddMissingExcess(dbContext);
 
-        var treasuryContext = new TreasuryContext(dbContext);
+        var treasuryContext = new TreasuryContext(dbContext, storageSpaces);
+
         var exchangeContext = new ExchangeContext(dbContext, treasuryContext);
+
+        bool isFullyLoaded = false;
 
         exchangeContext.TakeExact();
         exchangeContext.TakeApproximate();
 
         exchangeContext.ReturnExact();
         exchangeContext.ReturnApproximate();
-        exchangeContext.ReturnGuess();
 
-        treasuryContext.LowerExactExcess();
-        treasuryContext.LowerApproximateExcess();
+        if (deck.GiveBacks.Any(g => g.Copies > 0))
+        {
+            await EntireStorage(dbContext).LoadAsync(cancel);
+
+            isFullyLoaded = true;
+
+            treasuryContext.Refresh();
+            exchangeContext.ReturnGuess();
+        }
+
+        bool hasAvialable = treasuryContext.Available.Any();
+
+        if (hasAvialable && !isFullyLoaded)
+        {
+            await EntireStorage(dbContext).LoadAsync(cancel);
+
+            treasuryContext.Refresh();
+        }
+
+        if (hasAvialable)
+        {
+            treasuryContext.LowerExactExcess();
+            treasuryContext.LowerApproximateExcess();
+        }
 
         RemoveEmpty(dbContext);
     }
@@ -164,13 +269,18 @@ public static partial class TreasuryExtensions
             return;
         }
 
-        await OrderedBoxes(dbContext).LoadAsync(cancel);
+        var storageSpaces = await MergedStorageSpacesAsync(dbContext, cancel);
 
-        await ExistingExcess(dbContext).LoadAsync(cancel);
+        var modified = dbContext.Boxes.Local
+            .Where(b => dbContext.Entry(b).State is EntityState.Modified)
+            .Select(b => b.Id)
+            .ToArray();
+
+        await ArrangingStorage(dbContext, modified).LoadAsync(cancel);
 
         AddMissingExcess(dbContext);
 
-        var treasuryContext = new TreasuryContext(dbContext);
+        var treasuryContext = new TreasuryContext(dbContext, storageSpaces);
 
         treasuryContext.LowerExactOver();
         treasuryContext.LowerApproximateOver();
@@ -199,6 +309,32 @@ public static partial class TreasuryExtensions
             .All(e => e.State is EntityState.Detached
                 || e.State is not EntityState.Added
                     && !e.Property(h => h.Copies).IsModified);
+    }
+
+
+    private static async Task<Dictionary<LocationIndex, StorageSpace>> MergedStorageSpacesAsync(
+        CardDbContext dbContext,
+        CancellationToken cancel)
+    {
+        var storageSpaces = await StorageSpaces(dbContext)
+            .ToDictionaryAsync(s => (LocationIndex)s, cancel);
+
+        var modifiedBoxes = dbContext.Boxes.Local
+            .Where(b => dbContext.Entry(b).State is EntityState.Modified)
+            .Join( storageSpaces,
+                b => b.Id,
+                kv => kv.Key.Id,
+                (Box, kv) => (kv.Key, kv.Value, Box));
+
+        foreach (var (index, space, box) in modifiedBoxes)
+        {
+            storageSpaces.Remove(index);
+
+            storageSpaces.Add(
+                (LocationIndex)box, space with { Capacity = box.Capacity });
+        }
+
+        return storageSpaces;
     }
 
 

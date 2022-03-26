@@ -69,7 +69,7 @@ internal class ExactAdd : AddHandler
                 continue;
             }
 
-            foreach (var assignment in FitToBoxes(request))
+            foreach (var assignment in FitToStorage(request))
             {
                 yield return assignment;
             }
@@ -77,27 +77,27 @@ internal class ExactAdd : AddHandler
     }
 
 
-    private IEnumerable<StorageAssignment<CardRequest>> FitToBoxes(CardRequest request)
+    private IEnumerable<StorageAssignment<CardRequest>> FitToStorage(CardRequest request)
     {
         _exactMatches ??= AddLookup();
 
         var (card, copies) = request;
 
-        var possibleBoxes = _exactMatches[card.Id];
-        var storageSpace = TreasuryContext.StorageSpace;
+        var matches = _exactMatches[card.Id];
+        var storageSpaces = TreasuryContext.StorageSpaces;
 
-        return Assignment.FitToBoxes(request, copies, possibleBoxes, storageSpace);
+        return Assignment.FitToStorage(request, copies, matches, storageSpaces);
     }
 
 
     private ILookup<string, Storage> AddLookup()
     {
-        var (available, _, _, storageSpace) = TreasuryContext;
+        var (available, _, _, storageSpaces) = TreasuryContext;
 
         var availableCards = available.SelectMany(b => b.Holds);
         var cardRequests = CardRequests.Select(cr => cr.Card);
 
-        return Assignment.ExactAddLookup(availableCards, cardRequests, storageSpace);
+        return Assignment.ExactAddLookup(availableCards, cardRequests, storageSpaces);
     }
 }
 
@@ -125,7 +125,7 @@ internal class ApproximateAdd : AddHandler
                 continue;
             }
 
-            foreach (var assignment in FitToBoxes(request))
+            foreach (var assignment in FitToStorage(request))
             {
                 yield return assignment;
             }
@@ -133,16 +133,16 @@ internal class ApproximateAdd : AddHandler
     }
 
 
-    private IEnumerable<StorageAssignment<CardRequest>> FitToBoxes(CardRequest request)
+    private IEnumerable<StorageAssignment<CardRequest>> FitToStorage(CardRequest request)
     {
         _approxMatches ??= AddLookup();
 
         var (card, copies) = request;
 
-        var possibleBoxes = _approxMatches[card.Name];
-        var storageSpace = TreasuryContext.StorageSpace;
+        var matches = _approxMatches[card.Name];
+        var storageSpaces = TreasuryContext.StorageSpaces;
 
-        return Assignment.FitToBoxes(request, copies, possibleBoxes, storageSpace);
+        return Assignment.FitToStorage(request, copies, matches, storageSpaces);
     }
 
 
@@ -182,7 +182,7 @@ internal class GuessAdd : AddHandler
         var orderedRequests = CardRequests
             .OrderByDescending(cr => cr.Copies)
                 .ThenByDescending(cr => cr.Card.Name)
-                    .ThenByDescending(cr => cr.Card.SetName);
+                .ThenByDescending(cr => cr.Card.SetName);
 
         foreach (CardRequest request in orderedRequests)
         {
@@ -191,7 +191,7 @@ internal class GuessAdd : AddHandler
                 continue;
             }
 
-            foreach (var assignment in FitToBoxes(request))
+            foreach (var assignment in FitToStorage(request))
             {
                 yield return assignment;
             }
@@ -199,19 +199,19 @@ internal class GuessAdd : AddHandler
     }
 
 
-    private IEnumerable<StorageAssignment<CardRequest>> FitToBoxes(CardRequest request)
+    private IEnumerable<StorageAssignment<CardRequest>> FitToStorage(CardRequest request)
     {
         var (card, copies) = request;
-        var (available, _, excessStorage, storageSpace) = TreasuryContext;
+        var (available, _, excess, storageSpaces) = TreasuryContext;
 
         _boxSearch ??= new BoxSearcher(available);
 
-        var bestBoxes = _boxSearch
+        var matches = _boxSearch
             .FindBestBoxes(card)
             .Union(available)
             .Cast<Storage>()
-            .Concat(excessStorage);
+            .Concat(excess);
 
-        return Assignment.FitToBoxes(request, copies, bestBoxes, storageSpace);
+        return Assignment.FitToStorage(request, copies, matches, storageSpaces);
     }
 }

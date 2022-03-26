@@ -75,6 +75,42 @@ public class TradeValidateTests : IAsyncLifetime
 
 
     [Fact]
+    public async Task BeforeSave_TradeNewDecks_Returns()
+    {
+        var card = await _dbContext.Cards.FirstAsync();
+
+        var users = await _dbContext.Users
+            .Take(2)
+            .ToListAsync();
+
+        var newTrade = new Trade
+        {
+            Card = card,
+            To = new Deck { Name = "To Deck", Owner = users[0] },
+            From = new Deck { Name = "From Deck", Owner = users[1] }
+        };
+
+        bool sameTargetIds = newTrade.To.Id == newTrade.From.Id;
+
+        _dbContext.Trades.Add(newTrade);
+
+        var triggerContext = new Mock<ITriggerContext<Trade>>();
+
+        triggerContext
+            .SetupGet(t => t.ChangeType)
+            .Returns(ChangeType.Added);
+
+        triggerContext
+            .SetupGet(t => t.Entity)
+            .Returns(newTrade);
+
+        await _tradeValidate.BeforeSave(triggerContext.Object, default);
+
+        Assert.True(sameTargetIds);
+    }
+
+
+    [Fact]
     public async Task BeforeSave_TradeSameTargets_Throws()
     {
         var card = await _dbContext.Cards.FirstAsync();

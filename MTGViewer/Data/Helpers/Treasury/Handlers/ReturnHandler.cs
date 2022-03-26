@@ -63,7 +63,7 @@ internal class ExactReturn : ReturnHandler
 
         foreach (var giveBack in giveBacks)
         {
-            foreach (var assignment in FitToBoxes(giveBack))
+            foreach (var assignment in FitToStorage(giveBack))
             {
                 yield return assignment;
             }
@@ -71,15 +71,15 @@ internal class ExactReturn : ReturnHandler
     }
 
 
-    private IEnumerable<StorageAssignment<Card>> FitToBoxes(GiveBack giveBack)
+    private IEnumerable<StorageAssignment<Card>> FitToStorage(GiveBack giveBack)
     {
         _exactMatch ??= AddLookup();
 
-        var bestBoxes = _exactMatch[giveBack.CardId];
-        var storageSpace = TreasuryContext.StorageSpace;
+        var matches = _exactMatch[giveBack.CardId];
+        var storageSpaces = TreasuryContext.StorageSpaces;
 
-        return Assignment.FitToBoxes(
-            giveBack.Card, giveBack.Copies, bestBoxes, storageSpace);
+        return Assignment.FitToStorage(
+            giveBack.Card, giveBack.Copies, matches, storageSpaces);
     }
 
     private ILookup<string, Storage> AddLookup()
@@ -119,7 +119,7 @@ internal class ApproximateReturn : ReturnHandler
                 continue;
             }
 
-            foreach (var assignment in FitToBoxes(giveBack))
+            foreach (var assignment in FitToStorage(giveBack))
             {
                 yield return assignment;
             }
@@ -127,26 +127,27 @@ internal class ApproximateReturn : ReturnHandler
     }
 
 
-    private IEnumerable<StorageAssignment<Card>> FitToBoxes(GiveBack giveBack)
+    private IEnumerable<StorageAssignment<Card>> FitToStorage(GiveBack giveBack)
     {
         _approxMatch ??= AddLookup();
 
-        var bestBoxes = _approxMatch[giveBack.Card.Name];
-        var storageSpace = TreasuryContext.StorageSpace;
+        var matches = _approxMatch[giveBack.Card.Name];
+        var storageSpaces = TreasuryContext.StorageSpaces;
 
-        return Assignment.FitToBoxes(
-            giveBack.Card, giveBack.Copies, bestBoxes, storageSpace);
+        return Assignment.FitToStorage(
+            giveBack.Card, giveBack.Copies, matches, storageSpaces);
     }
+
 
     private ILookup<string, Storage> AddLookup()
     {
         var availableHolds = TreasuryContext.Available.SelectMany(b => b.Holds);
         var giveCards = ExchangeContext.Deck.GiveBacks.Select(w => w.Card);
 
-        var storageSpace = TreasuryContext.StorageSpace;
+        var storageSpaces = TreasuryContext.StorageSpaces;
 
         // TODO: account for changing Copies while iter
-        return Assignment.ApproxAddLookup(availableHolds, giveCards, storageSpace);
+        return Assignment.ApproxAddLookup(availableHolds, giveCards, storageSpaces);
     }
 }
 
@@ -176,7 +177,7 @@ internal class GuessReturn : ReturnHandler
         var orderedGiveBacks = giveBacks
             .OrderByDescending(g => g.Copies)
                 .ThenByDescending(g => g.Card.Name)
-                    .ThenByDescending(g => g.Card.SetName);
+                .ThenByDescending(g => g.Card.SetName);
 
         foreach (var giveBack in orderedGiveBacks)
         {
@@ -185,7 +186,7 @@ internal class GuessReturn : ReturnHandler
                 continue;
             }
 
-            foreach (var assignment in FitToBoxes(giveBack))
+            foreach (var assignment in FitToStorage(giveBack))
             {
                 yield return assignment;
             }
@@ -193,19 +194,19 @@ internal class GuessReturn : ReturnHandler
     }
 
 
-    private IEnumerable<StorageAssignment<Card>> FitToBoxes(GiveBack giveBack)
+    private IEnumerable<StorageAssignment<Card>> FitToStorage(GiveBack giveBack)
     {
-        var (available, _, excess, storageSpace) = TreasuryContext;
+        var (available, _, excess, storageSpaces) = TreasuryContext;
 
         _boxSearch ??= new BoxSearcher(available);
 
-        var bestTargets = _boxSearch
+        var matches = _boxSearch
             .FindBestBoxes(giveBack.Card)
             .Union(available)
             .Cast<Storage>()
             .Concat(excess);
 
-        return Assignment.FitToBoxes(
-            giveBack.Card, giveBack.Copies, bestTargets, storageSpace);
+        return Assignment.FitToStorage(
+            giveBack.Card, giveBack.Copies, matches, storageSpaces);
     }
 }

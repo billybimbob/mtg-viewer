@@ -10,23 +10,28 @@ internal readonly record struct StorageAssignment<TSource>(TSource Source, int C
 
 internal static class Assignment
 {
-    public static IEnumerable<StorageAssignment<TSource>> FitToBoxes<TSource>(
+    public static IEnumerable<StorageAssignment<TSource>> FitToStorage<TSource>(
         TSource source,
         int copiesToAssign,
         IEnumerable<Storage> storageOptions,
-        IReadOnlyDictionary<Storage, int> storageSpace)
+        IReadOnlyDictionary<LocationIndex, StorageSpace> storageSpaces)
     {
         foreach (var storage in storageOptions)
         {
-            if (storage is not Box box)
+            if (storage is not Box)
             {
                 continue;
             }
 
-            int spaceUsed = storageSpace.GetValueOrDefault(storage);
-            int remainingSpace = Math.Max(0, box.Capacity - spaceUsed);
+            var index = (LocationIndex)storage;
 
-            int newCopies = Math.Min(copiesToAssign, remainingSpace);
+            if (storageSpaces.GetValueOrDefault(index)
+                is not StorageSpace { Remaining: > 0 and int remaining })
+            {
+                continue;
+            }
+
+            int newCopies = Math.Min(copiesToAssign, remaining);
             if (newCopies == 0)
             {
                 continue;
@@ -35,6 +40,7 @@ internal static class Assignment
             yield return new StorageAssignment<TSource>(source, newCopies, storage);
 
             copiesToAssign -= newCopies;
+
             if (copiesToAssign == 0)
             {
                 yield break;
@@ -56,7 +62,7 @@ internal static class Assignment
     public static ILookup<string, Storage> ExactAddLookup(
         IEnumerable<Hold> targets,
         IEnumerable<Card> cards,
-        IReadOnlyDictionary<Storage, int> storageSpace)
+        IReadOnlyDictionary<LocationIndex, StorageSpace> storageSpaces)
     {
         var cardIds = cards
             .Select(c => c.Id)
@@ -68,13 +74,8 @@ internal static class Assignment
                 h => h.CardId, cid => cid,
                 (target, _) => target)
 
-            .OrderByDescending(h => h.Copies)
-                .ThenByDescending(h => h.Location switch
-                {
-                    Box box => box.Capacity - storageSpace.GetValueOrDefault(box),
-                    Excess excess => -storageSpace.GetValueOrDefault(excess),
-                    _ => throw new ArgumentException($"Location is unexpected type {h.Location.GetType().Name}", nameof(targets))
-                })
+            .OrderByDescending(h => h.Location is Box)
+                .ThenByDescending(h => h.Copies)
 
             // lookup group orders should preserve Copies order
             .ToLookup(h => h.CardId, h => (Storage)h.Location);
@@ -84,7 +85,7 @@ internal static class Assignment
     public static ILookup<string, Storage> ApproxAddLookup(
         IEnumerable<Hold> targets,
         IEnumerable<Card> cards,
-        IReadOnlyDictionary<Storage, int> storageSpace)
+        IReadOnlyDictionary<LocationIndex, StorageSpace> storageSpaces)
     {
         var cardNames = cards
             .Select(c => c.Name)
@@ -97,13 +98,8 @@ internal static class Assignment
                 (target, _) => target)
 
             // lookup group orders should preserve Copies order
-            .OrderByDescending(h => h.Copies)
-                .ThenByDescending(h => h.Location switch
-                {
-                    Box box => box.Capacity - storageSpace.GetValueOrDefault(box),
-                    Excess excess => -storageSpace.GetValueOrDefault(excess),
-                    _ => throw new ArgumentException($"Location is unexpected type {h.Location.GetType().Name}", nameof(targets))
-                })
+            .OrderByDescending(h => h.Location is Box)
+                .ThenByDescending(h => h.Copies)
 
             .ToLookup(h => h.Card.Name, h => (Storage)h.Location);
     }

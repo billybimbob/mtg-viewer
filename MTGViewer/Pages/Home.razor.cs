@@ -140,12 +140,17 @@ public sealed partial class Home : ComponentBase, IDisposable
 
     internal bool IsImageLoaded(CardImage card)
     {
-        if (!_isInteractive)
+        if (_randomContext is null)
+        {
+            return false;
+        }
+
+        if (_randomContext is { LoadedImages.Count: 0 } && !_isInteractive)
         {
             return true;
         }
 
-        return _randomContext?.LoadedImages.Contains(card.Id) ?? false;
+        return _randomContext.LoadedImages.Contains(card.Id);
     }
 
 

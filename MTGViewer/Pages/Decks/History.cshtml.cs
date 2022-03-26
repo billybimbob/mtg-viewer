@@ -225,6 +225,7 @@ public class HistoryModel : PageModel
                 .SingleOrDefault(t => t.Id == transactionId));
 
 
+
     public async Task<IActionResult> OnPostAsync(int transactionId, CancellationToken cancel)
     {
         var authorized = await _authorization.AuthorizeAsync(User, CardPolicies.ChangeTreasury);

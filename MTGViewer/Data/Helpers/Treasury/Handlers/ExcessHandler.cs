@@ -58,7 +58,7 @@ internal class ExactExcess : ExcessHandler
 
         foreach (var excess in excessHolds)
         {
-            foreach (var assignment in FitToBoxes(excess))
+            foreach (var assignment in FitToStorage(excess))
             {
                 yield return assignment;
             }
@@ -66,15 +66,16 @@ internal class ExactExcess : ExcessHandler
     }
 
 
-    private IEnumerable<StorageAssignment<Hold>> FitToBoxes(Hold excess)
+    private IEnumerable<StorageAssignment<Hold>> FitToStorage(Hold excess)
     {
         _exactMatches ??= AddLookup();
 
-        var bestBoxes = _exactMatches[excess.CardId];
-        var storageSpace = TreasuryContext.StorageSpace;
+        var matches = _exactMatches[excess.CardId];
+        var storageSpaces = TreasuryContext.StorageSpaces;
 
-        return Assignment.FitToBoxes(excess, excess.Copies, bestBoxes, storageSpace);
+        return Assignment.FitToStorage(excess, excess.Copies, matches, storageSpaces);
     }
+
 
     private ILookup<string, Storage> AddLookup()
     {
@@ -112,7 +113,7 @@ internal class ApproximateExcess : ExcessHandler
 
         foreach (var excess in excessHolds)
         {
-            foreach (var assignment in FitToBoxes(excess))
+            foreach (var assignment in FitToStorage(excess))
             {
                 yield return assignment;
             }
@@ -120,15 +121,18 @@ internal class ApproximateExcess : ExcessHandler
     }
 
 
-    private IEnumerable<StorageAssignment<Hold>> FitToBoxes(Hold excess)
+    private IEnumerable<StorageAssignment<Hold>> FitToStorage(Hold excess)
     {
         _approxMatches ??= AddLookup();
 
-        var (available, _, _, storageSpace) = TreasuryContext;
-        var bestBoxes = _approxMatches[excess.Card.Name].Union(available);
+        var (available, _, _, storageSpaces) = TreasuryContext;
 
-        return Assignment.FitToBoxes(excess, excess.Copies, bestBoxes, storageSpace);
+        var matches = _approxMatches[excess.Card.Name]
+            .Union(available);
+
+        return Assignment.FitToStorage(excess, excess.Copies, matches, storageSpaces);
     }
+
 
     private ILookup<string, Storage> AddLookup()
     {

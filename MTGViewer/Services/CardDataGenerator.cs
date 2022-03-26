@@ -192,7 +192,7 @@ public class CardDataGenerator
             Card = card,
             To = tradeTo,
             From = tradeFrom,
-            Copies = _random.Next(5)
+            Copies = _random.Next(1, 5)
         };
 
         tradeTo.TradesTo.Add(trade);

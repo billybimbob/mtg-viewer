@@ -118,10 +118,10 @@
                 <table class="table mb-3">
                     <thead>
                         <tr>
-                            <th scope="col"> @Html.DisplayNameForInnerType((Suggestion t) => t.Card) </th>
+                            <th scope="col"> @Html.DisplayNameForInnerType((Suggestion s) => s.Card) </th>
                             <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.ManaCost) </th>
-                            <th scope="col"> @Html.DisplayNameForInnerType((Suggestion t) => t.To) </th>
-                            <th scope="col"> @Html.DisplayNameForInnerType((Suggestion t) => t.Comment) </th>
+                            <th scope="col"> @Html.DisplayNameForInnerType((Suggestion s) => s.To) </th>
+                            <th scope="col"> @Html.DisplayNameForInnerType((Suggestion s) => s.Comment) </th>
 
                             @if (canChangeTreasury)
                             {
@@ -137,26 +137,32 @@
                                     <a asp-page="/Cards/Details" asp-route-id="@suggestion.CardId">
                                         @suggestion.CardName </a>
                                 </td>
+
                                 <td>
                                     <div class="ms-group">
-                                        @MtgSymbols.Format(suggestion.CardManaCost).ToMarkupString()
+                                        @MtgSymbols.Format(suggestion.CardManaCost).ToHtmlString()
                                     </div>
                                 </td>
 
-                                <td>@suggestion.ToName</td>
-                                <td>@suggestion.Comment</td>
+                                <td>@(suggestion.ToName ?? "--")</td>
+                                <td>@(suggestion.Comment ?? "--")</td>
 
-                                @if (canChangeTreasury)
-                                {
-                                    <td>
+                                <td>
+                                    @if (canChangeTreasury)
+                                    {
                                         <form method="POST">
-                                            <input type="submit"
-                                                asp-route-id="@suggestion.Id"
-                                                class="btn btn-secondary"
-                                                value="Acknowledge" />
+                                            <input type="hidden" name="id" value="@suggestion.Id"/>
+
+                                            <button class="btn btn-danger" type="submit">
+                                                &times; </button>
                                         </form>
-                                    </td>
-                                }
+                                    }
+                                    else
+                                    {
+                                        <button class="btn btn-danger" type="button" disabled>
+                                            &times; </button>
+                                    }
+                                </td>
                             </tr>
                         }
                     </tbody>
