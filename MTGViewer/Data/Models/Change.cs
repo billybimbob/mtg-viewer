@@ -41,6 +41,7 @@ public class Change
 }
 
 
+[Index(nameof(AppliedAt), IsUnique = true)]
 [Index(nameof(AppliedAt), nameof(Id))]
 public class Transaction
 {

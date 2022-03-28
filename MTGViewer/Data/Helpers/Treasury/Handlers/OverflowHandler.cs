@@ -98,7 +98,7 @@ internal class ExactOverflow : OverflowHandler
 
     private ILookup<string, Storage> AddLookup()
     {
-        var (available, overflowBoxes, _, storageSpace) = TreasuryContext;
+        var (available, overflowBoxes, _, _) = TreasuryContext;
 
         var targets = available.SelectMany(b => b.Holds);
 
@@ -106,7 +106,7 @@ internal class ExactOverflow : OverflowHandler
             .SelectMany(b => b.Holds)
             .Select(h => h.Card);
 
-        return Assignment.ExactAddLookup(targets, overflowCards, storageSpace);
+        return Assignment.ExactAddLookup(targets, overflowCards);
     }
 }
 
@@ -172,7 +172,7 @@ internal class ApproximateOverflow : OverflowHandler
 
     private ILookup<string, Storage> AddLookup()
     {
-        var (available, overflow, _, storageSpaces) = TreasuryContext;
+        var (available, overflow, _, _) = TreasuryContext;
 
         var targets = available.SelectMany(b => b.Holds);
 
@@ -180,6 +180,6 @@ internal class ApproximateOverflow : OverflowHandler
             .SelectMany(b => b.Holds)
             .Select(h => h.Card);
 
-        return Assignment.ApproxAddLookup(targets, overflowCards, storageSpaces);
+        return Assignment.ApproxAddLookup(targets, overflowCards);
     }
 }

@@ -7,15 +7,15 @@ using Microsoft.EntityFrameworkCore;
 using Xunit;
 
 using MTGViewer.Data;
-using MTGViewer.Pages.Decks;
+using MTGViewer.Pages.Transactions;
 using MTGViewer.Tests.Utils;
 
-namespace MTGViewer.Tests.Pages.Decks;
+namespace MTGViewer.Tests.Pages.Transactions;
 
 
-public class HistoryTests : IAsyncLifetime
+public class DetailsTests : IAsyncLifetime
 {
-    private readonly HistoryModel _historyModel;
+    private readonly DetailsModel _detailsModel;
     private readonly CardDbContext _dbContext;
     private readonly PageContextFactory _pageFactory;
 
@@ -23,13 +23,13 @@ public class HistoryTests : IAsyncLifetime
     private Transaction _transaction = default!;
 
 
-    public HistoryTests(
-        HistoryModel historyModel,
+    public DetailsTests(
+        DetailsModel detailsModel,
         CardDbContext dbContext,
         PageContextFactory pageFactory,
         TestDataGenerator testGen)
     {
-        _historyModel = historyModel;
+        _detailsModel = detailsModel;
         _dbContext = dbContext;
         _pageFactory = pageFactory;
         _testGen = testGen;
@@ -58,9 +58,9 @@ public class HistoryTests : IAsyncLifetime
 
         var invalidTransactionId = 0;
 
-        await _pageFactory.AddModelContextAsync(_historyModel, ownedId);
+        await _pageFactory.AddModelContextAsync(_detailsModel, ownedId);
 
-        var result = await _historyModel.OnPostAsync(invalidTransactionId, default);
+        var result = await _detailsModel.OnPostAsync(invalidTransactionId, default);
         var transactions = await Transactions.Select(t => t.Id).ToListAsync();
 
         Assert.IsType<NotFoundResult>(result);
@@ -75,16 +75,15 @@ public class HistoryTests : IAsyncLifetime
         var ownedId = (change.To as Deck)?.OwnerId ?? (change.From as Deck)?.OwnerId;
 
         var wrongUser = await _dbContext.Users
-            .Where(u => u.Id != ownedId)
             .Select(u => u.Id)
-            .FirstAsync();
+            .FirstAsync(uid => uid != ownedId);
 
-        await _pageFactory.AddModelContextAsync(_historyModel, wrongUser);
+        await _pageFactory.AddModelContextAsync(_detailsModel, wrongUser);
 
-        var result = await _historyModel.OnPostAsync(_transaction.Id, default);
+        var result = await _detailsModel.OnPostAsync(_transaction.Id, default);
         var transactions = await Transactions.Select(t => t.Id).ToListAsync();
 
-        Assert.IsType<NotFoundResult>(result);
+        Assert.IsType<ForbidResult>(result);
         Assert.Contains(_transaction.Id, transactions);
     }
 
@@ -95,9 +94,9 @@ public class HistoryTests : IAsyncLifetime
         var change = _transaction.Changes.First();
         var ownedId = (change.To as Deck)?.OwnerId ?? (change.From as Deck)!.OwnerId;
 
-        await _pageFactory.AddModelContextAsync(_historyModel, ownedId);
+        await _pageFactory.AddModelContextAsync(_detailsModel, ownedId);
 
-        var result = await _historyModel.OnPostAsync(_transaction.Id, default);
+        var result = await _detailsModel.OnPostAsync(_transaction.Id, default);
         var transactions = await Transactions.Select(t => t.Id).ToListAsync();
 
         Assert.IsType<RedirectToPageResult>(result);

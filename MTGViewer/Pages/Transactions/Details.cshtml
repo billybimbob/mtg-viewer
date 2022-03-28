@@ -1,7 +1,7 @@
 @page "{id:int}"
-@model Decks.HistoryModel
+@model Transactions.DetailsModel
 @{
-    ViewData["Title"] = $"{Model.Deck.Name} - History";
+    ViewData["Title"] = $"Transaction {Model.AppliedAt.ToShortDateString()}";
 }
 
 @using Microsoft.AspNetCore.Authorization
@@ -9,6 +9,7 @@
 @using MTGViewer.Data.Internal
 
 @inject IAuthorizationService AuthorizationService
+@inject SymbolFormatter MtgSymbols
 
 @{ 
     bool canChangeTreasury = (await AuthorizationService
@@ -16,54 +17,58 @@
 }
 
 
-<h1>
-    Changes To
-    <a asp-page="Details" asp-route-id="@Model.Deck.Id">
-        @Model.Deck.Name </a>
-</h1>
+<h1> Transaction - @Model.AppliedAt </h1>
 
-<partial name="_TimeZonePartial" for="TimeZone"/>
+@if (Model.Transaction.CanDelete && canChangeTreasury)
+{
+    <form method="POST">
+        <div class="btn-group mb-3" role="group">
+            <partial name="_TimeZonePartial" for="TimeZone"/>
 
+            <input type="submit" class="btn btn-danger" value="Delete" />
+        </div>
+    </form>
+}
+else if (Model.Transaction.CanDelete)
+{
+    <div class="btn-group mb-3" role="group">
+        <partial name="_TimeZonePartial" for="TimeZone"/>
+
+        <button class="btn btn-danger" disabled> Delete </button>
+    </div>
+}
+else
+{
+    <div class="btn-group mb-3" role="group">
+        <partial name="_TimeZonePartial" for="TimeZone"/>
+    </div>
+}
 
 <div class="table-responsive-md">
     <table class="table table-bordered">
         <thead>
             <tr>
-                <th scope="col"> @Html.DisplayNameForInnerType((Transaction t) => t.AppliedAt) </th>
                 <th scope="col"> @Html.DisplayNameForInnerType((Change c) => c.From) </th>
                 <th scope="col"> @Html.DisplayNameForInnerType((Change c) => c.To) </th>
                 <th scope="col"> @Html.DisplayNameForInnerType((Change c) => c.Card) </th>
+                <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.ManaCost) </th>
                 <th scope="col"> @Html.DisplayNameForInnerType((Change c) => c.Copies) </th>
-                <th scope="col"></th>
             </tr>
         </thead>
         <tbody>
-            @if (!Model.Transfers.Any())
+            @foreach (var move in Model.Moves)
             {
-                <tr>
-                    <td> -- </td>
-                    <td> -- </td>
-                    <td> -- </td>
-                    <td> -- </td>
-                    <td> -- </td>
-                    <td> -- </td>
-                </tr>
-            }
-            @foreach (var (transaction, to, from, changes) in Model.Transfers)
-            {
-                <tr>
-                    @if (Model.IsFirstTransfer(transaction, to, from))
-                    {
-                        <th scope="rowgroup" rowspan="@Model.GetTransactionCount(transaction)">
-                            @TimeZoneInfo.ConvertTimeFromUtc(transaction.AppliedAt, Model.TimeZone)
-                        </th>
-                    }
+                var from = move.From;
+                var to = move.To;
 
-                    <td rowspan="@changes.Count">
+                int span = Math.Max(1, move.Changes.Count());
+
+                <tr>
+                    <td rowspan="@span">
                         @switch (from?.Type)
                         {
-                            case LocationType.Deck when from.Id != Model.Deck.Id:
-                                <a asp-page="Details" asp-route-id="@from.Id"> @from.Name </a>
+                            case LocationType.Deck:
+                                <a asp-page="/Decks/Details" asp-route-id="@from.Id"> @from.Name </a>
                                 break;
 
                             case LocationType.Unclaimed when canChangeTreasury:
@@ -71,7 +76,7 @@
                                 break;
 
                             case LocationType.Excess:
-                                <a asp-page="/Treasury/Excess" asp-route-id="@from.Id"> @from.Name </a>
+                                <a asp-page="/Treasury/Excess"> @from.Name </a>
                                 break;
 
                             case LocationType.Box:
@@ -87,12 +92,12 @@
                                 break;
                         }
                     </td>
-
-                    <td rowspan="@changes.Count">
+                    
+                    <td rowspan="@span">
                         @switch (to.Type)
                         {
-                            case LocationType.Deck when to.Id != Model.Deck.Id:
-                                <a asp-page="Details" asp-route-id="@to.Id"> @to.Name </a>
+                            case LocationType.Deck:
+                                <a asp-page="/Decks/Details" asp-route-id="@to.Id"> @to.Name </a>
                                 break;
 
                             case LocationType.Unclaimed when canChangeTreasury:
@@ -113,40 +118,51 @@
                         }
                     </td>
 
-                    <td> 
-                        <component type="typeof(HoverCard)" render-mode="Static"
-                            param-Preview="changes[0].Card"/>
-                    </td>
-                    <td> @changes[0].Copies </td>
-
-                    @if (Model.IsFirstTransfer(transaction, to, from))
+                    @if (move.Changes.FirstOrDefault() is ChangeDetails firstChange)
                     {
-                        <td rowspan="@Model.GetTransactionCount(transaction)" class="text-center">
-                            @if (canChangeTreasury)
-                            {
-                                <form method="POST" asp-route-transactionId="@transaction.Id">
-                                    <button title="Remove Record" type="submit" class="btn btn-danger"> &times; </button>
-                                </form>
-                            }
-                            else
-                            {
-                                <button type="button" class="btn btn-danger" disabled> &times; </button>
-                            }
+                        <td>
+                            <component type="typeof(HoverCard)" render-mode="Static"
+                                param-Preview="firstChange.Card"/>
                         </td>
+                        <td> 
+                            <div class="ms-group">
+                                @MtgSymbols.Format(firstChange.Card.ManaCost).ToHtmlString() 
+                            </div> 
+                        </td>
+                        <td> @firstChange.Copies </td>
+                    }
+                    else
+                    {
+                        <td> -- </td>
+                        <td> -- </td>
+                        <td> -- </td>
                     }
                 </tr>
 
-                @foreach (var change in changes.Skip(1))
+                @foreach (var change in move.Changes.Skip(1))
                 {
                     <tr>
                         <td>
                             <component type="typeof(HoverCard)" render-mode="Static"
-                                param-Preview="change.Card" />
+                                param-Preview="change.Card"/>
+                        </td>
+                        <td> 
+                            <div class="ms-group">
+                                @MtgSymbols.Format(change.Card.ManaCost).ToHtmlString() 
+                            </div> 
                         </td>
                         <td> @change.Copies </td>
                     </tr>
                 }
             }
+
+            <tr>
+                <th scope="row"> Total </th>
+                <td> -- </td>
+                <td> -- </td>
+                <td> -- </td>
+                <td> <strong> @Model.Transaction.Copies </strong> </td>
+            </tr>
         </tbody>
     </table>
 </div>

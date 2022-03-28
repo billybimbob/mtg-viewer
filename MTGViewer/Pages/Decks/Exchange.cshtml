@@ -48,17 +48,6 @@ else if (Model.Deck.HasWants)
         </div>
     </section>
 }
-else
-{
-    <section class="alert alert-warning" role="alert">
-        <h5 class="alert-heading">There are no pending changes for the deck</h5>
-
-        <a asp-page="Details"
-            asp-route-id="@Model.Deck.Id"
-            class="btn btn-secondary" role="button">
-            Details </a>
-    </section>
-}
 
 
 <h3> Wanted Card Matches </h3>

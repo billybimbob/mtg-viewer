@@ -84,13 +84,12 @@ internal class ExactReturn : ReturnHandler
 
     private ILookup<string, Storage> AddLookup()
     {
-        var (available, _, _, storageSpace) = TreasuryContext;
-        var availableHolds = available.SelectMany(b => b.Holds);
+        var availableHolds = TreasuryContext.Available.SelectMany(b => b.Holds);
 
         var giveCards = ExchangeContext.Deck.GiveBacks.Select(w => w.Card);
 
         // TODO: account for changing Copies while iter
-        return Assignment.ExactAddLookup(availableHolds, giveCards, storageSpace);
+        return Assignment.ExactAddLookup(availableHolds, giveCards);
     }
 }
 
@@ -144,10 +143,8 @@ internal class ApproximateReturn : ReturnHandler
         var availableHolds = TreasuryContext.Available.SelectMany(b => b.Holds);
         var giveCards = ExchangeContext.Deck.GiveBacks.Select(w => w.Card);
 
-        var storageSpaces = TreasuryContext.StorageSpaces;
-
         // TODO: account for changing Copies while iter
-        return Assignment.ApproxAddLookup(availableHolds, giveCards, storageSpaces);
+        return Assignment.ApproxAddLookup(availableHolds, giveCards);
     }
 }
 
@@ -206,7 +203,6 @@ internal class GuessReturn : ReturnHandler
             .Cast<Storage>()
             .Concat(excess);
 
-        return Assignment.FitToStorage(
-            giveBack.Card, giveBack.Copies, matches, storageSpaces);
+        return Assignment.FitToStorage(giveBack.Card, giveBack.Copies, matches, storageSpaces);
     }
 }

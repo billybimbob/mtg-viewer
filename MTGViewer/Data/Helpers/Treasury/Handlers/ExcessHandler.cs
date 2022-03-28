@@ -79,16 +79,16 @@ internal class ExactExcess : ExcessHandler
 
     private ILookup<string, Storage> AddLookup()
     {
-        var (available, _, excessStorage, storageSpace) = TreasuryContext;
+        var (available, _, excess, _) = TreasuryContext;
 
         var availableHolds = available.SelectMany(b => b.Holds);
 
-        var excessCards = excessStorage
+        var excessCards = excess
             .SelectMany(b => b.Holds)
             .Select(h => h.Card);
 
         // TODO: account for changing Copies while iter
-        return Assignment.ExactAddLookup(availableHolds, excessCards, storageSpace);
+        return Assignment.ExactAddLookup(availableHolds, excessCards);
     }
 }
 
@@ -136,15 +136,15 @@ internal class ApproximateExcess : ExcessHandler
 
     private ILookup<string, Storage> AddLookup()
     {
-        var (available, _, excessStorage, storageSpace) = TreasuryContext;
+        var (available, _, excess, _) = TreasuryContext;
 
         var availableHolds = available.SelectMany(b => b.Holds);
 
-        var excessCards = excessStorage
+        var excessCards = excess
             .SelectMany(b => b.Holds)
             .Select(h => h.Card);
 
         // TODO: account for changing Copies while iter
-        return Assignment.ApproxAddLookup(availableHolds, excessCards, storageSpace);
+        return Assignment.ApproxAddLookup(availableHolds, excessCards);
     }
 }

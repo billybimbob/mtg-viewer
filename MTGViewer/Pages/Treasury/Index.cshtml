@@ -43,7 +43,7 @@
 
     <div class="col-auto btn-group pr-2" role="group" aria-label="Treasury Miscellaneous">
 
-        <a asp-page="History" class="btn btn-secondary" role="button"> History </a>
+        <a asp-page="/Transactions/Index" class="btn btn-secondary" role="button"> History </a>
         @if (Model.HasExcess)
         {
             <a asp-page="Excess" class="btn btn-secondary" role="button"> Excess </a>

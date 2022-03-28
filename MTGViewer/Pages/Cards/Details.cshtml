@@ -25,8 +25,8 @@
 }
 
 
-<div class="row"> 
-    <h1 class="h1 col-auto"> @Model.Card.Name </h1> 
+<div class="row no-gutters pb-2 align-items-center"> 
+    <h1 class="h1 m-0 col-lg-auto col-12 pr-4"> @Model.Card.Name </h1> 
 
     @{ var manaCost = Model.Card.Flip is not null
             ? Model.Card.Flip.ManaCost
@@ -34,7 +34,7 @@
 
     @if (manaCost is not null)
     {
-        <div class="h5 m-0 pl-sm-0 pb-3 pb-sm-0 col-sm-auto col-12 d-flex align-items-center">
+        <div class="h5 m-0 pt-xl-3 py-2 pl-1 pl-lg-0 col-lg-auto col-12">
             @MtgSymbols.Format(manaCost).ToHtmlString()
         </div>
     }

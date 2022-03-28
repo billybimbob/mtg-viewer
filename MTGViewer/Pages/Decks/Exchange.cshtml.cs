@@ -66,6 +66,11 @@ public class ExchangeModel : PageModel
             return NotFound();
         }
 
+        if (!deck.HasWants && !deck.GiveBacks.Any())
+        {
+            return RedirectToPage("Details", new { id });
+        }
+
         var matches = await WantTargets(deck)
             .PageBy(offset, _pageSize)
             .ToOffsetListAsync(cancel);
@@ -218,7 +223,7 @@ public class ExchangeModel : PageModel
             PostMessage = "Ran into issue while trying to exchange";
         }
 
-        return RedirectToPage("History", new { id });
+        return RedirectToPage("/Transactions/Index", new { id });
     }
 
 

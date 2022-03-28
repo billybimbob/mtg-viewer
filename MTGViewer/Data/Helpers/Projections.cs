@@ -113,7 +113,7 @@ public sealed record RecentTransaction
     {
         return transfer is not null
             && transfer.AppliedAt == AppliedAt
-            && transfer.Copies== Copies
+            && transfer.Copies == Copies
             && transfer.Changes.SequenceEqual(Changes);
     }
 
@@ -134,64 +134,94 @@ public sealed record RecentChange
 }
 
 
-public sealed record TransferPreview(
-    TransactionPreview Transaction,
-    LocationPreview To,
-    LocationPreview? From,
-    IReadOnlyList<ChangePreview> Changes)
-{
-    public bool Equals(TransferPreview? transfer)
-    {
-        return transfer is var (transaction, to, from, changes)
-            && transaction == Transaction
-            && to == To
-            && from == From
-            && changes.SequenceEqual(Changes);
-    }
-
-    public override int GetHashCode()
-    {
-        return Transaction.GetHashCode()
-            ^ To.GetHashCode()
-            ^ From?.GetHashCode() ?? 0
-            ^ Changes.Aggregate(0, (hash, c) => hash ^ c.GetHashCode());
-    }
-}
-
-
 public sealed record TransactionPreview
 {
     public int Id { get; init; }
     public DateTime AppliedAt { get; init; }
-    public bool IsShared { get; init; }
+
+    public int Copies { get; init; }
+    public IEnumerable<LocationLink> Cards { get; init; } = Enumerable.Empty<LocationLink>();
+
+    public bool HasMore => Copies > Cards.Sum(l => l.Held);
+
+    public override int GetHashCode()
+    {
+        return Id.GetHashCode()
+            ^ AppliedAt.GetHashCode()
+            ^ Copies.GetHashCode()
+            ^ Cards.Aggregate(0, (hash, c) => hash ^ c.GetHashCode());
+    }
+
+    public bool Equals(TransactionPreview? transaction)
+    {
+        return transaction is not null
+            && transaction.Id == Id
+            && transaction.AppliedAt == AppliedAt
+            && transaction.Copies == Copies
+            && transaction.Cards.SequenceEqual(Cards);
+    }
 }
 
 
-public sealed record ChangePreview
+public sealed record TransactionDetails
 {
     public int Id { get; init; }
+
+    public DateTime AppliedAt { get; init; }
+
     public int Copies { get; init; }
-    public TransactionPreview Transaction { get; init; } = default!;
 
-    public LocationPreview To { get; init; } = default!;
-    public LocationPreview? From { get; init; }
+    public bool CanDelete { get; init; }
+}
 
+
+public sealed record ChangeDetails
+{
+    public int Id { get; init; }
+
+    public MoveTarget To { get; init; } = default!;
+    public MoveTarget? From { get; init; }
+
+    public int Copies { get; init; }
     public CardPreview Card { get; init; } = default!;
 }
 
 
-public sealed record LocationPreview
+public sealed record MoveTarget
 {
     public int Id { get; init; }
     public string Name { get; init; } = default!;
     internal LocationType Type { get; init; }
 }
 
+
+public sealed record Move
+{
+    public MoveTarget To { get; init; } = default!;
+    public MoveTarget? From { get; init; }
+    public IEnumerable<ChangeDetails> Changes { get; init; } = Enumerable.Empty<ChangeDetails>();
+
+    public override int GetHashCode()
+    {
+        return To.GetHashCode()
+            ^ From?.GetHashCode() ?? 0
+            ^ Changes.Aggregate(0, (hash, c) => hash ^ c.GetHashCode());
+    }
+
+    public bool Equals(Move? transfer)
+    {
+        return transfer is not null
+            && transfer.To == To
+            && transfer.From == From
+            && transfer.Changes.SequenceEqual(Changes);
+    }
+}
+
 #endregion
 
 
 
-#region Theory Craft Projections
+#region TheoryCraft Projections
 
 public enum BuildState
 {
@@ -267,7 +297,7 @@ public sealed record UnclaimedDetails
 
 
 
-#region Transfer Projections
+#region Trade/Suggestion Projections
 
 public sealed record TradeDeckPreview
 {

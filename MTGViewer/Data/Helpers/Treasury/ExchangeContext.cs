@@ -9,8 +9,7 @@ internal class ExchangeContext
     private readonly CardDbContext _dbContext;
     private readonly Dictionary<string, QuantityGroup> _deckCards;
 
-    public ExchangeContext(
-        CardDbContext dbContext, TreasuryContext treasuryContext)
+    public ExchangeContext(CardDbContext dbContext, TreasuryContext treasuryContext)
     {
         Deck = dbContext.Decks.Local.First();
 
@@ -97,6 +96,7 @@ internal class ExchangeContext
         else
         {
             group = new(hold);
+
             _deckCards.Add(card.Id, group);
         }
 

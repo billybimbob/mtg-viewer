@@ -217,7 +217,6 @@ public static partial class TreasuryExtensions
         AddMissingExcess(dbContext);
 
         var treasuryContext = new TreasuryContext(dbContext, storageSpaces);
-
         var exchangeContext = new ExchangeContext(dbContext, treasuryContext);
 
         bool isFullyLoaded = false;
@@ -235,6 +234,7 @@ public static partial class TreasuryExtensions
             isFullyLoaded = true;
 
             treasuryContext.Refresh();
+
             exchangeContext.ReturnGuess();
         }
 

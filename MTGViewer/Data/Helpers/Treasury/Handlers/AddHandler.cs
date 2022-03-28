@@ -92,12 +92,11 @@ internal class ExactAdd : AddHandler
 
     private ILookup<string, Storage> AddLookup()
     {
-        var (available, _, _, storageSpaces) = TreasuryContext;
+        var availableCards = TreasuryContext.Available.SelectMany(b => b.Holds);
 
-        var availableCards = available.SelectMany(b => b.Holds);
         var cardRequests = CardRequests.Select(cr => cr.Card);
 
-        return Assignment.ExactAddLookup(availableCards, cardRequests, storageSpaces);
+        return Assignment.ExactAddLookup(availableCards, cardRequests);
     }
 }
 
@@ -148,12 +147,11 @@ internal class ApproximateAdd : AddHandler
 
     private ILookup<string, Storage> AddLookup()
     {
-        var (available, _, _, storageSpace) = TreasuryContext;
+        var availableCards = TreasuryContext.Available.SelectMany(b => b.Holds);
 
-        var availableCards = available.SelectMany(b => b.Holds);
         var cardRequests = CardRequests.Select(cr => cr.Card);
 
-        return Assignment.ApproxAddLookup(availableCards, cardRequests, storageSpace);
+        return Assignment.ApproxAddLookup(availableCards, cardRequests);
     }
 }
 

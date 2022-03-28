@@ -59,10 +59,7 @@ internal static class Assignment
     // add assignments should add to larger dup stacks
     // in boxes with more available space
 
-    public static ILookup<string, Storage> ExactAddLookup(
-        IEnumerable<Hold> targets,
-        IEnumerable<Card> cards,
-        IReadOnlyDictionary<LocationIndex, StorageSpace> storageSpaces)
+    public static ILookup<string, Storage> ExactAddLookup(IEnumerable<Hold> targets, IEnumerable<Card> cards)
     {
         var cardIds = cards
             .Select(c => c.Id)
@@ -82,10 +79,7 @@ internal static class Assignment
     }
 
 
-    public static ILookup<string, Storage> ApproxAddLookup(
-        IEnumerable<Hold> targets,
-        IEnumerable<Card> cards,
-        IReadOnlyDictionary<LocationIndex, StorageSpace> storageSpaces)
+    public static ILookup<string, Storage> ApproxAddLookup(IEnumerable<Hold> targets, IEnumerable<Card> cards)
     {
         var cardNames = cards
             .Select(c => c.Name)
