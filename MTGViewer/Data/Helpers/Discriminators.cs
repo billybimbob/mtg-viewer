@@ -14,7 +14,7 @@ internal enum LocationType
     Deck,
     Unclaimed,
     Box,
-    Excess,
+    Excess
 }
 
 
@@ -23,5 +23,5 @@ internal enum QuantityType
     Invalid,
     Hold,
     Want,
-    GiveBack,
+    Giveback
 }

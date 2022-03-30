@@ -54,14 +54,14 @@ internal class ExactReturn : ReturnHandler
 
     protected override IEnumerable<StorageAssignment<Card>> GetAssignments()
     {
-        var giveBacks = ExchangeContext.Deck.GiveBacks;
+        var givebacks = ExchangeContext.Deck.Givebacks;
 
-        if (!TreasuryContext.Available.Any() || giveBacks.All(g => g.Copies == 0))
+        if (!TreasuryContext.Available.Any() || givebacks.All(g => g.Copies == 0))
         {
             yield break;
         }
 
-        foreach (var giveBack in giveBacks)
+        foreach (var giveBack in givebacks)
         {
             foreach (var assignment in FitToStorage(giveBack))
             {
@@ -71,7 +71,7 @@ internal class ExactReturn : ReturnHandler
     }
 
 
-    private IEnumerable<StorageAssignment<Card>> FitToStorage(GiveBack giveBack)
+    private IEnumerable<StorageAssignment<Card>> FitToStorage(Giveback giveBack)
     {
         _exactMatch ??= AddLookup();
 
@@ -86,7 +86,7 @@ internal class ExactReturn : ReturnHandler
     {
         var availableHolds = TreasuryContext.Available.SelectMany(b => b.Holds);
 
-        var giveCards = ExchangeContext.Deck.GiveBacks.Select(w => w.Card);
+        var giveCards = ExchangeContext.Deck.Givebacks.Select(w => w.Card);
 
         // TODO: account for changing Copies while iter
         return Assignment.ExactAddLookup(availableHolds, giveCards);
@@ -104,7 +104,7 @@ internal class ApproximateReturn : ReturnHandler
 
     protected override IEnumerable<StorageAssignment<Card>> GetAssignments()
     {
-        var giveBacks = ExchangeContext.Deck.GiveBacks;
+        var giveBacks = ExchangeContext.Deck.Givebacks;
 
         if (!TreasuryContext.Available.Any() || giveBacks.All(g => g.Copies == 0))
         {
@@ -126,7 +126,7 @@ internal class ApproximateReturn : ReturnHandler
     }
 
 
-    private IEnumerable<StorageAssignment<Card>> FitToStorage(GiveBack giveBack)
+    private IEnumerable<StorageAssignment<Card>> FitToStorage(Giveback giveBack)
     {
         _approxMatch ??= AddLookup();
 
@@ -141,7 +141,7 @@ internal class ApproximateReturn : ReturnHandler
     private ILookup<string, Storage> AddLookup()
     {
         var availableHolds = TreasuryContext.Available.SelectMany(b => b.Holds);
-        var giveCards = ExchangeContext.Deck.GiveBacks.Select(w => w.Card);
+        var giveCards = ExchangeContext.Deck.Givebacks.Select(w => w.Card);
 
         // TODO: account for changing Copies while iter
         return Assignment.ApproxAddLookup(availableHolds, giveCards);
@@ -159,9 +159,9 @@ internal class GuessReturn : ReturnHandler
 
     protected override IEnumerable<StorageAssignment<Card>> GetAssignments()
     {
-        var giveBacks = ExchangeContext.Deck.GiveBacks;
+        var givebacks = ExchangeContext.Deck.Givebacks;
 
-        if (giveBacks.All(g => g.Copies == 0))
+        if (givebacks.All(g => g.Copies == 0))
         {
             yield break;
         }
@@ -171,12 +171,12 @@ internal class GuessReturn : ReturnHandler
         // each of the returned cards should have less effect on following returns
         // keep eye on
 
-        var orderedGiveBacks = giveBacks
+        var orderedGivebacks = givebacks
             .OrderByDescending(g => g.Copies)
                 .ThenByDescending(g => g.Card.Name)
                 .ThenByDescending(g => g.Card.SetName);
 
-        foreach (var giveBack in orderedGiveBacks)
+        foreach (var giveBack in orderedGivebacks)
         {
             if (giveBack.Copies == 0)
             {
@@ -191,7 +191,7 @@ internal class GuessReturn : ReturnHandler
     }
 
 
-    private IEnumerable<StorageAssignment<Card>> FitToStorage(GiveBack giveBack)
+    private IEnumerable<StorageAssignment<Card>> FitToStorage(Giveback giveBack)
     {
         var (available, _, excess, storageSpaces) = TreasuryContext;
 

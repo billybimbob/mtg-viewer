@@ -87,7 +87,7 @@ public class DetailsModel : PageModel
 
                     HeldCopies = d.Holds.Sum(h => h.Copies),
                     WantCopies = d.Wants.Sum(w => w.Copies),
-                    ReturnCopies = d.GiveBacks.Sum(g => g.Copies),
+                    ReturnCopies = d.Givebacks.Sum(g => g.Copies),
 
                     HasTrades = d.TradesTo.Any()
                 })
@@ -99,7 +99,7 @@ public class DetailsModel : PageModel
         return _dbContext.Cards
             .Where(c => c.Holds.Any(h => h.LocationId == deckId)
                 || c.Wants.Any(w => w.LocationId == deckId)
-                || c.GiveBacks.Any(g => g.LocationId == deckId))
+                || c.Givebacks.Any(g => g.LocationId == deckId))
 
             .OrderBy(c => c.Name)
                 .ThenBy(c => c.SetName)
@@ -124,7 +124,7 @@ public class DetailsModel : PageModel
                     .Where(w => w.LocationId == deckId)
                     .Sum(w => w.Copies),
 
-                Returning = c.GiveBacks
+                Returning = c.Givebacks
                     .Where(g => g.LocationId == deckId)
                     .Sum(g => g.Copies),
             });

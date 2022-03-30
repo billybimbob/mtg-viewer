@@ -43,7 +43,7 @@ public class Startup
         services
             .AddTransient<ColorUpdate>()
             .AddTransient<ImmutableCard>()
-            .AddTransient<LiteTokenUpdate>()
+            .AddTransient<StampUpdate>()
             .AddTransient<QuantityValidate>()
             .AddTransient<TradeValidate>();
 

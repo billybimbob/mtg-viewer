@@ -208,7 +208,7 @@ public static partial class TreasuryExtensions
 
         var cardNames = deck.Wants
             .Select(w => w.Card.Name)
-            .Union(deck.GiveBacks
+            .Union(deck.Givebacks
                 .Select(g => g.Card.Name))
             .ToArray();
 
@@ -227,7 +227,7 @@ public static partial class TreasuryExtensions
         exchangeContext.ReturnExact();
         exchangeContext.ReturnApproximate();
 
-        if (deck.GiveBacks.Any(g => g.Copies > 0))
+        if (deck.Givebacks.Any(g => g.Copies > 0))
         {
             await EntireStorage(dbContext).LoadAsync(cancel);
 
@@ -357,7 +357,7 @@ public static partial class TreasuryExtensions
         var emptyWants = dbContext.Wants.Local
             .Where(w => w.Copies == 0);
 
-        var emptyGiveBacks = dbContext.GiveBacks.Local
+        var emptyGivebacks = dbContext.Givebacks.Local
             .Where(g => g.Copies == 0);
 
         var emptyTransactions = dbContext.Transactions.Local
@@ -365,7 +365,7 @@ public static partial class TreasuryExtensions
 
         dbContext.Holds.RemoveRange(emptyHolds);
         dbContext.Wants.RemoveRange(emptyWants);
-        dbContext.GiveBacks.RemoveRange(emptyGiveBacks);
+        dbContext.Givebacks.RemoveRange(emptyGivebacks);
 
         dbContext.Transactions.RemoveRange(emptyTransactions);
     }

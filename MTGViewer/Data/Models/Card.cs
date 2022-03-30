@@ -68,7 +68,7 @@ public class Card
     public List<Want> Wants { get; } = new();
 
     [JsonIgnore]
-    public List<GiveBack> GiveBacks { get; } = new();
+    public List<Giveback> Givebacks { get; } = new();
 
     [JsonIgnore]
     public List<Suggestion> Suggestions { get; } = new();

@@ -90,7 +90,7 @@ public class DeleteModel : PageModel
 
                     HeldCopies = d.Holds.Sum(h => h.Copies),
                     WantCopies = d.Wants.Sum(w => w.Copies),
-                    ReturnCopies = d.GiveBacks.Sum(g => g.Copies),
+                    ReturnCopies = d.Givebacks.Sum(g => g.Copies),
 
                     HasTrades = d.TradesTo.Any() || d.TradesFrom.Any()
                 })
@@ -103,7 +103,7 @@ public class DeleteModel : PageModel
             dbContext.Cards
                 .Where(c => c.Holds.Any(h => h.LocationId == id)
                     || c.Wants.Any(w => w.LocationId == id)
-                    || c.GiveBacks.Any(g => g.LocationId == id))
+                    || c.Givebacks.Any(g => g.LocationId == id))
 
                 .OrderBy(c => c.Name)
                     .ThenBy(c => c.SetName)
@@ -126,7 +126,7 @@ public class DeleteModel : PageModel
                         .Where(w => w.LocationId == id)
                         .Sum(w => w.Copies),
 
-                    Returning = c.GiveBacks
+                    Returning = c.Givebacks
                         .Where(g => g.LocationId == id)
                         .Sum(g => g.Copies),
                 }));
@@ -139,7 +139,7 @@ public class DeleteModel : PageModel
                     .ThenInclude(h => h.Card)
 
                 .Include(d => d.Wants) // unbounded: keep eye on
-                .Include(d => d.GiveBacks) // unbounded: keep eye on
+                .Include(d => d.Givebacks) // unbounded: keep eye on
 
                 .Include(d => d.TradesTo) // unbounded: keep eye on
                 .Include(d => d.TradesFrom) // unbounded: keep eye on

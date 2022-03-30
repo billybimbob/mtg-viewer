@@ -29,7 +29,7 @@ public class CardDbContext : DbContext
 
     public DbSet<Hold> Holds => Set<Hold>();
     public DbSet<Want> Wants => Set<Want>();
-    public DbSet<GiveBack> GiveBacks => Set<GiveBack>();
+    public DbSet<Giveback> Givebacks => Set<Giveback>();
 
     public DbSet<Change> Changes => Set<Change>();
     public DbSet<Transaction> Transactions => Set<Transaction>();
@@ -48,7 +48,7 @@ public class CardDbContext : DbContext
             .ApplyConfiguration(new CardConfiguration())
             .ApplyConfiguration(new LocationConfiguration())
 
-            .ApplyConfiguration(new OwnedConfiguration())
+            .ApplyConfiguration(new TheoryCraftConfiguration())
             .ApplyConfiguration(new DeckConfiguration())
             .ApplyConfiguration(new BoxConfiguration())
 
@@ -79,15 +79,15 @@ internal class LocationConfiguration : IEntityTypeConfiguration<Location>
     {
         builder
             .HasDiscriminator(l => l.Type)
-                .HasValue<Location>(LocationType.Invalid)
+            .HasValue<Location>(LocationType.Invalid)
 
-                .HasValue<TheoryCraft>(LocationType.Invalid)
-                .HasValue<Deck>(LocationType.Deck)
-                .HasValue<Unclaimed>(LocationType.Unclaimed)
+            .HasValue<Theorycraft>(LocationType.Invalid)
+            .HasValue<Deck>(LocationType.Deck)
+            .HasValue<Unclaimed>(LocationType.Unclaimed)
 
-                .HasValue<Storage>(LocationType.Invalid)
-                .HasValue<Box>(LocationType.Box)
-                .HasValue<Excess>(LocationType.Excess);
+            .HasValue<Storage>(LocationType.Invalid)
+            .HasValue<Box>(LocationType.Box)
+            .HasValue<Excess>(LocationType.Excess);
 
         builder
             .HasMany(l => l.Holds)
@@ -97,12 +97,12 @@ internal class LocationConfiguration : IEntityTypeConfiguration<Location>
 }
 
 
-internal class OwnedConfiguration : IEntityTypeConfiguration<TheoryCraft>
+internal class TheoryCraftConfiguration : IEntityTypeConfiguration<Theorycraft>
 {
-    public void Configure(EntityTypeBuilder<TheoryCraft> builder)
+    public void Configure(EntityTypeBuilder<Theorycraft> builder)
     {
         builder
-            .HasMany(o => o.Wants)
+            .HasMany(t => t.Wants)
             .WithOne(w => w.Location)
             .OnDelete(DeleteBehavior.Cascade);
     }
@@ -114,7 +114,7 @@ internal class DeckConfiguration : IEntityTypeConfiguration<Deck>
     public void Configure(EntityTypeBuilder<Deck> builder)
     {
         builder
-            .HasMany(d => d.GiveBacks)
+            .HasMany(d => d.Givebacks)
             .WithOne(g => g.Location)
             .OnDelete(DeleteBehavior.Cascade);
 
@@ -149,11 +149,11 @@ internal class QuantityConfiguration : IEntityTypeConfiguration<Quantity>
     {
         builder
             .HasDiscriminator(q => q.Type)
-
             .HasValue<Quantity>(QuantityType.Invalid)
+
             .HasValue<Hold>(QuantityType.Hold)
-            .HasValue<Want>(QuantityType.Want)
-            .HasValue<GiveBack>(QuantityType.GiveBack);
+            .HasValue<Giveback>(QuantityType.Giveback)
+            .HasValue<Want>(QuantityType.Want);
     }
 }
 

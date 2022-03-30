@@ -411,9 +411,9 @@ public class TestDataGenerator
     }
 
 
-    private async Task<GiveBack> FindGiveBackAsync(Card card, Deck target, int copies)
+    private async Task<Giveback> FindGivebackAsync(Card card, Deck target, int copies)
     {
-        var give = await _dbContext.GiveBacks
+        var give = await _dbContext.Givebacks
             .SingleOrDefaultAsync(g =>
                 g.LocationId == target.Id && g.CardId == card.Id);
 
@@ -425,7 +425,7 @@ public class TestDataGenerator
                 Location = target
             };
 
-            _dbContext.GiveBacks.Attach(give);
+            _dbContext.Givebacks.Attach(give);
         }
 
         give.Copies = copies;
@@ -462,7 +462,7 @@ public class TestDataGenerator
     }
 
 
-    public async Task<GiveBack> GetGiveBackAsync(int targetMod = 0)
+    public async Task<Giveback> GetGivebackAsync(int targetMod = 0)
     {
         var returnTarget = await _dbContext.Decks
             .Where(d => !d.TradesTo.Any())
@@ -476,7 +476,7 @@ public class TestDataGenerator
 
         int limit = Math.Max(1, returnTarget.Copies + targetMod);
 
-        var give = await FindGiveBackAsync(
+        var give = await FindGivebackAsync(
             returnTarget.Card, (Deck)returnTarget.Location, limit);
 
         await _dbContext.SaveChangesAsync();
@@ -486,7 +486,7 @@ public class TestDataGenerator
     }
 
 
-    public async Task<(Want, GiveBack)> GetMixedRequestDeckAsync()
+    public async Task<(Want, Giveback)> GetMixedRequestDeckAsync()
     {
         var returnTarget = await _dbContext.Holds
             .Include(h => h.Card)
@@ -509,7 +509,7 @@ public class TestDataGenerator
             .Select(h => h.Copies)
             .SumAsync();
 
-        var deckGive = await FindGiveBackAsync(
+        var deckGive = await FindGivebackAsync(
             returnTarget.Card, deckTarget, returnTarget.Copies);
 
         var deckWant = await FindWantAsync(

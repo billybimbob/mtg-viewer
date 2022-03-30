@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
+using System.Text.Json.Serialization;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
@@ -14,12 +15,25 @@ namespace MTGViewer.Data.Concurrency;
 public abstract class Concurrent
 {
     [ConcurrencyCheck]
-    internal Guid LiteToken { get; set; }
+    internal Guid Stamp { get; set; }
 
     [Timestamp]
     internal byte[] SqlToken { get; set; } = Array.Empty<byte>();
 
     internal uint xmin { get; set; }
+}
+
+
+internal abstract class ConcurrentDto
+{
+    [JsonInclude]
+    public Guid Stamp { get; set; }
+
+    [JsonInclude]
+    public byte[] SqlToken { get; set; } = Array.Empty<byte>();
+
+    [JsonInclude]
+    public uint xmin { get; set; }
 }
 
 
@@ -37,7 +51,7 @@ internal static class ConcurrencyExtensions
     }
 
 
-    private static IEnumerable<System.Type> GetConcurrentTypes()
+    private static IEnumerable<Type> GetConcurrentTypes()
     {
         var concurrentType = typeof(Concurrent);
 
@@ -59,7 +73,7 @@ internal static class ConcurrencyExtensions
         // else if (database.IsSqlite())
         else
         {
-            entity.Property(nameof(Concurrent.LiteToken));
+            entity.Property(nameof(Concurrent.Stamp));
         }
     }
 
@@ -77,7 +91,7 @@ internal static class ConcurrencyExtensions
         }
         else
         {
-            return current.LiteToken;
+            return current.Stamp;
         }
     }
 
@@ -118,7 +132,7 @@ internal static class ConcurrencyExtensions
         else
         {
             var tokenProp = entry
-                .Property(c => c.LiteToken);
+                .Property(c => c.Stamp);
 
             tokenProp.OriginalValue = dbProps
                 .GetValue<Guid>(tokenProp.Metadata);
@@ -134,6 +148,23 @@ internal static class ConcurrencyExtensions
             context.Entry(dbValues).CurrentValues);
     }
 
+
+    public static void CopyToken(this CardDbContext context, ConcurrentDto current, Concurrent db)
+    {
+        if (context.Database.IsSqlServer())
+        {
+            current.SqlToken = db.SqlToken;
+        }
+        else if (context.Database.IsNpgsql())
+        {
+            current.xmin = db.xmin;
+        }
+        // else if (context.Database.IsSqlite())
+        else
+        {
+            current.Stamp = db.Stamp;
+        }
+    }
 
 
     public static IEnumerable<EntityEntry<TEntity>> Entries<TEntity>(

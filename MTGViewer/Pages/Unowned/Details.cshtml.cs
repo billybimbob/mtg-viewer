@@ -197,7 +197,7 @@ public class DetailsModel : PageModel
         }
 
         var cardReturns = unclaimed.Holds
-            .Select(h => new CardRequest(h.Card, h.Copies));
+            .Select(q => new CardRequest(q.Card, q.Copies));
 
         _dbContext.Holds.RemoveRange(unclaimed.Holds);
         _dbContext.Unclaimed.Remove(unclaimed);

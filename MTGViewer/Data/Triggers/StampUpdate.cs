@@ -6,13 +6,13 @@ using MTGViewer.Data.Concurrency;
 
 namespace MTGViewer.Data.Triggers;
 
-public class LiteTokenUpdate : IBeforeSaveTrigger<Concurrent>
+public class StampUpdate : IBeforeSaveTrigger<Concurrent>
 {
     public Task BeforeSave(ITriggerContext<Concurrent> trigContext, CancellationToken cancel)
     {
         if (trigContext.ChangeType is ChangeType.Added or ChangeType.Modified)
         {
-            trigContext.Entity.LiteToken = Guid.NewGuid();
+            trigContext.Entity.Stamp = Guid.NewGuid();
         }
 
         return Task.CompletedTask;

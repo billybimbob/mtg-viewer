@@ -107,7 +107,7 @@ internal class ExchangeContext
     public void ReturnCopies(Card card, int copies, Storage storage)
     {
         if (_deckCards.GetValueOrDefault(card.Id)
-            is not { GiveBack: GiveBack give, Hold: Hold hold })
+            is not { Giveback: Giveback give, Hold: Hold hold })
         {
             throw new ArgumentException("Card cannot be found", nameof(card));
         }

@@ -372,7 +372,7 @@ public class BulkOperations
         {
             _dbContext.Holds.RemoveRange(deck.Holds);
             _dbContext.Wants.RemoveRange(deck.Wants);
-            _dbContext.GiveBacks.RemoveRange(deck.GiveBacks);
+            _dbContext.Givebacks.RemoveRange(deck.Givebacks);
 
             _dbContext.Decks.Remove(deck);
         }

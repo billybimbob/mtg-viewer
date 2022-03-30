@@ -128,21 +128,21 @@ public class QuantityValidateTests : IAsyncLifetime
 
 
     [Fact]
-    public async Task BeforeSave_GiveBackMissingLocation_Throws()
+    public async Task BeforeSave_GivebackMissingLocation_Throws()
     {
         var hold = await _dbContext.Holds
             .Include(h => h.Card)
             .FirstAsync(h =>
-                h.Card.GiveBacks.All(g => g.LocationId != h.LocationId));
+                h.Card.Givebacks.All(g => g.LocationId != h.LocationId));
 
-        var giveBack = new GiveBack
+        var giveBack = new Giveback
         {
             Card = hold.Card,
             LocationId = hold.LocationId,
             Copies = 3
         };
 
-        _dbContext.GiveBacks.Add(giveBack);
+        _dbContext.Givebacks.Add(giveBack);
 
         var triggerContext = new Mock<ITriggerContext<Quantity>>();
 
@@ -161,21 +161,21 @@ public class QuantityValidateTests : IAsyncLifetime
 
 
     [Fact]
-    public async Task BeforeSave_GiveBackMissingHolds_Throws()
+    public async Task BeforeSave_GivebackMissingHolds_Throws()
     {
         var deck = await _dbContext.Decks.FirstAsync();
 
         var card = await _dbContext.Cards
             .FirstAsync(c => c.Holds.All(h => h.LocationId != deck.Id));
 
-        var giveBack = new GiveBack
+        var giveBack = new Giveback
         {
             Card = card,
             Location = deck,
             Copies = 3
         };
 
-        _dbContext.GiveBacks.Add(giveBack);
+        _dbContext.Givebacks.Add(giveBack);
 
         var triggerContext = new Mock<ITriggerContext<Quantity>>();
 

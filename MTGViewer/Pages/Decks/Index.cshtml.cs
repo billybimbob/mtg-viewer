@@ -94,7 +94,7 @@ public class IndexModel : PageModel
                 HeldCopies = d.Holds.Sum(h => h.Copies),
                 WantCopies = d.Wants.Sum(w => w.Copies),
 
-                HasReturns = d.GiveBacks.Any(),
+                HasReturns = d.Givebacks.Any(),
                 HasTrades = d.TradesTo.Any(),
             });
     }

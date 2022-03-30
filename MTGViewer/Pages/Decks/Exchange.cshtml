@@ -5,7 +5,7 @@
 }
 @inject SymbolFormatter MtgSymbols
 
-@{ bool hasPendings = Model.Deck.GiveBacks.Any() || Model.Matches.Any(); }
+@{ bool hasPendings = Model.Deck.Givebacks.Any() || Model.Matches.Any(); }
 
 
 <h1>@Model.Deck.Name Treasury Exchange</h1>
@@ -108,14 +108,14 @@ else if (Model.Deck.HasWants)
             <table class="table mt-2">
                 <thead>
                     <tr>
-                        <th scope="col"> @Html.DisplayNameForInnerType((GiveBack g) => g.Card) </th>
+                        <th scope="col"> @Html.DisplayNameForInnerType((Giveback g) => g.Card) </th>
                         <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.ManaCost) </th>
                         <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.SetName) </th>
-                        <th scope="col"> @Html.DisplayNameForInnerType((GiveBack g) => g.Copies) </th>
+                        <th scope="col"> @Html.DisplayNameForInnerType((Giveback g) => g.Copies) </th>
                     </tr>
                 </thead>
                 <tbody>
-                    @if (!Model.Deck.GiveBacks.Any())
+                    @if (!Model.Deck.Givebacks.Any())
                     {
                         <tr>
                             <td> -- </td>
@@ -124,7 +124,7 @@ else if (Model.Deck.HasWants)
                             <td> -- </td>
                         </tr>
                     }
-                    @foreach (var card in Model.Deck.GiveBacks)
+                    @foreach (var card in Model.Deck.Givebacks)
                     {
                         <tr>
                             <td>

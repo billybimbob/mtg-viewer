@@ -51,8 +51,8 @@ public class ExchangeTests : IAsyncLifetime
             .Select(w => w.Copies);
 
 
-    private IQueryable<int> Copies(GiveBack give) =>
-        _dbContext.GiveBacks
+    private IQueryable<int> Copies(Giveback give) =>
+        _dbContext.Givebacks
             .Where(g => g.Id == give.Id)
             .Select(g => g.Copies);
 
@@ -190,7 +190,7 @@ public class ExchangeTests : IAsyncLifetime
     public async Task OnPost_ValidGive_AppliesGive(int targetMod)
     {
         // Arrange
-        var request = await _testGen.GetGiveBackAsync(targetMod);
+        var request = await _testGen.GetGivebackAsync(targetMod);
         int returnCopies = request.Copies;
         var deckOwnerId = await OwnerId(request).SingleAsync();
 
@@ -225,7 +225,7 @@ public class ExchangeTests : IAsyncLifetime
     [Fact]
     public async Task OnPost_TradeActive_NoChange()
     {
-        var giveBack = await _testGen.GetGiveBackAsync(2);
+        var giveBack = await _testGen.GetGivebackAsync(2);
         var deckOwnerId = await OwnerId(giveBack).SingleAsync();
 
         var tradeTarget = await _dbContext.Holds

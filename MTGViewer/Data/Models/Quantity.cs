@@ -45,11 +45,11 @@ public class Hold : Quantity
 
 public class Want : Quantity
 {
-    public override TheoryCraft Location => (TheoryCraft)base.Location;
+    public override Theorycraft Location => (Theorycraft)base.Location;
 }
 
 
-public class GiveBack : Quantity
+public class Giveback : Quantity
 {
     public override Deck Location => (Deck)base.Location;
 }

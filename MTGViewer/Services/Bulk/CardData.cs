@@ -335,7 +335,7 @@ public sealed class CardStream
                 .Include(d => d.Wants
                     .OrderBy(w => w.Id))
 
-                .Include(d => d.GiveBacks
+                .Include(d => d.Givebacks
                     .OrderBy(g => g.Id))
 
                 .Include(d => d.TradesFrom

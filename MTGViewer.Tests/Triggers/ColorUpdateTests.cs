@@ -48,7 +48,7 @@ public class ColorUpdateTests : IAsyncLifetime
     }
 
 
-    private static Color GetColor(TheoryCraft theory)
+    private static Color GetColor(Theorycraft theory)
     {
         var cards = theory.Holds
             .Select(h => h.Card)
@@ -66,7 +66,7 @@ public class ColorUpdateTests : IAsyncLifetime
 
         var theory = new Deck { Color = black };
 
-        var triggerContext = new Mock<ITriggerContext<TheoryCraft>>();
+        var triggerContext = new Mock<ITriggerContext<Theorycraft>>();
 
         triggerContext
             .SetupGet(t => t.ChangeType)
@@ -109,7 +109,7 @@ public class ColorUpdateTests : IAsyncLifetime
 
         _dbContext.Decks.Attach(theory); // attack for nav fixup
 
-        var triggerContext = new Mock<ITriggerContext<TheoryCraft>>();
+        var triggerContext = new Mock<ITriggerContext<Theorycraft>>();
 
         triggerContext
             .SetupGet(t => t.ChangeType)
@@ -155,7 +155,7 @@ public class ColorUpdateTests : IAsyncLifetime
         bool cardAreMissing = theory.Wants.All(w => w.Card is null)
             && theory.Holds.All(h => h.Card is null);
 
-        var triggerContext = new Mock<ITriggerContext<TheoryCraft>>();
+        var triggerContext = new Mock<ITriggerContext<Theorycraft>>();
 
         triggerContext
             .SetupGet(t => t.ChangeType)
@@ -207,7 +207,7 @@ public class ColorUpdateTests : IAsyncLifetime
 
         var color = GetColor(deck);
 
-        var triggerContext = new Mock<ITriggerContext<TheoryCraft>>();
+        var triggerContext = new Mock<ITriggerContext<Theorycraft>>();
 
         triggerContext
             .SetupGet(t => t.ChangeType)
@@ -258,7 +258,7 @@ public class ColorUpdateTests : IAsyncLifetime
 
         _dbContext.Decks.Attach(deck); // attach for nav fixup
 
-        var triggerContext = new Mock<ITriggerContext<TheoryCraft>>();
+        var triggerContext = new Mock<ITriggerContext<Theorycraft>>();
 
         triggerContext
             .SetupGet(t => t.ChangeType)
@@ -320,7 +320,7 @@ public class ColorUpdateTests : IAsyncLifetime
             .Union(deckColors.WantColors)
             .Aggregate(Color.None, (color, c) => color | c);
 
-        var triggerContext = new Mock<ITriggerContext<TheoryCraft>>();
+        var triggerContext = new Mock<ITriggerContext<Theorycraft>>();
 
         triggerContext
             .SetupGet(t => t.ChangeType)

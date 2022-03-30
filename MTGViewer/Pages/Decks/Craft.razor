@@ -2,6 +2,9 @@
 @inherits OwningComponentBase
 @inject SymbolFormatter MtgSymbols
 
+@using System.Text.Json.Serialization
+@using MTGViewer.Data.Concurrency
+
 <PageTitle> @DeckName - Builder </PageTitle>
 
 @if (DeckEdit?.Model is Deck deck)
@@ -75,111 +78,283 @@ else
     </ErrorMessage>
 </SavePrompt>
 
+<div class="row form-group">
+    <div class="col-5 col-sm-4 col-md-3 col-lg-2 ">
+        <select title="Deck Build Type" class="form-control"
+            disabled="@IsLoading" @onchange="UpdateBuildTypeAsync">
+
+            <option value="@BuildType.Holds" selected="@(BuildOption is BuildType.Holds)">
+                Held Cards </option>
+
+            <option value="@BuildType.Theorycrafting" selected="@(BuildOption is BuildType.Theorycrafting)">
+                Theorycrafting </option>
+        </select>
+    </div>
+</div>
 
 <CardFilter @bind-SearchName="Filters.SearchName"
     Color="Filters.PickedColors"
     ColorChanged="Filters.ToggleColor"
-    IsDisabled="IsLoading" />
+    IsDisabled="IsLoading || BuildOption is not BuildType.Theorycrafting" />
 
-<div class="row">
-    <section class="col-12 col-lg-7">
-        <h3>Treasury</h3>
 
-        <div class="list-group list-group-flush mb-4">
-            @if (!Treasury.Any())
-            {
+@if (BuildOption is BuildType.Theorycrafting)
+{
+    <div class="row">
+        <section class="col-12 col-lg-7 pb-3">
+            <h3>Treasury</h3>
+
+            <div class="list-group list-group-flush mb-4">
+                @if (!Treasury.Any())
+                {
+                    <div class="list-group-item disabled px-2" aria-disabled="true">
+                        <div class="row">
+                            <div class="col-6"> --- </div>
+                            <div class="col-4"> --- </div>
+                            <div class="col-2"> --- </div>
+                        </div>
+                    </div>
+                }
+                @foreach ((Card card, int available) in Treasury)
+                {
+                    int wantTotal = card.Wants.Sum(w => w.Copies);
+
+                    <button type="button" title="Add @card.Name"
+                        class="list-group-item list-group-item-action px-2"
+                        @onclick="() => AddCardToDeck(card)">
+
+                        <div class="row">
+                            <div class="col-6"> 
+                                <HoverCard Target="card"> 
+                                    <span class="btn-link">@card.Name</span>
+                                </HoverCard>
+                            </div>
+                            <div class="col-4"> @MtgSymbols.Format(card.ManaCost).ToMarkupString() </div>
+                            <div class="col-2"> @(available - Math.Min(wantTotal, available)) </div>
+                        </div>
+                    </button>
+                }
+            </div>
+
+            <OffsetPaging Offset="Treasury.Offset" PageSelected="ChangeTreasuryPage" IsDisabled="IsLoading" />
+        </section>
+
+
+        <section class="col">
+            <h3> @DeckName (Wanted Cards) </h3>
+
+            <div class="list-group list-group-flush mb-4">
+                @foreach (var want in GetDeckWants())
+                {
+                    var card = want.Card;
+
+                    <button type="button" title="Remove @card.Name"
+                        class="list-group-item list-group-item-action px-2"
+                        @onclick="() => RemoveCardFromDeck(want.Card)">
+
+                        <div class="row">
+                            <div class="col-6">
+                                <HoverCard Target="card"> 
+                                    <span class="btn-link">@card.Name</span>
+                                </HoverCard>
+                            </div>
+
+                            <div class="col-4"> @MtgSymbols.Format(card.ManaCost).ToMarkupString() </div>
+                            <div class="col-2"> @want.Copies </div>
+                        </div>
+                    </button>
+                }
                 <div class="list-group-item disabled px-2" aria-disabled="true">
                     <div class="row">
-                        <div class="col-6"> --- </div>
+                        <div class="col-6"> <b> Total </b> </div>
                         <div class="col-4"> --- </div>
-                        <div class="col-2"> --- </div>
-                    </div>
-                </div>
-            }
-            @foreach ((Card card, int available) in Treasury)
-            {
-                int wantTotal = card.Wants.Sum(w => w.Copies);
-
-                <button type="button" title="Add @card.Name"
-                    class="list-group-item list-group-item-action px-2"
-                    @onclick="() => AddCardToDeck(card)">
-
-                    <div class="row">
-                        <div class="col-6"> 
-                            <HoverCard Target="card"> 
-                                <span class="btn-link">@card.Name</span>
-                            </HoverCard>
-                        </div>
-
-                        <div class="col-4"> @MtgSymbols.Format(card.ManaCost).ToMarkupString() </div>
-                        <div class="col-2"> @(available - Math.Min(wantTotal, available)) </div>
-                    </div>
-                </button>
-            }
-        </div>
-
-        <OffsetPaging Offset="Treasury.Offset" PageSelected="ChangeTreasuryPage" IsDisabled="IsLoading" />
-    </section>
-
-
-    <section class="col">
-        <h3>@DeckName</h3>
-
-        @{ var deckCards = PagedDeckCards(); }
-
-        <div class="list-group list-group-flush mb-4">
-            @foreach (var group in deckCards)
-            {
-                var card = group.Card;
-
-                <button type="button" title="Remove @card.Name"
-                    class="list-group-item list-group-item-action px-2"
-                    disabled="@(group.Copies <= 0)"
-                    @onclick="() => RemoveCardFromDeck(card)">
-
-                    <div class="row">
-                        <div class="col-5">
-                            <HoverCard Target="card"> 
-                                <span class="btn-link">@card.Name</span>
-                            </HoverCard>
-                        </div>
-
-                        <div class="col-4"> @MtgSymbols.Format(card.ManaCost).ToMarkupString() </div>
-
-                        <div class="col-3">
-                            <span title="@card.Name Held" class="badge badge-pill badge-primary"> 
-                                @(group.Hold?.Copies ?? 0) </span>
-
-                            <span title="@card.Name Returning" class="badge badge-pill badge-danger"> 
-                                @(group.GiveBack?.Copies ?? 0) </span>
-
-                            <span title="@card.Name Wanted" class="badge badge-pill badge-secondary">
-                                @(group.Want?.Copies ?? 0) </span>
-                        </div>
-                    </div>
-                </button>
-            }
-            <div class="list-group-item disabled px-2" aria-disabled="true">
-                <div class="row">
-                    <div class="col-5"> <b> Total </b> </div>
-                    <div class="col-4"> --- </div>
-                    <div class="col-3">
-
-                        @{ var allDeckCards = AllDeckCards(); }
-
-                        <span title="Total Held" class="badge badge-pill badge-primary"> 
-                            @allDeckCards.Sum(qg => qg.Hold?.Copies ?? 0) </span>
-
-                        <span title="Total Returning" class="badge badge-pill badge-danger"> 
-                            @allDeckCards.Sum(qg => qg.GiveBack?.Copies ?? 0) </span>
-
-                        <span title="Total Wanted" class="badge badge-pill badge-secondary">
-                            @allDeckCards.Sum(qg => qg.Want?.Copies ?? 0) </span>
+                        <div class="col-2"> @TotalWants </div>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <OffsetPaging Offset="deckCards.Offset" PageSelected="ChangeDeckPage" IsDisabled="IsLoading" />
-    </section>
-</div>
+            <OffsetPaging Offset="WantOffset" PageSelected="ChangeWantPage" IsDisabled="IsLoading" />
+        </section>
+    </div>
+}
+
+
+@if (BuildOption is BuildType.Holds)
+{
+    <div class="row">
+        <section class="col-12 col-lg-7 pb-3">
+            <h3> @DeckName (Held) </h3>
+
+            <div class="list-group list-group-flush mb-4">
+                @foreach (var group in GetDeckCards())
+                {
+                    int copies = (group.Hold?.Copies ?? 0) - (group.Giveback?.Copies ?? 0);
+                    var card = group.Card;
+
+                    <button type="button" title="Remove @card.Name"
+                        class="list-group-item list-group-item-action px-2"
+                        disabled="@(copies == 0)"
+                        @onclick="() => RemoveCardFromDeck(card)">
+
+                        <div class="row">
+                            <div class="col-6">
+                                <HoverCard Target="card"> 
+                                    <span class="btn-link">@card.Name</span>
+                                </HoverCard>
+                            </div>
+
+                            <div class="col-4"> @MtgSymbols.Format(card.ManaCost).ToMarkupString() </div>
+                            <div class="col-2"> @copies </div>
+                        </div>
+                    </button>
+                }
+                <div class="list-group-item disabled px-2" aria-disabled="true">
+                    <div class="row">
+                        <div class="col-6"> <b> Total </b> </div>
+                        <div class="col-4"> --- </div>
+                        <div class="col-2"> @TotalHolds </div>
+                    </div>
+                </div>
+            </div>
+
+            <OffsetPaging Offset="HoldOffset" PageSelected="ChangeHoldPage" IsDisabled="IsLoading" />
+        </section>
+
+        <section class="col">
+            <h3> @DeckName (Returning) </h3>
+
+            <div class="list-group list-group-flush mb-4">
+                @foreach (var giveback in GetDeckGivebacks())
+                {
+                    var card = giveback.Card;
+
+                    <button type="button" title="Add Back @card.Name"
+                        class="list-group-item list-group-item-action px-2"
+                        @onclick="() => AddCardToDeck(card)">
+
+                        <div class="row">
+                            <div class="col-6">
+                                <HoverCard Target="card"> 
+                                    <span class="btn-link">@card.Name</span>
+                                </HoverCard>
+                            </div>
+
+                            <div class="col-4"> @MtgSymbols.Format(card.ManaCost).ToMarkupString() </div>
+                            <div class="col-2"> @giveback.Copies </div>
+                        </div>
+                    </button>
+                }
+                <div class="list-group-item disabled px-2" aria-disabled="true">
+                    <div class="row">
+                        <div class="col-6"> <b> Total </b> </div>
+                        <div class="col-4"> --- </div>
+                        <div class="col-2"> @TotalGives </div>
+                    </div>
+                </div>
+            </div>
+
+            <OffsetPaging Offset="GiveOffset" PageSelected="ChangeGivePage" IsDisabled="IsLoading" />
+        </section>
+    </div>
+}
+
+
+@code
+{
+    internal enum BuildType
+    {
+        Holds,
+        Theorycrafting
+    }
+
+
+    private class DeckDto : ConcurrentDto
+    {
+        public int Id { get; init; }
+
+        public string OwnerId { get; init; } = string.Empty;
+
+        public string Name { get; init; } = string.Empty;
+
+        public Color Color { get; init; }
+
+        public IEnumerable<QuantityDto> Holds { get; init; } = Enumerable.Empty<QuantityDto>();
+
+        public IEnumerable<QuantityDto> Sideboards { get; init; } = Enumerable.Empty<QuantityDto>();
+
+        public IEnumerable<QuantityDto> Wants { get; init; } = Enumerable.Empty<QuantityDto>();
+
+        public IEnumerable<QuantityDto> Givebacks { get; init; } = Enumerable.Empty<QuantityDto>();
+
+
+        [JsonConstructor]
+        public DeckDto()
+        { }
+
+        public DeckDto(CardDbContext dbContext, Deck deck)
+        {
+            Id = deck.Id;
+            OwnerId = deck.OwnerId;
+
+            Name = deck.Name;
+            Color = deck.Color;
+
+            Wants = deck.Wants.Select(w => new QuantityDto(dbContext, w));
+            Holds = deck.Holds.Select(h => new QuantityDto(dbContext, h));
+            Givebacks = deck.Givebacks.Select(g => new QuantityDto(dbContext, g));
+
+            dbContext.CopyToken(this, deck);
+        }
+
+        public Deck ToDeck(CardDbContext dbContext)
+        {
+            var deck = new Deck();
+
+            dbContext.Entry(deck).CurrentValues.SetValues(this);
+
+            deck.Holds.AddRange(
+                Holds.Select(q => q.ToQuantity<Hold>(dbContext)));
+
+            deck.Wants.AddRange(
+                Wants.Select(q => q.ToQuantity<Want>(dbContext)));
+
+            deck.Givebacks.AddRange(
+                Givebacks.Select(q => q.ToQuantity<Giveback>(dbContext)));
+
+            return deck;
+        }
+    }
+
+
+    private class QuantityDto : ConcurrentDto
+    {
+        public int Id { get; init; }
+        
+        public string CardId { get; init; } = string.Empty;
+
+        public int Copies { get; init; }
+
+
+        [JsonConstructor]
+        public QuantityDto()
+        { }
+
+        public QuantityDto(CardDbContext dbContext, Quantity quantity)
+        {
+            Id = quantity.Id;
+            CardId = quantity.CardId;
+            Copies = quantity.Copies;
+
+            dbContext.CopyToken(this, quantity);
+        }
+
+        public TQuantity ToQuantity<TQuantity>(CardDbContext dbcontext) where TQuantity : Quantity, new()
+        {
+            var quantity = new TQuantity();
+
+            dbcontext.Entry(quantity).CurrentValues.SetValues(this);
+
+            return quantity;
+        }
+    }
+}

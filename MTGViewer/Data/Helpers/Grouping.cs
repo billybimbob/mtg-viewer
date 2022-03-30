@@ -156,7 +156,7 @@ public class WantNameGroup : IEnumerable<Want>
 /// </summary>
 public class QuantityGroup : IEnumerable<Quantity>
 {
-    public QuantityGroup(Hold? hold, Want? want, GiveBack? giveBack)
+    public QuantityGroup(Hold? hold, Want? want, Giveback? giveBack)
     {
         _hold = hold;
         _want = want;
@@ -173,7 +173,7 @@ public class QuantityGroup : IEnumerable<Quantity>
         : this(null, want, null)
     { }
 
-    public QuantityGroup(GiveBack giveBack)
+    public QuantityGroup(Giveback giveBack)
         : this(null, null, giveBack)
     { }
 
@@ -189,7 +189,7 @@ public class QuantityGroup : IEnumerable<Quantity>
                 _want = want;
                 break;
 
-            case GiveBack giveBack:
+            case Giveback giveBack:
                 _giveBack = giveBack;
                 break;
         }
@@ -201,7 +201,7 @@ public class QuantityGroup : IEnumerable<Quantity>
     {
         var holdsById = deck.Holds.ToDictionary(h => h.CardId);
         var takesById = deck.Wants.ToDictionary(w => w.CardId);
-        var givesById = deck.GiveBacks.ToDictionary(g => g.CardId);
+        var givesById = deck.Givebacks.ToDictionary(g => g.CardId);
 
         var cardIds = holdsById.Keys
             .Union(takesById.Keys)
@@ -218,7 +218,7 @@ public class QuantityGroup : IEnumerable<Quantity>
     // Guaranteed to not all be null
     private Hold? _hold;
     private Want? _want;
-    private GiveBack? _giveBack;
+    private Giveback? _giveBack;
 
 
     public Hold? Hold
@@ -253,14 +253,14 @@ public class QuantityGroup : IEnumerable<Quantity>
         }
     }
 
-    public GiveBack? GiveBack
+    public Giveback? Giveback
     {
         get => _giveBack;
         set
         {
             if (value is null)
             {
-                throw new ArgumentNullException(nameof(GiveBack));
+                throw new ArgumentNullException(nameof(Giveback));
             }
 
             _giveBack = value;
@@ -274,7 +274,7 @@ public class QuantityGroup : IEnumerable<Quantity>
     {
         return Hold as TQuantity
             ?? Want as TQuantity
-            ?? GiveBack as TQuantity;
+            ?? Giveback as TQuantity;
     }
 
     public void AddQuantity<TQuantity>(TQuantity quantity)
@@ -290,8 +290,8 @@ public class QuantityGroup : IEnumerable<Quantity>
                 Want = want;
                 break;
 
-            case GiveBack giveBack:
-                GiveBack = giveBack;
+            case Giveback giveBack:
+                Giveback = giveBack;
                 break;
         }
     }
@@ -301,7 +301,7 @@ public class QuantityGroup : IEnumerable<Quantity>
     {
         var nullCount = (Hold is null ? 0 : 1)
             + (Want is null ? 0 : 1)
-            + (GiveBack is null ? 0 : 1);
+            + (Giveback is null ? 0 : 1);
 
         if (nullCount == 0)
         {
@@ -331,8 +331,8 @@ public class QuantityGroup : IEnumerable<Quantity>
         var sameTakeIds = Want == null
             || Want.CardId == cardId && Want.LocationId == locationId;
 
-        var sameRetIds = GiveBack == null
-            || GiveBack.CardId == cardId && GiveBack.LocationId == locationId;
+        var sameRetIds = Giveback == null
+            || Giveback.CardId == cardId && Giveback.LocationId == locationId;
 
         return sameHoldIds && sameTakeIds && sameRetIds;
     }
@@ -348,8 +348,8 @@ public class QuantityGroup : IEnumerable<Quantity>
         var sameTakeRefs = Want == null
             || Want.Card == card && Want.Location == location;
 
-        var sameRetRefs = GiveBack == null
-            || GiveBack.Card == card && GiveBack.Location == location;
+        var sameRetRefs = Giveback == null
+            || Giveback.Card == card && Giveback.Location == location;
 
         return sameActRefs && sameTakeRefs && sameRetRefs;
     }
@@ -369,9 +369,9 @@ public class QuantityGroup : IEnumerable<Quantity>
             yield return Want;
         }
 
-        if (GiveBack is not null)
+        if (Giveback is not null)
         {
-            yield return GiveBack;
+            yield return Giveback;
         }
     }
 
@@ -379,38 +379,38 @@ public class QuantityGroup : IEnumerable<Quantity>
     public string CardId =>
         Hold?.CardId
             ?? Want?.CardId
-            ?? GiveBack?.CardId
+            ?? Giveback?.CardId
             ?? Card.Id;
 
     public Card Card =>
         Hold?.Card
             ?? Want?.Card
-            ?? GiveBack?.Card
+            ?? Giveback?.Card
             ?? default!;
 
 
     public int LocationId =>
         Hold?.LocationId
             ?? Want?.LocationId
-            ?? GiveBack?.LocationId
+            ?? Giveback?.LocationId
             ?? Location.Id;
 
     public Location Location =>
         Hold?.Location
             ?? Want?.Location
-            ?? GiveBack?.Location
+            ?? Giveback?.Location
             ?? default!;
 
 
     public int Copies =>
         (Hold?.Copies ?? 0)
             + (Want?.Copies ?? 0)
-            - (GiveBack?.Copies ?? 0);
+            - (Giveback?.Copies ?? 0);
 
     public int Total =>
         (Hold?.Copies ?? 0)
             + (Want?.Copies ?? 0)
-            + (GiveBack?.Copies ?? 0);
+            + (Giveback?.Copies ?? 0);
 }
 
 

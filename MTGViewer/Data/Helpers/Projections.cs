@@ -257,6 +257,7 @@ public sealed class TheoryColors
     public int Id { get; init; }
     public IEnumerable<Color> HoldColors { get; init; } = Enumerable.Empty<Color>();
     public IEnumerable<Color> WantColors { get; init; } = Enumerable.Empty<Color>();
+    public IEnumerable<Color> SideboardColors { get; init; } = Enumerable.Empty<Color>();
 }
 
 
@@ -342,7 +343,7 @@ public sealed record ExchangePreview
     public int Id { get; init; }
     public string Name { get; init; } = default!;
     public bool HasWants { get; init; }
-    public IEnumerable<LocationCopy> GiveBacks { get; init; } = Enumerable.Empty<LocationCopy>();
+    public IEnumerable<LocationCopy> Givebacks { get; init; } = Enumerable.Empty<LocationCopy>();
 
 
     public bool Equals(ExchangePreview? exchange)
@@ -350,14 +351,14 @@ public sealed record ExchangePreview
         return exchange is not null
             && exchange.Id == Id
             && exchange.Name == Name
-            && exchange.GiveBacks.SequenceEqual(GiveBacks);
+            && exchange.Givebacks.SequenceEqual(Givebacks);
     }
 
     public override int GetHashCode()
     {
         return Id.GetHashCode()
             ^ Name.GetHashCode()
-            ^ GiveBacks.Aggregate(0, (hash, g) => hash ^ g.GetHashCode());
+            ^ Givebacks.Aggregate(0, (hash, g) => hash ^ g.GetHashCode());
     }
 }
 

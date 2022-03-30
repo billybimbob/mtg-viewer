@@ -66,7 +66,7 @@ public class ExchangeModel : PageModel
             return NotFound();
         }
 
-        if (!deck.HasWants && !deck.GiveBacks.Any())
+        if (!deck.HasWants && !deck.Givebacks.Any())
         {
             return RedirectToPage("Details", new { id });
         }
@@ -99,7 +99,7 @@ public class ExchangeModel : PageModel
                     Name = d.Name,
                     HasWants = d.Wants.Any(),
 
-                    GiveBacks = d.GiveBacks
+                    Givebacks = d.Givebacks
                         .OrderBy(g => g.Card.Name)
                             .ThenBy(g => g.Card.SetName)
                             .ThenBy(g => g.Id)
@@ -173,7 +173,7 @@ public class ExchangeModel : PageModel
                 .Include(d => d.Wants) // unbounded: keep eye one
                     .ThenInclude(w => w.Card)
 
-                .Include(d => d.GiveBacks) // unbounded: keep eye one
+                .Include(d => d.Givebacks) // unbounded: keep eye one
                     .ThenInclude(g => g.Card)
 
                 .Include(d => d.TradesFrom) // unbounded, keep eye on
@@ -207,7 +207,7 @@ public class ExchangeModel : PageModel
         {
             await _dbContext.SaveChangesAsync(cancel);
 
-            if (deck.Wants.Any() || deck.GiveBacks.Any())
+            if (deck.Wants.Any() || deck.Givebacks.Any())
             {
                 PostMessage = "Successfully exchanged requests, but not all could be fullfilled";
             }
@@ -247,7 +247,7 @@ public class ExchangeModel : PageModel
     private static void ApplyExchangeOverlap(Deck deck)
     {
         var exactMatches = deck.Wants
-            .Join(deck.GiveBacks,
+            .Join(deck.Givebacks,
                 w => w.CardId, g => g.CardId,
                 (want, give) => (want, give));
 
@@ -260,7 +260,7 @@ public class ExchangeModel : PageModel
         }
 
         var nameMatches = deck.Wants
-            .Join(deck.GiveBacks,
+            .Join(deck.Givebacks,
                 w => w.Card.Name, g => g.Card.Name,
                 (want, give) => (want, give));
 

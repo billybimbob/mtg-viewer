@@ -169,7 +169,7 @@ public partial class Create : OwningComponentBase
         }
         catch (OperationCanceledException ex)
         {
-            Logger.LogWarning("{Error}", ex);
+            Logger.LogWarning("{Warning}", ex);
         }
         catch (NavigationException ex)
         {

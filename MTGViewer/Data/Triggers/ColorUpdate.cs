@@ -10,7 +10,7 @@ using Microsoft.Extensions.Logging;
 
 namespace MTGViewer.Data.Triggers;
 
-public class ColorUpdate : IBeforeSaveTrigger<TheoryCraft>
+public class ColorUpdate : IBeforeSaveTrigger<Theorycraft>
 {
     private readonly CardDbContext _dbContext;
     private readonly ILogger<ColorUpdate> _logger;
@@ -22,7 +22,7 @@ public class ColorUpdate : IBeforeSaveTrigger<TheoryCraft>
     }
 
 
-    public async Task BeforeSave(ITriggerContext<TheoryCraft> trigContext, CancellationToken cancel)
+    public async Task BeforeSave(ITriggerContext<Theorycraft> trigContext, CancellationToken cancel)
     {
         if (trigContext.ChangeType is ChangeType.Deleted)
         {
@@ -53,7 +53,7 @@ public class ColorUpdate : IBeforeSaveTrigger<TheoryCraft>
     }
 
 
-    private async Task SetAddedColorAsync(TheoryCraft theory, CancellationToken cancel)
+    private async Task SetAddedColorAsync(Theorycraft theory, CancellationToken cancel)
     {
         if (theory.Holds.All(h => h.Card is not null)
             && theory.Wants.All(w => w.Card is not null))
@@ -65,7 +65,7 @@ public class ColorUpdate : IBeforeSaveTrigger<TheoryCraft>
         _logger.LogWarning("Theorycraft {TheoryId} not fully loaded", theory.Id);
 
         var cardIds = theory.Holds.Select(h => h.CardId)
-            .Union(theory.Wants.Select(h => h.CardId))
+            .Union(theory.Wants.Select(w => w.CardId))
             .ToArray();
 
         var localColors = theory.Holds
@@ -84,7 +84,7 @@ public class ColorUpdate : IBeforeSaveTrigger<TheoryCraft>
     }
 
 
-    private bool IsFullyLoaded(TheoryCraft theory)
+    private bool IsFullyLoaded(Theorycraft theory)
     {
         var entry = _dbContext.Entry(theory);
 
@@ -99,7 +99,7 @@ public class ColorUpdate : IBeforeSaveTrigger<TheoryCraft>
     }
 
 
-    private static Color GetColor(TheoryCraft theory)
+    private static Color GetColor(Theorycraft theory)
     {
         var holdColors = theory.Holds
             .Select(h => h.Card.Color);
@@ -113,7 +113,7 @@ public class ColorUpdate : IBeforeSaveTrigger<TheoryCraft>
     }
 
 
-    private static Color GetColor(TheoryColors? colors, TheoryCraft theory)
+    private static Color GetColor(TheoryColors? colors, Theorycraft theory)
     {
         if (colors is null)
         {
@@ -125,7 +125,7 @@ public class ColorUpdate : IBeforeSaveTrigger<TheoryCraft>
             .OfType<Color>();
 
         var wantColors = theory.Wants
-            .Select(h => h.Card?.Color)
+            .Select(w => w.Card?.Color)
             .OfType<Color>();
 
         return colors.HoldColors

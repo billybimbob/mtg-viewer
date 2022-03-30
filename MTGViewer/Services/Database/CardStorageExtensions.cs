@@ -55,7 +55,7 @@ public static class CardStorageExtensions
                     .UseTriggers(triggers => triggers
                         .AddTrigger<ColorUpdate>()
                         .AddTrigger<ImmutableCard>()
-                        .AddTrigger<LiteTokenUpdate>()
+                        .AddTrigger<StampUpdate>()
                         .AddTrigger<QuantityValidate>()
                         .AddTrigger<TradeValidate>()));
                 break;
