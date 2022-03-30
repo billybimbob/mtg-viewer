@@ -47,7 +47,13 @@ public class Startup
                 setup.Cookie.SecurePolicy = CookieSecurePolicy.Always;
             });
 
-        services.AddServerSideBlazor();
+        services
+            .AddServerSideBlazor()
+            .AddHubOptions(options =>
+            {
+                options.EnableDetailedErrors = _env.IsDevelopment();
+                options.MaximumReceiveMessageSize = 64 * 1_024;
+            });
 
         services.AddCardStorage(_config);
         services.AddSingleton<PageSizes>();

@@ -70,7 +70,7 @@ public sealed partial class Home : ComponentBase, IDisposable
 
             var cachedChanges = GetValueOrDefault<RecentTransaction[]>(nameof(_recentChanges));
 
-            int limit = PageSizes.Limit;
+            int limit = PageSizes.GetComponentSize<Home>();
             var token = _cancel.Token;
 
             await using var dbContext = await DbFactory.CreateDbContextAsync(token);

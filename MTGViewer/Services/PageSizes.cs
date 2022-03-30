@@ -53,9 +53,13 @@ public class PageSizes
             .Except(PagesNamespace)
             .ToArray();
 
-        var sectionKey = string.Join(':', route.SkipLast(1));
-        var section = _config.GetSection(sectionKey);
-        var pageName = route.Last();
+        string sectionKey = string.Join(':', route.SkipLast(1));
+
+        var section = string.IsNullOrWhiteSpace(sectionKey)
+            ? _config
+            : _config.GetSection(sectionKey);
+
+        string pageName = route.Last();
 
         return section.GetValue<int?>(pageName, null)
             ?? section.GetValue(Index, Default);
