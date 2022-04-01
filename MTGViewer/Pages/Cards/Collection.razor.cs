@@ -252,12 +252,17 @@ public sealed partial class Collection : ComponentBase, IDisposable
                     return;
                 }
 
+                if (FilterChanged is null)
+                {
+                    return;
+                }
+
                 var args = new FilterEventArgs(
                     KeyValuePair.Create(nameof(Collection.Search), value as object),
                     KeyValuePair.Create(nameof(Collection.Page), null as object),
                     KeyValuePair.Create(nameof(Collection.Size), null as object));
 
-                FilterChanged?.Invoke(this, args);
+                FilterChanged.Invoke(this, args);
             }
         }
 
@@ -305,6 +310,11 @@ public sealed partial class Collection : ComponentBase, IDisposable
                 return;
             }
 
+            if (FilterChanged is null)
+            {
+                return;
+            }
+
             object? reversed = value == _orderBy && !IsReversed ? true : null;
 
             var args = new FilterEventArgs(
@@ -313,7 +323,7 @@ public sealed partial class Collection : ComponentBase, IDisposable
                 KeyValuePair.Create(nameof(Collection.Page), null as object),
                 KeyValuePair.Create(nameof(Collection.Size), null as object));
 
-            FilterChanged?.Invoke(this, args);
+            FilterChanged.Invoke(this, args);
         }
 
 
@@ -340,13 +350,18 @@ public sealed partial class Collection : ComponentBase, IDisposable
                 return;
             }
 
+            if (FilterChanged is null)
+            {
+                return;
+            }
+
             object? offset = value == default ? null : value;
 
             var args = new FilterEventArgs(
                 KeyValuePair.Create(nameof(Collection.Page), offset),
                 KeyValuePair.Create(nameof(Collection.Size), (object?)_maxPage));
 
-            FilterChanged?.Invoke(this, args);
+            FilterChanged.Invoke(this, args);
         }
 
         private bool IsValidPageIndex(int value)
@@ -361,6 +376,11 @@ public sealed partial class Collection : ComponentBase, IDisposable
 
         public void ToggleColor(Color value)
         {
+            if (FilterChanged is null)
+            {
+                return;
+            }
+
             value = PickedColors.HasFlag(value)
                 ? PickedColors & ~value
                 : PickedColors | value;
@@ -370,7 +390,7 @@ public sealed partial class Collection : ComponentBase, IDisposable
                 KeyValuePair.Create(nameof(Collection.Page), null as object),
                 KeyValuePair.Create(nameof(Collection.Size), null as object));
 
-            FilterChanged?.Invoke(this, newValues);
+            FilterChanged.Invoke(this, newValues);
         }
 
 

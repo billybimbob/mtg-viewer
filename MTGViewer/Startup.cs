@@ -1,6 +1,7 @@
 using System.Text.Json.Serialization;
 
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 
@@ -9,8 +10,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
 using MtgApiManager.Lib.Service;
+using MTGViewer.Middleware;
 using MTGViewer.Services;
-using MTGViewer.Filters;
 
 namespace MTGViewer;
 
@@ -39,12 +40,12 @@ public class Startup
             {
                 options.Filters.Add<OperationCancelledFilter>();
             })
-            .AddCookieTempDataProvider(setup =>
+            .AddCookieTempDataProvider(options =>
             {
-                setup.Cookie.IsEssential = false;
-                setup.Cookie.HttpOnly = true;
-                setup.Cookie.SameSite = SameSiteMode.Strict;
-                setup.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+                options.Cookie.IsEssential = false;
+                options.Cookie.HttpOnly = true;
+                options.Cookie.SameSite = SameSiteMode.Strict;
+                options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
             });
 
         services
@@ -109,14 +110,21 @@ public class Startup
         app.UseStaticFiles();
 
         app.UseRouting();
+        app.UseCors(); // using cors just to disable for blazor
 
         app.UseAuthentication();
         app.UseAuthorization();
 
+        app.UseMiddleware<ContentSecurityPolicy>();
+
         app.UseEndpoints(endpoints =>
         {
             endpoints.MapRazorPages();
-            endpoints.MapBlazorHub();
+
+            endpoints
+                .MapBlazorHub()
+                .WithMetadata(new DisableCorsAttribute());
+
             endpoints.MapFallbackToPage("/_Host");
         });
     }

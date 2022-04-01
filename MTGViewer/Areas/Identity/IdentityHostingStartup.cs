@@ -5,14 +5,13 @@ using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
-using MTGViewer.Data;
-using MTGViewer.Services;
 using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Areas.Identity.Services;
+using MTGViewer.Services;
+using MTGViewer.Utils;
 
 [assembly: HostingStartup(typeof(MTGViewer.Areas.Identity.IdentityHostingStartup))]
 namespace MTGViewer.Areas.Identity;
-
 
 public class IdentityHostingStartup : IHostingStartup
 {
@@ -59,11 +58,12 @@ public class IdentityHostingStartup : IHostingStartup
                 .AddDataProtection()
                 .PersistKeysToDbContext<UserDbContext>();
 
-            services.AddTransient<IEmailSender, EmailSender>();
-            services.Configure<AuthMessageSenderOptions>(config);
-
-            services.AddTransient<EmailVerification>();
             services.AddScoped<ReferenceManager>();
+
+            services
+                .Configure<AuthMessageSenderOptions>(config)
+                .AddTransient<IEmailSender, EmailSender>()
+                .AddTransient<EmailVerification>();
 
             services.AddAuthorization(options =>
             {

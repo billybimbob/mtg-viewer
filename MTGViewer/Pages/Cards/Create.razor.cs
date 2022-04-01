@@ -127,6 +127,7 @@ public partial class Create : OwningComponentBase
 
     private ValidationMessageStore? _resultErrors;
     private Offset _matchPage;
+    private string? _returnUrl;
 
 
     protected override void OnInitialized()
@@ -134,6 +135,7 @@ public partial class Create : OwningComponentBase
         _persistSubscription = ApplicationState.RegisterOnPersisting(PersistMatches);
 
         var edit = new EditContext(Query);
+
         _resultErrors = new(edit);
 
         edit.OnFieldChanged += ClearErrors;
@@ -157,6 +159,15 @@ public partial class Create : OwningComponentBase
 
                 NavigateToQuery(_empty);
                 return;
+            }
+
+            if (ReturnUrl is not null)
+            {
+                // ensure no open redirects
+
+                _returnUrl = ReturnUrl.StartsWith(Nav.BaseUri)
+                    ? ReturnUrl
+                    : $"{Nav.BaseUri}{ReturnUrl.TrimStart('/')}";
             }
 
             if (Query == _empty)
@@ -560,10 +571,9 @@ public partial class Create : OwningComponentBase
 
             Result = SaveResult.Success;
 
-            if (ReturnUrl is not null)
+            if (_returnUrl is not null)
             {
-                // should be safe from open redirection
-                Nav.NavigateTo(ReturnUrl, forceLoad: true);
+                Nav.NavigateTo(_returnUrl, forceLoad: true);
             }
             else
             {

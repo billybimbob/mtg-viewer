@@ -9,21 +9,8 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title> @(ViewData["Title"] ?? "MTG Viewer") </title>
 
-    <meta http-equiv="Content-Security-Policy" 
-        content="base-uri 'self';
-                 block-all-mixed-content;
-                 connect-src 'self' wss:;
-                 child-src 'none';
-                 default-src 'self';
-                 img-src data: https:;
-                 object-src 'none';
-                 script-src 'self';
-                 style-src 'self'
-                           'sha256-9Nkt6zGDtyRXhEF45Xj607dE12YASsy2b157ViK9w6E='
-                           'unsafe-hashes';
-                 upgrade-insecure-requests;" />
+    <title> @(ViewData["Title"] ?? "MTG Viewer") </title>
 
     <link rel="stylesheet" type="text/css" href="~/lib/mana/css/mana.min.css"/>
     <link rel="stylesheet" type="text/css" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />

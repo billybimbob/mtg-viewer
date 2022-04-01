@@ -79,7 +79,7 @@ public class Excess : Storage
     {
         return new Excess
         {
-            Name = "Excess",
+            Name = nameof(Excess),
         };
     }
 }

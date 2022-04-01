@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Html;
 using Microsoft.AspNetCore.Components;
 using Npgsql;
 
-namespace MTGViewer.Data;
+namespace MTGViewer.Utils;
 
 public static class StringExtensions
 {

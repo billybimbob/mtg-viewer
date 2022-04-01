@@ -169,7 +169,7 @@ public class FileCardStorage
         CancellationToken cancel)
     {
         return csv
-            .GetRecordsAsync<CsvCard>(cancel)
+            .GetRecordsAsync<CsvCard>()
             .Where(cc => cc.Quantity > 0)
 
             .GroupByAwaitWithCancellation(

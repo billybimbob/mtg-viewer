@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.Extensions.Logging;
 
-namespace MTGViewer.Filters;
+namespace MTGViewer.Middleware;
 
 public class OperationCancelledFilter : ExceptionFilterAttribute
 {

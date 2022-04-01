@@ -18,44 +18,19 @@
             }
         },
         {
-            "label": "publish",
+            "label": "drop",
             "command": "dotnet",
             "type": "process",
             "args": [
-                "publish",
-                "${workspaceFolder}/MTGViewer/MTGViewer.csproj",
-                "/property:GenerateFullPaths=true",
-                "/consoleloggerparameters:NoSummary"
-            ],
-            "problemMatcher": "$msCompile"
-        },
-        {
-            "label": "watch",
-            "command": "dotnet",
-            "type": "process",
-            "args": [
-                "watch",
-                "run",
-                "${workspaceFolder}/MTGViewer.csproj",
+                "ef",
+                "database",
+                "drop",
                 "--project",
                 "MTGViewer",
-                "/property:GenerateFullPaths=true",
-                "/consoleloggerparameters:NoSummary"
+                "--context",
+                "${input:context}"
             ],
             "problemMatcher": "$msCompile"
-        },
-        {
-            "label": "test",
-            "command": "dotnet",
-            "type": "process",
-            "args": [
-                "test"
-            ],
-            "problemMatcher": "$msCompile",
-            "group": {
-                "kind": "test",
-                "isDefault": true
-            }
         },
         {
             "label": "migrate",
@@ -70,6 +45,18 @@
                 "MTGViewer",
                 "--context",
                 "${input:context}"
+            ],
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "publish",
+            "command": "dotnet",
+            "type": "process",
+            "args": [
+                "publish",
+                "${workspaceFolder}/MTGViewer/MTGViewer.csproj",
+                "/property:GenerateFullPaths=true",
+                "/consoleloggerparameters:NoSummary"
             ],
             "problemMatcher": "$msCompile"
         },
@@ -89,6 +76,19 @@
             "problemMatcher": "$msCompile"
         },
         {
+            "label": "test",
+            "command": "dotnet",
+            "type": "process",
+            "args": [
+                "test"
+            ],
+            "problemMatcher": "$msCompile",
+            "group": {
+                "kind": "test",
+                "isDefault": true
+            }
+        },
+        {
             "label": "update",
             "command": "dotnet",
             "type": "process",
@@ -104,17 +104,17 @@
             "problemMatcher": "$msCompile"
         },
         {
-            "label": "drop",
+            "label": "watch",
             "command": "dotnet",
             "type": "process",
             "args": [
-                "ef",
-                "database",
-                "drop",
+                "watch",
+                "run",
+                "${workspaceFolder}/MTGViewer.csproj",
                 "--project",
                 "MTGViewer",
-                "--context",
-                "${input:context}"
+                "/property:GenerateFullPaths=true",
+                "/consoleloggerparameters:NoSummary"
             ],
             "problemMatcher": "$msCompile"
         }
