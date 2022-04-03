@@ -1,80 +1,46 @@
 # mtg-viewer
 
-Magic: The Gathering Card Manager and Deck Builder, using [ASP.net](https://dotnet.microsoft.com/apps/aspnet)
+A Magic: The Gathering Card Manager and Deck Builder, built using Blazor, Razor Pages, EF Core, all bundled in [ASP.NET](https://dotnet.microsoft.com/en-us/apps/aspnet).
 
-## Requirements
+## Features
 
-* [.NET 6.0 SDK](https://dotnet.microsoft.com/download)
-* Entity Framework Core
+MTG Viewer is a collaborative collection manager, that enables users to build and share Magic: The Gathering decks. This application is intended for a small group of friends to organize and theorize deck ideas from their personal MTG collection.
 
-### Instal EF Core
+* Card collection Management
+  * Keep track of cards counts
+  * Add, search, and remove individual cards
+  * Track card changes
+  * Overall collection statistics
+  * Import/Backup collection
+* User accounts
+  * Create user-owned decks
+  * Player trading
+  * Suggest cards to other users
+* Deck building
+  * Theorycrafting
+  * Sample mulligans
+  * Track change history
+  * Share a deck preview with everyone
 
-```powershell
-dotnet tool install --global dotnet-ef
-```
+## Web Design Highlights
 
-## Projects
+* Simple, responsive user interface
+* Optimized and efficient backend
 
-There are multiple projects in the repository:
+## Design Philosophy
 
-* `MTGViewer`: MTG card website and database information
-* `MTGViewer.Tests`: test cases for website components
+MTG Viewer was made for the purpose of accessing a physical card collection through the web. This application does this by synchronizing a physical card collection with a virtual one.
 
-All the ef core and database commands are in reference to the `MTGViewer` project, which should be specified with the `-p` argument.
+This application expects the users to manually add their collections into the application via manually searching or a json/csv formatted file. Note that only cards with multiverse IDs will be processed due to limitations of [Gatherer](https://gatherer.wizards.com/Pages/Default.aspx).
 
-## Database
+In addition to simply adding the cards to the database, we implemented an organization structure that is seemingly redundant for a virtual collection. This organization structure is a two-tiered system of "bins" and "boxes". In this system, the physical cards would be
 
-The development database is sqlite, where the database is hosted on the local machine, and is not synchronized with the repo.The database is defined into two separate contexts:
+This application was built with trusted friends in mind who would not intentionally harm the system. There is however, some safety mechanisms in place in case the user accidentally attempts to modify the collection. Users that register into the application will have the verification emails sent and managed to a specified system administrator. This is done because all verified users have access to the collection and will be able to modify card counts.
 
-* `CardDbContext`: all card and deck data
-* `UserDbContext`: all user and account data
+The main goal of this application is to keep the user's physical card collection in sync with the virtual one as closely as possible. For that reason, the concept of "theorycrafted" and "built" decks, as well as "wanted" and "held" cards are introduced. These concepts are used in the application to distinguish what changes are being done virtually versus what changes are actually being done to the physical collection.
 
-With all of the ef commands listed below, the context must be specified, using the `-c` argument, and make sure to run all commands below in the project directory.
+Since synchronicity between the virtual and physical collections is imperative for this application, multiple systems were implemented to maintain a reliable and resilient data storage. These systems include exporting and importing a database backup upon user request and additional confirmation steps upon committing collection and deck changes.
 
-### Add Database Migrations and Schema
+Once changes are officially committed in the application, the users are expected to reflect these changes to their physical collection.
 
- For the `migrations add` commands, the out directory is recommended to be specified, using the `-o` argument. If the out directory is not specified, then the default target will be the `Migrations` folder.
-
-The mains steps are to create the database schema with ef core:
-
-1. Add/create the database migrations
-
-    ```powershell
-    dotnet ef migrations add AddUsers -p MTGViewer -c UserDbContext -o Migrations\Users
-    dotnet ef migrations add AddCards -p MTGViewer -c CardDbContext -o Migrations\Cards
-    ```
-
-2. Apply/update the database migrations to the actual database
-
-    ```powershell
-    dotnet ef database update -p MTGViewer -c UserDbContext
-    dotnet ef database update -p MTGViewer -c CardDbContext
-    ```
-
-### Reset Database
-
-If the schema is modified, the best approach is to just drop all of the previous tables and rebuild the database.
-
-1. Drop the database:
-
-    ```powershell
-    dotnet ef database drop -p MTGViewer -c UserDbContext
-    dotnet ef database drop -p MTGViewer -c CardDbContext
-    ```
-
-2. Delete the  files in the `Migrations` folder
-
-    ```powershell
-    rm -r MTGViewer\Migrations\Users
-    rm -r MTGViewer\Migrations\Cards
-    ```
-
-3. Repeat the migration and update steps [above](#add-database-migrations-and-schema)
-
-## Run the Application
-
-In the project directory:
-
-```powershell
-dotnet watch run -p MTGViewer
-```
+TODO
