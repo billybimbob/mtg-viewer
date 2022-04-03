@@ -37,7 +37,7 @@ internal static class ConcurrencyExtensions
     {
         if (database.IsSqlServer())
         {
-            entity.Property(nameof(Concurrent.SqlToken));
+            entity.Property(nameof(Concurrent.Version));
         }
         else if (database.IsNpgsql())
         {
@@ -56,7 +56,7 @@ internal static class ConcurrencyExtensions
         // not great, since boxes
         if (context.Database.IsSqlServer())
         {
-            return current.SqlToken;
+            return current.Version;
         }
         else if (context.Database.IsNpgsql())
         {
@@ -83,7 +83,7 @@ internal static class ConcurrencyExtensions
         if (db.IsSqlServer())
         {
             var tokenProp = entry
-                .Property(c => c.SqlToken);
+                .Property(c => c.Version);
 
             tokenProp.OriginalValue = dbProps
                 .GetValue<byte[]>(tokenProp.Metadata);
@@ -126,7 +126,7 @@ internal static class ConcurrencyExtensions
     {
         if (context.Database.IsSqlServer())
         {
-            current.SqlToken = db.SqlToken;
+            current.Version = db.Version;
         }
         else if (context.Database.IsNpgsql())
         {

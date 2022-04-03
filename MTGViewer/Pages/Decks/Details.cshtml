@@ -18,36 +18,40 @@
 
 <h1>@Model.Deck.Owner.Name's @Model.Deck.Name</h1>
 
-@if (Model.IsOwner)
-{
-    <div class="btn-group mb-3" role="group">
-        @if (Model.Deck.HasTrades || !canChangeTreasury)
-        {
-            <button class="btn btn-secondary" type="button" disabled> Edit </button>
-        }
-        else
-        {
-            <a href="/Decks/Craft/@Model.Deck.Id"
-                class="btn btn-secondary" role="button">
-                Edit </a>
-        }
-
-        <a asp-page="/Transactions/Index" asp-route-id="@Model.Deck.Id"
+<div class="btn-group mb-3" role="group">
+    @if (Model.IsOwner && (Model.Deck.HasTrades || !canChangeTreasury))
+    {
+        <button class="btn btn-secondary" type="button" disabled> Edit </button>
+    }
+    else if (Model.IsOwner)
+    {
+        <a href="/Decks/Craft/@Model.Deck.Id"
             class="btn btn-secondary" role="button">
-            History </a>
+            Edit </a>
+    }
 
-        @if (canChangeTreasury)
-        {
-            <a asp-page="Delete" asp-route-id="@Model.Deck.Id"
-                class="btn btn-danger" role="button">
-                Delete </a>
-        }
-        else
-        {
-            <button type="button" class="btn btn-danger" disabled> Delete </button>
-        }
-    </div>
-}
+    @if (Model.IsOwner)
+    {
+        <a href="/Decks/Mulligan/@Model.Deck.Id"
+            class="btn btn-secondary" role="button">
+            Mulligan </a>
+    }
+
+    <a asp-page="/Transactions/Index" asp-route-id="@Model.Deck.Id"
+        class="btn btn-secondary" role="button">
+        History </a>
+
+    @if (Model.IsOwner && canChangeTreasury)
+    {
+        <a asp-page="Delete" asp-route-id="@Model.Deck.Id"
+            class="btn btn-danger" role="button">
+            Delete </a>
+    }
+    else if (Model.IsOwner)
+    {
+        <button type="button" class="btn btn-danger" disabled> Delete </button>
+    }
+</div>
 
 
 @{ string returnUrl = $"{Request.Path}{Request.QueryString}"; }

@@ -79,6 +79,7 @@ public partial class Craft : OwningComponentBase
 
     private bool _isBusy;
     private bool _isInteractive;
+    private bool _isTreasuryLoaded;
 
     private DeckContext? _deckContext;
 
@@ -390,7 +391,7 @@ public partial class Craft : OwningComponentBase
         }
 
         if (value is BuildType.Theorycrafting
-            && Treasury.Any())
+            && _isTreasuryLoaded)
         {
             BuildOption = BuildType.Theorycrafting;
             return;
@@ -401,6 +402,8 @@ public partial class Craft : OwningComponentBase
         try
         {
             await ApplyFiltersAsync(Filters, _cancel.Token);
+
+            _isTreasuryLoaded = true;
 
             BuildOption = BuildType.Theorycrafting;
         }

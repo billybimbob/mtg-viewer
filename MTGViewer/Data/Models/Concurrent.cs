@@ -12,7 +12,7 @@ public abstract class Concurrent
     internal Guid Stamp { get; set; }
 
     [Timestamp]
-    internal byte[] SqlToken { get; set; } = Array.Empty<byte>();
+    internal byte[] Version { get; set; } = Array.Empty<byte>();
 
     internal uint xmin { get; set; }
 }
@@ -24,7 +24,7 @@ internal abstract class ConcurrentDto
     public Guid Stamp { get; set; }
 
     [JsonInclude]
-    public byte[] SqlToken { get; set; } = Array.Empty<byte>();
+    public byte[] Version { get; set; } = Array.Empty<byte>();
 
     [JsonInclude]
     public uint xmin { get; set; }

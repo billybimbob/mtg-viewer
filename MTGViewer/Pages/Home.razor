@@ -22,7 +22,7 @@
     {
         <h3>
             <a href="/Cards" title="Card Collection">
-                Cards from our collection!  </a>
+                Cards from our collection! </a>
         </h3>
 
         <div class="row row-cols-lg-4 row-cols-2 justify-content-around m-0">
@@ -35,7 +35,7 @@
                     title="@card.Name Details"
                     aria-label="@card.Id details">
 
-                    <img alt="@card.Name image" 
+                    <img alt="@card.Name Image" 
                         @onload="() => CardImageLoaded(card)"
                         class="w-100 card-img @loading" 
                         src="@card.ImageUrl.WithHttps()">
@@ -45,7 +45,6 @@
                         <div class="placeholder"></div>
                     }
                 </a>
-
             }
         </div>
 

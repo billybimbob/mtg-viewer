@@ -13,22 +13,21 @@ public sealed record HeldCard(Card Card, int Copies);
 
 public sealed record CardImage
 {
-    public string Id { get; init; } = default!;
-    public string Name { get; init; } = default!;
-    public string ImageUrl { get; init; } = default!;
+    public string Id { get; init; } = string.Empty;
+    public string Name { get; init; } = string.Empty;
+    public string ImageUrl { get; init; } = string.Empty;
 }
 
 
 public record CardPreview
 {
-    public string Id { get; init; } = default!;
-    public string Name { get; init; } = default!;
+    public string Id { get; init; } = string.Empty;
+    public string Name { get; init; } = string.Empty;
     public string? ManaCost { get; init; }
 
-    public string SetName { get; init; } = default!;
+    public string SetName { get; init; } = string.Empty;
     public Rarity Rarity { get; init; }
-
-    public string ImageUrl { get; init; } = default!;
+    public string ImageUrl { get; init; } = string.Empty;
 }
 
 
@@ -47,10 +46,10 @@ public sealed record DeckCopy : LocationCopy
 
 public record CardLink
 {
-    public string Id { get; init; } = default!;
-    public string Name { get; init; } = default!;
-    public string SetName { get; init; } = default!;
-    public string? ManaCost { get; init; } = default!;
+    public string Id { get; init; } = string.Empty;
+    public string Name { get; init; } = string.Empty;
+    public string SetName { get; init; } = string.Empty;
+    public string? ManaCost { get; init; } = string.Empty;
 }
 
 
@@ -76,8 +75,8 @@ public sealed record DeckLink : LocationLink
 
 public sealed record CardId
 {
-    public string Id { get; init; } = default!;
-    public string MultiverseId { get; init; } = default!;
+    public string Id { get; init; } = string.Empty;
+    public string MultiverseId { get; init; } = string.Empty;
 }
 
 #endregion
@@ -130,7 +129,7 @@ public sealed record RecentChange
 {
     public bool ToStorage { get; init; }
     public bool FromStorage { get; init; }
-    public string CardName { get; init; } = default!;
+    public string CardName { get; init; } = string.Empty;
 }
 
 
@@ -190,7 +189,7 @@ public sealed record ChangeDetails
 public sealed record MoveTarget
 {
     public int Id { get; init; }
-    public string Name { get; init; } = default!;
+    public string Name { get; init; } = string.Empty;
     internal LocationType Type { get; init; }
 }
 
@@ -234,7 +233,7 @@ public enum BuildState
 public sealed record DeckPreview
 {
     public int Id { get; init; }
-    public string Name { get; init; } = default!;
+    public string Name { get; init; } = string.Empty;
     public Color Color { get; init; }
 
     public int HeldCopies { get; init; }
@@ -266,7 +265,7 @@ public sealed record DeckDetails
     public int Id { get; init; }
     public OwnerPreview Owner { get; init; } = default!;
 
-    public string Name { get; init; } = default!;
+    public string Name { get; init; } = string.Empty;
     public Color Color { get; init; }
 
     public int HeldCopies { get; init; }
@@ -279,15 +278,15 @@ public sealed record DeckDetails
 
 public sealed record OwnerPreview
 {
-    public string Id { get; init; } = default!;
-    public string Name { get; init; } = default!;
+    public string Id { get; init; } = string.Empty;
+    public string Name { get; init; } = string.Empty;
 }
 
 
 public sealed record UnclaimedDetails
 {
     public int Id { get; init; }
-    public string Name { get; init; } = default!;
+    public string Name { get; init; } = string.Empty;
     public Color Color { get; init; }
 
     public int HeldCopies { get; init; }
@@ -303,7 +302,7 @@ public sealed record UnclaimedDetails
 public sealed record TradeDeckPreview
 {
     public int Id { get; init; }
-    public string Name { get; init; } = default!;
+    public string Name { get; init; } = string.Empty;
     public Color Color { get; init; }
 
     public bool SentTrades { get; init; }
@@ -317,8 +316,8 @@ public sealed record SuggestionPreview
     public int Id { get; init; }
     public DateTime SentAt { get; init; }
 
-    public string CardId { get; init; } = default!;
-    public string CardName { get; init; } = default!;
+    public string CardId { get; init; } = string.Empty;
+    public string CardName { get; init; } = string.Empty;
     public string? CardManaCost { get; init; }
 
     public string? ToName { get; init; }
@@ -341,7 +340,7 @@ public sealed record TradePreview
 public sealed record ExchangePreview
 {
     public int Id { get; init; }
-    public string Name { get; init; } = default!;
+    public string Name { get; init; } = string.Empty;
     public bool HasWants { get; init; }
     public IEnumerable<LocationCopy> Givebacks { get; init; } = Enumerable.Empty<LocationCopy>();
 
@@ -377,7 +376,7 @@ public sealed record QuantityPreview
 public sealed class BoxPreview
 {
     public int Id { get; init; }
-    public string Name { get; init; } = default!;
+    public string Name { get; init; } = string.Empty;
 
     public BinPreview Bin { get; init; } = default!;
 
@@ -394,7 +393,7 @@ public sealed class BoxPreview
 public sealed record BinPreview
 {
     public int Id { get; init; }
-    public string Name { get; init; } = default!;
+    public string Name { get; init; } = string.Empty;
     public IEnumerable<BoxPreview> Boxes { get; init; } = Enumerable.Empty<BoxPreview>();
 
     public bool Equals(BinPreview? bin)
@@ -418,6 +417,6 @@ public sealed record BinPreview
 
 public sealed record UserPreview
 {
-    public string Id { get; init; } = default!;
-    public string Name { get; init; } = default!;
+    public string Id { get; init; } = string.Empty;
+    public string Name { get; init; } = string.Empty;
 }
