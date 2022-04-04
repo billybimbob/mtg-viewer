@@ -28,19 +28,19 @@
         <div class="row row-cols-lg-4 row-cols-2 justify-content-around m-0">
             @foreach (var card in RandomCards)
             {
-                bool imageLoaded = IsImageLoaded(card);
-                string loading = imageLoaded ? string.Empty : "d-none";
+                bool isLoaded = IsImageLoaded(card);
+                string show = isLoaded ? "img-fade" : "d-none";
 
-                <a href="/Cards/Details/@card.Id" class="home-link"
+                <a href="/Cards/Details/@card.Id" class="img-link"
                     title="@card.Name Details"
                     aria-label="@card.Id details">
 
                     <img alt="@card.Name Image" 
-                        @onload="() => CardImageLoaded(card)"
-                        class="w-100 card-img @loading" 
+                        @onload="() => OnImageLoad(card)"
+                        class="card-img scale @show" 
                         src="@card.ImageUrl.WithHttps()">
 
-                    @if (!imageLoaded)
+                    @if (!isLoaded)
                     {
                         <div class="placeholder"></div>
                     }

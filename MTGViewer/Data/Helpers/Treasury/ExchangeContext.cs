@@ -49,6 +49,7 @@ internal class ExchangeContext
         }
 
         var hold = GetOrAddHold(card);
+
         hold.Copies += copies;
 
         TreasuryContext.TransferCopies(card, copies, Deck, storage);
@@ -114,7 +115,7 @@ internal class ExchangeContext
 
         if (give.Copies < copies || hold.Copies < copies)
         {
-            throw new ArgumentException("Copy amount is too high", nameof(copies));
+            throw new ArgumentException("Return amount is higher than giveback or hold", nameof(copies));
         }
 
         give.Copies -= copies;

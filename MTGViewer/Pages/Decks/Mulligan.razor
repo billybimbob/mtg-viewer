@@ -19,7 +19,7 @@
     <div class="row">
         <div class="col-12 col-lg-9">
             <p>
-                @DeckName can simulate the ordering of how cards drawn are from it.
+                @DeckName can simulate the ordering of how cards are  drawn from it.
                 The cards that are included in the simulation are based on the selected 
                 mulligan type.
             </p>
@@ -68,11 +68,11 @@ else
             Back
         </button>
 
-        <button title="Reshuffle Deck" type="button"
+        <button title="Get a New Hand" type="button"
             class="btn btn-danger"
             disabled="@(IsLoading || !DrawnCards.Any())"
-            @onclick="Reshuffle">
-            Reshuffle
+            @onclick="NewHand">
+            New Hand
         </button>
 
         <button title="Draw a Card" type="button"
@@ -101,15 +101,18 @@ else
         </div>
     }
 
-    <div class="row row-cols-lg-4 row-cols-2 m-0">
-        @foreach (var card in DrawnCards.Reverse())
+    <div class="row row-cols-lg-5 row-cols-md-4 row-cols-2 m-0">
+        @foreach (var card in DrawnCards)
         {
-            <a href="/Cards/Details/@card.Id" class="home-link"
+            string fade = IsImageLoaded(card) ? "img-fade" : "invisible";
+
+            <a href="/Cards/Details/@card.Id" class="img-link"
                 title="@card.Name Details"
                 aria-label="@card.Id details">
 
                 <img alt="@card.Name Image" 
-                    class="w-100 card-img" 
+                    @onload="() => OnImageLoad(card)"
+                    class="card-img scale @fade" 
                     src="@card.ImageUrl.WithHttps()">
             </a>
         }

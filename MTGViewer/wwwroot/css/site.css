@@ -172,7 +172,33 @@ body {
   align-items: center;
 }
 
-.home-link {
+.img-fade {
+  animation: fade-in 200ms ease-in;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (min-width: 768px) {
+  .scale.img-fade,
+  .scale.card-img {
+    transition: transform 200ms ease-in;
+  }
+
+  .scale.img-fade:hover,
+  .scale.card-img:hover {
+    box-shadow: 0 0 20px black;
+    transform: scale(1.1);
+  }
+}
+
+.img-link {
   max-width: 300px;
   width: 100%;
   padding: .4rem .25rem;
@@ -203,7 +229,7 @@ body {
   from {
       left: -150px;
   }
-  to   {
+  to {
       left: 100%;
   }
 }

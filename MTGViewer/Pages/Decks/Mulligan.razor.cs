@@ -89,6 +89,7 @@ public partial class Mulligan : OwningComponentBase
     private DrawSimulation? _shuffledDeck;
 
     private readonly List<CardPreview> _drawnCards = new();
+    private readonly HashSet<string> _loadedImages = new();
 
 
     protected override void OnInitialized()
@@ -274,7 +275,9 @@ public partial class Mulligan : OwningComponentBase
     private void DrawStartingHand()
     {
         _shuffledDeck?.Dispose();
+
         _drawnCards.Clear();
+        _loadedImages.Clear();
 
         if (_mulliganType is MulliganType.None)
         {
@@ -308,7 +311,7 @@ public partial class Mulligan : OwningComponentBase
     }
 
 
-    internal void Reshuffle()
+    internal void NewHand()
     {
         if (!_isBusy
             && _isInteractive
@@ -316,6 +319,18 @@ public partial class Mulligan : OwningComponentBase
         {
             DrawStartingHand();
         }
+    }
+
+
+    internal bool IsImageLoaded(CardPreview card)
+    {
+        return _loadedImages.Contains(card.Id);
+    }
+
+
+    internal void OnImageLoad(CardPreview card)
+    {
+        _loadedImages.Add(card.Id);
     }
 
 

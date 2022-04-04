@@ -38,8 +38,7 @@ internal abstract class TakeHandler
         }
     }
 
-    protected static IEnumerable<StorageAssignment<TSource>> TakeFromStorage<TSource>(
-        TSource source,
+    protected static IEnumerable<StorageAssignment<Card>> TakeFromStorage(
         int cardsToTake,
         IEnumerable<Hold> storageHolds)
     {
@@ -56,7 +55,7 @@ internal abstract class TakeHandler
                 continue;
             }
 
-            yield return new StorageAssignment<TSource>(source, takeCopies, storage);
+            yield return new StorageAssignment<Card>(hold.Card, takeCopies, storage);
 
             cardsToTake -= takeCopies;
             if (cardsToTake == 0)
@@ -100,9 +99,9 @@ internal class ExactTake : TakeHandler
     {
         _exactTake ??= TakeLookup();
 
-        var idPositions = _exactTake[want.CardId];
+        var matches = _exactTake[want.CardId];
 
-        return TakeFromStorage(want.Card, want.Copies, idPositions);
+        return TakeFromStorage(want.Copies, matches);
     }
 
     // take assignments should take from smaller dup stacks first
@@ -169,9 +168,9 @@ internal class ApproximateTake : TakeHandler
     {
         _approxLookup ??= TakeLookup();
 
-        var namePositions = _approxLookup[want.Card.Name];
+        var matches = _approxLookup[want.Card.Name];
 
-        return TakeFromStorage(want.Card, want.Copies, namePositions);
+        return TakeFromStorage(want.Copies, matches);
     }
 
     // take assignments should take from smaller dup stacks first

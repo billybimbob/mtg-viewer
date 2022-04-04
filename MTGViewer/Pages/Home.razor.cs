@@ -177,6 +177,9 @@ public sealed partial class Home : ComponentBase, IDisposable
     }
 
 
+    internal void OnImageLoad(CardImage card) => _randomContext?.OnImageLoad(card);
+
+
     internal async Task LoadMoreCardsAsync()
     {
         if (_isBusy || _randomContext is null or { HasMore: false })
@@ -205,15 +208,6 @@ public sealed partial class Home : ComponentBase, IDisposable
     }
 
 
-    internal void CardImageLoaded(CardImage card)
-    {
-        if (_randomContext is not null && card?.Id is string cardId)
-        {
-            _randomContext.LoadedImages.Add(cardId);
-        }
-    }
-
-
 
     private class RandomCardsContext
     {
@@ -223,7 +217,7 @@ public sealed partial class Home : ComponentBase, IDisposable
 
         public IReadOnlyList<string[]> Order { get; }
 
-        public ICollection<string> LoadedImages => _imageLoaded;
+        public IReadOnlyCollection<string> LoadedImages => _imageLoaded;
 
         public IReadOnlyList<CardImage> Cards => _cards;
 
@@ -305,6 +299,15 @@ public sealed partial class Home : ComponentBase, IDisposable
             var newCards = await CardChunkAsync(dbContext, chunk).ToListAsync(cancel);
 
             _cards.AddRange(newCards);
+        }
+
+
+        public void OnImageLoad(CardImage card)
+        {
+            if (card?.Id is string cardId)
+            {
+                _imageLoaded.Add(cardId);
+            }
         }
     }
 
