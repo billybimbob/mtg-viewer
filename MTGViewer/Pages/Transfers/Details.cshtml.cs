@@ -141,9 +141,11 @@ public class DetailsModel : PageModel
                     {
                         Id = t.CardId,
                         Name = t.Card.Name,
-                        SetName = t.Card.SetName,
 
                         ManaCost = t.Card.ManaCost,
+                        ManaValue = t.Card.ManaValue,
+
+                        SetName = t.Card.SetName,
                         Rarity = t.Card.Rarity,
                         ImageUrl = t.Card.ImageUrl,
                     },

@@ -197,7 +197,9 @@ public class DetailsModel : PageModel
                 {
                     Id = c.CardId,
                     Name = c.Card.Name,
+
                     ManaCost = c.Card.ManaCost,
+                    ManaValue = c.Card.ManaValue,
 
                     SetName = c.Card.SetName,
                     Rarity = c.Card.Rarity,

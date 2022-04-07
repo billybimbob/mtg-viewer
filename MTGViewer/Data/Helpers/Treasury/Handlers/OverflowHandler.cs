@@ -76,7 +76,7 @@ internal class ExactOverflow : OverflowHandler
         var index = (LocationIndex)source.Location;
 
         if (storageSpaces.GetValueOrDefault(index)
-            is not StorageSpace { Remaining: < 0 and int deficit })
+            is not { Remaining: < 0 and int deficit })
         {
             return Enumerable.Empty<StorageAssignment<Hold>>();
         }
@@ -148,7 +148,7 @@ internal class ApproximateOverflow : OverflowHandler
         var index = (LocationIndex)source.Location;
 
         if (storageSpaces.GetValueOrDefault(index)
-            is not StorageSpace { Remaining: < 0 and int deficit })
+            is not { Remaining: < 0 and int deficit })
         {
             return Enumerable.Empty<StorageAssignment<Hold>>();
         }

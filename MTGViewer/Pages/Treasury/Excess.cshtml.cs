@@ -73,9 +73,11 @@ public class ExcessModel : PageModel
             {
                 Id = c.Id,
                 Name = c.Name,
-                ManaCost = c.ManaCost,
-                SetName = c.SetName,
 
+                ManaCost = c.ManaCost,
+                ManaValue = c.ManaValue,
+
+                SetName = c.SetName,
                 Rarity = c.Rarity,
                 ImageUrl = c.ImageUrl,
 

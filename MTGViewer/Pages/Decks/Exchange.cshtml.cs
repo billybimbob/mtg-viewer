@@ -109,7 +109,9 @@ public class ExchangeModel : PageModel
                         {
                             Id = g.CardId,
                             Name = g.Card.Name,
+
                             ManaCost = g.Card.ManaCost,
+                            ManaValue = g.Card.ManaValue,
 
                             SetName = g.Card.SetName,
                             Rarity = g.Card.Rarity,
@@ -153,9 +155,11 @@ public class ExchangeModel : PageModel
                 {
                     Id = c.Id,
                     Name = c.Name,
-                    SetName = c.SetName,
 
                     ManaCost = c.ManaCost,
+                    ManaValue = c.ManaValue,
+
+                    SetName = c.SetName,
                     Rarity = c.Rarity,
                     ImageUrl = c.ImageUrl,
 

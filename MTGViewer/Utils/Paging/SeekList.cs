@@ -12,6 +12,9 @@ public enum SeekDirection
 }
 
 
+public readonly record struct SeekRequest<T>(T? Seek, SeekDirection Direction);
+
+
 public readonly record struct Seek(object? Previous, object? Next);
 
 

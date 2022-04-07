@@ -7,11 +7,10 @@ using Microsoft.EntityFrameworkCore;
 namespace MTGViewer.Data;
 
 
-[Index(nameof(TransactionId), nameof(FromId), nameof(ToId), nameof(CardId), IsUnique = true)]
-[Index(nameof(Copies), nameof(Id), nameof(TransactionId), nameof(FromId), nameof(ToId), nameof(CardId))]
+[Index(nameof(CardId), nameof(ToId), nameof(FromId), nameof(TransactionId), IsUnique = true)]
+[Index(nameof(Copies), nameof(Id), nameof(CardId), nameof(ToId), nameof(FromId), nameof(TransactionId))]
 public class Change
 {
-    [Key]
     [JsonIgnore]
     public int Id { get; private set; }
 
@@ -42,7 +41,6 @@ public class Change
 
 
 [Index(nameof(AppliedAt), IsUnique = true)]
-[Index(nameof(AppliedAt), nameof(Id))]
 public class Transaction
 {
     [JsonIgnore]

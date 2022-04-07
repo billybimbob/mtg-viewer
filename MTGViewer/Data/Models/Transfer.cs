@@ -10,7 +10,6 @@ namespace MTGViewer.Data;
 [Index(nameof(CardId), nameof(ReceiverId), nameof(ToId), IsUnique = true)]
 public class Suggestion
 {
-    [Key]
     [JsonIgnore]
     public int Id { get; private set; }
 

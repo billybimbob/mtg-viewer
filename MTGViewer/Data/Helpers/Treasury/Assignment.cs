@@ -26,7 +26,7 @@ internal static class Assignment
             var index = (LocationIndex)storage;
 
             if (storageSpaces.GetValueOrDefault(index)
-                is not StorageSpace { Remaining: > 0 and int remaining })
+                is not { Remaining: > 0 and int remaining })
             {
                 continue;
             }

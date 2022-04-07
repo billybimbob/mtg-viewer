@@ -4,7 +4,7 @@
 @inject SymbolFormatter MtgSymbols
 
 
-<PageTitle> Card Collection (@Cards.Offset) </PageTitle>
+<PageTitle> Card Collection </PageTitle>
 
 <h1>Card Collection</h1>
 
@@ -43,15 +43,13 @@
                     @onclick="() => Filters.Reorder(c => c.Name)" 
                     class="@HeaderClass(c => c.Name)">
                     @DisplayName(c => c.Name)
-                    @Direction(c => c.Name)
                 </th>
 
                 <th scope="col" 
-                    title="Order By Cmc"
+                    title="Order By Mana Value"
                     @onclick="() => Filters.Reorder(c => c.ManaCost)" 
                     class="@HeaderClass(c => c.ManaCost)">
                     @DisplayName(c => c.ManaCost)
-                    @Direction(c => c.ManaCost)
                 </th>
 
                 <th scope="col"
@@ -59,7 +57,6 @@
                     @onclick="() => Filters.Reorder(c => c.SetName)" 
                     class="@HeaderClass(c => c.SetName)">
                     @DisplayName(c => c.SetName)
-                    @Direction(c => c.SetName)
                 </th>
 
                 <th scope="col"
@@ -67,7 +64,6 @@
                     @onclick="() => Filters.Reorder(c => c.Rarity)" 
                     class="@HeaderClass(c => c.Rarity)">
                     @DisplayName(c => c.Rarity)
-                    @Direction(c => c.Rarity)
                 </th>
 
                 <th scope="col" 
@@ -75,7 +71,6 @@
                     @onclick="() => Filters.Reorder(c => c.Holds)" 
                     class="@HeaderClass(c => c.Holds)">
                     Total Copies
-                    @Direction(c => c.Holds)
                 </th>
             </tr>
         </thead>
@@ -110,26 +105,12 @@
     </table>
 </div>
 
-<OffsetPaging Offset="Cards.Offset" PageSelected="Filters.SetPage" IsDisabled="IsLoading" />
+<SeekPaging TEntity="LocationCopy"
+    Seek="Cards.Seek" PageSelected="Filters.SeekPage" IsDisabled="IsLoading" />
 
 
 @code
 {
-    internal string Direction<T>(Expression<Func<Card, T>> property)
-    {
-        bool invalid = Filters.OrderBy is null
-            || property is not { Body: MemberExpression { Member.Name: string name } }
-            || name != Filters.OrderBy;
-
-        return Filters.IsReversed switch
-        {
-            _ when invalid => string.Empty,
-            true => "\u25B2",
-            false => "\u25BC"
-        };
-    }
-
-
     internal static string DisplayName<T>(Expression<Func<Card, T>> property) =>
         EntityExtensions.DisplayName(property);
 
@@ -146,7 +127,7 @@
         }
         else if (isMatch)
         {
-            return "clickable btn-link font-weight-bold";
+            return "btn-link font-weight-bold";
         }
         else if (!IsLoading)
         {

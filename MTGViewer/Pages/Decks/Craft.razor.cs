@@ -63,7 +63,7 @@ public partial class Craft : OwningComponentBase
     internal TreasuryFilters Filters { get; } = new();
 
 
-    internal OffsetList<HeldCard> Treasury { get; private set; } = OffsetList<HeldCard>.Empty;
+    internal SeekList<HeldCard> Treasury { get; private set; } = SeekList<HeldCard>.Empty;
 
     internal BuildType BuildOption { get; private set; }
 
@@ -330,7 +330,7 @@ public partial class Craft : OwningComponentBase
                     && !d.TradesTo.Any()));
 
 
-    private static Task<OffsetList<HeldCard>> FilteredCardsAsync(
+    private static Task<SeekList<HeldCard>> FilteredCardsAsync(
         CardDbContext dbContext,
         TreasuryFilters filters,
         CancellationToken cancel)
@@ -353,9 +353,6 @@ public partial class Craft : OwningComponentBase
                 .Where(c => (c.Color & pickedColors) == pickedColors);
         }
 
-        int pageSize = filters.PageSize;
-        int pageIndex = filters.PageIndex;
-
         return cards
             .OrderBy(c => c.Name)
                 .ThenBy(c => c.SetName)
@@ -368,8 +365,11 @@ public partial class Craft : OwningComponentBase
                         .Where(h => h.Location is Box || h.Location is Excess)
                         .Sum(h => h.Copies)))
 
-            .PageBy(pageIndex, pageSize)
-            .ToOffsetListAsync(cancel);
+            .SeekBy(filters.Seek, filters.Direction)
+            .OrderBy<Card>()
+            .Take(filters.PageSize)
+
+            .ToSeekListAsync(cancel);
     }
 
     #endregion
@@ -467,15 +467,11 @@ public partial class Craft : OwningComponentBase
 
     #region Treasury Operations
 
-    internal void ChangeTreasuryPage(int pageIndex) => Filters.PageIndex = pageIndex;
-
 
     internal sealed class TreasuryFilters
     {
         public event EventHandler FilterChanged;
-
         private bool _pendingChanges;
-        private int _maxPage;
 
         public TreasuryFilters()
         {
@@ -488,10 +484,8 @@ public partial class Craft : OwningComponentBase
             if (sender is Craft parameters)
             {
                 _pendingChanges = false;
-                _maxPage = parameters.Treasury.Offset.Total;
             }
         }
-
 
         private int _pageSize;
         public int PageSize
@@ -510,24 +504,31 @@ public partial class Craft : OwningComponentBase
             }
         }
 
-        private int _pageIndex;
-        public int PageIndex
+
+        public string? Seek { get; private set; }
+
+        public SeekDirection Direction { get; private set; }
+
+
+        public void SeekPage(SeekRequest<HeldCard> request)
         {
-            get => _pageIndex;
-            set
+            if (_pendingChanges)
             {
-                if (_pendingChanges
-                    || value < 0
-                    || value == _pageIndex
-                    || value >= _maxPage)
-                {
-                    return;
-                }
-
-                _pageIndex = value;
-
-                FilterChanged?.Invoke(this, EventArgs.Empty);
+                return;
             }
+
+            var seek = request.Seek?.Card.Id;
+            var direction = request.Direction;
+
+            if (seek == Seek && direction == Direction)
+            {
+                return;
+            }
+
+            Seek = seek;
+            Direction = direction;
+
+            FilterChanged?.Invoke(this, EventArgs.Empty);
         }
 
         private string? _searchName;
@@ -541,10 +542,7 @@ public partial class Craft : OwningComponentBase
                     return;
                 }
 
-                if (_pageIndex > 0)
-                {
-                    _pageIndex = 0;
-                }
+                Seek = null;
 
                 _searchName = value;
 
@@ -570,10 +568,7 @@ public partial class Craft : OwningComponentBase
                 PickedColors |= color;
             }
 
-            if (_pageIndex > 0)
-            {
-                _pageIndex = 0;
-            }
+            Seek = null;
 
             FilterChanged?.Invoke(this, EventArgs.Empty);
         }

@@ -8,13 +8,13 @@ namespace MTGViewer.Data;
 
 
 [Index(nameof(MultiverseId), IsUnique = true)]
-[Index(nameof(ManaValue), nameof(Name), nameof(SetName), nameof(Id))]
-[Index(nameof(Rarity), nameof(Name), nameof(SetName), nameof(Id))]
+[Index(nameof(ManaValue), nameof(SetName), nameof(Name), nameof(Id))]
+[Index(nameof(ManaCost), nameof(SetName), nameof(Name), nameof(Id))]
+[Index(nameof(Rarity), nameof(SetName), nameof(Name), nameof(Id))]
 [Index(nameof(SetName), nameof(Name), nameof(Id))]
 [Index(nameof(Name), nameof(Id))]
 public class Card
 {
-    [Key]
     public string Id { get; init; } = default!;
 
     [Display(Name = "Multiverse Id")]

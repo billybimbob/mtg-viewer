@@ -17,7 +17,6 @@ public class UserRef
         Name = user.DisplayName;
     }
 
-    [Key]
     public string Id { get; init; } = default!;
 
     [StringLength(256, MinimumLength = 1)]

@@ -272,6 +272,7 @@ public partial class Mulligan : OwningComponentBase
                 }));
 
 
+
     private void DrawStartingHand()
     {
         _shuffledDeck?.Dispose();
@@ -381,7 +382,7 @@ public partial class Mulligan : OwningComponentBase
 
         public CardPreview DrawCard()
         {
-            if (_nextDraw is not CardCopy { Card: CardPreview card })
+            if (_nextDraw is not { Card: CardPreview card })
             {
                 throw new InvalidOperationException("There are no cards to draw");
             }
@@ -415,30 +416,9 @@ public partial class Mulligan : OwningComponentBase
                 return null;
             }
 
-            int pickedIndex = _random.Next(0, _cardsInDeck);
+            int picked = _random.Next(0, _cardsInDeck);
 
-            return FindCopy(_cardOptions, pickedIndex) switch
-            {
-                CardCopy c => c,
-                _ => null
-            };
-        }
-
-
-        public static int GetCopies(DeckCopy source, MulliganType mulliganType)
-        {
-            return mulliganType switch
-            {
-                MulliganType.Built => source.Held,
-                MulliganType.Theorycraft => source.Held - source.Returning + source.Want,
-                _ => 0
-            };
-        }
-
-
-        private static CardCopy? FindCopy(IEnumerable<CardCopy> cards, int picked)
-        {
-            using var e = cards.GetEnumerator();
+            using var e = _cardOptions.GetEnumerator();
 
             while (e.MoveNext())
             {
@@ -451,6 +431,17 @@ public partial class Mulligan : OwningComponentBase
             }
 
             return null;
+        }
+
+
+        private static int GetCopies(DeckCopy source, MulliganType mulliganType)
+        {
+            return mulliganType switch
+            {
+                MulliganType.Built => source.Held,
+                MulliganType.Theorycraft => source.Held - source.Returning + source.Want,
+                _ => 0
+            };
         }
     }
 }

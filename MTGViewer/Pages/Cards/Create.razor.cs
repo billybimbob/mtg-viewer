@@ -514,7 +514,7 @@ public partial class Create : OwningComponentBase
 
     internal async Task LoadMoreCardsAsync()
     {
-        if (_isBusy || _matchPage is Offset { Total: > 0, HasNext: false })
+        if (_isBusy || _matchPage is { Total: > 0, HasNext: false })
         {
             return;
         }

@@ -1,27 +1,22 @@
-@inject NavigationManager Nav
-@using System.Paging.Query
+@typeparam TEntity
+
 
 @if (HasPrevious || HasNext)
 {
     <nav>
         <ul class="pagination justify-content-center">
-            @if (HasPrevious && ChangePage.HasDelegate)
+            @if (HasPrevious && PageSelected.HasDelegate && !IsDisabled)
             {
                 <li class="page-item">
-                    <button title="Previous Page" class="page-link"
-                        @onclick="PreviousPageAsync" disabled="@IsDisabled">
-                        Previous
+                    <button title="First Page" class="page-link" @onclick="FirstPageAsync">
+                        First
                     </button>
-                </li>
-            }
-            else if (HasPrevious && !IsDisabled)
-            {
-                <li class="page-item">
-                    <a title="First Page" href="@FirstUrl()" class="page-link"> First </a>
                 </li>
 
                 <li class="page-item">
-                    <a title="Previous Page" href="@PreviousUrl()" class="page-link"> Previous </a>
+                    <button title="Previous Page" class="page-link" @onclick="PreviousPageAsync">
+                        Previous
+                    </button>
                 </li>
             }
             else
@@ -35,23 +30,18 @@
                 </li>
             }
 
-            @if (HasNext && ChangePage.HasDelegate)
+            @if (HasNext && PageSelected.HasDelegate && !IsDisabled)
             {
                 <li class="page-item ">
-                    <button title="Next Page" class="page-link"
-                        @onclick="NextPageAsync" disabled="@IsDisabled">
+                    <button title="Next Page" class="page-link" @onclick="NextPageAsync">
                         Next
                     </button>
                 </li>
-            }
-            else if (HasNext && !IsDisabled)
-            {
-                <li class="page-item ">
-                    <a title="Next Page" href="@NextUrl()" class="page-link"> Next </a>
-                </li>
 
                 <li class="page-item">
-                    <a title="Last Page" href="@LastUrl()" class="page-link"> Last </a>
+                    <button title="Last Page" class="page-link" @onclick="LastPageAsync">
+                        Last
+                    </button>
                 </li>
             }
             else
@@ -72,81 +62,25 @@
 @code 
 {
     [Parameter]
-    public Seek Seek { get; set; }
+    public Seek<TEntity> Seek { get; set; }
 
     [Parameter]
-    public EventCallback<object> ChangePage { get; set; }
+    public EventCallback<SeekRequest<TEntity>> PageSelected { get; set; }
 
     [Parameter]
     public bool IsDisabled { get; set; }
 
-    public bool HasPrevious => Seek.Previous is not null;
+    internal bool HasPrevious => Seek.Previous is not null;
 
-    public bool HasNext => Seek.Next is not null;
+    internal bool HasNext => Seek.Next is not null;
 
 
     private bool _isBusy;
 
 
-    private static readonly Dictionary<string, object?> _first = new()
+    internal async Task FirstPageAsync()
     {
-        ["direction"] = SeekDirection.Forward,
-        ["seek"] = null
-    };
-
-    private readonly Dictionary<string, object?> _previous = new()
-    {
-        ["direction"] = SeekDirection.Backwards,
-    };
-
-    private readonly Dictionary<string, object?> _next = new()
-    {
-        ["direction"] = SeekDirection.Forward,
-    };
-
-    private static readonly Dictionary<string, object?> _last = new()
-    {
-        ["direction"] = SeekDirection.Backwards,
-        ["seek"] = null
-    };
-
-
-    protected override void OnParametersSet()
-    {
-        _previous["seek"] = GetKey(Seek.Previous);
-        _next["seek"] = GetKey(Seek.Next);
-    }
-
-
-    private object? GetKey(object? value)
-    {
-        if (value is null)
-        {
-            return null;
-        }
-
-        var keyProperty = ExpressionHelpers.GetKeyProperty(value.GetType());
-
-        return keyProperty?.GetValue(value);
-    }
-
-
-    public string FirstUrl() =>
-        Nav.GetUriWithQueryParameters(_first);
-
-    public string PreviousUrl() =>
-        Nav.GetUriWithQueryParameters(_previous);
-
-    public string NextUrl() =>
-        Nav.GetUriWithQueryParameters(_next);
-
-    public string LastUrl() =>
-        Nav.GetUriWithQueryParameters(_last);
-
-
-    public async Task PreviousPageAsync()
-    {
-        if (_isBusy || GetKey(Seek.Previous) is not object current)
+        if (_isBusy)
         {
             return;
         }
@@ -155,7 +89,8 @@
 
         try
         {
-            await ChangePage.InvokeAsync(current);
+            await PageSelected.InvokeAsync(
+                new SeekRequest<TEntity>(default, SeekDirection.Forward));
         }
         finally
         {
@@ -164,9 +99,9 @@
     }
 
 
-    public async Task NextPageAsync()
+    internal async Task PreviousPageAsync()
     {
-        if (_isBusy || GetKey(Seek.Next) is not object next)
+        if (_isBusy || Seek.Previous is not TEntity previous)
         {
             return;
         }
@@ -175,7 +110,8 @@
 
         try
         {
-            await ChangePage.InvokeAsync(next);
+            await PageSelected.InvokeAsync(
+                new SeekRequest<TEntity>(previous, SeekDirection.Backwards));
         }
         finally
         {
@@ -183,4 +119,45 @@
         }
     }
 
+
+    internal async Task NextPageAsync()
+    {
+        if (_isBusy || Seek.Next is not TEntity next)
+        {
+            return;
+        }
+
+        _isBusy = true;
+
+        try
+        {
+            await PageSelected.InvokeAsync(
+                new SeekRequest<TEntity>(next, SeekDirection.Forward));
+        }
+        finally
+        {
+            _isBusy = false;
+        }
+    }
+
+
+    internal async Task LastPageAsync()
+    {
+        if (_isBusy)
+        {
+            return;
+        }
+
+        _isBusy = true;
+
+        try
+        {
+            await PageSelected.InvokeAsync(
+                new SeekRequest<TEntity>(default, SeekDirection.Backwards));
+        }
+        finally
+        {
+            _isBusy = false;
+        }
+    }
 }

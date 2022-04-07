@@ -29,16 +29,16 @@
             @foreach (var card in RandomCards)
             {
                 bool isLoaded = IsImageLoaded(card);
-                string show = isLoaded ? "img-fade" : "d-none";
+                string fade = isLoaded ? "img-fade" : "d-none";
 
-                <a href="/Cards/Details/@card.Id" class="img-link"
-                    title="@card.Name Details"
-                    aria-label="@card.Id details">
+                <a title="@card.Name Details"
+                    href="/Cards/Details/@card.Id"
+                    class="img-link">
 
                     <img alt="@card.Name Image" 
-                        @onload="() => OnImageLoad(card)"
-                        class="card-img scale @show" 
-                        src="@card.ImageUrl.WithHttps()">
+                        src="@card.ImageUrl.WithHttps()"
+                        class="card-img scale @fade"
+                        @onload="() => OnImageLoad(card)" />
 
                     @if (!isLoaded)
                     {
@@ -49,9 +49,10 @@
         </div>
 
         <div class="pt-3 d-flex justify-content-center">
-            <button title="More Cards" type="button" class="btn btn-secondary"
-                @onclick="LoadMoreCardsAsync" 
-                disabled="@IsLoading" >
+            <button title="More Cards" type="button"
+                class="btn btn-secondary"
+                disabled="@IsLoading"
+                @onclick="LoadMoreCardsAsync">
                 @if (IsLoading)
                 {
                     <text>

@@ -7,8 +7,6 @@ public interface ISeekable<TEntity> where TEntity : class
 {
     ISeekable<TEntity> OrderBy<TSource>() where TSource : class;
 
-    // ISeekable<TEntity> UseSourceOrigin();
-
     ISeekable<TEntity> Take(int count);
 
     Task<SeekList<TEntity>> ToSeekListAsync(CancellationToken cancel = default);

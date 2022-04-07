@@ -14,7 +14,6 @@ namespace MTGViewer.Data;
 [Index(nameof(CardId), nameof(Type))]
 public abstract class Quantity : Concurrent
 {
-    [Key]
     [JsonIgnore]
     public int Id { get; init; }
 

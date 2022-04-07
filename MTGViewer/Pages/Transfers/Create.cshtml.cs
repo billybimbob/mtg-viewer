@@ -148,9 +148,11 @@ public class CreateModel : PageModel
             {
                 Id = w.CardId,
                 Name = w.Card.Name,
-                SetName = w.Card.SetName,
 
                 ManaCost = w.Card.ManaCost,
+                ManaValue = w.Card.ManaValue,
+
+                SetName = w.Card.SetName,
                 Rarity = w.Card.Rarity,
                 ImageUrl = w.Card.ImageUrl,
 

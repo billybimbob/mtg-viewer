@@ -237,6 +237,10 @@ internal sealed class OriginFilter<TOrigin, TEntity>
     {
         return (_origin.Translate(parameter), GetNullOrder(parameter)) switch
         {
+            (MemberExpression o and { Type.IsEnum: true }, _)  =>
+                Expression.GreaterThan(
+                    parameter, o, false, ExpressionConstants.EnumGreaterThan(o.Type)),
+
             (MemberExpression o, _) when IsValueComparable(o.Type) =>
                 Expression.GreaterThan(parameter, o),
 
@@ -260,6 +264,10 @@ internal sealed class OriginFilter<TOrigin, TEntity>
     {
         return (_origin.Translate(parameter), GetNullOrder(parameter)) switch
         {
+            (MemberExpression o and { Type.IsEnum: true }, _) =>
+                Expression.LessThan(
+                    parameter, o, false, ExpressionConstants.EnumLessThan(o.Type)),
+
             (MemberExpression o, _) when IsValueComparable(o.Type) =>
                 Expression.LessThan(parameter, o),
 
@@ -410,17 +418,17 @@ internal sealed class OriginFilter<TOrigin, TEntity>
 
     private static bool IsScalarType(Type type)
     {
-        return IsValueComparable(type) || type == typeof(string);
+        return type.IsEnum
+            || IsValueComparable(type)
+            || type == typeof(string);
     }
 
     private static bool IsValueComparable(Type type)
     {
-        return type is { IsValueType: true } && IsComparable(type);
-    }
+        return type is { IsValueType: true }
+            && type.IsAssignableTo(typeof(IComparable<>).MakeGenericType(type))
 
-    private static bool IsComparable(Type type)
-    {
-        return type.IsAssignableTo(typeof(IComparable))
-            || type.IsAssignableTo(typeof(IComparable<>).MakeGenericType(type));
+            || Nullable.GetUnderlyingType(type) is Type inner
+                && IsValueComparable(inner);
     }
 }

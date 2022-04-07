@@ -34,15 +34,11 @@ public sealed partial class Collection : ComponentBase, IDisposable
 
     [Parameter]
     [SupplyParameterFromQuery]
-    public bool Reversed { get; set; }
+    public string? Seek { get; set; }
 
     [Parameter]
     [SupplyParameterFromQuery]
-    public int Page { get; set; }
-
-    [Parameter]
-    [SupplyParameterFromQuery]
-    public int Size { get; set; }
+    public int Direction { get; set; }
 
 
     [Inject]
@@ -63,14 +59,12 @@ public sealed partial class Collection : ComponentBase, IDisposable
 
     internal event EventHandler? ParametersChanged;
 
-    internal event EventHandler? CardsLoaded;
-
 
     internal bool IsLoading => _isBusy || !_isInteractive;
 
     internal FilterContext Filters { get; } = new();
 
-    internal OffsetList<LocationCopy> Cards { get; private set; } = OffsetList<LocationCopy>.Empty;
+    internal SeekList<LocationCopy> Cards { get; private set; } = SeekList<LocationCopy>.Empty;
 
 
     private readonly CancellationTokenSource _cancel = new();
@@ -87,7 +81,6 @@ public sealed partial class Collection : ComponentBase, IDisposable
         _persistSubscription = ApplicationState.RegisterOnPersisting(PersistCardData);
 
         ParametersChanged += Filters.OnParametersChanged;
-        CardsLoaded += Filters.OnCardsLoaded;
     }
 
 
@@ -101,17 +94,15 @@ public sealed partial class Collection : ComponentBase, IDisposable
 
             await LoadCardDataAsync(_cancel.Token);
 
-            if (Cards is { Count: 0, Offset.Current: > 0 })
+            if (!Cards.Any() && Seek is not null)
             {
-                Logger.LogWarning("Invalid offset {Offset} was given", Cards.Offset.Current);
+                Logger.LogWarning("Invalid seek {Seek} was given", Seek);
 
                 Nav.NavigateTo(
-                    Nav.GetUriWithQueryParameter(nameof(Page), null as int?), replace: true);
+                    Nav.GetUriWithQueryParameter(nameof(Seek), null as string), replace: true);
 
                 return;
             }
-
-            CardsLoaded?.Invoke(this, EventArgs.Empty);
 
             Filters.FilterChanged -= OnFilterChanged;
             Filters.FilterChanged += OnFilterChanged;
@@ -145,7 +136,6 @@ public sealed partial class Collection : ComponentBase, IDisposable
     void IDisposable.Dispose()
     {
         ParametersChanged -= Filters.OnParametersChanged;
-        CardsLoaded -= Filters.OnCardsLoaded;
 
         Filters.FilterChanged -= OnFilterChanged;
 
@@ -160,7 +150,7 @@ public sealed partial class Collection : ComponentBase, IDisposable
     {
         ApplicationState.PersistAsJson(nameof(Cards), Cards as IReadOnlyList<LocationCopy>);
 
-        ApplicationState.PersistAsJson(nameof(Cards.Offset), Cards.Offset);
+        ApplicationState.PersistAsJson(nameof(Seek), Cards.Seek);
 
         return Task.CompletedTask;
     }
@@ -181,12 +171,12 @@ public sealed partial class Collection : ComponentBase, IDisposable
     private async Task LoadCardDataAsync(CancellationToken cancel)
     {
         if (TryGetData(nameof(Cards), out IReadOnlyList<LocationCopy>? cards)
-            && TryGetData(nameof(Offset), out Offset offset))
+            && TryGetData(nameof(Seek), out Seek<LocationCopy> seek))
         {
             // persisted state should match set filters
             // TODO: find way to check filters are consistent
 
-            Cards = new OffsetList<LocationCopy>(offset, cards);
+            Cards = new SeekList<LocationCopy>(seek, cards);
             return;
         }
 
@@ -259,8 +249,8 @@ public sealed partial class Collection : ComponentBase, IDisposable
 
                 var args = new FilterEventArgs(
                     KeyValuePair.Create(nameof(Collection.Search), value as object),
-                    KeyValuePair.Create(nameof(Collection.Page), null as object),
-                    KeyValuePair.Create(nameof(Collection.Size), null as object));
+                    KeyValuePair.Create(nameof(Collection.Seek), null as object),
+                    KeyValuePair.Create(nameof(Collection.Direction), null as object));
 
                 FilterChanged.Invoke(this, args);
             }
@@ -283,8 +273,6 @@ public sealed partial class Collection : ComponentBase, IDisposable
 
 
         private const string DefaultOrder = nameof(Card.Name);
-
-        public bool IsReversed { get; private set; }
 
         private string _orderBy = DefaultOrder;
         public string OrderBy
@@ -310,65 +298,42 @@ public sealed partial class Collection : ComponentBase, IDisposable
                 return;
             }
 
-            if (FilterChanged is null)
+            if (FilterChanged is null || _orderBy == value)
             {
                 return;
             }
 
-            object? reversed = value == _orderBy && !IsReversed ? true : null;
-
             var args = new FilterEventArgs(
-                KeyValuePair.Create(nameof(Collection.Reversed), reversed),
                 KeyValuePair.Create(nameof(Collection.Order), (object?)value),
-                KeyValuePair.Create(nameof(Collection.Page), null as object),
-                KeyValuePair.Create(nameof(Collection.Size), null as object));
+                KeyValuePair.Create(nameof(Collection.Seek), null as object),
+                KeyValuePair.Create(nameof(Collection.Direction), null as object));
 
             FilterChanged.Invoke(this, args);
         }
 
 
-        private int _maxPage;
         public int PageSize { get; private set; }
 
-        private int _pageIndex;
-        public int PageIndex
-        {
-            get => _pageIndex;
-            private set
-            {
-                if (IsValidPageIndex(value))
-                {
-                    _pageIndex = value;
-                }
-            }
-        }
+        public string? Seek { get; private set; }
 
-        public void SetPage(int value)
-        {
-            if (!IsValidPageIndex(value))
-            {
-                return;
-            }
+        public SeekDirection Direction { get; private set; }
 
+
+        public void SeekPage(SeekRequest<LocationCopy> request)
+        {
             if (FilterChanged is null)
             {
                 return;
             }
 
-            object? offset = value == default ? null : value;
+            var direction = request.Direction is SeekDirection.Backwards
+                ? (int?)SeekDirection.Backwards : null;
 
             var args = new FilterEventArgs(
-                KeyValuePair.Create(nameof(Collection.Page), offset),
-                KeyValuePair.Create(nameof(Collection.Size), (object?)_maxPage));
+                KeyValuePair.Create(nameof(Collection.Seek), request.Seek?.Id as object),
+                KeyValuePair.Create(nameof(Collection.Direction), direction as object));
 
             FilterChanged.Invoke(this, args);
-        }
-
-        private bool IsValidPageIndex(int value)
-        {
-            return value >= 0
-                && value != _pageIndex
-                && value < _maxPage;
         }
 
 
@@ -385,10 +350,12 @@ public sealed partial class Collection : ComponentBase, IDisposable
                 ? PickedColors & ~value
                 : PickedColors | value;
 
+            var color = value is Color.None ? null : (int?)value;
+
             var newValues = new FilterEventArgs(
-                KeyValuePair.Create(nameof(Collection.Colors), (object?)(int)value),
-                KeyValuePair.Create(nameof(Collection.Page), null as object),
-                KeyValuePair.Create(nameof(Collection.Size), null as object));
+                KeyValuePair.Create(nameof(Collection.Colors), color as object),
+                KeyValuePair.Create(nameof(Collection.Seek), null as object),
+                KeyValuePair.Create(nameof(Collection.Direction), null as object));
 
             FilterChanged.Invoke(this, newValues);
         }
@@ -401,11 +368,6 @@ public sealed partial class Collection : ComponentBase, IDisposable
                 return;
             }
 
-            if (parameters.Size > 0)
-            {
-                _maxPage = parameters.Size;
-            }
-
             _searchName = ValidatedSearchName(parameters.Search);
 
             PickedColors = (Color)parameters.Colors;
@@ -415,26 +377,16 @@ public sealed partial class Collection : ComponentBase, IDisposable
                 PageSize = parameters.PageSizes.GetComponentSize<Collection>();
             }
 
-            PageIndex = parameters.Page;
-            IsReversed = parameters.Reversed;
             OrderBy = parameters.Order ?? DefaultOrder;
-        }
 
-
-        public void OnCardsLoaded(object? sender, EventArgs _)
-        {
-            if (sender is not Collection parameters)
-            {
-                return;
-            }
-
-            _maxPage = parameters.Cards.Offset.Total;
+            Seek = parameters.Seek;
+            Direction = (SeekDirection)parameters.Direction;
         }
     }
 
 
 
-    private static Task<OffsetList<LocationCopy>> FilteredCardsAsync(
+    private static Task<SeekList<LocationCopy>> FilteredCardsAsync(
         CardDbContext dbContext,
         FilterContext filters,
         CancellationToken cancel)
@@ -458,28 +410,32 @@ public sealed partial class Collection : ComponentBase, IDisposable
                 .Where(c => (c.Color & pickedColors) == pickedColors);
         }
 
-        int pageSize = filters.PageSize;
-        int pageIndex = filters.PageIndex;
-
-        return CardsOrdered(cards, filters)
-            .PageBy(pageIndex, pageSize)
+        var copies = cards
             .Select(c => new LocationCopy
             {
                 Id = c.Id,
                 Name = c.Name,
-                SetName = c.SetName,
+
                 ManaCost = c.ManaCost,
+                ManaValue = c.ManaValue,
+
+                SetName = c.SetName,
                 Rarity = c.Rarity,
                 ImageUrl = c.ImageUrl,
+
                 Held = c.Holds.Sum(c => c.Copies)
-            })
-            .ToOffsetListAsync(cancel);
+            });
+
+        return OrderedCopies(copies, filters.OrderBy)
+            .SeekBy(filters.Seek, filters.Direction)
+            .Take(filters.PageSize)
+            .ToSeekListAsync(cancel);
     }
 
 
-    private static IQueryable<Card> CardsOrdered(IQueryable<Card> cards, FilterContext filters)
+    private static IQueryable<LocationCopy> OrderedCopies(IQueryable<LocationCopy> copies, string orderBy)
     {
-        bool isAscending = filters.OrderBy switch
+        bool isAscending = orderBy switch
         {
             nameof(Card.ManaCost) => false,
             nameof(Card.SetName) => true,
@@ -488,14 +444,14 @@ public sealed partial class Collection : ComponentBase, IDisposable
             _ => true
         };
 
-        IOrderedQueryable<Card> PrimaryOrder<T>(Expression<Func<Card, T>> property)
+        IOrderedQueryable<LocationCopy> PrimaryOrder<T>(Expression<Func<LocationCopy, T>> property)
         {
-            return isAscending ^ filters.IsReversed
-                ? cards.OrderBy(property)
-                : cards.OrderByDescending(property);
+            return isAscending
+                ? copies.OrderBy(property)
+                : copies.OrderByDescending(property);
         }
 
-        return filters.OrderBy switch
+        return orderBy switch
         {
             nameof(Card.ManaCost) =>
                 PrimaryOrder(c => c.ManaValue)
@@ -509,7 +465,7 @@ public sealed partial class Collection : ComponentBase, IDisposable
                     .ThenBy(c => c.Id),
 
             nameof(Card.Holds) =>
-                PrimaryOrder(c => c.Holds.Sum(h => h.Copies))
+                PrimaryOrder(c => c.Held) // keep eye on, query is a bit expensive
                     .ThenBy(c => c.Name)
                     .ThenBy(c => c.SetName)
                     .ThenBy(c => c.Id),

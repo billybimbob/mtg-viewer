@@ -23,7 +23,9 @@ public record CardPreview
 {
     public string Id { get; init; } = string.Empty;
     public string Name { get; init; } = string.Empty;
+
     public string? ManaCost { get; init; }
+    public float? ManaValue { get; init; }
 
     public string SetName { get; init; } = string.Empty;
     public Rarity Rarity { get; init; }

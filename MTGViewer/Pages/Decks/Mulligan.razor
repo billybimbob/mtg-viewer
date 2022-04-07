@@ -106,14 +106,14 @@ else
         {
             string fade = IsImageLoaded(card) ? "img-fade" : "invisible";
 
-            <a href="/Cards/Details/@card.Id" class="img-link"
-                title="@card.Name Details"
-                aria-label="@card.Id details">
+            <a title="@card.Name Details"
+                href="/Cards/Details/@card.Id"
+                class="img-link">
 
                 <img alt="@card.Name Image" 
-                    @onload="() => OnImageLoad(card)"
-                    class="card-img scale @fade" 
-                    src="@card.ImageUrl.WithHttps()">
+                    src="@card.ImageUrl.WithHttps()"
+                    class="card-img scale @fade"
+                    @onload="() => OnImageLoad(card)" />
             </a>
         }
     </div>

@@ -137,9 +137,11 @@ public class DetailsModel : PageModel
                 {
                     Id = h.CardId,
                     Name = h.Card.Name,
-                    SetName = h.Card.SetName,
-                    ManaCost = h.Card.ManaCost,
 
+                    ManaCost = h.Card.ManaCost,
+                    ManaValue = h.Card.ManaValue,
+
+                    SetName = h.Card.SetName,
                     Rarity = h.Card.Rarity,
                     ImageUrl = h.Card.ImageUrl
                 },

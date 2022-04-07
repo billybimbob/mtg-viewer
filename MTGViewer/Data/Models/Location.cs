@@ -13,7 +13,6 @@ namespace MTGViewer.Data;
 [Index(nameof(Name), nameof(Id))] // could be updated often
 public abstract class Location : Concurrent
 {
-    [Key]
     [JsonIgnore]
     public int Id { get; init; }
 
@@ -100,6 +99,7 @@ public class Box : Storage
 }
 
 
+[Index(nameof(Name), nameof(Id))]
 public class Bin
 {
     [JsonIgnore]
