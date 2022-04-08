@@ -306,6 +306,15 @@ internal sealed class OriginTranslator<TOrigin, TEntity>
 
     private bool TryAddOriginProperty(MemberExpression member)
     {
+        if (_origin.Type == member.Expression?.Type)
+        {
+            var originMember = Expression.MakeMemberAccess(_origin, member.Member);
+
+            _translations.Add(member, originMember);
+
+            return true;
+        }
+
         const BindingFlags instance = BindingFlags.Instance | BindingFlags.Public;
 
         var property = _origin.Type

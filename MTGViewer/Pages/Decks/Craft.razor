@@ -92,9 +92,9 @@ else
     </div>
 </div>
 
-<CardFilter @bind-SearchName="Filters.SearchName"
-    Color="Filters.PickedColors"
-    ColorChanged="Filters.ToggleColor"
+<CardFilter
+    @bind-TextFilter="Filters.TextFilter"
+    @bind-Color="Filters.PickedColors"
     IsDisabled="IsLoading || BuildOption is not BuildType.Theorycrafting" />
 
 

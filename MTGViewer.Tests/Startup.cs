@@ -87,6 +87,8 @@ public class Startup
                 .AddFormatter<CardText>()
                 .AddTranslator<ManaTranslator>());
 
+        services.AddSingleton<ParseTextFilter>();
+
         services
             .AddSingleton<IMtgServiceProvider, MtgServiceProvider>()
             .AddScoped<ICardService>(provider => provider

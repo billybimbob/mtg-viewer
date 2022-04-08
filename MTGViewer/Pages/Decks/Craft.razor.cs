@@ -337,15 +337,29 @@ public partial class Craft : OwningComponentBase
     {
         var cards = dbContext.Cards.AsQueryable();
 
-        var searchName = filters.SearchName;
-        var pickedColors = filters.PickedColors;
+        var name = filters.Name?.ToLower();
+        var text = filters.Text?.ToLower();
 
-        if (!string.IsNullOrWhiteSpace(searchName))
+        if (!string.IsNullOrWhiteSpace(name))
         {
             cards = cards
-                .Where(c => c.Name.ToLower()
-                    .Contains(searchName.ToLower()));
+                .Where(c => c.Name.ToLower().Contains(name));
         }
+
+        if (!string.IsNullOrWhiteSpace(text))
+        {
+            cards = cards
+                .Where(c => c.Text != null
+                    && c.Text.ToLower().Contains(text));
+        }
+
+        foreach (var type in filters.Types)
+        {
+            cards = cards
+                .Where(c => c.Type.ToLower().Contains(type.ToLower()));
+        }
+
+        var pickedColors = filters.PickedColors;
 
         if (pickedColors is not Color.None)
         {
@@ -531,10 +545,86 @@ public partial class Craft : OwningComponentBase
             FilterChanged?.Invoke(this, EventArgs.Empty);
         }
 
-        private string? _searchName;
-        public string? SearchName
+        private string? _name;
+        public string? Name
         {
-            get => _searchName;
+            get => _name;
+            private set
+            {
+                if (string.IsNullOrWhiteSpace(value))
+                {
+                    value = null;
+                }
+
+                if (value?.Length > TextFilter.TextLimit)
+                {
+                    return;
+                }
+
+                _name = value;
+            }
+        }
+
+        private string[] _types = Array.Empty<string>();
+        public string[] Types
+        {
+            get => _types;
+            private set
+            {
+                if (value.Length <= TextFilter.TypeLimit)
+                {
+                    _types = value;
+                }
+            }
+        }
+
+        private string? _text;
+        public string? Text
+        {
+            get => _text;
+            private set
+            {
+                if (string.IsNullOrWhiteSpace(value))
+                {
+                    value = null;
+                }
+
+                if (value?.Length > TextFilter.TextLimit)
+                {
+                    return;
+                }
+
+                _text = value;
+            }
+        }
+
+        public TextFilter TextFilter
+        {
+            get => new TextFilter(_name, _types, _text);
+            set
+            {
+                if (_pendingChanges || TextFilter == value)
+                {
+                    return;
+                }
+
+                var (name, types, text) = value;
+
+                _name = name;
+                _types = types ?? Array.Empty<string>();
+                _text = text;
+
+                Seek = null;
+                Direction = SeekDirection.Forward;
+
+                FilterChanged?.Invoke(this, EventArgs.Empty);
+            }
+        }
+
+        private Color _pickedColors;
+        public Color PickedColors
+        {
+            get => _pickedColors;
             set
             {
                 if (_pendingChanges)
@@ -542,35 +632,20 @@ public partial class Craft : OwningComponentBase
                     return;
                 }
 
-                Seek = null;
+                if (_pickedColors.HasFlag(value))
+                {
+                    _pickedColors &= ~value;
+                }
+                else
+                {
+                    _pickedColors |= value;
+                }
 
-                _searchName = value;
+                Seek = null;
+                Direction = SeekDirection.Forward;
 
                 FilterChanged?.Invoke(this, EventArgs.Empty);
             }
-        }
-
-        public Color PickedColors { get; private set; }
-
-        public void ToggleColor(Color color)
-        {
-            if (_pendingChanges)
-            {
-                return;
-            }
-
-            if (PickedColors.HasFlag(color))
-            {
-                PickedColors &= ~color;
-            }
-            else
-            {
-                PickedColors |= color;
-            }
-
-            Seek = null;
-
-            FilterChanged?.Invoke(this, EventArgs.Empty);
         }
     }
 
@@ -694,7 +769,8 @@ public partial class Craft : OwningComponentBase
         }
 
         if (!_deckContext.CanSave()
-            && (deck.Wants.Any() || deck.Givebacks.Any()))
+            && (deck.Wants.Any(w => w.Copies > 0)
+                || deck.Givebacks.Any(g => g.Copies > 0)))
         {
             return deck;
         }

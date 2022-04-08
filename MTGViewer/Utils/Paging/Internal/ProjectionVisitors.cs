@@ -5,9 +5,11 @@ using Microsoft.EntityFrameworkCore.Query;
 
 namespace System.Paging.Query;
 
+
 internal record SelectResult<TSource, TResult>(
     IQueryable<TSource> Query,
     Expression<Func<TSource, TResult>> Selector);
+
 
 internal record SelectResult(IQueryable Query, LambdaExpression Selector);
 

@@ -12,7 +12,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 using MTGViewer.Data;
-using MTGViewer.Pages.Shared;
 using MTGViewer.Services;
 
 namespace MTGViewer.Pages.Cards;
@@ -23,6 +22,18 @@ public sealed partial class Collection : ComponentBase, IDisposable
     [Parameter]
     [SupplyParameterFromQuery]
     public string? Search { get; set; }
+
+    [Parameter]
+    [SupplyParameterFromQuery]
+    public string? Name { get; set; }
+
+    [Parameter]
+    [SupplyParameterFromQuery]
+    public string? Text { get; set; }
+
+    [Parameter]
+    [SupplyParameterFromQuery]
+    public string[]? Types { get; set; }
 
     [Parameter]
     [SupplyParameterFromQuery]
@@ -68,7 +79,7 @@ public sealed partial class Collection : ComponentBase, IDisposable
 
 
     private readonly CancellationTokenSource _cancel = new();
-    private readonly Dictionary<string, object?> _newFilters = new(4);
+    private readonly Dictionary<string, object?> _newFilters = new(5);
 
     private PersistingComponentStateSubscription _persistSubscription;
 
@@ -214,14 +225,16 @@ public sealed partial class Collection : ComponentBase, IDisposable
 
     internal sealed class FilterEventArgs : EventArgs
     {
-        private readonly KeyValuePair<string, object?>[] _changes;
+        public IEnumerable<KeyValuePair<string, object?>> Changes { get; }
 
-        public FilterEventArgs(params KeyValuePair<string, object?>[] changes)
+        public FilterEventArgs(IEnumerable<KeyValuePair<string, object?>> changes)
         {
-            _changes = changes;
+            Changes = changes;
         }
 
-        public IEnumerable<KeyValuePair<string, object?>> Changes => _changes;
+        public FilterEventArgs(params KeyValuePair<string, object?>[] changes)
+            : this(changes.AsEnumerable())
+        { }
     }
 
 
@@ -229,46 +242,105 @@ public sealed partial class Collection : ComponentBase, IDisposable
     {
         public event EventHandler<FilterEventArgs>? FilterChanged;
 
-        private string? _searchName;
-        public string? SearchName
-        {
-            get => _searchName;
-            set
-            {
-                value = ValidatedSearchName(value);
 
-                if (value == _searchName)
+        private string? _name;
+        public string? Name
+        {
+            get => _name;
+            private set
+            {
+                if (string.IsNullOrWhiteSpace(value))
+                {
+                    value = null;
+                }
+
+                if (value?.Length > TextFilter.TextLimit)
                 {
                     return;
                 }
 
+                _name = value;
+            }
+        }
+
+
+        private string[] _types = Array.Empty<string>();
+        public string[] Types
+        {
+            get => _types;
+            private set
+            {
+                if (value.Length <= TextFilter.TypeLimit)
+                {
+                    _types = value;
+                }
+            }
+        }
+
+
+        private string? _text;
+        public string? Text
+        {
+            get => _text;
+            private set
+            {
+                if (string.IsNullOrWhiteSpace(value))
+                {
+                    value = null;
+                }
+
+                if (value?.Length > TextFilter.TextLimit)
+                {
+                    return;
+                }
+
+                _text = value;
+            }
+        }
+
+
+        public TextFilter TextFilter
+        {
+            get => new TextFilter(_name, _types, _text);
+            set
+            {
                 if (FilterChanged is null)
                 {
                     return;
                 }
 
-                var args = new FilterEventArgs(
-                    KeyValuePair.Create(nameof(Collection.Search), value as object),
-                    KeyValuePair.Create(nameof(Collection.Seek), null as object),
-                    KeyValuePair.Create(nameof(Collection.Direction), null as object));
+                if (TextFilter == value)
+                {
+                    return;
+                }
 
-                FilterChanged.Invoke(this, args);
+                var args = new FilterEventArgs(ChangedFilters(value));
+
+                FilterChanged?.Invoke(this, args);
             }
         }
 
-        private string? ValidatedSearchName(string? value)
+
+        private IEnumerable<KeyValuePair<string, object?>> ChangedFilters(TextFilter filter)
         {
-            if (string.IsNullOrWhiteSpace(value))
+            if (Name != filter.Name)
             {
-                value = null;
+                yield return KeyValuePair.Create(nameof(Collection.Name), filter.Name as object);
             }
 
-            if (value?.Length > CardFilter.SearchNameLimit || value == _searchName)
+            if (!Types.SequenceEqual(filter.Types ?? Array.Empty<string>()))
             {
-                return _searchName;
+                yield return KeyValuePair.Create(nameof(Collection.Types), filter.Types as object);
             }
 
-            return value;
+            if (Text != filter.Text)
+            {
+                yield return KeyValuePair.Create(nameof(Collection.Text), filter.Text as object);
+            }
+
+            yield return KeyValuePair.Create(nameof(Collection.Seek), null as object);
+
+            yield return KeyValuePair.Create(nameof(Collection.Direction), null as object);
         }
 
 
@@ -337,27 +409,30 @@ public sealed partial class Collection : ComponentBase, IDisposable
         }
 
 
-        public Color PickedColors { get; private set; }
-
-        public void ToggleColor(Color value)
+        private Color _pickedColors;
+        public Color PickedColors
         {
-            if (FilterChanged is null)
+            get => _pickedColors;
+            set
             {
-                return;
+                if (FilterChanged is null)
+                {
+                    return;
+                }
+
+                value = PickedColors.HasFlag(value)
+                    ? PickedColors & ~value
+                    : PickedColors | value;
+
+                var color = value is Color.None ? null : (int?)value;
+
+                var newValues = new FilterEventArgs(
+                    KeyValuePair.Create(nameof(Collection.Colors), color as object),
+                    KeyValuePair.Create(nameof(Collection.Seek), null as object),
+                    KeyValuePair.Create(nameof(Collection.Direction), null as object));
+
+                FilterChanged.Invoke(this, newValues);
             }
-
-            value = PickedColors.HasFlag(value)
-                ? PickedColors & ~value
-                : PickedColors | value;
-
-            var color = value is Color.None ? null : (int?)value;
-
-            var newValues = new FilterEventArgs(
-                KeyValuePair.Create(nameof(Collection.Colors), color as object),
-                KeyValuePair.Create(nameof(Collection.Seek), null as object),
-                KeyValuePair.Create(nameof(Collection.Direction), null as object));
-
-            FilterChanged.Invoke(this, newValues);
         }
 
 
@@ -368,9 +443,11 @@ public sealed partial class Collection : ComponentBase, IDisposable
                 return;
             }
 
-            _searchName = ValidatedSearchName(parameters.Search);
+            Name = parameters.Name;
+            Text = parameters.Text;
+            Types = parameters.Types ?? Array.Empty<string>();
 
-            PickedColors = (Color)parameters.Colors;
+            _pickedColors = (Color)parameters.Colors;
 
             if (PageSize == 0)
             {
@@ -378,7 +455,6 @@ public sealed partial class Collection : ComponentBase, IDisposable
             }
 
             OrderBy = parameters.Order ?? DefaultOrder;
-
             Seek = parameters.Seek;
             Direction = (SeekDirection)parameters.Direction;
         }
@@ -393,16 +469,30 @@ public sealed partial class Collection : ComponentBase, IDisposable
     {
         var cards = dbContext.Cards.AsQueryable();
 
-        var searchName = filters.SearchName;
-        var pickedColors = filters.PickedColors;
+        var name = filters.Name?.ToLower();
+        var text = filters.Text?.ToLower();
 
-        if (!string.IsNullOrWhiteSpace(searchName))
+        if (!string.IsNullOrWhiteSpace(name))
         {
             // keep eye on perf, postgres is slow here
             cards = cards
-                .Where(c => c.Name.ToLower()
-                    .Contains(searchName.ToLower()));
+                .Where(c => c.Name.ToLower().Contains(name));
         }
+
+        if (!string.IsNullOrWhiteSpace(text))
+        {
+            cards = cards
+                .Where(c => c.Text != null
+                    && c.Text.ToLower().Contains(text));
+        }
+
+        foreach (var type in filters.Types)
+        {
+            cards = cards
+                .Where(c => c.Type.ToLower().Contains(type.ToLower()));
+        }
+
+        var pickedColors = filters.PickedColors;
 
         if (pickedColors is not Color.None)
         {
