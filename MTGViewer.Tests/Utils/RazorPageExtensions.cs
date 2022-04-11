@@ -18,7 +18,7 @@ public static class RazorPageExtensions
 
     private static IEnumerable<System.Type> GetPageModels()
     {
-        var mtgViewerRef = typeof(MTGViewer.Program);
+        var mtgViewerRef = typeof(MTGViewer.App);
         var pageModel = typeof(PageModel);
 
         return mtgViewerRef.Assembly.ExportedTypes

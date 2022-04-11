@@ -4,13 +4,9 @@
     ViewData["Title"] = $"{Model.Box.Name} - Details";
 }
 
-@using Microsoft.AspNetCore.Authorization
-@using Microsoft.AspNetCore.Identity
-@using MTGViewer.Areas.Identity.Data
-
+@inject SymbolFormatter MtgSymbols
 @inject IAuthorizationService AuthorizationService
 @inject SignInManager<CardUser> SignInManager
-@inject SymbolFormatter MtgSymbols
 
 
 <h1> @Model.Box.Name - @Model.Box.Bin.Name </h1>

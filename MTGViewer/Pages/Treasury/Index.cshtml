@@ -4,10 +4,6 @@
     ViewData["Title"] = $"Treasury";
 }
 
-@using Microsoft.AspNetCore.Authorization
-@using Microsoft.AspNetCore.Identity
-@using MTGViewer.Areas.Identity.Data
-
 @inject IAuthorizationService AuthorizationService
 @inject SignInManager<CardUser> SignInManager
 @inject SymbolFormatter MtgSymbols

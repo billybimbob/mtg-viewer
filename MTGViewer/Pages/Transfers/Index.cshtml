@@ -4,9 +4,6 @@
     ViewData["Title"] = $"{Model.UserName} - Trades";
 }
 
-@using Microsoft.AspNetCore.Authorization
-@using MTGViewer.Areas.Identity.Data
-
 @inject SymbolFormatter MtgSymbols
 @inject CardText CardText
 @inject IAuthorizationService AuthorizationService

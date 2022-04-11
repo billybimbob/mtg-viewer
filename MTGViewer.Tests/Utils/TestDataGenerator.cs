@@ -108,6 +108,24 @@ public class TestDataGenerator
     }
 
 
+    public async Task<Deck> CreateEmptyDeckAsync(int numCards = 0)
+    {
+        var users = await _dbContext.Users.ToListAsync();
+        var owner = users[_random.Next(users.Count)];
+
+        var newDeck = new Deck
+        {
+            Name = "Test Deck",
+            Owner = owner
+        };
+
+        _dbContext.Decks.Attach(newDeck);
+
+        await _dbContext.SaveChangesAsync();
+        _dbContext.ChangeTracker.Clear();
+
+        return newDeck;
+    }
 
     public async Task<Deck> CreateDeckAsync(int numCards = 0)
     {

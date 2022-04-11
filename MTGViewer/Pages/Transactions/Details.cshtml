@@ -3,9 +3,6 @@
 @{
     ViewData["Title"] = $"Transaction {Model.AppliedAt.ToShortDateString()}";
 }
-
-@using Microsoft.AspNetCore.Authorization
-@using MTGViewer.Areas.Identity.Data
 @using MTGViewer.Data.Internal
 
 @inject IAuthorizationService AuthorizationService
@@ -34,7 +31,7 @@ else if (Model.Transaction.CanDelete)
     <div class="btn-group mb-3" role="group">
         <partial name="_TimeZonePartial" for="TimeZone"/>
 
-        <button class="btn btn-danger" disabled> Delete </button>
+        <button class="btn btn-danger" type="button" disabled> Delete </button>
     </div>
 }
 else

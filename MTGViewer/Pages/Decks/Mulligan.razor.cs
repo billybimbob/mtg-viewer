@@ -348,8 +348,6 @@ public partial class Mulligan : OwningComponentBase
             = new DefaultObjectPool<CardCopy>(
                 new DefaultPooledObjectPolicy<CardCopy>());
 
-        private static readonly Random _random = new();
-
         private readonly ICollection<CardCopy> _cardOptions;
 
         private int _cardsInDeck;
@@ -416,7 +414,7 @@ public partial class Mulligan : OwningComponentBase
                 return null;
             }
 
-            int picked = _random.Next(0, _cardsInDeck);
+            int picked = Random.Shared.Next(0, _cardsInDeck);
 
             using var e = _cardOptions.GetEnumerator();
 

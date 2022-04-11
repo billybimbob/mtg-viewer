@@ -25,7 +25,7 @@ public class Startup
             .ConfigureAppConfiguration(config =>
             {
                 config.AddJsonFile("appsettings.Test.json", optional: true, reloadOnChange: true);
-                config.AddUserSecrets<MTGViewer.Program>();
+                config.AddUserSecrets<MTGViewer.App>();
             });
     }
 
@@ -55,14 +55,14 @@ public class Startup
         {
             case DatabaseOptions.Sqlite:
                 services
-                    .AddDbContext<CardDbContext>(TestFactory.SqliteInMemory)
+                    .AddDbContextFactory<CardDbContext>(TestFactory.SqliteInMemory, ServiceLifetime.Scoped)
                     .AddDbContext<UserDbContext>(TestFactory.SqliteInMemory);
                 break;
 
             case DatabaseOptions.InMemory:
             default:
                 services
-                    .AddDbContext<CardDbContext>(TestFactory.InMemoryDatabase)
+                    .AddDbContextFactory<CardDbContext>(TestFactory.InMemoryDatabase, ServiceLifetime.Scoped)
                     .AddDbContext<UserDbContext>(TestFactory.InMemoryDatabase);
                 break;
         }
@@ -85,9 +85,8 @@ public class Startup
         services
             .AddSymbols(options => options
                 .AddFormatter<CardText>()
-                .AddTranslator<ManaTranslator>());
-
-        services.AddSingleton<ParseTextFilter>();
+                .AddTranslator<ManaTranslator>())
+            .AddSingleton<ParseTextFilter>();
 
         services
             .AddSingleton<IMtgServiceProvider, MtgServiceProvider>()

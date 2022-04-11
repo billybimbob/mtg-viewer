@@ -5,7 +5,7 @@ using Microsoft.Extensions.Logging;
 
 namespace MTGViewer.Middleware;
 
-public class OperationCancelledFilter : ExceptionFilterAttribute
+public class OperationCancelledFilter : IExceptionFilter
 {
     private readonly ILogger<OperationCancelledFilter> _logger;
 
@@ -14,7 +14,7 @@ public class OperationCancelledFilter : ExceptionFilterAttribute
         _logger = logger;
     }
 
-    public override void OnException(ExceptionContext context)
+    public void OnException(ExceptionContext context)
     {
         if (context.Exception is OperationCanceledException)
         {

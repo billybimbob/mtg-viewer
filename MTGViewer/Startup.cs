@@ -39,6 +39,7 @@ public class Startup
             .AddMvcOptions(options =>
             {
                 options.Filters.Add<OperationCancelledFilter>();
+                options.Filters.Add<ContentSecurityPolicyFilter>();
             })
             .AddCookieTempDataProvider(options =>
             {
@@ -62,9 +63,8 @@ public class Startup
         services
             .AddSymbols(options => options
                 .AddFormatter<CardText>(isDefault: true)
-                .AddTranslator<ManaTranslator>(isDefault: true));
-
-        services.AddSingleton<ParseTextFilter>();
+                .AddTranslator<ManaTranslator>(isDefault: true))
+            .AddSingleton<ParseTextFilter>();
 
         services
             .AddSingleton<IMtgServiceProvider, MtgServiceProvider>()
@@ -116,8 +116,6 @@ public class Startup
 
         app.UseAuthentication();
         app.UseAuthorization();
-
-        app.UseMiddleware<ContentSecurityPolicy>();
 
         app.UseEndpoints(endpoints =>
         {

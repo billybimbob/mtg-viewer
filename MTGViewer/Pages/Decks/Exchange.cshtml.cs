@@ -68,6 +68,8 @@ public class ExchangeModel : PageModel
 
         if (!deck.HasWants && !deck.Givebacks.Any())
         {
+            PostMessage = $"There are no pending requests for {deck.Name}";
+
             return RedirectToPage("Details", new { id });
         }
 

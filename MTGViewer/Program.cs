@@ -1,20 +1,14 @@
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.Extensions.Hosting;
+using Microsoft.AspNetCore.Builder;
+using MTGViewer;
 
-namespace MTGViewer;
+var builder = WebApplication.CreateBuilder(args);
 
-public class Program
-{
-    public static async Task Main(string[] args)
-    {
-        await Host
-            .CreateDefaultBuilder(args)
-            .ConfigureWebHostDefaults(webBuilder =>
-            {
-                webBuilder.UseStartup<Startup>();
-            })
-            .Build()
-            .RunAsync();
-    }
-}
+var startup = new Startup(builder.Configuration, builder.Environment);
+
+startup.ConfigureServices(builder.Services);
+
+var app = builder.Build();
+
+startup.Configure(app);
+
+await app.RunAsync();
