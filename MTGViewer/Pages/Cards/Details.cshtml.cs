@@ -30,6 +30,26 @@ public class DetailsModel : PageModel
 
     public string? ReturnUrl { get; private set; }
 
+    private IEnumerable<KeyValuePair<string, string?>> CardParameters
+    {
+        get
+        {
+            yield return KeyValuePair.Create(nameof(Create.Name), (string?)Card.Name);
+
+            yield return KeyValuePair.Create(nameof(Create.Colors), ((int?)Card.Color)?.ToString());
+
+            yield return KeyValuePair.Create(nameof(Create.Cmc), Card.ManaValue?.ToString());
+
+            yield return KeyValuePair.Create(nameof(Create.ReturnUrl), ReturnUrl);
+        }
+    }
+
+
+    public string GetCreateCardUri()
+    {
+        return QueryHelpers.AddQueryString("/Cards/Create", CardParameters);
+    }
+
 
     public async Task<IActionResult> OnGetAsync(string id, bool flip, string? returnUrl, CancellationToken cancel)
     {
@@ -54,24 +74,6 @@ public class DetailsModel : PageModel
         }
 
         return Page();
-    }
-
-
-    public string GetCreateCardUri()
-    {
-        return QueryHelpers.AddQueryString("/Cards/Create", GetCardParameters());
-    }
-
-
-    private IEnumerable<KeyValuePair<string, string?>> GetCardParameters()
-    {
-        yield return KeyValuePair.Create(nameof(Create.Name), (string?)Card.Name);
-
-        yield return KeyValuePair.Create(nameof(Create.Colors), ((int?)Card.Color)?.ToString());
-
-        yield return KeyValuePair.Create(nameof(Create.Cmc), Card.ManaValue?.ToString());
-
-        yield return KeyValuePair.Create(nameof(Create.ReturnUrl), ReturnUrl);
     }
 
 

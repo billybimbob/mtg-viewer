@@ -270,6 +270,11 @@ public sealed partial class Collection : ComponentBase, IDisposable
             get => _types;
             private set
             {
+                if (value.Any(s => s.Any(char.IsWhiteSpace)))
+                {
+                    value = value.SelectMany(s => s.Split()).ToArray();
+                }
+
                 if (value.Length <= TextFilter.TypeLimit)
                 {
                     _types = value;
@@ -435,6 +440,14 @@ public sealed partial class Collection : ComponentBase, IDisposable
             }
         }
 
+        private void SetColor(int value)
+        {
+            _pickedColors = Enum
+                .GetValues<Color>()
+                .Select(c => c & (Color)value)
+                .Aggregate((color, c) => color | c);
+        }
+
 
         public void OnParametersChanged(object? sender, EventArgs _)
         {
@@ -447,7 +460,7 @@ public sealed partial class Collection : ComponentBase, IDisposable
             Text = parameters.Text;
             Types = parameters.Types ?? Array.Empty<string>();
 
-            _pickedColors = (Color)parameters.Colors;
+            SetColor(parameters.Colors);
 
             if (PageSize == 0)
             {

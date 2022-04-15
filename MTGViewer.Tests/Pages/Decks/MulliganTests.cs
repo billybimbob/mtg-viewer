@@ -45,7 +45,7 @@ public class MulliganTests : IAsyncLifetime
         _testContext.AddFakePersistentComponentState();
 
         _testContext.Services.AddFallbackServiceProvider(_services);
-        _testContext.Services.AddScoped<UserManager<CardUser>>((_) => _userManager);
+        _testContext.Services.AddScoped(_ => _userManager);
 
         await _testGen.SeedAsync();
     }
@@ -82,11 +82,11 @@ public class MulliganTests : IAsyncLifetime
         var deck = await _testGen.CreateEmptyDeckAsync();
 
         var user = await _userManager.Users.FirstAsync(u => u.Id == deck.OwnerId);
-        var claims = await _claimsFactory.CreateAsync(user);
+        var identity = await _claimsFactory.CreateAsync(user);
 
         var auth = _testContext.AddTestAuthorization();
 
-        auth.SetClaims(claims.Claims.ToArray());
+        auth.SetClaims(identity.Claims.ToArray());
 
         var cut = _testContext.RenderComponent<Mulligan>(p => p
             .Add(m => m.DeckId, deck.Id));
@@ -103,11 +103,11 @@ public class MulliganTests : IAsyncLifetime
     public async Task LoadData_InvalidDeck_Redirect()
     {
         var user = await _userManager.Users.FirstAsync();
-        var claims = await _claimsFactory.CreateAsync(user);
+        var identity = await _claimsFactory.CreateAsync(user);
 
         var auth = _testContext.AddTestAuthorization();
 
-        auth.SetClaims(claims.Claims.ToArray());
+        auth.SetClaims(identity.Claims.ToArray());
 
         var invalidDeck = await _services
             .GetRequiredService<CardDbContext>().Decks
@@ -126,95 +126,86 @@ public class MulliganTests : IAsyncLifetime
     }
 
 
-    [Fact]
-    public async Task PickMulligan_NoneType_NoCards()
+    private async Task<Deck> AddDeckAndSameUserAsync()
     {
         var deck = await _testGen.CreateDeckAsync(numCards: 10);
 
         var user = await _userManager.Users.FirstAsync(u => u.Id == deck.OwnerId);
-        var claims = await _claimsFactory.CreateAsync(user);
+        var identity = await _claimsFactory.CreateAsync(user);
 
         var auth = _testContext.AddTestAuthorization();
 
-        auth.SetClaims(claims.Claims.ToArray());
+        auth.SetClaims(identity.Claims.ToArray());
+
+        return deck;
+    }
+
+
+    [Fact]
+    public async Task PickMulligan_NoneType_NoCards()
+    {
+        var deck = await AddDeckAndSameUserAsync();
 
         var cut = _testContext.RenderComponent<Mulligan>(p => p
             .Add(m => m.DeckId, deck.Id));
 
-        var chooseMulligan = cut.WaitForElement("select:not([disabled])");
+        var chooseMulligan = cut.Find("select:not([disabled])");
 
         chooseMulligan.Change(Mulligan.MulliganType.None);
 
-        cut.WaitForState(() => cut.FindAll("img").Count == 0);
+        var images = cut.FindAll("img");
+
+        Assert.Equal(0, images.Count);
     }
 
 
     [Fact]
     public async Task PickMulligan_BuiltType_ShowCards()
     {
-        var deck = await _testGen.CreateDeckAsync(numCards: 10);
-
-        var user = await _userManager.Users.FirstAsync(u => u.Id == deck.OwnerId);
-        var claims = await _claimsFactory.CreateAsync(user);
-
-        var auth = _testContext.AddTestAuthorization();
-
-        auth.SetClaims(claims.Claims.ToArray());
+        var deck = await AddDeckAndSameUserAsync();
 
         var cut = _testContext.RenderComponent<Mulligan>(p => p
             .Add(m => m.DeckId, deck.Id));
 
-        var chooseMulligan = cut.WaitForElement("select:not([disabled])");
+        var chooseMulligan = cut.Find("select:not([disabled])");
 
         chooseMulligan.Change(Mulligan.MulliganType.Built);
 
-        cut.WaitForState(() => cut.FindAll("img").Count > 0);
+        var images = cut.FindAll("img");
+
+        Assert.True(images.Count > 0);
     }
 
 
     [Fact]
     public async Task PickMulligan_TheorycraftType_ShowCards()
     {
-        var deck = await _testGen.CreateDeckAsync(numCards: 10);
-
-        var user = await _userManager.Users.FirstAsync(u => u.Id == deck.OwnerId);
-        var claims = await _claimsFactory.CreateAsync(user);
-
-        var auth = _testContext.AddTestAuthorization();
-
-        auth.SetClaims(claims.Claims.ToArray());
+        var deck = await AddDeckAndSameUserAsync();
 
         var cut = _testContext.RenderComponent<Mulligan>(p => p
             .Add(m => m.DeckId, deck.Id));
 
-        var chooseMulligan = cut.WaitForElement("select:not([disabled])");
+        var chooseMulligan = cut.Find("select:not([disabled])");
 
         chooseMulligan.Change(Mulligan.MulliganType.Theorycraft);
 
-        cut.WaitForState(() => cut.FindAll("img").Count > 0);
+        var images = cut.FindAll("img");
+
+        Assert.True(images.Count > 0);
     }
 
 
     [Fact]
     public async Task PickMulligan_DrawCard_AddCard()
     {
-        var deck = await _testGen.CreateDeckAsync(numCards: 10);
-
-        var user = await _userManager.Users.FirstAsync(u => u.Id == deck.OwnerId);
-        var claims = await _claimsFactory.CreateAsync(user);
-
-        var auth = _testContext.AddTestAuthorization();
-
-        auth.SetClaims(claims.Claims.ToArray());
+        var deck = await AddDeckAndSameUserAsync();
 
         var cut = _testContext.RenderComponent<Mulligan>(p => p
             .Add(m => m.DeckId, deck.Id));
 
-        var chooseMulligan = cut.WaitForElement("select:not([disabled])");
+        var chooseMulligan = cut.Find("select:not([disabled])");
 
         chooseMulligan.Change(Mulligan.MulliganType.Theorycraft);
-
-        cut.WaitForState(() => cut.FindAll("img").Count > 0);
 
         var drawCard = cut.Find("button[title=\"Draw a Card\"]");
         int beforeCards = cut.FindAll("img").Count;
@@ -230,57 +221,47 @@ public class MulliganTests : IAsyncLifetime
     [Fact]
     public async Task PickMulligan_BackButton_ClearCards()
     {
-        var deck = await _testGen.CreateDeckAsync(numCards: 10);
-
-        var user = await _userManager.Users.FirstAsync(u => u.Id == deck.OwnerId);
-        var claims = await _claimsFactory.CreateAsync(user);
-
-        var auth = _testContext.AddTestAuthorization();
-
-        auth.SetClaims(claims.Claims.ToArray());
+        var deck = await AddDeckAndSameUserAsync();
 
         var cut = _testContext.RenderComponent<Mulligan>(p => p
             .Add(m => m.DeckId, deck.Id));
 
-        var chooseMulligan = cut.WaitForElement("select:not([disabled])");
+        var chooseMulligan = cut.Find("select:not([disabled])");
 
         chooseMulligan.Change(Mulligan.MulliganType.Theorycraft);
 
-        cut.WaitForState(() => cut.FindAll("img").Count > 0);
-
         var backButton = cut.Find("button[title=\"Choose Mulligan Type\"]");
+        var beforeImages = cut.FindAll("img");
 
         backButton.Click();
 
-        cut.WaitForState(() => cut.FindAll("img").Count == 0);
+        var afterImages = cut.FindAll("img");
+
+        Assert.True(beforeImages.Count > 0);
+        Assert.Equal(0, afterImages.Count);
     }
 
 
     [Fact]
     public async Task PickMulligan_NewHand_ShowCards()
     {
-        var deck = await _testGen.CreateDeckAsync(numCards: 10);
-
-        var user = await _userManager.Users.FirstAsync(u => u.Id == deck.OwnerId);
-        var claims = await _claimsFactory.CreateAsync(user);
-
-        var auth = _testContext.AddTestAuthorization();
-
-        auth.SetClaims(claims.Claims.ToArray());
+        var deck = await AddDeckAndSameUserAsync();
 
         var cut = _testContext.RenderComponent<Mulligan>(p => p
             .Add(m => m.DeckId, deck.Id));
 
-        var chooseMulligan = cut.WaitForElement("select:not([disabled])");
+        var chooseMulligan = cut.Find("select:not([disabled])");
 
         chooseMulligan.Change(Mulligan.MulliganType.Theorycraft);
 
-        cut.WaitForState(() => cut.FindAll("img").Count > 0);
-
         var newHand = cut.Find("button[title=\"Get a New Hand\"]");
+        var beforeImages = cut.FindAll("img");
 
         newHand.Click();
 
-        cut.WaitForState(() => cut.FindAll("img").Count > 0);
+        var afterImages = cut.FindAll("img");
+
+        Assert.True(beforeImages.Count > 0);
+        Assert.True(afterImages.Count > 0);
     }
 }

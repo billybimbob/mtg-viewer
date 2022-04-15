@@ -30,7 +30,7 @@ namespace MTGViewer.Pages.Decks;
 public partial class Craft : OwningComponentBase
 {
     [Parameter]
-    public int DeckId { get; set; } = default;
+    public int DeckId { get; set; }
 
     [CascadingParameter]
     protected Task<AuthenticationState> AuthState { get; set; } = default!;
@@ -1229,10 +1229,6 @@ public partial class Craft : OwningComponentBase
             {
                 dbQuantities.Add(quantity);
             }
-            else if (!isTracked && deckContext.IsModified(quantity))
-            {
-                dbQuantities.Attach(quantity).State = EntityState.Modified;
-            }
             else if (isEmpty && isTracked)
             {
                 dbQuantities.Remove(quantity);
@@ -1240,6 +1236,10 @@ public partial class Craft : OwningComponentBase
             else if (!isEmpty && !isTracked)
             {
                 dbQuantities.Attach(quantity);
+            }
+            else if (deckContext.IsModified(quantity))
+            {
+                dbQuantities.Attach(quantity).State = EntityState.Modified;
             }
         }
     }

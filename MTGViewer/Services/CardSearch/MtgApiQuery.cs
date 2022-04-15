@@ -15,9 +15,11 @@ namespace MTGViewer.Services;
 
 public sealed class MtgApiQuery : IMTGQuery
 {
-    internal const char Or = '|';
-    internal const char And = ',';
+    public const char Or = '|';
+    public const char And = ',';
+
     internal const int Limit = 100;
+    internal const string RequiredAttributes = "multiverseId,imageUrl";
 
     public static readonly MethodInfo QueryMethod =
         typeof(MtgApiQuery)
@@ -39,12 +41,12 @@ public sealed class MtgApiQuery : IMTGQuery
     private readonly LoadingProgress _loadProgress;
 
     public MtgApiQuery(
-        ICardService service,
+        ICardService cardService,
         MtgApiFlipQuery flipQuery,
         PageSizes pageSizes,
         LoadingProgress loadProgress)
     {
-        _cardService = service;
+        _cardService = cardService;
         _flipQuery = flipQuery;
         _pageSize = pageSizes.Default;
         _loadProgress = loadProgress;
@@ -140,9 +142,7 @@ public sealed class MtgApiQuery : IMTGQuery
 
     private ICardService ApplyParameters(MtgCardSearch values)
     {
-        const string requiredAttributes = "multiverseId,imageUrl";
-
-        var cards = _cardService.Where(c => c.Contains, requiredAttributes);
+        var cards = _cardService.Where(c => c.Contains, RequiredAttributes);
 
         foreach (var parameter in values.Parameters.Values)
         {

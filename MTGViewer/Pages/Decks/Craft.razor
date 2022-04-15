@@ -177,9 +177,7 @@ else
         </section>
     </div>
 }
-
-
-@if (BuildOption is BuildType.Holds)
+else if (BuildOption is BuildType.Holds)
 {
     <div class="row">
         <section class="col-12 col-lg-7 pb-3">
@@ -261,7 +259,7 @@ else
 
 @code
 {
-    internal enum BuildType
+    public enum BuildType
     {
         Holds,
         Theorycrafting

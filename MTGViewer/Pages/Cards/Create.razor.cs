@@ -337,9 +337,9 @@ public partial class Create : OwningComponentBase
         }
 
         Query.Name = Name;
-        Query.Cmc = Cmc;
-        Query.Colors = (Color)Colors;
-        Query.Rarity = (Rarity?)Rarity;
+        Query.Cmc = Cmc < 0 ? null : Cmc;
+        Query.Colors = ValidatedColor(Colors);
+        Query.Rarity = ValidatedRarity(Rarity);
         Query.SetName = Set;
         Query.Type = Types;
         Query.Artist = Artist;
@@ -350,6 +350,24 @@ public partial class Create : OwningComponentBase
         Query.Flavor = Flavor;
 
         return SearchEdit.Validate();
+    }
+        
+
+    private static Color ValidatedColor(int value)
+    {
+        return Enum
+            .GetValues<Color>()
+            .Select(c => c & (Color)value)
+            .Aggregate((color, c) => color | c);
+    }
+
+
+    private static Rarity? ValidatedRarity(int? value)
+    {
+        return Enum
+            .GetValues<Rarity>()
+            .OfType<Rarity?>()
+            .FirstOrDefault(r => r == (Rarity?)value);
     }
 
 

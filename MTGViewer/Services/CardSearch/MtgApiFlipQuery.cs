@@ -16,11 +16,16 @@ namespace MTGViewer.Services;
 public sealed class MtgApiFlipQuery
 {
     private readonly ICardService _cardService;
+    private readonly int _pageSize;
     private readonly ILogger<MtgApiFlipQuery> _logger;
 
-    public MtgApiFlipQuery(ICardService cardService, ILogger<MtgApiFlipQuery> logger)
+    public MtgApiFlipQuery(
+        ICardService cardService,
+        PageSizes pageSizes,
+        ILogger<MtgApiFlipQuery> logger)
     {
         _cardService = cardService;
+        _pageSize = pageSizes.Default;
         _logger = logger;
     }
 
@@ -66,6 +71,9 @@ public sealed class MtgApiFlipQuery
             .Where(c => c.Name, card.Name)
             .Where(c => c.Set, card.Set)
             .Where(c => c.Layout, card.Layout)
+
+            .Where(c => c.PageSize, _pageSize)
+            .Where(c => c.Contains, MtgApiQuery.RequiredAttributes)
             .AllAsync();
 
         cancel.ThrowIfCancellationRequested();

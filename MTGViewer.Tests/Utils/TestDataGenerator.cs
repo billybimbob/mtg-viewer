@@ -169,6 +169,101 @@ public class TestDataGenerator
     }
 
 
+    public async Task<Deck> CreateReturnDeckAsync(int numCards = 0)
+    {
+        var users = await _dbContext.Users.ToListAsync();
+        var owner = users[_random.Next(users.Count)];
+        var cards = await _dbContext.Cards.ToListAsync();
+
+        if (numCards <= 0)
+        {
+            numCards = _random.Next(1, cards.Count / 2);
+        }
+
+        var deckCards = cards
+            .Select(card => (card, key: _random.Next(cards.Count)))
+            .OrderBy(ck => ck.key)
+            .Take(numCards)
+            .Select(ck => ck.card)
+            .ToList();
+
+        var newDeck = new Deck
+        {
+            Name = "Test Deck",
+            Owner = owner
+        };
+
+        var deckHolds = deckCards
+            .Select(c => new Hold
+            {
+                Card = c,
+                Location = newDeck,
+                Copies = _random.Next(1, 3)
+            });
+
+        _dbContext.Decks.Attach(newDeck);
+        _dbContext.Holds.AttachRange(deckHolds);
+
+        var deckReturns = newDeck.Holds
+            .Select(h => new Giveback
+            {
+                Card = h.Card,
+                Location = newDeck,
+                Copies = _random.Next(1, h.Copies)
+            });
+
+        _dbContext.Givebacks.AttachRange(deckReturns);
+
+        await _dbContext.SaveChangesAsync();
+        _dbContext.ChangeTracker.Clear();
+
+        return newDeck;
+    }
+
+
+
+    public async Task<Deck> CreateWantDeckAsync(int numCards = 0)
+    {
+        var users = await _dbContext.Users.ToListAsync();
+        var owner = users[_random.Next(users.Count)];
+        var cards = await _dbContext.Cards.ToListAsync();
+
+        if (numCards <= 0)
+        {
+            numCards = _random.Next(1, cards.Count / 2);
+        }
+
+        var deckCards = cards
+            .Select(card => (card, key: _random.Next(cards.Count)))
+            .OrderBy(ck => ck.key)
+            .Take(numCards)
+            .Select(ck => ck.card)
+            .ToList();
+
+        var newDeck = new Deck
+        {
+            Name = "Test Deck",
+            Owner = owner
+        };
+
+        var deckWants = deckCards
+            .Select(c => new Want
+            {
+                Card = c,
+                Location = newDeck,
+                Copies = _random.Next(1, 3)
+            });
+
+        _dbContext.Decks.Attach(newDeck);
+        _dbContext.Wants.AttachRange(deckWants);
+
+        await _dbContext.SaveChangesAsync();
+        _dbContext.ChangeTracker.Clear();
+
+        return newDeck;
+    }
+
+
     public async Task<Deck> CreateRequestDeckAsync()
     {
         var users = await _dbContext.Users.ToListAsync();
@@ -219,7 +314,7 @@ public class TestDataGenerator
             Owner = owner
         };
 
-        var takeRequests = targetCards
+        var wants = targetCards
             .Select(card => new Want
             {
                 Card = card,
@@ -229,7 +324,7 @@ public class TestDataGenerator
             .ToList();
 
         _dbContext.Decks.Attach(newDeck);
-        _dbContext.Wants.AttachRange(takeRequests);
+        _dbContext.Wants.AttachRange(wants);
 
         await _dbContext.SaveChangesAsync();
         _dbContext.ChangeTracker.Clear();

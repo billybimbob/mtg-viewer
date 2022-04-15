@@ -103,7 +103,9 @@ public class ImportTests : IAsyncLifetime
 
         await cut.InvokeAsync(() => fileInput.Instance.OnChange.InvokeAsync(file));
 
-        cut.WaitForElement("span.text-danger");
+        var errors = cut.FindAll("span.text-danger");
+
+        Assert.Equal(1, errors.Count);
     }
 
 
@@ -118,7 +120,9 @@ public class ImportTests : IAsyncLifetime
 
         await cut.InvokeAsync(() => fileInput.Instance.OnChange.InvokeAsync(file));
 
-        cut.WaitForElement("span.text-danger");
+        var errors = cut.FindAll("span.text-danger");
+
+        Assert.Equal(1, errors.Count);
     }
 
 
@@ -133,7 +137,9 @@ public class ImportTests : IAsyncLifetime
 
         await cut.InvokeAsync(() => fileInput.Instance.OnChange.InvokeAsync(file));
 
-        cut.WaitForElement("span.text-danger");
+        var errors = cut.FindAll("span.text-danger");
+
+        Assert.Equal(1, errors.Count);
     }
 
 
@@ -150,11 +156,14 @@ public class ImportTests : IAsyncLifetime
 
         var file = GetFileInput(validData);
 
-        cut.WaitForElement("button[type=\"submit\"][disabled]");
+        var beforeSubmit = cut.FindAll("button[type=\"submit\"][disabled]");
 
         await cut.InvokeAsync(() => fileInput.Instance.OnChange.InvokeAsync(file));
 
-        cut.WaitForElement("button[type=\"submit\"]:not([disabled])");
+        var afterSubmit = cut.FindAll("button[type=\"submit\"]:not([disabled])");
+
+        Assert.Equal(1, beforeSubmit.Count);
+        Assert.Equal(1, afterSubmit.Count);
     }
 
 

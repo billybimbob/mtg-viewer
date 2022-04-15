@@ -89,6 +89,11 @@ public class Startup
             .AddSingleton<ParseTextFilter>();
 
         services
+            .Configure<CardResultOptions>(config.GetSection(nameof(CardResultOptions)))
+            .AddSingleton<TestCardService>()
+            .AddScoped<TestMtgApiQuery>();
+
+        services
             .AddSingleton<IMtgServiceProvider, MtgServiceProvider>()
             .AddScoped<ICardService>(provider => provider
                 .GetRequiredService<IMtgServiceProvider>()

@@ -47,7 +47,9 @@ public class CollectionTests : IAsyncLifetime
     {
         var cut = _testContext.RenderComponent<Collection>();
 
-        cut.WaitForState(() => cut.FindAll("tbody tr").Count > 1);
+        var cardEntries = cut.FindAll("tbody tr");
+
+        Assert.True(cardEntries.Count > 1);
     }
 
 
@@ -60,8 +62,6 @@ public class CollectionTests : IAsyncLifetime
         var nav = _testContext.Services.GetRequiredService<FakeNavigationManager>();
 
         var search = cut.Find("input[placeholder=\"Card Name\"]");
-
-        cut.WaitForState(() => cut.FindAll("tbody tr").Count > 1);
 
         search.Change(searchName);
 
@@ -77,7 +77,9 @@ public class CollectionTests : IAsyncLifetime
         var cut = _testContext.RenderComponent<Collection>(p => p
             .Add(c => c.Name, searchName));
 
-        cut.WaitForState(() => cut.FindAll("tbody tr").Count == 1);
+        var cardEntries = cut.FindAll("tbody tr");
+
+        Assert.Equal(1, cardEntries.Count);
     }
 
 
@@ -91,8 +93,6 @@ public class CollectionTests : IAsyncLifetime
 
         var search = cut.Find("input[placeholder=\"Card Name\"]");
 
-        cut.WaitForState(() => cut.FindAll("tbody tr").Count > 1);
-
         search.Change($"/t {searchType}");
 
         Assert.All(searchType.Split(), t =>
@@ -101,19 +101,21 @@ public class CollectionTests : IAsyncLifetime
 
 
     [Fact]
-    public void LoadData_TypesParam_NoResult()
+    public void LoadData_TypesParamater_NoResult()
     {
-        var searchTypes = "test invalid type".Split();
+        var searchTypes = new[] { "test", "invalid", "type" };
 
         var cut = _testContext.RenderComponent<Collection>(p => p
             .Add(c => c.Types, searchTypes));
 
-        cut.WaitForState(() => cut.FindAll("tbody tr").Count == 1);
+        var cardEntries = cut.FindAll("tbody tr");
+
+        Assert.Equal(1, cardEntries.Count);
     }
 
 
     [Fact]
-    public void ChangeColor_GreenColor_ChangeUrl()
+    public void ChangeColor_BlueColor_ChangeUrl()
     {
         const int blue = (int)Color.Blue;
 
@@ -122,22 +124,25 @@ public class CollectionTests : IAsyncLifetime
 
         var greenButton = cut.Find(".ms-u");
 
-        cut.WaitForState(() => cut.FindAll("tbody tr").Count > 1);
-
         greenButton.Click();
 
         Assert.Contains(blue.ToString(), nav.Uri);
     }
 
 
-    [Fact]
-    public void LoadData_ColorParam_Success()
+    [Theory]
+    [InlineData((int)Color.None)]
+    [InlineData((int)Color.Blue)]
+    [InlineData((int)Color.White)]
+    [InlineData(10)]
+    [InlineData(-3)]
+    public void LoadData_ColorParameter_Success(int color)
     {
-        const int blue = (int)Color.Blue;
-
         var cut = _testContext.RenderComponent<Collection>(p => p
-            .Add(c => c.Colors, blue));
+            .Add(c => c.Colors, color));
 
-        cut.WaitForState(() => cut.FindAll("tbody tr").Count > 1);
+        var inputs = cut.FindAll("input:not([disabled])");
+
+        Assert.Equal(1, inputs.Count);
     }
 }

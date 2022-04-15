@@ -167,9 +167,9 @@ internal class MtgColorParameter : IMtgParameter
             return cards;
         }
 
-        var colorNames = Enum.GetValues<Color>()
-            .Where(c => c is not Color.None && _color.HasFlag(c))
-            .Select(c => Symbol.Colors[c]);
+        var colorNames = Symbol.Colors
+            .Where(kv => _color.HasFlag(kv.Key))
+            .Select(kv => kv.Value);
 
         var colors = string.Join(MtgApiQuery.And, colorNames);
 
@@ -204,6 +204,13 @@ internal class MtgRarityParameter : IMtgParameter
     public ICardService Apply(ICardService cards)
     {
         if (_rarity is not Rarity rarity)
+        {
+            return cards;
+        }
+
+        var rarities = Enum.GetValues<Rarity>();
+
+        if (!rarities.Contains(rarity))
         {
             return cards;
         }

@@ -1,88 +1,87 @@
 using System.Linq;
 using System.Threading.Tasks;
 using Xunit;
-
-using MTGViewer.Services;
+using MtgApiManager.Lib.Model;
+using MTGViewer.Tests.Utils;
 
 namespace MTGViewer.Tests.Services;
 
 
 public class MTGQueryTests
 {
-    private const string TestId = "386616";
-    private const string TestName = "Narset, Enlightened Master";
+    private readonly TestMtgApiQuery _mtgQuery;
 
-    private const string SplitId = "27163";
-    private const string SplitName = "Illusion // Reality";
-
-
-    private readonly IMTGQuery _mtgQuery;
-
-    public MTGQueryTests(IMTGQuery query)
+    public MTGQueryTests(TestMtgApiQuery testMtgQuery)
     {
-        _mtgQuery = query;
+        _mtgQuery = testMtgQuery;
     }
 
 
-
-    [Fact(Skip = "Calls external api")]
+    [Fact]
     public async Task Search_NameParam_ReturnsSameName()
     {
+        var testCard = await _mtgQuery.SourceCards.FirstAsync();
+
         var cards = await _mtgQuery
-            .Where(c => c.Name == TestName)
+            .Where(c => c.Name == testCard.Name)
             .SearchAsync();
 
         var cardNames = cards.Select(c => c.Name);
 
-        Assert.Contains(TestName, cardNames);
+        Assert.Contains(testCard.Name, cardNames);
     }
 
 
-    private static string GetName() => TestName;
+    private static string GetName(ICard card) => card.Name;
 
 
-    [Fact(Skip = "Calls external api")]
+    [Fact]
     public async Task Search_NameParamCall_ReturnsSameName()
     {
+        var testCard = await _mtgQuery.SourceCards.FirstAsync();
+
+        var testName = GetName(testCard);
+
         var cards = await _mtgQuery
-            .Where(c => c.Name == GetName())
+            .Where(c => c.Name == testName)
             .SearchAsync();
 
         var cardNames = cards.Select(c => c.Name);
 
-        Assert.Contains(TestName, cardNames);
+        Assert.Contains(testCard.Name, cardNames);
     }
 
 
-    [Fact(Skip = "Calls external api")]
-    public async Task Search_SplitName_ResturnsWithFlip()
+    [Fact]
+    public async Task Search_SplitName_ReturnsWithFlip()
     {
+        var splitCard = await _mtgQuery.FlipCards.FirstAsync();
+
         var cards = await _mtgQuery
-            .Where(c => c.Name == SplitName)
+            .Where(c => c.Name == splitCard.Name)
             .SearchAsync();
 
-        var first = cards[0];
+        var first = cards.FirstOrDefault();
 
-        Assert.NotNull(first);
-        Assert.NotNull(first!.Flip);
-
-        Assert.Equal(SplitName, first!.Name);
-        Assert.Equal(SplitId, first!.MultiverseId);
+        Assert.NotNull(first?.Flip);
+        Assert.Equal(splitCard.Name, first?.Name);
     }
 
 
 
-    [Fact(Skip = "Calls external api")]
+    [Fact]
     public async Task Find_Id_ReturnsCard()
     {
-        var card = await _mtgQuery.FindAsync(TestId);
+        var testCard = await _mtgQuery.SourceCards.FirstAsync();
+
+        var card = await _mtgQuery.FindAsync(testCard.MultiverseId);
 
         Assert.NotNull(card);
-        Assert.Equal(TestName, card!.Name);
+        Assert.Equal(testCard.Name, card!.Name);
     }
 
 
-    [Fact(Skip = "Calls external api")]
+    [Fact]
     public async Task Find_NoId_ReturnsNull()
     {
         var card = await _mtgQuery.FindAsync(null!);
@@ -91,35 +90,22 @@ public class MTGQueryTests
     }
 
 
-    [Fact(Skip = "Calls external api")]
+    [Fact]
     public async Task Find_SplitId_ReturnsWithFlip()
     {
-        var card = await _mtgQuery.FindAsync(SplitId);
+        var splitCard = await _mtgQuery.FlipCards.FirstAsync();
+
+        var card = await _mtgQuery.FindAsync(splitCard.MultiverseId);
 
         Assert.NotNull(card);
         Assert.NotNull(card!.Flip);
 
-        Assert.Equal(SplitName, card!.Name);
-        Assert.Equal(SplitId, card!.MultiverseId);
+        Assert.Equal(splitCard.Name, card!.Name);
+        Assert.Equal(splitCard.MultiverseId, card!.MultiverseId);
     }
 
 
-    // [Fact(Skip = "Calls external api")]
-    // public async Task Find_Cache_ReturnsCard()
-    // {
-    //     var testCard = await _mtgQuery.FindAsync(TestId);
-
-    //     var card = await _mtgQuery.FindAsync(TestId);
-
-    //     Assert.NotNull(testCard);
-    //     Assert.NotNull(card);
-
-    //     Assert.Equal(TestId, testCard!.MultiverseId);
-    //     Assert.Equal(TestName, card!.Name);
-    // }
-
-
-    [Fact(Skip = "Calls external api")]
+    [Fact]
     public async Task Search_PagedQuery_EqualPage()
     {
         const int page = 1;
@@ -132,23 +118,21 @@ public class MTGQueryTests
     }
 
 
-    [Fact(Skip = "Calls external api")]
+    [Fact]
     public async Task Collection_MultipleIds_AllReturned()
     {
-        int idBase = int.Parse(TestId);
+        const int targetSize = 5;
 
-        var multiverseIds = Enumerable
-            .Range(0, 5)
-            .Select(i => idBase + i)
-            .Select(id => id.ToString())
-            .ToArray();
+        var multiverseIds = await _mtgQuery.SourceCards
+            .Take(targetSize)
+            .Select(c => c.MultiverseId)
+            .ToArrayAsync();
 
         var cardNames = await _mtgQuery
             .CollectionAsync(multiverseIds)
             .Select(c => c.Name)
             .ToListAsync();
 
-        Assert.Contains(TestName, cardNames);
         Assert.Equal(multiverseIds.Length, cardNames.Count);
     }
 }
