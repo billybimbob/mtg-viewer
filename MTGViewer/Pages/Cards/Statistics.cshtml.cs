@@ -20,7 +20,6 @@ public class StatisticsModel : PageModel
         _dbContext = dbContext;
     }
 
-
     public Statistics Statistics { get; private set; } = new();
 
     public async Task OnGetAsync(CancellationToken cancel)
@@ -62,18 +61,15 @@ public class StatisticsModel : PageModel
         };
     }
 
-
-
     private readonly record struct ColorCopies(Color Color, int Copies);
-
 
     private async Task<IReadOnlyDictionary<Color, int>> GetColorsAsync(CancellationToken cancel)
     {
         var dbColors = await _dbContext.Holds
             .GroupBy(h => h.Card.Color,
-                (color, hs) => 
+                (color, hs) =>
                     new ColorCopies(color, hs.Sum(h => h.Copies)))
-            
+
             // technically bounded, with limit as the total combos of colors bits
             // which given 5 bits = 2^5 - 1 = 63 max size
 
@@ -84,7 +80,6 @@ public class StatisticsModel : PageModel
             .Select(c => GetColorCopies(dbColors, c))
             .ToDictionary(cc => cc.Color, cc => cc.Copies);
     }
-
 
     private static ColorCopies GetColorCopies(IReadOnlyList<ColorCopies> dbColors, Color color)
     {
@@ -99,16 +94,12 @@ public class StatisticsModel : PageModel
         return new ColorCopies(color, copies);
     }
 
-
-
     public static readonly string[] CardTypes =
     {
         "Artifact", "Creature", "Enchantment", "Instant", "Land", "Sorcery"
     };
 
-
     private readonly record struct TypeCopies(string Type, int Copies);
-
 
     private async Task<IReadOnlyDictionary<string, int>> GetTypesAsync(CancellationToken cancel)
     {

@@ -21,15 +21,12 @@ public class TreasuryExtensionTests : IAsyncLifetime
         _testGen = testGen;
     }
 
-
     public Task InitializeAsync() => _testGen.SeedAsync();
 
     public Task DisposeAsync() => _testGen.ClearAsync();
 
-
     private Task<int> GetTotalCopiesAsync() =>
         _dbContext.Holds.SumAsync(amt => amt.Copies);
-
 
     private async Task RemoveCardCopiesAsync(Card card)
     {
@@ -44,7 +41,6 @@ public class TreasuryExtensionTests : IAsyncLifetime
         _dbContext.ChangeTracker.Clear();
     }
 
-
     [Fact]
     public async Task AddCards_NullDbContext_Throws()
     {
@@ -56,7 +52,6 @@ public class TreasuryExtensionTests : IAsyncLifetime
         await Assert.ThrowsAsync<ArgumentNullException>(AddAsync);
     }
 
-
     [Fact]
     public async Task AddCards_NullRequests_Throws()
     {
@@ -67,7 +62,6 @@ public class TreasuryExtensionTests : IAsyncLifetime
         await Assert.ThrowsAsync<ArgumentNullException>(AddAsync);
     }
 
-
     [Fact]
     public async Task AddCards_WithNullCard_Throws()
     {
@@ -77,7 +71,6 @@ public class TreasuryExtensionTests : IAsyncLifetime
 
         await Assert.ThrowsAsync<ArgumentNullException>(AddAsync);
     }
-
 
     [Fact]
     public async Task AddCards_WithNullCardRequest_NoChange()
@@ -93,7 +86,6 @@ public class TreasuryExtensionTests : IAsyncLifetime
         Assert.Equal(totalBefore, totalAfter);
     }
 
-
     [Fact]
     public async Task AddCards_EmptyCardRequest_NoChange()
     {
@@ -107,7 +99,6 @@ public class TreasuryExtensionTests : IAsyncLifetime
 
         Assert.Equal(totalBefore, totalAfter);
     }
-
 
     [Fact]
     public async Task AddCards_NewCard_OnlyNew()
@@ -136,7 +127,6 @@ public class TreasuryExtensionTests : IAsyncLifetime
         Assert.True(noModified);
         Assert.Equal(copies, totalAfter - totalBefore);
     }
-
 
     [Fact]
     public async Task AddCards_ExistingWithCapcity_OnlyExisting()
@@ -167,7 +157,6 @@ public class TreasuryExtensionTests : IAsyncLifetime
         Assert.True(noAdded);
         Assert.Equal(remainingSpace, totalAfter - totalBefore);
     }
-
 
     [Fact]
     public async Task AddCards_ExistingLackCapacity_MixDeposits()
@@ -206,7 +195,6 @@ public class TreasuryExtensionTests : IAsyncLifetime
         Assert.Equal(requestCopies, totalAfter - totalBefore);
     }
 
-
     [Fact]
     public async Task Exchange_NullDbContext_Throws()
     {
@@ -218,7 +206,6 @@ public class TreasuryExtensionTests : IAsyncLifetime
         await Assert.ThrowsAsync<ArgumentNullException>(ExchangeAsync);
     }
 
-
     [Fact]
     public async Task Exchange_NullDeck_Throws()
     {
@@ -229,7 +216,6 @@ public class TreasuryExtensionTests : IAsyncLifetime
         await Assert.ThrowsAsync<ArgumentNullException>(ExchangeAsync);
     }
 
-
     [Fact]
     public async Task UpdateBoxes_NullDbContext_Throws()
     {
@@ -239,7 +225,6 @@ public class TreasuryExtensionTests : IAsyncLifetime
 
         await Assert.ThrowsAsync<ArgumentNullException>(UpdateAsync);
     }
-
 
     [Fact]
     public async Task UpdateBoxes_NewBox_DecreaseExcess()
@@ -278,7 +263,6 @@ public class TreasuryExtensionTests : IAsyncLifetime
         Assert.Equal(extraSpace, oldExcess - newExcess);
     }
 
-
     [Fact]
     public async Task UpdateBoxes_IncreaseCapacity_DecreaseExcess()
     {
@@ -309,7 +293,6 @@ public class TreasuryExtensionTests : IAsyncLifetime
         Assert.Equal(extraSpace, newAvailable - oldAvailable);
         Assert.Equal(extraSpace, oldExcess - newExcess);
     }
-
 
     [Fact]
     public async Task Update_DecreaseCapacity_IncreaseExcess()

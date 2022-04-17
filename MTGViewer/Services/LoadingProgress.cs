@@ -3,7 +3,6 @@ using Microsoft.Extensions.Logging;
 
 namespace MTGViewer.Services;
 
-
 public readonly struct Percent
 {
     private readonly int _value;
@@ -36,7 +35,6 @@ public readonly struct Percent
         return $"{_value}%";
     }
 }
-
 
 public class LoadingProgress
 {
@@ -82,9 +80,7 @@ public class LoadingProgress
         _logger.LogInformation("Percent updated to {Current}", Current);
     }
 
-
     public void AddProgress() => AddProgress(_defaultProgress);
-
 
     public void Reset()
     {

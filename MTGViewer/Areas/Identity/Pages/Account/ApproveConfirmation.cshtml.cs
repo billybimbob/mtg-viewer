@@ -26,7 +26,6 @@ public class ApproveConfirmationModel : PageModel
     [TempData]
     public string? StatusMessage { get; set; }
 
-
     public async Task<IActionResult> OnGetAsync(string? userId, string? code)
     {
         if (userId == null || code == null)
@@ -71,7 +70,6 @@ public class ApproveConfirmationModel : PageModel
         StatusMessage = "Account is approved, and confirmation email was sent.";
         return Page();
     }
-
 
     private async Task<bool> ApproveUserAsync(CardUser user)
     {

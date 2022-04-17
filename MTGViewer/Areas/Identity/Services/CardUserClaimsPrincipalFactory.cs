@@ -27,7 +27,6 @@ namespace MTGViewer.Areas.Identity.Services
             _logger = logger;
         }
 
-
         protected async override Task<ClaimsIdentity> GenerateClaimsAsync(CardUser user)
         {
             var id = await base.GenerateClaimsAsync(user);
@@ -54,7 +53,6 @@ namespace MTGViewer.Areas.Identity.Services
             return id;
         }
 
-
         private async Task GenerateNewReferenceAsync(CardUser user, ClaimsIdentity id)
         {
             try
@@ -72,7 +70,6 @@ namespace MTGViewer.Areas.Identity.Services
 
     }
 }
-
 
 namespace Microsoft.AspNetCore.Identity
 {

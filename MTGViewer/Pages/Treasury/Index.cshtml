@@ -52,7 +52,6 @@
     <h3> There are no Boxes in the Collection </h3>
 }
 
-
 @{ string returnUrl = $"{Request.Path}{Request.QueryString}"; }
 
 @foreach (var bin in Model.Bins)
@@ -96,9 +95,9 @@
                                     @firstCard.Name </a>
                             </td>
 
-                            <td> 
+                            <td>
                                 <div class="ms-group">
-                                    @MtgSymbols.Format(firstCard.ManaCost).ToHtmlString() 
+                                    @MtgSymbols.Format(firstCard.ManaCost).ToHtmlString()
                                 </div>
                             </td>
                             <td> @firstCard.SetName </td>
@@ -123,7 +122,7 @@
                                     asp-route-id="@card.Id" asp-route-returnurl="@returnUrl">
                                     @card.Name </a>
                             </td>
-                            <td> 
+                            <td>
                                 <div class="ms-group">
                                     @MtgSymbols.Format(card.ManaCost).ToHtmlString()
                                 </div>

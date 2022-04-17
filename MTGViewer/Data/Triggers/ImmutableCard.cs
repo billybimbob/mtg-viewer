@@ -18,7 +18,6 @@ public class ImmutableCard : IBeforeSaveTrigger<Card>
         _logger = logger;
     }
 
-
     public Task BeforeSave(ITriggerContext<Card> trigContext, CancellationToken cancel)
     {
         if (trigContext.ChangeType is not ChangeType.Modified)

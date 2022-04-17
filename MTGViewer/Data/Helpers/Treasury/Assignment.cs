@@ -4,9 +4,7 @@ using System.Linq;
 
 namespace MTGViewer.Data.Internal;
 
-
 internal readonly record struct StorageAssignment<TSource>(TSource Source, int Copies, Storage Target);
-
 
 internal static class Assignment
 {
@@ -55,7 +53,6 @@ internal static class Assignment
         }
     }
 
-
     // add assignments should add to larger dup stacks
     // in boxes with more available space
 
@@ -77,7 +74,6 @@ internal static class Assignment
             // lookup group orders should preserve Copies order
             .ToLookup(h => h.CardId, h => (Storage)h.Location);
     }
-
 
     public static ILookup<string, Storage> ApproxAddLookup(IEnumerable<Hold> targets, IEnumerable<Card> cards)
     {

@@ -29,11 +29,9 @@ public class DeleteTests : IAsyncLifetime
         _testGen = testGen;
     }
 
-
     public Task InitializeAsync() => _testGen.SeedAsync();
 
     public Task DisposeAsync() => _testGen.ClearAsync();
-
 
     [Fact]
     public async Task OnPost_NullInput_NotFound()
@@ -44,7 +42,6 @@ public class DeleteTests : IAsyncLifetime
 
         Assert.IsType<NotFoundResult>(result);
     }
-
 
     [Fact]
     public async Task OnPost_NullId_NotFound()
@@ -58,7 +55,6 @@ public class DeleteTests : IAsyncLifetime
 
         Assert.IsType<NotFoundResult>(result);
     }
-
 
     [Theory]
     [InlineData(-1)]
@@ -86,7 +82,6 @@ public class DeleteTests : IAsyncLifetime
         Assert.IsType<RedirectResult>(result);
         Assert.Equal(oldCopies, newCopies);
     }
-
 
     [Theory]
     [InlineData(1)]
@@ -119,7 +114,6 @@ public class DeleteTests : IAsyncLifetime
         Assert.IsType<RedirectResult>(result);
         Assert.Equal(copies, oldCopies - newCopies);
     }
-
 
     [Fact]
     public async Task OnPost_MaxCopies_RemoveCard()
@@ -160,7 +154,6 @@ public class DeleteTests : IAsyncLifetime
         Assert.Equal(0, newCopies);
         Assert.False(cardRemains);
     }
-
 
     [Fact]
     public async Task OnPost_MaxCopiesWithDeck_CardRemains()
@@ -210,7 +203,6 @@ public class DeleteTests : IAsyncLifetime
         Assert.Equal(0, newCopies);
         Assert.True(cardRemains);
     }
-
 
     [Fact]
     public async Task OnPost_HasExcess_ExcessTranferred()

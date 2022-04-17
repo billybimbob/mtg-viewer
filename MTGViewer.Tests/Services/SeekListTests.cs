@@ -21,11 +21,9 @@ public class SeekListTests : IAsyncLifetime
         _testGen = testGen;
     }
 
-
     public Task InitializeAsync() => _testGen.SeedAsync();
 
     public Task DisposeAsync() => _testGen.ClearAsync();
-
 
     [Fact]
     public async Task ToSeekList_OrderByIdFirst_ReturnsFirst()
@@ -51,7 +49,6 @@ public class SeekListTests : IAsyncLifetime
         Assert.Equal(firstCards, seekList.Select(c => c.Id));
     }
 
-
     [Fact]
     public async Task ToSeekList_NoOrderByFirst_ReturnsFirst()
     {
@@ -76,7 +73,6 @@ public class SeekListTests : IAsyncLifetime
         Assert.Equal(firstCards, seekList.Select(c => c.Id));
     }
 
-
     [Fact]
     public async Task ToSeekList_NoOrderBySeek_Throws()
     {
@@ -95,7 +91,6 @@ public class SeekListTests : IAsyncLifetime
 
         await Assert.ThrowsAsync<InvalidOperationException>(SeekListAsync);
     }
-
 
     [Fact]
     public async Task ToSeekList_OrderBySeek_Returns()
@@ -119,7 +114,6 @@ public class SeekListTests : IAsyncLifetime
             Assert.True(c.Id.CompareTo(seek.Id) > 0));
     }
 
-
     [Fact]
     public async Task ToSeekList_OrderBySeekBackwards_Returns()
     {
@@ -141,7 +135,6 @@ public class SeekListTests : IAsyncLifetime
         Assert.All(seekList, c =>
             Assert.True(c.Id.CompareTo(seek.Id) < 0));
     }
-
 
     [Fact]
     public async Task ToSeekList_OrderBySeekMultiple_Returns()
@@ -169,7 +162,6 @@ public class SeekListTests : IAsyncLifetime
                 (c.Name, c.Id).CompareTo((seek.Name, c.Id)) > 0));
     }
 
-
     [Fact]
     public async Task ToSeekList_OrderBySeekMultipleBackwards_Returns()
     {
@@ -195,7 +187,6 @@ public class SeekListTests : IAsyncLifetime
             Assert.True(
                 (c.Name, c.Id).CompareTo((seek.Name, c.Id)) < 0));
     }
-
 
     [Fact]
     public async Task ToSeekList_OrderByManySeek_Returns()
@@ -244,7 +235,6 @@ public class SeekListTests : IAsyncLifetime
                     && c.Id.CompareTo(seek.Id) > 0));
     }
 
-
     // [Fact]
     // public async Task ToSeekList_WrongIndex_ReturnsFirst()
     // {
@@ -277,7 +267,6 @@ public class SeekListTests : IAsyncLifetime
     //     Assert.Equal(pageSize, seekList.Count);
     //     Assert.Equal(firstCards, seekList.Select(c => c.Id));
     // }
-
 
     [Fact]
     public async Task ToSeekList_OrderByNullableProperties_Returns()

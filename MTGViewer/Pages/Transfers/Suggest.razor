@@ -7,14 +7,13 @@
 @inject SymbolFormatter MtgSymbols
 @inject CardText CardText
 
-
 @switch ((Suggestion.Card, Suggestion.Receiver))
 {
     case (Card card, UserPreview receiver):
         <PageTitle> @card.Name - Suggest @receiver.Name </PageTitle>
         <h1>
             Suggest
-            <a href="/Cards/Details/@card.Id"> @card.Name </a> 
+            <a href="/Cards/Details/@card.Id"> @card.Name </a>
             To @receiver.Name </h1>
         break;
 
@@ -54,7 +53,7 @@
                     string active = Suggestion.ToId == deck.Id ? "list-group-item-secondary" : string.Empty;
 
                     <button type="button" title="Pick @deck.Name"
-                        class="list-group-item list-group-item-action @active" 
+                        class="list-group-item list-group-item-action @active"
                         @onclick="() => Suggestion.ToId = deck.Id">
 
                         <div class="d-flex align-items-center justify-content-between">
@@ -161,19 +160,17 @@ else if (IsLoading)
     </div>
 }
 
-
 @code
 {
     internal sealed class ReceiverEventArgs : EventArgs
     {
         public string? ReceiverId { get; }
-        
+
         public ReceiverEventArgs(string? receiverId)
         {
             ReceiverId = receiverId;
         }
     }
-
 
     internal sealed class SuggestionDto
     {
@@ -183,11 +180,9 @@ else if (IsLoading)
         private readonly List<UserPreview> _userOptions = new();
         private UserPreview? _receiver;
 
-
         public IReadOnlyList<UserPreview> UserOptions => _userOptions;
 
         public IReadOnlyList<DeckPreview> DeckOptions => _deckOptions;
-
 
         public Card? Card { get; set; }
 
@@ -224,7 +219,6 @@ else if (IsLoading)
             }
         }
 
-
         [Display(Name = "Suggest To A Specific Deck")]
         public DeckPreview? To { get; private set; }
 
@@ -244,7 +238,6 @@ else if (IsLoading)
         [Display(Name = "Add Comment")]
         public string? Comment { get; set; }
 
-
         public async Task AddDecksAsync(IAsyncEnumerable<DeckPreview> decks, CancellationToken cancel)
         {
             await foreach (var deck in decks.WithCancellation(cancel))
@@ -252,7 +245,6 @@ else if (IsLoading)
                 _deckOptions.Add(deck);
             }
         }
-
 
         public async Task AddUsersAsync(IAsyncEnumerable<UserPreview> users, CancellationToken cancel)
         {

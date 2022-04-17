@@ -30,12 +30,10 @@ public class PageSize : IDisposable
         _routeAccessor.RouteChanged += ResetPage;
     }
 
-
     public void Dispose()
     {
         _routeAccessor.RouteChanged -= ResetPage;
     }
-
 
     public int Default { get; }
     public int Limit { get; }
@@ -43,12 +41,10 @@ public class PageSize : IDisposable
     private int? _current;
     public int Current => _current ??= GetComponentSize() ?? GetActionSize();
 
-
     private void ResetPage(object? sender, RouteDataEventArgs args)
     {
         _current = null;
     }
-
 
     private int? GetComponentSize()
     {
@@ -83,7 +79,6 @@ public class PageSize : IDisposable
 
         return _config.GetValue($"{key}:Index", null as int?);
     }
-
 
     private int GetActionSize()
     {

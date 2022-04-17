@@ -5,7 +5,6 @@ using Microsoft.Data.Sqlite;
 
 namespace MTGViewer.Tests.Utils;
 
-
 public sealed class InMemoryConnection : IAsyncDisposable
 {
     private readonly Lazy<SqliteConnection> _connection = new(() =>
@@ -19,7 +18,6 @@ public sealed class InMemoryConnection : IAsyncDisposable
     public DbConnection Connection => _connection.Value;
 
     public string Database { get; } = "Test-Database-" + Guid.NewGuid();
-
 
     public async ValueTask DisposeAsync()
     {

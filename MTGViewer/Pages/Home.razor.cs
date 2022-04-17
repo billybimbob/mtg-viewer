@@ -28,7 +28,6 @@ public sealed partial class Home : ComponentBase, IDisposable
     [Inject]
     internal ILogger<Home> Logger { get; set; } = default!;
 
-
     internal bool IsFirstLoad => _isBusy && _randomContext is null;
 
     internal bool IsLoading => _isBusy || !_isInteractive;
@@ -37,11 +36,9 @@ public sealed partial class Home : ComponentBase, IDisposable
 
     internal bool IsFullyLoaded => _randomContext is null or { HasMore: false };
 
-
     internal IReadOnlyList<CardImage> RandomCards => _randomContext?.Cards ?? Array.Empty<CardImage>();
 
     internal IReadOnlyList<RecentTransaction> RecentChanges => _recentChanges;
-
 
     private const int ChunkSize = 4;
 
@@ -55,7 +52,6 @@ public sealed partial class Home : ComponentBase, IDisposable
     private RecentTransaction[] _recentChanges = Array.Empty<RecentTransaction>();
     private RandomCardsContext? _randomContext;
     private DateTime _currentTime;
-
 
     protected override async Task OnInitializedAsync()
     {
@@ -95,7 +91,6 @@ public sealed partial class Home : ComponentBase, IDisposable
         }
     }
 
-
     protected override void OnAfterRender(bool firstRender)
     {
         if (firstRender)
@@ -106,7 +101,6 @@ public sealed partial class Home : ComponentBase, IDisposable
         }
     }
 
-
     void IDisposable.Dispose()
     {
         _persistSubscription.Dispose();
@@ -114,7 +108,6 @@ public sealed partial class Home : ComponentBase, IDisposable
         _cancel.Cancel();
         _cancel.Dispose();
     }
-
 
     private Task PersistCardData()
     {
@@ -126,7 +119,6 @@ public sealed partial class Home : ComponentBase, IDisposable
         return Task.CompletedTask;
     }
 
-
     private TData? GetValueOrDefault<TData>(string key)
     {
         if (ApplicationState.TryTakeFromJson<TData>(key, out var data))
@@ -136,7 +128,6 @@ public sealed partial class Home : ComponentBase, IDisposable
 
         return default;
     }
-
 
     internal bool IsImageLoaded(CardImage card)
     {
@@ -153,7 +144,6 @@ public sealed partial class Home : ComponentBase, IDisposable
         return _randomContext.LoadedImages.Contains(card.Id);
     }
 
-
     internal static string CardNames(IEnumerable<RecentChange> changes)
     {
         var cardNames = changes
@@ -161,7 +151,6 @@ public sealed partial class Home : ComponentBase, IDisposable
 
         return string.Join(", ", cardNames);
     }
-
 
     internal string ElapsedTime(RecentTransaction transaction)
     {
@@ -176,9 +165,7 @@ public sealed partial class Home : ComponentBase, IDisposable
         };
     }
 
-
     internal void OnImageLoad(CardImage card) => _randomContext?.OnImageLoad(card);
-
 
     internal async Task LoadMoreCardsAsync()
     {
@@ -207,8 +194,6 @@ public sealed partial class Home : ComponentBase, IDisposable
         }
     }
 
-
-
     private class RandomCardsContext
     {
         private readonly List<CardImage> _cards;
@@ -223,7 +208,6 @@ public sealed partial class Home : ComponentBase, IDisposable
 
         public bool HasMore => _cards.Count < _limit;
 
-
         private RandomCardsContext(IReadOnlyList<string[]> loadOrder, List<CardImage> cards)
         {
             Order = loadOrder;
@@ -236,7 +220,6 @@ public sealed partial class Home : ComponentBase, IDisposable
         private RandomCardsContext(IReadOnlyList<string[]> loadOrder)
             : this(loadOrder, new List<CardImage>())
         { }
-
 
         public static async Task<RandomCardsContext> CreateAsync(
             IReadOnlyList<string[]>? loadOrder,
@@ -265,7 +248,6 @@ public sealed partial class Home : ComponentBase, IDisposable
             return randomContext;
         }
 
-
         private static bool AreValidCards(
             IReadOnlyList<string[]> loadOrder,
             [NotNullWhen(returnValue: true)] List<CardImage>? cards)
@@ -284,7 +266,6 @@ public sealed partial class Home : ComponentBase, IDisposable
                 .SequenceEqual(expectedOrder);
         }
 
-
         public async Task LoadNextChunkAsync(CardDbContext dbContext, CancellationToken cancel)
         {
             ArgumentNullException.ThrowIfNull(dbContext);
@@ -301,7 +282,6 @@ public sealed partial class Home : ComponentBase, IDisposable
             _cards.AddRange(newCards);
         }
 
-
         public void OnImageLoad(CardImage card)
         {
             if (card?.Id is string cardId)
@@ -311,10 +291,7 @@ public sealed partial class Home : ComponentBase, IDisposable
         }
     }
 
-
-
     #region Database Queries
-
 
     private static readonly Func<CardDbContext, int, IAsyncEnumerable<string>> ShuffleOrderAsync
         = EF.CompileAsyncQuery((CardDbContext dbContext, int limit) =>
@@ -322,7 +299,6 @@ public sealed partial class Home : ComponentBase, IDisposable
                 .Select(c => c.Id)
                 .OrderBy(_ => EF.Functions.Random())
                 .Take(limit));
-
 
     private static IAsyncEnumerable<CardImage> CardChunkAsync(CardDbContext dbContext, string[] chunk)
     {
@@ -343,7 +319,6 @@ public sealed partial class Home : ComponentBase, IDisposable
                 cid => cid, c => c.Id,
                 (_, preview) => preview);
     }
-
 
     private static readonly Func<CardDbContext, int, IAsyncEnumerable<RecentTransaction>> RecentTransactionsAsync
         = EF.CompileAsyncQuery((CardDbContext dbContext, int limit) =>

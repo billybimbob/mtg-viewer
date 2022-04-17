@@ -41,15 +41,12 @@ internal static class ExecuteSeek<TEntity> where TEntity : class
         return new SeekList<TEntity>(seek, items);
     }
 
-
     private record SeekInfo(SeekDirection Direction, bool HasOrigin, int? Size);
-
 
     private class GetSeekInfoVisitor : ExpressionVisitor
     {
         private static GetSeekInfoVisitor? s_instance;
         public static ExpressionVisitor Instance => s_instance ??= new();
-
 
         [return: NotNullIfNotNull("node")]
         public override Expression? Visit(Expression? node)
@@ -103,7 +100,6 @@ internal static class ExecuteSeek<TEntity> where TEntity : class
             return seekParent;
         }
     }
-
 
     private class OriginFilterVisitor : ExpressionVisitor
     {
@@ -166,12 +162,10 @@ internal static class ExecuteSeek<TEntity> where TEntity : class
         }
     }
 
-
     private class RemoveSeekOffsetVisitor : ExpressionVisitor
     {
         private static RemoveSeekOffsetVisitor? s_instance;
         public static ExpressionVisitor Instance => s_instance ??= new();
-
 
         protected override Expression VisitMethodCall(MethodCallExpression node)
         {
@@ -198,7 +192,6 @@ internal static class ExecuteSeek<TEntity> where TEntity : class
                 node.Arguments.Skip(1).Prepend(Visit(parent)));
         }
     }
-
 
     private class ReversedLookAheadVisitor : ExpressionVisitor
     {

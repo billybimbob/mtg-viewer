@@ -18,7 +18,6 @@ using MTGViewer.Services;
 
 namespace MTGViewer.Pages.Transfers;
 
-
 [Authorize]
 [Authorize(CardPolicies.ChangeTreasury)]
 public class ReviewModel : PageModel
@@ -37,7 +36,6 @@ public class ReviewModel : PageModel
         _pageSize = pageSize;
     }
 
-
     [TempData]
     public string? PostMessage { get; set; }
 
@@ -46,7 +44,6 @@ public class ReviewModel : PageModel
     public OffsetList<TradePreview> Trades { get; private set; } = OffsetList<TradePreview>.Empty;
 
     public IReadOnlyList<LocationLink> Cards { get; private set; } = Array.Empty<LocationLink>();
-
 
     public async Task<IActionResult> OnGetAsync(int id, int? offset, CancellationToken cancel)
     {
@@ -94,7 +91,6 @@ public class ReviewModel : PageModel
         return Page();
     }
 
-
     private static readonly Func<CardDbContext, int, string, CancellationToken, Task<DeckDetails?>> DeckAsync
 
         = EF.CompileAsyncQuery((CardDbContext dbContext, int deckId, string userId, CancellationToken _) =>
@@ -120,7 +116,6 @@ public class ReviewModel : PageModel
                 })
 
                 .SingleOrDefault());
-
 
     private IQueryable<TradePreview> ActiveTrades(DeckDetails deck)
     {
@@ -176,7 +171,6 @@ public class ReviewModel : PageModel
             });
     }
 
-
     private static readonly Func<CardDbContext, int, int, IAsyncEnumerable<LocationLink>> DeckCardsAsync
         = EF.CompileAsyncQuery((CardDbContext dbContext, int id, int limit) =>
 
@@ -199,8 +193,6 @@ public class ReviewModel : PageModel
                     Held = h.Copies
                 }));
 
-
-
     private record AcceptRequest(
         Trade Trade,
         WantNameGroup? ToWants,
@@ -209,7 +201,6 @@ public class ReviewModel : PageModel
     private record AcceptTargets(
         Hold ToHold,
         Want FromWant);
-
 
     public async Task<IActionResult> OnPostAcceptAsync(int tradeId, int amount, CancellationToken cancel)
     {
@@ -249,7 +240,6 @@ public class ReviewModel : PageModel
         return RedirectToPage();
     }
 
-
     private async Task<Trade?> GetTradeAsync(int id, CancellationToken cancel)
     {
         if (id == default)
@@ -270,7 +260,6 @@ public class ReviewModel : PageModel
         return await TradeForReview(id, tradeCard)
             .SingleOrDefaultAsync(cancel);
     }
-
 
     private IQueryable<Trade> TradeForReview(int id, Card tradeCard)
     {
@@ -298,8 +287,6 @@ public class ReviewModel : PageModel
             .AsSplitQuery();
     }
 
-
-
     private static AcceptRequest? GetAcceptRequest(Trade trade)
     {
         var tradeValid = trade.From.Holds
@@ -324,7 +311,6 @@ public class ReviewModel : PageModel
                 .Single(h => h.CardId == trade.CardId));
     }
 
-
     private void ApplyAccept(AcceptRequest acceptRequest, int amount)
     {
         int acceptAmount = Math.Max(amount, 1);
@@ -344,7 +330,6 @@ public class ReviewModel : PageModel
         _dbContext.Wants.RemoveRange(finishedWants);
         _dbContext.Trades.Remove(trade);
     }
-
 
     private void ModifyHoldsAndWants(AcceptRequest acceptRequest, int acceptAmount)
     {
@@ -395,7 +380,6 @@ public class ReviewModel : PageModel
         _dbContext.Changes.Attach(newChange);
     }
 
-
     private AcceptTargets GetAcceptTargets(AcceptRequest request)
     {
         var trade = request.Trade;
@@ -433,8 +417,6 @@ public class ReviewModel : PageModel
         return new AcceptTargets(toHold, fromWant);
     }
 
-
-
     private async Task UpdateOtherTradesAsync(AcceptRequest acceptRequest, CancellationToken cancel)
     {
         var (trade, toWants, _) = acceptRequest;
@@ -471,9 +453,6 @@ public class ReviewModel : PageModel
             remaining.Copies = toWants.Copies;
         }
     }
-
-
-
 
     public async Task<IActionResult> OnPostRejectAsync(int tradeId, CancellationToken cancel)
     {

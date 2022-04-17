@@ -17,7 +17,6 @@ using MTGViewer.Services;
 
 namespace MTGViewer.Pages.Unowned;
 
-
 [Authorize]
 [Authorize(Policy = CardPolicies.ChangeTreasury)]
 public class DetailsModel : PageModel
@@ -46,7 +45,6 @@ public class DetailsModel : PageModel
 
     public SeekList<DeckCopy> Cards { get; private set; } = SeekList<DeckCopy>.Empty;
 
-
     public async Task<IActionResult> OnGetAsync(
         int id,
         int? seek,
@@ -71,7 +69,6 @@ public class DetailsModel : PageModel
         return Page();
     }
 
-
     private static readonly Func<CardDbContext, int, CancellationToken, Task<UnclaimedDetails?>> UnclaimedAsync
         = EF.CompileAsyncQuery((CardDbContext dbContext, int unclaimedId, CancellationToken _) =>
             dbContext.Unclaimed
@@ -85,7 +82,6 @@ public class DetailsModel : PageModel
                     WantCopies = u.Wants.Sum(w => w.Copies)
                 })
                 .SingleOrDefault(u => u.Id == unclaimedId));
-
 
     private IQueryable<DeckCopy> UnclaimedCards(UnclaimedDetails unclaimed)
     {
@@ -116,8 +112,6 @@ public class DetailsModel : PageModel
                     .Sum(w => w.Copies)
             });
     }
-
-
 
     public async Task<IActionResult> OnPostClaimAsync(int id, CancellationToken cancel)
     {
@@ -178,7 +172,6 @@ public class DetailsModel : PageModel
 
         return RedirectToPage("Index");
     }
-
 
     public async Task<IActionResult> OnPostRemoveAsync(int id, CancellationToken cancel)
     {

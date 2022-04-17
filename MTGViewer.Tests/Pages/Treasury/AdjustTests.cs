@@ -33,7 +33,6 @@ public class AdjustTests : IAsyncLifetime
         _testContext = new TestContext();
     }
 
-
     public async Task InitializeAsync()
     {
         _testContext.AddFakePersistentComponentState();
@@ -50,7 +49,6 @@ public class AdjustTests : IAsyncLifetime
         await _testGen.ClearAsync();
     }
 
-
     private static void ChangeInput<T>(
         IRenderedComponent<Adjust> cut,
         string cssSelector,
@@ -58,7 +56,6 @@ public class AdjustTests : IAsyncLifetime
     {
         cut.Find(cssSelector).Change(newValue);
     }
-
 
     [Fact]
     public async Task LoadData_InvalidBox_KeepsLoading()
@@ -75,7 +72,6 @@ public class AdjustTests : IAsyncLifetime
         Assert.Equal("Treasury Adjustment", title.TextContent.Trim());
     }
 
-
     [Fact]
     public void LoadData_NewBox_AddBox()
     {
@@ -85,7 +81,6 @@ public class AdjustTests : IAsyncLifetime
 
         Assert.Equal("Add New Box", title.TextContent.Trim());
     }
-
 
     [Fact]
     public async Task LoadData_ExistingBox_EditBox()
@@ -99,7 +94,6 @@ public class AdjustTests : IAsyncLifetime
 
         Assert.Equal($"Edit {box.Name}", title.TextContent.Trim());
     }
-
 
     [Fact]
     public async Task SaveBox_NewBox_CreateBox()
@@ -122,7 +116,6 @@ public class AdjustTests : IAsyncLifetime
 
         Assert.Equal(1, afterBoxes - beforeBoxes);
     }
-
 
     [Theory]
     [InlineData(-5)]
@@ -150,7 +143,6 @@ public class AdjustTests : IAsyncLifetime
         Assert.Equal(newCapacity, updatedCapacity);
     }
 
-
     [Fact]
     public async Task SaveBox_ChangeName_ModifyBox()
     {
@@ -174,7 +166,6 @@ public class AdjustTests : IAsyncLifetime
 
         Assert.Equal(newName, updatedName);
     }
-
 
     [Fact]
     public async Task SaveBox_ChangeBinName_ModifyBox()

@@ -8,13 +8,12 @@
 @inject IAuthorizationService AuthorizationService
 @inject SignInManager<CardUser> SignInManager
 
-
 <h1> @Model.Box.Name - @Model.Box.Bin.Name </h1>
 
 @if (SignInManager.IsSignedIn(User))
 {
     bool canChangeTreasury = (await AuthorizationService
-        .AuthorizeAsync(User, CardPolicies.ChangeTreasury)).Succeeded; 
+        .AuthorizeAsync(User, CardPolicies.ChangeTreasury)).Succeeded;
 
     <div class="btn-group mb-3" role="group">
         @if (canChangeTreasury)
@@ -34,7 +33,6 @@
         }
     </div>
 }
-
 
 @{ string returnUrl = $"{Request.Path}{Request.QueryString}"; }
 
@@ -56,9 +54,9 @@
                         <component type="typeof(HoverCard)" render-mode="Static"
                             param-Preview="quantity.Card" param-ReturnUrl="returnUrl" />
                     </td>
-                    <td> 
+                    <td>
                         <div class="ms-group">
-                            @MtgSymbols.Format(quantity.Card.ManaCost).ToHtmlString() 
+                            @MtgSymbols.Format(quantity.Card.ManaCost).ToHtmlString()
                         </div>
                     </td>
                     <td> @quantity.Card.SetName </td>

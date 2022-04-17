@@ -8,11 +8,10 @@
 @inject IAuthorizationService AuthorizationService
 @inject SymbolFormatter MtgSymbols
 
-@{ 
+@{
     bool canChangeTreasury = (await AuthorizationService
         .AuthorizeAsync(User, CardPolicies.ChangeTreasury)).Succeeded;
 }
-
 
 <h1> Transaction - @Model.AppliedAt </h1>
 
@@ -83,13 +82,13 @@ else
                             case null:
                                 <i> Added </i>
                                 break;
-                            
+
                             default:
                                 @from.Name
                                 break;
                         }
                     </td>
-                    
+
                     <td rowspan="@span">
                         @switch (to.Type)
                         {
@@ -108,7 +107,7 @@ else
                             case LocationType.Box:
                                 <a asp-page="/Treasury/Details" asp-route-id="@to.Id"> @to.Name </a>
                                 break;
-                            
+
                             default:
                                 @to.Name
                                 break;
@@ -121,10 +120,10 @@ else
                             <component type="typeof(HoverCard)" render-mode="Static"
                                 param-Preview="firstChange.Card"/>
                         </td>
-                        <td> 
+                        <td>
                             <div class="ms-group">
-                                @MtgSymbols.Format(firstChange.Card.ManaCost).ToHtmlString() 
-                            </div> 
+                                @MtgSymbols.Format(firstChange.Card.ManaCost).ToHtmlString()
+                            </div>
                         </td>
                         <td> @firstChange.Copies </td>
                     }
@@ -143,10 +142,10 @@ else
                             <component type="typeof(HoverCard)" render-mode="Static"
                                 param-Preview="change.Card"/>
                         </td>
-                        <td> 
+                        <td>
                             <div class="ms-group">
-                                @MtgSymbols.Format(change.Card.ManaCost).ToHtmlString() 
-                            </div> 
+                                @MtgSymbols.Format(change.Card.ManaCost).ToHtmlString()
+                            </div>
                         </td>
                         <td> @change.Copies </td>
                     </tr>

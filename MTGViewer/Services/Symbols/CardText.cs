@@ -6,7 +6,6 @@ using MTGViewer.Data;
 
 namespace MTGViewer.Services;
 
-
 public class CardText : ISymbolFinder, ISymbolTranslator
 {
     private const string Mana = $@"{{(?<{ nameof(Mana) }>[^}}]+)}}";
@@ -15,7 +14,6 @@ public class CardText : ISymbolFinder, ISymbolTranslator
     private const string Loyalty = $@"\[(?<{ Direction }>[+−])?(?<{ nameof(Loyalty) }>\d+)\]";
 
     private const string Saga = $@"(?<{ nameof(Saga) }>(?:[IV]+(?:, )?)+) —";
-
 
     public IReadOnlyList<ManaSymbol> FindMana(string? mtgText)
     {
@@ -37,7 +35,6 @@ public class CardText : ISymbolFinder, ISymbolTranslator
             })
             .ToList();
     }
-
 
     public IReadOnlyList<LoyaltySymbol> FindLoyalties(string? mtgText)
     {
@@ -66,7 +63,6 @@ public class CardText : ISymbolFinder, ISymbolTranslator
             })
             .ToList();
     }
-
 
     public IReadOnlyList<SagaSymbol> FindSagas(string? mtgText)
     {
@@ -102,7 +98,6 @@ public class CardText : ISymbolFinder, ISymbolTranslator
             .ToList();
     }
 
-
     private static IReadOnlyList<int> SagaIndices(string[] sagas, int start, string separator)
     {
         var indices = new List<int> { start };
@@ -114,7 +109,6 @@ public class CardText : ISymbolFinder, ISymbolTranslator
 
         return indices;
     }
-
 
     public string ManaString(ManaSymbol symbol)
     {
@@ -130,14 +124,12 @@ public class CardText : ISymbolFinder, ISymbolTranslator
         return string.Join(string.Empty, manaSymbols);
     }
 
-
     public string LoyaltyString(LoyaltySymbol symbol)
     {
         var (_, direction, _) = symbol;
 
         return $"[{direction}{symbol}]";
     }
-
 
     public string SagaString(SagaSymbol symbol)
     {

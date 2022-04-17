@@ -48,7 +48,6 @@ public class LoginModel : PageModel
         public bool RememberMe { get; set; }
     }
 
-
     public async Task OnGetAsync(string? returnUrl = null)
     {
         if (!string.IsNullOrEmpty(ErrorMessage))
@@ -63,7 +62,6 @@ public class LoginModel : PageModel
 
         ReturnUrl = returnUrl;
     }
-
 
     public async Task<IActionResult> OnPostAsync(string? returnUrl = null)
     {

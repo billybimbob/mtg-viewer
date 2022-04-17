@@ -42,7 +42,6 @@ public class MulliganTests : IAsyncLifetime
         _testContext = new TestContext();
     }
 
-
     public async Task InitializeAsync()
     {
         _testContext.AddFakePersistentComponentState();
@@ -65,7 +64,6 @@ public class MulliganTests : IAsyncLifetime
         await _testGen.ClearAsync();
     }
 
-
     [Fact]
     public async Task LoadData_NoUser_Redirect()
     {
@@ -82,7 +80,6 @@ public class MulliganTests : IAsyncLifetime
 
         Assert.Equal(redirect, nav.Uri);
     }
-
 
     [Fact]
     public async Task LoadData_NoCards_Redirect()
@@ -105,7 +102,6 @@ public class MulliganTests : IAsyncLifetime
 
         Assert.Equal(redirect, nav.Uri);
     }
-
 
     [Fact]
     public async Task LoadData_InvalidDeck_Redirect()
@@ -133,7 +129,6 @@ public class MulliganTests : IAsyncLifetime
         Assert.Equal(redirect, nav.Uri);
     }
 
-
     private async Task<Deck> AddDeckAndSameUserAsync()
     {
         var deck = await _testGen.CreateDeckAsync(numCards: 10);
@@ -147,7 +142,6 @@ public class MulliganTests : IAsyncLifetime
 
         return deck;
     }
-
 
     [Fact]
     public async Task PickMulligan_NoneType_NoCards()
@@ -166,7 +160,6 @@ public class MulliganTests : IAsyncLifetime
         Assert.Equal(0, images.Count);
     }
 
-
     [Fact]
     public async Task PickMulligan_BuiltType_ShowCards()
     {
@@ -184,7 +177,6 @@ public class MulliganTests : IAsyncLifetime
         Assert.True(images.Count > 0);
     }
 
-
     [Fact]
     public async Task PickMulligan_TheorycraftType_ShowCards()
     {
@@ -201,7 +193,6 @@ public class MulliganTests : IAsyncLifetime
 
         Assert.True(images.Count > 0);
     }
-
 
     [Fact]
     public async Task PickMulligan_DrawCard_AddCard()
@@ -224,7 +215,6 @@ public class MulliganTests : IAsyncLifetime
 
         Assert.Equal(1, afterCards - beforeCards);
     }
-
 
     [Fact]
     public async Task PickMulligan_BackButton_ClearCards()
@@ -249,7 +239,6 @@ public class MulliganTests : IAsyncLifetime
         Assert.Equal(0, afterImages.Count);
     }
 
-
     [Fact]
     public async Task PickMulligan_NewHand_ShowCards()
     {
@@ -267,7 +256,7 @@ public class MulliganTests : IAsyncLifetime
         var beforeImages = cut.FindAll("img");
 
         newHand.Click();
-        
+
         var afterImages = cut.FindAll("img");
 
         Assert.True(beforeImages.Count > 0);

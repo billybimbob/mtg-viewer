@@ -6,7 +6,6 @@ using Microsoft.Extensions.Options;
 
 namespace MTGViewer.Services;
 
-
 public static class MTGSymbolExtensions
 {
     public static IServiceCollection AddSymbols(
@@ -35,7 +34,6 @@ public static class MTGSymbolExtensions
         return services;
     }
 
-
     private static SymbolOptionsBuilder GetOptionsBuilder(Action<SymbolOptionsBuilder>? builder = null)
     {
         var optionsBuilder = new SymbolOptionsBuilder()
@@ -46,7 +44,6 @@ public static class MTGSymbolExtensions
         return optionsBuilder;
     }
 
-
     private static ISymbolFinder DefaultFinderFactory(IServiceProvider provider)
     {
         var options = provider.GetRequiredService<IOptions<SymbolOptions>>();
@@ -54,7 +51,6 @@ public static class MTGSymbolExtensions
 
         return (ISymbolFinder)provider.GetRequiredService(defaultFinder);
     }
-
 
     private static ISymbolTranslator DefaultTranslatorFactory(IServiceProvider provider)
     {
@@ -65,14 +61,12 @@ public static class MTGSymbolExtensions
     }
 }
 
-
 public class SymbolOptions
 {
     public Type DefaultFinder { get; set; } = default!;
 
     public Type DefaultTranslator { get; set; } = default!;
 }
-
 
 public class SymbolOptionsBuilder
 {
@@ -82,7 +76,6 @@ public class SymbolOptionsBuilder
     public Type? DefaultTranslator { get; private set; }
 
     public IEnumerable<Type> SymbolHandlers => _handlers;
-
 
     public SymbolOptionsBuilder AddFinder(Type finder, bool isDefault = false)
     {
@@ -102,13 +95,11 @@ public class SymbolOptionsBuilder
         return this;
     }
 
-
     public SymbolOptionsBuilder AddFinder<TFinder>(bool isDefault = false)
         where TFinder : ISymbolFinder
     {
         return AddFinder(typeof(TFinder), isDefault);
     }
-
 
     public SymbolOptionsBuilder AddTranslator(Type translator, bool isDefault = false)
     {
@@ -128,13 +119,11 @@ public class SymbolOptionsBuilder
         return this;
     }
 
-
     public SymbolOptionsBuilder AddTranslator<TTranslator>(bool isDefault = false)
         where TTranslator : ISymbolTranslator
     {
         return AddTranslator(typeof(TTranslator), isDefault);
     }
-
 
     public SymbolOptionsBuilder AddFormatter(Type formatter, bool isDefault = false)
     {

@@ -15,14 +15,12 @@ internal static class EntityExtensions
         return DisplayName(memberExpr?.Member);
     }
 
-
     internal static string DisplayName<TEntity, TProperty>(
         this TEntity _, Expression<Func<TEntity, TProperty>> property)
         where TEntity : class
     {
         return DisplayName(property);
     }
-
 
     internal static string DisplayName<TEntity>(this TEntity _, string property)
     {
@@ -31,14 +29,12 @@ internal static class EntityExtensions
         return DisplayName(member);
     }
 
-
     private static string DisplayName(MemberInfo? member)
     {
         var display = member?.GetCustomAttribute<DisplayAttribute>();
 
         return display?.GetName() ?? member?.Name ?? string.Empty;
     }
-
 
     // public static void Reset<TEntity>(this TEntity entity)
     // {
@@ -73,7 +69,7 @@ internal static class EntityExtensions
     //             continue;
     //         }
 
-    //         var defaultProp = propType.IsValueType 
+    //         var defaultProp = propType.IsValueType
     //             && Nullable.GetUnderlyingType(propType) == null
     //             ? Activator.CreateInstance(propType)
     //             : null;

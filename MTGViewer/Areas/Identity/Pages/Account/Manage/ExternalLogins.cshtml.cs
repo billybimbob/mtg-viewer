@@ -26,7 +26,6 @@ public class ExternalLoginsModel : PageModel
     [TempData]
     public string? StatusMessage { get; set; }
 
-
     public IActionResult OnGet() => RedirectToPage("./Index");
 
     public async Task<IActionResult> OnGetLinkLoginCallbackAsync()

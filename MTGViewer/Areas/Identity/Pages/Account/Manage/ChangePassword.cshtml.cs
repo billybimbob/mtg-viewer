@@ -6,7 +6,6 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.Extensions.Logging;
 using MTGViewer.Areas.Identity.Data;
 
-
 namespace MTGViewer.Areas.Identity.Pages.Account.Manage;
 
 public class ChangePasswordModel : PageModel
@@ -25,13 +24,11 @@ public class ChangePasswordModel : PageModel
         _logger = logger;
     }
 
-
     [BindProperty]
     public InputModel? Input { get; set; }
 
     [TempData]
     public string? StatusMessage { get; set; }
-
 
     public class InputModel
     {
@@ -52,7 +49,6 @@ public class ChangePasswordModel : PageModel
         public string ConfirmPassword { get; set; } = default!;
     }
 
-
     public async Task<IActionResult> OnGetAsync()
     {
         var user = await _userManager.GetUserAsync(User);
@@ -69,7 +65,6 @@ public class ChangePasswordModel : PageModel
 
         return Page();
     }
-
 
     public async Task<IActionResult> OnPostAsync()
     {

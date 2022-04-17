@@ -19,7 +19,6 @@ using MTGViewer.Services;
 
 namespace MTGViewer.Pages.Decks;
 
-
 [Authorize]
 [Authorize(CardPolicies.ChangeTreasury)]
 public class ExchangeModel : PageModel
@@ -41,14 +40,12 @@ public class ExchangeModel : PageModel
         _logger = logger;
     }
 
-
     [TempData]
     public string? PostMessage { get; set; }
 
     public ExchangePreview Deck { get; private set; } = default!;
 
     public OffsetList<LocationCopy> Matches { get; private set; } = OffsetList<LocationCopy>.Empty;
-
 
     public async Task<IActionResult> OnGetAsync(int id, int? offset, CancellationToken cancel)
     {
@@ -88,7 +85,6 @@ public class ExchangeModel : PageModel
         return Page();
     }
 
-
     private static readonly Func<CardDbContext, int, string, int, CancellationToken, Task<ExchangePreview?>> ExchangePreviewAsync
         = EF.CompileAsyncQuery(
             (CardDbContext dbContext, int deckId, string userId, int limit, CancellationToken _) =>
@@ -123,7 +119,6 @@ public class ExchangeModel : PageModel
                         })
                 })
                 .SingleOrDefault());
-
 
     private IQueryable<LocationCopy> WantTargets(ExchangePreview deck)
     {
@@ -169,7 +164,6 @@ public class ExchangeModel : PageModel
                 });
     }
 
-
     private static readonly Func<CardDbContext, int, string, CancellationToken, Task<Deck?>> DeckForExchangeAsync
         = EF.CompileAsyncQuery((CardDbContext dbContext, int deckId, string userId, CancellationToken _) =>
             dbContext.Decks
@@ -188,8 +182,6 @@ public class ExchangeModel : PageModel
                 .AsSplitQuery()
                 .SingleOrDefault(d =>
                     d.Id == deckId && d.OwnerId == userId && !d.TradesTo.Any()));
-
-
 
     public async Task<IActionResult> OnPostAsync(int id, CancellationToken cancel)
     {
@@ -232,7 +224,6 @@ public class ExchangeModel : PageModel
         return RedirectToPage("/Transactions/Index", new { id });
     }
 
-
     private async Task ApplyChangesAsync(Deck deck, CancellationToken cancel)
     {
         ApplyExchangeOverlap(deck);
@@ -248,7 +239,6 @@ public class ExchangeModel : PageModel
 
         _dbContext.Trades.RemoveRange(emptyTrades);
     }
-
 
     private static void ApplyExchangeOverlap(Deck deck)
     {

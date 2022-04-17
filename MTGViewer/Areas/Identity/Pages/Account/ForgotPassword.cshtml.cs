@@ -31,7 +31,6 @@ public class ForgotPasswordModel : PageModel
         public string Email { get; set; } = default!;
     }
 
-
     public async Task<IActionResult> OnPostAsync()
     {
         if (Input is null || !ModelState.IsValid)

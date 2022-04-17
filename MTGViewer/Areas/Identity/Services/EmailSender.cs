@@ -18,7 +18,6 @@ public class AuthMessageSenderOptions
     public string SenderName { get; set; } = string.Empty;
 }
 
-
 public class EmailSender : IEmailSender
 {
     public EmailSender(IOptions<AuthMessageSenderOptions> optionsAccessor, ILogger<EmailSender> logger)
@@ -29,7 +28,6 @@ public class EmailSender : IEmailSender
 
     private readonly AuthMessageSenderOptions _options;
     private readonly ILogger<EmailSender> _logger;
-
 
     public async Task SendEmailAsync(string email, string subject, string message)
     {

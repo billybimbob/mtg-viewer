@@ -7,7 +7,6 @@ using Microsoft.EntityFrameworkCore.Query;
 
 namespace System.Paging.Query;
 
-
 internal class FindRootQuery : ExpressionVisitor
 {
     private static FindRootQuery? s_instance;
@@ -28,7 +27,6 @@ internal class FindRootQuery : ExpressionVisitor
         return Visit(parent);
     }
 }
-
 
 internal static class EntityTypeExtensions
 {

@@ -9,7 +9,6 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace MTGViewer.Data.Concurrency;
 
-
 internal static class ConcurrencyExtensions
 {
     public static ModelBuilder SelectConcurrencyToken(this ModelBuilder builder, DatabaseFacade database)
@@ -23,7 +22,6 @@ internal static class ConcurrencyExtensions
         return builder;
     }
 
-
     private static IEnumerable<Type> GetConcurrentTypes()
     {
         var concurrentType = typeof(Concurrent);
@@ -31,7 +29,6 @@ internal static class ConcurrencyExtensions
         return concurrentType.Assembly.ExportedTypes
             .Where(t => t.IsSubclassOf(concurrentType));
     }
-
 
     private static void AddConcurrentProperty(this EntityTypeBuilder entity, DatabaseFacade database)
     {
@@ -50,7 +47,6 @@ internal static class ConcurrencyExtensions
         }
     }
 
-
     public static object GetToken(this CardDbContext context, Concurrent current)
     {
         // not great, since boxes
@@ -67,7 +63,6 @@ internal static class ConcurrencyExtensions
             return current.Stamp;
         }
     }
-
 
     public static void MatchToken(
         this CardDbContext context, Concurrent current, PropertyValues dbProps)
@@ -112,7 +107,6 @@ internal static class ConcurrencyExtensions
         }
     }
 
-
     public static void MatchToken<E>(this CardDbContext context, E current, E dbValues)
         where E : Concurrent
     {
@@ -120,7 +114,6 @@ internal static class ConcurrencyExtensions
             current,
             context.Entry(dbValues).CurrentValues);
     }
-
 
     public static void CopyToken(this CardDbContext context, ConcurrentDto current, Concurrent db)
     {
@@ -138,7 +131,6 @@ internal static class ConcurrencyExtensions
             current.Stamp = db.Stamp;
         }
     }
-
 
     public static IEnumerable<EntityEntry<TEntity>> Entries<TEntity>(
         this DbUpdateConcurrencyException exception)

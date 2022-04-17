@@ -12,14 +12,12 @@ using MTGViewer.Tests.Utils;
 
 namespace MTGViewer.Tests.Pages.Decks;
 
-
 public class ExchangeTests : IAsyncLifetime
 {
     private readonly ExchangeModel _exchangeModel;
     private readonly CardDbContext _dbContext;
     private readonly PageContextFactory _pageFactory;
     private readonly TestDataGenerator _testGen;
-
 
     public ExchangeTests(
         ExchangeModel exchangeModel,
@@ -33,29 +31,24 @@ public class ExchangeTests : IAsyncLifetime
         _testGen = testGen;
     }
 
-
     public Task InitializeAsync() => _testGen.SeedAsync();
 
     public Task DisposeAsync() => _testGen.ClearAsync();
-
 
     private IQueryable<string> OwnerId(Quantity quantity) =>
         _dbContext.Decks
             .Where(d => d.Id == quantity.LocationId)
             .Select(d => d.OwnerId);
 
-
     private IQueryable<int> Copies(Want want) =>
         _dbContext.Wants
             .Where(w => w.Id == want.Id)
             .Select(w => w.Copies);
 
-
     private IQueryable<int> Copies(Giveback give) =>
         _dbContext.Givebacks
             .Where(g => g.Id == give.Id)
             .Select(g => g.Copies);
-
 
     private IQueryable<int> HoldCopies(Quantity quantity) =>
         _dbContext.Holds
@@ -63,19 +56,15 @@ public class ExchangeTests : IAsyncLifetime
                 && h.CardId == quantity.CardId)
             .Select(h => h.Copies);
 
-
     private IQueryable<int> BoxCardCopies(Quantity quantity) =>
         _dbContext.Holds
             .Where(h => h.Location is Box && h.CardId == quantity.CardId)
             .Select(h => h.Copies);
 
-
     private IQueryable<int> ChangeCopies(Quantity quantity) =>
         _dbContext.Changes
             .Where(c => c.ToId == quantity.LocationId || c.FromId == quantity.LocationId)
             .Select(c => c.Copies);
-
-
 
     [Fact]
     public async Task OnPost_InvalidDeck_NotFound()
@@ -89,7 +78,6 @@ public class ExchangeTests : IAsyncLifetime
 
         Assert.IsType<NotFoundResult>(result);
     }
-
 
     [Fact]
     public async Task OnPost_InvalidUser_NotFound()
@@ -108,7 +96,6 @@ public class ExchangeTests : IAsyncLifetime
 
         Assert.IsType<NotFoundResult>(result);
     }
-
 
     [Fact]
     public async Task OnPost_ValidWant_AppliesWant()
@@ -144,7 +131,6 @@ public class ExchangeTests : IAsyncLifetime
         Assert.Equal(targetCopies, boxBefore - boxAfter);
         Assert.Equal(targetCopies, changeAfter - changeBefore);
     }
-
 
     [Fact]
     public async Task OnPost_InsufficientWant_WantLowered()
@@ -183,7 +169,6 @@ public class ExchangeTests : IAsyncLifetime
         Assert.Equal(targetLimit, changeAfter - changeBefore);
     }
 
-
     [Theory]
     [InlineData(0)]
     [InlineData(-2)]
@@ -220,7 +205,6 @@ public class ExchangeTests : IAsyncLifetime
         Assert.Equal(returnCopies, boxAfter - boxBefore);
         Assert.Equal(returnCopies, changeAfter - changeBefore);
     }
-
 
     [Fact]
     public async Task OnPost_TradeActive_NoChange()
@@ -260,7 +244,6 @@ public class ExchangeTests : IAsyncLifetime
         Assert.Equal(boxBefore, boxAfter);
         Assert.Equal(holdBefore, holdAfter);
     }
-
 
     [Fact]
     public async Task OnPost_MixedWantGives_AppliesChanges()

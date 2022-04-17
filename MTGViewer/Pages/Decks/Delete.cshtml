@@ -5,14 +5,13 @@
 }
 @inject SymbolFormatter MtgSymbols
 
-
 <h1>Delete @Model.Deck.Name</h1>
 <hr />
 
 <div class="alert alert-warning" role="alert">
     <h5 class="alert-heading">Are you sure you want to delete this deck?</h5>
     <p>
-        All current cards in the deck will be automatically returned 
+        All current cards in the deck will be automatically returned
         to the Treasury
     </p>
 
@@ -31,7 +30,7 @@
 {
     <div class="mt-2 alert alert-danger" role="alert">
         <h5 class="alert-heading">Active Trades</h5>
-        <p class="mb-0"> 
+        <p class="mb-0">
             There are currently active trades for @Model.Deck.Name that will also be deleted.
         </p>
     </div>

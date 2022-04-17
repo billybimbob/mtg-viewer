@@ -17,7 +17,6 @@ using MTGViewer.Tests.Utils;
 
 namespace MTGViewer.Tests;
 
-
 public class Startup
 {
     public void ConfigureHost(IHostBuilder hostBuilder)
@@ -29,7 +28,6 @@ public class Startup
                 config.AddUserSecrets<MTGViewer.App>();
             });
     }
-
 
     public void ConfigureServices(IServiceCollection services, HostBuilderContext context)
     {

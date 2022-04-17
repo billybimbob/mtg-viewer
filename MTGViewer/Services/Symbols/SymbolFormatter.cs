@@ -4,7 +4,6 @@ using System.Text;
 
 namespace MTGViewer.Services;
 
-
 public class SymbolFormatter : ISymbolFinder, ISymbolTranslator
 {
     private readonly ISymbolFinder _finder;
@@ -15,7 +14,6 @@ public class SymbolFormatter : ISymbolFinder, ISymbolTranslator
         _finder = finder;
         _translator = translator;
     }
-
 
     public string Format(string? mtgText)
     {
@@ -49,7 +47,6 @@ public class SymbolFormatter : ISymbolFinder, ISymbolTranslator
         return translation.ToString();
     }
 
-
     public IReadOnlyList<ManaSymbol> FindMana(string? mtgText) =>
         _finder.FindMana(mtgText);
 
@@ -58,7 +55,6 @@ public class SymbolFormatter : ISymbolFinder, ISymbolTranslator
 
     public IReadOnlyList<SagaSymbol> FindSagas(string? mtgText) =>
         _finder.FindSagas(mtgText);
-
 
     public string ManaString(ManaSymbol symbol) =>
         _translator.ManaString(symbol);
@@ -70,8 +66,6 @@ public class SymbolFormatter : ISymbolFinder, ISymbolTranslator
         _translator.SagaString(symbol);
 }
 
-
-
 public static class ComposeExtensions
 {
     public static SymbolFormatter ComposeWith(
@@ -82,7 +76,6 @@ public static class ComposeExtensions
 
         return new SymbolFormatter(finder, translator);
     }
-
 
     public static SymbolFormatter ComposeWith(
         this ISymbolTranslator translator, ISymbolFinder finder)

@@ -8,7 +8,6 @@ using MTGViewer.Data.Internal;
 
 namespace MTGViewer.Data;
 
-
 [Index(nameof(Type), nameof(Id))]
 [Index(nameof(Name), nameof(Id))] // could be updated often
 public abstract class Location : Concurrent
@@ -25,14 +24,12 @@ public abstract class Location : Concurrent
     public List<Hold> Holds { get; init; } = new();
 }
 
-
 public abstract class Theorycraft : Location
 {
     public Color Color { get; set; }
 
     public List<Want> Wants { get; init; } = new();
 }
-
 
 public class Unclaimed : Theorycraft
 {
@@ -47,7 +44,6 @@ public class Unclaimed : Theorycraft
     }
 }
 
-
 [Index(nameof(OwnerId), nameof(Type), nameof(Id))]
 public class Deck : Theorycraft
 {
@@ -55,22 +51,17 @@ public class Deck : Theorycraft
     public string OwnerId { get; init; } = default!;
     public UserRef Owner { get; init; } = default!;
 
-
     public List<Giveback> Givebacks { get; init; } = new();
-
 
     [Display(Name = "Trades To")]
     public List<Trade> TradesTo { get; init; } = new();
-
 
     [Display(Name = "Trades From")]
     public List<Trade> TradesFrom { get; init; } = new();
 }
 
-
 public abstract class Storage : Location
 { }
-
 
 public class Excess : Storage
 {
@@ -82,7 +73,6 @@ public class Excess : Storage
         };
     }
 }
-
 
 [Index(nameof(BinId), nameof(Type), nameof(Id))]
 public class Box : Storage
@@ -97,7 +87,6 @@ public class Box : Storage
     [StringLength(40)]
     public string? Appearance { get; set; }
 }
-
 
 [Index(nameof(Name), nameof(Id))]
 public class Bin

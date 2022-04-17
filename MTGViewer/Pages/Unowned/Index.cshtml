@@ -6,7 +6,6 @@
 @inject SymbolFormatter MtgSymbols
 @inject CardText CardText
 
-
 <h1>Unclaimed Decks</h1>
 
 <div class="table-responsive-md">
@@ -43,7 +42,7 @@
                             <input type="hidden" name="id" value="@unclaimed.Id"/>
 
                             <div class="btn-group" role="group">
-                                <input title="Claim @unclaimed.Name" 
+                                <input title="Claim @unclaimed.Name"
                                     asp-page-handler="Claim"
                                     type="submit" class="btn btn-secondary"
                                     value="Claim" />

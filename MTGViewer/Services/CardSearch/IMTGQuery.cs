@@ -8,7 +8,6 @@ using MTGViewer.Data;
 
 namespace MTGViewer.Services;
 
-
 public interface IMTGQuery
 {
     IMTGCardSearch Where(Expression<Func<CardQuery, bool>> predicate);
@@ -17,7 +16,6 @@ public interface IMTGQuery
 
     Task<Card?> FindAsync(string id, CancellationToken cancel = default);
 }
-
 
 public interface IMTGCardSearch
 {

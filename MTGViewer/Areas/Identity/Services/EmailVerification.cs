@@ -38,7 +38,6 @@ public class EmailVerification
         _authOptions = authOptions.Value;
     }
 
-
     public async Task<bool> SendApproveRequestAsync(CardUser user)
     {
         var httpContext = _httpAccessor.HttpContext;
@@ -73,7 +72,6 @@ public class EmailVerification
 
         return true;
     }
-
 
     public async Task<bool> SendEmailChangeAsync(CardUser user, string newEmail)
     {
@@ -116,7 +114,6 @@ public class EmailVerification
         return true;
     }
 
-
     public async Task<bool> SendConfirmationAsync(CardUser user)
     {
         var httpContext = _httpAccessor.HttpContext;
@@ -151,7 +148,6 @@ public class EmailVerification
 
         return true;
     }
-
 
     public async Task<bool> SendResetPasswordAsync(CardUser user)
     {

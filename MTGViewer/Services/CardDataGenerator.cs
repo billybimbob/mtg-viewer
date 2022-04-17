@@ -11,7 +11,6 @@ using MTGViewer.Services.Internal;
 
 namespace MTGViewer.Services;
 
-
 public class SeedSettings
 {
     public int Seed { get; set; } = 100;
@@ -19,13 +18,11 @@ public class SeedSettings
     public string? Password { get; set; }
 }
 
-
 public class CardDataGenerator
 {
     private readonly Random _random;
     private readonly IMTGQuery _mtgQuery;
     private readonly BulkOperations _bulkOperations;
-
 
     public CardDataGenerator(
         IOptions<SeedSettings> seedOptions,
@@ -36,7 +33,6 @@ public class CardDataGenerator
         _mtgQuery = mtgQuery;
         _bulkOperations = bulkOperations;
     }
-
 
     public async Task GenerateAsync(CancellationToken cancel = default)
     {
@@ -69,7 +65,6 @@ public class CardDataGenerator
         await _bulkOperations.SeedAsync(data, cancel);
     }
 
-
     private static IReadOnlyList<CardUser> GetUsers() => new List<CardUser>()
     {
         new CardUser
@@ -98,7 +93,6 @@ public class CardDataGenerator
         }
     };
 
-
     private async Task<IReadOnlyList<Card>> GetCardsAsync(CancellationToken cancel)
     {
         var cards = await _mtgQuery
@@ -108,7 +102,6 @@ public class CardDataGenerator
 
         return cards;
     }
-
 
     private Bin GetBin() => new Bin
     {
@@ -124,7 +117,6 @@ public class CardDataGenerator
             .ToList()
     };
 
-
     private IReadOnlyList<Deck> GetDecks(IEnumerable<UserRef> users)
     {
         return users
@@ -139,7 +131,6 @@ public class CardDataGenerator
             .ToList();
     }
 
-
     private void AddDeckHolds(IEnumerable<Card> cards, IEnumerable<Deck> decks)
     {
         foreach (var (card, deck) in cards.Zip(decks))
@@ -151,7 +142,6 @@ public class CardDataGenerator
             });
         }
     }
-
 
     private void AddBoxHolds(IEnumerable<Card> cards, Bin bin)
     {
@@ -180,7 +170,6 @@ public class CardDataGenerator
         }
     }
 
-
     private void AddTrades(IEnumerable<Deck> decks)
     {
         var tradeFrom = decks.First();
@@ -198,7 +187,6 @@ public class CardDataGenerator
         tradeTo.TradesTo.Add(trade);
         tradeFrom.TradesFrom.Add(trade);
     }
-
 
     private static IReadOnlyList<Suggestion> GetSuggestions(
         IEnumerable<Card> cards,

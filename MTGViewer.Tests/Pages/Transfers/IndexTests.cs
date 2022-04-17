@@ -12,7 +12,6 @@ using MTGViewer.Tests.Utils;
 
 namespace MTGViewer.Tests.Pages.Transfers;
 
-
 public class IndexTests : IAsyncLifetime
 {
     private readonly IndexModel _indexModel;
@@ -32,18 +31,14 @@ public class IndexTests : IAsyncLifetime
         _testGen = testGen;
     }
 
-
     public Task InitializeAsync() => _testGen.SeedAsync();
 
     public Task DisposeAsync() => _testGen.ClearAsync();
-
 
     private IQueryable<Suggestion> AllSuggestions =>
         _dbContext.Suggestions
             .AsNoTracking()
             .OrderBy(s => s.Id);
-
-
 
     [Fact]
     public async Task OnPost_ValidSuggestion_RemovesSuggestion()
@@ -61,7 +56,6 @@ public class IndexTests : IAsyncLifetime
         Assert.IsType<RedirectToPageResult>(result);
         Assert.DoesNotContain(suggestion.Id, suggestions);
     }
-
 
     [Fact]
     public async Task OnPost_WrongUser_NoRemove()
@@ -83,7 +77,6 @@ public class IndexTests : IAsyncLifetime
         Assert.IsType<RedirectToPageResult>(result);
         Assert.Contains(suggestion.Id, suggestions);
     }
-
 
     [Fact]
     public async Task OnPost_InvalidSuggestion_NoRemove()

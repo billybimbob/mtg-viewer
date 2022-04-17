@@ -10,7 +10,6 @@
 
 @inject ILogger<Import> Logger
 
-
 <PageTitle> Treasury - Upload </PageTitle>
 
 <h1> Upload Card Data </h1>
@@ -76,7 +75,6 @@
     </div>
 </div>
 
-
 @code
 {
     internal bool HasNoFile => _chosenImport == null;
@@ -89,12 +87,10 @@
 
     internal Percent PercentProgress { get; private set; }
 
-
     private const long SizeLimit = 2_097_152;
 
     private CancellationTokenSource? _cancel = new();
     private IBrowserFile? _chosenImport;
-
 
     protected override void Dispose(bool disposing)
     {
@@ -107,7 +103,6 @@
 
         base.Dispose(disposing);
     }
-
 
     internal void FileChosen(InputFileChangeEventArgs args)
     {
@@ -146,7 +141,6 @@
         FileError = string.Empty;
         _chosenImport = file;
     }
-
 
     internal async Task UploadAsync()
     {
@@ -209,7 +203,6 @@
         }
     }
 
-
     private void UploadProgress(Percent percent)
     {
         if (percent <= PercentProgress)
@@ -221,7 +214,6 @@
 
         StateHasChanged();
     }
-
 
     internal void CancelUpload()
     {

@@ -37,7 +37,6 @@ public static class PagingExtensions
             .Take(pageSize);
     }
 
-
     public static OffsetList<TEntity> ToOffsetList<TEntity>(
         this IEnumerable<TEntity> source,
         int? index,
@@ -50,7 +49,6 @@ public static class PagingExtensions
         return ExecuteOffset<TEntity>.ToOffsetList(query);
     }
 
-
     public static Task<OffsetList<TEntity>> ToOffsetListAsync<TEntity>(
         this IQueryable<TEntity> source,
         CancellationToken cancel = default)
@@ -59,8 +57,6 @@ public static class PagingExtensions
 
         return ExecuteOffset<TEntity>.ToOffsetListAsync(source, cancel);
     }
-
-
 
     private sealed class SelectableQueryable<TSource, TResult>
         : ISelectableQueryable<TSource, TResult>, IAsyncEnumerable<TResult>
@@ -86,14 +82,11 @@ public static class PagingExtensions
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
     }
 
-
     public static ISelectableQueryable<TSource, TResult> WithSelect<TSource, TResult>(
         this IQueryable<TResult> source)
     {
         return new SelectableQueryable<TSource, TResult>(source);
     }
-
-
 
     public static ISelectableQueryable<TEntity, TEntity> After<TEntity, TOrigin>(
         this IQueryable<TEntity> source,
@@ -110,7 +103,6 @@ public static class PagingExtensions
             .Where(seekCondition)
             .WithSelect<TEntity, TEntity>();
     }
-
 
     public static ISelectableQueryable<TSource, TResult> After<TSource, TResult>(
         this ISelectableQueryable<TSource, TResult> source,
@@ -130,7 +122,6 @@ public static class PagingExtensions
             .WithSelect<TSource, TResult>();
     }
 
-
     public static ISelectableQueryable<TSource, TResult> After<TSource, TResult>(
         this ISelectableQueryable<TSource, TResult> source,
         TResult origin)
@@ -149,8 +140,6 @@ public static class PagingExtensions
             .WithSelect<TSource, TResult>();
     }
 
-
-
     public static ISelectableQueryable<TEntity, TEntity> Before<TEntity, TOrigin>(
         this IQueryable<TEntity> source,
         TOrigin origin)
@@ -168,7 +157,6 @@ public static class PagingExtensions
             .Reverse()
             .WithSelect<TEntity, TEntity>();
     }
-
 
     public static ISelectableQueryable<TSource, TResult> Before<TSource, TResult>(
         this ISelectableQueryable<TSource, TResult> source,
@@ -189,7 +177,6 @@ public static class PagingExtensions
             .Select(selector)
             .WithSelect<TSource, TResult>();
     }
-
 
     public static ISelectableQueryable<TSource, TResult> Before<TSource, TResult>(
         this ISelectableQueryable<TSource, TResult> source,
@@ -212,7 +199,6 @@ public static class PagingExtensions
             .WithSelect<TSource, TResult>();
     }
 
-
     public static IQueryable<TResult> Take<TSource, TResult>(
         this ISelectableQueryable<TSource, TResult> source,
         int count)
@@ -224,8 +210,6 @@ public static class PagingExtensions
         return source.Provider
             .CreateQuery<TResult>(insertVisitor.Visit(source.Expression));
     }
-
-
 
     public static ISelectableQueryable<TEntity, TEntity> SeekOrigin<TEntity>(
         this IQueryable<TEntity> source,
@@ -244,7 +228,6 @@ public static class PagingExtensions
         };
     }
 
-
     private static ISelectableQueryable<TEntity, TEntity> SeekBackwards<TEntity>(
         this IQueryable<TEntity> source)
     {
@@ -253,7 +236,6 @@ public static class PagingExtensions
             .Reverse()
             .WithSelect<TEntity, TEntity>();
     }
-
 
     public static ISelectableQueryable<TSource, TResult> SeekOrigin<TSource, TResult>(
         this ISelectableQueryable<TSource, TResult> source,
@@ -271,7 +253,6 @@ public static class PagingExtensions
             .Select(selector)
             .WithSelect<TSource, TResult>();
     }
-
 
     public static ISelectableQueryable<TSource, TResult> SeekOrigin<TSource, TResult>(
         this ISelectableQueryable<TSource, TResult> source,
@@ -292,7 +273,6 @@ public static class PagingExtensions
         };
     }
 
-
     private static ISelectableQueryable<TSource, TResult> SeekBackwards<TSource, TResult>(
         this ISelectableQueryable<TSource, TResult> source)
     {
@@ -304,7 +284,6 @@ public static class PagingExtensions
             .Select(selector)
             .WithSelect<TSource, TResult>();
     }
-
 
     public static ISeekable<TEntity> SeekBy<TEntity, TKey>(
         this IQueryable<TEntity> source,
@@ -319,7 +298,6 @@ public static class PagingExtensions
             source, direction, null, key, null);
     }
 
-
     public static ISeekable<TEntity> SeekBy<TEntity, TKey>(
         this IQueryable<TEntity> source,
         TKey? key,
@@ -332,7 +310,6 @@ public static class PagingExtensions
         return new EntityOriginSeek<TEntity, object, TKey>(
             source, direction, null, null, key);
     }
-
 
     public static Task<SeekList<TEntity>> ToSeekListAsync<TEntity>(
         this IQueryable<TEntity> source,

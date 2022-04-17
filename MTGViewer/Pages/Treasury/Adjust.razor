@@ -126,7 +126,6 @@
                         id="@BoxDto.PropertyId(b => b.Appearance)" class="form-control" />
                 </div>
 
-
                 <div class="form-group">
                     <label for="@BoxDto.PropertyId(b => b.Capacity)">
                         @Box.DisplayName(b => b.Capacity)
@@ -164,7 +163,6 @@ else
     </div>
 }
 
-
 @code
 {
     public sealed class BoxDto
@@ -191,7 +189,6 @@ else
         [ValidateComplexType]
         public BinDto Bin { get; init; }
 
-
         public static string PropertyId<T>(Expression<Func<BoxDto, T>> property)
         {
             if (property.Body is not MemberExpression expression)
@@ -202,7 +199,6 @@ else
             return $"{nameof(BoxDto)}-{expression.Member.Name}";
         }
     }
-
 
     public sealed class BinDto
     {
@@ -218,7 +214,6 @@ else
         {
             _box = box;
         }
-
 
         public bool IsEdit => Id != default;
 
@@ -238,13 +233,11 @@ else
             }
         }
 
-
         public void Update(BinDto? bin)
         {
             Id = bin?.Id ?? default;
             _name = bin?.Name;
         }
-
 
         public static string PropertyId<T>(Expression<Func<BinDto, T>> property)
         {

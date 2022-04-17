@@ -29,14 +29,12 @@ public sealed class MtgApiFlipQuery
         _logger = logger;
     }
 
-
     public bool HasFlip(string cardName)
     {
         const string faceSplit = "//";
 
         return cardName.Contains(faceSplit);
     }
-
 
     public async ValueTask<Card?> GetCardAsync(
         IOperationResult<ICard> result,
@@ -60,7 +58,6 @@ public sealed class MtgApiFlipQuery
 
         return GetValidatedCard(iCard, flip);
     }
-
 
     private async Task<Flip?> GetFlipAsync(ICard card, CancellationToken cancel)
     {
@@ -88,7 +85,6 @@ public sealed class MtgApiFlipQuery
 
         return GetValidatedFlip(iFlip);
     }
-
 
     public async ValueTask<IReadOnlyList<Card>> GetCardsAsync(
         IOperationResult<List<ICard>> result,
@@ -121,8 +117,6 @@ public sealed class MtgApiFlipQuery
             .ToListAsync(cancel);
     }
 
-
-
     private async ValueTask<Card?> CardWithFlipAsync(Queue<ICard> cardGroup, CancellationToken cancel)
     {
         if (!cardGroup.TryDequeue(out var iCard))
@@ -146,7 +140,6 @@ public sealed class MtgApiFlipQuery
         return GetValidatedCard(iCard, flip);
     }
 
-
     private async ValueTask<Flip?> GetFlipAsync(ICard card, Queue<ICard> cardGroup, CancellationToken cancel)
     {
         if (cardGroup.TryDequeue(out var iFlip)
@@ -161,8 +154,6 @@ public sealed class MtgApiFlipQuery
         return await GetFlipAsync(card, cancel);
     }
 
-
-
     private T? LoggedUnwrap<T>(IOperationResult<T> result) where T : class
     {
         if (!result.IsSuccess)
@@ -173,7 +164,6 @@ public sealed class MtgApiFlipQuery
 
         return result.Value;
     }
-
 
     private Card? GetValidatedCard(ICard iCard, Flip? flip)
     {
@@ -226,7 +216,6 @@ public sealed class MtgApiFlipQuery
 
         return card;
     }
-
 
     private Flip? GetValidatedFlip(ICard iFlip)
     {

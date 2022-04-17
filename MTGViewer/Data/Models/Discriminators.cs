@@ -7,7 +7,6 @@ public enum SaveResult
     Error
 }
 
-
 internal enum LocationType
 {
     Invalid,
@@ -16,7 +15,6 @@ internal enum LocationType
     Box,
     Excess
 }
-
 
 internal enum QuantityType
 {

@@ -16,7 +16,6 @@ using MTGViewer.Services;
 
 namespace MTGViewer.Pages.Cards;
 
-
 public sealed partial class Collection : ComponentBase, IDisposable
 {
     [Parameter]
@@ -51,7 +50,6 @@ public sealed partial class Collection : ComponentBase, IDisposable
     [SupplyParameterFromQuery]
     public int Direction { get; set; }
 
-
     [Inject]
     internal IDbContextFactory<CardDbContext> DbFactory { get; set; } = default!;
 
@@ -67,16 +65,13 @@ public sealed partial class Collection : ComponentBase, IDisposable
     [Inject]
     internal ILogger<Collection> Logger { get; set; } = default!;
 
-
     internal event EventHandler? ParametersChanged;
-
 
     internal bool IsLoading => _isBusy || !_isInteractive;
 
     internal FilterContext Filters { get; } = new();
 
     internal SeekList<LocationCopy> Cards { get; private set; } = SeekList<LocationCopy>.Empty;
-
 
     private readonly CancellationTokenSource _cancel = new();
     private readonly Dictionary<string, object?> _newFilters = new(5);
@@ -86,14 +81,12 @@ public sealed partial class Collection : ComponentBase, IDisposable
     private bool _isBusy;
     private bool _isInteractive;
 
-
     protected override void OnInitialized()
     {
         _persistSubscription = ApplicationState.RegisterOnPersisting(PersistCardData);
 
         ParametersChanged += Filters.OnParametersChanged;
     }
-
 
     protected async override Task OnParametersSetAsync()
     {
@@ -132,7 +125,6 @@ public sealed partial class Collection : ComponentBase, IDisposable
         }
     }
 
-
     protected override void OnAfterRender(bool firstRender)
     {
         if (firstRender)
@@ -142,7 +134,6 @@ public sealed partial class Collection : ComponentBase, IDisposable
             StateHasChanged();
         }
     }
-
 
     void IDisposable.Dispose()
     {
@@ -156,7 +147,6 @@ public sealed partial class Collection : ComponentBase, IDisposable
         _cancel.Dispose();
     }
 
-
     private Task PersistCardData()
     {
         ApplicationState.PersistAsJson(nameof(Cards), Cards as IReadOnlyList<LocationCopy>);
@@ -165,7 +155,6 @@ public sealed partial class Collection : ComponentBase, IDisposable
 
         return Task.CompletedTask;
     }
-
 
     private bool TryGetData<TData>(string key, [NotNullWhen(true)] out TData? data)
     {
@@ -177,7 +166,6 @@ public sealed partial class Collection : ComponentBase, IDisposable
 
         return false;
     }
-
 
     private async Task LoadCardDataAsync(CancellationToken cancel)
     {
@@ -195,7 +183,6 @@ public sealed partial class Collection : ComponentBase, IDisposable
 
         Cards = await FilteredCardsAsync(dbContext, Filters, cancel);
     }
-
 
     private void OnFilterChanged(object? sender, FilterEventArgs args)
     {
@@ -221,8 +208,6 @@ public sealed partial class Collection : ComponentBase, IDisposable
             Nav.GetUriWithQueryParameters(_newFilters), replace: true);
     }
 
-
-
     internal sealed class FilterEventArgs : EventArgs
     {
         public IEnumerable<KeyValuePair<string, object?>> Changes { get; }
@@ -237,11 +222,9 @@ public sealed partial class Collection : ComponentBase, IDisposable
         { }
     }
 
-
     internal sealed class FilterContext
     {
         public event EventHandler<FilterEventArgs>? FilterChanged;
-
 
         private string? _name;
         public string? Name
@@ -263,7 +246,6 @@ public sealed partial class Collection : ComponentBase, IDisposable
             }
         }
 
-
         private string[] _types = Array.Empty<string>();
         public string[] Types
         {
@@ -281,7 +263,6 @@ public sealed partial class Collection : ComponentBase, IDisposable
                 }
             }
         }
-
 
         private string? _text;
         public string? Text
@@ -302,7 +283,6 @@ public sealed partial class Collection : ComponentBase, IDisposable
                 _text = value;
             }
         }
-
 
         public TextFilter TextFilter
         {
@@ -325,7 +305,6 @@ public sealed partial class Collection : ComponentBase, IDisposable
             }
         }
 
-
         private IEnumerable<KeyValuePair<string, object?>> ChangedFilters(TextFilter filter)
         {
             if (Name != filter.Name)
@@ -347,7 +326,6 @@ public sealed partial class Collection : ComponentBase, IDisposable
 
             yield return KeyValuePair.Create(nameof(Collection.Direction), null as object);
         }
-
 
         private const string DefaultOrder = nameof(Card.Name);
 
@@ -388,13 +366,11 @@ public sealed partial class Collection : ComponentBase, IDisposable
             FilterChanged.Invoke(this, args);
         }
 
-
         public int PageSize { get; private set; }
 
         public string? Seek { get; private set; }
 
         public SeekDirection Direction { get; private set; }
-
 
         public void SeekPage(SeekRequest<LocationCopy> request)
         {
@@ -412,7 +388,6 @@ public sealed partial class Collection : ComponentBase, IDisposable
 
             FilterChanged.Invoke(this, args);
         }
-
 
         private Color _pickedColors;
         public Color PickedColors
@@ -448,7 +423,6 @@ public sealed partial class Collection : ComponentBase, IDisposable
                 .Aggregate((color, c) => color | c);
         }
 
-
         public void OnParametersChanged(object? sender, EventArgs _)
         {
             if (sender is not Collection parameters)
@@ -472,8 +446,6 @@ public sealed partial class Collection : ComponentBase, IDisposable
             Direction = (SeekDirection)parameters.Direction;
         }
     }
-
-
 
     private static Task<SeekList<LocationCopy>> FilteredCardsAsync(
         CardDbContext dbContext,
@@ -534,7 +506,6 @@ public sealed partial class Collection : ComponentBase, IDisposable
             .Take(filters.PageSize)
             .ToSeekListAsync(cancel);
     }
-
 
     private static IQueryable<LocationCopy> OrderedCopies(IQueryable<LocationCopy> copies, string orderBy)
     {

@@ -45,7 +45,7 @@
                                     @deck.Name </a>
                             </td>
 
-                            <td> 
+                            <td>
                                 <div class="ms-group">
                                     @MtgSymbols.Format(CardText.ColorString(deck.Color)).ToHtmlString()
                                 </div>
@@ -103,7 +103,6 @@
         <partial name="_SeekPagingPartial" model="(Seek)Model.TradeDecks.Seek" />
     </div>
 </div>
-
 
 @if (Model.Suggestions.Any())
 {

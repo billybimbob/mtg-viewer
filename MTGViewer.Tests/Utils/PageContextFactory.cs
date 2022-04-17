@@ -32,7 +32,6 @@ public class PageContextFactory
         _claimsFactory = claimsFactory;
     }
 
-
     public void AddModelContext(PageModel model, ClaimsPrincipal? user = null)
     {
         var objectValidate = new Mock<IObjectModelValidator>();
@@ -80,14 +79,12 @@ public class PageContextFactory
         model.Url = new UrlHelper(actionContext);
     }
 
-
     public async Task AddModelContextAsync(PageModel model, CardUser user)
     {
         var userClaim = await _claimsFactory.CreateAsync(user);
 
         AddModelContext(model, userClaim);
     }
-
 
     public async Task AddModelContextAsync(PageModel model, string userId)
     {

@@ -13,7 +13,6 @@ using MTGViewer.Services;
 
 namespace MTGViewer.Pages.Treasury;
 
-
 public class IndexModel : PageModel
 {
     private readonly CardDbContext _dbContext;
@@ -25,13 +24,11 @@ public class IndexModel : PageModel
         _pageSize = pageSize;
     }
 
-
     public IReadOnlyList<BinPreview> Bins { get; private set; } = Array.Empty<BinPreview>();
 
     public Seek Seek { get; private set; }
 
     public bool HasExcess { get; private set; }
-
 
     public async Task OnGetAsync(int? seek, SeekDirection direction, CancellationToken cancel)
     {
@@ -51,7 +48,6 @@ public class IndexModel : PageModel
 
         HasExcess = await HasExcessAsync.Invoke(_dbContext, cancel);
     }
-
 
     private IQueryable<BoxPreview> BoxesForViewing()
     {
@@ -95,7 +91,6 @@ public class IndexModel : PageModel
                     })
             });
     }
-
 
     private static readonly Func<CardDbContext, CancellationToken, Task<bool>> HasExcessAsync
         = EF.CompileAsyncQuery((CardDbContext dbContext, CancellationToken _) =>

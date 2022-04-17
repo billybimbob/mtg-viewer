@@ -20,7 +20,6 @@ internal class MtgTypeParameter : IMtgParameter
     private readonly string[] _types;
     public bool IsEmpty => !_types.Any();
 
-
     public IMtgParameter Accept(object? value)
     {
         if (value is IEnumerable<string> values)
@@ -65,7 +64,6 @@ internal class MtgTypeParameter : IMtgParameter
     }
 }
 
-
 internal class MtgPageSizeParameter : IMtgParameter
 {
     public MtgPageSizeParameter() : this(0)
@@ -99,7 +97,6 @@ internal class MtgPageSizeParameter : IMtgParameter
         return cards;
     }
 }
-
 
 internal class MtgPageParameter : IMtgParameter
 {
@@ -135,7 +132,6 @@ internal class MtgPageParameter : IMtgParameter
         return cards;
     }
 }
-
 
 internal class MtgColorParameter : IMtgParameter
 {
@@ -177,7 +173,6 @@ internal class MtgColorParameter : IMtgParameter
     }
 }
 
-
 internal class MtgRarityParameter : IMtgParameter
 {
     public MtgRarityParameter() : this(null)
@@ -218,7 +213,6 @@ internal class MtgRarityParameter : IMtgParameter
         return cards.Where(q => q.Rarity, rarity.ToString());
     }
 }
-
 
 internal class MtgDefaultParameter : IMtgParameter
 {
@@ -283,7 +277,6 @@ internal class MtgDefaultParameter : IMtgParameter
         return cards;
     }
 }
-
 
 public static class CardQueryParameters
 {

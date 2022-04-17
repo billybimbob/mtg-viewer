@@ -16,7 +16,6 @@ using MTGViewer.Data.Internal;
 
 namespace MTGViewer.Pages.Treasury;
 
-
 [Authorize]
 [Authorize(Policy = CardPolicies.ChangeTreasury)]
 public sealed partial class Adjust : ComponentBase, IDisposable
@@ -36,7 +35,6 @@ public sealed partial class Adjust : ComponentBase, IDisposable
     [Inject]
     internal ILogger<Adjust> Logger { get; set; } = default!;
 
-
     internal bool IsLoading => _isBusy || !_isInteractive;
 
     internal IReadOnlyList<BinDto> Bins => _bins;
@@ -47,7 +45,6 @@ public sealed partial class Adjust : ComponentBase, IDisposable
 
     internal SaveResult Result { get; set; }
 
-
     private readonly CancellationTokenSource _cancel = new();
 
     private bool _isBusy;
@@ -55,7 +52,6 @@ public sealed partial class Adjust : ComponentBase, IDisposable
 
     private PersistingComponentStateSubscription _persistSubscription;
     private BinDto[] _bins = Array.Empty<BinDto>();
-
 
     protected override async Task OnInitializedAsync()
     {
@@ -86,7 +82,6 @@ public sealed partial class Adjust : ComponentBase, IDisposable
             _isBusy = false;
         }
     }
-
 
     protected override async Task OnParametersSetAsync()
     {
@@ -139,7 +134,6 @@ public sealed partial class Adjust : ComponentBase, IDisposable
         }
     }
 
-
     protected override void OnAfterRender(bool firstRender)
     {
         if (firstRender)
@@ -150,7 +144,6 @@ public sealed partial class Adjust : ComponentBase, IDisposable
         }
     }
 
-
     void IDisposable.Dispose()
     {
         _persistSubscription.Dispose();
@@ -158,8 +151,6 @@ public sealed partial class Adjust : ComponentBase, IDisposable
         _cancel.Cancel();
         _cancel.Dispose();
     }
-
-
 
     private Task PersistBoxData()
     {
@@ -169,7 +160,6 @@ public sealed partial class Adjust : ComponentBase, IDisposable
 
         return Task.CompletedTask;
     }
-
 
     private bool TryGetData<TData>(string key, [NotNullWhen(true)] out TData? data)
     {
@@ -182,7 +172,6 @@ public sealed partial class Adjust : ComponentBase, IDisposable
         return false;
     }
 
-
     private static readonly Func<CardDbContext, IAsyncEnumerable<BinDto>> BinsAsync =
         EF.CompileAsyncQuery((CardDbContext dbContext) =>
             dbContext.Bins
@@ -192,7 +181,6 @@ public sealed partial class Adjust : ComponentBase, IDisposable
                     Id = b.Id,
                     Name = b.Name
                 }));
-
 
     private async Task<BoxDto?> GetBoxAsync(CancellationToken cancel)
     {
@@ -222,8 +210,6 @@ public sealed partial class Adjust : ComponentBase, IDisposable
             .SingleOrDefaultAsync(cancel);
     }
 
-
-
     internal void BinSelected(ChangeEventArgs args)
     {
         if (int.TryParse(args.Value?.ToString(), out int id)
@@ -232,8 +218,6 @@ public sealed partial class Adjust : ComponentBase, IDisposable
             Box.Bin.Update(bin);
         }
     }
-
-
 
     internal async Task ValidBoxSubmittedAsync()
     {
@@ -269,7 +253,6 @@ public sealed partial class Adjust : ComponentBase, IDisposable
             _isBusy = false;
         }
     }
-
 
     private async Task ApplyBoxChangesAsync(CancellationToken cancel)
     {
@@ -314,7 +297,6 @@ public sealed partial class Adjust : ComponentBase, IDisposable
             replace: true);
     }
 
-
     private static async Task<Box?> GetBoxAsync(
         CardDbContext dbContext,
         BoxDto boxDto,
@@ -353,7 +335,6 @@ public sealed partial class Adjust : ComponentBase, IDisposable
 
         return box;
     }
-
 
     private static async Task<Bin?> GetBinAsync(
         CardDbContext dbContext, BinDto binDto, CancellationToken cancel)

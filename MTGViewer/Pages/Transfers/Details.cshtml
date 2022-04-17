@@ -6,7 +6,6 @@
 @inject SymbolFormatter MtgSymbols
 @inject CardText CardText
 
-
 <h1>Trades To @Model.Deck.Name</h1>
 <hr />
 
@@ -20,7 +19,6 @@
             value="Cancel Requests" />
     </form>
 </div>
-
 
 <h3>Sent Trades</h3>
 
@@ -53,9 +51,9 @@
                             asp-route-id="@trade.Target.Id">
                             @trade.Target.Name </a>
                     </td>
-                    <td> 
+                    <td>
                         <div class="ms-group">
-                            @MtgSymbols.Format(CardText.ColorString(trade.Target.Color)).ToHtmlString() 
+                            @MtgSymbols.Format(CardText.ColorString(trade.Target.Color)).ToHtmlString()
                         </div>
                     </td>
                     <td> @trade.Copies </td>
@@ -66,7 +64,6 @@
 </div>
 
 <partial name="_OffsetPagingPartial" for="Trades.Offset"/>
-
 
 <h3>
     <a asp-page="/Decks/Details" asp-route-id="@Model.Deck.Id">
@@ -101,9 +98,9 @@
                         <a asp-page="/Cards/Details" asp-route-id="@card.Id">
                             @card.Name </a>
                     </td>
-                    <td> 
+                    <td>
                         <div class="ms-group">
-                            @MtgSymbols.Format(card.ManaCost).ToHtmlString() 
+                            @MtgSymbols.Format(card.ManaCost).ToHtmlString()
                         </div>
                     </td>
                     <td> @card.SetName </td>

@@ -15,7 +15,6 @@ internal static class ExpressionHelpers
                 or nameof(Queryable.OrderByDescending);
     }
 
-
     public static bool IsOrderedMethod(MethodCallExpression orderBy)
     {
         return orderBy.Method.Name
@@ -25,15 +24,12 @@ internal static class ExpressionHelpers
                 or nameof(Queryable.ThenByDescending);
     }
 
-
     public static bool IsDescending(MethodCallExpression orderBy)
     {
         return orderBy.Method.Name
             is nameof(Queryable.OrderByDescending)
                 or nameof(Queryable.ThenByDescending);
     }
-
-
 
     public static IEnumerable<MemberExpression> GetLineage(MemberExpression? member)
     {
@@ -44,7 +40,6 @@ internal static class ExpressionHelpers
         }
     }
 
-
     public static string GetLineageName(MemberExpression member)
     {
         var memberNames = GetLineage(member)
@@ -53,7 +48,6 @@ internal static class ExpressionHelpers
 
         return string.Join(string.Empty, memberNames);
     }
-
 
     public static bool IsDescendant(MemberExpression? node, MemberExpression possibleAncestor)
     {
@@ -70,12 +64,10 @@ internal static class ExpressionHelpers
         return nodeName.StartsWith(ancestor, ordinal);
     }
 
-
     public static PropertyInfo GetKeyProperty<TEntity>() where TEntity : class
     {
         return GetKeyProperty(typeof(TEntity));
     }
-
 
     public static PropertyInfo GetKeyProperty(Type entityType)
     {
@@ -128,7 +120,6 @@ internal static class ExpressionHelpers
 
         throw new ArgumentException($"type {entityType.Name} is invalid");
     }
-
 
     private static bool IsEntityType(Type type)
     {

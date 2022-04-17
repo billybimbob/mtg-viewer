@@ -17,7 +17,6 @@ using MTGViewer.Services;
 
 namespace MTGViewer.Pages.Transactions;
 
-
 public class IndexModel : PageModel
 {
     private readonly UserManager<CardUser> _userManager;
@@ -37,7 +36,6 @@ public class IndexModel : PageModel
         _logger = logger;
     }
 
-
     [TempData]
     public string? PostMessage { get; set; }
 
@@ -49,7 +47,6 @@ public class IndexModel : PageModel
     public string? DeckName { get; private set; }
 
     public TimeZoneInfo TimeZone { get; private set; } = TimeZoneInfo.Utc;
-
 
     public async Task<IActionResult> OnGetAsync(
         int? id,
@@ -88,7 +85,6 @@ public class IndexModel : PageModel
         return Page();
     }
 
-
     private Task<string?> GetDeckNameAsync(int? id, CancellationToken cancel)
     {
         if (id is null)
@@ -108,7 +104,6 @@ public class IndexModel : PageModel
             .Select(d => d.Name)
             .SingleOrDefaultAsync(cancel);
     }
-
 
     private IQueryable<TransactionPreview> TransactionIndices(int? id)
     {
@@ -156,7 +151,6 @@ public class IndexModel : PageModel
                     .Take(_pageSize.Current)
             });
     }
-
 
     private void UpdateTimeZone(string? timeZoneId)
     {

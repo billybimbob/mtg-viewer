@@ -15,7 +15,6 @@ internal static class StringExtensions
     public static string WithHttps(this string url) =>
         new UriBuilder(url) { Scheme = "https", Port = -1 }.ToString();
 
-
     public static string ToNpgsqlConnectionString(this string pgUrl)
     {
         const string pgUrlPattern = @"postgres(?:ql)?:\/\/"

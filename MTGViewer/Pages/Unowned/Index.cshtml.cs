@@ -13,7 +13,6 @@ using MTGViewer.Services;
 
 namespace MTGViewer.Pages.Unowned;
 
-
 [Authorize]
 [Authorize(Policy = CardPolicies.ChangeTreasury)]
 public class IndexModel : PageModel
@@ -27,9 +26,7 @@ public class IndexModel : PageModel
         _pageSize = pageSize;
     }
 
-
     public SeekList<UnclaimedDetails> Unclaimed { get; private set; } = SeekList<UnclaimedDetails>.Empty;
-
 
     public async Task<IActionResult> OnGetAsync(
         int? seek,
@@ -44,7 +41,6 @@ public class IndexModel : PageModel
 
         return Page();
     }
-
 
     private IQueryable<UnclaimedDetails> UnclaimedDecks()
     {
@@ -63,12 +59,10 @@ public class IndexModel : PageModel
             });
     }
 
-
     public IActionResult OnPostClaim(int id)
     {
         return RedirectToPagePreserveMethod("Details", "Claim", new { id });
     }
-
 
     public IActionResult OnPostRemove(int id)
     {

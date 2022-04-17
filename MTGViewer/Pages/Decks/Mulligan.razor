@@ -20,7 +20,7 @@
         <div class="col-12 col-lg-9">
             <p>
                 @DeckName can simulate the ordering of how cards are  drawn from it.
-                The cards that are included in the simulation are based on the selected 
+                The cards that are included in the simulation are based on the selected
                 mulligan type.
             </p>
         </div>
@@ -30,7 +30,7 @@
                 <dt class="col-12 col-lg-3"> Built Deck </dt>
                 <dd class="col-12 col-lg-9">
                     <p>
-                        Only the currently held cards are included. Pending returns and wanted cards 
+                        Only the currently held cards are included. Pending returns and wanted cards
                         are excluded.
                     </p>
                 </dd>
@@ -76,7 +76,7 @@ else
         </button>
 
         <button title="Draw a Card" type="button"
-            class="btn btn-secondary" 
+            class="btn btn-secondary"
             disabled="@(IsLoading || !CanDraw)"
             @onclick="DrawCard">
             @if (IsLoading)
@@ -111,7 +111,7 @@ else
                 href="/Cards/Details/@card.Id"
                 class="img-link">
 
-                <img alt="@card.Name Image" 
+                <img alt="@card.Name Image"
                     src="@card.ImageUrl.WithHttps()"
                     class="card-img scale @fade"
                     @onload="() => OnImageLoad(card)" />
@@ -120,7 +120,6 @@ else
     </div>
 }
 
-
 @code
 {
     public enum MulliganType
@@ -128,5 +127,5 @@ else
         None,
         Built,
         Theorycraft
-    }    
+    }
 }

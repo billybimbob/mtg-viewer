@@ -14,7 +14,6 @@ internal sealed class BoxSearcher
     private readonly List<int> _boxBoundaries;
     private readonly List<int> _addPositions;
 
-
     public BoxSearcher(IReadOnlyCollection<Box> boxes)
     {
         _sortedBoxes = boxes
@@ -36,7 +35,6 @@ internal sealed class BoxSearcher
         _boxBoundaries = GetBoxBoundaries(_sortedBoxes).ToList();
         _addPositions = GetAddPositions(sortedHolds).ToList();
     }
-
 
     private static Dictionary<string, int> GetFirstCards(IEnumerable<Card> sortedCards)
     {
@@ -78,7 +76,6 @@ internal sealed class BoxSearcher
             }
         }
     }
-
 
     public IEnumerable<Box> FindBestBoxes(Card card)
     {

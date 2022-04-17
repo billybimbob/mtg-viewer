@@ -12,7 +12,6 @@ public class ParseTextFilterTests
         _parseFilter = parseFilter;
     }
 
-
     [Fact]
     public void Parse_Null_DefaultFilter()
     {
@@ -22,7 +21,6 @@ public class ParseTextFilterTests
 
         Assert.Equal(default(TextFilter), filter);
     }
-
 
     [Fact]
     public void Parse_EmptyString_DefaultFilter()
@@ -34,7 +32,6 @@ public class ParseTextFilterTests
         Assert.Equal(default(TextFilter), filter);
     }
 
-
     [Fact]
     public void Parse_Whitespace_DefaultFilter()
     {
@@ -44,7 +41,6 @@ public class ParseTextFilterTests
 
         Assert.Equal(default(TextFilter), filter);
     }
-
 
     [Fact]
     public void Parse_TestName_NameFilter()
@@ -58,7 +54,6 @@ public class ParseTextFilterTests
         Assert.Equal(result, filter);
     }
 
-
     [Fact]
     public void Parse_TestTypes_TypesFilter()
     {
@@ -71,7 +66,6 @@ public class ParseTextFilterTests
         Assert.Equal(result, filter);
     }
 
-
     [Fact]
     public void Parse_TestText_TextFilter()
     {
@@ -83,7 +77,6 @@ public class ParseTextFilterTests
 
         Assert.Equal(result, filter);
     }
-
 
     [Fact]
     public void Parse_TestMixed_MixedFilter()

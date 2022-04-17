@@ -27,7 +27,6 @@ public class Startup
         _env = env;
     }
 
-
     public void ConfigureServices(IServiceCollection services)
     {
         services
@@ -97,7 +96,6 @@ public class Startup
             services.AddScoped<CardDataGenerator>();
         }
     }
-
 
     public void Configure(IApplicationBuilder app)
     {

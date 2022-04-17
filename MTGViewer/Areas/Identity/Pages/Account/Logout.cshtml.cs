@@ -18,12 +18,10 @@ public class LogoutModel : PageModel
         _logger = logger;
     }
 
-
     public IActionResult OnGet()
     {
         return RedirectToPage("/Account/Manage/Index");
     }
-
 
     public async Task<IActionResult> OnPostAsync(string? returnUrl = null)
     {

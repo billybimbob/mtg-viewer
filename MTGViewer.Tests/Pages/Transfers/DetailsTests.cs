@@ -12,7 +12,6 @@ using MTGViewer.Tests.Utils;
 
 namespace MTGViewer.Tests.Pages.Transfers;
 
-
 public class StatusTests : IAsyncLifetime
 {
     private readonly DetailsModel _detailsModel;
@@ -34,7 +33,6 @@ public class StatusTests : IAsyncLifetime
         _testGen = testGen;
     }
 
-
     public async Task InitializeAsync()
     {
         await _testGen.SeedAsync();
@@ -42,7 +40,6 @@ public class StatusTests : IAsyncLifetime
     }
 
     public Task DisposeAsync() => _testGen.ClearAsync();
-
 
     private IQueryable<Trade> TradesInSet =>
         _dbContext.Trades
@@ -53,7 +50,6 @@ public class StatusTests : IAsyncLifetime
             .Distinct()
             .Where(t => t.ToId == _trades.TargetId)
             .AsNoTracking();
-
 
     [Fact]
     public async Task OnPost_WrongUser_NoChange()
@@ -75,7 +71,6 @@ public class StatusTests : IAsyncLifetime
         Assert.Contains(trade.Id, tradesAfter);
     }
 
-
     [Fact]
     public async Task OnPost_InvalidTrade_NoChange()
     {
@@ -95,7 +90,6 @@ public class StatusTests : IAsyncLifetime
         Assert.Equal(tradesBefore, tradesAfter);
         Assert.Contains(trade.Id, tradesAfter);
     }
-
 
     [Fact]
     public async Task OnPost_ValidTrade_RemovesTrade()

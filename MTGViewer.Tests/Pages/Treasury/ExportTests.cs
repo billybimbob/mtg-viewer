@@ -30,11 +30,9 @@ public class ExportTests : IAsyncLifetime
         _pageContext = pageContext;
     }
 
-
     public Task InitializeAsync() => _testGen.SeedAsync();
 
     public Task DisposeAsync() => _testGen.ClearAsync();
-
 
     [Fact]
     public async Task OnPost_NotSignedIn_NotFound()
@@ -45,7 +43,6 @@ public class ExportTests : IAsyncLifetime
 
         Assert.IsType<NotFoundResult>(result);
     }
-
 
     [Fact]
     public async Task OnPost_UserData_File()
@@ -61,7 +58,6 @@ public class ExportTests : IAsyncLifetime
         Assert.IsType<FileStreamResult>(result);
     }
 
-
     [Fact]
     public async Task OnPost_TreasuryData_File()
     {
@@ -75,7 +71,6 @@ public class ExportTests : IAsyncLifetime
 
         Assert.IsType<FileStreamResult>(result);
     }
-
 
     [Fact]
     public async Task OnPost_CompleteData_File()

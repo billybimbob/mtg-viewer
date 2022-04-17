@@ -66,7 +66,6 @@ internal class InsertTakeVisitor<TEntity> : ExpressionVisitor
             Expression.Constant(_count));
     }
 
-
     private static bool IsValidMethod(MethodCallExpression node)
     {
         var generics = node.Method.GetGenericArguments();
@@ -77,7 +76,6 @@ internal class InsertTakeVisitor<TEntity> : ExpressionVisitor
             || correctType && ExpressionHelpers.IsOrderedMethod(node);
     }
 
-
     private static bool IsSelectMethod(MethodCallExpression node)
     {
         var generics = node.Method.GetGenericArguments();
@@ -86,7 +84,6 @@ internal class InsertTakeVisitor<TEntity> : ExpressionVisitor
             && node.Method.GetGenericMethodDefinition() == QueryableMethods.Select
             && generics.ElementAtOrDefault(1) == typeof(TEntity);
     }
-
 
     private class InsertReverseTakeVisitor : ExpressionVisitor
     {
@@ -123,7 +120,6 @@ internal class InsertTakeVisitor<TEntity> : ExpressionVisitor
             return Visit(parent);
         }
     }
-
 
     private class FindSecondReverseVisitor : ExpressionVisitor
     {

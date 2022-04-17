@@ -12,7 +12,6 @@ using MTGViewer.Data;
 
 namespace MTGViewer.Services.Internal;
 
-
 public sealed class CardData
 {
     public IReadOnlyList<CardUser> Users { get; set; } = Array.Empty<CardUser>();
@@ -29,7 +28,6 @@ public sealed class CardData
 
     public IReadOnlyList<Transaction> Transactions { get; set; } = Array.Empty<Transaction>();
     public IReadOnlyList<Suggestion> Suggestions { get; set; } = Array.Empty<Suggestion>();
-
 
     // possible memory issue?
 
@@ -80,7 +78,6 @@ public sealed class CardData
     }
 }
 
-
 public sealed class CardStream
 {
     public IAsyncEnumerable<CardUser> Users { get; set; } = AsyncEnumerable.Empty<CardUser>();
@@ -97,7 +94,6 @@ public sealed class CardStream
 
     public IAsyncEnumerable<Transaction> Transactions { get; set; } = AsyncEnumerable.Empty<Transaction>();
     public IAsyncEnumerable<Suggestion> Suggestions { get; set; } = AsyncEnumerable.Empty<Suggestion>();
-
 
     public static CardStream Default(CardDbContext dbContext)
     {
@@ -157,7 +153,6 @@ public sealed class CardStream
         };
     }
 
-
     public static CardStream User(CardDbContext dbContext, string userId)
     {
         ArgumentNullException.ThrowIfNull(dbContext);
@@ -203,7 +198,6 @@ public sealed class CardStream
                 .AsAsyncEnumerable()
         };
     }
-
 
     public static CardStream Treasury(CardDbContext dbContext)
     {
@@ -253,7 +247,6 @@ public sealed class CardStream
                 .AsAsyncEnumerable(),
         };
     }
-
 
     public static CardStream Reset(CardDbContext dbContext)
     {
@@ -306,7 +299,6 @@ public sealed class CardStream
                 .AsAsyncEnumerable()
         };
     }
-
 
     public static CardStream All(CardDbContext dbContext, UserManager<CardUser> userManager)
     {

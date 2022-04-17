@@ -35,7 +35,6 @@ public class IndexModel : PageModel
     [Display(Name = "User Name")]
     public string? UserName { get; set; }
 
-
     public async Task<IActionResult> OnGetAsync()
     {
         var user = await _userManager.GetUserAsync(User);
@@ -55,7 +54,6 @@ public class IndexModel : PageModel
 
         return Page();
     }
-
 
     public async Task<IActionResult> OnPostAsync()
     {

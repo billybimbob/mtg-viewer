@@ -16,7 +16,6 @@ using MTGViewer.Services;
 
 namespace MTGViewer.Pages.Decks;
 
-
 [Authorize]
 public class IndexModel : PageModel
 {
@@ -34,7 +33,6 @@ public class IndexModel : PageModel
         _pageSize = pageSize;
     }
 
-
     [TempData]
     public string? PostMessage { get; set; }
 
@@ -43,7 +41,6 @@ public class IndexModel : PageModel
     public SeekList<DeckPreview> Decks { get; private set; } = SeekList<DeckPreview>.Empty;
 
     public bool HasUnclaimed { get; private set; }
-
 
     public async Task<IActionResult> OnGetAsync(
         int? seek,
@@ -77,7 +74,6 @@ public class IndexModel : PageModel
         return Page();
     }
 
-
     private IQueryable<DeckPreview> DeckPreviews(string userId)
     {
         return _dbContext.Decks
@@ -99,7 +95,6 @@ public class IndexModel : PageModel
                 HasTrades = d.TradesTo.Any(),
             });
     }
-
 
     private static readonly Func<CardDbContext, CancellationToken, Task<bool>> HasUnclaimedAsync
         = EF.CompileAsyncQuery(

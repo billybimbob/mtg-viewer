@@ -42,7 +42,6 @@ public class CreateTests : IAsyncLifetime
         _testContext = new TestContext();
     }
 
-
     public async Task InitializeAsync()
     {
         _testContext.AddFakePersistentComponentState();
@@ -61,7 +60,6 @@ public class CreateTests : IAsyncLifetime
         await _testGen.ClearAsync();
     }
 
-
     [Fact]
     public void LoadData_NoParamters_CardSearchForm()
     {
@@ -71,7 +69,6 @@ public class CreateTests : IAsyncLifetime
 
         Assert.Equal(1, forms.Count);
     }
-
 
     [Fact]
     public async Task LoadData_NameParameter_ShowResults()
@@ -88,7 +85,6 @@ public class CreateTests : IAsyncLifetime
         Assert.True(cardEntries.Count > 0);
     }
 
-
     [Theory]
     [InlineData((int)Color.Red)]
     [InlineData((int)Color.White)]
@@ -104,7 +100,6 @@ public class CreateTests : IAsyncLifetime
 
         Assert.Equal(1, tables.Count);
     }
-    
 
     [Fact]
     public void LoadData_InvalidColorParameter_CardSearchForm()
@@ -119,7 +114,6 @@ public class CreateTests : IAsyncLifetime
         Assert.Equal(1, forms.Count);
     }
 
-
     [Theory]
     [InlineData(3)]
     [InlineData(7)]
@@ -132,7 +126,6 @@ public class CreateTests : IAsyncLifetime
 
         Assert.Equal(1, tables.Count);
     }
-
 
     [Theory]
     [InlineData(null)]
@@ -147,7 +140,6 @@ public class CreateTests : IAsyncLifetime
         Assert.Equal(1, forms.Count);
     }
 
-
     [Theory]
     [InlineData((int)Rarity.Common)]
     [InlineData((int)Rarity.Rare)]
@@ -160,7 +152,6 @@ public class CreateTests : IAsyncLifetime
 
         Assert.Equal(1, tables.Count);
     }
-    
 
     [Theory]
     [InlineData(null)]
@@ -175,7 +166,6 @@ public class CreateTests : IAsyncLifetime
 
         Assert.Equal(1, forms.Count);
     }
-
 
     [Fact]
     public async Task Submit_SearchName_Redirect()
@@ -199,7 +189,6 @@ public class CreateTests : IAsyncLifetime
         Assert.Contains(Uri.EscapeDataString(cardName), nav.Uri);
     }
 
-
     [Theory]
     [InlineData(Color.Red)]
     [InlineData(Color.Red | Color.White)]
@@ -221,7 +210,6 @@ public class CreateTests : IAsyncLifetime
         Assert.Contains(colorName, nav.Uri);
     }
 
-
     private static void ClickColorButtons(IRenderedComponent<Create> component, Color colors)
     {
         foreach (var color in Symbol.Colors.Keys)
@@ -234,7 +222,6 @@ public class CreateTests : IAsyncLifetime
             }
         }
     }
-
 
     [Theory]
     [InlineData(null)]
@@ -258,7 +245,6 @@ public class CreateTests : IAsyncLifetime
         Assert.Contains(cmc?.ToString() ?? string.Empty, nav.Uri);
     }
 
-
     [Theory]
     [InlineData(null)]
     [InlineData(Rarity.Common)]
@@ -281,7 +267,6 @@ public class CreateTests : IAsyncLifetime
 
         Assert.Contains(rarityName, nav.Uri);
     }
-
 
     [Fact]
     public async Task AddCards_MultipleCopies_NewCards()
@@ -314,7 +299,6 @@ public class CreateTests : IAsyncLifetime
         Assert.Equal(string.Empty, uri.Query);
         Assert.Equal(addedCopies, newCopies - oldCopies);
     }
-
 
     [Fact]
     public async Task Reset_PressReset_Redirect()

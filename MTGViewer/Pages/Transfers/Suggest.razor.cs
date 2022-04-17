@@ -35,7 +35,6 @@ public partial class Suggest : OwningComponentBase
     [CascadingParameter]
     protected Task<AuthenticationState> AuthState { get; set; } = default!;
 
-
     [Inject]
     protected IDbContextFactory<CardDbContext> DbFactory { get; set; } = default!;
 
@@ -51,7 +50,6 @@ public partial class Suggest : OwningComponentBase
     [Inject]
     protected ILogger<Suggest> Logger { get; set; } = default!;
 
-
     internal bool IsLoading => _isBusy || !_isInteractive;
 
     internal bool HasMore => _cursor.HasMore;
@@ -63,7 +61,6 @@ public partial class Suggest : OwningComponentBase
 
     internal SuggestionDto Suggestion { get; } = new();
 
-
     private readonly CancellationTokenSource _cancel = new();
 
     private bool _isBusy;
@@ -72,7 +69,6 @@ public partial class Suggest : OwningComponentBase
     private PersistingComponentStateSubscription _persistSubscription;
 
     private DeckCursor _cursor;
-
 
     protected override void OnInitialized()
     {
@@ -85,7 +81,6 @@ public partial class Suggest : OwningComponentBase
 
         Suggestion.ReceiverChanged += OnReceiverChange;
     }
-
 
     protected override async Task OnParametersSetAsync()
     {
@@ -135,7 +130,6 @@ public partial class Suggest : OwningComponentBase
         }
     }
 
-
     protected override void OnAfterRender(bool firstRender)
     {
         if (firstRender)
@@ -145,7 +139,6 @@ public partial class Suggest : OwningComponentBase
             StateHasChanged();
         }
     }
-
 
     protected override void Dispose(bool disposing)
     {
@@ -162,7 +155,6 @@ public partial class Suggest : OwningComponentBase
         base.Dispose(disposing);
     }
 
-
     private Task PersistSuggestionData()
     {
         ApplicationState.PersistAsJson(nameof(Suggestion.Card), Suggestion.Card);
@@ -176,7 +168,6 @@ public partial class Suggest : OwningComponentBase
         return Task.CompletedTask;
     }
 
-
     private bool TryGetData<TData>(string key, [NotNullWhen(true)] out TData? data)
     {
         if (ApplicationState.TryTakeFromJson(key, out data!)
@@ -187,7 +178,6 @@ public partial class Suggest : OwningComponentBase
 
         return false;
     }
-
 
     private async Task LoadCardAsync(CardDbContext dbContext, CancellationToken cancel)
     {
@@ -201,7 +191,6 @@ public partial class Suggest : OwningComponentBase
             .SingleOrDefaultAsync(c => c.Id == CardId, cancel);
     }
 
-
     private async Task LoadReceiverAsync(CardDbContext dbContext, CancellationToken cancel)
     {
         if (!Suggestion.UserOptions.Any())
@@ -214,7 +203,6 @@ public partial class Suggest : OwningComponentBase
 
         await LoadReceiverDecksAsync(dbContext, cancel);
     }
-
 
     private async Task LoadUserOptionsAsync(CardDbContext dbContext, CancellationToken cancel)
     {
@@ -244,7 +232,6 @@ public partial class Suggest : OwningComponentBase
         await Suggestion.AddUsersAsync(users, cancel);
     }
 
-
     private async ValueTask<string?> GetUserIdAsync(CancellationToken cancel)
     {
         var authState = await AuthState;
@@ -262,7 +249,6 @@ public partial class Suggest : OwningComponentBase
 
         return userId;
     }
-
 
     private async Task LoadReceiverDecksAsync(CardDbContext dbContext, CancellationToken cancel)
     {
@@ -295,8 +281,6 @@ public partial class Suggest : OwningComponentBase
         _cursor = await LoadDeckPageAsync(dbContext, _cursor, Suggestion, cancel);
     }
 
-
-
     private void OnReceiverChange(object? sender, ReceiverEventArgs args)
     {
         if (_isBusy || Suggestion.Card is null)
@@ -313,7 +297,6 @@ public partial class Suggest : OwningComponentBase
             replace: true);
     }
 
-
     internal void ViewDeckDetails()
     {
         if (_isBusy || Suggestion.ToId is not int deckId)
@@ -327,7 +310,6 @@ public partial class Suggest : OwningComponentBase
 
         Nav.NavigateTo($"/Decks/Details/{deckId}", forceLoad: true);
     }
-
 
     internal async Task LoadMoreDecksAsync()
     {
@@ -356,7 +338,6 @@ public partial class Suggest : OwningComponentBase
         }
     }
 
-
     private static async Task<DeckCursor> LoadDeckPageAsync(
         CardDbContext dbContext,
         DeckCursor cursor,
@@ -383,8 +364,6 @@ public partial class Suggest : OwningComponentBase
 
         return cursor.NextPage();
     }
-
-
 
     public async Task SendSuggestionAsync()
     {
@@ -435,8 +414,6 @@ public partial class Suggest : OwningComponentBase
         }
     }
 
-
-
     private readonly struct DeckCursor
     {
         public int PageSize { get; init; }
@@ -450,8 +427,6 @@ public partial class Suggest : OwningComponentBase
             return this with { LoadedDecks = LoadedDecks + PageSize };
         }
     }
-
-
 
     private static IQueryable<UserPreview> UsersForSuggestion(
         CardDbContext dbContext,
@@ -483,7 +458,6 @@ public partial class Suggest : OwningComponentBase
                 Name = us.User.Name
             });
     }
-
 
     private static IQueryable<DeckPreview> DecksForSuggest(
         CardDbContext dbContext,

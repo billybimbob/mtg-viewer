@@ -14,7 +14,6 @@ internal sealed class OriginTranslator<TOrigin, TEntity>
     private readonly Dictionary<MemberExpression, MemberExpression> _translations;
     private readonly Dictionary<MemberExpression, bool> _nulls;
 
-
     public OriginTranslator(TOrigin origin, Expression<Func<TEntity, TOrigin>>? selector)
     {
         var expressionEquality = ExpressionEqualityComparer.Instance;
@@ -27,7 +26,6 @@ internal sealed class OriginTranslator<TOrigin, TEntity>
 
         _nulls = new Dictionary<MemberExpression, bool>(expressionEquality);
     }
-
 
     public MemberExpression? Translate(MemberExpression member)
     {
@@ -43,7 +41,6 @@ internal sealed class OriginTranslator<TOrigin, TEntity>
 
         return translation;
     }
-
 
     private bool IsNull(MemberExpression member)
     {
@@ -73,7 +70,6 @@ internal sealed class OriginTranslator<TOrigin, TEntity>
 
         return _nulls[member] = reference is null;
     }
-
 
     public bool IsParentNull(MemberExpression member)
     {
@@ -110,7 +106,6 @@ internal sealed class OriginTranslator<TOrigin, TEntity>
         return _nulls[chain] = reference is null;
     }
 
-
     public bool TryRegister(MemberExpression member)
     {
         if (_translations.ContainsKey(member))
@@ -136,7 +131,6 @@ internal sealed class OriginTranslator<TOrigin, TEntity>
         return false;
     }
 
-
     private bool TryAddFromProjection(MemberExpression member)
     {
         if (_selector is not MemberInitExpression projection)
@@ -159,7 +153,6 @@ internal sealed class OriginTranslator<TOrigin, TEntity>
 
         return TryAddFromMemberInit(registration, translation, projection);
     }
-
 
     private bool TryAddFromMemberInit(
         Registration registration,
@@ -190,7 +183,6 @@ internal sealed class OriginTranslator<TOrigin, TEntity>
         return false;
     }
 
-
     private bool TryAddFromAssignment(
         Registration registration,
         Translation translation,
@@ -207,7 +199,6 @@ internal sealed class OriginTranslator<TOrigin, TEntity>
         };
     }
 
-
     private bool TryAddFromMember(Registration registration, Translation translation)
     {
         if (translation.Expression is MemberExpression m
@@ -220,7 +211,6 @@ internal sealed class OriginTranslator<TOrigin, TEntity>
 
         return false;
     }
-
 
     private bool TryAddFromConditional(
         Registration registration,
@@ -246,8 +236,6 @@ internal sealed class OriginTranslator<TOrigin, TEntity>
         return false;
     }
 
-
-
     private bool TryAddOriginChain(MemberExpression member)
     {
         using var e = GetPropertyChain(member).GetEnumerator();
@@ -269,7 +257,6 @@ internal sealed class OriginTranslator<TOrigin, TEntity>
         _translations.Add(member, translation);
         return true;
     }
-
 
     private IEnumerable<PropertyInfo> GetPropertyChain(MemberExpression member)
     {
@@ -306,8 +293,6 @@ internal sealed class OriginTranslator<TOrigin, TEntity>
         }
     }
 
-
-
     private bool TryAddOriginProperty(MemberExpression member)
     {
         if (_origin.Type == member.Expression?.Type)
@@ -339,8 +324,6 @@ internal sealed class OriginTranslator<TOrigin, TEntity>
         return true;
     }
 
-
-
     private class Registration
     {
         public MemberExpression Expression { get; }
@@ -352,7 +335,6 @@ internal sealed class OriginTranslator<TOrigin, TEntity>
             LineageName = ExpressionHelpers.GetLineageName(member);
         }
     }
-
 
     private readonly struct Translation
     {
@@ -388,7 +370,6 @@ internal sealed class OriginTranslator<TOrigin, TEntity>
         }
     }
 
-
     private class SelectorVisitor : ExpressionVisitor
     {
         private static SelectorVisitor? s_instance;
@@ -416,7 +397,6 @@ internal sealed class OriginTranslator<TOrigin, TEntity>
             return node;
         }
     }
-
 
     private class TernaryVisitor : ExpressionVisitor
     {

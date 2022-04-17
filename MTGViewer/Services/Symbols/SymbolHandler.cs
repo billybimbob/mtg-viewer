@@ -4,7 +4,6 @@ using System.Linq;
 
 namespace MTGViewer.Services;
 
-
 public interface ISymbolFinder
 {
     IReadOnlyList<ManaSymbol> FindMana(string? mtgText);
@@ -14,7 +13,6 @@ public interface ISymbolFinder
     IReadOnlyList<SagaSymbol> FindSagas(string? mtgText);
 }
 
-
 public interface ISymbolTranslator
 {
     string ManaString(ManaSymbol symbol);
@@ -23,7 +21,6 @@ public interface ISymbolTranslator
 
     string SagaString(SagaSymbol symbol);
 }
-
 
 public abstract record TextSymbol(Range Position);
 
@@ -35,8 +32,6 @@ public record LoyaltySymbol(Range Postion, string? Direction, string Value)
 
 public record SagaSymbol(Range Position, string Value, bool HasNext)
     : TextSymbol(Position);
-
-
 
 public static class SymbolExtensions
 {
@@ -92,7 +87,6 @@ public static class SymbolExtensions
         }
     }
 
-
     public static string SymbolString(this ISymbolTranslator translator, TextSymbol symbol)
     {
         ArgumentNullException.ThrowIfNull(translator);
@@ -107,7 +101,6 @@ public static class SymbolExtensions
         };
     }
 
-
     public static string ManaString(
         this ISymbolTranslator translator, string mana)
     {
@@ -117,7 +110,6 @@ public static class SymbolExtensions
         return translator.ManaString(new ManaSymbol(default, mana));
     }
 
-
     public static string LoyaltyString(
         this ISymbolTranslator translator, string? direction, string value)
     {
@@ -126,7 +118,6 @@ public static class SymbolExtensions
 
         return translator.LoyaltyString(new LoyaltySymbol(default, direction, value));
     }
-
 
     public static string SagaString(
         this ISymbolTranslator translator, string saga, bool hasNext = default)

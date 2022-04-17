@@ -32,10 +32,8 @@ public class HoldNameGroup : IEnumerable<Hold>
         : this(holds.AsEnumerable())
     { }
 
-
     // guranteed >= 1 Holds in linkedlist
     private readonly LinkedList<Hold> _holds;
-
 
     private Hold First => _holds.First!.Value;
 
@@ -44,7 +42,6 @@ public class HoldNameGroup : IEnumerable<Hold>
 
     public IEnumerable<string> CardIds => _holds.Select(h => h.CardId);
     public IEnumerable<Card> Cards => _holds.Select(h => h.Card);
-
 
     public int Copies
     {
@@ -77,8 +74,6 @@ public class HoldNameGroup : IEnumerable<Hold>
     public IEnumerator<Hold> GetEnumerator() => _holds.GetEnumerator();
 }
 
-
-
 /// <summary>Group of wants with the same card name</summary>
 public class WantNameGroup : IEnumerable<Want>
 {
@@ -106,10 +101,8 @@ public class WantNameGroup : IEnumerable<Want>
         : this(wants.AsEnumerable())
     { }
 
-
     // guranteed >= 1 Want in linkedlist
     private readonly LinkedList<Want> _wants;
-
 
     private Want First => _wants.First!.Value;
 
@@ -118,7 +111,6 @@ public class WantNameGroup : IEnumerable<Want>
 
     public IEnumerable<string> CardIds => _wants.Select(w => w.CardId);
     public IEnumerable<Card> Cards => _wants.Select(w => w.Card);
-
 
     public int Copies
     {
@@ -147,8 +139,6 @@ public class WantNameGroup : IEnumerable<Want>
 
     public IEnumerator<Want> GetEnumerator() => _wants.GetEnumerator();
 }
-
-
 
 /// <summary>
 /// Group of quantities (hold, want, and give back) with the same deck and
@@ -214,12 +204,10 @@ public class QuantityGroup : IEnumerable<Quantity>
                 givesById.GetValueOrDefault(cid)));
     }
 
-
     // Guaranteed to not all be null
     private Hold? _hold;
     private Want? _want;
     private Giveback? _giveBack;
-
 
     public Hold? Hold
     {
@@ -296,7 +284,6 @@ public class QuantityGroup : IEnumerable<Quantity>
         }
     }
 
-
     private void CheckGroup()
     {
         var nullCount = (Hold is null ? 0 : 1)
@@ -354,7 +341,6 @@ public class QuantityGroup : IEnumerable<Quantity>
         return sameActRefs && sameTakeRefs && sameRetRefs;
     }
 
-
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
     public IEnumerator<Quantity> GetEnumerator()
@@ -375,7 +361,6 @@ public class QuantityGroup : IEnumerable<Quantity>
         }
     }
 
-
     public string CardId =>
         Hold?.CardId
             ?? Want?.CardId
@@ -387,7 +372,6 @@ public class QuantityGroup : IEnumerable<Quantity>
             ?? Want?.Card
             ?? Giveback?.Card
             ?? default!;
-
 
     public int LocationId =>
         Hold?.LocationId
@@ -401,7 +385,6 @@ public class QuantityGroup : IEnumerable<Quantity>
             ?? Giveback?.Location
             ?? default!;
 
-
     public int Copies =>
         (Hold?.Copies ?? 0)
             + (Want?.Copies ?? 0)
@@ -412,8 +395,6 @@ public class QuantityGroup : IEnumerable<Quantity>
             + (Want?.Copies ?? 0)
             + (Giveback?.Copies ?? 0);
 }
-
-
 
 /// <summary>Group of trades with either the same To or From deck</summary>
 public class TradeSet : IEnumerable<Trade>
@@ -451,11 +432,9 @@ public class TradeSet : IEnumerable<Trade>
         }
     }
 
-
     public Deck Target => _useToTarget ? _first.To : _first.From;
     public int TargetId => Target?.Id
         ?? (_useToTarget ? _first.ToId : _first.FromId);
-
 
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 

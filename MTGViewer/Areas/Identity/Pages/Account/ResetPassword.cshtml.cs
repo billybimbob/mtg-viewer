@@ -7,7 +7,6 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.WebUtilities;
 using MTGViewer.Areas.Identity.Data;
 
-
 namespace MTGViewer.Areas.Identity.Pages.Account;
 
 public class ResetPasswordModel : PageModel
@@ -18,7 +17,6 @@ public class ResetPasswordModel : PageModel
     {
         _userManager = userManager;
     }
-
 
     [BindProperty]
     public InputModel? Input { get; set; }
@@ -44,7 +42,6 @@ public class ResetPasswordModel : PageModel
 
     }
 
-
     public IActionResult OnGet(string? code = null)
     {
         if (code == null)
@@ -61,7 +58,6 @@ public class ResetPasswordModel : PageModel
             return Page();
         }
     }
-
 
     public async Task<IActionResult> OnPostAsync()
     {

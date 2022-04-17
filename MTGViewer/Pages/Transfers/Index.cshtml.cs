@@ -17,7 +17,6 @@ using MTGViewer.Services;
 
 namespace MTGViewer.Pages.Transfers;
 
-
 [Authorize]
 public class IndexModel : PageModel
 {
@@ -38,7 +37,6 @@ public class IndexModel : PageModel
         _pageSize = pageSize;
     }
 
-
     [TempData]
     public string? PostMessage { get; set; }
 
@@ -47,8 +45,6 @@ public class IndexModel : PageModel
     public SeekList<TradeDeckPreview> TradeDecks { get; private set; } = SeekList<TradeDeckPreview>.Empty;
 
     public IReadOnlyList<SuggestionPreview> Suggestions { get; private set; } = Array.Empty<SuggestionPreview>();
-
-
 
     public async Task<IActionResult> OnGetAsync(int? seek, SeekDirection direction, CancellationToken cancel)
     {
@@ -79,7 +75,6 @@ public class IndexModel : PageModel
         return Page();
     }
 
-
     public IQueryable<TradeDeckPreview> TradeDeckPreviews(string userId)
     {
         return _dbContext.Decks
@@ -104,7 +99,6 @@ public class IndexModel : PageModel
             });
     }
 
-
     private static readonly Func<CardDbContext, string, int, IAsyncEnumerable<SuggestionPreview>> SuggestionsAsync
         = EF.CompileAsyncQuery((CardDbContext dbContext, string userId, int limit) =>
 
@@ -128,8 +122,6 @@ public class IndexModel : PageModel
                     ToName = s.To == null ? null : s.To.Name,
                     Comment = s.Comment
                 }));
-
-
 
     public async Task<IActionResult> OnPostAsync(int id, CancellationToken cancel)
     {

@@ -30,7 +30,6 @@ public class ImportTests : IAsyncLifetime
         _testContext = new TestContext();
     }
 
-
     public async Task InitializeAsync()
     {
         _testContext.JSInterop
@@ -48,7 +47,6 @@ public class ImportTests : IAsyncLifetime
 
         await _testGen.ClearAsync();
     }
-
 
     private InputFileChangeEventArgs GetFileInput(
         CardData data,
@@ -89,7 +87,6 @@ public class ImportTests : IAsyncLifetime
         return new InputFileChangeEventArgs(new[] { browserFile.Object });
     }
 
-
     [Fact]
     public async Task ChooseFile_LargeLength_InvalidInput()
     {
@@ -108,7 +105,6 @@ public class ImportTests : IAsyncLifetime
         Assert.Equal(1, errors.Count);
     }
 
-
     [Fact]
     public async Task ChooseFile_InvalidContentType_InvalidInput()
     {
@@ -125,7 +121,6 @@ public class ImportTests : IAsyncLifetime
         Assert.Equal(1, errors.Count);
     }
 
-
     [Fact]
     public async Task ChooseFile_InvalidFileName_InvalidInput()
     {
@@ -141,7 +136,6 @@ public class ImportTests : IAsyncLifetime
 
         Assert.Equal(1, errors.Count);
     }
-
 
     [Fact]
     public async Task ChooseFile_ValidFile_CanUpload()
@@ -165,7 +159,6 @@ public class ImportTests : IAsyncLifetime
         Assert.Equal(1, beforeSubmit.Count);
         Assert.Equal(1, afterSubmit.Count);
     }
-
 
     // TODO: add file update test cases
 }

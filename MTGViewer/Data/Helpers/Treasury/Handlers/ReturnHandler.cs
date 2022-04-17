@@ -21,7 +21,6 @@ internal static class ReturnExtensions
     }
 }
 
-
 internal abstract class ReturnHandler
 {
     protected ExchangeContext ExchangeContext { get; }
@@ -43,14 +42,12 @@ internal abstract class ReturnHandler
     }
 }
 
-
 internal class ExactReturn : ReturnHandler
 {
     private ILookup<string, Storage>? _exactMatch;
 
     public ExactReturn(ExchangeContext exchangeContext) : base(exchangeContext)
     { }
-
 
     protected override IEnumerable<StorageAssignment<Card>> GetAssignments()
     {
@@ -69,7 +66,6 @@ internal class ExactReturn : ReturnHandler
             }
         }
     }
-
 
     private IEnumerable<StorageAssignment<Card>> FitToStorage(Giveback giveBack)
     {
@@ -93,14 +89,12 @@ internal class ExactReturn : ReturnHandler
     }
 }
 
-
 internal class ApproximateReturn : ReturnHandler
 {
     private ILookup<string, Storage>? _approxMatch;
 
     public ApproximateReturn(ExchangeContext exchangeContext) : base(exchangeContext)
     { }
-
 
     protected override IEnumerable<StorageAssignment<Card>> GetAssignments()
     {
@@ -125,7 +119,6 @@ internal class ApproximateReturn : ReturnHandler
         }
     }
 
-
     private IEnumerable<StorageAssignment<Card>> FitToStorage(Giveback giveBack)
     {
         _approxMatch ??= AddLookup();
@@ -137,7 +130,6 @@ internal class ApproximateReturn : ReturnHandler
             giveBack.Card, giveBack.Copies, matches, storageSpaces);
     }
 
-
     private ILookup<string, Storage> AddLookup()
     {
         var availableHolds = TreasuryContext.Available.SelectMany(b => b.Holds);
@@ -148,14 +140,12 @@ internal class ApproximateReturn : ReturnHandler
     }
 }
 
-
 internal class GuessReturn : ReturnHandler
 {
     private BoxSearcher? _boxSearch;
 
     public GuessReturn(ExchangeContext exchangeContext) : base(exchangeContext)
     { }
-
 
     protected override IEnumerable<StorageAssignment<Card>> GetAssignments()
     {
@@ -166,7 +156,7 @@ internal class GuessReturn : ReturnHandler
             yield break;
         }
 
-        // descending so that the first added cards do not shift down the 
+        // descending so that the first added cards do not shift down the
         // positioning of the sorted card holds
         // each of the returned cards should have less effect on following returns
         // keep eye on
@@ -189,7 +179,6 @@ internal class GuessReturn : ReturnHandler
             }
         }
     }
-
 
     private IEnumerable<StorageAssignment<Card>> FitToStorage(Giveback giveBack)
     {

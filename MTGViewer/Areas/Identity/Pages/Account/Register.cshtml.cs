@@ -33,7 +33,6 @@ public class RegisterModel : PageModel
         _logger = logger;
     }
 
-
     public sealed class InputModel
     {
         [Required]
@@ -58,17 +57,14 @@ public class RegisterModel : PageModel
         public string ConfirmPassword { get; set; } = default!;
     }
 
-
     [BindProperty]
     public InputModel Input { get; set; } = default!;
 
     [BindProperty(SupportsGet = true)]
     public string? ReturnUrl { get; set; }
 
-
     public void OnGet()
     { }
-
 
     public async Task<IActionResult> OnPostAsync(CancellationToken cancel)
     {
@@ -118,7 +114,6 @@ public class RegisterModel : PageModel
 
         return RedirectToPage("RegisterConfirmation", new { user.Email, ReturnUrl });
     }
-
 
     private void AddResultErrors(IEnumerable<IdentityError> errors)
     {

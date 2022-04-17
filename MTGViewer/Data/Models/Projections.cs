@@ -5,11 +5,9 @@ using MTGViewer.Data.Internal;
 
 namespace MTGViewer.Data;
 
-
 #region Card Projections
 
 public sealed record HeldCard(Card Card, int Copies);
-
 
 public sealed record CardImage
 {
@@ -17,7 +15,6 @@ public sealed record CardImage
     public string Name { get; init; } = string.Empty;
     public string ImageUrl { get; init; } = string.Empty;
 }
-
 
 public record CardPreview
 {
@@ -32,19 +29,16 @@ public record CardPreview
     public string ImageUrl { get; init; } = string.Empty;
 }
 
-
 public record LocationCopy : CardPreview
 {
     public int Held { get; init; }
 }
-
 
 public sealed record DeckCopy : LocationCopy
 {
     public int Want { get; init; }
     public int Returning { get; init; }
 }
-
 
 public record CardLink
 {
@@ -54,26 +48,22 @@ public record CardLink
     public string? ManaCost { get; init; } = string.Empty;
 }
 
-
 public sealed record DeleteLink : CardLink
 {
     public bool HasDeckCopies { get; init; }
     public int StorageCopies { get; init; }
 }
 
-
 public record LocationLink : CardLink
 {
     public int Held { get; init; }
 }
-
 
 public sealed record DeckLink : LocationLink
 {
     public int Want { get; init; }
     public int Returning { get; init; }
 }
-
 
 public sealed record CardId
 {
@@ -82,7 +72,6 @@ public sealed record CardId
 }
 
 #endregion
-
 
 public sealed class Statistics
 {
@@ -99,8 +88,6 @@ public sealed class Statistics
         ManaValues.Sum(kv => kv.Key * (float)kv.Value) / Copies;
 }
 
-
-
 #region Change Projections
 
 public sealed record RecentTransaction
@@ -108,7 +95,6 @@ public sealed record RecentTransaction
     public DateTime AppliedAt { get; init; }
     public IEnumerable<RecentChange> Changes { get; init; } = Enumerable.Empty<RecentChange>();
     public int Copies { get; init; }
-
 
     public bool Equals(RecentTransaction? transfer)
     {
@@ -126,14 +112,12 @@ public sealed record RecentTransaction
     }
 }
 
-
 public sealed record RecentChange
 {
     public bool ToStorage { get; init; }
     public bool FromStorage { get; init; }
     public string CardName { get; init; } = string.Empty;
 }
-
 
 public sealed record TransactionPreview
 {
@@ -163,7 +147,6 @@ public sealed record TransactionPreview
     }
 }
 
-
 public sealed record TransactionDetails
 {
     public int Id { get; init; }
@@ -174,7 +157,6 @@ public sealed record TransactionDetails
 
     public bool CanDelete { get; init; }
 }
-
 
 public sealed record ChangeDetails
 {
@@ -187,14 +169,12 @@ public sealed record ChangeDetails
     public CardPreview Card { get; init; } = default!;
 }
 
-
 public sealed record MoveTarget
 {
     public int Id { get; init; }
     public string Name { get; init; } = string.Empty;
     internal LocationType Type { get; init; }
 }
-
 
 public sealed record Move
 {
@@ -220,8 +200,6 @@ public sealed record Move
 
 #endregion
 
-
-
 #region TheoryCraft Projections
 
 public enum BuildState
@@ -230,7 +208,6 @@ public enum BuildState
     Built,
     Requesting
 }
-
 
 public sealed record DeckPreview
 {
@@ -252,7 +229,6 @@ public sealed record DeckPreview
     };
 }
 
-
 public sealed class TheoryColors
 {
     public int Id { get; init; }
@@ -260,7 +236,6 @@ public sealed class TheoryColors
     public IEnumerable<Color> WantColors { get; init; } = Enumerable.Empty<Color>();
     public IEnumerable<Color> SideboardColors { get; init; } = Enumerable.Empty<Color>();
 }
-
 
 public sealed record DeckDetails
 {
@@ -277,13 +252,11 @@ public sealed record DeckDetails
     public bool HasTrades { get; init; }
 }
 
-
 public sealed record OwnerPreview
 {
     public string Id { get; init; } = string.Empty;
     public string Name { get; init; } = string.Empty;
 }
-
 
 public sealed record UnclaimedDetails
 {
@@ -296,8 +269,6 @@ public sealed record UnclaimedDetails
 }
 
 #endregion
-
-
 
 #region Trade/Suggestion Projections
 
@@ -312,7 +283,6 @@ public sealed record TradeDeckPreview
     public bool WantsCards { get; init; }
 }
 
-
 public sealed record SuggestionPreview
 {
     public int Id { get; init; }
@@ -326,7 +296,6 @@ public sealed record SuggestionPreview
     public string? Comment { get; init; }
 }
 
-
 public sealed record TradePreview
 {
     public int Id { get; init; }
@@ -337,15 +306,12 @@ public sealed record TradePreview
 
 #endregion
 
-
-
 public sealed record ExchangePreview
 {
     public int Id { get; init; }
     public string Name { get; init; } = string.Empty;
     public bool HasWants { get; init; }
     public IEnumerable<LocationCopy> Givebacks { get; init; } = Enumerable.Empty<LocationCopy>();
-
 
     public bool Equals(ExchangePreview? exchange)
     {
@@ -363,15 +329,12 @@ public sealed record ExchangePreview
     }
 }
 
-
 public sealed record QuantityPreview
 {
     public int Id { get; init; }
     public CardPreview Card { get; init; } = default!;
     public int Copies { get; init; }
 }
-
-
 
 #region Box Projections
 
@@ -390,7 +353,6 @@ public sealed class BoxPreview
 
     public bool HasMoreCards => Held > Cards.Sum(s => s.Held);
 }
-
 
 public sealed record BinPreview
 {
@@ -415,7 +377,6 @@ public sealed record BinPreview
 }
 
 #endregion
-
 
 public sealed record UserPreview
 {

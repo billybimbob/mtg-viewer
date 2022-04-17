@@ -32,10 +32,8 @@ public class ReferenceManager
         _logger = logger;
     }
 
-
     public IQueryable<UserRef> References =>
         _dbContext.Users.AsNoTrackingWithIdentityResolution();
-
 
     public async Task<bool> CreateReferenceAsync(CardUser user, CancellationToken cancel = default)
     {
@@ -68,7 +66,6 @@ public class ReferenceManager
             return false;
         }
     }
-
 
     public async Task<bool> UpdateReferenceAsync(CardUser user, CancellationToken cancel = default)
     {
@@ -110,7 +107,6 @@ public class ReferenceManager
         }
     }
 
-
     public async Task<bool> DeleteReferenceAsync(CardUser user, CancellationToken cancel = default)
     {
         bool validUser = await _userManager.Users
@@ -151,7 +147,6 @@ public class ReferenceManager
         }
     }
 
-
     private async Task ReturnUserDecksAsync(UserRef reference, CancellationToken cancel)
     {
         if (!reference.Decks.Any())
@@ -175,7 +170,6 @@ public class ReferenceManager
 
         await _dbContext.AddCardsAsync(returnRequests, cancel);
     }
-
 
     public async Task ApplyResetAsync(CancellationToken cancel = default)
     {

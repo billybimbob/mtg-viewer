@@ -16,7 +16,6 @@ using MTGViewer.Data;
 
 namespace MTGViewer.Pages.Treasury;
 
-
 [Authorize]
 public class ResetModel : PageModel
 {
@@ -49,7 +48,6 @@ public class ResetModel : PageModel
 
     public int Remaining { get; private set; }
 
-
     public async Task OnGetAsync(CancellationToken cancel)
     {
         var userId = _userManager.GetUserId(User);
@@ -59,7 +57,6 @@ public class ResetModel : PageModel
         Remaining = await RemainingRequestsAsync.Invoke(_dbContext, cancel);
     }
 
-
     private static readonly Func<CardDbContext, string, CancellationToken, Task<bool>> IsResetRequestedAsync
         = EF.CompileAsyncQuery((CardDbContext dbContext, string userId, CancellationToken _) =>
             dbContext.Users
@@ -67,12 +64,10 @@ public class ResetModel : PageModel
                 .Select(u => u.ResetRequested)
                 .SingleOrDefault());
 
-
     private static readonly Func<CardDbContext, CancellationToken, Task<int>> RemainingRequestsAsync
         = EF.CompileAsyncQuery((CardDbContext dbContext, CancellationToken _) =>
             dbContext.Users
                 .Count(u => !u.ResetRequested));
-
 
     public async Task<IActionResult> OnPostAsync(CancellationToken cancel)
     {
@@ -102,7 +97,6 @@ public class ResetModel : PageModel
         return RedirectToPage("Index");
     }
 
-
     private async Task CancelRequestAsync(UserRef user, CancellationToken cancel)
     {
         if (!user.ResetRequested)
@@ -129,7 +123,6 @@ public class ResetModel : PageModel
             PostMessage = "Ran into error canceling reset request";
         }
     }
-
 
     private async Task ApplyRequestAsync(UserRef user, CancellationToken cancel)
     {

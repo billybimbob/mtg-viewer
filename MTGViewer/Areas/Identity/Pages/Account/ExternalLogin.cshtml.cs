@@ -24,13 +24,10 @@ public class ExternalLoginModel : PageModel
         _logger = logger;
     }
 
-
     [TempData]
     public string? ErrorMessage { get; set; }
 
-
     public IActionResult OnGet() => RedirectToPage("./Login");
-
 
     public async Task<IActionResult> OnGetCallbackAsync(string? returnUrl = null, string? remoteError = null)
     {

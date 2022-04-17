@@ -23,7 +23,6 @@ public class CollectionTests : IAsyncLifetime
         _testContext = new TestContext();
     }
 
-
     public async Task InitializeAsync()
     {
         _testContext.Services.AddFallbackServiceProvider(_services);
@@ -41,7 +40,6 @@ public class CollectionTests : IAsyncLifetime
         await _testGen.ClearAsync();
     }
 
-
     [Fact]
     public void LoadData_NoParameters_Success()
     {
@@ -51,7 +49,6 @@ public class CollectionTests : IAsyncLifetime
 
         Assert.True(cardEntries.Count > 1);
     }
-
 
     [Fact]
     public void ChangeName_InvalidName_ChangeUrl()
@@ -68,7 +65,6 @@ public class CollectionTests : IAsyncLifetime
         Assert.Contains(Uri.EscapeDataString(searchName), nav.Uri);
     }
 
-
     [Fact]
     public void LoadData_NameParam_NoResult()
     {
@@ -81,7 +77,6 @@ public class CollectionTests : IAsyncLifetime
 
         Assert.Equal(1, cardEntries.Count);
     }
-
 
     [Fact]
     public void ChangeType_InvalidType_ChangeUrl()
@@ -99,7 +94,6 @@ public class CollectionTests : IAsyncLifetime
             Assert.Contains(t, nav.Uri));
     }
 
-
     [Fact]
     public void LoadData_TypesParamater_NoResult()
     {
@@ -112,7 +106,6 @@ public class CollectionTests : IAsyncLifetime
 
         Assert.Equal(1, cardEntries.Count);
     }
-
 
     [Fact]
     public void ChangeColor_BlueColor_ChangeUrl()
@@ -128,7 +121,6 @@ public class CollectionTests : IAsyncLifetime
 
         Assert.Contains(blue.ToString(), nav.Uri);
     }
-
 
     [Theory]
     [InlineData((int)Color.None)]

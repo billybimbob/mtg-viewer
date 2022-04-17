@@ -5,7 +5,6 @@
 }
 @inject SymbolFormatter MtgSymbols
 
-
 <h1> Delete @Model.Box.Name </h1>
 
 <div class="alert alert-warning" role="alert">
@@ -44,9 +43,9 @@
                         <a asp-page="/Cards/Details" asp-route-id="@card.Id">
                             @card.Name </a>
                     </td>
-                    <td> 
+                    <td>
                         <div class="ms-group">
-                            @MtgSymbols.Format(card.ManaCost).ToHtmlString() 
+                            @MtgSymbols.Format(card.ManaCost).ToHtmlString()
                         </div>
                     </td>
                     <td> @card.SetName </td>

@@ -16,7 +16,6 @@ using MTGViewer.Services.Internal;
 
 namespace MTGViewer.Services;
 
-
 public class FileCardStorage
 {
     private readonly string _defaultFilename;
@@ -33,14 +32,12 @@ public class FileCardStorage
         _loadProgress = loadProgress;
     }
 
-
     public Task<Stream> GetUserBackupAsync(string userId, CancellationToken cancel = default)
     {
         var stream = _bulkOperations.GetUserStream(userId);
 
         return SerializeAsync(stream, cancel);
     }
-
 
     public Task<Stream> GetTreasuryBackupAsync(CancellationToken cancel = default)
     {
@@ -49,14 +46,12 @@ public class FileCardStorage
         return SerializeAsync(stream, cancel);
     }
 
-
     public Task<Stream> GetDefaultBackupAsync(CancellationToken cancel = default)
     {
         var stream = _bulkOperations.GetDefaultStream();
 
         return SerializeAsync(stream, cancel);
     }
-
 
     private static async Task<Stream> SerializeAsync(CardStream stream, CancellationToken cancel)
     {
@@ -79,7 +74,6 @@ public class FileCardStorage
         return utf8Stream;
     }
 
-
     public async Task WriteBackupAsync(string? path = default, CancellationToken cancel = default)
     {
         path ??= Path.Combine(Directory.GetCurrentDirectory(), _defaultFilename);
@@ -96,7 +90,6 @@ public class FileCardStorage
 
         await JsonSerializer.SerializeAsync(writer, stream, serializeOptions, cancel);
     }
-
 
     public async Task JsonSeedAsync(string? path = default, CancellationToken cancel = default)
     {
@@ -121,8 +114,6 @@ public class FileCardStorage
         await _bulkOperations.SeedAsync(data, cancel);
     }
 
-
-
     public async Task JsonAddAsync(Stream jsonStream, CancellationToken cancel = default)
     {
         var deserializeOptions = new JsonSerializerOptions
@@ -142,14 +133,12 @@ public class FileCardStorage
         await _bulkOperations.MergeAsync(data, cancel);
     }
 
-
     private sealed class CsvCard
     {
         public string Name { get; set; } = string.Empty;
         public string MultiverseID { get; set; } = string.Empty;
         public int Quantity { get; set; }
     }
-
 
     public async Task CsvAddAsync(Stream csvStream, CancellationToken cancel = default)
     {
@@ -162,7 +151,6 @@ public class FileCardStorage
 
         await _bulkOperations.MergeAsync(csvAdditions, cancel);
     }
-
 
     private static Task<Dictionary<string, int>> CsvAdditionsAsync(
         CsvReader csv,

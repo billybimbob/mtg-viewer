@@ -29,7 +29,6 @@ public class ColorUpdateTests : IAsyncLifetime
         _testGen = testGen;
     }
 
-
     public async Task InitializeAsync()
     {
         await _testGen.SeedAsync();
@@ -40,13 +39,11 @@ public class ColorUpdateTests : IAsyncLifetime
         await _testGen.ClearAsync();
     }
 
-
     private static Color GetColor(IEnumerable<Card> cards)
     {
         return cards
             .Aggregate(Color.None, (color, c) => color | c.Color);
     }
-
 
     private static Color GetColor(Theorycraft theory)
     {
@@ -57,7 +54,6 @@ public class ColorUpdateTests : IAsyncLifetime
 
         return GetColor(cards);
     }
-
 
     [Fact]
     public async Task BeforeSave_DeleteDeck_NoChange()
@@ -80,7 +76,6 @@ public class ColorUpdateTests : IAsyncLifetime
 
         Assert.Equal(theory.Color, black);
     }
-
 
     [Fact]
     public async Task BeforeSave_AddDeckWithCards_CorrectColor()
@@ -123,7 +118,6 @@ public class ColorUpdateTests : IAsyncLifetime
 
         Assert.Equal(theory.Color, color);
     }
-
 
     [Fact]
     public async Task BeforeSave_AddDeckMissingCards_CorrectColor()
@@ -170,7 +164,6 @@ public class ColorUpdateTests : IAsyncLifetime
         Assert.True(cardAreMissing);
         Assert.Equal(theory.Color, color);
     }
-
 
     [Fact]
     public async Task BeforeSave_UpdateFullyLoadedDeck_CorrectColor()
@@ -222,7 +215,6 @@ public class ColorUpdateTests : IAsyncLifetime
         Assert.Equal(color, deck.Color);
     }
 
-
     [Fact]
     public async Task BeforeSave_UpdateDeckMissingCards_CorrectColor()
     {
@@ -272,7 +264,6 @@ public class ColorUpdateTests : IAsyncLifetime
 
         Assert.Equal(color, deck.Color);
     }
-
 
     [Fact]
     public async Task BeforeSave_UpdateDeckNotLoaded_CorrectColor()

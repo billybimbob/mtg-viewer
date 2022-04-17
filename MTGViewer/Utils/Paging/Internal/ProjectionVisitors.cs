@@ -5,14 +5,11 @@ using Microsoft.EntityFrameworkCore.Query;
 
 namespace System.Paging.Query;
 
-
 internal record SelectResult<TSource, TResult>(
     IQueryable<TSource> Query,
     Expression<Func<TSource, TResult>> Selector);
 
-
 internal record SelectResult(IQueryable Query, LambdaExpression Selector);
-
 
 internal static class SelectQueries
 {
@@ -32,7 +29,6 @@ internal static class SelectQueries
 
         return new SelectResult<TSource, TResult>(query, selector);
     }
-
 
     internal static SelectResult GetSelectQuery<TResult>(Type source, IQueryable<TResult> results)
     {
@@ -58,14 +54,12 @@ internal static class SelectQueries
     }
 }
 
-
 internal class FindSelect<TSource, TResult> : ExpressionVisitor
 {
     private static FindSelect<TSource, TResult>? s_instance;
     private static MethodInfo? _selectMethod;
 
     public static ExpressionVisitor Instance => s_instance ??= new();
-
 
     protected override Expression VisitMethodCall(MethodCallExpression node)
     {
@@ -94,7 +88,6 @@ internal class FindSelect<TSource, TResult> : ExpressionVisitor
         return node;
     }
 }
-
 
 internal class FindSelect : ExpressionVisitor
 {
@@ -136,14 +129,12 @@ internal class FindSelect : ExpressionVisitor
     }
 }
 
-
 internal class RemoveSelect<TSource, TResult> : ExpressionVisitor
 {
     private static RemoveSelect<TSource, TResult>? s_instance;
     private static MethodInfo? _selectMethod;
 
     public static ExpressionVisitor Instance => s_instance ??= new();
-
 
     protected override Expression VisitMethodCall(MethodCallExpression node)
     {
@@ -162,7 +153,6 @@ internal class RemoveSelect<TSource, TResult> : ExpressionVisitor
         return Visit(parent);
     }
 }
-
 
 internal class RemoveSelect : ExpressionVisitor
 {

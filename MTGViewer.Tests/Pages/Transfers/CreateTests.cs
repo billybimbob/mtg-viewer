@@ -12,7 +12,6 @@ using MTGViewer.Tests.Utils;
 
 namespace MTGViewer.Tests.Pages.Transfers;
 
-
 public class CreateTests : IAsyncLifetime
 {
     private readonly CreateModel _createModel;
@@ -34,7 +33,6 @@ public class CreateTests : IAsyncLifetime
         _testGen = testGen;
     }
 
-
     public async Task InitializeAsync()
     {
         await _testGen.SeedAsync();
@@ -43,12 +41,10 @@ public class CreateTests : IAsyncLifetime
 
     public Task DisposeAsync() => _testGen.ClearAsync();
 
-
     private IQueryable<Trade> AllTrades =>
         _dbContext.Trades
             .AsNoTracking()
             .OrderBy(t => t.Id);
-
 
     [Fact]
     public async Task OnPost_WrongUser_NoChange()
@@ -68,7 +64,6 @@ public class CreateTests : IAsyncLifetime
         Assert.IsType<NotFoundResult>(result);
         Assert.Equal(tradesBefore, tradesAfter);
     }
-
 
     [Fact]
     public async Task OnPost_InvalidDeck_NoChange()
@@ -91,7 +86,6 @@ public class CreateTests : IAsyncLifetime
         Assert.Equal(tradesBefore, tradesAfter);
     }
 
-
     [Fact]
     public async Task OnPost_ValidDeck_Requests()
     {
@@ -113,7 +107,6 @@ public class CreateTests : IAsyncLifetime
         Assert.All(addedTrades, t =>
             Assert.Equal(_requestDeck.Id, t.ToId));
     }
-
 
     [Fact]
     public async Task OnPost_MultipleSources_RequestsAll()

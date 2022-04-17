@@ -32,7 +32,6 @@ public class QuantityValidateTests : IAsyncLifetime
         _testGen = testGen;
     }
 
-
     public async Task InitializeAsync()
     {
         await _testGen.SeedAsync();
@@ -42,7 +41,6 @@ public class QuantityValidateTests : IAsyncLifetime
     {
         await _testGen.ClearAsync();
     }
-
 
     [Fact]
     public async Task BeforeSave_RemoveQuantity_Returns()
@@ -67,7 +65,6 @@ public class QuantityValidateTests : IAsyncLifetime
 
         Assert.Equal(EntityState.Deleted, state);
     }
-
 
     [Fact]
     public async Task BeforeSave_AddValidQuantity_Returns()
@@ -103,7 +100,6 @@ public class QuantityValidateTests : IAsyncLifetime
         Assert.Equal(EntityState.Added, state);
     }
 
-
     [Fact]
     public async Task BeforeSave_CopiesAboveLimit_CopiesLowered()
     {
@@ -125,7 +121,6 @@ public class QuantityValidateTests : IAsyncLifetime
 
         Assert.Equal(_pageSize.Limit, quantity.Copies);
     }
-
 
     [Fact]
     public async Task BeforeSave_GivebackMissingLocation_Throws()
@@ -158,7 +153,6 @@ public class QuantityValidateTests : IAsyncLifetime
 
         await Assert.ThrowsAsync<DbUpdateException>(SaveAsync);
     }
-
 
     [Fact]
     public async Task BeforeSave_GivebackMissingHolds_Throws()

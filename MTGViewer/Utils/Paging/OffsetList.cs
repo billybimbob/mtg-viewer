@@ -16,7 +16,6 @@ public readonly record struct Offset(int Current, int Total)
         : this(currentPage, TotalPages(totalItems, pageSize))
     { }
 
-
     private static int TotalPages(int totalItems, int pageSize)
     {
         totalItems = Math.Max(totalItems, 0);
@@ -25,13 +24,10 @@ public readonly record struct Offset(int Current, int Total)
         return (int)Math.Ceiling((double)totalItems / pageSize);
     }
 
-
     public override string ToString() => Current == Total
         ? $"{Current}/{Total}"
         : $"{Current + 1}/{Total}";
 }
-
-
 
 public class OffsetList<T> : IReadOnlyList<T>
 {
@@ -51,11 +47,9 @@ public class OffsetList<T> : IReadOnlyList<T>
 
     public T this[int index] => _items[index];
 
-
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
     public IEnumerator<T> GetEnumerator() => _items.GetEnumerator();
-
 
     private static OffsetList<T>? s_empty;
     public static OffsetList<T> Empty => s_empty ??= new(default, Array.Empty<T>());

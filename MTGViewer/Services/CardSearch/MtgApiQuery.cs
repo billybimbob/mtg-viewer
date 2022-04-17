@@ -12,7 +12,6 @@ using MTGViewer.Data;
 
 namespace MTGViewer.Services;
 
-
 public sealed class MtgApiQuery : IMTGQuery
 {
     public const char Or = '|';
@@ -33,7 +32,6 @@ public sealed class MtgApiQuery : IMTGQuery
                     typeof(object)
                 })!;
 
-
     private readonly ICardService _cardService;
     private readonly MtgApiFlipQuery _flipQuery;
 
@@ -52,7 +50,6 @@ public sealed class MtgApiQuery : IMTGQuery
         _loadProgress = loadProgress;
     }
 
-
     public IMTGCardSearch Where(Expression<Func<CardQuery, bool>> predicate)
     {
         var parameters = CardQueryParameters.Base
@@ -60,7 +57,6 @@ public sealed class MtgApiQuery : IMTGQuery
 
         return QueryFromPredicate(parameters, predicate);
     }
-
 
     internal IMTGCardSearch QueryFromPredicate(
         IDictionary<string, IMtgParameter> parameters,
@@ -81,7 +77,6 @@ public sealed class MtgApiQuery : IMTGQuery
         return new MtgCardSearch(this, parameters);
     }
 
-
     private static void QueryProperty(IDictionary<string, IMtgParameter> parameters, string name, object? value)
     {
         if (!parameters.TryGetValue(name, out var parameter))
@@ -91,7 +86,6 @@ public sealed class MtgApiQuery : IMTGQuery
 
         parameters[name] = parameter.Accept(value);
     }
-
 
     private static Expression<Func<CardQueryParameter, string>> GetParameter(string name)
     {
@@ -112,8 +106,6 @@ public sealed class MtgApiQuery : IMTGQuery
             .Lambda<Func<CardQueryParameter, string>>(
                 Expression.Property(param, name), param);
     }
-
-
 
     internal async Task<OffsetList<Card>> SearchAsync(
         MtgCardSearch values,
@@ -139,7 +131,6 @@ public sealed class MtgApiQuery : IMTGQuery
         return new OffsetList<Card>(offset, cards);
     }
 
-
     private ICardService ApplyParameters(MtgCardSearch values)
     {
         var cards = _cardService.Where(c => c.Contains, RequiredAttributes);
@@ -161,13 +152,10 @@ public sealed class MtgApiQuery : IMTGQuery
         return cards;
     }
 
-
-
     public IAsyncEnumerable<Card> CollectionAsync(IEnumerable<string> multiverseIds)
     {
         return BulkSearchAsync(multiverseIds);
     }
-
 
     private async IAsyncEnumerable<Card> BulkSearchAsync(
         IEnumerable<string> multiverseIds,
@@ -209,8 +197,6 @@ public sealed class MtgApiQuery : IMTGQuery
             _loadProgress.AddProgress();
         }
     }
-
-
 
     public async Task<Card?> FindAsync(string id, CancellationToken cancel = default)
     {

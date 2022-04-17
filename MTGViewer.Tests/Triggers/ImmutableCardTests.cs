@@ -28,7 +28,6 @@ public class ImmutableCardTests : IAsyncLifetime
         _testGen = testGen;
     }
 
-
     public async Task InitializeAsync()
     {
         await _testGen.SeedAsync();
@@ -38,7 +37,6 @@ public class ImmutableCardTests : IAsyncLifetime
     {
         await _testGen.ClearAsync();
     }
-
 
     [Fact]
     public async Task BeforeSave_AddCard_Returns()
@@ -66,7 +64,6 @@ public class ImmutableCardTests : IAsyncLifetime
         Assert.Equal(EntityState.Added, afterState);
     }
 
-
     [Fact]
     public async Task BeforeSave_RemoveCard_Returns()
     {
@@ -90,7 +87,6 @@ public class ImmutableCardTests : IAsyncLifetime
 
         Assert.Equal(EntityState.Deleted, afterState);
     }
-
 
     [Fact]
     public async Task BeforeSave_UpdateTrackedCard_NoChange()
@@ -120,7 +116,6 @@ public class ImmutableCardTests : IAsyncLifetime
         Assert.Equal(EntityState.Modified, beforeState);
         Assert.Equal(EntityState.Unchanged, afterState);
     }
-
 
     [Fact]
     public async Task BeforeSave_UpdateUntrackedCard_Throws()

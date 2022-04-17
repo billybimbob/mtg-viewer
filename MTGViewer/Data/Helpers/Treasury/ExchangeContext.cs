@@ -26,7 +26,6 @@ internal class ExchangeContext
 
     public Deck Deck { get; }
 
-
     public void TakeCopies(Card card, int copies, Storage storage)
     {
         var wants = GetPossibleWants(card).ToList();
@@ -55,7 +54,6 @@ internal class ExchangeContext
         TreasuryContext.TransferCopies(card, copies, Deck, storage);
     }
 
-
     private IEnumerable<Want> GetPossibleWants(Card card)
     {
         var approxWants = Deck.Wants
@@ -72,7 +70,6 @@ internal class ExchangeContext
 
         return approxWants;
     }
-
 
     private Hold GetOrAddHold(Card card)
     {
@@ -103,7 +100,6 @@ internal class ExchangeContext
 
         return hold;
     }
-
 
     public void ReturnCopies(Card card, int copies, Storage storage)
     {

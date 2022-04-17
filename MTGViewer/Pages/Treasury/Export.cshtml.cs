@@ -14,7 +14,6 @@ using MTGViewer.Services;
 
 namespace MTGViewer.Pages.Treasury;
 
-
 [Authorize]
 public class ExportModel : PageModel
 {
@@ -27,7 +26,6 @@ public class ExportModel : PageModel
         _userManager = userManager;
     }
 
-
     public enum DataScope
     {
         User,
@@ -35,15 +33,12 @@ public class ExportModel : PageModel
         Complete
     }
 
-
     [BindProperty]
     [Display(Name = "Backup Type")]
     public DataScope BackupType { get; set; }
 
-
     public void OnGet()
     { }
-
 
     public async Task<IActionResult> OnPostAsync(CancellationToken cancel)
     {

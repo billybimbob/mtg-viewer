@@ -24,12 +24,10 @@ public class ExcessModel : PageModel
         _pageSize = pageSize;
     }
 
-
     public SeekList<LocationCopy> Cards { get; private set; } = SeekList<LocationCopy>.Empty;
 
     public bool HasExcess =>
         Cards.Any() || Cards.Seek is not { Previous: null, Next: null };
-
 
     public async Task<IActionResult> OnGetAsync(
         string? seek,
@@ -57,7 +55,6 @@ public class ExcessModel : PageModel
 
         return Page();
     }
-
 
     private IQueryable<LocationCopy> ExcessCards()
     {
@@ -87,7 +84,6 @@ public class ExcessModel : PageModel
             });
     }
 
-
     private async Task<string?> GetCardJumpAsync(string? id, CancellationToken cancel)
     {
         if (id is null)
@@ -113,7 +109,6 @@ public class ExcessModel : PageModel
             .Where((id, i) => i % size == size - 1)
             .LastOrDefaultAsync(cancel);
     }
-
 
     private static readonly Func<CardDbContext, string, CancellationToken, Task<Card?>> CardJumpAsync
         = EF.CompileAsyncQuery((CardDbContext dbContext, string cardId, CancellationToken _) =>

@@ -4,19 +4,15 @@ using System.Linq;
 
 namespace System.Paging;
 
-
 public enum SeekDirection
 {
     Forward,
     Backwards
 }
 
-
 public readonly record struct SeekRequest<T>(T? Seek, SeekDirection Direction);
 
-
 public readonly record struct Seek(object? Previous, object? Next);
-
 
 public readonly record struct Seek<T>(T? Previous, T? Next)
 {
@@ -46,7 +42,6 @@ public readonly record struct Seek<T>(T? Previous, T? Next)
     }
 }
 
-
 public class SeekList<T> : IReadOnlyList<T>
 {
     private readonly IReadOnlyList<T> _items;
@@ -66,11 +61,9 @@ public class SeekList<T> : IReadOnlyList<T>
 
     public T this[int index] => _items[index];
 
-
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
     public IEnumerator<T> GetEnumerator() => _items.GetEnumerator();
-
 
     private static SeekList<T>? s_empty;
     public static SeekList<T> Empty => s_empty ??= new(default, Array.Empty<T>());

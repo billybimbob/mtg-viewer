@@ -129,7 +129,6 @@ internal class CardDto
     public string? Watermark { get; set; }
 }
 
-
 internal class ApiCard : ICard
 {
     public ApiCard(CardDto card)

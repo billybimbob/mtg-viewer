@@ -24,7 +24,6 @@ using MTGViewer.Services;
 
 namespace MTGViewer.Pages.Decks;
 
-
 [Authorize]
 [Authorize(Policy = CardPolicies.ChangeTreasury)]
 public partial class Craft : OwningComponentBase
@@ -34,7 +33,6 @@ public partial class Craft : OwningComponentBase
 
     [CascadingParameter]
     protected Task<AuthenticationState> AuthState { get; set; } = default!;
-
 
     [Inject]
     protected IDbContextFactory<CardDbContext> DbFactory { get; set; } = default!;
@@ -51,7 +49,6 @@ public partial class Craft : OwningComponentBase
     [Inject]
     protected ILogger<Craft> Logger { get; set; } = default!;
 
-
     internal bool IsLoading => _isBusy || !_isInteractive;
 
     internal string DeckName =>
@@ -62,13 +59,11 @@ public partial class Craft : OwningComponentBase
 
     internal TreasuryFilters Filters { get; } = new();
 
-
     internal SeekList<HeldCard> Treasury { get; private set; } = SeekList<HeldCard>.Empty;
 
     internal BuildType BuildOption { get; private set; }
 
     internal SaveResult Result { get; set; }
-
 
     internal event EventHandler? TreasuryLoaded;
 
@@ -83,7 +78,6 @@ public partial class Craft : OwningComponentBase
 
     private DeckContext? _deckContext;
 
-
     protected override void OnInitialized()
     {
         _persistSubscription = ApplicationState.RegisterOnPersisting(PersistCardDataAsync);
@@ -93,7 +87,6 @@ public partial class Craft : OwningComponentBase
 
         TreasuryLoaded += Filters.OnTreasuryLoaded;
     }
-
 
     protected override async Task OnParametersSetAsync()
     {
@@ -117,7 +110,6 @@ public partial class Craft : OwningComponentBase
         }
     }
 
-
     protected override void OnAfterRender(bool firstRender)
     {
         if (firstRender)
@@ -127,7 +119,6 @@ public partial class Craft : OwningComponentBase
             StateHasChanged();
         }
     }
-
 
     protected override void Dispose(bool disposing)
     {
@@ -145,8 +136,6 @@ public partial class Craft : OwningComponentBase
 
         base.Dispose(disposing);
     }
-
-
 
     private async Task PersistCardDataAsync()
     {
@@ -166,7 +155,6 @@ public partial class Craft : OwningComponentBase
         ApplicationState.PersistAsJson(nameof(_cards), _cards);
     }
 
-
     private bool TryGetData<TData>(string key, [NotNullWhen(true)] out TData? data)
     {
         if (ApplicationState.TryTakeFromJson(key, out data!)
@@ -177,7 +165,6 @@ public partial class Craft : OwningComponentBase
 
         return false;
     }
-
 
     private async Task LoadDeckDataAsync(CancellationToken cancel)
     {
@@ -216,7 +203,6 @@ public partial class Craft : OwningComponentBase
         _cards.UnionWith(dbContext.Cards.Local);
     }
 
-
     private async ValueTask<string?> GetUserIdAsync(CancellationToken cancel)
     {
         var authState = await AuthState;
@@ -234,7 +220,6 @@ public partial class Craft : OwningComponentBase
 
         return userId;
     }
-
 
     private async Task<Deck?> FetchDeckOrRedirectAsync(
         CardDbContext dbContext,
@@ -260,7 +245,6 @@ public partial class Craft : OwningComponentBase
 
         return deck;
     }
-
 
     private async Task<Deck?> CreateDeckOrRedirectAsync(
         CardDbContext dbContext,
@@ -294,8 +278,6 @@ public partial class Craft : OwningComponentBase
         return newDeck;
     }
 
-
-
     #region Queries
 
     private static readonly Func<CardDbContext, int, string, int, CancellationToken, Task<Deck?>> CraftingDeckAsync
@@ -328,7 +310,6 @@ public partial class Craft : OwningComponentBase
                 .SingleOrDefault(d => d.Id == deckId
                     && d.OwnerId == userId
                     && !d.TradesTo.Any()));
-
 
     private static Task<SeekList<HeldCard>> FilteredCardsAsync(
         CardDbContext dbContext,
@@ -388,8 +369,6 @@ public partial class Craft : OwningComponentBase
 
     #endregion
 
-
-
     internal async Task UpdateBuildTypeAsync(ChangeEventArgs args)
     {
         if (_isBusy
@@ -431,7 +410,6 @@ public partial class Craft : OwningComponentBase
         }
     }
 
-
     private async void OnFilterChange(object? sender, EventArgs _)
     {
         if (_isBusy
@@ -463,7 +441,6 @@ public partial class Craft : OwningComponentBase
         }
     }
 
-
     private async Task ApplyFiltersAsync(TreasuryFilters filters, CancellationToken cancel)
     {
         await using var dbContext = await DbFactory.CreateDbContextAsync(cancel);
@@ -477,10 +454,7 @@ public partial class Craft : OwningComponentBase
         TreasuryLoaded?.Invoke(this, EventArgs.Empty);
     }
 
-
-
     #region Treasury Operations
-
 
     internal sealed class TreasuryFilters
     {
@@ -491,7 +465,6 @@ public partial class Craft : OwningComponentBase
         {
             FilterChanged += (_, _) => _pendingChanges = true;
         }
-
 
         public void OnTreasuryLoaded(object? sender, EventArgs _)
         {
@@ -518,11 +491,9 @@ public partial class Craft : OwningComponentBase
             }
         }
 
-
         public string? Seek { get; private set; }
 
         public SeekDirection Direction { get; private set; }
-
 
         public void SeekPage(SeekRequest<HeldCard> request)
         {
@@ -651,8 +622,6 @@ public partial class Craft : OwningComponentBase
 
     #endregion
 
-
-
     #region Deck Operations
 
     internal IEnumerable<QuantityGroup> GetDeckCards()
@@ -677,7 +646,6 @@ public partial class Craft : OwningComponentBase
             .Skip(current * pageSize)
             .Take(pageSize);
     }
-
 
     internal IEnumerable<Want> GetDeckWants()
     {
@@ -704,7 +672,6 @@ public partial class Craft : OwningComponentBase
             .Take(pageSize);
     }
 
-
     internal IEnumerable<Giveback> GetDeckGivebacks()
     {
         if (_deckContext is not
@@ -730,7 +697,6 @@ public partial class Craft : OwningComponentBase
             .Take(pageSize);
     }
 
-
     internal int TotalHolds =>
         _deckContext?.Groups
             .Sum(g => (g.Hold?.Copies ?? 0) - (g.Giveback?.Copies ?? 0)) ?? 0;
@@ -741,20 +707,16 @@ public partial class Craft : OwningComponentBase
     internal int TotalGives =>
         _deckContext?.Groups.Sum(g => g.Giveback?.Copies ?? 0) ?? 0;
 
-
     internal Offset HoldOffset => _deckContext?.HoldOffset ?? default;
     internal Offset WantOffset => _deckContext?.WantOffset ?? default;
     internal Offset GiveOffset => _deckContext?.GiveOffset ?? default;
-
 
     internal void ChangeHoldPage(int value) => _deckContext?.SetHoldPage(value);
     internal void ChangeWantPage(int value) => _deckContext?.SetWantPage(value);
     internal void ChangeGivePage(int value) => _deckContext?.SetGivePage(value);
 
-
     internal bool CannotSave() =>
         !_deckContext?.CanSave() ?? true;
-
 
     internal Deck? GetExchangeDeck()
     {
@@ -777,7 +739,6 @@ public partial class Craft : OwningComponentBase
 
         return null;
     }
-
 
     internal void AddCardToDeck(Card card)
     {
@@ -834,7 +795,6 @@ public partial class Craft : OwningComponentBase
         want.Copies += 1;
     }
 
-
     internal void RemoveCardFromDeck(Card card)
     {
         if (_deckContext == null)
@@ -889,7 +849,6 @@ public partial class Craft : OwningComponentBase
         giveback.Copies += 1;
     }
 
-
     private sealed class DeckContext
     {
         private readonly Dictionary<Quantity, int> _originalCopies;
@@ -918,7 +877,6 @@ public partial class Craft : OwningComponentBase
             UpdateOriginals();
         }
 
-
         public Deck Deck { get; }
 
         public EditContext EditContext { get; }
@@ -926,7 +884,6 @@ public partial class Craft : OwningComponentBase
         public int PageSize { get; }
 
         public bool IsNewDeck { get; private set; }
-
 
         public IReadOnlyCollection<QuantityGroup> Groups => _groups.Values;
 
@@ -936,7 +893,6 @@ public partial class Craft : OwningComponentBase
 
         public Offset WantOffset => new Offset(_wantPage, TotalWants, PageSize);
 
-
         private int TotalHolds =>
              _groups.Values.Count(g => g.Hold is Hold);
 
@@ -945,7 +901,6 @@ public partial class Craft : OwningComponentBase
 
         private int TotalGives =>
             _groups.Values.Count(g => g is { Giveback.Copies: > 0 });
-
 
         public void SetHoldPage(int value)
         {
@@ -971,7 +926,6 @@ public partial class Craft : OwningComponentBase
             }
         }
 
-
         public bool IsAdded(Quantity quantity)
         {
             return !_originalCopies.ContainsKey(quantity);
@@ -981,7 +935,6 @@ public partial class Craft : OwningComponentBase
         {
             return quantity.Copies != _originalCopies.GetValueOrDefault(quantity);
         }
-
 
         public bool CanSave()
         {
@@ -1012,7 +965,6 @@ public partial class Craft : OwningComponentBase
             return false;
         }
 
-
         public IEnumerable<TQuantity> GetQuantities<TQuantity>()
             where TQuantity : Quantity
         {
@@ -1032,7 +984,6 @@ public partial class Craft : OwningComponentBase
                 return Deck.Givebacks.OfType<TQuantity>();
             }
         }
-
 
         public bool TryGetQuantity<TQuantity>(Card card, out TQuantity quantity)
             where TQuantity : Quantity
@@ -1054,7 +1005,6 @@ public partial class Craft : OwningComponentBase
             return quantity != null;
         }
 
-
         public void AddQuantity<TQuantity>(TQuantity quantity)
             where TQuantity : Quantity
         {
@@ -1074,7 +1024,6 @@ public partial class Craft : OwningComponentBase
             group.AddQuantity(quantity);
         }
 
-
         public void AddOriginalQuantity(Quantity quantity)
         {
             ArgumentNullException.ThrowIfNull(quantity);
@@ -1084,14 +1033,12 @@ public partial class Craft : OwningComponentBase
             _originalCopies.Add(quantity, quantity.Copies);
         }
 
-
         public void ConvertToAddition(Quantity quantity)
         {
             ArgumentNullException.ThrowIfNull(quantity);
 
             _originalCopies.Remove(quantity);
         }
-
 
         private void UpdateOriginals()
         {
@@ -1103,7 +1050,6 @@ public partial class Craft : OwningComponentBase
             }
         }
 
-
         public void SuccessfullySaved()
         {
             UpdateOriginals();
@@ -1113,8 +1059,6 @@ public partial class Craft : OwningComponentBase
     }
 
     #endregion
-
-
 
     #region Save Changes
 
@@ -1156,7 +1100,6 @@ public partial class Craft : OwningComponentBase
         }
     }
 
-
     private async Task<SaveResult> SaveOrConcurrentRecoverAsync(
         CardDbContext dbContext,
         DeckContext deckContext,
@@ -1182,7 +1125,6 @@ public partial class Craft : OwningComponentBase
         }
     }
 
-
     private static void PrepareChanges(CardDbContext dbContext, DeckContext deckContext)
     {
         var deck = deckContext.Deck;
@@ -1200,7 +1142,6 @@ public partial class Craft : OwningComponentBase
         PrepareQuantity(deckContext, dbContext.Wants);
         PrepareQuantity(deckContext, dbContext.Givebacks);
     }
-
 
     private static void PrepareQuantity<TQuantity>(
         DeckContext deckContext,
@@ -1230,7 +1171,6 @@ public partial class Craft : OwningComponentBase
             }
         }
     }
-
 
     private static async Task UpdateDeckFromDbAsync(
         CardDbContext dbContext,
@@ -1289,7 +1229,6 @@ public partial class Craft : OwningComponentBase
         dbContext.MatchToken(localDeck, dbDeck);
     }
 
-
     private static bool HasNoDeckConflicts(
         DeckContext deckContext,
         DbUpdateConcurrencyException ex)
@@ -1319,7 +1258,6 @@ public partial class Craft : OwningComponentBase
             && !giveConflicts.Any();
     }
 
-
     private static void MergeDbRemoves(DeckContext deckContext, Deck dbDeck)
     {
         MergeRemovedQuantity(deckContext, dbDeck.Holds);
@@ -1328,7 +1266,6 @@ public partial class Craft : OwningComponentBase
 
         MergeRemovedQuantity(deckContext, dbDeck.Givebacks);
     }
-
 
     private static void MergeRemovedQuantity<TQuantity>(
         DeckContext deckContext,
@@ -1360,8 +1297,6 @@ public partial class Craft : OwningComponentBase
         }
     }
 
-
-
     private static void MergeDbConflicts(
         CardDbContext dbContext,
         DeckContext deckContext,
@@ -1373,7 +1308,6 @@ public partial class Craft : OwningComponentBase
 
         MergeQuantityConflict(dbContext, deckContext, dbDeck.Givebacks);
     }
-
 
     private static void MergeQuantityConflict<TQuantity>(
         CardDbContext dbContext,
@@ -1397,7 +1331,6 @@ public partial class Craft : OwningComponentBase
         }
     }
 
-
     private static void MergeDbAdditions(
         CardDbContext dbContext,
         DeckContext deckContext,
@@ -1409,7 +1342,6 @@ public partial class Craft : OwningComponentBase
 
         MergeNewQuantity(deckContext, dbContext, dbDeck.Givebacks);
     }
-
 
     private static void MergeNewQuantity<TQuantity>(
         DeckContext deckContext,
@@ -1453,7 +1385,6 @@ public partial class Craft : OwningComponentBase
         }
     }
 
-
     private static void AttachQuantity<TQuantity>(CardDbContext dbContext, TQuantity quantity)
         where TQuantity : Quantity
     {
@@ -1475,7 +1406,6 @@ public partial class Craft : OwningComponentBase
                 throw new ArgumentException($"Unexpected Quantity type {typeof(TQuantity).Name}", nameof(quantity));
         }
     }
-
 
     private static void CapGivebacks(IEnumerable<QuantityGroup> deckCards)
     {

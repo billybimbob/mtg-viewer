@@ -19,7 +19,6 @@ using MTGViewer.Services;
 
 namespace MTGViewer.Pages.Transactions;
 
-
 public class DetailsModel : PageModel
 {
     private readonly IAuthorizationService _authorization;
@@ -46,13 +45,11 @@ public class DetailsModel : PageModel
         _logger = logger;
     }
 
-
     [TempData]
     public string? PostMessage { get; set; }
 
     [TempData]
     public string? TimeZoneId { get; set; }
-
 
     public TransactionDetails Transaction { get; private set; } = default!;
 
@@ -63,7 +60,6 @@ public class DetailsModel : PageModel
     public TimeZoneInfo TimeZone { get; private set; } = TimeZoneInfo.Utc;
 
     public DateTime AppliedAt => TimeZoneInfo.ConvertTimeFromUtc(Transaction.AppliedAt, TimeZone);
-
 
     public async Task<IActionResult> OnGetAsync(
         int id,
@@ -119,7 +115,6 @@ public class DetailsModel : PageModel
         return Page();
     }
 
-
     private IQueryable<TransactionDetails> TransactionDetails(int id)
     {
         return _dbContext.Transactions
@@ -133,7 +128,6 @@ public class DetailsModel : PageModel
                 // CanDelete is always false
             });
     }
-
 
     private IQueryable<TransactionDetails> TransactionDetails(int id, string userId)
     {
@@ -157,7 +151,6 @@ public class DetailsModel : PageModel
                         || c.From is Deck && (c.From as Deck)!.OwnerId == userId))
             });
     }
-
 
     private IQueryable<ChangeDetails> ChangeDetails(TransactionDetails transaction)
     {
@@ -208,7 +201,6 @@ public class DetailsModel : PageModel
             });
     }
 
-
     private void UpdateTimeZone(string? timeZoneId)
     {
         if (timeZoneId is null && TimeZoneId is not null)
@@ -234,7 +226,6 @@ public class DetailsModel : PageModel
         }
     }
 
-
     private static readonly Func<CardDbContext, int, string, CancellationToken, Task<Transaction?>> DeletingTransactionAsync
 
         = EF.CompileAsyncQuery((CardDbContext dbContext, int transactionId, string userId, CancellationToken _) =>
@@ -247,14 +238,12 @@ public class DetailsModel : PageModel
 
                 .SingleOrDefault(t => t.Id == transactionId));
 
-
     private static bool IsInvalidTransaction(Transaction transaction, string userId)
     {
         return transaction.Changes
             .Any(c => c.To is Deck toDeck && toDeck.OwnerId != userId
                 || c.From is Deck fromDeck && fromDeck.OwnerId != userId);
     }
-
 
     public async Task<IActionResult> OnPostAsync(int id, CancellationToken cancel)
     {

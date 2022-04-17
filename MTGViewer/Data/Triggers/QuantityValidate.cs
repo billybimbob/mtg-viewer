@@ -21,7 +21,6 @@ public class QuantityValidate : IBeforeSaveTrigger<Quantity>
         _logger = logger;
     }
 
-
     public Task BeforeSave(ITriggerContext<Quantity> trigContext, CancellationToken cancel)
     {
         if (trigContext.ChangeType is ChangeType.Deleted)

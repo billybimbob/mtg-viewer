@@ -7,11 +7,10 @@
 @inject IAuthorizationService AuthorizationService
 @inject SymbolFormatter MtgSymbols
 
-@{ 
+@{
     bool canChangeTreasury = (await AuthorizationService
         .AuthorizeAsync(User, CardPolicies.ChangeTreasury)).Succeeded;
 }
-
 
 <h1>@Model.Deck.Owner.Name's @Model.Deck.Name</h1>
 
@@ -50,7 +49,6 @@
     }
 </div>
 
-
 @{ string returnUrl = $"{Request.Path}{Request.QueryString}"; }
 
 <div class="table-responsive-md">
@@ -73,9 +71,9 @@
                         <component type="typeof(HoverCard)" render-mode="Static"
                             param-Preview="card" param-ReturnUrl="returnUrl" />
                     </td>
-                    <td> 
+                    <td>
                         <div class="ms-group">
-                            @MtgSymbols.Format(card.ManaCost).ToHtmlString() 
+                            @MtgSymbols.Format(card.ManaCost).ToHtmlString()
                         </div>
                     </td>
                     <td> @card.SetName </td>

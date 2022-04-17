@@ -2,7 +2,6 @@
 @inject SymbolFormatter MtgSymbols
 @using MTGViewer.Data.Internal
 
-
 <PageTitle> Add Cards </PageTitle>
 
 <h1>Add Card(s)</h1>
@@ -33,7 +32,7 @@
                         <dt class="col-12 col-lg-2"> @Query.DisplayName(c => c.Name) </dt>
                         <dd class="col-12 col-lg-10">
                             <p>
-                                The Name of the Card (in the top left). Split cards are treated 
+                                The Name of the Card (in the top left). Split cards are treated
                                 as separate cards, so only side of the card should be specified.
                             </p>
                         </dd>
@@ -43,7 +42,7 @@
                             <p>
                                 The color identity of the card. Color identity is affected by
                                 a card's mana cost, but also mana abilities costs and text
-                                effects. Multiple colors can be specified, where the searched 
+                                effects. Multiple colors can be specified, where the searched
                                 must have <i>all</i> selected colors.
                             </p>
                         </dd>
@@ -65,7 +64,7 @@
                         <dt class="col-12 col-lg-2"> @Query.DisplayName(c => c.Text) </dt>
                         <dd class="col-12 col-lg-10">
                             <p>
-                                The card effect text. The Oracle Text can also be searched by 
+                                The card effect text. The Oracle Text can also be searched by
                                 keywords and phrases.
                             </p>
                         </dd>
@@ -87,14 +86,14 @@
                 <p> Enter the card search parameters below </p>
 
                 <div class="form-group">
-                    <InputText @bind-Value="Query.Name" 
-                        placeholder="@Query.DisplayName(c => c.Name)" 
+                    <InputText @bind-Value="Query.Name"
+                        placeholder="@Query.DisplayName(c => c.Name)"
                         class="form-control" />
                 </div>
 
                 <div class="form-group">
                     <InputNumber @bind-Value="Query.Cmc" min="0"
-                        placeholder="@Query.DisplayName(c => c.Cmc)" 
+                        placeholder="@Query.DisplayName(c => c.Cmc)"
                         class="form-control" />
                 </div>
 
@@ -111,8 +110,8 @@
                 </div>
 
                 <div class="form-group">
-                    <InputText @bind-Value="Query.SetName" 
-                        placeholder="@Query.DisplayName(c => c.SetName)" 
+                    <InputText @bind-Value="Query.SetName"
+                        placeholder="@Query.DisplayName(c => c.SetName)"
                         class="form-control" />
                 </div>
 
@@ -136,44 +135,44 @@
                 </div>
 
                 <div class="form-group">
-                    <InputText @bind-Value="Query.Power" 
-                        placeholder="@Query.DisplayName(c => c.Power)" 
+                    <InputText @bind-Value="Query.Power"
+                        placeholder="@Query.DisplayName(c => c.Power)"
                         class="form-control" />
                 </div>
 
                 <div class="form-group">
-                    <InputText @bind-Value="Query.Toughness" 
-                        placeholder="@Query.DisplayName(c => c.Toughness)" 
+                    <InputText @bind-Value="Query.Toughness"
+                        placeholder="@Query.DisplayName(c => c.Toughness)"
                         class="form-control" />
                 </div>
 
                 <div class="form-group">
-                    <InputText @bind-Value="Query.Loyalty" 
-                        placeholder="@Query.DisplayName(c => c.Loyalty)" 
+                    <InputText @bind-Value="Query.Loyalty"
+                        placeholder="@Query.DisplayName(c => c.Loyalty)"
                         class="form-control" />
                 </div>
 
                 <div class="form-group">
-                    <InputTextArea @bind-Value="Query.Text" 
-                        placeholder="@Query.DisplayName(c => c.Text)" 
+                    <InputTextArea @bind-Value="Query.Text"
+                        placeholder="@Query.DisplayName(c => c.Text)"
                         class="form-control" />
                 </div>
 
                 <div class="form-group">
-                    <InputTextArea @bind-Value="Query.Flavor" 
-                        placeholder="@Query.DisplayName(c => c.Flavor)" 
+                    <InputTextArea @bind-Value="Query.Flavor"
+                        placeholder="@Query.DisplayName(c => c.Flavor)"
                         class="form-control" />
                 </div>
 
                 <div class="form-group">
-                    <InputText @bind-Value="Query.Artist" 
-                        placeholder="@Query.DisplayName(c => c.Artist)" 
+                    <InputText @bind-Value="Query.Artist"
+                        placeholder="@Query.DisplayName(c => c.Artist)"
                         class="form-control" />
                 </div>
 
                 <div class="btn-group" role="group">
 
-                    <button type="submit" class="btn btn-secondary" 
+                    <button type="submit" class="btn btn-secondary"
                         title="Search For Card" disabled="@(IsEmpty || IsLoading)">
                         @if (IsLoading)
                         {
@@ -197,7 +196,7 @@ else
     <div class="btn-group pb-2" role="group">
         <button title="Reset Search Arguments"
             type="button"
-            @onclick="Reset" 
+            @onclick="Reset"
             disabled="@IsLoading"
             class="btn btn-danger">
             Reset </button>
@@ -205,7 +204,7 @@ else
         <button title="Add Selected Cards"
             type="button"
             class="btn btn-secondary"
-            @onclick="AddNewCardsAsync" 
+            @onclick="AddNewCardsAsync"
             disabled="@(CannotAdd() || IsLoading)">
             Add Cards/Copies </button>
     </div>
@@ -226,7 +225,7 @@ else
                 {
                     var card = match.Card;
                     <tr>
-                        <td> 
+                        <td>
                             <HoverCard Target="card">
                                 @if (match.HasDetails)
                                 {
@@ -234,9 +233,9 @@ else
                                 }
                                 else
                                 {
-                                    <span class="btn-link"> @card.Name </span> 
+                                    <span class="btn-link"> @card.Name </span>
                                 }
-                            </HoverCard> 
+                            </HoverCard>
                         </td>
                         <td>
                             <div class="ms-group">
@@ -247,7 +246,7 @@ else
                         <td> @card.Rarity </td>
                         <td>
                             <input @bind="match.Copies"
-                                title="@card.Name Copies" 
+                                title="@card.Name Copies"
                                 type="number" min="0" max="@match.Limit"
                                 class="form-control amt-input" />
                         </td>
@@ -260,7 +259,7 @@ else
     <div class="btn-group pb-3">
         <button title="More Results" type="button"
             class="btn btn-secondary"
-            @onclick="LoadMoreCardsAsync" 
+            @onclick="LoadMoreCardsAsync"
             disabled="@(HasNoNext || IsLoading)" >
             @if (IsLoading)
             {
@@ -276,7 +275,6 @@ else
         </button>
     </div>
 }
-
 
 @code
 {

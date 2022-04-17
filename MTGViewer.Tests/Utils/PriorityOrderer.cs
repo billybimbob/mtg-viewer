@@ -6,7 +6,6 @@ using Xunit.Sdk;
 
 namespace MTGViewer.Tests.Utils;
 
-
 [AttributeUsage(AttributeTargets.Method, AllowMultiple = false)]
 public class TestPriorityAttribute : Attribute
 {
@@ -14,7 +13,6 @@ public class TestPriorityAttribute : Attribute
 
     public TestPriorityAttribute(int priority) => Priority = priority;
 }
-
 
 public class PriorityOrderer : ITestCaseOrderer
 {
@@ -45,7 +43,6 @@ public class PriorityOrderer : ITestCaseOrderer
             yield return testCase;
         }
     }
-
 
     private static TValue GetOrCreate<TKey, TValue>(
         IDictionary<TKey, TValue> dictionary, TKey key)

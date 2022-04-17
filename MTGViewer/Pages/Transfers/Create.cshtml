@@ -5,7 +5,6 @@
 }
 @inject SymbolFormatter MtgSymbols
 
-
 <h1>Requests for @Model.Deck.Name</h1>
 <hr />
 
@@ -14,7 +13,7 @@
     <div class="alert alert-secondary" role="alert">
         <h5 class="alert-heading"> Send Request Confirmation </h5>
         <p>
-            Are you sure you want to send requests listed below?  While a 
+            Are you sure you want to send requests listed below?  While a
             request is active, <strong>you cannot edit @Model.Deck.Name</strong>
         </p>
 
@@ -31,7 +30,6 @@ else
         <p class="mb-0"> There are no possible decks to requests to. </p>
     </div>
 }
-
 
 <div class="table-responsive-md">
     <table class="table">
@@ -60,7 +58,7 @@ else
                         <component type="typeof(HoverCard)" render-mode="Static"
                             param-Preview="card" />
                     </td>
-                    <td> 
+                    <td>
                         <div class="ms-group">
                             @MtgSymbols.Format(card.ManaCost).ToHtmlString()
                         </div>
@@ -68,13 +66,12 @@ else
                     <td> @card.SetName </td>
                     <td> @card.Held </td>
                 </tr>
-            } 
+            }
         </tbody>
     </table>
 </div>
 
 <partial name="_OffsetPagingPartial" for="Requests.Offset"/>
-
 
 <h3>
     <a asp-page="/Decks/Details" asp-route-id="@Model.Deck.Id">
@@ -101,9 +98,9 @@ else
                         <a asp-page="/Cards/Details" asp-route-id="@card.Id">
                             @card.Name </a>
                     </td>
-                    <td> 
+                    <td>
                         <div class="ms-group">
-                            @MtgSymbols.Format(card.ManaCost).ToHtmlString() 
+                            @MtgSymbols.Format(card.ManaCost).ToHtmlString()
                         </div>
                     </td>
                     <td> @card.SetName </td>

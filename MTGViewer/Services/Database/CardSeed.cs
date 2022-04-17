@@ -23,7 +23,6 @@ internal class CardSeed : IHostedService
         _env = env;
     }
 
-
     public async Task StartAsync(CancellationToken cancel)
     {
         if (_env.IsProduction())
@@ -54,7 +53,6 @@ internal class CardSeed : IHostedService
 
         await cardGen.GenerateAsync(cancel);
     }
-
 
     public Task StopAsync(CancellationToken cancel) => Task.CompletedTask;
 

@@ -10,7 +10,6 @@ using MTGViewer.Areas.Identity.Services;
 
 namespace MTGViewer.Areas.Identity.Pages.Account;
 
-
 [AllowAnonymous]
 public class ResendEmailConfirmationModel : PageModel
 {
@@ -24,7 +23,6 @@ public class ResendEmailConfirmationModel : PageModel
         _emailVerify = emailVerify;
     }
 
-
     [BindProperty]
     public InputModel Input { get; set; } = default!;
 
@@ -35,10 +33,8 @@ public class ResendEmailConfirmationModel : PageModel
         public string Email { get; set; } = default!;
     }
 
-
     public void OnGet()
     { }
-
 
     public async Task<IActionResult> OnPostAsync()
     {

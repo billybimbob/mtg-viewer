@@ -12,7 +12,6 @@ using MTGViewer.Tests.Utils;
 
 namespace MTGViewer.Tests.Pages.Transactions;
 
-
 public class DetailsTests : IAsyncLifetime
 {
     private readonly DetailsModel _detailsModel;
@@ -21,7 +20,6 @@ public class DetailsTests : IAsyncLifetime
 
     private readonly TestDataGenerator _testGen;
     private Transaction _transaction = default!;
-
 
     public DetailsTests(
         DetailsModel detailsModel,
@@ -35,20 +33,16 @@ public class DetailsTests : IAsyncLifetime
         _testGen = testGen;
     }
 
-
     public async Task InitializeAsync()
     {
         await _testGen.SeedAsync();
         _transaction = await _testGen.CreateTransactionAsync();
     }
 
-
     public Task DisposeAsync() => _testGen.ClearAsync();
-
 
     private IQueryable<Transaction> Transactions =>
         _dbContext.Transactions.AsNoTracking();
-
 
     [Fact]
     public async Task OnPost_InvalidTransaction_NoChange()
@@ -66,7 +60,6 @@ public class DetailsTests : IAsyncLifetime
         Assert.IsType<NotFoundResult>(result);
         Assert.Contains(_transaction.Id, transactions);
     }
-
 
     [Fact]
     public async Task OnPost_InvalidUser_NoChange()
@@ -86,7 +79,6 @@ public class DetailsTests : IAsyncLifetime
         Assert.IsType<ForbidResult>(result);
         Assert.Contains(_transaction.Id, transactions);
     }
-
 
     [Fact]
     public async Task OnPost_ValidTransaction_RemovesTransaction()

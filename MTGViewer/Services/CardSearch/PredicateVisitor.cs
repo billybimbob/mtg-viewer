@@ -9,7 +9,6 @@ internal class PredicateVisitor : ExpressionVisitor
     private static PredicateVisitor? s_instance;
     public static PredicateVisitor Instance => s_instance ??= new();
 
-
     private static UnaryExpression? _nullDictionary;
     private static UnaryExpression NullDictionary =>
         _nullDictionary ??=
@@ -17,18 +16,15 @@ internal class PredicateVisitor : ExpressionVisitor
                 ExpressionConstants.Null,
                 typeof(IDictionary<,>).MakeGenericType(typeof(string), typeof(IMtgParameter)));
 
-
     private readonly Dictionary<string, ConstantExpression> _propertyNames = new();
 
     private AllPredicateVisitor? _allVisitor;
     private ExpressionVisitor AllPredicate => _allVisitor ??= new(_propertyNames);
 
-
     protected override Expression VisitLambda<T>(Expression<T> node)
     {
         return Visit(node.Body);
     }
-
 
     protected override Expression VisitMember(MemberExpression node)
     {
@@ -48,7 +44,6 @@ internal class PredicateVisitor : ExpressionVisitor
         };
     }
 
-
     private ConstantExpression GetOrCreatePropertyName(MemberExpression property)
     {
         string propertyName = property.Member.Name;
@@ -61,7 +56,6 @@ internal class PredicateVisitor : ExpressionVisitor
         return _propertyNames[propertyName] = Expression.Constant(propertyName);
     }
 
-
     protected override Expression VisitParameter(ParameterExpression node)
     {
         if (node.Type == typeof(CardQuery))
@@ -71,7 +65,6 @@ internal class PredicateVisitor : ExpressionVisitor
 
         return ExpressionConstants.Null;
     }
-
 
     protected override Expression VisitUnary(UnaryExpression node)
     {
@@ -83,12 +76,10 @@ internal class PredicateVisitor : ExpressionVisitor
         return node;
     }
 
-
     protected override Expression VisitConstant(ConstantExpression node)
     {
         return Expression.Constant(node.Value, typeof(object));
     }
-
 
     protected override Expression VisitBinary(BinaryExpression node)
     {
@@ -125,7 +116,6 @@ internal class PredicateVisitor : ExpressionVisitor
         return node;
     }
 
-
     private static MethodCallExpression CallQuery(Expression propertyName, Expression value)
     {
         return Expression.Call(
@@ -133,7 +123,6 @@ internal class PredicateVisitor : ExpressionVisitor
             MtgApiQuery.QueryMethod,
             NullDictionary, propertyName, value);
     }
-
 
     protected override Expression VisitMethodCall(MethodCallExpression node)
     {
@@ -153,7 +142,6 @@ internal class PredicateVisitor : ExpressionVisitor
         return node;
     }
 
-
     private class AllPredicateVisitor : ExpressionVisitor
     {
         private readonly Dictionary<string, ConstantExpression> _propertyNames;
@@ -168,7 +156,6 @@ internal class PredicateVisitor : ExpressionVisitor
             return Visit(node.Body);
         }
 
-
         protected override Expression VisitMember(MemberExpression node)
         {
             if (Visit(node.Expression) is ParameterExpression)
@@ -178,7 +165,6 @@ internal class PredicateVisitor : ExpressionVisitor
 
             return node;
         }
-
 
         private ConstantExpression GetOrCreatePropertyName(MemberExpression property)
         {
@@ -192,7 +178,6 @@ internal class PredicateVisitor : ExpressionVisitor
             return _propertyNames[propertyName] = Expression.Constant(propertyName);
         }
 
-
         protected override Expression VisitParameter(ParameterExpression node)
         {
             if (node.Type == typeof(CardQuery))
@@ -202,7 +187,6 @@ internal class PredicateVisitor : ExpressionVisitor
 
             return ExpressionConstants.Null;
         }
-
 
         protected override Expression VisitUnary(UnaryExpression node)
         {
@@ -214,12 +198,10 @@ internal class PredicateVisitor : ExpressionVisitor
             return node;
         }
 
-
         protected override Expression VisitConstant(ConstantExpression node)
         {
             return Expression.Constant(node.Value, typeof(object));
         }
-
 
         protected override Expression VisitBinary(BinaryExpression node)
         {

@@ -1,6 +1,5 @@
 @typeparam TEntity
 
-
 @if (HasPrevious || HasNext)
 {
     <nav>
@@ -58,8 +57,7 @@
     </nav>
 }
 
-
-@code 
+@code
 {
     [Parameter]
     public Seek<TEntity> Seek { get; set; }
@@ -74,9 +72,7 @@
 
     internal bool HasNext => Seek.Next is not null;
 
-
     private bool _isBusy;
-
 
     internal async Task FirstPageAsync()
     {
@@ -98,7 +94,6 @@
         }
     }
 
-
     internal async Task PreviousPageAsync()
     {
         if (_isBusy || Seek.Previous is not TEntity previous)
@@ -119,7 +114,6 @@
         }
     }
 
-
     internal async Task NextPageAsync()
     {
         if (_isBusy || Seek.Next is not TEntity next)
@@ -139,7 +133,6 @@
             _isBusy = false;
         }
     }
-
 
     internal async Task LastPageAsync()
     {

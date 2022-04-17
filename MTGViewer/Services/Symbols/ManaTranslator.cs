@@ -3,7 +3,6 @@ using System.Linq;
 
 namespace MTGViewer.Services;
 
-
 public class ManaTranslator : ISymbolTranslator
 {
     public string ManaString(ManaSymbol symbol)
@@ -18,7 +17,6 @@ public class ManaTranslator : ISymbolTranslator
 
         return $@"<i class=""mr-2 ms ms-{cost} ms-cost""></i>";
     }
-
 
     public string LoyaltyString(LoyaltySymbol symbol)
     {
@@ -35,14 +33,12 @@ public class ManaTranslator : ISymbolTranslator
         return $@"<i class=""mr-1 ms ms-loyalty-{direction} ms-loyalty-{loyalty}""></i>";
     }
 
-
     public string SagaString(SagaSymbol symbol)
     {
         var saga = ParseRomanNumeral(symbol.Value);
 
         return $@"<i class=""mr-1 ms ms-saga ms-saga-{saga}""></i>";
     }
-
 
     private static int ParseRomanNumeral(string romanNumeral)
     {
@@ -68,7 +64,6 @@ public class ManaTranslator : ISymbolTranslator
 
         return result;
     }
-
 
     private static int RomanLetterValue(char romanLetter) => romanLetter switch
     {

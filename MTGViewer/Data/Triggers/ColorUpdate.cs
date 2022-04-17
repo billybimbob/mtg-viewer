@@ -21,7 +21,6 @@ public class ColorUpdate : IBeforeSaveTrigger<Theorycraft>
         _logger = logger;
     }
 
-
     public async Task BeforeSave(ITriggerContext<Theorycraft> trigContext, CancellationToken cancel)
     {
         if (trigContext.ChangeType is ChangeType.Deleted)
@@ -51,7 +50,6 @@ public class ColorUpdate : IBeforeSaveTrigger<Theorycraft>
 
         theory.Color = GetColor(deckColors, theory);
     }
-
 
     private async Task SetAddedColorAsync(Theorycraft theory, CancellationToken cancel)
     {
@@ -83,7 +81,6 @@ public class ColorUpdate : IBeforeSaveTrigger<Theorycraft>
             .AggregateAsync(Color.None, (color, c) => color | c, cancel);
     }
 
-
     private bool IsFullyLoaded(Theorycraft theory)
     {
         var entry = _dbContext.Entry(theory);
@@ -98,7 +95,6 @@ public class ColorUpdate : IBeforeSaveTrigger<Theorycraft>
                 is not { IsLoaded: false, IsModified: true };
     }
 
-
     private static Color GetColor(Theorycraft theory)
     {
         var holdColors = theory.Holds
@@ -111,7 +107,6 @@ public class ColorUpdate : IBeforeSaveTrigger<Theorycraft>
             .Union(wantColors)
             .Aggregate(Color.None, (color, card) => color | card);
     }
-
 
     private static Color GetColor(TheoryColors? colors, Theorycraft theory)
     {
@@ -135,7 +130,6 @@ public class ColorUpdate : IBeforeSaveTrigger<Theorycraft>
             .Aggregate(Color.None, (color, card) => color | card);
     }
 
-
     private static readonly Func<CardDbContext, int, CancellationToken, Task<TheoryColors?>> DeckColorsAsync
 
         = EF.CompileAsyncQuery((CardDbContext dbContext, int deckId, CancellationToken _) =>
@@ -150,7 +144,6 @@ public class ColorUpdate : IBeforeSaveTrigger<Theorycraft>
                 .AsSplitQuery()
                 .SingleOrDefault());
 
-
     private static readonly Func<CardDbContext, int, CancellationToken, Task<TheoryColors?>> UnclaimedColorsAsync
 
         = EF.CompileAsyncQuery((CardDbContext dbContext, int unclaimedId, CancellationToken _) =>
@@ -164,7 +157,6 @@ public class ColorUpdate : IBeforeSaveTrigger<Theorycraft>
                 })
                 .AsSplitQuery()
                 .SingleOrDefault());
-
 
     private static readonly Func<CardDbContext, string[], IAsyncEnumerable<Color>> CardColorsAsync
 

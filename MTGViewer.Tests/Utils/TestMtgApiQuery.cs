@@ -33,12 +33,10 @@ public class TestMtgApiQuery : IMTGQuery
         _mtgQuery = new MtgApiQuery(testCards, _flipQuery, pageSize, loadingProgress);
     }
 
-
     public IAsyncEnumerable<ICard> SourceCards => _testCards.Cards;
 
     public IAsyncEnumerable<ICard> FlipCards =>
         _flipCards ??= SourceCards.Where(c => _flipQuery.HasFlip(c.Name));
-
 
     public IMTGCardSearch Where(Expression<Func<CardQuery, bool>> predicate)
     {

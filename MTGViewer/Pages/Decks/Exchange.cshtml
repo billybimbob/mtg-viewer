@@ -7,7 +7,6 @@
 
 @{ bool hasPendings = Model.Deck.Givebacks.Any() || Model.Matches.Any(); }
 
-
 <h1>@Model.Deck.Name Treasury Exchange</h1>
 
 @if (hasPendings)
@@ -48,7 +47,6 @@ else if (Model.Deck.HasWants)
         </div>
     </section>
 }
-
 
 <h3> Wanted Card Matches </h3>
 
@@ -99,7 +97,6 @@ else if (Model.Deck.HasWants)
 
 <partial name="_OffsetPagingPartial" for="Matches.Offset"/>
 
-
 <h3> Returning Cards </h3>
 
 <section class="row">
@@ -146,18 +143,17 @@ else if (Model.Deck.HasWants)
     </div>
 </section>
 
-
 @if (hasPendings)
 {
     <div class="mt-2 alert alert-danger" role="alert">
         <h5 class="alert-heading">Treasury Confirmation</h5>
-        <p> 
+        <p>
             Make sure that any exchanges with the Treasury are done <i>only</i> when the
             changes can also be reflected with the physical collection.
         </p>
         <hr class="mb-1">
-        <small class="my-1"> 
-            Modifications to the Treasury represent current state of the physical collection, 
+        <small class="my-1">
+            Modifications to the Treasury represent current state of the physical collection,
             and therefore both must be kept synchronized.
         </small>
 

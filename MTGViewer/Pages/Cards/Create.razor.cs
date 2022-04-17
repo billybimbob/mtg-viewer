@@ -21,7 +21,6 @@ using MTGViewer.Services;
 
 namespace MTGViewer.Pages.Cards;
 
-
 [Authorize]
 [Authorize(CardPolicies.ChangeTreasury)]
 public partial class Create : ComponentBase, IDisposable
@@ -78,7 +77,6 @@ public partial class Create : ComponentBase, IDisposable
     [SupplyParameterFromQuery]
     public string? ReturnUrl { get; set; }
 
-
     [Inject]
     protected IDbContextFactory<CardDbContext> DbFactory { get; set; } = default!;
 
@@ -97,7 +95,6 @@ public partial class Create : ComponentBase, IDisposable
     [Inject]
     protected ILogger<Create> Logger { get; set; } = default!;
 
-
     internal IReadOnlyList<MatchInput> Matches => _matches;
 
     internal bool HasNoNext => !_matchPage.HasNext;
@@ -106,16 +103,13 @@ public partial class Create : ComponentBase, IDisposable
 
     internal bool IsEmpty => Query == s_empty;
 
-
     internal CardQuery Query { get; } = new();
 
     internal EditContext? SearchEdit { get; private set; }
 
-
     internal bool IsFromForm { get; private set; }
 
     internal SaveResult Result { get; set; }
-
 
     // should never change, only used for resets
     private static readonly CardQuery s_empty = new();
@@ -132,7 +126,6 @@ public partial class Create : ComponentBase, IDisposable
     private Offset _matchPage;
     private string? _returnUrl;
 
-
     protected override void OnInitialized()
     {
         _persistSubscription = ApplicationState.RegisterOnPersisting(PersistMatches);
@@ -145,7 +138,6 @@ public partial class Create : ComponentBase, IDisposable
 
         SearchEdit = edit;
     }
-
 
     protected override async Task OnParametersSetAsync()
     {
@@ -195,7 +187,6 @@ public partial class Create : ComponentBase, IDisposable
         }
     }
 
-
     protected override void OnAfterRender(bool firstRender)
     {
         if (firstRender)
@@ -205,7 +196,6 @@ public partial class Create : ComponentBase, IDisposable
             StateHasChanged();
         }
     }
-
 
     void IDisposable.Dispose()
     {
@@ -219,8 +209,6 @@ public partial class Create : ComponentBase, IDisposable
         _cancel.Cancel();
         _cancel.Dispose();
     }
-
-
 
     private Task PersistMatches()
     {
@@ -240,7 +228,6 @@ public partial class Create : ComponentBase, IDisposable
         return Task.CompletedTask;
     }
 
-
     private bool TryGetData<TData>(string key, [NotNullWhen(true)] out TData? data)
     {
         if (ApplicationState.TryTakeFromJson(key, out data!)
@@ -251,7 +238,6 @@ public partial class Create : ComponentBase, IDisposable
 
         return false;
     }
-
 
     private async Task LoadCardMatchesAsync(CancellationToken cancel)
     {
@@ -273,7 +259,6 @@ public partial class Create : ComponentBase, IDisposable
         _matchPage = offset;
     }
 
-
     private void ClearErrors(object? sender, FieldChangedEventArgs args)
     {
         if (SearchEdit is not EditContext edit || _resultErrors is null)
@@ -289,7 +274,6 @@ public partial class Create : ComponentBase, IDisposable
         edit.NotifyValidationStateChanged();
     }
 
-
     private void NoMatchError()
     {
         if (SearchEdit is not EditContext edit || _resultErrors is null)
@@ -303,7 +287,6 @@ public partial class Create : ComponentBase, IDisposable
         _resultErrors.Add(idField, noMatch);
         edit.NotifyValidationStateChanged();
     }
-
 
     internal void ToggleColor(Color toggle)
     {
@@ -325,7 +308,6 @@ public partial class Create : ComponentBase, IDisposable
 
         edit.NotifyFieldChanged(colorField);
     }
-
 
     private bool ValidateParameters()
     {
@@ -350,7 +332,6 @@ public partial class Create : ComponentBase, IDisposable
         return SearchEdit.Validate();
     }
 
-
     private static Color ValidatedColor(int value)
     {
         return Enum
@@ -359,7 +340,6 @@ public partial class Create : ComponentBase, IDisposable
             .Aggregate((color, c) => color | c);
     }
 
-
     private static Rarity? ValidatedRarity(int? value)
     {
         return Enum
@@ -367,7 +347,6 @@ public partial class Create : ComponentBase, IDisposable
             .OfType<Rarity?>()
             .FirstOrDefault(r => r == (Rarity?)value);
     }
-
 
     private void NavigateToQuery(CardQuery query)
     {
@@ -394,7 +373,6 @@ public partial class Create : ComponentBase, IDisposable
             Nav.GetUriWithQueryParameters(parameters), replace: true);
     }
 
-
     internal void Reset()
     {
         if (_isBusy)
@@ -409,7 +387,6 @@ public partial class Create : ComponentBase, IDisposable
         NavigateToQuery(s_empty);
     }
 
-
     internal void SubmitSearch()
     {
         if (_isBusy)
@@ -423,7 +400,6 @@ public partial class Create : ComponentBase, IDisposable
 
         NavigateToQuery(Query);
     }
-
 
     internal sealed class MatchInput
     {
@@ -454,7 +430,6 @@ public partial class Create : ComponentBase, IDisposable
         }
     }
 
-
     private async Task SearchForCardAsync(CancellationToken cancel)
     {
         var result = await SearchQueryAsync(cancel);
@@ -468,7 +443,6 @@ public partial class Create : ComponentBase, IDisposable
             NoMatchError();
         }
     }
-
 
     private async Task<OffsetList<Card>> SearchQueryAsync(CancellationToken cancel)
     {
@@ -498,7 +472,6 @@ public partial class Create : ComponentBase, IDisposable
             .SearchAsync(cancel);
     }
 
-
     private async Task AddNewMatchesAsync(IEnumerable<Card> cards, CancellationToken cancel)
     {
         if (!cards.Any())
@@ -527,7 +500,6 @@ public partial class Create : ComponentBase, IDisposable
         _matches.AddRange(newMatches);
     }
 
-
     internal async Task LoadMoreCardsAsync()
     {
         if (_isBusy || _matchPage is { Total: > 0, HasNext: false })
@@ -550,7 +522,6 @@ public partial class Create : ComponentBase, IDisposable
             _isBusy = false;
         }
     }
-
 
     internal async Task AddNewCardsAsync()
     {
@@ -614,7 +585,6 @@ public partial class Create : ComponentBase, IDisposable
         }
     }
 
-
     private static async Task AddNewCardsAsync(
         CardDbContext dbContext,
         IReadOnlyList<CardRequest> requests,
@@ -636,7 +606,6 @@ public partial class Create : ComponentBase, IDisposable
         dbContext.Cards.AttachRange(existingCards);
         dbContext.Cards.AddRange(newCards);
     }
-
 
     private static Task<List<string>> ExistingCardIdsAsync(
         CardDbContext dbContext,

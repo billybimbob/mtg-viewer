@@ -14,7 +14,7 @@
             <div class="col col-md-6">
                 <InputText title="Edit Deck Name"
                     class="form-control form-control-lg mb-3"
-                    @bind-Value="deck.Name" 
+                    @bind-Value="deck.Name"
                     DisplayName="Deck Name"/>
 
                 <DataAnnotationsValidator />
@@ -35,7 +35,7 @@ else
 
 <div class="btn-group mb-3" role="group">
     <button title="Save Deck" type="button"
-        class="btn btn-secondary" 
+        class="btn btn-secondary"
         disabled="@(IsLoading || CannotSave())"
         @onclick="CommitChangesAsync">
         @if (IsLoading)
@@ -97,7 +97,6 @@ else
     @bind-Color="Filters.PickedColors"
     IsDisabled="IsLoading || BuildOption is not BuildType.Theorycrafting" />
 
-
 @if (BuildOption is BuildType.Theorycrafting)
 {
     <div class="row">
@@ -125,8 +124,8 @@ else
                         @onclick="() => AddCardToDeck(card)">
 
                         <div class="row">
-                            <div class="col-6"> 
-                                <HoverCard Target="card"> 
+                            <div class="col-6">
+                                <HoverCard Target="card">
                                     <span class="btn-link">@card.Name</span>
                                 </HoverCard>
                             </div>
@@ -139,7 +138,6 @@ else
 
             <SeekPaging TEntity="HeldCard" Seek="Treasury.Seek" PageSelected="Filters.SeekPage" IsDisabled="IsLoading" />
         </section>
-
 
         <section class="col">
             <h3> @DeckName (Wanted Cards) </h3>
@@ -155,7 +153,7 @@ else
 
                         <div class="row">
                             <div class="col-6">
-                                <HoverCard Target="card"> 
+                                <HoverCard Target="card">
                                     <span class="btn-link">@card.Name</span>
                                 </HoverCard>
                             </div>
@@ -197,7 +195,7 @@ else if (BuildOption is BuildType.Holds)
 
                         <div class="row">
                             <div class="col-6">
-                                <HoverCard Target="card"> 
+                                <HoverCard Target="card">
                                     <span class="btn-link">@card.Name</span>
                                 </HoverCard>
                             </div>
@@ -233,7 +231,7 @@ else if (BuildOption is BuildType.Holds)
 
                         <div class="row">
                             <div class="col-6">
-                                <HoverCard Target="card"> 
+                                <HoverCard Target="card">
                                     <span class="btn-link">@card.Name</span>
                                 </HoverCard>
                             </div>
@@ -257,7 +255,6 @@ else if (BuildOption is BuildType.Holds)
     </div>
 }
 
-
 @code
 {
     public enum BuildType
@@ -265,7 +262,6 @@ else if (BuildOption is BuildType.Holds)
         Holds,
         Theorycrafting
     }
-
 
     private class DeckDto : ConcurrentDto
     {
@@ -284,7 +280,6 @@ else if (BuildOption is BuildType.Holds)
         public IEnumerable<QuantityDto> Wants { get; init; } = Enumerable.Empty<QuantityDto>();
 
         public IEnumerable<QuantityDto> Givebacks { get; init; } = Enumerable.Empty<QuantityDto>();
-
 
         [JsonConstructor]
         public DeckDto()
@@ -324,15 +319,13 @@ else if (BuildOption is BuildType.Holds)
         }
     }
 
-
     private class QuantityDto : ConcurrentDto
     {
         public int Id { get; init; }
-        
+
         public string CardId { get; init; } = string.Empty;
 
         public int Copies { get; init; }
-
 
         [JsonConstructor]
         public QuantityDto()

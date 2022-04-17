@@ -84,16 +84,13 @@
     [Parameter]
     public bool IsDisabled { get; set; }
 
-
     private bool _isBusy;
     private int _pageSize;
-
 
     protected override void OnParametersSet()
     {
         _pageSize = Size > 0 ? Size : PageSize.Default;
     }
-
 
     public (int, int) GetBounds()
     {
@@ -112,7 +109,6 @@
 
         return (start, end);
     }
-
 
     public async Task ChangePageAsync(int page)
     {

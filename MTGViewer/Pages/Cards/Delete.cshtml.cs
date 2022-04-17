@@ -16,7 +16,6 @@ using MTGViewer.Data;
 
 namespace MTGViewer.Pages.Cards;
 
-
 [Authorize]
 [Authorize(CardPolicies.ChangeTreasury)]
 public class DeleteModel : PageModel
@@ -30,7 +29,6 @@ public class DeleteModel : PageModel
         _logger = logger;
     }
 
-
     public sealed class InputModel
     {
         [Display(Name = "Number of Copies")]
@@ -38,7 +36,6 @@ public class DeleteModel : PageModel
         [Range(1, int.MaxValue)]
         public int RemoveCopies { get; set; }
     }
-
 
     [TempData]
     public string? PostMessage { get; set; }
@@ -49,7 +46,6 @@ public class DeleteModel : PageModel
 
     [BindProperty]
     public InputModel? Input { get; set; }
-
 
     public async Task<IActionResult> OnGetAsync(string id, string? returnUrl, CancellationToken cancel)
     {
@@ -69,7 +65,6 @@ public class DeleteModel : PageModel
 
         return Page();
     }
-
 
     private static readonly Func<CardDbContext, string, CancellationToken, Task<DeleteLink?>> DeleteLinkAsync
         = EF.CompileAsyncQuery((CardDbContext dbContext, string cardId, CancellationToken _) =>
@@ -91,7 +86,6 @@ public class DeleteModel : PageModel
                 })
                 .SingleOrDefault());
 
-
     private static readonly Func<CardDbContext, string, CancellationToken, Task<Card?>> CardDeleteAsync
         = EF.CompileAsyncQuery((CardDbContext dbContext, string cardId, CancellationToken _) =>
             dbContext.Cards
@@ -103,7 +97,6 @@ public class DeleteModel : PageModel
 
                 .OrderBy(c => c.Id)
                 .SingleOrDefault(c => c.Id == cardId));
-
 
     private static DeleteLink CardAsDeleteLink(Card card)
     {
@@ -122,8 +115,6 @@ public class DeleteModel : PageModel
                 .Sum(h => h.Copies)
         };
     }
-
-
 
     public async Task<IActionResult> OnPostAsync(string id, string? returnUrl, CancellationToken cancel)
     {
@@ -194,7 +185,6 @@ public class DeleteModel : PageModel
 
         return Redirect("~/Cards/");
     }
-
 
     private static void RemoveCopies(IEnumerable<Hold> holds, int removeCopies)
     {

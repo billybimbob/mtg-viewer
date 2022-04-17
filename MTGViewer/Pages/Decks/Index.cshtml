@@ -13,7 +13,6 @@
         .AuthorizeAsync(User, CardPolicies.ChangeTreasury)).Succeeded;
 }
 
- 
 <h1>@Model.UserName's Decks</h1>
 
 <div class="row mb-3">
@@ -84,7 +83,7 @@
                             @deck.BuildState.ToString()
                         }
                     </td>
-                    
+
                     <td class="btn-group" role="group">
                         @if (deck.BuildState is not BuildState.Requesting && canChangeTreasury)
                         {
@@ -118,6 +117,5 @@
         </tbody>
     </table>
 </div>
-
 
 <partial name="_SeekPagingPartial" model="(Seek)Model.Decks.Seek"/>

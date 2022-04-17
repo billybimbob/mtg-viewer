@@ -4,7 +4,6 @@ using System.Linq;
 
 namespace MTGViewer.Data.Internal;
 
-
 internal readonly record struct LocationIndex(int Id, string? Name, int? Capacity)
 {
     public static explicit operator LocationIndex(StorageSpace space)
@@ -21,7 +20,6 @@ internal readonly record struct LocationIndex(int Id, string? Name, int? Capacit
     }
 }
 
-
 internal readonly record struct HoldIndex(string CardId, LocationIndex Location)
 {
     public static explicit operator HoldIndex(Hold hold)
@@ -31,7 +29,6 @@ internal readonly record struct HoldIndex(string CardId, LocationIndex Location)
         return new HoldIndex(hold.CardId, (LocationIndex)hold.Location);
     }
 }
-
 
 internal readonly record struct ChangeIndex(string CardId, LocationIndex To, LocationIndex? From)
 {
@@ -45,7 +42,6 @@ internal readonly record struct ChangeIndex(string CardId, LocationIndex To, Loc
             change.From is null ? null : (LocationIndex)change.From);
     }
 }
-
 
 internal sealed class TreasuryContext
 {
@@ -124,7 +120,6 @@ internal sealed class TreasuryContext
             .ToDictionary(c => (ChangeIndex)c);
     }
 
-
     public IReadOnlyCollection<Box> Available => _available;
     public IReadOnlyCollection<Box> Overflow => _overflow;
 
@@ -132,7 +127,6 @@ internal sealed class TreasuryContext
     public IReadOnlyDictionary<LocationIndex, StorageSpace> StorageSpaces => _storageSpaces;
 
     public IReadOnlyCollection<Hold> Holds => _holds.Values;
-
 
     public void Deconstruct(
         out IReadOnlyCollection<Box> available,
@@ -145,7 +139,6 @@ internal sealed class TreasuryContext
         excess = _dbContext.Excess.Local;
         storageSpace = _storageSpaces;
     }
-
 
     public void Refresh()
     {
@@ -184,14 +177,12 @@ internal sealed class TreasuryContext
         }
     }
 
-
     public void AddCopies(Card card, int copies, Storage storage)
     {
         UpdateHold(card, copies, storage);
         UpdateChange(card, copies, storage, null);
         UpdateStorageSpace(storage, copies);
     }
-
 
     public void TransferCopies(Card card, int copies, Storage to, Location from)
     {
@@ -212,7 +203,6 @@ internal sealed class TreasuryContext
         UpdateChange(card, copies, to, from);
     }
 
-
     public void TransferCopies(Card card, int copies, Location to, Storage from)
     {
         if (to == from)
@@ -231,7 +221,6 @@ internal sealed class TreasuryContext
         UpdateHold(card, -copies, from);
         UpdateStorageSpace(from, -copies);
     }
-
 
     private void UpdateHold(Card card, int copies, Storage storage)
     {
@@ -257,7 +246,6 @@ internal sealed class TreasuryContext
 
         hold.Copies = newCopies;
     }
-
 
     private void UpdateChange(Card card, int copies, Location to, Location? from)
     {
@@ -286,7 +274,6 @@ internal sealed class TreasuryContext
 
         change.Copies = newCopies;
     }
-
 
     private void UpdateStorageSpace(Storage storage, int copies)
     {

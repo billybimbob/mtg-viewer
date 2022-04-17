@@ -19,7 +19,6 @@ using MTGViewer.Areas.Identity.Data;
 
 namespace MTGViewer.Tests.Utils;
 
-
 public static class TestFactory
 {
     public static void InMemoryDatabase(IServiceProvider provider, DbContextOptionsBuilder options)
@@ -32,7 +31,6 @@ public static class TestFactory
             .ConfigureWarnings(b => b.Ignore(InMemoryEventId.TransactionIgnoredWarning));
     }
 
-
     public static void SqliteInMemory(IServiceProvider provider, DbContextOptionsBuilder options)
     {
         var inMemory = provider.GetRequiredService<InMemoryConnection>();
@@ -42,14 +40,12 @@ public static class TestFactory
             .UseSqlite(inMemory.Connection);
     }
 
-
     public static UserStore<CardUser> CardUserStore(IServiceProvider provider)
     {
         var userDb = provider.GetRequiredService<UserDbContext>();
 
         return new UserStore<CardUser>(userDb);
     }
-
 
     public static UserManager<CardUser> CardUserManager(IServiceProvider provider)
     {
@@ -86,7 +82,6 @@ public static class TestFactory
 
         return userManager;
     }
-
 
     public static SignInManager<CardUser> CardSignInManager(IServiceProvider provider)
     {

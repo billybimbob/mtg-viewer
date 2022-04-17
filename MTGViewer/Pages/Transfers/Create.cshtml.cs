@@ -19,7 +19,6 @@ using MTGViewer.Services;
 
 namespace MTGViewer.Pages.Transfers;
 
-
 [Authorize]
 [Authorize(CardPolicies.ChangeTreasury)]
 public class CreateModel : PageModel
@@ -41,7 +40,6 @@ public class CreateModel : PageModel
         _logger = logger;
     }
 
-
     [TempData]
     public string? PostMessage { get; set; }
 
@@ -50,7 +48,6 @@ public class CreateModel : PageModel
     public OffsetList<LocationCopy> Requests { get; private set; } = OffsetList<LocationCopy>.Empty;
 
     public IReadOnlyList<DeckLink> Cards { get; private set; } = Array.Empty<DeckLink>();
-
 
     public async Task<IActionResult> OnGetAsync(int id, int? offset, CancellationToken cancel)
     {
@@ -73,7 +70,7 @@ public class CreateModel : PageModel
             return RedirectToPage("Details", new { deck.Id });
         }
 
-        // offset paging used since the amount of pages is unlikely 
+        // offset paging used since the amount of pages is unlikely
         // to be that high
 
         var requests = await RequestMatches(deck)
@@ -96,7 +93,6 @@ public class CreateModel : PageModel
 
         return Page();
     }
-
 
     private static readonly Func<CardDbContext, int, string, CancellationToken, Task<DeckDetails?>> DeckAsync
 
@@ -124,7 +120,6 @@ public class CreateModel : PageModel
                     HasTrades = d.TradesTo.Any()
                 })
                 .SingleOrDefault());
-
 
     private IQueryable<LocationCopy> RequestMatches(DeckDetails deck)
     {
@@ -159,7 +154,6 @@ public class CreateModel : PageModel
             });
     }
 
-
     private static readonly Func<CardDbContext, int, int, IAsyncEnumerable<DeckLink>> DeckCardsAsync
         = EF.CompileAsyncQuery((CardDbContext dbContext, int id, int limit) =>
 
@@ -187,7 +181,6 @@ public class CreateModel : PageModel
                         .Where(w => w.LocationId == id)
                         .Sum(w => w.Copies)
                 }));
-
 
     private IQueryable<Trade> TradeRequests(DeckDetails deck)
     {
@@ -219,8 +212,6 @@ public class CreateModel : PageModel
                     Copies = want.Copies
                 });
     }
-
-
 
     public async Task<IActionResult> OnPostAsync(int id, CancellationToken cancel)
     {

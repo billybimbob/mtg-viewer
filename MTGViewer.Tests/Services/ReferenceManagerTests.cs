@@ -30,12 +30,9 @@ public class ReferenceManagerTests : IAsyncLifetime
         _testGen = testGen;
     }
 
-
     public Task InitializeAsync() => _testGen.SeedAsync();
 
     public Task DisposeAsync() => _testGen.ClearAsync();
-
-
 
     [Fact]
     public async Task CreateReference_NewUser_Success()
@@ -66,7 +63,6 @@ public class ReferenceManagerTests : IAsyncLifetime
         Assert.True(success);
         Assert.True(userAfter);
     }
-
 
     [Fact]
     public async Task CreateReference_ExistingUser_Fails()
@@ -101,7 +97,6 @@ public class ReferenceManagerTests : IAsyncLifetime
         Assert.True(userAfter);
     }
 
-
     [Fact]
     public async Task CreateReference_NonExistingUser_Fails()
     {
@@ -128,7 +123,6 @@ public class ReferenceManagerTests : IAsyncLifetime
         Assert.False(success);
         Assert.False(userAfter);
     }
-
 
     [Fact]
     public async Task UpdateReference_NameChange_Success()
@@ -161,7 +155,6 @@ public class ReferenceManagerTests : IAsyncLifetime
         Assert.Equal(user.DisplayName, newRefName);
     }
 
-
     [Fact]
     public async Task UpdateReference_NoChange_Success()
     {
@@ -184,7 +177,6 @@ public class ReferenceManagerTests : IAsyncLifetime
         Assert.Equal(user.DisplayName, newRefName);
     }
 
-
     [Fact]
     public async Task DeleteReference_CardUserExists_Fails()
     {
@@ -198,7 +190,6 @@ public class ReferenceManagerTests : IAsyncLifetime
         Assert.False(success);
         Assert.True(afterDelete);
     }
-
 
     [Fact]
     public async Task DeleteReference_CardUserDeleted_Success()
@@ -216,7 +207,6 @@ public class ReferenceManagerTests : IAsyncLifetime
         Assert.True(success);
         Assert.False(afterDelete);
     }
-
 
     [Fact]
     public async Task DeleteReference_CardUserDeleted_CardsReturned()
@@ -255,7 +245,6 @@ public class ReferenceManagerTests : IAsyncLifetime
 
         Assert.Equal(userCards, treasuryAfter - treasuryBefore);
     }
-
 
     [Fact]
     public async Task Reset_AllResetting_CardsEmpty()

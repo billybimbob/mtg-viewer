@@ -33,10 +33,8 @@ public class DeletePersonalDataModel : PageModel
         _logger = logger;
     }
 
-
     [BindProperty]
     public InputModel? Input { get; set; }
-
 
     public class InputModel
     {
@@ -46,7 +44,6 @@ public class DeletePersonalDataModel : PageModel
     }
 
     public bool RequirePassword { get; set; }
-
 
     public async Task<IActionResult> OnGetAsync()
     {
@@ -59,7 +56,6 @@ public class DeletePersonalDataModel : PageModel
         RequirePassword = await _userManager.HasPasswordAsync(user);
         return Page();
     }
-
 
     public async Task<IActionResult> OnPostAsync(CancellationToken cancel)
     {
@@ -112,7 +108,6 @@ public class DeletePersonalDataModel : PageModel
 
         return Redirect("~/");
     }
-
 
     private async Task<bool> CheckAndApplyResetAsync(string userId, CancellationToken cancel)
     {

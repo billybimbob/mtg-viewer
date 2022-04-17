@@ -4,7 +4,6 @@ using MTGViewer.Services;
 
 namespace MTGViewer.Tests.Services;
 
-
 public class CardTextTests
 {
     private readonly CardText _cardText;
@@ -13,7 +12,6 @@ public class CardTextTests
     {
         _cardText = cardText;
     }
-
 
     [Theory]
     [InlineData("{B}", "B")]
@@ -28,7 +26,6 @@ public class CardTextTests
         Assert.Equal(mana, parsedMana.Value);
     }
 
-
     [Fact]
     public void FindMana_ManaCost_ManaSymbolArray()
     {
@@ -39,7 +36,6 @@ public class CardTextTests
 
         Assert.Equal(manaSymbols, parsedMana);
     }
-
 
     [Fact]
     public void ManaString_ManaSymbolArray_ManaCost()
@@ -53,7 +49,6 @@ public class CardTextTests
         Assert.Equal(manaCost, parsedCost);
     }
 
-
     [Fact]
     public void FindThenString_ManaCost_SameValue()
     {
@@ -66,7 +61,6 @@ public class CardTextTests
 
         Assert.Equal(manaCost, parsedCost);
     }
-
 
     [Theory]
     [InlineData("[+2]", "+", "2")]
@@ -84,7 +78,6 @@ public class CardTextTests
         Assert.Equal(value, symbol.Value);
     }
 
-
     [Theory]
     [InlineData("I —", "I")]
     [InlineData("III —", "III")]
@@ -99,7 +92,6 @@ public class CardTextTests
         Assert.Equal(value, symbol.Value);
         Assert.False(symbol.HasNext);
     }
-
 
     [Fact]
     public void FindSagas_MultipleSagas_MultipleSymbols()
@@ -118,7 +110,6 @@ public class CardTextTests
         Assert.Equal("II", second.Value);
         Assert.False(second.HasNext);
     }
-
 
     [Fact]
     public void SagaString_MultipleSymbols_MultipleSagas()

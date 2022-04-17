@@ -40,7 +40,6 @@ public class SetPasswordModel : PageModel
         public string ConfirmPassword { get; set; } = default!;
     }
 
-
     public async Task<IActionResult> OnGetAsync()
     {
         var user = await _userManager.GetUserAsync(User);
@@ -58,7 +57,6 @@ public class SetPasswordModel : PageModel
 
         return Page();
     }
-
 
     public async Task<IActionResult> OnPostAsync()
     {

@@ -1,6 +1,5 @@
 @page "/"
 
-
 <PageTitle> MTG Viewer </PageTitle>
 
 <h1 class="text-center display-4">Welcome to the card database!</h1>
@@ -35,7 +34,7 @@
                     href="/Cards/Details/@card.Id"
                     class="img-link">
 
-                    <img alt="@card.Name Image" 
+                    <img alt="@card.Name Image"
                         src="@card.ImageUrl.WithHttps()"
                         class="card-img scale @fade"
                         @onload="() => OnImageLoad(card)" />
@@ -105,7 +104,7 @@
                                     }
                                 </div>
                                 <span class="badge badge-secondary badge-pill">
-                                    @transaction.Copies 
+                                    @transaction.Copies
                                 </span>
                             </div>
                         </div>

@@ -17,7 +17,6 @@ internal static class OverflowExtensions
     }
 }
 
-
 internal abstract class OverflowHandler
 {
     protected TreasuryContext TreasuryContext { get; }
@@ -38,7 +37,6 @@ internal abstract class OverflowHandler
     }
 }
 
-
 internal class ExactOverflow : OverflowHandler
 {
     private ILookup<string, Storage>? _exactMatches;
@@ -46,7 +44,6 @@ internal class ExactOverflow : OverflowHandler
     public ExactOverflow(TreasuryContext treasuryContext)
         : base(treasuryContext)
     { }
-
 
     protected override IEnumerable<StorageAssignment<Hold>> GetAssignments()
     {
@@ -67,7 +64,6 @@ internal class ExactOverflow : OverflowHandler
             }
         }
     }
-
 
     private IEnumerable<StorageAssignment<Hold>> OverflowAssignment(Hold source)
     {
@@ -95,7 +91,6 @@ internal class ExactOverflow : OverflowHandler
         return Assignment.FitToStorage(source, minTransfer, matches, storageSpaces);
     }
 
-
     private ILookup<string, Storage> AddLookup()
     {
         var (available, overflowBoxes, _, _) = TreasuryContext;
@@ -110,7 +105,6 @@ internal class ExactOverflow : OverflowHandler
     }
 }
 
-
 internal class ApproximateOverflow : OverflowHandler
 {
     private ILookup<string, Storage>? _approxMatches;
@@ -118,7 +112,6 @@ internal class ApproximateOverflow : OverflowHandler
     public ApproximateOverflow(TreasuryContext treasuryContext)
         : base(treasuryContext)
     { }
-
 
     protected override IEnumerable<StorageAssignment<Hold>> GetAssignments()
     {
@@ -139,7 +132,6 @@ internal class ApproximateOverflow : OverflowHandler
             }
         }
     }
-
 
     private IEnumerable<StorageAssignment<Hold>> OverflowAssignment(Hold source)
     {
@@ -168,7 +160,6 @@ internal class ApproximateOverflow : OverflowHandler
 
         return Assignment.FitToStorage(source, minTransfer, matches, storageSpaces);
     }
-
 
     private ILookup<string, Storage> AddLookup()
     {

@@ -8,7 +8,6 @@ using MTGViewer.Data.Concurrency;
 
 namespace MTGViewer.Data;
 
-
 [Index(nameof(Type), nameof(LocationId), nameof(CardId), IsUnique = true)]
 [Index(nameof(LocationId), nameof(Type))]
 [Index(nameof(CardId), nameof(Type))]
@@ -20,11 +19,9 @@ public abstract class Quantity : Concurrent
     [JsonIgnore]
     internal QuantityType Type { get; private set; }
 
-
     [JsonIgnore]
     public Card Card { get; init; } = default!;
     public string CardId { get; init; } = default!;
-
 
     [JsonIgnore]
     public int LocationId { get; init; }
@@ -37,16 +34,13 @@ public abstract class Quantity : Concurrent
     public int Copies { get; set; }
 }
 
-
 public class Hold : Quantity
 { }
-
 
 public class Want : Quantity
 {
     public override Theorycraft Location => (Theorycraft)base.Location;
 }
-
 
 public class Giveback : Quantity
 {

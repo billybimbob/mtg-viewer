@@ -12,7 +12,6 @@ using MTGViewer.Tests.Utils;
 
 namespace MTGViewer.Tests.Pages.Transfers;
 
-
 public class ReviewTests : IAsyncLifetime
 {
     private readonly ReviewModel _reviewModel;
@@ -34,7 +33,6 @@ public class ReviewTests : IAsyncLifetime
         _testGen = testGen;
     }
 
-
     public async Task InitializeAsync()
     {
         await _testGen.SeedAsync();
@@ -42,7 +40,6 @@ public class ReviewTests : IAsyncLifetime
     }
 
     public Task DisposeAsync() => _testGen.ClearAsync();
-
 
     private IQueryable<Trade> TradesInSet =>
         _dbContext.Trades
@@ -54,18 +51,15 @@ public class ReviewTests : IAsyncLifetime
             .Where(t => t.FromId == _trades.TargetId)
             .AsNoTracking();
 
-
     private IQueryable<Hold> ToTarget(Trade trade) =>
         _dbContext.Holds
             .Where(h => h.CardId == trade.CardId && h.LocationId == trade.ToId)
             .AsNoTracking();
 
-
     private IQueryable<Hold> FromTarget(Trade trade) =>
         _dbContext.Holds
             .Where(h => h.CardId == trade.CardId && h.LocationId == _trades.TargetId)
             .AsNoTracking();
-
 
     [Fact]
     public async Task OnPostAccept_WrongUser_NoChange()
@@ -88,7 +82,6 @@ public class ReviewTests : IAsyncLifetime
         Assert.Contains(trade.Id, tradeAfter);
     }
 
-
     [Fact]
     public async Task OnPostAccept_InvalidTrade_NoChange()
     {
@@ -110,7 +103,6 @@ public class ReviewTests : IAsyncLifetime
         Assert.Equal(fromBefore.Copies, fromAfter.Copies);
         Assert.Contains(trade.Id, tradesAfter);
     }
-
 
     [Theory]
     [InlineData(-1)]
@@ -150,7 +142,6 @@ public class ReviewTests : IAsyncLifetime
 
         Assert.DoesNotContain(trade.Id, tradeAfter);
     }
-
 
     [Fact]
     public async Task OnPostAccept_LackCopies_OnlyRemovesTrade()
@@ -193,7 +184,6 @@ public class ReviewTests : IAsyncLifetime
         Assert.Contains(trade.Id, tradesFinished);
     }
 
-
     [Fact]
     public async Task OnPostReject_WrongUser_NoChange()
     {
@@ -217,7 +207,6 @@ public class ReviewTests : IAsyncLifetime
         Assert.Equal(fromBefore, fromAfter);
         Assert.Contains(trade.Id, tradesAfter);
     }
-
 
     [Fact]
     public async Task OnPostReject_InvalidTrade_NoChange()
@@ -243,7 +232,6 @@ public class ReviewTests : IAsyncLifetime
         Assert.Equal(fromBefore, fromAfter);
         Assert.Contains(trade.Id, tradesAfter);
     }
-
 
     [Fact]
     public async Task OnPostReject_ValidTrade_RemovesTrade()

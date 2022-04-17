@@ -11,7 +11,6 @@ using MTGViewer.Services;
 
 namespace MTGViewer.Tests.Utils;
 
-
 public class TestDataGenerator
 {
     private static readonly SemaphoreSlim s_jsonLock = new(1, 1);
@@ -23,7 +22,6 @@ public class TestDataGenerator
     private readonly CardDataGenerator _cardGen;
 
     private readonly Random _random;
-
 
     public TestDataGenerator(
         CardDbContext dbContext,
@@ -39,7 +37,6 @@ public class TestDataGenerator
 
         _random = new Random(100);
     }
-
 
     public async Task SeedAsync()
     {
@@ -64,7 +61,6 @@ public class TestDataGenerator
         }
     }
 
-
     private async Task<bool> TryJsonSeedAsync()
     {
         try
@@ -86,7 +82,6 @@ public class TestDataGenerator
         }
     }
 
-
     public async Task SetupAsync()
     {
         if (_dbContext.Database.IsRelational())
@@ -100,13 +95,11 @@ public class TestDataGenerator
         }
     }
 
-
     public async Task ClearAsync()
     {
         await _userContext.Database.EnsureDeletedAsync();
         await _dbContext.Database.EnsureDeletedAsync();
     }
-
 
     public async Task<Deck> CreateEmptyDeckAsync(int numCards = 0)
     {
@@ -168,7 +161,6 @@ public class TestDataGenerator
         return newDeck;
     }
 
-
     public async Task<Deck> CreateReturnDeckAsync(int numCards = 0)
     {
         var users = await _dbContext.Users.ToListAsync();
@@ -220,8 +212,6 @@ public class TestDataGenerator
         return newDeck;
     }
 
-
-
     public async Task<Deck> CreateWantDeckAsync(int numCards = 0)
     {
         var users = await _dbContext.Users.ToListAsync();
@@ -262,7 +252,6 @@ public class TestDataGenerator
 
         return newDeck;
     }
-
 
     public async Task<Deck> CreateRequestDeckAsync()
     {
@@ -332,8 +321,6 @@ public class TestDataGenerator
         return newDeck;
     }
 
-
-
     public async Task<TradeSet> CreateTradeSetAsync(bool isToSet)
     {
         var users = await _dbContext.Users
@@ -359,10 +346,7 @@ public class TestDataGenerator
         return new TradeSet(trades, isToSet);
     }
 
-
-
     private record TradeOptions(Deck Source, IReadOnlyList<Deck> Options);
-
 
     private async Task<IReadOnlyList<Trade>> CreateToTradesAsync(
         UserRef proposer,
@@ -399,7 +383,6 @@ public class TestDataGenerator
 
         return trades;
     }
-
 
     private async Task<TradeOptions> GetTradeOptionsAsync(
         UserRef sourceUser,
@@ -440,7 +423,6 @@ public class TestDataGenerator
         return new TradeOptions(source, options);
     }
 
-
     private async Task<IReadOnlyList<Trade>> CreateFromTradesAsync(
         UserRef proposer,
         UserRef receiver)
@@ -477,7 +459,6 @@ public class TestDataGenerator
         return trades;
     }
 
-
     private async Task<Hold> FindHoldAsync(Card card, Location location, int copies)
     {
         var hold = await _dbContext.Holds
@@ -499,7 +480,6 @@ public class TestDataGenerator
 
         return hold;
     }
-
 
     private async Task<Want> FindWantAsync(Card card, Deck target, int copies)
     {
@@ -523,7 +503,6 @@ public class TestDataGenerator
         return want;
     }
 
-
     private async Task<Giveback> FindGivebackAsync(Card card, Deck target, int copies)
     {
         var give = await _dbContext.Givebacks
@@ -545,7 +524,6 @@ public class TestDataGenerator
 
         return give;
     }
-
 
     public async Task<Want> GetWantAsync(int targetMod = 0)
     {
@@ -574,7 +552,6 @@ public class TestDataGenerator
         return want;
     }
 
-
     public async Task<Giveback> GetGivebackAsync(int targetMod = 0)
     {
         var returnTarget = await _dbContext.Decks
@@ -597,7 +574,6 @@ public class TestDataGenerator
 
         return give;
     }
-
 
     public async Task<(Want, Giveback)> GetMixedRequestDeckAsync()
     {
@@ -633,7 +609,6 @@ public class TestDataGenerator
 
         return (deckWant, deckGive);
     }
-
 
     public async Task<Transaction> CreateTransactionAsync(int numCards = 0)
     {
@@ -673,7 +648,6 @@ public class TestDataGenerator
 
         return transaction;
     }
-
 
     public async Task<Unclaimed> CreateUnclaimedAsync(int numCards = 0)
     {
@@ -723,7 +697,6 @@ public class TestDataGenerator
 
         return unclaimed;
     }
-
 
     public async Task AddExcessAsync(int excessSpace)
     {
@@ -797,7 +770,6 @@ public class TestDataGenerator
         _dbContext.ChangeTracker.Clear();
     }
 
-
     public async Task CreateChangesAsync()
     {
         var cards = await _dbContext.Cards
@@ -822,7 +794,6 @@ public class TestDataGenerator
 
         _dbContext.ChangeTracker.Clear();
     }
-
 
     public async Task AddUserCardsAsync(UserRef user)
     {

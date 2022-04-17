@@ -15,7 +15,6 @@ using MTGViewer.Services;
 
 namespace MTGViewer.Pages.Decks;
 
-
 public class DetailsModel : PageModel
 {
     private readonly UserManager<CardUser> _userManager;
@@ -32,13 +31,11 @@ public class DetailsModel : PageModel
         _pageSize = pageSize;
     }
 
-
     public bool IsOwner { get; private set; }
 
     public DeckDetails Deck { get; private set; } = default!;
 
     public SeekList<DeckCopy> Cards { get; private set; } = SeekList<DeckCopy>.Empty;
-
 
     public async Task<IActionResult> OnGetAsync(
         int id,
@@ -68,7 +65,6 @@ public class DetailsModel : PageModel
         return Page();
     }
 
-
     private static readonly Func<CardDbContext, int, CancellationToken, Task<DeckDetails?>> DeckDetailsAsync
         = EF.CompileAsyncQuery((CardDbContext dbContext, int deckId, CancellationToken _) =>
             dbContext.Decks
@@ -92,7 +88,6 @@ public class DetailsModel : PageModel
                     HasTrades = d.TradesTo.Any()
                 })
                 .SingleOrDefault());
-
 
     private IQueryable<DeckCopy> DeckCards(int deckId)
     {

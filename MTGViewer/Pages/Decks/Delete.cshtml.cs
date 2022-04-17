@@ -34,14 +34,12 @@ public class DeleteModel : PageModel
         _pageSize = pageSize;
     }
 
-
     [TempData]
     public string? PostMesssage { get; set; }
 
     public DeckDetails Deck { get; private set; } = default!;
 
     public IReadOnlyList<DeckLink> Cards { get; private set; } = Array.Empty<DeckLink>();
-
 
     public async Task<IActionResult> OnGetAsync(int id, CancellationToken cancel)
     {
@@ -69,7 +67,6 @@ public class DeleteModel : PageModel
         return Page();
     }
 
-
     private static readonly Func<CardDbContext, int, string, CancellationToken, Task<DeckDetails?>> DeckDetailsAsync
 
         = EF.CompileAsyncQuery((CardDbContext dbContext, int deckId, string userId, CancellationToken _) =>
@@ -94,7 +91,6 @@ public class DeleteModel : PageModel
                     HasTrades = d.TradesTo.Any() || d.TradesFrom.Any()
                 })
                 .SingleOrDefault());
-
 
     private static readonly Func<CardDbContext, int, int, IAsyncEnumerable<DeckLink>> DeckCardsAsync
         = EF.CompileAsyncQuery((CardDbContext dbContext, int id, int limit) =>
@@ -130,7 +126,6 @@ public class DeleteModel : PageModel
                         .Sum(g => g.Copies),
                 }));
 
-
     private static readonly Func<CardDbContext, int, string, CancellationToken, Task<Deck?>> DeckForDeleteAsync
         = EF.CompileAsyncQuery((CardDbContext dbContext, int deckId, string userId, CancellationToken _) =>
             dbContext.Decks
@@ -145,8 +140,6 @@ public class DeleteModel : PageModel
 
                 .AsSplitQuery()
                 .SingleOrDefault(d => d.Id == deckId && d.OwnerId == userId));
-
-
 
     public async Task<IActionResult> OnPostAsync(int id, string? returnUrl, CancellationToken cancel)
     {

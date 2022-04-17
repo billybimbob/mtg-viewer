@@ -23,18 +23,15 @@ public class EmailModel : PageModel
         _emailVerify = emailVerify;
     }
 
-
     public string Email { get; set; } = default!;
 
     public bool IsEmailConfirmed { get; set; }
-
 
     [TempData]
     public string? StatusMessage { get; set; }
 
     [BindProperty]
     public InputModel? Input { get; set; }
-
 
     public class InputModel
     {
@@ -43,7 +40,6 @@ public class EmailModel : PageModel
         [Display(Name = "New email")]
         public string NewEmail { get; set; } = default!;
     }
-
 
     private async Task LoadAsync(CardUser user)
     {
@@ -58,7 +54,6 @@ public class EmailModel : PageModel
         IsEmailConfirmed = await _userManager.IsEmailConfirmedAsync(user);
     }
 
-
     public async Task<IActionResult> OnGetAsync()
     {
         var user = await _userManager.GetUserAsync(User);
@@ -70,7 +65,6 @@ public class EmailModel : PageModel
         await LoadAsync(user);
         return Page();
     }
-
 
     public async Task<IActionResult> OnPostChangeEmailAsync()
     {
@@ -101,7 +95,6 @@ public class EmailModel : PageModel
         StatusMessage = "Confirmation link to change email sent. Please check your email.";
         return RedirectToPage();
     }
-
 
     public async Task<IActionResult> OnPostSendVerificationEmailAsync()
     {

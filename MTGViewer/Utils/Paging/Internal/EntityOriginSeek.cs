@@ -38,7 +38,6 @@ internal sealed class EntityOriginSeek<TEntity, TRefKey, TValueKey> : ISeekable<
         _valueKey = valueKey;
     }
 
-
     public ISeekable<TEntity> OrderBy<TSource>()
         where TSource : class
     {
@@ -51,7 +50,6 @@ internal sealed class EntityOriginSeek<TEntity, TRefKey, TValueKey> : ISeekable<
             _query, _direction, _take, _referenceKey, _valueKey);
     }
 
-
     public ISeekable<TEntity> Take(int count)
     {
         if (count == _take)
@@ -63,7 +61,6 @@ internal sealed class EntityOriginSeek<TEntity, TRefKey, TValueKey> : ISeekable<
             _query, _direction, count, _referenceKey, _valueKey);
     }
 
-
     public async Task<SeekList<TEntity>> ToSeekListAsync(CancellationToken cancel = default)
     {
         var origin = await GetOriginAsync(cancel).ConfigureAwait(false);
@@ -73,7 +70,6 @@ internal sealed class EntityOriginSeek<TEntity, TRefKey, TValueKey> : ISeekable<
             .ConfigureAwait(false);
     }
 
-
     private IQueryable<TEntity> SeekQuery(TEntity? origin)
     {
         var query = _query.SeekOrigin(origin, _direction);
@@ -82,7 +78,6 @@ internal sealed class EntityOriginSeek<TEntity, TRefKey, TValueKey> : ISeekable<
             ? query.Take(count)
             : query;
     }
-
 
     private async Task<TEntity?> GetOriginAsync(CancellationToken cancel)
     {
@@ -108,7 +103,6 @@ internal sealed class EntityOriginSeek<TEntity, TRefKey, TValueKey> : ISeekable<
         return null;
     }
 
-
     private IQueryable<TEntity> GetOriginQuery<TKey>(TKey key)
     {
         if (FindRootQuery.Instance.Visit(_query.Expression)
@@ -121,7 +115,6 @@ internal sealed class EntityOriginSeek<TEntity, TRefKey, TValueKey> : ISeekable<
             ? GetEntityQuery(key, entityType)
             : GetSelectedQuery(key, entityType);
     }
-
 
     private IQueryable<TEntity> GetEntityQuery<TKey>(TKey key, IEntityType entityType)
     {
@@ -154,7 +147,6 @@ internal sealed class EntityOriginSeek<TEntity, TRefKey, TValueKey> : ISeekable<
 
         return originQuery;
     }
-
 
     private IQueryable<TEntity> GetSelectedQuery<TKey>(TKey key, IEntityType entityType)
     {

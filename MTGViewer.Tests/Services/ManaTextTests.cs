@@ -3,7 +3,6 @@ using MTGViewer.Services;
 
 namespace MTGViewer.Tests.Services;
 
-
 public class ManaTextTests
 {
     private readonly SymbolFormatter _manaText;
@@ -12,7 +11,6 @@ public class ManaTextTests
     {
         _manaText = cardText.ComposeWith(manaTranslator);
     }
-
 
     [Fact]
     public void Format_Null_EmptyString()
@@ -24,7 +22,6 @@ public class ManaTextTests
         Assert.Equal(string.Empty, markup);
     }
 
-
     [Fact]
     public void Format_WhiteLetter_WhiteSymbolClass()
     {
@@ -34,7 +31,6 @@ public class ManaTextTests
 
         Assert.Contains("ms ms-w ms-cost", markup);
     }
-
 
     [Fact]
     public void Format_ThreeRedLetter_ThreeRedSymbolClass()
@@ -47,7 +43,6 @@ public class ManaTextTests
         Assert.Contains("ms ms-r ms-cost", markup);
     }
 
-
     [Fact]
     public void Format_TapLetter_TapSymbolClass()
     {
@@ -57,7 +52,6 @@ public class ManaTextTests
 
         Assert.Contains("ms ms-tap ms-cost", markup);
     }
-
 
     [Fact]
     public void Format_LlanowarText_TapGreenSymbolClass()
@@ -71,7 +65,6 @@ public class ManaTextTests
         Assert.Contains("ms ms-g ms-cost", markup);
     }
 
-
     [Fact]
     public void Format_LoyaltyUpText_LoyaltyUpSymbolClass()
     {
@@ -81,7 +74,6 @@ public class ManaTextTests
 
         Assert.Contains("ms ms-loyalty-up ms-loyalty-3", markup);
     }
-
 
     [Fact]
     public void Format_LoyaltyDownText_LoyaltyDownSymbolClass()
@@ -93,7 +85,6 @@ public class ManaTextTests
         Assert.Contains("ms ms-loyalty-down ms-loyalty-2", markup);
     }
 
-
     [Fact]
     public void Format_LoyaltyZeroText_LoyaltyZeroSymbolClass()
     {
@@ -103,7 +94,6 @@ public class ManaTextTests
 
         Assert.Contains("ms ms-loyalty-zero ms-loyalty-0", markup);
     }
-
 
     [Fact]
     public void Format_AjaniGreatheartedText_LoyaltySymbolClasses()
@@ -119,7 +109,6 @@ public class ManaTextTests
         Assert.Contains("ms ms-loyalty-down ms-loyalty-2", markup);
     }
 
-
     [Fact]
     public void Format_SagaOneText_SagaOneSymbolClass()
     {
@@ -130,7 +119,6 @@ public class ManaTextTests
         Assert.Contains("ms ms-saga ms-saga-1", markup);
     }
 
-
     [Fact]
     public void Format_SagaFourText_SagaFourSymbolClass()
     {
@@ -140,7 +128,6 @@ public class ManaTextTests
 
         Assert.Contains("ms ms-saga ms-saga-4", markup);
     }
-
 
     [Fact]
     public void Format_SagaOneTwoThreeText_SagaOneTwoThreeSymbolClass()
@@ -153,7 +140,6 @@ public class ManaTextTests
         Assert.Contains("ms ms-saga ms-saga-2", markup);
         Assert.Contains("ms ms-saga ms-saga-3", markup);
     }
-
 
     [Fact]
     public void Format_HistoryBenaliaText_SagaSymbolClasses()
@@ -169,7 +155,6 @@ public class ManaTextTests
         Assert.Contains("ms ms-saga ms-saga-2", markup);
         Assert.Contains("ms ms-saga ms-saga-3", markup);
     }
-
 
     [Fact]
     public void Format_FirstIroanText_SagaSymbolClasses()

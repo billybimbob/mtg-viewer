@@ -13,7 +13,6 @@ public class CardDbContext : DbContext
         : base(options)
     { }
 
-
     public DbSet<UserRef> Users => Set<UserRef>();
 
     public DbSet<Card> Cards => Set<Card>();
@@ -37,7 +36,6 @@ public class CardDbContext : DbContext
     public DbSet<Trade> Trades => Set<Trade>();
     public DbSet<Suggestion> Suggestions => Set<Suggestion>();
 
-
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -60,8 +58,6 @@ public class CardDbContext : DbContext
     }
 }
 
-
-
 internal class CardConfiguration : IEntityTypeConfiguration<Card>
 {
     public void Configure(EntityTypeBuilder<Card> builder)
@@ -71,7 +67,6 @@ internal class CardConfiguration : IEntityTypeConfiguration<Card>
             .AutoInclude(false);
     }
 }
-
 
 internal class LocationConfiguration : IEntityTypeConfiguration<Location>
 {
@@ -96,7 +91,6 @@ internal class LocationConfiguration : IEntityTypeConfiguration<Location>
     }
 }
 
-
 internal class TheoryCraftConfiguration : IEntityTypeConfiguration<Theorycraft>
 {
     public void Configure(EntityTypeBuilder<Theorycraft> builder)
@@ -107,7 +101,6 @@ internal class TheoryCraftConfiguration : IEntityTypeConfiguration<Theorycraft>
             .OnDelete(DeleteBehavior.Cascade);
     }
 }
-
 
 internal class DeckConfiguration : IEntityTypeConfiguration<Deck>
 {
@@ -130,7 +123,6 @@ internal class DeckConfiguration : IEntityTypeConfiguration<Deck>
     }
 }
 
-
 internal class BoxConfiguration : IEntityTypeConfiguration<Box>
 {
     public void Configure(EntityTypeBuilder<Box> builder)
@@ -141,7 +133,6 @@ internal class BoxConfiguration : IEntityTypeConfiguration<Box>
             .OnDelete(DeleteBehavior.Restrict);
     }
 }
-
 
 internal class QuantityConfiguration : IEntityTypeConfiguration<Quantity>
 {
@@ -156,7 +147,6 @@ internal class QuantityConfiguration : IEntityTypeConfiguration<Quantity>
             .HasValue<Want>(QuantityType.Want);
     }
 }
-
 
 internal class ChangeConfiguration : IEntityTypeConfiguration<Change>
 {
@@ -173,7 +163,6 @@ internal class ChangeConfiguration : IEntityTypeConfiguration<Change>
             .OnDelete(DeleteBehavior.SetNull);
     }
 }
-
 
 internal class TransactionConfiguration : IEntityTypeConfiguration<Transaction>
 {
@@ -197,7 +186,6 @@ internal class TransactionConfiguration : IEntityTypeConfiguration<Transaction>
     }
 }
 
-
 internal class SuggestionConfiguration : IEntityTypeConfiguration<Suggestion>
 {
     private readonly DatabaseFacade _database;
@@ -206,7 +194,6 @@ internal class SuggestionConfiguration : IEntityTypeConfiguration<Suggestion>
     {
         _database = database;
     }
-
 
     public void Configure(EntityTypeBuilder<Suggestion> builder)
     {

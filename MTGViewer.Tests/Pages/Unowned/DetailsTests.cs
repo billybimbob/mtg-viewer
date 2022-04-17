@@ -32,7 +32,6 @@ public class IndexTests : IAsyncLifetime
         _testGen = testGen;
     }
 
-
     public async Task InitializeAsync()
     {
         await _testGen.SeedAsync();
@@ -41,8 +40,6 @@ public class IndexTests : IAsyncLifetime
     }
 
     public Task DisposeAsync() => _testGen.ClearAsync();
-
-
 
     [Fact]
     public async Task OnPostClaim_NoUser_NoChange()
@@ -64,7 +61,6 @@ public class IndexTests : IAsyncLifetime
         Assert.True(unclaimedBefore);
         Assert.True(unclaimedAfter);
     }
-
 
     [Fact]
     public async Task OnPostClaim_WithUser_AppliesClaim()
@@ -100,7 +96,6 @@ public class IndexTests : IAsyncLifetime
 
         Assert.Equal(1, userDecksAfter - userDecksBefore);
     }
-
 
     [Fact]
     public async Task OnPostRemove_WithUser_NoChange()

@@ -25,7 +25,6 @@ public class BulkOperations
     private readonly IMTGQuery _mtgQuery;
     private readonly UserManager<CardUser> _userManager;
 
-
     public BulkOperations(
         IOptions<SeedSettings> seedOptions,
         PageSize pageSize,
@@ -44,7 +43,6 @@ public class BulkOperations
         _userManager = userManager;
     }
 
-
     public CardStream GetDefaultStream() => CardStream.Default(_dbContext);
 
     public CardStream GetUserStream(string userId) => CardStream.User(_dbContext, userId);
@@ -52,8 +50,6 @@ public class BulkOperations
     public CardStream GetTreasuryStream() => CardStream.Treasury(_dbContext);
 
     public CardStream GetSeedStream() => CardStream.All(_dbContext, _userManager);
-
-
 
     public async Task SeedAsync(CardData data, CancellationToken cancel = default)
     {
@@ -80,7 +76,6 @@ public class BulkOperations
             _loadProgress.AddProgress();
         }
     }
-
 
     private async ValueTask<IdentityResult> AddUserAsync(CardUser user, CancellationToken cancel)
     {
@@ -109,7 +104,6 @@ public class BulkOperations
 
         return confirmed;
     }
-
 
     public async Task MergeAsync(CardData data, CancellationToken cancel = default)
     {
@@ -151,7 +145,6 @@ public class BulkOperations
 
         _loadProgress.AddProgress();
     }
-
 
     private async Task<bool> MergeCardsAsync(CardData data, CancellationToken cancel)
     {
@@ -202,7 +195,6 @@ public class BulkOperations
         return hasNewCards;
     }
 
-
     private Task<List<Card>> ExistingCardsAsync(
         CardData data,
         CancellationToken cancel)
@@ -238,7 +230,6 @@ public class BulkOperations
                 .AsTask();
         }
     }
-
 
     private static Transaction? MergeTransaction(
         IReadOnlyList<Bin> bins,
@@ -277,7 +268,6 @@ public class BulkOperations
             Changes = changes
         };
     }
-
 
     public async Task MergeAsync(
         IDictionary<string, int> multiverseAdditions,
@@ -327,7 +317,6 @@ public class BulkOperations
         _loadProgress.AddProgress();
     }
 
-
     private Task<List<Card>> ExistingCardsAsync(
         IEnumerable<string> multiverseIds,
         CancellationToken cancel)
@@ -353,7 +342,6 @@ public class BulkOperations
                 .AsTask();
         }
     }
-
 
     public async Task ResetAsync(CancellationToken cancel = default)
     {

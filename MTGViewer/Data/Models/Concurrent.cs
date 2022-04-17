@@ -4,7 +4,6 @@ using System.Text.Json.Serialization;
 
 namespace MTGViewer.Data.Concurrency;
 
-
 // each internal property is ignored by convention
 public abstract class Concurrent
 {
@@ -16,7 +15,6 @@ public abstract class Concurrent
 
     internal uint xmin { get; set; }
 }
-
 
 internal abstract class ConcurrentDto
 {

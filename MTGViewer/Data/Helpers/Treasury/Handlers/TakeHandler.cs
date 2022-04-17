@@ -17,7 +17,6 @@ internal static class TakeExtensions
     }
 }
 
-
 internal abstract class TakeHandler
 {
     protected ExchangeContext ExchangeContext { get; }
@@ -66,14 +65,12 @@ internal abstract class TakeHandler
     }
 }
 
-
 internal class ExactTake : TakeHandler
 {
     private ILookup<string, Hold>? _exactTake;
 
     public ExactTake(ExchangeContext exchangeContext) : base(exchangeContext)
     { }
-
 
     protected override IEnumerable<StorageAssignment<Card>> GetAssignments()
     {
@@ -84,7 +81,6 @@ internal class ExactTake : TakeHandler
             yield break;
         }
 
-
         foreach (var want in wants)
         {
             foreach (var assignment in TakeFromStorage(want))
@@ -93,7 +89,6 @@ internal class ExactTake : TakeHandler
             }
         }
     }
-
 
     private IEnumerable<StorageAssignment<Card>> TakeFromStorage(Want want)
     {
@@ -131,14 +126,12 @@ internal class ExactTake : TakeHandler
     }
 }
 
-
 internal class ApproximateTake : TakeHandler
 {
     private ILookup<string, Hold>? _approxLookup;
 
     public ApproximateTake(ExchangeContext exchangeContext) : base(exchangeContext)
     { }
-
 
     protected override IEnumerable<StorageAssignment<Card>> GetAssignments()
     {
@@ -162,7 +155,6 @@ internal class ApproximateTake : TakeHandler
             }
         }
     }
-
 
     private IEnumerable<StorageAssignment<Card>> TakeFromStorage(Want want)
     {

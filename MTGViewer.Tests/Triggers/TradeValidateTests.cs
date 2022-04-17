@@ -28,7 +28,6 @@ public class TradeValidateTests : IAsyncLifetime
         _testGen = testGen;
     }
 
-
     public async Task InitializeAsync()
     {
         await _testGen.SeedAsync();
@@ -38,7 +37,6 @@ public class TradeValidateTests : IAsyncLifetime
     {
         await _testGen.ClearAsync();
     }
-
 
     [Fact]
     public async Task BeforeSave_NewTrade_Returns()
@@ -72,7 +70,6 @@ public class TradeValidateTests : IAsyncLifetime
 
         Assert.NotEqual(newTrade.FromId, newTrade.ToId);
     }
-
 
     [Fact]
     public async Task BeforeSave_TradeNewDecks_Returns()
@@ -108,7 +105,6 @@ public class TradeValidateTests : IAsyncLifetime
 
         Assert.True(sameTargetIds);
     }
-
 
     [Fact]
     public async Task BeforeSave_TradeSameTargets_Throws()

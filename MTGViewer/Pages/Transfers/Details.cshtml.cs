@@ -17,7 +17,6 @@ using MTGViewer.Services;
 
 namespace MTGViewer.Pages.Transfers;
 
-
 [Authorize]
 [Authorize(Policy = CardPolicies.ChangeTreasury)]
 public class DetailsModel : PageModel
@@ -36,7 +35,6 @@ public class DetailsModel : PageModel
         _pageSize = pageSize;
     }
 
-
     [TempData]
     public string? PostMessage { get; set; }
 
@@ -45,7 +43,6 @@ public class DetailsModel : PageModel
     public OffsetList<TradePreview> Trades { get; private set; } = OffsetList<TradePreview>.Empty;
 
     public IReadOnlyList<DeckLink> Cards { get; private set; } = Array.Empty<DeckLink>();
-
 
     public async Task<IActionResult> OnGetAsync(int id, int? offset, CancellationToken cancel)
     {
@@ -87,7 +84,6 @@ public class DetailsModel : PageModel
         return Page();
     }
 
-
     private static readonly Func<CardDbContext, int, string, CancellationToken, Task<DeckDetails?>> DeckAsync
 
         = EF.CompileAsyncQuery((CardDbContext dbContext, int deckId, string userId, CancellationToken _) =>
@@ -114,7 +110,6 @@ public class DetailsModel : PageModel
                 })
 
                 .SingleOrDefault());
-
 
     private IQueryable<TradePreview> ActiveTrades(DeckDetails deck)
     {
@@ -167,7 +162,6 @@ public class DetailsModel : PageModel
                 });
     }
 
-
     private static readonly Func<CardDbContext, int, int, IAsyncEnumerable<DeckLink>> DeckCardsAsync
         = EF.CompileAsyncQuery((CardDbContext dbContext, int id, int limit) =>
 
@@ -195,8 +189,6 @@ public class DetailsModel : PageModel
                         .Where(w => w.LocationId == id)
                         .Sum(w => w.Copies)
                 }));
-
-
 
     public async Task<IActionResult> OnPostAsync(int id, CancellationToken cancel)
     {

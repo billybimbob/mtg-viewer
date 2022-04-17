@@ -17,7 +17,6 @@ public class DeleteTests : IAsyncLifetime
     private readonly CardDbContext _dbContext;
     private readonly TestDataGenerator _testGen;
 
-
     public DeleteTests(
         DeleteModel deleteModel,
         CardDbContext dbContext,
@@ -28,11 +27,9 @@ public class DeleteTests : IAsyncLifetime
         _testGen = testGen;
     }
 
-
     public Task InitializeAsync() => _testGen.SeedAsync();
 
     public Task DisposeAsync() => _testGen.ClearAsync();
-
 
     [Fact]
     public async Task OnPost_InvalidBox_NotFound()
@@ -43,7 +40,6 @@ public class DeleteTests : IAsyncLifetime
 
         Assert.IsType<NotFoundResult>(result);
     }
-
 
     [Fact]
     public async Task OnPost_ExcessBox_NotFound()
@@ -64,7 +60,6 @@ public class DeleteTests : IAsyncLifetime
         Assert.IsType<NotFoundResult>(result);
     }
 
-
     [Fact]
     public async Task OnPost_RandomBox_DeleteSuccess()
     {
@@ -77,7 +72,6 @@ public class DeleteTests : IAsyncLifetime
         Assert.IsType<RedirectToPageResult>(result);
         Assert.True(isDeleted);
     }
-
 
     [Fact]
     public async Task OnPost_WithCards_CardsPreserved()
@@ -102,7 +96,6 @@ public class DeleteTests : IAsyncLifetime
         Assert.True(isDeleted);
         Assert.Equal(treasuryCardsBefore, treasuryCardsAfter);
     }
-
 
     [Fact]
     public async Task OnPost_LastInBin_BinDeleted()

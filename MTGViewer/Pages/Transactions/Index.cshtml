@@ -7,7 +7,6 @@
 }
 @inject SymbolFormatter MtgSymbols
 
-
 @if (Model.DeckName is null)
 {
     <h1> Collection Changes </h1>
@@ -25,7 +24,6 @@ else
         <a asp-route-id="@null" class="btn btn-secondary" role="button"> All Changes </a>
     }
 </div>
-
 
 <div class="table-responsive-md">
     <table class="table table-bordered">
@@ -74,11 +72,11 @@ else
                         </td>
                         <td>
                             <div class="ms-group">
-                                @MtgSymbols.Format(firstCard.ManaCost).ToHtmlString() 
+                                @MtgSymbols.Format(firstCard.ManaCost).ToHtmlString()
                             </div>
                         </td>
                         <td> @firstCard.SetName </td>
-                        <td> @firstCard.Held </td> 
+                        <td> @firstCard.Held </td>
                     }
                     else
                     {
@@ -99,11 +97,11 @@ else
                         </td>
                         <td>
                             <div class="ms-group">
-                                @MtgSymbols.Format(card.ManaCost).ToHtmlString() 
+                                @MtgSymbols.Format(card.ManaCost).ToHtmlString()
                             </div>
                         </td>
                         <td> @card.SetName </td>
-                        <td> @card.Held </td> 
+                        <td> @card.Held </td>
                     </tr>
                 }
                 @if (transaction.HasMore)

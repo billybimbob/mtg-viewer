@@ -7,7 +7,6 @@ using MTGViewer.Areas.Identity.Data;
 
 namespace MTGViewer.Areas.Identity.Pages.Account;
 
-
 [AllowAnonymous]
 public class RegisterConfirmationModel : PageModel
 {

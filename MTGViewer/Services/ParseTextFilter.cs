@@ -5,7 +5,6 @@ using Microsoft.Extensions.Logging;
 
 namespace MTGViewer.Services;
 
-
 public readonly record struct TextFilter(string? Name, string[]? Types, string? Text)
 {
     public const int TextLimit = 40;
@@ -46,7 +45,6 @@ public readonly record struct TextFilter(string? Name, string[]? Types, string? 
     }
 }
 
-
 public class ParseTextFilter
 {
     public const string SearchName = "/n";
@@ -61,7 +59,6 @@ public class ParseTextFilter
     {
         _logger = logger;
     }
-
 
     public TextFilter Parse(string? search)
     {
@@ -92,7 +89,6 @@ public class ParseTextFilter
         return AddFilter(filter, capture, search[index..]);
     }
 
-
     private static TextFilter AddFilter(
         TextFilter filter,
         ReadOnlySpan<char> capture,
@@ -120,7 +116,6 @@ public class ParseTextFilter
 
         return filter;
     }
-
 
     private static string TextString(ReadOnlySpan<char> text)
     {

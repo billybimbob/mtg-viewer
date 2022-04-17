@@ -47,7 +47,6 @@ public class CraftTests : IAsyncLifetime
         _testContext = new TestContext();
     }
 
-
     public async Task InitializeAsync()
     {
         _testContext.AddFakePersistentComponentState();
@@ -70,7 +69,6 @@ public class CraftTests : IAsyncLifetime
         await _testGen.ClearAsync();
     }
 
-
     [Fact]
     public void LoadData_NoUserNewDeck_Redirect()
     {
@@ -82,7 +80,6 @@ public class CraftTests : IAsyncLifetime
 
         Assert.EndsWith("/Decks", nav.Uri);
     }
-
 
     [Fact]
     public async Task LoadData_NoUserEditDeck_Redirect()
@@ -98,7 +95,6 @@ public class CraftTests : IAsyncLifetime
 
         Assert.EndsWith("/Decks", nav.Uri);
     }
-
 
     [Fact]
     public async Task LoadData_WrongUser_Redirect()
@@ -126,7 +122,6 @@ public class CraftTests : IAsyncLifetime
         Assert.Equal(string.Empty, uri.Query);
     }
 
-
     [Fact]
     public async Task LoadData_NewDeck_Success()
     {
@@ -146,7 +141,6 @@ public class CraftTests : IAsyncLifetime
 
         Assert.Equal(1, pickMulligans.Count);
     }
-
 
     [Fact]
     public async Task LoadData_EditDeck_Success()
@@ -170,7 +164,6 @@ public class CraftTests : IAsyncLifetime
         Assert.Equal(1, pickMulligans.Count);
     }
 
-
     private async Task<Deck> AddDeckAndSameUserAsync(int numCards)
     {
         var deck = await _testGen.CreateDeckAsync(numCards);
@@ -185,7 +178,6 @@ public class CraftTests : IAsyncLifetime
         return deck;
     }
 
-
     private static void ClickButton(IRenderedComponent<Craft> cut, string buttonCss, int numClicks)
     {
         for (int i = 0; i < numClicks; ++i)
@@ -195,7 +187,6 @@ public class CraftTests : IAsyncLifetime
             button.Click();
         }
     }
-
 
     [Theory]
     [InlineData(1)]
@@ -220,7 +211,6 @@ public class CraftTests : IAsyncLifetime
 
         Assert.Equal(numClicks, newReturns - oldReturns);
     }
-
 
     [Theory]
     [InlineData(1)]
@@ -253,7 +243,6 @@ public class CraftTests : IAsyncLifetime
         Assert.Equal(numClicks, oldReturns - newReturns);
     }
 
-
     [Theory]
     [InlineData(1)]
     [InlineData(5)]
@@ -281,7 +270,6 @@ public class CraftTests : IAsyncLifetime
 
         Assert.Equal(numClicks, newWants - oldWants);
     }
-
 
     [Theory]
     [InlineData(1)]
@@ -317,7 +305,6 @@ public class CraftTests : IAsyncLifetime
 
         Assert.Equal(numClicks, oldWants - newWants);
     }
-
 
     // TODO: try to add concurrent tests
 }

@@ -39,8 +39,6 @@ internal sealed class ResultOriginSeek<TSource, TResult, TRefKey, TValueKey> : I
         _valueKey = valueKey;
     }
 
-
-
     public ISeekable<TResult> OrderBy<TNewSource>()
         where TNewSource : class
     {
@@ -53,7 +51,6 @@ internal sealed class ResultOriginSeek<TSource, TResult, TRefKey, TValueKey> : I
             _query, _direction, _take, _referenceKey, _valueKey);
     }
 
-
     public ISeekable<TResult> Take(int count)
     {
         if (count == _take)
@@ -65,7 +62,6 @@ internal sealed class ResultOriginSeek<TSource, TResult, TRefKey, TValueKey> : I
             _query, _direction, count, _referenceKey, _valueKey);
     }
 
-
     public async Task<SeekList<TResult>> ToSeekListAsync(CancellationToken cancel = default)
     {
         var origin = await GetOriginAsync(cancel).ConfigureAwait(false);
@@ -74,7 +70,6 @@ internal sealed class ResultOriginSeek<TSource, TResult, TRefKey, TValueKey> : I
             .ToSeekListAsync(cancel)
             .ConfigureAwait(false);
     }
-
 
     private IQueryable<TResult> SeekQuery(TResult? origin)
     {
@@ -86,7 +81,6 @@ internal sealed class ResultOriginSeek<TSource, TResult, TRefKey, TValueKey> : I
             ? query.Take(count)
             : query;
     }
-
 
     private async Task<TResult?> GetOriginAsync(CancellationToken cancel)
     {
@@ -111,7 +105,6 @@ internal sealed class ResultOriginSeek<TSource, TResult, TRefKey, TValueKey> : I
 
         return null;
     }
-
 
     private IQueryable<TResult> GetOriginQuery<TKey>(TKey key)
     {
@@ -140,7 +133,6 @@ internal sealed class ResultOriginSeek<TSource, TResult, TRefKey, TValueKey> : I
             .OrderBy(orderId)
             .Select(selector);
     }
-
 
     private IEntityType GetEntityType()
     {

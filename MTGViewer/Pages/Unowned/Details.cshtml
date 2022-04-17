@@ -6,7 +6,6 @@
 
 @inject SymbolFormatter MtgSymbols
 
-
 <h1> @Model.Unclaimed.Name </h1>
 
 <form method="POST">
@@ -22,7 +21,6 @@
             value="Remove" />
     </div>
 </form>
-
 
 <div class="table-responsive-md">
     <table class="table">
@@ -43,9 +41,9 @@
                         <component type="typeof(HoverCard)" render-mode="Static"
                             param-Preview="card" />
                     </td>
-                    <td> 
+                    <td>
                         <div class="ms-group">
-                            @MtgSymbols.Format(card.ManaCost).ToHtmlString() 
+                            @MtgSymbols.Format(card.ManaCost).ToHtmlString()
                         </div>
                     </td>
 

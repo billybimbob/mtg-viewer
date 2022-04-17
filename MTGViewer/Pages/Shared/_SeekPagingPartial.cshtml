@@ -62,13 +62,11 @@
     </nav>
 }
 
-
 @functions
 {
     public bool HasPrevious => Model.Previous is not null;
 
     public bool HasNext => Model.Next is not null;
-
 
     public object? PreviousKey => GetKey(Model.Previous);
 

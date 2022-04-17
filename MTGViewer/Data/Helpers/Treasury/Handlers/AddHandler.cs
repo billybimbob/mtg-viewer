@@ -21,7 +21,6 @@ internal static class AddExtensions
     }
 }
 
-
 internal abstract class AddHandler
 {
     protected TreasuryContext TreasuryContext { get; }
@@ -45,7 +44,6 @@ internal abstract class AddHandler
     }
 }
 
-
 internal class ExactAdd : AddHandler
 {
     private ILookup<string, Storage>? _exactMatches;
@@ -53,7 +51,6 @@ internal class ExactAdd : AddHandler
     public ExactAdd(TreasuryContext treasuryContext, IEnumerable<CardRequest> requests)
         : base(treasuryContext, requests)
     { }
-
 
     protected override IEnumerable<StorageAssignment<CardRequest>> GetAssignments()
     {
@@ -75,7 +72,6 @@ internal class ExactAdd : AddHandler
             }
         }
     }
-
 
     private IEnumerable<StorageAssignment<CardRequest>> FitToStorage(CardRequest request)
     {
@@ -89,7 +85,6 @@ internal class ExactAdd : AddHandler
         return Assignment.FitToStorage(request, copies, matches, storageSpaces);
     }
 
-
     private ILookup<string, Storage> AddLookup()
     {
         var availableCards = TreasuryContext.Available.SelectMany(b => b.Holds);
@@ -100,7 +95,6 @@ internal class ExactAdd : AddHandler
     }
 }
 
-
 internal class ApproximateAdd : AddHandler
 {
     private ILookup<string, Storage>? _approxMatches;
@@ -108,7 +102,6 @@ internal class ApproximateAdd : AddHandler
     public ApproximateAdd(TreasuryContext treasuryContext, IEnumerable<CardRequest> requests)
         : base(treasuryContext, requests)
     { }
-
 
     protected override IEnumerable<StorageAssignment<CardRequest>> GetAssignments()
     {
@@ -131,7 +124,6 @@ internal class ApproximateAdd : AddHandler
         }
     }
 
-
     private IEnumerable<StorageAssignment<CardRequest>> FitToStorage(CardRequest request)
     {
         _approxMatches ??= AddLookup();
@@ -144,7 +136,6 @@ internal class ApproximateAdd : AddHandler
         return Assignment.FitToStorage(request, copies, matches, storageSpaces);
     }
 
-
     private ILookup<string, Storage> AddLookup()
     {
         var availableCards = TreasuryContext.Available.SelectMany(b => b.Holds);
@@ -155,7 +146,6 @@ internal class ApproximateAdd : AddHandler
     }
 }
 
-
 internal class GuessAdd : AddHandler
 {
     private BoxSearcher? _boxSearch;
@@ -164,7 +154,6 @@ internal class GuessAdd : AddHandler
         : base(treasuryContext, requests)
     { }
 
-
     protected override IEnumerable<StorageAssignment<CardRequest>> GetAssignments()
     {
         if (CardRequests.All(cr => cr.Copies == 0))
@@ -172,7 +161,7 @@ internal class GuessAdd : AddHandler
             yield break;
         }
 
-        // descending so that the first added cards do not shift down the 
+        // descending so that the first added cards do not shift down the
         // positioning of the sorted card holds
         // each of the returned cards should have less effect on following returns
         // keep eye on
@@ -195,7 +184,6 @@ internal class GuessAdd : AddHandler
             }
         }
     }
-
 
     private IEnumerable<StorageAssignment<CardRequest>> FitToStorage(CardRequest request)
     {

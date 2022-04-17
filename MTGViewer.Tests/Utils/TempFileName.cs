@@ -9,7 +9,6 @@ public sealed class TempFileName : IDisposable
 
     public string Value => _lazy.Value;
 
-
     public void Dispose()
     {
         if (_lazy.IsValueCreated && File.Exists(_lazy.Value))

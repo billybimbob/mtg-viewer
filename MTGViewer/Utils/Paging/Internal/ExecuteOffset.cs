@@ -8,7 +8,6 @@ using Microsoft.EntityFrameworkCore.Query;
 
 namespace System.Paging.Query;
 
-
 internal static class ExecuteOffset<TEntity>
 {
     private static GetPageInfoVisitor? s_getPageInfo;
@@ -16,7 +15,6 @@ internal static class ExecuteOffset<TEntity>
 
     private static RemoveOffsetVisitor? s_removeOffset;
     private static ExpressionVisitor RemoveOffset => s_removeOffset ??= new();
-
 
     public static OffsetList<TEntity> ToOffsetList(IQueryable<TEntity> query)
     {
@@ -39,7 +37,6 @@ internal static class ExecuteOffset<TEntity>
 
         return new OffsetList<TEntity>(offset, items);
     }
-
 
     public static async Task<OffsetList<TEntity>> ToOffsetListAsync(
         IQueryable<TEntity> query,
@@ -70,9 +67,7 @@ internal static class ExecuteOffset<TEntity>
         return new OffsetList<TEntity>(offset, items);
     }
 
-
     private record PageInfo(int Index, int Size);
-
 
     private class GetPageInfoVisitor : ExpressionVisitor
     {
@@ -107,7 +102,6 @@ internal static class ExecuteOffset<TEntity>
             return visitedParent;
         }
     }
-
 
     private class RemoveOffsetVisitor : ExpressionVisitor
     {

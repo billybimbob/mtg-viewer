@@ -6,7 +6,6 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MTGViewer.Data;
 
-
 [Index(nameof(MultiverseId), IsUnique = true)]
 [Index(nameof(ManaValue), nameof(SetName), nameof(Name), nameof(Id))]
 [Index(nameof(ManaCost), nameof(SetName), nameof(Name), nameof(Id))]
@@ -23,7 +22,6 @@ public class Card
     public string Name { get; init; } = default!;
 
     public string Layout { get; init; } = default!;
-
 
     [Display(Name = "Mana Cost")]
     public string? ManaCost { get; init; } = default!;
@@ -43,7 +41,6 @@ public class Card
 
     public Flip? Flip { get; init; }
 
-
     public string? Text { get; init; }
 
     public string? Flavor { get; init; }
@@ -60,7 +57,6 @@ public class Card
 
     public string Artist { get; init; } = default!;
 
-
     [JsonIgnore]
     public List<Hold> Holds { get; } = new();
 
@@ -74,7 +70,6 @@ public class Card
     public List<Suggestion> Suggestions { get; } = new();
 }
 
-
 public enum Rarity
 {
     Common,
@@ -84,7 +79,6 @@ public enum Rarity
     Special,
     Bonus
 }
-
 
 [Flags]
 public enum Color
@@ -96,7 +90,6 @@ public enum Color
     Red = 16,
     White = 32
 }
-
 
 public static class Symbol
 {
@@ -112,7 +105,6 @@ public static class Symbol
             [Color.White] = "W"
         };
 }
-
 
 [Owned]
 public class Flip

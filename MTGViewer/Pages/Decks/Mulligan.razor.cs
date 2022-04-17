@@ -23,7 +23,6 @@ using MTGViewer.Services;
 
 namespace MTGViewer.Pages.Decks;
 
-
 [Authorize]
 public partial class Mulligan : OwningComponentBase
 {
@@ -32,7 +31,6 @@ public partial class Mulligan : OwningComponentBase
 
     [CascadingParameter]
     protected Task<AuthenticationState> AuthState { get; set; } = default!;
-
 
     [Inject]
     protected IDbContextFactory<CardDbContext> DbFactory { get; set; } = default!;
@@ -52,7 +50,6 @@ public partial class Mulligan : OwningComponentBase
     [Inject]
     protected ILogger<Mulligan> Logger { get; set; } = default!;
 
-
     internal string DeckName => _deckName ?? "Deck Mulligan";
 
     internal IReadOnlyList<CardPreview> DrawnCards => _drawnCards;
@@ -60,7 +57,6 @@ public partial class Mulligan : OwningComponentBase
     internal bool CanDraw => _shuffledDeck?.CanDraw ?? false;
 
     internal bool IsLoading => _isBusy || !_isInteractive;
-
 
     internal MulliganType DeckMulligan
     {
@@ -75,7 +71,6 @@ public partial class Mulligan : OwningComponentBase
             }
         }
     }
-
 
     private readonly CancellationTokenSource _cancel = new();
 
@@ -93,12 +88,10 @@ public partial class Mulligan : OwningComponentBase
     private readonly List<CardPreview> _drawnCards = new();
     private readonly HashSet<string> _loadedImages = new();
 
-
     protected override void OnInitialized()
     {
         _persistSubscription = ApplicationState.RegisterOnPersisting(PersistDeckData);
     }
-
 
     protected override async Task OnParametersSetAsync()
     {
@@ -144,7 +137,6 @@ public partial class Mulligan : OwningComponentBase
         }
     }
 
-
     protected override void OnAfterRender(bool firstRender)
     {
         if (firstRender)
@@ -154,7 +146,6 @@ public partial class Mulligan : OwningComponentBase
             StateHasChanged();
         }
     }
-
 
     protected override void Dispose(bool disposing)
     {
@@ -170,7 +161,6 @@ public partial class Mulligan : OwningComponentBase
 
         base.Dispose(disposing);
     }
-
 
     private async ValueTask<string?> GetUserIdAsync(CancellationToken cancel)
     {
@@ -190,7 +180,6 @@ public partial class Mulligan : OwningComponentBase
         return userId;
     }
 
-
     private Task PersistDeckData()
     {
         ApplicationState.PersistAsJson(nameof(_deckName), _deckName);
@@ -199,7 +188,6 @@ public partial class Mulligan : OwningComponentBase
 
         return Task.CompletedTask;
     }
-
 
     private bool TryGetData<TData>(string key, [NotNullWhen(true)] out TData? data)
     {
@@ -211,7 +199,6 @@ public partial class Mulligan : OwningComponentBase
 
         return false;
     }
-
 
     private async Task LoadMulliganDataAsync(string userId, CancellationToken cancel)
     {
@@ -234,7 +221,6 @@ public partial class Mulligan : OwningComponentBase
             .Invoke(dbContext, DeckId, PageSize.Limit)
             .ToListAsync(cancel);
     }
-
 
     private Func<CardDbContext, int, int, IAsyncEnumerable<DeckCopy>> DeckCardsAsync
 
@@ -272,8 +258,6 @@ public partial class Mulligan : OwningComponentBase
                         .Where(g => g.LocationId == deckId)
                         .Sum(g => g.Copies)
                 }));
-
-
 
     internal async Task NewHandAsync()
     {
@@ -317,7 +301,6 @@ public partial class Mulligan : OwningComponentBase
         }
     }
 
-
     internal void DrawCard()
     {
         if (!_isBusy
@@ -329,19 +312,15 @@ public partial class Mulligan : OwningComponentBase
         }
     }
 
-
     internal bool IsImageLoaded(CardPreview card)
     {
         return _loadedImages.Contains(card.Id);
     }
 
-
     internal void OnImageLoad(CardPreview card)
     {
         _loadedImages.Add(card.Id);
     }
-
-
 
     private sealed class DrawSimulation : IDisposable
     {
@@ -359,7 +338,6 @@ public partial class Mulligan : OwningComponentBase
 
         private int _cardsInDeck;
         private CardCopy? _nextDraw;
-
 
         public DrawSimulation(IReadOnlyList<DeckCopy> deck, MulliganType mulliganType)
         {
@@ -381,9 +359,7 @@ public partial class Mulligan : OwningComponentBase
             _nextDraw = PickRandomCard();
         }
 
-
         public bool CanDraw => _nextDraw is not null;
-
 
         public CardPreview DrawCard()
         {
@@ -400,7 +376,6 @@ public partial class Mulligan : OwningComponentBase
             return card;
         }
 
-
         public void Dispose()
         {
             foreach (var option in _cardOptions)
@@ -412,7 +387,6 @@ public partial class Mulligan : OwningComponentBase
 
             _nextDraw = null;
         }
-
 
         private CardCopy? PickRandomCard()
         {
@@ -437,7 +411,6 @@ public partial class Mulligan : OwningComponentBase
 
             return null;
         }
-
 
         private static int GetCopies(DeckCopy source, MulliganType mulliganType)
         {

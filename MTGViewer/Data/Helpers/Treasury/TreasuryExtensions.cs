@@ -8,7 +8,6 @@ using MTGViewer.Data.Internal;
 
 namespace MTGViewer.Data;
 
-
 internal sealed record StorageSpace
 {
     public int Id { get; init; }
@@ -23,7 +22,6 @@ internal sealed record StorageSpace
 
     public int? Remaining => Capacity - Held;
 }
-
 
 public static partial class TreasuryExtensions
 {
@@ -42,7 +40,6 @@ public static partial class TreasuryExtensions
             });
     }
 
-
     private static IQueryable<Location> MatchingStorage(CardDbContext dbContext, string[] cardNames)
     {
         return dbContext.Locations
@@ -57,7 +54,6 @@ public static partial class TreasuryExtensions
 
             .OrderBy(l => l.Id);
     }
-
 
     private static IQueryable<Location> ArrangingStorage(CardDbContext dbContext, int[] modified)
     {
@@ -75,7 +71,6 @@ public static partial class TreasuryExtensions
 
             .OrderBy(l => l.Id);
     }
-    
 
     private static IQueryable<Location> EntireStorage(CardDbContext dbContext)
     {
@@ -94,7 +89,6 @@ public static partial class TreasuryExtensions
             .OrderBy(l => l.Id);
     }
 
-
     public static Task AddCardsAsync(
         this CardDbContext dbContext,
         Card card,
@@ -107,7 +101,6 @@ public static partial class TreasuryExtensions
 
         return dbContext.AddCardsAsync(request, cancel);
     }
-
 
     public static async Task AddCardsAsync(
         this CardDbContext dbContext,
@@ -154,7 +147,6 @@ public static partial class TreasuryExtensions
         RemoveEmpty(dbContext);
     }
 
-
     private static IReadOnlyList<CardRequest> AsAddRequests(IEnumerable<CardRequest> requests)
     {
         ArgumentNullException.ThrowIfNull(requests);
@@ -170,7 +162,6 @@ public static partial class TreasuryExtensions
             .ToList();
     }
 
-
     private static void AttachCardRequests(
         CardDbContext dbContext,
         IEnumerable<CardRequest> requests)
@@ -184,8 +175,6 @@ public static partial class TreasuryExtensions
 
         dbContext.Cards.AttachRange(detachedCards);
     }
-
-
 
     public static async Task ExchangeAsync(
         this CardDbContext dbContext,
@@ -256,8 +245,6 @@ public static partial class TreasuryExtensions
         RemoveEmpty(dbContext);
     }
 
-
-
     public static async Task UpdateBoxesAsync(
         this CardDbContext dbContext,
         CancellationToken cancel = default)
@@ -291,7 +278,6 @@ public static partial class TreasuryExtensions
         RemoveEmpty(dbContext);
     }
 
-
     private static bool AreBoxesUnchanged(CardDbContext dbContext)
     {
         return dbContext.ChangeTracker
@@ -301,7 +287,6 @@ public static partial class TreasuryExtensions
                     && !e.Property(b => b.Capacity).IsModified);
     }
 
-
     private static bool AreHoldsUnchanged(CardDbContext dbContext)
     {
         return dbContext.ChangeTracker
@@ -310,7 +295,6 @@ public static partial class TreasuryExtensions
                 || e.State is not EntityState.Added
                     && !e.Property(h => h.Copies).IsModified);
     }
-
 
     private static async Task<Dictionary<LocationIndex, StorageSpace>> MergedStorageSpacesAsync(
         CardDbContext dbContext,
@@ -337,7 +321,6 @@ public static partial class TreasuryExtensions
         return storageSpaces;
     }
 
-
     private static void AddMissingExcess(CardDbContext dbContext)
     {
         if (!dbContext.Excess.Local.Any())
@@ -347,7 +330,6 @@ public static partial class TreasuryExtensions
             dbContext.Excess.Add(excessBox);
         }
     }
-
 
     private static void RemoveEmpty(CardDbContext dbContext)
     {

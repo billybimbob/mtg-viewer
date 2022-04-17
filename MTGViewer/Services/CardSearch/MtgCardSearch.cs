@@ -32,11 +32,10 @@ internal class MtgCardSearch : IMTGCardSearch
         get
         {
             var pageParameter = _parameters.GetValueOrDefault(nameof(CardQuery.Page)) as MtgPageParameter;
-            
+
             return pageParameter?.Page ?? 0;
         }
     }
-
 
     public IMTGCardSearch Where(Expression<Func<CardQuery, bool>> predicate)
     {

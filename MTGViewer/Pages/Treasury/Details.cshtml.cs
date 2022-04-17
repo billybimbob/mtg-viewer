@@ -24,11 +24,9 @@ public class DetailsModel : PageModel
         _pageSize = pageSize;
     }
 
-
     public BoxPreview Box { get; private set; } = default!;
 
     public SeekList<QuantityPreview> Cards { get; private set; } = SeekList<QuantityPreview>.Empty;
-
 
     public async Task<IActionResult> OnGetAsync(
         int id,
@@ -61,7 +59,6 @@ public class DetailsModel : PageModel
         return Page();
     }
 
-
     private static readonly Func<CardDbContext, int, CancellationToken, Task<BoxPreview?>> BoxAsync
         = EF.CompileAsyncQuery((CardDbContext dbContext, int boxId, CancellationToken _) =>
             dbContext.Boxes
@@ -82,7 +79,6 @@ public class DetailsModel : PageModel
                     Held = b.Holds.Sum(h => h.Copies)
                 })
                 .SingleOrDefault(b => b.Id == boxId));
-
 
     private async Task<int?> GetCardJumpAsync(string? cardId, BoxPreview box, CancellationToken cancel)
     {
@@ -109,7 +105,6 @@ public class DetailsModel : PageModel
             .LastOrDefaultAsync(cancel);
     }
 
-
     private static readonly Func<CardDbContext, string, int, CancellationToken, Task<Hold?>> CardJumpAsync
 
         = EF.CompileAsyncQuery((CardDbContext dbContext, string cardId, int boxId, CancellationToken _) =>
@@ -118,7 +113,6 @@ public class DetailsModel : PageModel
                 .Include(h => h.Card)
                 .OrderBy(h => h.Id)
                 .SingleOrDefault(h => h.LocationId == boxId && h.CardId == cardId));
-
 
     private IQueryable<QuantityPreview> BoxCards(BoxPreview box)
     {

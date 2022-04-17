@@ -7,7 +7,6 @@ using Microsoft.EntityFrameworkCore.Query;
 
 namespace System.Paging.Query;
 
-
 internal class FindByIdVisitor : ExpressionVisitor
 {
     private readonly FindIncludeVisitor? _findInclude;
@@ -19,9 +18,7 @@ internal class FindByIdVisitor : ExpressionVisitor
         _include = new HashSet<string>();
     }
 
-
     public IReadOnlyCollection<string> Include => _include;
-
 
     [return: NotNullIfNotNull("node")]
     public new Expression? Visit(Expression? node)
@@ -30,7 +27,6 @@ internal class FindByIdVisitor : ExpressionVisitor
 
         return base.Visit(node);
     }
-
 
     protected override Expression VisitMethodCall(MethodCallExpression node)
     {
@@ -62,7 +58,6 @@ internal class FindByIdVisitor : ExpressionVisitor
     }
 }
 
-
 internal class FindIncludeVisitor : ExpressionVisitor
 {
     private readonly IReadOnlyEntityType _entity;
@@ -71,7 +66,6 @@ internal class FindIncludeVisitor : ExpressionVisitor
     {
         _entity = entity;
     }
-
 
     protected override Expression VisitMethodCall(MethodCallExpression node)
     {
@@ -86,7 +80,6 @@ internal class FindIncludeVisitor : ExpressionVisitor
         return node;
     }
 
-
     protected override Expression VisitUnary(UnaryExpression node)
     {
         if (node.NodeType is ExpressionType.Quote)
@@ -96,7 +89,6 @@ internal class FindIncludeVisitor : ExpressionVisitor
 
         return node;
     }
-
 
     protected override Expression VisitLambda<TFunc>(Expression<TFunc> node)
     {
@@ -108,7 +100,6 @@ internal class FindIncludeVisitor : ExpressionVisitor
 
         return node;
     }
-
 
     protected override Expression VisitMember(MemberExpression node)
     {
@@ -124,7 +115,6 @@ internal class FindIncludeVisitor : ExpressionVisitor
 
         return Expression.Constant(string.Join('.', overlapChain));
     }
-
 
     private MemberExpression? GetOriginOverlap(MemberExpression node)
     {

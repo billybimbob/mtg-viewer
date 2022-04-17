@@ -16,7 +16,6 @@ internal static class ExcessExtensions
     }
 }
 
-
 internal abstract class ExcessHandler
 {
     protected TreasuryContext TreasuryContext { get; }
@@ -37,14 +36,12 @@ internal abstract class ExcessHandler
     }
 }
 
-
 internal class ExactExcess : ExcessHandler
 {
     private ILookup<string, Storage>? _exactMatches;
 
     public ExactExcess(TreasuryContext treasuryContext) : base(treasuryContext)
     { }
-
 
     protected override IEnumerable<StorageAssignment<Hold>> GetAssignments()
     {
@@ -65,7 +62,6 @@ internal class ExactExcess : ExcessHandler
         }
     }
 
-
     private IEnumerable<StorageAssignment<Hold>> FitToStorage(Hold excess)
     {
         _exactMatches ??= AddLookup();
@@ -75,7 +71,6 @@ internal class ExactExcess : ExcessHandler
 
         return Assignment.FitToStorage(excess, excess.Copies, matches, storageSpaces);
     }
-
 
     private ILookup<string, Storage> AddLookup()
     {
@@ -92,14 +87,12 @@ internal class ExactExcess : ExcessHandler
     }
 }
 
-
 internal class ApproximateExcess : ExcessHandler
 {
     private ILookup<string, Storage>? _approxMatches;
 
     public ApproximateExcess(TreasuryContext treasuryContext) : base(treasuryContext)
     { }
-
 
     protected override IEnumerable<StorageAssignment<Hold>> GetAssignments()
     {
@@ -120,7 +113,6 @@ internal class ApproximateExcess : ExcessHandler
         }
     }
 
-
     private IEnumerable<StorageAssignment<Hold>> FitToStorage(Hold excess)
     {
         _approxMatches ??= AddLookup();
@@ -132,7 +124,6 @@ internal class ApproximateExcess : ExcessHandler
 
         return Assignment.FitToStorage(excess, excess.Copies, matches, storageSpaces);
     }
-
 
     private ILookup<string, Storage> AddLookup()
     {

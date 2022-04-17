@@ -20,12 +20,10 @@ using MTGViewer.Tests.Utils.Dto;
 
 namespace MTGViewer.Tests.Utils;
 
-
 public class CardResultOptions
 {
     public string? JsonPath { get; set; }
 }
-
 
 public class TestCardService : ICardService
 {
@@ -47,17 +45,14 @@ public class TestCardService : ICardService
         _query = _cards.AsEnumerable();
     }
 
-
     private IAsyncEnumerable<ICard>? _asyncCards;
     public IAsyncEnumerable<ICard> Cards => _asyncCards ??= GetCardsAsync();
-
 
     public void Reset()
     {
         _query = _cards.AsEnumerable();
         _page = 0;
     }
-
 
     public ICardService Where<T>(Expression<Func<CardQueryParameter, T>> predicate, T value)
         where T : notnull
@@ -89,7 +84,6 @@ public class TestCardService : ICardService
 
         return this;
     }
-
 
     private bool QueryByPredicate(ICard card, string propertyName, object? value)
     {
@@ -128,7 +122,6 @@ public class TestCardService : ICardService
         return cardString.Equals(s, ordinal);
     }
 
-
     public async Task<IOperationResult<List<ICard>>> AllAsync()
     {
         await AddCardResultsAsync(default);
@@ -145,7 +138,6 @@ public class TestCardService : ICardService
         return result;
     }
 
-
     public async Task<IOperationResult<ICard>> FindAsync(string id)
     {
         const StringComparison ordinal = StringComparison.Ordinal;
@@ -160,7 +152,6 @@ public class TestCardService : ICardService
         return card is null ? NotFound<ICard>() : Result(card);
     }
 
-
     public async Task<IOperationResult<ICard>> FindAsync(int multiverseId)
     {
         await AddCardResultsAsync(default);
@@ -171,7 +162,6 @@ public class TestCardService : ICardService
 
         return card is null ? NotFound<ICard>() : Result(card);
     }
-
 
     private async IAsyncEnumerable<ICard> GetCardsAsync([EnumeratorCancellation] CancellationToken cancel = default)
     {
@@ -184,7 +174,6 @@ public class TestCardService : ICardService
             yield return card;
         }
     }
-
 
     private async ValueTask AddCardResultsAsync(CancellationToken cancel)
     {
@@ -225,13 +214,11 @@ public class TestCardService : ICardService
         }
     }
 
-
     public Task<IOperationResult<List<string>>> GetFormatsAsync()
     {
         return Task.FromResult(
             NotImplemented<List<string>>());
     }
-
 
     public Task<IOperationResult<List<string>>> GetCardSubTypesAsync()
     {
@@ -239,20 +226,17 @@ public class TestCardService : ICardService
             NotImplemented<List<string>>());
     }
 
-
     public Task<IOperationResult<List<string>>> GetCardTypesAsync()
     {
         return Task.FromResult(
             NotImplemented<List<string>>());
     }
 
-
     public Task<IOperationResult<List<string>>> GetCardSuperTypesAsync()
     {
         return Task.FromResult(
             NotImplemented<List<string>>());
     }
-
 
     private static IOperationResult<T> NotImplemented<T>() where T : class
     {
@@ -273,7 +257,6 @@ public class TestCardService : ICardService
         return result.Object;
     }
 
-
     private static IOperationResult<T> NotFound<T>() where T : class
     {
         var result = new Mock<IOperationResult<T>>();
@@ -293,7 +276,6 @@ public class TestCardService : ICardService
         return result.Object;
     }
 
-
     private static IOperationResult<T> Result<T>(T value) where T : class
     {
         var result = new Mock<IOperationResult<T>>();
@@ -312,7 +294,6 @@ public class TestCardService : ICardService
 
         return result.Object;
     }
-
 
     private static IOperationResult<T> Result<T>(T value, int total, int pageSize)
         where T : class

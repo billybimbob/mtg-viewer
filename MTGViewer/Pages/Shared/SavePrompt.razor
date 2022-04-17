@@ -3,7 +3,7 @@
 @if (Result is SaveResult.Success)
 {
     <div class="alert alert-success d-flex align-items-center alert-dismissible fade show" role="alert">
-        <svg class="bi bi-check-circle-fill flex-shrink-0 mr-4" 
+        <svg class="bi bi-check-circle-fill flex-shrink-0 mr-4"
             viewBox="0 0 16 16"
             width="24"
             height="24"
@@ -16,10 +16,10 @@
             @SuccessMessage
         </div>
 
-        <button type="button" 
+        <button type="button"
                 title="Close Success"
                 aria-label="Close Success"
-                class="close" 
+                class="close"
                 @onclick="ClearResult">
             <span aria-hidden="true">&times;</span>
         </button>
@@ -40,16 +40,15 @@ else if (Result is SaveResult.Error)
         <div>
             @ErrorMessage
         </div>
-        <button type="button" 
+        <button type="button"
                 title="Close Error"
                 aria-label="Close Error"
-                class="close" 
+                class="close"
                 @onclick="ClearResult">
             <span aria-hidden="true">&times;</span>
         </button>
     </div>
 }
-
 
 @code
 {

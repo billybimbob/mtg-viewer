@@ -6,7 +6,6 @@ using MTGViewer.Tests.Utils;
 
 namespace MTGViewer.Tests.Services;
 
-
 public class MTGQueryTests
 {
     private readonly TestMtgApiQuery _mtgQuery;
@@ -15,7 +14,6 @@ public class MTGQueryTests
     {
         _mtgQuery = testMtgQuery;
     }
-
 
     [Fact]
     public async Task Search_NameParam_ReturnsSameName()
@@ -31,9 +29,7 @@ public class MTGQueryTests
         Assert.Contains(testCard.Name, cardNames);
     }
 
-
     private static string GetName(ICard card) => card.Name;
-
 
     [Fact]
     public async Task Search_NameParamCall_ReturnsSameName()
@@ -51,7 +47,6 @@ public class MTGQueryTests
         Assert.Contains(testCard.Name, cardNames);
     }
 
-
     [Fact]
     public async Task Search_SplitName_ReturnsWithFlip()
     {
@@ -67,8 +62,6 @@ public class MTGQueryTests
         Assert.Equal(splitCard.Name, first?.Name);
     }
 
-
-
     [Fact]
     public async Task Find_Id_ReturnsCard()
     {
@@ -80,7 +73,6 @@ public class MTGQueryTests
         Assert.Equal(testCard.Name, card!.Name);
     }
 
-
     [Fact]
     public async Task Find_NoId_ReturnsNull()
     {
@@ -88,7 +80,6 @@ public class MTGQueryTests
 
         Assert.Null(card);
     }
-
 
     [Fact]
     public async Task Find_SplitId_ReturnsWithFlip()
@@ -104,7 +95,6 @@ public class MTGQueryTests
         Assert.Equal(splitCard.MultiverseId, card!.MultiverseId);
     }
 
-
     [Fact]
     public async Task Search_PagedQuery_EqualPage()
     {
@@ -116,7 +106,6 @@ public class MTGQueryTests
 
         Assert.Equal(page, result.Offset.Current);
     }
-
 
     [Fact]
     public async Task Collection_MultipleIds_AllReturned()

@@ -13,7 +13,6 @@ using MTGViewer.Data;
 
 namespace MTGViewer.Pages.Cards;
 
-
 public class DetailsModel : PageModel
 {
     private readonly CardDbContext _dbContext;
@@ -22,7 +21,6 @@ public class DetailsModel : PageModel
     {
         _dbContext = dbContext;
     }
-
 
     public Card Card { get; private set; } = default!;
 
@@ -44,12 +42,10 @@ public class DetailsModel : PageModel
         }
     }
 
-
     public string GetCreateCardUri()
     {
         return QueryHelpers.AddQueryString("/Cards/Create", CardParameters);
     }
-
 
     public async Task<IActionResult> OnGetAsync(string id, bool flip, string? returnUrl, CancellationToken cancel)
     {
@@ -76,14 +72,12 @@ public class DetailsModel : PageModel
         return Page();
     }
 
-
     private Task<Card?> GetCardAsync(string cardId, bool flip, CancellationToken cancel)
     {
         return flip
             ? CardWithFlipAsync.Invoke(_dbContext, cardId, cancel)
             : CardWithoutFlipAsync.Invoke(_dbContext, cardId, cancel);
     }
-
 
     private static readonly Func<CardDbContext, string, CancellationToken, Task<Card?>> CardWithoutFlipAsync
 
@@ -98,7 +92,6 @@ public class DetailsModel : PageModel
                 .OrderBy(c => c.Id)
                 .AsNoTrackingWithIdentityResolution()
                 .SingleOrDefault());
-
 
     private static readonly Func<CardDbContext, string, CancellationToken, Task<Card?>> CardWithFlipAsync
 
@@ -115,7 +108,6 @@ public class DetailsModel : PageModel
                 .AsNoTrackingWithIdentityResolution()
                 .SingleOrDefault());
 
-
     private static readonly Func<CardDbContext, string, string, IAsyncEnumerable<CardLink>> CardAlternativesAsync
 
         = EF.CompileAsyncQuery((CardDbContext dbContext, string cardId, string cardName) =>
@@ -129,7 +121,6 @@ public class DetailsModel : PageModel
                     Name = c.Name,
                     SetName = c.SetName
                 }));
-
 
     private static void MergeExcessHolds(Card card)
     {

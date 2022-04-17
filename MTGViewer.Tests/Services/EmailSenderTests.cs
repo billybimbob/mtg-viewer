@@ -28,7 +28,6 @@ namespace MTGViewer.Tests.Services
             await _emailSender.SendEmailAsync(_authOptions.SenderEmail, subject, message);
         }
 
-
         [Fact(Skip = "Calls external api")]
         public async Task SendEmail_HtmlContent_Success()
         {

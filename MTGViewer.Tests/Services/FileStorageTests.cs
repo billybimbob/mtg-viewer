@@ -10,7 +10,6 @@ using MTGViewer.Tests.Utils;
 
 namespace MTGViewer.Tests.Services;
 
-
 [TestCaseOrderer("MTGViewer.Tests.Utils." + nameof(PriorityOrderer), "MTGViewer.Tests")]
 public class FileStorageTests : IClassFixture<TempFileName>, IAsyncLifetime
 {
@@ -38,7 +37,6 @@ public class FileStorageTests : IClassFixture<TempFileName>, IAsyncLifetime
 
     public Task DisposeAsync() => Task.CompletedTask;
 
-
     [Fact]
     [TestPriority(1)]
     public async Task Write_Temp_Success()
@@ -59,7 +57,6 @@ public class FileStorageTests : IClassFixture<TempFileName>, IAsyncLifetime
         Assert.True(anyAfter);
     }
 
-
     [Fact]
     [TestPriority(2)]
     public async Task Seed_Temp_Success()
@@ -73,7 +70,6 @@ public class FileStorageTests : IClassFixture<TempFileName>, IAsyncLifetime
         Assert.False(anyBefore, "Card Db should be empty");
         Assert.True(anyAfter, "Card Db should be filled");
     }
-
 
     [Fact]
     [TestPriority(2)]

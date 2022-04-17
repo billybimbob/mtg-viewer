@@ -10,7 +10,6 @@ public enum DatabaseContext
     User
 }
 
-
 public sealed class DatabaseOptions
 {
     public const string SqlServer = "SqlServer";
@@ -18,13 +17,11 @@ public sealed class DatabaseOptions
     public const string Sqlite = "Sqlite";
     public const string InMemory = "InMemory";
 
-
     public string? Provider { get; set; }
     public string? CardRedirect { get; set; }
     public string? UserRedirect { get; set; }
 
     private IConfiguration? Configuration { get; init; }
-
 
     public static DatabaseOptions Bind(IConfiguration configuration)
     {
@@ -37,7 +34,6 @@ public sealed class DatabaseOptions
 
         return options;
     }
-
 
     public string GetConnectionString(DatabaseContext context)
     {
