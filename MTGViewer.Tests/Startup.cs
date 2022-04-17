@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity.UI.Services;
+using Microsoft.AspNetCore.Mvc.Infrastructure;
 
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -38,7 +39,9 @@ public class Startup
         services
             .AddRazorPageModels()
             .AddScoped<PageContextFactory>()
-            .AddSingleton<PageSizes>();
+            .AddSingleton<IActionContextAccessor, ActionContextAccessor>()
+            .AddScoped<RouteDataAccessor>()
+            .AddScoped<PageSize>();
 
         services
             .AddTransient<ColorUpdate>()

@@ -115,7 +115,7 @@ internal sealed class TreasuryContext
         }
         else
         {
-            _transaction = new();
+            _transaction = new Transaction();
             _dbContext.Transactions.Attach(_transaction);
         }
 
@@ -167,7 +167,7 @@ internal sealed class TreasuryContext
                 _overflow.Add(box);
             }
         }
-            
+
         foreach (var hold in _dbContext.Holds.Local)
         {
             if (hold.Location is not Storage)

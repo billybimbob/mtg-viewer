@@ -10,8 +10,8 @@ namespace System.Paging.Query;
 
 internal class FindRootQuery : ExpressionVisitor
 {
-    private static FindRootQuery? _instance;
-    public static ExpressionVisitor Instance => _instance ??= new();
+    private static FindRootQuery? s_instance;
+    public static ExpressionVisitor Instance => s_instance ??= new();
 
     protected override Expression VisitMethodCall(MethodCallExpression node)
     {

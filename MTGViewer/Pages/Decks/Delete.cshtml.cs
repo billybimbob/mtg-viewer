@@ -4,11 +4,10 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.RazorPages;
-
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 
 using MTGViewer.Areas.Identity.Data;
@@ -23,16 +22,16 @@ public class DeleteModel : PageModel
 {
     private readonly UserManager<CardUser> _userManager;
     private readonly CardDbContext _dbContext;
-    private readonly int _pageSize;
+    private readonly PageSize _pageSize;
 
     public DeleteModel(
         UserManager<CardUser> userManager,
         CardDbContext dbContext,
-        PageSizes pageSizes)
+        PageSize pageSize)
     {
         _userManager = userManager;
         _dbContext = dbContext;
-        _pageSize = pageSizes.GetPageModelSize<DeleteModel>();
+        _pageSize = pageSize;
     }
 
 
@@ -61,7 +60,7 @@ public class DeleteModel : PageModel
         }
 
         var cards = await DeckCardsAsync
-            .Invoke(_dbContext, id, _pageSize)
+            .Invoke(_dbContext, id, _pageSize.Current)
             .ToListAsync(cancel);
 
         Deck = deck;

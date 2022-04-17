@@ -17,11 +17,15 @@ internal sealed class OriginTranslator<TOrigin, TEntity>
 
     public OriginTranslator(TOrigin origin, Expression<Func<TEntity, TOrigin>>? selector)
     {
+        var expressionEquality = ExpressionEqualityComparer.Instance;
+
         _origin = Expression.Constant(origin);
+
         _selector = SelectorVisitor.Instance.Visit(selector);
 
-        _translations = new(ExpressionEqualityComparer.Instance);
-        _nulls = new(ExpressionEqualityComparer.Instance);
+        _translations = new Dictionary<MemberExpression, MemberExpression>(expressionEquality);
+
+        _nulls = new Dictionary<MemberExpression, bool>(expressionEquality);
     }
 
 
@@ -387,8 +391,8 @@ internal sealed class OriginTranslator<TOrigin, TEntity>
 
     private class SelectorVisitor : ExpressionVisitor
     {
-        private static SelectorVisitor? _instance;
-        public static ExpressionVisitor Instance => _instance ??= new();
+        private static SelectorVisitor? s_instance;
+        public static ExpressionVisitor Instance => s_instance ??= new();
 
         protected override Expression VisitLambda<TFunc>(Expression<TFunc> node)
         {
@@ -416,8 +420,8 @@ internal sealed class OriginTranslator<TOrigin, TEntity>
 
     private class TernaryVisitor : ExpressionVisitor
     {
-        private static TernaryVisitor? _instance;
-        public static ExpressionVisitor Instance => _instance ??= new();
+        private static TernaryVisitor? s_instance;
+        public static ExpressionVisitor Instance => s_instance ??= new();
 
         protected override Expression VisitConditional(ConditionalExpression node)
         {

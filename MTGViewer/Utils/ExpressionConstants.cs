@@ -20,7 +20,7 @@ internal static class ExpressionConstants
 
 
     private static MethodInfo? _stringCompare;
-    public static MethodInfo StringCompare =>
+    public static MethodInfo StringCompareTo =>
         _stringCompare ??= typeof(string)
             .GetMethod(nameof(string.CompareTo), new[] { typeof(string) })!;
 

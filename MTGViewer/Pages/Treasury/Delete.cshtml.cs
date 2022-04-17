@@ -19,12 +19,12 @@ namespace MTGViewer.Pages.Treasury;
 public class DeleteModel : PageModel
 {
     private readonly CardDbContext _dbContext;
-    private readonly int _pageSize;
+    private readonly PageSize _pageSize;
 
-    public DeleteModel(CardDbContext dbContext, PageSizes pageSizes)
+    public DeleteModel(CardDbContext dbContext, PageSize pageSize)
     {
         _dbContext = dbContext;
-        _pageSize = pageSizes.GetPageModelSize<DeleteModel>();
+        _pageSize = pageSize;
     }
 
     [TempData]
@@ -35,7 +35,7 @@ public class DeleteModel : PageModel
 
     public async Task<IActionResult> OnGetAsync(int id, CancellationToken cancel)
     {
-        var box = await BoxToDeleteAsync.Invoke(_dbContext, id, _pageSize, cancel);
+        var box = await BoxToDeleteAsync.Invoke(_dbContext, id, _pageSize.Current, cancel);
 
         if (box == default)
         {

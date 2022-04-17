@@ -69,18 +69,18 @@ public class ColorUpdate : IBeforeSaveTrigger<Theorycraft>
             .ToArray();
 
         var localColors = theory.Holds
-            .Select(h => h.Card)
+            .Select(h => h.Card?.Color)
             .Concat(theory.Wants
-                .Select(w => w.Card))
+                .Select(w => w.Card?.Color))
 
-            .OfType<Card>()
-            .GroupBy(c => c.Color, (color, _) => color)
+            .Distinct()
+            .OfType<Color>()
             .ToAsyncEnumerable();
 
         theory.Color = await CardColorsAsync
             .Invoke(_dbContext, cardIds)
             .Union(localColors)
-            .AggregateAsync(Color.None, (color, card) => color | card, cancel);
+            .AggregateAsync(Color.None, (color, c) => color | c, cancel);
     }
 
 
@@ -108,7 +108,7 @@ public class ColorUpdate : IBeforeSaveTrigger<Theorycraft>
             .Select(w => w.Card.Color);
 
         return holdColors
-            .Concat(wantColors)
+            .Union(wantColors)
             .Aggregate(Color.None, (color, card) => color | card);
     }
 
@@ -171,5 +171,6 @@ public class ColorUpdate : IBeforeSaveTrigger<Theorycraft>
         = EF.CompileAsyncQuery((CardDbContext dbContext, string[] cardIds) =>
             dbContext.Cards
                 .Where(c => cardIds.Contains(c.Id))
-                .Select(c => c.Color));
+                .Select(c => c.Color)
+                .Distinct());
 }

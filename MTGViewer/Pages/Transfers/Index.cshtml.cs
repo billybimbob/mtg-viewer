@@ -6,9 +6,9 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
 using MTGViewer.Areas.Identity.Data;
@@ -21,21 +21,21 @@ namespace MTGViewer.Pages.Transfers;
 [Authorize]
 public class IndexModel : PageModel
 {
-    private readonly int _pageSize;
+    private readonly IAuthorizationService _authorizations;
     private readonly UserManager<CardUser> _userManager;
     private readonly CardDbContext _dbContext;
-    private readonly IAuthorizationService _authorizations;
+    private readonly PageSize _pageSize;
 
     public IndexModel(
-        PageSizes pageSizes,
+        IAuthorizationService authorizations,
         UserManager<CardUser> userManager,
         CardDbContext dbContext,
-        IAuthorizationService authorizations)
+        PageSize pageSize)
     {
-        _pageSize = pageSizes.GetPageModelSize<IndexModel>();
+        _authorizations = authorizations;
         _userManager = userManager;
         _dbContext = dbContext;
-        _authorizations = authorizations;
+        _pageSize = pageSize;
     }
 
 
@@ -69,11 +69,11 @@ public class IndexModel : PageModel
         TradeDecks = await TradeDeckPreviews(userId)
             .SeekBy(seek, direction)
             .OrderBy<Deck>()
-            .Take(_pageSize)
+            .Take(_pageSize.Current)
             .ToSeekListAsync(cancel);
 
         Suggestions = await SuggestionsAsync
-            .Invoke(_dbContext, userId, _pageSize)
+            .Invoke(_dbContext, userId, _pageSize.Current)
             .ToListAsync(cancel);
 
         return Page();

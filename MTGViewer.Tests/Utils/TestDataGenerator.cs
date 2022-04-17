@@ -14,7 +14,7 @@ namespace MTGViewer.Tests.Utils;
 
 public class TestDataGenerator
 {
-    private static readonly SemaphoreSlim _jsonLock = new(1, 1);
+    private static readonly SemaphoreSlim s_jsonLock = new(1, 1);
 
     private readonly CardDbContext _dbContext;
     private readonly UserDbContext _userContext;
@@ -37,13 +37,13 @@ public class TestDataGenerator
         _fileStorage = jsonStorage;
         _cardGen = cardGen;
 
-        _random = new(100);
+        _random = new Random(100);
     }
 
 
     public async Task SeedAsync()
     {
-        await _jsonLock.WaitAsync();
+        await s_jsonLock.WaitAsync();
         try
         {
             await SetupAsync();
@@ -60,7 +60,7 @@ public class TestDataGenerator
         }
         finally
         {
-            _jsonLock.Release();
+            s_jsonLock.Release();
         }
     }
 
@@ -386,7 +386,7 @@ public class TestDataGenerator
 
             var toWant = await FindWantAsync(tradeCard, to, wantCopies);
 
-            trades.Add(new()
+            trades.Add(new Trade
             {
                 Card = tradeCard,
                 To = to,
@@ -412,7 +412,7 @@ public class TestDataGenerator
 
         if (source == default)
         {
-            source = new()
+            source = new Deck
             {
                 Name = "Trade deck",
                 Owner = sourceUser
@@ -463,7 +463,7 @@ public class TestDataGenerator
 
             var toWant = await FindWantAsync(tradeCard, to, wantCopies);
 
-            trades.Add(new()
+            trades.Add(new Trade
             {
                 Card = tradeCard,
                 To = to,
@@ -486,7 +486,7 @@ public class TestDataGenerator
 
         if (hold == default)
         {
-            hold = new()
+            hold = new Hold
             {
                 Card = card,
                 Location = location
@@ -509,7 +509,7 @@ public class TestDataGenerator
 
         if (want == default)
         {
-            want = new()
+            want = new Want
             {
                 Card = card,
                 Location = target,
@@ -532,7 +532,7 @@ public class TestDataGenerator
 
         if (give == default)
         {
-            give = new()
+            give = new Giveback
             {
                 Card = card,
                 Location = target

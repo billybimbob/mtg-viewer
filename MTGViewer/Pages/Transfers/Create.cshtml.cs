@@ -6,9 +6,9 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Microsoft.AspNetCore.Identity;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -24,21 +24,20 @@ namespace MTGViewer.Pages.Transfers;
 [Authorize(CardPolicies.ChangeTreasury)]
 public class CreateModel : PageModel
 {
-    private readonly CardDbContext _dbContext;
     private readonly UserManager<CardUser> _userManager;
-    private readonly int _pageSize;
-
+    private readonly CardDbContext _dbContext;
+    private readonly PageSize _pageSize;
     private readonly ILogger<CreateModel> _logger;
 
     public CreateModel(
-        CardDbContext dbContext,
         UserManager<CardUser> userManager,
-        PageSizes pageSizes,
+        CardDbContext dbContext,
+        PageSize pageSize,
         ILogger<CreateModel> logger)
     {
-        _dbContext = dbContext;
         _userManager = userManager;
-        _pageSize = pageSizes.GetPageModelSize<CreateModel>();
+        _dbContext = dbContext;
+        _pageSize = pageSize;
         _logger = logger;
     }
 
@@ -78,7 +77,7 @@ public class CreateModel : PageModel
         // to be that high
 
         var requests = await RequestMatches(deck)
-            .PageBy(offset, _pageSize)
+            .PageBy(offset, _pageSize.Current)
             .ToOffsetListAsync(cancel);
 
         if (requests.Offset.Current > requests.Offset.Total)
@@ -92,7 +91,7 @@ public class CreateModel : PageModel
         Requests = requests;
 
         Cards = await DeckCardsAsync
-            .Invoke(_dbContext, id, _pageSize)
+            .Invoke(_dbContext, id, _pageSize.Current)
             .ToListAsync(cancel);
 
         return Page();

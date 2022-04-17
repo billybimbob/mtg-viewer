@@ -5,6 +5,7 @@
 
 @using System.IO
 @using Microsoft.Extensions.DependencyInjection
+@using Microsoft.Extensions.Logging
 @using MTGViewer.Data.Internal
 
 @inject ILogger<Import> Logger
@@ -58,7 +59,7 @@
             </div>
 
             <div class="btn-group" role="group">
-                <button title="Cancel Upload" class="btn btn-danger" type="button" 
+                <button title="Cancel Upload" class="btn btn-danger" type="button"
                     @onclick="CancelUpload" disabled="@(!IsBusy || HasNoFile || IsCancelled)">
                     Cancel
                 </button>
@@ -89,8 +90,8 @@
     internal Percent PercentProgress { get; private set; }
 
 
-    private const long _2_MB = 2_097_152;
-    
+    private const long SizeLimit = 2_097_152;
+
     private CancellationTokenSource? _cancel = new();
     private IBrowserFile? _chosenImport;
 
@@ -106,7 +107,7 @@
 
         base.Dispose(disposing);
     }
-    
+
 
     internal void FileChosen(InputFileChangeEventArgs args)
     {
@@ -127,7 +128,7 @@
 
         string content = file.ContentType;
 
-        if (content != ".json" 
+        if (content != ".json"
             && content != "application/json"
             && content != "application/vnd.ms-excel"
             && content != "text/csv")
@@ -136,7 +137,7 @@
             return;
         }
 
-        if (file.Size > _2_MB)
+        if (file.Size > SizeLimit)
         {
             FileError = "File is too large";
             return;
@@ -171,7 +172,7 @@
         {
             var fileStorage = ScopedServices.GetRequiredService<FileCardStorage>();
 
-            await using var fileStream = _chosenImport.OpenReadStream(_2_MB, token);
+            await using var fileStream = _chosenImport.OpenReadStream(SizeLimit, token);
 
             switch (Path.GetExtension(_chosenImport.Name).ToLowerInvariant())
             {
@@ -225,7 +226,7 @@
     internal void CancelUpload()
     {
         if (!IsBusy
-            || HasNoFile 
+            || HasNoFile
             || IsCancelled
             || _cancel is null)
         {
@@ -234,7 +235,7 @@
 
         _cancel.Cancel();
         _cancel.Dispose();
-        _cancel = new();
+        _cancel = new CancellationTokenSource();
 
         IsCancelled = true;
     }

@@ -16,12 +16,12 @@ namespace MTGViewer.Pages.Treasury;
 public class DetailsModel : PageModel
 {
     private readonly CardDbContext _dbContext;
-    private readonly int _pageSize;
+    private readonly PageSize _pageSize;
 
-    public DetailsModel(CardDbContext dbContext, PageSizes pageSizes)
+    public DetailsModel(CardDbContext dbContext, PageSize pageSize)
     {
         _dbContext = dbContext;
-        _pageSize = pageSizes.GetPageModelSize<DetailsModel>();
+        _pageSize = pageSize;
     }
 
 
@@ -52,7 +52,7 @@ public class DetailsModel : PageModel
         var cards = await BoxCards(box)
             .SeekBy(seek, direction)
             .OrderBy<Hold>()
-            .Take(_pageSize)
+            .Take(_pageSize.Current)
             .ToSeekListAsync(cancel);
 
         Box = box;
@@ -97,13 +97,15 @@ public class DetailsModel : PageModel
             return null;
         }
 
+        int size = _pageSize.Current;
+
         return await BoxCards(box)
             .WithSelect<Hold, QuantityPreview>()
             .Before(hold)
             .Select(c => c.Id)
 
             .AsAsyncEnumerable()
-            .Where((id, i) => i % _pageSize == _pageSize - 1)
+            .Where((id, i) => i % size == size - 1)
             .LastOrDefaultAsync(cancel);
     }
 

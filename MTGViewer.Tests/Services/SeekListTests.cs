@@ -8,7 +8,7 @@ using Xunit;
 using MTGViewer.Data;
 using MTGViewer.Tests.Utils;
 
-namespace MTGViewer.Tests;
+namespace MTGViewer.Tests.Services;
 
 public class SeekListTests : IAsyncLifetime
 {

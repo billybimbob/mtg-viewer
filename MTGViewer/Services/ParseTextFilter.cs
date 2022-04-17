@@ -79,6 +79,8 @@ public class ParseTextFilter
 
         while (match.Success)
         {
+            _logger.LogInformation("Received match {Match}", match);
+
             filter = AddFilter(filter, capture, search[index..match.Index]);
 
             capture = match.Groups[nameof(Split)].ValueSpan;
@@ -91,7 +93,7 @@ public class ParseTextFilter
     }
 
 
-    private TextFilter AddFilter(
+    private static TextFilter AddFilter(
         TextFilter filter,
         ReadOnlySpan<char> capture,
         ReadOnlySpan<char> text)

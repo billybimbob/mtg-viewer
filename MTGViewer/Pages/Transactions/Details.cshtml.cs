@@ -5,11 +5,11 @@ using System.Paging;
 using System.Threading;
 using System.Threading.Tasks;
 
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -22,22 +22,22 @@ namespace MTGViewer.Pages.Transactions;
 
 public class DetailsModel : PageModel
 {
-    private readonly int _pageSize;
-    private readonly CardDbContext _dbContext;
-
-    private readonly UserManager<CardUser> _userManager;
     private readonly IAuthorizationService _authorization;
+    private readonly UserManager<CardUser> _userManager;
+
+    private readonly CardDbContext _dbContext;
+    private readonly PageSize _pageSize;
 
     private readonly ILogger<DetailsModel> _logger;
 
     public DetailsModel(
-        PageSizes pageSizes,
-        CardDbContext dbContext,
-        UserManager<CardUser> userManager,
         IAuthorizationService authorization,
+        UserManager<CardUser> userManager,
+        CardDbContext dbContext,
+        PageSize pageSize,
         ILogger<DetailsModel> logger)
     {
-        _pageSize = pageSizes.GetPageModelSize<DetailsModel>();
+        _pageSize = pageSize;
         _dbContext = dbContext;
 
         _userManager = userManager;
@@ -88,7 +88,7 @@ public class DetailsModel : PageModel
         var changes = await ChangeDetails(transaction)
             .SeekBy(seek, direction)
             .OrderBy<Change>()
-            .Take(_pageSize)
+            .Take(_pageSize.Current)
             .ToSeekListAsync(cancel);
 
         if (!changes.Any() && seek is not null)

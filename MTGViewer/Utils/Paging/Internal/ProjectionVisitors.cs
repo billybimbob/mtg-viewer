@@ -30,9 +30,9 @@ internal static class SelectQueries
 
         var query = source.Provider.CreateQuery<TSource>(removeSelect);
 
-        return new(query, selector);
+        return new SelectResult<TSource, TResult>(query, selector);
     }
-    
+
 
     internal static SelectResult GetSelectQuery<TResult>(Type source, IQueryable<TResult> results)
     {
@@ -61,10 +61,10 @@ internal static class SelectQueries
 
 internal class FindSelect<TSource, TResult> : ExpressionVisitor
 {
-    private static FindSelect<TSource, TResult>? _instance;
+    private static FindSelect<TSource, TResult>? s_instance;
     private static MethodInfo? _selectMethod;
 
-    public static ExpressionVisitor Instance => _instance ??= new();
+    public static ExpressionVisitor Instance => s_instance ??= new();
 
 
     protected override Expression VisitMethodCall(MethodCallExpression node)
@@ -139,10 +139,10 @@ internal class FindSelect : ExpressionVisitor
 
 internal class RemoveSelect<TSource, TResult> : ExpressionVisitor
 {
-    private static RemoveSelect<TSource, TResult>? _instance;
+    private static RemoveSelect<TSource, TResult>? s_instance;
     private static MethodInfo? _selectMethod;
 
-    public static ExpressionVisitor Instance => _instance ??= new();
+    public static ExpressionVisitor Instance => s_instance ??= new();
 
 
     protected override Expression VisitMethodCall(MethodCallExpression node)

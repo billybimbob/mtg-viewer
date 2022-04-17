@@ -1,4 +1,4 @@
-@inject PageSizes PageSizes
+@inject PageSize PageSize
 
 @if (Offset.HasMultiple)
 {
@@ -12,9 +12,9 @@
             {
                 <li class="page-item @disabled">
                     <button title="To First Page"
-                        @onclick="() => ChangePageAsync(0)" 
+                        @onclick="() => ChangePageAsync(0)"
                         disabled="@IsDisabled"
-                        class="page-link"> 
+                        class="page-link">
                         1 </button>
                 </li>
 
@@ -59,9 +59,9 @@
             {
                 <li class="page-item @disabled">
                     <button title="To Last Page"
-                        @onclick="() => ChangePageAsync(Offset.Total - 1)" 
+                        @onclick="() => ChangePageAsync(Offset.Total - 1)"
                         disabled="@IsDisabled"
-                        class="page-link"> 
+                        class="page-link">
                         @Offset.Total </button>
                 </li>
             }
@@ -79,7 +79,7 @@
     public EventCallback<int> PageSelected { get; set; }
 
     [Parameter]
-    public int PageSize { get; set; }
+    public int Size { get; set; }
 
     [Parameter]
     public bool IsDisabled { get; set; }
@@ -91,7 +91,7 @@
 
     protected override void OnParametersSet()
     {
-        _pageSize = PageSize > 0 ? PageSize : PageSizes.Default;
+        _pageSize = Size > 0 ? Size : PageSize.Default;
     }
 
 

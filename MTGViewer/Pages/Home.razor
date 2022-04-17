@@ -51,7 +51,7 @@
         <div class="pt-3 d-flex justify-content-center">
             <button title="More Cards" type="button"
                 class="btn btn-secondary"
-                disabled="@IsLoading"
+                disabled="@(IsLoading || IsFullyLoaded)"
                 @onclick="LoadMoreCardsAsync">
                 @if (IsLoading)
                 {

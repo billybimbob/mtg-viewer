@@ -12,6 +12,7 @@ using Xunit;
 using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
 using MTGViewer.Pages.Decks;
+using MTGViewer.Services;
 using MTGViewer.Tests.Utils;
 
 namespace MTGViewer.Tests.Pages.Decks;
@@ -19,6 +20,7 @@ namespace MTGViewer.Tests.Pages.Decks;
 public class MulliganTests : IAsyncLifetime
 {
     private readonly IServiceProvider _services;
+
     private readonly UserManager<CardUser> _userManager;
     private readonly IUserClaimsPrincipalFactory<CardUser> _claimsFactory;
 
@@ -32,6 +34,7 @@ public class MulliganTests : IAsyncLifetime
         TestDataGenerator testGen)
     {
         _services = services;
+
         _userManager = userManager;
         _claimsFactory = claimsFactory;
 
@@ -46,6 +49,11 @@ public class MulliganTests : IAsyncLifetime
 
         _testContext.Services.AddFallbackServiceProvider(_services);
         _testContext.Services.AddScoped(_ => _userManager);
+
+        _testContext.Services.Configure<MulliganOptions>(options =>
+        {
+            options.DrawInterval = 0;
+        });
 
         await _testGen.SeedAsync();
     }
@@ -254,11 +262,12 @@ public class MulliganTests : IAsyncLifetime
 
         chooseMulligan.Change(Mulligan.MulliganType.Theorycraft);
 
-        var newHand = cut.Find("button[title=\"Get a New Hand\"]");
+        var newHand = cut.Find("button[title=\"Get a New Hand\"]:not([disabled])");
+
         var beforeImages = cut.FindAll("img");
 
         newHand.Click();
-
+        
         var afterImages = cut.FindAll("img");
 
         Assert.True(beforeImages.Count > 0);

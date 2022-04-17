@@ -17,18 +17,18 @@ public class QuantityValidateTests : IAsyncLifetime
 {
     private readonly QuantityValidate _quantityValidate;
     private readonly CardDbContext _dbContext;
-    private readonly PageSizes _pageSizes;
+    private readonly PageSize _pageSize;
     private readonly TestDataGenerator _testGen;
 
     public QuantityValidateTests(
         QuantityValidate quantityValidate,
         CardDbContext dbContext,
-        PageSizes pageSizes,
+        PageSize pageSize,
         TestDataGenerator testGen)
     {
         _quantityValidate = quantityValidate;
         _dbContext = dbContext;
-        _pageSizes = pageSizes;
+        _pageSize = pageSize;
         _testGen = testGen;
     }
 
@@ -109,7 +109,7 @@ public class QuantityValidateTests : IAsyncLifetime
     {
         var quantity = await _dbContext.Holds.FirstAsync();
 
-        quantity.Copies = _pageSizes.Limit + 3;
+        quantity.Copies = _pageSize.Limit + 3;
 
         var triggerContext = new Mock<ITriggerContext<Quantity>>();
 
@@ -123,7 +123,7 @@ public class QuantityValidateTests : IAsyncLifetime
 
         await _quantityValidate.BeforeSave(triggerContext.Object, default);
 
-        Assert.Equal(_pageSizes.Limit, quantity.Copies);
+        Assert.Equal(_pageSize.Limit, quantity.Copies);
     }
 
 

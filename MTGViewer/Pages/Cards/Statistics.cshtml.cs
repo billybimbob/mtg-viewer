@@ -101,7 +101,7 @@ public class StatisticsModel : PageModel
 
 
 
-    public static readonly string[] CardTypes = new[]
+    public static readonly string[] CardTypes =
     {
         "Artifact", "Creature", "Enchantment", "Instant", "Land", "Sorcery"
     };

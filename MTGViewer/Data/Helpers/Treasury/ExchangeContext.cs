@@ -96,7 +96,7 @@ internal class ExchangeContext
         }
         else
         {
-            group = new(hold);
+            group = new QuantityGroup(hold);
 
             _deckCards.Add(card.Id, group);
         }

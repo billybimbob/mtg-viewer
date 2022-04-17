@@ -88,7 +88,7 @@
             }
             @foreach (var card in Cards)
             {
-                <tr>
+                <tr @key="card.Id">
                     <td> <HoverCard Preview="card"/> </td>
                     <td>
                         <div class="ms-group">

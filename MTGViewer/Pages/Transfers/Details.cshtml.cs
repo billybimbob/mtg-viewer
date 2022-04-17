@@ -6,9 +6,9 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
 using MTGViewer.Areas.Identity.Data;
@@ -24,16 +24,16 @@ public class DetailsModel : PageModel
 {
     private readonly UserManager<CardUser> _userManager;
     private readonly CardDbContext _dbContext;
-    private readonly int _pageSize;
+    private readonly PageSize _pageSize;
 
     public DetailsModel(
         UserManager<CardUser> userManager,
         CardDbContext dbContext,
-        PageSizes pageSizes)
+        PageSize pageSize)
     {
         _userManager = userManager;
         _dbContext = dbContext;
-        _pageSize = pageSizes.GetPageModelSize<DetailsModel>();
+        _pageSize = pageSize;
     }
 
 
@@ -69,7 +69,7 @@ public class DetailsModel : PageModel
         }
 
         var trades = await ActiveTrades(deck)
-            .PageBy(offset, _pageSize)
+            .PageBy(offset, _pageSize.Current)
             .ToOffsetListAsync(cancel);
 
         if (trades.Offset.Current > trades.Offset.Total)
@@ -81,7 +81,7 @@ public class DetailsModel : PageModel
         Trades = trades;
 
         Cards = await DeckCardsAsync
-            .Invoke(_dbContext, deck.Id, _pageSize)
+            .Invoke(_dbContext, deck.Id, _pageSize.Current)
             .ToListAsync(cancel);
 
         return Page();

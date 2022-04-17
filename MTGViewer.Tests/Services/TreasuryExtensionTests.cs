@@ -8,7 +8,7 @@ using Xunit;
 using MTGViewer.Data;
 using MTGViewer.Tests.Utils;
 
-namespace MTGViewer.Services;
+namespace MTGViewer.Utils.Services;
 
 public class TreasuryExtensionTests : IAsyncLifetime
 {

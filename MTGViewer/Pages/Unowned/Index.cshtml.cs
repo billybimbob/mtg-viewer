@@ -18,15 +18,13 @@ namespace MTGViewer.Pages.Unowned;
 [Authorize(Policy = CardPolicies.ChangeTreasury)]
 public class IndexModel : PageModel
 {
-    private readonly int _pageSize;
     private readonly CardDbContext _dbContext;
+    private readonly PageSize _pageSize;
 
-    public IndexModel(
-        CardDbContext dbContext,
-        PageSizes pageSizes)
+    public IndexModel(CardDbContext dbContext, PageSize pageSize)
     {
-        _pageSize = pageSizes.GetPageModelSize<IndexModel>();
         _dbContext = dbContext;
+        _pageSize = pageSize;
     }
 
 
@@ -41,7 +39,7 @@ public class IndexModel : PageModel
         Unclaimed = await UnclaimedDecks()
             .SeekBy(seek, direction)
             .OrderBy<Unclaimed>()
-            .Take(_pageSize)
+            .Take(_pageSize.Current)
             .ToSeekListAsync(cancel);
 
         return Page();

@@ -71,7 +71,7 @@ else
         <button title="Get a New Hand" type="button"
             class="btn btn-danger"
             disabled="@(IsLoading || !DrawnCards.Any())"
-            @onclick="NewHand">
+            @onclick="NewHandAsync">
             New Hand
         </button>
 
@@ -94,7 +94,8 @@ else
     </div>
 
     <hr />
-    @if (!DrawnCards.Any())
+
+    @if (!IsLoading && !DrawnCards.Any())
     {
         <div class="alert alert-warning" role="alert">
             There are no cards in @DeckName for @DeckMulligan mulligans.

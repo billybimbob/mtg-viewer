@@ -56,7 +56,7 @@ public sealed partial class Collection : ComponentBase, IDisposable
     internal IDbContextFactory<CardDbContext> DbFactory { get; set; } = default!;
 
     [Inject]
-    internal PageSizes PageSizes { get; set; } = default!;
+    internal PageSize PageSize { get; set; } = default!;
 
     [Inject]
     internal NavigationManager Nav { get; set; } = default!;
@@ -464,7 +464,7 @@ public sealed partial class Collection : ComponentBase, IDisposable
 
             if (PageSize == 0)
             {
-                PageSize = parameters.PageSizes.GetComponentSize<Collection>();
+                PageSize = parameters.PageSize.Current;
             }
 
             OrderBy = parameters.Order ?? DefaultOrder;

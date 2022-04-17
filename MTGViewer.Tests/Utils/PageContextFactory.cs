@@ -21,11 +21,12 @@ namespace MTGViewer.Tests.Utils;
 
 public class PageContextFactory
 {
-    private readonly UserManager<CardUser> _userManager;
     private readonly IUserClaimsPrincipalFactory<CardUser> _claimsFactory;
+    private readonly UserManager<CardUser> _userManager;
 
     public PageContextFactory(
-        UserManager<CardUser> userManager, IUserClaimsPrincipalFactory<CardUser> claimsFactory)
+        IUserClaimsPrincipalFactory<CardUser> claimsFactory,
+        UserManager<CardUser> userManager)
     {
         _userManager = userManager;
         _claimsFactory = claimsFactory;

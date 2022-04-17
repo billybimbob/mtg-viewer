@@ -47,8 +47,8 @@ internal static class ExecuteSeek<TEntity> where TEntity : class
 
     private class GetSeekInfoVisitor : ExpressionVisitor
     {
-        private static GetSeekInfoVisitor? _instance;
-        public static ExpressionVisitor Instance => _instance ??= new();
+        private static GetSeekInfoVisitor? s_instance;
+        public static ExpressionVisitor Instance => s_instance ??= new();
 
 
         [return: NotNullIfNotNull("node")]
@@ -107,8 +107,8 @@ internal static class ExecuteSeek<TEntity> where TEntity : class
 
     private class OriginFilterVisitor : ExpressionVisitor
     {
-        private static OriginFilterVisitor? _instance;
-        public static ExpressionVisitor Instance => _instance ??= new();
+        private static OriginFilterVisitor? s_instance;
+        public static ExpressionVisitor Instance => s_instance ??= new();
 
         protected override Expression VisitUnary(UnaryExpression node)
         {
@@ -157,7 +157,7 @@ internal static class ExecuteSeek<TEntity> where TEntity : class
 
         protected override Expression VisitMethodCall(MethodCallExpression node)
         {
-            if (node.Method == ExpressionConstants.StringCompare)
+            if (node.Method == ExpressionConstants.StringCompareTo)
             {
                 return base.VisitMethodCall(node);
             }
@@ -169,8 +169,8 @@ internal static class ExecuteSeek<TEntity> where TEntity : class
 
     private class RemoveSeekOffsetVisitor : ExpressionVisitor
     {
-        private static RemoveSeekOffsetVisitor? _instance;
-        public static ExpressionVisitor Instance => _instance ??= new();
+        private static RemoveSeekOffsetVisitor? s_instance;
+        public static ExpressionVisitor Instance => s_instance ??= new();
 
 
         protected override Expression VisitMethodCall(MethodCallExpression node)
@@ -202,8 +202,8 @@ internal static class ExecuteSeek<TEntity> where TEntity : class
 
     private class ReversedLookAheadVisitor : ExpressionVisitor
     {
-        private static ReversedLookAheadVisitor? _instance;
-        public static ExpressionVisitor Instance => _instance ??= new();
+        private static ReversedLookAheadVisitor? s_instance;
+        public static ExpressionVisitor Instance => s_instance ??= new();
 
         protected override Expression VisitMethodCall(MethodCallExpression node)
         {

@@ -4,7 +4,7 @@ namespace MTGViewer.Middleware;
 
 public class ContentSecurityPolicyFilter : IAlwaysRunResultFilter
 {
-    private static readonly string Policy = string.Join(' ',
+    private static readonly string s_policy = string.Join(' ',
         "base-uri 'self';",
         "child-src 'none';",
         "default-src 'self';",
@@ -17,7 +17,7 @@ public class ContentSecurityPolicyFilter : IAlwaysRunResultFilter
 
     public void OnResultExecuting(ResultExecutingContext context)
     {
-        context.HttpContext.Response.Headers.ContentSecurityPolicy = Policy;
+        context.HttpContext.Response.Headers.ContentSecurityPolicy = s_policy;
     }
 
     public void OnResultExecuted(ResultExecutedContext context)

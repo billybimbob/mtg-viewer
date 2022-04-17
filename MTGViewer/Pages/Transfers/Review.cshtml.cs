@@ -6,9 +6,9 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Microsoft.AspNetCore.Identity;
 
 using Microsoft.EntityFrameworkCore;
 
@@ -23,18 +23,18 @@ namespace MTGViewer.Pages.Transfers;
 [Authorize(CardPolicies.ChangeTreasury)]
 public class ReviewModel : PageModel
 {
-    private readonly CardDbContext _dbContext;
     private readonly UserManager<CardUser> _userManager;
-    private readonly int _pageSize;
+    private readonly CardDbContext _dbContext;
+    private readonly PageSize _pageSize;
 
     public ReviewModel(
-        CardDbContext dbContext,
         UserManager<CardUser> userManager,
-        PageSizes pageSizes)
+        CardDbContext dbContext,
+        PageSize pageSize)
     {
-        _dbContext = dbContext;
         _userManager = userManager;
-        _pageSize = pageSizes.GetPageModelSize<ReviewModel>();
+        _dbContext = dbContext;
+        _pageSize = pageSize;
     }
 
 
@@ -70,7 +70,7 @@ public class ReviewModel : PageModel
         }
 
         var cards = await DeckCardsAsync
-            .Invoke(_dbContext, deck.Id, _pageSize)
+            .Invoke(_dbContext, deck.Id, _pageSize.Current)
             .ToListAsync(cancel);
 
         if (!cards.Any())
@@ -79,7 +79,7 @@ public class ReviewModel : PageModel
         }
 
         var trades = await ActiveTrades(deck)
-            .PageBy(offset, _pageSize)
+            .PageBy(offset, _pageSize.Current)
             .ToOffsetListAsync(cancel);
 
         if (trades.Offset.Current > trades.Offset.Total)
@@ -389,7 +389,7 @@ public class ReviewModel : PageModel
             To = toHold.Location,
 
             Copies = change,
-            Transaction = new()
+            Transaction = new Transaction()
         };
 
         _dbContext.Changes.Attach(newChange);
@@ -420,7 +420,7 @@ public class ReviewModel : PageModel
 
         if (fromWant is null)
         {
-            fromWant = new()
+            fromWant = new Want
             {
                 Card = trade.Card,
                 Location = trade.From,

@@ -21,11 +21,11 @@ public sealed class MtgApiFlipQuery
 
     public MtgApiFlipQuery(
         ICardService cardService,
-        PageSizes pageSizes,
+        PageSize pageSize,
         ILogger<MtgApiFlipQuery> logger)
     {
         _cardService = cardService;
-        _pageSize = pageSizes.Default;
+        _pageSize = pageSize.Default;
         _logger = logger;
     }
 

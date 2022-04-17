@@ -4,10 +4,10 @@ using System.Paging;
 using System.Threading;
 using System.Threading.Tasks;
 
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
-using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -20,20 +20,20 @@ namespace MTGViewer.Pages.Transactions;
 
 public class IndexModel : PageModel
 {
-    private readonly int _pageSize;
-    private readonly CardDbContext _dbContext;
     private readonly UserManager<CardUser> _userManager;
+    private readonly CardDbContext _dbContext;
+    private readonly PageSize _pageSize;
     private readonly ILogger<IndexModel> _logger;
 
     public IndexModel(
-        PageSizes pageSizes,
-        CardDbContext dbContext,
         UserManager<CardUser> userManager,
+        CardDbContext dbContext,
+        PageSize pageSize,
         ILogger<IndexModel> logger)
     {
-        _pageSize = pageSizes.GetPageModelSize<IndexModel>();
-        _dbContext = dbContext;
         _userManager = userManager;
+        _dbContext = dbContext;
+        _pageSize = pageSize;
         _logger = logger;
     }
 
@@ -68,7 +68,7 @@ public class IndexModel : PageModel
         var transactions = await TransactionIndices(id)
             .SeekBy(seek, direction)
             .OrderBy<Transaction>()
-            .Take(_pageSize)
+            .Take(_pageSize.Current)
             .ToSeekListAsync(cancel);
 
         if (!transactions.Any() && seek is not null)
@@ -153,7 +153,7 @@ public class IndexModel : PageModel
                     .OrderBy(l => l.Name)
                         .ThenBy(l => l.SetName)
 
-                    .Take(_pageSize)
+                    .Take(_pageSize.Current)
             });
     }
 

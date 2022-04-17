@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc.Infrastructure;
 
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -14,7 +15,6 @@ using MTGViewer.Middleware;
 using MTGViewer.Services;
 
 namespace MTGViewer;
-
 
 public class Startup
 {
@@ -57,8 +57,13 @@ public class Startup
                 options.MaximumReceiveMessageSize = 64 * 1_024;
             });
 
+        services
+            .AddSingleton<IActionContextAccessor, ActionContextAccessor>()
+            .AddScoped<RouteDataAccessor>()
+            .AddScoped<PageSize>();
+
         services.AddCardStorage(_config);
-        services.AddSingleton<PageSizes>();
+        services.Configure<MulliganOptions>(_config.GetSection(nameof(MulliganOptions)));
 
         services
             .AddSymbols(options => options

@@ -12,12 +12,12 @@ namespace MTGViewer.Data.Triggers;
 
 public class QuantityValidate : IBeforeSaveTrigger<Quantity>
 {
-    private readonly PageSizes _pageSizes;
+    private readonly PageSize _pageSize;
     private readonly ILogger<QuantityValidate> _logger;
 
-    public QuantityValidate(PageSizes pageSizes, ILogger<QuantityValidate> logger)
+    public QuantityValidate(PageSize pageSize, ILogger<QuantityValidate> logger)
     {
-        _pageSizes = pageSizes;
+        _pageSize = pageSize;
         _logger = logger;
     }
 
@@ -31,12 +31,12 @@ public class QuantityValidate : IBeforeSaveTrigger<Quantity>
 
         var quantity = trigContext.Entity;
 
-        if (quantity.Copies > _pageSizes.Limit)
+        if (quantity.Copies > _pageSize.Limit)
         {
             _logger.LogWarning(
                 "Quantity {Id} has Copies {Copies} amount above limit", quantity.Id, quantity.Copies);
 
-            quantity.Copies = _pageSizes.Limit;
+            quantity.Copies = _pageSize.Limit;
         }
 
         if (quantity is not Giveback giveBack)

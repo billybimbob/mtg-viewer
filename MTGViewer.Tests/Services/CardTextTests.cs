@@ -123,9 +123,9 @@ public class CardTextTests
     [Fact]
     public void SagaString_MultipleSymbols_MultipleSagas()
     {
-        var symbols = new SagaSymbol[]
+        var symbols = new[]
         {
-            new(default, "I", true), new(default, "II", false)
+            new SagaSymbol(default, "I", true), new SagaSymbol(default, "II", false)
         };
 
         var sagas = "I, II —";

@@ -287,9 +287,9 @@ internal class MtgDefaultParameter : IMtgParameter
 
 public static class CardQueryParameters
 {
-    private static Dictionary<string, IMtgParameter>? _base;
+    private static Dictionary<string, IMtgParameter>? s_base;
     internal static IReadOnlyDictionary<string, IMtgParameter> Base =>
-        _base ??= new()
+        s_base ??= new Dictionary<string, IMtgParameter>
         {
             [nameof(CardQuery.Colors)] = new MtgColorParameter(),
             [nameof(CardQuery.Rarity)] = new MtgRarityParameter(),

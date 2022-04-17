@@ -6,8 +6,8 @@ namespace MTGViewer.Services;
 
 internal class PredicateVisitor : ExpressionVisitor
 {
-    private static PredicateVisitor? _instance;
-    public static PredicateVisitor Instance => _instance ??= new();
+    private static PredicateVisitor? s_instance;
+    public static PredicateVisitor Instance => s_instance ??= new();
 
 
     private static UnaryExpression? _nullDictionary;

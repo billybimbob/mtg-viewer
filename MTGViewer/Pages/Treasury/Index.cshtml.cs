@@ -16,13 +16,13 @@ namespace MTGViewer.Pages.Treasury;
 
 public class IndexModel : PageModel
 {
-    private readonly int _pageSize;
     private readonly CardDbContext _dbContext;
+    private readonly PageSize _pageSize;
 
-    public IndexModel(PageSizes pageSizes, CardDbContext dbContext)
+    public IndexModel(CardDbContext dbContext, PageSize pageSize)
     {
-        _pageSize = pageSizes.GetPageModelSize<IndexModel>();
         _dbContext = dbContext;
+        _pageSize = pageSize;
     }
 
 
@@ -38,7 +38,7 @@ public class IndexModel : PageModel
         var boxes = await BoxesForViewing()
             .SeekBy(seek, direction)
             .OrderBy<Box>()
-            .Take(_pageSize)
+            .Take(_pageSize.Current)
             .ToSeekListAsync(cancel);
 
         Bins = boxes
@@ -82,7 +82,7 @@ public class IndexModel : PageModel
                         .ThenBy(h => h.Card.SetName)
                         .ThenBy(h => h.Copies)
 
-                    .Take(_pageSize)
+                    .Take(_pageSize.Current)
                     .Select(h => new LocationLink
                     {
                         Id = h.CardId,

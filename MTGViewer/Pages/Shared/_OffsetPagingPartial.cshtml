@@ -1,5 +1,5 @@
 @model Offset
-@inject PageSizes PageSizes
+@inject PageSize PageSize
 
 @if (Model.HasMultiple)
 {
@@ -62,7 +62,7 @@
 {
     public (int, int) GetBounds()
     {
-        int pageSize = PageSizes.Default;
+        int pageSize = PageSize.Default;
 
         if (pageSize == 0)
         {

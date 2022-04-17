@@ -43,7 +43,7 @@ public partial class Craft : OwningComponentBase
     protected PersistentComponentState ApplicationState { get; set; } = default!;
 
     [Inject]
-    protected PageSizes PageSizes { get; set; } = default!;
+    protected PageSize PageSize { get; set; } = default!;
 
     [Inject]
     protected NavigationManager Nav { get; set; } = default!;
@@ -88,7 +88,7 @@ public partial class Craft : OwningComponentBase
     {
         _persistSubscription = ApplicationState.RegisterOnPersisting(PersistCardDataAsync);
 
-        Filters.PageSize = PageSizes.GetComponentSize<Craft>();
+        Filters.PageSize = PageSize.Current;
         Filters.FilterChanged += OnFilterChange;
 
         TreasuryLoaded += Filters.OnTreasuryLoaded;
@@ -191,7 +191,7 @@ public partial class Craft : OwningComponentBase
             dbContext.Cards.AttachRange(cards);
             dbContext.Decks.Attach(deck);
 
-            _deckContext = new(deck, Filters.PageSize);
+            _deckContext = new DeckContext(deck, Filters.PageSize);
 
             _cards.UnionWith(cards);
 
@@ -211,7 +211,7 @@ public partial class Craft : OwningComponentBase
             return;
         }
 
-        _deckContext = new(deckResult, Filters.PageSize);
+        _deckContext = new DeckContext(deckResult, Filters.PageSize);
 
         _cards.UnionWith(dbContext.Cards.Local);
     }
@@ -247,7 +247,7 @@ public partial class Craft : OwningComponentBase
             return null;
         }
 
-        int limit = PageSizes.Limit;
+        int limit = PageSize.Limit;
 
         var deck = await CraftingDeckAsync.Invoke(dbContext, DeckId, userId, limit, cancel);
 
@@ -801,7 +801,7 @@ public partial class Craft : OwningComponentBase
             return;
         }
 
-        if (_deckContext.Groups.Count >= PageSizes.Limit)
+        if (_deckContext.Groups.Count >= PageSize.Limit)
         {
             Logger.LogWarning("Deck want failed since at limit");
             return;
@@ -825,7 +825,7 @@ public partial class Craft : OwningComponentBase
 
         }
 
-        if (want.Copies >= PageSizes.Limit)
+        if (want.Copies >= PageSize.Limit)
         {
             Logger.LogWarning("Deck want failed since at limit");
             return;
@@ -895,6 +895,10 @@ public partial class Craft : OwningComponentBase
         private readonly Dictionary<Quantity, int> _originalCopies;
         private readonly Dictionary<string, QuantityGroup> _groups;
 
+        private int _holdPage;
+        private int _wantPage;
+        private int _givePage;
+
         public DeckContext(Deck deck, int pageSize)
         {
             ArgumentNullException.ThrowIfNull(deck);
@@ -903,19 +907,15 @@ public partial class Craft : OwningComponentBase
                 .FromDeck(deck)
                 .ToDictionary(cg => cg.CardId);
 
-            _originalCopies = new();
+            _originalCopies = new Dictionary<Quantity, int>();
 
             Deck = deck;
-            EditContext = new(deck);
+            EditContext = new EditContext(deck);
 
             PageSize = pageSize;
             IsNewDeck = deck.Id == default;
 
             UpdateOriginals();
-
-            SetHoldPage(0);
-            SetGivePage(0);
-            SetWantPage(0);
         }
 
 
@@ -928,61 +928,48 @@ public partial class Craft : OwningComponentBase
         public bool IsNewDeck { get; private set; }
 
 
-        public Offset HoldOffset { get; private set; }
+        public IReadOnlyCollection<QuantityGroup> Groups => _groups.Values;
+
+        public Offset HoldOffset => new Offset(_holdPage, TotalHolds, PageSize);
+
+        public Offset GiveOffset => new Offset(_givePage, TotalGives, PageSize);
+
+        public Offset WantOffset => new Offset(_wantPage, TotalWants, PageSize);
+
+
+        private int TotalHolds =>
+             _groups.Values.Count(g => g.Hold is Hold);
+
+        private int TotalWants =>
+            _groups.Values.Count(w => w is { Want.Copies: > 0 });
+
+        private int TotalGives =>
+            _groups.Values.Count(g => g is { Giveback.Copies: > 0 });
+
 
         public void SetHoldPage(int value)
         {
-            if (value < 0
-                || value == HoldOffset.Current
-                || value >= HoldOffset.Total)
+            if (value >= 0 && value != _holdPage && value < TotalHolds)
             {
-                return;
+                _holdPage = value;
             }
-
-            int totalHolds = _groups.Values.Count(g =>
-                g.Hold is Hold hold
-                    && (g.Giveback is null
-                        || g.Giveback is Giveback give && give.Copies < hold.Copies));
-
-            HoldOffset = new Offset(value, totalHolds, PageSize);
         }
-
-
-        public Offset WantOffset { get; private set; }
 
         public void SetWantPage(int value)
         {
-            if (value < 0
-                || value == WantOffset.Current
-                || value >= WantOffset.Total)
+            if (value >= 0 && value != _wantPage && value < TotalWants)
             {
-                return;
+                _wantPage = value;
             }
-
-            int totalWants = _groups.Values.Count(g => g is { Want.Copies: > 0 });
-
-            WantOffset = new Offset(value, totalWants, PageSize);
         }
-
-
-        public Offset GiveOffset { get; private set; }
 
         public void SetGivePage(int value)
         {
-            if (value < 0
-                || value == GiveOffset.Current
-                || value >= GiveOffset.Total)
+            if (value >= 0 && value != _givePage && value < TotalGives)
             {
-                return;
+                _givePage = value;
             }
-
-            int totalGiveback = _groups.Values.Count(g => g is { Giveback.Copies: > 0 });
-
-            GiveOffset = new Offset(value, totalGiveback, PageSize);
         }
-
-
-        public IReadOnlyCollection<QuantityGroup> Groups => _groups.Values;
 
 
         public bool IsAdded(Quantity quantity)

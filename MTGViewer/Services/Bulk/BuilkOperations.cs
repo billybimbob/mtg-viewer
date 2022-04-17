@@ -17,7 +17,7 @@ namespace MTGViewer.Services;
 public class BulkOperations
 {
     private readonly SeedSettings _seedSettings;
-    private readonly PageSizes _pageSizes;
+    private readonly PageSize _pageSize;
     private readonly LoadingProgress _loadProgress;
 
     // might want to use dbFactory, keep eye on
@@ -28,13 +28,13 @@ public class BulkOperations
 
     public BulkOperations(
         IOptions<SeedSettings> seedOptions,
-        PageSizes pageSizes,
+        PageSize pageSize,
         LoadingProgress loadProgress,
         CardDbContext dbContext,
         IMTGQuery fetch,
         UserManager<CardUser> userManager)
     {
-        _pageSizes = pageSizes;
+        _pageSize = pageSize;
         _seedSettings = seedOptions.Value;
         _loadProgress = loadProgress;
 
@@ -169,7 +169,7 @@ public class BulkOperations
             .CollectionAsync(newMultiverseIds)
             .WithCancellation(cancel);
 
-        // existing cards will be left unmodified, so they don't 
+        // existing cards will be left unmodified, so they don't
         // need to be validated
 
         var dataCardTable = data.Cards.ToDictionary(c => c.Id);
@@ -207,7 +207,7 @@ public class BulkOperations
         CardData data,
         CancellationToken cancel)
     {
-        if (data.Cards.Count + data.CardIds.Count < _pageSizes.Limit)
+        if (data.Cards.Count + data.CardIds.Count < _pageSize.Limit)
         {
             var cardIds = data.Cards
                 .Select(c => c.Id)
@@ -332,7 +332,7 @@ public class BulkOperations
         IEnumerable<string> multiverseIds,
         CancellationToken cancel)
     {
-        if (multiverseIds.Count() < _pageSizes.Limit)
+        if (multiverseIds.Count() < _pageSize.Limit)
         {
             return _dbContext.Cards
                 .Where(c => multiverseIds.Contains(c.MultiverseId))

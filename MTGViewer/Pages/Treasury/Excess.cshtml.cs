@@ -15,13 +15,13 @@ namespace MTGViewer.Pages.Treasury;
 
 public class ExcessModel : PageModel
 {
-    private readonly int _pageSize;
     private readonly CardDbContext _dbContext;
+    private readonly PageSize _pageSize;
 
-    public ExcessModel(PageSizes pageSizes, CardDbContext dbContext)
+    public ExcessModel(CardDbContext dbContext, PageSize pageSize)
     {
-        _pageSize = pageSizes.GetPageModelSize<ExcessModel>();
         _dbContext = dbContext;
+        _pageSize = pageSize;
     }
 
 
@@ -45,7 +45,7 @@ public class ExcessModel : PageModel
         var cards = await ExcessCards()
             .SeekBy(seek, direction)
             .OrderBy<Card>()
-            .Take(_pageSize)
+            .Take(_pageSize.Current)
             .ToSeekListAsync(cancel);
 
         if (!cards.Any() && cards.Seek is { Previous: null, Next: null })
@@ -102,13 +102,15 @@ public class ExcessModel : PageModel
             return default;
         }
 
+        int size = _pageSize.Current;
+
         return await ExcessCards()
             .WithSelect<Card, LocationCopy>()
             .Before(card)
             .Select(c => c.Id)
 
             .AsAsyncEnumerable()
-            .Where((id, i) => i % _pageSize == _pageSize - 1)
+            .Where((id, i) => i % size == size - 1)
             .LastOrDefaultAsync(cancel);
     }
 

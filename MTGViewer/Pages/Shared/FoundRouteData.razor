@@ -1,0 +1,12 @@
+@inject RouteDataAccessor RouteDataAccessor
+
+@code
+{
+    [Parameter]
+    public RouteData RouteData { get; set; } = default!;
+
+    protected override void OnParametersSet()
+    {
+        RouteDataAccessor.RouteData = RouteData;
+    }
+}

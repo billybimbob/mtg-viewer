@@ -72,7 +72,7 @@
                     <label for="@BoxDto.PropertyId(b => b.Name)">
                         @Box.DisplayName(b => b.Name)
                     </label>
-                    <InputText @bind-Value="Box.Name" 
+                    <InputText @bind-Value="Box.Name"
                         id="@BoxDto.PropertyId(b => b.Name)" class="form-control" />
                 </div>
 
@@ -171,7 +171,7 @@ else
     {
         public BoxDto()
         {
-            Bin = new(this);
+            Bin = new BinDto(this);
         }
 
         public int Id { get; set; }

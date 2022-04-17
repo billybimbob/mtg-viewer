@@ -24,7 +24,7 @@ namespace MTGViewer.Pages.Cards;
 
 [Authorize]
 [Authorize(CardPolicies.ChangeTreasury)]
-public partial class Create : OwningComponentBase
+public partial class Create : ComponentBase, IDisposable
 {
     [Parameter]
     [SupplyParameterFromQuery]
@@ -83,13 +83,16 @@ public partial class Create : OwningComponentBase
     protected IDbContextFactory<CardDbContext> DbFactory { get; set; } = default!;
 
     [Inject]
+    protected IMTGQuery MtgQuery { get; set; } = default!;
+
+    [Inject]
     protected NavigationManager Nav { get; set; } = default!;
 
     [Inject]
     protected PersistentComponentState ApplicationState { get; set; } = default!;
 
     [Inject]
-    protected PageSizes PageSizes { get; set; } = default!;
+    protected PageSize PageSize { get; set; } = default!;
 
     [Inject]
     protected ILogger<Create> Logger { get; set; } = default!;
@@ -101,7 +104,7 @@ public partial class Create : OwningComponentBase
 
     internal bool IsLoading => _isBusy || !_isInteractive;
 
-    internal bool IsEmpty => Query == _empty;
+    internal bool IsEmpty => Query == s_empty;
 
 
     internal CardQuery Query { get; } = new();
@@ -115,7 +118,7 @@ public partial class Create : OwningComponentBase
 
 
     // should never change, only used for resets
-    private static readonly CardQuery _empty = new();
+    private static readonly CardQuery s_empty = new();
 
     private readonly CancellationTokenSource _cancel = new();
     private readonly List<MatchInput> _matches = new();
@@ -136,7 +139,7 @@ public partial class Create : OwningComponentBase
 
         var edit = new EditContext(Query);
 
-        _resultErrors = new(edit);
+        _resultErrors = new ValidationMessageStore(edit);
 
         edit.OnFieldChanged += ClearErrors;
 
@@ -157,7 +160,7 @@ public partial class Create : OwningComponentBase
             {
                 Logger.LogWarning("Given search parameters were invalid");
 
-                NavigateToQuery(_empty);
+                NavigateToQuery(s_empty);
                 return;
             }
 
@@ -170,7 +173,7 @@ public partial class Create : OwningComponentBase
                     : $"{Nav.BaseUri}{ReturnUrl.TrimStart('/')}";
             }
 
-            if (Query == _empty)
+            if (Query == s_empty)
             {
                 IsFromForm = true;
                 return;
@@ -204,22 +207,17 @@ public partial class Create : OwningComponentBase
     }
 
 
-    protected override void Dispose(bool disposing)
+    void IDisposable.Dispose()
     {
-        if (disposing)
+        _persistSubscription.Dispose();
+
+        if (SearchEdit is EditContext edit)
         {
-            _persistSubscription.Dispose();
-
-            if (SearchEdit is EditContext edit)
-            {
-                edit.OnFieldChanged -= ClearErrors;
-            }
-
-            _cancel.Cancel();
-            _cancel.Dispose();
+            edit.OnFieldChanged -= ClearErrors;
         }
 
-        base.Dispose(disposing);
+        _cancel.Cancel();
+        _cancel.Dispose();
     }
 
 
@@ -266,7 +264,7 @@ public partial class Create : OwningComponentBase
             return;
         }
 
-        int limit = PageSizes.Limit;
+        int limit = PageSize.Limit;
 
         var matches = cards
             .Select(c => new MatchInput(c, inDbCards.Contains(c.Id), limit));
@@ -351,7 +349,7 @@ public partial class Create : OwningComponentBase
 
         return SearchEdit.Validate();
     }
-        
+
 
     private static Color ValidatedColor(int value)
     {
@@ -408,7 +406,7 @@ public partial class Create : OwningComponentBase
 
         Result = SaveResult.None;
 
-        NavigateToQuery(_empty);
+        NavigateToQuery(s_empty);
     }
 
 
@@ -459,9 +457,7 @@ public partial class Create : OwningComponentBase
 
     private async Task SearchForCardAsync(CancellationToken cancel)
     {
-        var mtgQuery = ScopedServices.GetRequiredService<IMTGQuery>();
-
-        var result = await ApplyQuery(mtgQuery).SearchAsync(cancel);
+        var result = await SearchQueryAsync(cancel);
 
         _matchPage = result.Offset;
 
@@ -474,13 +470,13 @@ public partial class Create : OwningComponentBase
     }
 
 
-    private IMTGCardSearch ApplyQuery(IMTGQuery search)
+    private async Task<OffsetList<Card>> SearchQueryAsync(CancellationToken cancel)
     {
         var types = Query.Type?.Split() ?? Enumerable.Empty<string>();
 
         int page = _matchPage == default ? 0 : _matchPage.Current + 1;
 
-        return search
+        return await MtgQuery
             .Where(c => c.Name == Query.Name)
             .Where(c => c.SetName == Query.SetName)
 
@@ -497,7 +493,9 @@ public partial class Create : OwningComponentBase
             .Where(c => c.Text!.Contains(Query.Text ?? string.Empty))
             .Where(c => c.Flavor!.Contains(Query.Flavor ?? string.Empty))
             .Where(c => c.Artist == Query.Artist)
-            .Where(c => c.Page == page);
+            .Where(c => c.Page == page)
+
+            .SearchAsync(cancel);
     }
 
 
@@ -521,7 +519,7 @@ public partial class Create : OwningComponentBase
             .AsAsyncEnumerable()
             .ToHashSetAsync(cancel);
 
-        int limit = PageSizes.Limit;
+        int limit = PageSize.Limit;
 
         var newMatches = cards
             .Select(c => new MatchInput(c, existingIds.Contains(c.Id), limit));
@@ -562,7 +560,7 @@ public partial class Create : OwningComponentBase
         }
 
         var addedCopies = _matches
-            .Where(m => m.Copies > 0 && m.Copies <= PageSizes.Limit)
+            .Where(m => m.Copies > 0 && m.Copies <= PageSize.Limit)
             .Select(m => new CardRequest(m.Card, m.Copies))
             .ToList();
 
@@ -581,7 +579,7 @@ public partial class Create : OwningComponentBase
 
             await using var dbContext = await DbFactory.CreateDbContextAsync(token);
 
-            await AddNewCardsAsync(dbContext, addedCopies, PageSizes.Limit, token);
+            await AddNewCardsAsync(dbContext, addedCopies, PageSize.Limit, token);
 
             await dbContext.AddCardsAsync(addedCopies, token);
 
@@ -595,7 +593,7 @@ public partial class Create : OwningComponentBase
             }
             else
             {
-                NavigateToQuery(_empty);
+                NavigateToQuery(s_empty);
             }
         }
         catch (DbUpdateException e)

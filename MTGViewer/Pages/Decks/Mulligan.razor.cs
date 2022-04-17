@@ -15,6 +15,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.ObjectPool;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
@@ -43,7 +44,10 @@ public partial class Mulligan : OwningComponentBase
     protected NavigationManager Nav { get; set; } = default!;
 
     [Inject]
-    protected PageSizes PageSizes { get; set; } = default!;
+    protected PageSize PageSize { get; set; } = default!;
+
+    [Inject]
+    protected IOptions<MulliganOptions> Options { get; set; } = default!;
 
     [Inject]
     protected ILogger<Mulligan> Logger { get; set; } = default!;
@@ -67,13 +71,11 @@ public partial class Mulligan : OwningComponentBase
             {
                 _mulliganType = value;
 
-                DrawStartingHand();
+                _ = NewHandAsync();
             }
         }
     }
 
-
-    private const int StartingHand = 7;
 
     private readonly CancellationTokenSource _cancel = new();
 
@@ -229,7 +231,7 @@ public partial class Mulligan : OwningComponentBase
             .SingleOrDefaultAsync(cancel);
 
         _cards = await DeckCardsAsync
-            .Invoke(dbContext, DeckId, PageSizes.Limit)
+            .Invoke(dbContext, DeckId, PageSize.Limit)
             .ToListAsync(cancel);
     }
 
@@ -273,29 +275,45 @@ public partial class Mulligan : OwningComponentBase
 
 
 
-    private void DrawStartingHand()
+    internal async Task NewHandAsync()
     {
-        _shuffledDeck?.Dispose();
-
-        _drawnCards.Clear();
-        _loadedImages.Clear();
-
-        if (_mulliganType is MulliganType.None)
+        if (_isBusy || !_isInteractive)
         {
-            _shuffledDeck = null;
             return;
         }
 
-        _shuffledDeck = new DrawSimulation(_cards, _mulliganType);
+        _isBusy = true;
 
-        int requiredCards = StartingHand;
-
-        while (requiredCards > 0 && _shuffledDeck.CanDraw)
+        try
         {
-            _drawnCards.Add(
-                _shuffledDeck.DrawCard());
+            _shuffledDeck?.Dispose();
+            _drawnCards.Clear();
 
-            requiredCards -= 1;
+            if (_mulliganType is MulliganType.None)
+            {
+                _shuffledDeck = null;
+                return;
+            }
+
+            _shuffledDeck = new DrawSimulation(_cards, _mulliganType);
+
+            int requiredCards = Options.Value.HandSize;
+
+            while (requiredCards > 0 && _shuffledDeck.CanDraw)
+            {
+                await Task.Delay(Options.Value.DrawInterval, _cancel.Token);
+
+                _drawnCards.Add(
+                    _shuffledDeck.DrawCard());
+
+                requiredCards -= 1;
+
+                StateHasChanged();
+            }
+        }
+        finally
+        {
+            _isBusy = false;
         }
     }
 
@@ -308,17 +326,6 @@ public partial class Mulligan : OwningComponentBase
         {
             _drawnCards.Add(
                 _shuffledDeck.DrawCard());
-        }
-    }
-
-
-    internal void NewHand()
-    {
-        if (!_isBusy
-            && _isInteractive
-            && _drawnCards is { Count: > 0 })
-        {
-            DrawStartingHand();
         }
     }
 
@@ -344,7 +351,7 @@ public partial class Mulligan : OwningComponentBase
             public int Copies { get; set; }
         }
 
-        private static readonly ObjectPool<CardCopy> _cardPool
+        private static readonly ObjectPool<CardCopy> s_cardPool
             = new DefaultObjectPool<CardCopy>(
                 new DefaultPooledObjectPolicy<CardCopy>());
 
@@ -359,7 +366,7 @@ public partial class Mulligan : OwningComponentBase
             _cardOptions = deck
                 .Select(d =>
                 {
-                    var copy = _cardPool.Get();
+                    var copy = s_cardPool.Get();
                     copy.Card = d;
                     copy.Copies = GetCopies(d, mulliganType);
 
@@ -398,7 +405,7 @@ public partial class Mulligan : OwningComponentBase
         {
             foreach (var option in _cardOptions)
             {
-                _cardPool.Return(option);
+                s_cardPool.Return(option);
             }
 
             _cardOptions.Clear();

@@ -22,22 +22,20 @@ namespace MTGViewer.Pages.Unowned;
 [Authorize(Policy = CardPolicies.ChangeTreasury)]
 public class DetailsModel : PageModel
 {
-    private readonly CardDbContext _dbContext;
     private readonly UserManager<CardUser> _userManager;
-    private readonly int _pageSize;
-
+    private readonly CardDbContext _dbContext;
+    private readonly PageSize _pageSize;
     private readonly ILogger<DetailsModel> _logger;
 
     public DetailsModel(
-        CardDbContext dbContext,
         UserManager<CardUser> userManager,
-        PageSizes pageSizes,
+        CardDbContext dbContext,
+        PageSize pageSize,
         ILogger<DetailsModel> logger)
     {
-        _dbContext = dbContext;
         _userManager = userManager;
-        _pageSize = pageSizes.GetPageModelSize<DetailsModel>();
-
+        _dbContext = dbContext;
+        _pageSize = pageSize;
         _logger = logger;
     }
 
@@ -67,7 +65,7 @@ public class DetailsModel : PageModel
         Cards = await UnclaimedCards(unclaimed)
             .SeekBy(seek, direction)
             .OrderBy<Card>()
-            .Take(_pageSize)
+            .Take(_pageSize.Current)
             .ToSeekListAsync(cancel);
 
         return Page();

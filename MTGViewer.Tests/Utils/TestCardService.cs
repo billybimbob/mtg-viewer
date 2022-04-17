@@ -29,9 +29,7 @@ public class CardResultOptions
 
 public class TestCardService : ICardService
 {
-    private const StringComparison Ordinal = StringComparison.Ordinal;
-
-    private static readonly SemaphoreSlim _lock = new(1, 1);
+    private static readonly SemaphoreSlim s_lock = new(1, 1);
 
     private readonly List<ICard> _cards;
     private readonly CardResultOptions _options;
@@ -44,7 +42,7 @@ public class TestCardService : ICardService
 
     public TestCardService(IOptions<CardResultOptions> cardOptions)
     {
-        _cards = new();
+        _cards = new List<ICard>();
         _options = cardOptions.Value;
         _query = _cards.AsEnumerable();
     }
@@ -109,12 +107,14 @@ public class TestCardService : ICardService
             return cardValue == value;
         }
 
+        const StringComparison ordinal = StringComparison.Ordinal;
+
         var andValues = s.Split(MtgApiQuery.And);
 
         if (andValues.Length > 1)
         {
             return andValues
-                .Aggregate(false, (b, v) => b && cardString.Equals(v, Ordinal));
+                .Aggregate(false, (b, v) => b && cardString.Equals(v, ordinal));
         }
 
         var orValues = s.Split(MtgApiQuery.Or);
@@ -122,10 +122,10 @@ public class TestCardService : ICardService
         if (orValues.Length > 1)
         {
             return orValues
-                .Aggregate(false, (b, v) => b || cardString.Equals(v, Ordinal));
+                .Aggregate(false, (b, v) => b || cardString.Equals(v, ordinal));
         }
 
-        return cardString.Equals(s, Ordinal);
+        return cardString.Equals(s, ordinal);
     }
 
 
@@ -148,12 +148,14 @@ public class TestCardService : ICardService
 
     public async Task<IOperationResult<ICard>> FindAsync(string id)
     {
+        const StringComparison ordinal = StringComparison.Ordinal;
+
         await AddCardResultsAsync(default);
 
         var card = _cards
             .FirstOrDefault(c =>
-                string.Equals(c.Id, id, Ordinal)
-                    || string.Equals(c.MultiverseId, id, Ordinal));
+                string.Equals(c.Id, id, ordinal)
+                    || string.Equals(c.MultiverseId, id, ordinal));
 
         return card is null ? NotFound<ICard>() : Result(card);
     }
@@ -165,7 +167,7 @@ public class TestCardService : ICardService
 
         var card = _cards
             .FirstOrDefault(c => string
-                .Equals(c.MultiverseId, multiverseId.ToString(), Ordinal));
+                .Equals(c.MultiverseId, multiverseId.ToString(), StringComparison.Ordinal));
 
         return card is null ? NotFound<ICard>() : Result(card);
     }
@@ -191,7 +193,7 @@ public class TestCardService : ICardService
             return;
         }
 
-        await _lock.WaitAsync(cancel);
+        await s_lock.WaitAsync(cancel);
 
         try
         {
@@ -219,7 +221,7 @@ public class TestCardService : ICardService
         }
         finally
         {
-            _lock.Release();
+            s_lock.Release();
         }
     }
 

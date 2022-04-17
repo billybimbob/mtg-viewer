@@ -164,7 +164,7 @@ internal sealed class OriginFilter<TOrigin, TEntity>
                 continue;
             }
 
-            // a null is only used as a sort property if there are also 
+            // a null is only used as a sort property if there are also
             // non null orderings specified
 
             // null check ordering by itself it not unique enough
@@ -246,7 +246,7 @@ internal sealed class OriginFilter<TOrigin, TEntity>
 
             (MemberExpression o, _) when o.Type == typeof(string) =>
                 Expression.GreaterThan(
-                    Expression.Call(parameter, ExpressionConstants.StringCompare, o),
+                    Expression.Call(parameter, ExpressionConstants.StringCompareTo, o),
                     ExpressionConstants.Zero),
 
             (null, NullOrder.Before) =>
@@ -273,7 +273,7 @@ internal sealed class OriginFilter<TOrigin, TEntity>
 
             (MemberExpression o, _) when o.Type == typeof(string) =>
                 Expression.LessThan(
-                    Expression.Call(parameter, ExpressionConstants.StringCompare, o),
+                    Expression.Call(parameter, ExpressionConstants.StringCompareTo, o),
                     ExpressionConstants.Zero),
 
             (null, NullOrder.After) =>
@@ -343,8 +343,8 @@ internal sealed class OriginFilter<TOrigin, TEntity>
 
     private class OrderByVisitor : ExpressionVisitor
     {
-        private static OrderByVisitor? _instance;
-        public static ExpressionVisitor Instance => _instance ??= new();
+        private static OrderByVisitor? s_instance;
+        public static ExpressionVisitor Instance => s_instance ??= new();
 
         protected override Expression VisitMethodCall(MethodCallExpression node)
         {

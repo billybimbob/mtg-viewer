@@ -23,7 +23,7 @@ public sealed partial class Home : ComponentBase, IDisposable
     internal PersistentComponentState ApplicationState { get; set; } = default!;
 
     [Inject]
-    internal PageSizes PageSizes { get; set; } = default!;
+    internal PageSize PageSize { get; set; } = default!;
 
     [Inject]
     internal ILogger<Home> Logger { get; set; } = default!;
@@ -70,7 +70,7 @@ public sealed partial class Home : ComponentBase, IDisposable
 
             var cachedChanges = GetValueOrDefault<RecentTransaction[]>(nameof(_recentChanges));
 
-            int limit = PageSizes.GetComponentSize<Home>();
+            int limit = PageSize.Current;
             var token = _cancel.Token;
 
             await using var dbContext = await DbFactory.CreateDbContextAsync(token);
@@ -230,11 +230,11 @@ public sealed partial class Home : ComponentBase, IDisposable
             _cards = cards;
 
             _limit = Order.Sum(chunk => chunk.Length);
-            _imageLoaded = new();
+            _imageLoaded = new HashSet<string>();
         }
 
         private RandomCardsContext(IReadOnlyList<string[]> loadOrder)
-            : this(loadOrder, new())
+            : this(loadOrder, new List<CardImage>())
         { }
 
 

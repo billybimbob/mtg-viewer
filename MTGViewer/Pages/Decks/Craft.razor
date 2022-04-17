@@ -119,7 +119,8 @@ else
                 {
                     int wantTotal = card.Wants.Sum(w => w.Copies);
 
-                    <button type="button" title="Add @card.Name"
+                    <button @key="card.Id"
+                        type="button" title="Add @card.Name"
                         class="list-group-item list-group-item-action px-2"
                         @onclick="() => AddCardToDeck(card)">
 

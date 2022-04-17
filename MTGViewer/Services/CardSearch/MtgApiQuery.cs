@@ -43,12 +43,12 @@ public sealed class MtgApiQuery : IMTGQuery
     public MtgApiQuery(
         ICardService cardService,
         MtgApiFlipQuery flipQuery,
-        PageSizes pageSizes,
+        PageSize pageSize,
         LoadingProgress loadProgress)
     {
         _cardService = cardService;
         _flipQuery = flipQuery;
-        _pageSize = pageSizes.Default;
+        _pageSize = pageSize.Default;
         _loadProgress = loadProgress;
     }
 

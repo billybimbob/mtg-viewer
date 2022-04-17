@@ -5,11 +5,11 @@ using System.Paging;
 using System.Threading;
 using System.Threading.Tasks;
 
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -24,20 +24,20 @@ namespace MTGViewer.Pages.Decks;
 [Authorize(CardPolicies.ChangeTreasury)]
 public class ExchangeModel : PageModel
 {
-    private readonly CardDbContext _dbContext;
     private readonly UserManager<CardUser> _userManager;
-    private readonly int _pageSize;
+    private readonly CardDbContext _dbContext;
+    private readonly PageSize _pageSize;
     private readonly ILogger<ExchangeModel> _logger;
 
     public ExchangeModel(
-        CardDbContext dbContext,
         UserManager<CardUser> userManager,
-        PageSizes pageSizes,
+        CardDbContext dbContext,
+        PageSize pageSize,
         ILogger<ExchangeModel> logger)
     {
-        _dbContext = dbContext;
         _userManager = userManager;
-        _pageSize = pageSizes.GetPageModelSize<ExchangeModel>();
+        _dbContext = dbContext;
+        _pageSize = pageSize;
         _logger = logger;
     }
 
@@ -59,7 +59,7 @@ public class ExchangeModel : PageModel
         }
 
         var deck = await ExchangePreviewAsync
-            .Invoke(_dbContext, id, userId, _pageSize, cancel);
+            .Invoke(_dbContext, id, userId, _pageSize.Current, cancel);
 
         if (deck == default)
         {
@@ -74,7 +74,7 @@ public class ExchangeModel : PageModel
         }
 
         var matches = await WantTargets(deck)
-            .PageBy(offset, _pageSize)
+            .PageBy(offset, _pageSize.Current)
             .ToOffsetListAsync(cancel);
 
         if (matches.Offset.Current > matches.Offset.Total)

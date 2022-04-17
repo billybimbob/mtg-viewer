@@ -52,7 +52,7 @@ internal class InsertTakeVisitor<TEntity> : ExpressionVisitor
             return node;
         }
 
-        _reverseTake ??= new(_count);
+        _reverseTake ??= new InsertReverseTakeVisitor(_count);
 
         if (_reverseTake.Visit(node) is MethodCallExpression inserted)
         {
@@ -127,8 +127,8 @@ internal class InsertTakeVisitor<TEntity> : ExpressionVisitor
 
     private class FindSecondReverseVisitor : ExpressionVisitor
     {
-        private static FindSecondReverseVisitor? _instance;
-        public static ExpressionVisitor Instance => _instance ??= new();
+        private static FindSecondReverseVisitor? s_instance;
+        public static ExpressionVisitor Instance => s_instance ??= new();
 
         protected override Expression VisitMethodCall(MethodCallExpression node)
         {

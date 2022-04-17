@@ -15,8 +15,8 @@ internal class FindByIdVisitor : ExpressionVisitor
 
     public FindByIdVisitor(IReadOnlyEntityType? entity = null)
     {
-        _findInclude = entity is null ? null : new(entity);
-        _include = new();
+        _findInclude = entity is null ? null : new FindIncludeVisitor(entity);
+        _include = new HashSet<string>();
     }
 
 

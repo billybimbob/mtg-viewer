@@ -43,7 +43,7 @@ public partial class Suggest : OwningComponentBase
     protected NavigationManager Nav { get; set; } = default!;
 
     [Inject]
-    protected PageSizes PageSizes { get; set; } = default!;
+    protected PageSize PageSize { get; set; } = default!;
 
     [Inject]
     protected PersistentComponentState ApplicationState { get; set; } = default!;
@@ -80,7 +80,7 @@ public partial class Suggest : OwningComponentBase
 
         _cursor = new DeckCursor
         {
-            PageSize = PageSizes.GetComponentSize<Suggest>()
+            PageSize = PageSize.Current
         };
 
         Suggestion.ReceiverChanged += OnReceiverChange;

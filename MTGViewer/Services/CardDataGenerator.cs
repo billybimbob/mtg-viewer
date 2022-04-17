@@ -110,7 +110,7 @@ public class CardDataGenerator
     }
 
 
-    private Bin GetBin() => new()
+    private Bin GetBin() => new Bin
     {
         // just use same bin for now
         Name = "Bin #1",

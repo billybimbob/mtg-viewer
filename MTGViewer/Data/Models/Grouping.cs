@@ -10,7 +10,7 @@ public class HoldNameGroup : IEnumerable<Hold>
 {
     public HoldNameGroup(IEnumerable<Hold> holds)
     {
-        _holds = new(holds);
+        _holds = new LinkedList<Hold>(holds);
 
         if (!_holds.Any())
         {
@@ -84,7 +84,7 @@ public class WantNameGroup : IEnumerable<Want>
 {
     public WantNameGroup(IEnumerable<Want> wants)
     {
-        _wants = new(wants);
+        _wants = new LinkedList<Want>(wants);
 
         if (!_wants.Any())
         {
@@ -151,7 +151,7 @@ public class WantNameGroup : IEnumerable<Want>
 
 
 /// <summary>
-/// Group of quantities (hold, want, and give back) with the same deck and 
+/// Group of quantities (hold, want, and give back) with the same deck and
 /// exact same card
 /// </summary>
 public class QuantityGroup : IEnumerable<Quantity>

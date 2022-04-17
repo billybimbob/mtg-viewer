@@ -4,11 +4,10 @@ using System.Paging;
 using System.Threading;
 using System.Threading.Tasks;
 
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.RazorPages;
-
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 
 using MTGViewer.Areas.Identity.Data;
@@ -23,14 +22,16 @@ public class IndexModel : PageModel
 {
     private readonly UserManager<CardUser> _userManager;
     private readonly CardDbContext _dbContext;
-    private readonly int _pageSize;
+    private readonly PageSize _pageSize;
 
     public IndexModel(
-        UserManager<CardUser> userManager, CardDbContext dbContext, PageSizes pageSizes)
+        UserManager<CardUser> userManager,
+        CardDbContext dbContext,
+        PageSize pageSize)
     {
         _userManager = userManager;
         _dbContext = dbContext;
-        _pageSize = pageSizes.GetPageModelSize<IndexModel>();
+        _pageSize = pageSize;
     }
 
 
@@ -64,7 +65,7 @@ public class IndexModel : PageModel
         var decks = await DeckPreviews(userId)
             .SeekBy(seek, direction)
             .OrderBy<Deck>()
-            .Take(_pageSize)
+            .Take(_pageSize.Current)
             .ToSeekListAsync(cancel);
 
         UserName = userName;

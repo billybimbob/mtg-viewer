@@ -24,13 +24,13 @@ public class TestMtgApiQuery : IMTGQuery
 
     public TestMtgApiQuery(
         TestCardService testCards,
-        PageSizes pageSizes,
+        PageSize pageSize,
         LoadingProgress loadingProgress,
         ILogger<MtgApiFlipQuery> logger)
     {
         _testCards = testCards;
-        _flipQuery = new MtgApiFlipQuery(testCards, pageSizes, logger);
-        _mtgQuery = new MtgApiQuery(testCards, _flipQuery, pageSizes, loadingProgress);
+        _flipQuery = new MtgApiFlipQuery(testCards, pageSize, logger);
+        _mtgQuery = new MtgApiQuery(testCards, _flipQuery, pageSize, loadingProgress);
     }
 
 
