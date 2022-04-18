@@ -29,7 +29,7 @@ public class EmailSender : IEmailSender
     private readonly AuthMessageSenderOptions _options;
     private readonly ILogger<EmailSender> _logger;
 
-    public async Task SendEmailAsync(string email, string subject, string message)
+    public async Task SendEmailAsync(string email, string subject, string htmlMessage)
     {
         var client = new SendGridClient(_options.SendGridKey);
 
@@ -37,8 +37,8 @@ public class EmailSender : IEmailSender
         {
             From = new EmailAddress(_options.SenderEmail, _options.SenderName),
             Subject = subject,
-            PlainTextContent = message,
-            HtmlContent = message
+            PlainTextContent = htmlMessage,
+            HtmlContent = htmlMessage
         };
 
         // issue where if the to and From are the same, the email is not sent

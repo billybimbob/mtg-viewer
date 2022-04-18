@@ -7,14 +7,14 @@ namespace MTGViewer.Data.Triggers;
 
 public class TradeValidate : IBeforeSaveTrigger<Trade>
 {
-    public Task BeforeSave(ITriggerContext<Trade> trigContext, CancellationToken cancel)
+    public Task BeforeSave(ITriggerContext<Trade> context, CancellationToken cancellationToken)
     {
-        if (trigContext.ChangeType is ChangeType.Deleted)
+        if (context.ChangeType is ChangeType.Deleted)
         {
             return Task.CompletedTask;
         }
 
-        var trade = trigContext.Entity;
+        var trade = context.Entity;
 
         if (trade.ToId == trade.FromId && trade.To == trade.From)
         {

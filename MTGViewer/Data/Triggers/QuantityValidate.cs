@@ -21,14 +21,14 @@ public class QuantityValidate : IBeforeSaveTrigger<Quantity>
         _logger = logger;
     }
 
-    public Task BeforeSave(ITriggerContext<Quantity> trigContext, CancellationToken cancel)
+    public Task BeforeSave(ITriggerContext<Quantity> context, CancellationToken cancellationToken)
     {
-        if (trigContext.ChangeType is ChangeType.Deleted)
+        if (context.ChangeType is ChangeType.Deleted)
         {
             return Task.CompletedTask;
         }
 
-        var quantity = trigContext.Entity;
+        var quantity = context.Entity;
 
         if (quantity.Copies > _pageSize.Limit)
         {

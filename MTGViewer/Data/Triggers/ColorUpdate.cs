@@ -21,18 +21,18 @@ public class ColorUpdate : IBeforeSaveTrigger<Theorycraft>
         _logger = logger;
     }
 
-    public async Task BeforeSave(ITriggerContext<Theorycraft> trigContext, CancellationToken cancel)
+    public async Task BeforeSave(ITriggerContext<Theorycraft> context, CancellationToken cancellationToken)
     {
-        if (trigContext.ChangeType is ChangeType.Deleted)
+        if (context.ChangeType is ChangeType.Deleted)
         {
             return;
         }
 
-        var theory = trigContext.Entity;
+        var theory = context.Entity;
 
-        if (trigContext.ChangeType is ChangeType.Added)
+        if (context.ChangeType is ChangeType.Added)
         {
-            await SetAddedColorAsync(theory, cancel);
+            await SetAddedColorAsync(theory, cancellationToken);
             return;
         }
 
@@ -45,8 +45,8 @@ public class ColorUpdate : IBeforeSaveTrigger<Theorycraft>
         _logger.LogWarning("Theorycraft {TheoryId} not fully loaded", theory.Id);
 
         var deckColors
-            = await DeckColorsAsync.Invoke(_dbContext, theory.Id, cancel)
-            ?? await UnclaimedColorsAsync.Invoke(_dbContext, theory.Id, cancel);
+            = await DeckColorsAsync.Invoke(_dbContext, theory.Id, cancellationToken)
+            ?? await UnclaimedColorsAsync.Invoke(_dbContext, theory.Id, cancellationToken);
 
         theory.Color = GetColor(deckColors, theory);
     }

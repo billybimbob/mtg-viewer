@@ -65,6 +65,6 @@ public class SeekList<T> : IReadOnlyList<T>
 
     public IEnumerator<T> GetEnumerator() => _items.GetEnumerator();
 
-    private static SeekList<T>? s_empty;
-    public static SeekList<T> Empty => s_empty ??= new(default, Array.Empty<T>());
+    private static SeekList<T>? _empty;
+    public static SeekList<T> Empty => _empty ??= new(default, Array.Empty<T>());
 }

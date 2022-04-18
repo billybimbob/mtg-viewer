@@ -96,12 +96,12 @@ public sealed record RecentTransaction
     public IEnumerable<RecentChange> Changes { get; init; } = Enumerable.Empty<RecentChange>();
     public int Copies { get; init; }
 
-    public bool Equals(RecentTransaction? transfer)
+    public bool Equals(RecentTransaction? other)
     {
-        return transfer is not null
-            && transfer.AppliedAt == AppliedAt
-            && transfer.Copies == Copies
-            && transfer.Changes.SequenceEqual(Changes);
+        return other is not null
+            && other.AppliedAt == AppliedAt
+            && other.Copies == Copies
+            && other.Changes.SequenceEqual(Changes);
     }
 
     public override int GetHashCode()
@@ -137,13 +137,13 @@ public sealed record TransactionPreview
             ^ Cards.Aggregate(0, (hash, c) => hash ^ c.GetHashCode());
     }
 
-    public bool Equals(TransactionPreview? transaction)
+    public bool Equals(TransactionPreview? other)
     {
-        return transaction is not null
-            && transaction.Id == Id
-            && transaction.AppliedAt == AppliedAt
-            && transaction.Copies == Copies
-            && transaction.Cards.SequenceEqual(Cards);
+        return other is not null
+            && other.Id == Id
+            && other.AppliedAt == AppliedAt
+            && other.Copies == Copies
+            && other.Cards.SequenceEqual(Cards);
     }
 }
 
@@ -189,12 +189,12 @@ public sealed record Move
             ^ Changes.Aggregate(0, (hash, c) => hash ^ c.GetHashCode());
     }
 
-    public bool Equals(Move? transfer)
+    public bool Equals(Move? other)
     {
-        return transfer is not null
-            && transfer.To == To
-            && transfer.From == From
-            && transfer.Changes.SequenceEqual(Changes);
+        return other is not null
+            && other.To == To
+            && other.From == From
+            && other.Changes.SequenceEqual(Changes);
     }
 }
 
@@ -313,12 +313,12 @@ public sealed record ExchangePreview
     public bool HasWants { get; init; }
     public IEnumerable<LocationCopy> Givebacks { get; init; } = Enumerable.Empty<LocationCopy>();
 
-    public bool Equals(ExchangePreview? exchange)
+    public bool Equals(ExchangePreview? other)
     {
-        return exchange is not null
-            && exchange.Id == Id
-            && exchange.Name == Name
-            && exchange.Givebacks.SequenceEqual(Givebacks);
+        return other is not null
+            && other.Id == Id
+            && other.Name == Name
+            && other.Givebacks.SequenceEqual(Givebacks);
     }
 
     public override int GetHashCode()
@@ -360,12 +360,12 @@ public sealed record BinPreview
     public string Name { get; init; } = string.Empty;
     public IEnumerable<BoxPreview> Boxes { get; init; } = Enumerable.Empty<BoxPreview>();
 
-    public bool Equals(BinPreview? bin)
+    public bool Equals(BinPreview? other)
     {
-        return bin is not null
-            && Id == bin.Id
-            && Name == bin.Name
-            && Boxes.SequenceEqual(bin.Boxes);
+        return other is not null
+            && Id == other.Id
+            && Name == other.Name
+            && Boxes.SequenceEqual(other.Boxes);
     }
 
     public override int GetHashCode()

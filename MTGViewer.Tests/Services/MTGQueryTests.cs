@@ -56,10 +56,10 @@ public class MTGQueryTests
             .Where(c => c.Name == splitCard.Name)
             .SearchAsync();
 
-        var first = cards.FirstOrDefault();
+        var first = cards[0];
 
-        Assert.NotNull(first?.Flip);
-        Assert.Equal(splitCard.Name, first?.Name);
+        Assert.NotNull(first.Flip);
+        Assert.Equal(splitCard.Name, first.Name);
     }
 
     [Fact]

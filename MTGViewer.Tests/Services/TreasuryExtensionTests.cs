@@ -2,13 +2,14 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 
 using MTGViewer.Data;
 using MTGViewer.Tests.Utils;
 
-namespace MTGViewer.Utils.Services;
+namespace MTGViewer.Tests.Services;
 
 public class TreasuryExtensionTests : IAsyncLifetime
 {
@@ -45,7 +46,8 @@ public class TreasuryExtensionTests : IAsyncLifetime
     public async Task AddCards_NullDbContext_Throws()
     {
         const CardDbContext nullDbContext = null!;
-        IEnumerable<CardRequest> emptyRequests = Enumerable.Empty<CardRequest>();
+
+        var emptyRequests = Enumerable.Empty<CardRequest>();
 
         Task AddAsync() => nullDbContext.AddCardsAsync(emptyRequests);
 

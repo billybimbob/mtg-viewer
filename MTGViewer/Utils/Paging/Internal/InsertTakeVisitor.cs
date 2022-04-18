@@ -85,7 +85,7 @@ internal class InsertTakeVisitor<TEntity> : ExpressionVisitor
             && generics.ElementAtOrDefault(1) == typeof(TEntity);
     }
 
-    private class InsertReverseTakeVisitor : ExpressionVisitor
+    private sealed class InsertReverseTakeVisitor : ExpressionVisitor
     {
         private readonly int _count;
         public InsertReverseTakeVisitor(int count)
@@ -121,10 +121,10 @@ internal class InsertTakeVisitor<TEntity> : ExpressionVisitor
         }
     }
 
-    private class FindSecondReverseVisitor : ExpressionVisitor
+    private sealed class FindSecondReverseVisitor : ExpressionVisitor
     {
-        private static FindSecondReverseVisitor? s_instance;
-        public static ExpressionVisitor Instance => s_instance ??= new();
+        private static FindSecondReverseVisitor? _instance;
+        public static ExpressionVisitor Instance => _instance ??= new();
 
         protected override Expression VisitMethodCall(MethodCallExpression node)
         {

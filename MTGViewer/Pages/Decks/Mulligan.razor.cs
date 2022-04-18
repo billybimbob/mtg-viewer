@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Paging;
 using System.Threading;
@@ -20,6 +19,7 @@ using Microsoft.Extensions.Options;
 using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
 using MTGViewer.Services;
+using MTGViewer.Utils;
 
 namespace MTGViewer.Pages.Decks;
 
@@ -50,29 +50,10 @@ public partial class Mulligan : OwningComponentBase
     [Inject]
     protected ILogger<Mulligan> Logger { get; set; } = default!;
 
-    internal string DeckName => _deckName ?? "Deck Mulligan";
-
-    internal IReadOnlyList<CardPreview> DrawnCards => _drawnCards;
-
-    internal bool CanDraw => _shuffledDeck?.CanDraw ?? false;
-
-    internal bool IsLoading => _isBusy || !_isInteractive;
-
-    internal MulliganType DeckMulligan
-    {
-        get => _mulliganType;
-        set
-        {
-            if (!_isBusy && _isInteractive && _mulliganType != value)
-            {
-                _mulliganType = value;
-
-                _ = NewHandAsync();
-            }
-        }
-    }
-
     private readonly CancellationTokenSource _cancel = new();
+
+    private readonly List<CardPreview> _drawnCards = new();
+    private readonly HashSet<string> _loadedImages = new();
 
     private bool _isBusy;
     private bool _isInteractive;
@@ -81,12 +62,8 @@ public partial class Mulligan : OwningComponentBase
 
     private string? _deckName;
     private IReadOnlyList<DeckCopy> _cards = Array.Empty<DeckCopy>();
-
-    private MulliganType _mulliganType;
     private DrawSimulation? _shuffledDeck;
-
-    private readonly List<CardPreview> _drawnCards = new();
-    private readonly HashSet<string> _loadedImages = new();
+    private MulliganType _mulliganType;
 
     protected override void OnInitialized()
     {
@@ -189,21 +166,10 @@ public partial class Mulligan : OwningComponentBase
         return Task.CompletedTask;
     }
 
-    private bool TryGetData<TData>(string key, [NotNullWhen(true)] out TData? data)
-    {
-        if (ApplicationState.TryTakeFromJson(key, out data!)
-            && data is not null)
-        {
-            return true;
-        }
-
-        return false;
-    }
-
     private async Task LoadMulliganDataAsync(string userId, CancellationToken cancel)
     {
-        if (TryGetData(nameof(_deckName), out string? name)
-            && TryGetData(nameof(_cards), out DeckCopy[]? cards))
+        if (ApplicationState.TryGetData(nameof(_deckName), out string? name)
+            && ApplicationState.TryGetData(nameof(_cards), out DeckCopy[]? cards))
         {
             _deckName = name;
             _cards = cards;
@@ -222,7 +188,7 @@ public partial class Mulligan : OwningComponentBase
             .ToListAsync(cancel);
     }
 
-    private Func<CardDbContext, int, int, IAsyncEnumerable<DeckCopy>> DeckCardsAsync
+    private static readonly Func<CardDbContext, int, int, IAsyncEnumerable<DeckCopy>> DeckCardsAsync
 
         = EF.CompileAsyncQuery((CardDbContext dbContext, int deckId, int limit) =>
 
@@ -258,6 +224,32 @@ public partial class Mulligan : OwningComponentBase
                         .Where(g => g.LocationId == deckId)
                         .Sum(g => g.Copies)
                 }));
+
+    #region View Properties
+
+    internal string DeckName => _deckName ?? "Deck Mulligan";
+
+    internal IReadOnlyList<CardPreview> DrawnCards => _drawnCards;
+
+    internal bool CanDraw => _shuffledDeck?.CanDraw ?? false;
+
+    internal bool IsLoading => _isBusy || !_isInteractive;
+
+    internal MulliganType DeckMulligan
+    {
+        get => _mulliganType;
+        set
+        {
+            if (!_isBusy && _isInteractive && _mulliganType != value)
+            {
+                _mulliganType = value;
+
+                _ = NewHandAsync();
+            }
+        }
+    }
+
+    #endregion
 
     internal async Task NewHandAsync()
     {
@@ -330,7 +322,7 @@ public partial class Mulligan : OwningComponentBase
             public int Copies { get; set; }
         }
 
-        private static readonly ObjectPool<CardCopy> s_cardPool
+        private static readonly ObjectPool<CardCopy> _cardPool
             = new DefaultObjectPool<CardCopy>(
                 new DefaultPooledObjectPolicy<CardCopy>());
 
@@ -344,14 +336,13 @@ public partial class Mulligan : OwningComponentBase
             _cardOptions = deck
                 .Select(d =>
                 {
-                    var copy = s_cardPool.Get();
+                    var copy = _cardPool.Get();
                     copy.Card = d;
                     copy.Copies = GetCopies(d, mulliganType);
 
                     return copy;
                 })
-                // want hash set for undefined (random) iter order
-                .ToHashSet();
+                .ToHashSet(); // want hash set for undefined (random) iter order
 
             _cardsInDeck = deck
                 .Sum(d => GetCopies(d, mulliganType));
@@ -380,7 +371,7 @@ public partial class Mulligan : OwningComponentBase
         {
             foreach (var option in _cardOptions)
             {
-                s_cardPool.Return(option);
+                _cardPool.Return(option);
             }
 
             _cardOptions.Clear();

@@ -305,7 +305,7 @@ public static partial class TreasuryExtensions
 
         var modifiedBoxes = dbContext.Boxes.Local
             .Where(b => dbContext.Entry(b).State is EntityState.Modified)
-            .Join( storageSpaces,
+            .Join(storageSpaces,
                 b => b.Id,
                 kv => kv.Key.Id,
                 (Box, kv) => (kv.Key, kv.Value, Box));

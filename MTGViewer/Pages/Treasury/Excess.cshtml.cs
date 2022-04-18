@@ -26,8 +26,7 @@ public class ExcessModel : PageModel
 
     public SeekList<LocationCopy> Cards { get; private set; } = SeekList<LocationCopy>.Empty;
 
-    public bool HasExcess =>
-        Cards.Any() || Cards.Seek is not { Previous: null, Next: null };
+    public bool HasExcess => Cards is not { Count: 0, Seek.Previous: null, Seek.Next: null };
 
     public async Task<IActionResult> OnGetAsync(
         string? seek,

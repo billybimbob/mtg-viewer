@@ -34,7 +34,7 @@ public class DeleteModel : PageModel
 
     public async Task<IActionResult> OnGetAsync(int id, CancellationToken cancel)
     {
-        var box = await BoxToDeleteAsync.Invoke(_dbContext, id, _pageSize.Current, cancel);
+        var box = await BoxAsync.Invoke(_dbContext, id, _pageSize.Current, cancel);
 
         if (box == default)
         {
@@ -46,7 +46,7 @@ public class DeleteModel : PageModel
         return Page();
     }
 
-    private static readonly Func<CardDbContext, int, int, CancellationToken, Task<BoxPreview?>> BoxToDeleteAsync
+    private static readonly Func<CardDbContext, int, int, CancellationToken, Task<BoxPreview?>> BoxAsync
         = EF.CompileAsyncQuery((CardDbContext dbContext, int boxId, int pageSize, CancellationToken _) =>
             dbContext.Boxes
                 .Select(b => new BoxPreview

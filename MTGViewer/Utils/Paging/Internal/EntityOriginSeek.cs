@@ -108,7 +108,7 @@ internal sealed class EntityOriginSeek<TEntity, TRefKey, TValueKey> : ISeekable<
         if (FindRootQuery.Instance.Visit(_query.Expression)
             is not QueryRootExpression { EntityType: var entityType })
         {
-            throw new ArgumentException("Missing a query root", nameof(_query));
+            throw new InvalidOperationException("Cannot find a query root");
         }
 
         return entityType.ClrType == typeof(TEntity)

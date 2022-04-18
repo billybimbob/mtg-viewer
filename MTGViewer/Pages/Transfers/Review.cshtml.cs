@@ -47,7 +47,7 @@ public class ReviewModel : PageModel
 
     public async Task<IActionResult> OnGetAsync(int id, int? offset, CancellationToken cancel)
     {
-        var userId = _userManager.GetUserId(User);
+        string? userId = _userManager.GetUserId(User);
 
         if (userId is null)
         {
@@ -206,7 +206,7 @@ public class ReviewModel : PageModel
     {
         var trade = await GetTradeAsync(tradeId, cancel);
 
-        if (trade == null)
+        if (trade is null)
         {
             PostMessage = "Trade could not be found";
 
@@ -215,7 +215,7 @@ public class ReviewModel : PageModel
 
         var acceptRequest = GetAcceptRequest(trade);
 
-        if (acceptRequest == null)
+        if (acceptRequest is null)
         {
             PostMessage = "Source Deck lacks the cards to complete the trade";
 
@@ -263,7 +263,7 @@ public class ReviewModel : PageModel
 
     private IQueryable<Trade> TradeForReview(int id, Card tradeCard)
     {
-        var userId = _userManager.GetUserId(User);
+        string? userId = _userManager.GetUserId(User);
 
         return _dbContext.Trades
             .Where(t => t.Id == id && t.From.OwnerId == userId)
@@ -289,7 +289,7 @@ public class ReviewModel : PageModel
 
     private static AcceptRequest? GetAcceptRequest(Trade trade)
     {
-        var tradeValid = trade.From.Holds
+        bool tradeValid = trade.From.Holds
             .Select(h => h.CardId)
             .Contains(trade.CardId);
 
@@ -421,7 +421,7 @@ public class ReviewModel : PageModel
     {
         var (trade, toWants, _) = acceptRequest;
 
-        if (toWants == default)
+        if (toWants is null)
         {
             return;
         }
@@ -462,8 +462,9 @@ public class ReviewModel : PageModel
             return RedirectToPage();
         }
 
-        var userId = _userManager.GetUserId(User);
-        if (userId == null)
+        string? userId = _userManager.GetUserId(User);
+
+        if (userId is null)
         {
             return Forbid();
         }

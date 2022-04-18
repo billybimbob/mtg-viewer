@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -13,6 +12,7 @@ using Microsoft.Extensions.Logging;
 using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
 using MTGViewer.Data.Internal;
+using MTGViewer.Utils;
 
 namespace MTGViewer.Pages.Treasury;
 
@@ -61,7 +61,7 @@ public sealed partial class Adjust : ComponentBase, IDisposable
 
         try
         {
-            if (TryGetData(nameof(_bins), out BinDto[]? cachedBins))
+            if (ApplicationState.TryGetData(nameof(_bins), out BinDto[]? cachedBins))
             {
                 _bins = cachedBins;
                 return;
@@ -161,17 +161,6 @@ public sealed partial class Adjust : ComponentBase, IDisposable
         return Task.CompletedTask;
     }
 
-    private bool TryGetData<TData>(string key, [NotNullWhen(true)] out TData? data)
-    {
-        if (ApplicationState.TryTakeFromJson(key, out data!)
-            && data is not null)
-        {
-            return true;
-        }
-
-        return false;
-    }
-
     private static readonly Func<CardDbContext, IAsyncEnumerable<BinDto>> BinsAsync =
         EF.CompileAsyncQuery((CardDbContext dbContext) =>
             dbContext.Bins
@@ -184,7 +173,7 @@ public sealed partial class Adjust : ComponentBase, IDisposable
 
     private async Task<BoxDto?> GetBoxAsync(CancellationToken cancel)
     {
-        if (TryGetData(nameof(Box), out BoxDto? cachedBox))
+        if (ApplicationState.TryGetData(nameof(Box), out BoxDto? cachedBox))
         {
             return cachedBox;
         }

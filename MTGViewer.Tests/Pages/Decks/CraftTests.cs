@@ -74,7 +74,7 @@ public class CraftTests : IAsyncLifetime
     {
         _testContext.AddTestAuthorization();
 
-        var cut = _testContext.RenderComponent<Craft>();
+        _ = _testContext.RenderComponent<Craft>();
 
         var nav = _testContext.Services.GetRequiredService<FakeNavigationManager>();
 

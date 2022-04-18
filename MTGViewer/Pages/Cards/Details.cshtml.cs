@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -32,11 +33,13 @@ public class DetailsModel : PageModel
     {
         get
         {
+            var invariant = CultureInfo.InvariantCulture;
+
             yield return KeyValuePair.Create(nameof(Create.Name), (string?)Card.Name);
 
-            yield return KeyValuePair.Create(nameof(Create.Colors), ((int?)Card.Color)?.ToString());
+            yield return KeyValuePair.Create(nameof(Create.Colors), ((int?)Card.Color)?.ToString(invariant));
 
-            yield return KeyValuePair.Create(nameof(Create.Cmc), Card.ManaValue?.ToString());
+            yield return KeyValuePair.Create(nameof(Create.Cmc), Card.ManaValue?.ToString(invariant));
 
             yield return KeyValuePair.Create(nameof(Create.ReturnUrl), ReturnUrl);
         }
@@ -60,7 +63,7 @@ public class DetailsModel : PageModel
 
         Card = card;
 
-        Alternatives = await CardAlternativesAsync
+        Alternatives = await CardAlternativesAsync // unbounded: keep eye on
             .Invoke(_dbContext, card.Id, card.Name)
             .ToListAsync(cancel);
 
@@ -79,20 +82,6 @@ public class DetailsModel : PageModel
             : CardWithoutFlipAsync.Invoke(_dbContext, cardId, cancel);
     }
 
-    private static readonly Func<CardDbContext, string, CancellationToken, Task<Card?>> CardWithoutFlipAsync
-
-        = EF.CompileAsyncQuery((CardDbContext dbContext, string cardId, CancellationToken _) =>
-            dbContext.Cards
-                .Where(c => c.Id == cardId)
-
-                .Include(c => c.Holds
-                    .OrderBy(h => h.Location.Name))
-                    .ThenInclude(h => h.Location)
-
-                .OrderBy(c => c.Id)
-                .AsNoTrackingWithIdentityResolution()
-                .SingleOrDefault());
-
     private static readonly Func<CardDbContext, string, CancellationToken, Task<Card?>> CardWithFlipAsync
 
         = EF.CompileAsyncQuery((CardDbContext dbContext, string cardId, CancellationToken _) =>
@@ -108,11 +97,24 @@ public class DetailsModel : PageModel
                 .AsNoTrackingWithIdentityResolution()
                 .SingleOrDefault());
 
+    private static readonly Func<CardDbContext, string, CancellationToken, Task<Card?>> CardWithoutFlipAsync
+
+        = EF.CompileAsyncQuery((CardDbContext dbContext, string cardId, CancellationToken _) =>
+            dbContext.Cards
+                .Where(c => c.Id == cardId)
+
+                .Include(c => c.Holds
+                    .OrderBy(h => h.Location.Name))
+                    .ThenInclude(h => h.Location)
+
+                .OrderBy(c => c.Id)
+                .AsNoTrackingWithIdentityResolution()
+                .SingleOrDefault());
+
     private static readonly Func<CardDbContext, string, string, IAsyncEnumerable<CardLink>> CardAlternativesAsync
 
         = EF.CompileAsyncQuery((CardDbContext dbContext, string cardId, string cardName) =>
             dbContext.Cards
-                // unbounded: keep eye on
                 .Where(c => c.Id != cardId && c.Name == cardName)
                 .OrderBy(c => c.SetName)
                 .Select(c => new CardLink

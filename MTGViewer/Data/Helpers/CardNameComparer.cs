@@ -5,25 +5,25 @@ namespace MTGViewer.Data;
 
 public class CardNameComparer : Comparer<Card>
 {
-    private static CardNameComparer? s_instance;
-    public static CardNameComparer Instance => s_instance ??= new();
+    private static CardNameComparer? _instance;
+    public static CardNameComparer Instance => _instance ??= new();
 
-    public override int Compare(Card? cardA, Card? cardB)
+    public override int Compare(Card? x, Card? y)
     {
         const StringComparison currentCompare = StringComparison.CurrentCulture;
 
-        int nameCompare = string.Compare(cardA?.Name, cardB?.Name, currentCompare);
+        int nameCompare = string.Compare(x?.Name, y?.Name, currentCompare);
         if (nameCompare != 0)
         {
             return nameCompare;
         }
 
-        int setCompare = string.Compare(cardA?.SetName, cardB?.SetName, currentCompare);
+        int setCompare = string.Compare(x?.SetName, y?.SetName, currentCompare);
         if (setCompare != 0)
         {
             return setCompare;
         }
 
-        return string.Compare(cardA?.Id, cardB?.Id, currentCompare);
+        return string.Compare(x?.Id, y?.Id, currentCompare);
     }
 }

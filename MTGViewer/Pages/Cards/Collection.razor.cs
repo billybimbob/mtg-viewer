@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Paging;
@@ -13,6 +12,7 @@ using Microsoft.Extensions.Logging;
 
 using MTGViewer.Data;
 using MTGViewer.Services;
+using MTGViewer.Utils;
 
 namespace MTGViewer.Pages.Cards;
 
@@ -65,19 +65,16 @@ public sealed partial class Collection : ComponentBase, IDisposable
     [Inject]
     internal ILogger<Collection> Logger { get; set; } = default!;
 
-    internal event EventHandler? ParametersChanged;
-
     internal bool IsLoading => _isBusy || !_isInteractive;
 
     internal FilterContext Filters { get; } = new();
 
     internal SeekList<LocationCopy> Cards { get; private set; } = SeekList<LocationCopy>.Empty;
 
+    private event EventHandler? ParametersChanged;
+
     private readonly CancellationTokenSource _cancel = new();
-    private readonly Dictionary<string, object?> _newFilters = new(5);
-
     private PersistingComponentStateSubscription _persistSubscription;
-
     private bool _isBusy;
     private bool _isInteractive;
 
@@ -88,7 +85,7 @@ public sealed partial class Collection : ComponentBase, IDisposable
         ParametersChanged += Filters.OnParametersChanged;
     }
 
-    protected async override Task OnParametersSetAsync()
+    protected override async Task OnParametersSetAsync()
     {
         _isBusy = true;
 
@@ -156,21 +153,10 @@ public sealed partial class Collection : ComponentBase, IDisposable
         return Task.CompletedTask;
     }
 
-    private bool TryGetData<TData>(string key, [NotNullWhen(true)] out TData? data)
-    {
-        if (ApplicationState.TryTakeFromJson(key, out data!)
-            && data is not null)
-        {
-            return true;
-        }
-
-        return false;
-    }
-
     private async Task LoadCardDataAsync(CancellationToken cancel)
     {
-        if (TryGetData(nameof(Cards), out IReadOnlyList<LocationCopy>? cards)
-            && TryGetData(nameof(Seek), out Seek<LocationCopy> seek))
+        if (ApplicationState.TryGetData(nameof(Cards), out IReadOnlyList<LocationCopy>? cards)
+            && ApplicationState.TryGetData(nameof(Seek), out Seek<LocationCopy> seek))
         {
             // persisted state should match set filters
             // TODO: find way to check filters are consistent
@@ -195,26 +181,19 @@ public sealed partial class Collection : ComponentBase, IDisposable
 
         filter.FilterChanged -= OnFilterChanged;
 
-        _newFilters.Clear();
-
-        foreach (var (name, value) in args.Changes)
-        {
-            _newFilters.Add(name, value);
-        }
-
         // triggers on ParameterSet, where IsBusy set to false
 
         Nav.NavigateTo(
-            Nav.GetUriWithQueryParameters(_newFilters), replace: true);
+            Nav.GetUriWithQueryParameters(args.Changes), replace: true);
     }
 
     internal sealed class FilterEventArgs : EventArgs
     {
-        public IEnumerable<KeyValuePair<string, object?>> Changes { get; }
+        public IReadOnlyDictionary<string, object?> Changes { get; }
 
         public FilterEventArgs(IEnumerable<KeyValuePair<string, object?>> changes)
         {
-            Changes = changes;
+            Changes = new Dictionary<string, object?>(changes);
         }
 
         public FilterEventArgs(params KeyValuePair<string, object?>[] changes)
@@ -224,7 +203,11 @@ public sealed partial class Collection : ComponentBase, IDisposable
 
     internal sealed class FilterContext
     {
+        private const string DefaultOrder = nameof(Card.Name);
+
         public event EventHandler<FilterEventArgs>? FilterChanged;
+
+        public int PageSize { get; private set; }
 
         private string? _name;
         public string? Name
@@ -286,7 +269,7 @@ public sealed partial class Collection : ComponentBase, IDisposable
 
         public TextFilter TextFilter
         {
-            get => new TextFilter(_name, _types, _text);
+            get => new(_name, _types, _text);
             set
             {
                 if (FilterChanged is null)
@@ -327,7 +310,27 @@ public sealed partial class Collection : ComponentBase, IDisposable
             yield return KeyValuePair.Create(nameof(Collection.Direction), null as object);
         }
 
-        private const string DefaultOrder = nameof(Card.Name);
+        public string? Seek { get; private set; }
+
+        public SeekDirection Direction { get; private set; }
+
+        public void SeekPage(SeekRequest<LocationCopy> request)
+        {
+            if (FilterChanged is null)
+            {
+                return;
+            }
+
+            int? direction = request.Direction is SeekDirection.Backwards
+                ? (int?)SeekDirection.Backwards
+                : null;
+
+            var args = new FilterEventArgs(
+                KeyValuePair.Create(nameof(Collection.Seek), request.Seek?.Id as object),
+                KeyValuePair.Create(nameof(Collection.Direction), direction as object));
+
+            FilterChanged.Invoke(this, args);
+        }
 
         private string _orderBy = DefaultOrder;
         public string OrderBy
@@ -366,29 +369,6 @@ public sealed partial class Collection : ComponentBase, IDisposable
             FilterChanged.Invoke(this, args);
         }
 
-        public int PageSize { get; private set; }
-
-        public string? Seek { get; private set; }
-
-        public SeekDirection Direction { get; private set; }
-
-        public void SeekPage(SeekRequest<LocationCopy> request)
-        {
-            if (FilterChanged is null)
-            {
-                return;
-            }
-
-            var direction = request.Direction is SeekDirection.Backwards
-                ? (int?)SeekDirection.Backwards : null;
-
-            var args = new FilterEventArgs(
-                KeyValuePair.Create(nameof(Collection.Seek), request.Seek?.Id as object),
-                KeyValuePair.Create(nameof(Collection.Direction), direction as object));
-
-            FilterChanged.Invoke(this, args);
-        }
-
         private Color _pickedColors;
         public Color PickedColors
         {
@@ -404,7 +384,7 @@ public sealed partial class Collection : ComponentBase, IDisposable
                     ? PickedColors & ~value
                     : PickedColors | value;
 
-                var color = value is Color.None ? null : (int?)value;
+                int? color = value is Color.None ? null : (int?)value;
 
                 var newValues = new FilterEventArgs(
                     KeyValuePair.Create(nameof(Collection.Colors), color as object),
@@ -454,8 +434,8 @@ public sealed partial class Collection : ComponentBase, IDisposable
     {
         var cards = dbContext.Cards.AsQueryable();
 
-        var name = filters.Name?.ToLower();
-        var text = filters.Text?.ToLower();
+        string? name = filters.Name?.ToLowerInvariant();
+        string? text = filters.Text?.ToLowerInvariant();
 
         if (!string.IsNullOrWhiteSpace(name))
         {
@@ -471,7 +451,7 @@ public sealed partial class Collection : ComponentBase, IDisposable
                     && c.Text.ToLower().Contains(text));
         }
 
-        foreach (var type in filters.Types)
+        foreach (string type in filters.Types)
         {
             cards = cards
                 .Where(c => c.Type.ToLower().Contains(type.ToLower()));

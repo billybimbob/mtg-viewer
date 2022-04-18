@@ -47,13 +47,15 @@ public class IndexModel : PageModel
         SeekDirection direction,
         CancellationToken cancel)
     {
-        var userId = _userManager.GetUserId(User);
+        string? userId = _userManager.GetUserId(User);
+
         if (userId is null)
         {
             return Challenge();
         }
 
-        var userName = _userManager.GetDisplayName(User);
+        string? userName = _userManager.GetDisplayName(User);
+
         if (userName is null)
         {
             return NotFound();
@@ -67,9 +69,7 @@ public class IndexModel : PageModel
 
         UserName = userName;
         Decks = decks;
-
         HasUnclaimed = await HasUnclaimedAsync.Invoke(_dbContext, cancel);
-        // HasUnclaimed =  await _dbContext.Unclaimed.AnyAsync(cancel);
 
         return Page();
     }

@@ -19,7 +19,7 @@ public class ParseTextFilterTests
 
         var filter = _parseFilter.Parse(nullString);
 
-        Assert.Equal(default(TextFilter), filter);
+        Assert.Equal(default, filter);
     }
 
     [Fact]
@@ -29,7 +29,7 @@ public class ParseTextFilterTests
 
         var filter = _parseFilter.Parse(empty);
 
-        Assert.Equal(default(TextFilter), filter);
+        Assert.Equal(default, filter);
     }
 
     [Fact]
@@ -39,7 +39,7 @@ public class ParseTextFilterTests
 
         var filter = _parseFilter.Parse(whitespace);
 
-        Assert.Equal(default(TextFilter), filter);
+        Assert.Equal(default, filter);
     }
 
     [Fact]

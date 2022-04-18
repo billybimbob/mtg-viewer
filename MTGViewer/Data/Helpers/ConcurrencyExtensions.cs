@@ -34,16 +34,16 @@ internal static class ConcurrencyExtensions
     {
         if (database.IsSqlServer())
         {
-            entity.Property(nameof(Concurrent.Version));
+            _ = entity.Property(nameof(Concurrent.Version));
         }
         else if (database.IsNpgsql())
         {
-            entity.UseXminAsConcurrencyToken();
+            _ = entity.UseXminAsConcurrencyToken();
         }
         // else if (database.IsSqlite())
         else
         {
-            entity.Property(nameof(Concurrent.Stamp));
+            _ = entity.Property(nameof(Concurrent.Stamp));
         }
     }
 

@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
@@ -9,8 +8,8 @@ namespace System.Paging.Query;
 
 internal class FindRootQuery : ExpressionVisitor
 {
-    private static FindRootQuery? s_instance;
-    public static ExpressionVisitor Instance => s_instance ??= new();
+    private static FindRootQuery? _instance;
+    public static ExpressionVisitor Instance => _instance ??= new();
 
     protected override Expression VisitMethodCall(MethodCallExpression node)
     {
@@ -39,7 +38,7 @@ internal static class EntityTypeExtensions
             throw new ArgumentException($"{typeof(TKey).Name} is the not correct key type");
         }
 
-        if (entityId is not { Properties.Count: 1, Properties: IReadOnlyList<IProperty> properties }
+        if (entityId is not { Properties.Count: 1, Properties: var properties }
             || properties[0].PropertyInfo is not PropertyInfo getKey)
         {
             throw new NotSupportedException("Only single primary keys are supported");

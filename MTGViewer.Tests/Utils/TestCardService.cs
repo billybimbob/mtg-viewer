@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Linq.Expressions;
@@ -27,7 +28,7 @@ public class CardResultOptions
 
 public class TestCardService : ICardService
 {
-    private static readonly SemaphoreSlim s_lock = new(1, 1);
+    private static readonly SemaphoreSlim _lock = new(1, 1);
 
     private readonly List<ICard> _cards;
     private readonly CardResultOptions _options;
@@ -54,12 +55,12 @@ public class TestCardService : ICardService
         _page = 0;
     }
 
-    public ICardService Where<T>(Expression<Func<CardQueryParameter, T>> predicate, T value)
+    public ICardService Where<T>(Expression<Func<CardQueryParameter, T>> property, T value)
         where T : notnull
     {
-        if (predicate.Body is not MemberExpression { Member.Name: string name })
+        if (property.Body is not MemberExpression { Member.Name: string name })
         {
-            throw new ArgumentException("Cannot query by given parameter", nameof(predicate));
+            throw new ArgumentException("Cannot query by given parameter", nameof(property));
         }
 
         if (name == nameof(CardQueryParameter.PageSize) && value is int size)
@@ -85,7 +86,7 @@ public class TestCardService : ICardService
         return this;
     }
 
-    private bool QueryByPredicate(ICard card, string propertyName, object? value)
+    private static bool QueryByPredicate(ICard card, string propertyName, object? value)
     {
         var cardValue = typeof(ICard)
             .GetProperty(propertyName)
@@ -103,7 +104,7 @@ public class TestCardService : ICardService
 
         const StringComparison ordinal = StringComparison.Ordinal;
 
-        var andValues = s.Split(MtgApiQuery.And);
+        string[] andValues = s.Split(MtgApiQuery.And);
 
         if (andValues.Length > 1)
         {
@@ -111,7 +112,7 @@ public class TestCardService : ICardService
                 .Aggregate(false, (b, v) => b && cardString.Equals(v, ordinal));
         }
 
-        var orValues = s.Split(MtgApiQuery.Or);
+        string[] orValues = s.Split(MtgApiQuery.Or);
 
         if (orValues.Length > 1)
         {
@@ -154,11 +155,13 @@ public class TestCardService : ICardService
 
     public async Task<IOperationResult<ICard>> FindAsync(int multiverseId)
     {
+        var invariant = CultureInfo.InvariantCulture;
+
         await AddCardResultsAsync(default);
 
         var card = _cards
             .FirstOrDefault(c => string
-                .Equals(c.MultiverseId, multiverseId.ToString(), StringComparison.Ordinal));
+                .Equals(c.MultiverseId, multiverseId.ToString(invariant), StringComparison.Ordinal));
 
         return card is null ? NotFound<ICard>() : Result(card);
     }
@@ -182,7 +185,7 @@ public class TestCardService : ICardService
             return;
         }
 
-        await s_lock.WaitAsync(cancel);
+        await _lock.WaitAsync(cancel);
 
         try
         {
@@ -194,9 +197,7 @@ public class TestCardService : ICardService
 
             await using var cardData = File.OpenRead(path);
 
-            var cards = JsonSerializer
-                .DeserializeAsyncEnumerable<CardDto>(cardData)
-                .WithCancellation(cancel);
+            var cards = JsonSerializer.DeserializeAsyncEnumerable<CardDto>(cardData, cancellationToken: cancel);
 
             await foreach (var card in cards)
             {
@@ -210,7 +211,7 @@ public class TestCardService : ICardService
         }
         finally
         {
-            s_lock.Release();
+            _lock.Release();
         }
     }
 

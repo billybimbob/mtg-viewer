@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Paging;
 using System.Threading;
@@ -21,6 +20,7 @@ using MTGViewer.Data;
 using MTGViewer.Data.Concurrency;
 using MTGViewer.Data.Internal;
 using MTGViewer.Services;
+using MTGViewer.Utils;
 
 namespace MTGViewer.Pages.Decks;
 
@@ -51,12 +51,6 @@ public partial class Craft : OwningComponentBase
 
     internal bool IsLoading => _isBusy || !_isInteractive;
 
-    internal string DeckName =>
-        _deckContext?.Deck.Name is string name && !string.IsNullOrWhiteSpace(name)
-            ? name : "New Deck";
-
-    internal EditContext? DeckEdit => _deckContext?.EditContext;
-
     internal TreasuryFilters Filters { get; } = new();
 
     internal SeekList<HeldCard> Treasury { get; private set; } = SeekList<HeldCard>.Empty;
@@ -65,7 +59,7 @@ public partial class Craft : OwningComponentBase
 
     internal SaveResult Result { get; set; }
 
-    internal event EventHandler? TreasuryLoaded;
+    private event EventHandler? TreasuryLoaded;
 
     private readonly CancellationTokenSource _cancel = new();
     private readonly SortedSet<Card> _cards = new(CardNameComparer.Instance);
@@ -155,23 +149,12 @@ public partial class Craft : OwningComponentBase
         ApplicationState.PersistAsJson(nameof(_cards), _cards);
     }
 
-    private bool TryGetData<TData>(string key, [NotNullWhen(true)] out TData? data)
-    {
-        if (ApplicationState.TryTakeFromJson(key, out data!)
-            && data is not null)
-        {
-            return true;
-        }
-
-        return false;
-    }
-
     private async Task LoadDeckDataAsync(CancellationToken cancel)
     {
         await using var dbContext = await DbFactory.CreateDbContextAsync(cancel);
 
-        if (TryGetData(nameof(_deckContext), out DeckDto? deckData)
-            && TryGetData(nameof(_cards), out IReadOnlyCollection<Card>? cards))
+        if (ApplicationState.TryGetData(nameof(_deckContext), out DeckDto? deckData)
+            && ApplicationState.TryGetData(nameof(_cards), out IReadOnlyCollection<Card>? cards))
         {
             var deck = deckData.ToDeck(dbContext);
 
@@ -185,7 +168,7 @@ public partial class Craft : OwningComponentBase
             return;
         }
 
-        var userId = await GetUserIdAsync(cancel);
+        string? userId = await GetUserIdAsync(cancel);
 
         dbContext.Cards.AttachRange(_cards);
 
@@ -266,7 +249,7 @@ public partial class Craft : OwningComponentBase
             return null;
         }
 
-        var userDeckCount = await dbContext.Decks
+        int userDeckCount = await dbContext.Decks
             .CountAsync(d => d.OwnerId == userId, cancel);
 
         var newDeck = new Deck
@@ -318,8 +301,8 @@ public partial class Craft : OwningComponentBase
     {
         var cards = dbContext.Cards.AsQueryable();
 
-        var name = filters.Name?.ToLower();
-        var text = filters.Text?.ToLower();
+        string? name = filters.Name?.ToLower();
+        string? text = filters.Text?.ToLower();
 
         if (!string.IsNullOrWhiteSpace(name))
         {
@@ -458,7 +441,6 @@ public partial class Craft : OwningComponentBase
 
     internal sealed class TreasuryFilters
     {
-        public event EventHandler FilterChanged;
         private bool _pendingChanges;
 
         public TreasuryFilters()
@@ -466,12 +448,31 @@ public partial class Craft : OwningComponentBase
             FilterChanged += (_, _) => _pendingChanges = true;
         }
 
-        public void OnTreasuryLoaded(object? sender, EventArgs _)
+        public event EventHandler FilterChanged;
+
+        public string? Seek { get; private set; }
+
+        public SeekDirection Direction { get; private set; }
+
+        public void SeekPage(SeekRequest<HeldCard> request)
         {
-            if (sender is Craft parameters)
+            if (_pendingChanges)
             {
-                _pendingChanges = false;
+                return;
             }
+
+            string? seek = request.Seek?.Card.Id;
+            var direction = request.Direction;
+
+            if (seek == Seek && direction == Direction)
+            {
+                return;
+            }
+
+            Seek = seek;
+            Direction = direction;
+
+            FilterChanged?.Invoke(this, EventArgs.Empty);
         }
 
         private int _pageSize;
@@ -489,31 +490,6 @@ public partial class Craft : OwningComponentBase
 
                 _pageSize = value;
             }
-        }
-
-        public string? Seek { get; private set; }
-
-        public SeekDirection Direction { get; private set; }
-
-        public void SeekPage(SeekRequest<HeldCard> request)
-        {
-            if (_pendingChanges)
-            {
-                return;
-            }
-
-            var seek = request.Seek?.Card.Id;
-            var direction = request.Direction;
-
-            if (seek == Seek && direction == Direction)
-            {
-                return;
-            }
-
-            Seek = seek;
-            Direction = direction;
-
-            FilterChanged?.Invoke(this, EventArgs.Empty);
         }
 
         private string? _name;
@@ -571,7 +547,7 @@ public partial class Craft : OwningComponentBase
 
         public TextFilter TextFilter
         {
-            get => new TextFilter(_name, _types, _text);
+            get => new(_name, _types, _text);
             set
             {
                 if (_pendingChanges || TextFilter == value)
@@ -618,84 +594,29 @@ public partial class Craft : OwningComponentBase
                 FilterChanged?.Invoke(this, EventArgs.Empty);
             }
         }
+
+        public void OnTreasuryLoaded(object? sender, EventArgs _)
+        {
+            if (sender is Craft)
+            {
+                _pendingChanges = false;
+            }
+        }
     }
 
     #endregion
 
     #region Deck Operations
 
-    internal IEnumerable<QuantityGroup> GetDeckCards()
-    {
-        if (_deckContext is not
-        {
-            Groups: var groups,
-            PageSize: int pageSize,
-            HoldOffset.Current: int current
-        })
-        {
-            return Enumerable.Empty<QuantityGroup>();
-        }
+    internal string DeckName =>
+        _deckContext?.Deck.Name is string name && !string.IsNullOrWhiteSpace(name)
+            ? name : "New Deck";
 
-        return _cards
-            .Join(_deckContext.Groups
-                .Where(g => g.Hold is not null),
+    internal EditContext? DeckEdit => _deckContext?.EditContext;
 
-                c => c.Id, qg => qg.CardId,
-                (_, group) => group)
-
-            .Skip(current * pageSize)
-            .Take(pageSize);
-    }
-
-    internal IEnumerable<Want> GetDeckWants()
-    {
-        if (_deckContext is not
-        {
-            Groups: var groups,
-            PageSize: int pageSize,
-            WantOffset.Current: int current
-        })
-        {
-            return Enumerable.Empty<Want>();
-        }
-
-        var wants = groups
-            .Select(g => g.Want)
-            .Where(w => w is { Copies: >0 })
-            .OfType<Want>();
-
-        return _cards
-            .Join( wants,
-                c => c.Id, qg => qg.CardId,
-                (_, want) => want)
-            .Skip(current * pageSize)
-            .Take(pageSize);
-    }
-
-    internal IEnumerable<Giveback> GetDeckGivebacks()
-    {
-        if (_deckContext is not
-        {
-            Groups: var groups,
-            PageSize: int pageSize,
-            GiveOffset.Current: int current
-        })
-        {
-            return Enumerable.Empty<Giveback>();
-        }
-
-        var holds = groups
-            .Select(g => g.Giveback)
-            .Where(g => g is { Copies: >0 })
-            .OfType<Giveback>();
-
-        return _cards
-            .Join( holds,
-                c => c.Id, qg => qg.CardId,
-                (_, giveback) => giveback)
-            .Skip(current * pageSize)
-            .Take(pageSize);
-    }
+    internal Offset HoldOffset => _deckContext?.HoldOffset ?? default;
+    internal Offset WantOffset => _deckContext?.WantOffset ?? default;
+    internal Offset GiveOffset => _deckContext?.GiveOffset ?? default;
 
     internal int TotalHolds =>
         _deckContext?.Groups
@@ -707,16 +628,74 @@ public partial class Craft : OwningComponentBase
     internal int TotalGives =>
         _deckContext?.Groups.Sum(g => g.Giveback?.Copies ?? 0) ?? 0;
 
-    internal Offset HoldOffset => _deckContext?.HoldOffset ?? default;
-    internal Offset WantOffset => _deckContext?.WantOffset ?? default;
-    internal Offset GiveOffset => _deckContext?.GiveOffset ?? default;
+    internal IEnumerable<QuantityGroup> GetDeckCards()
+    {
+        if (_deckContext is not
+            { Groups: var groups, PageSize: int pageSize, HoldOffset.Current: int current })
+        {
+            return Enumerable.Empty<QuantityGroup>();
+        }
+
+        var holdGroups = _deckContext.Groups.Where(g => g.Hold is not null);
+
+        return _cards
+            .Join(holdGroups,
+                c => c.Id, qg => qg.CardId,
+                (_, group) => group)
+            .Skip(current * pageSize)
+            .Take(pageSize);
+    }
+
+    internal IEnumerable<Want> GetDeckWants()
+    {
+        if (_deckContext is not
+            { Groups: var groups, PageSize: int pageSize, WantOffset.Current: int current })
+        {
+            return Enumerable.Empty<Want>();
+        }
+
+        var wants = groups
+            .Select(g => g.Want)
+            .Where(w => w is { Copies: > 0 })
+            .OfType<Want>();
+
+        return _cards
+            .Join(wants,
+                c => c.Id, qg => qg.CardId,
+                (_, want) => want)
+            .Skip(current * pageSize)
+            .Take(pageSize);
+    }
+
+    internal IEnumerable<Giveback> GetDeckGivebacks()
+    {
+        if (_deckContext is not
+            { Groups: var groups, PageSize: int pageSize, GiveOffset.Current: int current })
+        {
+            return Enumerable.Empty<Giveback>();
+        }
+
+        var holds = groups
+            .Select(g => g.Giveback)
+            .Where(g => g is { Copies: > 0 })
+            .OfType<Giveback>();
+
+        return _cards
+            .Join(holds,
+                c => c.Id, qg => qg.CardId,
+                (_, giveback) => giveback)
+            .Skip(current * pageSize)
+            .Take(pageSize);
+    }
 
     internal void ChangeHoldPage(int value) => _deckContext?.SetHoldPage(value);
     internal void ChangeWantPage(int value) => _deckContext?.SetWantPage(value);
     internal void ChangeGivePage(int value) => _deckContext?.SetGivePage(value);
 
-    internal bool CannotSave() =>
-        !_deckContext?.CanSave() ?? true;
+    internal bool CannotSave()
+    {
+        return !_deckContext?.CanSave() ?? true;
+    }
 
     internal Deck? GetExchangeDeck()
     {
@@ -887,14 +866,14 @@ public partial class Craft : OwningComponentBase
 
         public IReadOnlyCollection<QuantityGroup> Groups => _groups.Values;
 
-        public Offset HoldOffset => new Offset(_holdPage, TotalHolds, PageSize);
+        public Offset HoldOffset => new(_holdPage, TotalHolds, PageSize);
 
-        public Offset GiveOffset => new Offset(_givePage, TotalGives, PageSize);
+        public Offset GiveOffset => new(_givePage, TotalGives, PageSize);
 
-        public Offset WantOffset => new Offset(_wantPage, TotalWants, PageSize);
+        public Offset WantOffset => new(_wantPage, TotalWants, PageSize);
 
         private int TotalHolds =>
-             _groups.Values.Count(g => g.Hold is Hold);
+             _groups.Values.Count(g => g.Hold is not null);
 
         private int TotalWants =>
             _groups.Values.Count(w => w is { Want.Copies: > 0 });

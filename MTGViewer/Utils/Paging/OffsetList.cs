@@ -51,6 +51,6 @@ public class OffsetList<T> : IReadOnlyList<T>
 
     public IEnumerator<T> GetEnumerator() => _items.GetEnumerator();
 
-    private static OffsetList<T>? s_empty;
-    public static OffsetList<T> Empty => s_empty ??= new(default, Array.Empty<T>());
+    private static OffsetList<T>? _empty;
+    public static OffsetList<T> Empty => _empty ??= new(default, Array.Empty<T>());
 }

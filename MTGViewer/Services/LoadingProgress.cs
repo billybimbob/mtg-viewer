@@ -38,16 +38,16 @@ public readonly struct Percent
 
 public class LoadingProgress
 {
-    public event Action<Percent>? ProgressUpdate;
-
+    private readonly ILogger<LoadingProgress> _logger;
     private int _ticks;
     private int _defaultProgress;
-    private readonly ILogger<LoadingProgress> _logger;
 
     public LoadingProgress(ILogger<LoadingProgress> logger)
     {
         _logger = logger;
     }
+
+    public event Action<Percent>? ProgressUpdate;
 
     public Percent Current { get; private set; }
 
@@ -80,7 +80,10 @@ public class LoadingProgress
         _logger.LogInformation("Percent updated to {Current}", Current);
     }
 
-    public void AddProgress() => AddProgress(_defaultProgress);
+    public void AddProgress()
+    {
+        AddProgress(_defaultProgress);
+    }
 
     public void Reset()
     {

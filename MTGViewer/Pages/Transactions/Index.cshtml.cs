@@ -55,14 +55,14 @@ public class IndexModel : PageModel
         string? tz,
         CancellationToken cancel)
     {
-        var deckName = await GetDeckNameAsync(id, cancel);
+        string? deckName = await GetDeckNameAsync(id, cancel);
 
         if (id is not null && deckName is null)
         {
             return RedirectToPage(new { id = null as int? });
         }
 
-        var transactions = await TransactionIndices(id)
+        var transactions = await TransactionPreviews(id)
             .SeekBy(seek, direction)
             .OrderBy<Transaction>()
             .Take(_pageSize.Current)
@@ -92,7 +92,7 @@ public class IndexModel : PageModel
             return Task.FromResult<string?>(null);
         }
 
-        var userId = _userManager.GetUserId(User);
+        string? userId = _userManager.GetUserId(User);
 
         if (userId is null)
         {
@@ -105,7 +105,7 @@ public class IndexModel : PageModel
             .SingleOrDefaultAsync(cancel);
     }
 
-    private IQueryable<TransactionPreview> TransactionIndices(int? id)
+    private IQueryable<TransactionPreview> TransactionPreviews(int? id)
     {
         var transactions = _dbContext.Transactions.AsQueryable();
 
@@ -129,7 +129,8 @@ public class IndexModel : PageModel
                     .Sum(c => c.Copies),
 
                 Cards = t.Changes
-                    .GroupBy(c => new
+                    .GroupBy(
+                        c => new
                         {
                             c.Card.Id,
                             c.Card.Name,

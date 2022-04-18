@@ -221,7 +221,7 @@ public class ExchangeTests : IAsyncLifetime
         var activeTrade = new Trade
         {
             Card = giveBack.Card,
-            To = (Deck)giveBack.Location,
+            To = giveBack.Location,
             From = (Deck)tradeTarget,
             Copies = 3
         };

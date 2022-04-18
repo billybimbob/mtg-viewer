@@ -263,7 +263,7 @@ else if (BuildOption is BuildType.Holds)
         Theorycrafting
     }
 
-    private class DeckDto : ConcurrentDto
+    private sealed class DeckDto : ConcurrentDto
     {
         public int Id { get; init; }
 
@@ -319,7 +319,7 @@ else if (BuildOption is BuildType.Holds)
         }
     }
 
-    private class QuantityDto : ConcurrentDto
+    private sealed class QuantityDto : ConcurrentDto
     {
         public int Id { get; init; }
 

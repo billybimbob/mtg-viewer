@@ -47,7 +47,8 @@ public class ExportModel : PageModel
             return Page();
         }
 
-        var userId = _userManager.GetUserId(User);
+        string? userId = _userManager.GetUserId(User);
+
         if (userId is null)
         {
             return NotFound();
@@ -60,8 +61,8 @@ public class ExportModel : PageModel
             DataScope.Complete or _ => await _fileStorage.GetDefaultBackupAsync(cancel)
         };
 
-        var userName = _userManager.GetDisplayName(User);
-        var timestamp = DateTime.UtcNow.ToString(CultureInfo.InvariantCulture);
+        string userName = _userManager.GetDisplayName(User) ?? userId;
+        string timestamp = DateTime.UtcNow.ToString(CultureInfo.InvariantCulture);
 
         string filename = BackupType switch
         {

@@ -324,7 +324,7 @@ internal sealed class OriginTranslator<TOrigin, TEntity>
         return true;
     }
 
-    private class Registration
+    private sealed class Registration
     {
         public MemberExpression Expression { get; }
         public string LineageName { get; }
@@ -370,10 +370,10 @@ internal sealed class OriginTranslator<TOrigin, TEntity>
         }
     }
 
-    private class SelectorVisitor : ExpressionVisitor
+    private sealed class SelectorVisitor : ExpressionVisitor
     {
-        private static SelectorVisitor? s_instance;
-        public static ExpressionVisitor Instance => s_instance ??= new();
+        private static SelectorVisitor? _instance;
+        public static ExpressionVisitor Instance => _instance ??= new();
 
         protected override Expression VisitLambda<TFunc>(Expression<TFunc> node)
         {
@@ -398,10 +398,10 @@ internal sealed class OriginTranslator<TOrigin, TEntity>
         }
     }
 
-    private class TernaryVisitor : ExpressionVisitor
+    private sealed class TernaryVisitor : ExpressionVisitor
     {
-        private static TernaryVisitor? s_instance;
-        public static ExpressionVisitor Instance => s_instance ??= new();
+        private static TernaryVisitor? _instance;
+        public static ExpressionVisitor Instance => _instance ??= new();
 
         protected override Expression VisitConditional(ConditionalExpression node)
         {

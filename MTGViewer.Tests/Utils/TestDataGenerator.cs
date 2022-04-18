@@ -13,7 +13,7 @@ namespace MTGViewer.Tests.Utils;
 
 public class TestDataGenerator
 {
-    private static readonly SemaphoreSlim s_jsonLock = new(1, 1);
+    private static readonly SemaphoreSlim _jsonLock = new(1, 1);
 
     private readonly CardDbContext _dbContext;
     private readonly UserDbContext _userContext;
@@ -40,7 +40,7 @@ public class TestDataGenerator
 
     public async Task SeedAsync()
     {
-        await s_jsonLock.WaitAsync();
+        await _jsonLock.WaitAsync();
         try
         {
             await SetupAsync();
@@ -57,7 +57,7 @@ public class TestDataGenerator
         }
         finally
         {
-            s_jsonLock.Release();
+            _jsonLock.Release();
         }
     }
 
@@ -101,7 +101,7 @@ public class TestDataGenerator
         await _dbContext.Database.EnsureDeletedAsync();
     }
 
-    public async Task<Deck> CreateEmptyDeckAsync(int numCards = 0)
+    public async Task<Deck> CreateEmptyDeckAsync()
     {
         var users = await _dbContext.Users.ToListAsync();
         var owner = users[_random.Next(users.Count)];

@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 
@@ -25,7 +24,7 @@ public class Startup
             .ConfigureAppConfiguration(config =>
             {
                 config.AddJsonFile("appsettings.Test.json", optional: true, reloadOnChange: true);
-                config.AddUserSecrets<MTGViewer.App>();
+                config.AddUserSecrets<App>();
             });
     }
 
@@ -70,9 +69,9 @@ public class Startup
 
         services
             .Configure<IdentityOptions>(config)
-            .AddScoped<UserStore<CardUser>>(TestFactory.CardUserStore)
-            .AddScoped<UserManager<CardUser>>(TestFactory.CardUserManager)
-            .AddScoped<SignInManager<CardUser>>(TestFactory.CardSignInManager);
+            .AddScoped(TestFactory.CardUserStore)
+            .AddScoped(TestFactory.CardUserManager)
+            .AddScoped(TestFactory.CardSignInManager);
 
         services
             .AddScoped<ReferenceManager>()
@@ -96,7 +95,7 @@ public class Startup
 
         services
             .AddSingleton<IMtgServiceProvider, MtgServiceProvider>()
-            .AddScoped<ICardService>(provider => provider
+            .AddScoped(provider => provider
                 .GetRequiredService<IMtgServiceProvider>()
                 .GetCardService());
 

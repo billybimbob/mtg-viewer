@@ -10,11 +10,11 @@ public readonly record struct TextFilter(string? Name, string[]? Types, string? 
     public const int TextLimit = 40;
     public const int TypeLimit = 8;
 
-    public bool Equals(TextFilter filter)
+    public bool Equals(TextFilter other)
     {
-        return Name == filter.Name
-            && Text == filter.Text
-            && TypesEqual(filter.Types);
+        return Name == other.Name
+            && Text == other.Text
+            && TypesEqual(other.Types);
     }
 
     private bool TypesEqual(string[]? types)

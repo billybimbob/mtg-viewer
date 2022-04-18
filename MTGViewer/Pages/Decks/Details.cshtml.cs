@@ -56,7 +56,7 @@ public class DetailsModel : PageModel
             .Take(_pageSize.Current)
             .ToSeekListAsync(cancel);
 
-        var userId = _userManager.GetUserId(User);
+        string? userId = _userManager.GetUserId(User);
 
         IsOwner = deck.Owner.Id == userId;
         Deck = deck;

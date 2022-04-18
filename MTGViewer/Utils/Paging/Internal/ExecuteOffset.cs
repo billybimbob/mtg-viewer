@@ -10,11 +10,11 @@ namespace System.Paging.Query;
 
 internal static class ExecuteOffset<TEntity>
 {
-    private static GetPageInfoVisitor? s_getPageInfo;
-    private static ExpressionVisitor GetPageInfo => s_getPageInfo ??= new();
+    private static GetPageInfoVisitor? _getPageInfo;
+    private static ExpressionVisitor GetPageInfo => _getPageInfo ??= new();
 
-    private static RemoveOffsetVisitor? s_removeOffset;
-    private static ExpressionVisitor RemoveOffset => s_removeOffset ??= new();
+    private static RemoveOffsetVisitor? _removeOffset;
+    private static ExpressionVisitor RemoveOffset => _removeOffset ??= new();
 
     public static OffsetList<TEntity> ToOffsetList(IQueryable<TEntity> query)
     {
@@ -69,7 +69,7 @@ internal static class ExecuteOffset<TEntity>
 
     private record PageInfo(int Index, int Size);
 
-    private class GetPageInfoVisitor : ExpressionVisitor
+    private sealed class GetPageInfoVisitor : ExpressionVisitor
     {
         protected override Expression VisitMethodCall(MethodCallExpression node)
         {
@@ -103,7 +103,7 @@ internal static class ExecuteOffset<TEntity>
         }
     }
 
-    private class RemoveOffsetVisitor : ExpressionVisitor
+    private sealed class RemoveOffsetVisitor : ExpressionVisitor
     {
         protected override Expression VisitMethodCall(MethodCallExpression node)
         {

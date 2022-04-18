@@ -174,11 +174,11 @@ else if (IsLoading)
 
     internal sealed class SuggestionDto
     {
-        public event EventHandler<ReceiverEventArgs>? ReceiverChanged;
-
         private readonly List<DeckPreview> _deckOptions = new();
         private readonly List<UserPreview> _userOptions = new();
         private UserPreview? _receiver;
+
+        public event EventHandler<ReceiverEventArgs>? ReceiverChanged;
 
         public IReadOnlyList<UserPreview> UserOptions => _userOptions;
 

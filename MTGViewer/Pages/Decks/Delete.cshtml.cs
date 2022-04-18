@@ -43,9 +43,9 @@ public class DeleteModel : PageModel
 
     public async Task<IActionResult> OnGetAsync(int id, CancellationToken cancel)
     {
-        var userId = _userManager.GetUserId(User);
+        string? userId = _userManager.GetUserId(User);
 
-        if (userId == default)
+        if (userId is null)
         {
             return NotFound();
         }
@@ -143,7 +143,8 @@ public class DeleteModel : PageModel
 
     public async Task<IActionResult> OnPostAsync(int id, string? returnUrl, CancellationToken cancel)
     {
-        var userId = _userManager.GetUserId(User);
+        string? userId = _userManager.GetUserId(User);
+
         if (userId is null)
         {
             return NotFound();

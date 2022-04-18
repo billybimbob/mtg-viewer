@@ -27,7 +27,7 @@ namespace MTGViewer.Areas.Identity.Services
             _logger = logger;
         }
 
-        protected async override Task<ClaimsIdentity> GenerateClaimsAsync(CardUser user)
+        protected override async Task<ClaimsIdentity> GenerateClaimsAsync(CardUser user)
         {
             var id = await base.GenerateClaimsAsync(user);
 

@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Paging;
 using System.Threading;
@@ -18,6 +17,7 @@ using Microsoft.Extensions.Logging;
 using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
 using MTGViewer.Services;
+using MTGViewer.Utils;
 
 namespace MTGViewer.Pages.Transfers;
 
@@ -49,15 +49,6 @@ public partial class Suggest : OwningComponentBase
 
     [Inject]
     protected ILogger<Suggest> Logger { get; set; } = default!;
-
-    internal bool IsLoading => _isBusy || !_isInteractive;
-
-    internal bool HasMore => _cursor.HasMore;
-
-    internal bool HasDetails => Suggestion.ToId is not null;
-
-    internal bool IsMissingUsers =>
-        !_isBusy && Suggestion is { Card: Card, UserOptions.Count: 0 };
 
     internal SuggestionDto Suggestion { get; } = new();
 
@@ -120,7 +111,7 @@ public partial class Suggest : OwningComponentBase
         {
             Logger.LogWarning("{Error}", ex);
         }
-        catch(NavigationException ex)
+        catch (NavigationException ex)
         {
             Logger.LogWarning("Navigation {Warning}", ex);
         }
@@ -168,20 +159,9 @@ public partial class Suggest : OwningComponentBase
         return Task.CompletedTask;
     }
 
-    private bool TryGetData<TData>(string key, [NotNullWhen(true)] out TData? data)
-    {
-        if (ApplicationState.TryTakeFromJson(key, out data!)
-            && data is not null)
-        {
-            return true;
-        }
-
-        return false;
-    }
-
     private async Task LoadCardAsync(CardDbContext dbContext, CancellationToken cancel)
     {
-        if (TryGetData(nameof(Suggestion.Card), out Card? card))
+        if (ApplicationState.TryGetData(nameof(Suggestion.Card), out Card? card))
         {
             Suggestion.Card = card;
             return;
@@ -213,7 +193,7 @@ public partial class Suggest : OwningComponentBase
 
         const string key = nameof(Suggestion.UserOptions);
 
-        if (TryGetData(key, out IAsyncEnumerable<UserPreview>? users))
+        if (ApplicationState.TryGetData(key, out IAsyncEnumerable<UserPreview>? users))
         {
             await Suggestion.AddUsersAsync(users, cancel);
             return;
@@ -258,12 +238,12 @@ public partial class Suggest : OwningComponentBase
             return;
         }
 
-        if (!TryGetData(nameof(_cursor.TotalDecks), out int deckCount))
+        if (!ApplicationState.TryGetData(nameof(_cursor.TotalDecks), out int deckCount))
         {
             deckCount = await DecksForSuggest(dbContext, name, id).CountAsync(cancel);
         }
 
-        if (TryGetData(nameof(Suggestion.DeckOptions), out IEnumerable<DeckPreview>? decks))
+        if (ApplicationState.TryGetData(nameof(Suggestion.DeckOptions), out IEnumerable<DeckPreview>? decks))
         {
             await Suggestion.AddDecksAsync(decks.ToAsyncEnumerable(), cancel);
         }
@@ -296,6 +276,19 @@ public partial class Suggest : OwningComponentBase
             Nav.GetUriWithQueryParameter(nameof(ReceiverId), args.ReceiverId),
             replace: true);
     }
+
+    #region View Properties
+
+    internal bool IsLoading => _isBusy || !_isInteractive;
+
+    internal bool HasMore => _cursor.HasMore;
+
+    internal bool HasDetails => Suggestion.ToId is not null;
+
+    internal bool IsMissingUsers =>
+        !_isBusy && Suggestion is { Card: Card, UserOptions.Count: 0 };
+
+    #endregion
 
     internal void ViewDeckDetails()
     {

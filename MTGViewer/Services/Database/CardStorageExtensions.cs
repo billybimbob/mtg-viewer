@@ -62,7 +62,7 @@ public static class CardStorageExtensions
                 break;
         }
 
-        services.AddScoped<CardDbContext>(provider => provider
+        services.AddScoped(provider => provider
             .GetRequiredService<IDbContextFactory<CardDbContext>>()
             .CreateDbContext());
 

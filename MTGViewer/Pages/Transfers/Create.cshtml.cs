@@ -51,7 +51,7 @@ public class CreateModel : PageModel
 
     public async Task<IActionResult> OnGetAsync(int id, int? offset, CancellationToken cancel)
     {
-        var userId = _userManager.GetUserId(User);
+        string? userId = _userManager.GetUserId(User);
 
         if (userId is null)
         {
@@ -85,6 +85,7 @@ public class CreateModel : PageModel
         }
 
         Deck = deck;
+
         Requests = requests;
 
         Cards = await DeckCardsAsync
@@ -182,7 +183,7 @@ public class CreateModel : PageModel
                         .Sum(w => w.Copies)
                 }));
 
-    private IQueryable<Trade> TradeRequests(DeckDetails deck)
+    private IQueryable<Trade> TradeMatches(DeckDetails deck)
     {
         var wantNames = _dbContext.Wants
             .Where(w => w.LocationId == deck.Id)
@@ -192,14 +193,14 @@ public class CreateModel : PageModel
 
         // TODO: prioritize requesting from exact card matches
 
+        // intentionally leave wants unbounded by target since
+        // that cap will be handled later
+
         return _dbContext.Users
             .Where(u => u.Id != deck.Owner.Id && !u.ResetRequested)
             .SelectMany(u => u.Decks)
             .SelectMany(d => d.Holds)
             .OrderBy(h => h.Id)
-
-            // intentionally leave wants unbounded by target since
-            // that cap will be handled later
 
             .Join(wantNames,
                 h => h.Card.Name,
@@ -236,7 +237,7 @@ public class CreateModel : PageModel
             return RedirectToPage("Details", new { id });
         }
 
-        var trades = await TradeRequests(deck).ToListAsync(cancel);
+        var trades = await TradeMatches(deck).ToListAsync(cancel);
 
         if (!trades.Any())
         {

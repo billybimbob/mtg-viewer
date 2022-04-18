@@ -72,7 +72,7 @@ public class Startup
 
         services
             .AddSingleton<IMtgServiceProvider, MtgServiceProvider>()
-            .AddScoped<ICardService>(provider => provider
+            .AddScoped(provider => provider
                 .GetRequiredService<IMtgServiceProvider>()
                 .GetCardService());
 

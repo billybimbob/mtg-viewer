@@ -8,11 +8,11 @@ namespace MTGViewer.Data.Triggers;
 
 public class StampUpdate : IBeforeSaveTrigger<Concurrent>
 {
-    public Task BeforeSave(ITriggerContext<Concurrent> trigContext, CancellationToken cancel)
+    public Task BeforeSave(ITriggerContext<Concurrent> context, CancellationToken cancellationToken)
     {
-        if (trigContext.ChangeType is ChangeType.Added or ChangeType.Modified)
+        if (context.ChangeType is ChangeType.Added or ChangeType.Modified)
         {
-            trigContext.Entity.Stamp = Guid.NewGuid();
+            context.Entity.Stamp = Guid.NewGuid();
         }
 
         return Task.CompletedTask;

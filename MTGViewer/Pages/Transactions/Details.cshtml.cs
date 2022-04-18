@@ -68,7 +68,7 @@ public class DetailsModel : PageModel
         string? tz,
         CancellationToken cancel)
     {
-        var userId = _userManager.GetUserId(User);
+        string? userId = _userManager.GetUserId(User);
 
         var transactionQuery = userId is null
             ? TransactionDetails(id)
@@ -241,13 +241,13 @@ public class DetailsModel : PageModel
     private static bool IsInvalidTransaction(Transaction transaction, string userId)
     {
         return transaction.Changes
-            .Any(c => c.To is Deck toDeck && toDeck.OwnerId != userId
-                || c.From is Deck fromDeck && fromDeck.OwnerId != userId);
+            .Any(c => (c.To is Deck toDeck && toDeck.OwnerId != userId)
+                || (c.From is Deck fromDeck && fromDeck.OwnerId != userId));
     }
 
     public async Task<IActionResult> OnPostAsync(int id, CancellationToken cancel)
     {
-        var userId = _userManager.GetUserId(User);
+        string? userId = _userManager.GetUserId(User);
 
         if (userId is null)
         {

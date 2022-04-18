@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using System.Threading.Tasks;
 using Bunit;
 using Bunit.TestDoubles;
@@ -117,9 +118,11 @@ public class CollectionTests : IAsyncLifetime
 
         var greenButton = cut.Find(".ms-u");
 
+        var invariant = CultureInfo.InvariantCulture;
+
         greenButton.Click();
 
-        Assert.Contains(blue.ToString(), nav.Uri);
+        Assert.Contains(blue.ToString(invariant), nav.Uri);
     }
 
     [Theory]

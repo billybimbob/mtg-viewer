@@ -46,7 +46,7 @@ public class DetailsModel : PageModel
 
     public async Task<IActionResult> OnGetAsync(int id, int? offset, CancellationToken cancel)
     {
-        var userId = _userManager.GetUserId(User);
+        string? userId = _userManager.GetUserId(User);
 
         if (userId is null)
         {
@@ -121,10 +121,10 @@ public class DetailsModel : PageModel
                 .ThenBy(t => t.Card.SetName)
                 .ThenBy(t => t.Id);
 
-        return deckTrades
-            // each join should be one-to-one match because
-            // holds are unique by Location and Card
+        // each join should be one-to-one match because
+        // holds are unique by Location and Card
 
+        return deckTrades
             .Join(_dbContext.Holds,
                 t => new { LocationId = t.FromId, t.CardId },
                 h => new { h.LocationId, h.CardId },
@@ -192,7 +192,7 @@ public class DetailsModel : PageModel
 
     public async Task<IActionResult> OnPostAsync(int id, CancellationToken cancel)
     {
-        var userId = _userManager.GetUserId(User);
+        string? userId = _userManager.GetUserId(User);
 
         if (userId is null)
         {

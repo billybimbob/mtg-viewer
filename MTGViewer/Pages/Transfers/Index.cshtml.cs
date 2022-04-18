@@ -48,13 +48,15 @@ public class IndexModel : PageModel
 
     public async Task<IActionResult> OnGetAsync(int? seek, SeekDirection direction, CancellationToken cancel)
     {
-        var userId = _userManager.GetUserId(User);
+        string? userId = _userManager.GetUserId(User);
+
         if (userId is null)
         {
             return Challenge();
         }
 
-        var userName = _userManager.GetDisplayName(User);
+        string? userName = _userManager.GetDisplayName(User);
+
         if (userName is null)
         {
             return NotFound();
@@ -62,7 +64,7 @@ public class IndexModel : PageModel
 
         UserName = userName;
 
-        TradeDecks = await TradeDeckPreviews(userId)
+        TradeDecks = await TradingDecks(userId)
             .SeekBy(seek, direction)
             .OrderBy<Deck>()
             .Take(_pageSize.Current)
@@ -75,7 +77,7 @@ public class IndexModel : PageModel
         return Page();
     }
 
-    public IQueryable<TradeDeckPreview> TradeDeckPreviews(string userId)
+    public IQueryable<TradeDeckPreview> TradingDecks(string userId)
     {
         return _dbContext.Decks
             .Where(d => d.OwnerId == userId
@@ -125,13 +127,15 @@ public class IndexModel : PageModel
 
     public async Task<IActionResult> OnPostAsync(int id, CancellationToken cancel)
     {
-        var userId = _userManager.GetUserId(User);
+        string? userId = _userManager.GetUserId(User);
+
         if (userId is null)
         {
             return NotFound();
         }
 
         var changeTreasury = await _authorizations.AuthorizeAsync(User, CardPolicies.ChangeTreasury);
+
         if (!changeTreasury.Succeeded)
         {
             return NotFound();

@@ -20,24 +20,24 @@ namespace MTGViewer.Pages.Treasury;
 public class ResetModel : PageModel
 {
     private readonly CardDbContext _dbContext;
-    private readonly ReferenceManager _referenceManager;
 
-    private readonly SignInManager<CardUser> _signManager;
+    private readonly ReferenceManager _referenceManager;
     private readonly UserManager<CardUser> _userManager;
+    private readonly SignInManager<CardUser> _signManager;
 
     private readonly ILogger<ResetModel> _logger;
 
     public ResetModel(
         CardDbContext dbContext,
         ReferenceManager referenceManager,
-        SignInManager<CardUser> signInManager,
         UserManager<CardUser> userManager,
+        SignInManager<CardUser> signInManager,
         ILogger<ResetModel> logger)
     {
         _dbContext = dbContext;
         _referenceManager = referenceManager;
-        _signManager = signInManager;
         _userManager = userManager;
+        _signManager = signInManager;
         _logger = logger;
     }
 
@@ -48,13 +48,20 @@ public class ResetModel : PageModel
 
     public int Remaining { get; private set; }
 
-    public async Task OnGetAsync(CancellationToken cancel)
+    public async Task<IActionResult> OnGetAsync(CancellationToken cancel)
     {
-        var userId = _userManager.GetUserId(User);
+        string? userId = _userManager.GetUserId(User);
+
+        if (userId is null)
+        {
+            return Forbid();
+        }
 
         ResetRequested = await IsResetRequestedAsync.Invoke(_dbContext, userId, cancel);
 
         Remaining = await RemainingRequestsAsync.Invoke(_dbContext, cancel);
+
+        return Page();
     }
 
     private static readonly Func<CardDbContext, string, CancellationToken, Task<bool>> IsResetRequestedAsync
@@ -71,8 +78,9 @@ public class ResetModel : PageModel
 
     public async Task<IActionResult> OnPostAsync(CancellationToken cancel)
     {
-        var userId = _userManager.GetUserId(User);
-        if (userId == default)
+        string? userId = _userManager.GetUserId(User);
+
+        if (userId is null)
         {
             return NotFound();
         }

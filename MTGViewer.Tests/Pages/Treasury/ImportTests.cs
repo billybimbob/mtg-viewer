@@ -48,7 +48,7 @@ public class ImportTests : IAsyncLifetime
         await _testGen.ClearAsync();
     }
 
-    private InputFileChangeEventArgs GetFileInput(
+    private static InputFileChangeEventArgs GetFileInput(
         CardData data,
         string? fileName = null,
         long? length = null,
@@ -145,7 +145,7 @@ public class ImportTests : IAsyncLifetime
 
         var validData = new CardData
         {
-            Cards = new [] { new Card() }
+            Cards = new[] { new Card() }
         };
 
         var file = GetFileInput(validData);

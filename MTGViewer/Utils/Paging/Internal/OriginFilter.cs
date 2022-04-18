@@ -55,7 +55,7 @@ internal sealed class OriginFilter<TOrigin, TEntity>
 
         var filter = builder.CompareTo(firstKey);
 
-        foreach ((KeyOrder key, int before) in otherKeys)
+        foreach ((var key, int before) in otherKeys)
         {
             var comparison = builder.CompareTo(key, builder.OrderKeys.Take(before));
 
@@ -224,7 +224,7 @@ internal sealed class OriginFilter<TOrigin, TEntity>
     {
         return (_origin.Translate(parameter), GetNullOrder(parameter)) switch
         {
-            (MemberExpression o and { Type.IsEnum: true }, _)  =>
+            (MemberExpression o and { Type.IsEnum: true }, _) =>
                 Expression.GreaterThan(
                     parameter, o, false, ExpressionConstants.EnumGreaterThan(o.Type)),
 
@@ -322,10 +322,10 @@ internal sealed class OriginFilter<TOrigin, TEntity>
         After
     }
 
-    private class OrderByVisitor : ExpressionVisitor
+    private sealed class OrderByVisitor : ExpressionVisitor
     {
-        private static OrderByVisitor? s_instance;
-        public static ExpressionVisitor Instance => s_instance ??= new();
+        private static OrderByVisitor? _instance;
+        public static ExpressionVisitor Instance => _instance ??= new();
 
         protected override Expression VisitMethodCall(MethodCallExpression node)
         {

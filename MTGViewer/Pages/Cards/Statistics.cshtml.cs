@@ -13,6 +13,11 @@ namespace MTGViewer.Pages.Cards;
 
 public class StatisticsModel : PageModel
 {
+    public static readonly IReadOnlyList<string> CardTypes = new[]
+    {
+        "Artifact", "Creature", "Enchantment", "Instant", "Land", "Sorcery"
+    };
+
     private readonly CardDbContext _dbContext;
 
     public StatisticsModel(CardDbContext dbContext)
@@ -63,16 +68,18 @@ public class StatisticsModel : PageModel
 
     private readonly record struct ColorCopies(Color Color, int Copies);
 
+    private readonly record struct TypeCopies(string Type, int Copies);
+
     private async Task<IReadOnlyDictionary<Color, int>> GetColorsAsync(CancellationToken cancel)
     {
+        // technically bounded, with limit as the total combos of colors bits
+        // which given 5 bits = 2^5 - 1 = 63 max size
+
         var dbColors = await _dbContext.Holds
-            .GroupBy(h => h.Card.Color,
+            .GroupBy(
+                h => h.Card.Color,
                 (color, hs) =>
                     new ColorCopies(color, hs.Sum(h => h.Copies)))
-
-            // technically bounded, with limit as the total combos of colors bits
-            // which given 5 bits = 2^5 - 1 = 63 max size
-
             .ToListAsync(cancel);
 
         return Enum
@@ -94,17 +101,10 @@ public class StatisticsModel : PageModel
         return new ColorCopies(color, copies);
     }
 
-    public static readonly string[] CardTypes =
-    {
-        "Artifact", "Creature", "Enchantment", "Instant", "Land", "Sorcery"
-    };
-
-    private readonly record struct TypeCopies(string Type, int Copies);
-
     private async Task<IReadOnlyDictionary<string, int>> GetTypesAsync(CancellationToken cancel)
     {
         const StringComparison ordinal = StringComparison.Ordinal;
-        const string longDash = "—";
+        const string longDash = "\u2014";
 
         var dbTypes = await _dbContext.Cards
             .Where(c => c.Type.Contains("Artifact")

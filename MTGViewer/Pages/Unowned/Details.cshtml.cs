@@ -115,9 +115,9 @@ public class DetailsModel : PageModel
 
     public async Task<IActionResult> OnPostClaimAsync(int id, CancellationToken cancel)
     {
-        var userId = _userManager.GetUserId(User);
+        string? userId = _userManager.GetUserId(User);
 
-        if (userId == null)
+        if (userId is null)
         {
             return NotFound();
         }

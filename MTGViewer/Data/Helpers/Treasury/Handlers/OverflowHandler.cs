@@ -30,7 +30,7 @@ internal abstract class OverflowHandler
 
     public void TransferOverflow()
     {
-        foreach ((Hold source, int copies, Storage storage) in GetAssignments())
+        foreach ((var source, int copies, var storage) in GetAssignments())
         {
             TreasuryContext.TransferCopies(source.Card, copies, storage, source.Location);
         }

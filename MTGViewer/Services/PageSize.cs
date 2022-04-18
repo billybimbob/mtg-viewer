@@ -8,7 +8,7 @@ using Microsoft.Extensions.Configuration;
 
 namespace MTGViewer.Services;
 
-public class PageSize : IDisposable
+public sealed class PageSize : IDisposable
 {
     private readonly IConfiguration _config;
     private readonly IActionContextAccessor _actionAccessor;
@@ -20,19 +20,13 @@ public class PageSize : IDisposable
         RouteDataAccessor routeAccessor)
     {
         _config = config.GetSection(nameof(PageSize));
-
         _actionAccessor = actionAccessor;
+
         _routeAccessor = routeAccessor;
+        _routeAccessor.RouteChanged += ResetPage;
 
         Default = _config.GetValue(nameof(Default), 10);
         Limit = _config.GetValue(nameof(Limit), 256);
-
-        _routeAccessor.RouteChanged += ResetPage;
-    }
-
-    public void Dispose()
-    {
-        _routeAccessor.RouteChanged -= ResetPage;
     }
 
     public int Default { get; }
@@ -40,6 +34,11 @@ public class PageSize : IDisposable
 
     private int? _current;
     public int Current => _current ??= GetComponentSize() ?? GetActionSize();
+
+    public void Dispose()
+    {
+        _routeAccessor.RouteChanged -= ResetPage;
+    }
 
     private void ResetPage(object? sender, RouteDataEventArgs args)
     {
@@ -65,7 +64,7 @@ public class PageSize : IDisposable
             .Skip(1)
             .Where(s => !s.StartsWith('{'));
 
-        var key = string.Join(':', route);
+        string key = string.Join(':', route);
 
         if (string.IsNullOrEmpty(key))
         {
@@ -82,16 +81,16 @@ public class PageSize : IDisposable
 
     private int GetActionSize()
     {
-        var actionName = _actionAccessor.ActionContext?.ActionDescriptor?.DisplayName;
+        string? actionName = _actionAccessor.ActionContext?.ActionDescriptor?.DisplayName;
 
         if (actionName is { Length: 0 })
         {
             return Default;
         }
 
-        var route = actionName?.Split('/')[1..];
+        string[] route = actionName?.Split('/')[1..] ?? Array.Empty<string>();
 
-        var key = string.Join(':', route ?? Array.Empty<string>());
+        string key = string.Join(':', route);
 
         if (_config.GetValue(key, null as int?) is int size)
         {

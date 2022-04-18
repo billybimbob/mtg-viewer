@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Paging;
 using System.Threading;
@@ -11,19 +10,19 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
 
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
 using MTGViewer.Data.Internal;
 using MTGViewer.Services;
+using MTGViewer.Utils;
 
 namespace MTGViewer.Pages.Cards;
 
 [Authorize]
 [Authorize(CardPolicies.ChangeTreasury)]
-public partial class Create : ComponentBase, IDisposable
+public sealed partial class Create : ComponentBase, IDisposable
 {
     [Parameter]
     [SupplyParameterFromQuery]
@@ -78,22 +77,22 @@ public partial class Create : ComponentBase, IDisposable
     public string? ReturnUrl { get; set; }
 
     [Inject]
-    protected IDbContextFactory<CardDbContext> DbFactory { get; set; } = default!;
+    internal IDbContextFactory<CardDbContext> DbFactory { get; set; } = default!;
 
     [Inject]
-    protected IMTGQuery MtgQuery { get; set; } = default!;
+    internal IMTGQuery MtgQuery { get; set; } = default!;
 
     [Inject]
-    protected NavigationManager Nav { get; set; } = default!;
+    internal NavigationManager Nav { get; set; } = default!;
 
     [Inject]
-    protected PersistentComponentState ApplicationState { get; set; } = default!;
+    internal PersistentComponentState ApplicationState { get; set; } = default!;
 
     [Inject]
-    protected PageSize PageSize { get; set; } = default!;
+    internal PageSize PageSize { get; set; } = default!;
 
     [Inject]
-    protected ILogger<Create> Logger { get; set; } = default!;
+    internal ILogger<Create> Logger { get; set; } = default!;
 
     internal IReadOnlyList<MatchInput> Matches => _matches;
 
@@ -101,7 +100,7 @@ public partial class Create : ComponentBase, IDisposable
 
     internal bool IsLoading => _isBusy || !_isInteractive;
 
-    internal bool IsEmpty => Query == s_empty;
+    internal bool IsEmpty => Query == Empty;
 
     internal CardQuery Query { get; } = new();
 
@@ -112,7 +111,7 @@ public partial class Create : ComponentBase, IDisposable
     internal SaveResult Result { get; set; }
 
     // should never change, only used for resets
-    private static readonly CardQuery s_empty = new();
+    private static readonly CardQuery Empty = new();
 
     private readonly CancellationTokenSource _cancel = new();
     private readonly List<MatchInput> _matches = new();
@@ -121,7 +120,6 @@ public partial class Create : ComponentBase, IDisposable
     private bool _isInteractive;
 
     private PersistingComponentStateSubscription _persistSubscription;
-
     private ValidationMessageStore? _resultErrors;
     private Offset _matchPage;
     private string? _returnUrl;
@@ -152,7 +150,7 @@ public partial class Create : ComponentBase, IDisposable
             {
                 Logger.LogWarning("Given search parameters were invalid");
 
-                NavigateToQuery(s_empty);
+                NavigateToQuery(Empty);
                 return;
             }
 
@@ -165,7 +163,7 @@ public partial class Create : ComponentBase, IDisposable
                     : $"{Nav.BaseUri}{ReturnUrl.TrimStart('/')}";
             }
 
-            if (Query == s_empty)
+            if (Query == Empty)
             {
                 IsFromForm = true;
                 return;
@@ -228,23 +226,12 @@ public partial class Create : ComponentBase, IDisposable
         return Task.CompletedTask;
     }
 
-    private bool TryGetData<TData>(string key, [NotNullWhen(true)] out TData? data)
-    {
-        if (ApplicationState.TryTakeFromJson(key, out data!)
-            && data is not null)
-        {
-            return true;
-        }
-
-        return false;
-    }
-
     private async Task LoadCardMatchesAsync(CancellationToken cancel)
     {
         if (_matches.Any()
-            || !TryGetData(nameof(_matches), out IEnumerable<Card>? cards)
-            || !TryGetData(nameof(MatchInput.HasDetails), out HashSet<string>? inDbCards)
-            || !TryGetData(nameof(_matchPage), out Offset offset))
+            || !ApplicationState.TryGetData(nameof(_matches), out IEnumerable<Card>? cards)
+            || !ApplicationState.TryGetData(nameof(MatchInput.HasDetails), out HashSet<string>? inDbCards)
+            || !ApplicationState.TryGetData(nameof(_matchPage), out Offset offset))
         {
             await SearchForCardAsync(cancel);
             return;
@@ -282,7 +269,8 @@ public partial class Create : ComponentBase, IDisposable
         }
 
         var idField = edit.Field(nameof(CardQuery.Id));
-        var noMatch = new[] { "No matches were found" };
+
+        string[] noMatch = { "No matches were found" };
 
         _resultErrors.Add(idField, noMatch);
         edit.NotifyValidationStateChanged();
@@ -350,7 +338,7 @@ public partial class Create : ComponentBase, IDisposable
 
     private void NavigateToQuery(CardQuery query)
     {
-        var color = query.Colors is not Color.None
+        int? color = query.Colors is not Color.None
             ? (int?)query.Colors
             : null;
 
@@ -384,7 +372,7 @@ public partial class Create : ComponentBase, IDisposable
 
         Result = SaveResult.None;
 
-        NavigateToQuery(s_empty);
+        NavigateToQuery(Empty);
     }
 
     internal void SubmitSearch()
@@ -564,7 +552,7 @@ public partial class Create : ComponentBase, IDisposable
             }
             else
             {
-                NavigateToQuery(s_empty);
+                NavigateToQuery(Empty);
             }
         }
         catch (DbUpdateException e)

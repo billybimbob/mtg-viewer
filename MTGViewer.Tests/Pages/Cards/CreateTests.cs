@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -203,9 +204,11 @@ public class CreateTests : IAsyncLifetime
 
         var form = cut.FindComponent<EditForm>();
 
+        var invariant = CultureInfo.InvariantCulture;
+
         await cut.InvokeAsync(() => form.Instance.OnValidSubmit.InvokeAsync());
 
-        string colorName = ((int)color).ToString();
+        string colorName = ((int)color).ToString(invariant);
 
         Assert.Contains(colorName, nav.Uri);
     }
@@ -240,9 +243,11 @@ public class CreateTests : IAsyncLifetime
 
         var form = cut.FindComponent<EditForm>();
 
+        var invariant = CultureInfo.InvariantCulture;
+
         await cut.InvokeAsync(() => form.Instance.OnValidSubmit.InvokeAsync());
 
-        Assert.Contains(cmc?.ToString() ?? string.Empty, nav.Uri);
+        Assert.Contains(cmc?.ToString(invariant) ?? string.Empty, nav.Uri);
     }
 
     [Theory]
@@ -261,9 +266,11 @@ public class CreateTests : IAsyncLifetime
 
         var form = cut.FindComponent<EditForm>();
 
+        var invariant = CultureInfo.InvariantCulture;
+
         await cut.InvokeAsync(() => form.Instance.OnValidSubmit.InvokeAsync());
 
-        string rarityName = ((int?)rarity)?.ToString() ?? string.Empty;
+        string rarityName = ((int?)rarity)?.ToString(invariant) ?? string.Empty;
 
         Assert.Contains(rarityName, nav.Uri);
     }
