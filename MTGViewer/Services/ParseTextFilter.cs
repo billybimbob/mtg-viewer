@@ -67,9 +67,10 @@ public class ParseTextFilter
             return default;
         }
 
+        var filter = new TextFilter();
         var match = Regex.Match(search, Split);
 
-        var filter = new TextFilter();
+        var source = search.AsSpan();
         var capture = ReadOnlySpan<char>.Empty;
 
         int index = 0;
@@ -78,7 +79,7 @@ public class ParseTextFilter
         {
             _logger.LogInformation("Received match {Match}", match);
 
-            filter = AddFilter(filter, capture, search[index..match.Index]);
+            filter = AddFilter(filter, capture, source[index..match.Index]);
 
             capture = match.Groups[nameof(Split)].ValueSpan;
             index = match.Index + match.Length;
@@ -86,7 +87,7 @@ public class ParseTextFilter
             match = match.NextMatch();
         }
 
-        return AddFilter(filter, capture, search[index..]);
+        return AddFilter(filter, capture, source[index..]);
     }
 
     private static TextFilter AddFilter(
