@@ -67,12 +67,12 @@ public class CollectionTests : IAsyncLifetime
     }
 
     [Fact]
-    public void LoadData_NameParam_NoResult()
+    public void LoadData_SearchNameParameter_NoResult()
     {
         const string searchName = "test invalid search";
 
         var cut = _testContext.RenderComponent<Collection>(p => p
-            .Add(c => c.Name, searchName));
+            .Add(c => c.Search, searchName));
 
         var cardEntries = cut.FindAll("tbody tr");
 
@@ -91,17 +91,16 @@ public class CollectionTests : IAsyncLifetime
 
         search.Change($"/t {searchType}");
 
-        Assert.All(searchType.Split(), t =>
-            Assert.Contains(t, nav.Uri));
+        Assert.Contains(Uri.EscapeDataString(searchType), nav.Uri);
     }
 
     [Fact]
-    public void LoadData_TypesParamater_NoResult()
+    public void LoadData_SearchTypesParamater_NoResult()
     {
-        var searchTypes = new[] { "test", "invalid", "type" };
+        var searchTypes = "/t test invalid type";
 
         var cut = _testContext.RenderComponent<Collection>(p => p
-            .Add(c => c.Types, searchTypes));
+            .Add(c => c.Search, searchTypes));
 
         var cardEntries = cut.FindAll("tbody tr");
 

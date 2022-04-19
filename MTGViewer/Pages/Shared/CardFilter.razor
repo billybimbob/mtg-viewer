@@ -1,9 +1,8 @@
-@inject ParseTextFilter ParseFilter
 
 <div class="form-row align-items-center mb-3">
     <div class="col-12 col-md-4">
         <input class="form-control" placeholder="Card Name"
-            disabled="@IsDisabled" @bind="SearchName" />
+            disabled="@IsDisabled" @bind="BoundSearch" />
     </div>
 
     <div class="col-auto btn-group pt-2 pt-md-0" role="group" aria-label="Color Buttons">
@@ -26,10 +25,10 @@
 @code
 {
     [Parameter]
-    public TextFilter TextFilter { get; set; }
+    public string? Search { get; set; }
 
     [Parameter]
-    public EventCallback<TextFilter> TextFilterChanged { get; set; }
+    public EventCallback<string?> SearchChanged { get; set; }
 
     [Parameter]
     public Color Color { get; set; }
@@ -43,33 +42,13 @@
     [Parameter]
     public RenderFragment? ChildContent { get; set; }
 
-    private string? _searchName;
-    private string? SearchName
+    internal string? BoundSearch
     {
-        get => _searchName ?? TextFilter.ToString();
-        set
-        {
-            if (string.IsNullOrWhiteSpace(value))
-            {
-                value = null;
-            }
-
-            if (IsDisabled
-                || value?.Length > TextFilter.TextLimit
-                || value == _searchName)
-            {
-                return;
-            }
-
-            var filter = ParseFilter.Parse(value);
-
-            TextFilterChanged.InvokeAsync(filter);
-
-            _searchName = value;
-        }
+        get => Search;
+        set => _ = SearchChanged.InvokeAsync(value);
     }
 
-    private string ColorActive(Color color)
+    internal string ColorActive(Color color)
     {
         return Color.HasFlag(color) ? "active" : string.Empty;
     }

@@ -70,7 +70,7 @@ else
 
         <button title="Get a New Hand" type="button"
             class="btn btn-danger"
-            disabled="@(IsLoading || !DrawnCards.Any())"
+            disabled="@(IsLoading || !Hand.Any())"
             @onclick="NewHandAsync">
             New Hand
         </button>
@@ -95,7 +95,7 @@ else
 
     <hr />
 
-    @if (!IsLoading && !DrawnCards.Any())
+    @if (!IsLoading && !Hand.Any())
     {
         <div class="alert alert-warning" role="alert">
             There are no cards in @DeckName for @DeckMulligan mulligans.
@@ -103,7 +103,7 @@ else
     }
 
     <div class="row row-cols-lg-5 row-cols-md-4 row-cols-2 m-0">
-        @foreach (var card in DrawnCards)
+        @foreach (var card in Hand)
         {
             string fade = IsImageLoaded(card) ? "img-fade" : "invisible";
 
@@ -127,5 +127,12 @@ else
         None,
         Built,
         Theorycraft
+    }
+
+    private sealed class MulliganTarget
+    {
+        public string Name { get; init; } = string.Empty;
+
+        public IReadOnlyList<DeckCopy> Cards { get; init; } = Array.Empty<DeckCopy>();
     }
 }

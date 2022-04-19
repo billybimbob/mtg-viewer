@@ -21,8 +21,8 @@
 </div>
 
 <CardFilter
-    @bind-TextFilter="Filters.TextFilter"
-    @bind-Color="Filters.PickedColors"
+    @bind-Search="BoundSearch"
+    @bind-Color="PickedColors"
     IsDisabled="@IsLoading" >
     @if (IsLoading)
     {
@@ -38,35 +38,35 @@
             <tr>
                 <th scope="col"
                     title="Order By Name"
-                    @onclick="() => Filters.Reorder(c => c.Name)"
+                    @onclick="() => Reorder(c => c.Name)"
                     class="@HeaderClass(c => c.Name)">
                     @DisplayName(c => c.Name)
                 </th>
 
                 <th scope="col"
                     title="Order By Mana Value"
-                    @onclick="() => Filters.Reorder(c => c.ManaCost)"
+                    @onclick="() => Reorder(c => c.ManaCost)"
                     class="@HeaderClass(c => c.ManaCost)">
                     @DisplayName(c => c.ManaCost)
                 </th>
 
                 <th scope="col"
                     title="Order By Set Name"
-                    @onclick="() => Filters.Reorder(c => c.SetName)"
+                    @onclick="() => Reorder(c => c.SetName)"
                     class="@HeaderClass(c => c.SetName)">
                     @DisplayName(c => c.SetName)
                 </th>
 
                 <th scope="col"
                     title="Order By Rarity"
-                    @onclick="() => Filters.Reorder(c => c.Rarity)"
+                    @onclick="() => Reorder(c => c.Rarity)"
                     class="@HeaderClass(c => c.Rarity)">
                     @DisplayName(c => c.Rarity)
                 </th>
 
                 <th scope="col"
                     title="Order By Number of Copies"
-                    @onclick="() => Filters.Reorder(c => c.Holds)"
+                    @onclick="() => Reorder(c => c.Holds)"
                     class="@HeaderClass(c => c.Holds)">
                     Total Copies
                 </th>
@@ -104,7 +104,7 @@
 </div>
 
 <SeekPaging TEntity="LocationCopy"
-    Seek="Cards.Seek" PageSelected="Filters.SeekPage" IsDisabled="IsLoading" />
+    Seek="Cards.Seek" PageSelected="SeekPage" IsDisabled="IsLoading" />
 
 @code
 {
@@ -115,7 +115,7 @@
     {
         bool isMatch = property
             is { Body: MemberExpression { Member.Name: string name }}
-            && name == Filters.OrderBy;
+            && name == Order;
 
         if (isMatch && IsLoading)
         {

@@ -1,7 +1,9 @@
+@implements IDisposable
+@inject NavigationManager Nav
 @inject RouteDataAccessor RouteDataAccessor
 
 <CascadingAuthenticationState>
-    <Router AppAssembly="@typeof(Program).Assembly" OnNavigateAsync="@OnNavigate">
+    <Router AppAssembly="@typeof(Program).Assembly">
         <Found Context="routeData">
             <FoundRouteData RouteData="@routeData" />
             <AuthorizeRouteView Resource="@routeData" RouteData="@routeData">
@@ -20,8 +22,21 @@
 
 @code
 {
-    internal void OnNavigate(NavigationContext context)
+    protected override void OnInitialized()
     {
-        RouteDataAccessor.RouteData = null;
+        Nav.LocationChanged += OnLocationChange;
+    }
+
+    void IDisposable.Dispose()
+    {
+        Nav.LocationChanged -= OnLocationChange;
+    }
+
+    private void OnLocationChange(object? sender, LocationChangedEventArgs args)
+    {
+        if (!args.IsNavigationIntercepted)
+        {
+            RouteDataAccessor.RouteData = null;
+        }
     }
 }

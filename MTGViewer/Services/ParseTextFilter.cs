@@ -5,44 +5,9 @@ using Microsoft.Extensions.Logging;
 
 namespace MTGViewer.Services;
 
-public readonly record struct TextFilter(string? Name, string[]? Types, string? Text)
+public readonly record struct TextFilter(string? Name, string? Types, string? Text)
 {
-    public const int TextLimit = 40;
-    public const int TypeLimit = 8;
-
-    public bool Equals(TextFilter other)
-    {
-        return Name == other.Name
-            && Text == other.Text
-            && TypesEqual(other.Types);
-    }
-
-    private bool TypesEqual(string[]? types)
-    {
-        return Types is null && types is null
-            || Types is not null
-                && types is not null
-                && Types.SequenceEqual(types);
-    }
-
-    public override int GetHashCode()
-    {
-        return Name?.GetHashCode() ?? 0
-            ^ Text?.GetHashCode() ?? 0
-            ^ Types?.Aggregate(0,
-                (hash, s) => hash ^ s.GetHashCode()) ?? 0;
-    }
-
-    public override string ToString()
-    {
-        return (Name ?? "")
-
-            + (Types is { Length: > 0 }
-                ? $"{ParseTextFilter.SearchType} {string.Join(' ', Types)}" : "")
-
-            + (Text is not null
-                ? $"{ParseTextFilter.SearchText} {Text}" : "");
-    }
+    public const int Limit = 40;
 }
 
 public class ParseTextFilter
@@ -100,9 +65,9 @@ public class ParseTextFilter
             return filter;
         }
 
-        if (capture.SequenceEqual(SearchType) && filter.Types is not { Length: > 0 })
+        if (capture.SequenceEqual(SearchType) && filter.Types is null)
         {
-            return filter with { Types = TextString(text).Split() };
+            return filter with { Types = TextString(text) };
         }
 
         if (capture.SequenceEqual(SearchText) && filter.Text is null)

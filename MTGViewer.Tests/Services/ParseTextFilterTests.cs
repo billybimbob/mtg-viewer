@@ -61,7 +61,7 @@ public class ParseTextFilterTests
 
         var filter = _parseFilter.Parse($"/t {testTypes}");
 
-        var result = new TextFilter(null, testTypes.Split(), null);
+        var result = new TextFilter(null, testTypes, null);
 
         Assert.Equal(result, filter);
     }
@@ -87,7 +87,7 @@ public class ParseTextFilterTests
 
         var filter = _parseFilter.Parse($"{testName} /o {testText} /t {testTypes}");
 
-        var result = new TextFilter(testName, testTypes.Split(), testText);
+        var result = new TextFilter(testName, testTypes, testText);
 
         Assert.Equal(result, filter);
     }

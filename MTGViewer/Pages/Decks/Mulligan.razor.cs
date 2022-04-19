@@ -51,19 +51,16 @@ public partial class Mulligan : OwningComponentBase
     protected ILogger<Mulligan> Logger { get; set; } = default!;
 
     private readonly CancellationTokenSource _cancel = new();
-
-    private readonly List<CardPreview> _drawnCards = new();
     private readonly HashSet<string> _loadedImages = new();
+
+    private PersistingComponentStateSubscription _persistSubscription;
 
     private bool _isBusy;
     private bool _isInteractive;
 
-    private PersistingComponentStateSubscription _persistSubscription;
-
-    private string? _deckName;
-    private IReadOnlyList<DeckCopy> _cards = Array.Empty<DeckCopy>();
-    private DrawSimulation? _shuffledDeck;
+    private MulliganTarget? _target;
     private MulliganType _mulliganType;
+    private DrawSimulation? _shuffledDeck;
 
     protected override void OnInitialized()
     {
@@ -76,9 +73,7 @@ public partial class Mulligan : OwningComponentBase
 
         try
         {
-            var token = _cancel.Token;
-
-            var userId = await GetUserIdAsync(token);
+            string? userId = await GetUserIdAsync(_cancel.Token);
 
             if (userId is null)
             {
@@ -86,15 +81,15 @@ public partial class Mulligan : OwningComponentBase
                 return;
             }
 
-            await LoadMulliganDataAsync(userId, token);
+            _target = await GetMulliganDataAsync(userId, _cancel.Token);
 
-            if (_deckName is null)
+            if (_target is null)
             {
                 Nav.NavigateTo("/Decks", forceLoad: true, replace: true);
                 return;
             }
 
-            if (!_cards.Any())
+            if (!_target.Cards.Any())
             {
                 Nav.NavigateTo($"/Decks/Details/{DeckId}", forceLoad: true);
             }
@@ -159,39 +154,41 @@ public partial class Mulligan : OwningComponentBase
 
     private Task PersistDeckData()
     {
-        ApplicationState.PersistAsJson(nameof(_deckName), _deckName);
-
-        ApplicationState.PersistAsJson(nameof(_cards), _cards);
+        ApplicationState.PersistAsJson(nameof(_target), _target);
 
         return Task.CompletedTask;
     }
 
-    private async Task LoadMulliganDataAsync(string userId, CancellationToken cancel)
+    private async Task<MulliganTarget?> GetMulliganDataAsync(string userId, CancellationToken cancel)
     {
-        if (ApplicationState.TryGetData(nameof(_deckName), out string? name)
-            && ApplicationState.TryGetData(nameof(_cards), out DeckCopy[]? cards))
+        if (ApplicationState.TryGetData(nameof(_target), out MulliganTarget? target))
         {
-            _deckName = name;
-            _cards = cards;
-            return;
+            return target;
         }
 
         await using var dbContext = await DbFactory.CreateDbContextAsync(cancel);
 
-        _deckName = await dbContext.Decks
+        string? name = await dbContext.Decks
             .Where(d => d.Id == DeckId && d.OwnerId == userId)
             .Select(d => d.Name)
             .SingleOrDefaultAsync(cancel);
 
-        _cards = await DeckCardsAsync
-            .Invoke(dbContext, DeckId, PageSize.Limit)
-            .ToListAsync(cancel);
+        if (name is null)
+        {
+            return null;
+        }
+
+        return new MulliganTarget
+        {
+            Name = name,
+            Cards = await DeckCardsAsync
+                .Invoke(dbContext, DeckId, PageSize.Limit)
+                .ToListAsync(cancel)
+        };
     }
 
     private static readonly Func<CardDbContext, int, int, IAsyncEnumerable<DeckCopy>> DeckCardsAsync
-
         = EF.CompileAsyncQuery((CardDbContext dbContext, int deckId, int limit) =>
-
             dbContext.Cards
                 .Where(c => c.Holds.Any(h => h.LocationId == deckId)
                     || c.Wants.Any(w => w.LocationId == deckId)
@@ -227,9 +224,9 @@ public partial class Mulligan : OwningComponentBase
 
     #region View Properties
 
-    internal string DeckName => _deckName ?? "Deck Mulligan";
+    internal string DeckName => _target?.Name ?? "Deck Mulligan";
 
-    internal IReadOnlyList<CardPreview> DrawnCards => _drawnCards;
+    internal IReadOnlyList<CardPreview> Hand => _shuffledDeck?.Hand ?? Array.Empty<CardPreview>();
 
     internal bool CanDraw => _shuffledDeck?.CanDraw ?? false;
 
@@ -253,7 +250,7 @@ public partial class Mulligan : OwningComponentBase
 
     internal async Task NewHandAsync()
     {
-        if (_isBusy || !_isInteractive)
+        if (_isBusy || !_isInteractive || _target is null)
         {
             return;
         }
@@ -263,7 +260,6 @@ public partial class Mulligan : OwningComponentBase
         try
         {
             _shuffledDeck?.Dispose();
-            _drawnCards.Clear();
 
             if (_mulliganType is MulliganType.None)
             {
@@ -271,7 +267,7 @@ public partial class Mulligan : OwningComponentBase
                 return;
             }
 
-            _shuffledDeck = new DrawSimulation(_cards, _mulliganType);
+            _shuffledDeck = new DrawSimulation(_target.Cards, _mulliganType);
 
             int requiredCards = Options.Value.HandSize;
 
@@ -279,8 +275,7 @@ public partial class Mulligan : OwningComponentBase
             {
                 await Task.Delay(Options.Value.DrawInterval, _cancel.Token);
 
-                _drawnCards.Add(
-                    _shuffledDeck.DrawCard());
+                _shuffledDeck.DrawCard();
 
                 requiredCards -= 1;
 
@@ -299,8 +294,7 @@ public partial class Mulligan : OwningComponentBase
             && _isInteractive
             && _shuffledDeck is { CanDraw: true })
         {
-            _drawnCards.Add(
-                _shuffledDeck.DrawCard());
+            _shuffledDeck.DrawCard();
         }
     }
 
@@ -316,17 +310,12 @@ public partial class Mulligan : OwningComponentBase
 
     private sealed class DrawSimulation : IDisposable
     {
-        private sealed record CardCopy
-        {
-            public CardPreview? Card { get; set; }
-            public int Copies { get; set; }
-        }
-
         private static readonly ObjectPool<CardCopy> _cardPool
             = new DefaultObjectPool<CardCopy>(
                 new DefaultPooledObjectPolicy<CardCopy>());
 
         private readonly ICollection<CardCopy> _cardOptions;
+        private readonly List<CardPreview> _hand;
 
         private int _cardsInDeck;
         private CardCopy? _nextDraw;
@@ -344,28 +333,17 @@ public partial class Mulligan : OwningComponentBase
                 })
                 .ToHashSet(); // want hash set for undefined (random) iter order
 
+            _hand = new List<CardPreview>();
+
             _cardsInDeck = deck
                 .Sum(d => GetCopies(d, mulliganType));
 
             _nextDraw = PickRandomCard();
         }
 
+        public IReadOnlyList<CardPreview> Hand => _hand;
+
         public bool CanDraw => _nextDraw is not null;
-
-        public CardPreview DrawCard()
-        {
-            if (_nextDraw is not { Card: CardPreview card })
-            {
-                throw new InvalidOperationException("There are no cards to draw");
-            }
-
-            _nextDraw.Copies -= 1;
-            _cardsInDeck -= 1;
-
-            _nextDraw = PickRandomCard(); // keep eye on, O(N) could be bottleneck
-
-            return card;
-        }
 
         public void Dispose()
         {
@@ -375,8 +353,24 @@ public partial class Mulligan : OwningComponentBase
             }
 
             _cardOptions.Clear();
+            _hand.Clear();
 
             _nextDraw = null;
+        }
+
+        public void DrawCard()
+        {
+            if (_nextDraw is not { Card: CardPreview card })
+            {
+                return;
+            }
+
+            _nextDraw.Copies -= 1;
+            _cardsInDeck -= 1;
+
+            _nextDraw = PickRandomCard(); // keep eye on, O(N) could be bottleneck
+
+            _hand.Add(card);
         }
 
         private CardCopy? PickRandomCard()
@@ -411,6 +405,12 @@ public partial class Mulligan : OwningComponentBase
                 MulliganType.Theorycraft => source.Held - source.Returning + source.Want,
                 _ => 0
             };
+        }
+
+        private sealed record CardCopy
+        {
+            public CardPreview? Card { get; set; }
+            public int Copies { get; set; }
         }
     }
 }

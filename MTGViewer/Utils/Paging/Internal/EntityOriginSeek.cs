@@ -120,7 +120,8 @@ internal sealed class EntityOriginSeek<TEntity, TRefKey, TValueKey> : ISeekable<
     {
         var entityParameter = Expression
             .Parameter(
-                typeof(TEntity), typeof(TEntity).Name[0].ToString().ToLower());
+                typeof(TEntity),
+                typeof(TEntity).Name[0].ToString().ToLowerInvariant());
 
         var propertyId = Expression
             .Property(entityParameter, entityType.GetKeyInfo<TKey>());
@@ -159,7 +160,7 @@ internal sealed class EntityOriginSeek<TEntity, TRefKey, TValueKey> : ISeekable<
 
         var entityParameter = Expression
             .Parameter(
-                entityType.ClrType, entityType.ClrType.Name[0].ToString().ToLower());
+                entityType.ClrType, entityType.ClrType.Name[0].ToString().ToLowerInvariant());
 
         var propertyId = Expression
             .Property(entityParameter, entityType.GetKeyInfo<TKey>());

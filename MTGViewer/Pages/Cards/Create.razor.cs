@@ -146,7 +146,7 @@ public sealed partial class Create : ComponentBase, IDisposable
             _matches.Clear();
             _matchPage = default;
 
-            if (!ValidateParameters())
+            if (!UpdateQuery())
             {
                 Logger.LogWarning("Given search parameters were invalid");
 
@@ -157,7 +157,6 @@ public sealed partial class Create : ComponentBase, IDisposable
             if (ReturnUrl is not null)
             {
                 // ensure no open redirects
-
                 _returnUrl = ReturnUrl.StartsWith(Nav.BaseUri)
                     ? ReturnUrl
                     : $"{Nav.BaseUri}{ReturnUrl.TrimStart('/')}";
@@ -297,7 +296,7 @@ public sealed partial class Create : ComponentBase, IDisposable
         edit.NotifyFieldChanged(colorField);
     }
 
-    private bool ValidateParameters()
+    private bool UpdateQuery()
     {
         if (SearchEdit is null)
         {

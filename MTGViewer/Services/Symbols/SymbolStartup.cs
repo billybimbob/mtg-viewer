@@ -1,10 +1,9 @@
 using System;
 using System.Collections.Generic;
-
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using MTGViewer.Services;
 
-namespace MTGViewer.Services;
+namespace Microsoft.Extensions.DependencyInjection;
 
 public static class MTGSymbolExtensions
 {
@@ -27,8 +26,8 @@ public static class MTGSymbolExtensions
         }
 
         services
-            .AddScoped<ISymbolFinder>(DefaultFinderFactory)
-            .AddScoped<ISymbolTranslator>(DefaultTranslatorFactory)
+            .AddScoped(DefaultFinderFactory)
+            .AddScoped(DefaultTranslatorFactory)
             .AddScoped<SymbolFormatter>();
 
         return services;

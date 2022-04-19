@@ -109,7 +109,7 @@ internal sealed class ResultOriginSeek<TSource, TResult, TRefKey, TValueKey> : I
     private IQueryable<TResult> GetOriginQuery<TKey>(TKey key)
     {
         var entityParameter = Expression.Parameter(
-            typeof(TSource), typeof(TSource).Name[0].ToString().ToLower());
+            typeof(TSource), typeof(TSource).Name[0].ToString().ToLowerInvariant());
 
         var getKey = GetEntityType().GetKeyInfo<TKey>();
 

@@ -59,6 +59,8 @@ public sealed class PageSize : IDisposable
             return null;
         }
 
+        // keep eye on, this parse does not handle all possible route templates
+
         var route = attribute.Template
             .Split('/')
             .Skip(1)

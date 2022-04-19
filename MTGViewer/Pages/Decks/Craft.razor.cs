@@ -41,6 +41,9 @@ public partial class Craft : OwningComponentBase
     protected PersistentComponentState ApplicationState { get; set; } = default!;
 
     [Inject]
+    protected ParseTextFilter ParseTextFilter { get; set; } = default!;
+
+    [Inject]
     protected PageSize PageSize { get; set; } = default!;
 
     [Inject]
@@ -301,29 +304,31 @@ public partial class Craft : OwningComponentBase
     {
         var cards = dbContext.Cards.AsQueryable();
 
-        string? name = filters.Name?.ToLower();
-        string? text = filters.Text?.ToLower();
+        string? name = filters.Name?.ToUpperInvariant();
+        string? text = filters.Text?.ToUpperInvariant();
+
+        string[] types = filters.Types?.ToUpperInvariant().Split() ?? Array.Empty<string>();
+
+        var pickedColors = filters.PickedColors;
 
         if (!string.IsNullOrWhiteSpace(name))
         {
             cards = cards
-                .Where(c => c.Name.ToLower().Contains(name));
+                .Where(c => c.Name.ToUpper().Contains(name));
         }
 
         if (!string.IsNullOrWhiteSpace(text))
         {
             cards = cards
                 .Where(c => c.Text != null
-                    && c.Text.ToLower().Contains(text));
+                    && c.Text.ToUpper().Contains(text));
         }
 
-        foreach (var type in filters.Types)
+        foreach (string type in types)
         {
             cards = cards
-                .Where(c => c.Type.ToLower().Contains(type.ToLower()));
+                .Where(c => c.Type.ToUpper().Contains(type));
         }
-
-        var pickedColors = filters.PickedColors;
 
         if (pickedColors is not Color.None)
         {
@@ -441,6 +446,7 @@ public partial class Craft : OwningComponentBase
 
     internal sealed class TreasuryFilters
     {
+        private ParseTextFilter? _filterParse;
         private bool _pendingChanges;
 
         public TreasuryFilters()
@@ -492,74 +498,43 @@ public partial class Craft : OwningComponentBase
             }
         }
 
-        private string? _name;
-        public string? Name
+        public string? Name { get; private set; }
+
+        public string? Types { get; private set; }
+
+        public string? Text { get; private set; }
+
+        private string? _search;
+        public string? Search
         {
-            get => _name;
-            private set
-            {
-                if (string.IsNullOrWhiteSpace(value))
-                {
-                    value = null;
-                }
-
-                if (value?.Length > TextFilter.TextLimit)
-                {
-                    return;
-                }
-
-                _name = value;
-            }
-        }
-
-        private string[] _types = Array.Empty<string>();
-        public string[] Types
-        {
-            get => _types;
-            private set
-            {
-                if (value.Length <= TextFilter.TypeLimit)
-                {
-                    _types = value;
-                }
-            }
-        }
-
-        private string? _text;
-        public string? Text
-        {
-            get => _text;
-            private set
-            {
-                if (string.IsNullOrWhiteSpace(value))
-                {
-                    value = null;
-                }
-
-                if (value?.Length > TextFilter.TextLimit)
-                {
-                    return;
-                }
-
-                _text = value;
-            }
-        }
-
-        public TextFilter TextFilter
-        {
-            get => new(_name, _types, _text);
+            get => _search;
             set
             {
-                if (_pendingChanges || TextFilter == value)
+                if (_pendingChanges || _filterParse is null)
                 {
                     return;
                 }
 
-                var (name, types, text) = value;
+                if (string.IsNullOrWhiteSpace(value))
+                {
+                    value = null;
+                }
 
-                _name = name;
-                _types = types ?? Array.Empty<string>();
-                _text = text;
+                const StringComparison ignoreCase = StringComparison.CurrentCultureIgnoreCase;
+
+                if (value?.Length > TextFilter.Limit
+                    || string.Equals(value, _search, ignoreCase))
+                {
+                    return;
+                }
+
+                (string? name, string? types, string? text) = _filterParse.Parse(value);
+
+                _search = value;
+
+                Name = name;
+                Types = types;
+                Text = text;
 
                 Seek = null;
                 Direction = SeekDirection.Forward;
@@ -597,10 +572,17 @@ public partial class Craft : OwningComponentBase
 
         public void OnTreasuryLoaded(object? sender, EventArgs _)
         {
-            if (sender is Craft)
+            if (sender is not Craft craft)
             {
-                _pendingChanges = false;
+                return;
             }
+
+            if (_filterParse is null)
+            {
+                _filterParse = craft.ParseTextFilter;
+            }
+
+            _pendingChanges = false;
         }
     }
 

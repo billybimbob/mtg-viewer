@@ -103,7 +103,7 @@ internal sealed class OriginFilter<TOrigin, TEntity>
         _parameter ??=
             Expression.Parameter(
                 typeof(TEntity),
-                typeof(TEntity).Name[0].ToString().ToLower());
+                typeof(TEntity).Name[0].ToString().ToLowerInvariant());
 
     private List<KeyOrder>? _orderKeys;
     private IReadOnlyList<KeyOrder> OrderKeys =>

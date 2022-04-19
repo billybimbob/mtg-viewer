@@ -24,18 +24,6 @@ public sealed partial class Collection : ComponentBase, IDisposable
 
     [Parameter]
     [SupplyParameterFromQuery]
-    public string? Name { get; set; }
-
-    [Parameter]
-    [SupplyParameterFromQuery]
-    public string? Text { get; set; }
-
-    [Parameter]
-    [SupplyParameterFromQuery]
-    public string[]? Types { get; set; }
-
-    [Parameter]
-    [SupplyParameterFromQuery]
     public int Colors { get; set; }
 
     [Parameter]
@@ -57,6 +45,9 @@ public sealed partial class Collection : ComponentBase, IDisposable
     internal PageSize PageSize { get; set; } = default!;
 
     [Inject]
+    internal ParseTextFilter ParseTextFilter { get; set; } = default!;
+
+    [Inject]
     internal NavigationManager Nav { get; set; } = default!;
 
     [Inject]
@@ -67,22 +58,17 @@ public sealed partial class Collection : ComponentBase, IDisposable
 
     internal bool IsLoading => _isBusy || !_isInteractive;
 
-    internal FilterContext Filters { get; } = new();
-
     internal SeekList<LocationCopy> Cards { get; private set; } = SeekList<LocationCopy>.Empty;
-
-    private event EventHandler? ParametersChanged;
 
     private readonly CancellationTokenSource _cancel = new();
     private PersistingComponentStateSubscription _persistSubscription;
+
     private bool _isBusy;
     private bool _isInteractive;
 
     protected override void OnInitialized()
     {
         _persistSubscription = ApplicationState.RegisterOnPersisting(PersistCardData);
-
-        ParametersChanged += Filters.OnParametersChanged;
     }
 
     protected override async Task OnParametersSetAsync()
@@ -91,9 +77,7 @@ public sealed partial class Collection : ComponentBase, IDisposable
 
         try
         {
-            ParametersChanged?.Invoke(this, EventArgs.Empty);
-
-            await LoadCardDataAsync(_cancel.Token);
+            Cards = await GetCardDataAsync();
 
             if (!Cards.Any() && Seek is not null)
             {
@@ -101,12 +85,7 @@ public sealed partial class Collection : ComponentBase, IDisposable
 
                 Nav.NavigateTo(
                     Nav.GetUriWithQueryParameter(nameof(Seek), null as string), replace: true);
-
-                return;
             }
-
-            Filters.FilterChanged -= OnFilterChanged;
-            Filters.FilterChanged += OnFilterChanged;
         }
         catch (OperationCanceledException ex)
         {
@@ -134,10 +113,6 @@ public sealed partial class Collection : ComponentBase, IDisposable
 
     void IDisposable.Dispose()
     {
-        ParametersChanged -= Filters.OnParametersChanged;
-
-        Filters.FilterChanged -= OnFilterChanged;
-
         _persistSubscription.Dispose();
 
         _cancel.Cancel();
@@ -153,7 +128,7 @@ public sealed partial class Collection : ComponentBase, IDisposable
         return Task.CompletedTask;
     }
 
-    private async Task LoadCardDataAsync(CancellationToken cancel)
+    private Task<SeekList<LocationCopy>> GetCardDataAsync()
     {
         if (ApplicationState.TryGetData(nameof(Cards), out IReadOnlyList<LocationCopy>? cards)
             && ApplicationState.TryGetData(nameof(Seek), out Seek<LocationCopy> seek))
@@ -161,309 +136,21 @@ public sealed partial class Collection : ComponentBase, IDisposable
             // persisted state should match set filters
             // TODO: find way to check filters are consistent
 
-            Cards = new SeekList<LocationCopy>(seek, cards);
-            return;
+            return Task.FromResult(new SeekList<LocationCopy>(seek, cards));
         }
-
-        await using var dbContext = await DbFactory.CreateDbContextAsync(cancel);
-
-        Cards = await FilteredCardsAsync(dbContext, Filters, cancel);
-    }
-
-    private void OnFilterChanged(object? sender, FilterEventArgs args)
-    {
-        if (_isBusy || sender is not FilterContext filter)
+        else
         {
-            return;
-        }
-
-        _isBusy = true;
-
-        filter.FilterChanged -= OnFilterChanged;
-
-        // triggers on ParameterSet, where IsBusy set to false
-
-        Nav.NavigateTo(
-            Nav.GetUriWithQueryParameters(args.Changes), replace: true);
-    }
-
-    internal sealed class FilterEventArgs : EventArgs
-    {
-        public IReadOnlyDictionary<string, object?> Changes { get; }
-
-        public FilterEventArgs(IEnumerable<KeyValuePair<string, object?>> changes)
-        {
-            Changes = new Dictionary<string, object?>(changes);
-        }
-
-        public FilterEventArgs(params KeyValuePair<string, object?>[] changes)
-            : this(changes.AsEnumerable())
-        { }
-    }
-
-    internal sealed class FilterContext
-    {
-        private const string DefaultOrder = nameof(Card.Name);
-
-        public event EventHandler<FilterEventArgs>? FilterChanged;
-
-        public int PageSize { get; private set; }
-
-        private string? _name;
-        public string? Name
-        {
-            get => _name;
-            private set
-            {
-                if (string.IsNullOrWhiteSpace(value))
-                {
-                    value = null;
-                }
-
-                if (value?.Length > TextFilter.TextLimit)
-                {
-                    return;
-                }
-
-                _name = value;
-            }
-        }
-
-        private string[] _types = Array.Empty<string>();
-        public string[] Types
-        {
-            get => _types;
-            private set
-            {
-                if (value.Any(s => s.Any(char.IsWhiteSpace)))
-                {
-                    value = value.SelectMany(s => s.Split()).ToArray();
-                }
-
-                if (value.Length <= TextFilter.TypeLimit)
-                {
-                    _types = value;
-                }
-            }
-        }
-
-        private string? _text;
-        public string? Text
-        {
-            get => _text;
-            private set
-            {
-                if (string.IsNullOrWhiteSpace(value))
-                {
-                    value = null;
-                }
-
-                if (value?.Length > TextFilter.TextLimit)
-                {
-                    return;
-                }
-
-                _text = value;
-            }
-        }
-
-        public TextFilter TextFilter
-        {
-            get => new(_name, _types, _text);
-            set
-            {
-                if (FilterChanged is null)
-                {
-                    return;
-                }
-
-                if (TextFilter == value)
-                {
-                    return;
-                }
-
-                var args = new FilterEventArgs(ChangedFilters(value));
-
-                FilterChanged?.Invoke(this, args);
-            }
-        }
-
-        private IEnumerable<KeyValuePair<string, object?>> ChangedFilters(TextFilter filter)
-        {
-            if (Name != filter.Name)
-            {
-                yield return KeyValuePair.Create(nameof(Collection.Name), filter.Name as object);
-            }
-
-            if (!Types.SequenceEqual(filter.Types ?? Array.Empty<string>()))
-            {
-                yield return KeyValuePair.Create(nameof(Collection.Types), filter.Types as object);
-            }
-
-            if (Text != filter.Text)
-            {
-                yield return KeyValuePair.Create(nameof(Collection.Text), filter.Text as object);
-            }
-
-            yield return KeyValuePair.Create(nameof(Collection.Seek), null as object);
-
-            yield return KeyValuePair.Create(nameof(Collection.Direction), null as object);
-        }
-
-        public string? Seek { get; private set; }
-
-        public SeekDirection Direction { get; private set; }
-
-        public void SeekPage(SeekRequest<LocationCopy> request)
-        {
-            if (FilterChanged is null)
-            {
-                return;
-            }
-
-            int? direction = request.Direction is SeekDirection.Backwards
-                ? (int?)SeekDirection.Backwards
-                : null;
-
-            var args = new FilterEventArgs(
-                KeyValuePair.Create(nameof(Collection.Seek), request.Seek?.Id as object),
-                KeyValuePair.Create(nameof(Collection.Direction), direction as object));
-
-            FilterChanged.Invoke(this, args);
-        }
-
-        private string _orderBy = DefaultOrder;
-        public string OrderBy
-        {
-            get => _orderBy;
-            private set
-            {
-                bool isValid = value
-                    is nameof(Card.Name)
-                    or nameof(Card.ManaCost)
-                    or nameof(Card.SetName)
-                    or nameof(Card.Rarity)
-                    or nameof(Card.Holds);
-
-                _orderBy = isValid ? value : DefaultOrder;
-            }
-        }
-
-        public void Reorder<T>(Expression<Func<Card, T>> property)
-        {
-            if (property is not { Body: MemberExpression { Member.Name: string value } })
-            {
-                return;
-            }
-
-            if (FilterChanged is null || _orderBy == value)
-            {
-                return;
-            }
-
-            var args = new FilterEventArgs(
-                KeyValuePair.Create(nameof(Collection.Order), (object?)value),
-                KeyValuePair.Create(nameof(Collection.Seek), null as object),
-                KeyValuePair.Create(nameof(Collection.Direction), null as object));
-
-            FilterChanged.Invoke(this, args);
-        }
-
-        private Color _pickedColors;
-        public Color PickedColors
-        {
-            get => _pickedColors;
-            set
-            {
-                if (FilterChanged is null)
-                {
-                    return;
-                }
-
-                value = PickedColors.HasFlag(value)
-                    ? PickedColors & ~value
-                    : PickedColors | value;
-
-                int? color = value is Color.None ? null : (int?)value;
-
-                var newValues = new FilterEventArgs(
-                    KeyValuePair.Create(nameof(Collection.Colors), color as object),
-                    KeyValuePair.Create(nameof(Collection.Seek), null as object),
-                    KeyValuePair.Create(nameof(Collection.Direction), null as object));
-
-                FilterChanged.Invoke(this, newValues);
-            }
-        }
-
-        private void SetColor(int value)
-        {
-            _pickedColors = Enum
-                .GetValues<Color>()
-                .Select(c => c & (Color)value)
-                .Aggregate((color, c) => color | c);
-        }
-
-        public void OnParametersChanged(object? sender, EventArgs _)
-        {
-            if (sender is not Collection parameters)
-            {
-                return;
-            }
-
-            Name = parameters.Name;
-            Text = parameters.Text;
-            Types = parameters.Types ?? Array.Empty<string>();
-
-            SetColor(parameters.Colors);
-
-            if (PageSize == 0)
-            {
-                PageSize = parameters.PageSize.Current;
-            }
-
-            OrderBy = parameters.Order ?? DefaultOrder;
-            Seek = parameters.Seek;
-            Direction = (SeekDirection)parameters.Direction;
+            return FetchDbCopiesAsync();
         }
     }
 
-    private static Task<SeekList<LocationCopy>> FilteredCardsAsync(
-        CardDbContext dbContext,
-        FilterContext filters,
-        CancellationToken cancel)
+    private async Task<SeekList<LocationCopy>> FetchDbCopiesAsync()
     {
-        var cards = dbContext.Cards.AsQueryable();
+        await using var dbContext = await DbFactory.CreateDbContextAsync(_cancel.Token);
 
-        string? name = filters.Name?.ToLowerInvariant();
-        string? text = filters.Text?.ToLowerInvariant();
+        var filter = ParseTextFilter.Parse(Search);
 
-        if (!string.IsNullOrWhiteSpace(name))
-        {
-            // keep eye on perf, postgres is slow here
-            cards = cards
-                .Where(c => c.Name.ToLower().Contains(name));
-        }
-
-        if (!string.IsNullOrWhiteSpace(text))
-        {
-            cards = cards
-                .Where(c => c.Text != null
-                    && c.Text.ToLower().Contains(text));
-        }
-
-        foreach (string type in filters.Types)
-        {
-            cards = cards
-                .Where(c => c.Type.ToLower().Contains(type.ToLower()));
-        }
-
-        var pickedColors = filters.PickedColors;
-
-        if (pickedColors is not Color.None)
-        {
-            cards = cards
-                .Where(c => (c.Color & pickedColors) == pickedColors);
-        }
+        var cards = FilteredCards(dbContext.Cards, filter, PickedColors);
 
         var copies = cards
             .Select(c => new LocationCopy
@@ -481,13 +168,50 @@ public sealed partial class Collection : ComponentBase, IDisposable
                 Held = c.Holds.Sum(c => c.Copies)
             });
 
-        return OrderedCopies(copies, filters.OrderBy)
-            .SeekBy(filters.Seek, filters.Direction)
-            .Take(filters.PageSize)
-            .ToSeekListAsync(cancel);
+        return await OrderedCopies(copies, Order)
+
+            .SeekBy(Seek, (SeekDirection)Direction)
+            .Take(PageSize.Current)
+            .ToSeekListAsync(_cancel.Token);
     }
 
-    private static IQueryable<LocationCopy> OrderedCopies(IQueryable<LocationCopy> copies, string orderBy)
+    private static IQueryable<Card> FilteredCards(IQueryable<Card> cards, TextFilter filter, Color color)
+    {
+        string? name = filter.Name?.ToUpperInvariant();
+        string? text = filter.Text?.ToUpperInvariant();
+
+        string[]? types = filter.Types?.ToUpperInvariant().Split() ?? Array.Empty<string>();
+
+        if (!string.IsNullOrWhiteSpace(name))
+        {
+            // keep eye on perf, postgres is slow here
+            cards = cards
+                .Where(c => c.Name.ToUpper().Contains(name));
+        }
+
+        if (!string.IsNullOrWhiteSpace(text))
+        {
+            cards = cards
+                .Where(c => c.Text != null
+                    && c.Text.ToUpper().Contains(text));
+        }
+
+        foreach (string type in types)
+        {
+            cards = cards
+                .Where(c => c.Type.ToUpper().Contains(type));
+        }
+
+        if (color is not Color.None)
+        {
+            cards = cards
+                .Where(c => (c.Color & color) == color);
+        }
+
+        return cards;
+    }
+
+    private static IQueryable<LocationCopy> OrderedCopies(IQueryable<LocationCopy> copies, string? orderBy)
     {
         bool isAscending = orderBy switch
         {
@@ -537,4 +261,123 @@ public sealed partial class Collection : ComponentBase, IDisposable
         };
     }
 
+    #region Change Filter Handlers
+
+    internal string? BoundSearch
+    {
+        get => Search;
+        set
+        {
+            const StringComparison ignoreCase = StringComparison.CurrentCultureIgnoreCase;
+
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                value = null;
+            }
+
+            if (_isBusy
+                || value?.Length > TextFilter.Limit
+                || string.Equals(value, Search, ignoreCase))
+            {
+                return;
+            }
+
+            _isBusy = true;
+
+            var changes = new Dictionary<string, object?>
+            {
+                [nameof(Search)] = value,
+                [nameof(Seek)] = null,
+                [nameof(Direction)] = null
+            };
+
+            Nav.NavigateTo(
+                Nav.GetUriWithQueryParameters(changes), replace: true);
+        }
+    }
+
+    internal Color PickedColors
+    {
+        get => (Color)Colors;
+        set
+        {
+            if (_isBusy)
+            {
+                return;
+            }
+
+            _isBusy = true;
+
+            var picked = Enum
+                .GetValues<Color>()
+                .Select(c => c & (Color)Colors)
+                .Aggregate((color, c) => color | c);
+
+            // use value as a color toggle
+
+            picked = picked.HasFlag(value)
+                ? picked & ~value
+                : picked | value;
+
+            var changes = new Dictionary<string, object?>
+            {
+                [nameof(Colors)] = picked is Color.None ? null : (int?)picked,
+                [nameof(Seek)] = null,
+                [nameof(Direction)] = null
+            };
+
+            Nav.NavigateTo(
+                Nav.GetUriWithQueryParameters(changes), replace: true);
+        }
+    }
+
+    internal void Reorder<T>(Expression<Func<Card, T>> property)
+    {
+        if (property is not { Body: MemberExpression { Member.Name: string value } })
+        {
+            return;
+        }
+
+        if (_isBusy || Order == value)
+        {
+            return;
+        }
+
+        _isBusy = true;
+
+        var changes = new Dictionary<string, object?>
+        {
+            [nameof(Order)] = value,
+            [nameof(Seek)] = null,
+            [nameof(Direction)] = null
+        };
+
+        Nav.NavigateTo(
+            Nav.GetUriWithQueryParameters(changes), replace: true);
+    }
+
+    internal void SeekPage(SeekRequest<LocationCopy> request)
+    {
+        if (_isBusy)
+        {
+            return;
+        }
+
+        _isBusy = true;
+
+        var changes = new Dictionary<string, object?>
+        {
+            [nameof(Seek)] = request.Seek?.Id,
+            [nameof(Direction)] = request.Direction switch
+            {
+                SeekDirection.Backwards => (int?)SeekDirection.Backwards,
+                _ => null
+            }
+        };
+
+        Nav.NavigateTo(
+            Nav.GetUriWithQueryParameters(changes), replace: true);
+    }
+
+    #endregion
 }
