@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Components;
 
 namespace MTGViewer.Utils;
 
-public static partial class PersistentComponentStateExtensions
+internal static partial class PersistentComponentStateExtensions
 {
     public static TData? GetValueOrDefault<TData>(this PersistentComponentState persistent, string key)
     {

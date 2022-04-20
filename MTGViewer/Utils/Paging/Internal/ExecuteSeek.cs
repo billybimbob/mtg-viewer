@@ -46,7 +46,7 @@ internal static class ExecuteSeek<TEntity> where TEntity : class
     private sealed class GetSeekInfoVisitor : ExpressionVisitor
     {
         private static GetSeekInfoVisitor? _instance;
-        public static ExpressionVisitor Instance => _instance ??= new();
+        public static GetSeekInfoVisitor Instance => _instance ??= new();
 
         [return: NotNullIfNotNull("node")]
         public override Expression? Visit(Expression? node)
@@ -104,7 +104,7 @@ internal static class ExecuteSeek<TEntity> where TEntity : class
     private sealed class OriginFilterVisitor : ExpressionVisitor
     {
         private static OriginFilterVisitor? _instance;
-        public static ExpressionVisitor Instance => _instance ??= new();
+        public static OriginFilterVisitor Instance => _instance ??= new();
 
         protected override Expression VisitUnary(UnaryExpression node)
         {
@@ -165,7 +165,7 @@ internal static class ExecuteSeek<TEntity> where TEntity : class
     private sealed class RemoveSeekOffsetVisitor : ExpressionVisitor
     {
         private static RemoveSeekOffsetVisitor? _instance;
-        public static ExpressionVisitor Instance => _instance ??= new();
+        public static RemoveSeekOffsetVisitor Instance => _instance ??= new();
 
         protected override Expression VisitMethodCall(MethodCallExpression node)
         {
@@ -196,7 +196,7 @@ internal static class ExecuteSeek<TEntity> where TEntity : class
     private sealed class ReversedLookAheadVisitor : ExpressionVisitor
     {
         private static ReversedLookAheadVisitor? _instance;
-        public static ExpressionVisitor Instance => _instance ??= new();
+        public static ReversedLookAheadVisitor Instance => _instance ??= new();
 
         protected override Expression VisitMethodCall(MethodCallExpression node)
         {

@@ -1,4 +1,4 @@
-namespace MTGViewer.Data.Internal;
+namespace MTGViewer.Data;
 
 public enum SaveResult
 {

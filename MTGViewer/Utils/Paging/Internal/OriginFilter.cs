@@ -325,7 +325,7 @@ internal sealed class OriginFilter<TOrigin, TEntity>
     private sealed class OrderByVisitor : ExpressionVisitor
     {
         private static OrderByVisitor? _instance;
-        public static ExpressionVisitor Instance => _instance ??= new();
+        public static OrderByVisitor Instance => _instance ??= new();
 
         protected override Expression VisitMethodCall(MethodCallExpression node)
         {

@@ -17,8 +17,6 @@ using Microsoft.Extensions.Logging;
 
 using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
-using MTGViewer.Data.Concurrency;
-using MTGViewer.Data.Internal;
 using MTGViewer.Services;
 using MTGViewer.Utils;
 
@@ -554,14 +552,7 @@ public partial class Craft : OwningComponentBase
                     return;
                 }
 
-                if (_pickedColors.HasFlag(value))
-                {
-                    _pickedColors &= ~value;
-                }
-                else
-                {
-                    _pickedColors |= value;
-                }
+                _pickedColors ^= value;
 
                 Seek = null;
                 Direction = SeekDirection.Forward;

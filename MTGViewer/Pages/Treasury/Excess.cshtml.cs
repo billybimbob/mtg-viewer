@@ -1,4 +1,3 @@
-using System;
 using System.Linq;
 using System.Paging;
 using System.Threading;
@@ -87,14 +86,17 @@ public class ExcessModel : PageModel
     {
         if (id is null)
         {
-            return default;
+            return null;
         }
 
-        var card = await CardJumpAsync.Invoke(_dbContext, id, cancel);
+        var card = await _dbContext.Excess
+            .SelectMany(e => e.Holds, (_, h) => h.Card)
+            .OrderBy(c => c.Id)
+            .FirstOrDefaultAsync(c => c.Id == id, cancel);
 
         if (card is null)
         {
-            return default;
+            return null;
         }
 
         int size = _pageSize.Current;
@@ -108,11 +110,4 @@ public class ExcessModel : PageModel
             .Where((id, i) => i % size == size - 1)
             .LastOrDefaultAsync(cancel);
     }
-
-    private static readonly Func<CardDbContext, string, CancellationToken, Task<Card?>> CardJumpAsync
-        = EF.CompileAsyncQuery((CardDbContext dbContext, string cardId, CancellationToken _) =>
-            dbContext.Cards
-                .OrderBy(c => c.Id)
-                .SingleOrDefault(c =>
-                    c.Id == cardId && c.Holds.Any(h => h.Location is Excess)));
 }

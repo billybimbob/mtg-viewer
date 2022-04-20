@@ -7,7 +7,7 @@ using Moq;
 using Xunit;
 
 using MTGViewer.Data;
-using MTGViewer.Data.Triggers;
+using MTGViewer.Triggers;
 using MTGViewer.Tests.Utils;
 
 namespace MTGViewer.Tests.Triggers;

@@ -373,7 +373,7 @@ internal sealed class OriginTranslator<TOrigin, TEntity>
     private sealed class SelectorVisitor : ExpressionVisitor
     {
         private static SelectorVisitor? _instance;
-        public static ExpressionVisitor Instance => _instance ??= new();
+        public static SelectorVisitor Instance => _instance ??= new();
 
         protected override Expression VisitLambda<TFunc>(Expression<TFunc> node)
         {
@@ -392,27 +392,6 @@ internal sealed class OriginTranslator<TOrigin, TEntity>
             if (node.NodeType is ExpressionType.Quote)
             {
                 return node.Operand;
-            }
-
-            return node;
-        }
-    }
-
-    private sealed class TernaryVisitor : ExpressionVisitor
-    {
-        private static TernaryVisitor? _instance;
-        public static ExpressionVisitor Instance => _instance ??= new();
-
-        protected override Expression VisitConditional(ConditionalExpression node)
-        {
-            if (node.IfTrue is MemberInitExpression)
-            {
-                return node.IfTrue;
-            }
-
-            if (node.IfFalse is MemberInitExpression)
-            {
-                return node.IfFalse;
             }
 
             return node;

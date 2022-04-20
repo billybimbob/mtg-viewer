@@ -10,15 +10,9 @@ namespace System.Paging.Query;
 
 internal static class ExecuteOffset<TEntity>
 {
-    private static GetPageInfoVisitor? _getPageInfo;
-    private static ExpressionVisitor GetPageInfo => _getPageInfo ??= new();
-
-    private static RemoveOffsetVisitor? _removeOffset;
-    private static ExpressionVisitor RemoveOffset => _removeOffset ??= new();
-
     public static OffsetList<TEntity> ToOffsetList(IQueryable<TEntity> query)
     {
-        if (GetPageInfo.Visit(query.Expression)
+        if (GetPageInfoVisitor.Instance.Visit(query.Expression)
             is not ConstantExpression { Value: PageInfo pageInfo })
         {
             throw new ArgumentException(
@@ -26,7 +20,7 @@ internal static class ExecuteOffset<TEntity>
         }
 
         var withoutOffset = query.Provider
-            .CreateQuery<TEntity>(RemoveOffset.Visit(query.Expression));
+            .CreateQuery<TEntity>(RemoveOffsetVisitor.Instance.Visit(query.Expression));
 
         int totalItems = withoutOffset.Count();
 
@@ -42,7 +36,7 @@ internal static class ExecuteOffset<TEntity>
         IQueryable<TEntity> query,
         CancellationToken cancel = default)
     {
-        if (GetPageInfo.Visit(query.Expression)
+        if (GetPageInfoVisitor.Instance.Visit(query.Expression)
             is not ConstantExpression { Value: PageInfo pageInfo })
         {
             throw new ArgumentException(
@@ -50,7 +44,7 @@ internal static class ExecuteOffset<TEntity>
         }
 
         var withoutOffset = query.Provider
-            .CreateQuery<TEntity>(RemoveOffset.Visit(query.Expression));
+            .CreateQuery<TEntity>(RemoveOffsetVisitor.Instance.Visit(query.Expression));
 
         int totalItems = await withoutOffset
             .CountAsync(cancel)
@@ -71,6 +65,9 @@ internal static class ExecuteOffset<TEntity>
 
     private sealed class GetPageInfoVisitor : ExpressionVisitor
     {
+        private static GetPageInfoVisitor? _instance;
+        public static GetPageInfoVisitor Instance => _instance ??= new();
+
         protected override Expression VisitMethodCall(MethodCallExpression node)
         {
             if (node.Arguments.ElementAtOrDefault(0) is not Expression parent
@@ -105,6 +102,9 @@ internal static class ExecuteOffset<TEntity>
 
     private sealed class RemoveOffsetVisitor : ExpressionVisitor
     {
+        private static RemoveOffsetVisitor? _instance;
+        public static RemoveOffsetVisitor Instance => _instance ??= new();
+
         protected override Expression VisitMethodCall(MethodCallExpression node)
         {
             if (node.Arguments.ElementAtOrDefault(0) is not Expression parent

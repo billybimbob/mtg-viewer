@@ -1,140 +1,140 @@
 {
-    "version": "2.0.0",
-    "tasks": [
-        {
-            "label": "build",
-            "command": "dotnet",
-            "type": "process",
-            "args": [
-                "build",
-                "${workspaceFolder}/MTGViewer/MTGViewer.csproj",
-                "/property:GenerateFullPaths=true",
-                "/consoleloggerparameters:NoSummary"
-            ],
-            "problemMatcher": "$msCompile",
-            "group": {
-                "kind": "build",
-                "isDefault": true
-            }
-        },
-        {
-            "label": "drop",
-            "command": "dotnet",
-            "type": "process",
-            "args": [
-                "ef",
-                "database",
-                "drop",
-                "--project",
-                "MTGViewer",
-                "--context",
-                "${input:context}"
-            ],
-            "problemMatcher": "$msCompile"
-        },
-        {
-            "label": "migrate",
-            "command": "dotnet",
-            "type": "process",
-            "args": [
-                "ef",
-                "migrations",
-                "add",
-                "${input:migration}",
-                "--project",
-                "MTGViewer",
-                "--context",
-                "${input:context}"
-            ],
-            "problemMatcher": "$msCompile"
-        },
-        {
-            "label": "publish",
-            "command": "dotnet",
-            "type": "process",
-            "args": [
-                "publish",
-                "${workspaceFolder}/MTGViewer/MTGViewer.csproj",
-                "/property:GenerateFullPaths=true",
-                "/consoleloggerparameters:NoSummary"
-            ],
-            "problemMatcher": "$msCompile"
-        },
-        {
-            "label": "remove",
-            "command": "dotnet",
-            "type": "process",
-            "args": [
-                "ef",
-                "migrations",
-                "remove",
-                "--project",
-                "MTGViewer",
-                "--context",
-                "${input:context}"
-            ],
-            "problemMatcher": "$msCompile"
-        },
-        {
-            "label": "test",
-            "command": "dotnet",
-            "type": "process",
-            "args": [
-                "test"
-            ],
-            "problemMatcher": "$msCompile",
-            "group": {
-                "kind": "test",
-                "isDefault": true
-            }
-        },
-        {
-            "label": "update",
-            "command": "dotnet",
-            "type": "process",
-            "args": [
-                "ef",
-                "database",
-                "update",
-                "--project",
-                "MTGViewer",
-                "--context",
-                "${input:context}"
-            ],
-            "problemMatcher": "$msCompile"
-        },
-        {
-            "label": "watch",
-            "command": "dotnet",
-            "type": "process",
-            "args": [
-                "watch",
-                "run",
-                "${workspaceFolder}/MTGViewer.csproj",
-                "--project",
-                "MTGViewer",
-                "/property:GenerateFullPaths=true",
-                "/consoleloggerparameters:NoSummary"
-            ],
-            "problemMatcher": "$msCompile"
-        }
-    ],
-    "inputs": [
-        {
-            "id": "context",
-            "type": "pickString",
-            "description": "Which database context do you want to modify?",
-            "options": [
-                "CardDbContext",
-                "UserDbContext"
-            ],
-            "default": "CardDbContext",
-        },
-        {
-            "id": "migration",
-            "type": "promptString",
-            "description": "Enter the name of the migration",
-            "default": "NewMigration"
-        }
-    ]
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "build",
+      "command": "dotnet",
+      "type": "process",
+      "args": [
+        "build",
+        "${workspaceFolder}/MTGViewer/MTGViewer.csproj",
+        "/property:GenerateFullPaths=true",
+        "/consoleloggerparameters:NoSummary"
+      ],
+      "problemMatcher": "$msCompile",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    },
+    {
+      "label": "drop",
+      "command": "dotnet",
+      "type": "process",
+      "args": [
+        "ef",
+        "database",
+        "drop",
+        "--project",
+        "MTGViewer",
+        "--context",
+        "${input:context}"
+      ],
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "migrate",
+      "command": "dotnet",
+      "type": "process",
+      "args": [
+        "ef",
+        "migrations",
+        "add",
+        "${input:migration}",
+        "--project",
+        "MTGViewer",
+        "--context",
+        "${input:context}"
+      ],
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "publish",
+      "command": "dotnet",
+      "type": "process",
+      "args": [
+        "publish",
+        "${workspaceFolder}/MTGViewer/MTGViewer.csproj",
+        "/property:GenerateFullPaths=true",
+        "/consoleloggerparameters:NoSummary"
+      ],
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "remove",
+      "command": "dotnet",
+      "type": "process",
+      "args": [
+        "ef",
+        "migrations",
+        "remove",
+        "--project",
+        "MTGViewer",
+        "--context",
+        "${input:context}"
+      ],
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "test",
+      "command": "dotnet",
+      "type": "process",
+      "args": [
+        "test"
+      ],
+      "problemMatcher": "$msCompile",
+      "group": {
+        "kind": "test",
+        "isDefault": true
+      }
+    },
+    {
+      "label": "update",
+      "command": "dotnet",
+      "type": "process",
+      "args": [
+        "ef",
+        "database",
+        "update",
+        "--project",
+        "MTGViewer",
+        "--context",
+        "${input:context}"
+      ],
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "watch",
+      "command": "dotnet",
+      "type": "process",
+      "args": [
+        "watch",
+        "run",
+        "${workspaceFolder}/MTGViewer.csproj",
+        "--project",
+        "MTGViewer",
+        "/property:GenerateFullPaths=true",
+        "/consoleloggerparameters:NoSummary"
+      ],
+      "problemMatcher": "$msCompile"
+    }
+  ],
+  "inputs": [
+    {
+      "id": "context",
+      "type": "pickString",
+      "description": "Which database context do you want to modify?",
+      "options": [
+        "CardDbContext",
+        "UserDbContext"
+      ],
+      "default": "CardDbContext",
+    },
+    {
+      "id": "migration",
+      "type": "promptString",
+      "description": "Enter the name of the migration",
+      "default": "NewMigration"
+    }
+  ]
 }

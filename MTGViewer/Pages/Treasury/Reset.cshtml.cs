@@ -59,7 +59,7 @@ public class ResetModel : PageModel
 
         ResetRequested = await IsResetRequestedAsync.Invoke(_dbContext, userId, cancel);
 
-        Remaining = await RemainingRequestsAsync.Invoke(_dbContext, cancel);
+        Remaining = await _dbContext.Users.CountAsync(u => !u.ResetRequested, cancel);
 
         return Page();
     }
@@ -70,11 +70,6 @@ public class ResetModel : PageModel
                 .Where(u => u.Id == userId)
                 .Select(u => u.ResetRequested)
                 .SingleOrDefault());
-
-    private static readonly Func<CardDbContext, CancellationToken, Task<int>> RemainingRequestsAsync
-        = EF.CompileAsyncQuery((CardDbContext dbContext, CancellationToken _) =>
-            dbContext.Users
-                .Count(u => !u.ResetRequested));
 
     public async Task<IActionResult> OnPostAsync(CancellationToken cancel)
     {
@@ -170,7 +165,7 @@ public class ResetModel : PageModel
 
             await _signManager.RefreshSignInAsync(cardUser);
 
-            int remaining = await RemainingRequestsAsync.Invoke(_dbContext, cancel);
+            int remaining = await _dbContext.Users.CountAsync(u => !u.ResetRequested, cancel);
 
             PostMessage = $"Reset request applied, but waiting on {remaining} more users to apply the reset";
         }

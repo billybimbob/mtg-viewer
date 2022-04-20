@@ -46,7 +46,7 @@ public class IndexModel : PageModel
 
         Seek = (Seek)boxes.Seek;
 
-        HasExcess = await HasExcessAsync.Invoke(_dbContext, cancel);
+        HasExcess = await _dbContext.Excess.AnyAsync(cancel);
     }
 
     private IQueryable<BoxPreview> BoxesForViewing()
@@ -91,9 +91,4 @@ public class IndexModel : PageModel
                     })
             });
     }
-
-    private static readonly Func<CardDbContext, CancellationToken, Task<bool>> HasExcessAsync
-        = EF.CompileAsyncQuery((CardDbContext dbContext, CancellationToken _) =>
-            dbContext.Holds
-                .Any(h => h.Location is Excess));
 }

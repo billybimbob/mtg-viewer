@@ -60,6 +60,10 @@ public sealed partial class Collection : ComponentBase, IDisposable
 
     internal SeekList<LocationCopy> Cards { get; private set; } = SeekList<LocationCopy>.Empty;
 
+    private static readonly Color _validColors = Enum
+        .GetValues<Color>()
+        .Aggregate((x, y) => x | y);
+
     private readonly CancellationTokenSource _cancel = new();
     private PersistingComponentStateSubscription _persistSubscription;
 
@@ -213,49 +217,33 @@ public sealed partial class Collection : ComponentBase, IDisposable
 
     private static IQueryable<LocationCopy> OrderedCopies(IQueryable<LocationCopy> copies, string? orderBy)
     {
-        bool isAscending = orderBy switch
-        {
-            nameof(Card.ManaCost) => false,
-            nameof(Card.SetName) => true,
-            nameof(Card.Rarity) => false,
-            nameof(Card.Holds) => false,
-            _ => true
-        };
-
-        IOrderedQueryable<LocationCopy> PrimaryOrder<T>(Expression<Func<LocationCopy, T>> property)
-        {
-            return isAscending
-                ? copies.OrderBy(property)
-                : copies.OrderByDescending(property);
-        }
-
         return orderBy switch
         {
-            nameof(Card.ManaCost) =>
-                PrimaryOrder(c => c.ManaValue)
+            nameof(Card.ManaCost) => copies
+                .OrderByDescending(c => c.ManaValue)
                     .ThenBy(c => c.Name)
                     .ThenBy(c => c.SetName)
                     .ThenBy(c => c.Id),
 
-            nameof(Card.SetName) =>
-                PrimaryOrder(c => c.SetName)
+            nameof(Card.SetName) => copies
+                .OrderBy(c => c.SetName)
                     .ThenBy(c => c.Name)
                     .ThenBy(c => c.Id),
 
-            nameof(Card.Holds) =>
-                PrimaryOrder(c => c.Held) // keep eye on, query is a bit expensive
-                    .ThenBy(c => c.Name)
-                    .ThenBy(c => c.SetName)
-                    .ThenBy(c => c.Id),
-
-            nameof(Card.Rarity) =>
-                PrimaryOrder(c => c.Rarity)
+            nameof(Card.Rarity) => copies
+                .OrderByDescending(c => c.Rarity)
                     .ThenBy(c => c.Name)
                     .ThenBy(c => c.SetName)
                     .ThenBy(c => c.Id),
 
-            nameof(Card.Name) or _ =>
-                PrimaryOrder(c => c.Name)
+            nameof(Card.Holds) => copies
+                .OrderByDescending(c => c.Held) // keep eye on, query is a bit expensive
+                    .ThenBy(c => c.Name)
+                    .ThenBy(c => c.SetName)
+                    .ThenBy(c => c.Id),
+
+            nameof(Card.Name) or _ => copies
+                .OrderBy(c => c.Name)
                     .ThenBy(c => c.SetName)
                     .ThenBy(c => c.Id)
         };
@@ -298,7 +286,7 @@ public sealed partial class Collection : ComponentBase, IDisposable
 
     internal Color PickedColors
     {
-        get => (Color)Colors;
+        get => (Color)Colors & _validColors;
         set
         {
             if (_isBusy)
@@ -308,20 +296,13 @@ public sealed partial class Collection : ComponentBase, IDisposable
 
             _isBusy = true;
 
-            var picked = Enum
-                .GetValues<Color>()
-                .Select(c => c & (Color)Colors)
-                .Aggregate((color, c) => color | c);
-
             // use value as a color toggle
 
-            picked = picked.HasFlag(value)
-                ? picked & ~value
-                : picked | value;
+            var picked = PickedColors ^ value;
 
             var changes = new Dictionary<string, object?>
             {
-                [nameof(Colors)] = picked is Color.None ? null : (int?)picked,
+                [nameof(Colors)] = picked is Color.None ? null : (int)picked,
                 [nameof(Seek)] = null,
                 [nameof(Direction)] = null
             };
@@ -370,7 +351,7 @@ public sealed partial class Collection : ComponentBase, IDisposable
             [nameof(Seek)] = request.Seek?.Id,
             [nameof(Direction)] = request.Direction switch
             {
-                SeekDirection.Backwards => (int?)SeekDirection.Backwards,
+                SeekDirection.Backwards => (int)SeekDirection.Backwards,
                 _ => null
             }
         };

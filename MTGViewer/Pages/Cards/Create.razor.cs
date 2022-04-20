@@ -14,7 +14,6 @@ using Microsoft.Extensions.Logging;
 
 using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
-using MTGViewer.Data.Internal;
 using MTGViewer.Services;
 using MTGViewer.Utils;
 
@@ -321,31 +320,35 @@ public sealed partial class Create : ComponentBase, IDisposable
 
     private static Color ValidatedColor(int value)
     {
+        var color = (Color)value;
+
         return Enum
             .GetValues<Color>()
-            .Select(c => c & (Color)value)
-            .Aggregate((color, c) => color | c);
+            .Select(c => c & color)
+            .Aggregate((x, y) => x | y);
     }
 
     private static Rarity? ValidatedRarity(int? value)
     {
+        var rarity = (Rarity?)value;
+
         return Enum
             .GetValues<Rarity>()
             .OfType<Rarity?>()
-            .FirstOrDefault(r => r == (Rarity?)value);
+            .FirstOrDefault(r => r == rarity);
     }
 
     private void NavigateToQuery(CardQuery query)
     {
-        int? color = query.Colors is not Color.None
-            ? (int?)query.Colors
-            : null;
-
         var parameters = new Dictionary<string, object?>
         {
             [nameof(Name)] = query.Name,
             [nameof(Cmc)] = query.Cmc,
-            [nameof(Colors)] = color,
+            [nameof(Colors)] = query.Colors switch
+            {
+                Color c and not Color.None => (int)c,
+                _ => null
+            },
             [nameof(Rarity)] = (int?)query.Rarity,
             [nameof(Set)] = query.SetName,
             [nameof(Types)] = query.Type,

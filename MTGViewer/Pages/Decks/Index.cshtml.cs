@@ -1,4 +1,3 @@
-using System;
 using System.Linq;
 using System.Paging;
 using System.Threading;
@@ -69,7 +68,7 @@ public class IndexModel : PageModel
 
         UserName = userName;
         Decks = decks;
-        HasUnclaimed = await HasUnclaimedAsync.Invoke(_dbContext, cancel);
+        HasUnclaimed = await _dbContext.Unclaimed.AnyAsync(cancel);
 
         return Page();
     }
@@ -95,8 +94,4 @@ public class IndexModel : PageModel
                 HasTrades = d.TradesTo.Any(),
             });
     }
-
-    private static readonly Func<CardDbContext, CancellationToken, Task<bool>> HasUnclaimedAsync
-        = EF.CompileAsyncQuery(
-            (CardDbContext dbContext, CancellationToken _) => dbContext.Unclaimed.Any());
 }

@@ -7,7 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Areas.Identity.Services;
-using MTGViewer.Services;
+using MTGViewer.Data.Configuration;
 using MTGViewer.Utils;
 
 [assembly: HostingStartup(typeof(MTGViewer.Areas.Identity.IdentityHostingStartup))]

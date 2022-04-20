@@ -7,11 +7,14 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
 using MtgApiManager.Lib.Service;
+
 using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Areas.Identity.Services;
+
 using MTGViewer.Data;
-using MTGViewer.Data.Triggers;
+using MTGViewer.Data.Configuration;
 using MTGViewer.Services;
+using MTGViewer.Triggers;
 using MTGViewer.Tests.Utils;
 
 namespace MTGViewer.Tests;

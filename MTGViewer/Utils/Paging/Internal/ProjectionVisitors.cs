@@ -59,7 +59,7 @@ internal class FindSelect<TSource, TResult> : ExpressionVisitor
     private static FindSelect<TSource, TResult>? _instance;
     private static MethodInfo? _selectMethod;
 
-    public static ExpressionVisitor Instance => _instance ??= new();
+    public static FindSelect<TSource, TResult> Instance => _instance ??= new();
 
     protected override Expression VisitMethodCall(MethodCallExpression node)
     {
@@ -134,7 +134,7 @@ internal class RemoveSelect<TSource, TResult> : ExpressionVisitor
     private static RemoveSelect<TSource, TResult>? _instance;
     private static MethodInfo? _selectMethod;
 
-    public static ExpressionVisitor Instance => _instance ??= new();
+    public static RemoveSelect<TSource, TResult> Instance => _instance ??= new();
 
     protected override Expression VisitMethodCall(MethodCallExpression node)
     {

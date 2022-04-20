@@ -118,6 +118,16 @@ internal sealed class EntityOriginSeek<TEntity, TRefKey, TValueKey> : ISeekable<
 
     private IQueryable<TEntity> GetEntityQuery<TKey>(TKey key, IEntityType entityType)
     {
+        var findById = new FindByIdVisitor(entityType);
+
+        var originQuery = _query.Provider
+            .CreateQuery<TEntity>(findById.Visit(_query.Expression));
+
+        foreach (var include in findById.Include)
+        {
+            originQuery = originQuery.Include(include);
+        }
+
         var entityParameter = Expression
             .Parameter(
                 typeof(TEntity),
@@ -133,20 +143,10 @@ internal sealed class EntityOriginSeek<TEntity, TRefKey, TValueKey> : ISeekable<
         var orderId = Expression
             .Lambda<Func<TEntity, TKey>>(propertyId, entityParameter);
 
-        var findById = new FindByIdVisitor(entityType);
-
-        var originQuery = _query.Provider
-            .CreateQuery<TEntity>(findById.Visit(_query.Expression))
+        return originQuery
             .Where(equalId)
             .OrderBy(orderId)
             .AsNoTracking();
-
-        foreach (var include in findById.Include)
-        {
-            originQuery = originQuery.Include(include);
-        }
-
-        return originQuery;
     }
 
     private IQueryable<TEntity> GetSelectedQuery<TKey>(TKey key, IEntityType entityType)

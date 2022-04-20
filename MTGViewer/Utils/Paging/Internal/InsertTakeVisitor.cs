@@ -124,7 +124,7 @@ internal class InsertTakeVisitor<TEntity> : ExpressionVisitor
     private sealed class FindSecondReverseVisitor : ExpressionVisitor
     {
         private static FindSecondReverseVisitor? _instance;
-        public static ExpressionVisitor Instance => _instance ??= new();
+        public static FindSecondReverseVisitor Instance => _instance ??= new();
 
         protected override Expression VisitMethodCall(MethodCallExpression node)
         {

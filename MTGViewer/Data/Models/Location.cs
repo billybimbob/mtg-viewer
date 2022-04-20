@@ -3,9 +3,6 @@ using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
 
-using MTGViewer.Data.Concurrency;
-using MTGViewer.Data.Internal;
-
 namespace MTGViewer.Data;
 
 [Index(nameof(Type), nameof(Id))]
