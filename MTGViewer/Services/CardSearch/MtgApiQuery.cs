@@ -123,7 +123,7 @@ public sealed class MtgApiQuery : IMTGQuery
 
         cancel.ThrowIfCancellationRequested();
 
-        var totalPages = response.PagingInfo.TotalPages;
+        int totalPages = response.PagingInfo.TotalPages;
         var offset = new Offset(currentPage, totalPages);
 
         var cards = await _flipQuery.GetCardsAsync(response, cancel);
@@ -171,14 +171,14 @@ public sealed class MtgApiQuery : IMTGQuery
 
         _loadProgress.Ticks += chunks.Count;
 
-        foreach (var multiverseChunk in chunks)
+        foreach (string[] multiverseChunk in chunks)
         {
             if (!multiverseChunk.Any())
             {
                 continue;
             }
 
-            var multiverseArgs = string.Join(Or, multiverseChunk);
+            string multiverseArgs = string.Join(Or, multiverseChunk);
 
             var response = await _cardService
                 .Where(c => c.MultiverseId, multiverseArgs)

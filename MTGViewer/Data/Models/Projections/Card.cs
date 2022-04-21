@@ -38,7 +38,7 @@ public record CardLink
     public string Id { get; init; } = string.Empty;
     public string Name { get; init; } = string.Empty;
     public string SetName { get; init; } = string.Empty;
-    public string? ManaCost { get; init; } = string.Empty;
+    public string? ManaCost { get; init; }
 }
 
 public sealed record DeleteLink : CardLink

@@ -194,7 +194,7 @@ public partial class Craft : OwningComponentBase
         cancel.ThrowIfCancellationRequested();
 
         var userManager = ScopedServices.GetRequiredService<UserManager<CardUser>>();
-        var userId = userManager.GetUserId(authState.User);
+        string? userId = userManager.GetUserId(authState.User);
 
         if (userId is null)
         {
@@ -1368,8 +1368,8 @@ public partial class Craft : OwningComponentBase
                 continue;
             }
 
-            var currentReturn = cardGroup.Giveback.Copies;
-            var copiesCap = cardGroup.Hold?.Copies ?? currentReturn;
+            int currentReturn = cardGroup.Giveback.Copies;
+            int copiesCap = cardGroup.Hold?.Copies ?? currentReturn;
 
             cardGroup.Giveback.Copies = Math.Min(currentReturn, copiesCap);
         }

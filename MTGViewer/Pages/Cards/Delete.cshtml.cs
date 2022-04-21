@@ -91,10 +91,8 @@ public class DeleteModel : PageModel
             dbContext.Cards
                 .Include(c => c.Flip)
                 .Include(c => c.Holds
-                    // the smaller copies should be first
                     .OrderBy(h => h.Copies))
                     .ThenInclude(h => h.Location)
-
                 .OrderBy(c => c.Id)
                 .SingleOrDefault(c => c.Id == cardId));
 

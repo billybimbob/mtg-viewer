@@ -199,7 +199,7 @@ public partial class Suggest : OwningComponentBase
             return;
         }
 
-        var userId = await GetUserIdAsync(cancel);
+        string? userId = await GetUserIdAsync(cancel);
 
         if (userId is null)
         {
@@ -220,7 +220,7 @@ public partial class Suggest : OwningComponentBase
 
         var userManager = ScopedServices.GetRequiredService<UserManager<CardUser>>();
 
-        var userId = userManager.GetUserId(authState.User);
+        string? userId = userManager.GetUserId(authState.User);
 
         if (userId is null)
         {

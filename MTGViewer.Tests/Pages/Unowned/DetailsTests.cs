@@ -16,14 +16,14 @@ public class IndexTests : IAsyncLifetime
 {
     private readonly DetailsModel _detailsModel;
     private readonly CardDbContext _dbContext;
-    private readonly PageContextFactory _pageFactory;
+    private readonly ActionHandlerFactory _pageFactory;
     private readonly TestDataGenerator _testGen;
     private Unclaimed _unclaimed = default!;
 
     public IndexTests(
         DetailsModel indexModel,
         CardDbContext dbContext,
-        PageContextFactory pageFactory,
+        ActionHandlerFactory pageFactory,
         TestDataGenerator testGen)
     {
         _detailsModel = indexModel;
@@ -44,7 +44,7 @@ public class IndexTests : IAsyncLifetime
     [Fact]
     public async Task OnPostClaim_NoUser_NoChange()
     {
-        _pageFactory.AddModelContext(_detailsModel);
+        _pageFactory.AddPageContext(_detailsModel);
 
         bool unclaimedBefore = await _dbContext.Unclaimed
             .Select(u => u.Id)
@@ -65,11 +65,11 @@ public class IndexTests : IAsyncLifetime
     [Fact]
     public async Task OnPostClaim_WithUser_AppliesClaim()
     {
-        var userId = await _dbContext.Users
+        string userId = await _dbContext.Users
             .Select(u => u.Id)
             .FirstAsync();
 
-        await _pageFactory.AddModelContextAsync(_detailsModel, userId);
+        await _pageFactory.AddPageContextAsync(_detailsModel, userId);
 
         bool unclaimedBefore = await _dbContext.Unclaimed
             .Select(u => u.Id)
@@ -100,11 +100,11 @@ public class IndexTests : IAsyncLifetime
     [Fact]
     public async Task OnPostRemove_WithUser_NoChange()
     {
-        var userId = await _dbContext.Users
+        string userId = await _dbContext.Users
             .Select(u => u.Id)
             .FirstAsync();
 
-        await _pageFactory.AddModelContextAsync(_detailsModel, userId);
+        await _pageFactory.AddPageContextAsync(_detailsModel, userId);
 
         bool unclaimedBefore = await _dbContext.Unclaimed
             .Select(u => u.Id)

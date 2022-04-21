@@ -47,7 +47,7 @@ public class ReferenceManagerTests : IAsyncLifetime
         };
 
         var result = await _userManager.CreateAsync(newUser);
-        var userId = await _userManager.GetUserIdAsync(newUser);
+        string? userId = await _userManager.GetUserIdAsync(newUser);
 
         bool userBefore = await _dbContext.Users
             .AnyAsync(u => u.Id == userId);
@@ -77,7 +77,7 @@ public class ReferenceManagerTests : IAsyncLifetime
         };
 
         var result = await _userManager.CreateAsync(newUser);
-        var userId = await _userManager.GetUserIdAsync(newUser);
+        string? userId = await _userManager.GetUserIdAsync(newUser);
 
         bool firstCreate = await _referenceManager.CreateReferenceAsync(newUser);
 
@@ -109,7 +109,7 @@ public class ReferenceManagerTests : IAsyncLifetime
             EmailConfirmed = true
         };
 
-        var userId = await _userManager.GetUserIdAsync(newUser);
+        string? userId = await _userManager.GetUserIdAsync(newUser);
 
         bool userBefore = await _dbContext.Users
             .AnyAsync(u => u.Id == userId);

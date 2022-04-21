@@ -30,14 +30,11 @@ public sealed record BinPreview
     {
         return other is not null
             && Id == other.Id
-            && Name == other.Name
-            && Boxes.SequenceEqual(other.Boxes);
+            && Name == other.Name;
     }
 
     public override int GetHashCode()
     {
-        return Id.GetHashCode()
-            ^ Name.GetHashCode()
-            ^ Boxes.Aggregate(0, (hash, c) => hash ^ c.GetHashCode());
+        return HashCode.Combine(Id, Name);
     }
 }

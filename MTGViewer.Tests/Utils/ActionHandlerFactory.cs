@@ -1,11 +1,13 @@
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Security.Claims;
 
+using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Routing;
 
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -13,26 +15,35 @@ using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 
 using Microsoft.AspNetCore.Identity;
-
 using Moq;
+
 using MTGViewer.Areas.Identity.Data;
+using MTGViewer.Services;
 
 namespace MTGViewer.Tests.Utils;
 
-public class PageContextFactory
+public class ActionHandlerFactory
 {
+    private static readonly Dictionary<string, object> _emptyParams = new();
+
     private readonly IUserClaimsPrincipalFactory<CardUser> _claimsFactory;
     private readonly UserManager<CardUser> _userManager;
+    private readonly ActionContextAccessor _actionAccessor;
+    private readonly RouteDataAccessor _routeAccessor;
 
-    public PageContextFactory(
+    public ActionHandlerFactory(
         IUserClaimsPrincipalFactory<CardUser> claimsFactory,
-        UserManager<CardUser> userManager)
+        UserManager<CardUser> userManager,
+        ActionContextAccessor actionAccessor,
+        RouteDataAccessor routeAccessor)
     {
         _userManager = userManager;
         _claimsFactory = claimsFactory;
+        _actionAccessor = actionAccessor;
+        _routeAccessor = routeAccessor;
     }
 
-    public void AddModelContext(PageModel model, ClaimsPrincipal? user = null)
+    public void AddPageContext(PageModel model, ClaimsPrincipal? user = null)
     {
         var objectValidate = new Mock<IObjectModelValidator>();
         var requestServices = new Mock<IServiceProvider>();
@@ -61,11 +72,17 @@ public class PageContextFactory
 
         var modelState = new ModelStateDictionary();
 
+        // TODO: add display name based on page model
+
+        var pageAction = new PageActionDescriptor();
+
         var actionContext = new ActionContext(
             httpContext,
-            new RouteData(),
-            new PageActionDescriptor(),
+            new Microsoft.AspNetCore.Routing.RouteData(),
+            pageAction,
             modelState);
+
+        _actionAccessor.ActionContext = actionContext;
 
         var modelMetadataProvider = new EmptyModelMetadataProvider();
         var viewData = new ViewDataDictionary(modelMetadataProvider, modelState);
@@ -79,17 +96,35 @@ public class PageContextFactory
         model.Url = new UrlHelper(actionContext);
     }
 
-    public async Task AddModelContextAsync(PageModel model, CardUser user)
+    public async Task AddPageContextAsync(PageModel model, CardUser user)
     {
         var userClaim = await _claimsFactory.CreateAsync(user);
 
-        AddModelContext(model, userClaim);
+        AddPageContext(model, userClaim);
     }
 
-    public async Task AddModelContextAsync(PageModel model, string userId)
+    public async Task AddPageContextAsync(PageModel model, string userId)
     {
         var user = await _userManager.FindByIdAsync(userId);
 
-        await AddModelContextAsync(model, user);
+        await AddPageContextAsync(model, user);
+    }
+
+    public void AddRouteDataContext(IComponent component)
+    {
+        // just use empty params for now, they should not be needed
+
+        var routeData = new RouteData(component.GetType(), _emptyParams);
+
+        _routeAccessor.RouteData = routeData;
+    }
+
+    public void AddRouteDataContext<TComponent>() where TComponent : IComponent
+    {
+        // just use empty params for now, they should not be needed
+
+        var routeData = new RouteData(typeof(TComponent), _emptyParams);
+
+        _routeAccessor.RouteData = routeData;
     }
 }

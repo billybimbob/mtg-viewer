@@ -36,7 +36,7 @@ public class MTGQueryTests
     {
         var testCard = await _mtgQuery.SourceCards.FirstAsync();
 
-        var testName = GetName(testCard);
+        string testName = GetName(testCard);
 
         var cards = await _mtgQuery
             .Where(c => c.Name == testName)
@@ -112,7 +112,7 @@ public class MTGQueryTests
     {
         const int targetSize = 5;
 
-        var multiverseIds = await _mtgQuery.SourceCards
+        string[] multiverseIds = await _mtgQuery.SourceCards
             .Take(targetSize)
             .Select(c => c.MultiverseId)
             .ToArrayAsync();

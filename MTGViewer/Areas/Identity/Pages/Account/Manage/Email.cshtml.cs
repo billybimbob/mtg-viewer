@@ -43,7 +43,8 @@ public class EmailModel : PageModel
 
     private async Task LoadAsync(CardUser user)
     {
-        var email = await _userManager.GetEmailAsync(user);
+        string email = await _userManager.GetEmailAsync(user);
+
         Email = email;
 
         Input = new InputModel

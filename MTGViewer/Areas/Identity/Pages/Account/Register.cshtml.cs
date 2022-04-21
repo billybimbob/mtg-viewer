@@ -90,10 +90,12 @@ public class RegisterModel : PageModel
             return Page();
         }
 
-        var userId = await _userManager.GetUserIdAsync(user);
+        string? userId = await _userManager.GetUserIdAsync(user);
+
         user.Id = userId;
 
-        var created = await _referenceManager.CreateReferenceAsync(user, cancel);
+        bool created = await _referenceManager.CreateReferenceAsync(user, cancel);
+
         if (!created)
         {
             ModelState.AddModelError(string.Empty, "Issue creating user account");

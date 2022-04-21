@@ -216,7 +216,7 @@ public class CreateModel : PageModel
 
     public async Task<IActionResult> OnPostAsync(int id, CancellationToken cancel)
     {
-        var userId = _userManager.GetUserId(User);
+        string? userId = _userManager.GetUserId(User);
 
         if (userId is null)
         {

@@ -177,7 +177,7 @@ public class ColorUpdateTests : IAsyncLifetime
             .AsNoTrackingWithIdentityResolution()
             .FirstAsync();
 
-        var cardIds = deck.Holds
+        string[] cardIds = deck.Holds
             .Select(h => h.CardId)
             .Concat(deck.Wants
                 .Select(w => w.CardId))
@@ -284,7 +284,7 @@ public class ColorUpdateTests : IAsyncLifetime
             })
             .SingleAsync();
 
-        var cardIds = deck.Holds
+        string[] cardIds = deck.Holds
             .Select(h => h.CardId)
             .Concat(deck.Wants
                 .Select(w => w.CardId))

@@ -24,7 +24,7 @@ internal class MtgTypeParameter : IMtgParameter
     {
         if (value is IEnumerable<string> values)
         {
-            var types = values
+            string[] types = values
                 .Select(Validate)
                 .OfType<string>()
                 .Concat(_types)
@@ -58,7 +58,7 @@ internal class MtgTypeParameter : IMtgParameter
             return cards;
         }
 
-        var types = string.Join(MtgApiQuery.And, _types);
+        string types = string.Join(MtgApiQuery.And, _types);
 
         return cards.Where(q => q.Type, types);
     }
@@ -167,7 +167,7 @@ internal class MtgColorParameter : IMtgParameter
             .Where(kv => _color.HasFlag(kv.Key))
             .Select(kv => kv.Value);
 
-        var colors = string.Join(MtgApiQuery.And, colorNames);
+        string colors = string.Join(MtgApiQuery.And, colorNames);
 
         return cards.Where(q => q.ColorIdentity, colors);
     }
@@ -235,7 +235,7 @@ internal class MtgDefaultParameter : IMtgParameter
 
     public IMtgParameter Accept(object? value)
     {
-        if (TryToString(value, out var parameter))
+        if (TryToString(value, out string parameter))
         {
             return new MtgDefaultParameter(_property, parameter);
         }
@@ -245,7 +245,7 @@ internal class MtgDefaultParameter : IMtgParameter
 
     private static bool TryToString(object? paramValue, out string stringValue)
     {
-        var toString = paramValue?.ToString();
+        string? toString = paramValue?.ToString();
 
         if (toString == null)
         {

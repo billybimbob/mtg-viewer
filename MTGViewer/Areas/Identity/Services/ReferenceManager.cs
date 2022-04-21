@@ -181,7 +181,7 @@ public class ReferenceManager
             .Where(u => u.ResetRequested)
             .ToListAsync(cancel);
 
-        var resettingIds = usersResetting
+        string[] resettingIds = usersResetting
             .Select(u => u.Id)
             .ToArray();
 

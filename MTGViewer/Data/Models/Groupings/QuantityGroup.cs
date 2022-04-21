@@ -151,7 +151,7 @@ public class QuantityGroup : IEnumerable<Quantity>
 
     private void CheckGroup()
     {
-        var nullCount = (Hold is null ? 0 : 1)
+        int nullCount = (Hold is null ? 0 : 1)
             + (Want is null ? 0 : 1)
             + (Giveback is null ? 0 : 1);
 
@@ -174,17 +174,17 @@ public class QuantityGroup : IEnumerable<Quantity>
 
     private bool HasSameIds()
     {
-        var cardId = CardId;
-        var locationId = LocationId;
+        string cardId = CardId;
+        int locationId = LocationId;
 
-        var sameHoldIds = Hold == null
-            || Hold.CardId == cardId && Hold.LocationId == locationId;
+        bool sameHoldIds = Hold == null
+            || (Hold.CardId == cardId && Hold.LocationId == locationId);
 
-        var sameTakeIds = Want == null
-            || Want.CardId == cardId && Want.LocationId == locationId;
+        bool sameTakeIds = Want == null
+            || (Want.CardId == cardId && Want.LocationId == locationId);
 
-        var sameRetIds = Giveback == null
-            || Giveback.CardId == cardId && Giveback.LocationId == locationId;
+        bool sameRetIds = Giveback == null
+            || (Giveback.CardId == cardId && Giveback.LocationId == locationId);
 
         return sameHoldIds && sameTakeIds && sameRetIds;
     }
@@ -194,14 +194,14 @@ public class QuantityGroup : IEnumerable<Quantity>
         var card = Card;
         var location = Location;
 
-        var sameActRefs = Hold == null
-            || Hold.Card == card && Hold.Location == location;
+        bool sameActRefs = Hold == null
+            || (Hold.Card == card && Hold.Location == location);
 
-        var sameTakeRefs = Want == null
-            || Want.Card == card && Want.Location == location;
+        bool sameTakeRefs = Want == null
+            || (Want.Card == card && Want.Location == location);
 
-        var sameRetRefs = Giveback == null
-            || Giveback.Card == card && Giveback.Location == location;
+        bool sameRetRefs = Giveback == null
+            || (Giveback.Card == card && Giveback.Location == location);
 
         return sameActRefs && sameTakeRefs && sameRetRefs;
     }

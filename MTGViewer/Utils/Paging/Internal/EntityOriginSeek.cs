@@ -123,7 +123,7 @@ internal sealed class EntityOriginSeek<TEntity, TRefKey, TValueKey> : ISeekable<
         var originQuery = _query.Provider
             .CreateQuery<TEntity>(findById.Visit(_query.Expression));
 
-        foreach (var include in findById.Include)
+        foreach (string include in findById.Include)
         {
             originQuery = originQuery.Include(include);
         }

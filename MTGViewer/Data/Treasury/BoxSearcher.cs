@@ -52,7 +52,7 @@ internal sealed class BoxSearcher
     {
         int capacitySum = 0;
 
-        foreach (Box box in boxes)
+        foreach (var box in boxes)
         {
             checked
             {
@@ -67,7 +67,7 @@ internal sealed class BoxSearcher
     {
         int holdTotal = 0;
 
-        foreach (Hold hold in boxHolds)
+        foreach (var hold in boxHolds)
         {
             yield return holdTotal;
 

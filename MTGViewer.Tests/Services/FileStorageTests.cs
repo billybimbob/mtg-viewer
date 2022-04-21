@@ -41,13 +41,13 @@ public class FileStorageTests : IClassFixture<TempFileName>, IAsyncLifetime
     [TestPriority(1)]
     public async Task Write_Temp_Success()
     {
-        var anyBefore = await _dbContext.Cards.AnyAsync();
+        bool anyBefore = await _dbContext.Cards.AnyAsync();
 
         await _cardGen.GenerateAsync();
         await _fileStorage.WriteBackupAsync(_tempFileName);
 
         var tempInfo = new FileInfo(_tempFileName);
-        var anyAfter = await _dbContext.Cards.AnyAsync();
+        bool anyAfter = await _dbContext.Cards.AnyAsync();
 
         Assert.False(anyBefore);
 
@@ -61,11 +61,11 @@ public class FileStorageTests : IClassFixture<TempFileName>, IAsyncLifetime
     [TestPriority(2)]
     public async Task Seed_Temp_Success()
     {
-        var anyBefore = await _dbContext.Cards.AnyAsync();
+        bool anyBefore = await _dbContext.Cards.AnyAsync();
 
         await _fileStorage.JsonSeedAsync(_tempFileName);
 
-        var anyAfter = await _dbContext.Cards.AnyAsync();
+        bool anyAfter = await _dbContext.Cards.AnyAsync();
 
         Assert.False(anyBefore, "Card Db should be empty");
         Assert.True(anyAfter, "Card Db should be filled");
@@ -77,7 +77,7 @@ public class FileStorageTests : IClassFixture<TempFileName>, IAsyncLifetime
     {
         const string fileName = "tempFile.json";
 
-        var anyBefore = await _dbContext.Cards.AnyAsync();
+        bool anyBefore = await _dbContext.Cards.AnyAsync();
         var tempInfo = new FileInfo(_tempFileName);
 
         await using var tempStream = File.OpenRead(_tempFileName);
@@ -87,7 +87,7 @@ public class FileStorageTests : IClassFixture<TempFileName>, IAsyncLifetime
 
         await _fileStorage.JsonAddAsync(fileStream);
 
-        var anyAfter = await _dbContext.Cards.AnyAsync();
+        bool anyAfter = await _dbContext.Cards.AnyAsync();
 
         Assert.False(anyBefore, "Card Db should be empty");
         Assert.True(anyAfter, "Card Db should be filled");

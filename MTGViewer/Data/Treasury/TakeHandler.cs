@@ -31,7 +31,7 @@ internal abstract class TakeHandler
 
     public void ApplyTakes()
     {
-        foreach ((Card card, int copies, Storage target) in GetAssignments())
+        foreach ((var card, int copies, var target) in GetAssignments())
         {
             ExchangeContext.TakeCopies(card, copies, target);
         }
@@ -113,6 +113,7 @@ internal class ExactTake : TakeHandler
         var storageSpaces = TreasuryContext.StorageSpaces;
 
         // TODO: account for changing Copies while iter
+        // lookup group orders should preserve Copies order
         return targets
             .Join(cardIds,
                 h => h.CardId, cid => cid,
@@ -121,7 +122,6 @@ internal class ExactTake : TakeHandler
             .OrderByDescending(h => h.Location is Box)
                 .ThenBy(h => h.Copies)
 
-            // lookup group orders should preserve Copies order
             .ToLookup(h => h.CardId);
     }
 }
@@ -179,6 +179,7 @@ internal class ApproximateTake : TakeHandler
         var storageSpaces = TreasuryContext.StorageSpaces;
 
         // TODO: account for changing Copies while iter
+        // lookup group orders should preserve Copies order
         return targets
             .Join(cardNames,
                 h => h.Card.Name, cn => cn,
@@ -187,7 +188,6 @@ internal class ApproximateTake : TakeHandler
             .OrderByDescending(h => h.Location is Box)
                 .ThenBy(h => h.Copies)
 
-            // lookup group orders should preserve Copies order
             .ToLookup(h => h.Card.Name);
     }
 }

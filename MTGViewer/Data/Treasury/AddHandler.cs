@@ -36,7 +36,7 @@ internal abstract class AddHandler
 
     public void AddCopies()
     {
-        foreach ((CardRequest request, int copies, Storage storage) in GetAssignments())
+        foreach ((var request, int copies, var storage) in GetAssignments())
         {
             TreasuryContext.AddCopies(request.Card, copies, storage);
             request.Copies -= copies;
@@ -59,7 +59,7 @@ internal class ExactAdd : AddHandler
             yield break;
         }
 
-        foreach (CardRequest request in CardRequests)
+        foreach (var request in CardRequests)
         {
             if (request.Copies == 0)
             {
@@ -110,7 +110,7 @@ internal class ApproximateAdd : AddHandler
             yield break;
         }
 
-        foreach (CardRequest request in CardRequests)
+        foreach (var request in CardRequests)
         {
             if (request.Copies == 0)
             {
@@ -171,7 +171,7 @@ internal class GuessAdd : AddHandler
                 .ThenByDescending(cr => cr.Card.Name)
                 .ThenByDescending(cr => cr.Card.SetName);
 
-        foreach (CardRequest request in orderedRequests)
+        foreach (var request in orderedRequests)
         {
             if (request.Copies == 0)
             {

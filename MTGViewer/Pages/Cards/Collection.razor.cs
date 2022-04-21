@@ -184,7 +184,7 @@ public sealed partial class Collection : ComponentBase, IDisposable
         string? name = filter.Name?.ToUpperInvariant();
         string? text = filter.Text?.ToUpperInvariant();
 
-        string[]? types = filter.Types?.ToUpperInvariant().Split() ?? Array.Empty<string>();
+        string[] types = filter.Types?.ToUpperInvariant().Split() ?? Array.Empty<string>();
 
         if (!string.IsNullOrWhiteSpace(name))
         {
@@ -352,7 +352,7 @@ public sealed partial class Collection : ComponentBase, IDisposable
             [nameof(Direction)] = request.Direction switch
             {
                 SeekDirection.Backwards => (int)SeekDirection.Backwards,
-                _ => null
+                SeekDirection.Forward or _ => null
             }
         };
 

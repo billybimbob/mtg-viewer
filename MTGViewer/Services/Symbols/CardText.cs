@@ -8,12 +8,13 @@ namespace MTGViewer.Services;
 
 public class CardText : ISymbolFinder, ISymbolTranslator
 {
-    private const string Mana = $@"{{(?<{ nameof(Mana) }>[^}}]+)}}";
+    private const string Mana = $@"{{(?<{nameof(Mana)}>[^}}]+)}}";
 
     private const string Direction = "direction";
-    private const string Loyalty = $@"\[(?<{ Direction }>[+−])?(?<{ nameof(Loyalty) }>\d+)\]";
+    private const string LongDash = "\u2212";
+    private const string Loyalty = $@"\[(?<{Direction}>[+{LongDash}])?(?<{nameof(Loyalty)}>\d+)\]";
 
-    private const string Saga = $@"(?<{ nameof(Saga) }>(?:[IV]+(?:, )?)+) —";
+    private const string Saga = $@"(?<{nameof(Saga)}>(?:[IV]+(?:, )?)+) —";
 
     public IReadOnlyList<ManaSymbol> FindMana(string? mtgText)
     {
@@ -28,8 +29,8 @@ public class CardText : ISymbolFinder, ISymbolTranslator
             {
                 var mana = m.Groups[nameof(Mana)];
 
-                var start = m.Index;
-                var end = m.Index + m.Length;
+                int start = m.Index;
+                int end = m.Index + m.Length;
 
                 return new ManaSymbol(start..end, mana.Value);
             })
@@ -49,14 +50,14 @@ public class CardText : ISymbolFinder, ISymbolTranslator
             {
                 var direction = m.Groups[Direction];
 
-                var directionValue = direction.Success
+                string? directionValue = direction.Success
                     ? direction.Value
                     : null;
 
                 var loyalty = m.Groups[nameof(Loyalty)];
 
-                var start = m.Index;
-                var end = m.Index + m.Length;
+                int start = m.Index;
+                int end = m.Index + m.Length;
 
                 return new LoyaltySymbol(
                     start..end, directionValue, loyalty.Value);
@@ -76,19 +77,20 @@ public class CardText : ISymbolFinder, ISymbolTranslator
             .SelectMany(m =>
             {
                 const string separator = ", ";
-                var sagaGroup = m.Groups[nameof(Saga)];
 
-                var sagas = sagaGroup.Value.Split(separator);
+                var sagaGroup = m.Groups[nameof(Saga)];
+                string[] sagas = sagaGroup.Value.Split(separator);
+
                 var indices = SagaIndices(sagas, sagaGroup.Index, separator);
 
                 return sagas
                     .Zip(indices, (saga, index) => (saga, index))
                     .Select(si =>
                     {
-                        var hasNext = si.saga != sagas[^1];
+                        bool hasNext = si.saga != sagas[^1];
 
-                        var start = si.index;
-                        var end = hasNext
+                        int start = si.index;
+                        int end = hasNext
                             ? si.index + si.saga.Length + separator.Length
                             : m.Index + m.Length;
 
@@ -102,7 +104,7 @@ public class CardText : ISymbolFinder, ISymbolTranslator
     {
         var indices = new List<int> { start };
 
-        foreach (var saga in sagas.SkipLast(1))
+        foreach (string saga in sagas.SkipLast(1))
         {
             indices.Add(indices[^1] + saga.Length + separator.Length);
         }

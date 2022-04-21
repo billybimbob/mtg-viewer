@@ -16,7 +16,7 @@ public class StatusTests : IAsyncLifetime
 {
     private readonly DetailsModel _detailsModel;
     private readonly CardDbContext _dbContext;
-    private readonly PageContextFactory _pageFactory;
+    private readonly ActionHandlerFactory _pageFactory;
 
     private readonly TestDataGenerator _testGen;
     private TradeSet _trades = default!;
@@ -24,7 +24,7 @@ public class StatusTests : IAsyncLifetime
     public StatusTests(
         DetailsModel detailsModel,
         CardDbContext dbContext,
-        PageContextFactory pageFactory,
+        ActionHandlerFactory pageFactory,
         TestDataGenerator testGen)
     {
         _detailsModel = detailsModel;
@@ -58,7 +58,7 @@ public class StatusTests : IAsyncLifetime
         var trade = await TradesInSet.Include(t => t.From).FirstAsync();
         var tradeSet = TradesInSet.Select(t => t.Id);
 
-        await _pageFactory.AddModelContextAsync(_detailsModel, trade.From.OwnerId);
+        await _pageFactory.AddPageContextAsync(_detailsModel, trade.From.OwnerId);
 
         // Act
         var tradesBefore = await tradeSet.ToListAsync();
@@ -75,7 +75,7 @@ public class StatusTests : IAsyncLifetime
     public async Task OnPost_InvalidTrade_NoChange()
     {
         // Arrange
-        await _pageFactory.AddModelContextAsync(_detailsModel, _trades.Target.OwnerId);
+        await _pageFactory.AddPageContextAsync(_detailsModel, _trades.Target.OwnerId);
 
         var trade = await TradesInSet.FirstAsync();
         var tradeSet = TradesInSet.Select(t => t.Id);
@@ -95,7 +95,7 @@ public class StatusTests : IAsyncLifetime
     public async Task OnPost_ValidTrade_RemovesTrade()
     {
         // Arrange
-        await _pageFactory.AddModelContextAsync(_detailsModel, _trades.Target.OwnerId);
+        await _pageFactory.AddPageContextAsync(_detailsModel, _trades.Target.OwnerId);
 
         var tradeSet = TradesInSet.Select(t => t.Id);
 

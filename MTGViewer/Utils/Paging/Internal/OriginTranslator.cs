@@ -59,7 +59,7 @@ internal sealed class OriginTranslator<TOrigin, TEntity>
             .Reverse()
             .GetEnumerator();
 
-        var reference = _origin.Value;
+        object? reference = _origin.Value;
 
         while (reference is not null
             && e.MoveNext()
@@ -94,7 +94,7 @@ internal sealed class OriginTranslator<TOrigin, TEntity>
             .Reverse()
             .GetEnumerator();
 
-        var reference = _origin.Value;
+        object? reference = _origin.Value;
 
         while (reference is not null
             && e.MoveNext()

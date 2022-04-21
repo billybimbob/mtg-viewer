@@ -33,7 +33,7 @@ public class ConfirmEmailModel : PageModel
             return NotFound($"Unable to load user with ID '{userId}'.");
         }
 
-        var token = Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(code));
+        string token = Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(code));
         var result = await _userManager.ConfirmEmailAsync(user, token);
 
         StatusMessage = result.Succeeded

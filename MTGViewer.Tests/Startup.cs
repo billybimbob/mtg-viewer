@@ -37,9 +37,13 @@ public class Startup
         var databaseOptions = DatabaseOptions.Bind(config);
 
         services
+            .AddScoped<ActionContextAccessor>()
+            .AddScoped<IActionContextAccessor>(services =>
+                services.GetRequiredService<ActionContextAccessor>());
+
+        services
             .AddRazorPageModels()
-            .AddScoped<PageContextFactory>()
-            .AddSingleton<IActionContextAccessor, ActionContextAccessor>()
+            .AddScoped<ActionHandlerFactory>()
             .AddScoped<RouteDataAccessor>()
             .AddScoped<PageSize>();
 

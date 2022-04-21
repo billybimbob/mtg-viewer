@@ -29,7 +29,7 @@ internal abstract class ExcessHandler
 
     public void TransferExcess()
     {
-        foreach ((Hold source, int copies, Storage target) in GetAssignments())
+        foreach ((var source, int copies, var target) in GetAssignments())
         {
             TreasuryContext.TransferCopies(source.Card, copies, target, source.Location);
         }

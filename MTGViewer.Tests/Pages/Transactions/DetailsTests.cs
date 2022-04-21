@@ -16,7 +16,7 @@ public class DetailsTests : IAsyncLifetime
 {
     private readonly DetailsModel _detailsModel;
     private readonly CardDbContext _dbContext;
-    private readonly PageContextFactory _pageFactory;
+    private readonly ActionHandlerFactory _pageFactory;
 
     private readonly TestDataGenerator _testGen;
     private Transaction _transaction = default!;
@@ -24,7 +24,7 @@ public class DetailsTests : IAsyncLifetime
     public DetailsTests(
         DetailsModel detailsModel,
         CardDbContext dbContext,
-        PageContextFactory pageFactory,
+        ActionHandlerFactory pageFactory,
         TestDataGenerator testGen)
     {
         _detailsModel = detailsModel;
@@ -48,11 +48,11 @@ public class DetailsTests : IAsyncLifetime
     public async Task OnPost_InvalidTransaction_NoChange()
     {
         var change = _transaction.Changes.First();
-        var ownedId = (change.To as Deck)?.OwnerId ?? (change.From as Deck)!.OwnerId;
+        string ownedId = (change.To as Deck)?.OwnerId ?? (change.From as Deck)!.OwnerId;
 
-        var invalidTransactionId = 0;
+        const int invalidTransactionId = 0;
 
-        await _pageFactory.AddModelContextAsync(_detailsModel, ownedId);
+        await _pageFactory.AddPageContextAsync(_detailsModel, ownedId);
 
         var result = await _detailsModel.OnPostAsync(invalidTransactionId, default);
         var transactions = await Transactions.Select(t => t.Id).ToListAsync();
@@ -65,13 +65,13 @@ public class DetailsTests : IAsyncLifetime
     public async Task OnPost_InvalidUser_NoChange()
     {
         var change = _transaction.Changes.First();
-        var ownedId = (change.To as Deck)?.OwnerId ?? (change.From as Deck)?.OwnerId;
+        string? ownedId = (change.To as Deck)?.OwnerId ?? (change.From as Deck)?.OwnerId;
 
-        var wrongUser = await _dbContext.Users
+        string wrongUser = await _dbContext.Users
             .Select(u => u.Id)
             .FirstAsync(uid => uid != ownedId);
 
-        await _pageFactory.AddModelContextAsync(_detailsModel, wrongUser);
+        await _pageFactory.AddPageContextAsync(_detailsModel, wrongUser);
 
         var result = await _detailsModel.OnPostAsync(_transaction.Id, default);
         var transactions = await Transactions.Select(t => t.Id).ToListAsync();
@@ -84,9 +84,9 @@ public class DetailsTests : IAsyncLifetime
     public async Task OnPost_ValidTransaction_RemovesTransaction()
     {
         var change = _transaction.Changes.First();
-        var ownedId = (change.To as Deck)?.OwnerId ?? (change.From as Deck)!.OwnerId;
+        string ownedId = (change.To as Deck)?.OwnerId ?? (change.From as Deck)!.OwnerId;
 
-        await _pageFactory.AddModelContextAsync(_detailsModel, ownedId);
+        await _pageFactory.AddPageContextAsync(_detailsModel, ownedId);
 
         var result = await _detailsModel.OnPostAsync(_transaction.Id, default);
         var transactions = await Transactions.Select(t => t.Id).ToListAsync();

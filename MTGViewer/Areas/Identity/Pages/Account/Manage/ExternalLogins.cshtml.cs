@@ -36,7 +36,7 @@ public class ExternalLoginsModel : PageModel
             return NotFound($"Unable to load user with ID '{_userManager.GetUserId(User)}'.");
         }
 
-        var userId = await _userManager.GetUserIdAsync(user);
+        string? userId = await _userManager.GetUserIdAsync(user);
 
         var info = await _signInManager.GetExternalLoginInfoAsync(userId);
         if (info == null)

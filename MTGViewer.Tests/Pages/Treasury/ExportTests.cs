@@ -16,13 +16,13 @@ public class ExportTests : IAsyncLifetime
     private readonly ExportModel _exportModel;
     private readonly CardDbContext _dbContext;
     private readonly TestDataGenerator _testGen;
-    private readonly PageContextFactory _pageContext;
+    private readonly ActionHandlerFactory _pageContext;
 
     public ExportTests(
         ExportModel exportModel,
         CardDbContext dbContext,
         TestDataGenerator testGen,
-        PageContextFactory pageContext)
+        ActionHandlerFactory pageContext)
     {
         _exportModel = exportModel;
         _dbContext = dbContext;
@@ -37,7 +37,7 @@ public class ExportTests : IAsyncLifetime
     [Fact]
     public async Task OnPost_NotSignedIn_NotFound()
     {
-        _pageContext.AddModelContext(_exportModel);
+        _pageContext.AddPageContext(_exportModel);
 
         var result = await _exportModel.OnPostAsync(default);
 
@@ -47,9 +47,9 @@ public class ExportTests : IAsyncLifetime
     [Fact]
     public async Task OnPost_UserData_File()
     {
-        var userId = await _dbContext.Users.Select(u => u.Id).FirstAsync();
+        string userId = await _dbContext.Users.Select(u => u.Id).FirstAsync();
 
-        await _pageContext.AddModelContextAsync(_exportModel, userId);
+        await _pageContext.AddPageContextAsync(_exportModel, userId);
 
         _exportModel.BackupType = ExportModel.DataScope.User;
 
@@ -61,9 +61,9 @@ public class ExportTests : IAsyncLifetime
     [Fact]
     public async Task OnPost_TreasuryData_File()
     {
-        var userId = await _dbContext.Users.Select(u => u.Id).FirstAsync();
+        string userId = await _dbContext.Users.Select(u => u.Id).FirstAsync();
 
-        await _pageContext.AddModelContextAsync(_exportModel, userId);
+        await _pageContext.AddPageContextAsync(_exportModel, userId);
 
         _exportModel.BackupType = ExportModel.DataScope.Treasury;
 
@@ -75,9 +75,9 @@ public class ExportTests : IAsyncLifetime
     [Fact]
     public async Task OnPost_CompleteData_File()
     {
-        var userId = await _dbContext.Users.Select(u => u.Id).FirstAsync();
+        string userId = await _dbContext.Users.Select(u => u.Id).FirstAsync();
 
-        await _pageContext.AddModelContextAsync(_exportModel, userId);
+        await _pageContext.AddPageContextAsync(_exportModel, userId);
 
         _exportModel.BackupType = ExportModel.DataScope.Complete;
 

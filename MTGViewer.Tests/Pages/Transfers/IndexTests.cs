@@ -16,13 +16,13 @@ public class IndexTests : IAsyncLifetime
 {
     private readonly IndexModel _indexModel;
     private readonly CardDbContext _dbContext;
-    private readonly PageContextFactory _pageFactory;
+    private readonly ActionHandlerFactory _pageFactory;
     private readonly TestDataGenerator _testGen;
 
     public IndexTests(
         IndexModel indexModel,
         CardDbContext dbContext,
-        PageContextFactory pageFactory,
+        ActionHandlerFactory pageFactory,
         TestDataGenerator testGen)
     {
         _indexModel = indexModel;
@@ -46,7 +46,7 @@ public class IndexTests : IAsyncLifetime
         // Arrange
         var suggestion = await AllSuggestions.FirstAsync();
 
-        await _pageFactory.AddModelContextAsync(_indexModel, suggestion.ReceiverId);
+        await _pageFactory.AddPageContextAsync(_indexModel, suggestion.ReceiverId);
 
         // Act
         var result = await _indexModel.OnPostAsync(suggestion.Id, default);
@@ -63,11 +63,11 @@ public class IndexTests : IAsyncLifetime
         // Arrange
         var suggestion = await AllSuggestions.FirstAsync();
 
-        var wrongUser = await _dbContext.Users
+        string wrongUser = await _dbContext.Users
             .Select(u => u.Id)
             .FirstAsync(uid => uid != suggestion.ReceiverId);
 
-        await _pageFactory.AddModelContextAsync(_indexModel, wrongUser);
+        await _pageFactory.AddPageContextAsync(_indexModel, wrongUser);
 
         // Act
         var result = await _indexModel.OnPostAsync(suggestion.Id, default);
@@ -83,9 +83,10 @@ public class IndexTests : IAsyncLifetime
     {
         // Arrange
         var suggestion = await AllSuggestions.FirstAsync();
-        var invalidSuggestId = 0;
 
-        await _pageFactory.AddModelContextAsync(_indexModel, suggestion.ReceiverId);
+        const int invalidSuggestId = 0;
+
+        await _pageFactory.AddPageContextAsync(_indexModel, suggestion.ReceiverId);
 
         // Act
         var suggestsBefore = await AllSuggestions.Select(t => t.Id).ToListAsync();

@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -70,25 +69,10 @@ public sealed record UnclaimedDetails
     public int WantCopies { get; init; }
 }
 
-public sealed record ExchangePreview
+public sealed class ExchangePreview
 {
     public int Id { get; init; }
     public string Name { get; init; } = string.Empty;
     public bool HasWants { get; init; }
     public IEnumerable<LocationCopy> Givebacks { get; init; } = Enumerable.Empty<LocationCopy>();
-
-    public bool Equals(ExchangePreview? other)
-    {
-        return other is not null
-            && other.Id == Id
-            && other.Name == Name
-            && other.Givebacks.SequenceEqual(Givebacks);
-    }
-
-    public override int GetHashCode()
-    {
-        return Id.GetHashCode()
-            ^ Name.GetHashCode()
-            ^ Givebacks.Aggregate(0, (hash, g) => hash ^ g.GetHashCode());
-    }
 }

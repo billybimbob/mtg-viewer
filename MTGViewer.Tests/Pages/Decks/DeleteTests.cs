@@ -16,13 +16,13 @@ public class DeleteTests : IAsyncLifetime
 {
     private readonly DeleteModel _deleteModel;
     private readonly CardDbContext _dbContext;
-    private readonly PageContextFactory _pageFactory;
+    private readonly ActionHandlerFactory _pageFactory;
     private readonly TestDataGenerator _testGen;
 
     public DeleteTests(
         DeleteModel deleteModel,
         CardDbContext dbContext,
-        PageContextFactory pageFactory,
+        ActionHandlerFactory pageFactory,
         TestDataGenerator testGen)
     {
         _deleteModel = deleteModel;
@@ -53,7 +53,7 @@ public class DeleteTests : IAsyncLifetime
         var deck = await _testGen.CreateDeckAsync();
         var wrongUser = await _dbContext.Users.FirstAsync(u => u.Id != deck.OwnerId);
 
-        await _pageFactory.AddModelContextAsync(_deleteModel, wrongUser.Id);
+        await _pageFactory.AddPageContextAsync(_deleteModel, wrongUser.Id);
 
         // Act
         var result = await _deleteModel.OnPostAsync(deck.Id, null, default);
@@ -70,9 +70,9 @@ public class DeleteTests : IAsyncLifetime
         // Arrange
         var deck = await _testGen.CreateDeckAsync();
 
-        await _pageFactory.AddModelContextAsync(_deleteModel, deck.OwnerId);
+        await _pageFactory.AddPageContextAsync(_deleteModel, deck.OwnerId);
 
-        var wrongDeck = await _dbContext.Decks
+        int wrongDeck = await _dbContext.Decks
             .Where(d => d.OwnerId != deck.OwnerId)
             .Select(d => d.Id)
             .FirstAsync();
@@ -95,19 +95,19 @@ public class DeleteTests : IAsyncLifetime
         // Arrange
         var deck = await _testGen.CreateDeckAsync(copies);
 
-        await _pageFactory.AddModelContextAsync(_deleteModel, deck.OwnerId);
+        await _pageFactory.AddPageContextAsync(_deleteModel, deck.OwnerId);
 
-        var deckCardTotal = await DeckHolds(deck).SumAsync(h => h.Copies);
+        int deckCardTotal = await DeckHolds(deck).SumAsync(h => h.Copies);
 
         var boxTotal = _dbContext.Holds
             .Where(h => h.Location is Box)
             .Select(h => h.Copies);
 
         // Act
-        var boxBefore = await boxTotal.SumAsync();
+        int boxBefore = await boxTotal.SumAsync();
         var result = await _deleteModel.OnPostAsync(deck.Id, null, default);
 
-        var boxAfter = await boxTotal.SumAsync();
+        int boxAfter = await boxTotal.SumAsync();
         var deckAfter = await Deck(deck).SingleOrDefaultAsync();
 
         // Assert

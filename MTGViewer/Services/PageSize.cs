@@ -25,15 +25,17 @@ public sealed class PageSize : IDisposable
         _routeAccessor = routeAccessor;
         _routeAccessor.RouteChanged += ResetPage;
 
-        Default = _config.GetValue(nameof(Default), 10);
-        Limit = _config.GetValue(nameof(Limit), 256);
+        Default = GetNormalizedSize(nameof(Default), 10);
+        Limit = GetNormalizedSize(nameof(Limit), 256);
     }
 
     public int Default { get; }
     public int Limit { get; }
 
     private int? _current;
-    public int Current => _current ??= GetComponentSize() ?? GetActionSize();
+    public int Current =>
+        _current ??= GetComponentSize() ?? GetActionSize()
+            ?? throw new InvalidOperationException("No action handler exists");
 
     public void Dispose()
     {
@@ -43,6 +45,24 @@ public sealed class PageSize : IDisposable
     private void ResetPage(object? sender, RouteDataEventArgs args)
     {
         _current = null;
+    }
+
+    private int GetNormalizedSize(string key, int fallback)
+    {
+        return _config.GetValue(key, null as int?) switch
+        {
+            int i and > 0 => i,
+            _ => fallback
+        };
+    }
+
+    private int? GetNormalizedSize(string key)
+    {
+        return _config.GetValue(key, null as int?) switch
+        {
+            int i and > 0 => i,
+            _ => null
+        };
     }
 
     private int? GetComponentSize()
@@ -68,37 +88,34 @@ public sealed class PageSize : IDisposable
 
         string key = string.Join(':', route);
 
-        if (string.IsNullOrEmpty(key))
+        if (key == string.Empty)
         {
-            return _config.GetValue("Index", Default);
+            return GetNormalizedSize("Index", Default);
         }
 
-        if (_config.GetValue(key, null as int?) is int size)
-        {
-            return size;
-        }
-
-        return _config.GetValue($"{key}:Index", null as int?);
+        return GetNormalizedSize(key)
+            ?? GetNormalizedSize($"{key}:Index", Default);
     }
 
-    private int GetActionSize()
+    private int? GetActionSize()
     {
         string? actionName = _actionAccessor.ActionContext?.ActionDescriptor?.DisplayName;
 
-        if (actionName is { Length: 0 })
+        if (actionName is null or { Length: 0 })
         {
-            return Default;
+            return null;
         }
 
-        string[] route = actionName?.Split('/')[1..] ?? Array.Empty<string>();
+        string[] route = actionName.Split('/')[1..];
 
         string key = string.Join(':', route);
 
-        if (_config.GetValue(key, null as int?) is int size)
+        if (key == string.Empty)
         {
-            return size;
+            return GetNormalizedSize("Index", Default);
         }
 
-        return _config.GetValue($"{key}:Index", Default);
+        return GetNormalizedSize(key)
+            ?? GetNormalizedSize($"{key}:Index", Default);
     }
 }

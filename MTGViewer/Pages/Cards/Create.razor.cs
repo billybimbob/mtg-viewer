@@ -469,7 +469,7 @@ public sealed partial class Create : ComponentBase, IDisposable
             return;
         }
 
-        var matchIds = cards
+        string[] matchIds = cards
             .Select(c => c.Id)
             .ToArray();
 
@@ -618,7 +618,7 @@ public sealed partial class Create : ComponentBase, IDisposable
         }
         else
         {
-            var cardIds = cards
+            string[] cardIds = cards
                 .Select(c => c.Id)
                 .ToArray();
 

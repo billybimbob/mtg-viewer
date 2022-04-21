@@ -7,7 +7,7 @@ public class ManaTranslator : ISymbolTranslator
 {
     public string ManaString(ManaSymbol symbol)
     {
-        var cost = symbol.Value.Replace("/", "").ToLower();
+        string cost = symbol.Value.Replace("/", "").ToLowerInvariant();
 
         cost = cost switch
         {
@@ -26,7 +26,7 @@ public class ManaTranslator : ISymbolTranslator
         {
             null => "zero",
             "+" => "up",
-            "−" => "down",
+            "\u2212" => "down",
             _ => throw new ArgumentException("Unexpected loyalty group")
         };
 
@@ -35,14 +35,14 @@ public class ManaTranslator : ISymbolTranslator
 
     public string SagaString(SagaSymbol symbol)
     {
-        var saga = ParseRomanNumeral(symbol.Value);
+        int saga = ParseRomanNumeral(symbol.Value);
 
         return $@"<i class=""mr-1 ms ms-saga ms-saga-{saga}""></i>";
     }
 
     private static int ParseRomanNumeral(string romanNumeral)
     {
-        var result = romanNumeral
+        int result = romanNumeral
             .ToUpper()
             .Select(RomanLetterValue)
             .Sum();

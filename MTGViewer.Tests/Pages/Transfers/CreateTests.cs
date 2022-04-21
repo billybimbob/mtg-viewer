@@ -16,7 +16,7 @@ public class CreateTests : IAsyncLifetime
 {
     private readonly CreateModel _createModel;
     private readonly CardDbContext _dbContext;
-    private readonly PageContextFactory _pageFactory;
+    private readonly ActionHandlerFactory _pageFactory;
 
     private readonly TestDataGenerator _testGen;
     private Deck _requestDeck = default!;
@@ -24,7 +24,7 @@ public class CreateTests : IAsyncLifetime
     public CreateTests(
         CreateModel createModel,
         CardDbContext dbContext,
-        PageContextFactory pageFactory,
+        ActionHandlerFactory pageFactory,
         TestDataGenerator testGen)
     {
         _createModel = createModel;
@@ -51,7 +51,7 @@ public class CreateTests : IAsyncLifetime
     {
         // Arrange
         var wrongUser = await _dbContext.Users.FirstAsync(u => u.Id != _requestDeck.OwnerId);
-        await _pageFactory.AddModelContextAsync(_createModel, wrongUser.Id);
+        await _pageFactory.AddPageContextAsync(_createModel, wrongUser.Id);
 
         var allTradeIds = AllTrades.Select(t => t.Id);
 
@@ -69,7 +69,7 @@ public class CreateTests : IAsyncLifetime
     public async Task OnPost_InvalidDeck_NoChange()
     {
         // Arrange
-        await _pageFactory.AddModelContextAsync(_createModel, _requestDeck.OwnerId);
+        await _pageFactory.AddPageContextAsync(_createModel, _requestDeck.OwnerId);
 
         var allTradeIds = AllTrades.Select(t => t.Id);
         var wrongDeck = await _dbContext.Decks
@@ -90,7 +90,7 @@ public class CreateTests : IAsyncLifetime
     public async Task OnPost_ValidDeck_Requests()
     {
         // Arrange
-        await _pageFactory.AddModelContextAsync(_createModel, _requestDeck.OwnerId);
+        await _pageFactory.AddPageContextAsync(_createModel, _requestDeck.OwnerId);
 
         // Act
         var tradesBefore = await AllTrades.Select(t => t.Id).ToListAsync();
@@ -112,7 +112,7 @@ public class CreateTests : IAsyncLifetime
     public async Task OnPost_MultipleSources_RequestsAll()
     {
         // Arrange
-        await _pageFactory.AddModelContextAsync(_createModel, _requestDeck.OwnerId);
+        await _pageFactory.AddPageContextAsync(_createModel, _requestDeck.OwnerId);
 
         var requestCard = await _dbContext.Wants
             .Where(w => w.LocationId == _requestDeck.Id)

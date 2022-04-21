@@ -34,7 +34,7 @@ public class DeleteTests : IAsyncLifetime
     [Fact]
     public async Task OnPost_InvalidBox_NotFound()
     {
-        var deckId = await _dbContext.Decks.Select(d => d.Id).FirstAsync();
+        int deckId = await _dbContext.Decks.Select(d => d.Id).FirstAsync();
 
         var result = await _deleteModel.OnPostAsync(deckId, default);
 

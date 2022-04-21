@@ -267,7 +267,8 @@ public class TestDataGenerator
 
         if (cardOptions.Count < 2)
         {
-            var optionIds = cardOptions.Select(c => c.Id).ToArray();
+            string[] optionIds = cardOptions.Select(c => c.Id).ToArray();
+
             var nonOwner = users.First(u => u.Id != owner.Id);
             var card = await _dbContext.Cards
                 .FirstAsync(c => !optionIds.Contains(c.Id));
@@ -289,7 +290,7 @@ public class TestDataGenerator
             cardOptions.Add(card);
         }
 
-        var numRequests = _random.Next(1, cardOptions.Count / 2);
+        int numRequests = _random.Next(1, cardOptions.Count / 2);
 
         var targetCards = cardOptions
             .Select(card => (card, key: _random.Next(cardOptions.Count)))
@@ -430,7 +431,7 @@ public class TestDataGenerator
         var (from, tos) = await GetTradeOptionsAsync(receiver, proposer);
 
         var cards = await _dbContext.Cards.ToListAsync();
-        var tradeCount = _random.Next(1, cards.Count / 2);
+        int tradeCount = _random.Next(1, cards.Count / 2);
 
         var trades = new List<Trade>();
 
@@ -537,7 +538,7 @@ public class TestDataGenerator
             .AsNoTracking()
             .FirstAsync();
 
-        var targetCap = await _dbContext.Holds
+        int targetCap = await _dbContext.Holds
             .Where(h => h.Location is Box && h.CardId == takeTarget.Id)
             .Select(h => h.Copies)
             .SumAsync();
@@ -593,7 +594,7 @@ public class TestDataGenerator
             .AsNoTracking()
             .FirstAsync();
 
-        var targetCap = await _dbContext.Holds
+        int targetCap = await _dbContext.Holds
             .Where(h => h.Location is Box && h.CardId == takeTarget.Id)
             .Select(h => h.Copies)
             .SumAsync();

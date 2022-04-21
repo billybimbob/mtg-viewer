@@ -56,8 +56,8 @@ internal static class ExpressionHelpers
             return false;
         }
 
-        var nodeName = GetLineageName(node);
-        var ancestor = GetLineageName(possibleAncestor);
+        string nodeName = GetLineageName(node);
+        string ancestor = GetLineageName(possibleAncestor);
 
         const StringComparison ordinal = StringComparison.Ordinal;
 

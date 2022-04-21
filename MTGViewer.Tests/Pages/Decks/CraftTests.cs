@@ -17,7 +17,7 @@ using MTGViewer.Tests.Utils;
 
 namespace MTGViewer.Tests.Pages.Decks;
 
-public class CraftTests : IAsyncLifetime
+public sealed class CraftTests : IAsyncLifetime, IDisposable
 {
     private readonly IServiceProvider _services;
 
@@ -26,7 +26,9 @@ public class CraftTests : IAsyncLifetime
 
     private readonly CardDbContext _dbContext;
 
+    private readonly ActionHandlerFactory _handlerFactory;
     private readonly TestDataGenerator _testGen;
+
     private readonly TestContext _testContext;
 
     public CraftTests(
@@ -34,6 +36,7 @@ public class CraftTests : IAsyncLifetime
         UserManager<CardUser> userManager,
         IUserClaimsPrincipalFactory<CardUser> claimFactory,
         CardDbContext dbContext,
+        ActionHandlerFactory handlerFactory,
         TestDataGenerator testDataGenerator)
     {
         _services = serviceProvider;
@@ -43,18 +46,21 @@ public class CraftTests : IAsyncLifetime
 
         _dbContext = dbContext;
 
+        _handlerFactory = handlerFactory;
         _testGen = testDataGenerator;
+
         _testContext = new TestContext();
     }
 
     public async Task InitializeAsync()
     {
+        _handlerFactory.AddRouteDataContext<Craft>();
+
         _testContext.AddFakePersistentComponentState();
 
         var dbFactory = _services.GetRequiredService<IDbContextFactory<CardDbContext>>();
 
         _testContext.Services.AddScoped(_ => dbFactory.CreateDbContext());
-
         _testContext.Services.AddScoped(_ => _userManager);
 
         _testContext.Services.AddFallbackServiceProvider(_services);
@@ -67,6 +73,11 @@ public class CraftTests : IAsyncLifetime
         _testContext.Dispose();
 
         await _testGen.ClearAsync();
+    }
+
+    void IDisposable.Dispose()
+    {
+        _testContext.Dispose();
     }
 
     [Fact]
@@ -106,7 +117,7 @@ public class CraftTests : IAsyncLifetime
 
         auth.SetClaims(identity.Claims.ToArray());
 
-        var invalidDeck = await _services
+        int invalidDeck = await _services
             .GetRequiredService<CardDbContext>().Decks
             .Where(d => d.OwnerId != user.Id)
             .Select(d => d.Id)

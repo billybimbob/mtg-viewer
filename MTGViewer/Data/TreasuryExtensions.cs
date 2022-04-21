@@ -44,7 +44,7 @@ public static partial class TreasuryExtensions
             .ToDictionaryAsync(
                 s => (LocationIndex)s, cancel);
 
-        var cardNames = adding
+        string[] cardNames = adding
             .Select(cr => cr.Card.Name)
             .Distinct()
             .ToArray();
@@ -117,7 +117,7 @@ public static partial class TreasuryExtensions
             .ToDictionaryAsync(
                 s => (LocationIndex)s, cancel);
 
-        var cardNames = deck.Wants
+        string[] cardNames = deck.Wants
             .Select(w => w.Card.Name)
             .Union(deck.Givebacks
                 .Select(g => g.Card.Name))
@@ -180,7 +180,7 @@ public static partial class TreasuryExtensions
 
         var storageSpaces = await MergedStorageSpacesAsync(dbContext, cancel);
 
-        var modified = dbContext.Boxes.Local
+        int[] modified = dbContext.Boxes.Local
             .Where(b => dbContext.Entry(b).State is EntityState.Modified)
             .Select(b => b.Id)
             .ToArray();

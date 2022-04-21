@@ -39,7 +39,7 @@ public class ApproveConfirmationModel : PageModel
             return NotFound($"Unable to load user with ID '{userId}'.");
         }
 
-        var token = Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(code));
+        string token = Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(code));
 
         bool validToken = await _userManager.VerifyUserTokenAsync(
             user,

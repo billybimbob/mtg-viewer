@@ -18,7 +18,7 @@ using MTGViewer.Tests.Utils;
 
 namespace MTGViewer.Tests.Pages.Cards;
 
-public class CreateTests : IAsyncLifetime
+public sealed class CreateTests : IAsyncLifetime, IDisposable
 {
     private readonly IServiceProvider _services;
 
@@ -61,6 +61,11 @@ public class CreateTests : IAsyncLifetime
         await _testGen.ClearAsync();
     }
 
+    void IDisposable.Dispose()
+    {
+        _testContext.Dispose();
+    }
+
     [Fact]
     public void LoadData_NoParamters_CardSearchForm()
     {
@@ -74,7 +79,7 @@ public class CreateTests : IAsyncLifetime
     [Fact]
     public async Task LoadData_NameParameter_ShowResults()
     {
-        var cardName = await _mtgQuery.SourceCards
+        string cardName = await _mtgQuery.SourceCards
             .Select(c => c.Name)
             .FirstAsync();
 
@@ -171,7 +176,7 @@ public class CreateTests : IAsyncLifetime
     [Fact]
     public async Task Submit_SearchName_Redirect()
     {
-        var cardName = await _mtgQuery.SourceCards
+        string cardName = await _mtgQuery.SourceCards
             .Select(c => c.Name)
             .FirstAsync();
 
@@ -280,7 +285,7 @@ public class CreateTests : IAsyncLifetime
     {
         const int addedCopies = 7;
 
-        var cardName = await _mtgQuery.SourceCards
+        string cardName = await _mtgQuery.SourceCards
             .Select(c => c.Name)
             .FirstAsync();
 
@@ -310,7 +315,7 @@ public class CreateTests : IAsyncLifetime
     [Fact]
     public async Task Reset_PressReset_Redirect()
     {
-        var cardName = await _mtgQuery.SourceCards
+        string cardName = await _mtgQuery.SourceCards
             .Select(c => c.Name)
             .FirstAsync();
 

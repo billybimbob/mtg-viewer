@@ -62,7 +62,7 @@ public class DeleteTests : IAsyncLifetime
     [InlineData(-100)]
     public async Task OnPost_NegativeCopies_NoChange(int copies)
     {
-        var cardId = await _dbContext.Cards.Select(c => c.Id).FirstAsync();
+        string cardId = await _dbContext.Cards.Select(c => c.Id).FirstAsync();
 
         _deleteModel.Input = new DeleteModel.InputModel
         {
@@ -89,7 +89,7 @@ public class DeleteTests : IAsyncLifetime
     [InlineData(20)]
     public async Task OnPost_ValidCopies_Lowers(int copies)
     {
-        var cardId = await _dbContext.Holds
+        string cardId = await _dbContext.Holds
             .Where(h => h.Copies > 0 && h.Location is Box)
             .Select(h => h.CardId)
             .FirstAsync();
@@ -118,7 +118,7 @@ public class DeleteTests : IAsyncLifetime
     [Fact]
     public async Task OnPost_MaxCopies_RemoveCard()
     {
-        var cardId = await _dbContext.Holds
+        string cardId = await _dbContext.Holds
             .Where(h => h.Copies > 0 && h.Location is Box)
             .Select(h => h.CardId)
             .FirstAsync();
@@ -158,7 +158,7 @@ public class DeleteTests : IAsyncLifetime
     [Fact]
     public async Task OnPost_MaxCopiesWithDeck_CardRemains()
     {
-        var cardId = await _dbContext.Holds
+        string cardId = await _dbContext.Holds
             .Where(h => h.Copies > 0 && h.Location is Box)
             .Select(h => h.CardId)
             .FirstAsync();
@@ -209,7 +209,7 @@ public class DeleteTests : IAsyncLifetime
     {
         await _testGen.AddExcessAsync(15);
 
-        var cardId = await _dbContext.Cards
+        string cardId = await _dbContext.Cards
             .Where(c => c.Holds
                 .Any(h => h.Location is Excess))
             .Select(c => c.Id)

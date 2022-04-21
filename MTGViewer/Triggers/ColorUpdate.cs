@@ -64,7 +64,8 @@ public class ColorUpdate : IBeforeSaveTrigger<Theorycraft>
 
         _logger.LogWarning("Theorycraft {TheoryId} not fully loaded", theory.Id);
 
-        var cardIds = theory.Holds.Select(h => h.CardId)
+        string[] cardIds = theory.Holds
+            .Select(h => h.CardId)
             .Union(theory.Wants.Select(w => w.CardId))
             .ToArray();
 

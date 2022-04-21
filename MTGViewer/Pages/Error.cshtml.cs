@@ -18,7 +18,7 @@ public class ErrorModel : PageModel
 
     public void OnGet()
     {
-        var requestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier;
+        string requestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier;
 
         _logger.LogError("Ran into issue on request: {RequestId}", requestId);
     }

@@ -46,13 +46,13 @@ public class EmailVerification
             return false;
         }
 
-        var userId = await _userManager.GetUserIdAsync(user);
-        var email = await _userManager.GetEmailAsync(user);
+        string? userId = await _userManager.GetUserIdAsync(user);
+        string email = await _userManager.GetEmailAsync(user);
 
-        var token = await _userManager.GenerateUserTokenAsync(user, TokenOptions.DefaultProvider, Approval);
-        var code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
+        string token = await _userManager.GenerateUserTokenAsync(user, TokenOptions.DefaultProvider, Approval);
+        string code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
 
-        var callbackUrl = _linkGenerator.GetUriByPage(
+        string? callbackUrl = _linkGenerator.GetUriByPage(
             httpContext,
             "/Account/ApproveConfirmation",
             handler: null,
@@ -64,8 +64,9 @@ public class EmailVerification
             return false;
         }
 
-        var subject = $"Approve {user.DisplayName}";
-        var message = $"New request to create an account for {email}({user.DisplayName}). "
+        string subject = $"Approve {user.DisplayName}";
+
+        string message = $"New request to create an account for {email}({user.DisplayName}). "
             + $"<a href='{HtmlEncoder.Default.Encode(callbackUrl)}'>Click here</a> to approve the request.";
 
         await _emailSender.SendEmailAsync(_authOptions.SenderEmail, subject, message);
@@ -76,23 +77,25 @@ public class EmailVerification
     public async Task<bool> SendEmailChangeAsync(CardUser user, string newEmail)
     {
         var httpContext = _httpAccessor.HttpContext;
+
         if (httpContext is null)
         {
             return false;
         }
 
-        var email = await _userManager.GetEmailAsync(user);
+        string email = await _userManager.GetEmailAsync(user);
+
         if (newEmail == email)
         {
             return false;
         }
 
-        var userId = await _userManager.GetUserIdAsync(user);
+        string? userId = await _userManager.GetUserIdAsync(user);
 
-        var token = await _userManager.GenerateChangeEmailTokenAsync(user, newEmail);
-        var code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
+        string token = await _userManager.GenerateChangeEmailTokenAsync(user, newEmail);
+        string code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
 
-        var callbackUrl = _linkGenerator.GetUriByPage(
+        string? callbackUrl = _linkGenerator.GetUriByPage(
             httpContext,
             "/Account/ConfirmEmailChange",
             handler: null,
@@ -104,8 +107,9 @@ public class EmailVerification
             return false;
         }
 
-        var subject = "Confirm Email Change";
-        var message = $"A request to change your email to {newEmail} was made. "
+        const string subject = "Confirm Email Change";
+
+        string message = $"A request to change your email to {newEmail} was made. "
             + $"<a href='{HtmlEncoder.Default.Encode(callbackUrl)}'>Click here</a> "
             + "to approve the change, or ignore this email if the change was not made by you.";
 
@@ -122,13 +126,13 @@ public class EmailVerification
             return false;
         }
 
-        var userId = await _userManager.GetUserIdAsync(user);
-        var email = await _userManager.GetEmailAsync(user);
+        string? userId = await _userManager.GetUserIdAsync(user);
+        string email = await _userManager.GetEmailAsync(user);
 
-        var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
-        var code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
+        string token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+        string code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
 
-        var callbackUrl = _linkGenerator.GetUriByPage(
+        string? callbackUrl = _linkGenerator.GetUriByPage(
             httpContext,
             "/Account/ConfirmEmail",
             handler: null,
@@ -140,8 +144,9 @@ public class EmailVerification
             return false;
         }
 
-        var subject = "Confirm Account";
-        var message = $"Your {nameof(MTGViewer)} account was approved. "
+        const string subject = "Confirm Account";
+
+        string message = $"Your {nameof(MTGViewer)} account was approved. "
             + $"Please confirm your account by <a href='{HtmlEncoder.Default.Encode(callbackUrl)}'>clicking here</a>.";
 
         await _emailSender.SendEmailAsync(email, subject, message);
@@ -157,14 +162,14 @@ public class EmailVerification
             return false;
         }
 
-        var email = await _userManager.GetEmailAsync(user);
+        string email = await _userManager.GetEmailAsync(user);
 
         // For more information on how to enable account confirmation and password reset please
         // visit https://go.microsoft.com/fwlink/?LinkID=532713
-        var token = await _userManager.GeneratePasswordResetTokenAsync(user);
-        var code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
+        string token = await _userManager.GeneratePasswordResetTokenAsync(user);
+        string code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
 
-        var callbackUrl = _linkGenerator.GetUriByPage(
+        string? callbackUrl = _linkGenerator.GetUriByPage(
             httpContext,
             "/Account/ResetPassword",
             handler: null,
@@ -176,8 +181,9 @@ public class EmailVerification
             return false;
         }
 
-        var subject = "Reset Password";
-        var message = "A request to reset you account password was made. "
+        const string subject = "Reset Password";
+
+        string message = "A request to reset you account password was made. "
             + $"<a href='{HtmlEncoder.Default.Encode(callbackUrl)}'>Click here</a> "
             + "to complete the password reset, or ignore this email if the reset was not made by you.";
 

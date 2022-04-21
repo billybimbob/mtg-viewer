@@ -29,7 +29,7 @@ public class RouteDataAccessor
     public RouteData? RouteData
     {
         get => _routeData;
-        internal set
+        set
         {
             if (_routeData == value)
             {

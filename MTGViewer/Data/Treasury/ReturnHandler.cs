@@ -35,7 +35,7 @@ internal abstract class ReturnHandler
 
     public void ApplyReturns()
     {
-        foreach ((Card card, int copies, Storage storage) in GetAssignments())
+        foreach ((var card, int copies, var storage) in GetAssignments())
         {
             ExchangeContext.ReturnCopies(card, copies, storage);
         }

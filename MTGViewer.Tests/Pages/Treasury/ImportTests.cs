@@ -15,9 +15,9 @@ using MTGViewer.Pages.Treasury;
 using MTGViewer.Services.Internal;
 using MTGViewer.Tests.Utils;
 
-namespace MTGViewer.Tests.Pages.Cards;
+namespace MTGViewer.Tests.Pages.Treasury;
 
-public class ImportTests : IAsyncLifetime
+public sealed class ImportTests : IAsyncLifetime, IDisposable
 {
     private readonly IServiceProvider _services;
     private readonly TestDataGenerator _testGen;
@@ -48,6 +48,11 @@ public class ImportTests : IAsyncLifetime
         await _testGen.ClearAsync();
     }
 
+    void IDisposable.Dispose()
+    {
+        _testContext.Dispose();
+    }
+
     private static InputFileChangeEventArgs GetFileInput(
         CardData data,
         string? fileName = null,
@@ -59,7 +64,7 @@ public class ImportTests : IAsyncLifetime
             ReferenceHandler = ReferenceHandler.Preserve
         };
 
-        var jsonEncode = JsonSerializer.SerializeToUtf8Bytes(data);
+        byte[] jsonEncode = JsonSerializer.SerializeToUtf8Bytes(data);
 
         // stream is fine to not dispose
         var stream = new MemoryStream(jsonEncode);

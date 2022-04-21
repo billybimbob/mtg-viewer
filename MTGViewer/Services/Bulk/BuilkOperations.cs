@@ -201,7 +201,7 @@ public class BulkOperations
     {
         if (data.Cards.Count + data.CardIds.Count < _pageSize.Limit)
         {
-            var cardIds = data.Cards
+            string[] cardIds = data.Cards
                 .Select(c => c.Id)
                 .Union(data.CardIds
                     .Select(c => c.Id))

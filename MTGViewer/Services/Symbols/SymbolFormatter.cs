@@ -28,9 +28,9 @@ public class SymbolFormatter : ISymbolFinder, ISymbolTranslator
         foreach (var symbol in _finder.FindSymbols(mtgText))
         {
             int lastLength = symbol.Position.Start.Value - lastSymbol;
-            var symbolString = _translator.SymbolString(symbol);
+            string symbolString = _translator.SymbolString(symbol);
 
-            translation
+            _ = translation
                 .Append(mtgText, lastSymbol, lastLength)
                 .Append(symbolString);
 
@@ -41,7 +41,7 @@ public class SymbolFormatter : ISymbolFinder, ISymbolTranslator
 
         if (remaining > 0)
         {
-            translation.Append(mtgText, lastSymbol, remaining);
+            _ = translation.Append(mtgText, lastSymbol, remaining);
         }
 
         return translation.ToString();

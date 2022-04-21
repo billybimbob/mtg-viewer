@@ -141,7 +141,8 @@ public partial class Mulligan : OwningComponentBase
         cancel.ThrowIfCancellationRequested();
 
         var userManager = ScopedServices.GetRequiredService<UserManager<CardUser>>();
-        var userId = userManager.GetUserId(authState.User);
+
+        string? userId = userManager.GetUserId(authState.User);
 
         if (userId is null)
         {

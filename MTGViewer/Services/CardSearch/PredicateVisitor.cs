@@ -85,7 +85,7 @@ internal class PredicateVisitor : ExpressionVisitor
     {
         if (node.NodeType is ExpressionType.Coalesce)
         {
-            var eval = Expression
+            object? eval = Expression
                 .Lambda(node)
                 .Compile()
                 .DynamicInvoke();

@@ -6,6 +6,7 @@ namespace MTGViewer.Tests.Services;
 
 public class CardTextTests
 {
+    private const string LongDash = "\u2212";
     private readonly CardText _cardText;
 
     public CardTextTests(CardText cardText)
@@ -29,8 +30,9 @@ public class CardTextTests
     [Fact]
     public void FindMana_ManaCost_ManaSymbolArray()
     {
-        var manaCost = "{3}{W}{W}";
-        var manaSymbols = new[] { "3", "W", "W" };
+        const string manaCost = "{3}{W}{W}";
+
+        string[] manaSymbols = { "3", "W", "W" };
 
         var parsedMana = _cardText.FindMana(manaCost).Select(m => m.Value);
 
@@ -40,11 +42,13 @@ public class CardTextTests
     [Fact]
     public void ManaString_ManaSymbolArray_ManaCost()
     {
-        var symbolArray = new[] { "3", "W", "W" };
-        var manaCost = "{3}{W}{W}";
+        const string manaCost = "{3}{W}{W}";
+
+        string[] symbolArray = { "3", "W", "W" };
 
         var translation = symbolArray.Select(_cardText.ManaString);
-        var parsedCost = string.Join(string.Empty, translation);
+
+        string parsedCost = string.Join(string.Empty, translation);
 
         Assert.Equal(manaCost, parsedCost);
     }
@@ -52,19 +56,19 @@ public class CardTextTests
     [Fact]
     public void FindThenString_ManaCost_SameValue()
     {
-        var manaCost = "{3}{W}{W}";
+        const string manaCost = "{3}{W}{W}";
 
         var parsedMana = _cardText.FindMana(manaCost).Select(m => m.Value);
         var translation = parsedMana.Select(_cardText.ManaString);
 
-        var parsedCost = string.Join(string.Empty, translation);
+        string parsedCost = string.Join(string.Empty, translation);
 
         Assert.Equal(manaCost, parsedCost);
     }
 
     [Theory]
     [InlineData("[+2]", "+", "2")]
-    [InlineData("[−1]", "−", "1")]
+    [InlineData($"[{LongDash}1]", LongDash, "1")]
     [InlineData("[0]", null, "0")]
     [InlineData("[+10]", "+", "10")]
     public void FindLoyalties_SingleLoyalty_SingleSymbol(string loyalty, string direction, string value)
@@ -96,7 +100,7 @@ public class CardTextTests
     [Fact]
     public void FindSagas_MultipleSagas_MultipleSymbols()
     {
-        var sagas = "I, II —";
+        const string sagas = "I, II —";
         var parsedSymbols = _cardText.FindSagas(sagas);
 
         var first = parsedSymbols[0];
@@ -119,10 +123,10 @@ public class CardTextTests
             new SagaSymbol(default, "I", true), new SagaSymbol(default, "II", false)
         };
 
-        var sagas = "I, II —";
+        const string sagas = "I, II —";
 
         var sagaStrings = symbols.Select(_cardText.SagaString);
-        var parsedSagas = string.Join(string.Empty, sagaStrings);
+        string parsedSagas = string.Join(string.Empty, sagaStrings);
 
         Assert.Equal(sagas, parsedSagas);
     }

@@ -16,13 +16,13 @@ public class ExchangeTests : IAsyncLifetime
 {
     private readonly ExchangeModel _exchangeModel;
     private readonly CardDbContext _dbContext;
-    private readonly PageContextFactory _pageFactory;
+    private readonly ActionHandlerFactory _pageFactory;
     private readonly TestDataGenerator _testGen;
 
     public ExchangeTests(
         ExchangeModel exchangeModel,
         CardDbContext dbContext,
-        PageContextFactory pageFactory,
+        ActionHandlerFactory pageFactory,
         TestDataGenerator testGen)
     {
         _exchangeModel = exchangeModel;
@@ -69,10 +69,10 @@ public class ExchangeTests : IAsyncLifetime
     [Fact]
     public async Task OnPost_InvalidDeck_NotFound()
     {
-        var invalidDeckId = 0;
-        var validUserId = await _dbContext.Users.Select(u => u.Id).FirstAsync();
+        const int invalidDeckId = 0;
+        string validUserId = await _dbContext.Users.Select(u => u.Id).FirstAsync();
 
-        await _pageFactory.AddModelContextAsync(_exchangeModel, validUserId);
+        await _pageFactory.AddPageContextAsync(_exchangeModel, validUserId);
 
         var result = await _exchangeModel.OnPostAsync(invalidDeckId, default);
 
@@ -86,11 +86,11 @@ public class ExchangeTests : IAsyncLifetime
             .AsNoTracking()
             .FirstAsync();
 
-        var invalidUserId = await _dbContext.Users
+        string invalidUserId = await _dbContext.Users
             .Select(u => u.Id)
             .FirstAsync(uid => uid != deck.OwnerId);
 
-        await _pageFactory.AddModelContextAsync(_exchangeModel, invalidUserId);
+        await _pageFactory.AddPageContextAsync(_exchangeModel, invalidUserId);
 
         var result = await _exchangeModel.OnPostAsync(deck.Id, default);
 
@@ -102,25 +102,26 @@ public class ExchangeTests : IAsyncLifetime
     {
         // Arrange
         var want = await _testGen.GetWantAsync();
-        var targetCopies = want.Copies;
-        var deckOwnerId = await OwnerId(want).SingleAsync();
+        int targetCopies = want.Copies;
 
-        await _pageFactory.AddModelContextAsync(_exchangeModel, deckOwnerId);
+        string deckOwnerId = await OwnerId(want).SingleAsync();
+
+        await _pageFactory.AddPageContextAsync(_exchangeModel, deckOwnerId);
 
         // Act
-        var wantBefore = await Copies(want).SingleAsync();
-        var holdBefore = await HoldCopies(want).SingleOrDefaultAsync();
+        int wantBefore = await Copies(want).SingleAsync();
+        int holdBefore = await HoldCopies(want).SingleOrDefaultAsync();
 
-        var boxBefore = await BoxCardCopies(want).SumAsync();
-        var changeBefore = await ChangeCopies(want).SumAsync();
+        int boxBefore = await BoxCardCopies(want).SumAsync();
+        int changeBefore = await ChangeCopies(want).SumAsync();
 
         var result = await _exchangeModel.OnPostAsync(want.LocationId, default);
 
-        var wantAfter = await Copies(want).SingleOrDefaultAsync();
-        var holdAfter = await HoldCopies(want).SingleAsync();
+        int wantAfter = await Copies(want).SingleOrDefaultAsync();
+        int holdAfter = await HoldCopies(want).SingleAsync();
 
-        var boxAfter = await BoxCardCopies(want).SumAsync();
-        var changeAfter = await ChangeCopies(want).SumAsync();
+        int boxAfter = await BoxCardCopies(want).SumAsync();
+        int changeAfter = await ChangeCopies(want).SumAsync();
 
         // Assert
         Assert.IsType<RedirectToPageResult>(result);
@@ -136,13 +137,13 @@ public class ExchangeTests : IAsyncLifetime
     public async Task OnPost_InsufficientWant_WantLowered()
     {
         // Arrange
-        var targetMod = 2;
+        const int targetMod = 2;
         var want = await _testGen.GetWantAsync(targetMod);
 
-        var targetLimit = want.Copies - targetMod;
-        var deckOwnerId = await OwnerId(want).SingleAsync();
+        int targetLimit = want.Copies - targetMod;
+        string deckOwnerId = await OwnerId(want).SingleAsync();
 
-        await _pageFactory.AddModelContextAsync(_exchangeModel, deckOwnerId);
+        await _pageFactory.AddPageContextAsync(_exchangeModel, deckOwnerId);
 
         // Act
         int wantBefore = await Copies(want).SingleAsync();
@@ -177,9 +178,9 @@ public class ExchangeTests : IAsyncLifetime
         // Arrange
         var request = await _testGen.GetGivebackAsync(targetMod);
         int returnCopies = request.Copies;
-        var deckOwnerId = await OwnerId(request).SingleAsync();
+        string deckOwnerId = await OwnerId(request).SingleAsync();
 
-        await _pageFactory.AddModelContextAsync(_exchangeModel, deckOwnerId);
+        await _pageFactory.AddPageContextAsync(_exchangeModel, deckOwnerId);
 
         // Act
         int giveBefore = await Copies(request).SingleAsync();
@@ -210,7 +211,7 @@ public class ExchangeTests : IAsyncLifetime
     public async Task OnPost_TradeActive_NoChange()
     {
         var giveBack = await _testGen.GetGivebackAsync(2);
-        var deckOwnerId = await OwnerId(giveBack).SingleAsync();
+        string deckOwnerId = await OwnerId(giveBack).SingleAsync();
 
         var tradeTarget = await _dbContext.Holds
             .Where(h => h.Location is Deck
@@ -230,7 +231,7 @@ public class ExchangeTests : IAsyncLifetime
         await _dbContext.SaveChangesAsync();
         _dbContext.ChangeTracker.Clear();
 
-        await _pageFactory.AddModelContextAsync(_exchangeModel, deckOwnerId);
+        await _pageFactory.AddPageContextAsync(_exchangeModel, deckOwnerId);
 
         int boxBefore = await BoxCardCopies(giveBack).SumAsync();
         int holdBefore = await HoldCopies(giveBack).SingleAsync();
@@ -249,9 +250,9 @@ public class ExchangeTests : IAsyncLifetime
     public async Task OnPost_MixedWantGives_AppliesChanges()
     {
         var (want, give) = await _testGen.GetMixedRequestDeckAsync();
-        var deckOwnerId = await OwnerId(want).SingleAsync();
+        string deckOwnerId = await OwnerId(want).SingleAsync();
 
-        await _pageFactory.AddModelContextAsync(_exchangeModel, deckOwnerId);
+        await _pageFactory.AddPageContextAsync(_exchangeModel, deckOwnerId);
 
         int wantTarget = want.Copies;
         int giveTarget = give.Copies;

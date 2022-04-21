@@ -14,7 +14,7 @@ using MTGViewer.Tests.Utils;
 
 namespace MTGViewer.Tests.Pages.Treasury;
 
-public class AdjustTests : IAsyncLifetime
+public sealed class AdjustTests : IAsyncLifetime, IDisposable
 {
     private readonly IServiceProvider _services;
     private readonly CardDbContext _dbContext;
@@ -49,6 +49,11 @@ public class AdjustTests : IAsyncLifetime
         await _testGen.ClearAsync();
     }
 
+    void IDisposable.Dispose()
+    {
+        _testContext.Dispose();
+    }
+
     private static void ChangeInput<T>(
         IRenderedComponent<Adjust> cut,
         string cssSelector,
@@ -60,7 +65,7 @@ public class AdjustTests : IAsyncLifetime
     [Fact]
     public async Task LoadData_InvalidBox_KeepsLoading()
     {
-        var invalidBox = await _dbContext.Decks
+        int invalidBox = await _dbContext.Decks
             .Select(d => d.Id)
             .FirstAsync();
 
@@ -159,7 +164,7 @@ public class AdjustTests : IAsyncLifetime
 
         await cut.InvokeAsync(() => form.Instance.OnValidSubmit.InvokeAsync());
 
-        var updatedName = await _dbContext.Boxes
+        string? updatedName = await _dbContext.Boxes
             .Where(b => b.Id == box.Id)
             .Select(b => b.Name)
             .FirstOrDefaultAsync();
@@ -183,7 +188,7 @@ public class AdjustTests : IAsyncLifetime
 
         await cut.InvokeAsync(() => form.Instance.OnValidSubmit.InvokeAsync());
 
-        var updatedName = await _dbContext.Boxes
+        string? updatedName = await _dbContext.Boxes
             .Where(b => b.Id == box.Id)
             .Select(b => b.Bin.Name)
             .FirstOrDefaultAsync();

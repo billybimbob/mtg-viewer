@@ -88,7 +88,7 @@ public class TestCardService : ICardService
 
     private static bool QueryByPredicate(ICard card, string propertyName, object? value)
     {
-        var cardValue = typeof(ICard)
+        object? cardValue = typeof(ICard)
             .GetProperty(propertyName)
             ?.GetValue(card);
 

@@ -16,7 +16,7 @@ public class ReviewTests : IAsyncLifetime
 {
     private readonly ReviewModel _reviewModel;
     private readonly CardDbContext _dbContext;
-    private readonly PageContextFactory _pageFactory;
+    private readonly ActionHandlerFactory _pageFactory;
 
     private readonly TestDataGenerator _testGen;
     private TradeSet _trades = default!;
@@ -24,7 +24,7 @@ public class ReviewTests : IAsyncLifetime
     public ReviewTests(
         ReviewModel reviewModel,
         CardDbContext dbContext,
-        PageContextFactory pageFactory,
+        ActionHandlerFactory pageFactory,
         TestDataGenerator testGen)
     {
         _reviewModel = reviewModel;
@@ -67,7 +67,7 @@ public class ReviewTests : IAsyncLifetime
         // Arrange
         var trade = await TradesInSet.Include(t => t.To).FirstAsync();
 
-        await _pageFactory.AddModelContextAsync(_reviewModel, trade.To.OwnerId);
+        await _pageFactory.AddPageContextAsync(_reviewModel, trade.To.OwnerId);
 
         // Act
         var fromBefore = await FromTarget(trade).SingleAsync();
@@ -86,10 +86,11 @@ public class ReviewTests : IAsyncLifetime
     public async Task OnPostAccept_InvalidTrade_NoChange()
     {
         // Arrange
-        await _pageFactory.AddModelContextAsync(_reviewModel, _trades.Target.OwnerId);
+        await _pageFactory.AddPageContextAsync(_reviewModel, _trades.Target.OwnerId);
 
         var trade = await TradesInSet.FirstAsync();
-        var wrongTradeId = 0;
+
+        const int wrongTradeId = 0;
 
         // Act
         var fromBefore = await FromTarget(trade).SingleAsync();
@@ -111,7 +112,7 @@ public class ReviewTests : IAsyncLifetime
     public async Task OnPostAccept_ValidTrade_HoldsAndRequestsChanged(int copies)
     {
         // Arrange
-        await _pageFactory.AddModelContextAsync(_reviewModel, _trades.Target.OwnerId);
+        await _pageFactory.AddPageContextAsync(_reviewModel, _trades.Target.OwnerId);
 
         var trade = await TradesInSet.FirstAsync();
 
@@ -124,13 +125,13 @@ public class ReviewTests : IAsyncLifetime
         var fromCopies = FromTarget(trade).Select(h => h.Copies);
 
         // Act
-        var toBefore = await toCopies.SingleOrDefaultAsync();
-        var fromBefore = await fromCopies.SingleAsync();
+        int toBefore = await toCopies.SingleOrDefaultAsync();
+        int fromBefore = await fromCopies.SingleAsync();
 
         var result = await _reviewModel.OnPostAcceptAsync(trade.Id, copies, default);
 
-        var toAfter = await toCopies.SingleAsync();
-        var fromAfter = await fromCopies.SingleOrDefaultAsync();
+        int toAfter = await toCopies.SingleAsync();
+        int fromAfter = await fromCopies.SingleOrDefaultAsync();
 
         var tradeAfter = await TradesInSet.Select(t => t.Id).ToListAsync();
 
@@ -147,7 +148,7 @@ public class ReviewTests : IAsyncLifetime
     public async Task OnPostAccept_LackCopies_OnlyRemovesTrade()
     {
         // Arrange
-        await _pageFactory.AddModelContextAsync(_reviewModel, _trades.Target.OwnerId);
+        await _pageFactory.AddPageContextAsync(_reviewModel, _trades.Target.OwnerId);
 
         var trade = await TradesInSet.FirstAsync();
 
@@ -162,14 +163,14 @@ public class ReviewTests : IAsyncLifetime
         var tradeSet = TradesInSet.Select(t => t.Id);
 
         // Act
-        var toBefore = await toCopies.SingleOrDefaultAsync();
-        var fromBefore = await fromCopies.SingleAsync();
+        int toBefore = await toCopies.SingleOrDefaultAsync();
+        int fromBefore = await fromCopies.SingleAsync();
         var tradesBefore = await tradeSet.ToListAsync();
 
         var result = await _reviewModel.OnPostAcceptAsync(trade.Id, trade.Copies, default);
 
-        var toAfter = await toCopies.SingleAsync();
-        var fromAfter = await fromCopies.SingleOrDefaultAsync();
+        int toAfter = await toCopies.SingleAsync();
+        int fromAfter = await fromCopies.SingleOrDefaultAsync();
         var tradesAfter = await tradeSet.ToListAsync();
 
         var tradesFinished = tradesBefore.Except(tradesAfter);
@@ -190,15 +191,15 @@ public class ReviewTests : IAsyncLifetime
         // Arrange
         var trade = await TradesInSet.Include(t => t.To).FirstAsync();
 
-        await _pageFactory.AddModelContextAsync(_reviewModel, trade.To.OwnerId);
+        await _pageFactory.AddPageContextAsync(_reviewModel, trade.To.OwnerId);
 
         var fromCopies = FromTarget(trade).Select(h => h.Copies);
 
         // Act
-        var fromBefore = await fromCopies.SingleAsync();
+        int fromBefore = await fromCopies.SingleAsync();
         var result = await _reviewModel.OnPostRejectAsync(trade.Id, default);
 
-        var fromAfter = await fromCopies.SingleOrDefaultAsync();
+        int fromAfter = await fromCopies.SingleOrDefaultAsync();
         var tradesAfter = await TradesInSet.Select(t => t.Id).ToListAsync();
 
         // Assert
@@ -212,18 +213,18 @@ public class ReviewTests : IAsyncLifetime
     public async Task OnPostReject_InvalidTrade_NoChange()
     {
         // Arrange
-        await _pageFactory.AddModelContextAsync(_reviewModel, _trades.Target.OwnerId);
+        await _pageFactory.AddPageContextAsync(_reviewModel, _trades.Target.OwnerId);
 
         var trade = await TradesInSet.AsNoTracking().FirstAsync();
-        var wrongTradeId = 0;
+        const int wrongTradeId = 0;
 
         var fromCopies = FromTarget(trade).Select(h => h.Copies);
 
         // Act
-        var fromBefore = await fromCopies.SingleAsync();
+        int fromBefore = await fromCopies.SingleAsync();
         var result = await _reviewModel.OnPostRejectAsync(wrongTradeId, default);
 
-        var fromAfter = await fromCopies.SingleOrDefaultAsync();
+        int fromAfter = await fromCopies.SingleOrDefaultAsync();
         var tradesAfter = await TradesInSet.Select(t => t.Id).ToListAsync();
 
         // Assert
@@ -237,17 +238,17 @@ public class ReviewTests : IAsyncLifetime
     public async Task OnPostReject_ValidTrade_RemovesTrade()
     {
         // Arrange
-        await _pageFactory.AddModelContextAsync(_reviewModel, _trades.Target.OwnerId);
+        await _pageFactory.AddPageContextAsync(_reviewModel, _trades.Target.OwnerId);
 
         var trade = await TradesInSet.AsNoTracking().FirstAsync();
 
         var fromCopies = FromTarget(trade).Select(h => h.Copies);
 
         // Act
-        var fromBefore = await fromCopies.SingleAsync();
+        int fromBefore = await fromCopies.SingleAsync();
         var result = await _reviewModel.OnPostRejectAsync(trade.Id, default);
 
-        var fromAfter = await fromCopies.SingleAsync();
+        int fromAfter = await fromCopies.SingleAsync();
         var tradesAfter = await TradesInSet.Select(t => t.Id).ToListAsync();
 
         // Assert

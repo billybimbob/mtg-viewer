@@ -11,21 +11,28 @@ using MTGViewer.Tests.Utils;
 
 namespace MTGViewer.Tests.Pages.Cards;
 
-public class CollectionTests : IAsyncLifetime
+public sealed class CollectionTests : IAsyncLifetime, IDisposable
 {
     private readonly IServiceProvider _services;
+    private readonly ActionHandlerFactory _handlerFactory;
     private readonly TestDataGenerator _testGen;
     private readonly TestContext _testContext;
 
-    public CollectionTests(IServiceProvider services, TestDataGenerator testGen)
+    public CollectionTests(
+        IServiceProvider services,
+        ActionHandlerFactory handlerFactory,
+        TestDataGenerator testGen)
     {
         _services = services;
+        _handlerFactory = handlerFactory;
         _testGen = testGen;
         _testContext = new TestContext();
     }
 
     public async Task InitializeAsync()
     {
+        _handlerFactory.AddRouteDataContext<Collection>();
+
         _testContext.Services.AddFallbackServiceProvider(_services);
 
         _testContext.AddFakePersistentComponentState();
@@ -39,6 +46,11 @@ public class CollectionTests : IAsyncLifetime
         _testContext.Dispose();
 
         await _testGen.ClearAsync();
+    }
+
+    void IDisposable.Dispose()
+    {
+        _testContext.Dispose();
     }
 
     [Fact]
@@ -97,7 +109,7 @@ public class CollectionTests : IAsyncLifetime
     [Fact]
     public void LoadData_SearchTypesParamater_NoResult()
     {
-        var searchTypes = "/t test invalid type";
+        const string searchTypes = "/t test invalid type";
 
         var cut = _testContext.RenderComponent<Collection>(p => p
             .Add(c => c.Search, searchTypes));

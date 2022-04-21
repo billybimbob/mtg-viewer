@@ -101,10 +101,11 @@ public class DeletePersonalDataModel : PageModel
             return Page();
         }
 
-        var userId = await _userManager.GetUserIdAsync(user);
+        string? userId = await _userManager.GetUserIdAsync(user);
+
         await _signInManager.SignOutAsync();
 
-        _logger.LogInformation("User with ID '{userId}' deleted themselves.", userId);
+        _logger.LogInformation("User with ID '{UserId}' deleted themselves.", userId);
 
         return Redirect("~/");
     }

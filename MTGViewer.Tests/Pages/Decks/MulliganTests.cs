@@ -17,7 +17,7 @@ using MTGViewer.Tests.Utils;
 
 namespace MTGViewer.Tests.Pages.Decks;
 
-public class MulliganTests : IAsyncLifetime
+public sealed class MulliganTests : IAsyncLifetime, IDisposable
 {
     private readonly IServiceProvider _services;
 
@@ -64,6 +64,11 @@ public class MulliganTests : IAsyncLifetime
         await _testGen.ClearAsync();
     }
 
+    void IDisposable.Dispose()
+    {
+        _testContext.Dispose();
+    }
+
     [Fact]
     public async Task LoadData_NoUser_Redirect()
     {
@@ -76,7 +81,7 @@ public class MulliganTests : IAsyncLifetime
 
         var nav = _testContext.Services.GetRequiredService<FakeNavigationManager>();
 
-        var redirect = $"{nav.BaseUri}Cards";
+        string redirect = $"{nav.BaseUri}Cards";
 
         Assert.Equal(redirect, nav.Uri);
     }
@@ -98,7 +103,7 @@ public class MulliganTests : IAsyncLifetime
 
         var nav = _testContext.Services.GetRequiredService<FakeNavigationManager>();
 
-        var redirect = $"{nav.BaseUri}Decks/Details/{deck.Id}";
+        string redirect = $"{nav.BaseUri}Decks/Details/{deck.Id}";
 
         Assert.Equal(redirect, nav.Uri);
     }
@@ -113,7 +118,7 @@ public class MulliganTests : IAsyncLifetime
 
         auth.SetClaims(identity.Claims.ToArray());
 
-        var invalidDeck = await _services
+        int invalidDeck = await _services
             .GetRequiredService<CardDbContext>().Decks
             .Where(d => d.OwnerId != user.Id)
             .Select(d => d.Id)
@@ -124,7 +129,7 @@ public class MulliganTests : IAsyncLifetime
 
         var nav = _testContext.Services.GetRequiredService<FakeNavigationManager>();
 
-        var redirect = $"{nav.BaseUri}Decks";
+        string redirect = $"{nav.BaseUri}Decks";
 
         Assert.Equal(redirect, nav.Uri);
     }

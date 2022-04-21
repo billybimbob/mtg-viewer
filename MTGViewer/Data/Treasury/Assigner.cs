@@ -61,6 +61,7 @@ internal static class Assigner
             .Distinct();
 
         // TODO: account for changing Copies while iter
+        // lookup group orders should preserve Copies order
         return targets
             .Join(cardIds,
                 h => h.CardId, cid => cid,
@@ -69,7 +70,6 @@ internal static class Assigner
             .OrderByDescending(h => h.Location is Box)
                 .ThenByDescending(h => h.Copies)
 
-            // lookup group orders should preserve Copies order
             .ToLookup(h => h.CardId, h => (Storage)h.Location);
     }
 
@@ -80,12 +80,12 @@ internal static class Assigner
             .Distinct();
 
         // TODO: account for changing Copies while iter
+        // lookup group orders should preserve Copies order
         return targets
             .Join(cardNames,
                 h => h.Card.Name, cn => cn,
                 (target, _) => target)
 
-            // lookup group orders should preserve Copies order
             .OrderByDescending(h => h.Location is Box)
                 .ThenByDescending(h => h.Copies)
 
