@@ -28,8 +28,7 @@ public class WantNameGroup : IEnumerable<Want>
         }
     }
 
-    public WantNameGroup(params Want[] wants)
-        : this(wants.AsEnumerable())
+    public WantNameGroup(params Want[] wants) : this(wants.AsEnumerable())
     { }
 
     // guranteed >= 1 Want in linkedlist

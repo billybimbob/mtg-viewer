@@ -7,48 +7,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MTGViewer.Data.Treasury;
 
-internal readonly record struct LocationIndex(int Id, string? Name, int? Capacity)
-{
-    public static explicit operator LocationIndex(StorageSpace space)
-    {
-        ArgumentNullException.ThrowIfNull(space);
-
-        return new LocationIndex(space.Id, space.Name, space.Capacity);
-    }
-
-    public static explicit operator LocationIndex(Location location)
-    {
-        ArgumentNullException.ThrowIfNull(location);
-
-        return new LocationIndex(
-            location.Id, location.Name, (location as Box)?.Capacity);
-    }
-}
-
-internal readonly record struct HoldIndex(string CardId, LocationIndex Location)
-{
-    public static explicit operator HoldIndex(Hold hold)
-    {
-        ArgumentNullException.ThrowIfNull(hold);
-
-        return new HoldIndex(hold.CardId, (LocationIndex)hold.Location);
-    }
-}
-
-internal readonly record struct ChangeIndex(string CardId, LocationIndex To, LocationIndex? From)
-{
-    public static explicit operator ChangeIndex(Change change)
-    {
-        ArgumentNullException.ThrowIfNull(change);
-
-        return new ChangeIndex(
-            change.CardId,
-            (LocationIndex)change.To,
-            change.From is null ? null : (LocationIndex)change.From);
-    }
-}
-
-internal sealed class TreasuryContext
+internal sealed partial class TreasuryContext
 {
     private readonly CardDbContext _dbContext;
     private readonly Dictionary<LocationIndex, StorageSpace> _storageSpaces;
@@ -107,6 +66,15 @@ internal sealed class TreasuryContext
             .ToDictionary(c => (ChangeIndex)c);
     }
 
+    public IReadOnlyDictionary<LocationIndex, StorageSpace> StorageSpaces => _storageSpaces;
+
+    public IReadOnlyCollection<Box> Available => _available;
+    public IReadOnlyCollection<Box> Overflow => _overflow;
+
+    public IEnumerable<Excess> Excess => _dbContext.Excess.Local;
+
+    public IReadOnlyCollection<Hold> Holds => _holds.Values;
+
     private static void AddMissingExcess(CardDbContext dbContext)
     {
         if (!dbContext.Excess.Local.Any())
@@ -142,14 +110,6 @@ internal sealed class TreasuryContext
             }
         }
     }
-
-    public IReadOnlyCollection<Box> Available => _available;
-    public IReadOnlyCollection<Box> Overflow => _overflow;
-
-    public IEnumerable<Excess> Excess => _dbContext.Excess.Local;
-    public IReadOnlyDictionary<LocationIndex, StorageSpace> StorageSpaces => _storageSpaces;
-
-    public IReadOnlyCollection<Hold> Holds => _holds.Values;
 
     public void Deconstruct(
         out IReadOnlyCollection<Box> available,

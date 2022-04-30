@@ -4,7 +4,7 @@ using System.Linq;
 
 namespace MTGViewer.Data.Treasury;
 
-internal class ExchangeContext
+internal sealed partial class ExchangeContext
 {
     private readonly CardDbContext _dbContext;
     private readonly Dictionary<string, QuantityGroup> _deckCards;

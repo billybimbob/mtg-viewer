@@ -9,7 +9,7 @@ using MTGViewer.Utils;
 
 namespace Microsoft.Extensions.DependencyInjection;
 
-public static class ServiceCollectionExtensions
+public static partial class ServiceCollectionExtensions
 {
     public static IServiceCollection AddCardStorage(this IServiceCollection services, IConfiguration config)
     {

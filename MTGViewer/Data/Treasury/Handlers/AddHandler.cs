@@ -1,22 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 
-namespace MTGViewer.Data.Treasury;
-
-internal static class AddExtensions
-{
-    public static void AddExact(this TreasuryContext treasuryContext, IEnumerable<CardRequest> requests)
-        => new ExactAdd(treasuryContext, requests)
-            .AddCopies();
-
-    public static void AddApproximate(this TreasuryContext treasuryContext, IEnumerable<CardRequest> requests)
-        => new ApproximateAdd(treasuryContext, requests)
-            .AddCopies();
-
-    public static void AddGuess(this TreasuryContext treasuryContext, IEnumerable<CardRequest> requests)
-        => new GuessAdd(treasuryContext, requests)
-            .AddCopies();
-}
+namespace MTGViewer.Data.Treasury.Handlers;
 
 internal abstract class AddHandler
 {

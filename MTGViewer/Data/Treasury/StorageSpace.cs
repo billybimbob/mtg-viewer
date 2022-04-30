@@ -1,12 +1,10 @@
 namespace MTGViewer.Data.Treasury;
 
-internal readonly record struct Assignment<TSource>(TSource Source, int Copies, Storage Target);
-
 internal sealed record StorageSpace
 {
     public int Id { get; init; }
 
-    public string Name { get; init; } = default!;
+    public string Name { get; init; } = string.Empty;
 
     public int Held { get; set; }
 

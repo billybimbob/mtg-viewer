@@ -128,8 +128,8 @@ public partial class CardDbContext
                 await treasuryContext.LoadEntireStorageAsync(cancel);
             }
 
-            treasuryContext.LowerExactExcess();
-            treasuryContext.LowerApproximateExcess();
+            treasuryContext.ReduceExcessExact();
+            treasuryContext.ReduceExcessApproximate();
         }
 
         RemoveEmpty();
@@ -153,11 +153,11 @@ public partial class CardDbContext
 
         var treasuryContext = new TreasuryContext(this, storageSpaces);
 
-        treasuryContext.LowerExactOver();
-        treasuryContext.LowerApproximateOver();
+        treasuryContext.ReduceOverflowExact();
+        treasuryContext.ReduceOverflowApproximate();
 
-        treasuryContext.LowerExactExcess();
-        treasuryContext.LowerApproximateExcess();
+        treasuryContext.ReduceExcessExact();
+        treasuryContext.ReduceExcessApproximate();
 
         RemoveEmpty();
     }

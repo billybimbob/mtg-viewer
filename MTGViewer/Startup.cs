@@ -61,7 +61,10 @@ public class Startup
             .AddScoped<RouteDataAccessor>()
             .AddScoped<PageSize>();
 
-        services.AddCardStorage(_config);
+        services
+            .AddCardUsers(_config)
+            .AddCardStorage(_config);
+
         services.Configure<MulliganOptions>(_config.GetSection(nameof(MulliganOptions)));
 
         services

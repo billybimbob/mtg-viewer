@@ -1,18 +1,7 @@
 using System.Linq;
 using System.Collections.Generic;
 
-namespace MTGViewer.Data.Treasury;
-
-internal static class ExcessExtensions
-{
-    public static void LowerExactExcess(this TreasuryContext treasuryContext)
-        => new ExactExcess(treasuryContext)
-            .TransferExcess();
-
-    public static void LowerApproximateExcess(this TreasuryContext treasuryContext)
-        => new ApproximateExcess(treasuryContext)
-            .TransferExcess();
-}
+namespace MTGViewer.Data.Treasury.Handlers;
 
 internal abstract class ExcessHandler
 {

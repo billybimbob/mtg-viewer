@@ -28,8 +28,7 @@ public class HoldNameGroup : IEnumerable<Hold>
         }
     }
 
-    public HoldNameGroup(params Hold[] holds)
-        : this(holds.AsEnumerable())
+    public HoldNameGroup(params Hold[] holds) : this(holds.AsEnumerable())
     { }
 
     // guranteed >= 1 Holds in linkedlist

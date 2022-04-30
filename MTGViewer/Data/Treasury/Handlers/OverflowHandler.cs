@@ -2,18 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace MTGViewer.Data.Treasury;
-
-internal static class OverflowExtensions
-{
-    public static void LowerExactOver(this TreasuryContext treasuryContext)
-        => new ExactOverflow(treasuryContext)
-            .TransferOverflow();
-
-    public static void LowerApproximateOver(this TreasuryContext treasuryContext)
-        => new ApproximateOverflow(treasuryContext)
-            .TransferOverflow();
-}
+namespace MTGViewer.Data.Treasury.Handlers;
 
 internal abstract class OverflowHandler
 {

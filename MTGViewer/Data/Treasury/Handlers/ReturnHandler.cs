@@ -1,22 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 
-namespace MTGViewer.Data.Treasury;
-
-internal static class ReturnExtensions
-{
-    public static void ReturnExact(this ExchangeContext exchangeContext)
-        => new ExactReturn(exchangeContext)
-            .ApplyReturns();
-
-    public static void ReturnApproximate(this ExchangeContext exchangeContext)
-        => new ApproximateReturn(exchangeContext)
-            .ApplyReturns();
-
-    public static void ReturnGuess(this ExchangeContext exchangeContext)
-        => new GuessReturn(exchangeContext)
-            .ApplyReturns();
-}
+namespace MTGViewer.Data.Treasury.Handlers;
 
 internal abstract class ReturnHandler
 {

@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace MTGViewer.Data.Treasury;
+namespace MTGViewer.Data.Treasury.Handlers;
 
 internal static class Assigner
 {

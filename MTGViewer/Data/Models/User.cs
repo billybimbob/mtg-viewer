@@ -8,6 +8,7 @@ namespace MTGViewer.Data;
 
 public class UserRef
 {
+    [JsonConstructor]
     public UserRef()
     { }
 

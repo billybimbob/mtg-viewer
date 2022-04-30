@@ -2,18 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace MTGViewer.Data.Treasury;
-
-internal static class TakeExtensions
-{
-    public static void TakeExact(this ExchangeContext exchangeContext)
-        => new ExactTake(exchangeContext)
-            .ApplyTakes();
-
-    public static void TakeApproximate(this ExchangeContext exchangeContext)
-        => new ApproximateTake(exchangeContext)
-            .ApplyTakes();
-}
+namespace MTGViewer.Data.Treasury.Handlers;
 
 internal abstract class TakeHandler
 {

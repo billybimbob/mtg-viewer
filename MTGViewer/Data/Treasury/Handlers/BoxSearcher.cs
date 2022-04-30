@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using MTGViewer.Utils;
 
-namespace MTGViewer.Data.Treasury;
+namespace MTGViewer.Data.Treasury.Handlers;
 
 internal sealed class BoxSearcher
 {
