@@ -46,9 +46,7 @@ public class DetailsModel : PageModel
     }
 
     public string GetCreateCardUri()
-    {
-        return QueryHelpers.AddQueryString("/Cards/Create", CardParameters);
-    }
+        => QueryHelpers.AddQueryString("/Cards/Create", CardParameters);
 
     public async Task<IActionResult> OnGetAsync(string id, bool flip, string? returnUrl, CancellationToken cancel)
     {

@@ -1,6 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
 
 namespace MTGViewer.Data.Treasury;
 
@@ -8,6 +11,8 @@ internal readonly record struct LocationIndex(int Id, string? Name, int? Capacit
 {
     public static explicit operator LocationIndex(StorageSpace space)
     {
+        ArgumentNullException.ThrowIfNull(space);
+
         return new LocationIndex(space.Id, space.Name, space.Capacity);
     }
 
@@ -60,34 +65,16 @@ internal sealed class TreasuryContext
         CardDbContext dbContext,
         Dictionary<LocationIndex, StorageSpace> spaces)
     {
-        // local can have null
+        AddMissingExcess(dbContext);
 
         var boxes = dbContext.Boxes.Local.OfType<Box>();
         var excess = dbContext.Excess.Local.OfType<Excess>();
 
+        AddMissingStorageSpaces(spaces, boxes, excess);
+
         _dbContext = dbContext;
 
         _storageSpaces = spaces;
-
-        var trackedStorage = boxes
-            .Cast<Storage>()
-            .Concat(excess);
-
-        foreach (var storage in trackedStorage)
-        {
-            var index = (LocationIndex)storage;
-
-            if (!_storageSpaces.TryGetValue(index, out var space))
-            {
-                _storageSpaces.Add(index, new StorageSpace
-                {
-                    Id = storage.Id,
-                    Name = storage.Name,
-                    Held = storage.Holds.Sum(h => h.Copies),
-                    Capacity = (storage as Box)?.Capacity
-                });
-            }
-        }
 
         _available = boxes
             .Where(b => _storageSpaces.GetValueOrDefault((LocationIndex)b)
@@ -120,6 +107,42 @@ internal sealed class TreasuryContext
             .ToDictionary(c => (ChangeIndex)c);
     }
 
+    private static void AddMissingExcess(CardDbContext dbContext)
+    {
+        if (!dbContext.Excess.Local.Any())
+        {
+            var excessBox = Data.Excess.Create();
+
+            dbContext.Excess.Add(excessBox);
+        }
+    }
+
+    private static void AddMissingStorageSpaces(
+        IDictionary<LocationIndex, StorageSpace> spaces,
+        IEnumerable<Box> boxes,
+        IEnumerable<Excess> excess)
+    {
+        var allStorage = boxes
+            .Cast<Storage>()
+            .Concat(excess);
+
+        foreach (var storage in allStorage)
+        {
+            var index = (LocationIndex)storage;
+
+            if (!spaces.ContainsKey(index))
+            {
+                spaces.Add(index, new StorageSpace
+                {
+                    Id = storage.Id,
+                    Name = storage.Name,
+                    Held = storage.Holds.Sum(h => h.Copies),
+                    Capacity = (storage as Box)?.Capacity
+                });
+            }
+        }
+    }
+
     public IReadOnlyCollection<Box> Available => _available;
     public IReadOnlyCollection<Box> Overflow => _overflow;
 
@@ -140,13 +163,35 @@ internal sealed class TreasuryContext
         storageSpace = _storageSpaces;
     }
 
-    public void Refresh()
+    public async Task LoadEntireStorageAsync(CancellationToken cancel)
     {
-        foreach (var box in _dbContext.Boxes.Local)
+        await EntireStorage().LoadAsync(cancel);
+
+        // holds are fully loaded, so the local hold copy sum is indeed the held amount
+
+        var trackedStorage = _dbContext.Boxes.Local
+            .OfType<Storage>()
+            .Concat(_dbContext.Excess.Local
+                .OfType<Storage>());
+
+        foreach (var storage in trackedStorage)
         {
-            var index = (LocationIndex)box;
+            var index = (LocationIndex)storage;
 
             if (!_storageSpaces.TryGetValue(index, out var space))
+            {
+                space = new StorageSpace
+                {
+                    Id = storage.Id,
+                    Name = storage.Name,
+                    Held = storage.Holds.Sum(h => h.Copies),
+                    Capacity = (storage as Box)?.Capacity
+                };
+
+                _storageSpaces.Add(index, space);
+            }
+
+            if (storage is not Box box)
             {
                 continue;
             }
@@ -175,6 +220,23 @@ internal sealed class TreasuryContext
                 _holds.Add(index, hold);
             }
         }
+    }
+
+    private IQueryable<Location> EntireStorage()
+    {
+        // loading all shared cards, could be memory inefficient
+        // TODO: find more efficient way to determining card position
+        // unbounded: keep eye on
+
+        return _dbContext.Locations
+            .Where(l => l is Excess || l is Box)
+
+            .Include(l => l.Holds
+                .OrderBy(h => h.Card.Name)
+                    .ThenByDescending(h => h.Copies))
+                .ThenInclude(h => h.Card)
+
+            .OrderBy(l => l.Id);
     }
 
     public void AddCopies(Card card, int copies, Storage storage)

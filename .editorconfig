@@ -35,6 +35,8 @@ dotnet_style_predefined_type_for_member_access = true:suggestion
 
 dotnet_style_prefer_conditional_expression_over_return = false:suggestion
 
+csharp_style_expression_bodied_methods = when_on_single_line
+
 # Require var some of the time.
 csharp_style_var_for_built_in_types = false:suggestion
 csharp_style_var_when_type_is_apparent = true:suggestion

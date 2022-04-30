@@ -415,10 +415,10 @@ public partial class Suggest : OwningComponentBase
 
         public bool HasMore => LoadedDecks < TotalDecks;
 
-        public DeckCursor NextPage()
+        public DeckCursor NextPage() => this with
         {
-            return this with { LoadedDecks = LoadedDecks + PageSize };
-        }
+            LoadedDecks = LoadedDecks + PageSize
+        };
     }
 
     private static IQueryable<UserPreview> UsersForSuggestion(

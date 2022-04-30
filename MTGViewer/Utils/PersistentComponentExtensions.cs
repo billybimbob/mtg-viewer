@@ -16,9 +16,11 @@ internal static partial class PersistentComponentStateExtensions
     }
 
     public static bool TryGetData<TData>(
-        this PersistentComponentState persistent, string key, [NotNullWhen(true)] out TData? data)
+        this PersistentComponentState persistent,
+        string key,
+        [NotNullWhen(true)] out TData? data)
     {
-        if (persistent.TryTakeFromJson(key, out data!) && data is not null)
+        if (persistent.TryTakeFromJson(key, out data) && data is not null)
         {
             return true;
         }

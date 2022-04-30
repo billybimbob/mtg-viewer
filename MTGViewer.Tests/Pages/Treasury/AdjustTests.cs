@@ -49,18 +49,10 @@ public sealed class AdjustTests : IAsyncLifetime, IDisposable
         await _testGen.ClearAsync();
     }
 
-    void IDisposable.Dispose()
-    {
-        _testContext.Dispose();
-    }
+    void IDisposable.Dispose() => _testContext.Dispose();
 
-    private static void ChangeInput<T>(
-        IRenderedComponent<Adjust> cut,
-        string cssSelector,
-        T newValue)
-    {
-        cut.Find(cssSelector).Change(newValue);
-    }
+    private static void ChangeInput<T>(IRenderedComponent<Adjust> cut, string cssSelector, T newValue)
+        => cut.Find(cssSelector).Change(newValue);
 
     [Fact]
     public async Task LoadData_InvalidBox_KeepsLoading()

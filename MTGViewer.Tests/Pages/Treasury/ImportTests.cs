@@ -48,10 +48,7 @@ public sealed class ImportTests : IAsyncLifetime, IDisposable
         await _testGen.ClearAsync();
     }
 
-    void IDisposable.Dispose()
-    {
-        _testContext.Dispose();
-    }
+    void IDisposable.Dispose() => _testContext.Dispose();
 
     private static InputFileChangeEventArgs GetFileInput(
         CardData data,

@@ -77,7 +77,6 @@ public partial class Craft : OwningComponentBase
     {
         _persistSubscription = ApplicationState.RegisterOnPersisting(PersistCardDataAsync);
 
-        Filters.PageSize = PageSize.Current;
         Filters.FilterChanged += OnFilterChange;
 
         TreasuryLoaded += Filters.OnTreasuryLoaded;
@@ -162,7 +161,7 @@ public partial class Craft : OwningComponentBase
             dbContext.Cards.AttachRange(cards);
             dbContext.Decks.Attach(deck);
 
-            _deckContext = new DeckContext(deck, Filters.PageSize);
+            _deckContext = new DeckContext(deck, PageSize.Current);
 
             _cards.UnionWith(cards);
 
@@ -182,7 +181,7 @@ public partial class Craft : OwningComponentBase
             return;
         }
 
-        _deckContext = new DeckContext(deckResult, Filters.PageSize);
+        _deckContext = new DeckContext(deckResult, PageSize.Current);
 
         _cards.UnionWith(dbContext.Cards.Local);
     }
@@ -295,9 +294,10 @@ public partial class Craft : OwningComponentBase
                     && d.OwnerId == userId
                     && !d.TradesTo.Any()));
 
-    private static Task<SeekList<HeldCard>> FilteredCardsAsync(
+    private static async Task<SeekList<HeldCard>> FilteredCardsAsync(
         CardDbContext dbContext,
         TreasuryFilters filters,
+        int pageSize,
         CancellationToken cancel)
     {
         var cards = dbContext.Cards.AsQueryable();
@@ -334,7 +334,7 @@ public partial class Craft : OwningComponentBase
                 .Where(c => (c.Color & pickedColors) == pickedColors);
         }
 
-        return cards
+        return await cards
             .OrderBy(c => c.Name)
                 .ThenBy(c => c.SetName)
                 .ThenBy(c => c.Id)
@@ -348,7 +348,7 @@ public partial class Craft : OwningComponentBase
 
             .SeekBy(filters.Seek, filters.Direction)
             .OrderBy<Card>()
-            .Take(filters.PageSize)
+            .Take(pageSize)
 
             .ToSeekListAsync(cancel);
     }
@@ -380,7 +380,7 @@ public partial class Craft : OwningComponentBase
 
         try
         {
-            await ApplyFiltersAsync(Filters, _cancel.Token);
+            await ApplyFiltersAsync();
 
             _isTreasuryLoaded = true;
 
@@ -409,7 +409,7 @@ public partial class Craft : OwningComponentBase
 
         try
         {
-            await ApplyFiltersAsync(Filters, _cancel.Token);
+            await ApplyFiltersAsync();
         }
         catch (OperationCanceledException ex)
         {
@@ -427,13 +427,13 @@ public partial class Craft : OwningComponentBase
         }
     }
 
-    private async Task ApplyFiltersAsync(TreasuryFilters filters, CancellationToken cancel)
+    private async Task ApplyFiltersAsync()
     {
-        await using var dbContext = await DbFactory.CreateDbContextAsync(cancel);
+        await using var dbContext = await DbFactory.CreateDbContextAsync(_cancel.Token);
 
         dbContext.Cards.AttachRange(_cards);
 
-        Treasury = await FilteredCardsAsync(dbContext, filters, cancel);
+        Treasury = await FilteredCardsAsync(dbContext, Filters, PageSize.Current, _cancel.Token);
 
         _cards.UnionWith(Treasury.Select(c => c.Card));
 
@@ -477,23 +477,6 @@ public partial class Craft : OwningComponentBase
             Direction = direction;
 
             FilterChanged?.Invoke(this, EventArgs.Empty);
-        }
-
-        private int _pageSize;
-        public int PageSize
-        {
-            get => _pageSize;
-            set
-            {
-                if (_pendingChanges
-                    || value <= 0
-                    || value == _pageSize)
-                {
-                    return;
-                }
-
-                _pageSize = value;
-            }
         }
 
         public string? Name { get; private set; }
@@ -665,10 +648,7 @@ public partial class Craft : OwningComponentBase
     internal void ChangeWantPage(int value) => _deckContext?.SetWantPage(value);
     internal void ChangeGivePage(int value) => _deckContext?.SetGivePage(value);
 
-    internal bool CannotSave()
-    {
-        return !_deckContext?.CanSave() ?? true;
-    }
+    internal bool CannotSave() => !_deckContext?.CanSave() ?? true;
 
     internal Deck? GetExchangeDeck()
     {
@@ -879,14 +859,10 @@ public partial class Craft : OwningComponentBase
         }
 
         public bool IsAdded(Quantity quantity)
-        {
-            return !_originalCopies.ContainsKey(quantity);
-        }
+            => !_originalCopies.ContainsKey(quantity);
 
         public bool IsModified(Quantity quantity)
-        {
-            return quantity.Copies != _originalCopies.GetValueOrDefault(quantity);
-        }
+            => quantity.Copies != _originalCopies.GetValueOrDefault(quantity);
 
         public bool CanSave()
         {

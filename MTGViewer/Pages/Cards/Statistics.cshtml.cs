@@ -13,10 +13,16 @@ namespace MTGViewer.Pages.Cards;
 
 public class StatisticsModel : PageModel
 {
-    public static readonly IReadOnlyList<string> CardTypes = new[]
-    {
-        "Artifact", "Creature", "Enchantment", "Instant", "Land", "Sorcery"
-    };
+    public static readonly IReadOnlyList<string> CardTypes
+        = new string[]
+        {
+            "Artifact",
+            "Creature",
+            "Enchantment",
+            "Instant",
+            "Land",
+            "Sorcery"
+        };
 
     private readonly CardDbContext _dbContext;
 

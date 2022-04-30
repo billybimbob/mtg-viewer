@@ -7,45 +7,112 @@ namespace MTGViewer.Data.Treasury;
 
 internal sealed class BoxSearcher
 {
-    private readonly List<Box> _sortedBoxes;
+    private readonly IReadOnlyCollection<Box> _unorderedBoxes;
 
-    private readonly List<Card> _sortedCards;
+    private readonly List<Box> _orderedBoxes;
+    private readonly List<Card> _orderedCards;
+
     private readonly Dictionary<string, int> _firstCards;
 
     private readonly List<int> _boxBoundaries;
     private readonly List<int> _addPositions;
 
+    private bool _isFullyLoaded;
+
     public BoxSearcher(IReadOnlyCollection<Box> boxes)
     {
-        _sortedBoxes = boxes
-            .OrderBy(b => b.Id)
-            .ToList();
+        int totalHolds = boxes
+            .SelectMany(b => b.Holds)
+            .Count();
 
-        var sortedHolds = _sortedBoxes
+        int totalCards = boxes
+            .SelectMany(b => b.Holds, (_, h) => h.CardId)
+            .Distinct()
+            .Count();
+
+        _unorderedBoxes = boxes;
+        _isFullyLoaded = false;
+
+        _orderedBoxes = new List<Box>(boxes.Count);
+        _orderedCards = new List<Card>(totalHolds);
+
+        _firstCards = new Dictionary<string, int>(totalCards);
+
+        _boxBoundaries = new List<int>(boxes.Count);
+        _addPositions = new List<int>(totalHolds);
+    }
+
+    public static IEnumerable<TValue> GetOrderedRequests<TValue>(
+        IEnumerable<TValue> values,
+        Func<TValue, Card> getCard)
+    {
+        // descending to account for the static order of the searching algorithm
+        // the first added cards do not shift down the positioning of the order cards,
+        // so each of the returned cards should have less effect on following returns
+        // keep eye on
+
+        return values
+            .OrderByDescending(c => getCard.Invoke(c).Name)
+                .ThenByDescending(c => getCard.Invoke(c).SetName);
+    }
+
+    public IEnumerable<Box> FindBestBoxes(Card card)
+    {
+        InitOrderedValues();
+
+        int cardSearch = _orderedCards.BinarySearch(card, CardNameComparer.Instance);
+
+        int cardIndex = cardSearch >= 0
+            ? _firstCards.GetValueOrDefault(_orderedCards[cardSearch].Id)
+            : ~cardSearch;
+
+        int addPosition = _addPositions.ElementAtOrDefault(cardIndex);
+        int boxSearch = _boxBoundaries.BinarySearch(addPosition);
+
+        int boxIndex = boxSearch >= 0
+            ? boxSearch
+            : Math.Min(~boxSearch, _orderedBoxes.Count - 1);
+
+        foreach (var box in _orderedBoxes.Skip(boxIndex))
+        {
+            yield return box;
+        }
+    }
+
+    private void InitOrderedValues()
+    {
+        if (_isFullyLoaded)
+        {
+            return;
+        }
+
+        _orderedBoxes.AddRange(_unorderedBoxes.OrderBy(b => b.Id));
+
+        var sortedHolds = _orderedBoxes
             .SelectMany(b => b.Holds)
             .OrderBy(h => h.Card.Name)
                 .ThenBy(h => h.Card.SetName)
             .ToList();
 
-        _sortedCards = sortedHolds
-            .Select(h => h.Card)
-            .ToList();
+        _orderedCards.AddRange(sortedHolds.Select(h => h.Card));
 
-        _firstCards = GetFirstCards(_sortedCards);
+        foreach ((string id, int index) in GetFirstCards(_orderedCards))
+        {
+            _firstCards.Add(id, index);
+        }
 
-        _boxBoundaries = GetBoxBoundaries(_sortedBoxes).ToList();
-        _addPositions = GetAddPositions(sortedHolds).ToList();
+        _boxBoundaries.AddRange(GetBoxBoundaries(_orderedBoxes));
+        _addPositions.AddRange(GetAddPositions(sortedHolds));
+
+        _isFullyLoaded = true;
     }
 
-    private static Dictionary<string, int> GetFirstCards(IEnumerable<Card> sortedCards)
+    private static IEnumerable<(string id, int index)> GetFirstCards(IEnumerable<Card> sortedCards)
     {
         return sortedCards
             .Select((card, index) => (card, index))
             .GroupBy(ci => ci.card.Id,
-                (id, cis) => (id, cis.First().index))
-
-            .ToDictionary(
-                ii => ii.id, ii => ii.index);
+                (id, cis) => (id, cis.First().index));
     }
 
     private static IEnumerable<int> GetBoxBoundaries(IEnumerable<Box> boxes)
@@ -76,23 +143,5 @@ internal sealed class BoxSearcher
                 holdTotal += hold.Copies;
             }
         }
-    }
-
-    public IEnumerable<Box> FindBestBoxes(Card card)
-    {
-        int cardSearch = _sortedCards.BinarySearch(card, CardNameComparer.Instance);
-
-        int cardIndex = cardSearch >= 0
-            ? _firstCards.GetValueOrDefault(_sortedCards[cardSearch].Id)
-            : ~cardSearch;
-
-        int addPosition = _addPositions.ElementAtOrDefault(cardIndex);
-        int boxSearch = _boxBoundaries.BinarySearch(addPosition);
-
-        int boxIndex = boxSearch >= 0
-            ? boxSearch
-            : Math.Min(~boxSearch, _sortedBoxes.Count - 1);
-
-        return _sortedBoxes.Skip(boxIndex);
     }
 }

@@ -82,11 +82,8 @@ public static class PagingExtensions
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
     }
 
-    public static ISelectableQueryable<TSource, TResult> WithSelect<TSource, TResult>(
-        this IQueryable<TResult> source)
-    {
-        return new SelectableQueryable<TSource, TResult>(source);
-    }
+    public static ISelectableQueryable<TSource, TResult> WithSelect<TSource, TResult>(this IQueryable<TResult> source)
+        => new SelectableQueryable<TSource, TResult>(source);
 
     public static ISelectableQueryable<TEntity, TEntity> After<TEntity, TOrigin>(
         this IQueryable<TEntity> source,

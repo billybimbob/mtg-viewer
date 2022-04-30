@@ -20,7 +20,9 @@ public class ContentSecurityPolicyFilter : IAlwaysRunResultFilter
 
     public void OnResultExecuting(ResultExecutingContext context)
     {
-        context.HttpContext.Response.Headers.ContentSecurityPolicy = Policy;
+        var response = context.HttpContext.Response;
+
+        response.Headers.ContentSecurityPolicy = Policy;
     }
 
     public void OnResultExecuted(ResultExecutedContext context)

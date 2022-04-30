@@ -7,14 +7,12 @@ namespace MTGViewer.Data.Treasury;
 internal static class OverflowExtensions
 {
     public static void LowerExactOver(this TreasuryContext treasuryContext)
-    {
-        new ExactOverflow(treasuryContext).TransferOverflow();
-    }
+        => new ExactOverflow(treasuryContext)
+            .TransferOverflow();
 
     public static void LowerApproximateOver(this TreasuryContext treasuryContext)
-    {
-        new ApproximateOverflow(treasuryContext).TransferOverflow();
-    }
+        => new ApproximateOverflow(treasuryContext)
+            .TransferOverflow();
 }
 
 internal abstract class OverflowHandler
@@ -108,6 +106,7 @@ internal class ExactOverflow : OverflowHandler
 internal class ApproximateOverflow : OverflowHandler
 {
     private ILookup<string, Storage>? _approxMatches;
+    private BoxSearcher? _boxSearch;
 
     public ApproximateOverflow(TreasuryContext treasuryContext)
         : base(treasuryContext)
@@ -146,8 +145,10 @@ internal class ApproximateOverflow : OverflowHandler
         }
 
         _approxMatches ??= AddLookup();
+        _boxSearch ??= new BoxSearcher(available);
 
         var matches = _approxMatches[source.Card.Name]
+            .Union(_boxSearch.FindBestBoxes(source.Card))
             .Union(available)
             .Concat(excess);
 

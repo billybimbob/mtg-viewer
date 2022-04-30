@@ -85,21 +85,21 @@ public class IndexModel : PageModel
         return Page();
     }
 
-    private Task<string?> GetDeckNameAsync(int? id, CancellationToken cancel)
+    private async Task<string?> GetDeckNameAsync(int? id, CancellationToken cancel)
     {
         if (id is null)
         {
-            return Task.FromResult<string?>(null);
+            return null;
         }
 
         string? userId = _userManager.GetUserId(User);
 
         if (userId is null)
         {
-            return Task.FromResult<string?>(null);
+            return null;
         }
 
-        return _dbContext.Decks
+        return await _dbContext.Decks
             .Where(d => d.Id == id && d.OwnerId == userId)
             .Select(d => d.Name)
             .SingleOrDefaultAsync(cancel);

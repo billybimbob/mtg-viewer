@@ -153,9 +153,7 @@ public sealed class MtgApiQuery : IMTGQuery
     }
 
     public IAsyncEnumerable<Card> CollectionAsync(IEnumerable<string> multiverseIds)
-    {
-        return BulkSearchAsync(multiverseIds);
-    }
+        => BulkSearchAsync(multiverseIds);
 
     private async IAsyncEnumerable<Card> BulkSearchAsync(
         IEnumerable<string> multiverseIds,

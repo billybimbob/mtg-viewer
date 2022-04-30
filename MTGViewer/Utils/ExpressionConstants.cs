@@ -28,17 +28,9 @@ internal static class ExpressionConstants
             .GetGenericMethodDefinition();
 
     private static MethodInfo? _enumLessThan;
-    private static MethodInfo? _enumGreaterThan;
 
     private static bool EnumLessThan<TEnum>(TEnum left, TEnum right) where TEnum : Enum
-    {
-        return left.CompareTo(right) < 0;
-    }
-
-    private static bool EnumGreaterThan<TEnum>(TEnum left, TEnum right) where TEnum : Enum
-    {
-        return left.CompareTo(right) > 0;
-    }
+        => left.CompareTo(right) < 0;
 
     public static MethodInfo EnumLessThan(Type enumType)
     {
@@ -49,6 +41,11 @@ internal static class ExpressionConstants
 
         return _enumLessThan!.MakeGenericMethod(enumType);
     }
+
+    private static MethodInfo? _enumGreaterThan;
+
+    private static bool EnumGreaterThan<TEnum>(TEnum left, TEnum right) where TEnum : Enum
+        => left.CompareTo(right) > 0;
 
     public static MethodInfo EnumGreaterThan(Type enumType)
     {

@@ -29,15 +29,9 @@ public class ColorUpdateTests : IAsyncLifetime
         _testGen = testGen;
     }
 
-    public async Task InitializeAsync()
-    {
-        await _testGen.SeedAsync();
-    }
+    public Task InitializeAsync() => _testGen.SeedAsync();
 
-    public async Task DisposeAsync()
-    {
-        await _testGen.ClearAsync();
-    }
+    public Task DisposeAsync() => _testGen.ClearAsync();
 
     private static Color GetColor(IEnumerable<Card> cards)
     {

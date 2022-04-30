@@ -195,7 +195,7 @@ public class BulkOperations
         return hasNewCards;
     }
 
-    private Task<List<Card>> ExistingCardsAsync(
+    private async Task<IReadOnlyList<Card>> ExistingCardsAsync(
         CardData data,
         CancellationToken cancel)
     {
@@ -207,7 +207,7 @@ public class BulkOperations
                     .Select(c => c.Id))
                 .ToArray();
 
-            return _dbContext.Cards
+            return await _dbContext.Cards
                 .Where(c => cardIds.Contains(c.Id))
                 .AsNoTracking()
                 .ToListAsync(cancel);
@@ -220,14 +220,13 @@ public class BulkOperations
                     .Select(c => c.Id))
                 .ToAsyncEnumerable();
 
-            return _dbContext.Cards
+            return await _dbContext.Cards
                 .AsNoTracking()
                 .AsAsyncEnumerable()
                 .Join(cardIds,
                     c => c.Id, cid => cid,
                     (card, _) => card)
-                .ToListAsync(cancel)
-                .AsTask();
+                .ToListAsync(cancel);
         }
     }
 
@@ -270,15 +269,13 @@ public class BulkOperations
     }
 
     public async Task MergeAsync(
-        IDictionary<string, int> multiverseAdditions,
+        IReadOnlyDictionary<string, int> multiverseAdditions,
         CancellationToken cancel = default)
     {
         if (!multiverseAdditions.Any())
         {
             return;
         }
-
-        multiverseAdditions = new SortedList<string, int>(multiverseAdditions);
 
         var dbCards = await ExistingCardsAsync(multiverseAdditions.Keys, cancel);
 
@@ -317,13 +314,13 @@ public class BulkOperations
         _loadProgress.AddProgress();
     }
 
-    private Task<List<Card>> ExistingCardsAsync(
+    private async Task<List<Card>> ExistingCardsAsync(
         IEnumerable<string> multiverseIds,
         CancellationToken cancel)
     {
         if (multiverseIds.Count() < _pageSize.Limit)
         {
-            return _dbContext.Cards
+            return await _dbContext.Cards
                 .Where(c => multiverseIds.Contains(c.MultiverseId))
                 .ToListAsync(cancel);
         }
@@ -332,14 +329,13 @@ public class BulkOperations
             var asyncMultiverse = multiverseIds
                 .ToAsyncEnumerable();
 
-            return _dbContext.Cards
+            return await _dbContext.Cards
                 .AsAsyncEnumerable()
                 .Join(asyncMultiverse,
                     c => c.MultiverseId,
                     mid => mid,
                     (card, _) => card)
-                .ToListAsync(cancel)
-                .AsTask();
+                .ToListAsync(cancel);
         }
     }
 

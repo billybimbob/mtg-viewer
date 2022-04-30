@@ -96,9 +96,7 @@ public class SymbolOptionsBuilder
 
     public SymbolOptionsBuilder AddFinder<TFinder>(bool isDefault = false)
         where TFinder : ISymbolFinder
-    {
-        return AddFinder(typeof(TFinder), isDefault);
-    }
+        => AddFinder(typeof(TFinder), isDefault);
 
     public SymbolOptionsBuilder AddTranslator(Type translator, bool isDefault = false)
     {
@@ -120,9 +118,7 @@ public class SymbolOptionsBuilder
 
     public SymbolOptionsBuilder AddTranslator<TTranslator>(bool isDefault = false)
         where TTranslator : ISymbolTranslator
-    {
-        return AddTranslator(typeof(TTranslator), isDefault);
-    }
+        => AddTranslator(typeof(TTranslator), isDefault);
 
     public SymbolOptionsBuilder AddFormatter(Type formatter, bool isDefault = false)
     {
@@ -146,7 +142,5 @@ public class SymbolOptionsBuilder
 
     public SymbolOptionsBuilder AddFormatter<TFormatter>(bool isDefault = false)
         where TFormatter : ISymbolFinder, ISymbolTranslator
-    {
-        return AddFormatter(typeof(TFormatter), isDefault);
-    }
+        => AddFormatter(typeof(TFormatter), isDefault);
 }

@@ -299,15 +299,9 @@ public partial class Mulligan : OwningComponentBase
         }
     }
 
-    internal bool IsImageLoaded(CardPreview card)
-    {
-        return _loadedImages.Contains(card.Id);
-    }
+    internal bool IsImageLoaded(CardPreview card) => _loadedImages.Contains(card.Id);
 
-    internal void OnImageLoad(CardPreview card)
-    {
-        _loadedImages.Add(card.Id);
-    }
+    internal void OnImageLoad(CardPreview card) => _loadedImages.Add(card.Id);
 
     private sealed class DrawSimulation : IDisposable
     {
@@ -404,7 +398,7 @@ public partial class Mulligan : OwningComponentBase
             {
                 MulliganType.Built => source.Held,
                 MulliganType.Theorycraft => source.Held - source.Returning + source.Want,
-                _ => 0
+                MulliganType.None or _ => 0
             };
         }
 

@@ -216,42 +216,30 @@ public class TestCardService : ICardService
     }
 
     public Task<IOperationResult<List<string>>> GetFormatsAsync()
-    {
-        return Task.FromResult(
-            NotImplemented<List<string>>());
-    }
+        => Task.FromResult(NotImplemented<List<string>>());
 
     public Task<IOperationResult<List<string>>> GetCardSubTypesAsync()
-    {
-        return Task.FromResult(
-            NotImplemented<List<string>>());
-    }
+        => Task.FromResult(NotImplemented<List<string>>());
 
     public Task<IOperationResult<List<string>>> GetCardTypesAsync()
-    {
-        return Task.FromResult(
-            NotImplemented<List<string>>());
-    }
+        => Task.FromResult(NotImplemented<List<string>>());
 
     public Task<IOperationResult<List<string>>> GetCardSuperTypesAsync()
-    {
-        return Task.FromResult(
-            NotImplemented<List<string>>());
-    }
+        => Task.FromResult(NotImplemented<List<string>>());
 
     private static IOperationResult<T> NotImplemented<T>() where T : class
     {
         var result = new Mock<IOperationResult<T>>();
 
-        result
+        _ = result
             .SetupGet(o => o.IsSuccess)
             .Returns(false);
 
-        result
+        _ = result
             .SetupGet(o => o.Exception)
             .Returns(new NotImplementedException());
 
-        result
+        _ = result
             .Setup(o => o.PagingInfo)
             .Returns(PagingInfo.Create(0, 0));
 

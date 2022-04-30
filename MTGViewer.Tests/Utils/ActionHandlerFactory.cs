@@ -1,5 +1,5 @@
 using System;
-using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Threading.Tasks;
 using System.Security.Claims;
 
@@ -24,8 +24,6 @@ namespace MTGViewer.Tests.Utils;
 
 public class ActionHandlerFactory
 {
-    private static readonly Dictionary<string, object> _emptyParams = new();
-
     private readonly IUserClaimsPrincipalFactory<CardUser> _claimsFactory;
     private readonly UserManager<CardUser> _userManager;
     private readonly ActionContextAccessor _actionAccessor;
@@ -114,7 +112,9 @@ public class ActionHandlerFactory
     {
         // just use empty params for now, they should not be needed
 
-        var routeData = new RouteData(component.GetType(), _emptyParams);
+        var emptyParams = ImmutableDictionary<string, object>.Empty;
+
+        var routeData = new RouteData(component.GetType(), emptyParams);
 
         _routeAccessor.RouteData = routeData;
     }
@@ -123,7 +123,9 @@ public class ActionHandlerFactory
     {
         // just use empty params for now, they should not be needed
 
-        var routeData = new RouteData(typeof(TComponent), _emptyParams);
+        var emptyParams = ImmutableDictionary<string, object>.Empty;
+
+        var routeData = new RouteData(typeof(TComponent), emptyParams);
 
         _routeAccessor.RouteData = routeData;
     }

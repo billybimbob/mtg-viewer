@@ -11,12 +11,12 @@ using MTGViewer.Tests.Utils;
 
 namespace MTGViewer.Tests.Services;
 
-public class TreasuryExtensionTests : IAsyncLifetime
+public class CardDbContextTests : IAsyncLifetime
 {
     private readonly CardDbContext _dbContext;
     private readonly TestDataGenerator _testGen;
 
-    public TreasuryExtensionTests(CardDbContext dbContext, TestDataGenerator testGen)
+    public CardDbContextTests(CardDbContext dbContext, TestDataGenerator testGen)
     {
         _dbContext = dbContext;
         _testGen = testGen;
@@ -26,8 +26,8 @@ public class TreasuryExtensionTests : IAsyncLifetime
 
     public Task DisposeAsync() => _testGen.ClearAsync();
 
-    private Task<int> GetTotalCopiesAsync() =>
-        _dbContext.Holds.SumAsync(amt => amt.Copies);
+    private async Task<int> GetTotalCopiesAsync()
+        => await _dbContext.Holds.SumAsync(amt => amt.Copies);
 
     private async Task RemoveCardCopiesAsync(Card card)
     {
@@ -40,18 +40,6 @@ public class TreasuryExtensionTests : IAsyncLifetime
         await _dbContext.SaveChangesAsync();
 
         _dbContext.ChangeTracker.Clear();
-    }
-
-    [Fact]
-    public async Task AddCards_NullDbContext_Throws()
-    {
-        const CardDbContext nullDbContext = null!;
-
-        var emptyRequests = Enumerable.Empty<CardRequest>();
-
-        Task AddAsync() => nullDbContext.AddCardsAsync(emptyRequests);
-
-        await Assert.ThrowsAsync<ArgumentNullException>(AddAsync);
     }
 
     [Fact]
@@ -198,17 +186,6 @@ public class TreasuryExtensionTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Exchange_NullDbContext_Throws()
-    {
-        const CardDbContext nullDbContext = null!;
-        var deck = new Deck();
-
-        Task ExchangeAsync() => nullDbContext.ExchangeAsync(deck);
-
-        await Assert.ThrowsAsync<ArgumentNullException>(ExchangeAsync);
-    }
-
-    [Fact]
     public async Task Exchange_NullDeck_Throws()
     {
         const Deck nullDeck = null!;
@@ -216,16 +193,6 @@ public class TreasuryExtensionTests : IAsyncLifetime
         Task ExchangeAsync() => _dbContext.ExchangeAsync(nullDeck);
 
         await Assert.ThrowsAsync<ArgumentNullException>(ExchangeAsync);
-    }
-
-    [Fact]
-    public async Task UpdateBoxes_NullDbContext_Throws()
-    {
-        const CardDbContext nullDbContext = null!;
-
-        static Task UpdateAsync() => nullDbContext.UpdateBoxesAsync();
-
-        await Assert.ThrowsAsync<ArgumentNullException>(UpdateAsync);
     }
 
     [Fact]

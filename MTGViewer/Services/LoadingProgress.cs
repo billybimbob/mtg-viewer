@@ -30,10 +30,7 @@ public readonly struct Percent
         return new Percent(a._value + b._value);
     }
 
-    public override string ToString()
-    {
-        return $"{_value}%";
-    }
+    public override string ToString() => $"{_value}%";
 }
 
 public class LoadingProgress
@@ -80,10 +77,7 @@ public class LoadingProgress
         _logger.LogInformation("Percent updated to {Current}", Current);
     }
 
-    public void AddProgress()
-    {
-        AddProgress(_defaultProgress);
-    }
+    public void AddProgress() => AddProgress(_defaultProgress);
 
     public void Reset()
     {

@@ -112,10 +112,7 @@ public class CardText : ISymbolFinder, ISymbolTranslator
         return indices;
     }
 
-    public string ManaString(ManaSymbol symbol)
-    {
-        return $"{{{symbol.Value}}}";
-    }
+    public string ManaString(ManaSymbol symbol) => $"{{{symbol.Value}}}";
 
     public string ColorString(Color color)
     {

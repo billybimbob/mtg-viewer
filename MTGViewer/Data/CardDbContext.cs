@@ -3,7 +3,7 @@ using MTGViewer.Data.Configuration;
 
 namespace MTGViewer.Data;
 
-public class CardDbContext : DbContext
+public partial class CardDbContext : DbContext
 {
     public CardDbContext(DbContextOptions<CardDbContext> options)
         : base(options)
@@ -35,8 +35,7 @@ public class CardDbContext : DbContext
     {
         base.OnModelCreating(modelBuilder);
 
-        _ = modelBuilder
-            .SelectConcurrencyToken(Database)
+        _ = SelectConcurrencyToken(modelBuilder)
 
             .ApplyConfiguration(new CardConfiguration())
             .ApplyConfiguration(new LocationConfiguration())

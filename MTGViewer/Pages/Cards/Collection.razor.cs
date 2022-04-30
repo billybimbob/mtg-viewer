@@ -60,9 +60,9 @@ public sealed partial class Collection : ComponentBase, IDisposable
 
     internal SeekList<LocationCopy> Cards { get; private set; } = SeekList<LocationCopy>.Empty;
 
-    private static readonly Color _validColors = Enum
-        .GetValues<Color>()
-        .Aggregate((x, y) => x | y);
+    private static readonly Color ValidColors
+        = Enum.GetValues<Color>()
+            .Aggregate((x, y) => x | y);
 
     private readonly CancellationTokenSource _cancel = new();
     private PersistingComponentStateSubscription _persistSubscription;
@@ -132,7 +132,7 @@ public sealed partial class Collection : ComponentBase, IDisposable
         return Task.CompletedTask;
     }
 
-    private Task<SeekList<LocationCopy>> GetCardDataAsync()
+    private async Task<SeekList<LocationCopy>> GetCardDataAsync()
     {
         if (ApplicationState.TryGetData(nameof(Cards), out IReadOnlyList<LocationCopy>? cards)
             && ApplicationState.TryGetData(nameof(Seek), out Seek<LocationCopy> seek))
@@ -140,11 +140,11 @@ public sealed partial class Collection : ComponentBase, IDisposable
             // persisted state should match set filters
             // TODO: find way to check filters are consistent
 
-            return Task.FromResult(new SeekList<LocationCopy>(seek, cards));
+            return new SeekList<LocationCopy>(seek, cards);
         }
         else
         {
-            return FetchDbCopiesAsync();
+            return await FetchDbCopiesAsync();
         }
     }
 
@@ -173,7 +173,6 @@ public sealed partial class Collection : ComponentBase, IDisposable
             });
 
         return await OrderedCopies(copies, Order)
-
             .SeekBy(Seek, (SeekDirection)Direction)
             .Take(PageSize.Current)
             .ToSeekListAsync(_cancel.Token);
@@ -286,7 +285,7 @@ public sealed partial class Collection : ComponentBase, IDisposable
 
     internal Color PickedColors
     {
-        get => (Color)Colors & _validColors;
+        get => (Color)Colors & ValidColors;
         set
         {
             if (_isBusy)
@@ -296,13 +295,11 @@ public sealed partial class Collection : ComponentBase, IDisposable
 
             _isBusy = true;
 
-            // use value as a color toggle
-
-            var picked = PickedColors ^ value;
+            value ^= PickedColors; // use value as a picked colors toggle
 
             var changes = new Dictionary<string, object?>
             {
-                [nameof(Colors)] = picked is Color.None ? null : (int)picked,
+                [nameof(Colors)] = value is Color.None ? null : (int)value,
                 [nameof(Seek)] = null,
                 [nameof(Direction)] = null
             };
@@ -337,7 +334,7 @@ public sealed partial class Collection : ComponentBase, IDisposable
             Nav.GetUriWithQueryParameters(changes), replace: true);
     }
 
-    internal void SeekPage(SeekRequest<LocationCopy> request)
+    internal void SeekPage(SeekRequest<LocationCopy> value)
     {
         if (_isBusy)
         {
@@ -348,8 +345,8 @@ public sealed partial class Collection : ComponentBase, IDisposable
 
         var changes = new Dictionary<string, object?>
         {
-            [nameof(Seek)] = request.Seek?.Id,
-            [nameof(Direction)] = request.Direction switch
+            [nameof(Seek)] = value.Seek?.Id,
+            [nameof(Direction)] = value.Direction switch
             {
                 SeekDirection.Backwards => (int)SeekDirection.Backwards,
                 SeekDirection.Forward or _ => null

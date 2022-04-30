@@ -64,11 +64,6 @@ internal static class ExpressionHelpers
         return nodeName.StartsWith(ancestor, ordinal);
     }
 
-    public static PropertyInfo GetKeyProperty<TEntity>() where TEntity : class
-    {
-        return GetKeyProperty(typeof(TEntity));
-    }
-
     public static PropertyInfo GetKeyProperty(Type entityType)
     {
         if (!IsEntityType(entityType))
@@ -122,7 +117,8 @@ internal static class ExpressionHelpers
     }
 
     private static bool IsEntityType(Type type)
-    {
-        return !type.IsValueType && !type.IsGenericType;
-    }
+        => !type.IsValueType && !type.IsGenericType;
+
+    public static PropertyInfo GetKeyProperty<TEntity>() where TEntity : class
+        => GetKeyProperty(typeof(TEntity));
 }

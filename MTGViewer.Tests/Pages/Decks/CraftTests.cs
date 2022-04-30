@@ -75,10 +75,7 @@ public sealed class CraftTests : IAsyncLifetime, IDisposable
         await _testGen.ClearAsync();
     }
 
-    void IDisposable.Dispose()
-    {
-        _testContext.Dispose();
-    }
+    void IDisposable.Dispose() => _testContext.Dispose();
 
     [Fact]
     public void LoadData_NoUserNewDeck_Redirect()

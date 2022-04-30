@@ -16,7 +16,7 @@ public class ParseTextFilter
     public const string SearchType = "/t";
     public const string SearchText = "/o";
 
-    private const string Split = $@"(?<{nameof(Split)}>\/[nto])\s+";
+    private const string Split = $@"\s*(?<{nameof(Split)}>\/[nto])\s+";
 
     private readonly ILogger<ParseTextFilter> _logger;
 
@@ -67,24 +67,19 @@ public class ParseTextFilter
 
         if (capture.SequenceEqual(SearchType) && filter.Types is null)
         {
-            return filter with { Types = TextString(text) };
+            return filter with { Types = text.ToString() };
         }
 
         if (capture.SequenceEqual(SearchText) && filter.Text is null)
         {
-            return filter with { Text = TextString(text) };
+            return filter with { Text = text.ToString() };
         }
 
         if (filter.Name is null)
         {
-            return filter with { Name = TextString(text) };
+            return filter with { Name = text.ToString() };
         }
 
         return filter;
-    }
-
-    private static string TextString(ReadOnlySpan<char> text)
-    {
-        return text.Trim().ToString();
     }
 }

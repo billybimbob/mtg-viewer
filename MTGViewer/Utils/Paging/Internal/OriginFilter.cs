@@ -388,10 +388,8 @@ internal sealed class OriginFilter<TOrigin, TEntity>
             return node;
         }
 
-        private static bool IsNull(Expression node)
-        {
-            return node is ConstantExpression { Value: null };
-        }
+        private static bool IsNull(Expression node) => node is ConstantExpression { Value: null };
+
     }
 
     #endregion
@@ -405,10 +403,10 @@ internal sealed class OriginFilter<TOrigin, TEntity>
 
     private static bool IsValueComparable(Type type)
     {
-        return type is { IsValueType: true }
-            && type.IsAssignableTo(typeof(IComparable<>).MakeGenericType(type))
+        return (type is { IsValueType: true }
+            && type.IsAssignableTo(typeof(IComparable<>).MakeGenericType(type)))
 
-            || Nullable.GetUnderlyingType(type) is Type inner
-                && IsValueComparable(inner);
+            || (Nullable.GetUnderlyingType(type) is Type inner
+                && IsValueComparable(inner));
     }
 }

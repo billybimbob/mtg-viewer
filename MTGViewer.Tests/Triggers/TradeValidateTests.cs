@@ -28,15 +28,9 @@ public class TradeValidateTests : IAsyncLifetime
         _testGen = testGen;
     }
 
-    public async Task InitializeAsync()
-    {
-        await _testGen.SeedAsync();
-    }
+    public async Task InitializeAsync() => await _testGen.SeedAsync();
 
-    public async Task DisposeAsync()
-    {
-        await _testGen.ClearAsync();
-    }
+    public async Task DisposeAsync() => await _testGen.ClearAsync();
 
     [Fact]
     public async Task BeforeSave_NewTrade_Returns()

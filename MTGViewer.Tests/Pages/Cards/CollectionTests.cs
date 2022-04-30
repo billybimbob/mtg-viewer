@@ -48,10 +48,7 @@ public sealed class CollectionTests : IAsyncLifetime, IDisposable
         await _testGen.ClearAsync();
     }
 
-    void IDisposable.Dispose()
-    {
-        _testContext.Dispose();
-    }
+    void IDisposable.Dispose() => _testContext.Dispose();
 
     [Fact]
     public void LoadData_NoParameters_Success()

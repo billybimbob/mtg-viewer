@@ -37,17 +37,11 @@ public class TestMtgApiQuery : IMTGQuery
         _flipCards ??= SourceCards.Where(c => _flipQuery.HasFlip(c.Name));
 
     public IMTGCardSearch Where(Expression<Func<CardQuery, bool>> predicate)
-    {
-        return _mtgQuery.Where(predicate);
-    }
+        => _mtgQuery.Where(predicate);
 
     public IAsyncEnumerable<Card> CollectionAsync(IEnumerable<string> multiverseIds)
-    {
-        return _mtgQuery.CollectionAsync(multiverseIds);
-    }
+        => _mtgQuery.CollectionAsync(multiverseIds);
 
     public Task<Card?> FindAsync(string id, CancellationToken cancel = default)
-    {
-        return _mtgQuery.FindAsync(id, cancel);
-    }
+        => _mtgQuery.FindAsync(id, cancel);
 }

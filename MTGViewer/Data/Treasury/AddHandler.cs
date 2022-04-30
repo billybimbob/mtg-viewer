@@ -6,19 +6,16 @@ namespace MTGViewer.Data.Treasury;
 internal static class AddExtensions
 {
     public static void AddExact(this TreasuryContext treasuryContext, IEnumerable<CardRequest> requests)
-    {
-        new ExactAdd(treasuryContext, requests).AddCopies();
-    }
+        => new ExactAdd(treasuryContext, requests)
+            .AddCopies();
 
     public static void AddApproximate(this TreasuryContext treasuryContext, IEnumerable<CardRequest> requests)
-    {
-        new ApproximateAdd(treasuryContext, requests).AddCopies();
-    }
+        => new ApproximateAdd(treasuryContext, requests)
+            .AddCopies();
 
     public static void AddGuess(this TreasuryContext treasuryContext, IEnumerable<CardRequest> requests)
-    {
-        new GuessAdd(treasuryContext, requests).AddCopies();
-    }
+        => new GuessAdd(treasuryContext, requests)
+            .AddCopies();
 }
 
 internal abstract class AddHandler
@@ -161,15 +158,7 @@ internal class GuessAdd : AddHandler
             yield break;
         }
 
-        // descending so that the first added cards do not shift down the
-        // positioning of the sorted card holds
-        // each of the returned cards should have less effect on following returns
-        // keep eye on
-
-        var orderedRequests = CardRequests
-            .OrderByDescending(cr => cr.Copies)
-                .ThenByDescending(cr => cr.Card.Name)
-                .ThenByDescending(cr => cr.Card.SetName);
+        var orderedRequests = BoxSearcher.GetOrderedRequests(CardRequests, cr => cr.Card);
 
         foreach (var request in orderedRequests)
         {

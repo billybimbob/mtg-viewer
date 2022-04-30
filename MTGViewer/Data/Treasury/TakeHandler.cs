@@ -7,14 +7,12 @@ namespace MTGViewer.Data.Treasury;
 internal static class TakeExtensions
 {
     public static void TakeExact(this ExchangeContext exchangeContext)
-    {
-        new ExactTake(exchangeContext).ApplyTakes();
-    }
+        => new ExactTake(exchangeContext)
+            .ApplyTakes();
 
     public static void TakeApproximate(this ExchangeContext exchangeContext)
-    {
-        new ApproximateTake(exchangeContext).ApplyTakes();
-    }
+        => new ApproximateTake(exchangeContext)
+            .ApplyTakes();
 }
 
 internal abstract class TakeHandler

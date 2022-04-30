@@ -188,13 +188,14 @@ public class CreateModel : PageModel
         var wantNames = _dbContext.Wants
             .Where(w => w.LocationId == deck.Id)
             .GroupBy(w => w.Card.Name,
-                (Name, wants) =>
-                    new { Name, Copies = wants.Sum(w => w.Copies) });
+                (Name, wants) => new { Name, Copies = wants.Sum(w => w.Copies) });
 
         // TODO: prioritize requesting from exact card matches
 
         // intentionally leave wants unbounded by target since
         // that cap will be handled later
+
+        // keep eye on, this query potentially be expensive, and is also unbounded
 
         return _dbContext.Users
             .Where(u => u.Id != deck.Owner.Id && !u.ResetRequested)

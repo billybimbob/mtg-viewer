@@ -49,13 +49,11 @@ public sealed partial class Home : ComponentBase, IDisposable
 
         try
         {
-            var token = _cancel.Token;
+            await using var dbContext = await DbFactory.CreateDbContextAsync(_cancel.Token);
 
-            await using var dbContext = await DbFactory.CreateDbContextAsync(token);
+            _recentChanges = await GetRecentChangesAsync(dbContext, _cancel.Token);
 
-            _recentChanges = await GetRecentTransactionsAsync(dbContext, token);
-
-            _randomContext = await GetRandomContextAsync(dbContext, token);
+            _randomContext = await GetRandomContextAsync(dbContext, _cancel.Token);
 
             _currentTime = DateTime.UtcNow;
         }
@@ -90,6 +88,7 @@ public sealed partial class Home : ComponentBase, IDisposable
     private Task PersistCardData()
     {
         ApplicationState.PersistAsJson(nameof(_randomContext.Order), _randomContext?.Order);
+
         ApplicationState.PersistAsJson(nameof(_randomContext.Cards), _randomContext?.Cards);
 
         ApplicationState.PersistAsJson(nameof(_recentChanges), _recentChanges);
@@ -97,7 +96,7 @@ public sealed partial class Home : ComponentBase, IDisposable
         return Task.CompletedTask;
     }
 
-    private async Task<RecentTransaction[]> GetRecentTransactionsAsync(CardDbContext dbContext, CancellationToken cancel)
+    private async Task<RecentTransaction[]> GetRecentChangesAsync(CardDbContext dbContext, CancellationToken cancel)
     {
         if (ApplicationState.TryGetData(nameof(_recentChanges), out RecentTransaction[]? changes))
         {
@@ -140,21 +139,6 @@ public sealed partial class Home : ComponentBase, IDisposable
 
     #endregion
 
-    internal bool IsImageLoaded(CardImage card)
-    {
-        if (_randomContext is null)
-        {
-            return false;
-        }
-
-        if (_randomContext is { LoadedImages.Count: 0 } && !_isInteractive)
-        {
-            return true;
-        }
-
-        return _randomContext.LoadedImages.Contains(card.Id);
-    }
-
     internal static string CardNames(IEnumerable<RecentChange> changes)
     {
         var cardNames = changes
@@ -176,10 +160,22 @@ public sealed partial class Home : ComponentBase, IDisposable
         };
     }
 
-    internal void OnImageLoad(CardImage card)
+    internal bool IsImageLoaded(CardImage card)
     {
-        _randomContext?.OnImageLoad(card);
+        if (_randomContext is null)
+        {
+            return false;
+        }
+
+        if (_randomContext is { LoadedImages.Count: 0 } && !_isInteractive)
+        {
+            return true;
+        }
+
+        return _randomContext.LoadedImages.Contains(card.Id);
     }
+
+    internal void OnImageLoad(CardImage card) => _randomContext?.OnImageLoad(card);
 
     internal async Task LoadMoreCardsAsync()
     {
@@ -192,11 +188,9 @@ public sealed partial class Home : ComponentBase, IDisposable
 
         try
         {
-            var token = _cancel.Token;
+            await using var dbContext = await DbFactory.CreateDbContextAsync(_cancel.Token);
 
-            await using var dbContext = await DbFactory.CreateDbContextAsync(token);
-
-            await _randomContext.LoadNextChunkAsync(dbContext, token);
+            await _randomContext.LoadNextChunkAsync(dbContext, _cancel.Token);
         }
         catch (OperationCanceledException ex)
         {
@@ -216,17 +210,17 @@ public sealed partial class Home : ComponentBase, IDisposable
 
         public IReadOnlyList<string[]> Order { get; }
 
-        public IReadOnlyCollection<string> LoadedImages => _imageLoaded;
-
         public IReadOnlyList<CardImage> Cards => _cards;
+
+        public IReadOnlyCollection<string> LoadedImages => _imageLoaded;
 
         public bool HasMore => _cards.Count < _limit;
 
         private RandomCardsContext(IReadOnlyList<string[]> loadOrder, List<CardImage> cards)
         {
             _cards = cards;
-            _limit = loadOrder.Sum(chunk => chunk.Length);
             _imageLoaded = new HashSet<string>();
+            _limit = loadOrder.Sum(chunk => chunk.Length);
 
             Order = loadOrder;
         }

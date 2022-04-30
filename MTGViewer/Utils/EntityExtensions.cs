@@ -16,12 +16,8 @@ internal static class EntityExtensions
     }
 
     internal static string DisplayName<TEntity, TProperty>(
-        this TEntity _,
-        Expression<Func<TEntity, TProperty>> property)
-        where TEntity : class
-    {
-        return DisplayName(property);
-    }
+        this TEntity _, Expression<Func<TEntity, TProperty>> property) where TEntity : class
+        => DisplayName(property);
 
     internal static string DisplayName<TEntity>(this TEntity _, string property)
     {

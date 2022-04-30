@@ -44,7 +44,5 @@ internal class MtgCardSearch : IMTGCardSearch
     }
 
     public Task<OffsetList<Card>> SearchAsync(CancellationToken cancel = default)
-    {
-        return _provider.SearchAsync(this, cancel);
-    }
+        => _provider.SearchAsync(this, cancel);
 }

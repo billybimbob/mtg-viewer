@@ -6,19 +6,16 @@ namespace MTGViewer.Data.Treasury;
 internal static class ReturnExtensions
 {
     public static void ReturnExact(this ExchangeContext exchangeContext)
-    {
-        new ExactReturn(exchangeContext).ApplyReturns();
-    }
+        => new ExactReturn(exchangeContext)
+            .ApplyReturns();
 
     public static void ReturnApproximate(this ExchangeContext exchangeContext)
-    {
-        new ApproximateReturn(exchangeContext).ApplyReturns();
-    }
+        => new ApproximateReturn(exchangeContext)
+            .ApplyReturns();
 
     public static void ReturnGuess(this ExchangeContext exchangeContext)
-    {
-        new GuessReturn(exchangeContext).ApplyReturns();
-    }
+        => new GuessReturn(exchangeContext)
+            .ApplyReturns();
 }
 
 internal abstract class ReturnHandler
@@ -161,10 +158,7 @@ internal class GuessReturn : ReturnHandler
         // each of the returned cards should have less effect on following returns
         // keep eye on
 
-        var orderedGivebacks = givebacks
-            .OrderByDescending(g => g.Copies)
-                .ThenByDescending(g => g.Card.Name)
-                .ThenByDescending(g => g.Card.SetName);
+        var orderedGivebacks = BoxSearcher.GetOrderedRequests(givebacks, g => g.Card);
 
         foreach (var giveBack in orderedGivebacks)
         {

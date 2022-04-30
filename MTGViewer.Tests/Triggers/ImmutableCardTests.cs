@@ -28,15 +28,9 @@ public class ImmutableCardTests : IAsyncLifetime
         _testGen = testGen;
     }
 
-    public async Task InitializeAsync()
-    {
-        await _testGen.SeedAsync();
-    }
+    public Task InitializeAsync() => _testGen.SeedAsync();
 
-    public async Task DisposeAsync()
-    {
-        await _testGen.ClearAsync();
-    }
+    public Task DisposeAsync() => _testGen.ClearAsync();
 
     [Fact]
     public async Task BeforeSave_AddCard_Returns()

@@ -6,14 +6,12 @@ namespace MTGViewer.Data.Treasury;
 internal static class ExcessExtensions
 {
     public static void LowerExactExcess(this TreasuryContext treasuryContext)
-    {
-        new ExactExcess(treasuryContext).TransferExcess();
-    }
+        => new ExactExcess(treasuryContext)
+            .TransferExcess();
 
     public static void LowerApproximateExcess(this TreasuryContext treasuryContext)
-    {
-        new ApproximateExcess(treasuryContext).TransferExcess();
-    }
+        => new ApproximateExcess(treasuryContext)
+            .TransferExcess();
 }
 
 internal abstract class ExcessHandler
@@ -90,6 +88,7 @@ internal class ExactExcess : ExcessHandler
 internal class ApproximateExcess : ExcessHandler
 {
     private ILookup<string, Storage>? _approxMatches;
+    private BoxSearcher? _boxSearch;
 
     public ApproximateExcess(TreasuryContext treasuryContext) : base(treasuryContext)
     { }
@@ -115,11 +114,13 @@ internal class ApproximateExcess : ExcessHandler
 
     private IEnumerable<Assignment<Hold>> FitToStorage(Hold excess)
     {
-        _approxMatches ??= AddLookup();
-
         var (available, _, _, storageSpaces) = TreasuryContext;
 
+        _approxMatches ??= AddLookup();
+        _boxSearch ??= new BoxSearcher(available);
+
         var matches = _approxMatches[excess.Card.Name]
+            .Union(_boxSearch.FindBestBoxes(excess.Card))
             .Union(available);
 
         return Assigner.FitToStorage(excess, excess.Copies, matches, storageSpaces);

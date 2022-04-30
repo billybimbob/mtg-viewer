@@ -32,25 +32,25 @@ public class FileCardStorage
         _loadProgress = loadProgress;
     }
 
-    public Task<Stream> GetUserBackupAsync(string userId, CancellationToken cancel = default)
+    public async Task<Stream> GetUserBackupAsync(string userId, CancellationToken cancel = default)
     {
         var stream = _bulkOperations.GetUserStream(userId);
 
-        return SerializeAsync(stream, cancel);
+        return await SerializeAsync(stream, cancel);
     }
 
-    public Task<Stream> GetTreasuryBackupAsync(CancellationToken cancel = default)
+    public async Task<Stream> GetTreasuryBackupAsync(CancellationToken cancel = default)
     {
         var stream = _bulkOperations.GetTreasuryStream();
 
-        return SerializeAsync(stream, cancel);
+        return await SerializeAsync(stream, cancel);
     }
 
-    public Task<Stream> GetDefaultBackupAsync(CancellationToken cancel = default)
+    public async Task<Stream> GetDefaultBackupAsync(CancellationToken cancel = default)
     {
         var stream = _bulkOperations.GetDefaultStream();
 
-        return SerializeAsync(stream, cancel);
+        return await SerializeAsync(stream, cancel);
     }
 
     private static async Task<Stream> SerializeAsync(CardStream stream, CancellationToken cancel)
@@ -152,11 +152,16 @@ public class FileCardStorage
         await _bulkOperations.MergeAsync(csvAdditions, cancel);
     }
 
-    private static Task<Dictionary<string, int>> CsvAdditionsAsync(
+    private static async Task<IReadOnlyDictionary<string, int>> CsvAdditionsAsync(
         CsvReader csv,
         CancellationToken cancel)
     {
-        return csv
+        static ValueTask<string> MultiverseIdAsync(CsvCard card, CancellationToken _)
+        {
+            return ValueTask.FromResult(card.MultiverseID);
+        }
+
+        var additions = await csv
             .GetRecordsAsync<CsvCard>(CancellationToken.None) // cancel token given later
             .Where(cc => cc.Quantity > 0)
 
@@ -166,12 +171,10 @@ public class FileCardStorage
                     (multiverseId, quantity: await ccs.SumAsync(cc => cc.Quantity, cnl)))
 
             .ToDictionaryAsync(
-                cc => cc.multiverseId, cc => cc.quantity, cancel)
-            .AsTask();
+                cc => cc.multiverseId, cc => cc.quantity, cancel);
 
-        static ValueTask<string> MultiverseIdAsync(CsvCard card, CancellationToken _)
-        {
-            return ValueTask.FromResult(card.MultiverseID);
-        }
+        // ensure that the iter order is deterministic
+
+        return new SortedList<string, int>(additions);
     }
 }

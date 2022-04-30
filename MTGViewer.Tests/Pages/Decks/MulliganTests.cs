@@ -64,10 +64,7 @@ public sealed class MulliganTests : IAsyncLifetime, IDisposable
         await _testGen.ClearAsync();
     }
 
-    void IDisposable.Dispose()
-    {
-        _testContext.Dispose();
-    }
+    void IDisposable.Dispose() => _testContext.Dispose();
 
     [Fact]
     public async Task LoadData_NoUser_Redirect()

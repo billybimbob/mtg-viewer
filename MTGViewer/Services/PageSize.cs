@@ -10,16 +10,18 @@ namespace MTGViewer.Services;
 
 public sealed class PageSize : IDisposable
 {
-    private readonly IConfiguration _config;
+    private readonly IConfigurationSection _sizes;
     private readonly IActionContextAccessor _actionAccessor;
     private readonly RouteDataAccessor _routeAccessor;
+
+    private int? _current;
 
     public PageSize(
         IConfiguration config,
         IActionContextAccessor actionAccessor,
         RouteDataAccessor routeAccessor)
     {
-        _config = config.GetSection(nameof(PageSize));
+        _sizes = config.GetSection(nameof(PageSize));
         _actionAccessor = actionAccessor;
 
         _routeAccessor = routeAccessor;
@@ -29,27 +31,17 @@ public sealed class PageSize : IDisposable
         Limit = GetNormalizedSize(nameof(Limit), 256);
     }
 
+    void IDisposable.Dispose() => _routeAccessor.RouteChanged -= ResetPage;
+
     public int Default { get; }
     public int Limit { get; }
+    public int Current => _current ??= GetCurrentSize();
 
-    private int? _current;
-    public int Current =>
-        _current ??= GetComponentSize() ?? GetActionSize()
-            ?? throw new InvalidOperationException("No action handler exists");
-
-    public void Dispose()
-    {
-        _routeAccessor.RouteChanged -= ResetPage;
-    }
-
-    private void ResetPage(object? sender, RouteDataEventArgs args)
-    {
-        _current = null;
-    }
+    private void ResetPage(object? sender, RouteDataEventArgs args) => _current = null;
 
     private int GetNormalizedSize(string key, int fallback)
     {
-        return _config.GetValue(key, null as int?) switch
+        return _sizes.GetValue(key, null as int?) switch
         {
             int i and > 0 => i,
             _ => fallback
@@ -58,11 +50,18 @@ public sealed class PageSize : IDisposable
 
     private int? GetNormalizedSize(string key)
     {
-        return _config.GetValue(key, null as int?) switch
+        return _sizes.GetValue(key, null as int?) switch
         {
             int i and > 0 => i,
             _ => null
         };
+    }
+
+    private int GetCurrentSize()
+    {
+        return GetComponentSize()
+            ?? GetActionSize()
+            ?? throw new InvalidOperationException("No action handler exists");
     }
 
     private int? GetComponentSize()

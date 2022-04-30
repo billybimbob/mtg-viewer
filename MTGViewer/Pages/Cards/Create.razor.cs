@@ -597,7 +597,7 @@ public sealed partial class Create : ComponentBase, IDisposable
         dbContext.Cards.AddRange(newCards);
     }
 
-    private static Task<List<string>> ExistingCardIdsAsync(
+    private static async Task<IReadOnlyList<string>> ExistingCardIdsAsync(
         CardDbContext dbContext,
         IReadOnlyList<Card> cards,
         int limit,
@@ -609,12 +609,11 @@ public sealed partial class Create : ComponentBase, IDisposable
                 .Select(c => c.Id)
                 .ToAsyncEnumerable();
 
-            return dbContext.Cards
+            return await dbContext.Cards
                 .Select(c => c.Id)
                 .AsAsyncEnumerable()
                 .Intersect(cardIds)
-                .ToListAsync(cancel)
-                .AsTask();
+                .ToListAsync(cancel);
         }
         else
         {
@@ -622,7 +621,7 @@ public sealed partial class Create : ComponentBase, IDisposable
                 .Select(c => c.Id)
                 .ToArray();
 
-            return dbContext.Cards
+            return await dbContext.Cards
                 .Select(c => c.Id)
                 .Where(cid => cardIds.Contains(cid))
                 .ToListAsync(cancel);
