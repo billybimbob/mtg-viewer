@@ -1,5 +1,5 @@
 using Xunit;
-using MTGViewer.Services;
+using MTGViewer.Services.Symbols;
 
 namespace MTGViewer.Tests.Services;
 

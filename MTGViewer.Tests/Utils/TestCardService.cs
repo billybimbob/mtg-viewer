@@ -16,7 +16,7 @@ using MtgApiManager.Lib.Core;
 using MtgApiManager.Lib.Model;
 using MtgApiManager.Lib.Service;
 
-using MTGViewer.Services;
+using MTGViewer.Services.Search;
 using MTGViewer.Tests.Utils.Dto;
 
 namespace MTGViewer.Tests.Utils;

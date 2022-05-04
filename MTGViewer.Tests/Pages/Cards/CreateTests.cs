@@ -13,7 +13,7 @@ using Xunit;
 
 using MTGViewer.Data;
 using MTGViewer.Pages.Cards;
-using MTGViewer.Services;
+using MTGViewer.Services.Search;
 using MTGViewer.Tests.Utils;
 
 namespace MTGViewer.Tests.Pages.Cards;

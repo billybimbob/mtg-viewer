@@ -38,6 +38,8 @@ public sealed record TransactionDetails
     public int Copies { get; init; }
 
     public bool CanDelete { get; init; }
+
+    public bool IsEmpty => Copies == 0;
 }
 
 public sealed record ChangeDetails

@@ -5,7 +5,7 @@ using System.Linq.Expressions;
 using MtgApiManager.Lib.Service;
 using MTGViewer.Data;
 
-namespace MTGViewer.Services;
+namespace MTGViewer.Services.Search;
 
 internal class MtgTypeParameter : IMtgParameter
 {

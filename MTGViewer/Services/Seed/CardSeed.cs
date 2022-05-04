@@ -10,7 +10,7 @@ using Microsoft.Extensions.Hosting;
 using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
 
-namespace MTGViewer.Services;
+namespace MTGViewer.Services.Seed;
 
 internal class CardSeed : IHostedService
 {

@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace MTGViewer.Services;
+namespace MTGViewer.Services.Symbols;
 
 public class SymbolFormatter : ISymbolFinder, ISymbolTranslator
 {

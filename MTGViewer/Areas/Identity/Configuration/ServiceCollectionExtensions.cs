@@ -10,7 +10,7 @@ using MTGViewer.Utils;
 
 namespace Microsoft.Extensions.DependencyInjection;
 
-public static partial class ServiceCollectionExtensions
+public static partial class StartupExtensions
 {
     public static IServiceCollection AddCardUsers(this IServiceCollection services, IConfiguration config)
     {

@@ -12,7 +12,7 @@ using Xunit;
 
 using MTGViewer.Data;
 using MTGViewer.Pages.Treasury;
-using MTGViewer.Services.Internal;
+using MTGViewer.Services.Infrastructure;
 using MTGViewer.Tests.Utils;
 
 namespace MTGViewer.Tests.Pages.Treasury;

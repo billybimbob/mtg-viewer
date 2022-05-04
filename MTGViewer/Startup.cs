@@ -10,7 +10,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
-using MtgApiManager.Lib.Service;
 using MTGViewer.Middleware;
 using MTGViewer.Services;
 
@@ -69,25 +68,20 @@ public class Startup
 
         services
             .AddSymbols(options => options
-                .AddFormatter<CardText>(isDefault: true)
-                .AddTranslator<ManaTranslator>(isDefault: true))
-            .AddSingleton<ParseTextFilter>();
+                .AddFormatter<Services.Symbols.CardText>(isDefault: true)
+                .AddTranslator<Services.Symbols.ManaTranslator>(isDefault: true));
 
         services
-            .AddSingleton<IMtgServiceProvider, MtgServiceProvider>()
-            .AddScoped(provider => provider
-                .GetRequiredService<IMtgServiceProvider>()
-                .GetCardService());
+            .AddSingleton<ParseTextFilter>()
+            .AddScoped<LoadingProgress>()
+            .AddScoped<FileCardStorage>();
 
         services
-            .AddScoped<IMTGQuery, MtgApiQuery>()
-            .AddScoped<MtgApiFlipQuery>();
+            .AddScoped<BackupFactory>()
+            .AddScoped<Services.Infrastructure.MergeHandler>()
+            .AddScoped<Services.Infrastructure.ResetHandler>();
 
-        services
-            .Configure<SeedSettings>(_config.GetSection(nameof(SeedSettings)))
-            .AddScoped<BulkOperations>()
-            .AddScoped<FileCardStorage>()
-            .AddScoped<LoadingProgress>();
+        services.AddMtgQueries();
 
         if (_env.IsDevelopment())
         {
@@ -96,7 +90,7 @@ public class Startup
 
         if (!_env.IsProduction())
         {
-            services.AddScoped<CardDataGenerator>();
+            services.AddCardSeedServices(_config);
         }
     }
 

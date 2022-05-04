@@ -14,6 +14,12 @@ using MTGViewer.Areas.Identity.Services;
 using MTGViewer.Data;
 using MTGViewer.Data.Configuration;
 using MTGViewer.Services;
+
+using MTGViewer.Services.Infrastructure;
+using MTGViewer.Services.Search;
+using MTGViewer.Services.Seed;
+using MTGViewer.Services.Symbols;
+
 using MTGViewer.Triggers;
 using MTGViewer.Tests.Utils;
 
@@ -111,11 +117,18 @@ public class Startup
             .AddScoped<MtgApiFlipQuery>();
 
         services
-            .AddScoped<BulkOperations>()
-            .AddScoped<FileCardStorage>()
-            .AddScoped<LoadingProgress>();
+            .AddSingleton<ParseTextFilter>()
+            .AddScoped<LoadingProgress>()
+            .AddScoped<FileCardStorage>();
 
         services
+            .AddScoped<BackupFactory>()
+            .AddScoped<MergeHandler>()
+            .AddScoped<ResetHandler>();
+
+        services
+            .Configure<SeedSettings>(config.GetSection(nameof(SeedSettings)))
+            .AddScoped<SeedHandler>()
             .AddScoped<CardDataGenerator>()
             .AddScoped<TestDataGenerator>();
 

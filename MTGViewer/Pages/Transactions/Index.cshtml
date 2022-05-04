@@ -1,25 +1,25 @@
 @page "{id:int?}"
 @model Transactions.IndexModel
 @{
-    ViewData["Title"] = Model.DeckName is string deckName
+    ViewData["Title"] = Model.LocationName is string deckName
         ? $"{deckName} Transactions"
         : "Collection Transactions";
 }
 @inject SymbolFormatter MtgSymbols
 
-@if (Model.DeckName is null)
+@if (Model.LocationName is null)
 {
     <h1> Collection Changes </h1>
 }
 else
 {
-    <h1> @Model.DeckName Changes </h1>
+    <h1> @Model.LocationName Changes </h1>
 }
 
 <div class="btn-group pb-3">
     <partial name="_TimeZonePartial" for="TimeZone"/>
 
-    @if (Model.DeckName is not null)
+    @if (Model.LocationName is not null)
     {
         <a asp-route-id="@null" class="btn btn-secondary" role="button"> All Changes </a>
     }

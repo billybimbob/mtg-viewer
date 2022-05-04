@@ -15,6 +15,7 @@ using Microsoft.Extensions.Logging;
 using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
 using MTGViewer.Services;
+using MTGViewer.Services.Search;
 using MTGViewer.Utils;
 
 namespace MTGViewer.Pages.Cards;

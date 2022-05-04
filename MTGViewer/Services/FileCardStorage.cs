@@ -9,120 +9,31 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
 using CsvHelper;
-
-using MTGViewer.Services.Internal;
+using MTGViewer.Services.Infrastructure;
 
 namespace MTGViewer.Services;
 
 public class FileCardStorage
 {
-    private readonly string _defaultFilename;
-    private readonly BulkOperations _bulkOperations;
     private readonly LoadingProgress _loadProgress;
+    private readonly MergeHandler _mergeHandler;
 
-    public FileCardStorage(
-        IOptions<SeedSettings> seedOptions,
-        BulkOperations bulkOperations,
-        LoadingProgress loadProgress)
+    public FileCardStorage(LoadingProgress loadProgress, MergeHandler mergeHandler)
     {
-        _defaultFilename = Path.ChangeExtension(seedOptions.Value.JsonPath, ".json");
-        _bulkOperations = bulkOperations;
         _loadProgress = loadProgress;
+        _mergeHandler = mergeHandler;
     }
 
-    public async Task<Stream> GetUserBackupAsync(string userId, CancellationToken cancel = default)
-    {
-        var stream = _bulkOperations.GetUserStream(userId);
-
-        return await SerializeAsync(stream, cancel);
-    }
-
-    public async Task<Stream> GetTreasuryBackupAsync(CancellationToken cancel = default)
-    {
-        var stream = _bulkOperations.GetTreasuryStream();
-
-        return await SerializeAsync(stream, cancel);
-    }
-
-    public async Task<Stream> GetDefaultBackupAsync(CancellationToken cancel = default)
-    {
-        var stream = _bulkOperations.GetDefaultStream();
-
-        return await SerializeAsync(stream, cancel);
-    }
-
-    private static async Task<Stream> SerializeAsync(CardStream stream, CancellationToken cancel)
-    {
-        var serializeOptions = new JsonSerializerOptions
-        {
-            ReferenceHandler = ReferenceHandler.Preserve
-        };
-
-        // copy all data to memory, keep eye on
-        // could possibly use temp file?
-
-        var utf8Stream = new MemoryStream();
-
-        var data = await CardData.FromStreamAsync(stream, cancel);
-
-        await JsonSerializer.SerializeAsync(utf8Stream, data, serializeOptions, cancel);
-
-        utf8Stream.Position = 0;
-
-        return utf8Stream;
-    }
-
-    public async Task WriteBackupAsync(string? path = default, CancellationToken cancel = default)
-    {
-        path ??= Path.Combine(Directory.GetCurrentDirectory(), _defaultFilename);
-
-        await using var writer = File.Create(path);
-
-        var stream = _bulkOperations.GetSeedStream();
-
-        var serializeOptions = new JsonSerializerOptions
-        {
-            ReferenceHandler = ReferenceHandler.Preserve,
-            WriteIndented = true
-        };
-
-        await JsonSerializer.SerializeAsync(writer, stream, serializeOptions, cancel);
-    }
-
-    public async Task JsonSeedAsync(string? path = default, CancellationToken cancel = default)
-    {
-        path ??= Path.Combine(Directory.GetCurrentDirectory(), _defaultFilename);
-
-        await using var reader = File.OpenRead(path);
-
-        var deserializeOptions = new JsonSerializerOptions
-        {
-            ReferenceHandler = ReferenceHandler.Preserve,
-            PropertyNameCaseInsensitive = true
-        };
-
-        var data = await JsonSerializer.DeserializeAsync<CardData>(reader, deserializeOptions, cancel);
-        if (data is null)
-        {
-            throw new ArgumentException("Json file format is not valid", nameof(path));
-        }
-
-        _loadProgress.AddProgress(10); // percent is a guess, TODO: more informed value
-
-        await _bulkOperations.SeedAsync(data, cancel);
-    }
-
-    public async Task JsonAddAsync(Stream jsonStream, CancellationToken cancel = default)
+    public async Task AddFromJsonAsync(Stream jsonStream, CancellationToken cancel = default)
     {
         var deserializeOptions = new JsonSerializerOptions
         {
             ReferenceHandler = ReferenceHandler.Preserve,
-            PropertyNameCaseInsensitive = true
         };
 
         var data = await JsonSerializer.DeserializeAsync<CardData>(jsonStream, deserializeOptions, cancel);
+
         if (data is null)
         {
             throw new ArgumentException("Json file format is not valid", nameof(jsonStream));
@@ -130,7 +41,7 @@ public class FileCardStorage
 
         _loadProgress.AddProgress(10); // percent is a guess, TODO: more informed value
 
-        await _bulkOperations.MergeAsync(data, cancel);
+        await _mergeHandler.MergeAsync(data, cancel);
     }
 
     private sealed class CsvCard
@@ -140,7 +51,7 @@ public class FileCardStorage
         public int Quantity { get; set; }
     }
 
-    public async Task CsvAddAsync(Stream csvStream, CancellationToken cancel = default)
+    public async Task AddFromCsvAsync(Stream csvStream, CancellationToken cancel = default)
     {
         using var readStream = new StreamReader(csvStream);
         using var csv = new CsvReader(readStream, CultureInfo.InvariantCulture);
@@ -149,7 +60,7 @@ public class FileCardStorage
 
         _loadProgress.AddProgress(10); // percent is a guess, TODO: more informed value
 
-        await _bulkOperations.MergeAsync(csvAdditions, cancel);
+        await _mergeHandler.MergeAsync(csvAdditions, cancel);
     }
 
     private static async Task<IReadOnlyDictionary<string, int>> CsvAdditionsAsync(

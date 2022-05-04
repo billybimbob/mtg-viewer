@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace MTGViewer.Services;
+namespace MTGViewer.Services.Symbols;
 
 public interface ISymbolFinder
 {

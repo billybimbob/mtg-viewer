@@ -87,15 +87,15 @@ public class DeletePersonalDataModel : PageModel
             return Page();
         }
 
-        bool referenceDeleted = await _referenceManager.DeleteReferenceAsync(user, cancel);
-        if (!referenceDeleted)
+        var result = await _userManager.DeleteAsync(user);
+        if (!result.Succeeded)
         {
             ModelState.AddModelError(string.Empty, "Failed to delete the user");
             return Page();
         }
 
-        var result = await _userManager.DeleteAsync(user);
-        if (!result.Succeeded)
+        bool referenceDeleted = await _referenceManager.DeleteReferenceAsync(user, cancel);
+        if (!referenceDeleted)
         {
             ModelState.AddModelError(string.Empty, "Failed to delete the user");
             return Page();

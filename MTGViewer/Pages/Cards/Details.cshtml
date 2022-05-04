@@ -4,6 +4,8 @@
     ViewData["Title"] = $"{Model.Card.Name} - Details";
 }
 
+@using MTGViewer.Services.Search
+
 @inject IAuthorizationService AuthorizationService
 @inject SymbolFormatter MtgSymbols
 @inject MtgApiFlipQuery FlipQuery

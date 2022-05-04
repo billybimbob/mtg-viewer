@@ -1,6 +1,6 @@
 using MtgApiManager.Lib.Service;
 
-namespace MTGViewer.Services;
+namespace MTGViewer.Services.Search;
 
 internal interface IMtgParameter
 {

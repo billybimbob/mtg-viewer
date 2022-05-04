@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using MTGViewer.Data;
 
-namespace MTGViewer.Services;
+namespace MTGViewer.Services.Symbols;
 
 public class CardText : ISymbolFinder, ISymbolTranslator
 {

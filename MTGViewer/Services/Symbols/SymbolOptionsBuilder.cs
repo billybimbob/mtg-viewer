@@ -1,71 +1,7 @@
 using System;
 using System.Collections.Generic;
-using Microsoft.Extensions.Options;
-using MTGViewer.Services;
 
-namespace Microsoft.Extensions.DependencyInjection;
-
-public static class MTGSymbolExtensions
-{
-    public static IServiceCollection AddSymbols(
-        this IServiceCollection services, Action<SymbolOptionsBuilder>? builder = null)
-    {
-        var optionsBuilder = GetOptionsBuilder(builder);
-
-        services
-            .AddOptions<SymbolOptions>()
-            .Configure(options =>
-            {
-                options.DefaultFinder = optionsBuilder.DefaultFinder!;
-                options.DefaultTranslator = optionsBuilder.DefaultTranslator!;
-            });
-
-        foreach (var handler in optionsBuilder.SymbolHandlers)
-        {
-            services.AddScoped(handler);
-        }
-
-        services
-            .AddScoped(DefaultFinderFactory)
-            .AddScoped(DefaultTranslatorFactory)
-            .AddScoped<SymbolFormatter>();
-
-        return services;
-    }
-
-    private static SymbolOptionsBuilder GetOptionsBuilder(Action<SymbolOptionsBuilder>? builder = null)
-    {
-        var optionsBuilder = new SymbolOptionsBuilder()
-            .AddFormatter<CardText>(isDefault: true);
-
-        builder?.Invoke(optionsBuilder);
-
-        return optionsBuilder;
-    }
-
-    private static ISymbolFinder DefaultFinderFactory(IServiceProvider provider)
-    {
-        var options = provider.GetRequiredService<IOptions<SymbolOptions>>();
-        var defaultFinder = options.Value.DefaultFinder;
-
-        return (ISymbolFinder)provider.GetRequiredService(defaultFinder);
-    }
-
-    private static ISymbolTranslator DefaultTranslatorFactory(IServiceProvider provider)
-    {
-        var options = provider.GetRequiredService<IOptions<SymbolOptions>>();
-        var defaultTranslator = options.Value.DefaultTranslator;
-
-        return (ISymbolTranslator)provider.GetRequiredService(defaultTranslator);
-    }
-}
-
-public class SymbolOptions
-{
-    public Type DefaultFinder { get; set; } = default!;
-
-    public Type DefaultTranslator { get; set; } = default!;
-}
+namespace MTGViewer.Services.Symbols;
 
 public class SymbolOptionsBuilder
 {

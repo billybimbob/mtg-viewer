@@ -17,12 +17,12 @@ namespace MTGViewer.Pages.Treasury;
 [Authorize]
 public class ExportModel : PageModel
 {
-    private readonly FileCardStorage _fileStorage;
+    private readonly BackupFactory _backupFactory;
     private readonly UserManager<CardUser> _userManager;
 
-    public ExportModel(FileCardStorage fileStorage, UserManager<CardUser> userManager)
+    public ExportModel(BackupFactory backupFactory, UserManager<CardUser> userManager)
     {
-        _fileStorage = fileStorage;
+        _backupFactory = backupFactory;
         _userManager = userManager;
     }
 
@@ -56,9 +56,9 @@ public class ExportModel : PageModel
 
         var backup = BackupType switch // file stream should close backup
         {
-            DataScope.User => await _fileStorage.GetUserBackupAsync(userId, cancel),
-            DataScope.Treasury => await _fileStorage.GetTreasuryBackupAsync(cancel),
-            DataScope.Complete or _ => await _fileStorage.GetDefaultBackupAsync(cancel)
+            DataScope.User => await _backupFactory.GetUserBackupAsync(userId, cancel),
+            DataScope.Treasury => await _backupFactory.GetTreasuryBackupAsync(cancel),
+            DataScope.Complete or _ => await _backupFactory.GetDefaultBackupAsync(cancel)
         };
 
         string userName = _userManager.GetDisplayName(User) ?? userId;

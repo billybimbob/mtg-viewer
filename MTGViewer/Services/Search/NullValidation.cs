@@ -2,9 +2,9 @@ using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Reflection;
 
-namespace MTGViewer.Services;
+namespace MTGViewer.Services.Search;
 
-public class NullValidation<TEntity> : IValidatableObject where TEntity : notnull
+internal class NullValidation<TEntity> : IValidatableObject where TEntity : notnull
 {
     private readonly TEntity _entity;
     private readonly ValidationContext _nestedValidation;

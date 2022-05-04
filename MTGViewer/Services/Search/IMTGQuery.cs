@@ -6,7 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using MTGViewer.Data;
 
-namespace MTGViewer.Services;
+namespace MTGViewer.Services.Search;
 
 public interface IMTGQuery
 {

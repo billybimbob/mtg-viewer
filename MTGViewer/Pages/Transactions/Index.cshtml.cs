@@ -44,7 +44,7 @@ public class IndexModel : PageModel
 
     public SeekList<TransactionPreview> Transactions { get; private set; } = SeekList<TransactionPreview>.Empty;
 
-    public string? DeckName { get; private set; }
+    public string? LocationName { get; private set; }
 
     public TimeZoneInfo TimeZone { get; private set; } = TimeZoneInfo.Utc;
 
@@ -55,9 +55,9 @@ public class IndexModel : PageModel
         string? tz,
         CancellationToken cancel)
     {
-        string? deckName = await GetDeckNameAsync(id, cancel);
+        string? locationName = await GetLocationNameAsync(id, cancel);
 
-        if (id is not null && deckName is null)
+        if (id is not null && locationName is null)
         {
             return RedirectToPage(new { id = null as int? });
         }
@@ -80,12 +80,12 @@ public class IndexModel : PageModel
         UpdateTimeZone(tz);
 
         Transactions = transactions;
-        DeckName = deckName;
+        LocationName = locationName;
 
         return Page();
     }
 
-    private async Task<string?> GetDeckNameAsync(int? id, CancellationToken cancel)
+    private async Task<string?> GetLocationNameAsync(int? id, CancellationToken cancel)
     {
         if (id is null)
         {
@@ -94,14 +94,11 @@ public class IndexModel : PageModel
 
         string? userId = _userManager.GetUserId(User);
 
-        if (userId is null)
-        {
-            return null;
-        }
-
-        return await _dbContext.Decks
-            .Where(d => d.Id == id && d.OwnerId == userId)
-            .Select(d => d.Name)
+        return await _dbContext.Locations
+            .Where(l => l.Id == id
+                && (l is Box
+                || (l is Deck && (l as Deck)!.OwnerId == userId)))
+            .Select(l => l.Name)
             .SingleOrDefaultAsync(cancel);
     }
 

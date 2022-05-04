@@ -3,7 +3,13 @@ namespace MTGViewer.Services;
 
 public class MulliganOptions
 {
+    /// <summary>
+    /// Max hand size of starting mulligan
+    /// </summary>
     public int HandSize { get; set; } = 7;
 
-    public int DrawInterval { get; set; } = 300; // refresh time in ms
+    /// <summary>
+    /// Refresh time in milliseconds
+    /// </summary>
+    public int DrawInterval { get; set; } = 300;
 }

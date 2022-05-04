@@ -11,7 +11,7 @@ using MtgApiManager.Lib.Model;
 using MtgApiManager.Lib.Service;
 using MTGViewer.Data;
 
-namespace MTGViewer.Services;
+namespace MTGViewer.Services.Search;
 
 public sealed class MtgApiFlipQuery
 {

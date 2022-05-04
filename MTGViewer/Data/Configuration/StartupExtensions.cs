@@ -3,22 +3,21 @@ using Microsoft.Extensions.Configuration;
 
 using MTGViewer.Data;
 using MTGViewer.Data.Configuration;
-using MTGViewer.Services;
 using MTGViewer.Triggers;
 using MTGViewer.Utils;
 
 namespace Microsoft.Extensions.DependencyInjection;
 
-public static partial class ServiceCollectionExtensions
+public static partial class StartupExtensions
 {
     public static IServiceCollection AddCardStorage(this IServiceCollection services, IConfiguration config)
     {
         var databaseOptions = DatabaseOptions.Bind(config);
         string connString = databaseOptions.GetConnectionString(DatabaseContext.Card);
 
-        switch (databaseOptions.Provider)
+        _ = databaseOptions.Provider switch
         {
-            case DatabaseOptions.SqlServer:
+            DatabaseOptions.SqlServer =>
                 services.AddTriggeredDbContextFactory<CardDbContext>(options => options
                     .UseSqlServer(connString)
 
@@ -29,10 +28,9 @@ public static partial class ServiceCollectionExtensions
                         .AddTrigger<ColorUpdate>()
                         .AddTrigger<ImmutableCard>()
                         .AddTrigger<QuantityValidate>()
-                        .AddTrigger<TradeValidate>()));
-                break;
+                        .AddTrigger<TradeValidate>())),
 
-            case DatabaseOptions.Postgresql:
+            DatabaseOptions.Postgresql =>
                 services.AddTriggeredPooledDbContextFactory<CardDbContext>(options => options
                     .UseNpgsql(connString.ToNpgsqlConnectionString())
 
@@ -43,11 +41,9 @@ public static partial class ServiceCollectionExtensions
                         .AddTrigger<ColorUpdate>()
                         .AddTrigger<ImmutableCard>()
                         .AddTrigger<QuantityValidate>()
-                        .AddTrigger<TradeValidate>()));
-                break;
+                        .AddTrigger<TradeValidate>())),
 
-            case DatabaseOptions.Sqlite:
-            default:
+            DatabaseOptions.Sqlite or _ =>
                 services.AddTriggeredDbContextFactory<CardDbContext>(options => options
                     .UseSqlite(connString)
 
@@ -59,16 +55,11 @@ public static partial class ServiceCollectionExtensions
                         .AddTrigger<ImmutableCard>()
                         .AddTrigger<StampUpdate>()
                         .AddTrigger<QuantityValidate>()
-                        .AddTrigger<TradeValidate>()));
-                break;
-        }
+                        .AddTrigger<TradeValidate>()))
+        };
 
-        services.AddScoped(provider => provider
+        return services.AddScoped(provider => provider
             .GetRequiredService<IDbContextFactory<CardDbContext>>()
             .CreateDbContext());
-
-        services.AddHostedService<CardSeed>();
-
-        return services;
     }
 }

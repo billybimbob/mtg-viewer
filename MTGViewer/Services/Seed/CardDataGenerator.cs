@@ -7,31 +7,25 @@ using Microsoft.Extensions.Options;
 
 using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
-using MTGViewer.Services.Internal;
+using MTGViewer.Services.Infrastructure;
+using MTGViewer.Services.Search;
 
-namespace MTGViewer.Services;
-
-public class SeedSettings
-{
-    public int Seed { get; set; } = 100;
-    public string JsonPath { get; set; } = "cards.json";
-    public string? Password { get; set; }
-}
+namespace MTGViewer.Services.Seed;
 
 public class CardDataGenerator
 {
     private readonly Random _random;
     private readonly IMTGQuery _mtgQuery;
-    private readonly BulkOperations _bulkOperations;
+    private readonly SeedHandler _seedHandler;
 
     public CardDataGenerator(
         IOptions<SeedSettings> seedOptions,
         IMTGQuery mtgQuery,
-        BulkOperations bulkOperations)
+        SeedHandler seedHandler)
     {
         _random = new Random(seedOptions.Value.Seed);
         _mtgQuery = mtgQuery;
-        _bulkOperations = bulkOperations;
+        _seedHandler = seedHandler;
     }
 
     public async Task GenerateAsync(CancellationToken cancel = default)
@@ -62,7 +56,7 @@ public class CardDataGenerator
             Suggestions = suggestions,
         };
 
-        await _bulkOperations.SeedAsync(data, cancel);
+        await _seedHandler.SeedAsync(data, cancel);
     }
 
     private static IReadOnlyList<CardUser> GetUsers() => new List<CardUser>()

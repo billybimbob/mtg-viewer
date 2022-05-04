@@ -9,6 +9,7 @@ using Microsoft.Extensions.Logging;
 using MtgApiManager.Lib.Model;
 using MTGViewer.Data;
 using MTGViewer.Services;
+using MTGViewer.Services.Search;
 
 namespace MTGViewer.Tests.Utils;
 

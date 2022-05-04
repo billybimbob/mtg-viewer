@@ -2,7 +2,7 @@ using System;
 using System.ComponentModel.DataAnnotations;
 using MTGViewer.Data;
 
-namespace MTGViewer.Services;
+namespace MTGViewer.Services.Search;
 
 public sealed record CardQuery
 {

@@ -1,7 +1,7 @@
 using System;
 using System.Linq;
 
-namespace MTGViewer.Services;
+namespace MTGViewer.Services.Symbols;
 
 public class ManaTranslator : ISymbolTranslator
 {

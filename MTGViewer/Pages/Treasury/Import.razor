@@ -3,10 +3,11 @@
 @attribute [Authorize(Policy = CardPolicies.ChangeTreasury)]
 
 @using System.IO
-@using Microsoft.Extensions.DependencyInjection
 @using Microsoft.Extensions.Logging
 
-@inherits OwningComponentBase
+@implements IDisposable
+@inject LoadingProgress LoadingProgress
+@inject FileCardStorage FileStorage
 @inject ILogger<Import> Logger
 
 <PageTitle> Treasury - Upload </PageTitle>
@@ -91,16 +92,11 @@
     private CancellationTokenSource? _cancel = new();
     private IBrowserFile? _chosenImport;
 
-    protected override void Dispose(bool disposing)
+    void IDisposable.Dispose()
     {
-        if (disposing)
-        {
-            _cancel?.Cancel();
-            _cancel?.Dispose();
-            _cancel = null;
-        }
-
-        base.Dispose(disposing);
+        _cancel?.Cancel();
+        _cancel?.Dispose();
+        _cancel = null;
     }
 
     internal void FileChosen(InputFileChangeEventArgs args)
@@ -153,28 +149,25 @@
             return;
         }
 
-        var loadingProgress = ScopedServices.GetRequiredService<LoadingProgress>();
-
         IsBusy = true;
         Result = SaveResult.None;
         PercentProgress = 0;
 
-        loadingProgress.ProgressUpdate += UploadProgress;
+        LoadingProgress.Reset();
+        LoadingProgress.ProgressUpdate += UploadProgress;
 
         try
         {
-            var fileStorage = ScopedServices.GetRequiredService<FileCardStorage>();
-
             await using var fileStream = _chosenImport.OpenReadStream(SizeLimit, token);
 
             switch (Path.GetExtension(_chosenImport.Name).ToLowerInvariant())
             {
                 case ".json":
-                    await fileStorage.JsonAddAsync(fileStream, token);
+                    await FileStorage.AddFromJsonAsync(fileStream, token);
                     break;
 
                 case ".csv":
-                    await fileStorage.CsvAddAsync(fileStream, token);
+                    await FileStorage.AddFromCsvAsync(fileStream, token);
                     break;
             }
 
@@ -195,7 +188,7 @@
         }
         finally
         {
-            loadingProgress.ProgressUpdate -= UploadProgress;
+            LoadingProgress.ProgressUpdate -= UploadProgress;
 
             IsCancelled = false;
             IsBusy = false;

@@ -15,9 +15,10 @@
         </p>
 
         <form id="download-data" asp-page="DownloadPersonalData" method="post">
-            <button class="btn btn-primary" type="submit">Download</button>
-
-            <a id="delete" role="button" asp-page="DeletePersonalData" class="btn btn-danger">Delete</a>
+            <div class="btn-group">
+                <button class="btn btn-primary" type="submit">Download</button>
+                <a id="delete" role="button" asp-page="DeletePersonalData" class="btn btn-danger">Delete</a>
+            </div>
         </form>
     </div>
 </div>

@@ -7,7 +7,8 @@ using Microsoft.EntityFrameworkCore;
 
 using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
-using MTGViewer.Services;
+using MTGViewer.Services.Infrastructure;
+using MTGViewer.Services.Seed;
 
 namespace MTGViewer.Tests.Utils;
 
@@ -18,7 +19,7 @@ public class TestDataGenerator
     private readonly CardDbContext _dbContext;
     private readonly UserDbContext _userContext;
 
-    private readonly FileCardStorage _fileStorage;
+    private readonly SeedHandler _seedHandler;
     private readonly CardDataGenerator _cardGen;
 
     private readonly Random _random;
@@ -26,13 +27,13 @@ public class TestDataGenerator
     public TestDataGenerator(
         CardDbContext dbContext,
         UserDbContext userContext,
-        FileCardStorage jsonStorage,
+        SeedHandler seedHandler,
         CardDataGenerator cardGen)
     {
         _dbContext = dbContext;
         _userContext = userContext;
 
-        _fileStorage = jsonStorage;
+        _seedHandler = seedHandler;
         _cardGen = cardGen;
 
         _random = new Random(100);
@@ -50,7 +51,7 @@ public class TestDataGenerator
             if (!jsonSuccess)
             {
                 await _cardGen.GenerateAsync();
-                await _fileStorage.WriteBackupAsync();
+                await _seedHandler.WriteBackupAsync();
             }
 
             _dbContext.ChangeTracker.Clear();
@@ -65,7 +66,7 @@ public class TestDataGenerator
     {
         try
         {
-            await _fileStorage.JsonSeedAsync();
+            await _seedHandler.SeedAsync();
             return true;
         }
         catch (System.IO.FileNotFoundException)

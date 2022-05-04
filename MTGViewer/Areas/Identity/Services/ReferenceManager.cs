@@ -9,7 +9,7 @@ using Microsoft.Extensions.Logging;
 
 using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
-using MTGViewer.Services;
+using MTGViewer.Services.Infrastructure;
 
 namespace MTGViewer.Areas.Identity.Services;
 
@@ -17,18 +17,18 @@ public class ReferenceManager
 {
     private readonly CardDbContext _dbContext;
     private readonly UserManager<CardUser> _userManager;
-    private readonly BulkOperations _bulkOperations;
+    private readonly ResetHandler _resetHandler;
     private readonly ILogger<ReferenceManager> _logger;
 
     public ReferenceManager(
         CardDbContext dbContext,
         UserManager<CardUser> userManager,
-        BulkOperations bulkOperations,
+        ResetHandler resetHandler,
         ILogger<ReferenceManager> logger)
     {
         _dbContext = dbContext;
         _userManager = userManager;
-        _bulkOperations = bulkOperations;
+        _resetHandler = resetHandler;
         _logger = logger;
     }
 
@@ -114,6 +114,7 @@ public class ReferenceManager
 
         if (validUser)
         {
+            // only delete reference if the actual user is already deleted
             return false;
         }
 
@@ -175,7 +176,7 @@ public class ReferenceManager
     {
         var transaction = await _dbContext.Database.BeginTransactionAsync(cancel);
 
-        await _bulkOperations.ResetAsync(cancel);
+        await _resetHandler.ResetAsync(cancel);
 
         var usersResetting = await _dbContext.Users
             .Where(u => u.ResetRequested)
