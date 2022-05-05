@@ -14,28 +14,22 @@ public static partial class StartupExtensions
 {
     public static IServiceCollection AddCardUsers(this IServiceCollection services, IConfiguration config)
     {
-        var databaseOptions = DatabaseOptions.Bind(config);
+        var databaseOptions = DatabaseOptions.FromConfiguration(config);
 
         string connString = databaseOptions.GetConnectionString(DatabaseContext.User);
 
         services.AddDbContext<UserDbContext>(options =>
-        {
-            switch (databaseOptions.Provider)
+            _ = databaseOptions.Provider switch
             {
-                case DatabaseOptions.SqlServer:
-                    options.UseSqlServer(connString);
-                    break;
+                DatabaseOptions.SqlServer =>
+                    options.UseSqlServer(connString),
 
-                case DatabaseOptions.Postgresql:
-                    options.UseNpgsql(connString.ToNpgsqlConnectionString());
-                    break;
+                DatabaseOptions.Postgresql =>
+                    options.UseNpgsql(connString.ToNpgsqlConnectionString()),
 
-                case DatabaseOptions.Sqlite:
-                default:
-                    options.UseSqlite(connString);
-                    break;
-            }
-        });
+                DatabaseOptions.Sqlite or _ =>
+                    options.UseSqlite(connString)
+            });
 
         services
             .AddDefaultIdentity<CardUser>(options =>

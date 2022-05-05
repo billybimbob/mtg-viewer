@@ -12,7 +12,7 @@ public static partial class StartupExtensions
 {
     public static IServiceCollection AddCardStorage(this IServiceCollection services, IConfiguration config)
     {
-        var databaseOptions = DatabaseOptions.Bind(config);
+        var databaseOptions = DatabaseOptions.FromConfiguration(config);
         string connString = databaseOptions.GetConnectionString(DatabaseContext.Card);
 
         _ = databaseOptions.Provider switch

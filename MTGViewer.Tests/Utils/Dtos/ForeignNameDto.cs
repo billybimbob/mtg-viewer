@@ -1,7 +1,7 @@
 using System.Text.Json.Serialization;
 using MtgApiManager.Lib.Model;
 
-namespace MTGViewer.Tests.Utils.Dto;
+namespace MTGViewer.Tests.Utils.Dtos;
 
 internal class ForeignNameDto : IForeignName
 {

@@ -8,7 +8,7 @@
 @inject IAuthorizationService AuthorizationService
 @inject SignInManager<CardUser> SignInManager
 
-<h1> @Model.Box.Name - @Model.Box.Bin.Name </h1>
+<h1> @Model.Box.Bin.Name - @Model.Box.Name </h1>
 
 <div class="btn-group mb-3" role="group">
     @if (SignInManager.IsSignedIn(User))
@@ -47,6 +47,7 @@
                 <th scope="col"> @Html.DisplayNameForInnerType((Hold h) => h.Card) </th>
                 <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.ManaCost) </th>
                 <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.SetName) </th>
+                <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.Rarity) </th>
                 <th scope="col"> @Html.DisplayNameForInnerType((Hold h) => h.Copies) </th>
             </tr>
         </thead>
@@ -64,11 +65,13 @@
                         </div>
                     </td>
                     <td> @quantity.Card.SetName </td>
+                    <td> @quantity.Card.Rarity </td>
                     <td> @quantity.Copies </td>
                 </tr>
             }
             <tr>
                 <th> Total </th>
+                <td> -- </td>
                 <td> -- </td>
                 <td> -- </td>
                 <td class="font-weight-bold">

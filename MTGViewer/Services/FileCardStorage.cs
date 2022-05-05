@@ -8,8 +8,8 @@ using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 
-using Microsoft.EntityFrameworkCore;
 using CsvHelper;
+using Microsoft.EntityFrameworkCore;
 using MTGViewer.Services.Infrastructure;
 
 namespace MTGViewer.Services;

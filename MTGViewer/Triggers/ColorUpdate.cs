@@ -46,11 +46,11 @@ public class ColorUpdate : IBeforeSaveTrigger<Theorycraft>
 
         _logger.LogWarning("Theorycraft {TheoryId} not fully loaded", theory.Id);
 
-        var deckColors
+        var colors
             = await DeckColorsAsync.Invoke(_dbContext, theory.Id, cancellationToken)
             ?? await UnclaimedColorsAsync.Invoke(_dbContext, theory.Id, cancellationToken);
 
-        theory.Color = GetColor(deckColors, theory);
+        theory.Color = GetColor(theory, colors);
     }
 
     private async Task SetAddedColorAsync(Theorycraft theory, CancellationToken cancel)
@@ -101,24 +101,6 @@ public class ColorUpdate : IBeforeSaveTrigger<Theorycraft>
     private static Color GetColor(Theorycraft theory)
     {
         var holdColors = theory.Holds
-            .Select(h => h.Card.Color);
-
-        var wantColors = theory.Wants
-            .Select(w => w.Card.Color);
-
-        return holdColors
-            .Union(wantColors)
-            .Aggregate(Color.None, (color, card) => color | card);
-    }
-
-    private static Color GetColor(TheoryColors? colors, Theorycraft theory)
-    {
-        if (colors is null)
-        {
-            return Color.None;
-        }
-
-        var holdColors = theory.Holds
             .Select(h => h.Card?.Color)
             .OfType<Color>();
 
@@ -126,11 +108,22 @@ public class ColorUpdate : IBeforeSaveTrigger<Theorycraft>
             .Select(w => w.Card?.Color)
             .OfType<Color>();
 
-        return colors.HoldColors
-            .Union(colors.WantColors)
-            .Union(holdColors)
+        return holdColors
             .Union(wantColors)
             .Aggregate(Color.None, (color, card) => color | card);
+    }
+
+    private static Color GetColor(Theorycraft theory, TheoryColors? colors)
+    {
+        if (colors is null)
+        {
+            return Color.None;
+        }
+
+        return colors.HoldColors
+            .Union(colors.WantColors)
+            .Aggregate(
+                GetColor(theory), (color, c) => color | c);
     }
 
     private static readonly Func<CardDbContext, int, CancellationToken, Task<TheoryColors?>> DeckColorsAsync

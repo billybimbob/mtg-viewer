@@ -40,7 +40,7 @@ public class Startup
     public void ConfigureServices(IServiceCollection services, HostBuilderContext context)
     {
         var config = context.Configuration;
-        var databaseOptions = DatabaseOptions.Bind(config);
+        var databaseOptions = DatabaseOptions.FromConfiguration(config);
 
         services
             .AddScoped<ActionContextAccessor>()

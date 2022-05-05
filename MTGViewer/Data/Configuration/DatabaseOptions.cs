@@ -23,7 +23,7 @@ public sealed class DatabaseOptions
 
     private IConfiguration? Configuration { get; init; }
 
-    public static DatabaseOptions Bind(IConfiguration configuration)
+    public static DatabaseOptions FromConfiguration(IConfiguration configuration)
     {
         var options = new DatabaseOptions
         {

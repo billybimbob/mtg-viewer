@@ -32,10 +32,10 @@ public class ParseTextFilter
             return default;
         }
 
-        var filter = new TextFilter();
         var match = Regex.Match(search, Split);
-
         var source = search.AsSpan();
+
+        var filter = new TextFilter();
         var capture = ReadOnlySpan<char>.Empty;
 
         int index = 0;

@@ -17,7 +17,7 @@ using MtgApiManager.Lib.Model;
 using MtgApiManager.Lib.Service;
 
 using MTGViewer.Services.Search;
-using MTGViewer.Tests.Utils.Dto;
+using MTGViewer.Tests.Utils.Dtos;
 
 namespace MTGViewer.Tests.Utils;
 
@@ -97,7 +97,7 @@ public class TestCardService : ICardService
             cardValue = string.Join(MtgApiQuery.And, i);
         }
 
-        if (value is not string s || cardValue is not string cardString)
+        if (cardValue is not string cardString || value is not string s)
         {
             return cardValue == value;
         }
@@ -109,7 +109,7 @@ public class TestCardService : ICardService
         if (andValues.Length > 1)
         {
             return andValues
-                .Aggregate(false, (b, v) => b && cardString.Equals(v, ordinal));
+                .Aggregate(false, (b, v) => b && cardString.Contains(v, ordinal));
         }
 
         string[] orValues = s.Split(MtgApiQuery.Or);
@@ -117,7 +117,7 @@ public class TestCardService : ICardService
         if (orValues.Length > 1)
         {
             return orValues
-                .Aggregate(false, (b, v) => b || cardString.Equals(v, ordinal));
+                .Aggregate(false, (b, v) => b || cardString.Contains(v, ordinal));
         }
 
         return cardString.Equals(s, ordinal);
