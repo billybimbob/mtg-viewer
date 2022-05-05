@@ -1,12 +1,12 @@
 # mtg-viewer
 
-A Magic: The Gathering Card Manager and Deck Builder, built using Blazor, Razor Pages, EF Core, all bundled in [ASP.NET](https://dotnet.microsoft.com/en-us/apps/aspnet).
+A Magic: The Gathering Card Manager and Deck Builder, built using in [ASP.NET](https://dotnet.microsoft.com/en-us/apps/aspnet).
 
 ## Features
 
 MTG Viewer is a collaborative collection manager, that enables users to build and share Magic: The Gathering decks. This application is intended for a small group of friends to organize and theorize deck ideas from their personal MTG collection.
 
-* Card collection Management
+* Card collection management
   * Keep track of cards counts
   * Add, search, and remove individual cards
   * Track card changes
@@ -20,12 +20,16 @@ MTG Viewer is a collaborative collection manager, that enables users to build an
   * Theorycrafting
   * Sample mulligans
   * Track change history
-  * Share a deck preview with everyone
+  * Share deck previews with everyone
 
-## Web Design Highlights
+## Technology Stack
 
-* Simple, responsive user interface
-* Optimized and efficient backend
+* [Blazor Server](https://dotnet.microsoft.com/en-us/apps/aspnet/web-apps/blazor)
+* [Razor Pages](https://docs.microsoft.com/en-us/aspnet/core/razor-pages/)
+* [Bootstrap](https://getbootstrap.com/)
+* [jQuery](https://api.jquery.com/)
+* [Entity Framework Core](https://docs.microsoft.com/en-us/ef/core/)
+* [Postgresql](https://postgresql.org/)
 
 ## Design Philosophy
 
