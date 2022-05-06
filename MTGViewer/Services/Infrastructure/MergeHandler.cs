@@ -108,9 +108,9 @@ public class MergeHandler
 
             if (dataCardTable.TryGetValue(card.Id, out var conflict))
             {
-                dbContext.Cards
-                    .Add(conflict).CurrentValues
-                    .SetValues(card);
+                var newEntry = dbContext.Cards.Add(conflict);
+
+                newEntry.CurrentValues.SetValues(card);
             }
             else
             {

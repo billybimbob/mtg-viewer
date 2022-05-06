@@ -64,21 +64,18 @@ public class Startup
             .AddScoped<InMemoryConnection>()
             .AddScoped<TempFileName>();
 
-        switch (databaseOptions.Provider)
+        _ = databaseOptions.Provider switch
         {
-            case DatabaseOptions.Sqlite:
+            DatabaseOptions.Sqlite =>
                 services
-                    .AddDbContextFactory<CardDbContext>(TestFactory.SqliteInMemory, ServiceLifetime.Scoped)
-                    .AddDbContext<UserDbContext>(TestFactory.SqliteInMemory);
-                break;
+                    .AddDbContext<UserDbContext>(TestFactory.SqliteInMemory)
+                    .AddDbContextFactory<CardDbContext>(TestFactory.SqliteInMemory, ServiceLifetime.Scoped),
 
-            case DatabaseOptions.InMemory:
-            default:
+            DatabaseOptions.InMemory or _ =>
                 services
-                    .AddDbContextFactory<CardDbContext>(TestFactory.InMemoryDatabase, ServiceLifetime.Scoped)
-                    .AddDbContext<UserDbContext>(TestFactory.InMemoryDatabase);
-                break;
-        }
+                    .AddDbContext<UserDbContext>(TestFactory.InMemoryDatabase)
+                    .AddDbContextFactory<CardDbContext>(TestFactory.InMemoryDatabase, ServiceLifetime.Scoped),
+        };
 
         services
             .Configure<IdentityOptions>(config)

@@ -19,8 +19,8 @@ public static partial class StartupExtensions
         {
             DatabaseOptions.SqlServer =>
                 services.AddTriggeredDbContextFactory<CardDbContext>(options => options
-                    .UseSqlServer(connString)
 
+                    .UseSqlServer(connString)
                     .UseValidationCheckConstraints()
                     .UseEnumCheckConstraints()
 
@@ -32,8 +32,8 @@ public static partial class StartupExtensions
 
             DatabaseOptions.Postgresql =>
                 services.AddTriggeredPooledDbContextFactory<CardDbContext>(options => options
-                    .UseNpgsql(connString.ToNpgsqlConnectionString())
 
+                    .UseNpgsql(connString.ToNpgsqlConnectionString())
                     .UseValidationCheckConstraints()
                     .UseEnumCheckConstraints()
 
@@ -45,8 +45,8 @@ public static partial class StartupExtensions
 
             DatabaseOptions.Sqlite or _ =>
                 services.AddTriggeredDbContextFactory<CardDbContext>(options => options
-                    .UseSqlite(connString)
 
+                    .UseSqlite(connString)
                     .UseValidationCheckConstraints()
                     .UseEnumCheckConstraints()
 

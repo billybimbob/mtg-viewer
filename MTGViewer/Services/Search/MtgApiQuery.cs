@@ -160,11 +160,13 @@ public sealed class MtgApiQuery : IMTGQuery
         [System.Runtime.CompilerServices.EnumeratorCancellation]
         CancellationToken cancel = default)
     {
+        const int chunkSize = (int)(Limit * 0.9f); // leave wiggle room for result
+
         cancel.ThrowIfCancellationRequested();
 
         var chunks = multiverseIds
             .Distinct()
-            .Chunk(Limit)
+            .Chunk(chunkSize)
             .ToList();
 
         _loadProgress.Ticks += chunks.Count;
@@ -180,7 +182,6 @@ public sealed class MtgApiQuery : IMTGQuery
 
             var response = await _cardService
                 .Where(c => c.MultiverseId, multiverseArgs)
-                .Where(c => c.PageSize, Limit)
                 .AllAsync();
 
             cancel.ThrowIfCancellationRequested();
