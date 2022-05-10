@@ -124,14 +124,14 @@ public class QuantityValidateTests : IAsyncLifetime
             .FirstAsync(h =>
                 h.Card.Givebacks.All(g => g.LocationId != h.LocationId));
 
-        var giveBack = new Giveback
+        var giveback = new Giveback
         {
             Card = hold.Card,
             LocationId = hold.LocationId,
             Copies = 3
         };
 
-        _dbContext.Givebacks.Add(giveBack);
+        _dbContext.Givebacks.Add(giveback);
 
         var triggerContext = new Mock<ITriggerContext<Quantity>>();
 
@@ -141,7 +141,7 @@ public class QuantityValidateTests : IAsyncLifetime
 
         triggerContext
             .SetupGet(t => t.Entity)
-            .Returns(giveBack);
+            .Returns(giveback);
 
         Task SaveAsync() => _quantityValidate.BeforeSave(triggerContext.Object, default);
 
@@ -156,14 +156,14 @@ public class QuantityValidateTests : IAsyncLifetime
         var card = await _dbContext.Cards
             .FirstAsync(c => c.Holds.All(h => h.LocationId != deck.Id));
 
-        var giveBack = new Giveback
+        var giveback = new Giveback
         {
             Card = card,
             Location = deck,
             Copies = 3
         };
 
-        _dbContext.Givebacks.Add(giveBack);
+        _dbContext.Givebacks.Add(giveback);
 
         var triggerContext = new Mock<ITriggerContext<Quantity>>();
 
@@ -173,7 +173,7 @@ public class QuantityValidateTests : IAsyncLifetime
 
         triggerContext
             .SetupGet(t => t.Entity)
-            .Returns(giveBack);
+            .Returns(giveback);
 
         Task SaveAsync() => _quantityValidate.BeforeSave(triggerContext.Object, default);
 

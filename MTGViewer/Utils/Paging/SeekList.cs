@@ -17,22 +17,20 @@ public readonly record struct Seek(object? Previous, object? Next);
 public readonly record struct Seek<T>(T? Previous, T? Next)
 {
     public Seek(
-        IEnumerable<T> items,
+        IReadOnlyList<T> items,
         SeekDirection direction,
         bool hasOrigin,
         bool lookAhead) : this(default, default)
     {
         if (direction is SeekDirection.Forward)
         {
-            Previous = hasOrigin ? items.FirstOrDefault() : default;
-
-            Next = lookAhead ? items.LastOrDefault() : default;
+            Previous = hasOrigin && items.Any() ? items[0] : default;
+            Next = lookAhead && items.Any() ? items[^1] : default;
         }
         else
         {
-            Previous = lookAhead ? items.FirstOrDefault() : default;
-
-            Next = hasOrigin ? items.LastOrDefault() : default;
+            Previous = lookAhead && items.Any() ? items[0] : default;
+            Next = hasOrigin && items.Any() ? items[^1] : default;
         }
     }
 
@@ -51,7 +49,6 @@ public class SeekList<T> : IReadOnlyList<T>
         ArgumentNullException.ThrowIfNull(items);
 
         Seek = seek;
-
         _items = items;
     }
 
