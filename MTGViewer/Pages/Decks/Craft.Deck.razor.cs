@@ -16,21 +16,23 @@ public partial class Craft
     private DeckCounts? _counts;
     private DeckContext? _deckContext;
 
-    internal SeekList<Hold> DeckHolds { get; private set; } = SeekList<Hold>.Empty;
-    internal SeekList<Giveback> DeckReturns { get; private set; } = SeekList<Giveback>.Empty;
-    internal SeekList<Want> DeckWants { get; private set; } = SeekList<Want>.Empty;
+    private LoadedSeekList<Hold> _holds;
+    private LoadedSeekList<Giveback> _givebacks;
+    private LoadedSeekList<Want> _wants;
 
-    internal string DeckName =>
-        _deckContext?.Deck.Name is string name && !string.IsNullOrWhiteSpace(name)
-            ? name : "New Deck";
-
+    internal string DeckName => _deckContext?.Deck.Name ?? "New Deck";
     internal EditContext? DeckEdit => _deckContext?.EditContext;
 
     internal int HeldCopies => (_counts?.HeldCopies ?? 0) - (_counts?.ReturnCopies ?? 0);
     internal int ReturnCopies => _counts?.ReturnCopies ?? 0;
     internal int WantCopies => _counts?.WantCopies ?? 0;
 
-    internal bool CannotSave() => !_deckContext?.CanSave() ?? true;
+    internal SeekList<Hold> DeckHolds => _holds.List ?? SeekList<Hold>.Empty;
+    internal SeekList<Giveback> DeckReturns => _givebacks.List ?? SeekList<Giveback>.Empty;
+    internal SeekList<Want> DeckWants => _wants.List ?? SeekList<Want>.Empty;
+
+    internal bool CannotSave()
+        => !_deckContext?.CanSave() ?? true;
 
     internal Deck? GetExchangeDeck()
     {
@@ -54,170 +56,148 @@ public partial class Craft
         return null;
     }
 
-    internal async Task ChangeHoldPageAsync(SeekRequest<Hold> request)
+    private void InitializeHolds()
     {
-        var newHolds = GetHolds(request);
-
-        if (newHolds.Count == PageSize.Current)
+        if (_holds == default)
         {
-            DeckHolds = newHolds;
+            _holds = GetQuantities(_holds.Request, includeEmpty: true);
+        }
+    }
+
+    private void InitializeReturns()
+    {
+        if (_givebacks == default)
+        {
+            _givebacks = GetQuantities(_givebacks.Request);
+        }
+    }
+
+    private async Task InitializeHoldsAsync(CardDbContext dbContext)
+    {
+        if (_holds == default)
+        {
+            await LoadQuantitiesAsync(dbContext, _holds.Request);
+
+            _holds = GetQuantities(_holds.Request, includeEmpty: true);
+        }
+    }
+
+    private async Task InitializeReturnsAsync(CardDbContext dbContext)
+    {
+        if (_givebacks == default)
+        {
+            await LoadQuantitiesAsync(dbContext, _givebacks.Request);
+
+            _givebacks = GetQuantities(_givebacks.Request);
+        }
+    }
+
+    private async Task InitializeWantsAsync(CardDbContext dbContext)
+    {
+        if (_wants == default)
+        {
+            await LoadQuantitiesAsync(dbContext, _wants.Request);
+
+            _wants = GetQuantities(_wants.Request);
+        }
+    }
+
+    internal async Task ChangeHoldsAsync(SeekRequest<Hold> request)
+    {
+        var newHolds = GetQuantities(request, includeEmpty: true);
+
+        if (newHolds.List is { Count: int count } && count == PageSize.Current - 1)
+        {
+            _holds = newHolds;
             return;
         }
 
         await using var dbContext = await DbFactory.CreateDbContextAsync(_cancel.Token);
 
-        await LoadQuantityPageAsync(dbContext, request);
+        await LoadQuantitiesAsync(dbContext, request);
 
-        DeckHolds = GetHolds(request);
+        _holds = GetQuantities(request, includeEmpty: true);
     }
 
-    internal async Task ChangeHoldPageAsync(CardDbContext dbContext)
+    internal async Task ChangeReturnsAsync(SeekRequest<Giveback> request)
     {
-        var firstRequest = new SeekRequest<Hold>();
+        var newReturns = GetQuantities(request);
 
-        await LoadQuantityPageAsync(dbContext, firstRequest);
-
-        DeckHolds = GetHolds(firstRequest);
-    }
-
-    private SeekList<Hold> GetHolds(SeekRequest<Hold> request)
-    {
-        if (_deckContext is null)
+        if (newReturns.List is { Count: int count } && count == PageSize.Current - 1)
         {
-            return SeekList<Hold>.Empty;
-        }
-
-        var holds = _deckContext
-            .Groups
-            .Where(g => g.Hold is not null)
-            .Select(g => new Hold
-            {
-                CardId = g.CardId,
-                Card = g.Card,
-
-                LocationId = g.LocationId,
-                Location = g.Location,
-
-                Copies = (g.Hold?.Copies ?? 0) - (g.Giveback?.Copies ?? 0)
-            });
-
-        var orderedHolds = _cards
-            .Join(holds,
-                c => c.Id, h => h.Card.Id,
-                (_, group) => group);
-
-        return ToSeekList(orderedHolds, request, PageSize.Current + 1);
-    }
-
-    internal async Task ChangeReturnPageAsync(SeekRequest<Giveback> request)
-    {
-        var newReturns = GetReturns(request);
-
-        if (newReturns.Count == PageSize.Current)
-        {
-            DeckReturns = newReturns;
+            _givebacks = newReturns;
             return;
         }
 
         await using var dbContext = await DbFactory.CreateDbContextAsync(_cancel.Token);
 
-        await LoadQuantityPageAsync(dbContext, request);
+        await LoadQuantitiesAsync(dbContext, request);
 
-        DeckReturns = GetReturns(request);
+        _givebacks = GetQuantities(request);
     }
 
-    internal async Task ChangeReturnPageAsync(CardDbContext dbContext)
+    internal async Task ChangeWantsAsync(SeekRequest<Want> request)
     {
-        var firstRequest = new SeekRequest<Giveback>();
+        var newWants = GetQuantities(request);
 
-        await LoadQuantityPageAsync(dbContext, firstRequest);
-
-        DeckReturns = GetReturns(firstRequest);
-    }
-
-    private SeekList<Giveback> GetReturns(SeekRequest<Giveback> request)
-    {
-        if (_deckContext is null)
+        if (newWants.List is { Count: int count } && count == PageSize.Current - 1)
         {
-            return SeekList<Giveback>.Empty;
-        }
-
-        var gives = _deckContext.Groups
-            .Select(g => g.Giveback)
-            .Where(g => g is { Copies: > 0 })
-            .OfType<Giveback>();
-
-        var orderedGives = _cards
-            .Join(gives,
-                c => c.Id, g => g.CardId,
-                (_, giveback) => giveback);
-
-        return ToSeekList(orderedGives, request, PageSize.Current + 1);
-    }
-
-    internal async Task ChangeWantPageAsync(SeekRequest<Want> request)
-    {
-        var newWants = GetWants(request);
-
-        if (newWants.Count == PageSize.Current)
-        {
-            DeckWants = newWants;
+            _wants = newWants;
             return;
         }
 
         await using var dbContext = await DbFactory.CreateDbContextAsync(_cancel.Token);
 
-        await LoadQuantityPageAsync(dbContext, request);
+        await LoadQuantitiesAsync(dbContext, request);
 
-        DeckWants = GetWants(request);
+        _wants = GetQuantities(request);
     }
 
-    internal async Task ChangeWantPageAsync(CardDbContext dbContext)
-    {
-        var firstRequest = new SeekRequest<Want>();
-
-        await LoadQuantityPageAsync(dbContext, firstRequest);
-
-        DeckWants = GetWants(firstRequest);
-    }
-
-    private SeekList<Want> GetWants(SeekRequest<Want> request)
+    private LoadedSeekList<TQuantity> GetQuantities<TQuantity>(
+        SeekRequest<TQuantity> request,
+        bool includeEmpty = false)
+        where TQuantity : Quantity
     {
         if (_deckContext is null)
         {
-            return SeekList<Want>.Empty;
+            return default;
         }
 
-        var wants = _deckContext.Groups
-            .Select(g => g.Want)
-            .Where(w => w is { Copies: > 0 })
-            .OfType<Want>();
+        var quantities = _deckContext.Groups
+            .Select(g => g.GetQuantity<TQuantity>())
+            .Where(q => includeEmpty || q is { Copies: > 0 })
+            .OfType<TQuantity>();
 
-        var orderedGives = _cards
-            .Join(wants,
-                c => c.Id, g => g.CardId,
-                (_, giveback) => giveback);
+        var orderedQuantities = _cards
+            .Join(quantities,
+                c => c.Id,
+                q => q.CardId,
+                (_, quantity) => quantity);
 
-        return ToSeekList(orderedGives, request, PageSize.Current + 1);
+        return ToSeekList(orderedQuantities, request, PageSize.Current);
     }
 
-    private static SeekList<TQuantity> ToSeekList<TQuantity>(
+    private static LoadedSeekList<TQuantity> ToSeekList<TQuantity>(
         IEnumerable<TQuantity> quantities,
         SeekRequest<TQuantity> request,
         int size)
         where TQuantity : Quantity
     {
+        bool hasOrigin = request.Seek is not null;
+
+        var direction = request.Direction;
+
         var items = request switch
         {
             (TQuantity o, SeekDirection.Backwards) => quantities
-                .Where(t => (t.Card.Name, t.Card.SetName, t.Card.Id)
-                    .CompareTo((o.Card.Name, o.Card.SetName, o.Card.Id)) < 0)
+                .Where(t => (t.Card.Name, t.Card.SetName, t.CardId)
+                    .CompareTo((o.Card.Name, o.Card.SetName, o.CardId)) < 0)
                 .TakeLast(size)
                 .ToList(),
 
             (TQuantity o, SeekDirection.Forward) => quantities
-                .Where(t => (t.Card.Name, t.Card.SetName, t.Card.Id)
-                    .CompareTo((o.Card.Name, o.Card.SetName, o.Card.Id)) > 0)
+                .Where(t => (t.Card.Name, t.Card.SetName, t.CardId)
+                    .CompareTo((o.Card.Name, o.Card.SetName, o.CardId)) > 0)
                 .Take(size)
                 .ToList(),
 
@@ -232,25 +212,24 @@ public partial class Craft
 
         bool lookAhead = items.Count == size;
 
-        if (items.Any())
+        if (lookAhead)
         {
             items.RemoveAt(items.Count - 1);
         }
 
-        var seek = new Seek<TQuantity>(
-            items,
-            request.Direction,
-            request.Seek is not null,
-            lookAhead);
+        var seek = new Seek<TQuantity>(items, direction, hasOrigin, lookAhead);
 
-        return new SeekList<TQuantity>(seek, items);
+        var list = new SeekList<TQuantity>(seek, items);
+
+        return new LoadedSeekList<TQuantity>(request, list);
     }
 
-    private async Task LoadQuantityPageAsync<TQuantity>(CardDbContext dbContext, SeekRequest<TQuantity> request)
+    private async Task LoadQuantitiesAsync<TQuantity>(CardDbContext dbContext, SeekRequest<TQuantity> request)
         where TQuantity : Quantity
     {
         if (_deckContext is not { Deck: Deck deck })
         {
+            Logger.LogWarning("Deck is missing");
             return;
         }
 
@@ -259,7 +238,7 @@ public partial class Craft
 
         var (seek, direction) = request;
 
-        var newPage = DeckQuantitiesAsync(dbContext.Set<TQuantity>(), seek, direction);
+        var newPage = DeckQuantitiesAsync(dbContext, deck.Id, seek, direction, PageSize.Current);
 
         await foreach (var want in newPage.WithCancellation(_cancel.Token))
         {
@@ -269,13 +248,17 @@ public partial class Craft
         _cards.UnionWith(dbContext.Cards.Local);
     }
 
-    private IAsyncEnumerable<TQuantity> DeckQuantitiesAsync<TQuantity>(
-        DbSet<TQuantity> db,
+    private static IAsyncEnumerable<TQuantity> DeckQuantitiesAsync<TQuantity>(
+        CardDbContext dbContext,
+        int deckId,
         TQuantity? reference,
-        SeekDirection direction) where TQuantity : Quantity
+        SeekDirection direction,
+        int size)
+        where TQuantity : Quantity
     {
-        return db
-            .Where(q => q.LocationId == DeckId)
+        return dbContext
+            .Set<TQuantity>()
+            .Where(q => q.LocationId == deckId)
             .Include(q => q.Card)
 
             .OrderBy(q => q.Card.Name)
@@ -283,10 +266,12 @@ public partial class Craft
                 .ThenBy(q => q.CardId)
 
             .SeekOrigin(reference, direction)
-            .Take(PageSize.Current + 1)
+            .Take(size)
 
             .AsAsyncEnumerable();
     }
+
+    #region Edit Quantities
 
     internal async Task AddWantAsync(Card card)
     {
@@ -315,15 +300,15 @@ public partial class Craft
             return;
         }
 
-        if (want.Copies == 0)
+        want.Copies += 1;
+
+        if (want.Copies == 1)
         {
-            // implies that just added
+            _wants = GetQuantities(_wants.Request);
             _counts.WantCount += 1;
         }
 
         _counts.WantCopies += 1;
-
-        want.Copies += 1;
 
         Result = SaveResult.None;
     }
@@ -382,14 +367,15 @@ public partial class Craft
             return;
         }
 
-        _counts.WantCopies -= 1;
-
         want.Copies -= 1;
 
         if (want.Copies == 0)
         {
+            _wants = GetQuantities(_wants.Request);
             _counts.WantCount -= 1;
         }
+
+        _counts.WantCopies -= 1;
 
         Result = SaveResult.None;
     }
@@ -423,14 +409,15 @@ public partial class Craft
             return;
         }
 
-        if (giveback.Copies == 0)
+        giveback.Copies += 1;
+
+        if (giveback.Copies == 1)
         {
-            _counts.ReturnCount += 1; // implies that just added
+            _givebacks = GetQuantities(_givebacks.Request);
+            _counts.ReturnCount += 1;
         }
 
         _counts.ReturnCopies += 1;
-
-        giveback.Copies += 1;
 
         Result = SaveResult.None;
     }
@@ -511,15 +498,18 @@ public partial class Craft
             return;
         }
 
-        _counts.ReturnCopies -= 1;
-
         giveback.Copies -= 1;
 
         if (giveback.Copies == 0)
         {
+            _givebacks = GetQuantities(_givebacks.Request);
             _counts.ReturnCount -= 1;
         }
 
+        _counts.ReturnCopies -= 1;
+
         Result = SaveResult.None;
     }
+
+    #endregion
 }

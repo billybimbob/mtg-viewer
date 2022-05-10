@@ -2,8 +2,6 @@
 @inherits OwningComponentBase
 @inject SymbolFormatter MtgSymbols
 
-@using System.Text.Json.Serialization
-
 <PageTitle> @DeckName - Builder </PageTitle>
 
 @if (DeckEdit?.Model is Deck deck)
@@ -117,7 +115,7 @@ else
                 }
                 @foreach ((Card card, int available) in Treasury)
                 {
-                    int wantTotal = card.Wants.Sum(w => w.Copies);
+                    int wantCopies = card.Wants.Sum(w => w.Copies);
 
                     <button @key="card.Id"
                         type="button" title="Add @card.Name"
@@ -131,7 +129,7 @@ else
                                 </HoverCard>
                             </div>
                             <div class="col-4"> @MtgSymbols.Format(card.ManaCost).ToMarkupString() </div>
-                            <div class="col-2"> @(available - Math.Min(wantTotal, available)) </div>
+                            <div class="col-2"> @(available - Math.Min(wantCopies, available)) </div>
                         </div>
                     </button>
                 }
@@ -174,7 +172,7 @@ else
             </div>
 
             <SeekPaging TEntity="@Want"
-                Seek="@DeckWants.Seek" PageSelected="@ChangeWantPageAsync" IsDisabled="@IsLoading" />
+                Seek="@DeckWants.Seek" PageSelected="@ChangeWantsAsync" IsDisabled="@IsLoading" />
         </section>
     </div>
 }
@@ -188,6 +186,7 @@ else if (BuildOption is BuildType.Holds)
                 @foreach (var hold in DeckHolds)
                 {
                     var card = hold.Card;
+                    int returnCopies = card.Givebacks.Sum(g => g.Copies);
 
                     <button type="button" title="Remove @card.Name"
                         class="list-group-item list-group-item-action px-2"
@@ -202,7 +201,7 @@ else if (BuildOption is BuildType.Holds)
                             </div>
 
                             <div class="col-4"> @MtgSymbols.Format(card.ManaCost).ToMarkupString() </div>
-                            <div class="col-2"> @hold.Copies </div>
+                            <div class="col-2"> @(hold.Copies - Math.Min(returnCopies, hold.Copies)) </div>
                         </div>
                     </button>
                 }
@@ -216,7 +215,7 @@ else if (BuildOption is BuildType.Holds)
             </div>
 
             <SeekPaging TEntity="@Hold"
-                Seek="@DeckHolds.Seek" PageSelected="@ChangeHoldPageAsync" IsDisabled="@IsLoading" />
+                Seek="@DeckHolds.Seek" PageSelected="@ChangeHoldsAsync" IsDisabled="@IsLoading" />
         </section>
 
         <section class="col">
@@ -253,7 +252,7 @@ else if (BuildOption is BuildType.Holds)
             </div>
 
             <SeekPaging TEntity="@Giveback"
-                Seek="@DeckReturns.Seek" PageSelected="@ChangeReturnPageAsync" IsDisabled="@IsLoading" />
+                Seek="@DeckReturns.Seek" PageSelected="@ChangeReturnsAsync" IsDisabled="@IsLoading" />
         </section>
     </div>
 }
