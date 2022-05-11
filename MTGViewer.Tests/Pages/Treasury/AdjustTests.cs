@@ -8,6 +8,7 @@ using Bunit;
 using Bunit.TestDoubles;
 using Xunit;
 
+using MTGViewer.Data.Infrastructure;
 using MTGViewer.Data;
 using MTGViewer.Pages.Treasury;
 using MTGViewer.Tests.Utils;
@@ -99,9 +100,9 @@ public sealed class AdjustTests : IAsyncLifetime, IDisposable
 
         var cut = _testContext.RenderComponent<Adjust>();
 
-        ChangeInput(cut, $"input#{Adjust.BoxDto.PropertyId(b => b.Name)}", "New Box Name");
-        ChangeInput(cut, $"input#{Adjust.BinDto.PropertyId(b => b.Name)}", "New Bin Name");
-        ChangeInput(cut, $"input#{Adjust.BoxDto.PropertyId(b => b.Capacity)}", addCapacity);
+        ChangeInput(cut, $"input#{BoxDto.PropertyId(b => b.Name)}", "New Box Name");
+        ChangeInput(cut, $"input#{BinDto.PropertyId(b => b.Name)}", "New Bin Name");
+        ChangeInput(cut, $"input#{BoxDto.PropertyId(b => b.Capacity)}", addCapacity);
 
         int beforeBoxes = await _dbContext.Boxes.CountAsync();
 
@@ -126,7 +127,7 @@ public sealed class AdjustTests : IAsyncLifetime, IDisposable
         var cut = _testContext.RenderComponent<Adjust>(p => p
             .Add(b => b.BoxId, box.Id));
 
-        ChangeInput(cut, $"input#{Adjust.BoxDto.PropertyId(b => b.Capacity)}", newCapacity);
+        ChangeInput(cut, $"input#{BoxDto.PropertyId(b => b.Capacity)}", newCapacity);
 
         var form = cut.FindComponent<EditForm>();
 
@@ -150,7 +151,7 @@ public sealed class AdjustTests : IAsyncLifetime, IDisposable
         var cut = _testContext.RenderComponent<Adjust>(p => p
             .Add(b => b.BoxId, box.Id));
 
-        ChangeInput(cut, $"input#{Adjust.BoxDto.PropertyId(b => b.Name)}", newName);
+        ChangeInput(cut, $"input#{BoxDto.PropertyId(b => b.Name)}", newName);
 
         var form = cut.FindComponent<EditForm>();
 
@@ -174,7 +175,7 @@ public sealed class AdjustTests : IAsyncLifetime, IDisposable
         var cut = _testContext.RenderComponent<Adjust>(p => p
             .Add(b => b.BoxId, box.Id));
 
-        ChangeInput(cut, $"input#{Adjust.BinDto.PropertyId(b => b.Name)}", newName);
+        ChangeInput(cut, $"input#{BinDto.PropertyId(b => b.Name)}", newName);
 
         var form = cut.FindComponent<EditForm>();
 

@@ -3,7 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace MTGViewer.Data;
+namespace MTGViewer.Data.Infrastructure;
 
 /// <summary>Group of wants with the same card name</summary>
 public class WantNameGroup : IEnumerable<Want>

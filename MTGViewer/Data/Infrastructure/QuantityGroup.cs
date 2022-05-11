@@ -3,7 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace MTGViewer.Data;
+namespace MTGViewer.Data.Infrastructure;
 
 /// <summary>
 /// Group of quantities (hold, want, and give back) with the same deck and

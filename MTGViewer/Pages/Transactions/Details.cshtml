@@ -4,6 +4,7 @@
     ViewData["Title"] = $"Transaction {Model.AppliedAt.ToShortDateString()}";
 }
 
+@using MTGViewer.Data.Projections
 @inject IAuthorizationService AuthorizationService
 @inject SymbolFormatter MtgSymbols
 

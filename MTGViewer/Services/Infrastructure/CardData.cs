@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 
 using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
+using MTGViewer.Data.Projections;
 
 namespace MTGViewer.Services.Infrastructure;
 

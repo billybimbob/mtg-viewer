@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 using MTGViewer.Data;
+using MTGViewer.Data.Projections;
 using MTGViewer.Services;
 using MTGViewer.Utils;
 

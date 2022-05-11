@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 
-namespace MTGViewer.Data;
+namespace MTGViewer.Data.Projections;
 
 public enum BuildState
 {
@@ -75,4 +75,20 @@ public sealed class ExchangePreview
     public string Name { get; init; } = string.Empty;
     public bool HasWants { get; init; }
     public IEnumerable<LocationCopy> Givebacks { get; init; } = Enumerable.Empty<LocationCopy>();
+}
+
+public sealed record DeckCounts
+{
+    public int Id { get; init; }
+    public string OwnerId { get; init; } = string.Empty;
+
+    public int HeldCopies { get; init; }
+    public int WantCopies { get; set; }
+    public int ReturnCopies { get; set; }
+
+    public int HeldCount { get; init; }
+    public int WantCount { get; set; }
+    public int ReturnCount { get; set; }
+
+    public bool HasTrades { get; init; }
 }

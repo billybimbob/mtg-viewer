@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Identity;
 
 using Microsoft.EntityFrameworkCore;
@@ -16,6 +17,8 @@ using Microsoft.Extensions.Logging;
 
 using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
+using MTGViewer.Data.Infrastructure;
+using MTGViewer.Data.Projections;
 using MTGViewer.Services;
 using MTGViewer.Utils;
 
@@ -54,10 +57,13 @@ public partial class Suggest : OwningComponentBase
 
     private readonly CancellationTokenSource _cancel = new();
 
-    private bool _isBusy;
-    private bool _isInteractive;
+    private readonly List<DeckPreview> _deckOptions = new();
+    private readonly List<UserPreview> _userOptions = new();
 
     private PersistingComponentStateSubscription _persistSubscription;
+
+    private bool _isBusy;
+    private bool _isInteractive;
 
     private DeckCursor _cursor;
 
@@ -65,12 +71,7 @@ public partial class Suggest : OwningComponentBase
     {
         _persistSubscription = ApplicationState.RegisterOnPersisting(PersistSuggestionData);
 
-        _cursor = new DeckCursor
-        {
-            PageSize = PageSize.Current
-        };
-
-        Suggestion.ReceiverChanged += OnReceiverChange;
+        _cursor = new DeckCursor(PageSize.Current);
     }
 
     protected override async Task OnParametersSetAsync()
@@ -79,25 +80,22 @@ public partial class Suggest : OwningComponentBase
 
         try
         {
-            var token = _cancel.Token;
-
-            await using var dbContext = await DbFactory.CreateDbContextAsync(token);
+            await using var dbContext = await DbFactory.CreateDbContextAsync(_cancel.Token);
 
             if (Suggestion.Card?.Id != CardId)
             {
-                await LoadCardAsync(dbContext, token);
+                await LoadCardAsync(dbContext);
             }
 
             if (Suggestion.Card is null)
             {
                 Logger.LogError("Card {CardId} is not valid", CardId);
 
-                Nav.NavigateTo("/Cards/", forceLoad: true, replace: true);
-
+                Nav.NavigateTo("/Cards/", replace: true);
                 return;
             }
 
-            await LoadReceiverAsync(dbContext, token);
+            await LoadReceiverAsync(dbContext);
 
             if (ReceiverId is not null && Suggestion.Receiver is null)
             {
@@ -137,8 +135,6 @@ public partial class Suggest : OwningComponentBase
         {
             _persistSubscription.Dispose();
 
-            Suggestion.ReceiverChanged -= OnReceiverChange;
-
             _cancel.Cancel();
             _cancel.Dispose();
         }
@@ -150,66 +146,69 @@ public partial class Suggest : OwningComponentBase
     {
         ApplicationState.PersistAsJson(nameof(Suggestion.Card), Suggestion.Card);
 
-        ApplicationState.PersistAsJson(nameof(Suggestion.UserOptions), Suggestion.UserOptions);
+        ApplicationState.PersistAsJson(nameof(_userOptions), _userOptions);
+
+        ApplicationState.PersistAsJson(nameof(_deckOptions), _deckOptions);
 
         ApplicationState.PersistAsJson(nameof(_cursor.TotalDecks), _cursor.TotalDecks);
-
-        ApplicationState.PersistAsJson(nameof(Suggestion.DeckOptions), Suggestion.DeckOptions);
 
         return Task.CompletedTask;
     }
 
-    private async Task LoadCardAsync(CardDbContext dbContext, CancellationToken cancel)
+    private async Task LoadCardAsync(CardDbContext dbContext)
     {
-        if (ApplicationState.TryGetData(nameof(Suggestion.Card), out Card? card))
+        if (ApplicationState.TryGetData(nameof(Suggestion.Card), out CardImage? card))
         {
             Suggestion.Card = card;
             return;
         }
 
         Suggestion.Card = await dbContext.Cards
-            .SingleOrDefaultAsync(c => c.Id == CardId, cancel);
+            .Select(c => new CardImage
+            {
+                Id = c.Id,
+                Name = c.Name,
+                ImageUrl = c.ImageUrl
+            })
+            .SingleOrDefaultAsync(c => c.Id == CardId, _cancel.Token);
     }
 
-    private async Task LoadReceiverAsync(CardDbContext dbContext, CancellationToken cancel)
+    private async Task LoadReceiverAsync(CardDbContext dbContext)
     {
-        if (!Suggestion.UserOptions.Any())
+        if (!_userOptions.Any())
         {
-            await LoadUserOptionsAsync(dbContext, cancel);
+            await LoadUserOptionsAsync(dbContext);
         }
 
-        Suggestion.Receiver = Suggestion.UserOptions
+        Suggestion.Receiver = _userOptions
             .SingleOrDefault(u => u.Id == ReceiverId);
 
-        await LoadReceiverDecksAsync(dbContext, cancel);
+        await LoadReceiverDecksAsync(dbContext);
     }
 
-    private async Task LoadUserOptionsAsync(CardDbContext dbContext, CancellationToken cancel)
+    private async Task LoadUserOptionsAsync(CardDbContext dbContext)
     {
-        if (Suggestion.Card is not Card card)
+        if (Suggestion.Card is not CardImage card)
         {
             return;
         }
 
-        const string key = nameof(Suggestion.UserOptions);
-
-        if (ApplicationState.TryGetData(key, out IAsyncEnumerable<UserPreview>? users))
+        if (!ApplicationState.TryGetData(nameof(_userOptions), out IAsyncEnumerable<UserPreview>? users))
         {
-            await Suggestion.AddUsersAsync(users, cancel);
-            return;
+            string? userId = await GetUserIdAsync(_cancel.Token);
+
+            if (userId is null)
+            {
+                return;
+            }
+
+            users = UsersForSuggestion(dbContext, card, userId);
         }
 
-        string? userId = await GetUserIdAsync(cancel);
-
-        if (userId is null)
+        await foreach (var user in users.WithCancellation(_cancel.Token))
         {
-            return;
+            _userOptions.Add(user);
         }
-
-        users = UsersForSuggestion(dbContext, card, userId)
-            .AsAsyncEnumerable();
-
-        await Suggestion.AddUsersAsync(users, cancel);
     }
 
     private async ValueTask<string?> GetUserIdAsync(CancellationToken cancel)
@@ -230,51 +229,32 @@ public partial class Suggest : OwningComponentBase
         return userId;
     }
 
-    private async Task LoadReceiverDecksAsync(CardDbContext dbContext, CancellationToken cancel)
+    private async Task LoadReceiverDecksAsync(CardDbContext dbContext)
     {
-        if (Suggestion is not
-            { Card.Name: string name, Receiver.Id: string id })
+        if (Suggestion is not { Card.Name: string name, Receiver.Id: string id })
         {
             return;
         }
 
         if (!ApplicationState.TryGetData(nameof(_cursor.TotalDecks), out int deckCount))
         {
-            deckCount = await DecksForSuggest(dbContext, name, id).CountAsync(cancel);
+            deckCount = await DecksForSuggest(dbContext, name, id).CountAsync(_cancel.Token);
         }
 
-        if (ApplicationState.TryGetData(nameof(Suggestion.DeckOptions), out IEnumerable<DeckPreview>? decks))
+        if (!ApplicationState.TryGetData(nameof(_deckOptions), out IReadOnlyList<DeckPreview>? decks))
         {
-            await Suggestion.AddDecksAsync(decks.ToAsyncEnumerable(), cancel);
+            decks = Array.Empty<DeckPreview>();
         }
-        else
-        {
-            decks = Enumerable.Empty<DeckPreview>();
-        }
+
+        _deckOptions.AddRange(decks);
 
         _cursor = _cursor with
         {
             TotalDecks = deckCount,
-            LoadedDecks = decks.Count()
+            LoadedDecks = decks.Count
         };
 
-        _cursor = await LoadDeckPageAsync(dbContext, _cursor, Suggestion, cancel);
-    }
-
-    private void OnReceiverChange(object? sender, ReceiverEventArgs args)
-    {
-        if (_isBusy || Suggestion.Card is null)
-        {
-            return;
-        }
-
-        _isBusy = true;
-
-        // triggers on ParameterSet, where IsBusy set to false
-
-        Nav.NavigateTo(
-            Nav.GetUriWithQueryParameter(nameof(ReceiverId), args.ReceiverId),
-            replace: true);
+        _cursor = await LoadDeckPageAsync(dbContext);
     }
 
     #region View Properties
@@ -283,16 +263,56 @@ public partial class Suggest : OwningComponentBase
 
     internal bool HasMore => _cursor.HasMore;
 
-    internal bool HasDetails => Suggestion.ToId is not null;
+    internal bool HasDetails => ToId is not null;
 
-    internal bool IsMissingUsers =>
-        !_isBusy && Suggestion is { Card: Card, UserOptions.Count: 0 };
+    internal bool IsMissingUsers => this is
+    {
+        _isBusy: true,
+        _userOptions.Count: 0,
+        Suggestion.Card: not null
+    };
+
+    internal int? ToId
+    {
+        get => Suggestion.To?.Id;
+        set => Suggestion.To = _deckOptions.SingleOrDefault(d => d.Id == value);
+    }
+
+    internal IReadOnlyList<DeckPreview> DeckOptions => _deckOptions;
+
+    internal IReadOnlyList<UserPreview> UserOptions => _userOptions;
 
     #endregion
 
+    internal void ChangeReceiver(ChangeEventArgs args)
+    {
+        if (_isBusy
+            || Suggestion.Card is null
+            || args.Value?.ToString() is var receiverId)
+        {
+            return;
+        }
+
+        _isBusy = true;
+
+        if (receiverId is null)
+        {
+            // clear to get an updated listed of user options
+            _userOptions.Clear();
+        }
+
+        // triggers on ParameterSet, where IsBusy set to false
+
+        Nav.NavigateTo(
+            Nav.GetUriWithQueryParameter(nameof(ReceiverId), receiverId),
+            replace: true);
+    }
+
+    internal void ChangeReceiver(MouseEventArgs args) => ChangeReceiver(new ChangeEventArgs());
+
     internal void ViewDeckDetails()
     {
-        if (_isBusy || Suggestion.ToId is not int deckId)
+        if (_isBusy || ToId is not int deckId)
         {
             return;
         }
@@ -315,11 +335,9 @@ public partial class Suggest : OwningComponentBase
 
         try
         {
-            var token = _cancel.Token;
+            await using var dbContext = await DbFactory.CreateDbContextAsync(_cancel.Token);
 
-            await using var dbContext = await DbFactory.CreateDbContextAsync(token);
-
-            _cursor = await LoadDeckPageAsync(dbContext, _cursor, Suggestion, token);
+            _cursor = await LoadDeckPageAsync(dbContext);
         }
         catch (OperationCanceledException ex)
         {
@@ -331,42 +349,36 @@ public partial class Suggest : OwningComponentBase
         }
     }
 
-    private static async Task<DeckCursor> LoadDeckPageAsync(
-        CardDbContext dbContext,
-        DeckCursor cursor,
-        SuggestionDto suggestion,
-        CancellationToken cancel)
+    private async Task<DeckCursor> LoadDeckPageAsync(CardDbContext dbContext)
     {
-        if (!cursor.HasMore)
+        if (!_cursor.HasMore)
         {
-            return cursor;
+            return _cursor;
         }
 
-        if (suggestion is not
-            { Card.Name: string cardName, Receiver.Id: string receiverId })
+        if (Suggestion is not { Card.Name: string name, Receiver.Id: string id })
         {
-            return cursor;
+            return _cursor;
         }
 
-        var decks = DecksForSuggest(dbContext, cardName, receiverId)
-            .Skip(cursor.LoadedDecks)
-            .Take(cursor.PageSize)
-            .AsAsyncEnumerable();
+        var decks = DecksForSuggest(dbContext, name, id)
+            .Skip(_cursor.LoadedDecks)
+            .Take(PageSize.Current)
+            .AsAsyncEnumerable()
+            .WithCancellation(_cancel.Token);
 
-        await suggestion.AddDecksAsync(decks, cancel);
+        await foreach (var deck in decks)
+        {
+            _deckOptions.Add(deck);
+        }
 
-        return cursor.NextPage();
+        return _cursor.NextPage();
     }
 
-    public async Task SendSuggestionAsync()
+    internal async Task SendSuggestionAsync()
     {
-        if (_isBusy)
-        {
-            return;
-        }
-
-        if (Suggestion is not
-            { Card.Id: string cardId, Receiver.Id: string receiverId })
+        if (_isBusy
+            || Suggestion is not { Receiver.Id: string receiverId })
         {
             return;
         }
@@ -375,21 +387,19 @@ public partial class Suggest : OwningComponentBase
 
         try
         {
-            var token = _cancel.Token;
-
-            await using var dbContext = await DbFactory.CreateDbContextAsync(token);
+            await using var dbContext = await DbFactory.CreateDbContextAsync(_cancel.Token);
 
             var suggestion = new Suggestion
             {
-                CardId = cardId,
+                CardId = CardId,
                 ReceiverId = receiverId,
-                ToId = Suggestion.ToId,
+                ToId = ToId,
                 Comment = Suggestion.Comment
             };
 
             dbContext.Suggestions.Attach(suggestion);
 
-            await dbContext.SaveChangesAsync(token);
+            await dbContext.SaveChangesAsync(_cancel.Token);
 
             Nav.NavigateTo("/Cards", forceLoad: true);
         }
@@ -407,23 +417,9 @@ public partial class Suggest : OwningComponentBase
         }
     }
 
-    private readonly struct DeckCursor
-    {
-        public int PageSize { get; init; }
-        public int TotalDecks { get; init; }
-        public int LoadedDecks { get; init; }
-
-        public bool HasMore => LoadedDecks < TotalDecks;
-
-        public DeckCursor NextPage() => this with
-        {
-            LoadedDecks = LoadedDecks + PageSize
-        };
-    }
-
-    private static IQueryable<UserPreview> UsersForSuggestion(
+    private static IAsyncEnumerable<UserPreview> UsersForSuggestion(
         CardDbContext dbContext,
-        Card card,
+        CardImage card,
         string proposerId)
     {
         var nonProposers = dbContext.Users
@@ -449,7 +445,8 @@ public partial class Suggest : OwningComponentBase
             {
                 Id = us.User.Id,
                 Name = us.User.Name
-            });
+            })
+            .AsAsyncEnumerable();
     }
 
     private static IQueryable<DeckPreview> DecksForSuggest(
@@ -488,4 +485,26 @@ public partial class Suggest : OwningComponentBase
             });
     }
 
+    private readonly struct DeckCursor
+    {
+        private readonly int _pageSize;
+
+        public DeckCursor(int pageSize)
+        {
+            _pageSize = pageSize;
+
+            TotalDecks = 0;
+            LoadedDecks = 0;
+        }
+
+        public int TotalDecks { get; init; }
+        public int LoadedDecks { get; init; }
+
+        public bool HasMore => LoadedDecks < TotalDecks;
+
+        public DeckCursor NextPage() => this with
+        {
+            LoadedDecks = LoadedDecks + _pageSize
+        };
+    }
 }

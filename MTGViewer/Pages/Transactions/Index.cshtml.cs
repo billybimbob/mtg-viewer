@@ -13,6 +13,7 @@ using Microsoft.Extensions.Logging;
 
 using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
+using MTGViewer.Data.Projections;
 using MTGViewer.Services;
 
 namespace MTGViewer.Pages.Transactions;

@@ -11,6 +11,7 @@ using Microsoft.Extensions.Logging;
 
 using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
+using MTGViewer.Data.Infrastructure;
 using MTGViewer.Utils;
 
 namespace MTGViewer.Pages.Treasury;
@@ -316,8 +317,10 @@ public sealed partial class Adjust : ComponentBase, IDisposable
             return null;
         }
 
-        dbContext.Entry(box)
-            .CurrentValues.SetValues(boxDto);
+        dbContext
+            .Entry(box)
+            .CurrentValues
+            .SetValues(boxDto);
 
         return box;
     }

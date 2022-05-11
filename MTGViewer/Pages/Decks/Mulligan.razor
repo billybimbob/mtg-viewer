@@ -119,20 +119,3 @@ else
         }
     </div>
 }
-
-@code
-{
-    public enum MulliganType
-    {
-        None,
-        Built,
-        Theorycraft
-    }
-
-    private sealed class MulliganTarget
-    {
-        public string Name { get; init; } = string.Empty;
-
-        public IReadOnlyList<DeckCopy> Cards { get; init; } = Array.Empty<DeckCopy>();
-    }
-}

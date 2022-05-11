@@ -2,13 +2,17 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Paging;
+using System.Threading;
 using System.Threading.Tasks;
 
+using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 using MTGViewer.Data;
+using MTGViewer.Data.Infrastructure;
+using MTGViewer.Data.Projections;
 
 namespace MTGViewer.Pages.Decks;
 
@@ -56,6 +60,91 @@ public partial class Craft
 
         return null;
     }
+
+    private async Task CreateDeckOrRedirectAsync(CardDbContext dbContext, string? userId)
+    {
+        if (userId is null)
+        {
+            Nav.NavigateTo("/Decks", forceLoad: true, replace: true);
+            return;
+        }
+
+        bool userExists = await dbContext.Users
+            .AnyAsync(u => u.Id == userId, _cancel.Token);
+
+        if (!userExists)
+        {
+            Nav.NavigateTo("/Decks", forceLoad: true, replace: true);
+            return;
+        }
+
+        int userDeckCount = await dbContext.Decks
+            .CountAsync(d => d.OwnerId == userId, _cancel.Token);
+
+        var newDeck = new Deck
+        {
+            Name = $"Deck #{userDeckCount + 1}",
+            OwnerId = userId
+        };
+
+        _counts = new DeckCounts { OwnerId = userId };
+
+        _deckContext = new DeckContext(newDeck);
+    }
+
+    private async Task FetchDeckOrRedirectAsync(CardDbContext dbContext, string? userId)
+    {
+        if (userId is null)
+        {
+            Nav.NavigateTo("/Decks", forceLoad: true, replace: true);
+            return;
+        }
+
+        var counts = await DeckCountsAsync.Invoke(dbContext, DeckId, _cancel.Token);
+
+        if (counts is null || counts.OwnerId != userId || counts.HasTrades)
+        {
+            Nav.NavigateTo(
+                Nav.GetUriWithQueryParameter(nameof(DeckId), null as int?), replace: true);
+            return;
+        }
+
+        var deck = await dbContext.Decks
+            .SingleOrDefaultAsync(d => d.Id == DeckId, _cancel.Token);
+
+        if (deck is null)
+        {
+            Nav.NavigateTo(
+                Nav.GetUriWithQueryParameter(nameof(DeckId), null as int?), replace: true);
+            return;
+        }
+
+        _counts = counts;
+
+        _deckContext = new DeckContext(deck);
+    }
+
+    private static readonly Func<CardDbContext, int, CancellationToken, Task<DeckCounts?>> DeckCountsAsync
+
+        = EF.CompileAsyncQuery((CardDbContext dbContext, int deckId, CancellationToken _) =>
+            dbContext.Decks
+                .Where(d => d.Id == deckId)
+                .Select(d => new DeckCounts
+                {
+                    Id = d.Id,
+                    OwnerId = d.OwnerId,
+
+                    HeldCopies = d.Holds.Sum(h => h.Copies),
+                    WantCopies = d.Wants.Sum(w => w.Copies),
+                    ReturnCopies = d.Givebacks.Sum(g => g.Copies),
+
+                    HeldCount = d.Holds.Count,
+                    WantCount = d.Wants.Count,
+                    ReturnCount = d.Givebacks.Count,
+
+                    HasTrades = d.TradesTo.Any()
+                })
+                .SingleOrDefault());
 
     private void InitializeHolds()
     {
@@ -589,4 +678,16 @@ public partial class Craft
     }
 
     #endregion
+
+    private readonly record struct LoadedSeekList<T> where T : class
+    {
+        public SeekRequest<T> Request { get; }
+        public SeekList<T>? List { get; }
+
+        public LoadedSeekList(SeekRequest<T> request, SeekList<T> list)
+        {
+            Request = request;
+            List = list;
+        }
+    }
 }

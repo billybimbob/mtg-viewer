@@ -4,6 +4,8 @@ using System.Linq;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 
+using MTGViewer.Data.Infrastructure;
+
 namespace MTGViewer.Data;
 
 public partial class CardDbContext

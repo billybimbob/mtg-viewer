@@ -1,15 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Paging;
-using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
-using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.AspNetCore.Identity;
 
 using Microsoft.EntityFrameworkCore;
@@ -18,6 +15,8 @@ using Microsoft.Extensions.Logging;
 
 using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
+using MTGViewer.Data.Infrastructure;
+using MTGViewer.Data.Projections;
 using MTGViewer.Services;
 using MTGViewer.Utils;
 
@@ -56,6 +55,12 @@ public partial class Craft : OwningComponentBase
     internal BuildType BuildOption { get; private set; }
 
     internal SaveResult Result { get; set; }
+
+    public enum BuildType
+    {
+        Holds,
+        Theorycrafting
+    }
 
     private readonly CancellationTokenSource _cancel = new();
     private readonly SortedSet<Card> _cards = new(CardNameComparer.Instance);
@@ -197,90 +202,6 @@ public partial class Craft : OwningComponentBase
         return userId;
     }
 
-    private async Task CreateDeckOrRedirectAsync(CardDbContext dbContext, string? userId)
-    {
-        if (userId is null)
-        {
-            Nav.NavigateTo("/Decks", forceLoad: true, replace: true);
-            return;
-        }
-
-        bool userExists = await dbContext.Users
-            .AnyAsync(u => u.Id == userId, _cancel.Token);
-
-        if (!userExists)
-        {
-            Nav.NavigateTo("/Decks", forceLoad: true, replace: true);
-            return;
-        }
-
-        int userDeckCount = await dbContext.Decks
-            .CountAsync(d => d.OwnerId == userId, _cancel.Token);
-
-        var newDeck = new Deck
-        {
-            Name = $"Deck #{userDeckCount + 1}",
-            OwnerId = userId
-        };
-
-        _counts = new DeckCounts { OwnerId = userId };
-
-        _deckContext = new DeckContext(newDeck);
-    }
-
-    private async Task FetchDeckOrRedirectAsync(CardDbContext dbContext, string? userId)
-    {
-        if (userId is null)
-        {
-            Nav.NavigateTo("/Decks", forceLoad: true, replace: true);
-            return;
-        }
-
-        var preview = await DeckCountsAsync.Invoke(dbContext, DeckId, _cancel.Token);
-
-        if (preview is null || preview.OwnerId != userId || preview.HasTrades)
-        {
-            Nav.NavigateTo(
-                Nav.GetUriWithQueryParameter(nameof(DeckId), null as int?), replace: true);
-            return;
-        }
-
-        var deck = await dbContext.Decks
-            .SingleOrDefaultAsync(d => d.Id == DeckId, _cancel.Token);
-
-        if (deck is null)
-        {
-            Nav.NavigateTo(
-                Nav.GetUriWithQueryParameter(nameof(DeckId), null as int?), replace: true);
-            return;
-        }
-
-        _counts = preview;
-
-        _deckContext = new DeckContext(deck);
-    }
-
-    private static readonly Func<CardDbContext, int, CancellationToken, Task<DeckCounts?>> DeckCountsAsync
-
-        = EF.CompileAsyncQuery((CardDbContext dbContext, int deckId, CancellationToken _) =>
-            dbContext.Decks
-                .Where(d => d.Id == deckId)
-                .Select(d => new DeckCounts
-                {
-                    OwnerId = d.OwnerId,
-
-                    HeldCopies = d.Holds.Sum(h => h.Copies),
-                    WantCopies = d.Wants.Sum(w => w.Copies),
-                    ReturnCopies = d.Givebacks.Sum(g => g.Copies),
-
-                    HeldCount = d.Holds.Count,
-                    WantCount = d.Wants.Count,
-                    ReturnCount = d.Givebacks.Count,
-
-                    HasTrades = d.TradesTo.Any()
-                })
-                .SingleOrDefault());
-
     internal async Task UpdateBuildTypeAsync(ChangeEventArgs args)
     {
         if (_isBusy || !Enum.TryParse(args.Value?.ToString(), out BuildType value))
@@ -317,278 +238,347 @@ public partial class Craft : OwningComponentBase
         }
     }
 
-    public enum BuildType
+    #region Save Data
+
+    internal async Task CommitChangesAsync()
     {
-        Holds,
-        Theorycrafting
+        if (_isBusy
+            || _deckContext is null
+            || !_deckContext.CanSave())
+        {
+            return;
+        }
+
+        _isBusy = true;
+
+        try
+        {
+            await using var dbContext = await DbFactory.CreateDbContextAsync(_cancel.Token);
+
+            Result = await SaveOrConcurrentRecoverAsync(dbContext);
+        }
+        catch (OperationCanceledException ex)
+        {
+            Logger.LogWarning("{Error}", ex);
+
+            Result = SaveResult.Error;
+        }
+        catch (DbUpdateException ex)
+        {
+            Logger.LogError("{Error}", ex);
+
+            Result = SaveResult.Error;
+        }
+        finally
+        {
+            _isBusy = false;
+        }
     }
 
-    private sealed class DeckDto : ConcurrentDto
+    private async Task<SaveResult> SaveOrConcurrentRecoverAsync(CardDbContext dbContext)
     {
-        public int Id { get; init; }
-        public string OwnerId { get; init; } = string.Empty;
-        public string Name { get; init; } = string.Empty;
-        public Color Color { get; init; }
+        if (_deckContext is null)
+        {
+            return SaveResult.Error;
+        }
 
-        public IEnumerable<QuantityDto> Holds { get; init; } = Enumerable.Empty<QuantityDto>();
-        public IEnumerable<QuantityDto> Wants { get; init; } = Enumerable.Empty<QuantityDto>();
-        public IEnumerable<QuantityDto> Givebacks { get; init; } = Enumerable.Empty<QuantityDto>();
+        try
+        {
+            dbContext.Cards.AttachRange(_cards);
 
-        [JsonConstructor]
-        public DeckDto()
+            PrepareChanges(dbContext, _deckContext);
+
+            await dbContext.SaveChangesAsync(_cancel.Token);
+
+            _deckContext.SuccessfullySaved();
+
+            return SaveResult.Success;
+        }
+        catch (DbUpdateConcurrencyException ex)
+        {
+            await UpdateDeckFromDbAsync(dbContext, _deckContext, ex, _cancel.Token);
+
+            _cards.UnionWith(dbContext.Cards.Local);
+
+            return SaveResult.Error;
+        }
+    }
+
+    private static void PrepareChanges(CardDbContext dbContext, DeckContext deckContext)
+    {
+        var deck = deckContext.Deck;
+
+        if (deckContext.IsNewDeck)
+        {
+            dbContext.Decks.Add(deck);
+        }
+        else
+        {
+            dbContext.Decks.Attach(deck).State = EntityState.Modified;
+        }
+
+        PrepareQuantity(deckContext, dbContext.Holds);
+        PrepareQuantity(deckContext, dbContext.Wants);
+        PrepareQuantity(deckContext, dbContext.Givebacks);
+    }
+
+    private static void PrepareQuantity<TQuantity>(
+        DeckContext deckContext,
+        DbSet<TQuantity> dbQuantities)
+        where TQuantity : Quantity
+    {
+        foreach (var quantity in deckContext.GetQuantities<TQuantity>())
+        {
+            bool isEmpty = quantity.Copies == 0;
+            bool isTracked = dbQuantities.Local.Contains(quantity);
+
+            if (!isEmpty && deckContext.IsAdded(quantity))
+            {
+                dbQuantities.Add(quantity);
+            }
+            else if (isEmpty && isTracked)
+            {
+                dbQuantities.Remove(quantity);
+            }
+            else if (!isEmpty && !isTracked)
+            {
+                dbQuantities.Attach(quantity);
+            }
+            else if (deckContext.IsModified(quantity))
+            {
+                dbQuantities.Attach(quantity).State = EntityState.Modified;
+            }
+        }
+    }
+
+    private static async Task UpdateDeckFromDbAsync(
+        CardDbContext dbContext,
+        DeckContext deckContext,
+        DbUpdateConcurrencyException ex,
+        CancellationToken cancel)
+    {
+        if (HasNoDeckConflicts(deckContext, ex))
+        {
+            return;
+        }
+
+        if (cancel.IsCancellationRequested)
+        {
+            return;
+        }
+
+        Deck? dbDeck = null;
+        var localDeck = deckContext.Deck;
+
+        try
+        {
+            dbDeck = await dbContext.Decks
+                .Include(d => d.Holds) // unbounded: keep eye on
+                    .ThenInclude(h => h.Card)
+                .Include(d => d.Wants) // unbounded: keep eye on
+                    .ThenInclude(w => w.Card)
+                .Include(d => d.Givebacks) // unbounded: keep eye on
+                    .ThenInclude(g => g.Card)
+
+                .AsSplitQuery()
+                .AsNoTrackingWithIdentityResolution()
+                .SingleOrDefaultAsync(d => d.Id == localDeck.Id, cancel);
+        }
+        catch (OperationCanceledException)
         { }
 
-        public DeckDto(CardDbContext dbContext, DeckContext deckContext)
+        if (cancel.IsCancellationRequested)
         {
-            var deck = deckContext.Deck;
-
-            Id = deck.Id;
-            OwnerId = deck.OwnerId;
-
-            Name = deck.Name;
-            Color = deck.Color;
-
-            Wants = deck.Wants.Select(w => new QuantityDto(dbContext, w));
-            Holds = deck.Holds.Select(h => new QuantityDto(dbContext, h));
-            Givebacks = deck.Givebacks.Select(g => new QuantityDto(dbContext, g));
-
-            dbContext.CopyToken(this, deck);
+            return;
         }
 
-        public DeckContext ToDeckContext(CardDbContext dbContext)
+        if (dbDeck == default)
         {
-            var deck = new Deck();
-
-            dbContext.Entry(deck).CurrentValues.SetValues(this);
-
-            deck.Holds.AddRange(
-                Holds.Select(q => q.ToQuantity<Hold>(dbContext)));
-
-            deck.Wants.AddRange(
-                Wants.Select(q => q.ToQuantity<Want>(dbContext)));
-
-            deck.Givebacks.AddRange(
-                Givebacks.Select(q => q.ToQuantity<Giveback>(dbContext)));
-
-            return new DeckContext(deck);
+            return;
         }
+
+        MergeDbRemoves(deckContext, dbDeck);
+        MergeDbConflicts(dbContext, deckContext, dbDeck);
+        MergeDbAdditions(dbContext, deckContext, dbDeck);
+
+        CapGivebacks(deckContext.Groups);
+
+        dbContext.MatchToken(localDeck, dbDeck);
     }
 
-    private sealed class QuantityDto : ConcurrentDto
+    private static bool HasNoDeckConflicts(
+        DeckContext deckContext,
+        DbUpdateConcurrencyException ex)
     {
-        public int Id { get; init; }
+        var deckConflict = ex.Entries<Deck>().SingleOrDefault();
 
-        public string CardId { get; init; } = string.Empty;
-
-        public int Copies { get; init; }
-
-        [JsonConstructor]
-        public QuantityDto()
-        { }
-
-        public QuantityDto(CardDbContext dbContext, Quantity quantity)
+        if (deckConflict is not null && deckConflict.Entity.Id == deckContext.Deck.Id)
         {
-            Id = quantity.Id;
-            CardId = quantity.CardId;
-            Copies = quantity.Copies;
-
-            dbContext.CopyToken(this, quantity);
-        }
-
-        public TQuantity ToQuantity<TQuantity>(CardDbContext dbContext) where TQuantity : Quantity, new()
-        {
-            var quantity = new TQuantity();
-
-            dbContext.Entry(quantity).CurrentValues.SetValues(this);
-
-            return quantity;
-        }
-    }
-
-    private sealed record DeckCounts
-    {
-        public string OwnerId { get; init; } = string.Empty;
-
-        public int HeldCopies { get; init; }
-        public int WantCopies { get; set; }
-        public int ReturnCopies { get; set; }
-
-        public int HeldCount { get; init; }
-        public int WantCount { get; set; }
-        public int ReturnCount { get; set; }
-
-        public bool HasTrades { get; init; }
-    }
-
-    private readonly record struct LoadedSeekList<T> where T : class
-    {
-        public SeekRequest<T> Request { get; }
-        public SeekList<T>? List { get; }
-
-        public LoadedSeekList(SeekRequest<T> request, SeekList<T> list)
-        {
-            Request = request;
-            List = list;
-        }
-    }
-
-    private sealed class DeckContext
-    {
-        private readonly Dictionary<Quantity, int> _originalCopies;
-        private readonly Dictionary<string, QuantityGroup> _groups;
-
-        public DeckContext(Deck deck)
-        {
-            ArgumentNullException.ThrowIfNull(deck);
-
-            _originalCopies = new Dictionary<Quantity, int>();
-
-            _groups = QuantityGroup
-                .FromDeck(deck)
-                .ToDictionary(qg => qg.CardId);
-
-            Deck = deck;
-            EditContext = new EditContext(deck);
-
-            IsNewDeck = deck.Id == default;
-
-            UpdateOriginals();
-        }
-
-        public Deck Deck { get; }
-
-        public EditContext EditContext { get; }
-
-        public bool IsNewDeck { get; private set; }
-
-        public IReadOnlyCollection<QuantityGroup> Groups => _groups.Values;
-
-        public bool IsAdded(Quantity quantity)
-            => !_originalCopies.ContainsKey(quantity);
-
-        public bool IsModified(Quantity quantity)
-            => quantity.Copies != _originalCopies.GetValueOrDefault(quantity);
-
-        public bool CanSave()
-        {
-            if (!EditContext.Validate())
-            {
-                return false;
-            }
-
-            if (IsNewDeck)
-            {
-                return true;
-            }
-
-            if (EditContext.IsModified())
-            {
-                return true;
-            }
-
-            bool quantitiesModifed = _groups.Values
-                .SelectMany(cg => cg)
-                .Any(q => IsModified(q));
-
-            if (quantitiesModifed)
-            {
-                return true;
-            }
-
             return false;
         }
 
-        public IEnumerable<TQuantity> GetQuantities<TQuantity>()
-            where TQuantity : Quantity
-        {
-            var quantityType = typeof(TQuantity);
+        var cardIds = deckContext.Groups
+            .Select(cg => cg.CardId)
+            .ToList();
 
-            if (quantityType == typeof(Hold))
+        var holdConflicts = ex.Entries<Hold>()
+            .IntersectBy(cardIds, e => e.Entity.CardId);
+
+        var wantConflicts = ex.Entries<Want>()
+            .IntersectBy(cardIds, e => e.Entity.CardId);
+
+        var giveConflicts = ex.Entries<Giveback>()
+            .IntersectBy(cardIds, e => e.Entity.CardId);
+
+        return !holdConflicts.Any()
+            && !wantConflicts.Any()
+            && !giveConflicts.Any();
+    }
+
+    private static void MergeDbRemoves(DeckContext deckContext, Deck dbDeck)
+    {
+        MergeRemovedQuantity(deckContext, dbDeck.Holds);
+
+        MergeRemovedQuantity(deckContext, dbDeck.Wants);
+
+        MergeRemovedQuantity(deckContext, dbDeck.Givebacks);
+    }
+
+    private static void MergeRemovedQuantity<TQuantity>(
+        DeckContext deckContext,
+        IReadOnlyList<TQuantity> dbQuantities)
+        where TQuantity : Quantity
+    {
+        var removedQuantities = deckContext
+            .GetQuantities<TQuantity>()
+
+            .GroupJoin(dbQuantities,
+                lq => (lq.CardId, lq.LocationId),
+                db => (db.CardId, db.LocationId),
+                (local, dbs) =>
+                    (local, noDb: !dbs.Any()))
+
+            .Where(ln => ln.noDb)
+            .Select(ln => ln.local);
+
+        foreach (var removedQuantity in removedQuantities)
+        {
+            if (deckContext.IsModified(removedQuantity))
             {
-                return Deck.Holds.OfType<TQuantity>();
+                deckContext.ConvertToAddition(removedQuantity);
             }
-            else if (quantityType == typeof(Want))
-            {
-                return Deck.Wants.OfType<TQuantity>();
-            }
-            // else if (quantityType == typeof(Giveback))
             else
             {
-                return Deck.Givebacks.OfType<TQuantity>();
+                removedQuantity.Copies = 0;
             }
-        }
-
-        public bool TryGetQuantity<TQuantity>(Card card, out TQuantity quantity)
-            where TQuantity : Quantity
-        {
-            quantity = null!;
-
-            if (card is null)
-            {
-                return false;
-            }
-
-            if (!_groups.TryGetValue(card.Id, out var group))
-            {
-                return false;
-            }
-
-            quantity = group.GetQuantity<TQuantity>()!;
-
-            return quantity != null;
-        }
-
-        public void AddQuantity<TQuantity>(TQuantity quantity)
-            where TQuantity : Quantity
-        {
-            ArgumentNullException.ThrowIfNull(quantity);
-
-            if (!_groups.TryGetValue(quantity.CardId, out var group))
-            {
-                _groups.Add(quantity.CardId, new QuantityGroup(quantity));
-                return;
-            }
-
-            if (group.GetQuantity<TQuantity>() is not null)
-            {
-                return;
-            }
-
-            group.AddQuantity(quantity);
-        }
-
-        public void AddOriginalQuantity<TQuantity>(TQuantity quantity)
-            where TQuantity : Quantity
-        {
-            ArgumentNullException.ThrowIfNull(quantity);
-
-            AddQuantity(quantity);
-
-            _originalCopies.Add(quantity, quantity.Copies);
-        }
-
-        public void ConvertToAddition(Quantity quantity)
-        {
-            ArgumentNullException.ThrowIfNull(quantity);
-
-            _originalCopies.Remove(quantity);
-        }
-
-        private void UpdateOriginals()
-        {
-            var allQuantities = _groups.Values.SelectMany(qg => qg);
-
-            foreach (var quantity in allQuantities)
-            {
-                _originalCopies[quantity] = quantity.Copies;
-            }
-        }
-
-        public void SuccessfullySaved()
-        {
-            UpdateOriginals();
-
-            IsNewDeck = false;
         }
     }
+
+    private static void MergeDbConflicts(
+        CardDbContext dbContext,
+        DeckContext deckContext,
+        Deck dbDeck)
+    {
+        MergeQuantityConflict(dbContext, deckContext, dbDeck.Holds);
+
+        MergeQuantityConflict(dbContext, deckContext, dbDeck.Wants);
+
+        MergeQuantityConflict(dbContext, deckContext, dbDeck.Givebacks);
+    }
+
+    private static void MergeQuantityConflict<TQuantity>(
+        CardDbContext dbContext,
+        DeckContext deckContext,
+        IEnumerable<TQuantity> dbQuantities)
+        where TQuantity : Quantity
+    {
+        foreach (var dbQuantity in dbQuantities)
+        {
+            if (!deckContext.TryGetQuantity(dbQuantity.Card, out TQuantity localQuantity))
+            {
+                continue;
+            }
+
+            if (!deckContext.IsModified(localQuantity))
+            {
+                localQuantity.Copies = dbQuantity.Copies;
+            }
+
+            dbContext.MatchToken(localQuantity, dbQuantity);
+        }
+    }
+
+    private static void MergeDbAdditions(
+        CardDbContext dbContext,
+        DeckContext deckContext,
+        Deck dbDeck)
+    {
+        MergeNewQuantity(dbContext, deckContext, dbDeck.Holds);
+
+        MergeNewQuantity(dbContext, deckContext, dbDeck.Wants);
+
+        MergeNewQuantity(dbContext, deckContext, dbDeck.Givebacks);
+    }
+
+    private static void MergeNewQuantity<TQuantity>(
+        CardDbContext dbContext,
+        DeckContext deckContext,
+        IReadOnlyList<TQuantity> dbQuantities)
+        where TQuantity : Quantity, new()
+    {
+        foreach (var dbQuantity in dbQuantities)
+        {
+            if (deckContext.TryGetQuantity(dbQuantity.Card, out TQuantity _))
+            {
+                continue;
+            }
+
+            var card = dbContext.Cards.Local
+                .FirstOrDefault(c => c.Id == dbQuantity.CardId);
+
+            if (card == default)
+            {
+                card = dbQuantity.Card;
+
+                card.Holds.Clear();
+                card.Wants.Clear();
+
+                dbContext.Cards.Attach(card);
+            }
+
+            var newQuantity = new TQuantity
+            {
+                Id = dbQuantity.Id,
+                Card = card,
+                Location = deckContext.Deck,
+                Copies = dbQuantity.Copies
+            };
+
+            // attach for nav fixup
+
+            dbContext.Set<TQuantity>().Attach(newQuantity);
+
+            dbContext.MatchToken(newQuantity, dbQuantity);
+
+            deckContext.AddOriginalQuantity(newQuantity);
+        }
+    }
+
+    private static void CapGivebacks(IEnumerable<QuantityGroup> deckCards)
+    {
+        foreach (var cardGroup in deckCards)
+        {
+            if (cardGroup.Giveback is null)
+            {
+                continue;
+            }
+
+            int currentReturn = cardGroup.Giveback.Copies;
+            int copiesCap = cardGroup.Hold?.Copies ?? currentReturn;
+
+            cardGroup.Giveback.Copies = Math.Min(currentReturn, copiesCap);
+        }
+    }
+
+    #endregion
 }

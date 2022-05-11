@@ -8,6 +8,7 @@ using Moq;
 using Xunit;
 
 using MTGViewer.Data;
+using MTGViewer.Data.Projections;
 using MTGViewer.Triggers;
 using MTGViewer.Tests.Utils;
 

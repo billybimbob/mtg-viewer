@@ -1,4 +1,4 @@
-namespace MTGViewer.Data;
+namespace MTGViewer.Data.Projections;
 
 public sealed record HeldCard(Card Card, int Copies);
 

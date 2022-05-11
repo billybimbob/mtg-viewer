@@ -1,6 +1,6 @@
 using System;
 
-namespace MTGViewer.Data;
+namespace MTGViewer.Data.Projections;
 
 public sealed record TradeDeckPreview
 {

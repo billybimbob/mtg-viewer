@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
 
 using MTGViewer.Data;
+using MTGViewer.Data.Projections;
 
 namespace MTGViewer.Pages.Cards;
 

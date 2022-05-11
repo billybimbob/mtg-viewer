@@ -1,12 +1,5 @@
 namespace MTGViewer.Data;
 
-public enum SaveResult
-{
-    None,
-    Success,
-    Error
-}
-
 internal enum LocationType
 {
     Invalid,
