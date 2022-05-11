@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Paging;
@@ -106,51 +107,105 @@ public partial class Craft
     {
         var newHolds = GetQuantities(request, includeEmpty: true);
 
-        if (newHolds.List is { Count: int count } && count == PageSize.Current - 1)
+        if (newHolds.List?.Count == PageSize.Current - 1)
         {
             _holds = newHolds;
             return;
         }
 
-        await using var dbContext = await DbFactory.CreateDbContextAsync(_cancel.Token);
+        if (_isBusy)
+        {
+            return;
+        }
 
-        await LoadQuantitiesAsync(dbContext, request);
+        _isBusy = true;
 
-        _holds = GetQuantities(request, includeEmpty: true);
+        try
+        {
+            await using var dbContext = await DbFactory.CreateDbContextAsync(_cancel.Token);
+
+            await LoadQuantitiesAsync(dbContext, request);
+
+            _holds = GetQuantities(request, includeEmpty: true);
+        }
+        catch (OperationCanceledException ex)
+        {
+            Logger.LogWarning("{Warning}", ex);
+        }
+        finally
+        {
+            _isBusy = false;
+        }
     }
 
     internal async Task ChangeReturnsAsync(SeekRequest<Giveback> request)
     {
         var newReturns = GetQuantities(request);
 
-        if (newReturns.List is { Count: int count } && count == PageSize.Current - 1)
+        if (newReturns.List?.Count == PageSize.Current - 1)
         {
             _givebacks = newReturns;
             return;
         }
 
-        await using var dbContext = await DbFactory.CreateDbContextAsync(_cancel.Token);
+        if (_isBusy)
+        {
+            return;
+        }
 
-        await LoadQuantitiesAsync(dbContext, request);
+        _isBusy = true;
 
-        _givebacks = GetQuantities(request);
+        try
+        {
+            await using var dbContext = await DbFactory.CreateDbContextAsync(_cancel.Token);
+
+            await LoadQuantitiesAsync(dbContext, request);
+
+            _givebacks = GetQuantities(request);
+        }
+        catch (OperationCanceledException ex)
+        {
+            Logger.LogWarning("{Warning}", ex);
+        }
+        finally
+        {
+            _isBusy = false;
+        }
     }
 
     internal async Task ChangeWantsAsync(SeekRequest<Want> request)
     {
         var newWants = GetQuantities(request);
 
-        if (newWants.List is { Count: int count } && count == PageSize.Current - 1)
+        if (newWants.List?.Count == PageSize.Current - 1)
         {
             _wants = newWants;
             return;
         }
 
-        await using var dbContext = await DbFactory.CreateDbContextAsync(_cancel.Token);
+        if (_isBusy)
+        {
+            return;
+        }
 
-        await LoadQuantitiesAsync(dbContext, request);
+        _isBusy = true;
 
-        _wants = GetQuantities(request);
+        try
+        {
+            await using var dbContext = await DbFactory.CreateDbContextAsync(_cancel.Token);
+
+            await LoadQuantitiesAsync(dbContext, request);
+
+            _wants = GetQuantities(request);
+        }
+        catch (OperationCanceledException ex)
+        {
+            Logger.LogWarning("{Warning}", ex);
+        }
+        finally
+        {
+            _isBusy = false;
+        }
     }
 
     private LoadedSeekList<TQuantity> GetQuantities<TQuantity>(
@@ -165,8 +220,8 @@ public partial class Craft
 
         var quantities = _deckContext.Groups
             .Select(g => g.GetQuantity<TQuantity>())
-            .Where(q => includeEmpty || q is { Copies: > 0 })
-            .OfType<TQuantity>();
+            .OfType<TQuantity>()
+            .Where(q => includeEmpty || q.Copies > 0);
 
         var orderedQuantities = _cards
             .Join(quantities,
@@ -183,10 +238,6 @@ public partial class Craft
         int size)
         where TQuantity : Quantity
     {
-        bool hasOrigin = request.Seek is not null;
-
-        var direction = request.Direction;
-
         var items = request switch
         {
             (TQuantity o, SeekDirection.Backwards) => quantities
@@ -211,14 +262,15 @@ public partial class Craft
         };
 
         bool lookAhead = items.Count == size;
-
         if (lookAhead)
         {
             items.RemoveAt(items.Count - 1);
         }
 
-        var seek = new Seek<TQuantity>(items, direction, hasOrigin, lookAhead);
+        var direction = request.Direction;
+        bool hasOrigin = request.Seek is not null;
 
+        var seek = new Seek<TQuantity>(items, direction, hasOrigin, lookAhead);
         var list = new SeekList<TQuantity>(seek, items);
 
         return new LoadedSeekList<TQuantity>(request, list);
@@ -240,9 +292,9 @@ public partial class Craft
 
         var newPage = DeckQuantitiesAsync(dbContext, deck.Id, seek, direction, PageSize.Current);
 
-        await foreach (var want in newPage.WithCancellation(_cancel.Token))
+        await foreach (var quantity in newPage.WithCancellation(_cancel.Token))
         {
-            _deckContext.AddQuantity(want);
+            _deckContext.AddOriginalQuantity(quantity);
         }
 
         _cards.UnionWith(dbContext.Cards.Local);
@@ -275,42 +327,31 @@ public partial class Craft
 
     internal async Task AddWantAsync(Card card)
     {
-        if (_counts is null)
-        {
-            return;
-        }
-
         if (BuildOption is not BuildType.Theorycrafting)
         {
             Logger.LogWarning("Build type is not expected {Expected}", BuildType.Theorycrafting);
             return;
         }
 
-        var want = await FindWantAsync(card);
-
-        if (want is null)
+        if (_isBusy)
         {
-            Logger.LogWarning("Could not find want for {CardName}", card.Name);
             return;
         }
 
-        if (want.Copies >= PageSize.Limit)
+        _isBusy = true;
+
+        try
         {
-            Logger.LogWarning("Deck want failed since at limit");
-            return;
+            AddWant(await FindWantAsync(card));
         }
-
-        want.Copies += 1;
-
-        if (want.Copies == 1)
+        catch (OperationCanceledException ex)
         {
-            _wants = GetQuantities(_wants.Request);
-            _counts.WantCount += 1;
+            Logger.LogWarning("{Warning}", ex);
         }
-
-        _counts.WantCopies += 1;
-
-        Result = SaveResult.None;
+        finally
+        {
+            _isBusy = false;
+        }
     }
 
     private async Task<Want?> FindWantAsync(Card card)
@@ -345,16 +386,36 @@ public partial class Craft
         return want;
     }
 
-    internal void RemoveWant(Card card)
+    private void AddWant(Want? want)
     {
-        if (_deckContext is null || _counts is null)
+        if (want is null || _counts is null)
         {
             return;
         }
 
+        want.Copies += 1;
+
+        if (want.Copies == 1)
+        {
+            _wants = GetQuantities(_wants.Request);
+            _counts.WantCount += 1;
+        }
+
+        _counts.WantCopies += 1;
+
+        Result = SaveResult.None;
+    }
+
+    internal void RemoveWant(Card card)
+    {
         if (BuildOption is not BuildType.Theorycrafting)
         {
             Logger.LogWarning("Build type is not expected {Expected}", BuildType.Theorycrafting);
+            return;
+        }
+
+        if (_deckContext is null || _counts is null)
+        {
             return;
         }
 
@@ -382,47 +443,34 @@ public partial class Craft
 
     internal async Task AddReturnAsync(Card card)
     {
-        if (_deckContext is null || _counts is null)
-        {
-            return;
-        }
-
         if (BuildOption is not BuildType.Holds)
         {
             Logger.LogWarning("Build type is not expected {Expected}", BuildType.Holds);
             return;
         }
 
-        var deckReturn = await FindReturnAsync(card);
-
-        if (deckReturn is not var (hold, giveback))
+        if (_isBusy)
         {
-            Logger.LogWarning("Missing required Hold for Card {CardName}", card.Name);
             return;
         }
 
-        int remaining = hold.Copies - giveback.Copies;
+        _isBusy = true;
 
-        if (remaining == 0)
+        try
         {
-            Logger.LogError("There are no more of {CardName} to remove", card.Name);
-            return;
+            AddReturn(await FindReturnAsync(card));
         }
-
-        giveback.Copies += 1;
-
-        if (giveback.Copies == 1)
+        catch (OperationCanceledException ex)
         {
-            _givebacks = GetQuantities(_givebacks.Request);
-            _counts.ReturnCount += 1;
+            Logger.LogWarning("{Warning}", ex);
         }
-
-        _counts.ReturnCopies += 1;
-
-        Result = SaveResult.None;
+        finally
+        {
+            _isBusy = false;
+        }
     }
 
-    private async Task<(Hold, Giveback)?> FindReturnAsync(Card card)
+    private async Task<Giveback?> FindReturnAsync(Card card)
     {
         if (_deckContext is not { Deck: Deck deck })
         {
@@ -434,7 +482,7 @@ public partial class Craft
 
         if (holdExists && giveExists)
         {
-            return (hold, give);
+            return give;
         }
 
         await using var dbContext = await DbFactory.CreateDbContextAsync(_cancel.Token);
@@ -450,6 +498,7 @@ public partial class Craft
 
             if (dbHold is null)
             {
+                Logger.LogWarning("Missing required Hold for Card {CardName}", card.Name);
                 return null;
             }
 
@@ -473,7 +522,35 @@ public partial class Craft
             _deckContext.AddQuantity(give);
         }
 
-        return (hold, give);
+        int remaining = hold.Copies - give.Copies;
+
+        if (remaining == 0)
+        {
+            Logger.LogError("There are no more of {CardName} to remove", card.Name);
+            return null;
+        }
+
+        return give;
+    }
+
+    private void AddReturn(Giveback? giveback)
+    {
+        if (giveback is null || _counts is null)
+        {
+            return;
+        }
+
+        giveback.Copies += 1;
+
+        if (giveback.Copies == 1)
+        {
+            _givebacks = GetQuantities(_givebacks.Request);
+            _counts.ReturnCount += 1;
+        }
+
+        _counts.ReturnCopies += 1;
+
+        Result = SaveResult.None;
     }
 
     internal void RemoveReturn(Card card)

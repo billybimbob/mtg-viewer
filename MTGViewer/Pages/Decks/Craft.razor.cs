@@ -185,6 +185,7 @@ public partial class Craft : OwningComponentBase
         _cancel.Token.ThrowIfCancellationRequested();
 
         var userManager = ScopedServices.GetRequiredService<UserManager<CardUser>>();
+
         string? userId = userManager.GetUserId(authState.User);
 
         if (userId is null)
@@ -556,7 +557,8 @@ public partial class Craft : OwningComponentBase
             group.AddQuantity(quantity);
         }
 
-        public void AddOriginalQuantity(Quantity quantity)
+        public void AddOriginalQuantity<TQuantity>(TQuantity quantity)
+            where TQuantity : Quantity
         {
             ArgumentNullException.ThrowIfNull(quantity);
 
