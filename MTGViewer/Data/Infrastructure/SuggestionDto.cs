@@ -5,7 +5,7 @@ using MTGViewer.Data.Projections;
 
 namespace MTGViewer.Data.Infrastructure;
 
-internal sealed class SuggestionDto
+public sealed class SuggestionDto
 {
     public CardImage? Card { get; set; }
 

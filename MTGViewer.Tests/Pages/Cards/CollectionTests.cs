@@ -104,7 +104,7 @@ public sealed class CollectionTests : IAsyncLifetime, IDisposable
     }
 
     [Fact]
-    public void LoadData_SearchTypesParamater_NoResult()
+    public void LoadData_SearchTypesParameter_NoResult()
     {
         const string searchTypes = "/t test invalid type";
 

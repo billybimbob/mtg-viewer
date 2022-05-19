@@ -111,7 +111,8 @@ public sealed class CraftTests : IAsyncLifetime, IDisposable
         auth.SetClaims(identity.Claims.ToArray());
 
         int invalidDeck = await _services
-            .GetRequiredService<CardDbContext>().Decks
+            .GetRequiredService<CardDbContext>()
+            .Decks
             .Where(d => d.OwnerId != user.Id)
             .Select(d => d.Id)
             .FirstAsync();

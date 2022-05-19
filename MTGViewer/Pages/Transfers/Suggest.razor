@@ -28,6 +28,15 @@
         break;
 }
 
+<SavePrompt @bind-Result="Result">
+    <SuccessMessage>
+        Suggestion successfully sent.
+    </SuccessMessage>
+    <ErrorMessage>
+        Ran into issues while try send the suggestion.
+    </ErrorMessage>
+</SavePrompt>
+
 <hr>
 
 @if (Suggestion.Receiver is not null)
@@ -39,7 +48,7 @@
                 @Suggestion.DisplayName(s => s.To)
             </label>
 
-            <div class="list-group list-group-flush">
+            <div id="@SuggestionDto.PropertyId(s => s.To)" class="list-group list-group-flush">
                 @{ string nullActive = ToId == null ? "list-group-item-secondary" : string.Empty; }
 
                 <button type="button" title="No Specific Deck"
@@ -95,7 +104,7 @@
 
                 <button class="btn btn-secondary" type="button"
                     title="Load More Decks"
-                    @onclick="LoadMoreDecksAsync" disabled="@(IsLoading || !HasMore)">
+                    @onclick="LoadMoreDecksAsync" disabled="@(IsLoading || AllDecksLoaded)">
                     Load More
                 </button>
 
@@ -136,8 +145,12 @@ else if (Suggestion.Card is CardImage card)
                 </div>
 
                 <div class="form-group col-lg-6 col">
+                    <label for="SuggestionDto.PropertyId(s => s.Receiver)" hidden>
+                        @Suggestion.DisplayName(s => s.Receiver) </label>
+
                     <select @onchange="ChangeReceiver"
-                        disabled="@IsLoading" title="Suggest to User" class="form-control">
+                        disabled="@IsLoading" title="Suggest to User"
+                        id="@SuggestionDto.PropertyId(s => s.Receiver)" class="form-control">
 
                         <option value="@(null as string)" selected="@(ReceiverId == null)">
                             Choose a User </option>
