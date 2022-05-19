@@ -172,10 +172,18 @@ public partial class Craft : OwningComponentBase
         _counts = counts;
         _deckContext = deckData.ToDeckContext(dbContext);
 
-        dbContext.Cards.AttachRange(cards);
-        dbContext.Decks.Attach(_deckContext.Deck);
-
         _cards.UnionWith(cards);
+
+        if (_deckContext.IsNewDeck)
+        {
+            dbContext.Decks.Add(_deckContext.Deck);
+        }
+        else
+        {
+            dbContext.Decks.Attach(_deckContext.Deck);
+        }
+
+        dbContext.Cards.AttachRange(cards);
 
         InitializeHolds();
         InitializeReturns();

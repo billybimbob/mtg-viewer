@@ -351,6 +351,7 @@ public partial class Craft
         };
 
         bool lookAhead = items.Count == size;
+
         if (lookAhead)
         {
             items.RemoveAt(items.Count - 1);
@@ -375,7 +376,15 @@ public partial class Craft
         }
 
         dbContext.Cards.AttachRange(_cards);
-        dbContext.Decks.Attach(deck); // attach for nav fixup
+
+        if (_deckContext.IsNewDeck) // attach for nav fixup
+        {
+            dbContext.Decks.Add(deck);
+        }
+        else
+        {
+            dbContext.Decks.Attach(deck);
+        }
 
         var (seek, direction) = request;
 
@@ -458,7 +467,15 @@ public partial class Craft
         await using var dbContext = await DbFactory.CreateDbContextAsync(_cancel.Token);
 
         dbContext.Cards.Attach(card);
-        dbContext.Decks.Attach(deck);
+
+        if (_deckContext.IsNewDeck)
+        {
+            dbContext.Decks.Add(deck);
+        }
+        else
+        {
+            dbContext.Decks.Attach(deck);
+        }
 
         var want = await dbContext
             .Wants
@@ -577,7 +594,15 @@ public partial class Craft
         await using var dbContext = await DbFactory.CreateDbContextAsync(_cancel.Token);
 
         dbContext.Cards.Attach(card);
-        dbContext.Decks.Attach(deck);
+
+        if (_deckContext.IsNewDeck)
+        {
+            dbContext.Decks.Add(deck);
+        }
+        else
+        {
+            dbContext.Decks.Attach(deck);
+        }
 
         if (!holdExists)
         {

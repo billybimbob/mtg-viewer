@@ -92,6 +92,11 @@ public partial class Suggest : OwningComponentBase
                     Nav.GetUriWithQueryParameter(nameof(ReceiverId), null as string), replace: true);
                 return;
             }
+
+            if (_isInteractive)
+            {
+                await LoadUserOptionsAsync(dbContext);
+            }
         }
         catch (OperationCanceledException ex)
         {
@@ -118,7 +123,9 @@ public partial class Suggest : OwningComponentBase
 
         try
         {
-            await LoadUserOptionsAsync();
+            await using var dbContext = await DbFactory.CreateDbContextAsync(_cancel.Token);
+
+            await LoadUserOptionsAsync(dbContext);
 
             _isInteractive = true;
         }
@@ -288,14 +295,12 @@ public partial class Suggest : OwningComponentBase
         await LoadMoreDecksAsync(dbContext, cardName, receiverId);
     }
 
-    private async Task LoadUserOptionsAsync()
+    private async Task LoadUserOptionsAsync(CardDbContext dbContext)
     {
         if (_userOptions.Any())
         {
             return;
         }
-
-        await using var dbContext = await DbFactory.CreateDbContextAsync(_cancel.Token);
 
         if (Suggestion.Card?.Name is not string cardName)
         {
@@ -329,9 +334,9 @@ public partial class Suggest : OwningComponentBase
 
     internal bool IsMissingUsers => this is
     {
-        _isBusy: false,
-        _userOptions.Count: 0,
-        Suggestion.Card: not null
+        IsLoading: false,
+        Suggestion.Card: not null,
+        _userOptions.Count: 0
     };
 
     internal int? ToId
