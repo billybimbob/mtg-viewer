@@ -34,16 +34,16 @@ internal class ExactOverflow : OverflowHandler
 
     protected override IEnumerable<Assignment<Hold>> GetAssignments()
     {
-        var (available, overflow, _, _) = TreasuryContext;
+        var (available, overflowBoxes, _, _) = TreasuryContext;
 
-        if (!available.Any() || !overflow.Any())
+        var overflow = overflowBoxes.SelectMany(b => b.Holds);
+
+        if (!available.Any() || !overflow.Any(h => h.Copies > 0))
         {
             yield break;
         }
 
-        var overflowHolds = overflow.SelectMany(b => b.Holds);
-
-        foreach (var source in overflowHolds)
+        foreach (var source in overflow)
         {
             foreach (var assignment in OverflowAssignment(source))
             {
@@ -103,16 +103,14 @@ internal class ApproximateOverflow : OverflowHandler
 
     protected override IEnumerable<Assignment<Hold>> GetAssignments()
     {
-        var overflowBoxes = TreasuryContext.Overflow;
+        var overflow = TreasuryContext.Overflow.SelectMany(b => b.Holds);
 
-        if (!overflowBoxes.Any())
+        if (!overflow.Any(h => h.Copies > 0))
         {
             yield break;
         }
 
-        var overflowHolds = overflowBoxes.SelectMany(b => b.Holds);
-
-        foreach (var source in overflowHolds)
+        foreach (var source in overflow)
         {
             foreach (var assignment in OverflowAssignment(source))
             {

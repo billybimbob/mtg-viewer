@@ -149,11 +149,12 @@ internal sealed class DeckContext
 
     private void UpdateOriginals()
     {
-        var allQuantities = _groups.Values.SelectMany(qg => qg);
-
-        foreach (var quantity in allQuantities)
+        foreach (var group in _groups.Values)
         {
-            _originalCopies[quantity] = quantity.Copies;
+            foreach (var quantity in group)
+            {
+                _originalCopies[quantity] = quantity.Copies;
+            }
         }
     }
 

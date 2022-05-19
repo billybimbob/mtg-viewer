@@ -392,7 +392,10 @@ public partial class Craft
 
         await foreach (var quantity in newPage.WithCancellation(_cancel.Token))
         {
-            _deckContext.AddOriginalQuantity(quantity);
+            if (!_deckContext.TryGetQuantity(quantity.Card, out TQuantity _))
+            {
+                _deckContext.AddOriginalQuantity(quantity);
+            }
         }
 
         _cards.UnionWith(dbContext.Cards.Local);
