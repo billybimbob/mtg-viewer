@@ -3,7 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace MTGViewer.Data;
+namespace MTGViewer.Data.Infrastructure;
 
 /// <summary>
 /// Group of quantities (hold, want, and give back) with the same deck and
@@ -11,11 +11,11 @@ namespace MTGViewer.Data;
 /// </summary>
 public class QuantityGroup : IEnumerable<Quantity>
 {
-    public QuantityGroup(Hold? hold, Want? want, Giveback? giveBack)
+    public QuantityGroup(Hold? hold, Want? want, Giveback? giveback)
     {
         _hold = hold;
         _want = want;
-        _giveBack = giveBack;
+        _giveback = giveback;
 
         CheckGroup();
     }
@@ -41,8 +41,8 @@ public class QuantityGroup : IEnumerable<Quantity>
                 _want = want;
                 break;
 
-            case Giveback giveBack:
-                _giveBack = giveBack;
+            case Giveback giveback:
+                _giveback = giveback;
                 break;
         }
 
@@ -69,7 +69,7 @@ public class QuantityGroup : IEnumerable<Quantity>
     // Guaranteed to not all be null
     private Hold? _hold;
     private Want? _want;
-    private Giveback? _giveBack;
+    private Giveback? _giveback;
 
     public Hold? Hold
     {
@@ -105,7 +105,7 @@ public class QuantityGroup : IEnumerable<Quantity>
 
     public Giveback? Giveback
     {
-        get => _giveBack;
+        get => _giveback;
         set
         {
             if (value is null)
@@ -113,7 +113,7 @@ public class QuantityGroup : IEnumerable<Quantity>
                 throw new ArgumentNullException(nameof(Giveback));
             }
 
-            _giveBack = value;
+            _giveback = value;
 
             CheckGroup();
         }
@@ -127,8 +127,7 @@ public class QuantityGroup : IEnumerable<Quantity>
             ?? Giveback as TQuantity;
     }
 
-    public void AddQuantity<TQuantity>(TQuantity quantity)
-        where TQuantity : Quantity
+    public void AddQuantity(Quantity quantity)
     {
         switch (quantity)
         {
@@ -140,8 +139,8 @@ public class QuantityGroup : IEnumerable<Quantity>
                 Want = want;
                 break;
 
-            case Giveback giveBack:
-                Giveback = giveBack;
+            case Giveback giveback:
+                Giveback = giveback;
                 break;
         }
     }

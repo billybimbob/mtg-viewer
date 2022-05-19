@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 
 using MTGViewer.Data;
+using MTGViewer.Data.Projections;
 using MTGViewer.Services;
 
 namespace MTGViewer.Pages.Treasury;

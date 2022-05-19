@@ -58,11 +58,7 @@ public sealed class CraftTests : IAsyncLifetime, IDisposable
 
         _testContext.AddFakePersistentComponentState();
 
-        var dbFactory = _services.GetRequiredService<IDbContextFactory<CardDbContext>>();
-
-        _testContext.Services.AddScoped(_ => dbFactory.CreateDbContext());
         _testContext.Services.AddScoped(_ => _userManager);
-
         _testContext.Services.AddFallbackServiceProvider(_services);
 
         await _testGen.SeedAsync();
@@ -115,7 +111,8 @@ public sealed class CraftTests : IAsyncLifetime, IDisposable
         auth.SetClaims(identity.Claims.ToArray());
 
         int invalidDeck = await _services
-            .GetRequiredService<CardDbContext>().Decks
+            .GetRequiredService<CardDbContext>()
+            .Decks
             .Where(d => d.OwnerId != user.Id)
             .Select(d => d.Id)
             .FirstAsync();
@@ -211,7 +208,7 @@ public sealed class CraftTests : IAsyncLifetime, IDisposable
 
         int oldReturns = await _dbContext.Givebacks.SumAsync(g => g.Copies);
 
-        var saveButton = cut.Find("button[title=\"Save Deck\"]");
+        var saveButton = cut.WaitForElement("button[title=\"Save Deck\"]:not([disabled])");
 
         saveButton.Click();
 
@@ -242,7 +239,7 @@ public sealed class CraftTests : IAsyncLifetime, IDisposable
 
         int oldReturns = await _dbContext.Givebacks.SumAsync(g => g.Copies);
 
-        var saveButton = cut.Find("button[title=\"Save Deck\"]");
+        var saveButton = cut.WaitForElement("button[title=\"Save Deck\"]:not([disabled])");
 
         saveButton.Click();
 
@@ -270,7 +267,7 @@ public sealed class CraftTests : IAsyncLifetime, IDisposable
 
         int oldWants = await _dbContext.Wants.SumAsync(g => g.Copies);
 
-        var saveButton = cut.Find("button[title=\"Save Deck\"]");
+        var saveButton = cut.WaitForElement("button[title=\"Save Deck\"]:not([disabled])");
 
         saveButton.Click();
 
@@ -305,7 +302,7 @@ public sealed class CraftTests : IAsyncLifetime, IDisposable
 
         int oldWants = await _dbContext.Wants.SumAsync(g => g.Copies);
 
-        var saveButton = cut.Find("button[title=\"Save Deck\"]");
+        var saveButton = cut.WaitForElement("button[title=\"Save Deck\"]:not([disabled])");
 
         saveButton.Click();
 

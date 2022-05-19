@@ -210,8 +210,8 @@ public class ExchangeTests : IAsyncLifetime
     [Fact]
     public async Task OnPost_TradeActive_NoChange()
     {
-        var giveBack = await _testGen.GetGivebackAsync(2);
-        string deckOwnerId = await OwnerId(giveBack).SingleAsync();
+        var giveback = await _testGen.GetGivebackAsync(2);
+        string deckOwnerId = await OwnerId(giveback).SingleAsync();
 
         var tradeTarget = await _dbContext.Holds
             .Where(h => h.Location is Deck
@@ -221,8 +221,8 @@ public class ExchangeTests : IAsyncLifetime
 
         var activeTrade = new Trade
         {
-            Card = giveBack.Card,
-            To = giveBack.Location,
+            Card = giveback.Card,
+            To = giveback.Location,
             From = (Deck)tradeTarget,
             Copies = 3
         };
@@ -233,13 +233,13 @@ public class ExchangeTests : IAsyncLifetime
 
         await _pageFactory.AddPageContextAsync(_exchangeModel, deckOwnerId);
 
-        int boxBefore = await BoxCardCopies(giveBack).SumAsync();
-        int holdBefore = await HoldCopies(giveBack).SingleAsync();
+        int boxBefore = await BoxCardCopies(giveback).SumAsync();
+        int holdBefore = await HoldCopies(giveback).SingleAsync();
 
-        var result = await _exchangeModel.OnPostAsync(giveBack.LocationId, default);
+        var result = await _exchangeModel.OnPostAsync(giveback.LocationId, default);
 
-        int boxAfter = await BoxCardCopies(giveBack).SumAsync();
-        int holdAfter = await HoldCopies(giveBack).SingleAsync();
+        int boxAfter = await BoxCardCopies(giveback).SumAsync();
+        int holdAfter = await HoldCopies(giveback).SingleAsync();
 
         Assert.IsType<NotFoundResult>(result);
         Assert.Equal(boxBefore, boxAfter);

@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 
-namespace MTGViewer.Data;
+namespace MTGViewer.Data.Projections;
 
 public sealed class Statistics
 {

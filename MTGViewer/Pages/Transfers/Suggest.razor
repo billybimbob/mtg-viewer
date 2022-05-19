@@ -1,5 +1,7 @@
 @page "/Transfers/Suggest/{CardId}"
 @using System.ComponentModel.DataAnnotations
+@using MTGViewer.Data.Infrastructure
+@using MTGViewer.Data.Projections
 
 @inherits OwningComponentBase
 @inject SymbolFormatter MtgSymbols
@@ -7,7 +9,7 @@
 
 @switch ((Suggestion.Card, Suggestion.Receiver))
 {
-    case (Card card, UserPreview receiver):
+    case (CardImage card, UserPreview receiver):
         <PageTitle> @card.Name - Suggest @receiver.Name </PageTitle>
         <h1>
             Suggest
@@ -15,7 +17,7 @@
             To @receiver.Name </h1>
         break;
 
-    case (Card card, _):
+    case (CardImage card, _):
         <PageTitle> @card.Name - Suggest </PageTitle>
         <h1> Suggest <a href="/Cards/Details/@card.Id"> @card.Name </a> </h1>
         break;
@@ -26,7 +28,16 @@
         break;
 }
 
-<hr>
+<SavePrompt @bind-Result="Result">
+    <SuccessMessage>
+        Suggestion successfully sent.
+    </SuccessMessage>
+    <ErrorMessage>
+        Ran into issues while try send the suggestion.
+    </ErrorMessage>
+</SavePrompt>
+
+<hr />
 
 @if (Suggestion.Receiver is not null)
 {
@@ -37,22 +48,23 @@
                 @Suggestion.DisplayName(s => s.To)
             </label>
 
-            <div class="list-group list-group-flush">
-                @{ string nullActive = Suggestion.ToId == null ? "list-group-item-secondary" : string.Empty; }
+            <div id="@SuggestionDto.PropertyId(s => s.To)" class="list-group list-group-flush">
+                @{ string nullActive = ToId == null ? "list-group-item-secondary" : string.Empty; }
 
                 <button type="button" title="No Specific Deck"
                     class="list-group-item list-group-item-action @nullActive"
-                    @onclick="() => Suggestion.ToId = null">
+                    @onclick="() => ToId = null">
                     No Deck
                 </button>
 
-                @foreach (var deck in Suggestion.DeckOptions)
+                @foreach (var deck in DeckOptions)
                 {
-                    string active = Suggestion.ToId == deck.Id ? "list-group-item-secondary" : string.Empty;
+                    string active = ToId == deck.Id ? "list-group-item-secondary" : string.Empty;
 
-                    <button type="button" title="Pick @deck.Name"
+                    <button type="button"
+                        title="Pick @deck.Name"
                         class="list-group-item list-group-item-action @active"
-                        @onclick="() => Suggestion.ToId = deck.Id">
+                        @onclick="() => ToId = deck.Id">
 
                         <div class="d-flex align-items-center justify-content-between">
                             <div> @deck.Name </div>
@@ -79,7 +91,7 @@
             <div class="btn-group" role="group">
                 <button class="btn btn-secondary" type="button"
                     title="Choose A Different User"
-                    @onclick="() => Suggestion.ReceiverId = null" disabled="@IsLoading">
+                    @onclick="ChangeReceiver" disabled="@IsLoading">
                     Pick User
                 </button>
 
@@ -92,7 +104,7 @@
 
                 <button class="btn btn-secondary" type="button"
                     title="Load More Decks"
-                    @onclick="LoadMoreDecksAsync" disabled="@(IsLoading || !HasMore)">
+                    @onclick="LoadMoreDecksAsync" disabled="@(IsLoading || AllDecksLoaded)">
                     Load More
                 </button>
 
@@ -109,7 +121,7 @@
         </div>
     </form>
 }
-else if (Suggestion.Card is Card card)
+else if (Suggestion.Card is CardImage card)
 {
     @if (IsMissingUsers)
     {
@@ -133,15 +145,20 @@ else if (Suggestion.Card is Card card)
                 </div>
 
                 <div class="form-group col-lg-6 col">
-                    <select @bind="Suggestion.ReceiverId"
-                        disabled="@IsLoading"
-                        title="Suggest to User" class="form-control">
+                    <label for="SuggestionDto.PropertyId(s => s.Receiver)" hidden>
+                        @Suggestion.DisplayName(s => s.Receiver) </label>
 
-                        <option value="@(null as string)"> Choose a User </option>
+                    <select @onchange="ChangeReceiver"
+                        disabled="@IsLoading" title="Suggest to User"
+                        id="@SuggestionDto.PropertyId(s => s.Receiver)" class="form-control">
 
-                        @foreach (var user in Suggestion.UserOptions)
+                        <option value="@(null as string)" selected="@(ReceiverId == null)">
+                            Choose a User </option>
+
+                        @foreach (var user in UserOptions)
                         {
-                            <option value="@user.Id"> @user.Name </option>
+                            <option value="@user.Id" selected="@(user.Id == ReceiverId)">
+                                @user.Name </option>
                         }
                     </select>
                 </div>
@@ -149,117 +166,11 @@ else if (Suggestion.Card is Card card)
         </div>
     </div>
 }
-else if (IsLoading)
+else
 {
     <div class="d-flex justify-content-center">
         <div class="spinner-grow" style="width: 3rem; height: 3rem;" role="status">
             <span class="sr-only">Loading...</span>
         </div>
     </div>
-}
-
-@code
-{
-    internal sealed class ReceiverEventArgs : EventArgs
-    {
-        public string? ReceiverId { get; }
-
-        public ReceiverEventArgs(string? receiverId)
-        {
-            ReceiverId = receiverId;
-        }
-    }
-
-    internal sealed class SuggestionDto
-    {
-        private readonly List<DeckPreview> _deckOptions = new();
-        private readonly List<UserPreview> _userOptions = new();
-        private UserPreview? _receiver;
-
-        public event EventHandler<ReceiverEventArgs>? ReceiverChanged;
-
-        public IReadOnlyList<UserPreview> UserOptions => _userOptions;
-
-        public IReadOnlyList<DeckPreview> DeckOptions => _deckOptions;
-
-        public Card? Card { get; set; }
-
-        public string? ReceiverId
-        {
-            get => Receiver?.Id;
-            set
-            {
-                if (ReceiverId == value)
-                {
-                    return;
-                }
-
-                if (value is null)
-                {
-                    // clear to get an updated listed of user options
-                    _userOptions.Clear();
-                }
-
-                ReceiverChanged?.Invoke(this, new ReceiverEventArgs(value));
-            }
-        }
-
-        public UserPreview? Receiver
-        {
-            get => _receiver;
-            set
-            {
-                if (_receiver != value)
-                {
-                    _deckOptions.Clear();
-                    _receiver = value;
-                }
-            }
-        }
-
-        [Display(Name = "Suggest To A Specific Deck")]
-        public DeckPreview? To { get; private set; }
-
-        public int? ToId
-        {
-            get => To?.Id;
-            set
-            {
-                if (ToId != value)
-                {
-                    To = DeckOptions.SingleOrDefault(d => d.Id == value);
-                }
-            }
-        }
-
-        [StringLength(80)]
-        [Display(Name = "Add Comment")]
-        public string? Comment { get; set; }
-
-        public async Task AddDecksAsync(IAsyncEnumerable<DeckPreview> decks, CancellationToken cancel)
-        {
-            await foreach (var deck in decks.WithCancellation(cancel))
-            {
-                _deckOptions.Add(deck);
-            }
-        }
-
-        public async Task AddUsersAsync(IAsyncEnumerable<UserPreview> users, CancellationToken cancel)
-        {
-            await foreach (var user in users.WithCancellation(cancel))
-            {
-                _userOptions.Add(user);
-            }
-        }
-
-        public static string PropertyId<T>(Expression<Func<SuggestionDto, T>> property)
-        {
-            if (property.Body is not MemberExpression { Member.Name: string name })
-            {
-                return string.Empty;
-            }
-
-            return $"{nameof(SuggestionDto)}-{name}";
-        }
-    }
 }

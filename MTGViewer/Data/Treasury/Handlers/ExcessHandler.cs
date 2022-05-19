@@ -87,7 +87,7 @@ internal class ApproximateExcess : ExcessHandler
         var (available, _, excessStorage, _) = TreasuryContext;
         var excessHolds = excessStorage.SelectMany(b => b.Holds);
 
-        if (!available.Any() || excessHolds.All(h => h.Copies == 0))
+        if (!available.Any() || !excessHolds.Any(h => h.Copies > 0))
         {
             yield break;
         }

@@ -11,6 +11,7 @@ using Microsoft.Extensions.Logging;
 
 using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
+using MTGViewer.Data.Infrastructure;
 using MTGViewer.Utils;
 
 namespace MTGViewer.Pages.Treasury;
@@ -66,11 +67,9 @@ public sealed partial class Adjust : ComponentBase, IDisposable
                 return;
             }
 
-            var token = _cancel.Token;
+            await using var dbContext = await DbFactory.CreateDbContextAsync(_cancel.Token);
 
-            await using var dbContext = await DbFactory.CreateDbContextAsync(token);
-
-            _bins = await BinsAsync(dbContext).ToArrayAsync(token);
+            _bins = await BinsAsync(dbContext).ToArrayAsync(_cancel.Token);
         }
         catch (OperationCanceledException e)
         {
@@ -96,7 +95,7 @@ public sealed partial class Adjust : ComponentBase, IDisposable
                 return;
             }
 
-            var box = await GetBoxAsync(_cancel.Token);
+            var box = await GetBoxAsync();
 
             if (box is null)
             {
@@ -170,14 +169,14 @@ public sealed partial class Adjust : ComponentBase, IDisposable
                     Name = b.Name
                 }));
 
-    private async Task<BoxDto?> GetBoxAsync(CancellationToken cancel)
+    private async Task<BoxDto?> GetBoxAsync()
     {
         if (ApplicationState.TryGetData(nameof(Box), out BoxDto? cachedBox))
         {
             return cachedBox;
         }
 
-        await using var dbContext = await DbFactory.CreateDbContextAsync(cancel);
+        await using var dbContext = await DbFactory.CreateDbContextAsync(_cancel.Token);
 
         return await dbContext.Boxes
             .Where(b => b.Id == BoxId)
@@ -195,7 +194,7 @@ public sealed partial class Adjust : ComponentBase, IDisposable
                     Name = b.Bin.Name
                 }
             })
-            .SingleOrDefaultAsync(cancel);
+            .SingleOrDefaultAsync(_cancel.Token);
     }
 
     internal void BinSelected(ChangeEventArgs args)
@@ -220,7 +219,7 @@ public sealed partial class Adjust : ComponentBase, IDisposable
         {
             Result = SaveResult.None;
 
-            await ApplyBoxChangesAsync(_cancel.Token);
+            await ApplyBoxChangesAsync();
 
             Result = SaveResult.Success;
         }
@@ -242,17 +241,17 @@ public sealed partial class Adjust : ComponentBase, IDisposable
         }
     }
 
-    private async Task ApplyBoxChangesAsync(CancellationToken cancel)
+    private async Task ApplyBoxChangesAsync()
     {
-        await using var dbContext = await DbFactory.CreateDbContextAsync(cancel);
+        await using var dbContext = await DbFactory.CreateDbContextAsync(_cancel.Token);
 
-        var box = await GetBoxAsync(dbContext, Box, cancel);
+        var box = await GetBoxAsync(dbContext, Box, _cancel.Token);
         if (box is null)
         {
             return;
         }
 
-        var bin = await GetBinAsync(dbContext, Box.Bin, cancel);
+        var bin = await GetBinAsync(dbContext, Box.Bin, _cancel.Token);
         if (bin is null)
         {
             return;
@@ -268,12 +267,12 @@ public sealed partial class Adjust : ComponentBase, IDisposable
             dbContext.Bins.Remove(oldBin);
         }
 
-        await dbContext.UpdateBoxesAsync(cancel);
+        await dbContext.UpdateBoxesAsync(_cancel.Token);
 
-        await dbContext.SaveChangesAsync(cancel);
+        await dbContext.SaveChangesAsync(_cancel.Token);
 
         // refresh bin list
-        _bins = await BinsAsync(dbContext).ToArrayAsync(cancel);
+        _bins = await BinsAsync(dbContext).ToArrayAsync(_cancel.Token);
 
         if (Box.IsEdit)
         {
@@ -318,14 +317,18 @@ public sealed partial class Adjust : ComponentBase, IDisposable
             return null;
         }
 
-        dbContext.Entry(box)
-            .CurrentValues.SetValues(boxDto);
+        dbContext
+            .Entry(box)
+            .CurrentValues
+            .SetValues(boxDto);
 
         return box;
     }
 
     private static async Task<Bin?> GetBinAsync(
-        CardDbContext dbContext, BinDto binDto, CancellationToken cancel)
+        CardDbContext dbContext,
+        BinDto binDto,
+        CancellationToken cancel)
     {
         if (binDto.Name is null)
         {

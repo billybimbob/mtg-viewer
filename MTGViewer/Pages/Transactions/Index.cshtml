@@ -5,6 +5,7 @@
         ? $"{deckName} Transactions"
         : "Collection Transactions";
 }
+@using MTGViewer.Data.Projections
 @inject SymbolFormatter MtgSymbols
 
 @if (Model.LocationName is null)

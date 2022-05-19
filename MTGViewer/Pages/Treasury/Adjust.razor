@@ -1,5 +1,5 @@
 @page "/Treasury/Adjust/{BoxId:int?}"
-@using System.ComponentModel.DataAnnotations
+@using MTGViewer.Data.Infrastructure
 
 <PageTitle>
     @if (Box.IsEdit)
@@ -82,7 +82,7 @@
                     <select @onchange="BinSelected" disabled="@IsLoading"
                         id="@BoxDto.PropertyId(b => b.Bin)" class="form-control">
 
-                        <option value="0" selected="@(!Box.Bin.IsEdit)"> Create New </option>
+                        <option value="0" selected="@(!Box.Bin.IsEdit || Box.Bin.Id == 0)"> Create New </option>
 
                         @foreach (var bin in Bins)
                         {
@@ -160,92 +160,4 @@ else
             <span class="sr-only">Loading...</span>
         </div>
     </div>
-}
-
-@code
-{
-    public sealed class BoxDto
-    {
-        public BoxDto()
-        {
-            Bin = new BinDto(this);
-        }
-
-        public int Id { get; set; }
-
-        public bool IsEdit => Id != default;
-
-        [Required(ErrorMessage = "Box Name is Missing")]
-        [StringLength(20, ErrorMessage = "Box Name has a character limit of 20")]
-        public string? Name { get; set; }
-
-        [StringLength(40, ErrorMessage = "Appearance has a character limit of 40")]
-        public string? Appearance { get; set; }
-
-        [Range(10, 10_000, ErrorMessage = "Capacity must be Between 10 and 10,000")]
-        public int Capacity { get; set; }
-
-        [ValidateComplexType]
-        public BinDto Bin { get; init; }
-
-        public static string PropertyId<T>(Expression<Func<BoxDto, T>> property)
-        {
-            if (property.Body is not MemberExpression expression)
-            {
-                return string.Empty;
-            }
-
-            return $"{nameof(BoxDto)}-{expression.Member.Name}";
-        }
-    }
-
-    public sealed class BinDto
-    {
-        private readonly BoxDto? _box;
-        private string? _name;
-
-        public BinDto()
-        {
-            _box = null;
-        }
-
-        public BinDto(BoxDto box)
-        {
-            _box = box;
-        }
-
-        public bool IsEdit => Id != default;
-
-        public int Id { get; set; }
-
-        [Required(ErrorMessage = "Bin Name is Missing")]
-        [StringLength(10, ErrorMessage = "Bin Name has a character limit of 10")]
-        public string? Name
-        {
-            get => _name;
-            set
-            {
-                if (_box is null || _box.IsEdit || !IsEdit)
-                {
-                    _name = value;
-                }
-            }
-        }
-
-        public void Update(BinDto? bin)
-        {
-            Id = bin?.Id ?? default;
-            _name = bin?.Name;
-        }
-
-        public static string PropertyId<T>(Expression<Func<BinDto, T>> property)
-        {
-            if (property.Body is not MemberExpression expression)
-            {
-                return string.Empty;
-            }
-
-            return $"{nameof(BinDto)}-{expression.Member.Name}";
-        }
-    }
 }

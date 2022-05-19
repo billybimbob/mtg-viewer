@@ -39,29 +39,29 @@ public class QuantityValidate : IBeforeSaveTrigger<Quantity>
             quantity.Copies = _pageSize.Limit;
         }
 
-        if (quantity is not Giveback giveBack)
+        if (quantity is not Giveback giveback)
         {
             return Task.CompletedTask;
         }
 
-        if (giveBack.Location is not Deck deck)
+        if (giveback.Location is not Deck deck)
         {
             throw new DbUpdateException("Giveback can only have a Deck type, and must be loaded");
         }
 
-        var hold = deck.Holds.FirstOrDefault(h => h.CardId == giveBack.CardId);
+        var hold = deck.Holds.FirstOrDefault(h => h.CardId == giveback.CardId);
 
         if (hold is null || hold.Copies == 0)
         {
             throw new DbUpdateException("Giveback is lacking the required Hold amount");
         }
 
-        if (hold.Copies < giveBack.Copies)
+        if (hold.Copies < giveback.Copies)
         {
             _logger.LogWarning(
-                "Giveback {Id} Copies {Copies} is too high", giveBack.Id, giveBack.Copies);
+                "Giveback {Id} Copies {Copies} is too high", giveback.Id, giveback.Copies);
 
-            giveBack.Copies = hold.Copies;
+            giveback.Copies = hold.Copies;
         }
 
         return Task.CompletedTask;

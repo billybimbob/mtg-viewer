@@ -18,6 +18,7 @@ using Microsoft.Extensions.Options;
 
 using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
+using MTGViewer.Data.Projections;
 using MTGViewer.Services;
 using MTGViewer.Utils;
 
@@ -49,6 +50,13 @@ public partial class Mulligan : OwningComponentBase
 
     [Inject]
     protected ILogger<Mulligan> Logger { get; set; } = default!;
+
+    public enum MulliganType
+    {
+        None,
+        Built,
+        Theorycraft
+    }
 
     private readonly CancellationTokenSource _cancel = new();
     private readonly HashSet<string> _loadedImages = new();
@@ -302,6 +310,13 @@ public partial class Mulligan : OwningComponentBase
     internal bool IsImageLoaded(CardPreview card) => _loadedImages.Contains(card.Id);
 
     internal void OnImageLoad(CardPreview card) => _loadedImages.Add(card.Id);
+
+    private sealed class MulliganTarget
+    {
+        public string Name { get; init; } = string.Empty;
+
+        public IReadOnlyList<DeckCopy> Cards { get; init; } = Array.Empty<DeckCopy>();
+    }
 
     private sealed class DrawSimulation : IDisposable
     {

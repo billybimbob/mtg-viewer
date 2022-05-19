@@ -12,6 +12,8 @@ using Microsoft.Extensions.Hosting;
 
 using MTGViewer.Middleware;
 using MTGViewer.Services;
+using MTGViewer.Services.Infrastructure;
+using MTGViewer.Services.Symbols;
 
 namespace MTGViewer;
 
@@ -68,8 +70,8 @@ public class Startup
 
         services
             .AddSymbols(options => options
-                .AddFormatter<Services.Symbols.CardText>(isDefault: true)
-                .AddTranslator<Services.Symbols.ManaTranslator>(isDefault: true));
+                .AddFormatter<CardText>(isDefault: true)
+                .AddTranslator<ManaTranslator>(isDefault: true));
 
         services
             .AddSingleton<ParseTextFilter>()
@@ -78,8 +80,8 @@ public class Startup
 
         services
             .AddScoped<BackupFactory>()
-            .AddScoped<Services.Infrastructure.MergeHandler>()
-            .AddScoped<Services.Infrastructure.ResetHandler>();
+            .AddScoped<MergeHandler>()
+            .AddScoped<ResetHandler>();
 
         services.AddMtgQueries();
 
