@@ -105,16 +105,11 @@ public class IndexModel : PageModel
 
     private IQueryable<TransactionPreview> TransactionPreviews(int? id)
     {
-        var transactions = _dbContext.Transactions.AsQueryable();
+        return _dbContext.Transactions
 
-        if (id is int)
-        {
-            transactions = transactions
-                .Where(t => t.Changes
-                    .Any(c => c.FromId == id || c.ToId == id));
-        }
+            .Where(t => id == null || t.Changes
+                .Any(c => c.FromId == id || c.ToId == id))
 
-        return transactions
             .OrderByDescending(t => t.AppliedAt)
                 .ThenBy(t => t.Id)
 

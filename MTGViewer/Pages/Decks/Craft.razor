@@ -140,7 +140,7 @@ else
         </section>
 
         <section class="col">
-            <h3> @DeckName (Wanted Cards) </h3>
+            <h3> @DeckName - Wanted </h3>
 
             <div class="list-group list-group-flush mb-4">
                 @foreach (var want in DeckWants)
@@ -181,7 +181,7 @@ else if (BuildOption is BuildType.Holds)
 {
     <div class="row">
         <section class="col-12 col-lg-7 pb-3">
-            <h3> @DeckName (Held) </h3>
+            <h3> @DeckName - Held </h3>
 
             <div class="list-group list-group-flush mb-4">
                 @foreach (var hold in DeckHolds)
@@ -220,7 +220,7 @@ else if (BuildOption is BuildType.Holds)
         </section>
 
         <section class="col">
-            <h3> @DeckName (Returning) </h3>
+            <h3> @DeckName - Returning </h3>
 
             <div class="list-group list-group-flush mb-4">
                 @foreach (var giveback in DeckReturns)

@@ -1,39 +1,34 @@
-@page "{id:int?}"
-@model Cards.StatisticsModel
+@page "{id:int}"
+@model Decks.StatisticsModel
 @{
-    ViewData["Title"] = Model.Location is null
-        ? "Collection Statistics"
-        : $"{Model.Location.Name} Statistics";
+    ViewData["Title"] = $"{Model.Deck.Name} Statistics";
 }
+
 @using MTGViewer.Data.Infrastructure
 @inject SymbolFormatter MtgSymbols
 @inject CardText CardText
 
-@if (Model.Location?.Name is string name )
-{
-    <h1> @name Statistics </h1>
-}
-else
-{
-    <h1> Collection Statistics </h1>
-}
+<h1> @Model.Deck.Name Statistics </h1>
 
-@if (Model.Location?.Type is LocationType.Deck && Model.Location?.Id is int id)
-{
+<div class="btn-group" role="group">
     <div class="btn-group" role="group">
         <button id="stats-btn" type="button" class="btn btn-secondary dropdown-toggle"
-            data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" >
+            data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
             Statistics Type
         </button>
 
         <div class="dropdown-menu" aria-labelledby="stats-btn">
-            <button type="button" class="dropdown-item active"> Built </button>
+            <a asp-page="/Cards/Statistics" asp-route-id="@Model.Deck.Id" class="dropdown-item">
+                Built </a>
 
-            <a asp-page="/Decks/Statistics" asp-route-id="@id" class="dropdown-item">
-                Theorycraft </a>
+            <button type="button" class="dropdown-item active"> Theorycraft </button>
         </div>
     </div>
-}
+
+    <a asp-page="Details" asp-route-id="@Model.Deck.Id"
+        class="btn btn-secondary" role="button">
+        Details </a>
+</div>
 <hr>
 
 <div class="row">

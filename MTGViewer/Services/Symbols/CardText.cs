@@ -8,11 +8,11 @@ namespace MTGViewer.Services.Symbols;
 
 public class CardText : ISymbolFinder, ISymbolTranslator
 {
-    private const string Mana = $@"{{(?<{nameof(Mana)}>[^}}]+)}}";
+    public const string Minus = "\u2212";
 
+    private const string Mana = $@"{{(?<{nameof(Mana)}>[^}}]+)}}";
     private const string Direction = "direction";
-    private const string LongDash = "\u2212";
-    private const string Loyalty = $@"\[(?<{Direction}>[+{LongDash}])?(?<{nameof(Loyalty)}>\d+)\]";
+    private const string Loyalty = $@"\[(?<{Direction}>[+{Minus}])?(?<{nameof(Loyalty)}>\d+)\]";
 
     private const string Saga = $@"(?<{nameof(Saga)}>(?:[IV]+(?:, )?)+) —";
 

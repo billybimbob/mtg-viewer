@@ -37,6 +37,10 @@
         class="btn btn-secondary" role="button">
         History </a>
 
+    <a asp-page="/Cards/Statistics" asp-route-id="@Model.Deck.Id"
+        class="btn btn-secondary" role="button">
+        Statistics </a>
+
     @if (Model.IsOwner && canChangeTreasury)
     {
         <a asp-page="Delete" asp-route-id="@Model.Deck.Id"

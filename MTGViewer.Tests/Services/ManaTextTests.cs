@@ -1,11 +1,11 @@
 using Xunit;
+using MTGViewer.Data;
 using MTGViewer.Services.Symbols;
 
 namespace MTGViewer.Tests.Services;
 
 public class ManaTextTests
 {
-    private const string LongDash = "\u2212";
     private readonly SymbolFormatter _manaText;
 
     public ManaTextTests(CardText cardText, ManaTranslator manaTranslator)
@@ -79,7 +79,7 @@ public class ManaTextTests
     [Fact]
     public void Format_LoyaltyDownText_LoyaltyDownSymbolClass()
     {
-        const string loyaltyDown = $"[{LongDash}2]";
+        const string loyaltyDown = $"[{CardText.Minus}2]";
 
         string markup = _manaText.Format(loyaltyDown);
 
@@ -101,7 +101,7 @@ public class ManaTextTests
     {
         const string ajaniText = "Creatures you control have vigilance.\n"
             + "[+1]: You gain 3 life.\n"
-            + $"[{LongDash}2]: Put a +1/+1 counter on each creature you control "
+            + $"[{CardText.Minus}2]: Put a +1/+1 counter on each creature you control "
             + "and a loyalty counter on each other planeswalker you control.";
 
         string markup = _manaText.Format(ajaniText);

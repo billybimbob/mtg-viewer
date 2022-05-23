@@ -209,7 +209,7 @@ public sealed partial class Collection : ComponentBase, IDisposable
         if (color is not Color.None)
         {
             cards = cards
-                .Where(c => (c.Color & color) == color);
+                .Where(c => c.Color.HasFlag(color));
         }
 
         return cards;

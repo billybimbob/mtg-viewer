@@ -20,6 +20,7 @@ trim_trailing_whitespace = true
 
 [*.cs]
 indent_size = 4
+dotnet_analyzer_diagnostic.category-Style.severity = warning
 dotnet_sort_system_directives_first = true
 insert_final_newline = true
 

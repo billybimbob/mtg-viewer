@@ -93,6 +93,8 @@ public enum Color
 
 public static class Symbol
 {
+    public const string LongDash = "\u2014";
+
     private static SortedList<Color, string>? _colors;
 
     public static IReadOnlyDictionary<Color, string> Colors =>

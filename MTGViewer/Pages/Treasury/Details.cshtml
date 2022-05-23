@@ -36,6 +36,10 @@
     <a asp-page="/Transactions/Index" asp-route-id="@Model.Box.Id"
         class="btn btn-secondary" role="button">
         History </a>
+
+    <a asp-page="/Cards/Statistics" asp-route-id="@Model.Box.Id"
+        class="btn btn-secondary" role="button">
+        Statistics </a>
 </div>
 
 @{ string returnUrl = $"{Request.Path}{Request.QueryString}"; }

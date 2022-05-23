@@ -26,8 +26,8 @@
     <h1 class="h1 m-0 col-lg-auto col-12 pr-4"> @Model.Card.Name </h1>
 
     @{ var manaCost = Model.Card.Flip is not null
-            ? Model.Card.Flip.ManaCost
-            : Model.Card.ManaCost; }
+        ? Model.Card.Flip.ManaCost
+        : Model.Card.ManaCost; }
 
     @if (manaCost is not null)
     {

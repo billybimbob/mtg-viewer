@@ -21,24 +21,34 @@ internal static class ExecuteSeek<TEntity> where TEntity : class
             throw new ArgumentException("Missing seek values", nameof(query));
         }
 
-        var items = await query
-            .ToListAsync(cancel)
-            .ConfigureAwait(false);
-
         (var direction, bool hasOrigin, int? size) = seekInfo;
 
-        var withoutOffset = query.Provider
-            .CreateQuery<TEntity>(RemoveSeekOffsetVisitor.Instance.Visit(query.Expression));
+        var items = await query.ToListAsync(cancel).ConfigureAwait(false);
 
-        bool lookAhead = size is int s
-            && await withoutOffset
-                .Skip(s)
-                .AnyAsync(cancel)
-                .ConfigureAwait(false);
+        bool lookAhead = await GetLookAheadAsync(query, size, cancel).ConfigureAwait(false);
 
-        var seek = new Seek<TEntity>(items, direction, hasOrigin, lookAhead);
+        var seek = new Seek<TEntity>(items, direction, hasOrigin, size, lookAhead);
 
         return new SeekList<TEntity>(seek, items);
+    }
+
+    private static async Task<bool> GetLookAheadAsync(
+        IQueryable<TEntity> query,
+        int? size,
+        CancellationToken cancel)
+    {
+        if (size is not int s)
+        {
+            return false;
+        }
+
+        var withoutOffset = RemoveSeekOffsetVisitor.Instance.Visit(query.Expression);
+
+        return await query.Provider
+            .CreateQuery<TEntity>(withoutOffset)
+            .Skip(s)
+            .AnyAsync(cancel)
+            .ConfigureAwait(false);
     }
 
     private record SeekInfo(SeekDirection Direction, bool HasOrigin, int? Size);

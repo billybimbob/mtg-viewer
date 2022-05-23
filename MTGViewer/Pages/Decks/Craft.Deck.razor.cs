@@ -13,6 +13,7 @@ using Microsoft.Extensions.Logging;
 using MTGViewer.Data;
 using MTGViewer.Data.Infrastructure;
 using MTGViewer.Data.Projections;
+using MTGViewer.Utils;
 
 namespace MTGViewer.Pages.Decks;
 
@@ -150,7 +151,9 @@ public partial class Craft
     {
         if (_holds == default)
         {
-            _holds = GetQuantities(_holds.Request, includeEmpty: true);
+            var (seek, direction, _) = _holds;
+
+            _holds = GetQuantities(seek, direction, includeEmpty: true);
         }
     }
 
@@ -158,7 +161,9 @@ public partial class Craft
     {
         if (_givebacks == default)
         {
-            _givebacks = GetQuantities(_givebacks.Request);
+            var (seek, direction, _) = _givebacks;
+
+            _givebacks = GetQuantities(seek, direction);
         }
     }
 
@@ -166,9 +171,11 @@ public partial class Craft
     {
         if (_holds == default)
         {
-            await LoadQuantitiesAsync(dbContext, _holds.Request);
+            var (seek, direction, _) = _holds;
 
-            _holds = GetQuantities(_holds.Request, includeEmpty: true);
+            await LoadQuantitiesAsync(dbContext, seek, direction);
+
+            _holds = GetQuantities(seek, direction, includeEmpty: true);
         }
     }
 
@@ -176,9 +183,11 @@ public partial class Craft
     {
         if (_givebacks == default)
         {
-            await LoadQuantitiesAsync(dbContext, _givebacks.Request);
+            var (seek, direction, _) = _givebacks;
 
-            _givebacks = GetQuantities(_givebacks.Request);
+            await LoadQuantitiesAsync(dbContext, seek, direction);
+
+            _givebacks = GetQuantities(seek, direction);
         }
     }
 
@@ -186,22 +195,16 @@ public partial class Craft
     {
         if (_wants == default)
         {
-            await LoadQuantitiesAsync(dbContext, _wants.Request);
+            var (seek, direction, _) = _wants;
 
-            _wants = GetQuantities(_wants.Request);
+            await LoadQuantitiesAsync(dbContext, seek, direction);
+
+            _wants = GetQuantities(seek, direction);
         }
     }
 
     internal async Task ChangeHoldsAsync(SeekRequest<Hold> request)
     {
-        var newHolds = GetQuantities(request, includeEmpty: true);
-
-        if (newHolds.List?.Count == PageSize.Current - 1)
-        {
-            _holds = newHolds;
-            return;
-        }
-
         if (_isBusy)
         {
             return;
@@ -213,9 +216,11 @@ public partial class Craft
         {
             await using var dbContext = await DbFactory.CreateDbContextAsync(_cancel.Token);
 
-            await LoadQuantitiesAsync(dbContext, request);
+            var (seek, direction) = request;
 
-            _holds = GetQuantities(request, includeEmpty: true);
+            await LoadQuantitiesAsync(dbContext, seek, direction);
+
+            _holds = GetQuantities(seek, direction, includeEmpty: true);
         }
         catch (OperationCanceledException ex)
         {
@@ -229,14 +234,6 @@ public partial class Craft
 
     internal async Task ChangeReturnsAsync(SeekRequest<Giveback> request)
     {
-        var newReturns = GetQuantities(request);
-
-        if (newReturns.List?.Count == PageSize.Current - 1)
-        {
-            _givebacks = newReturns;
-            return;
-        }
-
         if (_isBusy)
         {
             return;
@@ -248,9 +245,11 @@ public partial class Craft
         {
             await using var dbContext = await DbFactory.CreateDbContextAsync(_cancel.Token);
 
-            await LoadQuantitiesAsync(dbContext, request);
+            var (seek, direction) = request;
 
-            _givebacks = GetQuantities(request);
+            await LoadQuantitiesAsync(dbContext, seek, direction);
+
+            _givebacks = GetQuantities(seek, direction);
         }
         catch (OperationCanceledException ex)
         {
@@ -264,14 +263,6 @@ public partial class Craft
 
     internal async Task ChangeWantsAsync(SeekRequest<Want> request)
     {
-        var newWants = GetQuantities(request);
-
-        if (newWants.List?.Count == PageSize.Current - 1)
-        {
-            _wants = newWants;
-            return;
-        }
-
         if (_isBusy)
         {
             return;
@@ -283,9 +274,11 @@ public partial class Craft
         {
             await using var dbContext = await DbFactory.CreateDbContextAsync(_cancel.Token);
 
-            await LoadQuantitiesAsync(dbContext, request);
+            var (seek, direction) = request;
 
-            _wants = GetQuantities(request);
+            await LoadQuantitiesAsync(dbContext, seek, direction);
+
+            _wants = GetQuantities(seek, direction);
         }
         catch (OperationCanceledException ex)
         {
@@ -298,7 +291,8 @@ public partial class Craft
     }
 
     private LoadedSeekList<TQuantity> GetQuantities<TQuantity>(
-        SeekRequest<TQuantity> request,
+        TQuantity? seek,
+        SeekDirection direction,
         bool includeEmpty = false)
         where TQuantity : Quantity
     {
@@ -318,16 +312,17 @@ public partial class Craft
                 q => q.CardId,
                 (_, quantity) => quantity);
 
-        return ToSeekList(orderedQuantities, request, PageSize.Current);
+        return ToSeekList(orderedQuantities, seek, direction, PageSize.Current);
     }
 
     private static LoadedSeekList<TQuantity> ToSeekList<TQuantity>(
         IEnumerable<TQuantity> quantities,
-        SeekRequest<TQuantity> request,
+        TQuantity? seek,
+        SeekDirection direction,
         int size)
         where TQuantity : Quantity
     {
-        var items = request switch
+        var items = (seek, direction) switch
         {
             (TQuantity o, SeekDirection.Backwards) => quantities
                 .Where(t => (t.Card.Name, t.Card.SetName, t.CardId)
@@ -352,21 +347,27 @@ public partial class Craft
 
         bool lookAhead = items.Count == size;
 
-        if (lookAhead)
+        if (lookAhead && direction is SeekDirection.Forward)
         {
             items.RemoveAt(items.Count - 1);
         }
+        else if (lookAhead && direction is SeekDirection.Backwards)
+        {
+            items.RemoveAt(0);
+        }
 
-        var direction = request.Direction;
-        bool hasOrigin = request.Seek is not null;
+        var seekResult = new Seek<TQuantity>(
+            items, direction, seek is not null, size - 1, lookAhead);
 
-        var seek = new Seek<TQuantity>(items, direction, hasOrigin, lookAhead);
-        var list = new SeekList<TQuantity>(seek, items);
+        var list = new SeekList<TQuantity>(seekResult, items);
 
-        return new LoadedSeekList<TQuantity>(request, list);
+        return new LoadedSeekList<TQuantity>(seek, direction, list);
     }
 
-    private async Task LoadQuantitiesAsync<TQuantity>(CardDbContext dbContext, SeekRequest<TQuantity> request)
+    private async Task LoadQuantitiesAsync<TQuantity>(
+        CardDbContext dbContext,
+        TQuantity? seek,
+        SeekDirection direction)
         where TQuantity : Quantity
     {
         if (_deckContext is not { Deck: Deck deck })
@@ -375,18 +376,14 @@ public partial class Craft
             return;
         }
 
+        if (_deckContext.IsNewDeck) 
+        {
+            // no quantities will exist in the db
+            return;
+        }
+
         dbContext.Cards.AttachRange(_cards);
-
-        if (_deckContext.IsNewDeck) // attach for nav fixup
-        {
-            dbContext.Decks.Add(deck);
-        }
-        else
-        {
-            dbContext.Decks.Attach(deck);
-        }
-
-        var (seek, direction) = request;
+        dbContext.Decks.Attach(deck); // attach for nav fixup
 
         var newPage = DeckQuantitiesAsync(dbContext, deck.Id, seek, direction, PageSize.Current);
 
@@ -506,7 +503,9 @@ public partial class Craft
 
         if (want.Copies == 1)
         {
-            _wants = GetQuantities(_wants.Request);
+            var (seek, direction, _) = _wants;
+
+            _wants = GetQuantities(seek, direction);
             _counts.WantCount += 1;
         }
 
@@ -541,7 +540,9 @@ public partial class Craft
 
         if (want.Copies == 0)
         {
-            _wants = GetQuantities(_wants.Request);
+            var (seek, direction, _) = _wants;
+
+            _wants = GetQuantities(seek, direction);
             _counts.WantCount -= 1;
         }
 
@@ -661,7 +662,9 @@ public partial class Craft
 
         if (giveback.Copies == 1)
         {
-            _givebacks = GetQuantities(_givebacks.Request);
+            var (seek, direction, _) = _givebacks;
+
+            _givebacks = GetQuantities(seek, direction);
             _counts.ReturnCount += 1;
         }
 
@@ -696,7 +699,9 @@ public partial class Craft
 
         if (giveback.Copies == 0)
         {
-            _givebacks = GetQuantities(_givebacks.Request);
+            var (seek, direction, _) = _givebacks;
+
+            _givebacks = GetQuantities(seek, direction);
             _counts.ReturnCount -= 1;
         }
 
@@ -706,16 +711,4 @@ public partial class Craft
     }
 
     #endregion
-
-    private readonly record struct LoadedSeekList<T> where T : class
-    {
-        public SeekRequest<T> Request { get; }
-        public SeekList<T>? List { get; }
-
-        public LoadedSeekList(SeekRequest<T> request, SeekList<T> list)
-        {
-            Request = request;
-            List = list;
-        }
-    }
 }

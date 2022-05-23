@@ -10,17 +10,71 @@ public enum SeekDirection
     Backwards
 }
 
-public readonly record struct SeekRequest<T>(T? Seek, SeekDirection Direction);
-
-public readonly record struct Seek(object? Previous, object? Next);
-
-public readonly record struct Seek<T>(T? Previous, T? Next)
+public readonly struct Seek
 {
+    public object? Previous { get; }
+    public object? Next { get; }
+    public bool IsMissing { get; }
+
+    public Seek(object reference, SeekDirection direction, bool isMissing)
+    {
+        if (direction is SeekDirection.Forward)
+        {
+            Previous = null;
+            Next = reference;
+        }
+        else
+        {
+            Previous = reference;
+            Next = null;
+        }
+
+        IsMissing = isMissing;
+    }
+
+    public Seek(object previous, object next)
+    {
+        Previous = previous;
+        Next = next;
+        IsMissing = false;
+    }
+}
+
+public readonly struct Seek<T>
+{
+    public T? Previous { get; }
+    public T? Next { get; }
+    public bool IsMissing { get; }
+
+    public Seek(T reference, SeekDirection direction, bool isMissing)
+    {
+        if (direction is SeekDirection.Forward)
+        {
+            Previous = default;
+            Next = reference;
+        }
+        else
+        {
+            Previous = reference;
+            Next = default;
+        }
+
+        IsMissing = isMissing;
+    }
+
+    public Seek(T previous, T next)
+    {
+        Previous = previous;
+        Next = next;
+        IsMissing = false;
+    }
+
     public Seek(
         IReadOnlyList<T> items,
         SeekDirection direction,
         bool hasOrigin,
-        bool lookAhead) : this(default, default)
+        int? targetSize,
+        bool lookAhead)
     {
         if (direction is SeekDirection.Forward)
         {
@@ -32,11 +86,19 @@ public readonly record struct Seek<T>(T? Previous, T? Next)
             Previous = lookAhead && items.Any() ? items[0] : default;
             Next = hasOrigin && items.Any() ? items[^1] : default;
         }
+
+        IsMissing = items.Count < targetSize && (Previous is null ^ Next is null);
     }
 
     public static explicit operator Seek(Seek<T> seek)
     {
-        return new Seek(seek.Previous, seek.Next);
+        return (seek.Previous, seek.Next, seek.IsMissing) switch
+        {
+            (object p, object n, _) => new Seek(p, n),
+            (null, object n, bool m) => new Seek(n, SeekDirection.Forward, m),
+            (object p, null, bool m) => new Seek(p, SeekDirection.Backwards, m),
+            _ => new Seek()
+        };
     }
 }
 

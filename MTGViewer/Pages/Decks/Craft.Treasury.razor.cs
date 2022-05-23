@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using MTGViewer.Data;
 using MTGViewer.Data.Projections;
 using MTGViewer.Services;
+using MTGViewer.Utils;
 
 namespace MTGViewer.Pages.Decks;
 
@@ -158,7 +159,7 @@ public partial class Craft
         if (PickedColors is not Color.None)
         {
             cards = cards
-                .Where(c => (c.Color & PickedColors) == PickedColors);
+                .Where(c => c.Color.HasFlag(PickedColors));
         }
 
         return await cards
