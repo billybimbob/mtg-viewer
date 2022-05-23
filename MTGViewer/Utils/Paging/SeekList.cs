@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -18,6 +19,8 @@ public readonly struct Seek
 
     public Seek(object reference, SeekDirection direction, bool isMissing)
     {
+        ArgumentNullException.ThrowIfNull(reference);
+
         if (direction is SeekDirection.Forward)
         {
             Previous = null;
@@ -34,6 +37,9 @@ public readonly struct Seek
 
     public Seek(object previous, object next)
     {
+        ArgumentNullException.ThrowIfNull(previous);
+        ArgumentNullException.ThrowIfNull(next);
+
         Previous = previous;
         Next = next;
         IsMissing = false;
@@ -94,9 +100,9 @@ public readonly struct Seek<T>
     {
         return (seek.Previous, seek.Next, seek.IsMissing) switch
         {
-            (object p, object n, _) => new Seek(p, n),
-            (null, object n, bool m) => new Seek(n, SeekDirection.Forward, m),
-            (object p, null, bool m) => new Seek(p, SeekDirection.Backwards, m),
+            (T p, T n, _) => new Seek(p, n),
+            (_, T n, bool m) => new Seek(n, SeekDirection.Forward, m),
+            (T p, _, bool m) => new Seek(p, SeekDirection.Backwards, m),
             _ => new Seek()
         };
     }

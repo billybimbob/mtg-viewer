@@ -149,7 +149,7 @@ else
 
                     <button type="button" title="Remove @card.Name"
                         class="list-group-item list-group-item-action px-2"
-                        @onclick="() => RemoveWant(want.Card)">
+                        @onclick="() => RemoveWantAsync(want.Card)">
 
                         <div class="row">
                             <div class="col-6">
@@ -188,10 +188,11 @@ else if (BuildOption is BuildType.Holds)
                 {
                     var card = hold.Card;
                     int returnCopies = card.Givebacks.Sum(g => g.Copies);
+                    int copies = hold.Copies - Math.Min(returnCopies, hold.Copies);
 
                     <button type="button" title="Remove @card.Name"
                         class="list-group-item list-group-item-action px-2"
-                        disabled="@(hold.Copies == 0)"
+                        disabled="@(copies == 0)"
                         @onclick="() => AddReturnAsync(card)">
 
                         <div class="row">
@@ -202,7 +203,7 @@ else if (BuildOption is BuildType.Holds)
                             </div>
 
                             <div class="col-4"> @MtgSymbols.Format(card.ManaCost).ToMarkupString() </div>
-                            <div class="col-2"> @(hold.Copies - Math.Min(returnCopies, hold.Copies)) </div>
+                            <div class="col-2"> @copies </div>
                         </div>
                     </button>
                 }
@@ -229,7 +230,7 @@ else if (BuildOption is BuildType.Holds)
 
                     <button type="button" title="Add Back @card.Name"
                         class="list-group-item list-group-item-action px-2"
-                        @onclick="() => RemoveReturn(card)">
+                        @onclick="() => RemoveReturnAsync(card)">
 
                         <div class="row">
                             <div class="col-6">

@@ -146,11 +146,14 @@ public class TestDataGenerator
         };
 
         var deckHolds = deckCards
-            .Select(c => new Hold
+            .Zip(
+                GetHoldCopies(deckCards.Count, numCards),
+                (card, copies) => (card, copies))
+            .Select(cc => new Hold
             {
-                Card = c,
+                Card = cc.card,
                 Location = newDeck,
-                Copies = _random.Next(1, 3)
+                Copies = cc.copies
             });
 
         _dbContext.Decks.Attach(newDeck);
@@ -160,6 +163,31 @@ public class TestDataGenerator
         _dbContext.ChangeTracker.Clear();
 
         return newDeck;
+    }
+
+    private IEnumerable<int> GetHoldCopies(int numHolds, int targetTotal)
+    {
+        if (numHolds <= 0)
+        {
+            yield break;
+        }
+
+        if (numHolds >= targetTotal)
+        {
+            for (int i = 0; i < numHolds; ++i)
+            {
+                yield return _random.Next(1, 3);
+            }
+
+            yield break;
+        }
+
+        int perHold = (int)MathF.Ceiling((float)targetTotal / numHolds);
+
+        for (int i = 0; i < numHolds; ++i)
+        {
+            yield return perHold;
+        }
     }
 
     public async Task<Deck> CreateReturnDeckAsync(int numCards = 0)
@@ -328,15 +356,15 @@ public class TestDataGenerator
         var users = await _dbContext.Users
             .ToListAsync();
 
-        var partipants = users
+        var participants = users
             .Select(user => (user, key: _random.Next(users.Count)))
             .OrderBy(uk => uk.key)
             .Take(2)
             .Select(uk => uk.user)
             .ToList();
 
-        var proposer = partipants[0];
-        var receiver = partipants[1];
+        var proposer = participants[0];
+        var receiver = participants[1];
 
         var trades = isToSet
             ? await CreateToTradesAsync(proposer, receiver)

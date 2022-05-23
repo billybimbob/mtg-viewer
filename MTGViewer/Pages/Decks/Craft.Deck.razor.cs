@@ -153,7 +153,7 @@ public partial class Craft
         {
             var (seek, direction, _) = _holds;
 
-            _holds = GetQuantities(seek, direction, includeEmpty: true);
+            _holds = GetQuantities(seek, direction);
         }
     }
 
@@ -175,7 +175,7 @@ public partial class Craft
 
             await LoadQuantitiesAsync(dbContext, seek, direction);
 
-            _holds = GetQuantities(seek, direction, includeEmpty: true);
+            _holds = GetQuantities(seek, direction);
         }
     }
 
@@ -220,7 +220,7 @@ public partial class Craft
 
             await LoadQuantitiesAsync(dbContext, seek, direction);
 
-            _holds = GetQuantities(seek, direction, includeEmpty: true);
+            _holds = GetQuantities(seek, direction);
         }
         catch (OperationCanceledException ex)
         {
@@ -292,8 +292,7 @@ public partial class Craft
 
     private LoadedSeekList<TQuantity> GetQuantities<TQuantity>(
         TQuantity? seek,
-        SeekDirection direction,
-        bool includeEmpty = false)
+        SeekDirection direction)
         where TQuantity : Quantity
     {
         if (_deckContext is null)
@@ -304,7 +303,7 @@ public partial class Craft
         var quantities = _deckContext.Groups
             .Select(g => g.GetQuantity<TQuantity>())
             .OfType<TQuantity>()
-            .Where(q => includeEmpty || q.Copies > 0);
+            .Where(QuantityFilter);
 
         var orderedQuantities = _cards
             .Join(quantities,
@@ -313,6 +312,15 @@ public partial class Craft
                 (_, quantity) => quantity);
 
         return ToSeekList(orderedQuantities, seek, direction, PageSize.Current);
+
+        static bool QuantityFilter(TQuantity quantity)
+        {
+            return quantity switch
+            {
+                Hold => true,
+                _ => quantity.Copies > 0
+            };
+        }
     }
 
     private static LoadedSeekList<TQuantity> ToSeekList<TQuantity>(
@@ -356,8 +364,11 @@ public partial class Craft
             items.RemoveAt(0);
         }
 
-        var seekResult = new Seek<TQuantity>(
-            items, direction, seek is not null, size - 1, lookAhead);
+        bool hasOrigin = seek is not null;
+
+        int target = size - 1;
+
+        var seekResult = new Seek<TQuantity>(items, direction, hasOrigin, target, lookAhead);
 
         var list = new SeekList<TQuantity>(seekResult, items);
 
@@ -376,49 +387,39 @@ public partial class Craft
             return;
         }
 
-        if (_deckContext.IsNewDeck) 
+        if (_deckContext.IsNewDeck)
         {
             // no quantities will exist in the db
             return;
         }
 
-        dbContext.Cards.AttachRange(_cards);
         dbContext.Decks.Attach(deck); // attach for nav fixup
+        dbContext.Cards.AttachRange(_cards);
 
-        var newPage = DeckQuantitiesAsync(dbContext, deck.Id, seek, direction, PageSize.Current);
-
-        await foreach (var quantity in newPage.WithCancellation(_cancel.Token))
-        {
-            if (!_deckContext.TryGetQuantity(quantity.Card, out TQuantity _))
-            {
-                _deckContext.AddOriginalQuantity(quantity);
-            }
-        }
-
-        _cards.UnionWith(dbContext.Cards.Local);
-    }
-
-    private static IAsyncEnumerable<TQuantity> DeckQuantitiesAsync<TQuantity>(
-        CardDbContext dbContext,
-        int deckId,
-        TQuantity? reference,
-        SeekDirection direction,
-        int size)
-        where TQuantity : Quantity
-    {
-        return dbContext
+        var newPage = dbContext
             .Set<TQuantity>()
-            .Where(q => q.LocationId == deckId)
+            .Where(q => q.LocationId == deck.Id)
             .Include(q => q.Card)
 
             .OrderBy(q => q.Card.Name)
                 .ThenBy(q => q.Card.SetName)
                 .ThenBy(q => q.CardId)
 
-            .SeekOrigin(reference, direction)
-            .Take(size)
+            .SeekOrigin(seek, direction)
+            .Take(PageSize.Current)
 
-            .AsAsyncEnumerable();
+            .AsAsyncEnumerable()
+            .WithCancellation(_cancel.Token);
+
+        await foreach (var quantity in newPage)
+        {
+            if (!_deckContext.TryGetQuantity(quantity.Card, out TQuantity _))
+            {
+                _deckContext.AddOriginalQuantity(quantity);
+            }
+
+            _cards.Add(quantity.Card);
+        }
     }
 
     #region Edit Quantities
@@ -459,9 +460,9 @@ public partial class Craft
             return null;
         }
 
-        if (_deckContext.TryGetQuantity(card, out Want localWant))
+        if (_deckContext.TryGetQuantity(card, out Want local))
         {
-            return localWant;
+            return local;
         }
 
         await using var dbContext = await DbFactory.CreateDbContextAsync(_cancel.Token);
@@ -477,17 +478,22 @@ public partial class Craft
             dbContext.Decks.Attach(deck);
         }
 
-        var want = await dbContext
-            .Wants
+        var want = await dbContext.Wants
             .SingleOrDefaultAsync(w =>
-                w.LocationId == deck.Id && w.CardId == card.Id, _cancel.Token)
+                w.LocationId == deck.Id && w.CardId == card.Id, _cancel.Token);
 
-            ?? dbContext
-                .Wants
-                .Attach(new Want { Card = card, Location = deck })
+        if (want is null)
+        {
+            want = dbContext.Wants
+                .Attach(new Want { Location = deck, Card = card })
                 .Entity;
 
-        _deckContext.AddQuantity(want);
+            _deckContext.AddQuantity(want);
+        }
+        else
+        {
+            _deckContext.AddOriginalQuantity(want);
+        }
 
         return want;
     }
@@ -514,7 +520,7 @@ public partial class Craft
         Result = SaveResult.None;
     }
 
-    internal void RemoveWant(Card card)
+    internal async Task RemoveWantAsync(Card card)
     {
         if (BuildOption is not BuildType.Theorycrafting)
         {
@@ -540,7 +546,9 @@ public partial class Craft
 
         if (want.Copies == 0)
         {
-            var (seek, direction, _) = _wants;
+            var (seek, direction, list) = _wants;
+
+            await LoadAdjacentPagesAsync(list?.Seek);
 
             _wants = GetQuantities(seek, direction);
             _counts.WantCount -= 1;
@@ -582,17 +590,41 @@ public partial class Craft
 
     private async Task<Giveback?> FindReturnAsync(Card card)
     {
+        var hold = await FindHoldAsync(card);
+
+        if (hold is null)
+        {
+            Logger.LogWarning("Missing required Hold for Card {CardName}", card.Name);
+            return null;
+        }
+
+        var giveback = await FindGivebackAsync(card);
+
+        if (giveback is null)
+        {
+            Logger.LogError("Giveback for {Card} is missing", card.Name);
+            return null;
+        }
+
+        if (hold.Copies - giveback.Copies <= 0)
+        {
+            Logger.LogError("There are no more of {CardName} to remove", card.Name);
+            return null;
+        }
+
+        return giveback;
+    }
+
+    private async Task<Hold?> FindHoldAsync(Card card)
+    {
         if (_deckContext is not { Deck: Deck deck })
         {
             return null;
         }
 
-        bool holdExists = _deckContext.TryGetQuantity(card, out Hold hold);
-        bool giveExists = _deckContext.TryGetQuantity(card, out Giveback give);
-
-        if (holdExists && giveExists)
+        if (_deckContext.TryGetQuantity(card, out Hold local))
         {
-            return give;
+            return local;
         }
 
         await using var dbContext = await DbFactory.CreateDbContextAsync(_cancel.Token);
@@ -608,47 +640,63 @@ public partial class Craft
             dbContext.Decks.Attach(deck);
         }
 
-        if (!holdExists)
+        var hold = await dbContext.Holds
+            .SingleOrDefaultAsync(h =>
+                h.LocationId == deck.Id && h.CardId == card.Id, _cancel.Token);
+
+        if (hold is null)
         {
-            var dbHold = await dbContext.Holds
-                .SingleOrDefaultAsync(h =>
-                    h.LocationId == deck.Id && h.CardId == card.Id, _cancel.Token);
-
-            if (dbHold is null)
-            {
-                Logger.LogWarning("Missing required Hold for Card {CardName}", card.Name);
-                return null;
-            }
-
-            _deckContext.AddQuantity(dbHold);
-
-            hold = dbHold;
-        }
-
-        if (!giveExists)
-        {
-            give = await dbContext
-                .Givebacks
-                .SingleOrDefaultAsync(
-                    g => g.LocationId == deck.Id && g.CardId == card.Id, _cancel.Token)
-
-                ?? dbContext
-                    .Givebacks
-                    .Attach(new Giveback { Location = deck, Card = card })
-                    .Entity;
-
-            _deckContext.AddQuantity(give);
-        }
-
-        int remaining = hold.Copies - give.Copies;
-
-        if (remaining == 0)
-        {
-            Logger.LogError("There are no more of {CardName} to remove", card.Name);
             return null;
         }
 
-        return give;
+        _deckContext.AddOriginalQuantity(hold);
+
+        return hold;
+    }
+
+    private async Task<Giveback?> FindGivebackAsync(Card card)
+    {
+        if (_deckContext is not { Deck: Deck deck })
+        {
+            return null;
+        }
+
+        if (_deckContext.TryGetQuantity(card, out Giveback local))
+        {
+            return local;
+        }
+
+        await using var dbContext = await DbFactory.CreateDbContextAsync(_cancel.Token);
+
+        dbContext.Cards.Attach(card);
+
+        if (_deckContext.IsNewDeck)
+        {
+            dbContext.Decks.Add(deck);
+        }
+        else
+        {
+            dbContext.Decks.Attach(deck);
+        }
+
+        var giveback = await dbContext.Givebacks
+            .SingleOrDefaultAsync(g =>
+                g.LocationId == deck.Id && g.CardId == card.Id, _cancel.Token);
+
+        if (giveback is null)
+        {
+            giveback = dbContext.Givebacks
+                .Attach(new Giveback { Location = deck, Card = card })
+                .Entity;
+
+            _deckContext.AddQuantity(giveback);
+        }
+        else
+        {
+            _deckContext.AddOriginalQuantity(giveback);
+        }
+
+        return giveback;
     }
 
     private void AddReturn(Giveback? giveback)
@@ -673,7 +721,7 @@ public partial class Craft
         Result = SaveResult.None;
     }
 
-    internal void RemoveReturn(Card card)
+    internal async Task RemoveReturnAsync(Card card)
     {
         if (_deckContext is null || _counts is null)
         {
@@ -699,7 +747,9 @@ public partial class Craft
 
         if (giveback.Copies == 0)
         {
-            var (seek, direction, _) = _givebacks;
+            var (seek, direction, list) = _givebacks;
+
+            await LoadAdjacentPagesAsync(list?.Seek);
 
             _givebacks = GetQuantities(seek, direction);
             _counts.ReturnCount -= 1;
@@ -708,6 +758,29 @@ public partial class Craft
         _counts.ReturnCopies -= 1;
 
         Result = SaveResult.None;
+    }
+
+    private async Task LoadAdjacentPagesAsync<TQuantity>(Seek<TQuantity>? seek)
+        where TQuantity : Quantity
+    {
+        bool hasNoAdjacent = seek?.Previous is null && seek?.Next is null;
+
+        if (hasNoAdjacent)
+        {
+            return;
+        }
+
+        await using var dbContext = await DbFactory.CreateDbContextAsync(_cancel.Token);
+
+        if (seek?.Previous is TQuantity previous)
+        {
+            await LoadQuantitiesAsync(dbContext, previous, SeekDirection.Backwards);
+        }
+
+        if (seek?.Next is TQuantity next)
+        {
+            await LoadQuantitiesAsync(dbContext, next, SeekDirection.Forward);
+        }
     }
 
     #endregion
