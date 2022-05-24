@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using MTGViewer.Utils;
+using MTGViewer.Data.Infrastructure;
 
 namespace MTGViewer.Data.Treasury.Handlers;
 

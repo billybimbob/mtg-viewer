@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using MTGViewer.Data;
 
-namespace MTGViewer.Utils;
+namespace MTGViewer.Data.Infrastructure;
 
 public class CardNameComparer : Comparer<Card>
 {
@@ -14,12 +14,14 @@ public class CardNameComparer : Comparer<Card>
         const StringComparison currentCompare = StringComparison.CurrentCulture;
 
         int nameCompare = string.Compare(x?.Name, y?.Name, currentCompare);
+
         if (nameCompare != 0)
         {
             return nameCompare;
         }
 
         int setCompare = string.Compare(x?.SetName, y?.SetName, currentCompare);
+
         if (setCompare != 0)
         {
             return setCompare;

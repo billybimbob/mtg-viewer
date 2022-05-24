@@ -11,6 +11,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 using MTGViewer.Data;
+using MTGViewer.Data.Infrastructure;
 using MTGViewer.Data.Projections;
 using MTGViewer.Services;
 using MTGViewer.Utils;
@@ -128,7 +129,7 @@ public sealed partial class Collection : ComponentBase, IDisposable
     {
         ApplicationState.PersistAsJson(nameof(Cards), Cards as IReadOnlyList<LocationCopy>);
 
-        ApplicationState.PersistAsJson(nameof(Seek), Cards.Seek);
+        ApplicationState.PersistAsJson(nameof(Seek), (SeekDto<LocationCopy>)Cards.Seek);
 
         return Task.CompletedTask;
     }
@@ -136,12 +137,12 @@ public sealed partial class Collection : ComponentBase, IDisposable
     private async Task<SeekList<LocationCopy>> GetCardDataAsync()
     {
         if (ApplicationState.TryGetData(nameof(Cards), out IReadOnlyList<LocationCopy>? cards)
-            && ApplicationState.TryGetData(nameof(Seek), out Seek<LocationCopy> seek))
+            && ApplicationState.TryGetData(nameof(Seek), out SeekDto<LocationCopy> seek))
         {
             // persisted state should match set filters
             // TODO: find way to check filters are consistent
 
-            return new SeekList<LocationCopy>(seek, cards);
+            return new SeekList<LocationCopy>((Seek<LocationCopy>)seek, cards);
         }
         else
         {

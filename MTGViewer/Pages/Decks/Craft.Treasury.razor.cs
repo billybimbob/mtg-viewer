@@ -5,9 +5,9 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using MTGViewer.Data;
+using MTGViewer.Data.Infrastructure;
 using MTGViewer.Data.Projections;
 using MTGViewer.Services;
-using MTGViewer.Utils;
 
 namespace MTGViewer.Pages.Decks;
 

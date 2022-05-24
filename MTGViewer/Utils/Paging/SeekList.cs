@@ -46,7 +46,7 @@ public readonly struct Seek
     }
 }
 
-public readonly struct Seek<T>
+public readonly struct Seek<T> where T : class
 {
     public T? Previous { get; }
     public T? Next { get; }
@@ -54,6 +54,8 @@ public readonly struct Seek<T>
 
     public Seek(T reference, SeekDirection direction, bool isMissing)
     {
+        ArgumentNullException.ThrowIfNull(reference);
+
         if (direction is SeekDirection.Forward)
         {
             Previous = default;
@@ -70,6 +72,9 @@ public readonly struct Seek<T>
 
     public Seek(T previous, T next)
     {
+        ArgumentNullException.ThrowIfNull(previous);
+        ArgumentNullException.ThrowIfNull(next);
+
         Previous = previous;
         Next = next;
         IsMissing = false;
@@ -101,14 +106,14 @@ public readonly struct Seek<T>
         return (seek.Previous, seek.Next, seek.IsMissing) switch
         {
             (T p, T n, _) => new Seek(p, n),
-            (_, T n, bool m) => new Seek(n, SeekDirection.Forward, m),
-            (T p, _, bool m) => new Seek(p, SeekDirection.Backwards, m),
+            (T p, null, bool m) => new Seek(p, SeekDirection.Forward, m),
+            (null, T n, bool m) => new Seek(n, SeekDirection.Backwards, m),
             _ => new Seek()
         };
     }
 }
 
-public class SeekList<T> : IReadOnlyList<T>
+public class SeekList<T> : IReadOnlyList<T> where T : class
 {
     private readonly IReadOnlyList<T> _items;
 
