@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using Xunit;
 
 using MTGViewer.Data;
+using MTGViewer.Data.Infrastructure;
 using MTGViewer.Pages.Treasury;
 using MTGViewer.Tests.Utils;
 
@@ -51,7 +52,7 @@ public class ExportTests : IAsyncLifetime
 
         await _pageContext.AddPageContextAsync(_exportModel, userId);
 
-        _exportModel.BackupType = ExportModel.DataScope.User;
+        _exportModel.DataScope = DataScope.User;
 
         var result = await _exportModel.OnPostAsync(default);
 
@@ -65,7 +66,7 @@ public class ExportTests : IAsyncLifetime
 
         await _pageContext.AddPageContextAsync(_exportModel, userId);
 
-        _exportModel.BackupType = ExportModel.DataScope.Treasury;
+        _exportModel.DataScope = DataScope.Treasury;
 
         var result = await _exportModel.OnPostAsync(default);
 
@@ -79,7 +80,7 @@ public class ExportTests : IAsyncLifetime
 
         await _pageContext.AddPageContextAsync(_exportModel, userId);
 
-        _exportModel.BackupType = ExportModel.DataScope.Complete;
+        _exportModel.DataScope = DataScope.Complete;
 
         var result = await _exportModel.OnPostAsync(default);
 

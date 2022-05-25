@@ -48,7 +48,7 @@ public class WantNameGroup : IEnumerable<Want>
         set
         {
             int change = Copies - value;
-            while (change < 0 || change > 0 && First.Copies > 0)
+            while ((change < 0) || (change > 0 && First.Copies > 0))
             {
                 int mod = Math.Min(change, First.Copies);
 

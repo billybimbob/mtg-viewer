@@ -24,6 +24,7 @@ public sealed record BinPreview
 {
     public int Id { get; init; }
     public string Name { get; init; } = string.Empty;
+
     public IEnumerable<BoxPreview> Boxes { get; init; } = Enumerable.Empty<BoxPreview>();
 
     public bool Equals(BinPreview? other)
@@ -33,8 +34,5 @@ public sealed record BinPreview
             && Name == other.Name;
     }
 
-    public override int GetHashCode()
-    {
-        return HashCode.Combine(Id, Name);
-    }
+    public override int GetHashCode() => HashCode.Combine(Id, Name);
 }

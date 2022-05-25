@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using MtgApiManager.Lib.Service;
+
 using MTGViewer.Data;
 
 namespace MTGViewer.Services.Search;
@@ -100,7 +101,7 @@ public sealed class MtgApiQuery : IMTGQuery
 
         var param = Expression.Parameter(
             typeof(CardQueryParameter),
-            typeof(CardQueryParameter).Name[0].ToString().ToLower());
+            nameof(CardQueryParameter)[0].ToString().ToLower());
 
         return Expression
             .Lambda<Func<CardQueryParameter, string>>(

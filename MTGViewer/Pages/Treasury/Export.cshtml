@@ -3,6 +3,7 @@
 @{
     ViewData["Title"] = "Treasury - Download";
 }
+@using MTGViewer.Data.Infrastructure
 
 <h1>Download Backup</h1>
 <hr />
@@ -10,7 +11,7 @@
 <div class="row">
     <div class="col col-md-8">
         <p>
-            Download currently stored card collection information. This data can then be 
+            Download currently stored card collection information. This data can then be
             <a href="/Treasury/Import">uploaded to bulk insert</a>.
         </p>
     </div>
@@ -57,14 +58,14 @@
     <div class="col-10 col-sm-6 col-lg-4">
         <form method="POST">
             <div class="form-group">
-                <select asp-for="BackupType" title="Pick Backup Type" class="form-control">
-                    @foreach (var backup in Enum.GetValues<ExportModel.DataScope>())
+                <select asp-for="DataScope" title="Pick Backup Type" class="form-control">
+                    @foreach (var backup in Enum.GetValues<DataScope>())
                     {
                         <option value="@backup"> @backup.ToString() </option>
                     }
                 </select>
 
-                <span asp-validation-for="BackupType" class="text-danger"></span>
+                <span asp-validation-for="DataScope" class="text-danger"></span>
             </div>
 
             <input type="submit" class="btn btn-secondary"

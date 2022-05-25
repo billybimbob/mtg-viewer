@@ -70,3 +70,9 @@ public sealed record QuantityPreview
     public CardPreview Card { get; init; } = default!;
     public int Copies { get; init; }
 }
+
+internal sealed record CardCopy
+{
+    public CardPreview? Card { get; set; }
+    public int Copies { get; set; }
+}

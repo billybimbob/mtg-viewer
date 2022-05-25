@@ -1,6 +1,7 @@
 using System;
 using System.ComponentModel.DataAnnotations;
 using System.Linq.Expressions;
+
 using MTGViewer.Data.Projections;
 
 namespace MTGViewer.Data.Infrastructure;

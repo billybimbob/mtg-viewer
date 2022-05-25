@@ -76,8 +76,6 @@ namespace Microsoft.AspNetCore.Identity
     public static class UserManagerExtensions
     {
         public static string? GetDisplayName(this UserManager<CardUser> _, ClaimsPrincipal user)
-        {
-            return user?.FindFirstValue(CardClaims.DisplayName);
-        }
+            => user?.FindFirstValue(CardClaims.DisplayName);
     }
 }

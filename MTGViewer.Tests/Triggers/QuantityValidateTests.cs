@@ -175,7 +175,11 @@ public class QuantityValidateTests : IAsyncLifetime
             .SetupGet(t => t.Entity)
             .Returns(giveback);
 
-        Task SaveAsync() => _quantityValidate.BeforeSave(triggerContext.Object, default);
+        Task SaveAsync()
+        {
+            return _quantityValidate
+                .BeforeSave(triggerContext.Object, default);
+        }
 
         await Assert.ThrowsAsync<DbUpdateException>(SaveAsync);
     }

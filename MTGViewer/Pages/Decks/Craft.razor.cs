@@ -52,15 +52,9 @@ public partial class Craft : OwningComponentBase
 
     internal bool IsLoading => _isBusy || !_isInteractive;
 
-    internal BuildType BuildOption { get; private set; }
+    internal DeckCraft DeckCraft { get; private set; }
 
     internal SaveResult Result { get; set; }
-
-    public enum BuildType
-    {
-        Holds,
-        Theorycrafting
-    }
 
     private readonly CancellationTokenSource _cancel = new();
     private readonly SortedSet<Card> _cards = new(CardNameComparer.Instance);
@@ -70,10 +64,8 @@ public partial class Craft : OwningComponentBase
     private bool _isBusy;
     private bool _isInteractive;
 
-    protected override void OnInitialized()
-    {
+    protected override void OnInitialized() =>
         _persistSubscription = ApplicationState.RegisterOnPersisting(PersistCardDataAsync);
-    }
 
     protected override async Task OnParametersSetAsync()
     {
@@ -210,9 +202,9 @@ public partial class Craft : OwningComponentBase
         return userId;
     }
 
-    internal async Task UpdateBuildTypeAsync(ChangeEventArgs args)
+    internal async Task UpdateDeckCraftAsync(ChangeEventArgs args)
     {
-        if (_isBusy || !Enum.TryParse(args.Value?.ToString(), out BuildType value))
+        if (_isBusy || !Enum.TryParse(args.Value?.ToString(), out DeckCraft value))
         {
             return;
         }
@@ -223,7 +215,7 @@ public partial class Craft : OwningComponentBase
         {
             await using var dbContext = await DbFactory.CreateDbContextAsync(_cancel.Token);
 
-            if (value is BuildType.Holds)
+            if (value is DeckCraft.Built)
             {
                 await InitializeHoldsAsync(dbContext);
                 await InitializeReturnsAsync(dbContext);
@@ -234,7 +226,7 @@ public partial class Craft : OwningComponentBase
                 await ApplyFiltersAsync(dbContext);
             }
 
-            BuildOption = value;
+            DeckCraft = value;
         }
         catch (OperationCanceledException ex)
         {

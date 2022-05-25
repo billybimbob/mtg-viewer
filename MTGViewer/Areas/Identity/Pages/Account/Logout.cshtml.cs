@@ -1,8 +1,10 @@
 using System.Threading.Tasks;
+
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.Extensions.Logging;
+
 using MTGViewer.Areas.Identity.Data;
 
 namespace MTGViewer.Areas.Identity.Pages.Account;
@@ -18,10 +20,7 @@ public class LogoutModel : PageModel
         _logger = logger;
     }
 
-    public IActionResult OnGet()
-    {
-        return RedirectToPage("/Account/Manage/Index");
-    }
+    public IActionResult OnGet() => RedirectToPage("/Account/Manage/Index");
 
     public async Task<IActionResult> OnPostAsync(string? returnUrl)
     {

@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Configuration;
+
 using MTGViewer.Services.Infrastructure;
 using MTGViewer.Services.Seed;
 

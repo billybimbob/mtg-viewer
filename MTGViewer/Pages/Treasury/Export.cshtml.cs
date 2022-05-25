@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
 using MTGViewer.Areas.Identity.Data;
+using MTGViewer.Data.Infrastructure;
 using MTGViewer.Services;
 
 namespace MTGViewer.Pages.Treasury;
@@ -26,16 +27,9 @@ public class ExportModel : PageModel
         _userManager = userManager;
     }
 
-    public enum DataScope
-    {
-        User,
-        Treasury,
-        Complete
-    }
-
     [BindProperty]
     [Display(Name = "Backup Type")]
-    public DataScope BackupType { get; set; }
+    public DataScope DataScope { get; set; }
 
     public void OnGet()
     { }
@@ -54,7 +48,7 @@ public class ExportModel : PageModel
             return NotFound();
         }
 
-        var backup = BackupType switch // file stream should close backup
+        var backup = DataScope switch // file stream should close backup
         {
             DataScope.User => await _backupFactory.GetUserBackupAsync(userId, cancel),
             DataScope.Treasury => await _backupFactory.GetTreasuryBackupAsync(cancel),
@@ -64,7 +58,7 @@ public class ExportModel : PageModel
         string userName = _userManager.GetDisplayName(User) ?? userId;
         string timestamp = DateTime.UtcNow.ToString(CultureInfo.InvariantCulture);
 
-        string filename = BackupType switch
+        string filename = DataScope switch
         {
             DataScope.User => $"cards-{timestamp}-{userName}.json",
             DataScope.Treasury => $"cards-{timestamp}-treasury.json",

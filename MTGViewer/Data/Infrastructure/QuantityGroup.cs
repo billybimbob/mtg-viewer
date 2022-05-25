@@ -44,6 +44,10 @@ public class QuantityGroup : IEnumerable<Quantity>
             case Giveback giveback:
                 _giveback = giveback;
                 break;
+
+            default:
+                throw new ArgumentException(
+                    $"Unexpected quantity type {quantity.GetType().Name}", nameof(quantity));
         }
 
         CheckGroup();
@@ -142,6 +146,10 @@ public class QuantityGroup : IEnumerable<Quantity>
             case Giveback giveback:
                 Giveback = giveback;
                 break;
+
+            default:
+                throw new ArgumentException(
+                    $"Unexpected quantity type {quantity.GetType().Name}", nameof(quantity));
         }
     }
 
@@ -163,7 +171,7 @@ public class QuantityGroup : IEnumerable<Quantity>
 
         if (!HasSameIds() && !HasSameReferences())
         {
-            throw new ArgumentException(
+            throw new InvalidOperationException(
                 "Pairs do not reference the same location or card");
         }
     }

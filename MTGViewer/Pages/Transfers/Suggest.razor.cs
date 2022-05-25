@@ -67,10 +67,8 @@ public partial class Suggest : OwningComponentBase
     private bool _isBusy;
     private bool _isInteractive;
 
-    protected override void OnInitialized()
-    {
+    protected override void OnInitialized() =>
         _persistSubscription = ApplicationState.RegisterOnPersisting(PersistSuggestionData);
-    }
 
     protected override async Task OnParametersSetAsync()
     {
@@ -95,7 +93,7 @@ public partial class Suggest : OwningComponentBase
 
             if (_isInteractive)
             {
-                await LoadUserOptionsAsync(dbContext);
+                await LoadUsersAsync(dbContext);
             }
         }
         catch (OperationCanceledException ex)
@@ -125,7 +123,7 @@ public partial class Suggest : OwningComponentBase
         {
             await using var dbContext = await DbFactory.CreateDbContextAsync(_cancel.Token);
 
-            await LoadUserOptionsAsync(dbContext);
+            await LoadUsersAsync(dbContext);
 
             _isInteractive = true;
         }
@@ -209,7 +207,7 @@ public partial class Suggest : OwningComponentBase
 
         if (Suggestion.Receiver?.Id is string receiverId)
         {
-            await LoadReceiverDecksAsync(dbContext, cardName, receiverId);
+            await LoadDecksAsync(dbContext, cardName, receiverId);
         }
         else
         {
@@ -239,19 +237,19 @@ public partial class Suggest : OwningComponentBase
             return true;
         }
 
-        if (await GetUserIdAsync() is not string userId)
+        if (await GetUserIdAsync() is not string proposerId)
         {
             Logger.LogError("User is missing");
             return false;
         }
 
-        if (userId == ReceiverId)
+        if (proposerId == ReceiverId)
         {
             Logger.LogError("Specified receiver is the same as the current user");
             return false;
         }
 
-        Suggestion.Receiver = await UsersForSuggestion(dbContext, cardName, userId)
+        Suggestion.Receiver = await PossibleReceivers(dbContext, cardName, proposerId)
             .SingleOrDefaultAsync(u => u.Id == ReceiverId, _cancel.Token);
 
         if (Suggestion.Receiver is null)
@@ -274,7 +272,7 @@ public partial class Suggest : OwningComponentBase
         return userManager.GetUserId(authState.User);
     }
 
-    private async Task LoadReceiverDecksAsync(CardDbContext dbContext, string cardName, string receiverId)
+    private async Task LoadDecksAsync(CardDbContext dbContext, string cardName, string receiverId)
     {
         if (_deckOptions.Any())
         {
@@ -283,7 +281,8 @@ public partial class Suggest : OwningComponentBase
 
         if (!ApplicationState.TryGetData(nameof(_maxDeckCount), out _maxDeckCount))
         {
-            _maxDeckCount = await DecksForSuggest(dbContext, cardName, receiverId).CountAsync(_cancel.Token);
+            _maxDeckCount = await ReceiverDecks(dbContext, cardName, receiverId)
+                .CountAsync(_cancel.Token);
         }
 
         if (ApplicationState.TryGetData(nameof(_deckOptions), out IReadOnlyList<DeckPreview>? decks))
@@ -295,7 +294,7 @@ public partial class Suggest : OwningComponentBase
         await LoadMoreDecksAsync(dbContext, cardName, receiverId);
     }
 
-    private async Task LoadUserOptionsAsync(CardDbContext dbContext)
+    private async Task LoadUsersAsync(CardDbContext dbContext)
     {
         if (_userOptions.Any())
         {
@@ -308,13 +307,13 @@ public partial class Suggest : OwningComponentBase
             return;
         }
 
-        if (await GetUserIdAsync() is not string userId)
+        if (await GetUserIdAsync() is not string proposerId)
         {
             Logger.LogError("User is missing");
             return;
         }
 
-        var dbUsers = UsersForSuggestion(dbContext, cardName, userId)
+        var dbUsers = PossibleReceivers(dbContext, cardName, proposerId)
             .AsAsyncEnumerable()
             .WithCancellation(_cancel.Token);
 
@@ -421,7 +420,7 @@ public partial class Suggest : OwningComponentBase
             return;
         }
 
-        var decks = DecksForSuggest(dbContext, cardName, receiverId)
+        var decks = ReceiverDecks(dbContext, cardName, receiverId)
             .Skip(_deckOptions.Count)
             .Take(PageSize.Current)
             .AsAsyncEnumerable()
@@ -475,7 +474,7 @@ public partial class Suggest : OwningComponentBase
         }
     }
 
-    private static IQueryable<DeckPreview> DecksForSuggest(
+    private static IQueryable<DeckPreview> ReceiverDecks(
         CardDbContext dbContext,
         string cardName,
         string receiverId)
@@ -511,7 +510,7 @@ public partial class Suggest : OwningComponentBase
             });
     }
 
-    private static IQueryable<UserPreview> UsersForSuggestion(
+    private static IQueryable<UserPreview> PossibleReceivers(
         CardDbContext dbContext,
         string cardName,
         string proposerId)

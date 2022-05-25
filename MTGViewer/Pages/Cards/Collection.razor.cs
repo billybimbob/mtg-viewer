@@ -72,10 +72,8 @@ public sealed partial class Collection : ComponentBase, IDisposable
     private bool _isBusy;
     private bool _isInteractive;
 
-    protected override void OnInitialized()
-    {
+    protected override void OnInitialized() =>
         _persistSubscription = ApplicationState.RegisterOnPersisting(PersistCardData);
-    }
 
     protected override async Task OnParametersSetAsync()
     {

@@ -9,7 +9,9 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using CsvHelper;
+
 using Microsoft.EntityFrameworkCore;
+
 using MTGViewer.Services.Infrastructure;
 
 namespace MTGViewer.Services;
@@ -68,9 +70,7 @@ public class FileCardStorage
         CancellationToken cancel)
     {
         static ValueTask<string> MultiverseIdAsync(CsvCard card, CancellationToken _)
-        {
-            return ValueTask.FromResult(card.MultiverseID);
-        }
+            => ValueTask.FromResult(card.MultiverseID);
 
         var additions = await csv
             .GetRecordsAsync<CsvCard>(CancellationToken.None) // cancel token given later

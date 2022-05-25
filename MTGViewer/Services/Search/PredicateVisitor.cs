@@ -22,9 +22,7 @@ internal class PredicateVisitor : ExpressionVisitor
     private ExpressionVisitor AllPredicate => _allVisitor ??= new(_propertyNames);
 
     protected override Expression VisitLambda<T>(Expression<T> node)
-    {
-        return Visit(node.Body);
-    }
+        => Visit(node.Body);
 
     protected override Expression VisitMember(MemberExpression node)
     {
@@ -77,9 +75,7 @@ internal class PredicateVisitor : ExpressionVisitor
     }
 
     protected override Expression VisitConstant(ConstantExpression node)
-    {
-        return Expression.Constant(node.Value, typeof(object));
-    }
+        => Expression.Constant(node.Value, typeof(object));
 
     protected override Expression VisitBinary(BinaryExpression node)
     {
@@ -152,9 +148,7 @@ internal class PredicateVisitor : ExpressionVisitor
         }
 
         protected override Expression VisitLambda<T>(Expression<T> node)
-        {
-            return Visit(node.Body);
-        }
+            => Visit(node.Body);
 
         protected override Expression VisitMember(MemberExpression node)
         {
@@ -199,9 +193,7 @@ internal class PredicateVisitor : ExpressionVisitor
         }
 
         protected override Expression VisitConstant(ConstantExpression node)
-        {
-            return Expression.Constant(node.Value, typeof(object));
-        }
+            => Expression.Constant(node.Value, typeof(object));
 
         protected override Expression VisitBinary(BinaryExpression node)
         {

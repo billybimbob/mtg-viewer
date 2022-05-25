@@ -50,7 +50,7 @@ public class HoldNameGroup : IEnumerable<Hold>
             var lastCycle = _holds.Last!.Value;
             int change = Copies - value;
 
-            while (change < 0 || change > 0 && lastCycle.Copies > 0)
+            while (change < 0 || (change > 0 && lastCycle.Copies > 0))
             {
                 int mod = Math.Min(change, First.Copies);
 

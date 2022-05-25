@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Components;
+
 using MTGViewer.Services;
 
 namespace MTGViewer.Pages.Shared;
@@ -12,7 +13,5 @@ public class FoundRouteData : ComponentBase
     internal RouteDataAccessor RouteDataAccessor { get; set; } = default!;
 
     protected override void OnParametersSet()
-    {
-        RouteDataAccessor.RouteData = RouteData;
-    }
+        => RouteDataAccessor.RouteData = RouteData;
 }

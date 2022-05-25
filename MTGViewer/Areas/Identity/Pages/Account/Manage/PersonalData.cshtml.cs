@@ -1,7 +1,9 @@
 using System.Threading.Tasks;
+
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+
 using MTGViewer.Areas.Identity.Data;
 
 namespace MTGViewer.Areas.Identity.Pages.Account.Manage;

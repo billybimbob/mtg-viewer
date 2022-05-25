@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+
 using MTGViewer.Data;
 
 namespace MTGViewer.Tests.Utils;
@@ -24,22 +25,17 @@ public class TradeSet : IEnumerable<Trade>
 
         _first = _trades.First();
 
-        if (useToTarget
-            && _first.To != null
-            && _trades.All(t => t.To == _first.To))
-        {
-            _useToTarget = true;
-        }
-        else if (!useToTarget
-            && _first.From != null
-            && _trades.All(t => t.From == _first.From))
-        {
-            _useToTarget = false;
-        }
-        else
+        if (_trades.Any(t => t.To != _first.To && t.From != _first.From))
         {
             throw new ArgumentException("All trade destinations are not the same", nameof(trades));
         }
+
+        _useToTarget = (useToTarget, _first) switch
+        {
+            (true, { To: not null }) => true,
+            (false, { From: not null }) => false,
+            _ => throw new InvalidOperationException("Trade target not specified")
+        };
     }
 
     public Deck Target => _useToTarget ? _first.To : _first.From;

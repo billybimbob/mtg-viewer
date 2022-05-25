@@ -19,7 +19,7 @@ public sealed class Statistics
     {
         get
         {
-            float manaTotal = (float)ManaValues.Values.Sum();
+            float manaTotal = ManaValues.Values.Sum();
 
             return manaTotal is 0f ? 0f : ManaValues.Sum(kv => kv.Key * kv.Value) / manaTotal;
         }

@@ -4,9 +4,11 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Threading;
 using System.Threading.Tasks;
+
 using Microsoft.Extensions.Logging;
 
 using MtgApiManager.Lib.Model;
+
 using MTGViewer.Data;
 using MTGViewer.Services;
 using MTGViewer.Services.Search;

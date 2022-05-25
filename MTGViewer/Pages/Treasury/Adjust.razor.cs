@@ -354,7 +354,10 @@ public sealed partial class Adjust : ComponentBase, IDisposable
             return null;
         }
 
-        dbContext.Entry(bin).CurrentValues.SetValues(binDto);
+        dbContext
+            .Entry(bin)
+            .CurrentValues
+            .SetValues(binDto);
 
         return bin;
     }

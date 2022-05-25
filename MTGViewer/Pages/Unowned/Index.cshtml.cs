@@ -61,13 +61,8 @@ public class IndexModel : PageModel
     }
 
     public IActionResult OnPostClaim(int id)
-    {
-        return RedirectToPagePreserveMethod("Details", "Claim", new { id });
-    }
+        => RedirectToPagePreserveMethod("Details", "Claim", new { id });
 
     public IActionResult OnPostRemove(int id)
-    {
-        return RedirectToPagePreserveMethod("Details", "Remove", new { id });
-    }
-
+        => RedirectToPagePreserveMethod("Details", "Remove", new { id });
 }

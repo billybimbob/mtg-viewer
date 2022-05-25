@@ -144,12 +144,12 @@ public class DetailsModel : PageModel
                     .All(c => (c.To is Box
                         || c.To is Excess
                         || c.To is Unclaimed
-                        || c.To is Deck && (c.To as Deck)!.OwnerId == userId)
+                        || (c.To is Deck && (c.To as Deck)!.OwnerId == userId))
                         && (c.From == null
                         || c.From is Box
                         || c.From is Excess
                         || c.From is Unclaimed
-                        || c.From is Deck && (c.From as Deck)!.OwnerId == userId))
+                        || (c.From is Deck && (c.From as Deck)!.OwnerId == userId)))
             });
     }
 

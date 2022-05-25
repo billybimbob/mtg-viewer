@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
+
 using Microsoft.EntityFrameworkCore.Query;
 
 namespace System.Paging.Query;
@@ -181,8 +182,8 @@ internal sealed class OriginFilter<TOrigin, TEntity>
     {
         _nullOrders ??= NullProperties()
             .ToDictionary(
-                nc => (Expression)nc.Key,
-                nc => nc.Ordering,
+                n => n.Key,
+                n => n.Ordering,
                 ExpressionEqualityComparer.Instance);
 
         return _nullOrders.GetValueOrDefault(node);
@@ -191,6 +192,11 @@ internal sealed class OriginFilter<TOrigin, TEntity>
     private BinaryExpression? CompareTo(KeyOrder keyOrder, IEnumerable<KeyOrder>? beforeKeys = null)
     {
         var (parameter, ordering) = keyOrder;
+
+        if (parameter is null)
+        {
+            return null;
+        }
 
         var comparison = IsGreaterThan(ordering)
             ? GreaterThan(parameter)
@@ -203,6 +209,7 @@ internal sealed class OriginFilter<TOrigin, TEntity>
 
         var equalKeys = beforeKeys
             ?.Select(k => k.Key)
+            .OfType<MemberExpression>()
             ?? Enumerable.Empty<MemberExpression>();
 
         if (EqualTo(equalKeys) is Expression equalTo)
@@ -305,7 +312,7 @@ internal sealed class OriginFilter<TOrigin, TEntity>
 
     #region Origin Builder types
 
-    private readonly record struct KeyOrder(MemberExpression Key, Ordering Ordering);
+    private readonly record struct KeyOrder(MemberExpression? Key, Ordering Ordering);
 
     private enum Ordering
     {
@@ -313,7 +320,7 @@ internal sealed class OriginFilter<TOrigin, TEntity>
         Descending,
     }
 
-    private readonly record struct NullCheck(MemberExpression Key, NullOrder Ordering);
+    private record NullCheck(Expression Key, NullOrder Ordering);
 
     private enum NullOrder
     {

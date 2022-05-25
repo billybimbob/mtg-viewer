@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using Microsoft.EntityFrameworkCore;
+
 using MTGViewer.Data.Treasury;
 
 namespace MTGViewer.Data;
@@ -167,8 +168,8 @@ public partial class CardDbContext
         return ChangeTracker
             .Entries<Box>()
             .All(e => e.State is EntityState.Detached
-                || e.State is not EntityState.Added
-                    && !e.Property(b => b.Capacity).IsModified);
+                || (e.State is not EntityState.Added
+                    && !e.Property(b => b.Capacity).IsModified));
     }
 
     private bool AreHoldsUnchanged()
@@ -176,8 +177,8 @@ public partial class CardDbContext
         return ChangeTracker
             .Entries<Hold>()
             .All(e => e.State is EntityState.Detached
-                || e.State is not EntityState.Added
-                    && !e.Property(h => h.Copies).IsModified);
+                || (e.State is not EntityState.Added
+                    && !e.Property(h => h.Copies).IsModified));
     }
 
     private async Task<Dictionary<LocationIndex, StorageSpace>> MergedStorageSpacesAsync(CancellationToken cancel)
@@ -222,7 +223,7 @@ public partial class CardDbContext
     {
         return Locations
             .Where(l => l is Excess
-                || l is Box && l.Holds.Any(h => cardNames.Contains(h.Card.Name)))
+                || (l is Box && l.Holds.Any(h => cardNames.Contains(h.Card.Name))))
 
             .Include(l => l.Holds
                 .Where(h => cardNames.Contains(h.Card.Name))
@@ -240,7 +241,8 @@ public partial class CardDbContext
         return Locations
             .Where(l => modified.Contains(l.Id)
                 || l is Excess
-                || l is Box && (l as Box)!.Capacity < l.Holds.Sum(h => h.Copies))
+                || (l is Box
+                    && (l as Box)!.Capacity < l.Holds.Sum(h => h.Copies)))
 
             .Include(l => l.Holds
                 .OrderBy(h => h.Card.Name)

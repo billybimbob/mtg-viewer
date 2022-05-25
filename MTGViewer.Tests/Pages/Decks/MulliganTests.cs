@@ -11,6 +11,7 @@ using Xunit;
 
 using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
+using MTGViewer.Data.Infrastructure;
 using MTGViewer.Pages.Decks;
 using MTGViewer.Services;
 using MTGViewer.Tests.Utils;
@@ -155,7 +156,7 @@ public sealed class MulliganTests : IAsyncLifetime, IDisposable
 
         var chooseMulligan = cut.Find("select:not([disabled])");
 
-        chooseMulligan.Change(Mulligan.MulliganType.None);
+        chooseMulligan.Change(DeckMulligan.None);
 
         var images = cut.FindAll("img");
 
@@ -172,7 +173,7 @@ public sealed class MulliganTests : IAsyncLifetime, IDisposable
 
         var chooseMulligan = cut.Find("select:not([disabled])");
 
-        chooseMulligan.Change(Mulligan.MulliganType.Built);
+        chooseMulligan.Change(DeckMulligan.Built);
 
         var images = cut.FindAll("img");
 
@@ -189,7 +190,7 @@ public sealed class MulliganTests : IAsyncLifetime, IDisposable
 
         var chooseMulligan = cut.Find("select:not([disabled])");
 
-        chooseMulligan.Change(Mulligan.MulliganType.Theorycraft);
+        chooseMulligan.Change(DeckMulligan.Theorycraft);
 
         var images = cut.FindAll("img");
 
@@ -206,7 +207,7 @@ public sealed class MulliganTests : IAsyncLifetime, IDisposable
 
         var chooseMulligan = cut.Find("select:not([disabled])");
 
-        chooseMulligan.Change(Mulligan.MulliganType.Theorycraft);
+        chooseMulligan.Change(DeckMulligan.Theorycraft);
 
         var drawCard = cut.Find("button[title=\"Draw a Card\"]");
         int beforeCards = cut.FindAll("img").Count;
@@ -228,7 +229,7 @@ public sealed class MulliganTests : IAsyncLifetime, IDisposable
 
         var chooseMulligan = cut.Find("select:not([disabled])");
 
-        chooseMulligan.Change(Mulligan.MulliganType.Theorycraft);
+        chooseMulligan.Change(DeckMulligan.Theorycraft);
 
         var backButton = cut.Find("button[title=\"Choose Mulligan Type\"]");
         var beforeImages = cut.FindAll("img");
@@ -251,7 +252,7 @@ public sealed class MulliganTests : IAsyncLifetime, IDisposable
 
         var chooseMulligan = cut.Find("select:not([disabled])");
 
-        chooseMulligan.Change(Mulligan.MulliganType.Theorycraft);
+        chooseMulligan.Change(DeckMulligan.Theorycraft);
 
         var newHand = cut.Find("button[title=\"Get a New Hand\"]:not([disabled])");
 

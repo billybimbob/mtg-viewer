@@ -1,7 +1,9 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+
 using EntityFrameworkCore.Triggered;
+
 using MTGViewer.Data;
 
 namespace MTGViewer.Triggers;

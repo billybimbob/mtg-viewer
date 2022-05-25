@@ -1,4 +1,5 @@
 using System.Diagnostics;
+
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -13,8 +14,6 @@ public class ErrorModel : PageModel
 
     public bool ShowRequestId => !string.IsNullOrEmpty(RequestId);
 
-    public void OnGet()
-    {
+    public void OnGet() =>
         RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier;
-    }
 }

@@ -1,6 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Linq.Expressions;
+
 using Microsoft.EntityFrameworkCore.Query;
 
 namespace System.Paging.Query;
@@ -72,8 +73,8 @@ internal class InsertTakeVisitor<TEntity> : ExpressionVisitor
 
         bool correctType = generics.ElementAtOrDefault(0) == typeof(TEntity);
 
-        return correctType && generics.Length == 1
-            || correctType && ExpressionHelpers.IsOrderedMethod(node);
+        return (correctType && generics.Length == 1)
+            || (correctType && ExpressionHelpers.IsOrderedMethod(node));
     }
 
     private static bool IsSelectMethod(MethodCallExpression node)

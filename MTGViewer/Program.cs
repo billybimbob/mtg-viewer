@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Builder;
+
 using MTGViewer;
 
 var builder = WebApplication.CreateBuilder(args);

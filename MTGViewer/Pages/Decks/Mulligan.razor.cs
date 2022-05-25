@@ -12,12 +12,12 @@ using Microsoft.AspNetCore.Identity;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.ObjectPool;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
+using MTGViewer.Data.Infrastructure;
 using MTGViewer.Data.Projections;
 using MTGViewer.Services;
 using MTGViewer.Utils;
@@ -51,13 +51,6 @@ public partial class Mulligan : OwningComponentBase
     [Inject]
     protected ILogger<Mulligan> Logger { get; set; } = default!;
 
-    public enum MulliganType
-    {
-        None,
-        Built,
-        Theorycraft
-    }
-
     private readonly CancellationTokenSource _cancel = new();
     private readonly HashSet<string> _loadedImages = new();
 
@@ -67,13 +60,11 @@ public partial class Mulligan : OwningComponentBase
     private bool _isInteractive;
 
     private MulliganTarget? _target;
-    private MulliganType _mulliganType;
+    private DeckMulligan _deckMulligan;
     private DrawSimulation? _shuffledDeck;
 
-    protected override void OnInitialized()
-    {
+    protected override void OnInitialized() =>
         _persistSubscription = ApplicationState.RegisterOnPersisting(PersistDeckData);
-    }
 
     protected override async Task OnParametersSetAsync()
     {
@@ -241,14 +232,14 @@ public partial class Mulligan : OwningComponentBase
 
     internal bool IsLoading => _isBusy || !_isInteractive;
 
-    internal MulliganType DeckMulligan
+    internal DeckMulligan DeckMulligan
     {
-        get => _mulliganType;
+        get => _deckMulligan;
         set
         {
-            if (!_isBusy && _isInteractive && _mulliganType != value)
+            if (!_isBusy && _isInteractive && _deckMulligan != value)
             {
-                _mulliganType = value;
+                _deckMulligan = value;
 
                 _ = NewHandAsync();
             }
@@ -270,13 +261,13 @@ public partial class Mulligan : OwningComponentBase
         {
             _shuffledDeck?.Dispose();
 
-            if (_mulliganType is MulliganType.None)
+            if (_deckMulligan is DeckMulligan.None)
             {
                 _shuffledDeck = null;
                 return;
             }
 
-            _shuffledDeck = new DrawSimulation(_target.Cards, _mulliganType);
+            _shuffledDeck = new DrawSimulation(_target.Cards, _deckMulligan);
 
             int requiredCards = Options.Value.HandSize;
 
@@ -310,117 +301,4 @@ public partial class Mulligan : OwningComponentBase
     internal bool IsImageLoaded(CardPreview card) => _loadedImages.Contains(card.Id);
 
     internal void OnImageLoad(CardPreview card) => _loadedImages.Add(card.Id);
-
-    private sealed class MulliganTarget
-    {
-        public string Name { get; init; } = string.Empty;
-
-        public IReadOnlyList<DeckCopy> Cards { get; init; } = Array.Empty<DeckCopy>();
-    }
-
-    private sealed class DrawSimulation : IDisposable
-    {
-        private static readonly ObjectPool<CardCopy> _cardPool
-            = new DefaultObjectPool<CardCopy>(
-                new DefaultPooledObjectPolicy<CardCopy>());
-
-        private readonly ICollection<CardCopy> _cardOptions;
-        private readonly List<CardPreview> _hand;
-
-        private int _cardsInDeck;
-        private CardCopy? _nextDraw;
-
-        public DrawSimulation(IReadOnlyList<DeckCopy> deck, MulliganType mulliganType)
-        {
-            _cardOptions = deck
-                .Select(d =>
-                {
-                    var copy = _cardPool.Get();
-                    copy.Card = d;
-                    copy.Copies = GetCopies(d, mulliganType);
-
-                    return copy;
-                })
-                .ToHashSet(); // want hash set for undefined (random) iter order
-
-            _hand = new List<CardPreview>();
-
-            _cardsInDeck = deck
-                .Sum(d => GetCopies(d, mulliganType));
-
-            _nextDraw = PickRandomCard();
-        }
-
-        public IReadOnlyList<CardPreview> Hand => _hand;
-
-        public bool CanDraw => _nextDraw is not null;
-
-        public void Dispose()
-        {
-            foreach (var option in _cardOptions)
-            {
-                _cardPool.Return(option);
-            }
-
-            _cardOptions.Clear();
-            _hand.Clear();
-
-            _nextDraw = null;
-        }
-
-        public void DrawCard()
-        {
-            if (_nextDraw is not { Card: CardPreview card })
-            {
-                return;
-            }
-
-            _nextDraw.Copies -= 1;
-            _cardsInDeck -= 1;
-
-            _nextDraw = PickRandomCard(); // keep eye on, O(N) could be bottleneck
-
-            _hand.Add(card);
-        }
-
-        private CardCopy? PickRandomCard()
-        {
-            if (_cardsInDeck <= 0)
-            {
-                return null;
-            }
-
-            int picked = Random.Shared.Next(0, _cardsInDeck);
-
-            using var e = _cardOptions.GetEnumerator();
-
-            while (e.MoveNext())
-            {
-                picked -= e.Current.Copies;
-
-                if (picked <= 0)
-                {
-                    return e.Current;
-                }
-            }
-
-            return null;
-        }
-
-        private static int GetCopies(DeckCopy source, MulliganType mulliganType)
-        {
-            return mulliganType switch
-            {
-                MulliganType.Built => source.Held,
-                MulliganType.Theorycraft => source.Held - source.Returning + source.Want,
-                MulliganType.None or _ => 0
-            };
-        }
-
-        private sealed record CardCopy
-        {
-            public CardPreview? Card { get; set; }
-            public int Copies { get; set; }
-        }
-    }
 }

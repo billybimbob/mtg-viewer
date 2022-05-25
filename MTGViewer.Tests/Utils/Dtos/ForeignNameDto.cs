@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+
 using MtgApiManager.Lib.Model;
 
 namespace MTGViewer.Tests.Utils.Dtos;

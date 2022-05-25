@@ -107,10 +107,10 @@ public class DeleteModel : PageModel
             ManaCost = card.ManaCost,
 
             HasDeckCopies = card.Holds
-                .Any(h => h.Location is Deck || h.Location is Unclaimed),
+                .Any(h => h.Location is Deck or Unclaimed),
 
             StorageCopies = card.Holds
-                .Where(h => h.Location is Box || h.Location is Excess)
+                .Where(h => h.Location is Box or Excess)
                 .Sum(h => h.Copies)
         };
     }

@@ -222,7 +222,6 @@ public class StatisticsModel : PageModel
             .ToDictionary(tc => tc.Type, tc => tc.Copies);
     }
 
-
     private async Task<IReadOnlyDictionary<int, int>> GetManaValuesAsync(int deckId, CancellationToken cancel)
     {
         return await _dbContext.Cards

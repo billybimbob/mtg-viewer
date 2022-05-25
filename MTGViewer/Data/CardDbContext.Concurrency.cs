@@ -31,16 +31,16 @@ public partial class CardDbContext
 
         if (Database.IsSqlServer())
         {
-            _ = entity.Property(nameof(Concurrent.Version));
+            entity.Property(nameof(Concurrent.Version));
         }
         else if (Database.IsNpgsql())
         {
-            _ = entity.UseXminAsConcurrencyToken();
+            entity.UseXminAsConcurrencyToken();
         }
         // else if (Database.IsSqlite())
         else
         {
-            _ = entity.Property(nameof(Concurrent.Stamp));
+            entity.Property(nameof(Concurrent.Stamp));
         }
     }
 

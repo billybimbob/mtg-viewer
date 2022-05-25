@@ -12,5 +12,9 @@ public abstract class Concurrent
     [Timestamp]
     internal byte[] Version { get; set; } = Array.Empty<byte>();
 
+#pragma warning disable IDE1006
+
     internal uint xmin { get; set; }
+
+#pragma warning restore IDE1006
 }

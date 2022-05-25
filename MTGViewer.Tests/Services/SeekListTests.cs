@@ -216,23 +216,23 @@ public class SeekListTests : IAsyncLifetime
             Assert.True(
                 c.Name.CompareTo(seek.Name) > 0
 
-                || c.Name == seek.Name
-                    && c.SetName.CompareTo(seek.SetName) > 0
+                || (c.Name == seek.Name
+                    && c.SetName.CompareTo(seek.SetName) > 0)
 
-                || c.Name == seek.Name
+                || (c.Name == seek.Name
                     && c.SetName == seek.SetName
-                    && c.ManaValue < seek.ManaValue
+                    && c.ManaValue < seek.ManaValue)
 
-                || c.Name == seek.Name
+                || (c.Name == seek.Name
                     && c.SetName == seek.SetName
                     && c.ManaValue == seek.ManaValue
-                    && c.Artist.CompareTo(seek.Artist) < 0
+                    && c.Artist.CompareTo(seek.Artist) < 0)
 
-                || c.Name == seek.Name
+                || (c.Name == seek.Name
                     && c.SetName == seek.SetName
                     && c.ManaValue == seek.ManaValue
                     && c.Artist == seek.Artist
-                    && c.Id.CompareTo(seek.Id) > 0));
+                    && c.Id.CompareTo(seek.Id) > 0)));
     }
 
     // [Fact]

@@ -1,11 +1,12 @@
 @page "/Decks/Mulligan/{DeckId:int}"
+@using MTGViewer.Data.Infrastructure
 @inherits OwningComponentBase
 
 <PageTitle> @DeckName - Mulligan </PageTitle>
 
 <h1> @DeckName Sample Mulligans </h1>
 
-@if (DeckMulligan is MulliganType.None)
+@if (DeckMulligan is DeckMulligan.None)
 {
     <div class="btn-group" role="group">
         <a href="/Decks/Details/@DeckId"
@@ -51,9 +52,9 @@
             <select title="Deck Mulligan Type" class="form-control"
                 disabled="@IsLoading" @bind="DeckMulligan">
 
-                <option value="@MulliganType.None"> Choose Mulligan Type </option>
-                <option value="@MulliganType.Built"> Built Deck </option>
-                <option value="@MulliganType.Theorycraft"> Theorycraft Deck </option>
+                <option value="@DeckMulligan.None"> Choose Mulligan Type </option>
+                <option value="@DeckMulligan.Built"> Built Deck </option>
+                <option value="@DeckMulligan.Theorycraft"> Theorycraft Deck </option>
             </select>
         </div>
     </div>
@@ -64,7 +65,7 @@ else
         <button title="Choose Mulligan Type" type="button"
             class="btn btn-secondary"
             disabled="@IsLoading"
-            @onclick="() => DeckMulligan = MulliganType.None">
+            @onclick="() => DeckMulligan = DeckMulligan.None">
             Back
         </button>
 

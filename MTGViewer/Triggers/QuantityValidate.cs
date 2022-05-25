@@ -3,6 +3,7 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using EntityFrameworkCore.Triggered;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 

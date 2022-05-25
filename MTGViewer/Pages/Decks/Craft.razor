@@ -1,4 +1,5 @@
 @page "/Decks/Craft/{DeckId:int?}"
+@using MTGViewer.Data.Infrastructure
 @using MTGViewer.Data.Projections
 @inherits OwningComponentBase
 @inject SymbolFormatter MtgSymbols
@@ -79,12 +80,12 @@ else
 <div class="row form-group">
     <div class="col-5 col-sm-4 col-md-3 col-lg-2 ">
         <select title="Deck Build Type" class="form-control"
-            disabled="@IsLoading" @onchange="UpdateBuildTypeAsync">
+            disabled="@IsLoading" @onchange="UpdateDeckCraftAsync">
 
-            <option value="@BuildType.Holds" selected="@(BuildOption is BuildType.Holds)">
+            <option value="@DeckCraft.Built" selected="@(DeckCraft is DeckCraft.Built)">
                 Held Cards </option>
 
-            <option value="@BuildType.Theorycrafting" selected="@(BuildOption is BuildType.Theorycrafting)">
+            <option value="@DeckCraft.Theorycraft" selected="@(DeckCraft is DeckCraft.Theorycraft)">
                 Theorycrafting </option>
         </select>
     </div>
@@ -95,9 +96,9 @@ else
     SearchChanged="@SearchAsync"
     Color="@PickedColors"
     ColorChanged="@ToggleColorAsync"
-    IsDisabled="IsLoading || BuildOption is not BuildType.Theorycrafting" />
+    IsDisabled="IsLoading || DeckCraft is not DeckCraft.Theorycraft" />
 
-@if (BuildOption is BuildType.Theorycrafting)
+@if (DeckCraft is DeckCraft.Theorycraft)
 {
     <div class="row">
         <section class="col-12 col-lg-7 pb-3">
@@ -177,7 +178,7 @@ else
         </section>
     </div>
 }
-else if (BuildOption is BuildType.Holds)
+else if (DeckCraft is DeckCraft.Built)
 {
     <div class="row">
         <section class="col-12 col-lg-7 pb-3">

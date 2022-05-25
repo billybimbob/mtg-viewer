@@ -1,5 +1,7 @@
 using System;
+
 using Microsoft.Extensions.Options;
+
 using MTGViewer.Services.Symbols;
 
 namespace Microsoft.Extensions.DependencyInjection;

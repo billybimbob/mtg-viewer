@@ -13,7 +13,6 @@ using Microsoft.Extensions.Logging;
 using MTGViewer.Data;
 using MTGViewer.Data.Infrastructure;
 using MTGViewer.Data.Projections;
-using MTGViewer.Utils;
 
 namespace MTGViewer.Pages.Decks;
 
@@ -26,16 +25,25 @@ public partial class Craft
     private LoadedSeekList<Giveback> _givebacks;
     private LoadedSeekList<Want> _wants;
 
+    #region view properties
+
     internal string DeckName => _deckContext?.Deck.Name ?? "New Deck";
+
     internal EditContext? DeckEdit => _deckContext?.EditContext;
 
     internal int HeldCopies => (_counts?.HeldCopies ?? 0) - (_counts?.ReturnCopies ?? 0);
+
     internal int ReturnCopies => _counts?.ReturnCopies ?? 0;
+
     internal int WantCopies => _counts?.WantCopies ?? 0;
 
     internal SeekList<Hold> DeckHolds => _holds.List ?? SeekList<Hold>.Empty;
+
     internal SeekList<Giveback> DeckReturns => _givebacks.List ?? SeekList<Giveback>.Empty;
+
     internal SeekList<Want> DeckWants => _wants.List ?? SeekList<Want>.Empty;
+
+    #endregion
 
     internal bool CannotSave()
         => !_deckContext?.CanSave() ?? true;
@@ -126,8 +134,8 @@ public partial class Craft
     }
 
     private static readonly Func<CardDbContext, int, CancellationToken, Task<DeckCounts?>> DeckCountsAsync
-
-        = EF.CompileAsyncQuery((CardDbContext dbContext, int deckId, CancellationToken _) =>
+        = EF.CompileAsyncQuery(
+            (CardDbContext dbContext, int deckId, CancellationToken _) =>
             dbContext.Decks
                 .Where(d => d.Id == deckId)
                 .Select(d => new DeckCounts
@@ -396,22 +404,10 @@ public partial class Craft
         dbContext.Decks.Attach(deck); // attach for nav fixup
         dbContext.Cards.AttachRange(_cards);
 
-        var newPage = dbContext
-            .Set<TQuantity>()
-            .Where(q => q.LocationId == deck.Id)
-            .Include(q => q.Card)
+        var dbQuantities = DbQuantitiesAsync(
+            dbContext, deck.Id, seek, direction, PageSize.Current);
 
-            .OrderBy(q => q.Card.Name)
-                .ThenBy(q => q.Card.SetName)
-                .ThenBy(q => q.CardId)
-
-            .SeekOrigin(seek, direction)
-            .Take(PageSize.Current)
-
-            .AsAsyncEnumerable()
-            .WithCancellation(_cancel.Token);
-
-        await foreach (var quantity in newPage)
+        await foreach (var quantity in dbQuantities.WithCancellation(_cancel.Token))
         {
             if (!_deckContext.TryGetQuantity(quantity.Card, out TQuantity _))
             {
@@ -422,13 +418,36 @@ public partial class Craft
         }
     }
 
+    private static IAsyncEnumerable<TQuantity> DbQuantitiesAsync<TQuantity>(
+        CardDbContext dbContext,
+        int deckId,
+        TQuantity? seek,
+        SeekDirection direction,
+        int size)
+        where TQuantity : Quantity
+    {
+        return dbContext
+            .Set<TQuantity>()
+            .Where(q => q.LocationId == deckId)
+            .Include(q => q.Card)
+
+            .OrderBy(q => q.Card.Name)
+                .ThenBy(q => q.Card.SetName)
+                .ThenBy(q => q.CardId)
+
+            .SeekOrigin(seek, direction)
+            .Take(size)
+
+            .AsAsyncEnumerable();
+    }
+
     #region Edit Quantities
 
     internal async Task AddWantAsync(Card card)
     {
-        if (BuildOption is not BuildType.Theorycrafting)
+        if (DeckCraft is not DeckCraft.Theorycraft)
         {
-            Logger.LogWarning("Build type is not expected {Expected}", BuildType.Theorycrafting);
+            Logger.LogWarning("Build type is not expected {Expected}", DeckCraft.Theorycraft);
             return;
         }
 
@@ -522,9 +541,9 @@ public partial class Craft
 
     internal async Task RemoveWantAsync(Card card)
     {
-        if (BuildOption is not BuildType.Theorycrafting)
+        if (DeckCraft is not DeckCraft.Theorycraft)
         {
-            Logger.LogWarning("Build type is not expected {Expected}", BuildType.Theorycrafting);
+            Logger.LogWarning("Build type is not expected {Expected}", DeckCraft.Theorycraft);
             return;
         }
 
@@ -561,9 +580,9 @@ public partial class Craft
 
     internal async Task AddReturnAsync(Card card)
     {
-        if (BuildOption is not BuildType.Holds)
+        if (DeckCraft is not DeckCraft.Built)
         {
-            Logger.LogWarning("Build type is not expected {Expected}", BuildType.Holds);
+            Logger.LogWarning("Build type is not expected {Expected}", DeckCraft.Built);
             return;
         }
 
@@ -728,9 +747,9 @@ public partial class Craft
             return;
         }
 
-        if (BuildOption is not BuildType.Holds)
+        if (DeckCraft is not DeckCraft.Built)
         {
-            Logger.LogWarning("Build type is not expected {Expected}", BuildType.Holds);
+            Logger.LogWarning("Build type is not expected {Expected}", DeckCraft.Built);
             return;
         }
 

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+
 using Xunit.Abstractions;
 using Xunit.Sdk;
 
@@ -11,7 +12,10 @@ public class TestPriorityAttribute : Attribute
 {
     public int Priority { get; init; }
 
-    public TestPriorityAttribute(int priority) => Priority = priority;
+    public TestPriorityAttribute(int priority)
+    {
+        Priority = priority;
+    }
 }
 
 public class PriorityOrderer : ITestCaseOrderer

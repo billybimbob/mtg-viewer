@@ -208,14 +208,9 @@ public class ExchangeModel : PageModel
         {
             await _dbContext.SaveChangesAsync(cancel);
 
-            if (deck.Wants.Any() || deck.Givebacks.Any())
-            {
-                PostMessage = "Successfully exchanged requests, but not all could be fullfilled";
-            }
-            else
-            {
-                PostMessage = "Successfully exchanged all card requests";
-            }
+            PostMessage = deck.Wants.Any() || deck.Givebacks.Any()
+                ? "Successfully exchanged requests, but not all could be fullfilled"
+                : "Successfully exchanged all card requests";
         }
         catch (DbUpdateException e)
         {

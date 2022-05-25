@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -91,4 +92,11 @@ public sealed record DeckCounts
     public int ReturnCount { get; set; }
 
     public bool HasTrades { get; init; }
+}
+
+public sealed class MulliganTarget
+{
+    public string Name { get; init; } = string.Empty;
+
+    public IReadOnlyList<DeckCopy> Cards { get; init; } = Array.Empty<DeckCopy>();
 }

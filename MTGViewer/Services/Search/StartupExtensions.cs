@@ -1,4 +1,5 @@
 using MtgApiManager.Lib.Service;
+
 using MTGViewer.Services.Search;
 
 namespace Microsoft.Extensions.DependencyInjection;

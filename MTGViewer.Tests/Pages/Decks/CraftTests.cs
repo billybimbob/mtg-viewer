@@ -12,6 +12,7 @@ using Xunit;
 
 using MTGViewer.Areas.Identity.Data;
 using MTGViewer.Data;
+using MTGViewer.Data.Infrastructure;
 using MTGViewer.Pages.Decks;
 using MTGViewer.Tests.Utils;
 
@@ -261,7 +262,7 @@ public sealed class CraftTests : IAsyncLifetime, IDisposable
 
         var selectBuild = cut.Find("select[title=\"Deck Build Type\"]");
 
-        selectBuild.Change(Craft.BuildType.Theorycrafting);
+        selectBuild.Change(DeckCraft.Theorycraft);
 
         ClickButton(cut, "button[title~=\"Add\"]:not([disabled])", numClicks);
 
@@ -296,7 +297,7 @@ public sealed class CraftTests : IAsyncLifetime, IDisposable
 
         var selectBuild = cut.Find("select[title=\"Deck Build Type\"]");
 
-        selectBuild.Change(Craft.BuildType.Theorycrafting);
+        selectBuild.Change(DeckCraft.Theorycraft);
 
         ClickButton(cut, "button[title~=\"Remove\"]", numClicks);
 

@@ -346,14 +346,12 @@ public sealed partial class Create : ComponentBase, IDisposable
         {
             [nameof(Name)] = query.Name,
             [nameof(Cmc)] = query.Cmc,
-            [nameof(Colors)] = query.Colors switch
-            {
-                Color c and not Color.None => (int)c,
-                _ => null
-            },
+            [nameof(Colors)] = query.Colors is Color.None ? null : (int)query.Colors,
+
             [nameof(Rarity)] = (int?)query.Rarity,
             [nameof(Set)] = query.SetName,
             [nameof(Types)] = query.Type,
+
             [nameof(Artist)] = query.Artist,
             [nameof(Power)] = query.Power,
             [nameof(Loyalty)] = query.Loyalty,

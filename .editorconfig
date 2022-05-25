@@ -20,11 +20,13 @@ trim_trailing_whitespace = true
 
 [*.cs]
 indent_size = 4
-dotnet_analyzer_diagnostic.category-Style.severity = warning
-dotnet_sort_system_directives_first = true
 insert_final_newline = true
 
-# Don't use this. qualifier
+dotnet_analyzer_diagnostic.category-Style.severity = warning
+
+dotnet_sort_system_directives_first = true
+dotnet_separate_import_directive_groups = true
+
 dotnet_style_qualification_for_field = false:suggestion
 dotnet_style_qualification_for_property = false:suggestion
 
@@ -36,6 +38,7 @@ dotnet_style_predefined_type_for_member_access = true:suggestion
 
 dotnet_style_prefer_conditional_expression_over_return = false:suggestion
 
+csharp_style_expression_bodied_local_functions = when_on_single_line
 csharp_style_expression_bodied_methods = when_on_single_line
 
 # Require var some of the time.
@@ -56,6 +59,8 @@ csharp_new_line_before_members_in_anonymous_types = true
 
 # Namespace settings
 csharp_style_namespace_declarations = file_scoped
+dotnet_style_namespace_match_folder = false
+dotnet_diagnostic.IDE0130.severity = silent
 
 # Brace settings
 csharp_prefer_braces = true # Prefer curly braces even for one line of code
@@ -242,7 +247,10 @@ dotnet_diagnostic.IDE0044.severity = warning
 dotnet_diagnostic.IDE0051.severity = warning
 
 # IDE0055: All formatting rules
-dotnet_diagnostic.IDE0055.severity = suggestion
+dotnet_diagnostic.IDE0055.severity = warning
+
+# IDE0058: Remove unnecessary expression
+dotnet_diagnostic.IDE0058.severity = silent
 
 # IDE0059: Unnecessary assignment to a value
 dotnet_diagnostic.IDE0059.severity = warning
@@ -321,6 +329,9 @@ dotnet_diagnostic.IDE0062.severity = suggestion
 
 # CA2016: Forward the 'CancellationToken' parameter to methods that take one
 dotnet_diagnostic.CA2016.severity = suggestion
+
+[**/Migrations/**]
+generated_code = true
 
 # Defaults for content in the shared src/ and shared runtime dir
 

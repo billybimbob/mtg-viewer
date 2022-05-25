@@ -1,6 +1,7 @@
 using System;
 using System.Data.Common;
 using System.Threading.Tasks;
+
 using Microsoft.Data.Sqlite;
 
 namespace MTGViewer.Tests.Utils;
