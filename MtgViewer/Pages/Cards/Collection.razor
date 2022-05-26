@@ -1,0 +1,137 @@
+@page "/Cards"
+@using MtgViewer.Data.Projections
+@inject SymbolFormatter MtgSymbols
+
+<PageTitle> Card Collection </PageTitle>
+
+<h1>Card Collection</h1>
+
+<div class="btn-group mb-3" role="group">
+    <AuthorizeView>
+        <AuthorizeView Policy="@CardPolicies.ChangeTreasury">
+            <Authorized Context="treasuryPolicy">
+                <a class="btn btn-secondary" href="/Cards/Create" role="button">Add Card</a>
+            </Authorized>
+            <NotAuthorized Context="treasuryPolicy">
+                <button class="btn btn-secondary" role="button" disabled>Add Card</button>
+            </NotAuthorized>
+        </AuthorizeView>
+    </AuthorizeView>
+    <a class="btn btn-secondary" href="/Cards/Statistics" role="button"> Statistics </a>
+</div>
+
+<CardFilter
+    @bind-Search="BoundSearch"
+    @bind-Color="PickedColors"
+    IsDisabled="@IsLoading" >
+    @if (IsLoading)
+    {
+        <div class="spinner-grow text-secondary p-2" role="status">
+            <span class="sr-only">Loading...</span>
+        </div>
+    }
+</CardFilter>
+
+<div class="table-responsive-md">
+    <table class="table">
+        <thead>
+            <tr>
+                <th scope="col"
+                    title="Order By Name"
+                    @onclick="() => Reorder(c => c.Name)"
+                    class="@HeaderClass(c => c.Name)">
+                    @DisplayName(c => c.Name)
+                </th>
+
+                <th scope="col"
+                    title="Order By Mana Value"
+                    @onclick="() => Reorder(c => c.ManaCost)"
+                    class="@HeaderClass(c => c.ManaCost)">
+                    @DisplayName(c => c.ManaCost)
+                </th>
+
+                <th scope="col"
+                    title="Order By Set Name"
+                    @onclick="() => Reorder(c => c.SetName)"
+                    class="@HeaderClass(c => c.SetName)">
+                    @DisplayName(c => c.SetName)
+                </th>
+
+                <th scope="col"
+                    title="Order By Rarity"
+                    @onclick="() => Reorder(c => c.Rarity)"
+                    class="@HeaderClass(c => c.Rarity)">
+                    @DisplayName(c => c.Rarity)
+                </th>
+
+                <th scope="col"
+                    title="Order By Number of Copies"
+                    @onclick="() => Reorder(c => c.Holds)"
+                    class="@HeaderClass(c => c.Holds)">
+                    Total Copies
+                </th>
+            </tr>
+        </thead>
+
+        <tbody>
+            @if (!IsLoading && !Cards.Any())
+            {
+                <tr>
+                    <td> -- </td>
+                    <td> -- </td>
+                    <td> -- </td>
+                    <td> -- </td>
+                    <td> -- </td>
+                </tr>
+
+            }
+            @foreach (var card in Cards)
+            {
+                <tr @key="card.Id">
+                    <td> <HoverCard Preview="card"/> </td>
+                    <td>
+                        <div class="ms-group">
+                            @MtgSymbols.Format(card.ManaCost).ToMarkupString()
+                        </div>
+                    </td>
+                    <td> @card.SetName </td>
+                    <td> @card.Rarity </td>
+                    <td> @card.Held </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+<SeekPaging TEntity="LocationCopy"
+    Seek="Cards.Seek" PageSelected="SeekPage" IsDisabled="IsLoading" />
+
+@code
+{
+    internal static string DisplayName<T>(Expression<Func<Card, T>> property) =>
+        EntityExtensions.DisplayName(property);
+
+    internal string HeaderClass<T>(Expression<Func<Card, T>> property)
+    {
+        bool isMatch = property
+            is { Body: MemberExpression { Member.Name: string name }}
+            && name == Order;
+
+        if (isMatch && IsLoading)
+        {
+            return "font-weight-bold";
+        }
+        else if (isMatch)
+        {
+            return "btn-link font-weight-bold";
+        }
+        else if (!IsLoading)
+        {
+            return "clickable btn-link";
+        }
+        else
+        {
+            return string.Empty;
+        }
+    }
+}

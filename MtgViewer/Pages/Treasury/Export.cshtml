@@ -1,0 +1,80 @@
+@page
+@model Treasury.ExportModel
+@{
+    ViewData["Title"] = "Treasury - Download";
+}
+@using MtgViewer.Data.Infrastructure
+
+<h1>Download Backup</h1>
+<hr />
+
+<div class="row">
+    <div class="col col-md-8">
+        <p>
+            Download currently stored card collection information. This data can then be
+            <a href="/Treasury/Import">uploaded to bulk insert</a>.
+        </p>
+    </div>
+</div>
+
+<section class="row">
+    <h5 class="col-12"> Backup Types </h5>
+
+    <div class="col-12 col-lg-10">
+        <dl class="row">
+            <dt class="col-12 col-lg-2"> User </dt>
+            <dd class="col-12 col-lg-10">
+                <p>
+                    Only the current specific User's card information is returned, like user created
+                    decks and received suggestions. Both Theorycraft and Built decks are included.
+                </p>
+            </dd>
+
+            <dt class="col-12 col-lg-2"> Treasury </dt>
+            <dd class="col-12 col-lg-10">
+                <p>
+                    The of the current data for cards that are stored in either Boxes or Unclaimed decks.
+                </p>
+                <p>
+                    <i>Warning: </i> the data returned is subject to change from all possible users. The
+                    returned backup file is prone to conflicts with other users.
+                </p>
+            </dd>
+
+            <dt class="col-12 col-lg-2"> Complete </dt>
+            <dd class="col-12 col-lg-10">
+                <p>
+                    All possible card data is included, which is a combination of both of the above
+                    options. All user card information is included, not just the current user.
+                </p>
+                <p>
+                    <i>Warning: </i> the data returned is subject to change from all possible users. The
+                    returned backup file is prone to conflicts with other users.
+                </p>
+            </dd>
+        </dl>
+    </div>
+
+    <div class="col-10 col-sm-6 col-lg-4">
+        <form method="POST">
+            <div class="form-group">
+                <select asp-for="DataScope" title="Pick Backup Type" class="form-control">
+                    @foreach (var backup in Enum.GetValues<DataScope>())
+                    {
+                        <option value="@backup"> @backup.ToString() </option>
+                    }
+                </select>
+
+                <span asp-validation-for="DataScope" class="text-danger"></span>
+            </div>
+
+            <input type="submit" class="btn btn-secondary"
+                title="Download Card Data"
+                value="Download" />
+        </form>
+    </div>
+</section>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial"/>
+}

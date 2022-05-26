@@ -1,0 +1,303 @@
+@page "{id}"
+@model Cards.DetailsModel
+@{
+    ViewData["Title"] = $"{Model.Card.Name} - Details";
+}
+
+@using MtgViewer.Services.Search
+
+@inject IAuthorizationService AuthorizationService
+@inject SymbolFormatter MtgSymbols
+@inject MtgApiFlipQuery FlipQuery
+@inject SignInManager<CardUser> SignInManager
+
+@{
+    bool hasAlts = Model.Alternatives.Any();
+
+    bool hasFlip = FlipQuery.HasFlip(Model.Card.Name);
+
+    bool isSignedIn = SignInManager.IsSignedIn(User);
+
+    bool canChangeTreasury = (await AuthorizationService
+        .AuthorizeAsync(User, CardPolicies.ChangeTreasury)).Succeeded;
+}
+
+<div class="row no-gutters pb-2 align-items-center">
+    <h1 class="h1 m-0 col-lg-auto col-12 pr-4"> @Model.Card.Name </h1>
+
+    @{ var manaCost = Model.Card.Flip is not null
+        ? Model.Card.Flip.ManaCost
+        : Model.Card.ManaCost; }
+
+    @if (manaCost is not null)
+    {
+        <div class="h5 m-0 pt-xl-3 py-2 pl-1 pl-lg-0 col-lg-auto col-12">
+            @MtgSymbols.Format(manaCost).ToHtmlString()
+        </div>
+    }
+</div>
+
+@if (hasAlts || isSignedIn || hasFlip)
+{
+    <div class="btn-group" role="group">
+        @if (hasAlts)
+        {
+            <div class="btn-group" role="group">
+
+                <button id="alt-btn" type="button" class="btn btn-secondary dropdown-toggle"
+                    data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" >
+                    Alternate Versions
+                </button>
+
+                <div class="dropdown-menu" aria-labelledby="alt-btn">
+                    @foreach (var card in Model.Alternatives)
+                    {
+                        <a class="dropdown-item" asp-route-id="@card.Id" >
+                            @card.Name (@card.SetName) </a>
+                    }
+                </div>
+            </div>
+        }
+
+        @if (hasFlip)
+        {
+            bool flip = Model.Card.Flip is null;
+
+            <a title="Flip @Model.Card.Name" class="btn btn-secondary"
+                role="button" asp-route-flip="@flip">
+                Flip </a>
+        }
+
+        @if (isSignedIn && canChangeTreasury)
+        {
+            <a href="/Transfers/Suggest/@Model.Card.Id"
+                title="Sugest @Model.Card.Name" class="btn btn-secondary" role="button">
+                Suggest </a>
+
+            <a href="@Model.GetCreateCardUri()"
+                title="Add Copies of @Model.Card.Name" class="btn btn-secondary" role="button">
+                Add </a>
+
+            <a asp-page="Delete"
+                asp-route-id="@Model.Card.Id" asp-route-returnurl="@Model.ReturnUrl"
+                title="Remove Copies of @Model.Card.Name" class="btn btn-danger" role="button">
+                Remove </a>
+        }
+        else if (isSignedIn)
+        {
+            <button type="button" class="btn btn-secondary" disabled>
+                Suggest </button>
+
+            <button type="button" class="btn btn-secondary" disabled>
+                Add </button>
+
+            <button type="button" class="btn btn-danger" disabled>
+                Remove </button>
+        }
+    </div>
+}
+
+<hr />
+<div class="row">
+    <div class="col pb-4 d-flex justify-content-center align-items-center">
+        @{ var imageUrl = Model.Card.Flip is not null
+            ? Model.Card.Flip.ImageUrl
+            : Model.Card.ImageUrl; }
+
+        <img class="card-img" alt="@Model.Card.Name" src="@imageUrl.WithHttps()"/>
+    </div>
+
+    <div class="col-lg-9 col-12">
+        <dl class="row m-0">
+
+            <dt class="col-md-2 col-5">
+                @Html.DisplayNameFor(m => m.Card.Rarity)
+            </dt>
+            <dd class="col-md-10 col-7">
+                @Html.DisplayFor(m => m.Card.Rarity)
+            </dd>
+
+            <dt class="col-md-2 col-5">
+                @Html.DisplayNameFor(m => m.Card.SetName)
+            </dt>
+            <dd class="col-md-10 col-7">
+                @Html.DisplayFor(m => m.Card.SetName)
+            </dd>
+
+            @if (Model.Card.Flip is not null)
+            {
+                <dt class="col-md-2 col-5">
+                    @Html.DisplayNameFor(m => m.Card.Flip!.ManaValue)
+                </dt>
+                <dd class="col-md-10 col-7">
+                    @(Model.Card.Flip.ManaValue?.ToString() ?? "--")
+                </dd>
+
+                <dt class="col-md-2 col-5">
+                    @Html.DisplayNameFor(m => m.Card.Flip!.Type)
+                </dt>
+                <dd class="col-md-10 col-7">
+                    @Model.Card.Flip.Type
+                </dd>
+
+                <dt class="col-md-2 col-5">
+                    @Html.DisplayNameFor(m => m.Card.Flip!.Power)
+                </dt>
+                <dd class="col-md-10 col-7">
+                    @(Model.Card.Flip.Power ?? "--")
+                </dd>
+
+                <dt class="col-md-2 col-5">
+                    @Html.DisplayNameFor(m => m.Card.Flip!.Toughness)
+                </dt>
+                <dd class="col-md-10 col-7">
+                    @(Model.Card.Flip.Toughness ?? "--")
+                </dd>
+
+                <dt class="col-md-2 col-5">
+                    @Html.DisplayNameFor(m => m.Card.Flip!.Loyalty)
+                </dt>
+                <dd class="col-md-10 col-7">
+                    @(Model.Card.Flip.Loyalty ?? "--")
+                </dd>
+
+                <dt class="col-md-2 col-5">
+                    @Html.DisplayNameFor(m => m.Card.Flip!.Artist)
+                </dt>
+                <dd class="col-md-10 col-7">
+                    @Model.Card.Flip.Artist
+                </dd>
+            }
+            else
+            {
+                <dt class="col-md-2 col-5">
+                    @Html.DisplayNameFor(m => m.Card.ManaValue)
+                </dt>
+                <dd class="col-md-10 col-7">
+                    @(Model.Card.ManaValue?.ToString() ?? "--")
+                </dd>
+
+                <dt class="col-md-2 col-5">
+                    @Html.DisplayNameFor(m => m.Card.Type)
+                </dt>
+                <dd class="col-md-10 col-7">
+                    @Model.Card.Type
+                </dd>
+
+                <dt class="col-md-2 col-5">
+                    @Html.DisplayNameFor(m => m.Card.Power)
+                </dt>
+                <dd class="col-md-10 col-7">
+                    @(Model.Card.Power ?? "--")
+                </dd>
+
+                <dt class="col-md-2 col-5">
+                    @Html.DisplayNameFor(m => m.Card.Toughness)
+                </dt>
+                <dd class="col-md-10 col-7">
+                    @(Model.Card.Toughness ?? "--")
+                </dd>
+
+                <dt class="col-md-2 col-5">
+                    @Html.DisplayNameFor(m => m.Card.Loyalty)
+                </dt>
+                <dd class="col-md-10 col-7">
+                    @(Model.Card.Loyalty ?? "--")
+                </dd>
+
+                <dt class="col-md-2 col-5">
+                    @Html.DisplayNameFor(m => m.Card.Artist)
+                </dt>
+                <dd class="col-md-10 col-7">
+                    @Model.Card.Artist
+                </dd>
+            }
+
+            @{ var text = Model.Card.Flip is not null ? Model.Card.Flip.Text : Model.Card.Text; }
+
+            <dt class="col-md-2 col-5">
+                @Html.DisplayNameFor(m => m.Card.Text)
+            </dt>
+
+            @if (text == null)
+            {
+                <dd class="col-md-10 col-7"> -- </dd>
+            }
+            else
+            {
+                <dd class="col-md-10 col-12">
+                    <span class="multiline">@MtgSymbols.Format(text).ToHtmlString()</span>
+                </dd>
+            }
+
+            @{ var flavor = Model.Card.Flip is not null ? Model.Card.Flip.Flavor : Model.Card.Flavor; }
+
+            <dt class="col-md-2 col-5">
+                @Html.DisplayNameFor(m => m.Card.Flavor)
+            </dt>
+
+            @if (flavor == null)
+            {
+                <dd class="col-md-10 col-7"> -- </dd>
+            }
+            else
+            {
+                <dd class="col-md-10 col-12">
+                    <span class="multiline">@flavor</span>
+                </dd>
+            }
+        </dl>
+    </div>
+</div>
+
+<hr>
+<section class="row py-3">
+    <h4 class="col-12 mb-3"> Location of Copies </h4>
+    <div class="col-lg-10 col">
+        <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 row-cols-xl-4 m-0 ">
+            @foreach(var hold in Model.Card.Holds)
+            {
+                @switch (hold.Location)
+                {
+                    case Deck deck:
+                        <a asp-page="/Decks/Details" asp-route-id="@deck.Id" class="loc-item">
+                            @deck.Name
+                            <span class="ml-1 badge badge-secondary badge-pill"> @hold.Copies </span>
+                        </a>
+                        break;
+
+                    case Unclaimed unclaimed when canChangeTreasury:
+                        <a asp-page="/Unowned/Details" asp-route-id="@unclaimed.Id" class="loc-item">
+                            @unclaimed.Name
+                            <span class="ml-1 badge badge-secondary badge-pill"> @hold.Copies </span>
+                        </a>
+                        break;
+
+                    case Excess excess:
+                        <a asp-page="/Treasury/Excess" asp-route-cardId="@Model.Card.Id" class="loc-item">
+                            @excess.Name
+                            <span class="ml-1 badge badge-secondary badge-pill"> @hold.Copies </span>
+                        </a>
+                        break;
+
+                    case Box box:
+                        <a asp-page="/Treasury/Details" asp-route-id="@box.Id" asp-route-cardId="@Model.Card.Id" class="loc-item">
+                            @box.Name
+                            <span class="ml-1 badge badge-secondary badge-pill"> @hold.Copies </span>
+                        </a>
+                        break;
+
+                    case Location location:
+                        <div class="loc-item">
+                            @location.Name
+                            <span class="ml-1 badge badge-secondary badge-pill"> @hold.Copies </span>
+                        </div>
+                        break;
+
+                    default:
+                        break;
+                }
+            }
+        </div>
+    </div>
+</secti>

@@ -1,0 +1,173 @@
+@page "{id:int}"
+@model Transactions.DetailsModel
+@{
+    ViewData["Title"] = $"Transaction {Model.AppliedAt.ToShortDateString()}";
+}
+
+@using MtgViewer.Data.Projections
+@inject IAuthorizationService AuthorizationService
+@inject SymbolFormatter MtgSymbols
+
+@{
+    bool canChangeTreasury = (await AuthorizationService
+        .AuthorizeAsync(User, CardPolicies.ChangeTreasury)).Succeeded;
+}
+
+<h1> Transaction - @Model.AppliedAt </h1>
+
+@if (Model.Transaction.CanDelete && canChangeTreasury)
+{
+    <form method="POST">
+        <div class="btn-group mb-3" role="group">
+            <partial name="_TimeZonePartial" for="TimeZone"/>
+
+            <input type="submit" class="btn btn-danger" value="Delete" />
+        </div>
+    </form>
+}
+else if (Model.Transaction.CanDelete)
+{
+    <div class="btn-group mb-3" role="group">
+        <partial name="_TimeZonePartial" for="TimeZone"/>
+
+        <button class="btn btn-danger" type="button" disabled> Delete </button>
+    </div>
+}
+else
+{
+    <div class="btn-group mb-3" role="group">
+        <partial name="_TimeZonePartial" for="TimeZone"/>
+    </div>
+}
+
+@if (Model.Transaction.IsEmpty)
+{
+    <div class="alert alert-warning" role="alert">
+        This transaction has no recorded changes.
+    </div>
+}
+
+<div class="table-responsive-md">
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th scope="col"> @Html.DisplayNameForInnerType((Change c) => c.From) </th>
+                <th scope="col"> @Html.DisplayNameForInnerType((Change c) => c.To) </th>
+                <th scope="col"> @Html.DisplayNameForInnerType((Change c) => c.Card) </th>
+                <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.ManaCost) </th>
+                <th scope="col"> @Html.DisplayNameForInnerType((Change c) => c.Copies) </th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var move in Model.Moves)
+            {
+                var from = move.From;
+                var to = move.To;
+
+                int span = Math.Max(1, move.Changes.Count());
+
+                <tr>
+                    <td rowspan="@span">
+                        @switch (from?.Type)
+                        {
+                            case LocationType.Deck:
+                                <a asp-page="/Decks/Details" asp-route-id="@from.Id"> @from.Name </a>
+                                break;
+
+                            case LocationType.Unclaimed when canChangeTreasury:
+                                <a asp-page="/Unowned/Index" asp-route-id="@from.Id"> @from.Name </a>
+                                break;
+
+                            case LocationType.Excess:
+                                <a asp-page="/Treasury/Excess"> @from.Name </a>
+                                break;
+
+                            case LocationType.Box:
+                                <a asp-page="/Treasury/Details" asp-route-id="@from.Id"> @from.Name </a>
+                                break;
+
+                            case null:
+                                <i> Added </i>
+                                break;
+
+                            default:
+                                @from.Name
+                                break;
+                        }
+                    </td>
+
+                    <td rowspan="@span">
+                        @switch (to.Type)
+                        {
+                            case LocationType.Deck:
+                                <a asp-page="/Decks/Details" asp-route-id="@to.Id"> @to.Name </a>
+                                break;
+
+                            case LocationType.Unclaimed when canChangeTreasury:
+                                <a asp-page="/Unowned/Index" asp-route-id="@to.Id"> @to.Name </a>
+                                break;
+
+                            case LocationType.Excess:
+                                <a asp-page="/Treasury/Excess"> @to.Name </a>
+                                break;
+
+                            case LocationType.Box:
+                                <a asp-page="/Treasury/Details" asp-route-id="@to.Id"> @to.Name </a>
+                                break;
+
+                            default:
+                                @to.Name
+                                break;
+                        }
+                    </td>
+
+                    @if (move.Changes.FirstOrDefault() is ChangeDetails firstChange)
+                    {
+                        <td>
+                            <component type="typeof(HoverCard)" render-mode="Static"
+                                param-Preview="firstChange.Card"/>
+                        </td>
+                        <td>
+                            <div class="ms-group">
+                                @MtgSymbols.Format(firstChange.Card.ManaCost).ToHtmlString()
+                            </div>
+                        </td>
+                        <td> @firstChange.Copies </td>
+                    }
+                    else
+                    {
+                        <td> -- </td>
+                        <td> -- </td>
+                        <td> -- </td>
+                    }
+                </tr>
+
+                @foreach (var change in move.Changes.Skip(1))
+                {
+                    <tr>
+                        <td>
+                            <component type="typeof(HoverCard)" render-mode="Static"
+                                param-Preview="change.Card"/>
+                        </td>
+                        <td>
+                            <div class="ms-group">
+                                @MtgSymbols.Format(change.Card.ManaCost).ToHtmlString()
+                            </div>
+                        </td>
+                        <td> @change.Copies </td>
+                    </tr>
+                }
+            }
+
+            <tr>
+                <th scope="row"> Total </th>
+                <td> -- </td>
+                <td> -- </td>
+                <td> -- </td>
+                <td> <strong> @Model.Transaction.Copies </strong> </td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<partial name="_SeekPagingPartial" for="Seek"/>

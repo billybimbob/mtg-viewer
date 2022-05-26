@@ -1,0 +1,122 @@
+@page "/Decks/Mulligan/{DeckId:int}"
+@using MtgViewer.Data.Infrastructure
+@inherits OwningComponentBase
+
+<PageTitle> @DeckName - Mulligan </PageTitle>
+
+<h1> @DeckName Sample Mulligans </h1>
+
+@if (DeckMulligan is DeckMulligan.None)
+{
+    <div class="btn-group" role="group">
+        <a href="/Decks/Details/@DeckId"
+            title="@DeckName Details" role="button"
+            class="btn btn-secondary">
+            Details </a>
+    </div>
+
+    <hr />
+
+    <div class="row">
+        <div class="col-12 col-lg-9">
+            <p>
+                @DeckName can simulate the ordering of how cards are  drawn from it.
+                The cards that are included in the simulation are based on the selected
+                mulligan type.
+            </p>
+        </div>
+
+        <div class="col-12 col-lg-9">
+            <dl class="row my-0">
+                <dt class="col-12 col-lg-3"> Built Deck </dt>
+                <dd class="col-12 col-lg-9">
+                    <p>
+                        Only the currently held cards are included. Pending returns and wanted cards
+                        are excluded.
+                    </p>
+                </dd>
+
+                <dt class="col-12 col-lg-3"> Theorycraft Deck </dt>
+                <dd class="col-12 col-lg-9">
+                    <p>
+                        Held, pending returns, and wanted cards are applied. The pending returns
+                        remove copies of a card, and wanted cards are added.
+                    </p>
+                </dd>
+            </dl>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-6 col-sm-5 col-md-4 col-lg-4 ">
+            <select title="Deck Mulligan Type" class="form-control"
+                disabled="@IsLoading" @bind="DeckMulligan">
+
+                <option value="@DeckMulligan.None"> Choose Mulligan Type </option>
+                <option value="@DeckMulligan.Built"> Built Deck </option>
+                <option value="@DeckMulligan.Theorycraft"> Theorycraft Deck </option>
+            </select>
+        </div>
+    </div>
+}
+else
+{
+    <div class="btn-group" role="group">
+        <button title="Choose Mulligan Type" type="button"
+            class="btn btn-secondary"
+            disabled="@IsLoading"
+            @onclick="() => DeckMulligan = DeckMulligan.None">
+            Back
+        </button>
+
+        <button title="Get a New Hand" type="button"
+            class="btn btn-danger"
+            disabled="@(IsLoading || !Hand.Any())"
+            @onclick="NewHandAsync">
+            New Hand
+        </button>
+
+        <button title="Draw a Card" type="button"
+            class="btn btn-secondary"
+            disabled="@(IsLoading || !CanDraw)"
+            @onclick="DrawCard">
+            @if (IsLoading)
+            {
+                <text>
+                    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"> </span>
+                    Loading...
+                </text>
+            }
+            else
+            {
+                <text> Draw Card </text>
+            }
+        </button>
+    </div>
+
+    <hr />
+
+    @if (!IsLoading && !Hand.Any())
+    {
+        <div class="alert alert-warning" role="alert">
+            There are no cards in @DeckName for @DeckMulligan mulligans.
+        </div>
+    }
+
+    <div class="row row-cols-lg-5 row-cols-md-4 row-cols-2 m-0">
+        @foreach (var card in Hand)
+        {
+            string fade = IsImageLoaded(card) ? "img-fade" : "invisible";
+
+            <a title="@card.Name Details"
+                href="/Cards/Details/@card.Id"
+                class="img-link">
+
+                <img alt="@card.Name Image"
+                    src="@card.ImageUrl.WithHttps()"
+                    class="card-img scale @fade"
+                    @onload="() => OnImageLoad(card)" />
+            </a>
+        }
+    </div>
+}

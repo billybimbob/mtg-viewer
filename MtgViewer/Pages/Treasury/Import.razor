@@ -1,0 +1,227 @@
+@page "/Treasury/Import"
+@using System.IO
+@using Microsoft.Extensions.Logging
+@using MtgViewer.Data.Infrastructure
+
+@implements IDisposable
+@attribute [Authorize]
+@attribute [Authorize(Policy = CardPolicies.ChangeTreasury)]
+
+@inject LoadingProgress LoadingProgress
+@inject FileCardStorage FileStorage
+@inject ILogger<Import> Logger
+
+<PageTitle> Treasury - Upload </PageTitle>
+
+<h1> Upload Card Data </h1>
+<hr />
+
+@if (IsBusy)
+{
+    <ProgressBar Percent="PercentProgress" />
+}
+
+<SavePrompt @bind-Result="Result">
+    <SuccessMessage>
+        Successfully added card data.
+    </SuccessMessage>
+    <ErrorMessage>
+        Ran into issue uploading card data.
+    </ErrorMessage>
+</SavePrompt>
+
+<div class="row">
+    <div class="col-12 col-md-8">
+        <p>
+            Bulk fetch and add operations can be done via files. Currently, only .json files with
+            the same format as the <a href="/Treasury/Export">exported .json format</a> and .csv files are supported.
+            The uploading process may take a long to time complete.
+        </p>
+        <p>
+            The .csv file format expects for a header with the format: <code>Name,MultiverseID,Quantity</code>.
+        </p>
+        <p>
+            <i>Warning</i> if you navigate to a different page, the current card import will be cancelled.
+        </p>
+    </div>
+    <div class="col-12 col-md-5">
+        <form @onsubmit="UploadAsync">
+            <div class="form-group">
+                <InputFile OnChange="FileChosen"
+                    title="Choose Import File"
+                    accept="application/json,text/csv"
+                    class="form-control-file" />
+
+                @if (!string.IsNullOrWhiteSpace(FileError))
+                {
+                    <span class="text-danger"> @FileError </span>
+                }
+            </div>
+
+            <div class="btn-group" role="group">
+                <button title="Cancel Upload" class="btn btn-danger" type="button"
+                    @onclick="CancelUpload" disabled="@(!IsBusy || HasNoFile || IsCancelled)">
+                    Cancel
+                </button>
+                <button title="Upload Card Data" class="btn btn-secondary"
+                    type="submit" disabled="@(IsBusy || HasNoFile)">
+                    @if (IsBusy)
+                    {
+                        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"> </span>
+                    }
+                    Upload
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@code
+{
+    internal bool HasNoFile => _chosenImport == null;
+
+    internal SaveResult Result { get; set; }
+    internal string FileError { get; private set; } = string.Empty;
+
+    internal bool IsBusy { get; private set;}
+    internal bool IsCancelled { get; private set; }
+
+    internal Percent PercentProgress { get; private set; }
+
+    private const long SizeLimit = 2_097_152;
+
+    private CancellationTokenSource? _cancel = new();
+    private IBrowserFile? _chosenImport;
+
+    void IDisposable.Dispose()
+    {
+        _cancel?.Cancel();
+        _cancel?.Dispose();
+        _cancel = null;
+    }
+
+    internal void FileChosen(InputFileChangeEventArgs args)
+    {
+        if (args.FileCount > 1)
+        {
+            FileError = "Too many files selected";
+            return;
+        }
+
+        var file = args.File;
+        string ext = Path.GetExtension(file.Name).ToLowerInvariant();
+
+        if (ext != ".json" && ext != ".csv")
+        {
+            FileError = "File is not the correct type";
+            return;
+        }
+
+        string content = file.ContentType;
+
+        if (content != ".json"
+            && content != "application/json"
+            && content != "application/vnd.ms-excel"
+            && content != "text/csv")
+        {
+            FileError = "File is not the correct type";
+            return;
+        }
+
+        if (file.Size > SizeLimit)
+        {
+            FileError = "File is too large";
+            return;
+        }
+
+        FileError = string.Empty;
+        _chosenImport = file;
+    }
+
+    internal async Task UploadAsync()
+    {
+        if (IsBusy || _chosenImport is null)
+        {
+            return;
+        }
+
+        if (_cancel?.Token is not CancellationToken token)
+        {
+            return;
+        }
+
+        IsBusy = true;
+        Result = SaveResult.None;
+        PercentProgress = 0;
+
+        LoadingProgress.Reset();
+        LoadingProgress.ProgressUpdate += UploadProgress;
+
+        try
+        {
+            await using var fileStream = _chosenImport.OpenReadStream(SizeLimit, token);
+
+            switch (Path.GetExtension(_chosenImport.Name).ToLowerInvariant())
+            {
+                case ".json":
+                    await FileStorage.AddFromJsonAsync(fileStream, token);
+                    break;
+
+                case ".csv":
+                    await FileStorage.AddFromCsvAsync(fileStream, token);
+                    break;
+            }
+
+            _chosenImport = null;
+            Result = SaveResult.Success;
+        }
+        catch (OperationCanceledException e)
+        {
+            Result = SaveResult.Error;
+
+            Logger.LogWarning("{Error}", e);
+        }
+        catch (Exception e)
+        {
+            Logger.LogError("{Error}", e);
+
+            Result = SaveResult.Error;
+        }
+        finally
+        {
+            LoadingProgress.ProgressUpdate -= UploadProgress;
+
+            IsCancelled = false;
+            IsBusy = false;
+        }
+    }
+
+    private void UploadProgress(Percent percent)
+    {
+        if (percent <= PercentProgress)
+        {
+            return;
+        }
+
+        PercentProgress = percent;
+
+        StateHasChanged();
+    }
+
+    internal void CancelUpload()
+    {
+        if (!IsBusy
+            || HasNoFile
+            || IsCancelled
+            || _cancel is null)
+        {
+            return;
+        }
+
+        _cancel.Cancel();
+        _cancel.Dispose();
+        _cancel = new CancellationTokenSource();
+
+        IsCancelled = true;
+    }
+}

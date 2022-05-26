@@ -1,0 +1,128 @@
+@page "{id:int?}"
+@model Transactions.IndexModel
+@{
+    ViewData["Title"] = Model.LocationName is string deckName
+        ? $"{deckName} Transactions"
+        : "Collection Transactions";
+}
+@using MtgViewer.Data.Projections
+@inject SymbolFormatter MtgSymbols
+
+@if (Model.LocationName is null)
+{
+    <h1> Collection Changes </h1>
+}
+else
+{
+    <h1> @Model.LocationName Changes </h1>
+}
+
+<div class="btn-group pb-3">
+    <partial name="_TimeZonePartial" for="TimeZone"/>
+
+    @if (Model.LocationName is not null)
+    {
+        <a asp-route-id="@null" class="btn btn-secondary" role="button"> All Changes </a>
+    }
+</div>
+
+<div class="table-responsive-md">
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th scope="col"> @Html.DisplayNameForInnerType((Transaction t) => t.AppliedAt) </th>
+                <th scope="col"> @Html.DisplayNameForInnerType((Change c) => c.Card) </th>
+                <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.ManaCost) </th>
+                <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.SetName) </th>
+                <th scope="col"> Cards Moved </th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (!Model.Transactions.Any())
+            {
+                <tr>
+                    <td> -- </td>
+                    <td> -- </td>
+                    <td> -- </td>
+                    <td> -- </td>
+                    <td> -- </td>
+                </tr>
+            }
+            @foreach (var transaction in Model.Transactions)
+            {
+                int span = Math.Max(1, transaction.Cards.Count()) + 1;
+
+                if (transaction.HasMore)
+                {
+                    span += 1;
+                }
+
+                <tr>
+                    <th scope="rowgroup" rowspan="@span">
+                        <a asp-page="Details" asp-route-id="@transaction.Id">
+                            @TimeZoneInfo.ConvertTimeFromUtc(transaction.AppliedAt, Model.TimeZone)
+                        </a>
+                    </th>
+
+                    @if (transaction.Cards.FirstOrDefault() is LocationLink firstCard)
+                    {
+                        <td>
+                            <a asp-page="/Cards/Details" asp-route-id="@firstCard.Id">
+                                @firstCard.Name
+                            </a>
+                        </td>
+                        <td>
+                            <div class="ms-group">
+                                @MtgSymbols.Format(firstCard.ManaCost).ToHtmlString()
+                            </div>
+                        </td>
+                        <td> @firstCard.SetName </td>
+                        <td> @firstCard.Held </td>
+                    }
+                    else
+                    {
+                        <td> -- </td>
+                        <td> -- </td>
+                        <td> -- </td>
+                        <td> -- </td>
+                    }
+                </tr>
+
+                @foreach (var card in transaction.Cards.Skip(1))
+                {
+                    <tr>
+                        <td>
+                            <a asp-page="/Cards/Details" asp-route-id="@card.Id">
+                                @card.Name
+                            </a>
+                        </td>
+                        <td>
+                            <div class="ms-group">
+                                @MtgSymbols.Format(card.ManaCost).ToHtmlString()
+                            </div>
+                        </td>
+                        <td> @card.SetName </td>
+                        <td> @card.Held </td>
+                    </tr>
+                }
+                @if (transaction.HasMore)
+                {
+                    <tr>
+                        <td> ... </td>
+                        <td> ... </td>
+                        <td> ... </td>
+                        <td> ... </td>
+                    </tr>
+                }
+                <tr>
+                    <td> <strong>Total</strong> </td>
+                    <td> -- </td>
+                    <td> -- </td>
+                    <td> <strong>@transaction.Copies</strong> </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+<partial name="_SeekPagingPartial" model="(Seek)Model.Transactions.Seek"/>

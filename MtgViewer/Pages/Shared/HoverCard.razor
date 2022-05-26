@@ -1,0 +1,73 @@
+@inject NavigationManager Nav
+@using Microsoft.AspNetCore.Http.Extensions
+@using MtgViewer.Data.Projections
+
+<div class="preview">
+    <div class="preview-watch">
+        @if (ChildContent != null)
+        {
+            @ChildContent
+        }
+        else
+        {
+            <a href="@TargetRoute"> @Card.Name </a>
+        }
+    </div>
+
+    <aside class="preview-item">
+        <img alt="@Card.Name image" src="@Card.ImageUrl.WithHttps()" class="img-fluid rounded" />
+    </aside>
+</div>
+
+@code
+{
+    public readonly QueryBuilder _query = new();
+
+    public string TargetRoute => $"/Cards/Details/{Card!.Id}{_query}";
+
+    public CardPreview Card { get; private set; } = default!;
+
+    [Parameter]
+    public Card? Target { get; set; }
+
+    [Parameter]
+    public CardPreview? Preview { get; set;}
+
+    [Parameter]
+    public string? ReturnUrl { get; set; }
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        if (ReturnUrl is not null)
+        {
+            _query.Add("returnUrl", ReturnUrl);
+        }
+
+        if (Preview is not null)
+        {
+            Card = Preview;
+            return;
+        }
+
+        if (Target is null)
+        {
+            throw new ArgumentNullException(nameof(Target));
+        }
+
+        Card = new CardPreview
+        {
+            Id = Target.Id,
+            Name = Target.Name,
+
+            ManaCost = Target.ManaCost,
+            ManaValue = Target.ManaValue,
+
+            SetName = Target.SetName,
+            Rarity = Target.Rarity,
+            ImageUrl = Target.ImageUrl
+        };
+    }
+}

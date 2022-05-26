@@ -1,0 +1,261 @@
+@page "/Decks/Craft/{DeckId:int?}"
+@using MtgViewer.Data.Infrastructure
+@using MtgViewer.Data.Projections
+@inherits OwningComponentBase
+@inject SymbolFormatter MtgSymbols
+
+<PageTitle> @DeckName - Builder </PageTitle>
+
+@if (DeckEdit?.Model is Deck deck)
+{
+    <EditForm EditContext="@DeckEdit">
+        <div class="row">
+            <div class="col col-md-6">
+                <InputText title="Edit Deck Name"
+                    class="form-control form-control-lg mb-3"
+                    @bind-Value="deck.Name"
+                    DisplayName="Deck Name"/>
+
+                <DataAnnotationsValidator />
+                <ValidationSummary />
+            </div>
+        </div>
+    </EditForm>
+}
+else
+{
+    <div class="row">
+        <div class="col col-md-6">
+            <input type="text" class="form-control form-control-lg mb-3"
+                placeholder="Deck Builder" readonly />
+        </div>
+    </div>
+}
+
+<div class="btn-group mb-3" role="group">
+    <button title="Save Deck" type="button"
+        class="btn btn-secondary"
+        disabled="@(IsLoading || CannotSave())"
+        @onclick="CommitChangesAsync">
+        @if (IsLoading)
+        {
+            <text>
+                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"> </span>
+                Loading...
+            </text>
+        }
+        else
+        {
+            <text> Save Changes </text>
+        }
+    </button>
+
+    @if (GetExchangeDeck() is Deck exchangeDeck)
+    {
+        <a href="/Decks/Exchange/@exchangeDeck.Id"
+            class="btn btn-secondary" role="button">
+            Exchange </a>
+    }
+    else
+    {
+        <button title="To Exchange Page" type="button"
+            class="btn btn-secondary"
+            disabled="true">
+            Exchange </button>
+    }
+</div>
+
+<SavePrompt @bind-Result="Result">
+    <SuccessMessage>
+        <p>Save was succesful, and values have been updated.</p>
+        <p class="mb-1">The wanted cards are not actually removed from the Treasury. Proceed to the Exchange page to take from the Treasury.</p>
+    </SuccessMessage>
+    <ErrorMessage>
+        <p>There are conflicts while trying to save, and values have been updated. </p>
+        <hr />
+        <p>Save again to confirm.</p>
+    </ErrorMessage>
+</SavePrompt>
+
+<div class="row form-group">
+    <div class="col-5 col-sm-4 col-md-3 col-lg-2 ">
+        <select title="Deck Build Type" class="form-control"
+            disabled="@IsLoading" @onchange="UpdateDeckCraftAsync">
+
+            <option value="@DeckCraft.Built" selected="@(DeckCraft is DeckCraft.Built)">
+                Held Cards </option>
+
+            <option value="@DeckCraft.Theorycraft" selected="@(DeckCraft is DeckCraft.Theorycraft)">
+                Theorycrafting </option>
+        </select>
+    </div>
+</div>
+
+<CardFilter
+    Search="@Search"
+    SearchChanged="@SearchAsync"
+    Color="@PickedColors"
+    ColorChanged="@ToggleColorAsync"
+    IsDisabled="IsLoading || DeckCraft is not DeckCraft.Theorycraft" />
+
+@if (DeckCraft is DeckCraft.Theorycraft)
+{
+    <div class="row">
+        <section class="col-12 col-lg-7 pb-3">
+            <h3>Treasury</h3>
+
+            <div class="list-group list-group-flush mb-4">
+                @if (!Treasury.Any())
+                {
+                    <div class="list-group-item disabled px-2" aria-disabled="true">
+                        <div class="row">
+                            <div class="col-6"> --- </div>
+                            <div class="col-4"> --- </div>
+                            <div class="col-2"> --- </div>
+                        </div>
+                    </div>
+                }
+                @foreach ((Card card, int available) in Treasury)
+                {
+                    int wantCopies = card.Wants.Sum(w => w.Copies);
+
+                    <button @key="card.Id"
+                        type="button" title="Add @card.Name"
+                        class="list-group-item list-group-item-action px-2"
+                        @onclick="() => AddWantAsync(card)">
+
+                        <div class="row">
+                            <div class="col-6">
+                                <HoverCard Target="card">
+                                    <span class="btn-link">@card.Name</span>
+                                </HoverCard>
+                            </div>
+                            <div class="col-4"> @MtgSymbols.Format(card.ManaCost).ToMarkupString() </div>
+                            <div class="col-2"> @(available - Math.Min(wantCopies, available)) </div>
+                        </div>
+                    </button>
+                }
+            </div>
+
+            <SeekPaging TEntity="@HeldCard" Seek="@Treasury.Seek" PageSelected="@SeekPageAsync" IsDisabled="@IsLoading" />
+        </section>
+
+        <section class="col">
+            <h3> @DeckName - Wanted </h3>
+
+            <div class="list-group list-group-flush mb-4">
+                @foreach (var want in DeckWants)
+                {
+                    var card = want.Card;
+
+                    <button type="button" title="Remove @card.Name"
+                        class="list-group-item list-group-item-action px-2"
+                        @onclick="() => RemoveWantAsync(want.Card)">
+
+                        <div class="row">
+                            <div class="col-6">
+                                <HoverCard Target="card">
+                                    <span class="btn-link">@card.Name</span>
+                                </HoverCard>
+                            </div>
+
+                            <div class="col-4"> @MtgSymbols.Format(card.ManaCost).ToMarkupString() </div>
+                            <div class="col-2"> @want.Copies </div>
+                        </div>
+                    </button>
+                }
+                <div class="list-group-item disabled px-2" aria-disabled="true">
+                    <div class="row">
+                        <div class="col-6"> <b> Total </b> </div>
+                        <div class="col-4"> --- </div>
+                        <div class="col-2"> @WantCopies </div>
+                    </div>
+                </div>
+            </div>
+
+            <SeekPaging TEntity="@Want"
+                Seek="@DeckWants.Seek" PageSelected="@ChangeWantsAsync" IsDisabled="@IsLoading" />
+        </section>
+    </div>
+}
+else if (DeckCraft is DeckCraft.Built)
+{
+    <div class="row">
+        <section class="col-12 col-lg-7 pb-3">
+            <h3> @DeckName - Held </h3>
+
+            <div class="list-group list-group-flush mb-4">
+                @foreach (var hold in DeckHolds)
+                {
+                    var card = hold.Card;
+                    int returnCopies = card.Givebacks.Sum(g => g.Copies);
+                    int copies = hold.Copies - Math.Min(returnCopies, hold.Copies);
+
+                    <button type="button" title="Remove @card.Name"
+                        class="list-group-item list-group-item-action px-2"
+                        disabled="@(copies == 0)"
+                        @onclick="() => AddReturnAsync(card)">
+
+                        <div class="row">
+                            <div class="col-6">
+                                <HoverCard Target="card">
+                                    <span class="btn-link">@card.Name</span>
+                                </HoverCard>
+                            </div>
+
+                            <div class="col-4"> @MtgSymbols.Format(card.ManaCost).ToMarkupString() </div>
+                            <div class="col-2"> @copies </div>
+                        </div>
+                    </button>
+                }
+                <div class="list-group-item disabled px-2" aria-disabled="true">
+                    <div class="row">
+                        <div class="col-6"> <b> Total </b> </div>
+                        <div class="col-4"> --- </div>
+                        <div class="col-2"> @HeldCopies </div>
+                    </div>
+                </div>
+            </div>
+
+            <SeekPaging TEntity="@Hold"
+                Seek="@DeckHolds.Seek" PageSelected="@ChangeHoldsAsync" IsDisabled="@IsLoading" />
+        </section>
+
+        <section class="col">
+            <h3> @DeckName - Returning </h3>
+
+            <div class="list-group list-group-flush mb-4">
+                @foreach (var giveback in DeckReturns)
+                {
+                    var card = giveback.Card;
+
+                    <button type="button" title="Add Back @card.Name"
+                        class="list-group-item list-group-item-action px-2"
+                        @onclick="() => RemoveReturnAsync(card)">
+
+                        <div class="row">
+                            <div class="col-6">
+                                <HoverCard Target="card">
+                                    <span class="btn-link">@card.Name</span>
+                                </HoverCard>
+                            </div>
+
+                            <div class="col-4"> @MtgSymbols.Format(card.ManaCost).ToMarkupString() </div>
+                            <div class="col-2"> @giveback.Copies </div>
+                        </div>
+                    </button>
+                }
+                <div class="list-group-item disabled px-2" aria-disabled="true">
+                    <div class="row">
+                        <div class="col-6"> <b> Total </b> </div>
+                        <div class="col-4"> --- </div>
+                        <div class="col-2"> @ReturnCopies </div>
+                    </div>
+                </div>
+            </div>
+
+            <SeekPaging TEntity="@Giveback"
+                Seek="@DeckReturns.Seek" PageSelected="@ChangeReturnsAsync" IsDisabled="@IsLoading" />
+        </section>
+    </div>
+}
