@@ -29,18 +29,36 @@ public sealed partial class Home : ComponentBase, IDisposable
     [Inject]
     internal ILogger<Home> Logger { get; set; } = default!;
 
+    #region View Properties
+
+    internal bool IsLoading => _isBusy || !_isInteractive;
+
+    internal bool IsFirstLoad => _isBusy && _shuffleOrder.Count is 0;
+
+    internal bool IsEmptyCollection => !_isBusy && _randomCards.Count is 0;
+
+    internal bool IsFullyLoaded => _randomCards.Count >= _shuffleOrder.Count;
+
+    internal IReadOnlyList<CardImage> RandomCards => _randomCards;
+
+    internal IReadOnlyList<RecentTransaction> RecentChanges { get; private set; } = Array.Empty<RecentTransaction>();
+
+    #endregion
+
     private const int ChunkSize = 4;
 
     private readonly CancellationTokenSource _cancel = new();
 
-    private bool _isBusy;
-    private bool _isInteractive;
+    private readonly List<CardImage> _randomCards = new();
+    private readonly HashSet<string> _loadedImages = new();
+
+    private IReadOnlyList<string> _shuffleOrder = Array.Empty<string>();
+    private DateTime _currentTime;
 
     private PersistingComponentStateSubscription _persistSubscription;
 
-    private RecentTransaction[] _recentChanges = Array.Empty<RecentTransaction>();
-    private RandomCardsContext? _randomContext;
-    private DateTime _currentTime;
+    private bool _isBusy;
+    private bool _isInteractive;
 
     protected override async Task OnInitializedAsync()
     {
@@ -52,9 +70,11 @@ public sealed partial class Home : ComponentBase, IDisposable
         {
             await using var dbContext = await DbFactory.CreateDbContextAsync(_cancel.Token);
 
-            _recentChanges = await GetRecentChangesAsync(dbContext, _cancel.Token);
+            RecentChanges = await GetRecentChangesAsync(dbContext);
 
-            _randomContext = await GetRandomContextAsync(dbContext, _cancel.Token);
+            _shuffleOrder = await GetShuffleOrderAsync(dbContext);
+
+            await LoadRandomCardsAsync(dbContext);
 
             _currentTime = DateTime.UtcNow;
         }
@@ -88,57 +108,108 @@ public sealed partial class Home : ComponentBase, IDisposable
 
     private Task PersistCardData()
     {
-        ApplicationState.PersistAsJson(nameof(_randomContext.Order), _randomContext?.Order);
+        ApplicationState.PersistAsJson(nameof(_shuffleOrder), _shuffleOrder);
 
-        ApplicationState.PersistAsJson(nameof(_randomContext.Cards), _randomContext?.Cards);
+        ApplicationState.PersistAsJson(nameof(_randomCards), _randomCards);
 
-        ApplicationState.PersistAsJson(nameof(_recentChanges), _recentChanges);
+        ApplicationState.PersistAsJson(nameof(RecentChanges), RecentChanges);
 
         return Task.CompletedTask;
     }
 
-    private async Task<RecentTransaction[]> GetRecentChangesAsync(CardDbContext dbContext, CancellationToken cancel)
+    private async Task<IReadOnlyList<RecentTransaction>> GetRecentChangesAsync(CardDbContext dbContext)
     {
-        if (ApplicationState.TryGetData(nameof(_recentChanges), out RecentTransaction[]? changes))
+        if (ApplicationState.TryGetData(nameof(RecentChanges), out RecentTransaction[]? changes))
         {
             return changes;
         }
 
         return await RecentTransactionsAsync
             .Invoke(dbContext, PageSize.Current)
-            .ToArrayAsync(cancel);
+            .ToListAsync(_cancel.Token);
     }
 
-    private async Task<RandomCardsContext> GetRandomContextAsync(CardDbContext dbContext, CancellationToken cancel)
+    private async Task<IReadOnlyList<string>> GetShuffleOrderAsync(CardDbContext dbContext)
     {
-        if (!ApplicationState.TryGetData(nameof(_randomContext.Order), out List<string[]>? order))
+        if (ApplicationState.TryGetData(nameof(_shuffleOrder), out string[]? shuffleOrder))
         {
-            return await RandomCardsContext.CreateAsync(dbContext, PageSize.Current, cancel);
+            return shuffleOrder;
         }
 
-        if (!ApplicationState.TryGetData(nameof(_randomContext.Cards), out List<CardImage>? cards))
-        {
-            return await RandomCardsContext.CreateAsync(order, dbContext, cancel);
-        }
+        return await ShuffleOrderAsync
+            .Invoke(dbContext, PageSize.Current)
+            .ToListAsync(_cancel.Token);
 
-        return await RandomCardsContext.CreateAsync(order, cards, dbContext, cancel);
     }
 
-    #region View Properties
+    private async Task LoadRandomCardsAsync(CardDbContext dbContext)
+    {
+        if (_randomCards.Any())
+        {
+            Logger.LogWarning("{Property} is already loaded", nameof(_randomCards));
+            return;
+        }
 
-    internal bool IsFirstLoad => _isBusy && _randomContext is null;
+        if (!_shuffleOrder.Any())
+        {
+            Logger.LogError("Expected {Missing} is not loaded", nameof(_shuffleOrder));
+            return;
+        }
 
-    internal bool IsLoading => _isBusy || !_isInteractive;
+        if (ApplicationState.TryGetData(nameof(_randomCards), out CardImage[]? cards))
+        {
+            _randomCards.AddRange(cards);
+            return;
+        }
 
-    internal bool IsEmptyCollection => _randomContext is { Cards.Count: 0 };
+        await LoadNextChunkAsync(dbContext);
+    }
 
-    internal bool IsFullyLoaded => _randomContext is null or { HasMore: false };
+    internal async Task LoadMoreCardsAsync()
+    {
+        if (_isBusy || IsFullyLoaded)
+        {
+            return;
+        }
 
-    internal IReadOnlyList<CardImage> RandomCards => _randomContext?.Cards ?? Array.Empty<CardImage>();
+        _isBusy = true;
 
-    internal IReadOnlyList<RecentTransaction> RecentChanges => _recentChanges;
+        try
+        {
+            await using var dbContext = await DbFactory.CreateDbContextAsync(_cancel.Token);
 
-    #endregion
+            await LoadNextChunkAsync(dbContext);
+        }
+        catch (OperationCanceledException ex)
+        {
+            Logger.LogWarning("{Error}", ex);
+        }
+        finally
+        {
+            _isBusy = false;
+        }
+    }
+
+    private async Task LoadNextChunkAsync(CardDbContext dbContext)
+    {
+        string[] chunk = _shuffleOrder
+            .Skip(_randomCards.Count)
+            .Take(ChunkSize)
+            .ToArray();
+
+        if (!chunk.Any())
+        {
+            Logger.LogError("Cannot load any more chunks");
+            return;
+        }
+
+        var dbCards = CardChunkAsync(dbContext, chunk).WithCancellation(_cancel.Token);
+
+        await foreach (var card in dbCards)
+        {
+            _randomCards.Add(card);
+        }
+    }
 
     internal static string CardNames(IEnumerable<RecentChange> changes)
     {
@@ -162,154 +233,11 @@ public sealed partial class Home : ComponentBase, IDisposable
     }
 
     internal bool IsImageLoaded(CardImage card)
-    {
-        if (_randomContext is null)
-        {
-            return false;
-        }
+        => (_loadedImages.Count is 0 && !_isInteractive)
+            || _loadedImages.Contains(card.Id);
 
-        if (_randomContext is { LoadedImages.Count: 0 } && !_isInteractive)
-        {
-            return true;
-        }
-
-        return _randomContext.LoadedImages.Contains(card.Id);
-    }
-
-    internal void OnImageLoad(CardImage card) => _randomContext?.OnImageLoad(card);
-
-    internal async Task LoadMoreCardsAsync()
-    {
-        if (_isBusy || _randomContext is null or { HasMore: false })
-        {
-            return;
-        }
-
-        _isBusy = true;
-
-        try
-        {
-            await using var dbContext = await DbFactory.CreateDbContextAsync(_cancel.Token);
-
-            await _randomContext.LoadNextChunkAsync(dbContext, _cancel.Token);
-        }
-        catch (OperationCanceledException ex)
-        {
-            Logger.LogWarning("{Error}", ex);
-        }
-        finally
-        {
-            _isBusy = false;
-        }
-    }
-
-    private sealed class RandomCardsContext
-    {
-        private readonly List<CardImage> _cards;
-        private readonly HashSet<string> _imageLoaded;
-        private readonly int _limit;
-
-        public IReadOnlyList<string[]> Order { get; }
-
-        public IReadOnlyList<CardImage> Cards => _cards;
-
-        public IReadOnlyCollection<string> LoadedImages => _imageLoaded;
-
-        public bool HasMore => _cards.Count < _limit;
-
-        private RandomCardsContext(IReadOnlyList<string[]> loadOrder, List<CardImage> cards)
-        {
-            _cards = cards;
-            _imageLoaded = new HashSet<string>();
-            _limit = loadOrder.Sum(chunk => chunk.Length);
-
-            Order = loadOrder;
-        }
-
-        public static async Task<RandomCardsContext> CreateAsync(
-            CardDbContext dbContext,
-            int limit,
-            CancellationToken cancel)
-        {
-            var loadOrder = await ShuffleOrderAsync
-                .Invoke(dbContext, limit)
-                .Chunk(ChunkSize)
-                .ToListAsync(cancel);
-
-            return await CreateAsync(loadOrder, dbContext, cancel);
-        }
-
-        public static async Task<RandomCardsContext> CreateAsync(
-            IReadOnlyList<string[]> loadOrder,
-            CardDbContext dbContext,
-            CancellationToken cancel)
-        {
-            var randomContext = new RandomCardsContext(loadOrder, new List<CardImage>());
-
-            if (randomContext.HasMore)
-            {
-                await randomContext.LoadNextChunkAsync(dbContext, cancel);
-            }
-
-            return randomContext;
-        }
-
-        public static async Task<RandomCardsContext> CreateAsync(
-            IReadOnlyList<string[]> loadOrder,
-            List<CardImage> cards,
-            CardDbContext dbContext,
-            CancellationToken cancel)
-        {
-            if (!AreValidCards(loadOrder, cards))
-            {
-                cards.Clear();
-            }
-
-            var randomContext = new RandomCardsContext(loadOrder, cards);
-
-            if (randomContext is { Cards.Count: 0, HasMore: true })
-            {
-                await randomContext.LoadNextChunkAsync(dbContext, cancel);
-            }
-
-            return randomContext;
-        }
-
-        private static bool AreValidCards(IReadOnlyList<string[]> loadOrder, IReadOnlyList<CardImage> cards)
-        {
-            var expectedOrder = loadOrder
-                .SelectMany(chunk => chunk)
-                .Take(cards.Count);
-
-            return cards
-                .Select(c => c.Id)
-                .SequenceEqual(expectedOrder);
-        }
-
-        public async Task LoadNextChunkAsync(CardDbContext dbContext, CancellationToken cancel)
-        {
-            ArgumentNullException.ThrowIfNull(dbContext);
-
-            string[]? chunk = Order.ElementAtOrDefault(_cards.Count / ChunkSize);
-
-            if (chunk is null)
-            {
-                throw new InvalidOperationException("Cannot load any more chunks");
-            }
-
-            var newCards = await CardChunkAsync(dbContext, chunk).ToListAsync(cancel);
-
-            _cards.AddRange(newCards);
-        }
-
-        public void OnImageLoad(CardImage card)
-        {
-            if (card?.Id is string cardId)
-            {
-                _ = _imageLoaded.Add(cardId);
-            }
-        }
-    }
+    internal void OnImageLoad(CardImage card)
+        => _loadedImages.Add(card.Id);
 
     #region Database Queries
 

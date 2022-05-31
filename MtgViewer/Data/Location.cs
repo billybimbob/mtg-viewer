@@ -47,7 +47,7 @@ public class Deck : Theorycraft
 {
     [JsonIgnore]
     public string OwnerId { get; init; } = default!;
-    public UserRef Owner { get; init; } = default!;
+    public Owner Owner { get; init; } = default!;
 
     public List<Giveback> Givebacks { get; init; } = new();
 

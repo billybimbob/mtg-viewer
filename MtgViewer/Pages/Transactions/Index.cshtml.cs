@@ -73,6 +73,7 @@ public class IndexModel : PageModel
         {
             return RedirectToPage(new
             {
+                tz,
                 seek = null as int?,
                 direction = SeekDirection.Forward
             });

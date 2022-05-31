@@ -56,12 +56,12 @@ public partial class Mulligan : OwningComponentBase
 
     private PersistingComponentStateSubscription _persistSubscription;
 
-    private bool _isBusy;
-    private bool _isInteractive;
-
     private MulliganTarget? _target;
     private DeckMulligan _deckMulligan;
     private DrawSimulation? _shuffledDeck;
+
+    private bool _isBusy;
+    private bool _isInteractive;
 
     protected override void OnInitialized() =>
         _persistSubscription = ApplicationState.RegisterOnPersisting(PersistDeckData);

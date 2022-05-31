@@ -205,7 +205,7 @@ public class DeleteTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task OnPost_HasExcess_ExcessTranferred()
+    public async Task OnPost_HasExcess_ExcessTransferred()
     {
         await _testGen.AddExcessAsync(15);
 

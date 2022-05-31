@@ -92,6 +92,7 @@ public class DetailsModel : PageModel
         {
             return RedirectToPage(new
             {
+                tz,
                 seek = null as int?,
                 direction = SeekDirection.Forward
             });
@@ -169,7 +170,7 @@ public class DetailsModel : PageModel
             {
                 Id = c.Id,
 
-                To = new MoveTarget
+                To = new LocationPreview
                 {
                     Id = c.ToId,
                     Name = c.To.Name,
@@ -178,7 +179,7 @@ public class DetailsModel : PageModel
 
                 From = c.From == null
                     ? null
-                    : new MoveTarget
+                    : new LocationPreview
                     {
                         Id = c.From.Id,
                         Name = c.From.Name,

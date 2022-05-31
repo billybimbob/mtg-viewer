@@ -51,7 +51,7 @@ public class DeleteTests : IAsyncLifetime
     {
         // Arrange
         var deck = await _testGen.CreateDeckAsync();
-        var wrongUser = await _dbContext.Users.FirstAsync(u => u.Id != deck.OwnerId);
+        var wrongUser = await _dbContext.Owners.FirstAsync(o => o.Id != deck.OwnerId);
 
         await _pageFactory.AddPageContextAsync(_deleteModel, wrongUser.Id);
 

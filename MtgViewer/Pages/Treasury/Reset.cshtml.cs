@@ -21,7 +21,7 @@ public class ResetModel : PageModel
 {
     private readonly CardDbContext _dbContext;
 
-    private readonly ReferenceManager _referenceManager;
+    private readonly OwnerManager _ownerManager;
     private readonly UserManager<CardUser> _userManager;
     private readonly SignInManager<CardUser> _signManager;
 
@@ -29,13 +29,13 @@ public class ResetModel : PageModel
 
     public ResetModel(
         CardDbContext dbContext,
-        ReferenceManager referenceManager,
+        OwnerManager ownerManager,
         UserManager<CardUser> userManager,
         SignInManager<CardUser> signInManager,
         ILogger<ResetModel> logger)
     {
         _dbContext = dbContext;
-        _referenceManager = referenceManager;
+        _ownerManager = ownerManager;
         _userManager = userManager;
         _signManager = signInManager;
         _logger = logger;
@@ -59,16 +59,16 @@ public class ResetModel : PageModel
 
         ResetRequested = await IsResetRequestedAsync.Invoke(_dbContext, userId, cancel);
 
-        Remaining = await _dbContext.Users.CountAsync(u => !u.ResetRequested, cancel);
+        Remaining = await _dbContext.Owners.CountAsync(o => !o.ResetRequested, cancel);
 
         return Page();
     }
 
     private static readonly Func<CardDbContext, string, CancellationToken, Task<bool>> IsResetRequestedAsync
         = EF.CompileAsyncQuery((CardDbContext dbContext, string userId, CancellationToken _) =>
-            dbContext.Users
-                .Where(u => u.Id == userId)
-                .Select(u => u.ResetRequested)
+            dbContext.Owners
+                .Where(o => o.Id == userId)
+                .Select(o => o.ResetRequested)
                 .SingleOrDefault());
 
     public async Task<IActionResult> OnPostAsync(CancellationToken cancel)
@@ -80,38 +80,38 @@ public class ResetModel : PageModel
             return NotFound();
         }
 
-        var user = await _dbContext.Users
-            .SingleOrDefaultAsync(u => u.Id == userId, cancel);
+        var owner = await _dbContext.Owners
+            .SingleOrDefaultAsync(o => o.Id == userId, cancel);
 
-        if (user == default)
+        if (owner == default)
         {
             return NotFound();
         }
 
-        if (user.ResetRequested)
+        if (owner.ResetRequested)
         {
-            await CancelRequestAsync(user, cancel);
+            await CancelRequestAsync(owner, cancel);
         }
         else
         {
-            await ApplyRequestAsync(user, cancel);
+            await ApplyRequestAsync(owner, cancel);
         }
 
         return RedirectToPage("Index");
     }
 
-    private async Task CancelRequestAsync(UserRef user, CancellationToken cancel)
+    private async Task CancelRequestAsync(Owner owner, CancellationToken cancel)
     {
-        if (!user.ResetRequested)
+        if (!owner.ResetRequested)
         {
-            throw new InvalidOperationException("user should have reset request active");
+            throw new InvalidOperationException("User should have reset request active");
         }
 
         try
         {
             var cardUser = await _userManager.GetUserAsync(User);
 
-            user.ResetRequested = false;
+            owner.ResetRequested = false;
 
             await _dbContext.SaveChangesAsync(cancel);
 
@@ -127,36 +127,36 @@ public class ResetModel : PageModel
         }
     }
 
-    private async Task ApplyRequestAsync(UserRef user, CancellationToken cancel)
+    private async Task ApplyRequestAsync(Owner owner, CancellationToken cancel)
     {
-        if (user.ResetRequested)
+        if (owner.ResetRequested)
         {
-            throw new InvalidOperationException("user should not have reset requested");
+            throw new InvalidOperationException("User should not have reset requested");
         }
 
-        bool allRequested = await _dbContext.Users
-            .Where(u => u.Id != user.Id)
-            .AllAsync(u => u.ResetRequested, cancel);
+        bool areAllRequested = await _dbContext.Owners
+            .Where(o => o.Id != owner.Id)
+            .AllAsync(o => o.ResetRequested, cancel);
 
         try
         {
-            if (allRequested)
+            if (areAllRequested)
             {
-                await _referenceManager.ApplyResetAsync(cancel);
+                await _ownerManager.ResetAsync(cancel);
                 return;
             }
 
             var cardUser = await _userManager.GetUserAsync(User);
 
             var suggestions = await _dbContext.Suggestions
-                .Where(s => s.ReceiverId == user.Id)
+                .Where(s => s.ReceiverId == owner.Id)
                 .ToListAsync(cancel);
 
             var trades = await _dbContext.Trades
-                .Where(t => t.To.OwnerId == user.Id || t.From.OwnerId == user.Id)
+                .Where(t => t.To.OwnerId == owner.Id || t.From.OwnerId == owner.Id)
                 .ToListAsync(cancel);
 
-            user.ResetRequested = true;
+            owner.ResetRequested = true;
 
             _dbContext.Suggestions.RemoveRange(suggestions);
             _dbContext.Trades.RemoveRange(trades);
@@ -165,7 +165,7 @@ public class ResetModel : PageModel
 
             await _signManager.RefreshSignInAsync(cardUser);
 
-            int remaining = await _dbContext.Users.CountAsync(u => !u.ResetRequested, cancel);
+            int remaining = await _dbContext.Owners.CountAsync(o => !o.ResetRequested, cancel);
 
             PostMessage = $"Reset request applied, but waiting on {remaining} more users to apply the reset";
         }

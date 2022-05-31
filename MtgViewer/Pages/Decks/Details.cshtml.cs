@@ -57,6 +57,15 @@ public class DetailsModel : PageModel
             .Take(_pageSize.Current)
             .ToSeekListAsync(cancel);
 
+        if (!cards.Any() && seek is not null)
+        {
+            return RedirectToPage(new
+            {
+                seek = null as int?,
+                direction = SeekDirection.Forward
+            });
+        }
+
         string? userId = _userManager.GetUserId(User);
 
         IsOwner = deck.Owner.Id == userId;

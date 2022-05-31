@@ -80,12 +80,12 @@ public class SeekListTests : IAsyncLifetime
 
         var cards = _dbContext.Cards;
 
-        var seek = await cards
+        var origin = await cards
             .Skip(pageSize)
             .FirstAsync();
 
         Task SeekListAsync() => cards
-            .SeekOrigin(seek, SeekDirection.Forward)
+            .SeekOrigin(origin, SeekDirection.Forward)
             .Take(pageSize)
             .ToSeekListAsync();
 
@@ -99,19 +99,19 @@ public class SeekListTests : IAsyncLifetime
 
         var cards = _dbContext.Cards.OrderBy(c => c.Id);
 
-        var seek = await cards
+        var origin = await cards
             .Skip(pageSize)
             .FirstAsync();
 
         var seekList = await cards
-            .SeekOrigin(seek, SeekDirection.Forward)
+            .SeekOrigin(origin, SeekDirection.Forward)
             .Take(pageSize)
             .ToSeekListAsync();
 
         Assert.NotNull(seekList.Seek.Previous);
 
         Assert.All(seekList, c =>
-            Assert.True(c.Id.CompareTo(seek.Id) > 0));
+            Assert.True(c.Id.CompareTo(origin.Id) > 0));
     }
 
     [Fact]
@@ -121,19 +121,19 @@ public class SeekListTests : IAsyncLifetime
 
         var cards = _dbContext.Cards.OrderBy(c => c.Id);
 
-        var seek = await cards
+        var origin = await cards
             .Skip(pageSize)
             .FirstAsync();
 
         var seekList = await cards
-            .SeekOrigin(seek, SeekDirection.Backwards)
+            .SeekOrigin(origin, SeekDirection.Backwards)
             .Take(pageSize)
             .ToSeekListAsync();
 
         Assert.Null(seekList.Seek.Previous);
 
         Assert.All(seekList, c =>
-            Assert.True(c.Id.CompareTo(seek.Id) < 0));
+            Assert.True(c.Id.CompareTo(origin.Id) < 0));
     }
 
     [Fact]
@@ -146,12 +146,12 @@ public class SeekListTests : IAsyncLifetime
             .OrderBy(c => c.Name)
                 .ThenBy(c => c.Id);
 
-        var seek = await cards
+        var origin = await cards
             .Skip(pageSize * numPages)
             .FirstAsync();
 
         var seekList = await cards
-            .SeekOrigin(seek, SeekDirection.Forward)
+            .SeekOrigin(origin, SeekDirection.Forward)
             .Take(pageSize)
             .ToSeekListAsync();
 
@@ -159,7 +159,7 @@ public class SeekListTests : IAsyncLifetime
 
         Assert.All(seekList, c =>
             Assert.True(
-                (c.Name, c.Id).CompareTo((seek.Name, c.Id)) > 0));
+                (c.Name, c.Id).CompareTo((origin.Name, c.Id)) > 0));
     }
 
     [Fact]
@@ -172,12 +172,12 @@ public class SeekListTests : IAsyncLifetime
             .OrderBy(c => c.Name)
                 .ThenBy(c => c.Id);
 
-        var seek = await cards
+        var origin = await cards
             .Skip(pageSize * numPages)
             .FirstAsync();
 
         var seekList = await cards
-            .SeekOrigin(seek, SeekDirection.Backwards)
+            .SeekOrigin(origin, SeekDirection.Backwards)
             .Take(pageSize)
             .ToSeekListAsync();
 
@@ -185,7 +185,7 @@ public class SeekListTests : IAsyncLifetime
 
         Assert.All(seekList, c =>
             Assert.True(
-                (c.Name, c.Id).CompareTo((seek.Name, c.Id)) < 0));
+                (c.Name, c.Id).CompareTo((origin.Name, c.Id)) < 0));
     }
 
     [Fact]
@@ -201,12 +201,12 @@ public class SeekListTests : IAsyncLifetime
                 .ThenByDescending(c => c.Artist)
                 .ThenBy(c => c.Id);
 
-        var seek = await cards
+        var origin = await cards
             .Skip(pageSize)
             .FirstAsync();
 
         var seekList = await cards
-            .SeekOrigin(seek, SeekDirection.Forward)
+            .SeekOrigin(origin, SeekDirection.Forward)
             .Take(pageSize)
             .ToSeekListAsync();
 
@@ -214,25 +214,25 @@ public class SeekListTests : IAsyncLifetime
 
         Assert.All(seekList, c =>
             Assert.True(
-                c.Name.CompareTo(seek.Name) > 0
+                c.Name.CompareTo(origin.Name) > 0
 
-                || (c.Name == seek.Name
-                    && c.SetName.CompareTo(seek.SetName) > 0)
+                || (c.Name == origin.Name
+                    && c.SetName.CompareTo(origin.SetName) > 0)
 
-                || (c.Name == seek.Name
-                    && c.SetName == seek.SetName
-                    && c.ManaValue < seek.ManaValue)
+                || (c.Name == origin.Name
+                    && c.SetName == origin.SetName
+                    && c.ManaValue < origin.ManaValue)
 
-                || (c.Name == seek.Name
-                    && c.SetName == seek.SetName
-                    && c.ManaValue == seek.ManaValue
-                    && c.Artist.CompareTo(seek.Artist) < 0)
+                || (c.Name == origin.Name
+                    && c.SetName == origin.SetName
+                    && c.ManaValue == origin.ManaValue
+                    && c.Artist.CompareTo(origin.Artist) < 0)
 
-                || (c.Name == seek.Name
-                    && c.SetName == seek.SetName
-                    && c.ManaValue == seek.ManaValue
-                    && c.Artist == seek.Artist
-                    && c.Id.CompareTo(seek.Id) > 0)));
+                || (c.Name == origin.Name
+                    && c.SetName == origin.SetName
+                    && c.ManaValue == origin.ManaValue
+                    && c.Artist == origin.Artist
+                    && c.Id.CompareTo(origin.Id) > 0)));
     }
 
     // [Fact]
@@ -284,12 +284,12 @@ public class SeekListTests : IAsyncLifetime
                 .ThenBy(c => c.From!.Name)
                 .ThenBy(c => c.Id);
 
-        var seek = await changes
+        var origin = await changes
             .Skip(pageSize * numPages)
             .FirstAsync();
 
         var seekList = await changes
-            .SeekOrigin(seek, SeekDirection.Forward)
+            .SeekOrigin(origin, SeekDirection.Forward)
             .Take(pageSize)
             .ToSeekListAsync();
 
@@ -298,6 +298,6 @@ public class SeekListTests : IAsyncLifetime
         Assert.All(seekList, c =>
             Assert.True(
                 (c.To.Name, c.From?.Name, c.Id).CompareTo(
-                    (seek.To.Name, seek.From?.Name, seek.Id)) > 0));
+                    (origin.To.Name, origin.From?.Name, origin.Id)) > 0));
     }
 }

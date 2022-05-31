@@ -10,7 +10,7 @@ public partial class CardDbContext : DbContext
         : base(options)
     { }
 
-    public DbSet<UserRef> Users => Set<UserRef>();
+    public DbSet<Owner> Owners => Set<Owner>();
 
     public DbSet<Card> Cards => Set<Card>();
     public DbSet<Location> Locations => Set<Location>();

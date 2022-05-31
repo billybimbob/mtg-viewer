@@ -13,17 +13,17 @@ namespace MtgViewer.Areas.Identity.Services
 {
     public class CardUserClaimsPrincipalFactory : UserClaimsPrincipalFactory<CardUser>
     {
-        private readonly ReferenceManager _referenceManager;
+        private readonly OwnerManager _ownerManager;
         private readonly ILogger<CardUserClaimsPrincipalFactory> _logger;
 
         public CardUserClaimsPrincipalFactory(
             UserManager<CardUser> userManager,
-            ReferenceManager referenceManager,
+            OwnerManager ownerManager,
             ILogger<CardUserClaimsPrincipalFactory> logger,
             IOptions<IdentityOptions> options)
             : base(userManager, options)
         {
-            _referenceManager = referenceManager;
+            _ownerManager = ownerManager;
             _logger = logger;
         }
 
@@ -31,33 +31,33 @@ namespace MtgViewer.Areas.Identity.Services
         {
             var id = await base.GenerateClaimsAsync(user);
 
-            var reference = await _referenceManager.References
-                .OrderBy(u => u.Id)
-                .SingleOrDefaultAsync(u => u.Id == user.Id);
+            var owner = await _ownerManager.Owners
+                .OrderBy(o => o.Id)
+                .SingleOrDefaultAsync(o => o.Id == user.Id);
 
-            if (reference == default)
+            if (owner == default)
             {
                 // reference is missing, add a new reference
 
-                await GenerateNewReferenceAsync(user, id);
+                await GenerateNewOwnerAsync(user, id);
                 return id;
             }
 
-            id.AddClaim(new Claim(CardClaims.DisplayName, reference.Name));
+            id.AddClaim(new Claim(CardClaims.DisplayName, owner.Name));
 
-            if (!reference.ResetRequested)
+            if (!owner.ResetRequested)
             {
-                id.AddClaim(new Claim(CardClaims.ChangeTreasury, reference.Id));
+                id.AddClaim(new Claim(CardClaims.ChangeTreasury, owner.Id));
             }
 
             return id;
         }
 
-        private async Task GenerateNewReferenceAsync(CardUser user, ClaimsIdentity id)
+        private async Task GenerateNewOwnerAsync(CardUser user, ClaimsIdentity id)
         {
             try
             {
-                await _referenceManager.CreateReferenceAsync(user);
+                await _ownerManager.CreateAsync(user);
 
                 id.AddClaim(new Claim(CardClaims.DisplayName, user.DisplayName));
                 id.AddClaim(new Claim(CardClaims.ChangeTreasury, user.Id));

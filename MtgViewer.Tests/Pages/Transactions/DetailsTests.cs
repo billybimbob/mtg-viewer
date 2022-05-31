@@ -67,9 +67,9 @@ public class DetailsTests : IAsyncLifetime
         var change = _transaction.Changes.First();
         string? ownedId = (change.To as Deck)?.OwnerId ?? (change.From as Deck)?.OwnerId;
 
-        string wrongUser = await _dbContext.Users
-            .Select(u => u.Id)
-            .FirstAsync(uid => uid != ownedId);
+        string wrongUser = await _dbContext.Owners
+            .Select(o => o.Id)
+            .FirstAsync(oid => oid != ownedId);
 
         await _pageFactory.AddPageContextAsync(_detailsModel, wrongUser);
 

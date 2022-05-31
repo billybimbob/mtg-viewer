@@ -119,15 +119,14 @@ public sealed class MtgApiQuery : IMtgQuery
 
         cancel.ThrowIfCancellationRequested();
 
-        int currentPage = values.Page;
         var response = await ApplyParameters(values).AllAsync();
 
         cancel.ThrowIfCancellationRequested();
 
-        int totalPages = response.PagingInfo.TotalPages;
-        var offset = new Offset(currentPage, totalPages);
-
         var cards = await _flipQuery.GetCardsAsync(response, cancel);
+
+        var offset = new Offset(
+            values.Page, response.PagingInfo.TotalPages);
 
         return new OffsetList<Card>(offset, cards);
     }

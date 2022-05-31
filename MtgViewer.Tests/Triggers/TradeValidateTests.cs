@@ -70,15 +70,15 @@ public class TradeValidateTests : IAsyncLifetime
     {
         var card = await _dbContext.Cards.FirstAsync();
 
-        var users = await _dbContext.Users
+        var owners = await _dbContext.Owners
             .Take(2)
             .ToListAsync();
 
         var newTrade = new Trade
         {
             Card = card,
-            To = new Deck { Name = "To Deck", Owner = users[0] },
-            From = new Deck { Name = "From Deck", Owner = users[1] }
+            To = new Deck { Name = "To Deck", Owner = owners[0] },
+            From = new Deck { Name = "From Deck", Owner = owners[1] }
         };
 
         bool sameTargetIds = newTrade.To.Id == newTrade.From.Id;

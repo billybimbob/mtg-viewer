@@ -50,7 +50,7 @@ public class CreateTests : IAsyncLifetime
     public async Task OnPost_WrongUser_NoChange()
     {
         // Arrange
-        var wrongUser = await _dbContext.Users.FirstAsync(u => u.Id != _requestDeck.OwnerId);
+        var wrongUser = await _dbContext.Owners.FirstAsync(o => o.Id != _requestDeck.OwnerId);
         await _pageFactory.AddPageContextAsync(_createModel, wrongUser.Id);
 
         var allTradeIds = AllTrades.Select(t => t.Id);
@@ -120,8 +120,8 @@ public class CreateTests : IAsyncLifetime
             .AsNoTracking()
             .FirstAsync();
 
-        var nonOwner = await _dbContext.Users
-            .FirstAsync(u => u.Id != _requestDeck.OwnerId);
+        var nonOwner = await _dbContext.Owners
+            .FirstAsync(o => o.Id != _requestDeck.OwnerId);
 
         var extraLocations = Enumerable
             .Range(0, 3)

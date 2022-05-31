@@ -119,7 +119,7 @@ public class CardDbContextTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task AddCards_ExistingWithCapcity_OnlyExisting()
+    public async Task AddCards_ExistingWithCapacity_OnlyExisting()
     {
         var card = await _dbContext.Holds
             .Where(h => h.Location is Box)

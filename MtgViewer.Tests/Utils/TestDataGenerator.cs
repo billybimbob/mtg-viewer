@@ -105,7 +105,7 @@ public class TestDataGenerator
 
     public async Task<Deck> CreateEmptyDeckAsync()
     {
-        var users = await _dbContext.Users.ToListAsync();
+        var users = await _dbContext.Owners.ToListAsync();
         var owner = users[_random.Next(users.Count)];
 
         var newDeck = new Deck
@@ -124,8 +124,9 @@ public class TestDataGenerator
 
     public async Task<Deck> CreateDeckAsync(int numCards = 0)
     {
-        var users = await _dbContext.Users.ToListAsync();
-        var owner = users[_random.Next(users.Count)];
+        var owners = await _dbContext.Owners.ToListAsync();
+        var owner = owners[_random.Next(owners.Count)];
+
         var cards = await _dbContext.Cards.ToListAsync();
 
         if (numCards <= 0)
@@ -193,8 +194,9 @@ public class TestDataGenerator
 
     public async Task<Deck> CreateReturnDeckAsync(int numCards = 0)
     {
-        var users = await _dbContext.Users.ToListAsync();
-        var owner = users[_random.Next(users.Count)];
+        var owners = await _dbContext.Owners.ToListAsync();
+        var owner = owners[_random.Next(owners.Count)];
+
         var cards = await _dbContext.Cards.ToListAsync();
 
         if (numCards <= 0)
@@ -244,8 +246,9 @@ public class TestDataGenerator
 
     public async Task<Deck> CreateWantDeckAsync(int numCards = 0)
     {
-        var users = await _dbContext.Users.ToListAsync();
-        var owner = users[_random.Next(users.Count)];
+        var owners = await _dbContext.Owners.ToListAsync();
+        var owner = owners[_random.Next(owners.Count)];
+
         var cards = await _dbContext.Cards.ToListAsync();
 
         if (numCards <= 0)
@@ -285,8 +288,8 @@ public class TestDataGenerator
 
     public async Task<Deck> CreateRequestDeckAsync()
     {
-        var users = await _dbContext.Users.ToListAsync();
-        var owner = users[_random.Next(users.Count)];
+        var owners = await _dbContext.Owners.ToListAsync();
+        var owner = owners[_random.Next(owners.Count)];
 
         var cardOptions = await _dbContext.Decks
             .Where(d => d.OwnerId != owner.Id)
@@ -299,7 +302,8 @@ public class TestDataGenerator
         {
             string[] optionIds = cardOptions.Select(c => c.Id).ToArray();
 
-            var nonOwner = users.First(u => u.Id != owner.Id);
+            var nonOwner = owners.First(o => o.Id != owner.Id);
+
             var card = await _dbContext.Cards
                 .FirstAsync(c => !optionIds.Contains(c.Id));
 
@@ -354,14 +358,13 @@ public class TestDataGenerator
 
     public async Task<TradeSet> CreateTradeSetAsync(bool isToSet)
     {
-        var users = await _dbContext.Users
-            .ToListAsync();
+        var owners = await _dbContext.Owners.ToListAsync();
 
-        var participants = users
-            .Select(user => (user, key: _random.Next(users.Count)))
-            .OrderBy(uk => uk.key)
+        var participants = owners
+            .Select(owner => (owner, key: _random.Next(owners.Count)))
+            .OrderBy(ok => ok.key)
             .Take(2)
-            .Select(uk => uk.user)
+            .Select(ok => ok.owner)
             .ToList();
 
         var proposer = participants[0];
@@ -379,9 +382,7 @@ public class TestDataGenerator
 
     private record TradeOptions(Deck Source, IReadOnlyList<Deck> Options);
 
-    private async Task<IReadOnlyList<Trade>> CreateToTradesAsync(
-        UserRef proposer,
-        UserRef receiver)
+    private async Task<IReadOnlyList<Trade>> CreateToTradesAsync(Owner proposer, Owner receiver)
     {
         var (to, froms) = await GetTradeOptionsAsync(proposer, receiver);
 
@@ -415,28 +416,26 @@ public class TestDataGenerator
         return trades;
     }
 
-    private async Task<TradeOptions> GetTradeOptionsAsync(
-        UserRef sourceUser,
-        UserRef optionsUser)
+    private async Task<TradeOptions> GetTradeOptionsAsync(Owner proposer, Owner receiver)
     {
         var source = await _dbContext.Decks
             .Include(d => d.Holds)
                 .ThenInclude(h => h.Card)
-            .FirstOrDefaultAsync(l => l.OwnerId == sourceUser.Id);
+            .FirstOrDefaultAsync(l => l.OwnerId == proposer.Id);
 
         if (source == default)
         {
             source = new Deck
             {
                 Name = "Trade deck",
-                Owner = sourceUser
+                Owner = proposer
             };
 
             _dbContext.Attach(source);
         }
 
         var options = await _dbContext.Decks
-            .Where(l => l.OwnerId == optionsUser.Id)
+            .Where(l => l.OwnerId == receiver.Id)
             .ToListAsync();
 
         if (!options.Any())
@@ -444,7 +443,7 @@ public class TestDataGenerator
             var option = new Deck
             {
                 Name = "Trade deck",
-                Owner = optionsUser
+                Owner = receiver
             };
 
             _dbContext.Decks.Attach(option);
@@ -454,9 +453,7 @@ public class TestDataGenerator
         return new TradeOptions(source, options);
     }
 
-    private async Task<IReadOnlyList<Trade>> CreateFromTradesAsync(
-        UserRef proposer,
-        UserRef receiver)
+    private async Task<IReadOnlyList<Trade>> CreateFromTradesAsync(Owner proposer, Owner receiver)
     {
         var (from, tos) = await GetTradeOptionsAsync(receiver, proposer);
 
@@ -826,7 +823,7 @@ public class TestDataGenerator
         _dbContext.ChangeTracker.Clear();
     }
 
-    public async Task AddUserCardsAsync(UserRef user)
+    public async Task AddUserCardsAsync(Owner user)
     {
         var card = await _dbContext.Cards
             .Take(_random.Next(1, 4))

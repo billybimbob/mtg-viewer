@@ -131,9 +131,9 @@ public class CreateModel : PageModel
                 .ThenBy(w => w.Card.SetName)
                 .ThenBy(w => w.Id);
 
-        var possibleTargets = _dbContext.Users
-            .Where(u => u.Id != deck.Owner.Id && !u.ResetRequested)
-            .SelectMany(u => u.Decks)
+        var possibleTargets = _dbContext.Owners
+            .Where(o => o.Id != deck.Owner.Id && !o.ResetRequested)
+            .SelectMany(o => o.Decks)
             .SelectMany(d => d.Holds, (_, h) => h.Card.Name)
             .Distinct();
 
@@ -198,9 +198,9 @@ public class CreateModel : PageModel
 
         // keep eye on, this query potentially be expensive, and is also unbounded
 
-        return _dbContext.Users
-            .Where(u => u.Id != deck.Owner.Id && !u.ResetRequested)
-            .SelectMany(u => u.Decks)
+        return _dbContext.Owners
+            .Where(o => o.Id != deck.Owner.Id && !o.ResetRequested)
+            .SelectMany(o => o.Decks)
             .SelectMany(d => d.Holds)
             .OrderBy(h => h.Id)
 

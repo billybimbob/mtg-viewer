@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Paging;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -12,21 +13,26 @@ using Microsoft.EntityFrameworkCore;
 
 using MtgViewer.Data;
 using MtgViewer.Data.Projections;
+using MtgViewer.Services;
 
 namespace MtgViewer.Pages.Cards;
 
 public class DetailsModel : PageModel
 {
     private readonly CardDbContext _dbContext;
+    private readonly PageSize _pageSize;
 
-    public DetailsModel(CardDbContext dbContext)
+    public DetailsModel(CardDbContext dbContext, PageSize pageSize)
     {
         _dbContext = dbContext;
+        _pageSize = pageSize;
     }
 
     public Card Card { get; private set; } = default!;
 
     public IReadOnlyList<CardLink> Alternatives { get; private set; } = Array.Empty<CardLink>();
+
+    public SeekList<QuantityLocationPreview> Locations { get; private set; } = SeekList<QuantityLocationPreview>.Empty;
 
     public string? ReturnUrl { get; private set; }
 
@@ -49,22 +55,41 @@ public class DetailsModel : PageModel
     public string GetCreateCardUri()
         => QueryHelpers.AddQueryString("/Cards/Create", CardParameters);
 
-    public async Task<IActionResult> OnGetAsync(string id, bool flip, string? returnUrl, CancellationToken cancel)
+    public async Task<IActionResult> OnGetAsync(
+        string id,
+        bool flip,
+        string? returnUrl,
+        int? seek,
+        SeekDirection direction,
+        CancellationToken cancel)
     {
         var card = await GetCardAsync(id, flip, cancel);
 
-        if (card == default)
+        if (card is null)
         {
             return NotFound();
         }
 
-        MergeExcessHolds(card);
+        var locations = await GetLocationsAsync(card.Id, seek, direction, cancel);
+
+        if (!locations.Any() && seek is not null)
+        {
+            return RedirectToPage(new
+            {
+                flip,
+                returnUrl,
+                seek = null as int?,
+                direction = SeekDirection.Forward,
+            });
+        }
 
         Card = card;
 
-        Alternatives = await CardAlternativesAsync // unbounded: keep eye on
-            .Invoke(_dbContext, card.Id, card.Name)
+        Alternatives = await CardAlternativesAsync
+            .Invoke(_dbContext, card.Id, card.Name, _pageSize.Limit)
             .ToListAsync(cancel);
+
+        Locations = locations;
 
         if (Url.IsLocalUrl(returnUrl))
         {
@@ -76,46 +101,26 @@ public class DetailsModel : PageModel
 
     private Task<Card?> GetCardAsync(string cardId, bool flip, CancellationToken cancel)
     {
-        return flip
-            ? CardWithFlipAsync.Invoke(_dbContext, cardId, cancel)
-            : CardWithoutFlipAsync.Invoke(_dbContext, cardId, cancel);
+        var cardQuery = _dbContext.Cards
+            .Where(c => c.Id == cardId)
+            .OrderBy(c => c.Id)
+            .AsNoTrackingWithIdentityResolution();
+
+        if (flip)
+        {
+            cardQuery = cardQuery
+                .Include(c => c.Flip);
+        }
+        return cardQuery
+            .SingleOrDefaultAsync(cancel);
     }
 
-    private static readonly Func<CardDbContext, string, CancellationToken, Task<Card?>> CardWithFlipAsync
-
-        = EF.CompileAsyncQuery((CardDbContext dbContext, string cardId, CancellationToken _) =>
-            dbContext.Cards
-                .Where(c => c.Id == cardId)
-
-                .Include(c => c.Flip)
-                .Include(c => c.Holds
-                    .OrderBy(h => h.Location.Name))
-                    .ThenInclude(h => h.Location)
-
-                .OrderBy(c => c.Id)
-                .AsNoTrackingWithIdentityResolution()
-                .SingleOrDefault());
-
-    private static readonly Func<CardDbContext, string, CancellationToken, Task<Card?>> CardWithoutFlipAsync
-
-        = EF.CompileAsyncQuery((CardDbContext dbContext, string cardId, CancellationToken _) =>
-            dbContext.Cards
-                .Where(c => c.Id == cardId)
-
-                .Include(c => c.Holds
-                    .OrderBy(h => h.Location.Name))
-                    .ThenInclude(h => h.Location)
-
-                .OrderBy(c => c.Id)
-                .AsNoTrackingWithIdentityResolution()
-                .SingleOrDefault());
-
-    private static readonly Func<CardDbContext, string, string, IAsyncEnumerable<CardLink>> CardAlternativesAsync
-
-        = EF.CompileAsyncQuery((CardDbContext dbContext, string cardId, string cardName) =>
+    private static readonly Func<CardDbContext, string, string, int, IAsyncEnumerable<CardLink>> CardAlternativesAsync
+        = EF.CompileAsyncQuery((CardDbContext dbContext, string cardId, string cardName, int limit) =>
             dbContext.Cards
                 .Where(c => c.Id != cardId && c.Name == cardName)
                 .OrderBy(c => c.SetName)
+                .Take(limit)
                 .Select(c => new CardLink
                 {
                     Id = c.Id,
@@ -123,34 +128,32 @@ public class DetailsModel : PageModel
                     SetName = c.SetName
                 }));
 
-    private static void MergeExcessHolds(Card card)
+    private Task<SeekList<QuantityLocationPreview>> GetLocationsAsync(
+        string cardId,
+        int? seek,
+        SeekDirection direction,
+        CancellationToken cancel)
     {
-        var excessHolds = card.Holds
-            .Where(h => h.Location is Excess);
+        return _dbContext.Holds
+            .Where(h => h.CardId == cardId)
+            .OrderBy(h => h.Location.Name)
+                .ThenBy(h => h.LocationId)
 
-        if (!excessHolds.Any())
-        {
-            return;
-        }
+            .Select(h => new QuantityLocationPreview
+            {
+                Location = new LocationPreview
+                {
+                    Id = h.LocationId,
+                    Name = h.Location.Name,
+                    Type = h.Location.Type
+                },
+                Copies = h.Copies
+            })
 
-        var mergedExcess = new Hold
-        {
-            Card = card,
-            Location = Excess.Create(),
-            Copies = 0
-        };
+            .SeekBy(seek, direction)
+            .OrderBy<Hold>()
+            .Take(_pageSize.Current)
 
-        foreach (var excess in excessHolds)
-        {
-            mergedExcess.Copies += excess.Copies;
-        }
-
-        var mergedHolds = card.Holds
-            .Except(excessHolds)
-            .Append(mergedExcess)
-            .ToList();
-
-        card.Holds.Clear();
-        card.Holds.AddRange(mergedHolds);
+            .ToSeekListAsync(cancel);
     }
 }

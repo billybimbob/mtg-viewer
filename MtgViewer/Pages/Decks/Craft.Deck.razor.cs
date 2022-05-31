@@ -25,7 +25,7 @@ public partial class Craft
     private LoadedSeekList<Giveback> _givebacks;
     private LoadedSeekList<Want> _wants;
 
-    #region view properties
+    #region View Properties
 
     internal string DeckName => _deckContext?.Deck.Name ?? "New Deck";
 
@@ -78,8 +78,8 @@ public partial class Craft
             return;
         }
 
-        bool userExists = await dbContext.Users
-            .AnyAsync(u => u.Id == userId, _cancel.Token);
+        bool userExists = await dbContext.Owners
+            .AnyAsync(o => o.Id == userId, _cancel.Token);
 
         if (!userExists)
         {
@@ -159,9 +159,9 @@ public partial class Craft
     {
         if (_holds == default)
         {
-            var (seek, direction, _) = _holds;
+            var (origin, direction, _) = _holds;
 
-            _holds = GetQuantities(seek, direction);
+            _holds = GetQuantities(origin, direction);
         }
     }
 
@@ -169,9 +169,9 @@ public partial class Craft
     {
         if (_givebacks == default)
         {
-            var (seek, direction, _) = _givebacks;
+            var (origin, direction, _) = _givebacks;
 
-            _givebacks = GetQuantities(seek, direction);
+            _givebacks = GetQuantities(origin, direction);
         }
     }
 
@@ -179,11 +179,11 @@ public partial class Craft
     {
         if (_holds == default)
         {
-            var (seek, direction, _) = _holds;
+            var (origin, direction, _) = _holds;
 
-            await LoadQuantitiesAsync(dbContext, seek, direction);
+            await LoadQuantitiesAsync(dbContext, origin, direction);
 
-            _holds = GetQuantities(seek, direction);
+            _holds = GetQuantities(origin, direction);
         }
     }
 
@@ -191,11 +191,11 @@ public partial class Craft
     {
         if (_givebacks == default)
         {
-            var (seek, direction, _) = _givebacks;
+            var (origin, direction, _) = _givebacks;
 
-            await LoadQuantitiesAsync(dbContext, seek, direction);
+            await LoadQuantitiesAsync(dbContext, origin, direction);
 
-            _givebacks = GetQuantities(seek, direction);
+            _givebacks = GetQuantities(origin, direction);
         }
     }
 
@@ -203,11 +203,11 @@ public partial class Craft
     {
         if (_wants == default)
         {
-            var (seek, direction, _) = _wants;
+            var (origin, direction, _) = _wants;
 
-            await LoadQuantitiesAsync(dbContext, seek, direction);
+            await LoadQuantitiesAsync(dbContext, origin, direction);
 
-            _wants = GetQuantities(seek, direction);
+            _wants = GetQuantities(origin, direction);
         }
     }
 
@@ -224,11 +224,11 @@ public partial class Craft
         {
             await using var dbContext = await DbFactory.CreateDbContextAsync(_cancel.Token);
 
-            var (seek, direction) = request;
+            var (origin, direction) = request;
 
-            await LoadQuantitiesAsync(dbContext, seek, direction);
+            await LoadQuantitiesAsync(dbContext, origin, direction);
 
-            _holds = GetQuantities(seek, direction);
+            _holds = GetQuantities(origin, direction);
         }
         catch (OperationCanceledException ex)
         {
@@ -253,11 +253,11 @@ public partial class Craft
         {
             await using var dbContext = await DbFactory.CreateDbContextAsync(_cancel.Token);
 
-            var (seek, direction) = request;
+            var (origin, direction) = request;
 
-            await LoadQuantitiesAsync(dbContext, seek, direction);
+            await LoadQuantitiesAsync(dbContext, origin, direction);
 
-            _givebacks = GetQuantities(seek, direction);
+            _givebacks = GetQuantities(origin, direction);
         }
         catch (OperationCanceledException ex)
         {
@@ -282,11 +282,11 @@ public partial class Craft
         {
             await using var dbContext = await DbFactory.CreateDbContextAsync(_cancel.Token);
 
-            var (seek, direction) = request;
+            var (origin, direction) = request;
 
-            await LoadQuantitiesAsync(dbContext, seek, direction);
+            await LoadQuantitiesAsync(dbContext, origin, direction);
 
-            _wants = GetQuantities(seek, direction);
+            _wants = GetQuantities(origin, direction);
         }
         catch (OperationCanceledException ex)
         {
@@ -299,7 +299,7 @@ public partial class Craft
     }
 
     private LoadedSeekList<TQuantity> GetQuantities<TQuantity>(
-        TQuantity? seek,
+        TQuantity? origin,
         SeekDirection direction)
         where TQuantity : Quantity
     {
@@ -311,7 +311,11 @@ public partial class Craft
         var quantities = _deckContext.Groups
             .Select(g => g.GetQuantity<TQuantity>())
             .OfType<TQuantity>()
-            .Where(QuantityFilter);
+            .Where(q => q switch
+            {
+                Hold or { Copies: > 0 } => true,
+                _ => false
+            });
 
         var orderedQuantities = _cards
             .Join(quantities,
@@ -319,26 +323,17 @@ public partial class Craft
                 q => q.CardId,
                 (_, quantity) => quantity);
 
-        return ToSeekList(orderedQuantities, seek, direction, PageSize.Current);
-
-        static bool QuantityFilter(TQuantity quantity)
-        {
-            return quantity switch
-            {
-                Hold => true,
-                _ => quantity.Copies > 0
-            };
-        }
+        return ToSeekList(orderedQuantities, origin, direction, PageSize.Current);
     }
 
     private static LoadedSeekList<TQuantity> ToSeekList<TQuantity>(
         IEnumerable<TQuantity> quantities,
-        TQuantity? seek,
+        TQuantity? origin,
         SeekDirection direction,
         int size)
         where TQuantity : Quantity
     {
-        var items = (seek, direction) switch
+        var items = (origin, direction) switch
         {
             (TQuantity o, SeekDirection.Backwards) => quantities
                 .Where(t => (t.Card.Name, t.Card.SetName, t.CardId)
@@ -372,20 +367,17 @@ public partial class Craft
             items.RemoveAt(0);
         }
 
-        bool hasOrigin = seek is not null;
+        var seek = new Seek<TQuantity>(
+            items, direction, origin is not null, size - 1, lookAhead);
 
-        int target = size - 1;
+        var list = new SeekList<TQuantity>(seek, items);
 
-        var seekResult = new Seek<TQuantity>(items, direction, hasOrigin, target, lookAhead);
-
-        var list = new SeekList<TQuantity>(seekResult, items);
-
-        return new LoadedSeekList<TQuantity>(seek, direction, list);
+        return new LoadedSeekList<TQuantity>(origin, direction, list);
     }
 
     private async Task LoadQuantitiesAsync<TQuantity>(
         CardDbContext dbContext,
-        TQuantity? seek,
+        TQuantity? origin,
         SeekDirection direction)
         where TQuantity : Quantity
     {
@@ -405,7 +397,7 @@ public partial class Craft
         dbContext.Cards.AttachRange(_cards);
 
         var dbQuantities = DbQuantitiesAsync(
-            dbContext, deck.Id, seek, direction, PageSize.Current);
+            dbContext, deck.Id, origin, direction, PageSize.Current);
 
         await foreach (var quantity in dbQuantities.WithCancellation(_cancel.Token))
         {
@@ -421,7 +413,7 @@ public partial class Craft
     private static IAsyncEnumerable<TQuantity> DbQuantitiesAsync<TQuantity>(
         CardDbContext dbContext,
         int deckId,
-        TQuantity? seek,
+        TQuantity? origin,
         SeekDirection direction,
         int size)
         where TQuantity : Quantity
@@ -435,7 +427,7 @@ public partial class Craft
                 .ThenBy(q => q.Card.SetName)
                 .ThenBy(q => q.CardId)
 
-            .SeekOrigin(seek, direction)
+            .SeekOrigin(origin, direction)
             .Take(size)
 
             .AsAsyncEnumerable();
@@ -528,9 +520,9 @@ public partial class Craft
 
         if (want.Copies == 1)
         {
-            var (seek, direction, _) = _wants;
+            var (origin, direction, _) = _wants;
 
-            _wants = GetQuantities(seek, direction);
+            _wants = GetQuantities(origin, direction);
             _counts.WantCount += 1;
         }
 
@@ -565,11 +557,11 @@ public partial class Craft
 
         if (want.Copies == 0)
         {
-            var (seek, direction, list) = _wants;
+            var (origin, direction, list) = _wants;
 
             await LoadAdjacentPagesAsync(list?.Seek);
 
-            _wants = GetQuantities(seek, direction);
+            _wants = GetQuantities(origin, direction);
             _counts.WantCount -= 1;
         }
 
@@ -729,9 +721,9 @@ public partial class Craft
 
         if (giveback.Copies == 1)
         {
-            var (seek, direction, _) = _givebacks;
+            var (origin, direction, _) = _givebacks;
 
-            _givebacks = GetQuantities(seek, direction);
+            _givebacks = GetQuantities(origin, direction);
             _counts.ReturnCount += 1;
         }
 
@@ -766,11 +758,11 @@ public partial class Craft
 
         if (giveback.Copies == 0)
         {
-            var (seek, direction, list) = _givebacks;
+            var (origin, direction, list) = _givebacks;
 
             await LoadAdjacentPagesAsync(list?.Seek);
 
-            _givebacks = GetQuantities(seek, direction);
+            _givebacks = GetQuantities(origin, direction);
             _counts.ReturnCount -= 1;
         }
 

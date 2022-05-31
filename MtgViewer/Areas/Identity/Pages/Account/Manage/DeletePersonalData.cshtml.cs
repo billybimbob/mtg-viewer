@@ -16,18 +16,18 @@ namespace MtgViewer.Areas.Identity.Pages.Account.Manage;
 
 public class DeletePersonalDataModel : PageModel
 {
-    private readonly ReferenceManager _referenceManager;
+    private readonly OwnerManager _ownerManager;
     private readonly UserManager<CardUser> _userManager;
     private readonly SignInManager<CardUser> _signInManager;
     private readonly ILogger<DeletePersonalDataModel> _logger;
 
     public DeletePersonalDataModel(
-        ReferenceManager referenceManager,
+        OwnerManager referenceManager,
         UserManager<CardUser> userManager,
         SignInManager<CardUser> signInManager,
         ILogger<DeletePersonalDataModel> logger)
     {
-        _referenceManager = referenceManager;
+        _ownerManager = referenceManager;
         _userManager = userManager;
         _signInManager = signInManager;
         _logger = logger;
@@ -94,8 +94,8 @@ public class DeletePersonalDataModel : PageModel
             return Page();
         }
 
-        bool referenceDeleted = await _referenceManager.DeleteReferenceAsync(user, cancel);
-        if (!referenceDeleted)
+        bool ownerDeleted = await _ownerManager.DeleteAsync(user, cancel);
+        if (!ownerDeleted)
         {
             ModelState.AddModelError(string.Empty, "Failed to delete the user");
             return Page();
@@ -112,18 +112,18 @@ public class DeletePersonalDataModel : PageModel
 
     private async Task<bool> CheckAndApplyResetAsync(string userId, CancellationToken cancel)
     {
-        bool allRequested = await _referenceManager.References
-            .Where(u => u.Id != userId)
-            .AllAsync(u => u.ResetRequested, cancel);
+        bool areAllRequested = await _ownerManager.Owners
+            .Where(o => o.Id != userId)
+            .AllAsync(o => o.ResetRequested, cancel);
 
-        if (!allRequested)
+        if (!areAllRequested)
         {
             return true;
         }
 
         try
         {
-            await _referenceManager.ApplyResetAsync(cancel);
+            await _ownerManager.ResetAsync(cancel);
 
             return true;
         }

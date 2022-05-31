@@ -64,7 +64,7 @@ public sealed class CreateTests : IAsyncLifetime, IDisposable
     void IDisposable.Dispose() => _testContext.Dispose();
 
     [Fact]
-    public void LoadData_NoParamters_CardSearchForm()
+    public void LoadData_NoParameters_CardSearchForm()
     {
         var cut = _testContext.RenderComponent<Create>();
 

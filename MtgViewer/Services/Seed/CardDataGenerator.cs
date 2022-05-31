@@ -32,10 +32,10 @@ public class CardDataGenerator
     public async Task GenerateAsync(CancellationToken cancel = default)
     {
         var users = GetUsers();
-        var userRefs = users.Select(u => new UserRef(u)).ToList();
+        var owners = users.Select(u => new Owner(u)).ToList();
 
         var cards = await GetCardsAsync(cancel);
-        var decks = GetDecks(userRefs);
+        var decks = GetDecks(owners);
         var bin = GetBin();
 
         AddBoxHolds(cards, bin);
@@ -48,7 +48,7 @@ public class CardDataGenerator
         var data = new CardData
         {
             Users = users,
-            Refs = userRefs,
+            Owners = owners,
 
             Cards = cards,
             Decks = decks,
@@ -112,16 +112,16 @@ public class CardDataGenerator
             .ToList()
     };
 
-    private IReadOnlyList<Deck> GetDecks(IEnumerable<UserRef> users)
+    private IReadOnlyList<Deck> GetDecks(IEnumerable<Owner> owners)
     {
-        return users
+        return owners
             .Where((_, i) => i % 2 == 0)
-            .SelectMany(u => Enumerable
+            .SelectMany(o => Enumerable
                 .Range(0, _random.Next(2, 4))
                 .Select(i => new Deck
                 {
                     Name = $"Deck #{i + 1}",
-                    Owner = u
+                    Owner = o
                 }))
             .ToList();
     }

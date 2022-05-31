@@ -345,7 +345,7 @@ public sealed partial class Collection : ComponentBase, IDisposable
 
         var changes = new Dictionary<string, object?>
         {
-            [nameof(Seek)] = value.Seek?.Id,
+            [nameof(Seek)] = value.Origin?.Id,
             [nameof(Direction)] = value.Direction switch
             {
                 SeekDirection.Backwards => (int)SeekDirection.Backwards,

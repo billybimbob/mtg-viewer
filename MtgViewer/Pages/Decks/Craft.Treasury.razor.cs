@@ -63,7 +63,7 @@ public partial class Craft
 
     internal async Task SeekPageAsync(SeekRequest<HeldCard> request)
     {
-        string? seek = request.Seek?.Card.Id;
+        string? seek = request.Origin?.Card.Id;
         var direction = request.Direction;
 
         if (_isBusy || (_seek == seek && _direction == direction))

@@ -255,49 +255,48 @@
     <h4 class="col-12 mb-3"> Location of Copies </h4>
     <div class="col-lg-10 col">
         <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 row-cols-xl-4 m-0 ">
-            @foreach(var hold in Model.Card.Holds)
+            @foreach(var hold in Model.Locations)
             {
-                @switch (hold.Location)
+                var loc = hold.Location;
+                @switch (loc.Type)
                 {
-                    case Deck deck:
-                        <a asp-page="/Decks/Details" asp-route-id="@deck.Id" class="loc-item">
-                            @deck.Name
+                    case LocationType.Deck:
+                        <a asp-page="/Decks/Details" asp-route-id="@loc.Id" class="loc-item">
+                            @loc.Name
                             <span class="ml-1 badge badge-secondary badge-pill"> @hold.Copies </span>
                         </a>
                         break;
 
-                    case Unclaimed unclaimed when canChangeTreasury:
-                        <a asp-page="/Unowned/Details" asp-route-id="@unclaimed.Id" class="loc-item">
-                            @unclaimed.Name
+                    case LocationType.Unclaimed when canChangeTreasury:
+                        <a asp-page="/Unowned/Details" asp-route-id="@loc.Id" class="loc-item">
+                            @loc.Name
                             <span class="ml-1 badge badge-secondary badge-pill"> @hold.Copies </span>
                         </a>
                         break;
 
-                    case Excess excess:
+                    case LocationType.Excess:
                         <a asp-page="/Treasury/Excess" asp-route-cardId="@Model.Card.Id" class="loc-item">
-                            @excess.Name
+                            @loc.Name
                             <span class="ml-1 badge badge-secondary badge-pill"> @hold.Copies </span>
                         </a>
                         break;
 
-                    case Box box:
-                        <a asp-page="/Treasury/Details" asp-route-id="@box.Id" asp-route-cardId="@Model.Card.Id" class="loc-item">
-                            @box.Name
+                    case LocationType.Box:
+                        <a asp-page="/Treasury/Details" asp-route-id="@loc.Id" asp-route-cardId="@Model.Card.Id" class="loc-item">
+                            @loc.Name
                             <span class="ml-1 badge badge-secondary badge-pill"> @hold.Copies </span>
                         </a>
-                        break;
-
-                    case Location location:
-                        <div class="loc-item">
-                            @location.Name
-                            <span class="ml-1 badge badge-secondary badge-pill"> @hold.Copies </span>
-                        </div>
                         break;
 
                     default:
+                        <div class="loc-item">
+                            @loc.Name
+                            <span class="ml-1 badge badge-secondary badge-pill"> @hold.Copies </span>
+                        </div>
                         break;
                 }
             }
         </div>
     </div>
-</secti>
+    <partial name="_SeekPagingPartial" model="(Seek)Model.Locations.Seek"/>
+</section>

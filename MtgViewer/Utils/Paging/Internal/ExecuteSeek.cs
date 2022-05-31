@@ -21,23 +21,23 @@ internal static class ExecuteSeek<TEntity> where TEntity : class
             throw new ArgumentException("Missing seek values", nameof(query));
         }
 
-        (var direction, bool hasOrigin, int? size) = seekInfo;
+        (var direction, bool hasOrigin, int? targetSize) = seekInfo;
 
         var items = await query.ToListAsync(cancel).ConfigureAwait(false);
 
-        bool lookAhead = await GetLookAheadAsync(query, size, cancel).ConfigureAwait(false);
+        bool lookAhead = await GetLookAheadAsync(query, targetSize, cancel).ConfigureAwait(false);
 
-        var seek = new Seek<TEntity>(items, direction, hasOrigin, size, lookAhead);
+        var seek = new Seek<TEntity>(items, direction, hasOrigin, targetSize, lookAhead);
 
         return new SeekList<TEntity>(seek, items);
     }
 
     private static async Task<bool> GetLookAheadAsync(
         IQueryable<TEntity> query,
-        int? size,
+        int? targetSize,
         CancellationToken cancel)
     {
-        if (size is not int s)
+        if (targetSize is not int size)
         {
             return false;
         }
@@ -46,12 +46,12 @@ internal static class ExecuteSeek<TEntity> where TEntity : class
 
         return await query.Provider
             .CreateQuery<TEntity>(withoutOffset)
-            .Skip(s)
+            .Skip(size)
             .AnyAsync(cancel)
             .ConfigureAwait(false);
     }
 
-    private record SeekInfo(SeekDirection Direction, bool HasOrigin, int? Size);
+    private record SeekInfo(SeekDirection Direction, bool HasOrigin, int? TargetSize);
 
     private sealed class GetSeekInfoVisitor : ExpressionVisitor
     {
@@ -98,7 +98,7 @@ internal static class ExecuteSeek<TEntity> where TEntity : class
                 && node.Arguments.ElementAtOrDefault(1) is ConstantExpression { Value: int take })
             {
                 return Expression.Constant(
-                    seekInfo with { Size = take });
+                    seekInfo with { TargetSize = take });
             }
 
             if (method == QueryableMethods.Reverse)

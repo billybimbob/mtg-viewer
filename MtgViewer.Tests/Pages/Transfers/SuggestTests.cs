@@ -168,8 +168,8 @@ public sealed class SuggestTests : IAsyncLifetime, IDisposable
     {
         var card = await _dbContext.Cards.FirstAsync();
 
-        var receiver = await _dbContext.Users
-            .Where(u => u.Id != _userId)
+        var receiver = await _dbContext.Owners
+            .Where(o => o.Id != _userId)
             .FirstAsync();
 
         var cut = _testContext.RenderComponent<Suggest>(p => p
@@ -189,8 +189,8 @@ public sealed class SuggestTests : IAsyncLifetime, IDisposable
     {
         var card = await _dbContext.Cards.FirstAsync();
 
-        var receiver = await _dbContext.Users
-            .Where(u => u.Id != _userId)
+        var receiver = await _dbContext.Owners
+            .Where(o => o.Id != _userId)
             .FirstAsync();
 
         var cut = _testContext.RenderComponent<Suggest>(p => p
@@ -211,8 +211,8 @@ public sealed class SuggestTests : IAsyncLifetime, IDisposable
     {
         var card = await _dbContext.Cards.FirstAsync();
 
-        var receiver = await _dbContext.Users
-            .Where(u => u.Id != _userId)
+        var receiver = await _dbContext.Owners
+            .Where(o => o.Id != _userId)
             .FirstAsync();
 
         await AddExtraReceiverDecksAsync(receiver);
@@ -236,7 +236,7 @@ public sealed class SuggestTests : IAsyncLifetime, IDisposable
         Assert.True(itemsAfter > itemsBefore);
     }
 
-    private async Task AddExtraReceiverDecksAsync(UserRef receiver)
+    private async Task AddExtraReceiverDecksAsync(Owner receiver)
     {
         int receiverDecks = await _dbContext.Decks
             .Where(d => d.OwnerId == receiver.Id)
@@ -264,8 +264,8 @@ public sealed class SuggestTests : IAsyncLifetime, IDisposable
     {
         var card = await _dbContext.Cards.FirstAsync();
 
-        var receiver = await _dbContext.Users
-            .Where(u => u.Id != _userId)
+        var receiver = await _dbContext.Owners
+            .Where(o => o.Id != _userId)
             .FirstAsync();
 
         var cut = _testContext.RenderComponent<Suggest>(p => p
@@ -288,8 +288,8 @@ public sealed class SuggestTests : IAsyncLifetime, IDisposable
     {
         var card = await _dbContext.Cards.FirstAsync();
 
-        var receiver = await _dbContext.Users
-            .Where(u => u.Id != _userId)
+        var receiver = await _dbContext.Owners
+            .Where(o => o.Id != _userId)
             .FirstAsync();
 
         await AddReceiverDeckAsync(receiver);
@@ -317,7 +317,7 @@ public sealed class SuggestTests : IAsyncLifetime, IDisposable
         Assert.Equal(1, suggestionsAfter - suggestionsBefore);
     }
 
-    private async Task AddReceiverDeckAsync(UserRef receiver)
+    private async Task AddReceiverDeckAsync(Owner receiver)
     {
         _dbContext.Decks.Add(new Deck
         {

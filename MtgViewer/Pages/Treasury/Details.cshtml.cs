@@ -27,7 +27,7 @@ public class DetailsModel : PageModel
 
     public BoxPreview Box { get; private set; } = default!;
 
-    public SeekList<QuantityPreview> Cards { get; private set; } = SeekList<QuantityPreview>.Empty;
+    public SeekList<QuantityCardPreview> Cards { get; private set; } = SeekList<QuantityCardPreview>.Empty;
 
     public async Task<IActionResult> OnGetAsync(
         int id,
@@ -97,7 +97,7 @@ public class DetailsModel : PageModel
         int size = _pageSize.Current;
 
         return await BoxCards(box)
-            .WithSelect<Hold, QuantityPreview>()
+            .WithSelect<Hold, QuantityCardPreview>()
             .Before(hold)
             .Select(c => c.Id)
 
@@ -107,7 +107,6 @@ public class DetailsModel : PageModel
     }
 
     private static readonly Func<CardDbContext, string, int, CancellationToken, Task<Hold?>> CardJumpAsync
-
         = EF.CompileAsyncQuery((CardDbContext dbContext, string cardId, int boxId, CancellationToken _) =>
             dbContext.Boxes
                 .SelectMany(b => b.Holds)
@@ -115,7 +114,7 @@ public class DetailsModel : PageModel
                 .OrderBy(h => h.Id)
                 .SingleOrDefault(h => h.LocationId == boxId && h.CardId == cardId));
 
-    private IQueryable<QuantityPreview> BoxCards(BoxPreview box)
+    private IQueryable<QuantityCardPreview> BoxCards(BoxPreview box)
     {
         return _dbContext.Holds
             .Where(h => h.LocationId == box.Id)
@@ -125,7 +124,7 @@ public class DetailsModel : PageModel
                 .ThenBy(h => h.Copies)
                 .ThenBy(h => h.Id)
 
-            .Select(h => new QuantityPreview
+            .Select(h => new QuantityCardPreview
             {
                 Id = h.Id,
                 Copies = h.Copies,

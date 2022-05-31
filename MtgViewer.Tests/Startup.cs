@@ -84,7 +84,7 @@ public class Startup
             .AddScoped(TestFactory.CardSignInManager);
 
         services
-            .AddScoped<ReferenceManager>()
+            .AddScoped<OwnerManager>()
             .AddScoped<IUserClaimsPrincipalFactory<CardUser>, CardUserClaimsPrincipalFactory>()
             .AddAuthorization(options =>
             {

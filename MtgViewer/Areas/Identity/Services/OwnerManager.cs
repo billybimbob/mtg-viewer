@@ -13,18 +13,18 @@ using MtgViewer.Services.Infrastructure;
 
 namespace MtgViewer.Areas.Identity.Services;
 
-public class ReferenceManager
+public class OwnerManager
 {
     private readonly CardDbContext _dbContext;
     private readonly UserManager<CardUser> _userManager;
     private readonly ResetHandler _resetHandler;
-    private readonly ILogger<ReferenceManager> _logger;
+    private readonly ILogger<OwnerManager> _logger;
 
-    public ReferenceManager(
+    public OwnerManager(
         CardDbContext dbContext,
         UserManager<CardUser> userManager,
         ResetHandler resetHandler,
-        ILogger<ReferenceManager> logger)
+        ILogger<OwnerManager> logger)
     {
         _dbContext = dbContext;
         _userManager = userManager;
@@ -32,10 +32,10 @@ public class ReferenceManager
         _logger = logger;
     }
 
-    public IQueryable<UserRef> References =>
-        _dbContext.Users.AsNoTrackingWithIdentityResolution();
+    public IQueryable<Owner> Owners =>
+        _dbContext.Owners.AsNoTrackingWithIdentityResolution();
 
-    public async Task<bool> CreateReferenceAsync(CardUser user, CancellationToken cancel = default)
+    public async Task<bool> CreateAsync(CardUser user, CancellationToken cancel = default)
     {
         bool validUser = await _userManager.Users
             .AnyAsync(u => u.Id == user.Id, cancel);
@@ -45,8 +45,8 @@ public class ReferenceManager
             return false;
         }
 
-        bool existing = await _dbContext.Users
-            .AnyAsync(u => u.Id == user.Id, cancel);
+        bool existing = await _dbContext.Owners
+            .AnyAsync(o => o.Id == user.Id, cancel);
 
         if (existing)
         {
@@ -55,7 +55,7 @@ public class ReferenceManager
 
         try
         {
-            _dbContext.Users.Add(new UserRef(user));
+            _dbContext.Owners.Add(new Owner(user));
 
             await _dbContext.SaveChangesAsync(cancel);
 
@@ -67,7 +67,7 @@ public class ReferenceManager
         }
     }
 
-    public async Task<bool> UpdateReferenceAsync(CardUser user, CancellationToken cancel = default)
+    public async Task<bool> UpdateAsync(CardUser user, CancellationToken cancel = default)
     {
         bool validUser = await _userManager.Users
             .AnyAsync(u => u.Id == user.Id, cancel);
@@ -77,23 +77,23 @@ public class ReferenceManager
             return false;
         }
 
-        var reference = await _dbContext.Users
-            .OrderBy(u => u.Id)
-            .SingleOrDefaultAsync(u => u.Id == user.Id, cancel);
+        var owner = await _dbContext.Owners
+            .OrderBy(o => o.Id)
+            .SingleOrDefaultAsync(o => o.Id == user.Id, cancel);
 
-        if (reference is null)
+        if (owner is null)
         {
             return false;
         }
 
-        if (reference.Name == user.DisplayName)
+        if (owner.Name == user.DisplayName)
         {
             return true;
         }
 
         try
         {
-            reference.Name = user.DisplayName;
+            owner.Name = user.DisplayName;
 
             await _dbContext.SaveChangesAsync(cancel);
 
@@ -107,34 +107,34 @@ public class ReferenceManager
         }
     }
 
-    public async Task<bool> DeleteReferenceAsync(CardUser user, CancellationToken cancel = default)
+    public async Task<bool> DeleteAsync(CardUser user, CancellationToken cancel = default)
     {
-        bool validUser = await _userManager.Users
+        bool isValidUser = await _userManager.Users
             .AnyAsync(u => u.Id == user.Id, cancel);
 
-        if (validUser)
+        if (isValidUser)
         {
             // only delete reference if the actual user is already deleted
             return false;
         }
 
-        var reference = await _dbContext.Users
-            .Include(u => u.Decks)
+        var owner = await _dbContext.Owners
+            .Include(o => o.Decks)
                 .ThenInclude(d => d.Holds)
                 .ThenInclude(h => h.Card)
 
-            .OrderBy(u => u.Id)
+            .OrderBy(o => o.Id)
             .AsSplitQuery()
-            .SingleOrDefaultAsync(u => u.Id == user.Id, cancel);
+            .SingleOrDefaultAsync(o => o.Id == user.Id, cancel);
 
-        if (reference is null)
+        if (owner is null)
         {
             return false;
         }
 
         try
         {
-            await ReturnUserDecksAsync(reference, cancel);
+            await ReturnOwnedDecksAsync(owner, cancel);
 
             await _dbContext.SaveChangesAsync(cancel);
 
@@ -148,23 +148,23 @@ public class ReferenceManager
         }
     }
 
-    private async Task ReturnUserDecksAsync(UserRef reference, CancellationToken cancel)
+    private async Task ReturnOwnedDecksAsync(Owner owner, CancellationToken cancel)
     {
-        if (!reference.Decks.Any())
+        if (!owner.Decks.Any())
         {
-            _dbContext.Users.Remove(reference);
+            _dbContext.Owners.Remove(owner);
             return;
         }
 
-        var userHolds = reference.Decks
+        var ownedHolds = owner.Decks
             .SelectMany(d => d.Holds)
             .ToList();
 
-        _dbContext.Holds.RemoveRange(userHolds);
-        _dbContext.Decks.RemoveRange(reference.Decks);
-        _dbContext.Users.Remove(reference);
+        _dbContext.Holds.RemoveRange(ownedHolds);
+        _dbContext.Decks.RemoveRange(owner.Decks);
+        _dbContext.Owners.Remove(owner);
 
-        var returnRequests = userHolds
+        var returnRequests = ownedHolds
             .GroupBy(h => h.Card,
                 (card, holds) =>
                     new CardRequest(card, holds.Sum(h => h.Copies)));
@@ -172,18 +172,18 @@ public class ReferenceManager
         await _dbContext.AddCardsAsync(returnRequests, cancel);
     }
 
-    public async Task ApplyResetAsync(CancellationToken cancel = default)
+    public async Task ResetAsync(CancellationToken cancel = default)
     {
         var transaction = await _dbContext.Database.BeginTransactionAsync(cancel);
 
         await _resetHandler.ResetAsync(cancel);
 
-        var usersResetting = await _dbContext.Users
-            .Where(u => u.ResetRequested)
+        var resetOwners = await _dbContext.Owners
+            .Where(o => o.ResetRequested)
             .ToListAsync(cancel);
 
-        string[] resettingIds = usersResetting
-            .Select(u => u.Id)
+        string[] resettingIds = resetOwners
+            .Select(o => o.Id)
             .ToArray();
 
         var cardUsers = await _userManager.Users
@@ -196,9 +196,9 @@ public class ReferenceManager
                 cardUser, new Claim(CardClaims.ChangeTreasury, cardUser.Id));
         }
 
-        foreach (var reference in usersResetting)
+        foreach (var owner in resetOwners)
         {
-            reference.ResetRequested = false;
+            owner.ResetRequested = false;
         }
 
         await _dbContext.SaveChangesAsync(cancel);

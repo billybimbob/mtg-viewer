@@ -65,8 +65,8 @@ public class IndexTests : IAsyncLifetime
     [Fact]
     public async Task OnPostClaim_WithUser_AppliesClaim()
     {
-        string userId = await _dbContext.Users
-            .Select(u => u.Id)
+        string userId = await _dbContext.Owners
+            .Select(o => o.Id)
             .FirstAsync();
 
         await _pageFactory.AddPageContextAsync(_detailsModel, userId);
@@ -100,8 +100,8 @@ public class IndexTests : IAsyncLifetime
     [Fact]
     public async Task OnPostRemove_WithUser_NoChange()
     {
-        string userId = await _dbContext.Users
-            .Select(u => u.Id)
+        string userId = await _dbContext.Owners
+            .Select(o => o.Id)
             .FirstAsync();
 
         await _pageFactory.AddPageContextAsync(_detailsModel, userId);

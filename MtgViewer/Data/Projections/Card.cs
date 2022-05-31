@@ -64,13 +64,6 @@ public sealed record CardId
     public string MultiverseId { get; init; } = string.Empty;
 }
 
-public sealed record QuantityPreview
-{
-    public int Id { get; init; }
-    public CardPreview Card { get; init; } = default!;
-    public int Copies { get; init; }
-}
-
 internal sealed record CardCopy
 {
     public CardPreview? Card { get; set; }

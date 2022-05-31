@@ -123,10 +123,10 @@ public class DetailsModel : PageModel
             return NotFound();
         }
 
-        var user = await _dbContext.Users
-            .SingleOrDefaultAsync(u => u.Id == userId, cancel);
+        var owner = await _dbContext.Owners
+            .SingleOrDefaultAsync(o => o.Id == userId, cancel);
 
-        if (user == default)
+        if (owner == default)
         {
             return NotFound();
         }
@@ -145,7 +145,7 @@ public class DetailsModel : PageModel
         var claimed = new Deck
         {
             Name = unclaimed.Name,
-            Owner = user
+            Owner = owner
         };
 
         _dbContext.Decks.Attach(claimed);

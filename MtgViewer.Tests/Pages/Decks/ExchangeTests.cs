@@ -70,7 +70,10 @@ public class ExchangeTests : IAsyncLifetime
     public async Task OnPost_InvalidDeck_NotFound()
     {
         const int invalidDeckId = 0;
-        string validUserId = await _dbContext.Users.Select(u => u.Id).FirstAsync();
+
+        string validUserId = await _dbContext.Owners
+            .Select(o => o.Id)
+            .FirstAsync();
 
         await _pageFactory.AddPageContextAsync(_exchangeModel, validUserId);
 
@@ -86,9 +89,9 @@ public class ExchangeTests : IAsyncLifetime
             .AsNoTracking()
             .FirstAsync();
 
-        string invalidUserId = await _dbContext.Users
-            .Select(u => u.Id)
-            .FirstAsync(uid => uid != deck.OwnerId);
+        string invalidUserId = await _dbContext.Owners
+            .Select(o => o.Id)
+            .FirstAsync(oid => oid != deck.OwnerId);
 
         await _pageFactory.AddPageContextAsync(_exchangeModel, invalidUserId);
 
