@@ -1,9 +1,12 @@
 using System.Text.Encodings.Web;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Options;
-using Xunit;
-using MtgViewer.Areas.Identity.Services;
+
 using Microsoft.AspNetCore.Identity.UI.Services;
+using Microsoft.Extensions.Options;
+
+using Xunit;
+
+using MtgViewer.Areas.Identity.Services;
 
 namespace MtgViewer.Tests.Services;
 

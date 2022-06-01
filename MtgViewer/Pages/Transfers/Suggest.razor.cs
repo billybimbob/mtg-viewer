@@ -515,10 +515,10 @@ public partial class Suggest : OwningComponentBase
         string cardName,
         string proposerId)
     {
-        var nonProposers = dbContext.Owners
-            .Where(o => o.Id != proposerId)
-            .OrderBy(o => o.Name)
-                .ThenBy(o => o.Id);
+        var nonProposers = dbContext.Players
+            .Where(p => p.Id != proposerId)
+            .OrderBy(p => p.Name)
+                .ThenBy(p => p.Id);
 
         var cardSuggests = dbContext.Suggestions
             .Where(s => s.Card.Name == cardName && s.ReceiverId != proposerId);

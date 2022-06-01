@@ -63,9 +63,9 @@ public class IndexTests : IAsyncLifetime
         // Arrange
         var suggestion = await AllSuggestions.FirstAsync();
 
-        string wrongUser = await _dbContext.Owners
-            .Select(o => o.Id)
-            .FirstAsync(oid => oid != suggestion.ReceiverId);
+        string wrongUser = await _dbContext.Players
+            .Select(p => p.Id)
+            .FirstAsync(pid => pid != suggestion.ReceiverId);
 
         await _pageFactory.AddPageContextAsync(_indexModel, wrongUser);
 

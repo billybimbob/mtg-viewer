@@ -13,18 +13,18 @@ using MtgViewer.Services.Infrastructure;
 
 namespace MtgViewer.Areas.Identity.Services;
 
-public class OwnerManager
+public class PlayerManager
 {
     private readonly CardDbContext _dbContext;
     private readonly UserManager<CardUser> _userManager;
     private readonly ResetHandler _resetHandler;
-    private readonly ILogger<OwnerManager> _logger;
+    private readonly ILogger<PlayerManager> _logger;
 
-    public OwnerManager(
+    public PlayerManager(
         CardDbContext dbContext,
         UserManager<CardUser> userManager,
         ResetHandler resetHandler,
-        ILogger<OwnerManager> logger)
+        ILogger<PlayerManager> logger)
     {
         _dbContext = dbContext;
         _userManager = userManager;
@@ -32,8 +32,8 @@ public class OwnerManager
         _logger = logger;
     }
 
-    public IQueryable<Owner> Owners =>
-        _dbContext.Owners.AsNoTrackingWithIdentityResolution();
+    public IQueryable<Player> Players =>
+        _dbContext.Players.AsNoTrackingWithIdentityResolution();
 
     public async Task<bool> CreateAsync(CardUser user, CancellationToken cancel = default)
     {
@@ -45,17 +45,17 @@ public class OwnerManager
             return false;
         }
 
-        bool existing = await _dbContext.Owners
-            .AnyAsync(o => o.Id == user.Id, cancel);
+        bool isExisting = await _dbContext.Players
+            .AnyAsync(p => p.Id == user.Id, cancel);
 
-        if (existing)
+        if (isExisting)
         {
             return false;
         }
 
         try
         {
-            _dbContext.Owners.Add(new Owner(user));
+            _dbContext.Players.Add(new Player(user));
 
             await _dbContext.SaveChangesAsync(cancel);
 
@@ -69,31 +69,31 @@ public class OwnerManager
 
     public async Task<bool> UpdateAsync(CardUser user, CancellationToken cancel = default)
     {
-        bool validUser = await _userManager.Users
+        bool isValidUser = await _userManager.Users
             .AnyAsync(u => u.Id == user.Id, cancel);
 
-        if (!validUser)
+        if (!isValidUser)
         {
             return false;
         }
 
-        var owner = await _dbContext.Owners
-            .OrderBy(o => o.Id)
-            .SingleOrDefaultAsync(o => o.Id == user.Id, cancel);
+        var player = await _dbContext.Players
+            .OrderBy(p => p.Id)
+            .SingleOrDefaultAsync(p => p.Id == user.Id, cancel);
 
-        if (owner is null)
+        if (player is null)
         {
             return false;
         }
 
-        if (owner.Name == user.DisplayName)
+        if (player.Name == user.DisplayName)
         {
             return true;
         }
 
         try
         {
-            owner.Name = user.DisplayName;
+            player.Name = user.DisplayName;
 
             await _dbContext.SaveChangesAsync(cancel);
 
@@ -118,23 +118,23 @@ public class OwnerManager
             return false;
         }
 
-        var owner = await _dbContext.Owners
-            .Include(o => o.Decks)
+        var player = await _dbContext.Players
+            .Include(p => p.Decks)
                 .ThenInclude(d => d.Holds)
                 .ThenInclude(h => h.Card)
 
-            .OrderBy(o => o.Id)
+            .OrderBy(p => p.Id)
             .AsSplitQuery()
-            .SingleOrDefaultAsync(o => o.Id == user.Id, cancel);
+            .SingleOrDefaultAsync(p => p.Id == user.Id, cancel);
 
-        if (owner is null)
+        if (player is null)
         {
             return false;
         }
 
         try
         {
-            await ReturnOwnedDecksAsync(owner, cancel);
+            await ReturnPlayerDecksAsync(player, cancel);
 
             await _dbContext.SaveChangesAsync(cancel);
 
@@ -148,23 +148,23 @@ public class OwnerManager
         }
     }
 
-    private async Task ReturnOwnedDecksAsync(Owner owner, CancellationToken cancel)
+    private async Task ReturnPlayerDecksAsync(Player player, CancellationToken cancel)
     {
-        if (!owner.Decks.Any())
+        if (!player.Decks.Any())
         {
-            _dbContext.Owners.Remove(owner);
+            _dbContext.Players.Remove(player);
             return;
         }
 
-        var ownedHolds = owner.Decks
+        var playerHolds = player.Decks
             .SelectMany(d => d.Holds)
             .ToList();
 
-        _dbContext.Holds.RemoveRange(ownedHolds);
-        _dbContext.Decks.RemoveRange(owner.Decks);
-        _dbContext.Owners.Remove(owner);
+        _dbContext.Holds.RemoveRange(playerHolds);
+        _dbContext.Decks.RemoveRange(player.Decks);
+        _dbContext.Players.Remove(player);
 
-        var returnRequests = ownedHolds
+        var returnRequests = playerHolds
             .GroupBy(h => h.Card,
                 (card, holds) =>
                     new CardRequest(card, holds.Sum(h => h.Copies)));
@@ -178,12 +178,12 @@ public class OwnerManager
 
         await _resetHandler.ResetAsync(cancel);
 
-        var resetOwners = await _dbContext.Owners
-            .Where(o => o.ResetRequested)
+        var resetPlayers = await _dbContext.Players
+            .Where(p => p.ResetRequested)
             .ToListAsync(cancel);
 
-        string[] resettingIds = resetOwners
-            .Select(o => o.Id)
+        string[] resettingIds = resetPlayers
+            .Select(p => p.Id)
             .ToArray();
 
         var cardUsers = await _userManager.Users
@@ -196,9 +196,9 @@ public class OwnerManager
                 cardUser, new Claim(CardClaims.ChangeTreasury, cardUser.Id));
         }
 
-        foreach (var owner in resetOwners)
+        foreach (var player in resetPlayers)
         {
-            owner.ResetRequested = false;
+            player.ResetRequested = false;
         }
 
         await _dbContext.SaveChangesAsync(cancel);

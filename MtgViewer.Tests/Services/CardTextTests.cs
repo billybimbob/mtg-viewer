@@ -1,5 +1,7 @@
 using System.Linq;
+
 using Xunit;
+
 using MtgViewer.Services.Symbols;
 
 namespace MtgViewer.Tests.Services;

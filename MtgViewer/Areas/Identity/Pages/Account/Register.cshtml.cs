@@ -16,18 +16,18 @@ namespace MtgViewer.Areas.Identity.Pages.Account;
 
 public class RegisterModel : PageModel
 {
-    private readonly OwnerManager _ownerManager;
     private readonly UserManager<CardUser> _userManager;
+    private readonly PlayerManager _playerManager;
     private readonly EmailVerification _emailVerify;
     private readonly ILogger<RegisterModel> _logger;
 
     public RegisterModel(
-        OwnerManager ownerManager,
         UserManager<CardUser> userManager,
+        PlayerManager playerManager,
         EmailVerification emailVerify,
         ILogger<RegisterModel> logger)
     {
-        _ownerManager = ownerManager;
+        _playerManager = playerManager;
         _userManager = userManager;
         _emailVerify = emailVerify;
         _logger = logger;
@@ -94,7 +94,7 @@ public class RegisterModel : PageModel
 
         user.Id = userId;
 
-        bool created = await _ownerManager.CreateAsync(user, cancel);
+        bool created = await _playerManager.CreateAsync(user, cancel);
 
         if (!created)
         {

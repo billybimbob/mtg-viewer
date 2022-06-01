@@ -171,7 +171,7 @@ public class TestCardService : ICardService
     {
         await AddCardResultsAsync(cancel);
 
-        // convert to IAsyncEnemerable to allow access to linq functions
+        // convert to IAsyncEnumerable to allow access to linq functions
 
         foreach (var card in _cards)
         {

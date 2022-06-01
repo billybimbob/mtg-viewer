@@ -71,8 +71,8 @@ public class ExchangeTests : IAsyncLifetime
     {
         const int invalidDeckId = 0;
 
-        string validUserId = await _dbContext.Owners
-            .Select(o => o.Id)
+        string validUserId = await _dbContext.Players
+            .Select(p => p.Id)
             .FirstAsync();
 
         await _pageFactory.AddPageContextAsync(_exchangeModel, validUserId);
@@ -89,9 +89,9 @@ public class ExchangeTests : IAsyncLifetime
             .AsNoTracking()
             .FirstAsync();
 
-        string invalidUserId = await _dbContext.Owners
-            .Select(o => o.Id)
-            .FirstAsync(oid => oid != deck.OwnerId);
+        string invalidUserId = await _dbContext.Players
+            .Select(p => p.Id)
+            .FirstAsync(pid => pid != deck.OwnerId);
 
         await _pageFactory.AddPageContextAsync(_exchangeModel, invalidUserId);
 

@@ -1,10 +1,11 @@
 using System;
 using System.Collections.Immutable;
-using System.Threading.Tasks;
 using System.Security.Claims;
+using System.Threading.Tasks;
 
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Identity;
 
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
@@ -14,7 +15,6 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 
-using Microsoft.AspNetCore.Identity;
 using Moq;
 
 using MtgViewer.Areas.Identity.Data;

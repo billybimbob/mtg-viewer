@@ -21,7 +21,7 @@ public class ResetModel : PageModel
 {
     private readonly CardDbContext _dbContext;
 
-    private readonly OwnerManager _ownerManager;
+    private readonly PlayerManager _playerManager;
     private readonly UserManager<CardUser> _userManager;
     private readonly SignInManager<CardUser> _signManager;
 
@@ -29,13 +29,13 @@ public class ResetModel : PageModel
 
     public ResetModel(
         CardDbContext dbContext,
-        OwnerManager ownerManager,
+        PlayerManager playerManager,
         UserManager<CardUser> userManager,
         SignInManager<CardUser> signInManager,
         ILogger<ResetModel> logger)
     {
         _dbContext = dbContext;
-        _ownerManager = ownerManager;
+        _playerManager = playerManager;
         _userManager = userManager;
         _signManager = signInManager;
         _logger = logger;
@@ -59,16 +59,16 @@ public class ResetModel : PageModel
 
         ResetRequested = await IsResetRequestedAsync.Invoke(_dbContext, userId, cancel);
 
-        Remaining = await _dbContext.Owners.CountAsync(o => !o.ResetRequested, cancel);
+        Remaining = await _dbContext.Players.CountAsync(p => !p.ResetRequested, cancel);
 
         return Page();
     }
 
     private static readonly Func<CardDbContext, string, CancellationToken, Task<bool>> IsResetRequestedAsync
         = EF.CompileAsyncQuery((CardDbContext dbContext, string userId, CancellationToken _) =>
-            dbContext.Owners
-                .Where(o => o.Id == userId)
-                .Select(o => o.ResetRequested)
+            dbContext.Players
+                .Where(p => p.Id == userId)
+                .Select(p => p.ResetRequested)
                 .SingleOrDefault());
 
     public async Task<IActionResult> OnPostAsync(CancellationToken cancel)
@@ -80,42 +80,48 @@ public class ResetModel : PageModel
             return NotFound();
         }
 
-        var owner = await _dbContext.Owners
-            .SingleOrDefaultAsync(o => o.Id == userId, cancel);
+        var player = await _dbContext.Players
+            .SingleOrDefaultAsync(p => p.Id == userId, cancel);
 
-        if (owner == default)
+        if (player == default)
         {
             return NotFound();
         }
 
-        if (owner.ResetRequested)
+        if (player.ResetRequested)
         {
-            await CancelRequestAsync(owner, cancel);
+            await CancelRequestAsync(player, cancel);
         }
         else
         {
-            await ApplyRequestAsync(owner, cancel);
+            await ApplyRequestAsync(player, cancel);
         }
 
         return RedirectToPage("Index");
     }
 
-    private async Task CancelRequestAsync(Owner owner, CancellationToken cancel)
+    private async Task CancelRequestAsync(Player player, CancellationToken cancel)
     {
-        if (!owner.ResetRequested)
+        if (!player.ResetRequested)
         {
             throw new InvalidOperationException("User should have reset request active");
         }
 
+        var user = await _userManager.GetUserAsync(User);
+
+        if (player.Id != user.Id)
+        {
+            throw new InvalidOperationException(
+                "Player id did not match the currently signed in user");
+        }
+
         try
         {
-            var cardUser = await _userManager.GetUserAsync(User);
-
-            owner.ResetRequested = false;
+            player.ResetRequested = false;
 
             await _dbContext.SaveChangesAsync(cancel);
 
-            await _signManager.RefreshSignInAsync(cardUser);
+            await _signManager.RefreshSignInAsync(user);
 
             PostMessage = "Successfully canceled reset request";
         }
@@ -127,45 +133,51 @@ public class ResetModel : PageModel
         }
     }
 
-    private async Task ApplyRequestAsync(Owner owner, CancellationToken cancel)
+    private async Task ApplyRequestAsync(Player player, CancellationToken cancel)
     {
-        if (owner.ResetRequested)
+        if (player.ResetRequested)
         {
             throw new InvalidOperationException("User should not have reset requested");
         }
 
-        bool areAllRequested = await _dbContext.Owners
-            .Where(o => o.Id != owner.Id)
-            .AllAsync(o => o.ResetRequested, cancel);
+        var user = await _userManager.GetUserAsync(User);
+
+        if (player.Id != user.Id)
+        {
+            throw new InvalidOperationException(
+                "Player id did not match the currently signed in user");
+        }
 
         try
         {
+            bool areAllRequested = await _dbContext.Players
+                .Where(p => p.Id != player.Id)
+                .AllAsync(p => p.ResetRequested, cancel);
+
             if (areAllRequested)
             {
-                await _ownerManager.ResetAsync(cancel);
+                await _playerManager.ResetAsync(cancel);
                 return;
             }
 
-            var cardUser = await _userManager.GetUserAsync(User);
-
             var suggestions = await _dbContext.Suggestions
-                .Where(s => s.ReceiverId == owner.Id)
+                .Where(s => s.ReceiverId == player.Id)
                 .ToListAsync(cancel);
 
             var trades = await _dbContext.Trades
-                .Where(t => t.To.OwnerId == owner.Id || t.From.OwnerId == owner.Id)
+                .Where(t => t.To.OwnerId == player.Id || t.From.OwnerId == player.Id)
                 .ToListAsync(cancel);
 
-            owner.ResetRequested = true;
+            player.ResetRequested = true;
 
             _dbContext.Suggestions.RemoveRange(suggestions);
             _dbContext.Trades.RemoveRange(trades);
 
             await _dbContext.SaveChangesAsync(cancel);
 
-            await _signManager.RefreshSignInAsync(cardUser);
+            await _signManager.RefreshSignInAsync(user);
 
-            int remaining = await _dbContext.Owners.CountAsync(o => !o.ResetRequested, cancel);
+            int remaining = await _dbContext.Players.CountAsync(p => !p.ResetRequested, cancel);
 
             PostMessage = $"Reset request applied, but waiting on {remaining} more users to apply the reset";
         }

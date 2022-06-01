@@ -16,19 +16,19 @@ public readonly struct Seek
     public object? Next { get; }
     public bool IsMissing { get; }
 
-    public Seek(object after, SeekDirection direction, bool isMissing)
+    public Seek(object origin, SeekDirection direction, bool isMissing)
     {
-        ArgumentNullException.ThrowIfNull(after);
+        ArgumentNullException.ThrowIfNull(origin);
 
         if (direction is SeekDirection.Forward)
         {
-            Previous = null;
-            Next = after;
+            Previous = origin;
+            Next = null;
         }
         else
         {
-            Previous = after;
-            Next = null;
+            Previous = null;
+            Next = origin;
         }
 
         IsMissing = isMissing;
@@ -51,19 +51,19 @@ public readonly struct Seek<T> where T : class
     public T? Next { get; }
     public bool IsMissing { get; }
 
-    public Seek(T after, SeekDirection direction, bool isMissing)
+    public Seek(T origin, SeekDirection direction, bool isMissing)
     {
-        ArgumentNullException.ThrowIfNull(after);
+        ArgumentNullException.ThrowIfNull(origin);
 
         if (direction is SeekDirection.Forward)
         {
-            Previous = default;
-            Next = after;
+            Previous = origin;
+            Next = null;
         }
         else
         {
-            Previous = after;
-            Next = default;
+            Previous = null;
+            Next = origin;
         }
 
         IsMissing = isMissing;

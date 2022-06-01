@@ -6,13 +6,13 @@ using MtgViewer.Areas.Identity.Data;
 
 namespace MtgViewer.Data;
 
-public class Owner
+public class Player
 {
     [JsonConstructor]
-    public Owner()
+    public Player()
     { }
 
-    public Owner(CardUser user)
+    public Player(CardUser user)
     {
         Id = user.Id;
         Name = user.DisplayName;

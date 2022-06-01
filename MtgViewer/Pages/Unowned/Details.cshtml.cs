@@ -123,8 +123,8 @@ public class DetailsModel : PageModel
             return NotFound();
         }
 
-        var owner = await _dbContext.Owners
-            .SingleOrDefaultAsync(o => o.Id == userId, cancel);
+        var owner = await _dbContext.Players
+            .SingleOrDefaultAsync(p => p.Id == userId, cancel);
 
         if (owner == default)
         {

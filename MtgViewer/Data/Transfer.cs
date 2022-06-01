@@ -20,7 +20,7 @@ public class Suggestion
     public string ReceiverId { get; init; } = default!;
 
     [Display(Name = "Sent To")]
-    public Owner Receiver { get; init; } = default!;
+    public Player Receiver { get; init; } = default!;
 
     [JsonIgnore]
     public int? ToId { get; init; }

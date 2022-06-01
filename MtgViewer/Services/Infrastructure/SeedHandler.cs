@@ -43,7 +43,7 @@ public class SeedHandler
     {
         await using var dbContext = await _dbFactory.CreateDbContextAsync(cancel);
 
-        dbContext.Owners.AddRange(data.Owners);
+        dbContext.Players.AddRange(data.Players);
         dbContext.Cards.AddRange(data.Cards);
 
         // ignore card ids, just assume it will be empty

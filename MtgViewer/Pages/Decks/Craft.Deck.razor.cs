@@ -78,8 +78,8 @@ public partial class Craft
             return;
         }
 
-        bool userExists = await dbContext.Owners
-            .AnyAsync(o => o.Id == userId, _cancel.Token);
+        bool userExists = await dbContext.Players
+            .AnyAsync(p => p.Id == userId, _cancel.Token);
 
         if (!userExists)
         {

@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+
 using Xunit;
 
 using MtgViewer.Data;
@@ -48,8 +49,8 @@ public class ExportTests : IAsyncLifetime
     [Fact]
     public async Task OnPost_UserData_File()
     {
-        string userId = await _dbContext.Owners
-            .Select(o => o.Id)
+        string userId = await _dbContext.Players
+            .Select(p => p.Id)
             .FirstAsync();
 
         await _pageContext.AddPageContextAsync(_exportModel, userId);
@@ -64,8 +65,8 @@ public class ExportTests : IAsyncLifetime
     [Fact]
     public async Task OnPost_TreasuryData_File()
     {
-        string userId = await _dbContext.Owners
-            .Select(o => o.Id)
+        string userId = await _dbContext.Players
+            .Select(p => p.Id)
             .FirstAsync();
 
         await _pageContext.AddPageContextAsync(_exportModel, userId);
@@ -80,8 +81,8 @@ public class ExportTests : IAsyncLifetime
     [Fact]
     public async Task OnPost_CompleteData_File()
     {
-        string userId = await _dbContext.Owners
-            .Select(o => o.Id)
+        string userId = await _dbContext.Players
+            .Select(p => p.Id)
             .FirstAsync();
 
         await _pageContext.AddPageContextAsync(_exportModel, userId);

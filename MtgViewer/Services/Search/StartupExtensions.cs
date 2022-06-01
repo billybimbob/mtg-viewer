@@ -8,7 +8,7 @@ public static partial class StartupExtensions
 {
     public static IServiceCollection AddMtgQueries(this IServiceCollection services)
     {
-        _ = services
+        services
             .AddSingleton<IMtgServiceProvider, MtgServiceProvider>()
             .AddScoped(provider => provider
                 .GetRequiredService<IMtgServiceProvider>()

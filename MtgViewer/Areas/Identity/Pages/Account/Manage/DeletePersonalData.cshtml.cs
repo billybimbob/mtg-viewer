@@ -16,18 +16,18 @@ namespace MtgViewer.Areas.Identity.Pages.Account.Manage;
 
 public class DeletePersonalDataModel : PageModel
 {
-    private readonly OwnerManager _ownerManager;
+    private readonly PlayerManager _playerManager;
     private readonly UserManager<CardUser> _userManager;
     private readonly SignInManager<CardUser> _signInManager;
     private readonly ILogger<DeletePersonalDataModel> _logger;
 
     public DeletePersonalDataModel(
-        OwnerManager referenceManager,
+        PlayerManager playerManager,
         UserManager<CardUser> userManager,
         SignInManager<CardUser> signInManager,
         ILogger<DeletePersonalDataModel> logger)
     {
-        _ownerManager = referenceManager;
+        _playerManager = playerManager;
         _userManager = userManager;
         _signInManager = signInManager;
         _logger = logger;
@@ -94,7 +94,7 @@ public class DeletePersonalDataModel : PageModel
             return Page();
         }
 
-        bool ownerDeleted = await _ownerManager.DeleteAsync(user, cancel);
+        bool ownerDeleted = await _playerManager.DeleteAsync(user, cancel);
         if (!ownerDeleted)
         {
             ModelState.AddModelError(string.Empty, "Failed to delete the user");
@@ -112,9 +112,9 @@ public class DeletePersonalDataModel : PageModel
 
     private async Task<bool> CheckAndApplyResetAsync(string userId, CancellationToken cancel)
     {
-        bool areAllRequested = await _ownerManager.Owners
-            .Where(o => o.Id != userId)
-            .AllAsync(o => o.ResetRequested, cancel);
+        bool areAllRequested = await _playerManager.Players
+            .Where(p => p.Id != userId)
+            .AllAsync(p => p.ResetRequested, cancel);
 
         if (!areAllRequested)
         {
@@ -123,7 +123,7 @@ public class DeletePersonalDataModel : PageModel
 
         try
         {
-            await _ownerManager.ResetAsync(cancel);
+            await _playerManager.ResetAsync(cancel);
 
             return true;
         }

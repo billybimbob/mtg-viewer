@@ -14,7 +14,7 @@ namespace MtgViewer.Services.Infrastructure;
 public sealed class CardStream
 {
     public IAsyncEnumerable<CardUser> Users { get; set; } = AsyncEnumerable.Empty<CardUser>();
-    public IAsyncEnumerable<Owner> Owners { get; set; } = AsyncEnumerable.Empty<Owner>();
+    public IAsyncEnumerable<Player> Players { get; set; } = AsyncEnumerable.Empty<Player>();
 
     public IAsyncEnumerable<CardId> CardIds { get; set; } = AsyncEnumerable.Empty<CardId>();
     public IAsyncEnumerable<Card> Cards { get; set; } = AsyncEnumerable.Empty<Card>();
@@ -244,8 +244,8 @@ public sealed class CardStream
                 .OrderBy(u => u.Id)
                 .AsAsyncEnumerable(),
 
-            Owners = dbContext.Owners
-                .OrderBy(o => o.Id)
+            Players = dbContext.Players
+                .OrderBy(p => p.Id)
                 .AsAsyncEnumerable(),
 
             Cards = dbContext.Cards

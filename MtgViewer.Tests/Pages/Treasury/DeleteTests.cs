@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+
 using Xunit;
 
 using MtgViewer.Data;

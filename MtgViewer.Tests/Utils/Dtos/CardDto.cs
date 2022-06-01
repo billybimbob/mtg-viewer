@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
+
 using MtgApiManager.Lib.Model;
 
 namespace MtgViewer.Tests.Utils.Dtos;

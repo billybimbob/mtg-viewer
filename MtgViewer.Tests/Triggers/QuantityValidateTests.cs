@@ -3,13 +3,14 @@ using System.Threading.Tasks;
 
 using Microsoft.EntityFrameworkCore;
 using EntityFrameworkCore.Triggered;
+
 using Moq;
 using Xunit;
 
 using MtgViewer.Data;
-using MtgViewer.Triggers;
 using MtgViewer.Services;
 using MtgViewer.Tests.Utils;
+using MtgViewer.Triggers;
 
 namespace MtgViewer.Tests.Triggers;
 

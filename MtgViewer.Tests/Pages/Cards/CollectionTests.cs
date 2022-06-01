@@ -1,10 +1,13 @@
 using System;
 using System.Globalization;
 using System.Threading.Tasks;
+
+using Microsoft.Extensions.DependencyInjection;
+
 using Bunit;
 using Bunit.TestDoubles;
 using Xunit;
-using Microsoft.Extensions.DependencyInjection;
+
 using MtgViewer.Data;
 using MtgViewer.Pages.Cards;
 using MtgViewer.Tests.Utils;

@@ -84,7 +84,7 @@ public class Startup
             .AddScoped(TestFactory.CardSignInManager);
 
         services
-            .AddScoped<OwnerManager>()
+            .AddScoped<PlayerManager>()
             .AddScoped<IUserClaimsPrincipalFactory<CardUser>, CardUserClaimsPrincipalFactory>()
             .AddAuthorization(options =>
             {
@@ -99,19 +99,10 @@ public class Startup
             .AddSingleton<ParseTextFilter>();
 
         services
+            .AddMtgQueries()
             .Configure<CardResultOptions>(config.GetSection(nameof(CardResultOptions)))
             .AddSingleton<TestCardService>()
             .AddScoped<TestMtgApiQuery>();
-
-        services
-            .AddSingleton<IMtgServiceProvider, MtgServiceProvider>()
-            .AddScoped(provider => provider
-                .GetRequiredService<IMtgServiceProvider>()
-                .GetCardService());
-
-        services
-            .AddScoped<IMtgQuery, MtgApiQuery>()
-            .AddScoped<MtgApiFlipQuery>();
 
         services
             .AddSingleton<ParseTextFilter>()

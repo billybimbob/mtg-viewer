@@ -13,17 +13,17 @@ namespace MtgViewer.Areas.Identity.Services
 {
     public class CardUserClaimsPrincipalFactory : UserClaimsPrincipalFactory<CardUser>
     {
-        private readonly OwnerManager _ownerManager;
+        private readonly PlayerManager _playerManager;
         private readonly ILogger<CardUserClaimsPrincipalFactory> _logger;
 
         public CardUserClaimsPrincipalFactory(
             UserManager<CardUser> userManager,
-            OwnerManager ownerManager,
+            PlayerManager playerManager,
             ILogger<CardUserClaimsPrincipalFactory> logger,
             IOptions<IdentityOptions> options)
             : base(userManager, options)
         {
-            _ownerManager = ownerManager;
+            _playerManager = playerManager;
             _logger = logger;
         }
 
@@ -31,33 +31,33 @@ namespace MtgViewer.Areas.Identity.Services
         {
             var id = await base.GenerateClaimsAsync(user);
 
-            var owner = await _ownerManager.Owners
-                .OrderBy(o => o.Id)
-                .SingleOrDefaultAsync(o => o.Id == user.Id);
+            var player = await _playerManager.Players
+                .OrderBy(p => p.Id)
+                .SingleOrDefaultAsync(p => p.Id == user.Id);
 
-            if (owner == default)
+            if (player == default)
             {
                 // reference is missing, add a new reference
 
-                await GenerateNewOwnerAsync(user, id);
+                await GenerateNewPlayerAsync(user, id);
                 return id;
             }
 
-            id.AddClaim(new Claim(CardClaims.DisplayName, owner.Name));
+            id.AddClaim(new Claim(CardClaims.DisplayName, player.Name));
 
-            if (!owner.ResetRequested)
+            if (!player.ResetRequested)
             {
-                id.AddClaim(new Claim(CardClaims.ChangeTreasury, owner.Id));
+                id.AddClaim(new Claim(CardClaims.ChangeTreasury, player.Id));
             }
 
             return id;
         }
 
-        private async Task GenerateNewOwnerAsync(CardUser user, ClaimsIdentity id)
+        private async Task GenerateNewPlayerAsync(CardUser user, ClaimsIdentity id)
         {
             try
             {
-                await _ownerManager.CreateAsync(user);
+                await _playerManager.CreateAsync(user);
 
                 id.AddClaim(new Claim(CardClaims.DisplayName, user.DisplayName));
                 id.AddClaim(new Claim(CardClaims.ChangeTreasury, user.Id));

@@ -12,16 +12,16 @@ namespace MtgViewer.Areas.Identity.Pages.Account.Manage;
 
 public class IndexModel : PageModel
 {
-    private readonly OwnerManager _referenceManager;
+    private readonly PlayerManager _playerManager;
     private readonly UserManager<CardUser> _userManager;
     private readonly SignInManager<CardUser> _signInManager;
 
     public IndexModel(
-        OwnerManager referenceManager,
+        PlayerManager playerManager,
         UserManager<CardUser> userManager,
         SignInManager<CardUser> signInManager)
     {
-        _referenceManager = referenceManager;
+        _playerManager = playerManager;
         _userManager = userManager;
         _signInManager = signInManager;
     }
@@ -85,7 +85,7 @@ public class IndexModel : PageModel
             return Page();
         }
 
-        bool refUpdated = await _referenceManager.UpdateAsync(user);
+        bool refUpdated = await _playerManager.UpdateAsync(user);
         if (!refUpdated)
         {
             ModelState.AddModelError(string.Empty, "Ran into issue updating name");

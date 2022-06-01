@@ -46,7 +46,7 @@ public static partial class StartupExtensions
             .AddDataProtection()
             .PersistKeysToDbContext<UserDbContext>();
 
-        services.AddScoped<OwnerManager>();
+        services.AddScoped<PlayerManager>();
 
         services
             .Configure<AuthMessageSenderOptions>(config)

@@ -1,4 +1,5 @@
 using Xunit;
+
 using MtgViewer.Services;
 
 namespace MtgViewer.Tests.Services;

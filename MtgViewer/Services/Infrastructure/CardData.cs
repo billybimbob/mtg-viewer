@@ -15,7 +15,7 @@ namespace MtgViewer.Services.Infrastructure;
 public sealed class CardData
 {
     public IReadOnlyList<CardUser> Users { get; set; } = Array.Empty<CardUser>();
-    public IReadOnlyList<Owner> Owners { get; set; } = Array.Empty<Owner>();
+    public IReadOnlyList<Player> Players { get; set; } = Array.Empty<Player>();
 
     public IReadOnlyList<CardId> CardIds { get; set; } = Array.Empty<CardId>();
     public IReadOnlyList<Card> Cards { get; set; } = Array.Empty<Card>();
@@ -39,7 +39,7 @@ public sealed class CardData
                 .ToListAsync(cancel)
                 .ConfigureAwait(false),
 
-            Owners = await stream.Owners
+            Players = await stream.Players
                 .ToListAsync(cancel)
                 .ConfigureAwait(false),
 

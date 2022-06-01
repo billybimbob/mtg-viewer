@@ -1,7 +1,9 @@
 using System.Linq;
 using System.Threading.Tasks;
+
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+
 using Xunit;
 
 using MtgViewer.Areas.Identity.Data;
@@ -11,21 +13,21 @@ using MtgViewer.Tests.Utils;
 
 namespace MtgViewer.Tests.Services;
 
-public class OwnerManagerTests : IAsyncLifetime
+public class PlayerManagerTests : IAsyncLifetime
 {
     private readonly UserManager<CardUser> _userManager;
-    private readonly OwnerManager _ownerManager;
+    private readonly PlayerManager _playerManager;
     private readonly CardDbContext _dbContext;
     private readonly TestDataGenerator _testGen;
 
-    public OwnerManagerTests(
+    public PlayerManagerTests(
         UserManager<CardUser> userManager,
-        OwnerManager referenceManager,
+        PlayerManager playerManager,
         CardDbContext dbContext,
         TestDataGenerator testGen)
     {
         _userManager = userManager;
-        _ownerManager = referenceManager;
+        _playerManager = playerManager;
         _dbContext = dbContext;
         _testGen = testGen;
     }
@@ -49,19 +51,19 @@ public class OwnerManagerTests : IAsyncLifetime
         var result = await _userManager.CreateAsync(newUser);
         string? userId = await _userManager.GetUserIdAsync(newUser);
 
-        bool ownersBefore = await _dbContext.Owners
-            .AnyAsync(o => o.Id == userId);
+        bool playersBefore = await _dbContext.Players
+            .AnyAsync(p => p.Id == userId);
 
-        bool success = await _ownerManager.CreateAsync(newUser);
+        bool success = await _playerManager.CreateAsync(newUser);
 
-        bool ownersAfter = await _dbContext.Owners
-            .AnyAsync(o => o.Id == userId);
+        bool playersAfter = await _dbContext.Players
+            .AnyAsync(p => p.Id == userId);
 
         Assert.True(result.Succeeded);
-        Assert.False(ownersBefore);
+        Assert.False(playersBefore);
 
         Assert.True(success);
-        Assert.True(ownersAfter);
+        Assert.True(playersAfter);
     }
 
     [Fact]
@@ -79,22 +81,22 @@ public class OwnerManagerTests : IAsyncLifetime
         var result = await _userManager.CreateAsync(newUser);
         string? userId = await _userManager.GetUserIdAsync(newUser);
 
-        bool firstCreate = await _ownerManager.CreateAsync(newUser);
+        bool firstCreate = await _playerManager.CreateAsync(newUser);
 
-        bool ownersBefore = await _dbContext.Owners
-            .AnyAsync(o => o.Id == userId);
+        bool playersBefore = await _dbContext.Players
+            .AnyAsync(p => p.Id == userId);
 
-        bool secondCreate = await _ownerManager.CreateAsync(newUser);
+        bool secondCreate = await _playerManager.CreateAsync(newUser);
 
-        bool ownersAfter = await _dbContext.Owners
-            .AnyAsync(o => o.Id == userId);
+        bool playersAfter = await _dbContext.Players
+            .AnyAsync(p => p.Id == userId);
 
         Assert.True(firstCreate);
         Assert.True(result.Succeeded);
 
-        Assert.True(ownersBefore);
+        Assert.True(playersBefore);
         Assert.False(secondCreate);
-        Assert.True(ownersAfter);
+        Assert.True(playersAfter);
     }
 
     [Fact]
@@ -111,17 +113,17 @@ public class OwnerManagerTests : IAsyncLifetime
 
         string? userId = await _userManager.GetUserIdAsync(newUser);
 
-        bool ownersBefore = await _dbContext.Owners
-            .AnyAsync(o => o.Id == userId);
+        bool playersBefore = await _dbContext.Players
+            .AnyAsync(p => p.Id == userId);
 
-        bool success = await _ownerManager.CreateAsync(newUser);
+        bool success = await _playerManager.CreateAsync(newUser);
 
-        bool ownerAfters = await _dbContext.Owners
-            .AnyAsync(o => o.Id == userId);
+        bool playersAfter = await _dbContext.Players
+            .AnyAsync(p => p.Id == userId);
 
-        Assert.False(ownersBefore);
+        Assert.False(playersBefore);
         Assert.False(success);
-        Assert.False(ownerAfters);
+        Assert.False(playersAfter);
     }
 
     [Fact]
@@ -129,20 +131,20 @@ public class OwnerManagerTests : IAsyncLifetime
     {
         var user = await _userManager.Users.FirstAsync();
 
-        string oldName = await _dbContext.Owners
-            .Where(o => o.Id == user.Id)
-            .Select(o => o.Name)
+        string oldName = await _dbContext.Players
+            .Where(p => p.Id == user.Id)
+            .Select(p => p.Name)
             .FirstAsync();
 
         user.DisplayName = "This is a new name";
 
         var result = await _userManager.UpdateAsync(user);
 
-        bool success = await _ownerManager.UpdateAsync(user);
+        bool success = await _playerManager.UpdateAsync(user);
 
-        string newName = await _dbContext.Owners
-            .Where(o => o.Id == user.Id)
-            .Select(o => o.Name)
+        string newName = await _dbContext.Players
+            .Where(p => p.Id == user.Id)
+            .Select(p => p.Name)
             .FirstAsync();
 
         Assert.NotEqual(oldName, user.DisplayName);
@@ -157,16 +159,16 @@ public class OwnerManagerTests : IAsyncLifetime
     {
         var user = await _userManager.Users.FirstAsync();
 
-        string oldName = await _dbContext.Owners
-            .Where(o => o.Id == user.Id)
-            .Select(o => o.Name)
+        string oldName = await _dbContext.Players
+            .Where(p => p.Id == user.Id)
+            .Select(p => p.Name)
             .FirstAsync();
 
-        bool success = await _ownerManager.UpdateAsync(user);
+        bool success = await _playerManager.UpdateAsync(user);
 
-        string newName = await _dbContext.Owners
-            .Where(o => o.Id == user.Id)
-            .Select(o => o.Name)
+        string newName = await _dbContext.Players
+            .Where(p => p.Id == user.Id)
+            .Select(p => p.Name)
             .FirstAsync();
 
         Assert.Equal(oldName, newName);
@@ -179,9 +181,13 @@ public class OwnerManagerTests : IAsyncLifetime
     {
         var user = await _userManager.Users.FirstAsync();
 
-        bool beforeDelete = await _dbContext.Owners.AnyAsync(o => o.Id == user.Id);
-        bool success = await _ownerManager.DeleteAsync(user);
-        bool afterDelete = await _dbContext.Owners.AnyAsync(o => o.Id == user.Id);
+        bool beforeDelete = await _dbContext.Players
+            .AnyAsync(p => p.Id == user.Id);
+
+        bool success = await _playerManager.DeleteAsync(user);
+
+        bool afterDelete = await _dbContext.Players
+            .AnyAsync(p => p.Id == user.Id);
 
         Assert.True(beforeDelete);
         Assert.False(success);
@@ -194,9 +200,13 @@ public class OwnerManagerTests : IAsyncLifetime
         var user = await _userManager.Users.FirstAsync();
         var result = await _userManager.DeleteAsync(user);
 
-        bool beforeDelete = await _dbContext.Owners.AnyAsync(o => o.Id == user.Id);
-        bool success = await _ownerManager.DeleteAsync(user);
-        bool afterDelete = await _dbContext.Owners.AnyAsync(o => o.Id == user.Id);
+        bool beforeDelete = await _dbContext.Players
+            .AnyAsync(p => p.Id == user.Id);
+
+        bool success = await _playerManager.DeleteAsync(user);
+
+        bool afterDelete = await _dbContext.Players
+            .AnyAsync(p => p.Id == user.Id);
 
         Assert.True(result.Succeeded);
 
@@ -210,10 +220,10 @@ public class OwnerManagerTests : IAsyncLifetime
     {
         var user = await _userManager.Users.FirstAsync();
 
-        var owner = await _ownerManager.Owners
-            .FirstAsync(o => o.Id == user.Id);
+        var player = await _playerManager.Players
+            .FirstAsync(p => p.Id == user.Id);
 
-        await _testGen.AddUserCardsAsync(owner);
+        await _testGen.AddPlayerCardsAsync(player);
 
         int userCards = await _dbContext.Holds
             .Where(h => h.Location is Deck
@@ -226,9 +236,13 @@ public class OwnerManagerTests : IAsyncLifetime
 
         var result = await _userManager.DeleteAsync(user);
 
-        bool beforeDelete = await _dbContext.Owners.AnyAsync(o => o.Id == user.Id);
-        bool success = await _ownerManager.DeleteAsync(user);
-        bool afterDelete = await _dbContext.Owners.AnyAsync(o => o.Id == user.Id);
+        bool beforeDelete = await _dbContext.Players
+            .AnyAsync(p => p.Id == user.Id);
+
+        bool success = await _playerManager.DeleteAsync(user);
+
+        bool afterDelete = await _dbContext.Players
+            .AnyAsync(p => p.Id == user.Id);
 
         int treasuryAfter = await _dbContext.Holds
             .Where(h => h.Location is Box)
@@ -246,11 +260,11 @@ public class OwnerManagerTests : IAsyncLifetime
     [Fact]
     public async Task Reset_AllResetting_CardsEmpty()
     {
-        var allOwners = _dbContext.Owners.AsAsyncEnumerable();
+        var allPlayers = _dbContext.Players.AsAsyncEnumerable();
 
-        await foreach (var owner in allOwners)
+        await foreach (var player in allPlayers)
         {
-            owner.ResetRequested = true;
+            player.ResetRequested = true;
         }
 
         await _dbContext.SaveChangesAsync();
@@ -261,7 +275,7 @@ public class OwnerManagerTests : IAsyncLifetime
         bool decksExistBefore = await _dbContext.Decks.AnyAsync();
         bool boxesExistBefore = await _dbContext.Boxes.AnyAsync();
 
-        await _ownerManager.ResetAsync();
+        await _playerManager.ResetAsync();
 
         bool cardsExistAfter = await _dbContext.Cards.AnyAsync();
         bool decksExistAfter = await _dbContext.Decks.AnyAsync();

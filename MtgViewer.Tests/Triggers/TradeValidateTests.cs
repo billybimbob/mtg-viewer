@@ -3,12 +3,13 @@ using System.Threading.Tasks;
 
 using Microsoft.EntityFrameworkCore;
 using EntityFrameworkCore.Triggered;
+
 using Moq;
 using Xunit;
 
 using MtgViewer.Data;
-using MtgViewer.Triggers;
 using MtgViewer.Tests.Utils;
+using MtgViewer.Triggers;
 
 namespace MtgViewer.Tests.Triggers;
 
@@ -70,15 +71,15 @@ public class TradeValidateTests : IAsyncLifetime
     {
         var card = await _dbContext.Cards.FirstAsync();
 
-        var owners = await _dbContext.Owners
+        var players = await _dbContext.Players
             .Take(2)
             .ToListAsync();
 
         var newTrade = new Trade
         {
             Card = card,
-            To = new Deck { Name = "To Deck", Owner = owners[0] },
-            From = new Deck { Name = "From Deck", Owner = owners[1] }
+            To = new Deck { Name = "To Deck", Owner = players[0] },
+            From = new Deck { Name = "From Deck", Owner = players[1] }
         };
 
         bool sameTargetIds = newTrade.To.Id == newTrade.From.Id;
