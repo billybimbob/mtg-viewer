@@ -14,16 +14,16 @@ using MtgViewer.Data;
 using MtgViewer.Data.Projections;
 using MtgViewer.Services;
 
-namespace MtgViewer.Pages.Decks;
+namespace MtgViewer.Pages.Players;
 
 [Authorize]
-public class IndexModel : PageModel
+public class DetailsModel : PageModel
 {
     private readonly UserManager<CardUser> _userManager;
     private readonly CardDbContext _dbContext;
     private readonly PageSize _pageSize;
 
-    public IndexModel(
+    public DetailsModel(
         UserManager<CardUser> userManager,
         CardDbContext dbContext,
         PageSize pageSize)
@@ -33,16 +33,12 @@ public class IndexModel : PageModel
         _pageSize = pageSize;
     }
 
-    [TempData]
-    public string? PostMessage { get; set; }
-
-    public string UserName { get; private set; } = string.Empty;
+    public PlayerPreview Player { get; private set; } = default!;
 
     public SeekList<DeckPreview> Decks { get; private set; } = SeekList<DeckPreview>.Empty;
 
-    public bool HasUnclaimed { get; private set; }
-
     public async Task<IActionResult> OnGetAsync(
+        string id,
         int? seek,
         SeekDirection direction,
         CancellationToken cancel)
@@ -54,20 +50,21 @@ public class IndexModel : PageModel
             return Challenge();
         }
 
-        string? userName = _userManager.GetDisplayName(User);
-
-        if (userName is null)
+        if (userId == id)
         {
-            return NotFound();
+            return RedirectToPage("/Decks/Index");
         }
 
-        var decks = await DeckPreviews(userId)
-            .SeekBy(seek, direction)
-            .OrderBy<Deck>()
-            .Take(_pageSize.Current)
-            .ToSeekListAsync(cancel);
+        var player = await GetPlayerAsync(id, cancel);
 
-        if (!decks.Any() && seek is not null)
+        if (player is null)
+        {
+            return RedirectToPage("Index");
+        }
+
+        Decks = await GetDecksAsync(player, seek, direction, cancel);
+
+        if (!Decks.Any() && seek is not null)
         {
             return RedirectToPage(new
             {
@@ -76,17 +73,31 @@ public class IndexModel : PageModel
             });
         }
 
-        UserName = userName;
-        Decks = decks;
-        HasUnclaimed = await _dbContext.Unclaimed.AnyAsync(cancel);
+        Player = player;
 
         return Page();
     }
 
-    private IQueryable<DeckPreview> DeckPreviews(string userId)
+    private async Task<PlayerPreview?> GetPlayerAsync(string playerId, CancellationToken cancel)
     {
-        return _dbContext.Decks
-            .Where(d => d.OwnerId == userId)
+        return await _dbContext.Players
+            .Where(p => p.Id == playerId)
+            .Select(p => new PlayerPreview
+            {
+                Id = p.Id,
+                Name = p.Name
+            })
+            .SingleOrDefaultAsync(cancel);
+    }
+
+    private async Task<SeekList<DeckPreview>> GetDecksAsync(
+        PlayerPreview player,
+        int? seek,
+        SeekDirection direction,
+        CancellationToken cancel)
+    {
+        return await _dbContext.Decks
+            .Where(d => d.OwnerId == player.Id)
 
             .OrderBy(d => d.Name)
                 .ThenBy(d => d.Id)
@@ -101,7 +112,12 @@ public class IndexModel : PageModel
                 WantCopies = d.Wants.Sum(w => w.Copies),
 
                 HasReturns = d.Givebacks.Any(),
-                HasTrades = d.TradesTo.Any(),
-            });
+            })
+
+            .SeekBy(seek, direction)
+            .OrderBy<Deck>()
+            .Take(_pageSize.Current)
+
+            .ToSeekListAsync(cancel);
     }
 }

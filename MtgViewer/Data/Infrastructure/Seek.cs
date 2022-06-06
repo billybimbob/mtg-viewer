@@ -22,8 +22,8 @@ public readonly record struct SeekDto<T>(T? Previous, T? Next, bool IsMissing)
         return dto switch
         {
             (T p, T n, _) => new Seek<T>(p, n),
-            (T p, null, bool m) => new Seek<T>(p, SeekDirection.Backwards, m),
-            (null, T n, bool m) => new Seek<T>(n, SeekDirection.Forward, m),
+            (T p, null, bool m) => new Seek<T>(p, SeekDirection.Forward, m),
+            (null, T n, bool m) => new Seek<T>(n, SeekDirection.Backwards, m),
             (null, null, false) => new Seek<T>(),
             _ => throw new InvalidCastException("Cannot convert to a valid seek")
         };

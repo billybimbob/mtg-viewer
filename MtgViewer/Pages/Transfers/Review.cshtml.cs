@@ -107,7 +107,7 @@ public class ReviewModel : PageModel
                     Name = d.Name,
                     Color = d.Color,
 
-                    Owner = new OwnerPreview
+                    Owner = new PlayerPreview
                     {
                         Id = d.OwnerId,
                         Name = d.Owner.Name
@@ -162,7 +162,7 @@ public class ReviewModel : PageModel
                     Name = t.To.Name,
                     Color = t.To.Color,
 
-                    Owner = new OwnerPreview
+                    Owner = new PlayerPreview
                     {
                         Id = t.To.OwnerId,
                         Name = t.To.Owner.Name

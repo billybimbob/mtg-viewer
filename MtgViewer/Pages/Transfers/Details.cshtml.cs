@@ -98,7 +98,7 @@ public class DetailsModel : PageModel
                     Name = d.Name,
                     Color = d.Color,
 
-                    Owner = new OwnerPreview
+                    Owner = new PlayerPreview
                     {
                         Id = d.OwnerId,
                         Name = d.Owner.Name
@@ -152,7 +152,7 @@ public class DetailsModel : PageModel
                         Name = t.From.Name,
                         Color = t.From.Color,
 
-                        Owner = new OwnerPreview
+                        Owner = new PlayerPreview
                         {
                             Id = t.From.OwnerId,
                             Name = t.From.Owner.Name

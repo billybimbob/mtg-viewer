@@ -1,0 +1,58 @@
+@page "{id}"
+@model Players.DetailsModel
+@{
+    ViewData["Title"] = $"Decks for {Model.Player.Name}";
+}
+
+@inject SymbolFormatter MtgSymbols
+@inject CardText CardText
+
+<h1> Decks for @Model.Player.Name </h1>
+
+<div class="btn-group mb-3">
+    <a asp-page="Index" role="button" class="btn btn-secondary"> All Players </a>
+</div>
+
+<div class="table-responsive-md">
+    <table class="table">
+        <thead>
+            <tr>
+                <th scope="col"> @Html.DisplayNameForInnerType((Deck d) => d.Name) </th>
+                <th scope="col"> @Html.DisplayNameForInnerType((Deck d) => d.Color) </th>
+                <th scope="col"> Held Cards </th>
+                <th scope="col"> Wanted Cards </th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (!Model.Decks.Any())
+            {
+                <tr>
+                    <td> -- </td>
+                    <td> -- </td>
+                    <td> -- </td>
+                    <td> -- </td>
+                </tr>
+            }
+            @foreach (var deck in Model.Decks)
+            {
+                <tr>
+                    <td>
+                        <a asp-page="/Decks/Details" asp-route-id="@deck.Id">
+                            @deck.Name </a>
+                    </td>
+
+                    <td>
+                        <div class="ms-group">
+                            @MtgSymbols.Format(CardText.ColorString(deck.Color)).ToHtmlString()
+                        </div>
+                    </td>
+
+                    <td> @deck.HeldCopies </td>
+                    <td> @deck.WantCopies </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+<partial name="_SeekPagingPartial" model="(Seek)Model.Decks.Seek"/>

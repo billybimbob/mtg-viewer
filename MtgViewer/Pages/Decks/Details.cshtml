@@ -33,13 +33,13 @@
             Mulligan </a>
     }
 
-    <a asp-page="/Transactions/Index" asp-route-id="@Model.Deck.Id"
-        class="btn btn-secondary" role="button">
-        History </a>
-
     <a asp-page="/Cards/Statistics" asp-route-id="@Model.Deck.Id"
         class="btn btn-secondary" role="button">
         Statistics </a>
+
+    <a asp-page="/Transactions/Index" asp-route-id="@Model.Deck.Id"
+        class="btn btn-secondary" role="button">
+        History </a>
 
     @if (Model.IsOwner && canChangeTreasury)
     {

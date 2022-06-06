@@ -10,7 +10,7 @@ public sealed class SuggestionDto
 {
     public CardImage? Card { get; set; }
 
-    public UserPreview? Receiver { get; set; }
+    public PlayerPreview? Receiver { get; set; }
 
     [Display(Name = "Suggest To A Specific Deck")]
     public DeckPreview? To { get; set; }

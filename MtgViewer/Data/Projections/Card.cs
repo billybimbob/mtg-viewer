@@ -2,6 +2,8 @@ namespace MtgViewer.Data.Projections;
 
 public sealed record HeldCard(Card Card, int Copies);
 
+#region Card Previews
+
 public sealed record CardImage
 {
     public string Id { get; init; } = string.Empty;
@@ -33,6 +35,10 @@ public sealed record DeckCopy : LocationCopy
     public int Returning { get; init; }
 }
 
+#endregion
+
+#region Card Links
+
 public record CardLink
 {
     public string Id { get; init; } = string.Empty;
@@ -57,6 +63,8 @@ public sealed record DeckLink : LocationLink
     public int Want { get; init; }
     public int Returning { get; init; }
 }
+
+#endregion
 
 public sealed record CardId
 {

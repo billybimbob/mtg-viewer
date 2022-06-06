@@ -1,0 +1,38 @@
+@page
+@model Players.IndexModel
+@{
+    ViewData["Title"] = "Player Decks";
+}
+
+<h1> Player Decks </h1>
+
+<div class="table-responsive-md">
+    <table class="table">
+        <thead>
+            <tr>
+                <th scope="col"> @Html.DisplayNameForInnerType((Player p) => p.Name) </th>
+                <th scope="col"> Number of Decks </th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (!Model.Players.Any())
+            {
+                <tr>
+                    <td> -- </td>
+                    <td> -- </td>
+                </tr>
+            }
+            @foreach (var player in Model.Players)
+            {
+                <tr>
+                    <td>
+                        <a asp-page="Details" asp-route-id="@player.Id"> @player.Name </a>
+                    </td>
+                    <td> @player.TotalDecks </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+<partial name="_SeekPagingPartial" model="(Seek)Model.Players.Seek"/>

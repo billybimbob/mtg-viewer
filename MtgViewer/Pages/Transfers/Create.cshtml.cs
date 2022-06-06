@@ -110,7 +110,7 @@ public class CreateModel : PageModel
                     Name = d.Name,
                     Color = d.Color,
 
-                    Owner = new OwnerPreview
+                    Owner = new PlayerPreview
                     {
                         Id = d.OwnerId,
                         Name = d.Owner.Name

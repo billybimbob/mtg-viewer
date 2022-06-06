@@ -8,7 +8,6 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
-using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Identity;
 
 using Microsoft.EntityFrameworkCore;
@@ -59,11 +58,14 @@ public partial class Suggest : OwningComponentBase
 
     private readonly CancellationTokenSource _cancel = new();
 
-    private readonly List<UserPreview> _userOptions = new();
+    private readonly List<PlayerPreview> _playerOptions = new();
     private readonly List<DeckPreview> _deckOptions = new();
-    private int _maxDeckCount;
+
+    private int _totalPlayers;
+    private int _totalDecks;
 
     private PersistingComponentStateSubscription _persistSubscription;
+
     private bool _isBusy;
     private bool _isInteractive;
 
@@ -90,11 +92,6 @@ public partial class Suggest : OwningComponentBase
                     Nav.GetUriWithQueryParameter(nameof(ReceiverId), null as string), replace: true);
                 return;
             }
-
-            if (_isInteractive)
-            {
-                await LoadUsersAsync(dbContext);
-            }
         }
         catch (OperationCanceledException ex)
         {
@@ -110,26 +107,11 @@ public partial class Suggest : OwningComponentBase
         }
     }
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    protected override void OnAfterRender(bool firstRender)
     {
-        if (!firstRender)
+        if (firstRender)
         {
-            return;
-        }
-
-        _isBusy = true;
-
-        try
-        {
-            await using var dbContext = await DbFactory.CreateDbContextAsync(_cancel.Token);
-
-            await LoadUsersAsync(dbContext);
-
             _isInteractive = true;
-        }
-        finally
-        {
-            _isBusy = false;
 
             StateHasChanged();
         }
@@ -151,12 +133,13 @@ public partial class Suggest : OwningComponentBase
     private Task PersistSuggestionData()
     {
         ApplicationState.PersistAsJson(nameof(Suggestion.Card), Suggestion.Card);
-
         ApplicationState.PersistAsJson(nameof(Suggestion.Receiver), Suggestion.Receiver);
 
+        ApplicationState.PersistAsJson(nameof(_playerOptions), _playerOptions);
         ApplicationState.PersistAsJson(nameof(_deckOptions), _deckOptions);
 
-        ApplicationState.PersistAsJson(nameof(_maxDeckCount), _maxDeckCount);
+        ApplicationState.PersistAsJson(nameof(_totalPlayers), _totalPlayers);
+        ApplicationState.PersistAsJson(nameof(_totalDecks), _totalDecks);
 
         return Task.CompletedTask;
     }
@@ -200,7 +183,15 @@ public partial class Suggest : OwningComponentBase
             return false;
         }
 
-        if (await LoadReceiverAsync(dbContext, cardName) is false)
+        if (await GetUserIdAsync() is not string proposerId)
+        {
+            Logger.LogError("User is missing");
+            return false;
+        }
+
+        await LoadPlayersAsync(dbContext, cardName, proposerId);
+
+        if (await LoadReceiverAsync(dbContext, cardName, proposerId) is false)
         {
             return false;
         }
@@ -209,16 +200,35 @@ public partial class Suggest : OwningComponentBase
         {
             await LoadDecksAsync(dbContext, cardName, receiverId);
         }
-        else
-        {
-            _userOptions.Clear(); // refresh users
-            _deckOptions.Clear();
-        }
 
         return true;
     }
 
-    private async Task<bool> LoadReceiverAsync(CardDbContext dbContext, string cardName)
+    private async Task LoadPlayersAsync(CardDbContext dbContext, string cardName, string proposerId)
+    {
+        if (ReceiverId is not null)
+        {
+            return;
+        }
+
+        if (!ApplicationState.TryGetData(nameof(_totalPlayers), out _totalPlayers))
+        {
+            _totalPlayers = await PossibleReceivers(dbContext, cardName, proposerId)
+                .CountAsync(_cancel.Token);
+        }
+
+        _playerOptions.Clear();
+
+        if (ApplicationState.TryGetData(nameof(_playerOptions), out IReadOnlyList<PlayerPreview>? players))
+        {
+            _playerOptions.AddRange(players);
+            return;
+        }
+
+        await LoadMorePlayersAsync(dbContext, cardName, proposerId);
+    }
+
+    private async Task<bool> LoadReceiverAsync(CardDbContext dbContext, string cardName, string proposerId)
     {
         if (Suggestion.Receiver?.Id == ReceiverId)
         {
@@ -231,22 +241,16 @@ public partial class Suggest : OwningComponentBase
             return true;
         }
 
-        if (ApplicationState.TryGetData(nameof(Suggestion.Receiver), out UserPreview? receiver))
-        {
-            Suggestion.Receiver = receiver;
-            return true;
-        }
-
-        if (await GetUserIdAsync() is not string proposerId)
-        {
-            Logger.LogError("User is missing");
-            return false;
-        }
-
         if (proposerId == ReceiverId)
         {
             Logger.LogError("Specified receiver is the same as the current user");
             return false;
+        }
+
+        if (ApplicationState.TryGetData(nameof(Suggestion.Receiver), out PlayerPreview? receiver))
+        {
+            Suggestion.Receiver = receiver;
+            return true;
         }
 
         Suggestion.Receiver = await PossibleReceivers(dbContext, cardName, proposerId)
@@ -261,6 +265,25 @@ public partial class Suggest : OwningComponentBase
         return true;
     }
 
+    private async Task LoadDecksAsync(CardDbContext dbContext, string cardName, string receiverId)
+    {
+        if (!ApplicationState.TryGetData(nameof(_totalDecks), out _totalDecks))
+        {
+            _totalDecks = await ReceiverDecks(dbContext, cardName, receiverId)
+                .CountAsync(_cancel.Token);
+        }
+
+        _deckOptions.Clear();
+
+        if (ApplicationState.TryGetData(nameof(_deckOptions), out IReadOnlyList<DeckPreview>? decks))
+        {
+            _deckOptions.AddRange(decks);
+            return;
+        }
+
+        await LoadMoreDecksAsync(dbContext, cardName, receiverId);
+    }
+
     private async ValueTask<string?> GetUserIdAsync()
     {
         var authState = await AuthState;
@@ -272,71 +295,26 @@ public partial class Suggest : OwningComponentBase
         return userManager.GetUserId(authState.User);
     }
 
-    private async Task LoadDecksAsync(CardDbContext dbContext, string cardName, string receiverId)
-    {
-        if (_deckOptions.Any())
-        {
-            return;
-        }
-
-        if (!ApplicationState.TryGetData(nameof(_maxDeckCount), out _maxDeckCount))
-        {
-            _maxDeckCount = await ReceiverDecks(dbContext, cardName, receiverId)
-                .CountAsync(_cancel.Token);
-        }
-
-        if (ApplicationState.TryGetData(nameof(_deckOptions), out IReadOnlyList<DeckPreview>? decks))
-        {
-            _deckOptions.AddRange(decks);
-            return;
-        }
-
-        await LoadMoreDecksAsync(dbContext, cardName, receiverId);
-    }
-
-    private async Task LoadUsersAsync(CardDbContext dbContext)
-    {
-        if (_userOptions.Any())
-        {
-            return;
-        }
-
-        if (Suggestion.Card?.Name is not string cardName)
-        {
-            Logger.LogError("Suggested card is missing");
-            return;
-        }
-
-        if (await GetUserIdAsync() is not string proposerId)
-        {
-            Logger.LogError("User is missing");
-            return;
-        }
-
-        var dbUsers = PossibleReceivers(dbContext, cardName, proposerId)
-            .AsAsyncEnumerable()
-            .WithCancellation(_cancel.Token);
-
-        await foreach (var user in dbUsers)
-        {
-            _userOptions.Add(user);
-        }
-    }
-
     #region View Properties
 
     internal bool IsLoading => _isBusy || !_isInteractive;
 
-    internal bool AllDecksLoaded => _deckOptions.Count >= _maxDeckCount;
+    internal bool AllDecksLoaded => _deckOptions.Count >= _totalDecks;
+
+    internal bool AllPlayersLoaded => _playerOptions.Count >= _totalPlayers;
 
     internal bool HasDetails => ToId is not null;
 
-    internal bool IsMissingUsers => this is
+    internal bool IsMissingPlayers => this is
     {
         IsLoading: false,
         Suggestion.Card: not null,
-        _userOptions.Count: 0
+        _playerOptions.Count: 0
     };
+
+    internal IReadOnlyList<DeckPreview> DeckOptions => _deckOptions;
+
+    internal IReadOnlyList<PlayerPreview> PlayerOptions => _playerOptions;
 
     internal int? ToId
     {
@@ -344,13 +322,9 @@ public partial class Suggest : OwningComponentBase
         set => Suggestion.To = _deckOptions.SingleOrDefault(d => d.Id == value);
     }
 
-    internal IReadOnlyList<DeckPreview> DeckOptions => _deckOptions;
-
-    internal IReadOnlyList<UserPreview> UserOptions => _userOptions;
-
     #endregion
 
-    internal void ChangeReceiver(ChangeEventArgs args)
+    internal void ChangeReceiver(string? receiverId)
     {
         if (_isBusy)
         {
@@ -359,15 +333,13 @@ public partial class Suggest : OwningComponentBase
 
         _isBusy = true;
 
-        string? receiverId = args.Value?.ToString();
-
         // triggers on ParameterSet, where IsBusy set to false
 
         Nav.NavigateTo(
             Nav.GetUriWithQueryParameter(nameof(ReceiverId), receiverId));
     }
 
-    internal void ChangeReceiver(MouseEventArgs args) => ChangeReceiver(new ChangeEventArgs());
+    internal void ChangeReceiver() => ChangeReceiver(null);
 
     internal void ViewDeckDetails()
     {
@@ -377,8 +349,6 @@ public partial class Suggest : OwningComponentBase
         }
 
         _isBusy = true;
-
-        // triggers on ParameterSet, where IsBusy set to false
 
         Nav.NavigateTo($"/Decks/Details/{deckId}", forceLoad: true);
     }
@@ -429,6 +399,61 @@ public partial class Suggest : OwningComponentBase
         await foreach (var deck in decks)
         {
             _deckOptions.Add(deck);
+        }
+    }
+
+    private async Task LoadMorePlayersAsync()
+    {
+        if (_isBusy)
+        {
+            return;
+        }
+
+        if (Suggestion.Card?.Name is not string name)
+        {
+            return;
+        }
+
+        _isBusy = true;
+
+        try
+        {
+            if (await GetUserIdAsync() is not string id)
+            {
+                Logger.LogError("User is missing");
+                return;
+            }
+
+            await using var dbContext = await DbFactory.CreateDbContextAsync(_cancel.Token);
+
+            await LoadMorePlayersAsync(dbContext, name, id);
+        }
+        catch (OperationCanceledException ex)
+        {
+            Logger.LogWarning("{Error}", ex);
+        }
+        finally
+        {
+            _isBusy = false;
+        }
+    }
+
+    private async Task LoadMorePlayersAsync(CardDbContext dbContext, string cardName, string proposerId)
+    {
+        if (AllPlayersLoaded)
+        {
+            return;
+        }
+
+        var players = PossibleReceivers(dbContext, cardName, proposerId)
+            .Skip(_playerOptions.Count)
+            .Take(PageSize.Current)
+            .AsAsyncEnumerable()
+            .WithCancellation(_cancel.Token);
+
+        await foreach (var player in players)
+        {
+            _playerOptions.Add(player);
         }
     }
 
@@ -510,7 +535,7 @@ public partial class Suggest : OwningComponentBase
             });
     }
 
-    private static IQueryable<UserPreview> PossibleReceivers(
+    private static IQueryable<PlayerPreview> PossibleReceivers(
         CardDbContext dbContext,
         string cardName,
         string proposerId)
@@ -534,7 +559,7 @@ public partial class Suggest : OwningComponentBase
                 (uss, Suggest) => new { uss.User, Suggest })
 
             .Where(us => us.Suggest == default)
-            .Select(us => new UserPreview
+            .Select(us => new PlayerPreview
             {
                 Id = us.User.Id,
                 Name = us.User.Name

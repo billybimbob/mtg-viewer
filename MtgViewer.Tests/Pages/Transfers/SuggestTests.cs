@@ -175,13 +175,15 @@ public sealed class SuggestTests : IAsyncLifetime, IDisposable
         var cut = _testContext.RenderComponent<Suggest>(p => p
             .Add(s => s.CardId, card.Id));
 
-        var chooseUser = cut.WaitForElement("select[title=\"Suggest to User\"]:not([disabled])");
+        var chooseUser = cut.WaitForElement("button.list-group-item");
 
         var nav = _testContext.Services.GetRequiredService<FakeNavigationManager>();
 
-        chooseUser.Change(receiver.Id);
+        string oldUri = nav.Uri;
 
-        Assert.Contains(receiver.Id, nav.Uri);
+        chooseUser.Click();
+
+        Assert.NotEqual(oldUri, nav.Uri);
     }
 
     [Fact]

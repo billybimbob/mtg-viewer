@@ -141,11 +141,6 @@ public class StatisticsModel : PageModel
 
             .ToListAsync(cancel);
 
-        return Enum
-            .GetValues<Color>()
-            .Select(GetColorCopies)
-            .ToDictionary(cc => cc.Color, cc => cc.Copies);
-
         ColorCopies GetColorCopies(Color color)
         {
             int copies = color is Color.None
@@ -159,6 +154,11 @@ public class StatisticsModel : PageModel
 
             return new ColorCopies(color, copies);
         }
+
+        return Enum
+            .GetValues<Color>()
+            .Select(GetColorCopies)
+            .ToDictionary(cc => cc.Color, cc => cc.Copies);
     }
 
     private async Task<IReadOnlyDictionary<string, int>> GetTypesAsync(int deckId, CancellationToken cancel)

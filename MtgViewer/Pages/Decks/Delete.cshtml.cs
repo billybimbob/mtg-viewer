@@ -36,7 +36,7 @@ public class DeleteModel : PageModel
     }
 
     [TempData]
-    public string? PostMesssage { get; set; }
+    public string? PostMessage { get; set; }
 
     public DeckDetails Deck { get; private set; } = default!;
 
@@ -79,7 +79,7 @@ public class DeleteModel : PageModel
                     Name = d.Name,
                     Color = d.Color,
 
-                    Owner = new OwnerPreview
+                    Owner = new PlayerPreview
                     {
                         Id = d.OwnerId,
                         Name = d.Owner.Name
@@ -175,11 +175,11 @@ public class DeleteModel : PageModel
         {
             await _dbContext.SaveChangesAsync(cancel);
 
-            PostMesssage = $"Successfully deleted {deck.Name}";
+            PostMessage = $"Successfully deleted {deck.Name}";
         }
         catch (DbUpdateException)
         {
-            PostMesssage = $"Ran into issue while trying to delete {deck.Name}";
+            PostMessage = $"Ran into issue while trying to delete {deck.Name}";
         }
 
         if (returnUrl is not null)

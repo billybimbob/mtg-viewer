@@ -42,7 +42,7 @@ public sealed class TheoryColors
 public sealed record DeckDetails
 {
     public int Id { get; init; }
-    public OwnerPreview Owner { get; init; } = default!;
+    public PlayerPreview Owner { get; init; } = default!;
 
     public string Name { get; init; } = string.Empty;
     public Color Color { get; init; }
@@ -52,12 +52,6 @@ public sealed record DeckDetails
     public int ReturnCopies { get; init; }
 
     public bool HasTrades { get; init; }
-}
-
-public sealed record OwnerPreview
-{
-    public string Id { get; init; } = string.Empty;
-    public string Name { get; init; } = string.Empty;
 }
 
 public sealed record UnclaimedDetails

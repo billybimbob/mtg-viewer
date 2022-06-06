@@ -9,7 +9,7 @@
 
 @switch ((Suggestion.Card, Suggestion.Receiver))
 {
-    case (CardImage card, UserPreview receiver):
+    case (CardImage card, PlayerPreview receiver):
         <PageTitle> @card.Name - Suggest @receiver.Name </PageTitle>
         <h1>
             Suggest
@@ -23,8 +23,8 @@
         break;
 
     default:
-        <PageTitle> Suggest Card To User </PageTitle>
-        <h1> Suggest Card to User </h1>
+        <PageTitle> Suggest Card To Player </PageTitle>
+        <h1> Suggest Card to Player </h1>
         break;
 }
 
@@ -90,9 +90,9 @@
         <div class="col-12">
             <div class="btn-group" role="group">
                 <button class="btn btn-secondary" type="button"
-                    title="Choose A Different User"
+                    title="Choose A Different Player"
                     @onclick="ChangeReceiver" disabled="@IsLoading">
-                    Pick User
+                    Pick Player
                 </button>
 
                 <button class="btn btn-secondary" type="button"
@@ -123,10 +123,10 @@
 }
 else if (Suggestion.Card is CardImage card)
 {
-    @if (IsMissingUsers)
+    @if (IsMissingPlayers)
     {
         <div class="alert alert-warning" role="alert">
-            There are no users to suggest @card.Name to.
+            There are no Players to suggest @card.Name to.
         </div>
     }
 
@@ -137,10 +137,10 @@ else if (Suggestion.Card is CardImage card)
 
         <div class="col-lg-8 col-md-6 col-12 pt-md-2">
             <section class="row">
-                <h4 class="col-12"> Send To User </h4>
+                <h4 class="col-12"> Send To Player </h4>
 
                 <div class="col-lg-9 col-12">
-                    <p> Suggestions can be used to message deck building ideas to other users.
+                    <p> Suggestions can be used to message deck building ideas to other Players.
                         They also do not have any effect on held copies. </p>
                 </div>
 
@@ -148,19 +148,33 @@ else if (Suggestion.Card is CardImage card)
                     <label for="SuggestionDto.PropertyId(s => s.Receiver)" hidden>
                         @Suggestion.DisplayName(s => s.Receiver) </label>
 
-                    <select @onchange="ChangeReceiver"
-                        disabled="@IsLoading" title="Suggest to User"
-                        id="@SuggestionDto.PropertyId(s => s.Receiver)" class="form-control">
+                    <div id="@SuggestionDto.PropertyId(s => s.Receiver)"
+                        title="Suggest to Player"
+                        class="list-group list-group-flush">
 
-                        <option value="@(null as string)" selected="@(ReceiverId == null)">
-                            Choose a User </option>
-
-                        @foreach (var user in UserOptions)
+                        @foreach (var player in PlayerOptions)
                         {
-                            <option value="@user.Id" selected="@(user.Id == ReceiverId)">
-                                @user.Name </option>
+                            <button type="button" title="Pick @player.Name"
+                                class="list-group-item list-group-item-action"
+                                @onclick="() => ChangeReceiver(player.Id)">
+                                @player.Name
+                            </button>
                         }
-                    </select>
+                    </div>
+                </div>
+
+                <div class="col-12">
+                    <div class="btn-group">
+                        <button class="btn btn-secondary" type="button"
+                            title="Load More Players"
+                            @onclick="LoadMorePlayersAsync" disabled="@(IsLoading || AllPlayersLoaded)">
+                            Load More
+                            @if (IsLoading)
+                            {
+                                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"> </span>
+                            }
+                        </button>
+                    </div>
                 </div>
             </section>
         </div>
