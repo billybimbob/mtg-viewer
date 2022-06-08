@@ -6,7 +6,7 @@ using System.Reflection;
 
 using Microsoft.EntityFrameworkCore.Query;
 
-namespace System.Paging.Query;
+namespace EntityFrameworkCore.Paging.Query;
 
 internal static class OriginFilter
 {

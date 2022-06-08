@@ -1,10 +1,11 @@
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 
-namespace System.Paging.Query;
+namespace EntityFrameworkCore.Paging.Query;
 
 internal static class ExpressionHelpers
 {

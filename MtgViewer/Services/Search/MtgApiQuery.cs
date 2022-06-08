@@ -2,10 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
-using System.Paging;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
+
+using EntityFrameworkCore.Paging;
 
 using MtgApiManager.Lib.Service;
 

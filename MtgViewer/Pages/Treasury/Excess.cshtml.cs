@@ -1,7 +1,8 @@
 using System.Linq;
-using System.Paging;
 using System.Threading;
 using System.Threading.Tasks;
+
+using EntityFrameworkCore.Paging;
 
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;

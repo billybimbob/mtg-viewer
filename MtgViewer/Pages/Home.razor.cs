@@ -139,7 +139,6 @@ public sealed partial class Home : ComponentBase, IDisposable
         return await ShuffleOrderAsync
             .Invoke(dbContext, PageSize.Current)
             .ToListAsync(_cancel.Token);
-
     }
 
     private async Task LoadRandomCardsAsync(CardDbContext dbContext)

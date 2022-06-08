@@ -1,7 +1,8 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 
-namespace System.Paging;
+namespace EntityFrameworkCore.Paging;
 
 public readonly record struct Offset(int Current, int Total)
 {

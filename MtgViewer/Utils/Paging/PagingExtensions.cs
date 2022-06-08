@@ -3,13 +3,14 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
-using System.Paging.Query;
 using System.Threading;
 using System.Threading.Tasks;
 
 using Microsoft.EntityFrameworkCore;
 
-namespace System.Paging;
+using EntityFrameworkCore.Paging.Query;
+
+namespace EntityFrameworkCore.Paging;
 
 public static class PagingExtensions
 {

@@ -1,7 +1,7 @@
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace System.Paging.Query;
+namespace EntityFrameworkCore.Paging;
 
 public interface ISeekable<TEntity> where TEntity : class
 {

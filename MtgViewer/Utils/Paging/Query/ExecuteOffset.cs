@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Threading;
@@ -6,7 +7,7 @@ using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Query;
 
-namespace System.Paging.Query;
+namespace EntityFrameworkCore.Paging.Query;
 
 internal static class ExecuteOffset<TEntity>
 {

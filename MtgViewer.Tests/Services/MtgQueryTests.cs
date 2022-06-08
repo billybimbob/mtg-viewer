@@ -1,6 +1,8 @@
 using System.Linq;
 using System.Threading.Tasks;
+
 using Xunit;
+
 using MtgApiManager.Lib.Model;
 using MtgViewer.Tests.Utils;
 

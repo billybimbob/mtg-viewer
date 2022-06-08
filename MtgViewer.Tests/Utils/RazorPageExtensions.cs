@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -17,7 +18,7 @@ public static class RazorPageExtensions
         return collection;
     }
 
-    private static IEnumerable<System.Type> GetPageModels()
+    private static IEnumerable<Type> GetPageModels()
     {
         var mtgViewerRef = typeof(MtgViewer.App);
         var pageModel = typeof(PageModel);

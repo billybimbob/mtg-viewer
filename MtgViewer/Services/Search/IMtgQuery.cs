@@ -1,9 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Linq.Expressions;
-using System.Paging;
 using System.Threading;
 using System.Threading.Tasks;
+
+using EntityFrameworkCore.Paging;
 
 using MtgViewer.Data;
 

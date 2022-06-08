@@ -1,5 +1,6 @@
 using System;
-using System.Paging;
+
+using EntityFrameworkCore.Paging;
 
 namespace MtgViewer.Data.Infrastructure;
 

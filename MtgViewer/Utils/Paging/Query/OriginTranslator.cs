@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
@@ -5,7 +6,7 @@ using System.Reflection;
 
 using Microsoft.EntityFrameworkCore.Query;
 
-namespace System.Paging.Query;
+namespace EntityFrameworkCore.Paging.Query;
 
 internal sealed class OriginTranslator<TOrigin, TEntity>
 {

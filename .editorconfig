@@ -22,8 +22,6 @@ trim_trailing_whitespace = true
 indent_size = 4
 insert_final_newline = true
 
-dotnet_analyzer_diagnostic.category-Style.severity = warning
-
 dotnet_sort_system_directives_first = true
 dotnet_separate_import_directive_groups = true
 
@@ -86,6 +84,9 @@ end_of_line = lf
 charset = utf-8-bom
 
 [*.{cs,vb}]
+
+# Default severity for analyzer diagnostics with category 'Style' (escalated to build warnings)
+dotnet_analyzer_diagnostic.category-Style.severity = warning
 
 # CA1018: Mark attributes with AttributeUsageAttribute
 dotnet_diagnostic.CA1018.severity = warning

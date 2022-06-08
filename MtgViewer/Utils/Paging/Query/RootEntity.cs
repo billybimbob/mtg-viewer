@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
@@ -5,7 +6,7 @@ using System.Reflection;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Query;
 
-namespace System.Paging.Query;
+namespace EntityFrameworkCore.Paging.Query;
 
 internal class FindRootQuery : ExpressionVisitor
 {

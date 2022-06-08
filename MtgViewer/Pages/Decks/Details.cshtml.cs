@@ -1,8 +1,9 @@
 using System;
 using System.Linq;
-using System.Paging;
 using System.Threading;
 using System.Threading.Tasks;
+
+using EntityFrameworkCore.Paging;
 
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
