@@ -10,23 +10,21 @@ namespace EntityFrameworkCore.Paging.Query;
 
 internal static class OriginFilter
 {
-    public static Expression<Func<TEntity, bool>> Build<TEntity>(
+    public static Expression<Func<TEntity, bool>>? Build<TEntity>(
         IQueryable<TEntity> query,
-        TEntity origin,
+        TEntity? origin,
         SeekDirection direction)
-        where TEntity : notnull
     {
         var translator = new OriginTranslator<TEntity, TEntity>(origin, null);
 
         return OriginFilter<TEntity, TEntity>.Build(query, translator, direction);
     }
 
-    public static Expression<Func<TEntity, bool>> Build<TEntity, TOrigin>(
+    public static Expression<Func<TEntity, bool>>? Build<TEntity, TOrigin>(
         IQueryable<TEntity> query,
-        TOrigin origin,
+        TOrigin? origin,
         SeekDirection direction,
         Expression<Func<TEntity, TOrigin>> selector)
-        where TOrigin : notnull
     {
         var translator = new OriginTranslator<TOrigin, TEntity>(origin, selector);
 
@@ -36,7 +34,7 @@ internal static class OriginFilter
 
 internal sealed class OriginFilter<TOrigin, TEntity>
 {
-    internal static Expression<Func<TEntity, bool>> Build(
+    internal static Expression<Func<TEntity, bool>>? Build(
         IQueryable<TEntity> query,
         OriginTranslator<TOrigin, TEntity> origin,
         SeekDirection direction)
@@ -45,7 +43,7 @@ internal sealed class OriginFilter<TOrigin, TEntity>
 
         if (!builder.OrderKeys.Any())
         {
-            throw new InvalidOperationException("There are no properties to filter by");
+            return null;
         }
 
         var firstKey = builder.OrderKeys[0];
@@ -76,8 +74,7 @@ internal sealed class OriginFilter<TOrigin, TEntity>
 
         if (filter is null)
         {
-            throw new InvalidOperationException(
-                "The given origin and orderings could not be compared");
+            return null;
         }
 
         return Expression.Lambda<Func<TEntity, bool>>(filter, Parameter);

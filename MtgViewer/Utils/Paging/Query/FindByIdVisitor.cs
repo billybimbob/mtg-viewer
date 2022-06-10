@@ -5,7 +5,6 @@ using System.Linq;
 using System.Linq.Expressions;
 
 using Microsoft.EntityFrameworkCore.Metadata;
-using Microsoft.EntityFrameworkCore.Query;
 
 namespace EntityFrameworkCore.Paging.Query;
 
@@ -39,14 +38,8 @@ internal class FindByIdVisitor : ExpressionVisitor
         }
 
         var visitedParent = base.Visit(parent);
-        var method = node.Method.GetGenericMethodDefinition();
 
-        if (method == QueryableMethods.Where)
-        {
-            return node.Update(
-                node.Object,
-                node.Arguments.Skip(1).Prepend(visitedParent));
-        }
+        var method = node.Method.GetGenericMethodDefinition();
 
         if (_findInclude?.Visit(node) is ConstantExpression { Value: string includeChain })
         {
@@ -57,6 +50,16 @@ internal class FindByIdVisitor : ExpressionVisitor
         }
 
         return visitedParent;
+    }
+
+    protected override Expression VisitExtension(Expression node)
+    {
+        if (node is SeekExpression seek)
+        {
+            return seek.Root;
+        }
+
+        return node;
     }
 }
 

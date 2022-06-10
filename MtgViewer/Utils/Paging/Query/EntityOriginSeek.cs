@@ -161,7 +161,8 @@ internal sealed class EntityOriginSeek<TEntity, TRefKey, TValueKey> : ISeekable<
 
         var entityParameter = Expression
             .Parameter(
-                entityType.ClrType, entityType.ClrType.Name[0].ToString().ToLowerInvariant());
+                entityType.ClrType,
+                entityType.ClrType.Name[0].ToString().ToLowerInvariant());
 
         var propertyId = Expression
             .Property(entityParameter, entityType.GetKeyInfo<TKey>());

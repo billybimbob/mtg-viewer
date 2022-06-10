@@ -5,6 +5,8 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 
+using Microsoft.EntityFrameworkCore.Query;
+
 namespace EntityFrameworkCore.Paging.Query;
 
 internal static class ExpressionHelpers
@@ -122,4 +124,55 @@ internal static class ExpressionHelpers
 
     public static PropertyInfo GetKeyProperty<TEntity>() where TEntity : class
         => GetKeyProperty(typeof(TEntity));
+
+    public static bool IsExecuteMethod(MethodInfo methodInfo)
+    {
+        if (!methodInfo.IsGenericMethodDefinition)
+        {
+            methodInfo = methodInfo.GetGenericMethodDefinition();
+        }
+
+        return methodInfo == QueryableMethods.AnyWithoutPredicate
+            || methodInfo == QueryableMethods.AnyWithPredicate
+
+            || methodInfo == QueryableMethods.All
+
+            || methodInfo == QueryableMethods.CountWithoutPredicate
+            || methodInfo == QueryableMethods.CountWithPredicate
+
+            || methodInfo == QueryableMethods.LongCountWithoutPredicate
+            || methodInfo == QueryableMethods.LongCountWithPredicate
+
+            || methodInfo == QueryableMethods.FirstWithoutPredicate
+            || methodInfo == QueryableMethods.FirstWithPredicate
+
+            || methodInfo == QueryableMethods.FirstOrDefaultWithoutPredicate
+            || methodInfo == QueryableMethods.FirstOrDefaultWithPredicate
+
+            || methodInfo == QueryableMethods.LastWithoutPredicate
+            || methodInfo == QueryableMethods.LastWithPredicate
+
+            || methodInfo == QueryableMethods.LastOrDefaultWithoutPredicate
+            || methodInfo == QueryableMethods.LastOrDefaultWithPredicate
+
+            || methodInfo == QueryableMethods.SingleWithoutPredicate
+            || methodInfo == QueryableMethods.SingleWithPredicate
+
+            || methodInfo == QueryableMethods.SingleOrDefaultWithoutPredicate
+            || methodInfo == QueryableMethods.SingleOrDefaultWithPredicate
+
+            || methodInfo == QueryableMethods.MinWithoutSelector
+            || methodInfo == QueryableMethods.MinWithSelector
+
+            || methodInfo == QueryableMethods.MaxWithoutSelector
+            || methodInfo == QueryableMethods.MaxWithSelector
+
+            || QueryableMethods.IsSumWithoutSelector(methodInfo)
+            || QueryableMethods.IsSumWithSelector(methodInfo)
+
+            || QueryableMethods.IsAverageWithoutSelector(methodInfo)
+            || QueryableMethods.IsAverageWithSelector(methodInfo)
+
+            || methodInfo == QueryableMethods.Contains;
+    }
 }

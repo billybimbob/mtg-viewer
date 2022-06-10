@@ -16,7 +16,7 @@ internal sealed class OriginTranslator<TOrigin, TEntity>
     private readonly Dictionary<MemberExpression, MemberExpression> _translations;
     private readonly Dictionary<MemberExpression, bool> _nulls;
 
-    public OriginTranslator(TOrigin origin, Expression<Func<TEntity, TOrigin>>? selector)
+    public OriginTranslator(TOrigin? origin, Expression<Func<TEntity, TOrigin>>? selector)
     {
         var expressionEquality = ExpressionEqualityComparer.Instance;
 

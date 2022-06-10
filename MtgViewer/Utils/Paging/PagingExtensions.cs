@@ -86,11 +86,9 @@ public static class PagingExtensions
     public static ISelectableQueryable<TSource, TResult> WithSelect<TSource, TResult>(this IQueryable<TResult> source)
         => new SelectableQueryable<TSource, TResult>(source);
 
-    public static ISelectableQueryable<TEntity, TEntity> After<TEntity, TOrigin>(
+    public static ISelectableQueryable<TEntity, TEntity> After<TEntity>(
         this IQueryable<TEntity> source,
-        TOrigin origin)
-        where TEntity : notnull
-        where TOrigin : TEntity
+        TEntity origin)
     {
         ArgumentNullException.ThrowIfNull(source);
         ArgumentNullException.ThrowIfNull(origin);
@@ -105,7 +103,6 @@ public static class PagingExtensions
     public static ISelectableQueryable<TSource, TResult> After<TSource, TResult>(
         this ISelectableQueryable<TSource, TResult> source,
         TSource origin)
-        where TSource : notnull
     {
         ArgumentNullException.ThrowIfNull(source);
         ArgumentNullException.ThrowIfNull(origin);
@@ -123,7 +120,6 @@ public static class PagingExtensions
     public static ISelectableQueryable<TSource, TResult> After<TSource, TResult>(
         this ISelectableQueryable<TSource, TResult> source,
         TResult origin)
-        where TResult : notnull
     {
         ArgumentNullException.ThrowIfNull(source);
         ArgumentNullException.ThrowIfNull(origin);
@@ -138,11 +134,9 @@ public static class PagingExtensions
             .WithSelect<TSource, TResult>();
     }
 
-    public static ISelectableQueryable<TEntity, TEntity> Before<TEntity, TOrigin>(
+    public static ISelectableQueryable<TEntity, TEntity> Before<TEntity>(
         this IQueryable<TEntity> source,
-        TOrigin origin)
-        where TEntity : notnull
-        where TOrigin : TEntity
+        TEntity origin)
     {
         ArgumentNullException.ThrowIfNull(source);
         ArgumentNullException.ThrowIfNull(origin);
@@ -159,7 +153,6 @@ public static class PagingExtensions
     public static ISelectableQueryable<TSource, TResult> Before<TSource, TResult>(
         this ISelectableQueryable<TSource, TResult> source,
         TSource origin)
-        where TSource : notnull
     {
         ArgumentNullException.ThrowIfNull(source);
         ArgumentNullException.ThrowIfNull(origin);
@@ -179,7 +172,6 @@ public static class PagingExtensions
     public static ISelectableQueryable<TSource, TResult> Before<TSource, TResult>(
         this ISelectableQueryable<TSource, TResult> source,
         TResult origin)
-        where TResult : notnull
     {
         ArgumentNullException.ThrowIfNull(source);
         ArgumentNullException.ThrowIfNull(origin);
@@ -213,7 +205,6 @@ public static class PagingExtensions
         this IQueryable<TEntity> source,
         TEntity? origin,
         SeekDirection direction)
-        where TEntity : notnull
     {
         return (origin, direction) switch
         {
@@ -221,7 +212,6 @@ public static class PagingExtensions
             (not null, SeekDirection.Backwards) => source.Before(origin),
 
             (null, SeekDirection.Backwards) => source.SeekBackwards(),
-
             (null, _) or _ => source.WithSelect<TEntity, TEntity>(),
         };
     }
@@ -239,8 +229,6 @@ public static class PagingExtensions
         this ISelectableQueryable<TSource, TResult> source,
         TSource? origin,
         SeekDirection direction)
-        where TSource : class
-        where TResult : class
     {
         ArgumentNullException.ThrowIfNull(source);
 
@@ -256,8 +244,6 @@ public static class PagingExtensions
         this ISelectableQueryable<TSource, TResult> source,
         TResult? origin,
         SeekDirection direction)
-        where TSource : class
-        where TResult : class
     {
         ArgumentNullException.ThrowIfNull(source);
 
