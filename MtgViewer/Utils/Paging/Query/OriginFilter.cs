@@ -20,16 +20,16 @@ internal static class OriginFilter
         return OriginFilter<TEntity, TEntity>.Build(query, translator, direction);
     }
 
-    public static Expression<Func<TEntity, bool>>? Build<TEntity, TOrigin>(
-        IQueryable<TEntity> query,
-        TOrigin? origin,
-        SeekDirection direction,
-        Expression<Func<TEntity, TOrigin>> selector)
-    {
-        var translator = new OriginTranslator<TOrigin, TEntity>(origin, selector);
+    // public static Expression<Func<TEntity, bool>>? Build<TEntity, TOrigin>(
+    //     IQueryable<TEntity> query,
+    //     TOrigin? origin,
+    //     SeekDirection direction,
+    //     Expression<Func<TEntity, TOrigin>> selector)
+    // {
+    //     var translator = new OriginTranslator<TOrigin, TEntity>(origin, selector);
 
-        return OriginFilter<TOrigin, TEntity>.Build(query, translator, direction);
-    }
+    //     return OriginFilter<TOrigin, TEntity>.Build(query, translator, direction);
+    // }
 }
 
 internal sealed class OriginFilter<TOrigin, TEntity>

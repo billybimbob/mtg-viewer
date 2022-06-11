@@ -9,6 +9,25 @@ using Microsoft.EntityFrameworkCore.Query;
 
 namespace EntityFrameworkCore.Paging.Query;
 
+internal sealed class SeekQuery : IQueryable
+{
+    public SeekQuery(IQueryProvider provider, Expression expression, Type elementType)
+    {
+        Provider = provider;
+        Expression = expression;
+        ElementType = elementType;
+    }
+
+    public IQueryProvider Provider { get; }
+
+    public Expression Expression { get; }
+
+    public Type ElementType { get; }
+
+    IEnumerator IEnumerable.GetEnumerator()
+        => ((IEnumerable)Provider.Execute(Expression)!).GetEnumerator();
+}
+
 internal sealed class SeekQuery<T> : ISeekQueryable<T>, IAsyncEnumerable<T>
 {
     private readonly IAsyncQueryProvider _provider;

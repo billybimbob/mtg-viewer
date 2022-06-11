@@ -13,15 +13,16 @@ internal static class ExecuteOffset<TEntity>
 {
     public static OffsetList<TEntity> ToOffsetList(IQueryable<TEntity> query)
     {
-        if (FindOffsetVisitor.Instance.Visit(query.Expression) is not OffsetExpression offsetInfo)
+        if (FindOffsetVisitor.Instance.Visit(query.Expression) is not OffsetExpression offsetExpression)
         {
-            throw new ArgumentException(
-                "Missing expected \"Skip\" followed by a \"Take\"", nameof(query));
+            offsetExpression = new OffsetExpression(0, null);
         }
 
         int totalItems = GetTotalItems(query);
 
-        var offset = new Offset(offsetInfo.Index, totalItems, offsetInfo.Size);
+        int pageSize = offsetExpression.Size ?? totalItems - offsetExpression.Index;
+
+        var offset = new Offset(offsetExpression.Index, totalItems, pageSize);
 
         var items = query.ToList();
 
@@ -30,25 +31,25 @@ internal static class ExecuteOffset<TEntity>
 
     private static int GetTotalItems(IQueryable<TEntity> query)
     {
-        var withoutOffset = query.Provider
-            .CreateQuery<TEntity>(RemoveOffsetVisitor.Instance.Visit(query.Expression));
+        var withoutOffset = RemoveOffsetVisitor.Instance.Visit(query.Expression);
 
-        return withoutOffset.Count();
+        return query.Provider
+            .CreateQuery<TEntity>(withoutOffset)
+            .Count();
     }
 
-    public static async Task<OffsetList<TEntity>> ToOffsetListAsync(
-        IQueryable<TEntity> query,
-        CancellationToken cancel = default)
+    public static async Task<OffsetList<TEntity>> ToOffsetListAsync(IQueryable<TEntity> query, CancellationToken cancel)
     {
-        if (FindOffsetVisitor.Instance.Visit(query.Expression) is not OffsetExpression offsetInfo)
+        if (FindOffsetVisitor.Instance.Visit(query.Expression) is not OffsetExpression offsetExpression)
         {
-            throw new ArgumentException(
-                "Missing expected \"Skip\" followed by a \"Take\"", nameof(query));
+            offsetExpression = new OffsetExpression(0, null);
         }
 
         int totalItems = await GetTotalItemsAsync(query, cancel).ConfigureAwait(false);
 
-        var offset = new Offset(offsetInfo.Index, totalItems, offsetInfo.Size);
+        int pageSize = offsetExpression.Size ?? totalItems - offsetExpression.Index;
+
+        var offset = new Offset(offsetExpression.Index, totalItems, pageSize);
 
         var items = await query.ToListAsync(cancel).ConfigureAwait(false);
 
@@ -57,15 +58,17 @@ internal static class ExecuteOffset<TEntity>
 
     private static async Task<int> GetTotalItemsAsync(IQueryable<TEntity> query, CancellationToken cancel)
     {
-        var withoutOffset = query.Provider
-            .CreateQuery<TEntity>(RemoveOffsetVisitor.Instance.Visit(query.Expression));
+        var withoutOffset = RemoveOffsetVisitor.Instance.Visit(query.Expression);
 
-        return await withoutOffset.CountAsync(cancel).ConfigureAwait(false);
+        return await query.Provider
+            .CreateQuery<TEntity>(withoutOffset)
+            .CountAsync(cancel)
+            .ConfigureAwait(false);
     }
 
     private sealed class OffsetExpression : Expression
     {
-        public OffsetExpression(int index, int size)
+        public OffsetExpression(int index, int? size)
         {
             Index = index;
             Size = size;
@@ -73,7 +76,7 @@ internal static class ExecuteOffset<TEntity>
 
         public int Index { get; }
 
-        public int Size { get; }
+        public int? Size { get; }
 
         public override Type Type => typeof(Offset);
 
@@ -82,6 +85,13 @@ internal static class ExecuteOffset<TEntity>
         public override bool CanReduce => false;
 
         protected override Expression VisitChildren(ExpressionVisitor visitor) => this;
+
+        public OffsetExpression Update(int index, int? size)
+        {
+            return index == Index && size == Size
+                ? this
+                : new OffsetExpression(index, size);
+        }
     }
 
     private sealed class FindOffsetVisitor : ExpressionVisitor
@@ -100,24 +110,25 @@ internal static class ExecuteOffset<TEntity>
             var method = node.Method.GetGenericMethodDefinition();
 
             if (method == QueryableMethods.Skip
-                && node.Arguments.ElementAtOrDefault(1) is ConstantExpression skip)
+                && node.Arguments.ElementAtOrDefault(1) is ConstantExpression { Value: int skip })
             {
-                return skip;
+                return new OffsetExpression(skip, null);
             }
 
             var visitedParent = Visit(parent);
 
-            if (method == QueryableMethods.Take
-                && visitedParent
-                    is ConstantExpression { Value: int index }
-
-                && node.Arguments.ElementAtOrDefault(1)
-                    is ConstantExpression { Value: int size })
+            if (method != QueryableMethods.Take
+                || node.Arguments.ElementAtOrDefault(1) is not ConstantExpression { Value: int size })
             {
-                return new OffsetExpression(index, size);
+                return visitedParent;
             }
 
-            return visitedParent;
+            if (visitedParent is OffsetExpression offset)
+            {
+                return offset.Update(offset.Index, size);
+            }
+
+            return new OffsetExpression(0, size);
         }
     }
 
@@ -136,24 +147,21 @@ internal static class ExecuteOffset<TEntity>
 
             var method = node.Method.GetGenericMethodDefinition();
 
+            var visitedParent = Visit(parent);
+
             if (method == QueryableMethods.Take)
             {
-                return Visit(parent);
+                return visitedParent;
             }
 
             if (method == QueryableMethods.Skip)
             {
-                return parent;
-            }
-
-            if (node.Object is not null)
-            {
-                return node;
+                return visitedParent;
             }
 
             return node.Update(
                 node.Object,
-                node.Arguments.Skip(1).Prepend(Visit(parent)));
+                node.Arguments.Skip(1).Prepend(visitedParent));
         }
     }
 }

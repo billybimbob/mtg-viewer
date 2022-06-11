@@ -8,12 +8,12 @@ using Microsoft.EntityFrameworkCore.Metadata;
 
 namespace EntityFrameworkCore.Paging.Query;
 
-internal class FindByIdVisitor : ExpressionVisitor
+internal class FindByKeyVisitor : ExpressionVisitor
 {
     private readonly FindIncludeVisitor? _findInclude;
     private readonly HashSet<string> _include;
 
-    public FindByIdVisitor(IReadOnlyEntityType? entity = null)
+    public FindByKeyVisitor(IReadOnlyEntityType? entity = null)
     {
         _findInclude = entity is null ? null : new FindIncludeVisitor(entity);
         _include = new HashSet<string>();
@@ -56,7 +56,7 @@ internal class FindByIdVisitor : ExpressionVisitor
     {
         if (node is SeekExpression seek)
         {
-            return seek.Root;
+            return seek.Query;
         }
 
         return node;

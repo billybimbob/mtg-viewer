@@ -1,7 +1,6 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Linq.Expressions;
-
-using Microsoft.EntityFrameworkCore.Query;
 
 namespace EntityFrameworkCore.Paging.Query;
 
@@ -32,6 +31,8 @@ internal sealed class AddSeekVisitor : ExpressionVisitor
     private readonly SeekDirection _direction;
     private readonly int? _take;
 
+    private bool _foundSeek;
+
     public AddSeekVisitor(object? origin, SeekDirection direction, int? take)
     {
         _origin = origin;
@@ -44,19 +45,37 @@ internal sealed class AddSeekVisitor : ExpressionVisitor
     {
     }
 
+    [return: NotNullIfNotNull("node")]
+    public override Expression? Visit(Expression? node)
+    {
+        _foundSeek = false;
+
+        var visit = base.Visit(node);
+
+        if (visit is null)
+        {
+            return null;
+        }
+
+        if (_foundSeek)
+        {
+            return visit;
+        }
+
+        return new SeekExpression(
+            visit, Expression.Constant(_origin), _direction, _take);
+    }
+
     protected override Expression VisitExtension(Expression node)
     {
-        if (node is SeekExpression seek)
+        if (node is not SeekExpression seek)
         {
-            return seek.Update(_origin, _direction, _take);
+            return node;
         }
 
-        if (node is QueryRootExpression root)
-        {
-            return new SeekExpression(root, Expression.Constant(_origin), _direction, _take);
-        }
+        _foundSeek = true;
 
-        return node;
+        return seek.Update(_origin, _direction, _take);
     }
 }
 
@@ -69,9 +88,66 @@ internal sealed class RemoveSeekVisitor : ExpressionVisitor
     {
         if (node is SeekExpression seek)
         {
-            return seek.Root;
+            return seek.Query;
         }
 
         return node;
+    }
+}
+
+internal sealed class ExpandSeekVisitor<TEntity> : ExpressionVisitor
+{
+    private readonly IQueryProvider _provider;
+    private readonly TEntity? _origin;
+
+    public ExpandSeekVisitor(IQueryProvider provider, TEntity? origin)
+    {
+        _provider = provider;
+        _origin = origin;
+    }
+
+    protected override Expression VisitExtension(Expression node)
+    {
+        if (node is not SeekExpression seek)
+        {
+            return node;
+        }
+
+        var query = _provider.CreateQuery<TEntity>(node);
+
+        var filter = OriginFilter.Build(query, _origin, seek.Direction);
+
+        var filteredQuery = (seek.Direction, filter, seek.Take) switch
+        {
+            (SeekDirection.Forward, not null, int count) => query
+                .Where(filter)
+                .Take(count),
+
+            (SeekDirection.Backwards, not null, int count) => query
+                .Reverse()
+                .Where(filter)
+                .Take(count)
+                .Reverse(),
+
+            (SeekDirection.Forward, not null, null) => query
+                .Where(filter),
+
+            (SeekDirection.Backwards, not null, null) => query
+                .Reverse()
+                .Where(filter)
+                .Reverse(),
+
+            (SeekDirection.Forward, null, int count) => query
+                .Take(count),
+
+            (SeekDirection.Backwards, null, int count) => query
+                .Reverse()
+                .Take(count)
+                .Reverse(),
+
+            _ => query
+        };
+
+        return filteredQuery.Expression;
     }
 }

@@ -124,7 +124,7 @@ internal sealed class ResultOriginSeek<TSource, TResult, TRefKey, TValueKey> : I
             Expression.Equal(propertyId, Expression.Constant(key)),
             entityParameter);
 
-        var findById = new FindByIdVisitor();
+        var findById = new FindByKeyVisitor();
 
         var selector = SelectQueries.GetSelectQuery<TSource, TResult>(_query).Selector;
 

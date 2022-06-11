@@ -119,7 +119,7 @@ internal sealed class EntityOriginSeek<TEntity, TRefKey, TValueKey> : ISeekable<
 
     private IQueryable<TEntity> GetEntityQuery<TKey>(TKey key, IEntityType entityType)
     {
-        var findById = new FindByIdVisitor(entityType);
+        var findById = new FindByKeyVisitor(entityType);
 
         var originQuery = _query.Provider
             .CreateQuery<TEntity>(findById.Visit(_query.Expression));
@@ -154,7 +154,7 @@ internal sealed class EntityOriginSeek<TEntity, TRefKey, TValueKey> : ISeekable<
     {
         var (query, selector) = SelectQueries.GetSelectQuery(entityType.ClrType, _query);
 
-        var findById = new FindByIdVisitor();
+        var findById = new FindByKeyVisitor();
 
         var findQuery = query.Provider
             .CreateQuery(findById.Visit(query.Expression));
