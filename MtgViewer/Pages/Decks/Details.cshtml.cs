@@ -52,11 +52,7 @@ public class DetailsModel : PageModel
             return NotFound();
         }
 
-        var cards = await DeckCards(id)
-            .SeekBy(seek, direction)
-            .OrderBy<Card>()
-            .Take(_pageSize.Current)
-            .ToSeekListAsync(cancel);
+        var cards = await DeckCards(id, seek, direction).ToSeekListAsync(cancel);
 
         if (!cards.Any() && seek is not null)
         {
@@ -100,7 +96,7 @@ public class DetailsModel : PageModel
                 })
                 .SingleOrDefault());
 
-    private IQueryable<DeckCopy> DeckCards(int deckId)
+    private ISeekQueryable<DeckCopy> DeckCards(int deckId, string? seek, SeekDirection direction)
     {
         return _dbContext.Cards
             .Where(c => c.Holds.Any(h => h.LocationId == deckId)
@@ -133,7 +129,9 @@ public class DetailsModel : PageModel
                 Returning = c.Givebacks
                     .Where(g => g.LocationId == deckId)
                     .Sum(g => g.Copies),
-            });
+            })
+
+            .SeekBy(seek, direction, _pageSize.Current);
     }
 
 }

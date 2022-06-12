@@ -116,6 +116,27 @@ public class SeekListTests : IAsyncLifetime
     }
 
     [Fact]
+    public void ToSeekListSync_OrderBySeek_Returns()
+    {
+        const int pageSize = 4;
+
+        var cards = _dbContext.Cards.OrderBy(c => c.Id);
+
+        var origin = cards
+            .Skip(pageSize)
+            .First();
+
+        var seekList = cards
+            .SeekBy(origin, SeekDirection.Forward, pageSize)
+            .ToSeekList();
+
+        Assert.NotNull(seekList.Seek.Previous);
+
+        Assert.All(seekList, c =>
+            Assert.True(c.Id.CompareTo(origin.Id) > 0));
+    }
+
+    [Fact]
     public async Task ToSeekList_OrderBySeekBackwards_Returns()
     {
         const int pageSize = 4;
@@ -152,6 +173,31 @@ public class SeekListTests : IAsyncLifetime
 
         var seekList = await cards
             .SeekBy(origin, SeekDirection.Forward, pageSize)
+            .ToSeekListAsync();
+
+        Assert.NotNull(seekList.Seek.Previous);
+
+        Assert.All(seekList, c =>
+            Assert.True(
+                (c.Name, c.Id).CompareTo((origin.Name, c.Id)) > 0));
+    }
+
+    [Fact]
+    public async Task ToSeekList_OrderBySeekMultipleId_Returns()
+    {
+        const int pageSize = 4;
+        const int numPages = 2;
+
+        var cards = _dbContext.Cards
+            .OrderBy(c => c.Name)
+                .ThenBy(c => c.Id);
+
+        var origin = await cards
+            .Skip(pageSize * numPages)
+            .FirstAsync();
+
+        var seekList = await cards
+            .SeekBy(origin.Id, SeekDirection.Forward, pageSize)
             .ToSeekListAsync();
 
         Assert.NotNull(seekList.Seek.Previous);

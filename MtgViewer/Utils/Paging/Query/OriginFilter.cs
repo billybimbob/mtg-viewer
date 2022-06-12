@@ -85,6 +85,10 @@ internal sealed class OriginFilter<TOrigin, TEntity>
     private readonly OriginTranslator<TOrigin, TEntity> _origin;
     private readonly SeekDirection _direction;
 
+    private static ParameterExpression? _parameter;
+    private IReadOnlyList<KeyOrder>? _orderKeys;
+    private IReadOnlyDictionary<Expression, NullOrder>? _nullOrders;
+
     private OriginFilter(
         IQueryable<TEntity> query,
         OriginTranslator<TOrigin, TEntity> origin,
@@ -97,43 +101,18 @@ internal sealed class OriginFilter<TOrigin, TEntity>
         _direction = direction;
     }
 
-    private static ParameterExpression? _parameter;
-    private IReadOnlyList<KeyOrder>? _orderKeys;
-    private IReadOnlyDictionary<Expression, NullOrder>? _nullOrders;
-
-    private static ParameterExpression Parameter =>
-        _parameter ??=
+    private static ParameterExpression Parameter
+        => _parameter ??=
             Expression.Parameter(
                 typeof(TEntity),
                 typeof(TEntity).Name[0].ToString().ToLowerInvariant());
 
     private IReadOnlyList<KeyOrder> OrderKeys
-    {
-        get
-        {
-            if (_orderKeys is null)
-            {
-                var findOrders = new FindOrderPropertiesVisitor(_origin);
-
-                _ = findOrders.Visit(_query.Expression);
-
-                _orderKeys = findOrders.Properties;
-            }
-
-            return _orderKeys;
-        }
-    }
+        => _orderKeys ??= FindOrderPropertiesVisitor.Scan(_origin, _query.Expression);
 
     private NullOrder GetNullOrder(MemberExpression node)
     {
-        if (_nullOrders is null)
-        {
-            var findNulls = new FindNullPropertiesVisitor(_origin);
-
-            _ = findNulls.Visit(_query.Expression);
-
-            _nullOrders = findNulls.Properties;
-        }
+        _nullOrders ??= FindNullPropertiesVisitor.Scan(_origin, _query.Expression);
 
         return _nullOrders.GetValueOrDefault(node);
     }
@@ -281,13 +260,22 @@ internal sealed class OriginFilter<TOrigin, TEntity>
         private readonly OriginTranslator<TOrigin, TEntity> _origin;
         private readonly List<KeyOrder> _properties;
 
-        public FindOrderPropertiesVisitor(OriginTranslator<TOrigin, TEntity> origin)
+        private FindOrderPropertiesVisitor(OriginTranslator<TOrigin, TEntity> origin)
         {
             _origin = origin;
             _properties = new List<KeyOrder>();
         }
 
-        public IReadOnlyList<KeyOrder> Properties => _properties;
+        public static IReadOnlyList<KeyOrder> Scan(
+            OriginTranslator<TOrigin, TEntity> origin,
+            Expression expression)
+        {
+            var findOrders = new FindOrderPropertiesVisitor(origin);
+
+            _ = findOrders.Visit(expression);
+
+            return findOrders._properties;
+        }
 
         [return: NotNullIfNotNull("node")]
         public override Expression? Visit(Expression? node)
@@ -325,13 +313,22 @@ internal sealed class OriginFilter<TOrigin, TEntity>
         private readonly Dictionary<Expression, NullOrder> _properties;
         private MemberExpression? _lastProperty;
 
-        public FindNullPropertiesVisitor(OriginTranslator<TOrigin, TEntity> origin)
+        public static IReadOnlyDictionary<Expression, NullOrder> Scan(
+            OriginTranslator<TOrigin, TEntity> origin,
+            Expression expression)
+        {
+            var findNulls = new FindNullPropertiesVisitor(origin);
+
+            _ = findNulls.Visit(expression);
+
+            return findNulls._properties;
+        }
+
+        private FindNullPropertiesVisitor(OriginTranslator<TOrigin, TEntity> origin)
         {
             _origin = origin;
             _properties = new Dictionary<Expression, NullOrder>(ExpressionEqualityComparer.Instance);
         }
-
-        public IReadOnlyDictionary<Expression, NullOrder> Properties => _properties;
 
         [return: NotNullIfNotNull("node")]
         public override Expression? Visit(Expression? node)

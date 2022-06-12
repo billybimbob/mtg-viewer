@@ -50,9 +50,7 @@ public class DetailsModel : PageModel
         }
 
         var cards = await BoxCards(box)
-            .SeekBy(seek, direction)
-            .OrderBy<Hold>()
-            .Take(_pageSize.Current)
+            .SeekBy(seek, direction, _pageSize.Current)
             .ToSeekListAsync(cancel);
 
         Box = box;
@@ -98,8 +96,7 @@ public class DetailsModel : PageModel
         int size = _pageSize.Current;
 
         return await BoxCards(box)
-            .WithSelect<Hold, QuantityCardPreview>()
-            .Before(hold)
+            .Before(hold, size: null)
             .Select(c => c.Id)
 
             .AsAsyncEnumerable()

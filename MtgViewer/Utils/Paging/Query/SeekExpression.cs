@@ -8,7 +8,7 @@ namespace EntityFrameworkCore.Paging.Query;
 
 internal class SeekExpression : Expression
 {
-    internal SeekExpression(Expression query, ConstantExpression origin, SeekDirection direction, int? take)
+    internal SeekExpression(Expression query, ConstantExpression origin, SeekDirection direction, int? size)
     {
         if (query.Type.IsGenericType is false)
         {
@@ -32,7 +32,7 @@ internal class SeekExpression : Expression
 
         Origin = origin;
         Direction = direction;
-        Take = take;
+        Size = size;
     }
 
     public override Type Type { get; }
@@ -43,7 +43,7 @@ internal class SeekExpression : Expression
 
     public SeekDirection Direction { get; }
 
-    public int? Take { get; }
+    public int? Size { get; }
 
     public override ExpressionType NodeType => ExpressionType.Extension;
 
@@ -56,8 +56,8 @@ internal class SeekExpression : Expression
 
         return (newOrigin, hasChanges) switch
         {
-            (ConstantExpression o, true) => new SeekExpression(newQuery, o, Direction, Take),
-            (_, true) => new SeekExpression(newQuery, Origin, Direction, Take),
+            (ConstantExpression o, true) => new SeekExpression(newQuery, o, Direction, Size),
+            (_, true) => new SeekExpression(newQuery, Origin, Direction, Size),
             _ => this
         };
     }
@@ -66,16 +66,16 @@ internal class SeekExpression : Expression
         Expression query,
         ConstantExpression origin,
         SeekDirection direction,
-        int? take)
+        int? size)
     {
         if (ExpressionEqualityComparer.Instance.Equals(query, Query)
             && ExpressionEqualityComparer.Instance.Equals(origin, Origin)
             && direction == Direction
-            && take == Take)
+            && size == Size)
         {
             return this;
         }
 
-        return new SeekExpression(query, origin, direction, take);
+        return new SeekExpression(query, origin, direction, size);
     }
 }

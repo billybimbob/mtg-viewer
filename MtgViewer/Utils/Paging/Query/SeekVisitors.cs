@@ -62,16 +62,16 @@ internal sealed class ExpandSeekVisitor<TEntity> : ExpressionVisitor
 
         var filter = OriginFilter.Build(query, _origin, seek.Direction);
 
-        var filteredQuery = (seek.Direction, filter, seek.Take) switch
+        var filteredQuery = (seek.Direction, filter, seek.Size) switch
         {
-            (SeekDirection.Forward, not null, int count) => query
+            (SeekDirection.Forward, not null, int size) => query
                 .Where(filter)
-                .Take(count),
+                .Take(size),
 
-            (SeekDirection.Backwards, not null, int count) => query
+            (SeekDirection.Backwards, not null, int size) => query
                 .Reverse()
                 .Where(filter)
-                .Take(count)
+                .Take(size)
                 .Reverse(),
 
             (SeekDirection.Forward, not null, null) => query
@@ -82,12 +82,12 @@ internal sealed class ExpandSeekVisitor<TEntity> : ExpressionVisitor
                 .Where(filter)
                 .Reverse(),
 
-            (SeekDirection.Forward, null, int count) => query
-                .Take(count),
+            (SeekDirection.Forward, null, int size) => query
+                .Take(size),
 
-            (SeekDirection.Backwards, null, int count) => query
+            (SeekDirection.Backwards, null, int size) => query
                 .Reverse()
-                .Take(count)
+                .Take(size)
                 .Reverse(),
 
             _ => query

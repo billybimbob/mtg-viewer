@@ -155,5 +155,4 @@ internal class FindIncludeVisitor : ExpressionVisitor
 
         return longestChain;
     }
-
 }

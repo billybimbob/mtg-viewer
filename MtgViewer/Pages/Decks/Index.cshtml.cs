@@ -62,10 +62,7 @@ public class IndexModel : PageModel
             return NotFound();
         }
 
-        var decks = await DeckPreviews(userId)
-            .SeekBy(seek, direction)
-            .OrderBy<Deck>()
-            .Take(_pageSize.Current)
+        var decks = await DeckPreviews(userId, seek, direction)
             .ToSeekListAsync(cancel);
 
         if (!decks.Any() && seek is not null)
@@ -84,7 +81,7 @@ public class IndexModel : PageModel
         return Page();
     }
 
-    private IQueryable<DeckPreview> DeckPreviews(string userId)
+    private ISeekQueryable<DeckPreview> DeckPreviews(string userId, int? seek, SeekDirection direction)
     {
         return _dbContext.Decks
             .Where(d => d.OwnerId == userId)
@@ -103,6 +100,8 @@ public class IndexModel : PageModel
 
                 HasReturns = d.Givebacks.Any(),
                 HasTrades = d.TradesTo.Any(),
-            });
+            })
+
+            .SeekBy(seek, direction, _pageSize.Current);
     }
 }

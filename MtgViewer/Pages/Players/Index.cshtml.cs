@@ -80,10 +80,7 @@ public class IndexModel : PageModel
                 TotalDecks = p.Decks.Count
             })
 
-            .SeekBy(seek, direction)
-            .OrderBy<Player>()
-            .Take(_pageSize.Current)
-
+            .SeekBy(seek, direction, _pageSize.Current)
             .ToSeekListAsync(cancel);
     }
 }

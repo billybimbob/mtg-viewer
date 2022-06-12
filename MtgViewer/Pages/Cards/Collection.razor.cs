@@ -173,8 +173,7 @@ public sealed partial class Collection : ComponentBase, IDisposable
             });
 
         return await OrderedCopies(copies, Order)
-            .SeekBy(Seek, (SeekDirection)Direction)
-            .Take(PageSize.Current)
+            .SeekBy(Seek, (SeekDirection)Direction, PageSize.Current)
             .ToSeekListAsync(_cancel.Token);
     }
 

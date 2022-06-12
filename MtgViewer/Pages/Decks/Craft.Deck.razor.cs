@@ -429,9 +429,7 @@ public partial class Craft
                 .ThenBy(q => q.Card.SetName)
                 .ThenBy(q => q.CardId)
 
-            .SeekOrigin(origin, direction)
-            .Take(size)
-
+            .SeekBy(origin, direction, size)
             .AsAsyncEnumerable();
     }
 

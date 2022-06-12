@@ -64,11 +64,7 @@ public class IndexModel : PageModel
             return RedirectToPage(new { id = null as int? });
         }
 
-        var transactions = await TransactionPreviews(id)
-            .SeekBy(seek, direction)
-            .OrderBy<Transaction>()
-            .Take(_pageSize.Current)
-            .ToSeekListAsync(cancel);
+        var transactions = await TransactionPreviews(id, seek, direction).ToSeekListAsync(cancel);
 
         if (!transactions.Any() && seek is not null)
         {
@@ -101,11 +97,12 @@ public class IndexModel : PageModel
             .Where(l => l.Id == id
                 && (l is Box
                 || (l is Deck && (l as Deck)!.OwnerId == userId)))
+
             .Select(l => l.Name)
             .SingleOrDefaultAsync(cancel);
     }
 
-    private IQueryable<TransactionPreview> TransactionPreviews(int? id)
+    private ISeekQueryable<TransactionPreview> TransactionPreviews(int? id, int? seek, SeekDirection direction)
     {
         return _dbContext.Transactions
 
@@ -145,7 +142,9 @@ public class IndexModel : PageModel
                         .ThenBy(l => l.SetName)
 
                     .Take(_pageSize.Current)
-            });
+            })
+
+            .SeekBy(seek, direction, _pageSize.Current);
     }
 
     private void UpdateTimeZone(string? timeZoneId)

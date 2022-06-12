@@ -34,11 +34,7 @@ public class IndexModel : PageModel
 
     public async Task OnGetAsync(int? seek, SeekDirection direction, CancellationToken cancel)
     {
-        var boxes = await BoxesForViewing()
-            .SeekBy(seek, direction)
-            .OrderBy<Box>()
-            .Take(_pageSize.Current)
-            .ToSeekListAsync(cancel);
+        var boxes = await BoxesForViewing(seek, direction).ToSeekListAsync(cancel);
 
         Bins = boxes
             .GroupBy(b => b.Bin,
@@ -51,10 +47,9 @@ public class IndexModel : PageModel
         HasExcess = await _dbContext.Excess.AnyAsync(cancel);
     }
 
-    private IQueryable<BoxPreview> BoxesForViewing()
+    private ISeekQueryable<BoxPreview> BoxesForViewing(int? seek, SeekDirection direction)
     {
         return _dbContext.Boxes
-
             .OrderBy(b => b.Bin.Name)
                 .ThenBy(b => b.BinId)
                 .ThenBy(b => b.Name)
@@ -72,6 +67,7 @@ public class IndexModel : PageModel
                 },
 
                 Appearance = b.Appearance,
+
                 Capacity = b.Capacity,
                 Held = b.Holds.Sum(h => h.Copies),
 
@@ -91,6 +87,7 @@ public class IndexModel : PageModel
 
                         Held = h.Copies
                     })
-            });
+            })
+            .SeekBy(seek, direction, _pageSize.Current);
     }
 }

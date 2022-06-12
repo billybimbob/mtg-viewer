@@ -63,11 +63,7 @@ public class DetailsModel : PageModel
 
         Unclaimed = unclaimed;
 
-        Cards = await UnclaimedCards(unclaimed)
-            .SeekBy(seek, direction)
-            .OrderBy<Card>()
-            .Take(_pageSize.Current)
-            .ToSeekListAsync(cancel);
+        Cards = await UnclaimedCards(unclaimed, seek, direction).ToSeekListAsync(cancel);
 
         return Page();
     }
@@ -86,7 +82,7 @@ public class DetailsModel : PageModel
                 })
                 .SingleOrDefault(u => u.Id == unclaimedId));
 
-    private IQueryable<DeckCopy> UnclaimedCards(UnclaimedDetails unclaimed)
+    private ISeekQueryable<DeckCopy> UnclaimedCards(UnclaimedDetails unclaimed, int? seek, SeekDirection direction)
     {
         return _dbContext.Cards
             .Where(c => c.Holds.Any(h => h.LocationId == unclaimed.Id)
@@ -113,7 +109,9 @@ public class DetailsModel : PageModel
                 Want = c.Wants
                     .Where(w => w.LocationId == unclaimed.Id)
                     .Sum(w => w.Copies)
-            });
+            })
+
+            .SeekBy(seek, direction, _pageSize.Current);
     }
 
     public async Task<IActionResult> OnPostClaimAsync(int id, CancellationToken cancel)
