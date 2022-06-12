@@ -20,12 +20,22 @@ internal class FindRootQuery : ExpressionVisitor
             return node;
         }
 
-        if (parent is QueryRootExpression root)
+        return Visit(parent);
+    }
+
+    protected override Expression VisitExtension(Expression node)
+    {
+        if (node is QueryRootExpression root)
         {
             return root;
         }
 
-        return Visit(parent);
+        if (node is SeekExpression seek)
+        {
+            return Visit(seek.Query);
+        }
+
+        return base.VisitExtension(node);
     }
 }
 

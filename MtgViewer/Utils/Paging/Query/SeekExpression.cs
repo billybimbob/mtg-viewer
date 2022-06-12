@@ -2,23 +2,40 @@ using System;
 using System.Linq;
 using System.Linq.Expressions;
 
+using Microsoft.EntityFrameworkCore.Query;
+
 namespace EntityFrameworkCore.Paging.Query;
 
 internal class SeekExpression : Expression
 {
     internal SeekExpression(Expression query, ConstantExpression origin, SeekDirection direction, int? take)
     {
+        if (query.Type.IsGenericType is false)
+        {
+            throw new ArgumentException($"{query.Type.Name} is not {nameof(IQueryable)}", nameof(query));
+        }
+
+        var elementType = query.Type.GenericTypeArguments[0];
+
+        if (!query.Type.IsAssignableTo(typeof(IQueryable<>).MakeGenericType(elementType)))
+        {
+            throw new ArgumentException($"{query.Type.Name} is not {nameof(IQueryable)}", nameof(query));
+        }
+
+        if (elementType.IsValueType)
+        {
+            throw new ArgumentException("Inner type is not a reference type", nameof(query));
+        }
+
+        Type = typeof(ISeekQueryable<>).MakeGenericType(elementType);
         Query = query;
+
         Origin = origin;
         Direction = direction;
         Take = take;
     }
 
-    public SeekExpression(IQueryable query, object? origin, SeekDirection direction, int? take)
-        : this(query.Expression, Constant(origin), direction, take)
-    {
-        // key is already boxed in the expression constant call, so boxing cannot be avoided
-    }
+    public override Type Type { get; }
 
     public Expression Query { get; }
 
@@ -27,8 +44,6 @@ internal class SeekExpression : Expression
     public SeekDirection Direction { get; }
 
     public int? Take { get; }
-
-    public override Type Type => Query.Type;
 
     public override ExpressionType NodeType => ExpressionType.Extension;
 
@@ -47,13 +62,20 @@ internal class SeekExpression : Expression
         };
     }
 
-    public SeekExpression Update(object? origin, SeekDirection direction, int? take)
+    public SeekExpression Update(
+        Expression query,
+        ConstantExpression origin,
+        SeekDirection direction,
+        int? take)
     {
-        if (Origin.Value == origin && Direction == direction && Take == take)
+        if (ExpressionEqualityComparer.Instance.Equals(query, Query)
+            && ExpressionEqualityComparer.Instance.Equals(origin, Origin)
+            && direction == Direction
+            && take == Take)
         {
             return this;
         }
 
-        return new SeekExpression(Query, Constant(origin), direction, take);
+        return new SeekExpression(query, origin, direction, take);
     }
 }

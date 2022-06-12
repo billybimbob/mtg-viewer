@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
@@ -97,91 +98,42 @@ internal sealed class OriginFilter<TOrigin, TEntity>
     }
 
     private static ParameterExpression? _parameter;
+    private IReadOnlyList<KeyOrder>? _orderKeys;
+    private IReadOnlyDictionary<Expression, NullOrder>? _nullOrders;
+
     private static ParameterExpression Parameter =>
         _parameter ??=
             Expression.Parameter(
                 typeof(TEntity),
                 typeof(TEntity).Name[0].ToString().ToLowerInvariant());
 
-    private List<KeyOrder>? _orderKeys;
-    private IReadOnlyList<KeyOrder> OrderKeys =>
-        _orderKeys ??= OrderProperties().Reverse().ToList();
-
-    private IEnumerable<KeyOrder> OrderProperties()
+    private IReadOnlyList<KeyOrder> OrderKeys
     {
-        // get only top level expressions
-        var source = _query.Expression;
-
-        while (source is MethodCallExpression orderBy)
+        get
         {
-            source = ExpressionHelpers.IsOrderBy(orderBy)
-                ? null
-                : orderBy.Arguments.ElementAtOrDefault(0);
-
-            if (OrderByVisitor.Instance.Visit(orderBy)
-                is MemberExpression propertyOrder
-                && _origin.TryRegister(propertyOrder))
+            if (_orderKeys is null)
             {
-                var ordering = ExpressionHelpers.IsDescending(orderBy)
-                    ? Ordering.Descending
-                    : Ordering.Ascending;
+                var findOrders = new FindOrderPropertiesVisitor(_origin);
 
-                yield return new KeyOrder(propertyOrder, ordering);
+                _ = findOrders.Visit(_query.Expression);
+
+                _orderKeys = findOrders.Properties;
             }
 
-            // TODO: parse projection and use it as a property translation map
+            return _orderKeys;
         }
     }
-
-    private IEnumerable<NullCheck> NullProperties()
-    {
-        MemberExpression? lastProperty = null;
-
-        var source = _query.Expression;
-
-        while (source is MethodCallExpression orderBy)
-        {
-            source = ExpressionHelpers.IsOrderBy(orderBy)
-                ? null
-                : orderBy.Arguments.ElementAtOrDefault(0);
-
-            if (OrderByVisitor.Instance.Visit(orderBy)
-                is not MemberExpression nullOrder
-
-                || !_origin.TryRegister(nullOrder))
-            {
-                continue;
-            }
-
-            // a null is only used as a sort property if there are also
-            // non null orderings specified
-
-            // null check ordering by itself it not unique enough
-
-            if (ExpressionHelpers.IsDescendant(lastProperty, nullOrder))
-            {
-                var ordering = ExpressionHelpers.IsDescending(orderBy)
-                    ? NullOrder.Before
-                    : NullOrder.After;
-
-                yield return new NullCheck(nullOrder, ordering);
-            }
-            else
-            {
-                lastProperty = nullOrder;
-            }
-        }
-    }
-
-    private IReadOnlyDictionary<Expression, NullOrder>? _nullOrders;
 
     private NullOrder GetNullOrder(MemberExpression node)
     {
-        _nullOrders ??= NullProperties()
-            .ToDictionary(
-                n => n.Key,
-                n => n.Ordering,
-                ExpressionEqualityComparer.Instance);
+        if (_nullOrders is null)
+        {
+            var findNulls = new FindNullPropertiesVisitor(_origin);
+
+            _ = findNulls.Visit(_query.Expression);
+
+            _nullOrders = findNulls.Properties;
+        }
 
         return _nullOrders.GetValueOrDefault(node);
     }
@@ -230,21 +182,21 @@ internal sealed class OriginFilter<TOrigin, TEntity>
         {
             (MemberExpression o and { Type.IsEnum: true }, _) =>
                 Expression.GreaterThan(
-                    parameter, o, false, ExpressionConstants.EnumGreaterThan(o.Type)),
+                    parameter, o, false, TypeHelpers.EnumGreaterThan(o.Type)),
 
-            (MemberExpression o, _) when IsValueComparable(o.Type) =>
+            (MemberExpression o, _) when TypeHelpers.IsValueComparable(o.Type) =>
                 Expression.GreaterThan(parameter, o),
 
             (MemberExpression o, _) when o.Type == typeof(string) =>
                 Expression.GreaterThan(
-                    Expression.Call(parameter, ExpressionConstants.StringCompareTo, o),
-                    ExpressionConstants.Zero),
+                    Expression.Call(parameter, TypeHelpers.StringCompareTo, o),
+                    ExpressionHelpers.Zero),
 
             (null, NullOrder.Before) =>
-                Expression.NotEqual(parameter, ExpressionConstants.Null),
+                Expression.NotEqual(parameter, ExpressionHelpers.Null),
 
             (not null, NullOrder.After) =>
-                Expression.Equal(parameter, ExpressionConstants.Null),
+                Expression.Equal(parameter, ExpressionHelpers.Null),
 
             (null, NullOrder.None) or _ => null
         };
@@ -256,21 +208,21 @@ internal sealed class OriginFilter<TOrigin, TEntity>
         {
             (MemberExpression o and { Type.IsEnum: true }, _) =>
                 Expression.LessThan(
-                    parameter, o, false, ExpressionConstants.EnumLessThan(o.Type)),
+                    parameter, o, false, TypeHelpers.EnumLessThan(o.Type)),
 
-            (MemberExpression o, _) when IsValueComparable(o.Type) =>
+            (MemberExpression o, _) when TypeHelpers.IsValueComparable(o.Type) =>
                 Expression.LessThan(parameter, o),
 
             (MemberExpression o, _) when o.Type == typeof(string) =>
                 Expression.LessThan(
-                    Expression.Call(parameter, ExpressionConstants.StringCompareTo, o),
-                    ExpressionConstants.Zero),
+                    Expression.Call(parameter, TypeHelpers.StringCompareTo, o),
+                    ExpressionHelpers.Zero),
 
             (null, NullOrder.After) =>
-                Expression.NotEqual(parameter, ExpressionConstants.Null),
+                Expression.NotEqual(parameter, ExpressionHelpers.Null),
 
             (not null, NullOrder.Before) =>
-                Expression.Equal(parameter, ExpressionConstants.Null),
+                Expression.Equal(parameter, ExpressionHelpers.Null),
 
             (null, NullOrder.None) or _ => null
         };
@@ -294,14 +246,14 @@ internal sealed class OriginFilter<TOrigin, TEntity>
     {
         return _origin.Translate(parameter) switch
         {
-            MemberExpression o when IsScalarType(o.Type) =>
+            MemberExpression o when TypeHelpers.IsScalarType(o.Type) =>
                 Expression.Equal(parameter, o),
 
             MemberExpression o when o.Type != parameter.Type =>
-                Expression.NotEqual(parameter, ExpressionConstants.Null),
+                Expression.NotEqual(parameter, ExpressionHelpers.Null),
 
             null when !_origin.IsParentNull(parameter) =>
-                Expression.Equal(parameter, ExpressionConstants.Null),
+                Expression.Equal(parameter, ExpressionHelpers.Null),
 
             _ => null
         };
@@ -317,13 +269,113 @@ internal sealed class OriginFilter<TOrigin, TEntity>
         Descending,
     }
 
-    private record NullCheck(Expression Key, NullOrder Ordering);
-
     private enum NullOrder
     {
         None,
         Before,
         After
+    }
+
+    private sealed class FindOrderPropertiesVisitor : ExpressionVisitor
+    {
+        private readonly OriginTranslator<TOrigin, TEntity> _origin;
+        private readonly List<KeyOrder> _properties;
+
+        public FindOrderPropertiesVisitor(OriginTranslator<TOrigin, TEntity> origin)
+        {
+            _origin = origin;
+            _properties = new List<KeyOrder>();
+        }
+
+        public IReadOnlyList<KeyOrder> Properties => _properties;
+
+        [return: NotNullIfNotNull("node")]
+        public override Expression? Visit(Expression? node)
+        {
+            _properties.Clear();
+
+            return base.Visit(node);
+        }
+
+        protected override Expression VisitMethodCall(MethodCallExpression node)
+        {
+            if (!ExpressionHelpers.IsOrderBy(node)
+                && node.Arguments.ElementAtOrDefault(0) is Expression parent)
+            {
+                _ = base.Visit(parent);
+            }
+
+            if (OrderByVisitor.Instance.Visit(node) is MemberExpression propertyOrder
+                && _origin.TryRegister(propertyOrder))
+            {
+                var ordering = ExpressionHelpers.IsDescending(node)
+                    ? Ordering.Descending
+                    : Ordering.Ascending;
+
+                _properties.Add(new KeyOrder(propertyOrder, ordering));
+            }
+
+            return node;
+        }
+    }
+
+    private sealed class FindNullPropertiesVisitor : ExpressionVisitor
+    {
+        private readonly OriginTranslator<TOrigin, TEntity> _origin;
+        private readonly Dictionary<Expression, NullOrder> _properties;
+        private MemberExpression? _lastProperty;
+
+        public FindNullPropertiesVisitor(OriginTranslator<TOrigin, TEntity> origin)
+        {
+            _origin = origin;
+            _properties = new Dictionary<Expression, NullOrder>(ExpressionEqualityComparer.Instance);
+        }
+
+        public IReadOnlyDictionary<Expression, NullOrder> Properties => _properties;
+
+        [return: NotNullIfNotNull("node")]
+        public override Expression? Visit(Expression? node)
+        {
+            _lastProperty = null;
+            _properties.Clear();
+
+            return base.Visit(node);
+        }
+
+        protected override Expression VisitMethodCall(MethodCallExpression node)
+        {
+            if (!ExpressionHelpers.IsOrderBy(node)
+                && node.Arguments.ElementAtOrDefault(0) is Expression parent)
+            {
+                _ = base.Visit(parent);
+            }
+
+            if (OrderByVisitor.Instance.Visit(node) is not MemberExpression nullOrder
+                || !_origin.TryRegister(nullOrder))
+            {
+                return node;
+            }
+
+            // a null is only used as a sort property if there are also
+            // non null orderings specified
+
+            // null check ordering by itself it not unique enough
+
+            if (!ExpressionHelpers.IsDescendant(_lastProperty, nullOrder))
+            {
+                _lastProperty = nullOrder;
+
+                return node;
+            }
+
+            var ordering = ExpressionHelpers.IsDescending(node)
+                ? NullOrder.Before
+                : NullOrder.After;
+
+            _properties.Add(nullOrder, ordering);
+
+            return node;
+        }
     }
 
     private sealed class OrderByVisitor : ExpressionVisitor
@@ -379,38 +431,19 @@ internal sealed class OriginFilter<TOrigin, TEntity>
                 return node;
             }
 
-            if (IsNull(node.Right) && Visit(node.Left) is MemberExpression left)
+            if (ExpressionHelpers.IsNull(node.Right) && Visit(node.Left) is MemberExpression left)
             {
                 return left;
             }
 
-            if (IsNull(node.Left) && Visit(node.Right) is MemberExpression right)
+            if (ExpressionHelpers.IsNull(node.Left) && Visit(node.Right) is MemberExpression right)
             {
                 return right;
             }
 
             return node;
         }
-
-        private static bool IsNull(Expression node) => node is ConstantExpression { Value: null };
-
     }
 
     #endregion
-
-    private static bool IsScalarType(Type type)
-    {
-        return type.IsEnum
-            || IsValueComparable(type)
-            || type == typeof(string);
-    }
-
-    private static bool IsValueComparable(Type type)
-    {
-        return (type is { IsValueType: true }
-            && type.IsAssignableTo(typeof(IComparable<>).MakeGenericType(type)))
-
-            || (Nullable.GetUnderlyingType(type) is Type inner
-                && IsValueComparable(inner));
-    }
 }

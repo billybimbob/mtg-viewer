@@ -99,7 +99,7 @@ internal class InsertTakeVisitor<TEntity> : ExpressionVisitor
         {
             if (node.Arguments.ElementAtOrDefault(0) is not Expression parent)
             {
-                return ExpressionConstants.Null;
+                return ExpressionHelpers.Null;
             }
 
             if (node.Method == QueryableMethods.Reverse.MakeGenericMethod(typeof(TEntity))
@@ -137,7 +137,7 @@ internal class InsertTakeVisitor<TEntity> : ExpressionVisitor
 
             if (node.Method == QueryableMethods.Reverse.MakeGenericMethod(typeof(TEntity)))
             {
-                return ExpressionConstants.Null;
+                return ExpressionHelpers.Null;
             }
 
             if (node.Method.IsGenericMethod

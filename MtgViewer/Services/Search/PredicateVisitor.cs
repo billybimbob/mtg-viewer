@@ -2,6 +2,8 @@ using System.Collections.Generic;
 using System.Linq.Expressions;
 using System.Reflection;
 
+using EntityFrameworkCore.Paging.Query;
+
 namespace MtgViewer.Services.Search;
 
 internal class PredicateVisitor : ExpressionVisitor
@@ -13,7 +15,7 @@ internal class PredicateVisitor : ExpressionVisitor
     private static UnaryExpression NullDictionary =>
         _nullDictionary ??=
             Expression.Convert(
-                ExpressionConstants.Null,
+                ExpressionHelpers.Null,
                 typeof(IDictionary<,>).MakeGenericType(typeof(string), typeof(IMtgParameter)));
 
     private readonly Dictionary<string, ConstantExpression> _propertyNames = new();
@@ -61,7 +63,7 @@ internal class PredicateVisitor : ExpressionVisitor
             return node;
         }
 
-        return ExpressionConstants.Null;
+        return ExpressionHelpers.Null;
     }
 
     protected override Expression VisitUnary(UnaryExpression node)
@@ -122,13 +124,13 @@ internal class PredicateVisitor : ExpressionVisitor
 
     protected override Expression VisitMethodCall(MethodCallExpression node)
     {
-        if (node.Method == ExpressionConstants.StringContains
+        if (node.Method == TypeHelpers.StringContains
             && Visit(node.Object) is Expression propertyName)
         {
             return CallQuery(propertyName, Visit(node.Arguments[0]));
         }
 
-        if (node.Method == ExpressionConstants.All.MakeGenericMethod(typeof(string)))
+        if (node.Method == TypeHelpers.All.MakeGenericMethod(typeof(string)))
         {
             var visitPredicate = AllPredicate.Visit(node.Arguments[1]);
 
@@ -179,7 +181,7 @@ internal class PredicateVisitor : ExpressionVisitor
                 return node;
             }
 
-            return ExpressionConstants.Null;
+            return ExpressionHelpers.Null;
         }
 
         protected override Expression VisitUnary(UnaryExpression node)

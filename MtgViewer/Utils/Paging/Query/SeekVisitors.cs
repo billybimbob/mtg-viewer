@@ -1,4 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Linq.Expressions;
 
@@ -22,60 +21,6 @@ internal sealed class FindSeekVisitor : ExpressionVisitor
         }
 
         return Visit(parent);
-    }
-}
-
-internal sealed class AddSeekVisitor : ExpressionVisitor
-{
-    private readonly object? _origin;
-    private readonly SeekDirection _direction;
-    private readonly int? _take;
-
-    private bool _foundSeek;
-
-    public AddSeekVisitor(object? origin, SeekDirection direction, int? take)
-    {
-        _origin = origin;
-        _direction = direction;
-        _take = take;
-    }
-
-    public AddSeekVisitor(SeekExpression seek)
-        : this(seek.Origin.Value, seek.Direction, seek.Take)
-    {
-    }
-
-    [return: NotNullIfNotNull("node")]
-    public override Expression? Visit(Expression? node)
-    {
-        _foundSeek = false;
-
-        var visit = base.Visit(node);
-
-        if (visit is null)
-        {
-            return null;
-        }
-
-        if (_foundSeek)
-        {
-            return visit;
-        }
-
-        return new SeekExpression(
-            visit, Expression.Constant(_origin), _direction, _take);
-    }
-
-    protected override Expression VisitExtension(Expression node)
-    {
-        if (node is not SeekExpression seek)
-        {
-            return node;
-        }
-
-        _foundSeek = true;
-
-        return seek.Update(_origin, _direction, _take);
     }
 }
 
@@ -113,7 +58,7 @@ internal sealed class ExpandSeekVisitor<TEntity> : ExpressionVisitor
             return node;
         }
 
-        var query = _provider.CreateQuery<TEntity>(node);
+        var query = _provider.CreateQuery<TEntity>(seek.Query);
 
         var filter = OriginFilter.Build(query, _origin, seek.Direction);
 

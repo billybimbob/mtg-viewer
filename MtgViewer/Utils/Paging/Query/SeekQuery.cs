@@ -29,10 +29,11 @@ internal sealed class SeekQuery : IQueryable
 }
 
 internal sealed class SeekQuery<T> : ISeekQueryable<T>, IAsyncEnumerable<T>
+    where T : class
 {
-    private readonly IAsyncQueryProvider _provider;
+    private readonly SeekProvider<T> _provider;
 
-    public SeekQuery(IAsyncQueryProvider provider, Expression expression)
+    public SeekQuery(SeekProvider<T> provider, Expression expression)
     {
         _provider = provider;
         Expression = expression;
@@ -43,6 +44,8 @@ internal sealed class SeekQuery<T> : ISeekQueryable<T>, IAsyncEnumerable<T>
     public Type ElementType => typeof(T);
 
     public IQueryProvider Provider => _provider;
+
+    public IAsyncQueryProvider AsyncProvider => _provider;
 
     IEnumerator IEnumerable.GetEnumerator()
         => ((IEnumerable)_provider.Execute(Expression)!).GetEnumerator();

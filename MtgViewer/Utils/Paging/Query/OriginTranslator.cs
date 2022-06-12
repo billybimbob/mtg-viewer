@@ -386,7 +386,7 @@ internal sealed class OriginTranslator<TOrigin, TEntity>
                 return node.Body;
             }
 
-            return ExpressionConstants.Null;
+            return ExpressionHelpers.Null;
         }
 
         protected override Expression VisitUnary(UnaryExpression node)

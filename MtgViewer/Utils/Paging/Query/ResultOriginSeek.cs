@@ -68,6 +68,7 @@ internal sealed class ResultOriginSeek<TSource, TResult, TRefKey, TValueKey> : I
         var origin = await GetOriginAsync(cancel).ConfigureAwait(false);
 
         return await SeekQuery(origin)
+            .AsSeekQueryable()
             .ToSeekListAsync(cancel)
             .ConfigureAwait(false);
     }

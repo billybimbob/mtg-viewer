@@ -67,6 +67,7 @@ internal sealed class EntityOriginSeek<TEntity, TRefKey, TValueKey> : ISeekable<
         var origin = await GetOriginAsync(cancel).ConfigureAwait(false);
 
         return await SeekQuery(origin)
+            .AsSeekQueryable()
             .ToSeekListAsync(cancel)
             .ConfigureAwait(false);
     }

@@ -92,7 +92,7 @@
             return null;
         }
 
-        var keyProperty = ExpressionHelpers.GetKeyProperty(value.GetType());
+        var keyProperty = TypeHelpers.GetKeyProperty(value.GetType());
 
         return keyProperty?.GetValue(value);
     }
