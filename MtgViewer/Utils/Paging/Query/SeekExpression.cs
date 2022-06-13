@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Query;
 
 namespace EntityFrameworkCore.Paging.Query;
 
-internal class SeekExpression : Expression
+internal sealed class SeekExpression : Expression
 {
     internal SeekExpression(Expression query, ConstantExpression origin, SeekDirection direction, int? size)
     {
@@ -27,15 +27,14 @@ internal class SeekExpression : Expression
             throw new ArgumentException("Inner type is not a reference type", nameof(query));
         }
 
-        Type = typeof(ISeekQueryable<>).MakeGenericType(elementType);
         Query = query;
-
         Origin = origin;
+
         Direction = direction;
         Size = size;
-    }
 
-    public override Type Type { get; }
+        Type = typeof(ISeekQueryable<>).MakeGenericType(elementType);
+    }
 
     public Expression Query { get; }
 
@@ -45,6 +44,8 @@ internal class SeekExpression : Expression
 
     public int? Size { get; }
 
+    public override Type Type { get; }
+
     public override ExpressionType NodeType => ExpressionType.Extension;
 
     protected override Expression VisitChildren(ExpressionVisitor visitor)
@@ -52,14 +53,12 @@ internal class SeekExpression : Expression
         var newQuery = visitor.Visit(Query);
         var newOrigin = visitor.Visit(Origin);
 
-        bool hasChanges = newQuery != Query || newOrigin != Origin;
-
-        return (newOrigin, hasChanges) switch
+        if (newOrigin is not ConstantExpression o)
         {
-            (ConstantExpression o, true) => new SeekExpression(newQuery, o, Direction, Size),
-            (_, true) => new SeekExpression(newQuery, Origin, Direction, Size),
-            _ => this
-        };
+            throw new InvalidOperationException($"{nameof(Origin)} is invalid type: {newOrigin.Type.Name}");
+        }
+
+        return Update(newQuery, o, Direction, Size);
     }
 
     public SeekExpression Update(

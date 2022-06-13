@@ -1,6 +1,8 @@
 using System.Linq;
 using System.Linq.Expressions;
 
+using EntityFrameworkCore.Paging.Extensions;
+
 namespace EntityFrameworkCore.Paging.Query;
 
 internal sealed class FindSeekVisitor : ExpressionVisitor
@@ -40,12 +42,12 @@ internal sealed class RemoveSeekVisitor : ExpressionVisitor
     }
 }
 
-internal sealed class ExpandSeekVisitor<TEntity> : ExpressionVisitor
+internal sealed class ExpandSeekVisitor : ExpressionVisitor
 {
     private readonly IQueryProvider _provider;
-    private readonly TEntity? _origin;
+    private readonly ConstantExpression _origin;
 
-    public ExpandSeekVisitor(IQueryProvider provider, TEntity? origin)
+    public ExpandSeekVisitor(IQueryProvider provider, ConstantExpression origin)
     {
         _provider = provider;
         _origin = origin;
@@ -58,7 +60,7 @@ internal sealed class ExpandSeekVisitor<TEntity> : ExpressionVisitor
             return node;
         }
 
-        var query = _provider.CreateQuery<TEntity>(seek.Query);
+        var query = _provider.CreateQuery(seek.Query);
 
         var filter = OriginFilter.Build(query, _origin, seek.Direction);
 

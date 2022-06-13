@@ -5,10 +5,10 @@ using Microsoft.EntityFrameworkCore.Query;
 
 namespace EntityFrameworkCore.Paging.Query;
 
-internal class FindRootQuery : ExpressionVisitor
+internal class FindRootVisitor : ExpressionVisitor
 {
-    private static FindRootQuery? _instance;
-    public static FindRootQuery Instance => _instance ??= new();
+    private static FindRootVisitor? _instance;
+    public static FindRootVisitor Instance => _instance ??= new();
 
     protected override Expression VisitMethodCall(MethodCallExpression node)
     {

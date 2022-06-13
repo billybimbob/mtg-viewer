@@ -10,6 +10,8 @@ using System.Runtime.CompilerServices;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Query;
 
+using EntityFrameworkCore.Paging.Extensions;
+
 namespace EntityFrameworkCore.Paging.Query;
 
 internal sealed class SeekProvider<TEntity> : IAsyncQueryProvider
@@ -55,7 +57,7 @@ internal sealed class SeekProvider<TEntity> : IAsyncQueryProvider
 
     public object? Execute(Expression expression)
     {
-        var origin = ExecuteOrigin(expression);
+        object? origin = ExecuteOrigin(expression);
 
         var query = CreateEntityQuery(expression, origin);
 
@@ -136,7 +138,7 @@ internal sealed class SeekProvider<TEntity> : IAsyncQueryProvider
             return (TResult)(object)ExecuteSeekList(expression);
         }
 
-        var origin = ExecuteOrigin(expression);
+        object? origin = ExecuteOrigin(expression);
 
         var query = CreateEntityQuery(expression, origin);
 
@@ -252,7 +254,7 @@ internal sealed class SeekProvider<TEntity> : IAsyncQueryProvider
     private async IAsyncEnumerable<TEntity> ExecuteAsyncEnumerable(
         Expression expression, [EnumeratorCancellation] CancellationToken cancel)
     {
-        var origin = await ExecuteOriginAsync(expression, cancel).ConfigureAwait(false);
+        object? origin = await ExecuteOriginAsync(expression, cancel).ConfigureAwait(false);
 
         var query = CreateEntityQuery(expression, origin)
             .AsAsyncEnumerable()
@@ -283,7 +285,7 @@ internal sealed class SeekProvider<TEntity> : IAsyncQueryProvider
 
     private async Task<T> ExecuteTaskAsync<T>(Expression expression, CancellationToken cancel)
     {
-        var origin = await ExecuteOriginAsync(expression, cancel)
+        object? origin = await ExecuteOriginAsync(expression, cancel)
             .ConfigureAwait(false);
 
         var query = CreateEntityQuery(expression, origin);
@@ -294,178 +296,106 @@ internal sealed class SeekProvider<TEntity> : IAsyncQueryProvider
 
     #endregion
 
+    private IQueryable<TEntity> CreateEntityQuery(Expression expression, object? origin)
+    {
+        var expander = new ExpandSeekVisitor(_source, Expression.Constant(origin));
+
+        var expandedExpression = expander.Visit(expression);
+
+        return _source.CreateQuery<TEntity>(expandedExpression);
+    }
+
     #region Fetch Origin
 
-    private TEntity? ExecuteOrigin(Expression expression)
+    private object? ExecuteOrigin(Expression source)
     {
-        if (FindSeekVisitor.Instance.Visit(expression) is not SeekExpression seek
-            || FindRootQuery.Instance.Visit(expression) is not QueryRootExpression root)
+        if (FindOriginQuery(source) is not OriginQueryExpression query)
         {
-            return default;
+            return null;
         }
 
-        if (seek.Origin.Value is TEntity keyEntity)
+        if (TryGetLocalOrigin(query, out object? local))
         {
-            return keyEntity;
+            return local;
         }
 
-        if (FindSelector(expression, root) is LambdaExpression selector)
+        if (query.Origin.Value is not object key)
         {
-            return ExecuteOrigin(seek, root, selector);
+            return null;
         }
 
-        if (seek.Origin.Value is not object key)
-        {
-            return default;
-        }
-
-        return CreateOriginQuery(expression, root, key)
+        return CreateOriginQuery(query, key, source)
             .SingleOrDefault();
     }
 
-    private async Task<TEntity?> ExecuteOriginAsync(Expression expression, CancellationToken cancel)
+    private async Task<object?> ExecuteOriginAsync(Expression source, CancellationToken cancel)
     {
-        if (FindSeekVisitor.Instance.Visit(expression) is not SeekExpression seek
-            || FindRootQuery.Instance.Visit(expression) is not QueryRootExpression root)
+        if (FindOriginQuery(source) is not OriginQueryExpression query)
         {
-            return default;
+            return null;
         }
 
-        if (seek.Origin.Value is TEntity keyEntity)
+        if (TryGetLocalOrigin(query, out object? local))
         {
-            return keyEntity;
+            return local;
         }
 
-        if (FindSelector(expression, root) is LambdaExpression selector)
+        if (query.Origin.Value is not object key)
         {
-            return await ExecuteOriginAsync(seek, root, selector, cancel);
+            return null;
         }
 
-        if (seek.Origin.Value is not object key)
-        {
-            return default;
-        }
-
-        return await CreateOriginQuery(expression, root, key)
+        return await CreateOriginQuery(query, key, source)
             .SingleOrDefaultAsync(cancel)
             .ConfigureAwait(false);
     }
 
-    private static LambdaExpression? FindSelector(
-        Expression expression,
-        QueryRootExpression root)
+    private static OriginQueryExpression? FindOriginQuery(Expression source)
     {
-        if (root.EntityType.ClrType == typeof(TEntity))
+        if (FindOrderParameterVisitor.Instance.Visit(source)
+            is not ParameterExpression orderBy)
         {
-            return default;
+            return null;
         }
 
-        var findSelect = new FindSelect(root.EntityType.ClrType, typeof(TEntity));
+        var findOriginQuery = new FindOriginQueryVisitor(orderBy);
 
-        return findSelect.Visit(expression) as LambdaExpression;
+        return findOriginQuery.Visit(source) as OriginQueryExpression;
     }
 
-    private TEntity? ExecuteOrigin(
-        SeekExpression seek,
+    private static bool TryGetLocalOrigin(OriginQueryExpression query, out object? origin)
+    {
+        if (query.Origin.Type == query.Type)
+        {
+            origin = query.Origin.Value;
+            return true;
+        }
+
+        if (query.Origin.Type != query.Selector?.Parameters.FirstOrDefault()?.Type)
+        {
+            origin = null;
+            return false;
+        }
+
+        origin = query.Selector
+            .Compile()
+            .DynamicInvoke(query.Origin.Value);
+
+        return true;
+    }
+
+    private IQueryable CreateOriginQuery(
+        OriginQueryExpression query,
+        object key,
+        Expression source)
+        => query.Selector is not null
+            ? CreateOriginQuery(query.Root, key, query.Selector)
+            : CreateOriginQuery(query.Root, key, source);
+
+    private IQueryable CreateOriginQuery(
         QueryRootExpression root,
+        object key,
         LambdaExpression selector)
-    {
-        if (seek.Origin.Type == root.EntityType.ClrType)
-        {
-            return (TEntity?)selector
-                .Compile()
-                .DynamicInvoke(seek.Origin.Value);
-        }
-
-        if (seek.Origin.Value is not object key)
-        {
-            return default;
-        }
-
-        return CreateOriginQuery(root, selector, key)
-            .SingleOrDefault();
-    }
-
-    private async Task<TEntity?> ExecuteOriginAsync(
-        SeekExpression seek,
-        QueryRootExpression root,
-        LambdaExpression selector,
-        CancellationToken cancel)
-    {
-        if (seek.Origin.Type == root.EntityType.ClrType)
-        {
-            return (TEntity?)selector
-                .Compile()
-                .DynamicInvoke(seek.Origin.Value);
-        }
-
-        if (seek.Origin.Value is not object key)
-        {
-            return default;
-        }
-
-        return await CreateOriginQuery(root, selector, key)
-            .SingleOrDefaultAsync(cancel)
-            .ConfigureAwait(false);
-    }
-
-    private IQueryable<TEntity> CreateOriginQuery(
-        Expression expression,
-        QueryRootExpression root,
-        object key)
-    {
-        if (typeof(TEntity) != root.EntityType.ClrType)
-        {
-            throw new InvalidOperationException(
-                $"{typeof(TEntity).Name} does not expected type {root.EntityType.ClrType.Name}");
-        }
-
-        var findByKey = new FindByKeyVisitor(root.EntityType);
-
-        var query = _source
-            .CreateQuery<TEntity>(findByKey
-                .Visit(expression));
-
-        foreach (string include in findByKey.Include)
-        {
-            query = query.Include(include);
-        }
-
-        var entityParameter = Expression
-            .Parameter(
-                type: query.ElementType,
-                name: query.ElementType.Name[0].ToString().ToLowerInvariant());
-
-        var keyProperty = Expression
-            .Property(entityParameter, GetKeyProperty(root, key));
-
-        var orderByKey = Expression
-            .Call(
-                instance: null,
-                method: QueryableMethods.OrderBy
-                    .MakeGenericMethod(query.ElementType, keyProperty.Type),
-                arg0: query.Expression,
-                arg1: Expression
-                    .Quote(Expression
-                        .Lambda(keyProperty, entityParameter)));
-
-        var equalsToKey = Expression
-            .Lambda<Func<TEntity, bool>>(Expression
-                .Equal(
-                    keyProperty,
-                    Expression.Constant(key, keyProperty.Type)),
-                entityParameter);
-
-        return query.Provider
-            .CreateQuery<TEntity>(orderByKey)
-            .Where(equalsToKey)
-            .AsNoTracking();
-    }
-
-    private IQueryable<TEntity> CreateOriginQuery(
-        QueryRootExpression root,
-        LambdaExpression selector,
-        object key)
     {
         var sourceParameter = Expression
             .Parameter(
@@ -476,40 +406,15 @@ internal sealed class SeekProvider<TEntity> : IAsyncQueryProvider
             .Property(sourceParameter, GetKeyProperty(root, key));
 
         var equalsToKey = Expression
-            .Lambda(Expression
-                .Equal(
-                    keyProperty,
-                    Expression.Constant(key, keyProperty.Type)),
-                sourceParameter);
+            .Equal(
+                keyProperty,
+                Expression.Constant(key, keyProperty.Type));
 
-        var query = _source
-            .CreateQuery(Expression
-                .Call(
-                    instance: null,
-                    method: QueryableMethods.Where
-                        .MakeGenericMethod(root.EntityType.ClrType),
-                    arg0: root,
-                    arg1: Expression.Quote(equalsToKey)));
-
-        query = query.Provider
-            .CreateQuery(Expression
-                .Call(
-                    instance: null,
-                    method: QueryableMethods.OrderBy
-                        .MakeGenericMethod(query.ElementType, keyProperty.Type),
-                    arg0: query.Expression,
-                    arg1: Expression
-                        .Quote(Expression
-                            .Lambda(keyProperty, sourceParameter))));
-
-        return query.Provider
-            .CreateQuery<TEntity>(Expression
-                .Call(
-                    instance: null,
-                    method: QueryableMethods.Select
-                        .MakeGenericMethod(query.ElementType, typeof(TEntity)),
-                    arg0: query.Expression,
-                    arg1: Expression.Quote(selector)));
+        return _source
+            .CreateQuery(root)
+            .Where(Expression.Lambda(equalsToKey, sourceParameter))
+            .OrderBy(Expression.Lambda(keyProperty, sourceParameter))
+            .Select(selector);
     }
 
     private static PropertyInfo GetKeyProperty(QueryRootExpression root, object key)
@@ -527,14 +432,89 @@ internal sealed class SeekProvider<TEntity> : IAsyncQueryProvider
         return getKey;
     }
 
-    #endregion
-
-    private IQueryable<TEntity> CreateEntityQuery(Expression expression, TEntity? origin)
+    private IQueryable CreateOriginQuery(
+        QueryRootExpression root,
+        object key,
+        Expression source)
     {
-        var expander = new ExpandSeekVisitor<TEntity>(_source, origin);
+        if (root.EntityType.ClrType == typeof(TEntity))
+        {
+            return CreateEntityOriginQuery(root, key, source);
+        }
 
-        var expandedExpression = expander.Visit(expression);
+        // add include statements as well
 
-        return _source.CreateQuery<TEntity>(expandedExpression);
+        var originInclude = new OriginIncludeVisitor(root.EntityType);
+
+        var query = _source
+            .CreateQuery(originInclude.Visit(source));
+
+        foreach (string include in originInclude.Includes)
+        {
+            query = query.Include(include);
+        }
+
+        var originParameter = Expression
+            .Parameter(
+                type: query.ElementType,
+                name: query.ElementType.Name[0].ToString().ToLowerInvariant());
+
+        var keyProperty = Expression
+            .Property(originParameter, GetKeyProperty(root, key));
+
+        var equalsToKey = Expression
+            .Equal(
+                keyProperty,
+                Expression.Constant(key, keyProperty.Type));
+
+        return query
+            .Where(Expression
+                .Lambda(equalsToKey, originParameter))
+
+            .OrderBy(Expression
+                .Lambda(keyProperty, originParameter))
+
+            .AsNoTracking();
     }
+
+    private IQueryable<TEntity> CreateEntityOriginQuery(
+        QueryRootExpression root,
+        object key,
+        Expression source)
+    {
+        var originInclude = new OriginIncludeVisitor(root.EntityType);
+
+        var query = _source
+            .CreateQuery<TEntity>(originInclude.Visit(source));
+
+        foreach (string include in originInclude.Includes)
+        {
+            query = query.Include(include);
+        }
+
+        var entityParameter = Expression
+            .Parameter(
+                type: root.EntityType.ClrType,
+                name: root.EntityType.ClrType.Name[0].ToString().ToLowerInvariant());
+
+        var keyProperty = Expression
+            .Property(entityParameter, GetKeyProperty(root, key));
+
+        var equalsToKey = Expression
+            .Equal(
+                keyProperty,
+                Expression.Constant(key, keyProperty.Type));
+
+        return query
+            .OrderBy(Expression
+                .Lambda(keyProperty, entityParameter))
+
+            .Cast<TEntity>()
+            .Where(Expression
+                .Lambda<Func<TEntity, bool>>(equalsToKey, entityParameter))
+
+            .AsNoTracking();
+    }
+
+    #endregion
 }

@@ -7,13 +7,13 @@ using Microsoft.EntityFrameworkCore.Query;
 
 namespace EntityFrameworkCore.Paging.Query;
 
-internal class FindSelect : ExpressionVisitor
+internal class FindSelectVisitor : ExpressionVisitor
 {
     private readonly Type _source;
     private readonly Type _result;
     private MethodInfo? _selectMethod;
 
-    public FindSelect(Type source, Type result)
+    public FindSelectVisitor(Type source, Type result)
     {
         _source = source;
         _result = result;

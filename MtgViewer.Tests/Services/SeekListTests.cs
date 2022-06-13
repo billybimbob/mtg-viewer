@@ -1,7 +1,8 @@
 using System;
 using System.Linq;
-using EntityFrameworkCore.Paging;
 using System.Threading.Tasks;
+
+using EntityFrameworkCore.Paging;
 
 using Microsoft.EntityFrameworkCore;
 

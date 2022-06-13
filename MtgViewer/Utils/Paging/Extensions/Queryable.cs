@@ -1,0 +1,201 @@
+using System;
+using System.Linq;
+using System.Linq.Expressions;
+using System.Reflection;
+using System.Threading;
+using System.Threading.Tasks;
+
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Query;
+
+namespace EntityFrameworkCore.Paging.Extensions;
+
+internal static class Queryable
+{
+    public static IQueryable Where(this IQueryable source, LambdaExpression predicate)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        ArgumentNullException.ThrowIfNull(predicate);
+
+        return source.Provider
+            .CreateQuery(
+                Expression.Call(
+                    instance: null,
+                    method: QueryableMethods.Where
+                        .MakeGenericMethod(source.ElementType),
+                    arg0: source.Expression,
+                    arg1: Expression.Quote(predicate)));
+    }
+
+    public static IQueryable Select(this IQueryable source, LambdaExpression selector)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        ArgumentNullException.ThrowIfNull(selector);
+
+        if (selector.Parameters.Count != 1)
+        {
+            throw new ArgumentException($"Invalid select {selector.Type.Name}", nameof(selector));
+        }
+
+        return source.Provider
+            .CreateQuery(
+                Expression.Call(
+                    instance: null,
+                    method: QueryableMethods.Select
+                        .MakeGenericMethod(source.ElementType, selector.Body.Type),
+                    arg0: source.Expression,
+                    arg1: Expression.Quote(selector)));
+    }
+
+    public static IQueryable OrderBy(this IQueryable source, LambdaExpression keySelector)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        ArgumentNullException.ThrowIfNull(keySelector);
+
+        if (keySelector.Parameters.Count != 1)
+        {
+            throw new ArgumentException($"Invalid select {keySelector.Type.Name}", nameof(keySelector));
+        }
+
+        return source.Provider
+            .CreateQuery(
+                Expression.Call(
+                    instance: null,
+                    method: QueryableMethods.OrderBy
+                        .MakeGenericMethod(source.ElementType, keySelector.Body.Type),
+                    arg0: source.Expression,
+                    arg1: Expression.Quote(keySelector)));
+    }
+
+    public static IQueryable Take(this IQueryable source, int count)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+
+        return source.Provider
+            .CreateQuery(
+                Expression.Call(
+                    instance: null,
+                    method: QueryableMethods.Take
+                        .MakeGenericMethod(source.ElementType),
+                    arg0: source.Expression,
+                    arg1: Expression.Constant(count)));
+    }
+
+    public static IQueryable Reverse(this IQueryable source)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+
+        return source.Provider
+            .CreateQuery(
+                Expression.Call(
+                    instance: null,
+                    method: QueryableMethods.Reverse
+                        .MakeGenericMethod(source.ElementType),
+                    arguments: source.Expression));
+
+    }
+
+    public static object? SingleOrDefault(this IQueryable source)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+
+        return source.Provider
+            .Execute(
+                Expression.Call(
+                    instance: null,
+                    method: QueryableMethods.SingleOrDefaultWithoutPredicate
+                        .MakeGenericMethod(source.ElementType),
+                    arguments: source.Expression));
+    }
+
+    #region Dynamic Invokes
+
+    public static async Task<object?> SingleOrDefaultAsync(
+        this IQueryable source,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+
+        if (source.Provider is not IAsyncQueryProvider asyncProvider)
+        {
+            throw new InvalidOperationException("Provider does not support async operations");
+        }
+
+        var resultType = typeof(Task<>)
+            .MakeGenericType(source.ElementType);
+
+        var call = Expression.Call(
+            instance: null,
+            method: QueryableMethods.SingleOrDefaultWithoutPredicate
+                .MakeGenericMethod(source.ElementType),
+            arguments: source.Expression);
+
+        var execute = (Task)typeof(IAsyncQueryProvider)
+            .GetTypeInfo()
+            .GetMethod(nameof(IAsyncQueryProvider.ExecuteAsync))!
+            .MakeGenericMethod(resultType)
+            .Invoke(asyncProvider, new object[] { call, cancellationToken })!;
+
+        await execute;
+
+        var resultProperty = resultType
+            .GetTypeInfo()
+            .GetProperty(nameof(Task<object>.Result))!;
+
+        return resultProperty.GetValue(execute);
+    }
+
+    public static IQueryable Include(this IQueryable source, string navigationPropertyPath)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        ArgumentNullException.ThrowIfNull(navigationPropertyPath);
+
+        if (source.ElementType.IsValueType)
+        {
+            throw new InvalidOperationException($"{source.ElementType} is not a reference type");
+        }
+
+        var genericQueryType = typeof(IQueryable<>).MakeGenericType(source.ElementType);
+
+        if (!source.GetType().IsAssignableTo(genericQueryType))
+        {
+            throw new InvalidOperationException("Query is not strongly typed");
+        }
+
+        const BindingFlags publicInstance = BindingFlags.Public | BindingFlags.Instance;
+
+        return (IQueryable)typeof(EntityFrameworkQueryableExtensions)
+            .GetMethod(
+                nameof(EntityFrameworkQueryableExtensions.Include),
+                publicInstance,
+                new[] { typeof(IQueryable<>), typeof(string) })!
+
+            .MakeGenericMethod(source.ElementType)
+            .Invoke(null, new object?[] { source, navigationPropertyPath })!;
+    }
+
+    public static IQueryable AsNoTracking(this IQueryable source)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+
+        if (source.ElementType.IsValueType)
+        {
+            throw new InvalidOperationException($"{source.ElementType} is not a reference type");
+        }
+
+        var genericQueryType = typeof(IQueryable<>).MakeGenericType(source.ElementType);
+
+        if (!source.GetType().IsAssignableTo(genericQueryType))
+        {
+            throw new InvalidOperationException("Query is not strongly typed");
+        }
+
+        return (IQueryable)typeof(EntityFrameworkQueryableExtensions)
+            .GetTypeInfo()
+            .GetMethod(nameof(EntityFrameworkQueryableExtensions.AsNoTracking))!
+            .MakeGenericMethod(source.ElementType)
+            .Invoke(null, new object?[] { source })!;
+    }
+
+    #endregion
+}
