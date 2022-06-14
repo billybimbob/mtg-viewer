@@ -2,7 +2,7 @@ using System;
 using System.Linq;
 using System.Linq.Expressions;
 
-using EntityFrameworkCore.Paging.Extensions;
+using EntityFrameworkCore.Paging.Utils;
 
 using Microsoft.EntityFrameworkCore.Query;
 

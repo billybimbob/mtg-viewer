@@ -1,6 +1,4 @@
-using System;
 using System.ComponentModel.DataAnnotations;
-using System.Linq.Expressions;
 
 namespace MtgViewer.Data.Infrastructure;
 
@@ -41,15 +39,5 @@ public sealed class BinDto
     {
         Id = bin?.Id ?? default;
         _name = bin?.Name;
-    }
-
-    public static string PropertyId<T>(Expression<Func<BinDto, T>> property)
-    {
-        if (property.Body is not MemberExpression expression)
-        {
-            return string.Empty;
-        }
-
-        return $"{nameof(BinDto)}-{expression.Member.Name}";
     }
 }

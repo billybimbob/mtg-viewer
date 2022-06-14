@@ -81,7 +81,7 @@ public class IndexModel : PageModel
         return Page();
     }
 
-    private ISeekQueryable<DeckPreview> DeckPreviews(string userId, int? seek, SeekDirection direction)
+    private IQueryable<DeckPreview> DeckPreviews(string userId, int? seek, SeekDirection direction)
     {
         return _dbContext.Decks
             .Where(d => d.OwnerId == userId)

@@ -7,6 +7,8 @@ using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Query;
 
+using EntityFrameworkCore.Paging.Utils;
+
 namespace EntityFrameworkCore.Paging.Query;
 
 internal class FindOriginQueryVisitor : ExpressionVisitor
@@ -35,12 +37,12 @@ internal class FindOriginQueryVisitor : ExpressionVisitor
     {
         if (node is QueryRootExpression root)
         {
-            return new OriginQueryExpression(root, ExpressionHelpers.Null, null);
+            return new OriginQueryExpression(root, Expression.Constant(null), null);
         }
 
         if (node is not SeekExpression seek)
         {
-            return base.VisitExtension(node);
+            return node;
         }
 
         if (base.Visit(seek.Query) is OriginQueryExpression query)

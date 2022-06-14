@@ -3,38 +3,32 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 
-namespace EntityFrameworkCore.Paging.Query;
+namespace EntityFrameworkCore.Paging.Utils;
 
 internal static class ExpressionHelpers
 {
-    private static ConstantExpression? _zero;
-    public static ConstantExpression Zero => _zero ??= Expression.Constant(0);
-
-    private static ConstantExpression? _null;
-    public static ConstantExpression Null => _null ??= Expression.Constant(null);
-
     public static bool IsNull(Expression node)
         => node is ConstantExpression { Value: null };
 
-    public static bool IsOrderBy(MethodCallExpression orderBy)
+    public static bool IsOrderBy(MethodCallExpression call)
     {
-        return orderBy.Method.Name
+        return call.Method.Name
             is nameof(Queryable.OrderBy)
                 or nameof(Queryable.OrderByDescending);
     }
 
-    public static bool IsOrderedMethod(MethodCallExpression orderBy)
+    public static bool IsOrderedMethod(MethodCallExpression call)
     {
-        return orderBy.Method.Name
+        return call.Method.Name
             is nameof(Queryable.OrderBy)
                 or nameof(Queryable.ThenBy)
                 or nameof(Queryable.OrderByDescending)
                 or nameof(Queryable.ThenByDescending);
     }
 
-    public static bool IsDescending(MethodCallExpression orderBy)
+    public static bool IsDescending(MethodCallExpression call)
     {
-        return orderBy.Method.Name
+        return call.Method.Name
             is nameof(Queryable.OrderByDescending)
                 or nameof(Queryable.ThenByDescending);
     }

@@ -7,9 +7,6 @@ namespace MtgViewer.Data.Infrastructure;
 public readonly record struct SeekRequest<T>(T? Origin, SeekDirection Direction)
     where T : class;
 
-public readonly record struct LoadedSeekList<T>(T? Origin, SeekDirection Direction, SeekList<T>? List)
-    where T : class;
-
 public readonly record struct SeekDto<T>(T? Previous, T? Next, bool IsMissing)
     where T : class
 {
@@ -30,3 +27,6 @@ public readonly record struct SeekDto<T>(T? Previous, T? Next, bool IsMissing)
         };
     }
 }
+
+public readonly record struct LoadedSeekList<T>(T? Origin, SeekDirection Direction, SeekList<T>? List)
+    where T : class;

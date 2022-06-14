@@ -1,6 +1,4 @@
-using System;
 using System.ComponentModel.DataAnnotations;
-using System.Linq.Expressions;
 
 namespace MtgViewer.Data.Infrastructure;
 
@@ -27,14 +25,4 @@ public sealed class BoxDto
 
     [ValidateComplexType]
     public BinDto Bin { get; init; }
-
-    public static string PropertyId<T>(Expression<Func<BoxDto, T>> property)
-    {
-        if (property.Body is not MemberExpression expression)
-        {
-            return string.Empty;
-        }
-
-        return $"{nameof(BoxDto)}-{expression.Member.Name}";
-    }
 }

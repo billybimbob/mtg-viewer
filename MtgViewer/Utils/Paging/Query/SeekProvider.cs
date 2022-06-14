@@ -10,7 +10,7 @@ using System.Runtime.CompilerServices;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Query;
 
-using EntityFrameworkCore.Paging.Extensions;
+using EntityFrameworkCore.Paging.Utils;
 
 namespace EntityFrameworkCore.Paging.Query;
 
@@ -26,21 +26,21 @@ internal sealed class SeekProvider<TEntity> : IAsyncQueryProvider
 
     #region Weakly Typed
 
+    // keep eye on, these weakly typed methods have not been tested
+    // may just throw InvalidOperation instead
+
     public IQueryable CreateQuery(Expression expression)
     {
-        if (FindSeekVisitor.Instance.Visit(expression) is SeekExpression seek)
-        {
-            return CreateSeekQuery(expression, seek);
-        }
-
-        return CreateSeekQuery(expression);
+        return FindSeekVisitor.Instance.Visit(expression) is SeekExpression seek
+            ? CreateSeekQuery(expression, seek)
+            : CreateSeekQuery(expression);
     }
 
     private IQueryable CreateSeekQuery(Expression expression)
     {
         var newQuery = _source.CreateQuery(expression);
 
-        return new SeekQuery(this, newQuery.Expression, newQuery.ElementType);
+        return SeekQueryable.Create(this, newQuery.Expression);
     }
 
     private IQueryable CreateSeekQuery(Expression expression, SeekExpression seek)
@@ -49,10 +49,9 @@ internal sealed class SeekProvider<TEntity> : IAsyncQueryProvider
 
         var newQuery = _source.CreateQuery(removedSeek);
 
-        return new SeekQuery(
-            this,
-            seek.Update(newQuery.Expression, seek.Origin, seek.Direction, seek.Size),
-            newQuery.ElementType);
+        var newSeek = seek.Update(newQuery.Expression, seek.Origin, seek.Direction, seek.Size);
+
+        return SeekQueryable.Create(this, newSeek);
     }
 
     public object? Execute(Expression expression)
@@ -70,12 +69,9 @@ internal sealed class SeekProvider<TEntity> : IAsyncQueryProvider
 
     public IQueryable<TElement> CreateQuery<TElement>(Expression expression)
     {
-        if (FindSeekVisitor.Instance.Visit(expression) is SeekExpression seek)
-        {
-            return CreateSeekQuery<TElement>(expression, seek);
-        }
-
-        return CreateSeekQuery<TElement>(expression);
+        return FindSeekVisitor.Instance.Visit(expression) is SeekExpression seek
+            ? CreateSeekQuery<TElement>(expression, seek)
+            : CreateSeekQuery<TElement>(expression);
     }
 
     private IQueryable<TElement> CreateSeekQuery<TElement>(Expression expression)
@@ -89,10 +85,7 @@ internal sealed class SeekProvider<TEntity> : IAsyncQueryProvider
 
         var newProvider = GetNewQueryProvider<TElement>();
 
-        return (IQueryable<TElement>)Activator
-            .CreateInstance(
-                typeof(SeekQuery<>).MakeGenericType(typeof(TElement)),
-                new object[] { newProvider, newQuery.Expression })!;
+        return SeekQueryable.Create<TElement>(newProvider, newQuery.Expression);
     }
 
     private IQueryable<TElement> CreateSeekQuery<TElement>(Expression expression, SeekExpression seek)
@@ -110,15 +103,17 @@ internal sealed class SeekProvider<TEntity> : IAsyncQueryProvider
 
         var newSeek = seek.Update(newQuery.Expression, seek.Origin, seek.Direction, seek.Size);
 
-        return (IQueryable<TElement>)Activator
-            .CreateInstance(
-                typeof(SeekQuery<>).MakeGenericType(typeof(TElement)),
-                new object[] { newProvider, newSeek })!;
+        return SeekQueryable.Create<TElement>(newProvider, newSeek);
     }
 
     private IAsyncQueryProvider GetNewQueryProvider<TElement>()
     {
-        if (typeof(TElement) == typeof(TEntity) || typeof(TElement).IsValueType)
+        if (typeof(TElement).IsValueType)
+        {
+            throw new InvalidOperationException($"{typeof(TElement).Name} is not a reference type");
+        }
+
+        if (typeof(TElement) == typeof(TEntity))
         {
             return this;
         }
@@ -280,12 +275,12 @@ internal sealed class SeekProvider<TEntity> : IAsyncQueryProvider
     {
         const string executeName = nameof(SeekProvider<TEntity>.ExecuteTaskAsync);
 
-        const BindingFlags privateFlags = BindingFlags.Instance | BindingFlags.NonPublic;
+        const BindingFlags privateInstance = BindingFlags.NonPublic | BindingFlags.Instance;
 
         return (TResult)typeof(SeekProvider<>)
             .MakeGenericType(typeof(TEntity))
 
-            .GetMethod(executeName, privateFlags, new[] { expression.GetType(), cancel.GetType() })!
+            .GetMethod(executeName, privateInstance, new[] { expression.GetType(), cancel.GetType() })!
 
             .MakeGenericMethod(typeof(TResult).GenericTypeArguments[0])
 
@@ -477,12 +472,8 @@ internal sealed class SeekProvider<TEntity> : IAsyncQueryProvider
                 Expression.Constant(key, keyProperty.Type));
 
         return query
-            .Where(Expression
-                .Lambda(equalsToKey, originParameter))
-
-            .OrderBy(Expression
-                .Lambda(keyProperty, originParameter))
-
+            .Where(Expression.Lambda(equalsToKey, originParameter))
+            .OrderBy(Expression.Lambda(keyProperty, originParameter))
             .AsNoTracking();
     }
 
@@ -515,8 +506,7 @@ internal sealed class SeekProvider<TEntity> : IAsyncQueryProvider
                 Expression.Constant(key, keyProperty.Type));
 
         return query
-            .OrderBy(Expression
-                .Lambda(keyProperty, entityParameter))
+            .OrderBy(Expression.Lambda(keyProperty, entityParameter))
 
             .Cast<TEntity>()
             .Where(Expression

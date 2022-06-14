@@ -5,7 +5,7 @@ using System.Reflection;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Query;
 
-namespace EntityFrameworkCore.Paging.Extensions;
+namespace EntityFrameworkCore.Paging.Utils;
 
 internal static class EntityTypeExtensions
 {

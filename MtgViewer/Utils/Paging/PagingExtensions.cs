@@ -65,7 +65,123 @@ public static class PagingExtensions
 
     #region Seek
 
-    public static ISeekQueryable<TEntity> AsSeekQueryable<TEntity>(this IQueryable<TEntity> source)
+    public static IQueryable<TEntity> SeekBy<TEntity, TOrigin>(
+        this IQueryable<TEntity> source,
+        TOrigin? origin,
+        SeekDirection direction,
+        int? size)
+        where TEntity : class
+        where TOrigin : class
+    {
+        ArgumentNullException.ThrowIfNull(source);
+
+        var seekSource = source.AsSeekQueryable();
+
+        var seek = new SeekExpression(
+            seekSource.Expression,
+            Expression.Constant(origin),
+            direction,
+            size);
+
+        return seekSource.Provider
+            .CreateQuery<TEntity>(seek);
+    }
+
+    public static IQueryable<TEntity> SeekBy<TEntity, TOrigin>(
+        this IQueryable<TEntity> source,
+        TOrigin? origin,
+        SeekDirection direction,
+        int? size)
+        where TEntity : class
+        where TOrigin : struct
+    {
+        ArgumentNullException.ThrowIfNull(source);
+
+        var seekSource = source.AsSeekQueryable();
+
+        var seek = new SeekExpression(
+            seekSource.Expression,
+            Expression.Constant(origin),
+            direction,
+            size);
+
+        return seekSource.Provider
+            .CreateQuery<TEntity>(seek);
+    }
+
+    public static IQueryable<TEntity> After<TEntity, TOrigin>(
+        this IQueryable<TEntity> source,
+        TOrigin? origin,
+        int? size)
+        where TEntity : class
+        where TOrigin : class
+        => source.SeekBy(origin, SeekDirection.Forward, size);
+
+    public static IQueryable<TEntity> After<TEntity, TOrigin>(
+        this IQueryable<TEntity> source,
+        TOrigin? origin,
+        int? size)
+        where TEntity : class
+        where TOrigin : struct
+        => source.SeekBy(origin, SeekDirection.Forward, size);
+
+    public static IQueryable<TEntity> Before<TEntity, TOrigin>(
+        this IQueryable<TEntity> source,
+        TOrigin? origin,
+        int? size)
+        where TEntity : class
+        where TOrigin : class
+        => source.SeekBy(origin, SeekDirection.Backwards, size);
+
+    public static IQueryable<TEntity> Before<TEntity, TOrigin>(
+        this IQueryable<TEntity> source,
+        TOrigin? origin,
+        int? size)
+        where TEntity : class
+        where TOrigin : struct
+        => source.SeekBy(origin, SeekDirection.Backwards, size);
+
+    internal static readonly MethodInfo ToSeekListMethodInfo
+        = typeof(PagingExtensions)
+            .GetTypeInfo()
+            .GetDeclaredMethod(nameof(ToSeekList))!;
+
+    public static SeekList<TEntity> ToSeekList<TEntity>(this IQueryable<TEntity> source)
+        where TEntity : class
+    {
+        ArgumentNullException.ThrowIfNull(source);
+
+        var seekSource = source.AsSeekQueryable();
+
+        return seekSource.Provider
+            .Execute<SeekList<TEntity>>(
+                Expression.Call(
+                    instance: null,
+                    method: ToSeekListMethodInfo
+                        .MakeGenericMethod(typeof(TEntity)),
+                    arguments: seekSource.Expression));
+    }
+
+    public static Task<SeekList<TEntity>> ToSeekListAsync<TEntity>(
+        this IQueryable<TEntity> source,
+        CancellationToken cancellationToken = default)
+        where TEntity : class
+    {
+        ArgumentNullException.ThrowIfNull(source);
+
+        var seekSource = source.AsSeekQueryable();
+
+        return seekSource.AsyncProvider
+            .ExecuteAsync<Task<SeekList<TEntity>>>(
+                Expression.Call(
+                    instance: null,
+                    method: ToSeekListMethodInfo
+                        .MakeGenericMethod(typeof(TEntity)),
+                    arguments: seekSource.Expression),
+                cancellationToken);
+    }
+
+    private static ISeekQueryable<TEntity> AsSeekQueryable<TEntity>(this IQueryable<TEntity> source)
         where TEntity : class
     {
         ArgumentNullException.ThrowIfNull(source);
@@ -82,121 +198,7 @@ public static class PagingExtensions
 
         var provider = new SeekProvider<TEntity>(asyncProvider);
 
-        return new SeekQuery<TEntity>(provider, source.Expression);
-    }
-
-    public static ISeekQueryable<TEntity> SeekBy<TEntity, TOrigin>(
-        this IQueryable<TEntity> source,
-        TOrigin? origin,
-        SeekDirection direction,
-        int? size)
-        where TEntity : class
-        where TOrigin : class
-    {
-        ArgumentNullException.ThrowIfNull(source);
-
-        var seekSource = source.AsSeekQueryable();
-
-        var seek = new SeekExpression(
-            seekSource.Expression,
-            Expression.Constant(origin),
-            direction,
-            size);
-
-        return seekSource.Provider
-            .CreateQuery<TEntity>(seek)
-            .AsSeekQueryable();
-    }
-
-    public static ISeekQueryable<TEntity> SeekBy<TEntity, TOrigin>(
-        this IQueryable<TEntity> source,
-        TOrigin? origin,
-        SeekDirection direction,
-        int? size)
-        where TEntity : class
-        where TOrigin : struct
-    {
-        ArgumentNullException.ThrowIfNull(source);
-
-        var seekSource = source.AsSeekQueryable();
-
-        var seek = new SeekExpression(
-            seekSource.Expression,
-            Expression.Constant(origin),
-            direction,
-            size);
-
-        return seekSource.Provider
-            .CreateQuery<TEntity>(seek)
-            .AsSeekQueryable();
-    }
-
-    public static ISeekQueryable<TEntity> After<TEntity, TOrigin>(
-        this IQueryable<TEntity> source,
-        TOrigin? origin,
-        int? size)
-        where TEntity : class
-        where TOrigin : class
-        => source.SeekBy(origin, SeekDirection.Forward, size);
-
-    public static ISeekQueryable<TEntity> After<TEntity, TOrigin>(
-        this IQueryable<TEntity> source,
-        TOrigin? origin,
-        int? size)
-        where TEntity : class
-        where TOrigin : struct
-        => source.SeekBy(origin, SeekDirection.Forward, size);
-
-    public static ISeekQueryable<TEntity> Before<TEntity, TOrigin>(
-        this IQueryable<TEntity> source,
-        TOrigin? origin,
-        int? size)
-        where TEntity : class
-        where TOrigin : class
-        => source.SeekBy(origin, SeekDirection.Backwards, size);
-
-    public static ISeekQueryable<TEntity> Before<TEntity, TOrigin>(
-        this IQueryable<TEntity> source,
-        TOrigin? origin,
-        int? size)
-        where TEntity : class
-        where TOrigin : struct
-        => source.SeekBy(origin, SeekDirection.Backwards, size);
-
-    internal static readonly MethodInfo ToSeekListMethodInfo
-        = typeof(PagingExtensions)
-            .GetTypeInfo()
-            .GetDeclaredMethod(nameof(ToSeekList))!;
-
-    public static SeekList<TEntity> ToSeekList<TEntity>(this ISeekQueryable<TEntity> source)
-        where TEntity : class
-    {
-        ArgumentNullException.ThrowIfNull(source);
-
-        return source.Provider
-            .Execute<SeekList<TEntity>>(
-                Expression.Call(
-                    instance: null,
-                    method: ToSeekListMethodInfo
-                        .MakeGenericMethod(typeof(TEntity)),
-                    arguments: source.Expression));
-    }
-
-    public static Task<SeekList<TEntity>> ToSeekListAsync<TEntity>(
-        this ISeekQueryable<TEntity> source,
-        CancellationToken cancel = default)
-        where TEntity : class
-    {
-        ArgumentNullException.ThrowIfNull(source);
-
-        return source.AsyncProvider
-            .ExecuteAsync<Task<SeekList<TEntity>>>(
-                Expression.Call(
-                    instance: null,
-                    method: ToSeekListMethodInfo
-                        .MakeGenericMethod(typeof(TEntity)),
-                    arguments: source.Expression),
-                cancel);
+        return SeekQueryable.Create(provider, source.Expression);
     }
 
     #endregion

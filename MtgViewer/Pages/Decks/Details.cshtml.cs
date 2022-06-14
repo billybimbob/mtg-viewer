@@ -96,7 +96,7 @@ public class DetailsModel : PageModel
                 })
                 .SingleOrDefault());
 
-    private ISeekQueryable<DeckCopy> DeckCards(int deckId, string? seek, SeekDirection direction)
+    private IQueryable<DeckCopy> DeckCards(int deckId, string? seek, SeekDirection direction)
     {
         return _dbContext.Cards
             .Where(c => c.Holds.Any(h => h.LocationId == deckId)

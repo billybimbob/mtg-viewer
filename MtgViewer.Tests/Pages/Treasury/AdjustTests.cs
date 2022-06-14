@@ -13,6 +13,7 @@ using MtgViewer.Data.Infrastructure;
 using MtgViewer.Data;
 using MtgViewer.Pages.Treasury;
 using MtgViewer.Tests.Utils;
+using MtgViewer.Utils;
 
 namespace MtgViewer.Tests.Pages.Treasury;
 
@@ -101,9 +102,9 @@ public sealed class AdjustTests : IAsyncLifetime, IDisposable
 
         var cut = _testContext.RenderComponent<Adjust>();
 
-        ChangeInput(cut, $"input#{BoxDto.PropertyId(b => b.Name)}", "New Box Name");
-        ChangeInput(cut, $"input#{BinDto.PropertyId(b => b.Name)}", "New Bin Name");
-        ChangeInput(cut, $"input#{BoxDto.PropertyId(b => b.Capacity)}", addCapacity);
+        ChangeInput(cut, $"input#{HtmlHelpers.GetId((BoxDto b) => b.Name)}", "New Box Name");
+        ChangeInput(cut, $"input#{HtmlHelpers.GetId((BinDto b) => b.Name)}", "New Bin Name");
+        ChangeInput(cut, $"input#{HtmlHelpers.GetId((BoxDto b) => b.Capacity)}", addCapacity);
 
         int beforeBoxes = await _dbContext.Boxes.CountAsync();
 
@@ -128,7 +129,7 @@ public sealed class AdjustTests : IAsyncLifetime, IDisposable
         var cut = _testContext.RenderComponent<Adjust>(p => p
             .Add(b => b.BoxId, box.Id));
 
-        ChangeInput(cut, $"input#{BoxDto.PropertyId(b => b.Capacity)}", newCapacity);
+        ChangeInput(cut, $"input#{HtmlHelpers.GetId((BoxDto b) => b.Capacity)}", newCapacity);
 
         var form = cut.FindComponent<EditForm>();
 
@@ -152,7 +153,7 @@ public sealed class AdjustTests : IAsyncLifetime, IDisposable
         var cut = _testContext.RenderComponent<Adjust>(p => p
             .Add(b => b.BoxId, box.Id));
 
-        ChangeInput(cut, $"input#{BoxDto.PropertyId(b => b.Name)}", newName);
+        ChangeInput(cut, $"input#{HtmlHelpers.GetId((BoxDto b) => b.Name)}", newName);
 
         var form = cut.FindComponent<EditForm>();
 
@@ -176,7 +177,7 @@ public sealed class AdjustTests : IAsyncLifetime, IDisposable
         var cut = _testContext.RenderComponent<Adjust>(p => p
             .Add(b => b.BoxId, box.Id));
 
-        ChangeInput(cut, $"input#{BinDto.PropertyId(b => b.Name)}", newName);
+        ChangeInput(cut, $"input#{HtmlHelpers.GetId((BinDto b) => b.Name)}", newName);
 
         var form = cut.FindComponent<EditForm>();
 

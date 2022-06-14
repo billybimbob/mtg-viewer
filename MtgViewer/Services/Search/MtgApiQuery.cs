@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -158,8 +159,7 @@ public sealed class MtgApiQuery : IMtgQuery
 
     private async IAsyncEnumerable<Card> BulkSearchAsync(
         IEnumerable<string> multiverseIds,
-        [System.Runtime.CompilerServices.EnumeratorCancellation]
-        CancellationToken cancel = default)
+        [EnumeratorCancellation] CancellationToken cancel = default)
     {
         const int chunkSize = (int)(Limit * 0.9f); // leave wiggle room for result
 

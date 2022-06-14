@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Components.Forms;
 
 namespace MtgViewer.Data.Infrastructure;
 
-internal sealed class DeckContext
+public sealed class DeckContext
 {
     private readonly Dictionary<Quantity, int> _originalCopies;
     private readonly Dictionary<string, QuantityGroup> _groups;
@@ -60,11 +60,11 @@ internal sealed class DeckContext
             return true;
         }
 
-        bool quantitiesModifed = _groups.Values
+        bool quantitiesModified = _groups.Values
             .SelectMany(cg => cg)
             .Any(q => IsModified(q));
 
-        if (quantitiesModifed)
+        if (quantitiesModified)
         {
             return true;
         }

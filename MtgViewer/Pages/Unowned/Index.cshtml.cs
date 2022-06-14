@@ -40,7 +40,7 @@ public class IndexModel : PageModel
         return Page();
     }
 
-    private ISeekQueryable<UnclaimedDetails> UnclaimedDecks(int? seek, SeekDirection direction)
+    private IQueryable<UnclaimedDetails> UnclaimedDecks(int? seek, SeekDirection direction)
     {
         return _dbContext.Unclaimed
 

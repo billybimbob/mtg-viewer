@@ -102,16 +102,16 @@ public class IndexModel : PageModel
             .SingleOrDefaultAsync(cancel);
     }
 
-    private ISeekQueryable<TransactionPreview> TransactionPreviews(int? id, int? seek, SeekDirection direction)
+    private IQueryable<TransactionPreview> TransactionPreviews(int? id, int? seek, SeekDirection direction)
     {
         return _dbContext.Transactions
-
             .Where(t => id == null || t.Changes
                 .Any(c => c.FromId == id || c.ToId == id))
 
             .OrderByDescending(t => t.AppliedAt)
                 .ThenBy(t => t.Id)
 
+            .SeekBy(seek, direction, _pageSize.Current)
             .Select(t => new TransactionPreview
             {
                 Id = t.Id,
@@ -142,9 +142,7 @@ public class IndexModel : PageModel
                         .ThenBy(l => l.SetName)
 
                     .Take(_pageSize.Current)
-            })
-
-            .SeekBy(seek, direction, _pageSize.Current);
+            });
     }
 
     private void UpdateTimeZone(string? timeZoneId)

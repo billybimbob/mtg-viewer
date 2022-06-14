@@ -44,16 +44,19 @@ public class IndexModel : PageModel
 
         Seek = (Seek)boxes.Seek;
 
-        HasExcess = await _dbContext.Excess.AnyAsync(cancel);
+        HasExcess = await _dbContext.Holds
+            .AnyAsync(h => h.Location is Excess, cancel);
     }
 
-    private ISeekQueryable<BoxPreview> BoxesForViewing(int? seek, SeekDirection direction)
+    private IQueryable<BoxPreview> BoxesForViewing(int? seek, SeekDirection direction)
     {
         return _dbContext.Boxes
             .OrderBy(b => b.Bin.Name)
                 .ThenBy(b => b.BinId)
                 .ThenBy(b => b.Name)
                 .ThenBy(b => b.Id)
+
+            .SeekBy(seek, direction, _pageSize.Current)
 
             .Select(b => new BoxPreview
             {
@@ -87,7 +90,6 @@ public class IndexModel : PageModel
 
                         Held = h.Copies
                     })
-            })
-            .SeekBy(seek, direction, _pageSize.Current);
+            });
     }
 }

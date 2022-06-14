@@ -6,6 +6,8 @@ using System.Reflection;
 
 using Microsoft.EntityFrameworkCore.Query;
 
+using EntityFrameworkCore.Paging.Utils;
+
 namespace EntityFrameworkCore.Paging.Query;
 
 internal sealed class OriginTranslator

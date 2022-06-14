@@ -25,7 +25,7 @@ public static partial class StartupExtensions
                     options.UseSqlServer(connString),
 
                 DatabaseOptions.Postgresql =>
-                    options.UseNpgsql(connString.ToNpgsqlConnectionString()),
+                    options.UseNpgsql(StringExtensions.ToNpgsqlConnectionString(connString)),
 
                 DatabaseOptions.Sqlite or _ =>
                     options.UseSqlite(connString)

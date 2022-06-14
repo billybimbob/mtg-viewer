@@ -32,8 +32,6 @@ internal sealed class SeekExpression : Expression
 
         Direction = direction;
         Size = size;
-
-        Type = typeof(ISeekQueryable<>).MakeGenericType(elementType);
     }
 
     public Expression Query { get; }
@@ -44,7 +42,7 @@ internal sealed class SeekExpression : Expression
 
     public int? Size { get; }
 
-    public override Type Type { get; }
+    public override Type Type => Query.Type;
 
     public override ExpressionType NodeType => ExpressionType.Extension;
 

@@ -68,19 +68,19 @@
 
             <div class="col col-md-8 col-lg-4">
                 <div class="form-group">
-                    <label for="@BoxDto.PropertyId(b => b.Name)">
-                        @Box.DisplayName(b => b.Name)
+                    <label for="@HtmlHelpers.GetId((BoxDto b) => b.Name)">
+                        @HtmlHelpers.GetDisplay((BoxDto b) => b.Name)
                     </label>
                     <InputText @bind-Value="Box.Name"
-                        id="@BoxDto.PropertyId(b => b.Name)" class="form-control" />
+                        id="@HtmlHelpers.GetId((BoxDto b) => b.Name)" class="form-control" />
                 </div>
 
                 <div class="form-group">
-                    <label for="@BoxDto.PropertyId(b => b.Bin)">
-                        @Box.DisplayName(b => b.Bin)
+                    <label for="@HtmlHelpers.GetId((BoxDto b) => b.Bin)">
+                        @HtmlHelpers.GetDisplay((BoxDto b) => b.Bin)
                     </label>
                     <select @onchange="BinSelected" disabled="@IsLoading"
-                        id="@BoxDto.PropertyId(b => b.Bin)" class="form-control">
+                        id="@HtmlHelpers.GetId((BoxDto b) => b.Bin)" class="form-control">
 
                         <option value="0" selected="@(!Box.Bin.IsEdit || Box.Bin.Id == 0)"> Create New </option>
 
@@ -92,45 +92,45 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="@BinDto.PropertyId(b => b.Name)">
+                    <label for="@HtmlHelpers.GetId((BinDto b) => b.Name)">
                         @if (!Box.Bin.IsEdit)
                         {
                             <text>
-                                New @Box.DisplayName(b => b.Bin) @Box.Bin.DisplayName(b => b.Name)
+                                New @HtmlHelpers.GetDisplay((BoxDto b) => b.Bin) @HtmlHelpers.GetDisplay((BinDto b) => b.Name)
                             </text>
                         }
                         else if (Box.IsEdit)
                         {
                             <text>
-                                Change @Box.Bin.Name's @Box.Bin.DisplayName(b => b.Name)
+                                Change @Box.Bin.Name's @HtmlHelpers.GetDisplay((BinDto b) => b.Name)
                             </text>
                         }
                         else
                         {
                             <text>
-                                @Box.DisplayName(b => b.Bin) @Box.Bin.DisplayName(b => b.Name)
+                                @HtmlHelpers.GetDisplay((BoxDto b) => b.Bin) @HtmlHelpers.GetDisplay((BinDto b) => b.Name)
                             </text>
                         }
                     </label>
                     <InputText @bind-Value="@Box.Bin.Name"
                         readonly="@(!Box.IsEdit && Box.Bin.IsEdit)"
-                        id="@BinDto.PropertyId(b => b.Name)" class="form-control" />
+                        id="@HtmlHelpers.GetId((BinDto b) => b.Name)" class="form-control" />
                 </div>
 
                 <div class="form-group">
-                    <label for="@BoxDto.PropertyId(b => b.Appearance)">
-                        @Box.DisplayName(b => b.Appearance)
+                    <label for="@HtmlHelpers.GetId((BoxDto b) => b.Appearance)">
+                        @HtmlHelpers.GetDisplay((BoxDto b) => b.Appearance)
                     </label>
                     <InputTextArea @bind-Value="Box.Appearance"
-                        id="@BoxDto.PropertyId(b => b.Appearance)" class="form-control" />
+                        id="@HtmlHelpers.GetId((BoxDto b) => b.Appearance)" class="form-control" />
                 </div>
 
                 <div class="form-group">
-                    <label for="@BoxDto.PropertyId(b => b.Capacity)">
-                        @Box.DisplayName(b => b.Capacity)
+                    <label for="@HtmlHelpers.GetId((BoxDto b) => b.Capacity)">
+                        @HtmlHelpers.GetDisplay((BoxDto b) => b.Capacity)
                     </label>
                     <InputNumber @bind-Value="Box.Capacity" min=0
-                        id="@BoxDto.PropertyId(b => b.Capacity)" class="form-control" />
+                        id="@HtmlHelpers.GetId((BoxDto b) => b.Capacity)" class="form-control" />
                 </div>
 
                 <div class="btn-group" role="group">

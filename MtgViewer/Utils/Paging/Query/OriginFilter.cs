@@ -5,6 +5,8 @@ using System.Linq.Expressions;
 
 using Microsoft.EntityFrameworkCore.Query;
 
+using EntityFrameworkCore.Paging.Utils;
+
 namespace EntityFrameworkCore.Paging.Query;
 
 internal sealed class OriginFilter
@@ -136,13 +138,13 @@ internal sealed class OriginFilter
             (MemberExpression o, _) when o.Type == typeof(string) =>
                 Expression.GreaterThan(
                     Expression.Call(parameter, TypeHelpers.StringCompareTo, o),
-                    ExpressionHelpers.Zero),
+                    Expression.Constant(0)),
 
             (null, NullOrder.Before) =>
-                Expression.NotEqual(parameter, ExpressionHelpers.Null),
+                Expression.NotEqual(parameter, Expression.Constant(null)),
 
             (not null, NullOrder.After) =>
-                Expression.Equal(parameter, ExpressionHelpers.Null),
+                Expression.Equal(parameter, Expression.Constant(null)),
 
             (null, NullOrder.None) or _ => null
         };
@@ -162,13 +164,13 @@ internal sealed class OriginFilter
             (MemberExpression o, _) when o.Type == typeof(string) =>
                 Expression.LessThan(
                     Expression.Call(parameter, TypeHelpers.StringCompareTo, o),
-                    ExpressionHelpers.Zero),
+                    Expression.Constant(0)),
 
             (null, NullOrder.After) =>
-                Expression.NotEqual(parameter, ExpressionHelpers.Null),
+                Expression.NotEqual(parameter, Expression.Constant(null)),
 
             (not null, NullOrder.Before) =>
-                Expression.Equal(parameter, ExpressionHelpers.Null),
+                Expression.Equal(parameter, Expression.Constant(null)),
 
             (null, NullOrder.None) or _ => null
         };
@@ -196,10 +198,10 @@ internal sealed class OriginFilter
                 Expression.Equal(parameter, o),
 
             MemberExpression o when o.Type != parameter.Type =>
-                Expression.NotEqual(parameter, ExpressionHelpers.Null),
+                Expression.NotEqual(parameter, Expression.Constant(null)),
 
             null when !_origin.IsParentNull(parameter) =>
-                Expression.Equal(parameter, ExpressionHelpers.Null),
+                Expression.Equal(parameter, Expression.Constant(null)),
 
             _ => null
         };

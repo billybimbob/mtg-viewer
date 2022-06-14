@@ -9,26 +9,7 @@ using Microsoft.EntityFrameworkCore.Query;
 
 namespace EntityFrameworkCore.Paging.Query;
 
-internal sealed class SeekQuery : IQueryable
-{
-    public SeekQuery(IQueryProvider provider, Expression expression, Type elementType)
-    {
-        Provider = provider;
-        Expression = expression;
-        ElementType = elementType;
-    }
-
-    public IQueryProvider Provider { get; }
-
-    public Expression Expression { get; }
-
-    public Type ElementType { get; }
-
-    IEnumerator IEnumerable.GetEnumerator()
-        => ((IEnumerable)Provider.Execute(Expression)!).GetEnumerator();
-}
-
-internal sealed class SeekQuery<T> : ISeekQueryable<T>, IAsyncEnumerable<T>
+internal class SeekQuery<T> : ISeekQueryable<T>, IAsyncEnumerable<T>
     where T : class
 {
     private readonly SeekProvider<T> _provider;
@@ -57,4 +38,13 @@ internal sealed class SeekQuery<T> : ISeekQueryable<T>, IAsyncEnumerable<T>
         => _provider
             .ExecuteAsync<IAsyncEnumerable<T>>(Expression, cancellationToken)
             .GetAsyncEnumerator(cancellationToken);
+}
+
+internal class OrderedSeekQuery<T> : SeekQuery<T>, IOrderedQueryable<T>
+    where T : class
+{
+    public OrderedSeekQuery(SeekProvider<T> provider, Expression expression)
+        : base(provider, expression)
+    {
+    }
 }

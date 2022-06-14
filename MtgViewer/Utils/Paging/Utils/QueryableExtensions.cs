@@ -8,9 +8,9 @@ using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Query;
 
-namespace EntityFrameworkCore.Paging.Extensions;
+namespace EntityFrameworkCore.Paging.Utils;
 
-internal static class Queryable
+internal static class QueryableExtensions
 {
     public static IQueryable Where(this IQueryable source, LambdaExpression predicate)
     {

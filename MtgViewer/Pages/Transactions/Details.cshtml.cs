@@ -151,13 +151,14 @@ public class DetailsModel : PageModel
             });
     }
 
-    private ISeekQueryable<ChangeDetails> ChangeDetails(
+    private IQueryable<ChangeDetails> ChangeDetails(
         TransactionDetails transaction,
         int? seek,
         SeekDirection direction)
     {
         return _dbContext.Changes
             .Where(c => c.TransactionId == transaction.Id)
+            .SeekBy(seek, direction, _pageSize.Current)
 
             .OrderByDescending(c => c.From == null)
                 .ThenBy(c => c.From!.Name)
@@ -200,9 +201,7 @@ public class DetailsModel : PageModel
                     Rarity = c.Card.Rarity,
                     ImageUrl = c.Card.ImageUrl
                 }
-            })
-
-            .SeekBy(seek, direction, _pageSize.Current);
+            });
     }
 
     private void UpdateTimeZone(string? timeZoneId)

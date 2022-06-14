@@ -16,6 +16,7 @@ using MtgViewer.Data.Infrastructure;
 using MtgViewer.Pages.Transfers;
 using MtgViewer.Services;
 using MtgViewer.Tests.Utils;
+using MtgViewer.Utils;
 
 namespace MtgViewer.Tests.Pages.Transfers;
 
@@ -304,7 +305,8 @@ public sealed class SuggestTests : IAsyncLifetime, IDisposable
 
         deckOption.Click();
 
-        var commentInput = cut.WaitForElement($"textarea#{SuggestionDto.PropertyId(s => s.Comment)}");
+        var commentInput = cut
+            .WaitForElement($"textarea#{HtmlHelpers.GetId((SuggestionDto s) => s.Comment)}");
 
         commentInput.Change("This is an added comment to the suggestion");
 
