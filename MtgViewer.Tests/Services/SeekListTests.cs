@@ -159,6 +159,27 @@ public class SeekListTests : IAsyncLifetime
     }
 
     [Fact]
+    public void ToSeekListSync_OrderBySeekBackwards_Returns()
+    {
+        const int pageSize = 4;
+
+        var cards = _dbContext.Cards.OrderBy(c => c.Id);
+
+        var origin = cards
+            .Skip(pageSize)
+            .First();
+
+        var seekList = cards
+            .SeekBy(origin, SeekDirection.Backwards, pageSize)
+            .ToSeekList();
+
+        Assert.Null(seekList.Seek.Previous);
+
+        Assert.All(seekList, c =>
+            Assert.True(c.Id.CompareTo(origin.Id) < 0));
+    }
+
+    [Fact]
     public async Task ToSeekList_OrderBySeekMultiple_Returns()
     {
         const int pageSize = 4;

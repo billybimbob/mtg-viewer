@@ -130,20 +130,34 @@ internal static class Queryable
                 .MakeGenericMethod(source.ElementType),
             arguments: source.Expression);
 
-        var execute = (Task)typeof(IAsyncQueryProvider)
+        var execute = (Task?)typeof(IAsyncQueryProvider)
             .GetTypeInfo()
-            .GetMethod(nameof(IAsyncQueryProvider.ExecuteAsync))!
+            .GetMethod(nameof(IAsyncQueryProvider.ExecuteAsync))?
             .MakeGenericMethod(resultType)
-            .Invoke(asyncProvider, new object[] { call, cancellationToken })!;
+            .Invoke(asyncProvider, new object[] { call, cancellationToken });
+
+        if (execute is null)
+        {
+            return null;
+        }
 
         await execute;
 
-        var resultProperty = resultType
+        return resultType
             .GetTypeInfo()
-            .GetProperty(nameof(Task<object>.Result))!;
-
-        return resultProperty.GetValue(execute);
+            .GetProperty(nameof(Task<object?>.Result))?
+            .GetValue(execute);
     }
+
+    // reference:
+    // https://github.com/dotnet/efcore/blob/a4f5b82d7e15311ca0275e5171a68f529463dcc8/src/EFCore/Extensions/EntityFrameworkQueryableExtensions.cs#L2429
+    private static readonly MethodInfo StringIncludeMethodInfo
+        = typeof(EntityFrameworkQueryableExtensions)
+            .GetTypeInfo()
+            .GetDeclaredMethods(nameof(EntityFrameworkQueryableExtensions.Include))
+            .Single(mi => mi
+                .GetParameters()
+                .Any(pi => pi.Name == "navigationPropertyPath" && pi.ParameterType == typeof(string)));
 
     public static IQueryable Include(this IQueryable source, string navigationPropertyPath)
     {
@@ -155,24 +169,17 @@ internal static class Queryable
             throw new InvalidOperationException($"{source.ElementType} is not a reference type");
         }
 
-        var genericQueryType = typeof(IQueryable<>).MakeGenericType(source.ElementType);
-
-        if (!source.GetType().IsAssignableTo(genericQueryType))
-        {
-            throw new InvalidOperationException("Query is not strongly typed");
-        }
-
-        const BindingFlags publicInstance = BindingFlags.Public | BindingFlags.Instance;
-
-        return (IQueryable)typeof(EntityFrameworkQueryableExtensions)
-            .GetMethod(
-                nameof(EntityFrameworkQueryableExtensions.Include),
-                publicInstance,
-                new[] { typeof(IQueryable<>), typeof(string) })!
-
+        return (IQueryable)StringIncludeMethodInfo
             .MakeGenericMethod(source.ElementType)
             .Invoke(null, new object?[] { source, navigationPropertyPath })!;
     }
+
+    // reference:
+    // https://github.com/dotnet/efcore/blob/a4f5b82d7e15311ca0275e5171a68f529463dcc8/src/EFCore/Extensions/EntityFrameworkQueryableExtensions.cs#L2530
+    private static readonly MethodInfo AsNoTrackingMethodInfo
+        = typeof(EntityFrameworkQueryableExtensions)
+            .GetTypeInfo()
+            .GetDeclaredMethod(nameof(EntityFrameworkQueryableExtensions.AsNoTracking))!;
 
     public static IQueryable AsNoTracking(this IQueryable source)
     {
@@ -183,16 +190,7 @@ internal static class Queryable
             throw new InvalidOperationException($"{source.ElementType} is not a reference type");
         }
 
-        var genericQueryType = typeof(IQueryable<>).MakeGenericType(source.ElementType);
-
-        if (!source.GetType().IsAssignableTo(genericQueryType))
-        {
-            throw new InvalidOperationException("Query is not strongly typed");
-        }
-
-        return (IQueryable)typeof(EntityFrameworkQueryableExtensions)
-            .GetTypeInfo()
-            .GetMethod(nameof(EntityFrameworkQueryableExtensions.AsNoTracking))!
+        return (IQueryable)AsNoTrackingMethodInfo
             .MakeGenericMethod(source.ElementType)
             .Invoke(null, new object?[] { source })!;
     }

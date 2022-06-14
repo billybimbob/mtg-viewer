@@ -28,8 +28,13 @@ internal static class TypeHelpers
 
     #region Enum Comparison
 
-    private static MethodInfo? _enumLessThan;
-    private static MethodInfo? _enumGreaterThan;
+    private const BindingFlags StaticPrivate = BindingFlags.Static | BindingFlags.NonPublic;
+
+    private static readonly MethodInfo _enumLessThan
+        = typeof(TypeHelpers).GetMethod(nameof(EnumLessThan), StaticPrivate)!;
+
+    private static readonly MethodInfo _enumGreaterThan
+        = typeof(TypeHelpers).GetMethod(nameof(EnumGreaterThan), StaticPrivate)!;
 
     private static bool EnumLessThan<TEnum>(TEnum left, TEnum right) where TEnum : Enum
         => left.CompareTo(right) < 0;
@@ -38,24 +43,10 @@ internal static class TypeHelpers
         => left.CompareTo(right) > 0;
 
     public static MethodInfo EnumLessThan(Type enumType)
-    {
-        const BindingFlags staticPrivate = BindingFlags.Static | BindingFlags.NonPublic;
-
-        _enumLessThan ??= typeof(TypeHelpers)
-            .GetMethod(nameof(TypeHelpers.EnumLessThan), staticPrivate);
-
-        return _enumLessThan!.MakeGenericMethod(enumType);
-    }
+        => _enumLessThan.MakeGenericMethod(enumType);
 
     public static MethodInfo EnumGreaterThan(Type enumType)
-    {
-        const BindingFlags staticPrivate = BindingFlags.Static | BindingFlags.NonPublic;
-
-        _enumGreaterThan ??= typeof(TypeHelpers)
-            .GetMethod(nameof(TypeHelpers.EnumGreaterThan), staticPrivate);
-
-        return _enumGreaterThan!.MakeGenericMethod(enumType);
-    }
+        => _enumGreaterThan.MakeGenericMethod(enumType);
 
     #endregion
 
@@ -115,20 +106,16 @@ internal static class TypeHelpers
         => type is { IsValueType: false, IsGenericType: false };
 
     public static bool IsScalarType(Type type)
-    {
-        return type.IsEnum
+        => type.IsEnum
             || IsValueComparable(type)
             || type == typeof(string);
-    }
 
     public static bool IsValueComparable(Type type)
-    {
-        return (type is { IsValueType: true }
+        => (type is { IsValueType: true }
             && type.IsAssignableTo(typeof(IComparable<>).MakeGenericType(type)))
 
             || (Nullable.GetUnderlyingType(type) is Type inner
                 && IsValueComparable(inner));
-    }
 
     public static bool IsExecuteMethod(MethodInfo methodInfo)
     {

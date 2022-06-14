@@ -146,15 +146,24 @@ internal sealed class SeekProvider<TEntity> : IAsyncQueryProvider
     }
 
     private static bool IsSeekListExecute<TResult>(Expression expression)
-        => expression is MethodCallExpression call
-            && call.Method
-                == PagingExtensions
-                    .ToSeekListMethodInfo
-                    .MakeGenericMethod(typeof(TEntity))
+    {
+        if (expression is not MethodCallExpression call)
+        {
+            return false;
+        }
 
-            && typeof(SeekList<>).MakeGenericType(typeof(TEntity)) is var seekList
-            && (typeof(TResult) == typeof(Task<>).MakeGenericType(seekList)
-                || typeof(TResult) == seekList);
+        var toSeekListMethod = PagingExtensions.ToSeekListMethodInfo.MakeGenericMethod(typeof(TEntity));
+
+        if (call.Method != toSeekListMethod)
+        {
+            return false;
+        }
+
+        var seekListType = typeof(SeekList<>).MakeGenericType(typeof(TEntity));
+
+        return typeof(TResult) == typeof(Task<>).MakeGenericType(seekListType)
+            || typeof(TResult) == seekListType;
+    }
 
     private SeekList<TEntity> ExecuteSeekList(Expression expression)
     {

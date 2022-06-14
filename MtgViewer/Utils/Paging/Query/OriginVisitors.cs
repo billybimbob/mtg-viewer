@@ -53,9 +53,8 @@ internal class FindOriginQueryVisitor : ExpressionVisitor
 
     protected override Expression VisitMethodCall(MethodCallExpression node)
     {
-        var parent = base.Visit(node.Arguments.ElementAtOrDefault(0));
-
-        if (parent is not OriginQueryExpression query)
+        if (base.Visit(node.Arguments.ElementAtOrDefault(0))
+            is not OriginQueryExpression query)
         {
             return node;
         }
@@ -158,13 +157,17 @@ internal class OriginIncludeVisitor : ExpressionVisitor
 
     protected override Expression VisitMethodCall(MethodCallExpression node)
     {
-        if (node.Arguments.ElementAtOrDefault(0) is not Expression parent
-            || node is { Method.IsGenericMethod: false })
+        if (node.Arguments.ElementAtOrDefault(0) is not Expression parent)
         {
             return node;
         }
 
         var visitedParent = base.Visit(parent);
+
+        if (node is { Method.IsGenericMethod: false })
+        {
+            return visitedParent;
+        }
 
         var method = node.Method.GetGenericMethodDefinition();
 
@@ -183,10 +186,10 @@ internal class OriginIncludeVisitor : ExpressionVisitor
     {
         if (node is SeekExpression seek)
         {
-            return seek.Query;
+            return base.Visit(seek.Query);
         }
 
-        return node;
+        return base.VisitExtension(node);
     }
 
     private sealed class FindIncludeVisitor : ExpressionVisitor
