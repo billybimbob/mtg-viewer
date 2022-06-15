@@ -33,10 +33,5 @@
     }
 
     private void OnLocationChange(object? sender, LocationChangedEventArgs args)
-    {
-        if (!args.IsNavigationIntercepted)
-        {
-            RouteDataAccessor.RouteData = null;
-        }
-    }
+        => RouteDataAccessor.RouteData = null;
 }

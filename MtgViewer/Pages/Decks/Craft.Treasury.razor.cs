@@ -21,7 +21,7 @@ public partial class Craft
 
     internal Color PickedColors { get; private set; }
 
-    internal SeekList<HeldCard> Treasury { get; private set; } = SeekList<HeldCard>.Empty;
+    internal SeekList<HeldCard> Treasury { get; private set; } = SeekList.Empty<HeldCard>();
 
     internal async Task SearchAsync(string? value)
     {

@@ -46,11 +46,11 @@ public class DetailsModel : PageModel
 
     public UnclaimedDetails Unclaimed { get; private set; } = default!;
 
-    public SeekList<DeckCopy> Cards { get; private set; } = SeekList<DeckCopy>.Empty;
+    public SeekList<DeckCopy> Cards { get; private set; } = SeekList.Empty<DeckCopy>();
 
     public async Task<IActionResult> OnGetAsync(
         int id,
-        int? seek,
+        string? seek,
         SeekDirection direction,
         CancellationToken cancel)
     {
@@ -82,7 +82,7 @@ public class DetailsModel : PageModel
                 })
                 .SingleOrDefault(u => u.Id == unclaimedId));
 
-    private IQueryable<DeckCopy> UnclaimedCards(UnclaimedDetails unclaimed, int? seek, SeekDirection direction)
+    private IQueryable<DeckCopy> UnclaimedCards(UnclaimedDetails unclaimed, string? seek, SeekDirection direction)
     {
         return _dbContext.Cards
             .Where(c => c.Holds.Any(h => h.LocationId == unclaimed.Id)

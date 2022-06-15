@@ -44,7 +44,7 @@ public class IndexModel : PageModel
 
     public string UserName { get; private set; } = string.Empty;
 
-    public SeekList<TradeDeckPreview> TradeDecks { get; private set; } = SeekList<TradeDeckPreview>.Empty;
+    public SeekList<TradeDeckPreview> TradeDecks { get; private set; } = SeekList.Empty<TradeDeckPreview>();
 
     public IReadOnlyList<SuggestionPreview> Suggestions { get; private set; } = Array.Empty<SuggestionPreview>();
 

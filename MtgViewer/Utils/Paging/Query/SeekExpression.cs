@@ -10,21 +10,10 @@ internal sealed class SeekExpression : Expression
 {
     internal SeekExpression(Expression query, ConstantExpression origin, SeekDirection direction, int? size)
     {
-        if (query.Type.IsGenericType is false)
+        if (!query.Type.IsAssignableTo(typeof(IQueryable))
+            || query.Type.IsGenericType is false)
         {
             throw new ArgumentException($"{query.Type.Name} is not {nameof(IQueryable)}", nameof(query));
-        }
-
-        var elementType = query.Type.GenericTypeArguments[0];
-
-        if (!query.Type.IsAssignableTo(typeof(IQueryable<>).MakeGenericType(elementType)))
-        {
-            throw new ArgumentException($"{query.Type.Name} is not {nameof(IQueryable)}", nameof(query));
-        }
-
-        if (elementType.IsValueType)
-        {
-            throw new ArgumentException("Inner type is not a reference type", nameof(query));
         }
 
         Query = query;

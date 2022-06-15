@@ -47,7 +47,7 @@ public class ExchangeModel : PageModel
 
     public ExchangePreview Deck { get; private set; } = default!;
 
-    public OffsetList<LocationCopy> Matches { get; private set; } = OffsetList<LocationCopy>.Empty;
+    public OffsetList<LocationCopy> Matches { get; private set; } = OffsetList.Empty<LocationCopy>();
 
     public async Task<IActionResult> OnGetAsync(int id, int? offset, CancellationToken cancel)
     {

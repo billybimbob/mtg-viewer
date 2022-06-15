@@ -28,7 +28,7 @@ public class DetailsModel : PageModel
 
     public BoxPreview Box { get; private set; } = default!;
 
-    public SeekList<QuantityCardPreview> Cards { get; private set; } = SeekList<QuantityCardPreview>.Empty;
+    public SeekList<QuantityCardPreview> Cards { get; private set; } = SeekList.Empty<QuantityCardPreview>();
 
     public async Task<IActionResult> OnGetAsync(
         int id,
@@ -119,6 +119,7 @@ public class DetailsModel : PageModel
 
             .AsAsyncEnumerable()
             .Where((id, i) => i % size == size - 1)
+            .Select(id => id as int?)
             .LastOrDefaultAsync(cancel);
     }
 

@@ -44,7 +44,7 @@ public class IndexModel : PageModel
     [TempData]
     public string? TimeZoneId { get; set; }
 
-    public SeekList<TransactionPreview> Transactions { get; private set; } = SeekList<TransactionPreview>.Empty;
+    public SeekList<TransactionPreview> Transactions { get; private set; } = SeekList.Empty<TransactionPreview>();
 
     public string? LocationName { get; private set; }
 

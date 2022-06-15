@@ -28,7 +28,7 @@ public class IndexModel : PageModel
         _pageSize = pageSize;
     }
 
-    public SeekList<UnclaimedDetails> Unclaimed { get; private set; } = SeekList<UnclaimedDetails>.Empty;
+    public SeekList<UnclaimedDetails> Unclaimed { get; private set; } = SeekList.Empty<UnclaimedDetails>();
 
     public async Task<IActionResult> OnGetAsync(
         int? seek,

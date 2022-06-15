@@ -116,7 +116,7 @@ public sealed class MtgApiQuery : IMtgQuery
     {
         if (values.IsEmpty)
         {
-            return OffsetList<Card>.Empty;
+            return OffsetList.Empty<Card>();
         }
 
         cancel.ThrowIfCancellationRequested();

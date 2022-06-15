@@ -89,7 +89,7 @@ public class SeekListTests : IAsyncLifetime
             .SeekBy(origin, SeekDirection.Forward, pageSize)
             .ToSeekListAsync();
 
-        Assert.NotNull(seekList.Seek.Previous);
+        Assert.Null(seekList.Seek.Previous);
         Assert.NotNull(seekList.Seek.Next);
 
         Assert.True(seekList.Count > 0);

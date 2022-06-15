@@ -9,12 +9,11 @@ using Microsoft.EntityFrameworkCore.Query;
 
 namespace EntityFrameworkCore.Paging.Query;
 
-internal class SeekQuery<T> : ISeekQueryable<T>, IAsyncEnumerable<T>
-    where T : class
+internal class SeekQuery<TSource> : ISeekQueryable<TSource>, IAsyncEnumerable<TSource>
 {
-    private readonly SeekProvider<T> _provider;
+    private readonly SeekProvider<TSource> _provider;
 
-    public SeekQuery(SeekProvider<T> provider, Expression expression)
+    public SeekQuery(SeekProvider<TSource> provider, Expression expression)
     {
         _provider = provider;
         Expression = expression;
@@ -22,7 +21,7 @@ internal class SeekQuery<T> : ISeekQueryable<T>, IAsyncEnumerable<T>
 
     public Expression Expression { get; }
 
-    public Type ElementType => typeof(T);
+    public Type ElementType => typeof(TSource);
 
     public IQueryProvider Provider => _provider;
 
@@ -31,19 +30,18 @@ internal class SeekQuery<T> : ISeekQueryable<T>, IAsyncEnumerable<T>
     IEnumerator IEnumerable.GetEnumerator()
         => ((IEnumerable)_provider.Execute(Expression)!).GetEnumerator();
 
-    public IEnumerator<T> GetEnumerator()
-        => _provider.Execute<IEnumerable<T>>(Expression).GetEnumerator();
+    public IEnumerator<TSource> GetEnumerator()
+        => _provider.Execute<IEnumerable<TSource>>(Expression).GetEnumerator();
 
-    public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken)
+    public IAsyncEnumerator<TSource> GetAsyncEnumerator(CancellationToken cancellationToken)
         => _provider
-            .ExecuteAsync<IAsyncEnumerable<T>>(Expression, cancellationToken)
+            .ExecuteAsync<IAsyncEnumerable<TSource>>(Expression, cancellationToken)
             .GetAsyncEnumerator(cancellationToken);
 }
 
-internal class OrderedSeekQuery<T> : SeekQuery<T>, IOrderedQueryable<T>
-    where T : class
+internal class OrderedSeekQuery<TSource> : SeekQuery<TSource>, IOrderedQueryable<TSource>
 {
-    public OrderedSeekQuery(SeekProvider<T> provider, Expression expression)
+    public OrderedSeekQuery(SeekProvider<TSource> provider, Expression expression)
         : base(provider, expression)
     {
     }

@@ -63,99 +63,112 @@ internal sealed class ExpandSeekVisitor : ExpressionVisitor
             return node;
         }
 
-        var insertExpansion = new InsertExpandedSeekVisitor(_provider, _origin, seek);
+        var expandingSeek = seek.Update(seek.Query, _origin, seek.Direction, seek.Size);
 
-        return insertExpansion.Visit(seek.Query);
+        var insertExpansion = new InsertExpandedSeekVisitor(_provider, expandingSeek);
+
+        return insertExpansion.Visit(expandingSeek.Query);
     }
+}
 
-    private sealed class InsertExpandedSeekVisitor : ExpressionVisitor
+internal sealed class InsertExpandedSeekVisitor : ExpressionVisitor
+{
+    private readonly IQueryProvider _provider;
+    private readonly SeekExpression _seek;
+
+    public InsertExpandedSeekVisitor(IQueryProvider provider, SeekExpression seek)
     {
-        private readonly IQueryProvider _provider;
-        private readonly ConstantExpression _origin;
-        private readonly SeekExpression _seek;
+        _provider = provider;
+        _seek = seek;
+    }
+    protected override Expression VisitMethodCall(MethodCallExpression node)
+    {
+        bool isSeekListCall = IsSeekListCall(node);
 
-        public InsertExpandedSeekVisitor(
-            IQueryProvider provider,
-            ConstantExpression origin,
-            SeekExpression seek)
+        if (IsOriginType(node) && !isSeekListCall)
         {
-            _provider = provider;
-            _origin = origin;
-            _seek = seek;
+            return ExpandedQuery(node).Expression;
         }
 
-        protected override Expression VisitMethodCall(MethodCallExpression node)
+        if (node.Arguments.FirstOrDefault() is not Expression parent)
         {
-            if (node.Type.GenericTypeArguments.FirstOrDefault() == _origin.Type
-                || _origin.Value is null)
-            {
-                return ExpandedQuery(node).Expression;
-            }
-
-            if (node.Arguments.FirstOrDefault() is not Expression parent)
-            {
-                return node;
-            }
-
-            return node.Update(
-                node.Object,
-                node.Arguments
-                    .Skip(1)
-                    .Prepend(Visit(parent)));
-        }
-
-        protected override Expression VisitExtension(Expression node)
-        {
-            if (node is SeekExpression seek)
-            {
-                return Visit(seek.Query);
-            }
-
-            if (node is QueryRootExpression root
-                && (root.EntityType.ClrType == _origin.Type || _origin.Value is null))
-            {
-                return ExpandedQuery(root).Expression;
-            }
-
             return node;
         }
 
-        private IQueryable ExpandedQuery(Expression node)
+        if (isSeekListCall)
         {
-            var query = _provider.CreateQuery(node);
-
-            var filter = OriginFilter.Build(query, _origin, _seek.Direction);
-
-            return (_seek.Direction, filter, _seek.Size) switch
-            {
-                (SeekDirection.Forward, not null, int size) => query
-                    .Where(filter)
-                    .Take(size),
-
-                (SeekDirection.Backwards, not null, int size) => query
-                    .Reverse()
-                    .Where(filter)
-                    .Take(size)
-                    .Reverse(),
-
-                (SeekDirection.Forward, not null, null) => query
-                    .Where(filter),
-
-                (SeekDirection.Backwards, not null, null) => query
-                    .Reverse()
-                    .Where(filter)
-                    .Reverse(),
-
-                (SeekDirection.Forward, null, int size) => query
-                    .Take(size),
-
-                (SeekDirection.Backwards, null, int size) => query
-                    .Reverse()
-                    .Take(size)
-                    .Reverse(),
-
-                _ => query
-            };
+            return Visit(parent);
         }
+
+        return node.Update(
+            node.Object,
+            node.Arguments
+                .Skip(1)
+                .Prepend(Visit(parent)));
+    }
+
+    private static bool IsSeekListCall(MethodCallExpression call)
+        => call.Method.IsGenericMethod
+            && call.Method.GetGenericMethodDefinition() == PagingExtensions.ToSeekListMethodInfo;
+
+    private bool IsOriginType(MethodCallExpression call)
+        => call.Type.GenericTypeArguments.FirstOrDefault() == _seek.Origin.Type
+            || _seek.Origin.Value is null;
+
+    protected override Expression VisitExtension(Expression node)
+    {
+        if (node is SeekExpression seek)
+        {
+            return Visit(seek.Query);
+        }
+
+        if (node is QueryRootExpression root && IsOriginType(root))
+        {
+            return ExpandedQuery(root).Expression;
+        }
+
+        return node;
+    }
+
+    private bool IsOriginType(QueryRootExpression root)
+        => root.EntityType.ClrType == _seek.Origin.Type
+            || _seek.Origin.Value is null;
+
+    private IQueryable ExpandedQuery(Expression node)
+    {
+        var query = _provider.CreateQuery(node);
+
+        var filter = OriginFilter.Build(query, _seek.Origin, _seek.Direction);
+
+        return (_seek.Direction, filter, _seek.Size) switch
+        {
+            (SeekDirection.Forward, not null, int size) => query
+                .Where(filter)
+                .Take(size),
+
+            (SeekDirection.Backwards, not null, int size) => query
+                .Reverse()
+                .Where(filter)
+                .Take(size)
+                .Reverse(),
+
+            (SeekDirection.Forward, not null, null) => query
+                .Where(filter),
+
+            (SeekDirection.Backwards, not null, null) => query
+                .Reverse()
+                .Where(filter)
+                .Reverse(),
+
+            (SeekDirection.Forward, null, int size) => query
+                .Take(size),
+
+            (SeekDirection.Backwards, null, int size) => query
+                .Reverse()
+                .Take(size)
+                .Reverse(),
+
+            _ => query
+        };
     }
 }

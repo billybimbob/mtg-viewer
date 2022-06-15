@@ -42,6 +42,10 @@ public class OffsetList<T> : IReadOnlyList<T>
         _items = items;
     }
 
+    internal OffsetList() : this(new Offset(), Array.Empty<T>())
+    {
+    }
+
     public Offset Offset { get; }
 
     public int Count => _items.Count;
@@ -51,7 +55,9 @@ public class OffsetList<T> : IReadOnlyList<T>
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
     public IEnumerator<T> GetEnumerator() => _items.GetEnumerator();
+}
 
-    private static OffsetList<T>? _empty;
-    public static OffsetList<T> Empty => _empty ??= new(default, Array.Empty<T>());
+public static class OffsetList
+{
+    public static OffsetList<T> Empty<T>() => Utils.EmptyOffsetList<T>.Value;
 }

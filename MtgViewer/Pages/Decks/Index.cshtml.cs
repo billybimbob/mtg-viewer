@@ -39,7 +39,7 @@ public class IndexModel : PageModel
 
     public string UserName { get; private set; } = string.Empty;
 
-    public SeekList<DeckPreview> Decks { get; private set; } = SeekList<DeckPreview>.Empty;
+    public SeekList<DeckPreview> Decks { get; private set; } = SeekList.Empty<DeckPreview>();
 
     public bool HasUnclaimed { get; private set; }
 

@@ -43,7 +43,7 @@ public class ReviewModel : PageModel
 
     public DeckDetails Deck { get; private set; } = default!;
 
-    public OffsetList<TradePreview> Trades { get; private set; } = OffsetList<TradePreview>.Empty;
+    public OffsetList<TradePreview> Trades { get; private set; } = OffsetList.Empty<TradePreview>();
 
     public IReadOnlyList<LocationLink> Cards { get; private set; } = Array.Empty<LocationLink>();
 

@@ -70,7 +70,6 @@ public static class PagingExtensions
         TOrigin? origin,
         SeekDirection direction,
         int? size)
-        where TEntity : class
         where TOrigin : class
     {
         ArgumentNullException.ThrowIfNull(source);
@@ -92,7 +91,6 @@ public static class PagingExtensions
         TOrigin? origin,
         SeekDirection direction,
         int? size)
-        where TEntity : class
         where TOrigin : struct
     {
         ArgumentNullException.ThrowIfNull(source);
@@ -113,7 +111,6 @@ public static class PagingExtensions
         this IQueryable<TEntity> source,
         TOrigin? origin,
         int? size)
-        where TEntity : class
         where TOrigin : class
         => source.SeekBy(origin, SeekDirection.Forward, size);
 
@@ -121,7 +118,6 @@ public static class PagingExtensions
         this IQueryable<TEntity> source,
         TOrigin? origin,
         int? size)
-        where TEntity : class
         where TOrigin : struct
         => source.SeekBy(origin, SeekDirection.Forward, size);
 
@@ -129,7 +125,6 @@ public static class PagingExtensions
         this IQueryable<TEntity> source,
         TOrigin? origin,
         int? size)
-        where TEntity : class
         where TOrigin : class
         => source.SeekBy(origin, SeekDirection.Backwards, size);
 
@@ -137,7 +132,6 @@ public static class PagingExtensions
         this IQueryable<TEntity> source,
         TOrigin? origin,
         int? size)
-        where TEntity : class
         where TOrigin : struct
         => source.SeekBy(origin, SeekDirection.Backwards, size);
 
@@ -182,7 +176,6 @@ public static class PagingExtensions
     }
 
     private static ISeekQueryable<TEntity> AsSeekQueryable<TEntity>(this IQueryable<TEntity> source)
-        where TEntity : class
     {
         ArgumentNullException.ThrowIfNull(source);
 

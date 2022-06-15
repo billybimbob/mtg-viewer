@@ -37,7 +37,7 @@ public class DetailsModel : PageModel
 
     public DeckDetails Deck { get; private set; } = default!;
 
-    public SeekList<DeckCopy> Cards { get; private set; } = SeekList<DeckCopy>.Empty;
+    public SeekList<DeckCopy> Cards { get; private set; } = SeekList.Empty<DeckCopy>();
 
     public async Task<IActionResult> OnGetAsync(
         int id,

@@ -25,7 +25,7 @@ public class ExcessModel : PageModel
         _pageSize = pageSize;
     }
 
-    public SeekList<LocationCopy> Cards { get; private set; } = SeekList<LocationCopy>.Empty;
+    public SeekList<LocationCopy> Cards { get; private set; } = SeekList.Empty<LocationCopy>();
 
     public bool HasExcess => Cards is not { Count: 0, Seek.Previous: null, Seek.Next: null };
 

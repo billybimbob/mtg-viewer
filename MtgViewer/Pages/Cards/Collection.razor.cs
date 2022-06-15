@@ -60,7 +60,7 @@ public sealed partial class Collection : ComponentBase, IDisposable
 
     internal bool IsLoading => _isBusy || !_isInteractive;
 
-    internal SeekList<LocationCopy> Cards { get; private set; } = SeekList<LocationCopy>.Empty;
+    internal SeekList<LocationCopy> Cards { get; private set; } = SeekList.Empty<LocationCopy>();
 
     private static readonly Color ValidColors
         = Enum.GetValues<Color>()
@@ -140,7 +140,8 @@ public sealed partial class Collection : ComponentBase, IDisposable
             // persisted state should match set filters
             // TODO: find way to check filters are consistent
 
-            return new SeekList<LocationCopy>((Seek<LocationCopy>)seek, cards);
+            return new SeekList<LocationCopy>(
+                cards, seek.HasPrevious, seek.HasNext, seek.IsMissing);
         }
         else
         {

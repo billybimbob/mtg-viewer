@@ -37,7 +37,9 @@ public class RouteDataAccessor
                 return;
             }
 
-            _logger.LogInformation("Updating blazor route to {RouteData}", value);
+            _logger.LogInformation(
+                "Updating blazor route to {RouteName}: {RouteValues}", value?.PageType.Name, value?.RouteValues);
+
             _routeData = value;
 
             RouteChanged?.Invoke(this, new RouteDataEventArgs(_routeData));

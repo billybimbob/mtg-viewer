@@ -36,7 +36,7 @@ public class DetailsModel : PageModel
 
     public PlayerPreview Player { get; private set; } = default!;
 
-    public SeekList<DeckPreview> Decks { get; private set; } = SeekList<DeckPreview>.Empty;
+    public SeekList<DeckPreview> Decks { get; private set; } = SeekList.Empty<DeckPreview>();
 
     public async Task<IActionResult> OnGetAsync(
         string id,

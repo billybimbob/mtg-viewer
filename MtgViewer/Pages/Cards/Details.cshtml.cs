@@ -32,7 +32,7 @@ public class DetailsModel : PageModel
 
     public IReadOnlyList<CardLink> Alternatives { get; private set; } = Array.Empty<CardLink>();
 
-    public SeekList<QuantityLocationPreview> Locations { get; private set; } = SeekList<QuantityLocationPreview>.Empty;
+    public SeekList<QuantityLocationPreview> Locations { get; private set; } = SeekList.Empty<QuantityLocationPreview>();
 
     public string? ReturnUrl { get; private set; }
 
