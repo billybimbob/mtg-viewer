@@ -11,33 +11,60 @@ namespace EntityFrameworkCore.Paging.Query;
 
 internal sealed class OriginFilter
 {
-    public static LambdaExpression? Build(IQueryable query, ConstantExpression origin, SeekDirection direction)
+    public static LambdaExpression? Build(SeekExpression seek)
     {
-        if (query.ElementType != origin.Type)
+        var builder = new OriginFilter(seek);
+
+        return builder.Build();
+    }
+
+    private readonly ParameterExpression _parameter;
+
+    private readonly OriginTranslator _origin;
+    private readonly SeekDirection _direction;
+
+    private readonly IReadOnlyList<KeyOrder> _orderKeys;
+    private readonly IReadOnlyDictionary<Expression, NullOrder> _nullOrders;
+
+    private OriginFilter(Expression query, OriginTranslator origin, SeekDirection direction)
+    {
+        _parameter = Expression
+            .Parameter(
+                origin.Type,
+                origin.Type.Name[0].ToString().ToLowerInvariant());
+
+        _origin = origin;
+        _direction = direction;
+
+        var orderByVisitor = new OrderByVisitor(_parameter);
+
+        _orderKeys = FindOrderPropertiesVisitor.Scan(orderByVisitor, origin, query);
+        _nullOrders = FindNullPropertiesVisitor.Scan(orderByVisitor, origin, query);
+    }
+
+    private OriginFilter(SeekExpression seek)
+        : this(seek.Query, new OriginTranslator(seek.Origin), seek.Direction)
+    {
+    }
+
+    private LambdaExpression? Build()
+    {
+        if (!_orderKeys.Any())
         {
             return null;
         }
 
-        var translator = new OriginTranslator(origin);
+        var firstKey = _orderKeys[0];
 
-        var builder = new OriginFilter(query, translator, direction);
-
-        if (!builder.OrderKeys.Any())
-        {
-            return null;
-        }
-
-        var firstKey = builder.OrderKeys[0];
-
-        var otherKeys = builder.OrderKeys
+        var otherKeys = _orderKeys
             .Select((key, i) => (key, i))
             .Skip(1);
 
-        var filter = builder.CompareTo(firstKey);
+        var filter = CompareTo(firstKey);
 
         foreach ((var key, int before) in otherKeys)
         {
-            var comparison = builder.CompareTo(key, builder.OrderKeys.Take(before));
+            var comparison = CompareTo(key, _orderKeys.Take(before));
 
             if (comparison is null)
             {
@@ -58,35 +85,11 @@ internal sealed class OriginFilter
             return null;
         }
 
-        return Expression.Lambda(filter, builder.Parameter);
+        return Expression.Lambda(filter, _parameter);
     }
 
-    private readonly OriginTranslator _origin;
-    private readonly SeekDirection _direction;
-    private readonly IReadOnlyDictionary<Expression, NullOrder> _nullOrders;
-
-    private OriginFilter(IQueryable query, OriginTranslator origin, SeekDirection direction)
-    {
-        _origin = origin;
-        _direction = direction;
-
-        Parameter = Expression
-            .Parameter(
-                query.ElementType,
-                query.ElementType.Name[0].ToString().ToLowerInvariant());
-
-        var orderByVisitor = new OrderByVisitor(Parameter);
-
-        _nullOrders = FindNullPropertiesVisitor.Scan(orderByVisitor, origin, query.Expression);
-
-        OrderKeys = FindOrderPropertiesVisitor.Scan(orderByVisitor, origin, query.Expression);
-    }
-
-    private ParameterExpression Parameter { get; }
-
-    private IReadOnlyList<KeyOrder> OrderKeys { get; }
-
-    private NullOrder GetNullOrder(MemberExpression node) => _nullOrders.GetValueOrDefault(node);
+    private NullOrder GetNullOrder(MemberExpression node)
+        => _nullOrders.GetValueOrDefault(node);
 
     private BinaryExpression? CompareTo(KeyOrder keyOrder, IEnumerable<KeyOrder>? beforeKeys = null)
     {

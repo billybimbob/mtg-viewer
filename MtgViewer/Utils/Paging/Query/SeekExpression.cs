@@ -13,7 +13,8 @@ internal sealed class SeekExpression : Expression
         if (!query.Type.IsAssignableTo(typeof(IQueryable))
             || query.Type.IsGenericType is false)
         {
-            throw new ArgumentException($"{query.Type.Name} is not {nameof(IQueryable)}", nameof(query));
+            throw new ArgumentException(
+                $"{query.Type.Name} is not a strongly typed {nameof(IQueryable)}", nameof(query));
         }
 
         Query = query;

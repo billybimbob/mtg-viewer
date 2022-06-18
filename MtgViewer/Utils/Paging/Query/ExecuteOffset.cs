@@ -20,9 +20,11 @@ internal static class ExecuteOffset<TEntity>
 
         int totalItems = GetTotalItems(query);
 
-        int pageSize = offsetExpression.Size ?? totalItems - offsetExpression.Index;
+        int pageSize = offsetExpression.Size ?? totalItems - offsetExpression.Skip;
 
-        var offset = new Offset(offsetExpression.Index, totalItems, pageSize);
+        int currentPage = offsetExpression.Skip / pageSize;
+
+        var offset = new Offset(currentPage, totalItems, pageSize);
 
         var items = query.ToList();
 
@@ -47,9 +49,11 @@ internal static class ExecuteOffset<TEntity>
 
         int totalItems = await GetTotalItemsAsync(query, cancel).ConfigureAwait(false);
 
-        int pageSize = offsetExpression.Size ?? totalItems - offsetExpression.Index;
+        int pageSize = offsetExpression.Size ?? totalItems - offsetExpression.Skip;
 
-        var offset = new Offset(offsetExpression.Index, totalItems, pageSize);
+        int currentPage = offsetExpression.Skip / pageSize;
+
+        var offset = new Offset(currentPage, totalItems, pageSize);
 
         var items = await query.ToListAsync(cancel).ConfigureAwait(false);
 
@@ -68,13 +72,13 @@ internal static class ExecuteOffset<TEntity>
 
     private sealed class OffsetExpression : Expression
     {
-        public OffsetExpression(int index, int? size)
+        public OffsetExpression(int skip, int? size)
         {
-            Index = index;
+            Skip = skip;
             Size = size;
         }
 
-        public int Index { get; }
+        public int Skip { get; }
 
         public int? Size { get; }
 
@@ -86,11 +90,11 @@ internal static class ExecuteOffset<TEntity>
 
         protected override Expression VisitChildren(ExpressionVisitor visitor) => this;
 
-        public OffsetExpression Update(int index, int? size)
+        public OffsetExpression Update(int skip, int? size)
         {
-            return index == Index && size == Size
+            return skip == Skip && size == Size
                 ? this
-                : new OffsetExpression(index, size);
+                : new OffsetExpression(skip, size);
         }
     }
 
@@ -125,7 +129,7 @@ internal static class ExecuteOffset<TEntity>
 
             if (visitedParent is OffsetExpression offset)
             {
-                return offset.Update(offset.Index, size);
+                return offset.Update(offset.Skip, size);
             }
 
             return new OffsetExpression(0, size);
@@ -142,26 +146,22 @@ internal static class ExecuteOffset<TEntity>
             if (node.Arguments.ElementAtOrDefault(0) is not Expression parent
                 || node is { Method.IsGenericMethod: false })
             {
-                return node;
+                return base.VisitMethodCall(node);
             }
 
             var method = node.Method.GetGenericMethodDefinition();
 
-            var visitedParent = Visit(parent);
-
             if (method == QueryableMethods.Take)
             {
-                return visitedParent;
+                return Visit(parent);
             }
 
             if (method == QueryableMethods.Skip)
             {
-                return visitedParent;
+                return Visit(parent);
             }
 
-            return node.Update(
-                node.Object,
-                node.Arguments.Skip(1).Prepend(visitedParent));
+            return base.VisitMethodCall(node);
         }
     }
 }

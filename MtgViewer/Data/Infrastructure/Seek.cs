@@ -5,12 +5,11 @@ namespace MtgViewer.Data.Infrastructure;
 public readonly record struct SeekRequest<T>(T? Origin, SeekDirection Direction)
     where T : class;
 
-public readonly record struct SeekDto<T>(bool HasPrevious, bool HasNext, bool IsMissing)
-    where T : class
+public readonly record struct SeekDto(bool HasPrevious, bool HasNext, bool IsMissing)
 {
-    public static explicit operator SeekDto<T>(Seek<T> seek)
+    public static SeekDto From<T>(Seek<T> seek) where T : class
     {
-        return new SeekDto<T>(
+        return new SeekDto(
             seek.Previous is not null,
             seek.Next is not null,
             seek.IsMissing);

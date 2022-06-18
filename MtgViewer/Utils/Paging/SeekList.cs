@@ -97,16 +97,16 @@ public class SeekList<T> : IReadOnlyList<T> where T : class
 
     internal SeekList()
     {
-        Seek = new Seek<T>();
         _items = Array.Empty<T>();
+        Seek = new Seek<T>();
     }
 
     public SeekList(IReadOnlyList<T> items, bool hasPrevious, bool hasNext, bool isMissing)
     {
         ArgumentNullException.ThrowIfNull(items);
 
-        Seek = CreateSeek(items, hasPrevious, hasNext, isMissing);
         _items = items;
+        Seek = CreateSeek(items, hasPrevious, hasNext, isMissing);
     }
 
     public SeekList(
@@ -118,8 +118,8 @@ public class SeekList<T> : IReadOnlyList<T> where T : class
     {
         ArgumentNullException.ThrowIfNull(items);
 
-        Seek = CreateSeek(items, direction, hasOrigin, lookAhead, targetSize);
         _items = items;
+        Seek = CreateSeek(items, direction, hasOrigin, lookAhead, targetSize);
     }
 
     public Seek<T> Seek { get; }
@@ -139,7 +139,6 @@ public class SeekList<T> : IReadOnlyList<T> where T : class
         bool isMissing)
     {
         var previous = hasPrevious ? items[0] : default;
-
         var next = hasNext ? items[^1] : default;
 
         return CreateSeek(previous, next, isMissing);

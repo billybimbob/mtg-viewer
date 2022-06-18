@@ -30,7 +30,7 @@ public sealed class MtgApiQuery : IMtgQuery
                 BindingFlags.Static | BindingFlags.NonPublic,
                 new[]
                 {
-                    typeof(IDictionary<,>).MakeGenericType(typeof(string), typeof(IMtgParameter)),
+                    typeof(IDictionary<string, IMtgParameter>),
                     typeof(string),
                     typeof(object)
                 })!;

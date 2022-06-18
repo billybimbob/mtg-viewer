@@ -158,7 +158,6 @@ public class DetailsModel : PageModel
     {
         return _dbContext.Changes
             .Where(c => c.TransactionId == transaction.Id)
-            .SeekBy(seek, direction, _pageSize.Current)
 
             .OrderByDescending(c => c.From == null)
                 .ThenBy(c => c.From!.Name)
@@ -167,6 +166,7 @@ public class DetailsModel : PageModel
                     .ThenBy(c => c.Copies)
                     .ThenBy(c => c.Id)
 
+            .SeekBy(seek, direction, _pageSize.Current)
             .Select(c => new ChangeDetails
             {
                 Id = c.Id,

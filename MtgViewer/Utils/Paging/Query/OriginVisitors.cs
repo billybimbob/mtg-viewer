@@ -90,16 +90,31 @@ internal class FindOrderParameterVisitor : ExpressionVisitor
     private static FindOrderParameterVisitor? _instance;
     public static FindOrderParameterVisitor Instance => _instance ??= new();
 
+    private bool _foundSeek;
+
+    [return: NotNullIfNotNull("node")]
+    public override Expression? Visit(Expression? node)
+    {
+        _foundSeek = false;
+
+        return base.Visit(node);
+    }
+
     protected override Expression VisitMethodCall(MethodCallExpression node)
     {
         if (ExpressionHelpers.IsOrderedMethod(node))
         {
-            return Visit(node.Arguments[1]);
+            if (!_foundSeek)
+            {
+                return node;
+            }
+
+            return base.Visit(node.Arguments[1]);
         }
 
         if (node.Arguments.ElementAtOrDefault(0) is Expression parent)
         {
-            return Visit(parent);
+            return base.Visit(parent);
         }
 
         return node;
@@ -119,7 +134,7 @@ internal class FindOrderParameterVisitor : ExpressionVisitor
     {
         if (node.NodeType is ExpressionType.Quote)
         {
-            return Visit(node.Operand);
+            return base.Visit(node.Operand);
         }
 
         return node;
@@ -127,12 +142,14 @@ internal class FindOrderParameterVisitor : ExpressionVisitor
 
     protected override Expression VisitExtension(Expression node)
     {
-        if (node is SeekExpression seek)
+        if (node is not SeekExpression seek)
         {
-            return Visit(seek.Query);
+            return node;
         }
 
-        return node;
+        _foundSeek = true;
+
+        return base.Visit(seek.Query);
     }
 }
 

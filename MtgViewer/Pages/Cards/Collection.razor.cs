@@ -127,7 +127,7 @@ public sealed partial class Collection : ComponentBase, IDisposable
     {
         ApplicationState.PersistAsJson(nameof(Cards), Cards as IReadOnlyList<LocationCopy>);
 
-        ApplicationState.PersistAsJson(nameof(Seek), (SeekDto<LocationCopy>)Cards.Seek);
+        ApplicationState.PersistAsJson(nameof(Seek), SeekDto.From(Cards.Seek));
 
         return Task.CompletedTask;
     }
@@ -135,7 +135,7 @@ public sealed partial class Collection : ComponentBase, IDisposable
     private async Task<SeekList<LocationCopy>> GetCardDataAsync()
     {
         if (ApplicationState.TryGetData(nameof(Cards), out IReadOnlyList<LocationCopy>? cards)
-            && ApplicationState.TryGetData(nameof(Seek), out SeekDto<LocationCopy> seek))
+            && ApplicationState.TryGetData(nameof(Seek), out SeekDto seek))
         {
             // persisted state should match set filters
             // TODO: find way to check filters are consistent
@@ -155,30 +155,16 @@ public sealed partial class Collection : ComponentBase, IDisposable
 
         var filter = ParseTextFilter.Parse(Search);
 
-        var cards = FilteredCards(dbContext.Cards, filter, PickedColors);
+        var cards = FilterCards(dbContext.Cards, filter, PickedColors);
 
-        var copies = cards
-            .Select(c => new LocationCopy
-            {
-                Id = c.Id,
-                Name = c.Name,
+        var copies = AsCopies(cards);
 
-                ManaCost = c.ManaCost,
-                ManaValue = c.ManaValue,
-
-                SetName = c.SetName,
-                Rarity = c.Rarity,
-                ImageUrl = c.ImageUrl,
-
-                Held = c.Holds.Sum(c => c.Copies)
-            });
-
-        return await OrderedCopies(copies, Order)
+        return await OrderCopies(copies, Order)
             .SeekBy(Seek, (SeekDirection)Direction, PageSize.Current)
             .ToSeekListAsync(_cancel.Token);
     }
 
-    private static IQueryable<Card> FilteredCards(IQueryable<Card> cards, TextFilter filter, Color color)
+    private static IQueryable<Card> FilterCards(IQueryable<Card> cards, TextFilter filter, Color color)
     {
         string? name = filter.Name?.ToUpperInvariant();
         string? text = filter.Text?.ToUpperInvariant();
@@ -214,7 +200,26 @@ public sealed partial class Collection : ComponentBase, IDisposable
         return cards;
     }
 
-    private static IQueryable<LocationCopy> OrderedCopies(IQueryable<LocationCopy> copies, string? orderBy)
+    private static IQueryable<LocationCopy> AsCopies(IQueryable<Card> cards)
+    {
+        return cards
+            .Select(c => new LocationCopy
+            {
+                Id = c.Id,
+                Name = c.Name,
+
+                ManaCost = c.ManaCost,
+                ManaValue = c.ManaValue,
+
+                SetName = c.SetName,
+                Rarity = c.Rarity,
+                ImageUrl = c.ImageUrl,
+
+                Held = c.Holds.Sum(c => c.Copies)
+            });
+    }
+
+    private static IQueryable<LocationCopy> OrderCopies(IQueryable<LocationCopy> copies, string? orderBy)
     {
         return orderBy switch
         {

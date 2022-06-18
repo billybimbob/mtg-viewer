@@ -2,9 +2,9 @@ using System;
 using System.Linq;
 using System.Linq.Expressions;
 
-using EntityFrameworkCore.Paging.Utils;
-
 using Microsoft.EntityFrameworkCore.Query;
+
+using EntityFrameworkCore.Paging.Utils;
 
 namespace EntityFrameworkCore.Paging.Query;
 
@@ -15,17 +15,22 @@ internal sealed class FindSeekVisitor : ExpressionVisitor
 
     protected override Expression VisitMethodCall(MethodCallExpression node)
     {
-        if (node.Arguments.ElementAtOrDefault(0) is not Expression parent)
+        if (node.Arguments.ElementAtOrDefault(0) is Expression parent)
         {
-            return node;
+            return Visit(parent);
         }
 
-        if (parent is SeekExpression seek)
+        return node;
+    }
+
+    protected override Expression VisitExtension(Expression node)
+    {
+        if (node is SeekExpression seek)
         {
             return seek;
         }
 
-        return Visit(parent);
+        return node;
     }
 }
 
@@ -45,130 +50,167 @@ internal sealed class RemoveSeekVisitor : ExpressionVisitor
     }
 }
 
-internal sealed class ExpandSeekVisitor : ExpressionVisitor
+internal sealed class LookAheadSeekVisitor : ExpressionVisitor
 {
-    private readonly IQueryProvider _provider;
-    private readonly ConstantExpression _origin;
-
-    public ExpandSeekVisitor(IQueryProvider provider, ConstantExpression origin)
-    {
-        _provider = provider;
-        _origin = origin;
-    }
-
-    protected override Expression VisitExtension(Expression node)
-    {
-        if (node is not SeekExpression seek)
-        {
-            return node;
-        }
-
-        var expandingSeek = seek.Update(seek.Query, _origin, seek.Direction, seek.Size);
-
-        var insertExpansion = new InsertExpandedSeekVisitor(_provider, expandingSeek);
-
-        return insertExpansion.Visit(expandingSeek.Query);
-    }
-}
-
-internal sealed class InsertExpandedSeekVisitor : ExpressionVisitor
-{
-    private readonly IQueryProvider _provider;
-    private readonly SeekExpression _seek;
-
-    public InsertExpandedSeekVisitor(IQueryProvider provider, SeekExpression seek)
-    {
-        _provider = provider;
-        _seek = seek;
-    }
-    protected override Expression VisitMethodCall(MethodCallExpression node)
-    {
-        bool isSeekListCall = IsSeekListCall(node);
-
-        if (IsOriginType(node) && !isSeekListCall)
-        {
-            return ExpandedQuery(node).Expression;
-        }
-
-        if (node.Arguments.FirstOrDefault() is not Expression parent)
-        {
-            return node;
-        }
-
-        if (isSeekListCall)
-        {
-            return Visit(parent);
-        }
-
-        return node.Update(
-            node.Object,
-            node.Arguments
-                .Skip(1)
-                .Prepend(Visit(parent)));
-    }
-
-    private static bool IsSeekListCall(MethodCallExpression call)
-        => call.Method.IsGenericMethod
-            && call.Method.GetGenericMethodDefinition() == PagingExtensions.ToSeekListMethodInfo;
-
-    private bool IsOriginType(MethodCallExpression call)
-        => call.Type.GenericTypeArguments.FirstOrDefault() == _seek.Origin.Type
-            || _seek.Origin.Value is null;
+    private static LookAheadSeekVisitor? _instance;
+    public static LookAheadSeekVisitor Instance => _instance ??= new();
 
     protected override Expression VisitExtension(Expression node)
     {
         if (node is SeekExpression seek)
         {
-            return Visit(seek.Query);
+            return seek.Update(seek.Query, seek.Origin, seek.Direction, seek.Size + 1);
         }
 
-        if (node is QueryRootExpression root && IsOriginType(root))
+        return base.VisitExtension(node);
+    }
+}
+
+internal sealed class ChangeSeekOriginVisitor : ExpressionVisitor
+{
+    private readonly ConstantExpression _origin;
+
+    public ChangeSeekOriginVisitor(ConstantExpression newOrigin)
+    {
+        _origin = newOrigin;
+    }
+
+    protected override Expression VisitExtension(Expression node)
+    {
+        if (node is SeekExpression seek)
         {
-            return ExpandedQuery(root).Expression;
+            return seek.Update(seek.Query, _origin, seek.Direction, seek.Size);
+        }
+
+        return base.VisitExtension(node);
+    }
+}
+
+internal sealed class ExpandSeekVisitor : ExpressionVisitor
+{
+    private readonly IQueryProvider _provider;
+
+    public ExpandSeekVisitor(IQueryProvider provider)
+    {
+        _provider = provider;
+    }
+
+    protected override Expression VisitMethodCall(MethodCallExpression node)
+    {
+        if (ExpressionHelpers.IsToSeekList(node)
+            && node.Arguments.FirstOrDefault() is Expression parent)
+        {
+            return Visit(parent);
+        }
+
+        return base.VisitMethodCall(node);
+    }
+
+    protected override Expression VisitExtension(Expression node)
+    {
+        if (node is SeekExpression seek)
+        {
+            return InsertExpandedSeekVisitor.Visit(_provider, seek);
         }
 
         return node;
     }
 
-    private bool IsOriginType(QueryRootExpression root)
-        => root.EntityType.ClrType == _seek.Origin.Type
-            || _seek.Origin.Value is null;
-
-    private IQueryable ExpandedQuery(Expression node)
+    private sealed class InsertExpandedSeekVisitor : ExpressionVisitor
     {
-        var query = _provider.CreateQuery(node);
-
-        var filter = OriginFilter.Build(query, _seek.Origin, _seek.Direction);
-
-        return (_seek.Direction, filter, _seek.Size) switch
+        public static Expression Visit(IQueryProvider provider, SeekExpression node)
         {
-            (SeekDirection.Forward, not null, int size) => query
-                .Where(filter)
-                .Take(size),
+            var filter = OriginFilter.Build(node);
 
-            (SeekDirection.Backwards, not null, int size) => query
-                .Reverse()
-                .Where(filter)
-                .Take(size)
-                .Reverse(),
+            var insertExpanded = new InsertExpandedSeekVisitor(
+                provider,
+                filter,
+                node.Direction,
+                node.Size);
 
-            (SeekDirection.Forward, not null, null) => query
-                .Where(filter),
+            return insertExpanded.Visit(node);
+        }
 
-            (SeekDirection.Backwards, not null, null) => query
-                .Reverse()
-                .Where(filter)
-                .Reverse(),
+        private readonly IQueryProvider _provider;
+        private readonly LambdaExpression? _filter;
+        private readonly SeekDirection _direction;
+        private readonly int? _size;
 
-            (SeekDirection.Forward, null, int size) => query
-                .Take(size),
+        private InsertExpandedSeekVisitor(
+            IQueryProvider provider,
+            LambdaExpression? filter,
+            SeekDirection direction,
+            int? size)
+        {
+            _provider = provider;
+            _filter = filter;
+            _direction = direction;
+            _size = size;
+        }
 
-            (SeekDirection.Backwards, null, int size) => query
-                .Reverse()
-                .Take(size)
-                .Reverse(),
+        protected override Expression VisitExtension(Expression node)
+        {
+            if (node is not SeekExpression seek)
+            {
+                return base.VisitExtension(node);
+            }
 
-            _ => query
-        };
+            var query = Visit(seek.Query);
+
+            if (ExpressionEqualityComparer.Instance.Equals(query, seek.Query))
+            {
+                return seek;
+            }
+
+            return query;
+        }
+
+        protected override Expression VisitMethodCall(MethodCallExpression node)
+        {
+            // expanded query will immediately follow the OrderBy chain
+
+            if (ExpressionHelpers.IsOrderedMethod(node))
+            {
+                return ExpandToQuery(node).Expression;
+            }
+
+            return base.VisitMethodCall(node);
+        }
+
+        private IQueryable ExpandToQuery(MethodCallExpression node)
+        {
+            var query = _provider.CreateQuery(node);
+
+            return (_direction, _filter, _size) switch
+            {
+                (SeekDirection.Forward, not null, int size) => query
+                    .Where(_filter)
+                    .Take(size),
+
+                (SeekDirection.Backwards, not null, int size) => query
+                    .Reverse()
+                    .Where(_filter)
+                    .Take(size)
+                    .Reverse(),
+
+                (SeekDirection.Forward, not null, null) => query
+                    .Where(_filter),
+
+                (SeekDirection.Backwards, not null, null) => query
+                    .Reverse()
+                    .Where(_filter)
+                    .Reverse(),
+
+                (SeekDirection.Forward, null, int size) => query
+                    .Take(size),
+
+                (SeekDirection.Backwards, null, int size) => query
+                    .Reverse()
+                    .Take(size)
+                    .Reverse(),
+
+                _ => query
+            };
+        }
     }
 }

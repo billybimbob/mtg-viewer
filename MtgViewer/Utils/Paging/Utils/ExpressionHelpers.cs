@@ -2,6 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Reflection;
+
+using Microsoft.EntityFrameworkCore.Query;
 
 namespace EntityFrameworkCore.Paging.Utils;
 
@@ -11,26 +14,42 @@ internal static class ExpressionHelpers
         => node is ConstantExpression { Value: null };
 
     public static bool IsOrderBy(MethodCallExpression call)
-    {
-        return call.Method.Name
-            is nameof(Queryable.OrderBy)
-                or nameof(Queryable.OrderByDescending);
-    }
+        => DoesMethodEqual(
+            call.Method,
+            QueryableMethods.OrderBy,
+            QueryableMethods.OrderByDescending);
 
     public static bool IsOrderedMethod(MethodCallExpression call)
-    {
-        return call.Method.Name
-            is nameof(Queryable.OrderBy)
-                or nameof(Queryable.ThenBy)
-                or nameof(Queryable.OrderByDescending)
-                or nameof(Queryable.ThenByDescending);
-    }
+        => DoesMethodEqual(
+            call.Method,
+            QueryableMethods.OrderBy,
+            QueryableMethods.OrderByDescending,
+            QueryableMethods.ThenBy,
+            QueryableMethods.ThenByDescending);
 
     public static bool IsDescending(MethodCallExpression call)
+        => DoesMethodEqual(
+            call.Method,
+            QueryableMethods.OrderByDescending,
+            QueryableMethods.ThenByDescending);
+
+    public static bool IsToSeekList(MethodCallExpression call)
+        => DoesMethodEqual(
+            call.Method,
+            PagingExtensions.ToSeekListMethodInfo);
+
+    public static bool IsToSeekList(Expression expression)
+        => expression is MethodCallExpression call
+            && IsToSeekList(call);
+
+    private static bool DoesMethodEqual(MethodInfo method, params MethodInfo[] options)
     {
-        return call.Method.Name
-            is nameof(Queryable.OrderByDescending)
-                or nameof(Queryable.ThenByDescending);
+        if (method is { IsGenericMethod: true, IsGenericMethodDefinition: false })
+        {
+            method = method.GetGenericMethodDefinition();
+        }
+
+        return options.Any(m => m == method);
     }
 
     public static IEnumerable<MemberExpression> GetLineage(MemberExpression? member)

@@ -189,9 +189,9 @@ public static class PagingExtensions
             throw new InvalidOperationException("Query does not support async operations");
         }
 
-        var provider = new SeekProvider<TEntity>(asyncProvider);
+        var provider = new SeekProvider(asyncProvider);
 
-        return SeekQueryable.Create(provider, source.Expression);
+        return SeekQuery.Create<TEntity>(provider, source.Expression);
     }
 
     #endregion

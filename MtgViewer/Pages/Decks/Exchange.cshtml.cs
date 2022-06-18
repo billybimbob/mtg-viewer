@@ -132,9 +132,12 @@ public class ExchangeModel : PageModel
 
         var totalMatches = _dbContext.Holds
             .Where(h => h.Location is Box || h.Location is Excess)
+
             .Join(deckWants,
-                h => h.Card.Name, name => name,
+                h => h.Card.Name,
+                name => name,
                 (hold, _) => hold)
+
             .GroupBy(
                 hold => hold.CardId,
                 (CardId, holds) => new
@@ -210,7 +213,7 @@ public class ExchangeModel : PageModel
             await _dbContext.SaveChangesAsync(cancel);
 
             PostMessage = deck.Wants.Any() || deck.Givebacks.Any()
-                ? "Successfully exchanged requests, but not all could be fullfilled"
+                ? "Successfully exchanged requests, but not all could be fulfilled"
                 : "Successfully exchanged all card requests";
         }
         catch (DbUpdateException e)

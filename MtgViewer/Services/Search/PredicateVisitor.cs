@@ -16,7 +16,7 @@ internal class PredicateVisitor : ExpressionVisitor
         _nullDictionary ??=
             Expression.Convert(
                 Expression.Constant(null),
-                typeof(IDictionary<,>).MakeGenericType(typeof(string), typeof(IMtgParameter)));
+                typeof(IDictionary<string, IMtgParameter>));
 
     private readonly Dictionary<string, ConstantExpression> _propertyNames = new();
 

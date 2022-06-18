@@ -16,6 +16,8 @@ internal sealed class OriginTranslator
     private readonly Dictionary<MemberExpression, MemberExpression> _translations;
     private readonly Dictionary<MemberExpression, bool> _nulls;
 
+    public Type Type => _origin.Type;
+
     public OriginTranslator(ConstantExpression origin)
     {
         var expressionEquality = ExpressionEqualityComparer.Instance;
