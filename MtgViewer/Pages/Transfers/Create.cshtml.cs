@@ -47,7 +47,7 @@ public class CreateModel : PageModel
 
     public DeckDetails Deck { get; private set; } = default!;
 
-    public OffsetList<LocationCopy> Requests { get; private set; } = OffsetList<LocationCopy>.Empty;
+    public OffsetList<LocationCopy> Requests { get; private set; } = OffsetList.Empty<LocationCopy>();
 
     public IReadOnlyList<DeckLink> Cards { get; private set; } = Array.Empty<DeckLink>();
 

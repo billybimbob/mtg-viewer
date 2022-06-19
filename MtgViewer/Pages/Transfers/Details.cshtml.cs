@@ -42,7 +42,7 @@ public class DetailsModel : PageModel
 
     public DeckDetails Deck { get; private set; } = default!;
 
-    public OffsetList<TradePreview> Trades { get; private set; } = OffsetList<TradePreview>.Empty;
+    public OffsetList<TradePreview> Trades { get; private set; } = OffsetList.Empty<TradePreview>();
 
     public IReadOnlyList<DeckLink> Cards { get; private set; } = Array.Empty<DeckLink>();
 

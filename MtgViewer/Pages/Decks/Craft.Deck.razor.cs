@@ -39,11 +39,11 @@ public partial class Craft
 
     internal int WantCopies => _counts?.WantCopies ?? 0;
 
-    internal SeekList<Hold> DeckHolds => _holds.List ?? SeekList<Hold>.Empty;
+    internal SeekList<Hold> DeckHolds => _holds.List ?? SeekList.Empty<Hold>();
 
-    internal SeekList<Giveback> DeckReturns => _givebacks.List ?? SeekList<Giveback>.Empty;
+    internal SeekList<Giveback> DeckReturns => _givebacks.List ?? SeekList.Empty<Giveback>();
 
-    internal SeekList<Want> DeckWants => _wants.List ?? SeekList<Want>.Empty;
+    internal SeekList<Want> DeckWants => _wants.List ?? SeekList.Empty<Want>();
 
     #endregion
 
@@ -369,12 +369,10 @@ public partial class Craft
             items.RemoveAt(0);
         }
 
-        var seek = new Seek<TQuantity>(
-            items, direction, origin is not null, size - 1, lookAhead);
+        var seekList = new SeekList<TQuantity>(
+            items, direction, origin is not null, lookAhead, size - 1);
 
-        var list = new SeekList<TQuantity>(seek, items);
-
-        return new LoadedSeekList<TQuantity>(origin, direction, list);
+        return new LoadedSeekList<TQuantity>(origin, direction, seekList);
     }
 
     private async Task LoadQuantitiesAsync<TQuantity>(
@@ -429,9 +427,7 @@ public partial class Craft
                 .ThenBy(q => q.Card.SetName)
                 .ThenBy(q => q.CardId)
 
-            .SeekOrigin(origin, direction)
-            .Take(size)
-
+            .SeekBy(origin, direction, size)
             .AsAsyncEnumerable();
     }
 

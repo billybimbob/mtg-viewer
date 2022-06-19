@@ -83,11 +83,7 @@ public class DetailsModel : PageModel
             return NotFound();
         }
 
-        var changes = await ChangeDetails(transaction)
-            .SeekBy(seek, direction)
-            .OrderBy<Change>()
-            .Take(_pageSize.Current)
-            .ToSeekListAsync(cancel);
+        var changes = await ChangeDetails(transaction, seek, direction).ToSeekListAsync(cancel);
 
         if (!changes.Any() && seek is not null)
         {
@@ -155,7 +151,10 @@ public class DetailsModel : PageModel
             });
     }
 
-    private IQueryable<ChangeDetails> ChangeDetails(TransactionDetails transaction)
+    private IQueryable<ChangeDetails> ChangeDetails(
+        TransactionDetails transaction,
+        int? seek,
+        SeekDirection direction)
     {
         return _dbContext.Changes
             .Where(c => c.TransactionId == transaction.Id)
@@ -167,6 +166,7 @@ public class DetailsModel : PageModel
                     .ThenBy(c => c.Copies)
                     .ThenBy(c => c.Id)
 
+            .SeekBy(seek, direction, _pageSize.Current)
             .Select(c => new ChangeDetails
             {
                 Id = c.Id,

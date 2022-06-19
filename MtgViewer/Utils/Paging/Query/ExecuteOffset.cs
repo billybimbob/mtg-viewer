@@ -13,61 +13,95 @@ internal static class ExecuteOffset<TEntity>
 {
     public static OffsetList<TEntity> ToOffsetList(IQueryable<TEntity> query)
     {
-        if (GetPageInfoVisitor.Instance.Visit(query.Expression)
-            is not ConstantExpression { Value: PageInfo pageInfo })
+        if (FindOffsetVisitor.Instance.Visit(query.Expression) is not OffsetExpression offsetExpression)
         {
-            throw new ArgumentException(
-                "Missing expected \"Skip\" followed by a \"Take\"", nameof(query));
+            offsetExpression = new OffsetExpression(0, null);
         }
 
-        var withoutOffset = query.Provider
-            .CreateQuery<TEntity>(RemoveOffsetVisitor.Instance.Visit(query.Expression));
+        int totalItems = GetTotalItems(query);
 
-        int totalItems = withoutOffset.Count();
+        int pageSize = offsetExpression.Size ?? totalItems - offsetExpression.Skip;
 
-        (int index, int size) = pageInfo;
+        int currentPage = offsetExpression.Skip / pageSize;
 
-        var offset = new Offset(index, totalItems, size);
+        var offset = new Offset(currentPage, totalItems, pageSize);
+
         var items = query.ToList();
 
         return new OffsetList<TEntity>(offset, items);
     }
 
-    public static async Task<OffsetList<TEntity>> ToOffsetListAsync(
-        IQueryable<TEntity> query,
-        CancellationToken cancel = default)
+    private static int GetTotalItems(IQueryable<TEntity> query)
     {
-        if (GetPageInfoVisitor.Instance.Visit(query.Expression)
-            is not ConstantExpression { Value: PageInfo pageInfo })
+        var withoutOffset = RemoveOffsetVisitor.Instance.Visit(query.Expression);
+
+        return query.Provider
+            .CreateQuery<TEntity>(withoutOffset)
+            .Count();
+    }
+
+    public static async Task<OffsetList<TEntity>> ToOffsetListAsync(IQueryable<TEntity> query, CancellationToken cancel)
+    {
+        if (FindOffsetVisitor.Instance.Visit(query.Expression) is not OffsetExpression offsetExpression)
         {
-            throw new ArgumentException(
-                "Missing expected \"Skip\" followed by a \"Take\"", nameof(query));
+            offsetExpression = new OffsetExpression(0, null);
         }
 
-        var withoutOffset = query.Provider
-            .CreateQuery<TEntity>(RemoveOffsetVisitor.Instance.Visit(query.Expression));
+        int totalItems = await GetTotalItemsAsync(query, cancel).ConfigureAwait(false);
 
-        int totalItems = await withoutOffset
-            .CountAsync(cancel)
-            .ConfigureAwait(false);
+        int pageSize = offsetExpression.Size ?? totalItems - offsetExpression.Skip;
 
-        (int index, int size) = pageInfo;
+        int currentPage = offsetExpression.Skip / pageSize;
 
-        var offset = new Offset(index, totalItems, size);
+        var offset = new Offset(currentPage, totalItems, pageSize);
 
-        var items = await query
-            .ToListAsync(cancel)
-            .ConfigureAwait(false);
+        var items = await query.ToListAsync(cancel).ConfigureAwait(false);
 
         return new OffsetList<TEntity>(offset, items);
     }
 
-    private record PageInfo(int Index, int Size);
-
-    private sealed class GetPageInfoVisitor : ExpressionVisitor
+    private static async Task<int> GetTotalItemsAsync(IQueryable<TEntity> query, CancellationToken cancel)
     {
-        private static GetPageInfoVisitor? _instance;
-        public static GetPageInfoVisitor Instance => _instance ??= new();
+        var withoutOffset = RemoveOffsetVisitor.Instance.Visit(query.Expression);
+
+        return await query.Provider
+            .CreateQuery<TEntity>(withoutOffset)
+            .CountAsync(cancel)
+            .ConfigureAwait(false);
+    }
+
+    private sealed class OffsetExpression : Expression
+    {
+        public OffsetExpression(int skip, int? size)
+        {
+            Skip = skip;
+            Size = size;
+        }
+
+        public int Skip { get; }
+
+        public int? Size { get; }
+
+        public override Type Type => typeof(Offset);
+
+        public override ExpressionType NodeType => ExpressionType.Extension;
+
+        public override bool CanReduce => false;
+
+        protected override Expression VisitChildren(ExpressionVisitor visitor) => this;
+
+        public OffsetExpression Update(int skip, int? size)
+        {
+            return skip == Skip && size == Size
+                ? this
+                : new OffsetExpression(skip, size);
+        }
+    }
+
+    private sealed class FindOffsetVisitor : ExpressionVisitor
+    {
+        private static FindOffsetVisitor? _instance;
+        public static FindOffsetVisitor Instance => _instance ??= new();
 
         protected override Expression VisitMethodCall(MethodCallExpression node)
         {
@@ -80,24 +114,25 @@ internal static class ExecuteOffset<TEntity>
             var method = node.Method.GetGenericMethodDefinition();
 
             if (method == QueryableMethods.Skip
-                && node.Arguments.ElementAtOrDefault(1) is ConstantExpression skip)
+                && node.Arguments.ElementAtOrDefault(1) is ConstantExpression { Value: int skip })
             {
-                return skip;
+                return new OffsetExpression(skip, null);
             }
 
             var visitedParent = Visit(parent);
 
-            if (method == QueryableMethods.Take
-                && visitedParent
-                    is ConstantExpression { Value: int skipBy }
-
-                && node.Arguments.ElementAtOrDefault(1)
-                    is ConstantExpression { Value: int pageSize })
+            if (method != QueryableMethods.Take
+                || node.Arguments.ElementAtOrDefault(1) is not ConstantExpression { Value: int size })
             {
-                return Expression.Constant(new PageInfo(skipBy / pageSize, pageSize));
+                return visitedParent;
             }
 
-            return visitedParent;
+            if (visitedParent is OffsetExpression offset)
+            {
+                return offset.Update(offset.Skip, size);
+            }
+
+            return new OffsetExpression(0, size);
         }
     }
 
@@ -111,7 +146,7 @@ internal static class ExecuteOffset<TEntity>
             if (node.Arguments.ElementAtOrDefault(0) is not Expression parent
                 || node is { Method.IsGenericMethod: false })
             {
-                return node;
+                return base.VisitMethodCall(node);
             }
 
             var method = node.Method.GetGenericMethodDefinition();
@@ -123,17 +158,10 @@ internal static class ExecuteOffset<TEntity>
 
             if (method == QueryableMethods.Skip)
             {
-                return parent;
+                return Visit(parent);
             }
 
-            if (node.Object is not null)
-            {
-                return node;
-            }
-
-            return node.Update(
-                node.Object,
-                node.Arguments.Skip(1).Prepend(Visit(parent)));
+            return base.VisitMethodCall(node);
         }
     }
 }

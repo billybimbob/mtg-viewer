@@ -25,7 +25,7 @@ public class ExcessModel : PageModel
         _pageSize = pageSize;
     }
 
-    public SeekList<LocationCopy> Cards { get; private set; } = SeekList<LocationCopy>.Empty;
+    public SeekList<LocationCopy> Cards { get; private set; } = SeekList.Empty<LocationCopy>();
 
     public bool HasExcess => Cards is not { Count: 0, Seek.Previous: null, Seek.Next: null };
 
@@ -41,9 +41,7 @@ public class ExcessModel : PageModel
         }
 
         var cards = await ExcessCards()
-            .SeekBy(seek, direction)
-            .OrderBy<Card>()
-            .Take(_pageSize.Current)
+            .SeekBy(seek, direction, _pageSize.Current)
             .ToSeekListAsync(cancel);
 
         if (!cards.Any() && cards.Seek is { Previous: null, Next: null })
@@ -104,8 +102,7 @@ public class ExcessModel : PageModel
         int size = _pageSize.Current;
 
         return await ExcessCards()
-            .WithSelect<Card, LocationCopy>()
-            .Before(card)
+            .Before(card, size: null)
             .Select(c => c.Id)
 
             .AsAsyncEnumerable()

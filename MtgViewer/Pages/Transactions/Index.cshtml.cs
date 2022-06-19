@@ -44,7 +44,7 @@ public class IndexModel : PageModel
     [TempData]
     public string? TimeZoneId { get; set; }
 
-    public SeekList<TransactionPreview> Transactions { get; private set; } = SeekList<TransactionPreview>.Empty;
+    public SeekList<TransactionPreview> Transactions { get; private set; } = SeekList.Empty<TransactionPreview>();
 
     public string? LocationName { get; private set; }
 
@@ -64,11 +64,7 @@ public class IndexModel : PageModel
             return RedirectToPage(new { id = null as int? });
         }
 
-        var transactions = await TransactionPreviews(id)
-            .SeekBy(seek, direction)
-            .OrderBy<Transaction>()
-            .Take(_pageSize.Current)
-            .ToSeekListAsync(cancel);
+        var transactions = await TransactionPreviews(id, seek, direction).ToSeekListAsync(cancel);
 
         if (!transactions.Any() && seek is not null)
         {
@@ -101,20 +97,21 @@ public class IndexModel : PageModel
             .Where(l => l.Id == id
                 && (l is Box
                 || (l is Deck && (l as Deck)!.OwnerId == userId)))
+
             .Select(l => l.Name)
             .SingleOrDefaultAsync(cancel);
     }
 
-    private IQueryable<TransactionPreview> TransactionPreviews(int? id)
+    private IQueryable<TransactionPreview> TransactionPreviews(int? id, int? seek, SeekDirection direction)
     {
         return _dbContext.Transactions
-
             .Where(t => id == null || t.Changes
                 .Any(c => c.FromId == id || c.ToId == id))
 
             .OrderByDescending(t => t.AppliedAt)
                 .ThenBy(t => t.Id)
 
+            .SeekBy(seek, direction, _pageSize.Current)
             .Select(t => new TransactionPreview
             {
                 Id = t.Id,

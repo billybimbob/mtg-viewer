@@ -6,23 +6,23 @@ using System.Reflection;
 
 using Microsoft.EntityFrameworkCore.Query;
 
+using EntityFrameworkCore.Paging.Utils;
+
 namespace EntityFrameworkCore.Paging.Query;
 
-internal sealed class OriginTranslator<TOrigin, TEntity>
+internal sealed class OriginTranslator
 {
     private readonly ConstantExpression _origin;
-    private readonly Expression? _selector;
-
     private readonly Dictionary<MemberExpression, MemberExpression> _translations;
     private readonly Dictionary<MemberExpression, bool> _nulls;
 
-    public OriginTranslator(TOrigin origin, Expression<Func<TEntity, TOrigin>>? selector)
+    public Type Type => _origin.Type;
+
+    public OriginTranslator(ConstantExpression origin)
     {
         var expressionEquality = ExpressionEqualityComparer.Instance;
 
-        _origin = Expression.Constant(origin);
-
-        _selector = SelectorVisitor.Instance.Visit(selector);
+        _origin = origin;
 
         _translations = new Dictionary<MemberExpression, MemberExpression>(expressionEquality);
 
@@ -115,288 +115,45 @@ internal sealed class OriginTranslator<TOrigin, TEntity>
             return true;
         }
 
-        if (TryAddFromProjection(member))
-        {
-            return true;
-        }
-
-        if (TryAddOriginChain(member))
-        {
-            return true;
-        }
-
-        if (TryAddOriginProperty(member))
-        {
-            return true;
-        }
-
-        return false;
-    }
-
-    private bool TryAddFromProjection(MemberExpression member)
-    {
-        if (_selector is not MemberInitExpression projection)
-        {
-            return false;
-        }
-
-        int target = ExpressionHelpers
-            .GetLineage(member)
-            .Count();
-
-        if (target == 0)
-        {
-            return false;
-        }
-
-        var registration = new Registration(member);
-
-        var translation = new Translation { Expression = _origin, Target = target };
-
-        return TryAddFromMemberInit(registration, translation, projection);
-    }
-
-    private bool TryAddFromMemberInit(
-        Registration registration,
-        Translation translation,
-        MemberInitExpression memberInit)
-    {
-        if (translation is { IsFinished: true, Expression: MemberExpression m }
-            && translation.IsMatch(registration))
-        {
-            _translations.Add(registration.Expression, m);
-            return true;
-        }
-
-        if (translation.IsFinished)
-        {
-            return false;
-        }
-
-        foreach (var binding in memberInit.Bindings)
-        {
-            if (binding is MemberAssignment assignment
-                && TryAddFromAssignment(registration, translation, assignment))
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private bool TryAddFromAssignment(
-        Registration registration,
-        Translation translation,
-        MemberAssignment assignment)
-    {
-        translation = translation.MakeAccess(assignment.Member);
-
-        return assignment.Expression switch
-        {
-            MemberExpression => TryAddFromMember(registration, translation),
-            MemberInitExpression i => TryAddFromMemberInit(registration, translation, i),
-            ConditionalExpression c => TryAddFromConditional(registration, translation, c),
-            _ => false
-        };
-    }
-
-    private bool TryAddFromMember(Registration registration, Translation translation)
-    {
-        if (translation.Expression is MemberExpression m
-            && translation.IsMatch(registration))
-        {
-            _translations.Add(registration.Expression, m);
-
-            return true;
-        }
-
-        return false;
-    }
-
-    private bool TryAddFromConditional(
-        Registration registration,
-        Translation translation,
-        ConditionalExpression condition)
-    {
-        if (condition.IfTrue is MemberInitExpression trueInit)
-        {
-            return TryAddFromMemberInit(registration, translation, trueInit);
-        }
-
-        if (condition.IfFalse is MemberInitExpression falseInit)
-        {
-            return TryAddFromMemberInit(registration, translation, falseInit);
-        }
-
-        if (condition.IfTrue is MemberExpression
-            || condition.IfFalse is MemberExpression)
-        {
-            return TryAddFromMember(registration, translation);
-        }
-
-        return false;
-    }
-
-    private bool TryAddOriginChain(MemberExpression member)
-    {
-        using var e = GetPropertyChain(member).GetEnumerator();
-
-        if (!e.MoveNext()
-            || e.Current.DeclaringType is null
-            || !e.Current.DeclaringType.IsInstanceOfType(_origin.Value))
-        {
-            return false;
-        }
-
-        var translation = Expression.Property(_origin, e.Current);
-
-        while (e.MoveNext())
-        {
-            translation = Expression.Property(translation, e.Current);
-        }
-
-        _translations.Add(member, translation);
-        return true;
-    }
-
-    private IEnumerable<PropertyInfo> GetPropertyChain(MemberExpression member)
-    {
-        if (_selector is not MemberExpression selectMember)
-        {
-            yield break;
-        }
-
-        using var e = ExpressionHelpers
-            .GetLineage(selectMember)
-            .Reverse()
-            .GetEnumerator();
-
-        bool isSelectorDone = e.MoveNext();
-
-        var memberLineage = ExpressionHelpers
-            .GetLineage(member)
-            .Reverse();
-
-        foreach (var m in memberLineage)
-        {
-            if (m.Member == e.Current?.Member && !isSelectorDone)
-            {
-                isSelectorDone = e.MoveNext();
-                continue;
-            }
-
-            if (m.Member is not PropertyInfo p)
-            {
-                continue;
-            }
-
-            yield return p;
-        }
+        return TryAddOriginProperty(member);
     }
 
     private bool TryAddOriginProperty(MemberExpression member)
     {
-        if (_origin.Type == member.Expression?.Type)
-        {
-            var originMember = Expression.MakeMemberAccess(_origin, member.Member);
+        using var e = ExpressionHelpers.GetLineage(member)
+            .Reverse()
+            .GetEnumerator();
 
-            _translations.Add(member, originMember);
-
-            return true;
-        }
-
-        const BindingFlags instance = BindingFlags.Instance | BindingFlags.Public;
-
-        var property = _origin.Type
-            .GetProperties(instance)
-            .FirstOrDefault(p => p.PropertyType == member.Expression?.Type);
-
-        if (property is null)
+        if (!e.MoveNext())
         {
             return false;
         }
 
-        var translation = Expression.MakeMemberAccess(
-            Expression.Property(_origin, property),
-            member.Member);
-
-        _translations.Add(member, translation);
-
-        return true;
-    }
-
-    private sealed class Registration
-    {
-        public MemberExpression Expression { get; }
-        public string LineageName { get; }
-
-        public Registration(MemberExpression member)
+        if (_origin.Type != e.Current.Expression?.Type)
         {
-            Expression = member;
-            LineageName = ExpressionHelpers.GetLineageName(member);
-        }
-    }
-
-    private readonly struct Translation
-    {
-        public Expression? Expression { get; init; }
-        public int Target { get; init; }
-        public int Progress { get; init; }
-
-        public bool IsFinished => Progress == Target;
-
-        public Translation MakeAccess(MemberInfo member)
-        {
-            var access = Expression.MakeMemberAccess(Expression, member);
-
-            return this with
-            {
-                Expression = access,
-                Target = Target,
-                Progress = Progress + 1
-            };
+            return false;
         }
 
-        public bool IsMatch(Registration registration)
+        var translation = Expression
+            .MakeMemberAccess(_origin, e.Current.Member);
+
+        while (e.MoveNext())
         {
-            if (Expression is not MemberExpression m)
+            var property = translation.Type
+                .GetTypeInfo()
+                .GetProperty(e.Current.Member.Name);
+
+            if (property is null)
             {
                 return false;
             }
 
-            return string.Equals(
-                ExpressionHelpers.GetLineageName(m),
-                registration.LineageName,
-                StringComparison.Ordinal);
-        }
-    }
-
-    private sealed class SelectorVisitor : ExpressionVisitor
-    {
-        private static SelectorVisitor? _instance;
-        public static SelectorVisitor Instance => _instance ??= new();
-
-        protected override Expression VisitLambda<TFunc>(Expression<TFunc> node)
-        {
-            if (node.Parameters.Count == 1
-                && node.Parameters[0].Type == typeof(TEntity)
-                && node.Body.Type == typeof(TOrigin))
-            {
-                return node.Body;
-            }
-
-            return ExpressionConstants.Null;
+            translation = Expression
+                .MakeMemberAccess(translation, property);
         }
 
-        protected override Expression VisitUnary(UnaryExpression node)
-        {
-            if (node.NodeType is ExpressionType.Quote)
-            {
-                return node.Operand;
-            }
+        _translations.Add(member, translation);
 
-            return node;
-        }
+        return true;
     }
 }

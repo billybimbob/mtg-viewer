@@ -28,25 +28,22 @@ public class IndexModel : PageModel
         _pageSize = pageSize;
     }
 
-    public SeekList<UnclaimedDetails> Unclaimed { get; private set; } = SeekList<UnclaimedDetails>.Empty;
+    public SeekList<UnclaimedDetails> Unclaimed { get; private set; } = SeekList.Empty<UnclaimedDetails>();
 
     public async Task<IActionResult> OnGetAsync(
         int? seek,
         SeekDirection direction,
         CancellationToken cancel)
     {
-        Unclaimed = await UnclaimedDecks()
-            .SeekBy(seek, direction)
-            .OrderBy<Unclaimed>()
-            .Take(_pageSize.Current)
-            .ToSeekListAsync(cancel);
+        Unclaimed = await UnclaimedDecks(seek, direction).ToSeekListAsync(cancel);
 
         return Page();
     }
 
-    private IQueryable<UnclaimedDetails> UnclaimedDecks()
+    private IQueryable<UnclaimedDetails> UnclaimedDecks(int? seek, SeekDirection direction)
     {
         return _dbContext.Unclaimed
+
             .OrderBy(u => u.Name)
                 .ThenBy(u => u.Id)
 
@@ -58,7 +55,9 @@ public class IndexModel : PageModel
 
                 HeldCopies = u.Holds.Sum(h => h.Copies),
                 WantCopies = u.Wants.Sum(w => w.Copies)
-            });
+            })
+
+            .SeekBy(seek, direction, _pageSize.Current);
     }
 
     public IActionResult OnPostClaim(int id)

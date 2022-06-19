@@ -46,11 +46,11 @@ public class DetailsModel : PageModel
 
     public UnclaimedDetails Unclaimed { get; private set; } = default!;
 
-    public SeekList<DeckCopy> Cards { get; private set; } = SeekList<DeckCopy>.Empty;
+    public SeekList<DeckCopy> Cards { get; private set; } = SeekList.Empty<DeckCopy>();
 
     public async Task<IActionResult> OnGetAsync(
         int id,
-        int? seek,
+        string? seek,
         SeekDirection direction,
         CancellationToken cancel)
     {
@@ -63,11 +63,7 @@ public class DetailsModel : PageModel
 
         Unclaimed = unclaimed;
 
-        Cards = await UnclaimedCards(unclaimed)
-            .SeekBy(seek, direction)
-            .OrderBy<Card>()
-            .Take(_pageSize.Current)
-            .ToSeekListAsync(cancel);
+        Cards = await UnclaimedCards(unclaimed, seek, direction).ToSeekListAsync(cancel);
 
         return Page();
     }
@@ -86,7 +82,7 @@ public class DetailsModel : PageModel
                 })
                 .SingleOrDefault(u => u.Id == unclaimedId));
 
-    private IQueryable<DeckCopy> UnclaimedCards(UnclaimedDetails unclaimed)
+    private IQueryable<DeckCopy> UnclaimedCards(UnclaimedDetails unclaimed, string? seek, SeekDirection direction)
     {
         return _dbContext.Cards
             .Where(c => c.Holds.Any(h => h.LocationId == unclaimed.Id)
@@ -95,6 +91,8 @@ public class DetailsModel : PageModel
             .OrderBy(c => c.Name)
                 .ThenBy(c => c.SetName)
                 .ThenBy(c => c.Id)
+
+            .SeekBy(seek, direction, _pageSize.Current)
 
             .Select(c => new DeckCopy
             {

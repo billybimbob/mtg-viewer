@@ -1,5 +1,6 @@
 @page "/Cards/Create"
 @using System.Linq.Expressions
+@using MtgViewer.Services.Search
 @inject SymbolFormatter MtgSymbols
 
 <PageTitle> Add Cards </PageTitle>
@@ -29,7 +30,7 @@
                     <p> Search by different attributes of an MTG card: </p>
 
                     <dl class="row mb-0">
-                        <dt class="col-12 col-lg-2"> @Query.DisplayName(c => c.Name) </dt>
+                        <dt class="col-12 col-lg-2"> @HtmlHelpers.GetDisplay((CardQuery c) => c.Name) </dt>
                         <dd class="col-12 col-lg-10">
                             <p>
                                 The Name of the Card (in the top left). Split cards are treated
@@ -37,7 +38,7 @@
                             </p>
                         </dd>
 
-                        <dt class="col-12 col-lg-2"> @Query.DisplayName(c => c.Colors) </dt>
+                        <dt class="col-12 col-lg-2"> @HtmlHelpers.GetDisplay((CardQuery c) => c.Colors) </dt>
                         <dd class="col-12 col-lg-10">
                             <p>
                                 The color identity of the card. Color identity is affected by
@@ -47,7 +48,7 @@
                             </p>
                         </dd>
 
-                        <dt class="col-12 col-lg-2"> @Query.DisplayName(c => c.SetName) </dt>
+                        <dt class="col-12 col-lg-2"> @HtmlHelpers.GetDisplay((CardQuery c) => c.SetName) </dt>
                         <dd class="col-12 col-lg-10">
                             <p>
                                 The set at which a specific card print was apart of. The set
@@ -55,13 +56,13 @@
                             </p>
                         </dd>
 
-                        <dt class="col-12 col-lg-2"> @Query.DisplayName(c => c.Type) </dt>
+                        <dt class="col-12 col-lg-2"> @HtmlHelpers.GetDisplay((CardQuery c) => c.Type) </dt>
                         <dd class="col-12 col-lg-10">
                             <p> Type information specified on the middle of the card </p>
                             <p> Examples: Basic Land, Planeswalker, Creature Enchantment </p>
                         </dd>
 
-                        <dt class="col-12 col-lg-2"> @Query.DisplayName(c => c.Text) </dt>
+                        <dt class="col-12 col-lg-2"> @HtmlHelpers.GetDisplay((CardQuery c) => c.Text) </dt>
                         <dd class="col-12 col-lg-10">
                             <p>
                                 The card effect text. The Oracle Text can also be searched by
@@ -69,7 +70,7 @@
                             </p>
                         </dd>
 
-                        <dt class="col-12 col-lg-2"> @Query.DisplayName(c => c.Flavor) </dt>
+                        <dt class="col-12 col-lg-2"> @HtmlHelpers.GetDisplay((CardQuery c) => c.Flavor) </dt>
                         <dd class="col-12 col-lg-10">
                             <p>
                                 The card flavor text. This is the card text that is in italics, and can differ
@@ -87,13 +88,13 @@
 
                 <div class="form-group">
                     <InputText @bind-Value="Query.Name"
-                        placeholder="@Query.DisplayName(c => c.Name)"
+                        placeholder="@HtmlHelpers.GetDisplay((CardQuery c) => c.Name)"
                         class="form-control" />
                 </div>
 
                 <div class="form-group">
                     <InputNumber @bind-Value="Query.Cmc" min="0"
-                        placeholder="@Query.DisplayName(c => c.Cmc)"
+                        placeholder="@HtmlHelpers.GetDisplay((CardQuery c) => c.Cmc)"
                         class="form-control" />
                 </div>
 
@@ -111,7 +112,7 @@
 
                 <div class="form-group">
                     <InputText @bind-Value="Query.SetName"
-                        placeholder="@Query.DisplayName(c => c.SetName)"
+                        placeholder="@HtmlHelpers.GetDisplay((CardQuery c) => c.SetName)"
                         class="form-control" />
                 </div>
 
@@ -130,43 +131,43 @@
 
                 <div class="form-group">
                     <InputText @bind-Value="Query.Type"
-                        placeholder="@Query.DisplayName(c => c.Type)"
+                        placeholder="@HtmlHelpers.GetDisplay((CardQuery c) => c.Type)"
                         class="form-control" />
                 </div>
 
                 <div class="form-group">
                     <InputText @bind-Value="Query.Power"
-                        placeholder="@Query.DisplayName(c => c.Power)"
+                        placeholder="@HtmlHelpers.GetDisplay((CardQuery c) => c.Power)"
                         class="form-control" />
                 </div>
 
                 <div class="form-group">
                     <InputText @bind-Value="Query.Toughness"
-                        placeholder="@Query.DisplayName(c => c.Toughness)"
+                        placeholder="@HtmlHelpers.GetDisplay((CardQuery c) => c.Toughness)"
                         class="form-control" />
                 </div>
 
                 <div class="form-group">
                     <InputText @bind-Value="Query.Loyalty"
-                        placeholder="@Query.DisplayName(c => c.Loyalty)"
+                        placeholder="@HtmlHelpers.GetDisplay((CardQuery c) => c.Loyalty)"
                         class="form-control" />
                 </div>
 
                 <div class="form-group">
                     <InputTextArea @bind-Value="Query.Text"
-                        placeholder="@Query.DisplayName(c => c.Text)"
+                        placeholder="@HtmlHelpers.GetDisplay((CardQuery c) => c.Text)"
                         class="form-control" />
                 </div>
 
                 <div class="form-group">
                     <InputTextArea @bind-Value="Query.Flavor"
-                        placeholder="@Query.DisplayName(c => c.Flavor)"
+                        placeholder="@HtmlHelpers.GetDisplay((CardQuery c) => c.Flavor)"
                         class="form-control" />
                 </div>
 
                 <div class="form-group">
                     <InputText @bind-Value="Query.Artist"
-                        placeholder="@Query.DisplayName(c => c.Artist)"
+                        placeholder="@HtmlHelpers.GetDisplay((CardQuery c) => c.Artist)"
                         class="form-control" />
                 </div>
 
@@ -213,10 +214,10 @@ else
         <table class="table">
             <thead>
                 <tr>
-                    <th scope="col"> @DisplayName(c => c.Name) </th>
-                    <th scope="col"> @DisplayName(c => c.ManaCost) </th>
-                    <th scope="col"> @DisplayName(c => c.SetName) </th>
-                    <th scope="col"> @DisplayName(c => c.Rarity) </th>
+                    <th scope="col"> @HtmlHelpers.GetDisplay((Card c) => c.Name) </th>
+                    <th scope="col"> @HtmlHelpers.GetDisplay((Card c) => c.ManaCost) </th>
+                    <th scope="col"> @HtmlHelpers.GetDisplay((Card c) => c.SetName) </th>
+                    <th scope="col"> @HtmlHelpers.GetDisplay((Card c) => c.Rarity) </th>
                     <th scope="col"> Copies </th>
                 </tr>
             </thead>
@@ -279,7 +280,7 @@ else
 @code
 {
     internal static string DisplayName<T>(Expression<Func<Card, T>> property) =>
-        EntityExtensions.DisplayName(property);
+        HtmlHelpers.GetDisplay(property);
 
     internal string ActiveColor(Color color) =>
         Query.Colors.HasFlag(color) ? "active" : string.Empty;

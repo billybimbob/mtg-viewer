@@ -36,7 +36,7 @@ public class DetailsModel : PageModel
 
     public PlayerPreview Player { get; private set; } = default!;
 
-    public SeekList<DeckPreview> Decks { get; private set; } = SeekList<DeckPreview>.Empty;
+    public SeekList<DeckPreview> Decks { get; private set; } = SeekList.Empty<DeckPreview>();
 
     public async Task<IActionResult> OnGetAsync(
         string id,
@@ -63,9 +63,9 @@ public class DetailsModel : PageModel
             return RedirectToPage("Index");
         }
 
-        Decks = await GetDecksAsync(player, seek, direction, cancel);
+        var decks = await GetDecksAsync(player, seek, direction, cancel);
 
-        if (!Decks.Any() && seek is not null)
+        if (!decks.Any() && seek is not null)
         {
             return RedirectToPage(new
             {
@@ -75,6 +75,7 @@ public class DetailsModel : PageModel
         }
 
         Player = player;
+        Decks = decks;
 
         return Page();
     }
@@ -115,10 +116,7 @@ public class DetailsModel : PageModel
                 HasReturns = d.Givebacks.Any(),
             })
 
-            .SeekBy(seek, direction)
-            .OrderBy<Deck>()
-            .Take(_pageSize.Current)
-
+            .SeekBy(seek, direction, _pageSize.Current)
             .ToSeekListAsync(cancel);
     }
 }

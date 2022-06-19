@@ -19,7 +19,7 @@ public sealed class DeckDto : ConcurrentDto
     public DeckDto()
     { }
 
-    internal DeckDto(CardDbContext dbContext, DeckContext deckContext)
+    public DeckDto(CardDbContext dbContext, DeckContext deckContext)
     {
         var deck = deckContext.Deck;
 

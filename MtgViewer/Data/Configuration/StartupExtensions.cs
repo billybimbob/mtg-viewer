@@ -33,7 +33,7 @@ public static partial class StartupExtensions
             DatabaseOptions.Postgresql =>
                 services.AddTriggeredPooledDbContextFactory<CardDbContext>(options => options
 
-                    .UseNpgsql(connString.ToNpgsqlConnectionString())
+                    .UseNpgsql(StringExtensions.ToNpgsqlConnectionString(connString))
                     .UseValidationCheckConstraints()
                     .UseEnumCheckConstraints()
 

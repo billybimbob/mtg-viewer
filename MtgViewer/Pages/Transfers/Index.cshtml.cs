@@ -44,7 +44,7 @@ public class IndexModel : PageModel
 
     public string UserName { get; private set; } = string.Empty;
 
-    public SeekList<TradeDeckPreview> TradeDecks { get; private set; } = SeekList<TradeDeckPreview>.Empty;
+    public SeekList<TradeDeckPreview> TradeDecks { get; private set; } = SeekList.Empty<TradeDeckPreview>();
 
     public IReadOnlyList<SuggestionPreview> Suggestions { get; private set; } = Array.Empty<SuggestionPreview>();
 
@@ -66,11 +66,7 @@ public class IndexModel : PageModel
 
         UserName = userName;
 
-        TradeDecks = await TradingDecks(userId)
-            .SeekBy(seek, direction)
-            .OrderBy<Deck>()
-            .Take(_pageSize.Current)
-            .ToSeekListAsync(cancel);
+        TradeDecks = await TradingDecks(userId, seek, direction).ToSeekListAsync(cancel);
 
         Suggestions = await SuggestionsAsync
             .Invoke(_dbContext, userId, _pageSize.Current)
@@ -79,7 +75,7 @@ public class IndexModel : PageModel
         return Page();
     }
 
-    public IQueryable<TradeDeckPreview> TradingDecks(string userId)
+    public IQueryable<TradeDeckPreview> TradingDecks(string userId, int? seek, SeekDirection direction)
     {
         return _dbContext.Decks
             .Where(d => d.OwnerId == userId
@@ -100,7 +96,9 @@ public class IndexModel : PageModel
                 ReceivedTrades = d.TradesFrom.Any() && d.Holds.Any(),
 
                 WantsCards = d.Wants.Any()
-            });
+            })
+
+            .SeekBy(seek, direction, _pageSize.Current);
     }
 
     private static readonly Func<CardDbContext, string, int, IAsyncEnumerable<SuggestionPreview>> SuggestionsAsync

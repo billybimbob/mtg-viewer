@@ -28,7 +28,7 @@ public class DetailsModel : PageModel
 
     public BoxPreview Box { get; private set; } = default!;
 
-    public SeekList<QuantityCardPreview> Cards { get; private set; } = SeekList<QuantityCardPreview>.Empty;
+    public SeekList<QuantityCardPreview> Cards { get; private set; } = SeekList.Empty<QuantityCardPreview>();
 
     public async Task<IActionResult> OnGetAsync(
         int id,
@@ -37,6 +37,8 @@ public class DetailsModel : PageModel
         string? cardId,
         CancellationToken cancel)
     {
+        // keep eye on, current flow can potentially lead to chained redirects
+
         var box = await BoxAsync.Invoke(_dbContext, id, cancel);
 
         if (box == default)
@@ -46,14 +48,27 @@ public class DetailsModel : PageModel
 
         if (await GetCardJumpAsync(cardId, box, cancel) is int cardJump)
         {
-            return RedirectToPage(new { seek = cardJump });
+            return RedirectToPage(new
+            {
+                seek = cardJump,
+                direction = SeekDirection.Forward,
+                cardId = null as string
+            });
         }
 
         var cards = await BoxCards(box)
-            .SeekBy(seek, direction)
-            .OrderBy<Hold>()
-            .Take(_pageSize.Current)
+            .SeekBy(seek, direction, _pageSize.Current)
             .ToSeekListAsync(cancel);
+
+        if (!cards.Any() && seek is not null)
+        {
+            return RedirectToPage(new
+            {
+                seek = null as int?,
+                direction = SeekDirection.Forward,
+                cardId = null as string
+            });
+        }
 
         Box = box;
         Cards = cards;
@@ -90,6 +105,7 @@ public class DetailsModel : PageModel
         }
 
         var hold = await CardJumpAsync.Invoke(_dbContext, cardId, box.Id, cancel);
+
         if (hold is null)
         {
             return null;
@@ -98,12 +114,12 @@ public class DetailsModel : PageModel
         int size = _pageSize.Current;
 
         return await BoxCards(box)
-            .WithSelect<Hold, QuantityCardPreview>()
-            .Before(hold)
+            .Before(hold, size: null)
             .Select(c => c.Id)
 
             .AsAsyncEnumerable()
             .Where((id, i) => i % size == size - 1)
+            .Select(id => id as int?)
             .LastOrDefaultAsync(cancel);
     }
 

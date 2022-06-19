@@ -33,7 +33,7 @@ public class IndexModel : PageModel
         _pageSize = pageSize;
     }
 
-    public SeekList<PlayerPreview> Players { get; private set; } = SeekList<PlayerPreview>.Empty;
+    public SeekList<PlayerPreview> Players { get; private set; } = SeekList.Empty<PlayerPreview>();
 
     public async Task<IActionResult> OnGetAsync(
         string? seek,
@@ -80,10 +80,7 @@ public class IndexModel : PageModel
                 TotalDecks = p.Decks.Count
             })
 
-            .SeekBy(seek, direction)
-            .OrderBy<Player>()
-            .Take(_pageSize.Current)
-
+            .SeekBy(seek, direction, _pageSize.Current)
             .ToSeekListAsync(cancel);
     }
 }

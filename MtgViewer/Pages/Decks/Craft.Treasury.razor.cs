@@ -21,7 +21,7 @@ public partial class Craft
 
     internal Color PickedColors { get; private set; }
 
-    internal SeekList<HeldCard> Treasury { get; private set; } = SeekList<HeldCard>.Empty;
+    internal SeekList<HeldCard> Treasury { get; private set; } = SeekList.Empty<HeldCard>();
 
     internal async Task SearchAsync(string? value)
     {
@@ -175,10 +175,7 @@ public partial class Craft
                         .Where(h => h.Location is Box || h.Location is Excess)
                         .Sum(h => h.Copies)))
 
-            .SeekBy(_seek, _direction)
-            .OrderBy<Card>()
-            .Take(PageSize.Current)
-
+            .SeekBy(_seek, _direction, PageSize.Current)
             .ToSeekListAsync(cancel);
     }
 }

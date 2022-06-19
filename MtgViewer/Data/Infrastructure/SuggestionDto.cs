@@ -1,6 +1,4 @@
-using System;
 using System.ComponentModel.DataAnnotations;
-using System.Linq.Expressions;
 
 using MtgViewer.Data.Projections;
 
@@ -18,14 +16,4 @@ public sealed class SuggestionDto
     [StringLength(80)]
     [Display(Name = "Add Comment")]
     public string? Comment { get; set; }
-
-    public static string PropertyId<T>(Expression<Func<SuggestionDto, T>> property)
-    {
-        if (property.Body is not MemberExpression { Member.Name: string name })
-        {
-            return string.Empty;
-        }
-
-        return $"{nameof(SuggestionDto)}-{name}";
-    }
 }
