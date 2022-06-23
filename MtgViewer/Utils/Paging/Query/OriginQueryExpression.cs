@@ -1,5 +1,4 @@
 using System;
-using System.Linq;
 using System.Linq.Expressions;
 
 using Microsoft.EntityFrameworkCore.Query;
@@ -8,17 +7,15 @@ namespace EntityFrameworkCore.Paging.Query;
 
 internal sealed class OriginQueryExpression : Expression
 {
-    internal OriginQueryExpression(QueryRootExpression root, ConstantExpression origin, LambdaExpression? selector)
+    internal OriginQueryExpression(
+        QueryRootExpression root,
+        ConstantExpression origin,
+        LambdaExpression? key,
+        LambdaExpression? selector)
     {
-        if (selector is not null
-            && selector.Parameters.FirstOrDefault()?.Type != root.EntityType.ClrType)
-        {
-            throw new ArgumentException(
-                $"{nameof(selector)} expected to have parameter type of {root.EntityType.ClrType.Name}", nameof(selector));
-        }
-
         Root = root;
         Origin = origin;
+        Key = key;
         Selector = selector;
     }
 
@@ -26,18 +23,20 @@ internal sealed class OriginQueryExpression : Expression
 
     public ConstantExpression Origin { get; }
 
+    public LambdaExpression? Key { get; }
+
     public LambdaExpression? Selector { get; }
 
-    public override Type Type => Selector?.Body.Type ?? Root.EntityType.ClrType;
+    public override Type Type
+        => Selector?.Body.Type ?? Root.EntityType.ClrType;
 
     public override ExpressionType NodeType => ExpressionType.Extension;
 
     protected override Expression VisitChildren(ExpressionVisitor visitor)
     {
         var newRoot = visitor.Visit(Root);
-
         var newOrigin = visitor.Visit(Origin);
-
+        var newKey = visitor.Visit(Key);
         var newSelector = visitor.Visit(Selector);
 
         if (newRoot is not QueryRootExpression r)
@@ -50,26 +49,33 @@ internal sealed class OriginQueryExpression : Expression
             throw new InvalidOperationException($"{nameof(Origin)} is invalid type: {newOrigin.Type.Name}");
         }
 
+        if (newKey is not (LambdaExpression or null))
+        {
+            throw new InvalidOperationException($"{nameof(Key)} is invalid type: {newKey.Type.Name}");
+        }
+
         if (newSelector is not (LambdaExpression or null))
         {
             throw new InvalidOperationException($"{nameof(Selector)} is invalid type: {newSelector.Type.Name}");
         }
 
-        return Update(r, o, newSelector as LambdaExpression);
+        return Update(r, o, newKey as LambdaExpression, newSelector as LambdaExpression);
     }
 
     public OriginQueryExpression Update(
         QueryRootExpression root,
         ConstantExpression origin,
+        LambdaExpression? key,
         LambdaExpression? selector)
     {
         if (ExpressionEqualityComparer.Instance.Equals(root, Root)
             && ExpressionEqualityComparer.Instance.Equals(origin, Origin)
+            && ExpressionEqualityComparer.Instance.Equals(key, Key)
             && ExpressionEqualityComparer.Instance.Equals(Selector, selector))
         {
             return this;
         }
 
-        return new OriginQueryExpression(root, origin, selector);
+        return new OriginQueryExpression(root, origin, key, selector);
     }
 }

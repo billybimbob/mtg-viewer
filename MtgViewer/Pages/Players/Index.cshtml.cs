@@ -47,7 +47,7 @@ public class IndexModel : PageModel
             return Challenge();
         }
 
-        Players = await GetPlayersAsync(userId, seek, direction, cancel);
+        Players = await SeekPlayersAsync(userId, direction, seek, cancel);
 
         if (!Players.Any() && seek is not null)
         {
@@ -61,10 +61,10 @@ public class IndexModel : PageModel
         return Page();
     }
 
-    private async Task<SeekList<PlayerPreview>> GetPlayersAsync(
+    private async Task<SeekList<PlayerPreview>> SeekPlayersAsync(
         string userId,
-        string? seek,
         SeekDirection direction,
+        string? origin,
         CancellationToken cancel)
     {
         return await _dbContext.Players
@@ -73,6 +73,10 @@ public class IndexModel : PageModel
             .OrderBy(p => p.Name)
                 .ThenBy(p => p.Id)
 
+            .SeekBy(direction)
+                .After(origin, p => p.Id)
+                .ThenTake(_pageSize.Current)
+
             .Select(p => new PlayerPreview
             {
                 Id = p.Id,
@@ -80,7 +84,6 @@ public class IndexModel : PageModel
                 TotalDecks = p.Decks.Count
             })
 
-            .SeekBy(seek, direction, _pageSize.Current)
             .ToSeekListAsync(cancel);
     }
 }

@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore.Query;
 
 using EntityFrameworkCore.Paging.Query;
+using EntityFrameworkCore.Paging.Utils;
 
 namespace EntityFrameworkCore.Paging;
 
@@ -54,86 +55,150 @@ public static class PagingExtensions
 
     public static Task<OffsetList<TEntity>> ToOffsetListAsync<TEntity>(
         this IQueryable<TEntity> source,
-        CancellationToken cancel = default)
+        CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(source);
 
-        return ExecuteOffset<TEntity>.ToOffsetListAsync(source, cancel);
+        return ExecuteOffset<TEntity>.ToOffsetListAsync(source, cancellationToken);
     }
 
     #endregion
 
     #region Seek
 
-    public static IQueryable<TEntity> SeekBy<TEntity, TOrigin>(
-        this IQueryable<TEntity> source,
-        TOrigin? origin,
-        SeekDirection direction,
-        int? size)
-        where TOrigin : class
+    internal static readonly MethodInfo SeekByMethod
+        = typeof(PagingExtensions)
+            .GetTypeInfo()
+            .GetDeclaredMethods(nameof(SeekBy))
+            .Single(m => m
+                .GetParameters()
+                .ElementAtOrDefault(1)?
+                .ParameterType == typeof(SeekDirection));
+
+    public static ISeekable<TEntity> SeekBy<TEntity>(
+        this IOrderedQueryable<TEntity> source,
+        SeekDirection direction)
     {
         ArgumentNullException.ThrowIfNull(source);
 
-        var seekSource = source.AsSeekQueryable();
+        var seekable = source.AsSeekable();
 
-        var seek = new SeekExpression(
-            seekSource.Expression,
-            Expression.Constant(origin),
-            direction,
-            size);
-
-        return seekSource.Provider
-            .CreateQuery<TEntity>(seek);
+        return seekable.Provider
+            .CreateQuery<TEntity>(
+                Expression.Call(
+                    instance: null,
+                    method: SeekByMethod
+                        .MakeGenericMethod(typeof(TEntity)),
+                    arg0: seekable.Expression,
+                    arg1: Expression.Constant(direction)))
+            .AsSeekable();
     }
 
-    public static IQueryable<TEntity> SeekBy<TEntity, TOrigin>(
-        this IQueryable<TEntity> source,
-        TOrigin? origin,
-        SeekDirection direction,
-        int? size)
-        where TOrigin : struct
+    internal static readonly MethodInfo AfterReference
+        = typeof(PagingExtensions)
+            .GetTypeInfo()
+            .GetDeclaredMethods(nameof(After))
+            .Single(m =>
+                m.GetGenericArguments().Length == 1
+                    && m.GetParameters().Length == 2);
+
+    public static ISeekable<TEntity> After<TEntity>(
+        this ISeekable<TEntity> source,
+        TEntity? origin)
+        where TEntity : class
     {
         ArgumentNullException.ThrowIfNull(source);
 
-        var seekSource = source.AsSeekQueryable();
-
-        var seek = new SeekExpression(
-            seekSource.Expression,
-            Expression.Constant(origin),
-            direction,
-            size);
-
-        return seekSource.Provider
-            .CreateQuery<TEntity>(seek);
+        return source.Provider
+            .CreateQuery<TEntity>(
+                Expression.Call(
+                    instance: null,
+                    method: AfterReference
+                        .MakeGenericMethod(typeof(TEntity)),
+                    arg0: source.Expression,
+                    arg1: Expression.Constant(origin, typeof(TEntity))))
+            .AsSeekable();
     }
 
-    public static IQueryable<TEntity> After<TEntity, TOrigin>(
-        this IQueryable<TEntity> source,
-        TOrigin? origin,
-        int? size)
-        where TOrigin : class
-        => source.SeekBy(origin, SeekDirection.Forward, size);
+    internal static readonly MethodInfo AfterKeyReference
+        = typeof(PagingExtensions)
+            .GetTypeInfo()
+            .GetDeclaredMethods(nameof(After))
+            .Single(m => m.GetParameters().Length == 3
+                && m.GetGenericArguments() is var args
+                && args.Length == 2
+                && TypeHelpers.HasReferenceConstraint(args[1]));
 
-    public static IQueryable<TEntity> After<TEntity, TOrigin>(
-        this IQueryable<TEntity> source,
-        TOrigin? origin,
-        int? size)
-        where TOrigin : struct
-        => source.SeekBy(origin, SeekDirection.Forward, size);
+    public static ISeekable<TEntity> After<TEntity, TKey>(
+        this ISeekable<TEntity> source,
+        TKey? origin,
+        Expression<Func<TEntity, TKey>> keySelector)
+        where TKey : class
+    {
+        ArgumentNullException.ThrowIfNull(source);
 
-    public static IQueryable<TEntity> Before<TEntity, TOrigin>(
-        this IQueryable<TEntity> source,
-        TOrigin? origin,
-        int? size)
-        where TOrigin : class
-        => source.SeekBy(origin, SeekDirection.Backwards, size);
+        return source.Provider
+            .CreateQuery<TEntity>(
+                Expression.Call(
+                    instance: null,
+                    method: AfterKeyReference
+                        .MakeGenericMethod(typeof(TEntity), typeof(TKey)),
+                    arg0: source.Expression,
+                    arg1: Expression.Constant(origin, typeof(TKey)),
+                    arg2: Expression.Quote(keySelector)))
+            .AsSeekable();
+    }
 
-    public static IQueryable<TEntity> Before<TEntity, TOrigin>(
-        this IQueryable<TEntity> source,
-        TOrigin? origin,
-        int? size)
-        where TOrigin : struct
-        => source.SeekBy(origin, SeekDirection.Backwards, size);
+    internal static readonly MethodInfo AfterKeyValue
+        = typeof(PagingExtensions)
+            .GetTypeInfo()
+            .GetDeclaredMethods(nameof(After))
+            .Single(m => m.GetParameters().Length == 3
+                && m.GetGenericArguments() is var args
+                && args.Length == 2
+                && TypeHelpers.HasValueConstraint(args[1]));
+
+    public static ISeekable<TEntity> After<TEntity, TKey>(
+        this ISeekable<TEntity> source,
+        TKey? origin,
+        Expression<Func<TEntity, TKey>> keySelector)
+        where TKey : struct
+    {
+        ArgumentNullException.ThrowIfNull(source);
+
+        return source.Provider
+            .CreateQuery<TEntity>(
+                Expression.Call(
+                    instance: null,
+                    method: AfterKeyValue
+                        .MakeGenericMethod(typeof(TEntity), typeof(TKey)),
+                    arg0: source.Expression,
+                    arg1: Expression.Constant(origin, typeof(TKey?)),
+                    arg2: Expression.Quote(keySelector)))
+            .AsSeekable();
+    }
+
+    internal static readonly MethodInfo ThenTakeMethod
+        = typeof(PagingExtensions)
+            .GetTypeInfo()
+            .GetDeclaredMethod(nameof(ThenTake))!;
+
+    public static ISeekable<TEntity> ThenTake<TEntity>(
+        this ISeekable<TEntity> source,
+        int count)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+
+        return source.Provider
+            .CreateQuery<TEntity>(
+                Expression.Call(
+                    instance: null,
+                    method: ThenTakeMethod
+                        .MakeGenericMethod(typeof(TEntity)),
+                    arg0: source.Expression,
+                    arg1: Expression.Constant(count)))
+            .AsSeekable();
+    }
 
     internal static readonly MethodInfo ToSeekListMethodInfo
         = typeof(PagingExtensions)
@@ -145,15 +210,15 @@ public static class PagingExtensions
     {
         ArgumentNullException.ThrowIfNull(source);
 
-        var seekSource = source.AsSeekQueryable();
+        var seekable = source.AsSeekable();
 
-        return seekSource.Provider
+        return seekable.Provider
             .Execute<SeekList<TEntity>>(
                 Expression.Call(
                     instance: null,
                     method: ToSeekListMethodInfo
                         .MakeGenericMethod(typeof(TEntity)),
-                    arguments: seekSource.Expression));
+                    arguments: seekable.Expression));
     }
 
     public static Task<SeekList<TEntity>> ToSeekListAsync<TEntity>(
@@ -163,25 +228,25 @@ public static class PagingExtensions
     {
         ArgumentNullException.ThrowIfNull(source);
 
-        var seekSource = source.AsSeekQueryable();
+        var seekable = source.AsSeekable();
 
-        return seekSource.AsyncProvider
+        return seekable.AsyncProvider
             .ExecuteAsync<Task<SeekList<TEntity>>>(
                 Expression.Call(
                     instance: null,
                     method: ToSeekListMethodInfo
                         .MakeGenericMethod(typeof(TEntity)),
-                    arguments: seekSource.Expression),
+                    arguments: seekable.Expression),
                 cancellationToken);
     }
 
-    private static ISeekQueryable<TEntity> AsSeekQueryable<TEntity>(this IQueryable<TEntity> source)
+    private static ISeekable<TEntity> AsSeekable<TEntity>(this IQueryable<TEntity> source)
     {
         ArgumentNullException.ThrowIfNull(source);
 
-        if (source is ISeekQueryable<TEntity> seekQuery)
+        if (source is ISeekable<TEntity> seekable)
         {
-            return seekQuery;
+            return seekable;
         }
 
         if (source.Provider is not IAsyncQueryProvider asyncProvider)
@@ -191,7 +256,7 @@ public static class PagingExtensions
 
         var provider = new SeekProvider(asyncProvider);
 
-        return SeekQuery.Create<TEntity>(provider, source.Expression);
+        return new SeekQuery<TEntity>(provider, source.Expression);
     }
 
     #endregion

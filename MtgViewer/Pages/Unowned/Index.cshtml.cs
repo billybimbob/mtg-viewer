@@ -35,17 +35,23 @@ public class IndexModel : PageModel
         SeekDirection direction,
         CancellationToken cancel)
     {
-        Unclaimed = await UnclaimedDecks(seek, direction).ToSeekListAsync(cancel);
+        Unclaimed = await SeekDecksAsync(direction, seek, cancel);
 
         return Page();
     }
 
-    private IQueryable<UnclaimedDetails> UnclaimedDecks(int? seek, SeekDirection direction)
+    private async Task<SeekList<UnclaimedDetails>> SeekDecksAsync(
+        SeekDirection direction,
+        int? origin,
+        CancellationToken cancel)
     {
-        return _dbContext.Unclaimed
-
+        return await _dbContext.Unclaimed
             .OrderBy(u => u.Name)
                 .ThenBy(u => u.Id)
+
+            .SeekBy(direction)
+                .After(origin, u => u.Id)
+                .ThenTake(_pageSize.Current)
 
             .Select(u => new UnclaimedDetails
             {
@@ -57,7 +63,7 @@ public class IndexModel : PageModel
                 WantCopies = u.Wants.Sum(w => w.Copies)
             })
 
-            .SeekBy(seek, direction, _pageSize.Current);
+            .ToSeekListAsync(cancel);
     }
 
     public IActionResult OnPostClaim(int id)

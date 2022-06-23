@@ -70,20 +70,14 @@ public class DetailsModel : PageModel
         string? tz,
         CancellationToken cancel)
     {
-        string? userId = _userManager.GetUserId(User);
-
-        var transactionQuery = userId is null
-            ? TransactionDetails(id)
-            : TransactionDetails(id, userId);
-
-        var transaction = await transactionQuery.SingleOrDefaultAsync(cancel);
+        var transaction = await FindTransactionAsync(id, cancel);
 
         if (transaction is null)
         {
             return NotFound();
         }
 
-        var changes = await ChangeDetails(transaction, seek, direction).ToSeekListAsync(cancel);
+        var changes = await SeekChangesAsync(transaction, direction, seek, cancel);
 
         if (!changes.Any() && seek is not null)
         {
@@ -95,23 +89,25 @@ public class DetailsModel : PageModel
             });
         }
 
-        var moves = changes
-            .GroupBy(c => (c.To, c.From),
-                (tf, changes) => new Move
-                {
-                    To = tf.To,
-                    From = tf.From,
-                    Changes = changes
-                })
-            .ToList();
-
         Transaction = transaction;
-        Moves = moves;
+
+        Moves = GetMoves(changes);
         Seek = (Seek)changes.Seek;
 
         UpdateTimeZone(tz);
 
         return Page();
+    }
+
+    private async Task<TransactionDetails?> FindTransactionAsync(int id, CancellationToken cancel)
+    {
+        string? userId = _userManager.GetUserId(User);
+
+        var transactionQuery = userId is null
+            ? TransactionDetails(id)
+            : TransactionDetails(id, userId);
+
+        return await transactionQuery.SingleOrDefaultAsync(cancel);
     }
 
     private IQueryable<TransactionDetails> TransactionDetails(int id)
@@ -151,12 +147,13 @@ public class DetailsModel : PageModel
             });
     }
 
-    private IQueryable<ChangeDetails> ChangeDetails(
+    private async Task<SeekList<ChangeDetails>> SeekChangesAsync(
         TransactionDetails transaction,
-        int? seek,
-        SeekDirection direction)
+        SeekDirection direction,
+        int? origin,
+        CancellationToken cancel)
     {
-        return _dbContext.Changes
+        return await _dbContext.Changes
             .Where(c => c.TransactionId == transaction.Id)
 
             .OrderByDescending(c => c.From == null)
@@ -166,7 +163,10 @@ public class DetailsModel : PageModel
                     .ThenBy(c => c.Copies)
                     .ThenBy(c => c.Id)
 
-            .SeekBy(seek, direction, _pageSize.Current)
+            .SeekBy(direction)
+                .After(origin, c => c.Id)
+                .ThenTake(_pageSize.Current)
+
             .Select(c => new ChangeDetails
             {
                 Id = c.Id,
@@ -201,8 +201,21 @@ public class DetailsModel : PageModel
                     Rarity = c.Card.Rarity,
                     ImageUrl = c.Card.ImageUrl
                 }
-            });
+            })
+
+            .ToSeekListAsync(cancel);
     }
+
+    private static IReadOnlyList<Move> GetMoves(IEnumerable<ChangeDetails> changes)
+        => changes
+            .GroupBy(c => (c.To, c.From),
+                (tf, changes) => new Move
+                {
+                    To = tf.To,
+                    From = tf.From,
+                    Changes = changes
+                })
+            .ToList();
 
     private void UpdateTimeZone(string? timeZoneId)
     {
@@ -229,17 +242,16 @@ public class DetailsModel : PageModel
         }
     }
 
-    private static readonly Func<CardDbContext, int, string, CancellationToken, Task<Transaction?>> DeletingTransactionAsync
-
-        = EF.CompileAsyncQuery((CardDbContext dbContext, int transactionId, string userId, CancellationToken _) =>
-            dbContext.Transactions
+    private static readonly Func<CardDbContext, int, CancellationToken, Task<Transaction?>> DeletingTransactionAsync
+        = EF.CompileAsyncQuery((CardDbContext db, int id, CancellationToken _)
+            => db.Transactions
                 .Include(t => t.Changes)
                     .ThenInclude(c => c.To)
 
                 .Include(t => t.Changes)
                     .ThenInclude(c => c.From)
 
-                .SingleOrDefault(t => t.Id == transactionId));
+                .SingleOrDefault(t => t.Id == id));
 
     private static bool IsInvalidTransaction(Transaction transaction, string userId)
     {
@@ -264,7 +276,7 @@ public class DetailsModel : PageModel
             return Forbid();
         }
 
-        var transaction = await DeletingTransactionAsync.Invoke(_dbContext, id, userId, cancel);
+        var transaction = await DeletingTransactionAsync.Invoke(_dbContext, id, cancel);
 
         if (transaction is null)
         {

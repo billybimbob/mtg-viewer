@@ -65,9 +65,9 @@ public class ResetModel : PageModel
     }
 
     private static readonly Func<CardDbContext, string, CancellationToken, Task<bool>> IsResetRequestedAsync
-        = EF.CompileAsyncQuery((CardDbContext dbContext, string userId, CancellationToken _) =>
-            dbContext.Players
-                .Where(p => p.Id == userId)
+        = EF.CompileAsyncQuery((CardDbContext db, string id, CancellationToken _)
+            => db.Players
+                .Where(p => p.Id == id)
                 .Select(p => p.ResetRequested)
                 .SingleOrDefault());
 

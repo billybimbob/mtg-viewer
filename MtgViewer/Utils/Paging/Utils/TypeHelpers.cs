@@ -21,6 +21,14 @@ internal static class TypeHelpers
             || (Nullable.GetUnderlyingType(type) is Type inner
                 && IsValueComparable(inner));
 
+    public static bool HasReferenceConstraint(Type? type)
+        => ((type?.GenericParameterAttributes ?? 0)
+            & GenericParameterAttributes.ReferenceTypeConstraint) != 0;
+
+    public static bool HasValueConstraint(Type? type)
+        => ((type?.GenericParameterAttributes ?? 0)
+            & GenericParameterAttributes.NotNullableValueTypeConstraint) != 0;
+
     #region Enum Comparison
 
     private const BindingFlags StaticPrivate = BindingFlags.Static | BindingFlags.NonPublic;

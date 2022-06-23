@@ -14,7 +14,7 @@ namespace MtgViewer.Pages.Decks;
 
 public partial class Craft
 {
-    private string? _seek;
+    private string? _origin;
     private SeekDirection _direction;
 
     internal string? Search { get; private set; }
@@ -49,7 +49,7 @@ public partial class Craft
         {
             Search = value;
 
-            _seek = null;
+            _origin = null;
             _direction = SeekDirection.Forward;
 
             await using var dbContext = await DbFactory.CreateDbContextAsync(_cancel.Token);
@@ -67,7 +67,7 @@ public partial class Craft
         string? seek = request.Origin?.Card.Id;
         var direction = request.Direction;
 
-        if (_isBusy || (_seek == seek && _direction == direction))
+        if (_isBusy || (_origin == seek && _direction == direction))
         {
             return;
         }
@@ -76,7 +76,7 @@ public partial class Craft
 
         try
         {
-            _seek = seek;
+            _origin = seek;
             _direction = direction;
 
             await using var dbContext = await DbFactory.CreateDbContextAsync(_cancel.Token);
@@ -102,7 +102,7 @@ public partial class Craft
         {
             PickedColors ^= value;
 
-            _seek = null;
+            _origin = null;
             _direction = SeekDirection.Forward;
 
             await using var dbContext = await DbFactory.CreateDbContextAsync(_cancel.Token);
@@ -168,6 +168,10 @@ public partial class Craft
                 .ThenBy(c => c.SetName)
                 .ThenBy(c => c.Id)
 
+            .SeekBy(_direction)
+                .After(_origin, c => c.Id)
+                .ThenTake(PageSize.Current)
+
             .Select(card =>
                 new HeldCard(
                     card,
@@ -175,7 +179,6 @@ public partial class Craft
                         .Where(h => h.Location is Box || h.Location is Excess)
                         .Sum(h => h.Copies)))
 
-            .SeekBy(_seek, _direction, PageSize.Current)
             .ToSeekListAsync(cancel);
     }
 }

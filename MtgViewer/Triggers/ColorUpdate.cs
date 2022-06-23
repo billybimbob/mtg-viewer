@@ -129,10 +129,9 @@ public class ColorUpdate : IBeforeSaveTrigger<Theorycraft>
     }
 
     private static readonly Func<CardDbContext, int, CancellationToken, Task<TheoryColors?>> DeckColorsAsync
-
-        = EF.CompileAsyncQuery((CardDbContext dbContext, int deckId, CancellationToken _) =>
-            dbContext.Decks
-                .Where(d => d.Id == deckId)
+        = EF.CompileAsyncQuery((CardDbContext db, int id, CancellationToken _)
+            => db.Decks
+                .Where(d => d.Id == id)
                 .Select(d => new TheoryColors
                 {
                     Id = d.Id,
@@ -143,10 +142,9 @@ public class ColorUpdate : IBeforeSaveTrigger<Theorycraft>
                 .SingleOrDefault());
 
     private static readonly Func<CardDbContext, int, CancellationToken, Task<TheoryColors?>> UnclaimedColorsAsync
-
-        = EF.CompileAsyncQuery((CardDbContext dbContext, int unclaimedId, CancellationToken _) =>
-            dbContext.Unclaimed
-                .Where(u => u.Id == unclaimedId)
+        = EF.CompileAsyncQuery((CardDbContext db, int id, CancellationToken _)
+            => db.Unclaimed
+                .Where(u => u.Id == id)
                 .Select(u => new TheoryColors
                 {
                     Id = u.Id,
@@ -157,10 +155,9 @@ public class ColorUpdate : IBeforeSaveTrigger<Theorycraft>
                 .SingleOrDefault());
 
     private static readonly Func<CardDbContext, string[], IAsyncEnumerable<Color>> CardColorsAsync
-
-        = EF.CompileAsyncQuery((CardDbContext dbContext, string[] cardIds) =>
-            dbContext.Cards
-                .Where(c => cardIds.Contains(c.Id))
+        = EF.CompileAsyncQuery((CardDbContext db, string[] cards)
+            => db.Cards
+                .Where(c => cards.Contains(c.Id))
                 .Select(c => c.Color)
                 .Distinct());
 }

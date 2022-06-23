@@ -155,12 +155,28 @@ public sealed partial class Collection : ComponentBase, IDisposable
 
         var filter = ParseTextFilter.Parse(Search);
 
-        var cards = FilterCards(dbContext.Cards, filter, PickedColors);
+        var cards = FilterCards(dbContext.Cards, filter, PickedColors)
+            .Select(c => new LocationCopy
+            {
+                Id = c.Id,
+                Name = c.Name,
 
-        var copies = AsCopies(cards);
+                ManaCost = c.ManaCost,
+                ManaValue = c.ManaValue,
 
-        return await OrderCopies(copies, Order)
-            .SeekBy(Seek, (SeekDirection)Direction, PageSize.Current)
+                SetName = c.SetName,
+                Rarity = c.Rarity,
+                ImageUrl = c.ImageUrl,
+
+                Held = c.Holds.Sum(c => c.Copies)
+            });
+
+        return await OrderCopies(cards, Order)
+
+            .SeekBy((SeekDirection)Direction)
+                .After(Seek, l => l.Id)
+                .ThenTake(PageSize.Current)
+
             .ToSeekListAsync(_cancel.Token);
     }
 
@@ -200,26 +216,7 @@ public sealed partial class Collection : ComponentBase, IDisposable
         return cards;
     }
 
-    private static IQueryable<LocationCopy> AsCopies(IQueryable<Card> cards)
-    {
-        return cards
-            .Select(c => new LocationCopy
-            {
-                Id = c.Id,
-                Name = c.Name,
-
-                ManaCost = c.ManaCost,
-                ManaValue = c.ManaValue,
-
-                SetName = c.SetName,
-                Rarity = c.Rarity,
-                ImageUrl = c.ImageUrl,
-
-                Held = c.Holds.Sum(c => c.Copies)
-            });
-    }
-
-    private static IQueryable<LocationCopy> OrderCopies(IQueryable<LocationCopy> copies, string? orderBy)
+    private static IOrderedQueryable<LocationCopy> OrderCopies(IQueryable<LocationCopy> copies, string? orderBy)
     {
         return orderBy switch
         {

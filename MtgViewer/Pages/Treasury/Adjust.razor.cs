@@ -159,9 +159,9 @@ public sealed partial class Adjust : ComponentBase, IDisposable
         return Task.CompletedTask;
     }
 
-    private static readonly Func<CardDbContext, IAsyncEnumerable<BinDto>> BinsAsync =
-        EF.CompileAsyncQuery((CardDbContext dbContext) =>
-            dbContext.Bins
+    private static readonly Func<CardDbContext, IAsyncEnumerable<BinDto>> BinsAsync
+        = EF.CompileAsyncQuery((CardDbContext db)
+            => db.Bins
                 .OrderBy(b => b.Name)
                 .Select(b => new BinDto
                 {

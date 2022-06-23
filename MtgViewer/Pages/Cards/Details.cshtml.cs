@@ -63,14 +63,14 @@ public class DetailsModel : PageModel
         SeekDirection direction,
         CancellationToken cancel)
     {
-        var card = await GetCardAsync(id, flip, cancel);
+        var card = await FindCardAsync(id, flip, cancel);
 
         if (card is null)
         {
             return NotFound();
         }
 
-        var locations = await GetLocationsAsync(card.Id, seek, direction, cancel);
+        var locations = await SeekLocationsAsync(card.Id, direction, seek, cancel);
 
         if (!locations.Any() && seek is not null)
         {
@@ -99,7 +99,7 @@ public class DetailsModel : PageModel
         return Page();
     }
 
-    private Task<Card?> GetCardAsync(string cardId, bool flip, CancellationToken cancel)
+    private Task<Card?> FindCardAsync(string cardId, bool flip, CancellationToken cancel)
     {
         var cardQuery = _dbContext.Cards
             .Where(c => c.Id == cardId)
@@ -116,9 +116,9 @@ public class DetailsModel : PageModel
     }
 
     private static readonly Func<CardDbContext, string, string, int, IAsyncEnumerable<CardLink>> CardAlternativesAsync
-        = EF.CompileAsyncQuery((CardDbContext dbContext, string cardId, string cardName, int limit) =>
-            dbContext.Cards
-                .Where(c => c.Id != cardId && c.Name == cardName)
+        = EF.CompileAsyncQuery((CardDbContext db, string id, string name, int limit)
+            => db.Cards
+                .Where(c => c.Id != id && c.Name == name)
                 .OrderBy(c => c.SetName)
                 .Take(limit)
                 .Select(c => new CardLink
@@ -128,16 +128,21 @@ public class DetailsModel : PageModel
                     SetName = c.SetName
                 }));
 
-    private Task<SeekList<QuantityLocationPreview>> GetLocationsAsync(
+    private async Task<SeekList<QuantityLocationPreview>> SeekLocationsAsync(
         string cardId,
-        int? seek,
         SeekDirection direction,
+        int? origin,
         CancellationToken cancel)
     {
-        return _dbContext.Holds
+        return await _dbContext.Holds
             .Where(h => h.CardId == cardId)
+
             .OrderBy(h => h.Location.Name)
                 .ThenBy(h => h.LocationId)
+
+            .SeekBy(direction)
+                .After(origin, h => h.Id)
+                .ThenTake(_pageSize.Current)
 
             .Select(h => new QuantityLocationPreview
             {
@@ -147,10 +152,10 @@ public class DetailsModel : PageModel
                     Name = h.Location.Name,
                     Type = h.Location.Type
                 },
+
                 Copies = h.Copies
             })
 
-            .SeekBy(seek, direction, _pageSize.Current)
             .ToSeekListAsync(cancel);
     }
 }

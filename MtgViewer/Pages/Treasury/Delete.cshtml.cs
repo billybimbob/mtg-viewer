@@ -48,8 +48,8 @@ public class DeleteModel : PageModel
     }
 
     private static readonly Func<CardDbContext, int, int, CancellationToken, Task<BoxPreview?>> BoxAsync
-        = EF.CompileAsyncQuery((CardDbContext dbContext, int boxId, int pageSize, CancellationToken _) =>
-            dbContext.Boxes
+        = EF.CompileAsyncQuery((CardDbContext db, int box, int limit, CancellationToken _)
+            => db.Boxes
                 .Select(b => new BoxPreview
                 {
                     Id = b.Id,
@@ -71,7 +71,7 @@ public class DeleteModel : PageModel
                             .ThenBy(h => h.Copies)
                             .ThenBy(h => h.Id)
 
-                        .Take(pageSize)
+                        .Take(limit)
                         .Select(h => new LocationLink
                         {
                             Id = h.CardId,
@@ -81,7 +81,7 @@ public class DeleteModel : PageModel
                             Held = h.Copies
                         })
                 })
-                .SingleOrDefault(d => d.Id == boxId));
+                .SingleOrDefault(d => d.Id == box));
 
     public async Task<IActionResult> OnPostAsync(int id, CancellationToken cancel)
     {

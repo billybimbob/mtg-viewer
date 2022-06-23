@@ -11,11 +11,11 @@ using EntityFrameworkCore.Paging.Utils;
 
 namespace EntityFrameworkCore.Paging.Query;
 
-internal class FindOriginQueryVisitor : ExpressionVisitor
+internal class OriginQueryTranslationVisitor : ExpressionVisitor
 {
     private readonly ParameterExpression _orderBy;
 
-    public FindOriginQueryVisitor(ParameterExpression orderBy)
+    public OriginQueryTranslationVisitor(ParameterExpression orderBy)
     {
         _orderBy = orderBy;
     }
@@ -37,34 +37,30 @@ internal class FindOriginQueryVisitor : ExpressionVisitor
     {
         if (node is QueryRootExpression root)
         {
-            return new OriginQueryExpression(root, Expression.Constant(null), null);
+            return new OriginQueryExpression(root, Expression.Constant(null), key: null, selector: null);
         }
 
-        if (node is not SeekExpression seek)
-        {
-            return node;
-        }
-
-        if (base.Visit(seek.Query) is OriginQueryExpression query)
-        {
-            return query.Update(query.Root, seek.Origin, query.Selector);
-        };
-
-        return seek;
+        return base.VisitExtension(node);
     }
 
     protected override Expression VisitMethodCall(MethodCallExpression node)
     {
-        if (base.Visit(node.Arguments.ElementAtOrDefault(0))
-            is not OriginQueryExpression query)
+        if (base.Visit(node.Arguments.ElementAtOrDefault(0)) is not OriginQueryExpression query)
         {
             return node;
+        }
+
+        if (ExpressionHelpers.IsAfter(node)
+            && node.Arguments.ElementAtOrDefault(1) is ConstantExpression origin
+            && base.Visit(node.Arguments.ElementAtOrDefault(2)) is var key)
+        {
+            return query.Update(query.Root, origin, key as LambdaExpression, query.Selector);
         }
 
         if (IsOrderTranslation(query, node)
             && base.Visit(node.Arguments[1]) is LambdaExpression selector)
         {
-            return query.Update(query.Root, query.Origin, selector);
+            return query.Update(query.Root, query.Origin, query.Key, selector);
         }
 
         return query;
@@ -95,10 +91,14 @@ internal class FindOrderParameterVisitor : ExpressionVisitor
     [return: NotNullIfNotNull("node")]
     public override Expression? Visit(Expression? node)
     {
-        _foundSeek = false;
+        _foundSeek = SeekByNotCalled(node);
 
         return base.Visit(node);
     }
+
+    private static bool SeekByNotCalled(Expression? node)
+        => FindSeekByVisitor.Instance.Visit(node) is not MethodCallExpression call
+            || ExpressionHelpers.IsSeekBy(call) is false;
 
     protected override Expression VisitMethodCall(MethodCallExpression node)
     {
@@ -110,6 +110,11 @@ internal class FindOrderParameterVisitor : ExpressionVisitor
             }
 
             return base.Visit(node.Arguments[1]);
+        }
+
+        if (ExpressionHelpers.IsSeekBy(node))
+        {
+            _foundSeek = true;
         }
 
         if (node.Arguments.ElementAtOrDefault(0) is Expression parent)
@@ -140,75 +145,67 @@ internal class FindOrderParameterVisitor : ExpressionVisitor
         return node;
     }
 
-    protected override Expression VisitExtension(Expression node)
+    private sealed class FindSeekByVisitor : ExpressionVisitor
     {
-        if (node is not SeekExpression seek)
+        private static FindSeekByVisitor? _instance;
+        public static FindSeekByVisitor Instance => _instance ??= new();
+
+        protected override Expression VisitMethodCall(MethodCallExpression node)
         {
-            return node;
+            if (ExpressionHelpers.IsSeekBy(node))
+            {
+                return node;
+            }
+
+            if (node.Arguments.ElementAtOrDefault(0) is not Expression parent)
+            {
+                return node;
+            }
+
+            return Visit(parent);
         }
-
-        _foundSeek = true;
-
-        return base.Visit(seek.Query);
     }
 }
 
 internal class OriginIncludeVisitor : ExpressionVisitor
 {
-    private readonly FindIncludeVisitor? _findInclude;
-    private readonly HashSet<string> _include;
-
-    public OriginIncludeVisitor(IReadOnlyEntityType? entity = null)
+    public static IReadOnlyCollection<string> Scan(Expression node, IReadOnlyEntityType? entityType = null)
     {
-        _findInclude = entity is null ? null : new FindIncludeVisitor(entity);
-        _include = new HashSet<string>();
+        var findIncludes = new OriginIncludeVisitor(entityType);
+
+        _ = findIncludes.Visit(node);
+
+        return findIncludes._includes;
     }
 
-    public IReadOnlyCollection<string> Includes => _include;
+    private readonly FindIncludeVisitor? _findInclude;
+    private readonly HashSet<string> _includes;
+
+    private OriginIncludeVisitor(IReadOnlyEntityType? entity)
+    {
+        _findInclude = entity is null ? null : new FindIncludeVisitor(entity);
+        _includes = new HashSet<string>();
+    }
 
     [return: NotNullIfNotNull("node")]
     public new Expression? Visit(Expression? node)
     {
-        _include.Clear();
+        _includes.Clear();
 
         return base.Visit(node);
     }
 
     protected override Expression VisitMethodCall(MethodCallExpression node)
     {
-        if (node.Arguments.ElementAtOrDefault(0) is not Expression parent)
-        {
-            return node;
-        }
-
-        var visitedParent = base.Visit(parent);
-
-        if (node is { Method.IsGenericMethod: false })
-        {
-            return visitedParent;
-        }
-
-        var method = node.Method.GetGenericMethodDefinition();
-
         if (_findInclude?.Visit(node) is ConstantExpression { Value: string includeChain })
         {
             const StringComparison ordinal = StringComparison.Ordinal;
 
-            _include.RemoveWhere(s => includeChain.StartsWith(s, ordinal));
-            _include.Add(includeChain);
+            _includes.RemoveWhere(s => includeChain.StartsWith(s, ordinal));
+            _includes.Add(includeChain);
         }
 
-        return visitedParent;
-    }
-
-    protected override Expression VisitExtension(Expression node)
-    {
-        if (node is SeekExpression seek)
-        {
-            return base.Visit(seek.Query);
-        }
-
-        return base.VisitExtension(node);
+        return base.VisitMethodCall(node);
     }
 
     private sealed class FindIncludeVisitor : ExpressionVisitor

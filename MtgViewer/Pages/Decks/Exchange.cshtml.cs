@@ -89,11 +89,10 @@ public class ExchangeModel : PageModel
     }
 
     private static readonly Func<CardDbContext, int, string, int, CancellationToken, Task<ExchangePreview?>> ExchangePreviewAsync
-        = EF.CompileAsyncQuery(
-            (CardDbContext dbContext, int deckId, string userId, int limit, CancellationToken _) =>
+        = EF.CompileAsyncQuery((CardDbContext db, int deck, string owner, int limit, CancellationToken _)
+            => db.Decks
+                .Where(d => d.Id == deck && d.OwnerId == owner && !d.TradesTo.Any())
 
-            dbContext.Decks
-                .Where(d => d.Id == deckId && d.OwnerId == userId && !d.TradesTo.Any())
                 .Select(d => new ExchangePreview
                 {
                     Id = d.Id,
@@ -121,6 +120,7 @@ public class ExchangeModel : PageModel
                             Held = g.Copies
                         })
                 })
+
                 .SingleOrDefault());
 
     private IQueryable<LocationCopy> WantTargets(ExchangePreview deck)
@@ -171,8 +171,8 @@ public class ExchangeModel : PageModel
     }
 
     private static readonly Func<CardDbContext, int, string, CancellationToken, Task<Deck?>> DeckForExchangeAsync
-        = EF.CompileAsyncQuery((CardDbContext dbContext, int deckId, string userId, CancellationToken _) =>
-            dbContext.Decks
+        = EF.CompileAsyncQuery((CardDbContext db, int deck, string owner, CancellationToken _)
+            => db.Decks
                 .Include(d => d.Holds) // unbounded: keep eye one
                     .ThenInclude(h => h.Card)
 
@@ -186,8 +186,9 @@ public class ExchangeModel : PageModel
 
                 .OrderBy(d => d.Id)
                 .AsSplitQuery()
+
                 .SingleOrDefault(d =>
-                    d.Id == deckId && d.OwnerId == userId && !d.TradesTo.Any()));
+                    d.Id == deck && d.OwnerId == owner && !d.TradesTo.Any()));
 
     public async Task<IActionResult> OnPostAsync(int id, CancellationToken cancel)
     {

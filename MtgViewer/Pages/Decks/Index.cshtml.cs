@@ -62,8 +62,7 @@ public class IndexModel : PageModel
             return NotFound();
         }
 
-        var decks = await DeckPreviews(userId, seek, direction)
-            .ToSeekListAsync(cancel);
+        var decks = await SeekDecksAsync(userId, direction, seek, cancel);
 
         if (!decks.Any() && seek is not null)
         {
@@ -81,13 +80,21 @@ public class IndexModel : PageModel
         return Page();
     }
 
-    private IQueryable<DeckPreview> DeckPreviews(string userId, int? seek, SeekDirection direction)
+    private async Task<SeekList<DeckPreview>> SeekDecksAsync(
+        string ownerId,
+        SeekDirection direction,
+        int? origin,
+        CancellationToken cancel)
     {
-        return _dbContext.Decks
-            .Where(d => d.OwnerId == userId)
+        return await _dbContext.Decks
+            .Where(d => d.OwnerId == ownerId)
 
             .OrderBy(d => d.Name)
                 .ThenBy(d => d.Id)
+
+            .SeekBy(direction)
+                .After(origin, d => d.Id)
+                .ThenTake(_pageSize.Current)
 
             .Select(d => new DeckPreview
             {
@@ -102,6 +109,6 @@ public class IndexModel : PageModel
                 HasTrades = d.TradesTo.Any(),
             })
 
-            .SeekBy(seek, direction, _pageSize.Current);
+            .ToSeekListAsync(cancel);
     }
 }

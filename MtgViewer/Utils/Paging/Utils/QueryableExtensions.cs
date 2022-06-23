@@ -121,7 +121,7 @@ internal static class QueryableExtensions
             throw new InvalidOperationException("Provider does not support async operations");
         }
 
-        var resultType = typeof(Task<>)
+        var resultTask = typeof(Task<>)
             .MakeGenericType(source.ElementType);
 
         var call = Expression.Call(
@@ -133,7 +133,7 @@ internal static class QueryableExtensions
         var execute = (Task?)typeof(IAsyncQueryProvider)
             .GetTypeInfo()
             .GetMethod(nameof(IAsyncQueryProvider.ExecuteAsync))?
-            .MakeGenericMethod(resultType)
+            .MakeGenericMethod(resultTask)
             .Invoke(asyncProvider, new object[] { call, cancellationToken });
 
         if (execute is null)
@@ -143,7 +143,7 @@ internal static class QueryableExtensions
 
         await execute;
 
-        return resultType
+        return resultTask
             .GetTypeInfo()
             .GetProperty(nameof(Task<object?>.Result))?
             .GetValue(execute);

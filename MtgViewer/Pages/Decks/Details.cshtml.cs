@@ -52,7 +52,7 @@ public class DetailsModel : PageModel
             return NotFound();
         }
 
-        var cards = await DeckCards(id, seek, direction).ToSeekListAsync(cancel);
+        var cards = await SeekCardsAsync(id, direction, seek, cancel);
 
         if (!cards.Any() && seek is not null)
         {
@@ -73,9 +73,9 @@ public class DetailsModel : PageModel
     }
 
     private static readonly Func<CardDbContext, int, CancellationToken, Task<DeckDetails?>> DeckDetailsAsync
-        = EF.CompileAsyncQuery((CardDbContext dbContext, int deckId, CancellationToken _) =>
-            dbContext.Decks
-                .Where(d => d.Id == deckId)
+        = EF.CompileAsyncQuery((CardDbContext db, int id, CancellationToken _)
+            => db.Decks
+                .Where(d => d.Id == id)
                 .Select(d => new DeckDetails
                 {
                     Id = d.Id,
@@ -96,9 +96,13 @@ public class DetailsModel : PageModel
                 })
                 .SingleOrDefault());
 
-    private IQueryable<DeckCopy> DeckCards(int deckId, string? seek, SeekDirection direction)
+    private async Task<SeekList<DeckCopy>> SeekCardsAsync(
+        int deckId,
+        SeekDirection direction,
+        string? origin,
+        CancellationToken cancel)
     {
-        return _dbContext.Cards
+        return await _dbContext.Cards
             .Where(c => c.Holds.Any(h => h.LocationId == deckId)
                 || c.Wants.Any(w => w.LocationId == deckId)
                 || c.Givebacks.Any(g => g.LocationId == deckId))
@@ -106,6 +110,10 @@ public class DetailsModel : PageModel
             .OrderBy(c => c.Name)
                 .ThenBy(c => c.SetName)
                 .ThenBy(c => c.Id)
+
+            .SeekBy(direction)
+                .After(origin, c => c.Id)
+                .ThenTake(_pageSize.Current)
 
             .Select(c => new DeckCopy
             {
@@ -131,7 +139,7 @@ public class DetailsModel : PageModel
                     .Sum(g => g.Copies),
             })
 
-            .SeekBy(seek, direction, _pageSize.Current);
+            .ToSeekListAsync(cancel);
     }
 
 }

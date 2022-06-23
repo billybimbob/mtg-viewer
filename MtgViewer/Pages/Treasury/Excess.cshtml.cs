@@ -35,14 +35,12 @@ public class ExcessModel : PageModel
         string? cardId,
         CancellationToken cancel)
     {
-        if (await GetCardJumpAsync(cardId, cancel) is string cardJump)
+        if (await FindCardJumpAsync(cardId, cancel) is string cardJump)
         {
             return RedirectToPage(new { seek = cardJump });
         }
 
-        var cards = await ExcessCards()
-            .SeekBy(seek, direction, _pageSize.Current)
-            .ToSeekListAsync(cancel);
+        var cards = await SeekCardsAsync(direction, seek, cancel);
 
         if (!cards.Any() && cards.Seek is { Previous: null, Next: null })
         {
@@ -54,15 +52,22 @@ public class ExcessModel : PageModel
         return Page();
     }
 
-    private IQueryable<LocationCopy> ExcessCards()
+    private async Task<SeekList<LocationCopy>> SeekCardsAsync(
+        SeekDirection direction,
+        string? origin,
+        CancellationToken cancel)
     {
-        return _dbContext.Cards
+        return await _dbContext.Cards
             .Where(c => c.Holds
                 .Any(h => h.Location is Excess))
 
             .OrderBy(c => c.Name)
                 .ThenBy(c => c.SetName)
                 .ThenBy(c => c.Id)
+
+            .SeekBy(direction)
+                .After(origin, c => c.Id)
+                .ThenTake(_pageSize.Current)
 
             .Select(c => new LocationCopy
             {
@@ -79,10 +84,12 @@ public class ExcessModel : PageModel
                 Held = c.Holds
                     .Where(h => h.Location is Excess)
                     .Sum(h => h.Copies)
-            });
+            })
+
+            .ToSeekListAsync(cancel);
     }
 
-    private async Task<string?> GetCardJumpAsync(string? id, CancellationToken cancel)
+    private async Task<string?> FindCardJumpAsync(string? id, CancellationToken cancel)
     {
         if (id is null)
         {
@@ -101,11 +108,20 @@ public class ExcessModel : PageModel
 
         int size = _pageSize.Current;
 
-        return await ExcessCards()
-            .Before(card, size: null)
-            .Select(c => c.Id)
+        return await _dbContext.Cards
+            .Where(c => c.Holds
+                .Any(h => h.Location is Excess))
 
+            .OrderBy(c => c.Name)
+                .ThenBy(c => c.SetName)
+                .ThenBy(c => c.Id)
+
+            .SeekBy(SeekDirection.Backwards)
+                .After(card)
+
+            .Select(c => c.Id)
             .AsAsyncEnumerable()
+
             .Where((id, i) => i % size == size - 1)
             .LastOrDefaultAsync(cancel);
     }

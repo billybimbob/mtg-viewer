@@ -5,14 +5,12 @@ using System.Threading.Tasks;
 
 using EntityFrameworkCore.Paging;
 
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
-using MtgViewer.Areas.Identity.Data;
 using MtgViewer.Data;
 using MtgViewer.Data.Projections;
 using MtgViewer.Services;
@@ -21,18 +19,15 @@ namespace MtgViewer.Pages.Transactions;
 
 public class IndexModel : PageModel
 {
-    private readonly UserManager<CardUser> _userManager;
     private readonly CardDbContext _dbContext;
     private readonly PageSize _pageSize;
     private readonly ILogger<IndexModel> _logger;
 
     public IndexModel(
-        UserManager<CardUser> userManager,
         CardDbContext dbContext,
         PageSize pageSize,
         ILogger<IndexModel> logger)
     {
-        _userManager = userManager;
         _dbContext = dbContext;
         _pageSize = pageSize;
         _logger = logger;
@@ -57,14 +52,14 @@ public class IndexModel : PageModel
         string? tz,
         CancellationToken cancel)
     {
-        string? locationName = await GetLocationNameAsync(id, cancel);
+        string? locationName = await FindLocationNameAsync(id, cancel);
 
         if (id is not null && locationName is null)
         {
             return RedirectToPage(new { id = null as int? });
         }
 
-        var transactions = await TransactionPreviews(id, seek, direction).ToSeekListAsync(cancel);
+        var transactions = await SeekTransactionsAsync(id, direction, seek, cancel);
 
         if (!transactions.Any() && seek is not null)
         {
@@ -84,34 +79,36 @@ public class IndexModel : PageModel
         return Page();
     }
 
-    private async Task<string?> GetLocationNameAsync(int? id, CancellationToken cancel)
+    private async Task<string?> FindLocationNameAsync(int? id, CancellationToken cancel)
     {
         if (id is null)
         {
             return null;
         }
 
-        string? userId = _userManager.GetUserId(User);
-
         return await _dbContext.Locations
-            .Where(l => l.Id == id
-                && (l is Box
-                || (l is Deck && (l as Deck)!.OwnerId == userId)))
-
+            .Where(l => l.Id == id && (l is Box || l is Deck))
             .Select(l => l.Name)
             .SingleOrDefaultAsync(cancel);
     }
 
-    private IQueryable<TransactionPreview> TransactionPreviews(int? id, int? seek, SeekDirection direction)
+    private async Task<SeekList<TransactionPreview>> SeekTransactionsAsync(
+        int? id,
+        SeekDirection direction,
+        int? origin,
+        CancellationToken cancel)
     {
-        return _dbContext.Transactions
+        return await _dbContext.Transactions
             .Where(t => id == null || t.Changes
                 .Any(c => c.FromId == id || c.ToId == id))
 
             .OrderByDescending(t => t.AppliedAt)
                 .ThenBy(t => t.Id)
 
-            .SeekBy(seek, direction, _pageSize.Current)
+            .SeekBy(direction)
+                .After(origin, t => t.Id)
+                .ThenTake(_pageSize.Current)
+
             .Select(t => new TransactionPreview
             {
                 Id = t.Id,
@@ -142,7 +139,9 @@ public class IndexModel : PageModel
                         .ThenBy(l => l.SetName)
 
                     .Take(_pageSize.Current)
-            });
+            })
+
+            .ToSeekListAsync(cancel);
     }
 
     private void UpdateTimeZone(string? timeZoneId)

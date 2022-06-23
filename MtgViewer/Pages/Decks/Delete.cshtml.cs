@@ -69,10 +69,9 @@ public class DeleteModel : PageModel
     }
 
     private static readonly Func<CardDbContext, int, string, CancellationToken, Task<DeckDetails?>> DeckDetailsAsync
-
-        = EF.CompileAsyncQuery((CardDbContext dbContext, int deckId, string userId, CancellationToken _) =>
-            dbContext.Decks
-                .Where(d => d.Id == deckId && d.OwnerId == userId)
+        = EF.CompileAsyncQuery((CardDbContext db, int deck, string owner, CancellationToken _)
+            => db.Decks
+                .Where(d => d.Id == deck && d.OwnerId == owner)
                 .Select(d => new DeckDetails
                 {
                     Id = d.Id,
@@ -94,12 +93,11 @@ public class DeleteModel : PageModel
                 .SingleOrDefault());
 
     private static readonly Func<CardDbContext, int, int, IAsyncEnumerable<DeckLink>> DeckCardsAsync
-        = EF.CompileAsyncQuery((CardDbContext dbContext, int id, int limit) =>
-
-            dbContext.Cards
-                .Where(c => c.Holds.Any(h => h.LocationId == id)
-                    || c.Wants.Any(w => w.LocationId == id)
-                    || c.Givebacks.Any(g => g.LocationId == id))
+        = EF.CompileAsyncQuery((CardDbContext db, int deck, int limit)
+            => db.Cards
+                .Where(c => c.Holds.Any(h => h.LocationId == deck)
+                    || c.Wants.Any(w => w.LocationId == deck)
+                    || c.Givebacks.Any(g => g.LocationId == deck))
 
                 .OrderBy(c => c.Name)
                     .ThenBy(c => c.SetName)
@@ -115,21 +113,21 @@ public class DeleteModel : PageModel
                     ManaCost = c.ManaCost,
 
                     Held = c.Holds
-                        .Where(h => h.LocationId == id)
+                        .Where(h => h.LocationId == deck)
                         .Sum(h => h.Copies),
 
                     Want = c.Wants
-                        .Where(w => w.LocationId == id)
+                        .Where(w => w.LocationId == deck)
                         .Sum(w => w.Copies),
 
                     Returning = c.Givebacks
-                        .Where(g => g.LocationId == id)
+                        .Where(g => g.LocationId == deck)
                         .Sum(g => g.Copies),
                 }));
 
     private static readonly Func<CardDbContext, int, string, CancellationToken, Task<Deck?>> DeckForDeleteAsync
-        = EF.CompileAsyncQuery((CardDbContext dbContext, int deckId, string userId, CancellationToken _) =>
-            dbContext.Decks
+        = EF.CompileAsyncQuery((CardDbContext db, int deck, string owner, CancellationToken _)
+            => db.Decks
                 .Include(d => d.Holds) // unbounded: keep eye on
                     .ThenInclude(h => h.Card)
 
@@ -140,7 +138,7 @@ public class DeleteModel : PageModel
                 .Include(d => d.TradesFrom) // unbounded: keep eye on
 
                 .AsSplitQuery()
-                .SingleOrDefault(d => d.Id == deckId && d.OwnerId == userId));
+                .SingleOrDefault(d => d.Id == deck && d.OwnerId == owner));
 
     public async Task<IActionResult> OnPostAsync(int id, string? returnUrl, CancellationToken cancel)
     {

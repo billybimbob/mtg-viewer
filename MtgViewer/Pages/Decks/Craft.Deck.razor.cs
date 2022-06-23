@@ -136,10 +136,9 @@ public partial class Craft
     }
 
     private static readonly Func<CardDbContext, int, CancellationToken, Task<DeckCounts?>> DeckCountsAsync
-        = EF.CompileAsyncQuery(
-            (CardDbContext dbContext, int deckId, CancellationToken _) =>
-            dbContext.Decks
-                .Where(d => d.Id == deckId)
+        = EF.CompileAsyncQuery((CardDbContext db, int id, CancellationToken _)
+            => db.Decks
+                .Where(d => d.Id == id)
                 .Select(d => new DeckCounts
                 {
                     Id = d.Id,
@@ -183,7 +182,7 @@ public partial class Craft
         {
             var (origin, direction, _) = _holds;
 
-            await LoadQuantitiesAsync(dbContext, origin, direction);
+            await LoadQuantitiesAsync(dbContext, direction, origin);
 
             _holds = GetQuantities(origin, direction);
         }
@@ -195,7 +194,7 @@ public partial class Craft
         {
             var (origin, direction, _) = _givebacks;
 
-            await LoadQuantitiesAsync(dbContext, origin, direction);
+            await LoadQuantitiesAsync(dbContext, direction, origin);
 
             _givebacks = GetQuantities(origin, direction);
         }
@@ -207,7 +206,7 @@ public partial class Craft
         {
             var (origin, direction, _) = _wants;
 
-            await LoadQuantitiesAsync(dbContext, origin, direction);
+            await LoadQuantitiesAsync(dbContext, direction, origin);
 
             _wants = GetQuantities(origin, direction);
         }
@@ -228,7 +227,7 @@ public partial class Craft
 
             var (origin, direction) = request;
 
-            await LoadQuantitiesAsync(dbContext, origin, direction);
+            await LoadQuantitiesAsync(dbContext, direction, origin);
 
             _holds = GetQuantities(origin, direction);
         }
@@ -257,7 +256,7 @@ public partial class Craft
 
             var (origin, direction) = request;
 
-            await LoadQuantitiesAsync(dbContext, origin, direction);
+            await LoadQuantitiesAsync(dbContext, direction, origin);
 
             _givebacks = GetQuantities(origin, direction);
         }
@@ -286,7 +285,7 @@ public partial class Craft
 
             var (origin, direction) = request;
 
-            await LoadQuantitiesAsync(dbContext, origin, direction);
+            await LoadQuantitiesAsync(dbContext, direction, origin);
 
             _wants = GetQuantities(origin, direction);
         }
@@ -377,8 +376,8 @@ public partial class Craft
 
     private async Task LoadQuantitiesAsync<TQuantity>(
         CardDbContext dbContext,
-        TQuantity? origin,
-        SeekDirection direction)
+        SeekDirection direction,
+        TQuantity? origin)
         where TQuantity : Quantity
     {
         if (_deckContext is not { Deck: Deck deck })
@@ -397,7 +396,7 @@ public partial class Craft
         dbContext.Cards.AttachRange(_cards);
 
         var dbQuantities = DbQuantitiesAsync(
-            dbContext, deck.Id, origin, direction, PageSize.Current);
+            dbContext, deck.Id, direction, origin, PageSize.Current);
 
         await foreach (var quantity in dbQuantities.WithCancellation(_cancel.Token))
         {
@@ -413,8 +412,8 @@ public partial class Craft
     private static IAsyncEnumerable<TQuantity> DbQuantitiesAsync<TQuantity>(
         CardDbContext dbContext,
         int deckId,
-        TQuantity? origin,
         SeekDirection direction,
+        TQuantity? origin,
         int size)
         where TQuantity : Quantity
     {
@@ -427,7 +426,10 @@ public partial class Craft
                 .ThenBy(q => q.Card.SetName)
                 .ThenBy(q => q.CardId)
 
-            .SeekBy(origin, direction, size)
+            .SeekBy(direction)
+                .After(origin)
+                .ThenTake(size)
+
             .AsAsyncEnumerable();
     }
 
@@ -783,12 +785,12 @@ public partial class Craft
 
         if (seek?.Previous is TQuantity previous)
         {
-            await LoadQuantitiesAsync(dbContext, previous, SeekDirection.Backwards);
+            await LoadQuantitiesAsync(dbContext, SeekDirection.Backwards, previous);
         }
 
         if (seek?.Next is TQuantity next)
         {
-            await LoadQuantitiesAsync(dbContext, next, SeekDirection.Forward);
+            await LoadQuantitiesAsync(dbContext, SeekDirection.Forward, next);
         }
     }
 

@@ -66,7 +66,7 @@ public class IndexModel : PageModel
 
         UserName = userName;
 
-        TradeDecks = await TradingDecks(userId, seek, direction).ToSeekListAsync(cancel);
+        TradeDecks = await SeekDecksAsync(userId, direction, seek, cancel);
 
         Suggestions = await SuggestionsAsync
             .Invoke(_dbContext, userId, _pageSize.Current)
@@ -75,14 +75,22 @@ public class IndexModel : PageModel
         return Page();
     }
 
-    public IQueryable<TradeDeckPreview> TradingDecks(string userId, int? seek, SeekDirection direction)
+    public async Task<SeekList<TradeDeckPreview>> SeekDecksAsync(
+        string userId,
+        SeekDirection direction,
+        int? origin,
+        CancellationToken cancel)
     {
-        return _dbContext.Decks
+        return await _dbContext.Decks
             .Where(d => d.OwnerId == userId
                 && (d.TradesFrom.Any() || d.TradesTo.Any() || d.Wants.Any()))
 
             .OrderBy(d => d.Name)
                 .ThenBy(d => d.Id)
+
+            .SeekBy(direction)
+                .After(origin, d => d.Id)
+                .ThenTake(_pageSize.Current)
 
             .Select(d => new TradeDeckPreview
             {
@@ -98,14 +106,13 @@ public class IndexModel : PageModel
                 WantsCards = d.Wants.Any()
             })
 
-            .SeekBy(seek, direction, _pageSize.Current);
+            .ToSeekListAsync(cancel);
     }
 
     private static readonly Func<CardDbContext, string, int, IAsyncEnumerable<SuggestionPreview>> SuggestionsAsync
-        = EF.CompileAsyncQuery((CardDbContext dbContext, string userId, int limit) =>
-
-            dbContext.Suggestions
-                .Where(s => s.ReceiverId == userId)
+        = EF.CompileAsyncQuery((CardDbContext db, string receiver, int limit)
+            => db.Suggestions
+                .Where(s => s.ReceiverId == receiver)
 
                 .OrderByDescending(s => s.SentAt)
                     .ThenBy(s => s.Card.Name)

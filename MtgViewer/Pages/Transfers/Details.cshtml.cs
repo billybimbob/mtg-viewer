@@ -87,11 +87,10 @@ public class DetailsModel : PageModel
     }
 
     private static readonly Func<CardDbContext, int, string, CancellationToken, Task<DeckDetails?>> DeckAsync
-
-        = EF.CompileAsyncQuery((CardDbContext dbContext, int deckId, string userId, CancellationToken _) =>
-            dbContext.Decks
+        = EF.CompileAsyncQuery((CardDbContext db, int deck, string owner, CancellationToken _)
+            => db.Decks
                 .Where(d =>
-                    d.Id == deckId && d.OwnerId == userId && d.Wants.Any())
+                    d.Id == deck && d.OwnerId == owner && d.Wants.Any())
 
                 .Select(d => new DeckDetails
                 {
@@ -165,11 +164,10 @@ public class DetailsModel : PageModel
     }
 
     private static readonly Func<CardDbContext, int, int, IAsyncEnumerable<DeckLink>> DeckCardsAsync
-        = EF.CompileAsyncQuery((CardDbContext dbContext, int id, int limit) =>
-
-            dbContext.Cards
-                .Where(c => c.Holds.Any(h => h.LocationId == id)
-                    || c.Wants.Any(w => w.LocationId == id))
+        = EF.CompileAsyncQuery((CardDbContext db, int deck, int limit)
+            => db.Cards
+                .Where(c => c.Holds.Any(h => h.LocationId == deck)
+                    || c.Wants.Any(w => w.LocationId == deck))
 
                 .OrderBy(c => c.Name)
                     .ThenBy(c => c.SetName)
@@ -184,11 +182,11 @@ public class DetailsModel : PageModel
                     ManaCost = c.ManaCost,
 
                     Held = c.Holds
-                        .Where(h => h.LocationId == id)
+                        .Where(h => h.LocationId == deck)
                         .Sum(h => h.Copies),
 
                     Want = c.Wants
-                        .Where(w => w.LocationId == id)
+                        .Where(w => w.LocationId == deck)
                         .Sum(w => w.Copies)
                 }));
 

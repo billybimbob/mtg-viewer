@@ -25,32 +25,14 @@ internal static class SeekQuery
             throw new ArgumentException("Expression must be strongly typed", nameof(expression));
         }
 
-        var seekQueryType = IsOrderedQuery(expression)
-            ? typeof(OrderedSeekQuery<>).MakeGenericType(elementType)
-            : typeof(SeekQuery<>).MakeGenericType(elementType);
+        var seekQueryType = typeof(SeekQuery<>).MakeGenericType(elementType);
 
         return (IQueryable)Activator
             .CreateInstance(seekQueryType, provider, expression)!;
     }
-
-    public static ISeekQueryable<T> Create<T>(SeekProvider provider, Expression expression)
-    {
-        if (!expression.Type.IsAssignableTo(typeof(IQueryable<T>)))
-        {
-            throw new ArgumentException(
-                $"{expression.Type.Name} is not {typeof(IQueryable<T>).Name}", nameof(expression));
-        }
-
-        return IsOrderedQuery(expression)
-            ? new OrderedSeekQuery<T>(provider, expression)
-            : new SeekQuery<T>(provider, expression);
-    }
-
-    private static bool IsOrderedQuery(Expression query)
-        => query.Type.IsAssignableTo(typeof(IOrderedQueryable));
 }
 
-internal class SeekQuery<TSource> : ISeekQueryable<TSource>, IAsyncEnumerable<TSource>
+internal class SeekQuery<TSource> : ISeekable<TSource>, IOrderedQueryable<TSource>, IAsyncEnumerable<TSource>
 {
     public SeekQuery(SeekProvider provider, Expression expression)
     {
@@ -79,12 +61,4 @@ internal class SeekQuery<TSource> : ISeekQueryable<TSource>, IAsyncEnumerable<TS
         => AsyncProvider
             .ExecuteAsync<IAsyncEnumerable<TSource>>(Expression, cancellationToken)
             .GetAsyncEnumerator(cancellationToken);
-}
-
-internal class OrderedSeekQuery<TSource> : SeekQuery<TSource>, IOrderedQueryable<TSource>
-{
-    public OrderedSeekQuery(SeekProvider provider, Expression expression)
-        : base(provider, expression)
-    {
-    }
 }

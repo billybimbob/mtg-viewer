@@ -56,14 +56,14 @@ public class DetailsModel : PageModel
             return RedirectToPage("/Decks/Index");
         }
 
-        var player = await GetPlayerAsync(id, cancel);
+        var player = await FindPlayerAsync(id, cancel);
 
         if (player is null)
         {
             return RedirectToPage("Index");
         }
 
-        var decks = await GetDecksAsync(player, seek, direction, cancel);
+        var decks = await SeekDecksAsync(player, direction, seek, cancel);
 
         if (!decks.Any() && seek is not null)
         {
@@ -80,7 +80,7 @@ public class DetailsModel : PageModel
         return Page();
     }
 
-    private async Task<PlayerPreview?> GetPlayerAsync(string playerId, CancellationToken cancel)
+    private async Task<PlayerPreview?> FindPlayerAsync(string playerId, CancellationToken cancel)
     {
         return await _dbContext.Players
             .Where(p => p.Id == playerId)
@@ -92,10 +92,10 @@ public class DetailsModel : PageModel
             .SingleOrDefaultAsync(cancel);
     }
 
-    private async Task<SeekList<DeckPreview>> GetDecksAsync(
+    private async Task<SeekList<DeckPreview>> SeekDecksAsync(
         PlayerPreview player,
-        int? seek,
         SeekDirection direction,
+        int? origin,
         CancellationToken cancel)
     {
         return await _dbContext.Decks
@@ -103,6 +103,10 @@ public class DetailsModel : PageModel
 
             .OrderBy(d => d.Name)
                 .ThenBy(d => d.Id)
+
+            .SeekBy(direction)
+                .After(origin, d => d.Id)
+                .ThenTake(_pageSize.Current)
 
             .Select(d => new DeckPreview
             {
@@ -116,7 +120,6 @@ public class DetailsModel : PageModel
                 HasReturns = d.Givebacks.Any(),
             })
 
-            .SeekBy(seek, direction, _pageSize.Current)
             .ToSeekListAsync(cancel);
     }
 }

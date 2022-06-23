@@ -33,6 +33,23 @@ internal static class ExpressionHelpers
             QueryableMethods.OrderByDescending,
             QueryableMethods.ThenByDescending);
 
+    public static bool IsSeekBy(MethodCallExpression call)
+        => DoesMethodEqual(
+            call.Method,
+            PagingExtensions.SeekByMethod);
+
+    public static bool IsAfter(MethodCallExpression call)
+        => DoesMethodEqual(
+            call.Method,
+            PagingExtensions.AfterReference,
+            PagingExtensions.AfterKeyReference,
+            PagingExtensions.AfterKeyValue);
+
+    public static bool IsThenTake(MethodCallExpression call)
+         => DoesMethodEqual(
+            call.Method,
+            PagingExtensions.ThenTakeMethod);
+
     public static bool IsToSeekList(MethodCallExpression call)
         => DoesMethodEqual(
             call.Method,

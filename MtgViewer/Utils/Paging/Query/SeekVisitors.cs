@@ -8,45 +8,62 @@ using EntityFrameworkCore.Paging.Utils;
 
 namespace EntityFrameworkCore.Paging.Query;
 
-internal sealed class FindSeekVisitor : ExpressionVisitor
+internal sealed class SeekTranslationVisitor : ExpressionVisitor
 {
-    private static FindSeekVisitor? _instance;
-    public static FindSeekVisitor Instance => _instance ??= new();
+    private static SeekTranslationVisitor? _instance;
+    public static SeekTranslationVisitor Instance => _instance ??= new();
 
     protected override Expression VisitMethodCall(MethodCallExpression node)
     {
-        if (node.Arguments.ElementAtOrDefault(0) is Expression parent)
+        if (ExpressionHelpers.IsToSeekList(node)
+            && node.Arguments.FirstOrDefault() is Expression parent)
         {
             return Visit(parent);
         }
 
-        return node;
+        return TranslateSeekBy(node)
+            ?? TranslateAfter(node)
+            ?? TranslateTake(node)
+            ?? base.VisitMethodCall(node);
     }
 
-    protected override Expression VisitExtension(Expression node)
+    private static SeekExpression? TranslateSeekBy(MethodCallExpression node)
     {
-        if (node is SeekExpression seek)
+        if (ExpressionHelpers.IsSeekBy(node)
+            && node.Arguments.ElementAtOrDefault(0) is Expression query
+            && node.Arguments.ElementAtOrDefault(1) is ConstantExpression { Value: SeekDirection direction })
         {
-            return seek;
+            var elementType = query.Type.GenericTypeArguments[0];
+
+            return new SeekExpression(
+                query, Expression.Constant(null, elementType), direction, size: null);
         }
 
-        return node;
+        return null;
     }
-}
 
-internal sealed class RemoveSeekVisitor : ExpressionVisitor
-{
-    private static RemoveSeekVisitor? _instance;
-    public static RemoveSeekVisitor Instance => _instance ??= new();
-
-    protected override Expression VisitExtension(Expression node)
+    private SeekExpression? TranslateAfter(MethodCallExpression node)
     {
-        if (node is SeekExpression seek)
+        if (ExpressionHelpers.IsAfter(node)
+            && node.Arguments.ElementAtOrDefault(1) is ConstantExpression origin
+            && Visit(node.Arguments.ElementAtOrDefault(0)) is SeekExpression seek)
         {
-            return seek.Query;
+            return seek.Update(seek.Query, origin, seek.Direction, seek.Size);
         }
 
-        return node;
+        return null;
+    }
+
+    private SeekExpression? TranslateTake(MethodCallExpression node)
+    {
+        if (ExpressionHelpers.IsThenTake(node)
+            && node.Arguments.ElementAtOrDefault(1) is ConstantExpression { Value: int count }
+            && Visit(node.Arguments.ElementAtOrDefault(0)) is SeekExpression seek)
+        {
+            return seek.Update(seek.Query, seek.Origin, seek.Direction, count);
+        }
+
+        return null;
     }
 }
 
@@ -93,17 +110,6 @@ internal sealed class ExpandSeekVisitor : ExpressionVisitor
     public ExpandSeekVisitor(IQueryProvider provider)
     {
         _provider = provider;
-    }
-
-    protected override Expression VisitMethodCall(MethodCallExpression node)
-    {
-        if (ExpressionHelpers.IsToSeekList(node)
-            && node.Arguments.FirstOrDefault() is Expression parent)
-        {
-            return Visit(parent);
-        }
-
-        return base.VisitMethodCall(node);
     }
 
     protected override Expression VisitExtension(Expression node)
@@ -169,7 +175,7 @@ internal sealed class ExpandSeekVisitor : ExpressionVisitor
         {
             // expanded query will immediately follow the OrderBy chain
 
-            if (ExpressionHelpers.IsOrderedMethod(node))
+            if (node.Type.IsAssignableTo(typeof(IOrderedQueryable)))
             {
                 return ExpandToQuery(node).Expression;
             }
@@ -212,5 +218,31 @@ internal sealed class ExpandSeekVisitor : ExpressionVisitor
                 _ => query
             };
         }
+    }
+}
+
+internal sealed class FindSeekVisitor : ExpressionVisitor
+{
+    private static FindSeekVisitor? _instance;
+    public static FindSeekVisitor Instance => _instance ??= new();
+
+    protected override Expression VisitMethodCall(MethodCallExpression node)
+    {
+        if (node.Arguments.ElementAtOrDefault(0) is Expression parent)
+        {
+            return Visit(parent);
+        }
+
+        return node;
+    }
+
+    protected override Expression VisitExtension(Expression node)
+    {
+        if (node is SeekExpression seek)
+        {
+            return seek;
+        }
+
+        return node;
     }
 }

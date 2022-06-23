@@ -8,18 +8,21 @@ namespace EntityFrameworkCore.Paging.Query;
 
 internal sealed class SeekExpression : Expression
 {
-    internal SeekExpression(Expression query, ConstantExpression origin, SeekDirection direction, int? size)
+    internal SeekExpression(
+        Expression query,
+        ConstantExpression origin,
+        SeekDirection direction,
+        int? size)
     {
-        if (!query.Type.IsAssignableTo(typeof(IQueryable))
+        if (!query.Type.IsAssignableTo(typeof(IOrderedQueryable))
             || query.Type.IsGenericType is false)
         {
             throw new ArgumentException(
-                $"{query.Type.Name} is not a strongly typed {nameof(IQueryable)}", nameof(query));
+                $"{query.Type.Name} is not a strongly typed {nameof(IOrderedQueryable)}", nameof(query));
         }
 
         Query = query;
         Origin = origin;
-
         Direction = direction;
         Size = size;
     }

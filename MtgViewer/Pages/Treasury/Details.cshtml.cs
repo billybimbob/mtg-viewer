@@ -46,7 +46,7 @@ public class DetailsModel : PageModel
             return NotFound();
         }
 
-        if (await GetCardJumpAsync(cardId, box, cancel) is int cardJump)
+        if (await FindCardJumpAsync(cardId, box, cancel) is int cardJump)
         {
             return RedirectToPage(new
             {
@@ -56,9 +56,7 @@ public class DetailsModel : PageModel
             });
         }
 
-        var cards = await BoxCards(box)
-            .SeekBy(seek, direction, _pageSize.Current)
-            .ToSeekListAsync(cancel);
+        var cards = await SeekCardsAsync(box, direction, seek, cancel);
 
         if (!cards.Any() && seek is not null)
         {
@@ -77,8 +75,8 @@ public class DetailsModel : PageModel
     }
 
     private static readonly Func<CardDbContext, int, CancellationToken, Task<BoxPreview?>> BoxAsync
-        = EF.CompileAsyncQuery((CardDbContext dbContext, int boxId, CancellationToken _) =>
-            dbContext.Boxes
+        = EF.CompileAsyncQuery((CardDbContext db, int id, CancellationToken _)
+            => db.Boxes
                 .Select(b => new BoxPreview
                 {
                     Id = b.Id,
@@ -95,51 +93,25 @@ public class DetailsModel : PageModel
 
                     Held = b.Holds.Sum(h => h.Copies)
                 })
-                .SingleOrDefault(b => b.Id == boxId));
+                .SingleOrDefault(b => b.Id == id));
 
-    private async Task<int?> GetCardJumpAsync(string? cardId, BoxPreview box, CancellationToken cancel)
+    private async Task<SeekList<QuantityCardPreview>> SeekCardsAsync(
+        BoxPreview box,
+        SeekDirection direction,
+        int? origin,
+        CancellationToken cancel)
     {
-        if (cardId is null)
-        {
-            return null;
-        }
-
-        var hold = await CardJumpAsync.Invoke(_dbContext, cardId, box.Id, cancel);
-
-        if (hold is null)
-        {
-            return null;
-        }
-
-        int size = _pageSize.Current;
-
-        return await BoxCards(box)
-            .Before(hold, size: null)
-            .Select(c => c.Id)
-
-            .AsAsyncEnumerable()
-            .Where((id, i) => i % size == size - 1)
-            .Select(id => id as int?)
-            .LastOrDefaultAsync(cancel);
-    }
-
-    private static readonly Func<CardDbContext, string, int, CancellationToken, Task<Hold?>> CardJumpAsync
-        = EF.CompileAsyncQuery((CardDbContext dbContext, string cardId, int boxId, CancellationToken _) =>
-            dbContext.Boxes
-                .SelectMany(b => b.Holds)
-                .Include(h => h.Card)
-                .OrderBy(h => h.Id)
-                .SingleOrDefault(h => h.LocationId == boxId && h.CardId == cardId));
-
-    private IQueryable<QuantityCardPreview> BoxCards(BoxPreview box)
-    {
-        return _dbContext.Holds
+        return await _dbContext.Holds
             .Where(h => h.LocationId == box.Id)
 
             .OrderBy(h => h.Card.Name)
                 .ThenBy(h => h.Card.SetName)
                 .ThenBy(h => h.Copies)
                 .ThenBy(h => h.Id)
+
+            .SeekBy(direction)
+                .After(origin, h => h.Id)
+                .ThenTake(_pageSize.Current)
 
             .Select(h => new QuantityCardPreview
             {
@@ -158,6 +130,52 @@ public class DetailsModel : PageModel
                     Rarity = h.Card.Rarity,
                     ImageUrl = h.Card.ImageUrl
                 },
-            });
+            })
+
+            .ToSeekListAsync(cancel);
     }
+
+    private async Task<int?> FindCardJumpAsync(string? cardId, BoxPreview box, CancellationToken cancel)
+    {
+        if (cardId is null)
+        {
+            return null;
+        }
+
+        var hold = await CardJumpAsync.Invoke(_dbContext, cardId, box.Id, cancel);
+
+        if (hold is null)
+        {
+            return null;
+        }
+
+        int size = _pageSize.Current;
+
+        return await _dbContext.Holds
+            .Where(h => h.LocationId == box.Id)
+
+            .OrderBy(h => h.Card.Name)
+                .ThenBy(h => h.Card.SetName)
+                .ThenBy(h => h.Copies)
+                .ThenBy(h => h.Id)
+
+            .SeekBy(SeekDirection.Backwards)
+                .After(hold)
+
+            .Select(c => c.Id)
+            .AsAsyncEnumerable()
+
+            .Where((id, i) => i % size == size - 1)
+            .Select(id => id as int?)
+
+            .LastOrDefaultAsync(cancel);
+    }
+
+    private static readonly Func<CardDbContext, string, int, CancellationToken, Task<Hold?>> CardJumpAsync
+        = EF.CompileAsyncQuery((CardDbContext db, string card, int box, CancellationToken _)
+            => db.Boxes
+                .SelectMany(b => b.Holds)
+                .Include(h => h.Card)
+                .OrderBy(h => h.Id)
+                .SingleOrDefault(h => h.CardId == card && h.LocationId == box));
 }

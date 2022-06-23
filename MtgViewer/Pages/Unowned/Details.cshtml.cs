@@ -63,14 +63,14 @@ public class DetailsModel : PageModel
 
         Unclaimed = unclaimed;
 
-        Cards = await UnclaimedCards(unclaimed, seek, direction).ToSeekListAsync(cancel);
+        Cards = await SeekCardsAsync(unclaimed, direction, seek, cancel);
 
         return Page();
     }
 
     private static readonly Func<CardDbContext, int, CancellationToken, Task<UnclaimedDetails?>> UnclaimedAsync
-        = EF.CompileAsyncQuery((CardDbContext dbContext, int unclaimedId, CancellationToken _) =>
-            dbContext.Unclaimed
+        = EF.CompileAsyncQuery((CardDbContext db, int id, CancellationToken _)
+            => db.Unclaimed
                 .Select(u => new UnclaimedDetails
                 {
                     Id = u.Id,
@@ -80,11 +80,15 @@ public class DetailsModel : PageModel
                     HeldCopies = u.Holds.Sum(h => h.Copies),
                     WantCopies = u.Wants.Sum(w => w.Copies)
                 })
-                .SingleOrDefault(u => u.Id == unclaimedId));
+                .SingleOrDefault(u => u.Id == id));
 
-    private IQueryable<DeckCopy> UnclaimedCards(UnclaimedDetails unclaimed, string? seek, SeekDirection direction)
+    private async Task<SeekList<DeckCopy>> SeekCardsAsync(
+        UnclaimedDetails unclaimed,
+        SeekDirection direction,
+        string? origin,
+        CancellationToken cancel)
     {
-        return _dbContext.Cards
+        return await _dbContext.Cards
             .Where(c => c.Holds.Any(h => h.LocationId == unclaimed.Id)
                 || c.Wants.Any(w => w.LocationId == unclaimed.Id))
 
@@ -92,7 +96,9 @@ public class DetailsModel : PageModel
                 .ThenBy(c => c.SetName)
                 .ThenBy(c => c.Id)
 
-            .SeekBy(seek, direction, _pageSize.Current)
+            .SeekBy(direction)
+                .After(origin, c => c.Id)
+                .ThenTake(_pageSize.Current)
 
             .Select(c => new DeckCopy
             {
@@ -111,7 +117,9 @@ public class DetailsModel : PageModel
                 Want = c.Wants
                     .Where(w => w.LocationId == unclaimed.Id)
                     .Sum(w => w.Copies)
-            });
+            })
+
+            .ToSeekListAsync(cancel);
     }
 
     public async Task<IActionResult> OnPostClaimAsync(int id, CancellationToken cancel)

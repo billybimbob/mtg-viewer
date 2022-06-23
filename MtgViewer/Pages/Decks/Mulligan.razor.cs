@@ -4,8 +4,6 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
-using EntityFrameworkCore.Paging;
-
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
@@ -189,11 +187,11 @@ public partial class Mulligan : OwningComponentBase
     }
 
     private static readonly Func<CardDbContext, int, int, IAsyncEnumerable<DeckCopy>> DeckCardsAsync
-        = EF.CompileAsyncQuery((CardDbContext dbContext, int deckId, int limit) =>
-            dbContext.Cards
-                .Where(c => c.Holds.Any(h => h.LocationId == deckId)
-                    || c.Wants.Any(w => w.LocationId == deckId)
-                    || c.Givebacks.Any(g => g.LocationId == deckId))
+        = EF.CompileAsyncQuery((CardDbContext db, int deck, int limit)
+            => db.Cards
+                .Where(c => c.Holds.Any(h => h.LocationId == deck)
+                    || c.Wants.Any(w => w.LocationId == deck)
+                    || c.Givebacks.Any(g => g.LocationId == deck))
 
                 .OrderBy(c => c.Name)
                     .ThenBy(c => c.SetName)
@@ -211,15 +209,15 @@ public partial class Mulligan : OwningComponentBase
                     ImageUrl = c.ImageUrl,
 
                     Held = c.Holds
-                        .Where(h => h.LocationId == deckId)
+                        .Where(h => h.LocationId == deck)
                         .Sum(h => h.Copies),
 
                     Want = c.Wants
-                        .Where(w => w.LocationId == deckId)
+                        .Where(w => w.LocationId == deck)
                         .Sum(w => w.Copies),
 
                     Returning = c.Givebacks
-                        .Where(g => g.LocationId == deckId)
+                        .Where(g => g.LocationId == deck)
                         .Sum(g => g.Copies)
                 }));
 

@@ -68,9 +68,9 @@ public class DeleteModel : PageModel
     }
 
     private static readonly Func<CardDbContext, string, CancellationToken, Task<DeleteLink?>> DeleteLinkAsync
-        = EF.CompileAsyncQuery((CardDbContext dbContext, string cardId, CancellationToken _) =>
-            dbContext.Cards
-                .Where(c => c.Id == cardId)
+        = EF.CompileAsyncQuery((CardDbContext db, string id, CancellationToken _)
+            => db.Cards
+                .Where(c => c.Id == id)
                 .Select(c => new DeleteLink
                 {
                     Id = c.Id,
@@ -88,14 +88,14 @@ public class DeleteModel : PageModel
                 .SingleOrDefault());
 
     private static readonly Func<CardDbContext, string, CancellationToken, Task<Card?>> CardDeleteAsync
-        = EF.CompileAsyncQuery((CardDbContext dbContext, string cardId, CancellationToken _) =>
-            dbContext.Cards
+        = EF.CompileAsyncQuery((CardDbContext db, string id, CancellationToken _)
+            => db.Cards
                 .Include(c => c.Flip)
                 .Include(c => c.Holds
                     .OrderBy(h => h.Copies))
                     .ThenInclude(h => h.Location)
                 .OrderBy(c => c.Id)
-                .SingleOrDefault(c => c.Id == cardId));
+                .SingleOrDefault(c => c.Id == id));
 
     private static DeleteLink CardAsDeleteLink(Card card)
     {

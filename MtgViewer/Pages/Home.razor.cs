@@ -241,8 +241,8 @@ public sealed partial class Home : ComponentBase, IDisposable
     #region Database Queries
 
     private static readonly Func<CardDbContext, int, IAsyncEnumerable<RecentTransaction>> RecentTransactionsAsync
-        = EF.CompileAsyncQuery((CardDbContext dbContext, int limit) =>
-            dbContext.Transactions
+        = EF.CompileAsyncQuery((CardDbContext db, int limit)
+            => db.Transactions
                 .Where(t => t.Changes
                     .Any(c => c.From is Box
                         || c.From is Excess
@@ -273,8 +273,8 @@ public sealed partial class Home : ComponentBase, IDisposable
                 }));
 
     private static readonly Func<CardDbContext, int, IAsyncEnumerable<string>> ShuffleOrderAsync
-        = EF.CompileAsyncQuery((CardDbContext dbContext, int limit) =>
-            dbContext.Cards
+        = EF.CompileAsyncQuery((CardDbContext db, int limit)
+            => db.Cards
                 .Select(c => c.Id)
                 .OrderBy(_ => EF.Functions.Random())
                 .Take(limit));

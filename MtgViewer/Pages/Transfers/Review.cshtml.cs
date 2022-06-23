@@ -94,12 +94,9 @@ public class ReviewModel : PageModel
     }
 
     private static readonly Func<CardDbContext, int, string, CancellationToken, Task<DeckDetails?>> DeckAsync
-
-        = EF.CompileAsyncQuery((CardDbContext dbContext, int deckId, string userId, CancellationToken _) =>
-            dbContext.Decks
-                .Where(d => d.Id == deckId
-                    && d.OwnerId == userId
-                    && d.TradesFrom.Any())
+        = EF.CompileAsyncQuery((CardDbContext db, int deck, string owner, CancellationToken _)
+            => db.Decks
+                .Where(d => d.Id == deck && d.OwnerId == owner && d.TradesFrom.Any())
 
                 .Select(d => new DeckDetails
                 {
@@ -174,9 +171,8 @@ public class ReviewModel : PageModel
     }
 
     private static readonly Func<CardDbContext, int, int, IAsyncEnumerable<LocationLink>> DeckCardsAsync
-        = EF.CompileAsyncQuery((CardDbContext dbContext, int id, int limit) =>
-
-            dbContext.Decks
+        = EF.CompileAsyncQuery((CardDbContext db, int id, int limit)
+            => db.Decks
                 .Where(d => d.Id == id)
                 .SelectMany(d => d.Holds)
 
