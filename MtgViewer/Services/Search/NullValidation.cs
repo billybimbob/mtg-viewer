@@ -26,12 +26,11 @@ internal class NullValidation<TEntity> : IValidatableObject where TEntity : notn
             yield return error;
         }
 
-        const BindingFlags publicProperties = BindingFlags.Instance | BindingFlags.Public;
         const NullabilityState nullable = NullabilityState.Nullable;
 
         var nullCheck = new NullabilityInfoContext();
 
-        foreach (var property in typeof(TEntity).GetProperties(publicProperties))
+        foreach (var property in typeof(TEntity).GetTypeInfo().GetProperties())
         {
             var nullInfo = nullCheck.Create(property);
 

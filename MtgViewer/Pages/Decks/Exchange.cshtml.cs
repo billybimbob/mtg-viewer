@@ -47,7 +47,7 @@ public class ExchangeModel : PageModel
 
     public ExchangePreview Deck { get; private set; } = default!;
 
-    public OffsetList<LocationCopy> Matches { get; private set; } = OffsetList.Empty<LocationCopy>();
+    public OffsetList<CardCopy> Matches { get; private set; } = OffsetList.Empty<CardCopy>();
 
     public async Task<IActionResult> OnGetAsync(int id, int? offset, CancellationToken cancel)
     {
@@ -61,7 +61,7 @@ public class ExchangeModel : PageModel
         var deck = await ExchangePreviewAsync
             .Invoke(_dbContext, id, userId, _pageSize.Current, cancel);
 
-        if (deck == default)
+        if (deck is null)
         {
             return NotFound();
         }
@@ -105,7 +105,7 @@ public class ExchangeModel : PageModel
                             .ThenBy(g => g.Id)
 
                         .Take(limit)
-                        .Select(g => new LocationCopy
+                        .Select(g => new CardCopy
                         {
                             Id = g.CardId,
                             Name = g.Card.Name,
@@ -123,7 +123,7 @@ public class ExchangeModel : PageModel
 
                 .SingleOrDefault());
 
-    private IQueryable<LocationCopy> WantTargets(ExchangePreview deck)
+    private IQueryable<CardCopy> WantTargets(ExchangePreview deck)
     {
         var deckWants = _dbContext.Wants
             .Where(w => w.LocationId == deck.Id)
@@ -154,7 +154,7 @@ public class ExchangeModel : PageModel
             .Join(totalMatches,
                 c => c.Id,
                 t => t.CardId,
-                (c, t) => new LocationCopy
+                (c, t) => new CardCopy
                 {
                     Id = c.Id,
                     Name = c.Name,
@@ -202,7 +202,7 @@ public class ExchangeModel : PageModel
         var deck = await DeckForExchangeAsync
             .Invoke(_dbContext, id, userId, cancel);
 
-        if (deck == default)
+        if (deck is null)
         {
             return NotFound();
         }

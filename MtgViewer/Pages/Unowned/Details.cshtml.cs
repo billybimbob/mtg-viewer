@@ -97,7 +97,7 @@ public class DetailsModel : PageModel
                 .ThenBy(c => c.Id)
 
             .SeekBy(direction)
-                .After(origin, c => c.Id)
+                .After(c => c.Id == origin)
                 .ThenTake(_pageSize.Current)
 
             .Select(c => new DeckCopy
@@ -134,7 +134,7 @@ public class DetailsModel : PageModel
         var owner = await _dbContext.Players
             .SingleOrDefaultAsync(p => p.Id == userId, cancel);
 
-        if (owner == default)
+        if (owner is null)
         {
             return NotFound();
         }
@@ -145,7 +145,7 @@ public class DetailsModel : PageModel
             .AsSplitQuery()
             .SingleOrDefaultAsync(u => u.Id == id, cancel);
 
-        if (unclaimed == default)
+        if (unclaimed is null)
         {
             return NotFound();
         }
@@ -191,7 +191,7 @@ public class DetailsModel : PageModel
             .AsSplitQuery()
             .SingleOrDefaultAsync(u => u.Id == id, cancel);
 
-        if (unclaimed == default)
+        if (unclaimed is null)
         {
             return NotFound();
         }

@@ -57,7 +57,7 @@ public class DetailsModel : PageModel
 
         var deck = await DeckAsync.Invoke(_dbContext, id, userId, cancel);
 
-        if (deck == default)
+        if (deck is null)
         {
             return NotFound();
         }

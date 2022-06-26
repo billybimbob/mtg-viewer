@@ -21,23 +21,15 @@ internal static class TypeHelpers
             || (Nullable.GetUnderlyingType(type) is Type inner
                 && IsValueComparable(inner));
 
-    public static bool HasReferenceConstraint(Type? type)
-        => ((type?.GenericParameterAttributes ?? 0)
-            & GenericParameterAttributes.ReferenceTypeConstraint) != 0;
-
-    public static bool HasValueConstraint(Type? type)
-        => ((type?.GenericParameterAttributes ?? 0)
-            & GenericParameterAttributes.NotNullableValueTypeConstraint) != 0;
-
     #region Enum Comparison
 
-    private const BindingFlags StaticPrivate = BindingFlags.Static | BindingFlags.NonPublic;
+    private const BindingFlags PrivateStatic = BindingFlags.NonPublic | BindingFlags.Static;
 
     private static readonly MethodInfo _enumLessThan
-        = typeof(TypeHelpers).GetMethod(nameof(EnumLessThan), StaticPrivate)!;
+        = typeof(TypeHelpers).GetMethod(nameof(EnumLessThan), PrivateStatic)!;
 
     private static readonly MethodInfo _enumGreaterThan
-        = typeof(TypeHelpers).GetMethod(nameof(EnumGreaterThan), StaticPrivate)!;
+        = typeof(TypeHelpers).GetMethod(nameof(EnumGreaterThan), PrivateStatic)!;
 
     private static bool EnumLessThan<TEnum>(TEnum left, TEnum right) where TEnum : Enum
         => left.CompareTo(right) < 0;

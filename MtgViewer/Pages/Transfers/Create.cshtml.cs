@@ -47,7 +47,7 @@ public class CreateModel : PageModel
 
     public DeckDetails Deck { get; private set; } = default!;
 
-    public OffsetList<LocationCopy> Requests { get; private set; } = OffsetList.Empty<LocationCopy>();
+    public OffsetList<CardCopy> Requests { get; private set; } = OffsetList.Empty<CardCopy>();
 
     public IReadOnlyList<DeckLink> Cards { get; private set; } = Array.Empty<DeckLink>();
 
@@ -62,7 +62,7 @@ public class CreateModel : PageModel
 
         var deck = await DeckAsync.Invoke(_dbContext, id, userId, cancel);
 
-        if (deck == default)
+        if (deck is null)
         {
             return NotFound();
         }
@@ -122,7 +122,7 @@ public class CreateModel : PageModel
 
                 .SingleOrDefault());
 
-    private IQueryable<LocationCopy> RequestMatches(DeckDetails deck)
+    private IQueryable<CardCopy> RequestMatches(DeckDetails deck)
     {
         var deckWants = _dbContext.Wants
             .Where(w => w.LocationId == deck.Id)
@@ -139,7 +139,7 @@ public class CreateModel : PageModel
         return deckWants.Join(possibleTargets,
             w => w.Card.Name,
             name => name,
-            (w, _) => new LocationCopy
+            (w, _) => new CardCopy
             {
                 Id = w.CardId,
                 Name = w.Card.Name,
@@ -225,7 +225,7 @@ public class CreateModel : PageModel
 
         var deck = await DeckAsync.Invoke(_dbContext, id, userId, cancel);
 
-        if (deck == default)
+        if (deck is null)
         {
             return NotFound();
         }

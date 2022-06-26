@@ -24,12 +24,12 @@ public record CardPreview
     public string ImageUrl { get; init; } = string.Empty;
 }
 
-public record LocationCopy : CardPreview
+public record CardCopy : CardPreview
 {
     public int Held { get; init; }
 }
 
-public sealed record DeckCopy : LocationCopy
+public sealed record DeckCopy : CardCopy
 {
     public int Want { get; init; }
     public int Returning { get; init; }
@@ -72,7 +72,7 @@ public sealed record CardId
     public string MultiverseId { get; init; } = string.Empty;
 }
 
-internal sealed record CardCopy
+internal sealed record MulliganOption
 {
     public CardPreview? Card { get; set; }
     public int Copies { get; set; }

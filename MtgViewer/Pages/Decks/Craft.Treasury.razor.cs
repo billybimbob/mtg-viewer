@@ -169,7 +169,7 @@ public partial class Craft
                 .ThenBy(c => c.Id)
 
             .SeekBy(_direction)
-                .After(_origin, c => c.Id)
+                .After(c => c.Id == _origin)
                 .ThenTake(PageSize.Current)
 
             .Select(card =>

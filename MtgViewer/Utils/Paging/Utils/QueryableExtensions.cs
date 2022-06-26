@@ -108,6 +108,19 @@ internal static class QueryableExtensions
                     arguments: source.Expression));
     }
 
+    public static object? FirstOrDefault(this IQueryable source)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+
+        return source.Provider
+            .Execute(
+                Expression.Call(
+                    instance: null,
+                    method: QueryableMethods.FirstOrDefaultWithoutPredicate
+                        .MakeGenericMethod(source.ElementType),
+                    arguments: source.Expression));
+    }
+
     #region Dynamic Invokes
 
     public static async Task<object?> SingleOrDefaultAsync(
@@ -127,6 +140,45 @@ internal static class QueryableExtensions
         var call = Expression.Call(
             instance: null,
             method: QueryableMethods.SingleOrDefaultWithoutPredicate
+                .MakeGenericMethod(source.ElementType),
+            arguments: source.Expression);
+
+        var execute = (Task?)typeof(IAsyncQueryProvider)
+            .GetTypeInfo()
+            .GetMethod(nameof(IAsyncQueryProvider.ExecuteAsync))?
+            .MakeGenericMethod(resultTask)
+            .Invoke(asyncProvider, new object[] { call, cancellationToken });
+
+        if (execute is null)
+        {
+            return null;
+        }
+
+        await execute;
+
+        return resultTask
+            .GetTypeInfo()
+            .GetProperty(nameof(Task<object?>.Result))?
+            .GetValue(execute);
+    }
+
+    public static async Task<object?> FirstOrDefaultAsync(
+        this IQueryable source,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+
+        if (source.Provider is not IAsyncQueryProvider asyncProvider)
+        {
+            throw new InvalidOperationException("Provider does not support async operations");
+        }
+
+        var resultTask = typeof(Task<>)
+            .MakeGenericType(source.ElementType);
+
+        var call = Expression.Call(
+            instance: null,
+            method: QueryableMethods.FirstOrDefaultWithoutPredicate
                 .MakeGenericMethod(source.ElementType),
             arguments: source.Expression);
 

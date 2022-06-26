@@ -240,17 +240,12 @@ public class ReviewModel : PageModel
 
     private async Task<Trade?> GetTradeAsync(int id, CancellationToken cancel)
     {
-        if (id == default)
-        {
-            return null;
-        }
-
         var tradeCard = await _dbContext.Trades
             .Where(t => t.Id == id)
             .Select(t => t.Card)
             .SingleOrDefaultAsync(cancel);
 
-        if (tradeCard == default)
+        if (tradeCard is null)
         {
             return null;
         }
@@ -333,7 +328,7 @@ public class ReviewModel : PageModel
     {
         var (trade, toWants, fromHold) = acceptRequest;
 
-        if (toWants == default)
+        if (toWants is null)
         {
             return;
         }
@@ -471,7 +466,7 @@ public class ReviewModel : PageModel
             .SingleOrDefaultAsync(t =>
                 t.Id == tradeId && t.From.OwnerId == userId, cancel);
 
-        if (deckTrade == default)
+        if (deckTrade is null)
         {
             PostMessage = "Trade could not be found";
             return RedirectToPage();

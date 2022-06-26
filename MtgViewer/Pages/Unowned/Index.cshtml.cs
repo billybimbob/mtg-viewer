@@ -50,7 +50,7 @@ public class IndexModel : PageModel
                 .ThenBy(u => u.Id)
 
             .SeekBy(direction)
-                .After(origin, u => u.Id)
+                .After(u => u.Id == origin)
                 .ThenTake(_pageSize.Current)
 
             .Select(u => new UnclaimedDetails

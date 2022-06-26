@@ -69,7 +69,7 @@ public sealed class ExchangePreview
     public int Id { get; init; }
     public string Name { get; init; } = string.Empty;
     public bool HasWants { get; init; }
-    public IEnumerable<LocationCopy> Givebacks { get; init; } = Enumerable.Empty<LocationCopy>();
+    public IEnumerable<CardCopy> Givebacks { get; init; } = Enumerable.Empty<CardCopy>();
 }
 
 public sealed record DeckCounts

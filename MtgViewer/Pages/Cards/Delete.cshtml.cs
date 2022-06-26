@@ -52,7 +52,7 @@ public class DeleteModel : PageModel
     {
         var card = await DeleteLinkAsync.Invoke(_dbContext, id, cancel);
 
-        if (card == default)
+        if (card is null)
         {
             return NotFound();
         }

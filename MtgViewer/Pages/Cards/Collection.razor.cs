@@ -60,7 +60,7 @@ public sealed partial class Collection : ComponentBase, IDisposable
 
     internal bool IsLoading => _isBusy || !_isInteractive;
 
-    internal SeekList<LocationCopy> Cards { get; private set; } = SeekList.Empty<LocationCopy>();
+    internal SeekList<CardCopy> Cards { get; private set; } = SeekList.Empty<CardCopy>();
 
     private static readonly Color ValidColors
         = Enum.GetValues<Color>()
@@ -125,22 +125,22 @@ public sealed partial class Collection : ComponentBase, IDisposable
 
     private Task PersistCardData()
     {
-        ApplicationState.PersistAsJson(nameof(Cards), Cards as IReadOnlyList<LocationCopy>);
+        ApplicationState.PersistAsJson(nameof(Cards), Cards as IReadOnlyList<CardCopy>);
 
         ApplicationState.PersistAsJson(nameof(Seek), SeekDto.From(Cards.Seek));
 
         return Task.CompletedTask;
     }
 
-    private async Task<SeekList<LocationCopy>> GetCardDataAsync()
+    private async Task<SeekList<CardCopy>> GetCardDataAsync()
     {
-        if (ApplicationState.TryGetData(nameof(Cards), out IReadOnlyList<LocationCopy>? cards)
+        if (ApplicationState.TryGetData(nameof(Cards), out IReadOnlyList<CardCopy>? cards)
             && ApplicationState.TryGetData(nameof(Seek), out SeekDto seek))
         {
             // persisted state should match set filters
             // TODO: find way to check filters are consistent
 
-            return new SeekList<LocationCopy>(
+            return new SeekList<CardCopy>(
                 cards, seek.HasPrevious, seek.HasNext, seek.IsMissing);
         }
         else
@@ -149,14 +149,14 @@ public sealed partial class Collection : ComponentBase, IDisposable
         }
     }
 
-    private async Task<SeekList<LocationCopy>> FetchDbCopiesAsync()
+    private async Task<SeekList<CardCopy>> FetchDbCopiesAsync()
     {
         await using var dbContext = await DbFactory.CreateDbContextAsync(_cancel.Token);
 
         var filter = ParseTextFilter.Parse(Search);
 
         var cards = FilterCards(dbContext.Cards, filter, PickedColors)
-            .Select(c => new LocationCopy
+            .Select(c => new CardCopy
             {
                 Id = c.Id,
                 Name = c.Name,
@@ -174,7 +174,7 @@ public sealed partial class Collection : ComponentBase, IDisposable
         return await OrderCopies(cards, Order)
 
             .SeekBy((SeekDirection)Direction)
-                .After(Seek, l => l.Id)
+                .After(l => l.Id == Seek)
                 .ThenTake(PageSize.Current)
 
             .ToSeekListAsync(_cancel.Token);
@@ -216,7 +216,7 @@ public sealed partial class Collection : ComponentBase, IDisposable
         return cards;
     }
 
-    private static IOrderedQueryable<LocationCopy> OrderCopies(IQueryable<LocationCopy> copies, string? orderBy)
+    private static IOrderedQueryable<CardCopy> OrderCopies(IQueryable<CardCopy> copies, string? orderBy)
     {
         return orderBy switch
         {
@@ -336,7 +336,7 @@ public sealed partial class Collection : ComponentBase, IDisposable
             Nav.GetUriWithQueryParameters(changes), replace: true);
     }
 
-    internal void SeekPage(SeekRequest<LocationCopy> value)
+    internal void SeekPage(SeekRequest<CardCopy> value)
     {
         if (_isBusy)
         {

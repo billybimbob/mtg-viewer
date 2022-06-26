@@ -25,19 +25,24 @@ public class ExcessModel : PageModel
         _pageSize = pageSize;
     }
 
-    public SeekList<LocationCopy> Cards { get; private set; } = SeekList.Empty<LocationCopy>();
+    public SeekList<CardCopy> Cards { get; private set; } = SeekList.Empty<CardCopy>();
 
     public bool HasExcess => Cards is not { Count: 0, Seek.Previous: null, Seek.Next: null };
 
     public async Task<IActionResult> OnGetAsync(
         string? seek,
         SeekDirection direction,
-        string? cardId,
+        string? jump,
         CancellationToken cancel)
     {
-        if (await FindCardJumpAsync(cardId, cancel) is string cardJump)
+        if (await FindCardJumpAsync(jump, cancel) is string cardJump)
         {
-            return RedirectToPage(new { seek = cardJump });
+            return RedirectToPage(new
+            {
+                seek = cardJump,
+                direction = SeekDirection.Forward,
+                jump = null as string
+            });
         }
 
         var cards = await SeekCardsAsync(direction, seek, cancel);
@@ -52,24 +57,18 @@ public class ExcessModel : PageModel
         return Page();
     }
 
-    private async Task<SeekList<LocationCopy>> SeekCardsAsync(
+    private async Task<SeekList<CardCopy>> SeekCardsAsync(
         SeekDirection direction,
         string? origin,
         CancellationToken cancel)
     {
-        return await _dbContext.Cards
-            .Where(c => c.Holds
-                .Any(h => h.Location is Excess))
-
-            .OrderBy(c => c.Name)
-                .ThenBy(c => c.SetName)
-                .ThenBy(c => c.Id)
+        return await ExcessCards()
 
             .SeekBy(direction)
-                .After(origin, c => c.Id)
+                .After(c => c.Id == origin)
                 .ThenTake(_pageSize.Current)
 
-            .Select(c => new LocationCopy
+            .Select(c => new CardCopy
             {
                 Id = c.Id,
                 Name = c.Name,
@@ -96,28 +95,11 @@ public class ExcessModel : PageModel
             return null;
         }
 
-        var card = await _dbContext.Excess
-            .SelectMany(e => e.Holds, (_, h) => h.Card)
-            .OrderBy(c => c.Id)
-            .FirstOrDefaultAsync(c => c.Id == id, cancel);
-
-        if (card is null)
-        {
-            return null;
-        }
-
         int size = _pageSize.Current;
 
-        return await _dbContext.Cards
-            .Where(c => c.Holds
-                .Any(h => h.Location is Excess))
-
-            .OrderBy(c => c.Name)
-                .ThenBy(c => c.SetName)
-                .ThenBy(c => c.Id)
-
+        return await ExcessCards()
             .SeekBy(SeekDirection.Backwards)
-                .After(card)
+                .After(c => c.Id == id)
 
             .Select(c => c.Id)
             .AsAsyncEnumerable()
@@ -125,4 +107,13 @@ public class ExcessModel : PageModel
             .Where((id, i) => i % size == size - 1)
             .LastOrDefaultAsync(cancel);
     }
+
+    private IOrderedQueryable<Card> ExcessCards()
+        => _dbContext.Cards
+            .Where(c => c.Holds
+                .Any(h => h.Location is Excess))
+
+            .OrderBy(c => c.Name)
+                .ThenBy(c => c.SetName)
+                .ThenBy(c => c.Id);
 }

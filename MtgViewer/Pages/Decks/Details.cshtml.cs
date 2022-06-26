@@ -47,7 +47,7 @@ public class DetailsModel : PageModel
     {
         var deck = await DeckDetailsAsync.Invoke(_dbContext, id, cancel);
 
-        if (deck == default)
+        if (deck is null)
         {
             return NotFound();
         }
@@ -112,7 +112,7 @@ public class DetailsModel : PageModel
                 .ThenBy(c => c.Id)
 
             .SeekBy(direction)
-                .After(origin, c => c.Id)
+                .After(c => c.Id == origin)
                 .ThenTake(_pageSize.Current)
 
             .Select(c => new DeckCopy

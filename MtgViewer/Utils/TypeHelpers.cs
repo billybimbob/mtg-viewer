@@ -28,14 +28,13 @@ internal static class TypeHelpers
         }
 
         const string id = "Id";
-        const BindingFlags binds = BindingFlags.Instance | BindingFlags.Public;
 
         string typeId = $"{entityType.Name}{id}";
 
         // could memo this in a static dict?
         PropertyInfo? key;
 
-        var entityProperties = entityType.GetProperties(binds);
+        var entityProperties = entityType.GetTypeInfo().GetProperties();
 
         key = entityProperties
             .FirstOrDefault(e => e.GetCustomAttribute<KeyAttribute>() is not null);

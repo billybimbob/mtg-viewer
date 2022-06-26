@@ -15,16 +15,25 @@ internal sealed class SeekExpression : Expression
         int? size)
     {
         if (!query.Type.IsAssignableTo(typeof(IOrderedQueryable))
-            || query.Type.IsGenericType is false)
+            || query.Type.GenericTypeArguments.ElementAtOrDefault(0) is not Type entityType)
         {
             throw new ArgumentException(
                 $"{query.Type.Name} is not a strongly typed {nameof(IOrderedQueryable)}", nameof(query));
         }
 
+        if (origin.Value is not null && origin.Type != entityType)
+        {
+            throw new ArgumentException(
+                $"{origin.Type.Name} is not expected type {entityType.Name}", nameof(origin));
+        }
+
         Query = query;
         Origin = origin;
+
         Direction = direction;
         Size = size;
+
+        Type = typeof(ISeekable<>).MakeGenericType(entityType);
     }
 
     public Expression Query { get; }
@@ -35,7 +44,7 @@ internal sealed class SeekExpression : Expression
 
     public int? Size { get; }
 
-    public override Type Type => Query.Type;
+    public override Type Type { get; }
 
     public override ExpressionType NodeType => ExpressionType.Extension;
 

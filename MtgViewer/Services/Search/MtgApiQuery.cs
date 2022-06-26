@@ -27,7 +27,7 @@ public sealed class MtgApiQuery : IMtgQuery
         typeof(MtgApiQuery)
             .GetMethod(
                 nameof(MtgApiQuery.QueryProperty),
-                BindingFlags.Static | BindingFlags.NonPublic,
+                BindingFlags.NonPublic | BindingFlags.Static,
                 new[]
                 {
                     typeof(IDictionary<string, IMtgParameter>),
@@ -92,7 +92,7 @@ public sealed class MtgApiQuery : IMtgQuery
 
     private static Expression<Func<CardQueryParameter, string>> GetParameter(string name)
     {
-        const BindingFlags binds = BindingFlags.IgnoreCase | BindingFlags.Instance | BindingFlags.Public;
+        const BindingFlags binds = BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase;
 
         var property = typeof(CardQueryParameter).GetProperty(name, binds);
 
@@ -103,7 +103,7 @@ public sealed class MtgApiQuery : IMtgQuery
 
         var param = Expression.Parameter(
             typeof(CardQueryParameter),
-            nameof(CardQueryParameter)[0].ToString().ToLower());
+            nameof(CardQueryParameter)[0].ToString().ToLowerInvariant());
 
         return Expression
             .Lambda<Func<CardQueryParameter, string>>(

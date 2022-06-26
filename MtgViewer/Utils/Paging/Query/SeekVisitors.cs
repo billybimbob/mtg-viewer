@@ -30,13 +30,12 @@ internal sealed class SeekTranslationVisitor : ExpressionVisitor
     private static SeekExpression? TranslateSeekBy(MethodCallExpression node)
     {
         if (ExpressionHelpers.IsSeekBy(node)
+            && node.Arguments.ElementAtOrDefault(1) is ConstantExpression { Value: SeekDirection direction }
             && node.Arguments.ElementAtOrDefault(0) is Expression query
-            && node.Arguments.ElementAtOrDefault(1) is ConstantExpression { Value: SeekDirection direction })
+            && query.Type.GenericTypeArguments.ElementAtOrDefault(0) is Type entityType)
         {
-            var elementType = query.Type.GenericTypeArguments[0];
-
             return new SeekExpression(
-                query, Expression.Constant(null, elementType), direction, size: null);
+                query, Expression.Constant(null, entityType), direction, size: null);
         }
 
         return null;
@@ -85,21 +84,28 @@ internal sealed class LookAheadSeekVisitor : ExpressionVisitor
 
 internal sealed class ChangeSeekOriginVisitor : ExpressionVisitor
 {
-    private readonly ConstantExpression _origin;
+    private readonly object? _origin;
 
-    public ChangeSeekOriginVisitor(ConstantExpression newOrigin)
+    public ChangeSeekOriginVisitor(object? newOrigin)
     {
         _origin = newOrigin;
     }
 
-    protected override Expression VisitExtension(Expression node)
+    protected override Expression VisitMethodCall(MethodCallExpression node)
     {
-        if (node is SeekExpression seek)
+        if (ExpressionHelpers.IsAfter(node)
+            && node.Arguments.ElementAtOrDefault(0) is Expression source
+            && node.Method.GetGenericArguments().ElementAtOrDefault(0) is Type entityType)
         {
-            return seek.Update(seek.Query, _origin, seek.Direction, seek.Size);
+            return Expression.Call(
+                instance: null,
+                method: PagingExtensions.AfterReference
+                    .MakeGenericMethod(entityType),
+                arg0: source,
+                arg1: Expression.Constant(_origin, entityType));
         }
 
-        return base.VisitExtension(node);
+        return base.VisitMethodCall(node);
     }
 }
 

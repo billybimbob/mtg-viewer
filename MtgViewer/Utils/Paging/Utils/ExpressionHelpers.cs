@@ -42,8 +42,7 @@ internal static class ExpressionHelpers
         => DoesMethodEqual(
             call.Method,
             PagingExtensions.AfterReference,
-            PagingExtensions.AfterKeyReference,
-            PagingExtensions.AfterKeyValue);
+            PagingExtensions.AfterPredicate);
 
     public static bool IsThenTake(MethodCallExpression call)
          => DoesMethodEqual(

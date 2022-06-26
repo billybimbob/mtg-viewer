@@ -53,7 +53,7 @@ public class DeleteModel : PageModel
 
         var deck = await DeckDetailsAsync.Invoke(_dbContext, id, userId, cancel);
 
-        if (deck == default)
+        if (deck is null)
         {
             return NotFound();
         }
@@ -151,7 +151,7 @@ public class DeleteModel : PageModel
 
         var deck = await DeckForDeleteAsync.Invoke(_dbContext, id, userId, cancel);
 
-        if (deck == default)
+        if (deck is null)
         {
             return RedirectToPage("Index");
         }

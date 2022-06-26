@@ -11,26 +11,26 @@ namespace MtgViewer.Data.Infrastructure;
 public sealed class DrawSimulation : IDisposable
 {
     // could use dependency injection instead of static ref
-    private static readonly ObjectPool<CardCopy> _cardPool
-        = new DefaultObjectPool<CardCopy>(
-            new DefaultPooledObjectPolicy<CardCopy>());
+    private static readonly ObjectPool<MulliganOption> _cardPool
+        = new DefaultObjectPool<MulliganOption>(
+            new DefaultPooledObjectPolicy<MulliganOption>());
 
-    private readonly ICollection<CardCopy> _cardOptions;
+    private readonly ICollection<MulliganOption> _cardOptions;
     private readonly List<CardPreview> _hand;
 
     private int _cardsInDeck;
-    private CardCopy? _nextDraw;
+    private MulliganOption? _nextDraw;
 
     public DrawSimulation(IReadOnlyList<DeckCopy> deck, DeckMulligan mulligan)
     {
         _cardOptions = deck
             .Select(d =>
             {
-                var copy = _cardPool.Get();
-                copy.Card = d;
-                copy.Copies = GetCopies(d, mulligan);
+                var option = _cardPool.Get();
+                option.Card = d;
+                option.Copies = GetCopies(d, mulligan);
 
-                return copy;
+                return option;
             })
             .ToHashSet(); // want hash set for undefined (random) iter order
 
@@ -74,7 +74,7 @@ public sealed class DrawSimulation : IDisposable
         _hand.Add(card);
     }
 
-    private CardCopy? PickRandomCard()
+    private MulliganOption? PickRandomCard()
     {
         if (_cardsInDeck <= 0)
         {

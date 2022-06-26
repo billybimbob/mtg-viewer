@@ -32,7 +32,7 @@ public class DetailsModel : PageModel
 
     public IReadOnlyList<CardLink> Alternatives { get; private set; } = Array.Empty<CardLink>();
 
-    public SeekList<QuantityLocationPreview> Locations { get; private set; } = SeekList.Empty<QuantityLocationPreview>();
+    public SeekList<LocationCopy> Locations { get; private set; } = SeekList.Empty<LocationCopy>();
 
     public string? ReturnUrl { get; private set; }
 
@@ -128,7 +128,7 @@ public class DetailsModel : PageModel
                     SetName = c.SetName
                 }));
 
-    private async Task<SeekList<QuantityLocationPreview>> SeekLocationsAsync(
+    private async Task<SeekList<LocationCopy>> SeekLocationsAsync(
         string cardId,
         SeekDirection direction,
         int? origin,
@@ -141,18 +141,14 @@ public class DetailsModel : PageModel
                 .ThenBy(h => h.LocationId)
 
             .SeekBy(direction)
-                .After(origin, h => h.Id)
+                .After(h => h.Id == origin)
                 .ThenTake(_pageSize.Current)
 
-            .Select(h => new QuantityLocationPreview
+            .Select(h => new LocationCopy
             {
-                Location = new LocationPreview
-                {
-                    Id = h.LocationId,
-                    Name = h.Location.Name,
-                    Type = h.Location.Type
-                },
-
+                Id = h.LocationId,
+                Name = h.Location.Name,
+                Type = h.Location.Type,
                 Copies = h.Copies
             })
 

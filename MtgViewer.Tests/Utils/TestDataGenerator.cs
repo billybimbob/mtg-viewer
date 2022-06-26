@@ -423,7 +423,7 @@ public class TestDataGenerator
                 .ThenInclude(h => h.Card)
             .FirstOrDefaultAsync(l => l.OwnerId == proposer.Id);
 
-        if (source == default)
+        if (source is null)
         {
             source = new Deck
             {
@@ -493,7 +493,7 @@ public class TestDataGenerator
             .SingleOrDefaultAsync(h =>
                 h.LocationId == location.Id && h.CardId == card.Id);
 
-        if (hold == default)
+        if (hold is null)
         {
             hold = new Hold
             {
@@ -515,7 +515,7 @@ public class TestDataGenerator
             .SingleOrDefaultAsync(w =>
                 w.LocationId == target.Id && w.CardId == card.Id);
 
-        if (want == default)
+        if (want is null)
         {
             want = new Want
             {
@@ -537,7 +537,7 @@ public class TestDataGenerator
             .SingleOrDefaultAsync(g =>
                 g.LocationId == target.Id && g.CardId == card.Id);
 
-        if (give == default)
+        if (give is null)
         {
             give = new Giveback
             {

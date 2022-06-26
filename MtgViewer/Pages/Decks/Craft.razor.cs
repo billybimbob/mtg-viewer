@@ -368,7 +368,6 @@ public partial class Craft : OwningComponentBase
         }
 
         Deck? dbDeck = null;
-        var localDeck = deckContext.Deck;
 
         try
         {
@@ -382,7 +381,7 @@ public partial class Craft : OwningComponentBase
 
                 .AsSplitQuery()
                 .AsNoTrackingWithIdentityResolution()
-                .SingleOrDefaultAsync(d => d.Id == localDeck.Id, cancel);
+                .SingleOrDefaultAsync(d => d.Id == deckContext.Deck.Id, cancel);
         }
         catch (OperationCanceledException)
         { }
@@ -392,7 +391,7 @@ public partial class Craft : OwningComponentBase
             return;
         }
 
-        if (dbDeck == default)
+        if (dbDeck is null)
         {
             return;
         }
@@ -403,7 +402,7 @@ public partial class Craft : OwningComponentBase
 
         CapGivebacks(deckContext.Groups);
 
-        dbContext.MatchToken(localDeck, dbDeck);
+        dbContext.MatchToken(deckContext.Deck, dbDeck);
     }
 
     private static bool HasNoDeckConflicts(
@@ -536,7 +535,7 @@ public partial class Craft : OwningComponentBase
             var card = dbContext.Cards.Local
                 .FirstOrDefault(c => c.Id == dbQuantity.CardId);
 
-            if (card == default)
+            if (card is null)
             {
                 card = dbQuantity.Card;
 

@@ -69,15 +69,12 @@ public static class PagingExtensions
     internal static readonly MethodInfo SeekByMethod
         = typeof(PagingExtensions)
             .GetTypeInfo()
-            .GetDeclaredMethods(nameof(SeekBy))
-            .Single(m => m
-                .GetParameters()
-                .ElementAtOrDefault(1)?
-                .ParameterType == typeof(SeekDirection));
+            .GetDeclaredMethod(nameof(SeekBy))!;
 
     public static ISeekable<TEntity> SeekBy<TEntity>(
         this IOrderedQueryable<TEntity> source,
         SeekDirection direction)
+        where TEntity : class
     {
         ArgumentNullException.ThrowIfNull(source);
 
@@ -98,9 +95,10 @@ public static class PagingExtensions
         = typeof(PagingExtensions)
             .GetTypeInfo()
             .GetDeclaredMethods(nameof(After))
-            .Single(m =>
-                m.GetGenericArguments().Length == 1
-                    && m.GetParameters().Length == 2);
+            .Single(mi => mi
+                .GetParameters()
+                .Any(pi => pi.Name == "origin"
+                    && !pi.ParameterType.IsAssignableTo(typeof(Expression))));
 
     public static ISeekable<TEntity> After<TEntity>(
         this ISeekable<TEntity> source,
@@ -120,61 +118,33 @@ public static class PagingExtensions
             .AsSeekable();
     }
 
-    internal static readonly MethodInfo AfterKeyReference
+    internal static readonly MethodInfo AfterPredicate
         = typeof(PagingExtensions)
             .GetTypeInfo()
             .GetDeclaredMethods(nameof(After))
-            .Single(m => m.GetParameters().Length == 3
-                && m.GetGenericArguments() is var args
-                && args.Length == 2
-                && TypeHelpers.HasReferenceConstraint(args[1]));
+            .Single(mi => mi
+                .GetParameters()
+                .Any(pi => pi.Name == "originPredicate"
+                    && pi.ParameterType.IsAssignableTo(typeof(Expression))));
 
-    public static ISeekable<TEntity> After<TEntity, TKey>(
+    public static ISeekable<TEntity> After<TEntity>(
         this ISeekable<TEntity> source,
-        TKey? origin,
-        Expression<Func<TEntity, TKey>> keySelector)
-        where TKey : class
+        Expression<Func<TEntity, bool>> originPredicate)
+        where TEntity : class
     {
         ArgumentNullException.ThrowIfNull(source);
+        ArgumentNullException.ThrowIfNull(originPredicate);
 
-        return source.Provider
+        var seekable = source.AsSeekable();
+
+        return seekable.Provider
             .CreateQuery<TEntity>(
                 Expression.Call(
                     instance: null,
-                    method: AfterKeyReference
-                        .MakeGenericMethod(typeof(TEntity), typeof(TKey)),
-                    arg0: source.Expression,
-                    arg1: Expression.Constant(origin, typeof(TKey)),
-                    arg2: Expression.Quote(keySelector)))
-            .AsSeekable();
-    }
-
-    internal static readonly MethodInfo AfterKeyValue
-        = typeof(PagingExtensions)
-            .GetTypeInfo()
-            .GetDeclaredMethods(nameof(After))
-            .Single(m => m.GetParameters().Length == 3
-                && m.GetGenericArguments() is var args
-                && args.Length == 2
-                && TypeHelpers.HasValueConstraint(args[1]));
-
-    public static ISeekable<TEntity> After<TEntity, TKey>(
-        this ISeekable<TEntity> source,
-        TKey? origin,
-        Expression<Func<TEntity, TKey>> keySelector)
-        where TKey : struct
-    {
-        ArgumentNullException.ThrowIfNull(source);
-
-        return source.Provider
-            .CreateQuery<TEntity>(
-                Expression.Call(
-                    instance: null,
-                    method: AfterKeyValue
-                        .MakeGenericMethod(typeof(TEntity), typeof(TKey)),
-                    arg0: source.Expression,
-                    arg1: Expression.Constant(origin, typeof(TKey?)),
-                    arg2: Expression.Quote(keySelector)))
+                    method: AfterPredicate
+                        .MakeGenericMethod(typeof(TEntity)),
+                    arg0: seekable.Expression,
+                    arg1: Expression.Quote(originPredicate)))
             .AsSeekable();
     }
 
@@ -186,6 +156,7 @@ public static class PagingExtensions
     public static ISeekable<TEntity> ThenTake<TEntity>(
         this ISeekable<TEntity> source,
         int count)
+        where TEntity : class
     {
         ArgumentNullException.ThrowIfNull(source);
 
@@ -242,8 +213,6 @@ public static class PagingExtensions
 
     private static ISeekable<TEntity> AsSeekable<TEntity>(this IQueryable<TEntity> source)
     {
-        ArgumentNullException.ThrowIfNull(source);
-
         if (source is ISeekable<TEntity> seekable)
         {
             return seekable;

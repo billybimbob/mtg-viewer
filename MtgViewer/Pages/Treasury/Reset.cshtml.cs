@@ -83,7 +83,7 @@ public class ResetModel : PageModel
         var player = await _dbContext.Players
             .SingleOrDefaultAsync(p => p.Id == userId, cancel);
 
-        if (player == default)
+        if (player is null)
         {
             return NotFound();
         }

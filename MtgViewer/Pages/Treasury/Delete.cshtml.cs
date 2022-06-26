@@ -37,7 +37,7 @@ public class DeleteModel : PageModel
     {
         var box = await BoxAsync.Invoke(_dbContext, id, _pageSize.Current, cancel);
 
-        if (box == default)
+        if (box is null)
         {
             return NotFound();
         }
@@ -91,7 +91,7 @@ public class DeleteModel : PageModel
                 .ThenInclude(h => h.Card)
             .SingleOrDefaultAsync(b => b.Id == id, cancel);
 
-        if (box == default)
+        if (box is null)
         {
             return NotFound();
         }

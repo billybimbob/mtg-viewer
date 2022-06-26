@@ -164,7 +164,7 @@ public class DetailsModel : PageModel
                     .ThenBy(c => c.Id)
 
             .SeekBy(direction)
-                .After(origin, c => c.Id)
+                .After(c => c.Id == origin)
                 .ThenTake(_pageSize.Current)
 
             .Select(c => new ChangeDetails

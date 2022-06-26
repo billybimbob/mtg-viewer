@@ -105,7 +105,7 @@ public class DetailsModel : PageModel
                 .ThenBy(d => d.Id)
 
             .SeekBy(direction)
-                .After(origin, d => d.Id)
+                .After(d => d.Id == origin)
                 .ThenTake(_pageSize.Current)
 
             .Select(d => new DeckPreview

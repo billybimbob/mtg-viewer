@@ -35,7 +35,7 @@ namespace MtgViewer.Areas.Identity.Services
                 .OrderBy(p => p.Id)
                 .SingleOrDefaultAsync(p => p.Id == user.Id);
 
-            if (player == default)
+            if (player is null)
             {
                 // reference is missing, add a new reference
 

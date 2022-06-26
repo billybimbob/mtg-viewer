@@ -49,11 +49,11 @@ internal class SeekQuery<TSource> : ISeekable<TSource>, IOrderedQueryable<TSourc
     public Type ElementType => typeof(TSource);
 
     IEnumerator IEnumerable.GetEnumerator()
-        => ((IEnumerable)AsyncProvider.Execute(Expression)!)
+        => ((IEnumerable)Provider.Execute(Expression)!)
             .GetEnumerator();
 
     public IEnumerator<TSource> GetEnumerator()
-        => AsyncProvider
+        => Provider
             .Execute<IEnumerable<TSource>>(Expression)
             .GetEnumerator();
 

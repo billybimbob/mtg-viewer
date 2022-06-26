@@ -1,6 +1,6 @@
 namespace MtgViewer.Data.Projections;
 
-public sealed record LocationPreview
+public record LocationPreview
 {
     public int Id { get; init; }
 
@@ -9,3 +9,7 @@ public sealed record LocationPreview
     internal LocationType Type { get; init; }
 }
 
+public sealed record LocationCopy : LocationPreview
+{
+    public int Copies { get; init; }
+}

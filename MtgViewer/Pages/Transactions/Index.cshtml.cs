@@ -106,7 +106,7 @@ public class IndexModel : PageModel
                 .ThenBy(t => t.Id)
 
             .SeekBy(direction)
-                .After(origin, t => t.Id)
+                .After(t => t.Id == origin)
                 .ThenTake(_pageSize.Current)
 
             .Select(t => new TransactionPreview

@@ -56,21 +56,21 @@
             </tr>
         </thead>
         <tbody>
-            @foreach (var quantity in Model.Cards)
+            @foreach (var card in Model.Cards)
             {
                 <tr>
                     <td>
                         <component type="typeof(HoverCard)" render-mode="Static"
-                            param-Preview="quantity.Card" param-ReturnUrl="returnUrl" />
+                            param-Preview="card" param-ReturnUrl="returnUrl" />
                     </td>
                     <td>
                         <div class="ms-group">
-                            @MtgSymbols.Format(quantity.Card.ManaCost).ToHtmlString()
+                            @MtgSymbols.Format(card.ManaCost).ToHtmlString()
                         </div>
                     </td>
-                    <td> @quantity.Card.SetName </td>
-                    <td> @quantity.Card.Rarity </td>
-                    <td> @quantity.Copies </td>
+                    <td> @card.SetName </td>
+                    <td> @card.Rarity </td>
+                    <td> @card.Held </td>
                 </tr>
             }
             <tr>

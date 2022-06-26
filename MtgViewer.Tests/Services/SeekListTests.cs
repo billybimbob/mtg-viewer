@@ -29,7 +29,7 @@ public class SeekListTests : IAsyncLifetime
     public Task DisposeAsync() => _testGen.ClearAsync();
 
     [Fact]
-    public async Task ToSeekList_OrderByIdFirst_ReturnsFirst()
+    public async Task ToSeekList_OrderByFirst_ReturnsFirst()
     {
         var cards = _dbContext.Cards
             .OrderBy(c => c.Id);
@@ -38,7 +38,33 @@ public class SeekListTests : IAsyncLifetime
 
         var seekList = await cards
             .SeekBy(SeekDirection.Forward)
-                .After(null, c => c.Id)
+                .After(null as Card)
+                .ThenTake(pageSize)
+            .ToSeekListAsync();
+
+        var firstCards = await cards
+            .Select(c => c.Id)
+            .Take(pageSize)
+            .ToListAsync();
+
+        Assert.Null(seekList.Seek.Previous);
+        Assert.NotNull(seekList.Seek.Next);
+
+        Assert.Equal(pageSize, seekList.Count);
+        Assert.Equal(firstCards, seekList.Select(c => c.Id));
+    }
+
+    [Fact]
+    public async Task ToSeekList_OrderByFirstId_ReturnsFirst()
+    {
+        var cards = _dbContext.Cards
+            .OrderBy(c => c.Id);
+
+        int pageSize = Math.Min(10, await cards.CountAsync() / 2);
+
+        var seekList = await cards
+            .SeekBy(SeekDirection.Forward)
+                .After(c => c.Id == null)
                 .ThenTake(pageSize)
             .ToSeekListAsync();
 
@@ -160,7 +186,7 @@ public class SeekListTests : IAsyncLifetime
 
         var seekList = await cards
             .SeekBy(SeekDirection.Forward)
-                .After(originId, c => c.Id)
+                .After(c => c.Id == originId)
                 .ThenTake(pageSize)
             .ToSeekListAsync();
 
@@ -261,7 +287,8 @@ public class SeekListTests : IAsyncLifetime
 
         var seekList = await cards
             .SeekBy(SeekDirection.Forward)
-                .After(origin.Id, c => c.Id)
+                .After(c => c.Id == origin.Id)
+                // .After(origin.Id, c => c.Id)
                 .ThenTake(pageSize)
             .ToSeekListAsync();
 
@@ -379,5 +406,34 @@ public class SeekListTests : IAsyncLifetime
             Assert.True(
                 (c.To.Name, c.From?.Name, c.Id).CompareTo(
                     (origin.To.Name, origin.From?.Name, origin.Id)) > 0));
+    }
+
+    [Fact]
+    public async Task ToSeekList_SeekByNullableOrigin_Returns()
+    {
+        await _testGen.CreateChangesAsync();
+
+        const int pageSize = 3;
+        const int numPages = 1;
+
+        var changes = _dbContext.Changes
+            .Include(c => c.To)
+            .Include(c => c.From)
+            .OrderBy(c => c.Id);
+
+        int? originId = await changes
+            .Skip(pageSize * numPages)
+            .Select(c => c.Id as int?)
+            .FirstAsync();
+
+        var seekList = await changes
+            .SeekBy(SeekDirection.Forward)
+                .After(c => c.Id == originId)
+                .ThenTake(pageSize)
+            .ToSeekListAsync();
+
+        Assert.NotNull(seekList.Seek.Previous);
+
+        Assert.All(seekList, c => Assert.True(c.Id >= originId));
     }
 }
