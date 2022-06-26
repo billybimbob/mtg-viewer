@@ -81,6 +81,35 @@ public class SeekListTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task ToSeekList_OrderByLastId_ReturnsLast()
+    {
+        var cards = _dbContext.Cards
+            .OrderBy(c => c.Id);
+
+        string? lastOrigin = null;
+
+        int cardCount = await cards.CountAsync();
+        int pageSize = Math.Min(10, cardCount / 2);
+
+        var seekList = await cards
+            .SeekBy(SeekDirection.Backwards)
+                .After(c => c.Id == lastOrigin)
+                .ThenTake(pageSize)
+            .ToSeekListAsync();
+
+        var lastCards = await cards
+            .Select(c => c.Id)
+            .Skip(cardCount - pageSize)
+            .ToListAsync();
+
+        Assert.NotNull(seekList.Seek.Previous);
+        Assert.Null(seekList.Seek.Next);
+
+        Assert.Equal(pageSize, seekList.Count);
+        Assert.Equal(lastCards, seekList.Select(c => c.Id));
+    }
+
+    [Fact]
     public async Task ToSeekList_NoSeekBy_ReturnsFirst()
     {
         var cards = _dbContext.Cards
@@ -288,7 +317,6 @@ public class SeekListTests : IAsyncLifetime
         var seekList = await cards
             .SeekBy(SeekDirection.Forward)
                 .After(c => c.Id == origin.Id)
-                // .After(origin.Id, c => c.Id)
                 .ThenTake(pageSize)
             .ToSeekListAsync();
 

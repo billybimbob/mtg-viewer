@@ -271,14 +271,9 @@ internal sealed class SeekProvider : IAsyncQueryProvider
     {
         var query = FindOriginQuery(source);
 
-        if (query.Origin.Value is null)
+        if (query is ConstantExpression { Value: var origin })
         {
-            return null;
-        }
-
-        if (query.Origin.Type == query.Type)
-        {
-            return query.Origin.Value;
+            return origin;
         }
 
         return CreateOriginQuery(query)
@@ -289,14 +284,9 @@ internal sealed class SeekProvider : IAsyncQueryProvider
     {
         var query = FindOriginQuery(source);
 
-        if (query.Origin.Value is null)
+        if (query is ConstantExpression { Value: var origin })
         {
-            return null;
-        }
-
-        if (query.Origin.Type == query.Type)
-        {
-            return query.Origin.Value;
+            return origin;
         }
 
         return await CreateOriginQuery(query)
@@ -304,7 +294,7 @@ internal sealed class SeekProvider : IAsyncQueryProvider
             .ConfigureAwait(false);
     }
 
-    private static OriginQueryExpression FindOriginQuery(Expression source)
+    private Expression FindOriginQuery(Expression source)
     {
         if (FindOrderParameterVisitor.Instance.Visit(source)
             is not ParameterExpression orderBy)
@@ -313,75 +303,45 @@ internal sealed class SeekProvider : IAsyncQueryProvider
                 "No valid Ordering could be found, be sure to not call \"OrderBy\" after \"SeekBy\"");
         }
 
-        var findOriginQuery = new OriginQueryTranslationVisitor(orderBy);
+        var findOriginQuery = new OriginTranslationVisitor(_source, orderBy);
 
-        if (findOriginQuery.Visit(source) is not OriginQueryExpression query)
-        {
-            throw new InvalidOperationException(
-                "Origin query can not be translated from specified query");
-        }
-
-        return query;
+        return findOriginQuery.Visit(source);
     }
 
-    private IQueryable CreateOriginQuery(OriginQueryExpression query)
+    private IQueryable CreateOriginQuery(Expression expression)
     {
-        var equalsToOrigin = CreateOriginPredicate(query);
+        var query = _source.CreateQuery(expression);
 
         if (IsSelectedQuery(query))
         {
-            return _source
-                .CreateQuery(query.Source)
-                .Where(equalsToOrigin);
+            return query;
         }
 
-        var root = FindQueryRoot(query);
+        var root = FindQueryRoot(query.Expression);
 
-        var includes = OriginIncludeVisitor.Scan(query.Source, root.EntityType);
-
-        var sourceQuery = _source.CreateQuery(root);
+        var includes = OriginIncludeVisitor.Scan(query.Expression, root.EntityType);
 
         foreach (string include in includes)
         {
-            sourceQuery = sourceQuery.Include(include);
+            query = query.Include(include);
         }
 
-        return sourceQuery
-            .Where(equalsToOrigin)
-            .AsNoTracking();
+        return query.AsNoTracking();
     }
 
-    private static LambdaExpression CreateOriginPredicate(OriginQueryExpression query)
+    private static bool IsSelectedQuery(IQueryable query)
     {
-        if (query.Origin.Value is null || query.Key is null)
-        {
-            throw new ArgumentException(
-                $"Both {nameof(query.Origin)} and {nameof(query.Key)} cannot be null", nameof(query));
-        }
+        var findSelector = new FindSelectVisitor(query.ElementType);
 
-        if (FindMemberParameter.Instance.Visit(query.Key) is not ParameterExpression parameter
-            || parameter.Type != query.Type)
+        return findSelector.Visit(query.Expression) is LambdaExpression;
+    }
+
+    private static QueryRootExpression FindQueryRoot(Expression query)
+    {
+        if (FindQueryRootVisitor.Instance.Visit(query) is not QueryRootExpression root)
         {
             throw new InvalidOperationException(
-                $"{nameof(query.Key)} is missing parameter of type {query.Type.Name}");
-        }
-
-        return Expression.Lambda(Expression.Equal(query.Key, query.Origin), parameter);
-    }
-
-    private static bool IsSelectedQuery(OriginQueryExpression query)
-    {
-        var findSelector = new FindSelectVisitor(query.Type);
-
-        return findSelector.Visit(query.Source) is LambdaExpression;
-    }
-
-    private static QueryRootExpression FindQueryRoot(OriginQueryExpression query)
-    {
-        if (FindQueryRootVisitor.Instance.Visit(query.Source) is not QueryRootExpression root)
-        {
-            throw new InvalidOperationException(
-                $"{nameof(query.Source)} is missing parameter of type {nameof(QueryRootExpression)}");
+                $"{nameof(query)} is missing parameter of type {nameof(QueryRootExpression)}");
         }
 
         return root;

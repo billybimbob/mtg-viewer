@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Linq.Expressions;
-using System.Reflection;
 
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Query;
@@ -12,156 +11,173 @@ using EntityFrameworkCore.Paging.Utils;
 
 namespace EntityFrameworkCore.Paging.Query;
 
-internal class OriginQueryTranslationVisitor : ExpressionVisitor
+internal class OriginTranslationVisitor : ExpressionVisitor
 {
+    private readonly IQueryProvider _source;
     private readonly ParameterExpression _orderBy;
+    private bool _isCreatedQuery;
 
-    public OriginQueryTranslationVisitor(ParameterExpression orderBy)
+    public OriginTranslationVisitor(IQueryProvider source, ParameterExpression orderBy)
     {
+        _source = source;
         _orderBy = orderBy;
     }
 
     [return: NotNullIfNotNull("node")]
     public override Expression? Visit(Expression? node)
     {
+        _isCreatedQuery = false;
+
         var visited = base.Visit(node);
 
-        if (visited is OriginQueryExpression query && query.Type != _orderBy.Type)
+        if (visited is ConstantExpression || _isCreatedQuery)
         {
-            return node;
+            return visited;
         }
 
-        return visited;
+        return Expression.Constant(null, _orderBy.Type);
     }
 
     protected override Expression VisitMethodCall(MethodCallExpression node)
     {
-        if (ExpressionHelpers.IsSeekBy(node))
+        if (ExpressionHelpers.IsSeekBy(node)
+            && node.Method.GetGenericArguments()[0] == _orderBy.Type)
         {
-            return new OriginQueryExpression(node.Arguments[0], Expression.Constant(null), null);
+            return node.Arguments[0];
         }
 
-        if (base.Visit(node.Arguments.ElementAtOrDefault(0)) is not OriginQueryExpression query)
+        if (base.Visit(node.Arguments.ElementAtOrDefault(0)) is not Expression parent)
         {
             return node;
         }
 
-        if (!ExpressionHelpers.IsAfter(node)
-            || node.Arguments.ElementAtOrDefault(1) is not Expression origin)
+        if (!ExpressionHelpers.IsAfter(node))
         {
-            return query;
+            return parent;
         }
 
-        var afterVisitor = new AfterVisitor(query);
+        var afterArgument = AfterVisitor.Scan(_orderBy, node.Arguments[1]);
 
-        return afterVisitor.Visit(origin);
-    }
-
-    protected override Expression VisitExtension(Expression node)
-    {
-        if (node is QueryRootExpression root)
+        if (afterArgument is ConstantExpression origin)
         {
-            return new OriginQueryExpression(root, Expression.Constant(null), null);
+            return origin;
         }
 
-        return node;
+        if (afterArgument is not LambdaExpression predicate)
+        {
+            return node;
+        }
+
+        _isCreatedQuery = true;
+
+        return _source
+            .CreateQuery(parent)
+            .Where(predicate)
+            .Expression;
     }
 
     private sealed class AfterVisitor : ExpressionVisitor
     {
-        private readonly OriginQueryExpression _seekBy;
-
-        public AfterVisitor(OriginQueryExpression seekBy)
+        public static Expression Scan(ParameterExpression orderBy, Expression node)
         {
-            _seekBy = seekBy;
+            var visitor = new AfterVisitor(orderBy);
+
+            return visitor.Visit(node);
         }
 
-        [return: NotNullIfNotNull("node")]
-        public override Expression? Visit(Expression? node)
+        private readonly ParameterExpression _orderBy;
+
+        private AfterVisitor(ParameterExpression orderBy)
         {
-            return base.Visit(node) switch
-            {
-                ConstantExpression o => _seekBy.Update(_seekBy.Source, o, _seekBy.Key),
-                OriginQueryExpression q => q,
-                Expression e => e,
-                null or _ => null
-            };
-        }
-
-        protected override Expression VisitConstant(ConstantExpression node)
-        {
-            if (node.Value is null)
-            {
-                return node;
-            }
-
-            var innerType = Nullable.GetUnderlyingType(node.Type);
-
-            if (innerType is null || innerType != _seekBy.Type)
-            {
-                return node;
-            }
-
-            return Expression.Constant(node.Value, innerType);
-        }
-
-        protected override Expression VisitBinary(BinaryExpression node)
-        {
-            if (node.NodeType is not ExpressionType.Equal)
-            {
-                return node;
-            }
-
-            // TODO: account for >1 equality conditions
-
-            var left = base.Visit(node.Left);
-            var right = base.Visit(node.Right);
-
-            return (left, right) switch
-            {
-                (ConstantExpression o, MemberExpression k) => _seekBy.Update(_seekBy.Source, o, k),
-                (MemberExpression k, ConstantExpression o) => _seekBy.Update(_seekBy.Source, o, k),
-                _ => node
-            };
+            _orderBy = orderBy;
         }
 
         protected override Expression VisitUnary(UnaryExpression node)
         {
             if (node.NodeType is ExpressionType.Quote)
             {
-                return base.Visit(node.Operand);
-            }
-
-            if (node.NodeType is ExpressionType.Convert
-                && Nullable.GetUnderlyingType(node.Type) is not null)
-            {
-                return base.Visit(node.Operand);
+                return Visit(node.Operand);
             }
 
             return node;
         }
 
         protected override Expression VisitLambda<TFunc>(Expression<TFunc> node)
-            => base.Visit(node.Body);
+        {
+            var body = Visit(node.Body);
+
+            if (ExpressionHelpers.IsNull(body))
+            {
+                return body;
+            }
+
+            return node.Update(body, node.Parameters);
+        }
+
+        protected override Expression VisitBinary(BinaryExpression node)
+        {
+            var left = Visit(node.Left);
+
+            if (ExpressionHelpers.IsNull(left))
+            {
+                return left;
+            }
+
+            var right = Visit(node.Right);
+
+            if (ExpressionHelpers.IsNull(right))
+            {
+                return right;
+            }
+
+            return node;
+        }
 
         protected override Expression VisitMember(MemberExpression node)
         {
-            return (node.Member, base.Visit(node.Expression)) switch
+            if (MemberEvaluationVisitor.Instance.Visit(node) is not LambdaExpression eval)
             {
-                (PropertyInfo property, ConstantExpression { Value: var e })
-                    => Expression
-                        .Constant(property.GetValue(e)),
+                return base.VisitMember(node);
+            }
 
-                (FieldInfo field, ConstantExpression { Value: var e })
-                    => Expression
-                        .Constant(field.GetValue(e)),
+            // keep eye on, could be slower than just pass thru
 
-                (_, Expression e) => node.Update(e),
+            if (eval.Compile().DynamicInvoke() is null)
+            {
+                return Expression.Constant(null, _orderBy.Type);
+            }
 
-                _ => node.Update(null)
-            };
+            return base.VisitMember(node);
         }
     }
+
+    private sealed class MemberEvaluationVisitor : ExpressionVisitor
+    {
+        private static MemberEvaluationVisitor? _instance;
+        public static MemberEvaluationVisitor Instance => _instance ??= new();
+
+        [return: NotNullIfNotNull("node")]
+        public override Expression? Visit(Expression? node)
+        {
+            if (base.Visit(node) is MemberExpression member)
+            {
+                return Expression.Lambda(member);
+            }
+
+            return node;
+        }
+
+        protected override Expression VisitMember(MemberExpression node)
+        {
+            if (node.Expression is ParameterExpression parameter)
+            {
+                return parameter;
+            }
+
+            return node;
+        }
+    }
+
 }
 
 internal class FindOrderParameterVisitor : ExpressionVisitor
