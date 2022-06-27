@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore.Query;
 
 using EntityFrameworkCore.Paging.Utils;
 
-namespace EntityFrameworkCore.Paging.Query;
+namespace EntityFrameworkCore.Paging.Query.Seek;
 
 internal sealed class OriginTranslator
 {

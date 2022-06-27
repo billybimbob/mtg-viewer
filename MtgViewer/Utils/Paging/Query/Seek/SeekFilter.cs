@@ -7,13 +7,23 @@ using Microsoft.EntityFrameworkCore.Query;
 
 using EntityFrameworkCore.Paging.Utils;
 
-namespace EntityFrameworkCore.Paging.Query;
+namespace EntityFrameworkCore.Paging.Query.Seek;
 
-internal sealed class OriginFilter
+internal sealed class SeekFilter
 {
-    public static LambdaExpression? Build(SeekExpression seek)
+    public static LambdaExpression? Build(Expression query, ConstantExpression? origin, SeekDirection? direction)
     {
-        var builder = new OriginFilter(seek);
+        if (origin is null)
+        {
+            return null;
+        }
+
+        if (direction is not SeekDirection dir)
+        {
+            return null;
+        }
+
+        var builder = new SeekFilter(query, origin, dir);
 
         return builder.Build();
     }
@@ -26,7 +36,7 @@ internal sealed class OriginFilter
     private readonly IReadOnlyList<KeyOrder> _orderKeys;
     private readonly IReadOnlyDictionary<Expression, NullOrder> _nullOrders;
 
-    private OriginFilter(Expression query, OriginTranslator origin, SeekDirection direction)
+    private SeekFilter(Expression query, OriginTranslator origin, SeekDirection direction)
     {
         _parameter = Expression
             .Parameter(
@@ -36,14 +46,14 @@ internal sealed class OriginFilter
         _origin = origin;
         _direction = direction;
 
-        var orderByVisitor = new OrderByVisitor(_parameter);
+        var orderProperty = new OrderPropertyVisitor(_parameter);
 
-        _orderKeys = FindOrderPropertiesVisitor.Scan(orderByVisitor, origin, query);
-        _nullOrders = FindNullPropertiesVisitor.Scan(orderByVisitor, origin, query);
+        _orderKeys = FindOrderPropertiesVisitor.Scan(orderProperty, origin, query);
+        _nullOrders = FindNullPropertiesVisitor.Scan(orderProperty, origin, query);
     }
 
-    private OriginFilter(SeekExpression seek)
-        : this(seek.Query, new OriginTranslator(seek.Origin), seek.Direction)
+    private SeekFilter(Expression query, ConstantExpression origin, SeekDirection direction)
+        : this(query, new OriginTranslator(origin), direction)
     {
     }
 
@@ -230,7 +240,7 @@ internal sealed class OriginFilter
     private sealed class FindOrderPropertiesVisitor : ExpressionVisitor
     {
         public static IReadOnlyList<KeyOrder> Scan(
-            OrderByVisitor orderByVisitor,
+            OrderPropertyVisitor orderByVisitor,
             OriginTranslator origin,
             Expression expression)
         {
@@ -241,14 +251,14 @@ internal sealed class OriginFilter
             return findOrders._properties;
         }
 
-        private readonly OrderByVisitor _orderByVisitor;
+        private readonly OrderPropertyVisitor _orderProperty;
         private readonly OriginTranslator _origin;
 
         private readonly List<KeyOrder> _properties;
 
-        private FindOrderPropertiesVisitor(OrderByVisitor orderByVisitor, OriginTranslator origin)
+        private FindOrderPropertiesVisitor(OrderPropertyVisitor orderProperty, OriginTranslator origin)
         {
-            _orderByVisitor = orderByVisitor;
+            _orderProperty = orderProperty;
             _origin = origin;
 
             _properties = new List<KeyOrder>();
@@ -270,7 +280,7 @@ internal sealed class OriginFilter
                 _ = base.Visit(parent);
             }
 
-            if (_orderByVisitor.Visit(node) is MemberExpression propertyOrder
+            if (_orderProperty.Visit(node) is MemberExpression propertyOrder
                 && _origin.TryRegister(propertyOrder))
             {
                 var ordering = ExpressionHelpers.IsDescending(node)
@@ -287,7 +297,7 @@ internal sealed class OriginFilter
     private sealed class FindNullPropertiesVisitor : ExpressionVisitor
     {
         public static IReadOnlyDictionary<Expression, NullOrder> Scan(
-            OrderByVisitor orderByVisitor,
+            OrderPropertyVisitor orderByVisitor,
             OriginTranslator origin,
             Expression expression)
         {
@@ -298,16 +308,16 @@ internal sealed class OriginFilter
             return findNulls._properties;
         }
 
-        private readonly OrderByVisitor _orderByVisitor;
+        private readonly OrderPropertyVisitor _orderProperty;
         private readonly OriginTranslator _origin;
 
         private readonly Dictionary<Expression, NullOrder> _properties;
 
         private MemberExpression? _lastProperty;
 
-        private FindNullPropertiesVisitor(OrderByVisitor orderByVisitor, OriginTranslator origin)
+        private FindNullPropertiesVisitor(OrderPropertyVisitor orderProperty, OriginTranslator origin)
         {
-            _orderByVisitor = orderByVisitor;
+            _orderProperty = orderProperty;
             _origin = origin;
 
             _properties = new Dictionary<Expression, NullOrder>(ExpressionEqualityComparer.Instance);
@@ -330,7 +340,7 @@ internal sealed class OriginFilter
                 _ = base.Visit(parent);
             }
 
-            if (_orderByVisitor.Visit(node) is not MemberExpression nullOrder
+            if (_orderProperty.Visit(node) is not MemberExpression nullOrder
                 || !_origin.TryRegister(nullOrder))
             {
                 return node;
@@ -358,11 +368,11 @@ internal sealed class OriginFilter
         }
     }
 
-    private sealed class OrderByVisitor : ExpressionVisitor
+    private sealed class OrderPropertyVisitor : ExpressionVisitor
     {
         private readonly ParameterExpression _parameter;
 
-        public OrderByVisitor(ParameterExpression parameter)
+        public OrderPropertyVisitor(ParameterExpression parameter)
         {
             _parameter = parameter;
         }

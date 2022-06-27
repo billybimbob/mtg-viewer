@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -17,8 +18,7 @@ public static class AsyncExtensions
         static async IAsyncEnumerable<TSource[]> CoreChunk(
             IAsyncEnumerable<TSource> source,
             int size,
-            [System.Runtime.CompilerServices.EnumeratorCancellation]
-            CancellationToken cancel = default)
+            [EnumeratorCancellation] CancellationToken cancel = default)
         {
             await using var e = source
                 .WithCancellation(cancel)

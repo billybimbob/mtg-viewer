@@ -9,29 +9,6 @@ using Microsoft.EntityFrameworkCore.Query;
 
 namespace EntityFrameworkCore.Paging.Query;
 
-internal static class SeekQuery
-{
-    public static IQueryable Create(SeekProvider provider, Expression expression)
-    {
-        if (!expression.Type.IsAssignableTo(typeof(IQueryable)))
-        {
-            throw new ArgumentException("Expression must be a query", nameof(expression));
-        }
-
-        var elementType = expression.Type.GenericTypeArguments.ElementAtOrDefault(0);
-
-        if (elementType is null)
-        {
-            throw new ArgumentException("Expression must be strongly typed", nameof(expression));
-        }
-
-        var seekQueryType = typeof(SeekQuery<>).MakeGenericType(elementType);
-
-        return (IQueryable)Activator
-            .CreateInstance(seekQueryType, provider, expression)!;
-    }
-}
-
 internal class SeekQuery<TSource> : ISeekable<TSource>, IOrderedQueryable<TSource>, IAsyncEnumerable<TSource>
 {
     public SeekQuery(SeekProvider provider, Expression expression)
@@ -61,4 +38,27 @@ internal class SeekQuery<TSource> : ISeekable<TSource>, IOrderedQueryable<TSourc
         => AsyncProvider
             .ExecuteAsync<IAsyncEnumerable<TSource>>(Expression, cancellationToken)
             .GetAsyncEnumerator(cancellationToken);
+}
+
+internal static class SeekQuery
+{
+    public static IQueryable Create(SeekProvider provider, Expression expression)
+    {
+        if (!expression.Type.IsAssignableTo(typeof(IQueryable)))
+        {
+            throw new ArgumentException("Expression must be a query", nameof(expression));
+        }
+
+        var elementType = expression.Type.GenericTypeArguments.ElementAtOrDefault(0);
+
+        if (elementType is null)
+        {
+            throw new ArgumentException("Expression must be strongly typed", nameof(expression));
+        }
+
+        var seekQueryType = typeof(SeekQuery<>).MakeGenericType(elementType);
+
+        return (IQueryable)Activator
+            .CreateInstance(seekQueryType, provider, expression)!;
+    }
 }
