@@ -4,12 +4,11 @@ using System.Linq.Expressions;
 
 using EntityFrameworkCore.Paging.Utils;
 
-namespace EntityFrameworkCore.Paging.Query.Seek;
+namespace EntityFrameworkCore.Paging.Query.Infrastructure;
 
 internal class FindOrderingVisitor : ExpressionVisitor
 {
-    private static FindOrderingVisitor? _instance;
-    public static FindOrderingVisitor Instance => _instance ??= new();
+    public static FindOrderingVisitor Instance { get; } = new();
 
     private bool _foundSeek;
 
@@ -72,8 +71,7 @@ internal class FindOrderingVisitor : ExpressionVisitor
 
     private sealed class FindSeekByVisitor : ExpressionVisitor
     {
-        private static FindSeekByVisitor? _instance;
-        public static FindSeekByVisitor Instance => _instance ??= new();
+        public static FindSeekByVisitor Instance { get; } = new();
 
         protected override Expression VisitMethodCall(MethodCallExpression node)
         {

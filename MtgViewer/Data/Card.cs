@@ -71,6 +71,16 @@ public class Card
     public List<Suggestion> Suggestions { get; } = new();
 }
 
+public enum Rarity
+{
+    Common,
+    Uncommon,
+    Rare,
+    Mythic,
+    Special,
+    Bonus
+}
+
 [Owned]
 public class Flip
 {

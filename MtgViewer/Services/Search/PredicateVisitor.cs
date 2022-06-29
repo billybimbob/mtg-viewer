@@ -8,20 +8,19 @@ namespace MtgViewer.Services.Search;
 
 internal class PredicateVisitor : ExpressionVisitor
 {
-    private static PredicateVisitor? _instance;
-    public static PredicateVisitor Instance => _instance ??= new();
+    public static PredicateVisitor Instance { get; } = new();
 
-    private static UnaryExpression? _nullDictionary;
-    private static UnaryExpression NullDictionary =>
-        _nullDictionary ??=
-            Expression.Convert(
-                Expression.Constant(null),
-                typeof(IDictionary<string, IMtgParameter>));
+    private static readonly ConstantExpression _nullDictionary
+        = Expression.Constant(null, typeof(IDictionary<string, IMtgParameter>));
 
-    private readonly Dictionary<string, ConstantExpression> _propertyNames = new();
+    private readonly Dictionary<string, ConstantExpression> _propertyNames;
+    private readonly AllPredicateVisitor _allVisitor;
 
-    private AllPredicateVisitor? _allVisitor;
-    private ExpressionVisitor AllPredicate => _allVisitor ??= new(_propertyNames);
+    private PredicateVisitor()
+    {
+        _propertyNames = new Dictionary<string, ConstantExpression>();
+        _allVisitor = new AllPredicateVisitor(_propertyNames);
+    }
 
     protected override Expression VisitLambda<T>(Expression<T> node)
         => Visit(node.Body);
@@ -119,7 +118,7 @@ internal class PredicateVisitor : ExpressionVisitor
         return Expression.Call(
             null,
             MtgApiQuery.QueryMethod,
-            NullDictionary, propertyName, value);
+            _nullDictionary, propertyName, value);
     }
 
     protected override Expression VisitMethodCall(MethodCallExpression node)
@@ -132,7 +131,7 @@ internal class PredicateVisitor : ExpressionVisitor
 
         if (node.Method == TypeHelpers.EnumerableAll.MakeGenericMethod(typeof(string)))
         {
-            var visitPredicate = AllPredicate.Visit(node.Arguments[1]);
+            var visitPredicate = _allVisitor.Visit(node.Arguments[1]);
 
             return CallQuery(visitPredicate, Visit(node.Arguments[0]));
         }

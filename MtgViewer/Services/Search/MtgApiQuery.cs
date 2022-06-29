@@ -84,30 +84,30 @@ public sealed class MtgApiQuery : IMtgQuery
     {
         if (!parameters.TryGetValue(name, out var parameter))
         {
-            parameter = new MtgDefaultParameter(GetParameter(name));
+            parameter = new MtgDefaultParameter(GetProperty(name));
         }
 
         parameters[name] = parameter.Accept(value);
     }
 
-    private static Expression<Func<CardQueryParameter, string>> GetParameter(string name)
+    private static Expression<Func<CardQueryParameter, string>> GetProperty(string name)
     {
         const BindingFlags binds = BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase;
 
-        var property = typeof(CardQueryParameter).GetProperty(name, binds);
+        var queryProperty = typeof(CardQueryParameter).GetProperty(name, binds);
 
-        if (property == null || property.PropertyType != typeof(string))
+        if (queryProperty is null || queryProperty.PropertyType != typeof(string))
         {
             throw new ArgumentException("The parameter property does not exist or is not a string type", nameof(name));
         }
 
-        var param = Expression.Parameter(
+        var queryParameter = Expression.Parameter(
             typeof(CardQueryParameter),
             nameof(CardQueryParameter)[0].ToString().ToLowerInvariant());
 
         return Expression
             .Lambda<Func<CardQueryParameter, string>>(
-                Expression.Property(param, name), param);
+                Expression.Property(queryParameter, queryProperty), queryParameter);
     }
 
     internal async Task<OffsetList<Card>> SearchAsync(
@@ -127,8 +127,7 @@ public sealed class MtgApiQuery : IMtgQuery
 
         var cards = await _flipQuery.GetCardsAsync(response, cancel);
 
-        var offset = new Offset(
-            values.Page, response.PagingInfo.TotalPages);
+        var offset = new Offset(values.Page, response.PagingInfo.TotalPages);
 
         return new OffsetList<Card>(offset, cards);
     }

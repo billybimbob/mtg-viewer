@@ -9,7 +9,7 @@ using Microsoft.EntityFrameworkCore.Query;
 
 using EntityFrameworkCore.Paging.Utils;
 
-namespace EntityFrameworkCore.Paging.Query.Seek;
+namespace EntityFrameworkCore.Paging.Query.Infrastructure;
 
 internal class QueryOriginVisitor : ExpressionVisitor
 {
@@ -123,8 +123,7 @@ internal class QueryOriginVisitor : ExpressionVisitor
 
     private sealed class AfterVisitor : ExpressionVisitor
     {
-        private static AfterVisitor? _instance;
-        public static AfterVisitor Instance => _instance ??= new();
+        public static AfterVisitor Instance { get; } = new();
 
         protected override Expression VisitUnary(UnaryExpression node)
         {
@@ -187,8 +186,7 @@ internal class QueryOriginVisitor : ExpressionVisitor
 
     private sealed class MemberEvaluationVisitor : ExpressionVisitor
     {
-        private static MemberEvaluationVisitor? _instance;
-        public static MemberEvaluationVisitor Instance => _instance ??= new();
+        public static MemberEvaluationVisitor Instance { get; } = new();
 
         [return: NotNullIfNotNull("node")]
         public override Expression? Visit(Expression? node)

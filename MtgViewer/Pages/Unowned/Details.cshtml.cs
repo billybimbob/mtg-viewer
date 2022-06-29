@@ -44,7 +44,7 @@ public class DetailsModel : PageModel
     [TempData]
     public string? PostMessage { get; set; }
 
-    public UnclaimedDetails Unclaimed { get; private set; } = default!;
+    public TheorycraftDetails Unclaimed { get; private set; } = default!;
 
     public SeekList<DeckCopy> Cards { get; private set; } = SeekList.Empty<DeckCopy>();
 
@@ -68,10 +68,10 @@ public class DetailsModel : PageModel
         return Page();
     }
 
-    private static readonly Func<CardDbContext, int, CancellationToken, Task<UnclaimedDetails?>> UnclaimedAsync
+    private static readonly Func<CardDbContext, int, CancellationToken, Task<TheorycraftDetails?>> UnclaimedAsync
         = EF.CompileAsyncQuery((CardDbContext db, int id, CancellationToken _)
             => db.Unclaimed
-                .Select(u => new UnclaimedDetails
+                .Select(u => new TheorycraftDetails
                 {
                     Id = u.Id,
                     Name = u.Name,
@@ -83,7 +83,7 @@ public class DetailsModel : PageModel
                 .SingleOrDefault(u => u.Id == id));
 
     private async Task<SeekList<DeckCopy>> SeekCardsAsync(
-        UnclaimedDetails unclaimed,
+        TheorycraftDetails unclaimed,
         SeekDirection direction,
         string? origin,
         CancellationToken cancel)

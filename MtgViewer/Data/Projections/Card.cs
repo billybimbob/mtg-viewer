@@ -2,14 +2,14 @@ namespace MtgViewer.Data.Projections;
 
 public sealed record HeldCard(Card Card, int Copies);
 
-#region Card Previews
-
 public sealed record CardImage
 {
     public string Id { get; init; } = string.Empty;
     public string Name { get; init; } = string.Empty;
     public string ImageUrl { get; init; } = string.Empty;
 }
+
+#region Card Previews
 
 public record CardPreview
 {

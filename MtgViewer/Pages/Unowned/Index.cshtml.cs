@@ -28,7 +28,7 @@ public class IndexModel : PageModel
         _pageSize = pageSize;
     }
 
-    public SeekList<UnclaimedDetails> Unclaimed { get; private set; } = SeekList.Empty<UnclaimedDetails>();
+    public SeekList<TheorycraftDetails> Unclaimed { get; private set; } = SeekList.Empty<TheorycraftDetails>();
 
     public async Task<IActionResult> OnGetAsync(
         int? seek,
@@ -40,7 +40,7 @@ public class IndexModel : PageModel
         return Page();
     }
 
-    private async Task<SeekList<UnclaimedDetails>> SeekDecksAsync(
+    private async Task<SeekList<TheorycraftDetails>> SeekDecksAsync(
         SeekDirection direction,
         int? origin,
         CancellationToken cancel)
@@ -53,7 +53,7 @@ public class IndexModel : PageModel
                 .After(u => u.Id == origin)
                 .ThenTake(_pageSize.Current)
 
-            .Select(u => new UnclaimedDetails
+            .Select(u => new TheorycraftDetails
             {
                 Id = u.Id,
                 Name = u.Name,

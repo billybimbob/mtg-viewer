@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Query;
 
-using EntityFrameworkCore.Paging.Query.Seek;
+using EntityFrameworkCore.Paging.Query.Infrastructure;
 using EntityFrameworkCore.Paging.Utils;
 
 namespace EntityFrameworkCore.Paging.Query;

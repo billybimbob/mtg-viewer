@@ -32,6 +32,14 @@ public abstract class Quantity : Concurrent
     public int Copies { get; set; }
 }
 
+internal enum QuantityType
+{
+    Invalid,
+    Hold,
+    Want,
+    Giveback
+}
+
 public class Hold : Quantity
 { }
 

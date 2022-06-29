@@ -28,8 +28,13 @@ public record CardRequest(Card Card, int Copies)
         return card;
     }
 
-    private static int NotNegativeOrThrow(int copies) =>
-        copies >= 0
-            ? copies
-            : throw new ArgumentException("Copies is negative", nameof(copies));
+    private static int NotNegativeOrThrow(int copies)
+    {
+        if (copies < 0)
+        {
+            throw new ArgumentException("Copies is negative", nameof(copies));
+        }
+
+        return copies;
+    }
 }

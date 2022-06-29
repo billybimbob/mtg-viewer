@@ -5,8 +5,7 @@ namespace MtgViewer.Data.Infrastructure;
 
 public class CardNameComparer : Comparer<Card>
 {
-    private static CardNameComparer? _instance;
-    public static CardNameComparer Instance => _instance ??= new();
+    public static CardNameComparer Instance { get; } = new();
 
     public override int Compare(Card? x, Card? y)
     {

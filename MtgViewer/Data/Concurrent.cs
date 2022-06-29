@@ -17,4 +17,5 @@ public abstract class Concurrent
     internal uint xmin { get; set; }
 
 #pragma warning restore IDE1006
+
 }

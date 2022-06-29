@@ -3,12 +3,11 @@ using System.Linq.Expressions;
 
 using EntityFrameworkCore.Paging.Utils;
 
-namespace EntityFrameworkCore.Paging.Query.Seek;
+namespace EntityFrameworkCore.Paging.Query.Infrastructure;
 
 internal sealed class ParseSeekVisitor : ExpressionVisitor
 {
-    private static ParseSeekVisitor? _instance;
-    public static ParseSeekVisitor Instance => _instance ??= new();
+    public static ParseSeekVisitor Instance { get; } = new();
 
     protected override Expression VisitMethodCall(MethodCallExpression node)
     {
@@ -42,6 +41,6 @@ internal sealed class ParseSeekVisitor : ExpressionVisitor
             return seek.Update(seek.Origin, seek.Direction, count);
         }
 
-        return parent;
+        return seek;
     }
 }

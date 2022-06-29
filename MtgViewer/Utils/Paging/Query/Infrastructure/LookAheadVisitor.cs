@@ -3,12 +3,11 @@ using System.Linq.Expressions;
 
 using EntityFrameworkCore.Paging.Utils;
 
-namespace EntityFrameworkCore.Paging.Query.Seek;
+namespace EntityFrameworkCore.Paging.Query.Infrastructure;
 
 internal sealed class LookAheadVisitor : ExpressionVisitor
 {
-    private static LookAheadVisitor? _instance;
-    public static LookAheadVisitor Instance => _instance ??= new();
+    public static LookAheadVisitor Instance { get; } = new();
 
     protected override Expression VisitMethodCall(MethodCallExpression node)
     {

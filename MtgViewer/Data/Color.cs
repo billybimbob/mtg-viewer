@@ -3,16 +3,6 @@ using System.Collections.Generic;
 
 namespace MtgViewer.Data;
 
-public enum Rarity
-{
-    Common,
-    Uncommon,
-    Rare,
-    Mythic,
-    Special,
-    Bonus
-}
-
 [Flags]
 public enum Color
 {
@@ -28,10 +18,8 @@ public static class Symbol
 {
     public const string LongDash = "\u2014";
 
-    private static SortedList<Color, string>? _colors;
-
-    public static IReadOnlyDictionary<Color, string> Colors =>
-        _colors ??= new()
+    public static IReadOnlyDictionary<Color, string> Colors { get; }
+        = new SortedList<Color, string>()
         {
             [Color.Black] = "B",
             [Color.Blue] = "U",
@@ -39,21 +27,4 @@ public static class Symbol
             [Color.Red] = "R",
             [Color.White] = "W"
         };
-}
-
-internal enum LocationType
-{
-    Invalid,
-    Deck,
-    Unclaimed,
-    Box,
-    Excess
-}
-
-internal enum QuantityType
-{
-    Invalid,
-    Hold,
-    Want,
-    Giveback
 }

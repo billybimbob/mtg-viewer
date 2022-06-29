@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
@@ -7,7 +8,7 @@ using Microsoft.EntityFrameworkCore.Query;
 
 using EntityFrameworkCore.Paging.Utils;
 
-namespace EntityFrameworkCore.Paging.Query.Seek;
+namespace EntityFrameworkCore.Paging.Query.Infrastructure;
 
 internal sealed class SeekFilter
 {
@@ -38,6 +39,9 @@ internal sealed class SeekFilter
 
     private SeekFilter(Expression query, OriginTranslator origin, SeekDirection direction)
     {
+        ArgumentNullException.ThrowIfNull(query);
+        ArgumentNullException.ThrowIfNull(origin);
+
         _parameter = Expression
             .Parameter(
                 origin.Type,

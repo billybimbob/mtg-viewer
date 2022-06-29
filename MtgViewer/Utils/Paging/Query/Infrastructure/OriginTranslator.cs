@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore.Query;
 
 using EntityFrameworkCore.Paging.Utils;
 
-namespace EntityFrameworkCore.Paging.Query.Seek;
+namespace EntityFrameworkCore.Paging.Query.Infrastructure;
 
 internal sealed class OriginTranslator
 {
@@ -20,6 +20,8 @@ internal sealed class OriginTranslator
 
     public OriginTranslator(ConstantExpression origin)
     {
+        ArgumentNullException.ThrowIfNull(origin);
+
         var expressionEquality = ExpressionEqualityComparer.Instance;
 
         _origin = origin;

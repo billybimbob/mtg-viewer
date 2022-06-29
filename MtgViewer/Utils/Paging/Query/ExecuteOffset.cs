@@ -100,8 +100,7 @@ internal static class ExecuteOffset<TEntity>
 
     private sealed class FindOffsetVisitor : ExpressionVisitor
     {
-        private static FindOffsetVisitor? _instance;
-        public static FindOffsetVisitor Instance => _instance ??= new();
+        public static FindOffsetVisitor Instance { get; } = new();
 
         protected override Expression VisitMethodCall(MethodCallExpression node)
         {
@@ -138,8 +137,7 @@ internal static class ExecuteOffset<TEntity>
 
     private sealed class RemoveOffsetVisitor : ExpressionVisitor
     {
-        private static RemoveOffsetVisitor? _instance;
-        public static RemoveOffsetVisitor Instance => _instance ??= new();
+        public static RemoveOffsetVisitor Instance { get; } = new();
 
         protected override Expression VisitMethodCall(MethodCallExpression node)
         {

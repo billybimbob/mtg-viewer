@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 
@@ -32,16 +31,4 @@ public class Change
     [JsonIgnore]
     public int TransactionId { get; init; }
     public Transaction Transaction { get; init; } = default!;
-}
-
-[Index(nameof(AppliedAt), IsUnique = true)]
-public class Transaction
-{
-    [JsonIgnore]
-    public int Id { get; private set; }
-
-    [Display(Name = "Applied At")]
-    public DateTime AppliedAt { get; private set; }
-
-    public List<Change> Changes { get; init; } = new();
 }

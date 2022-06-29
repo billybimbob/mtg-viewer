@@ -5,7 +5,7 @@ using System.Linq.Expressions;
 
 using EntityFrameworkCore.Paging.Utils;
 
-namespace EntityFrameworkCore.Paging.Query.Seek;
+namespace EntityFrameworkCore.Paging.Query.Infrastructure;
 
 internal sealed class TranslateSeekVisitor : ExpressionVisitor
 {
@@ -66,9 +66,9 @@ internal sealed class TranslateSeekVisitor : ExpressionVisitor
 
     private IQueryable ExpandToQuery(Expression source)
     {
-        var query = _provider.CreateQuery(source);
-
         var filter = SeekFilter.Build(source, _origin, _direction);
+
+        var query = _provider.CreateQuery(source);
 
         return (_direction, filter, _size) switch
         {

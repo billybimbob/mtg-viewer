@@ -311,12 +311,8 @@ public partial class Craft
 
         var quantities = _deckContext.Groups
             .Select(g => g.GetQuantity<TQuantity>())
-            .OfType<TQuantity>()
-            .Where(q => q switch
-            {
-                Hold or { Copies: > 0 } => true,
-                _ => false
-            });
+            .Where(q => q is Hold or { Copies: > 0 })
+            .Cast<TQuantity>();
 
         var orderedQuantities = _cards
             .Join(quantities,
@@ -357,7 +353,9 @@ public partial class Craft
                 .ToList(),
         };
 
+        bool hasOrigin = origin is not null;
         bool lookAhead = items.Count == size;
+        int targetSize = size - 1;
 
         if (lookAhead && direction is SeekDirection.Forward)
         {
@@ -368,10 +366,9 @@ public partial class Craft
             items.RemoveAt(0);
         }
 
-        var seekList = new SeekList<TQuantity>(
-            items, direction, origin is not null, lookAhead, size - 1);
+        var list = new SeekList<TQuantity>(items, direction, hasOrigin, lookAhead, targetSize);
 
-        return new LoadedSeekList<TQuantity>(origin, direction, seekList);
+        return new LoadedSeekList<TQuantity>(origin, direction, list);
     }
 
     private async Task LoadQuantitiesAsync<TQuantity>(
