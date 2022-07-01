@@ -51,7 +51,7 @@ public class BackupFactory
 
         var utf8Stream = new MemoryStream();
 
-        var data = await CardData.FromStreamAsync(stream, cancel);
+        var data = await CardData.FromAsync(stream, cancel);
 
         await JsonSerializer.SerializeAsync(utf8Stream, data, serializeOptions, cancel);
 

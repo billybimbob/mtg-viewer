@@ -130,13 +130,13 @@
                         {
                             <tr>
                                 <td>
-                                    <a asp-page="/Cards/Details" asp-route-id="@suggestion.CardId">
-                                        @suggestion.CardName </a>
+                                    <a asp-page="/Cards/Details" asp-route-id="@suggestion.Card.Id">
+                                        @suggestion.Card.Name </a>
                                 </td>
 
                                 <td>
                                     <div class="ms-group">
-                                        @MtgSymbols.Format(suggestion.CardManaCost).ToHtmlString()
+                                        @MtgSymbols.Format(suggestion.Card.ManaCost).ToHtmlString()
                                     </div>
                                 </td>
 

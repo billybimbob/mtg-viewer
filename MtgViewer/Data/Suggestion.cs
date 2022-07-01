@@ -28,9 +28,9 @@ public class Suggestion
     [Display(Name = "To Deck")]
     public Deck? To { get; init; }
 
-    [StringLength(80)]
-    public string? Comment { get; set; }
-
     [Display(Name = "Sent At")]
     public DateTime SentAt { get; private set; }
+
+    [StringLength(80)]
+    public string? Comment { get; set; }
 }

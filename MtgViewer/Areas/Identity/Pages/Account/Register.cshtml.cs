@@ -17,17 +17,14 @@ namespace MtgViewer.Areas.Identity.Pages.Account;
 public class RegisterModel : PageModel
 {
     private readonly UserManager<CardUser> _userManager;
-    private readonly PlayerManager _playerManager;
     private readonly EmailVerification _emailVerify;
     private readonly ILogger<RegisterModel> _logger;
 
     public RegisterModel(
         UserManager<CardUser> userManager,
-        PlayerManager playerManager,
         EmailVerification emailVerify,
         ILogger<RegisterModel> logger)
     {
-        _playerManager = playerManager;
         _userManager = userManager;
         _emailVerify = emailVerify;
         _logger = logger;
@@ -93,17 +90,6 @@ public class RegisterModel : PageModel
         string? userId = await _userManager.GetUserIdAsync(user);
 
         user.Id = userId;
-
-        bool created = await _playerManager.CreateAsync(user, cancel);
-
-        if (!created)
-        {
-            ModelState.AddModelError(string.Empty, "Issue creating user account");
-            // try to delete, possibly can still fail and remain in user store
-            await _userManager.DeleteAsync(user);
-
-            return Page();
-        }
 
         bool emailed = await _emailVerify.SendApproveRequestAsync(user);
         if (!emailed)

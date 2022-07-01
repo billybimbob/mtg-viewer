@@ -31,14 +31,18 @@ namespace MtgViewer.Areas.Identity.Services
         {
             var id = await base.GenerateClaimsAsync(user);
 
+            if (!user.IsApproved)
+            {
+                id.AddClaim(new Claim(CardClaims.DisplayName, user.DisplayName));
+                return id;
+            }
+
             var player = await _playerManager.Players
                 .OrderBy(p => p.Id)
                 .SingleOrDefaultAsync(p => p.Id == user.Id);
 
             if (player is null)
             {
-                // reference is missing, add a new reference
-
                 await GenerateNewPlayerAsync(user, id);
                 return id;
             }

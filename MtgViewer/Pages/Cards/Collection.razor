@@ -41,7 +41,7 @@
                 <th scope="col"
                     title="Order By Name"
                     @onclick="() => Reorder(c => c.Name)"
-                    class="@GetHeaderClass(c => c.Name)">
+                    class="@GetHeaderClass(c => c.Name, isDefault: true)">
                     @HtmlHelpers.GetDisplay((Card c) => c.Name)
                 </th>
 
@@ -110,11 +110,11 @@
 
 @code
 {
-    internal string GetHeaderClass<T>(Expression<Func<Card, T>> property)
+    internal string GetHeaderClass<T>(Expression<Func<Card, T>> property, bool isDefault = false)
     {
         bool isMatch = property
             is { Body: MemberExpression { Member.Name: string name }}
-            && name == Order;
+            && (name == Order || (Order is null && isDefault));
 
         if (isMatch && IsLoading)
         {

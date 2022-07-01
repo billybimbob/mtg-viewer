@@ -124,9 +124,13 @@ public class IndexModel : PageModel
                     Id = s.Id,
                     SentAt = s.SentAt,
 
-                    CardId = s.CardId,
-                    CardName = s.Card.Name,
-                    CardManaCost = s.Card.ManaCost,
+                    Card = new CardLink
+                    {
+                        Id = s.CardId,
+                        Name = s.Card.Name,
+                        SetName = s.Card.SetName,
+                        ManaCost = s.Card.ManaCost
+                    },
 
                     ToName = s.To == null ? null : s.To.Name,
                     Comment = s.Comment

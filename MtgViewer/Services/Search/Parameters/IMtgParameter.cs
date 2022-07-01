@@ -1,8 +1,10 @@
+using System;
+
 using MtgApiManager.Lib.Service;
 
-namespace MtgViewer.Services.Search;
+namespace MtgViewer.Services.Search.Parameters;
 
-internal interface IMtgParameter
+internal interface IMtgParameter : IEquatable<IMtgParameter>
 {
     bool IsEmpty { get; }
 

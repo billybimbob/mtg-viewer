@@ -2,12 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
-using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
-
-using EntityFrameworkCore.Paging;
 
 using MtgApiManager.Lib.Service;
 
@@ -23,22 +20,9 @@ public sealed class MtgApiQuery : IMtgQuery
     internal const int Limit = 100;
     internal const string RequiredAttributes = "multiverseId,imageUrl";
 
-    public static readonly MethodInfo QueryMethod =
-        typeof(MtgApiQuery)
-            .GetMethod(
-                nameof(MtgApiQuery.QueryProperty),
-                BindingFlags.NonPublic | BindingFlags.Static,
-                new[]
-                {
-                    typeof(IDictionary<string, IMtgParameter>),
-                    typeof(string),
-                    typeof(object)
-                })!;
-
     private readonly ICardService _cardService;
     private readonly MtgApiFlipQuery _flipQuery;
-
-    private readonly int _pageSize;
+    private readonly PageSize _pageSize;
     private readonly LoadingProgress _loadProgress;
 
     public MtgApiQuery(
@@ -49,108 +33,14 @@ public sealed class MtgApiQuery : IMtgQuery
     {
         _cardService = cardService;
         _flipQuery = flipQuery;
-        _pageSize = pageSize.Default;
+        _pageSize = pageSize;
         _loadProgress = loadProgress;
     }
 
     public IMtgCardSearch Where(Expression<Func<CardQuery, bool>> predicate)
     {
-        var parameters = CardQueryParameters.Base
-            .ToDictionary(kv => kv.Key, kv => kv.Value);
-
-        return QueryFromPredicate(parameters, predicate);
-    }
-
-    internal IMtgCardSearch QueryFromPredicate(
-        IDictionary<string, IMtgParameter> parameters,
-        Expression<Func<CardQuery, bool>> predicate)
-    {
-        if (PredicateVisitor.Instance.Visit(predicate) is MethodCallExpression call
-            && call.Method == QueryMethod
-            && call.Arguments[1] is ConstantExpression { Value: string propertyName }
-            && call.Arguments[2] is ConstantExpression { Value: var value })
-        {
-            QueryProperty(parameters, propertyName, value);
-        }
-        else
-        {
-            throw new NotSupportedException("Predicate cannot be parsed");
-        }
-
-        return new MtgCardSearch(this, parameters);
-    }
-
-    private static void QueryProperty(IDictionary<string, IMtgParameter> parameters, string name, object? value)
-    {
-        if (!parameters.TryGetValue(name, out var parameter))
-        {
-            parameter = new MtgDefaultParameter(GetProperty(name));
-        }
-
-        parameters[name] = parameter.Accept(value);
-    }
-
-    private static Expression<Func<CardQueryParameter, string>> GetProperty(string name)
-    {
-        const BindingFlags binds = BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase;
-
-        var queryProperty = typeof(CardQueryParameter).GetProperty(name, binds);
-
-        if (queryProperty is null || queryProperty.PropertyType != typeof(string))
-        {
-            throw new ArgumentException("The parameter property does not exist or is not a string type", nameof(name));
-        }
-
-        var queryParameter = Expression.Parameter(
-            typeof(CardQueryParameter),
-            nameof(CardQueryParameter)[0].ToString().ToLowerInvariant());
-
-        return Expression
-            .Lambda<Func<CardQueryParameter, string>>(
-                Expression.Property(queryParameter, queryProperty), queryParameter);
-    }
-
-    internal async Task<OffsetList<Card>> SearchAsync(
-        MtgCardSearch values,
-        CancellationToken cancel)
-    {
-        if (values.IsEmpty)
-        {
-            return OffsetList.Empty<Card>();
-        }
-
-        cancel.ThrowIfCancellationRequested();
-
-        var response = await ApplyParameters(values).AllAsync();
-
-        cancel.ThrowIfCancellationRequested();
-
-        var cards = await _flipQuery.GetCardsAsync(response, cancel);
-
-        var offset = new Offset(values.Page, response.PagingInfo.TotalPages);
-
-        return new OffsetList<Card>(offset, cards);
-    }
-
-    private ICardService ApplyParameters(MtgCardSearch values)
-    {
-        var cards = _cardService.Where(c => c.Contains, RequiredAttributes);
-
-        foreach (var parameter in values.Parameters.Values)
-        {
-            cards = parameter.Apply(cards);
-        }
-
-        // cards = cards.Where(c => c.OrderBy, "name") get error code 500 with this
-
-        const string pageSize = nameof(CardQuery.PageSize);
-
-        if (values.Parameters.GetValueOrDefault(pageSize)?.IsEmpty ?? true)
-        {
-            return cards.Where(c => c.PageSize, _pageSize);
-        }
-
-        return cards;
+        var query = new MtgCardSearch(_cardService, _flipQuery, _pageSize);
+        return query.Where(predicate);
     }
 
     public IAsyncEnumerable<Card> CollectionAsync(IEnumerable<string> multiverseIds)

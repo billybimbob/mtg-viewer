@@ -43,20 +43,16 @@ public class DeleteTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task OnPost_ExcessBox_NotFound()
+    public async Task OnPost_Excess_NotFound()
     {
-        var excessBox = new Box
-        {
-            Name = "Excess",
-            Capacity = 0
-        };
+        var excess = Excess.Create();
 
-        _dbContext.Boxes.Add(excessBox);
+        _dbContext.Excess.Add(excess);
         await _dbContext.SaveChangesAsync();
 
         _dbContext.ChangeTracker.Clear();
 
-        var result = await _deleteModel.OnPostAsync(excessBox.Id, default);
+        var result = await _deleteModel.OnPostAsync(excess.Id, default);
 
         Assert.IsType<NotFoundResult>(result);
     }

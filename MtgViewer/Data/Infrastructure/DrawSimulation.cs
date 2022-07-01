@@ -81,9 +81,13 @@ public sealed class DrawSimulation : IDisposable
             return null;
         }
 
+        int start = Random.Shared.Next(0, _cardOptions.Count);
         int picked = Random.Shared.Next(1, _cardsInDeck + 1);
 
-        using var e = _cardOptions.GetEnumerator();
+        using var e = _cardOptions
+            .Skip(start)
+            .Concat(_cardOptions.Take(start))
+            .GetEnumerator();
 
         while (e.MoveNext())
         {

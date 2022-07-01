@@ -96,7 +96,7 @@ public class ReviewModel : PageModel
     private static readonly Func<CardDbContext, int, string, CancellationToken, Task<DeckDetails?>> DeckAsync
         = EF.CompileAsyncQuery((CardDbContext db, int deck, string owner, CancellationToken _)
             => db.Decks
-                .Where(d => d.Id == deck && d.OwnerId == owner && d.TradesFrom.Any())
+                .Where(d => d.Id == deck && d.OwnerId == owner)
 
                 .Select(d => new DeckDetails
                 {

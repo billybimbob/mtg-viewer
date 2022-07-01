@@ -118,9 +118,8 @@ public class DetailsModel : PageModel
             {
                 Id = t.Id,
                 AppliedAt = t.AppliedAt,
-                Copies = t.Changes.Sum(c => c.Copies)
-
-                // CanDelete is always false
+                Copies = t.Changes.Sum(c => c.Copies),
+                CanDelete = false
             });
     }
 
@@ -135,15 +134,17 @@ public class DetailsModel : PageModel
                 Copies = t.Changes.Sum(c => c.Copies),
 
                 CanDelete = t.Changes
-                    .All(c => (c.To is Box
-                        || c.To is Excess
-                        || c.To is Unclaimed
-                        || (c.To is Deck && (c.To as Deck)!.OwnerId == userId))
+                    .All(c =>
+                        ((c.To is Box
+                            || c.To is Excess
+                            || c.To is Unclaimed)
                         && (c.From == null
-                        || c.From is Box
-                        || c.From is Excess
-                        || c.From is Unclaimed
-                        || (c.From is Deck && (c.From as Deck)!.OwnerId == userId)))
+                            || c.From is Box
+                            || c.From is Excess
+                            || c.From is Unclaimed))
+
+                        || (c.To is Deck && (c.To as Deck)!.OwnerId == userId)
+                        || (c.From is Deck && (c.From as Deck)!.OwnerId == userId))
             });
     }
 

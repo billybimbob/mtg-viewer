@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+using System;
 using System.Linq.Expressions;
 using System.Reflection;
 
@@ -8,18 +8,13 @@ namespace MtgViewer.Services.Search;
 
 internal class PredicateVisitor : ExpressionVisitor
 {
-    public static PredicateVisitor Instance { get; } = new();
+    private readonly ConstantExpression _search;
+    private readonly MethodInfo _addParameterMethod;
 
-    private static readonly ConstantExpression _nullDictionary
-        = Expression.Constant(null, typeof(IDictionary<string, IMtgParameter>));
-
-    private readonly Dictionary<string, ConstantExpression> _propertyNames;
-    private readonly AllPredicateVisitor _allVisitor;
-
-    private PredicateVisitor()
+    public PredicateVisitor(MtgCardSearch search, MethodInfo addParameterMethod)
     {
-        _propertyNames = new Dictionary<string, ConstantExpression>();
-        _allVisitor = new AllPredicateVisitor(_propertyNames);
+        _search = Expression.Constant(search);
+        _addParameterMethod = addParameterMethod;
     }
 
     protected override Expression VisitLambda<T>(Expression<T> node)
@@ -29,40 +24,17 @@ internal class PredicateVisitor : ExpressionVisitor
     {
         return (Visit(node.Expression), node.Member) switch
         {
-            (ParameterExpression, _) => GetOrCreatePropertyName(node),
+            (ParameterExpression p, _) when p.Type == typeof(CardQuery)
+                => Expression.Constant(node.Member.Name),
 
-            (ConstantExpression { Value: object o }, PropertyInfo info) =>
-                Expression.Constant(
-                    info.GetValue(o), typeof(object)),
+            (ConstantExpression { Value: object o }, PropertyInfo info)
+                => Expression.Constant(info.GetValue(o), typeof(object)),
 
-            (ConstantExpression { Value: object o }, FieldInfo info) =>
-                Expression.Constant(
-                    info.GetValue(o), typeof(object)),
+            (ConstantExpression { Value: object o }, FieldInfo info)
+                => Expression.Constant(info.GetValue(o), typeof(object)),
 
             _ => node
         };
-    }
-
-    private ConstantExpression GetOrCreatePropertyName(MemberExpression property)
-    {
-        string propertyName = property.Member.Name;
-
-        if (_propertyNames.TryGetValue(propertyName, out var name))
-        {
-            return name;
-        }
-
-        return _propertyNames[propertyName] = Expression.Constant(propertyName);
-    }
-
-    protected override Expression VisitParameter(ParameterExpression node)
-    {
-        if (node.Type == typeof(CardQuery))
-        {
-            return node;
-        }
-
-        return Expression.Constant(null);
     }
 
     protected override Expression VisitUnary(UnaryExpression node)
@@ -98,42 +70,42 @@ internal class PredicateVisitor : ExpressionVisitor
         var left = Visit(node.Left);
         var right = Visit(node.Right);
 
-        // only the card query will have a non-object constant
+        // only the property name will have a string type
 
         if (left.Type == typeof(string))
         {
-            return CallQuery(left, right);
+            return AddParameter(left, right);
         }
 
         if (right.Type == typeof(string))
         {
-            return CallQuery(right, left);
+            return AddParameter(right, left);
         }
 
         return node;
     }
 
-    private static MethodCallExpression CallQuery(Expression propertyName, Expression value)
-    {
-        return Expression.Call(
-            null,
-            MtgApiQuery.QueryMethod,
-            _nullDictionary, propertyName, value);
-    }
+    private Expression<Func<IMtgCardSearch>> AddParameter(Expression propertyName, Expression value)
+        => Expression.Lambda<Func<IMtgCardSearch>>(
+            Expression.Call(
+                instance: _search,
+                method: _addParameterMethod,
+                arg0: propertyName,
+                arg1: value));
 
     protected override Expression VisitMethodCall(MethodCallExpression node)
     {
         if (node.Method == TypeHelpers.StringContains
-            && Visit(node.Object) is Expression propertyName)
+            && Visit(node.Object) is Expression containsName)
         {
-            return CallQuery(propertyName, Visit(node.Arguments[0]));
+            return AddParameter(containsName, Visit(node.Arguments[0]));
         }
 
         if (node.Method == TypeHelpers.EnumerableAll.MakeGenericMethod(typeof(string)))
         {
-            var visitPredicate = _allVisitor.Visit(node.Arguments[1]);
+            var allName = AllPredicateVisitor.Instance.Visit(node.Arguments[1]);
 
-            return CallQuery(visitPredicate, Visit(node.Arguments[0]));
+            return AddParameter(allName, Visit(node.Arguments[0]));
         }
 
         return node;
@@ -141,46 +113,19 @@ internal class PredicateVisitor : ExpressionVisitor
 
     private sealed class AllPredicateVisitor : ExpressionVisitor
     {
-        private readonly Dictionary<string, ConstantExpression> _propertyNames;
-
-        public AllPredicateVisitor(Dictionary<string, ConstantExpression> propertyNames)
-        {
-            _propertyNames = propertyNames;
-        }
+        public static AllPredicateVisitor Instance { get; } = new();
 
         protected override Expression VisitLambda<T>(Expression<T> node)
             => Visit(node.Body);
 
         protected override Expression VisitMember(MemberExpression node)
         {
-            if (Visit(node.Expression) is ParameterExpression)
+            if (Visit(node.Expression) is ParameterExpression p && p.Type == typeof(CardQuery))
             {
-                return GetOrCreatePropertyName(node);
+                return Expression.Constant(node.Member.Name);
             };
 
             return node;
-        }
-
-        private ConstantExpression GetOrCreatePropertyName(MemberExpression property)
-        {
-            string propertyName = property.Member.Name;
-
-            if (_propertyNames.TryGetValue(propertyName, out var name))
-            {
-                return name;
-            }
-
-            return _propertyNames[propertyName] = Expression.Constant(propertyName);
-        }
-
-        protected override Expression VisitParameter(ParameterExpression node)
-        {
-            if (node.Type == typeof(CardQuery))
-            {
-                return node;
-            }
-
-            return Expression.Constant(null);
         }
 
         protected override Expression VisitUnary(UnaryExpression node)
@@ -194,7 +139,24 @@ internal class PredicateVisitor : ExpressionVisitor
         }
 
         protected override Expression VisitConstant(ConstantExpression node)
-            => Expression.Constant(node.Value, typeof(object));
+        {
+            if (node.Type == typeof(string))
+            {
+                return Expression.Constant(node.Value, typeof(object));
+            }
+
+            return node;
+        }
+
+        protected override Expression VisitParameter(ParameterExpression node)
+        {
+            if (node.Type == typeof(string))
+            {
+                return Expression.Parameter(typeof(object), node.Name);
+            }
+
+            return node;
+        }
 
         protected override Expression VisitBinary(BinaryExpression node)
         {
@@ -206,7 +168,7 @@ internal class PredicateVisitor : ExpressionVisitor
             var left = Visit(node.Left);
             var right = Visit(node.Right);
 
-            // only the card query will have a non-object constant
+            // only the property name will have a string type
 
             if (left.Type == typeof(string))
             {

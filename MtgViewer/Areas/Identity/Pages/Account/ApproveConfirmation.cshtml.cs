@@ -1,4 +1,5 @@
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 using Microsoft.AspNetCore.Identity;
@@ -14,19 +15,23 @@ namespace MtgViewer.Areas.Identity.Pages.Account;
 public class ApproveConfirmationModel : PageModel
 {
     private readonly UserManager<CardUser> _userManager;
+    private readonly PlayerManager _playerManager;
     private readonly EmailVerification _emailVerify;
 
     public ApproveConfirmationModel(
-        UserManager<CardUser> userManager, EmailVerification emailVerify)
+        UserManager<CardUser> userManager,
+        PlayerManager playerManager,
+        EmailVerification emailVerify)
     {
         _userManager = userManager;
+        _playerManager = playerManager;
         _emailVerify = emailVerify;
     }
 
     [TempData]
     public string? StatusMessage { get; set; }
 
-    public async Task<IActionResult> OnGetAsync(string? userId, string? code)
+    public async Task<IActionResult> OnGetAsync(string? userId, string? code, CancellationToken cancel)
     {
         if (userId == null || code == null)
         {
@@ -60,10 +65,17 @@ public class ApproveConfirmationModel : PageModel
             return Page();
         }
 
+        bool created = await _playerManager.CreateAsync(user, cancel);
+        if (!created)
+        {
+            StatusMessage = "Error approving the account.";
+            return Page();
+        }
+
         bool emailed = await _emailVerify.SendConfirmationAsync(user);
         if (!emailed)
         {
-            StatusMessage = "Error approving the account.";
+            StatusMessage = "Account was approved, but ran into an issue sending the email.";
             return Page();
         }
 
