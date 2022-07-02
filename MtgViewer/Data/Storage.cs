@@ -24,9 +24,5 @@ public class Box : Storage
 
 public class Excess : Storage
 {
-    public static Excess Create()
-        => new()
-        {
-            Name = nameof(Excess),
-        };
+    public static Excess Create() => new() { Name = nameof(Excess), };
 }

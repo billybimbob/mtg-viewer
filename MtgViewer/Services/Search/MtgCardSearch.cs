@@ -17,7 +17,7 @@ using MtgViewer.Services.Search.Parameters;
 
 namespace MtgViewer.Services.Search;
 
-internal class MtgCardSearch : IMtgCardSearch
+public class MtgCardSearch : IMtgCardSearch
 {
     private readonly ICardService _cardService;
     private readonly MtgApiFlipQuery _flipQuery;
@@ -58,10 +58,10 @@ internal class MtgCardSearch : IMtgCardSearch
         = new Dictionary<string, IMtgParameter>
         {
             [nameof(CardQuery.Colors)] = new Parameters.Color(),
+            [nameof(CardQuery.Page)] = new Page(),
+            [nameof(CardQuery.PageSize)] = new Parameters.PageSize(),
             [nameof(CardQuery.Rarity)] = new Parameters.Rarity(),
             [nameof(CardQuery.Type)] = new Types(),
-            [nameof(CardQuery.Page)] = new Page(),
-            [nameof(CardQuery.PageSize)] = new Parameters.PageSize()
         };
 
     private bool IsEmpty => _parameters.Values.All(p => p.IsEmpty);
@@ -70,11 +70,9 @@ internal class MtgCardSearch : IMtgCardSearch
     {
         get
         {
-            const string queryPage = nameof(CardQuery.Page);
+            const string page = nameof(CardQuery.Page);
 
-            var pageParameter = _parameters.GetValueOrDefault(queryPage);
-
-            return (pageParameter as Page)?.Value ?? 0;
+            return (_parameters.GetValueOrDefault(page) as Page)?.Value ?? 0;
         }
     }
 
@@ -101,7 +99,7 @@ internal class MtgCardSearch : IMtgCardSearch
 
     private IMtgCardSearch AddParameter(string name, object? value)
     {
-        var parameter = GetMtgParameter(name).Accept(value);
+        var parameter = GetParameter(name).From(value);
 
         if (_parameters.Contains(KeyValuePair.Create(name, parameter)))
         {
@@ -116,16 +114,14 @@ internal class MtgCardSearch : IMtgCardSearch
         return new MtgCardSearch(_cardService, _flipQuery, _pageSize, added);
     }
 
-    private IMtgParameter GetMtgParameter(string name)
+    private IMtgParameter GetParameter(string name)
     {
         if (_parameters.TryGetValue(name, out var parameter))
         {
             return parameter;
         }
 
-        const BindingFlags binds = BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase;
-
-        var queryProperty = typeof(CardQueryParameter).GetProperty(name, binds);
+        var queryProperty = typeof(CardQueryParameter).GetProperty(name);
 
         if (queryProperty?.PropertyType != typeof(string))
         {
@@ -168,7 +164,7 @@ internal class MtgCardSearch : IMtgCardSearch
 
         foreach (var parameter in _parameters.Values)
         {
-            cards = parameter.Apply(cards);
+            cards = parameter.ApplyTo(cards);
         }
 
         // cards = cards.Where(c => c.OrderBy, "name") get error code 500 with this

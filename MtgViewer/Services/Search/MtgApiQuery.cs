@@ -21,27 +21,24 @@ public sealed class MtgApiQuery : IMtgQuery
     internal const string RequiredAttributes = "multiverseId,imageUrl";
 
     private readonly ICardService _cardService;
+    private readonly IMtgCardSearch _baseQuery;
     private readonly MtgApiFlipQuery _flipQuery;
-    private readonly PageSize _pageSize;
     private readonly LoadingProgress _loadProgress;
 
     public MtgApiQuery(
         ICardService cardService,
+        IMtgCardSearch cardSearch,
         MtgApiFlipQuery flipQuery,
-        PageSize pageSize,
         LoadingProgress loadProgress)
     {
         _cardService = cardService;
+        _baseQuery = cardSearch;
         _flipQuery = flipQuery;
-        _pageSize = pageSize;
         _loadProgress = loadProgress;
     }
 
     public IMtgCardSearch Where(Expression<Func<CardQuery, bool>> predicate)
-    {
-        var query = new MtgCardSearch(_cardService, _flipQuery, _pageSize);
-        return query.Where(predicate);
-    }
+        => _baseQuery.Where(predicate);
 
     public IAsyncEnumerable<Card> CollectionAsync(IEnumerable<string> multiverseIds)
         => BulkSearchAsync(multiverseIds);

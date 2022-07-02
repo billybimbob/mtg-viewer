@@ -210,7 +210,7 @@ public sealed class MtgApiFlipQuery
         var nullCheck = new NullValidation<Card>(card);
         var validationContext = new ValidationContext(nullCheck);
 
-        if (!Validator.TryValidateObject(nullCheck, validationContext, null))
+        if (!Validator.TryValidateObject(nullCheck, validationContext, validationResults: null))
         {
             _logger.LogError("{Card} was found, but failed validation", card?.Id);
             return null;

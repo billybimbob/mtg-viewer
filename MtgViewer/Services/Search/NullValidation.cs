@@ -30,7 +30,7 @@ internal class NullValidation<TEntity> : IValidatableObject where TEntity : notn
 
         var nullCheck = new NullabilityInfoContext();
 
-        foreach (var property in typeof(TEntity).GetTypeInfo().GetProperties())
+        foreach (var property in typeof(TEntity).GetProperties())
         {
             var nullInfo = nullCheck.Create(property);
 

@@ -38,7 +38,12 @@ public class IndexModel : PageModel
 
         Bins = boxes
             .GroupBy(b => b.Bin,
-                (bin, boxes) => bin with { Boxes = boxes })
+                (bin, boxes) => new BinPreview
+                {
+                    Id = bin.Id,
+                    Name = bin.Name,
+                    Boxes = boxes
+                })
             .ToList();
 
         Seek = (Seek)boxes.Seek;

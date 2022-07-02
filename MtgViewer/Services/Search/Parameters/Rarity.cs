@@ -6,6 +6,8 @@ namespace MtgViewer.Services.Search.Parameters;
 
 internal record Rarity : IMtgParameter
 {
+    private readonly Data.Rarity? _value;
+
     public Rarity() : this(null as Data.Rarity?)
     { }
 
@@ -14,10 +16,9 @@ internal record Rarity : IMtgParameter
         _value = value;
     }
 
-    private readonly Data.Rarity? _value;
     public bool IsEmpty => _value is null;
 
-    public IMtgParameter Accept(object? value)
+    public IMtgParameter From(object? value)
     {
         if (value is Data.Rarity newValue && Enum.IsDefined(newValue))
         {
@@ -27,7 +28,7 @@ internal record Rarity : IMtgParameter
         return this;
     }
 
-    public ICardService Apply(ICardService cards)
+    public ICardService ApplyTo(ICardService cards)
     {
         if (_value is not Data.Rarity value)
         {

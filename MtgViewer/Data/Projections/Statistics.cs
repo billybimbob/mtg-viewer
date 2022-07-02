@@ -5,6 +5,15 @@ namespace MtgViewer.Data.Projections;
 
 public sealed class Statistics
 {
+    public static Statistics Empty { get; }
+        = new()
+        {
+            Rarities = new Dictionary<Rarity, int>(),
+            Colors = new Dictionary<Color, int>(),
+            Types = new Dictionary<string, int>(),
+            ManaValues = new Dictionary<int, int>()
+        };
+
     public IReadOnlyDictionary<Rarity, int> Rarities { get; init; } = default!;
 
     public IReadOnlyDictionary<Color, int> Colors { get; init; } = default!;
@@ -20,19 +29,7 @@ public sealed class Statistics
         get
         {
             float manaTotal = ManaValues.Values.Sum();
-
             return manaTotal is 0f ? 0f : ManaValues.Sum(kv => kv.Key * kv.Value) / manaTotal;
         }
-    }
-
-    public static Statistics CreateEmpty()
-    {
-        return new Statistics
-        {
-            Rarities = new Dictionary<Rarity, int>(),
-            Colors = new Dictionary<Color, int>(),
-            Types = new Dictionary<string, int>(),
-            ManaValues = new Dictionary<int, int>()
-        };
     }
 }

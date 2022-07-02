@@ -4,7 +4,7 @@ using System.Linq;
 
 namespace MtgViewer.Data.Projections;
 
-public sealed record BinPreview
+public sealed class BinPreview
 {
     public int Id { get; init; }
 
@@ -12,12 +12,28 @@ public sealed record BinPreview
 
     public IEnumerable<BoxPreview> Boxes { get; init; } = Enumerable.Empty<BoxPreview>();
 
-    public bool Equals(BinPreview? other)
+    public override int GetHashCode()
     {
-        return other is not null
-            && Id == other.Id
-            && Name == other.Name;
+        var hash = new HashCode();
+
+        hash.Add(Id);
+        hash.Add(Name);
+
+        // keep eye on, is O(N) runtime hash
+
+        foreach (var box in Boxes)
+        {
+            hash.Add(box);
+        }
+
+        return hash.ToHashCode();
     }
 
-    public override int GetHashCode() => HashCode.Combine(Id, Name);
+    public override bool Equals(object? obj)
+    {
+        return obj is BinPreview other
+            && Id == other.Id
+            && Name == other.Name
+            && Boxes.SequenceEqual(other.Boxes);
+    }
 }

@@ -8,7 +8,7 @@ internal interface IMtgParameter : IEquatable<IMtgParameter>
 {
     bool IsEmpty { get; }
 
-    IMtgParameter Accept(object? value);
+    IMtgParameter From(object? value);
 
-    ICardService Apply(ICardService cards);
+    ICardService ApplyTo(ICardService cards);
 }

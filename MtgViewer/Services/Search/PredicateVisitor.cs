@@ -125,6 +125,11 @@ internal class PredicateVisitor : ExpressionVisitor
                 return Expression.Constant(node.Member.Name);
             };
 
+            if (node.Type == typeof(string))
+            {
+                return Expression.Constant(null, typeof(object));
+            }
+
             return node;
         }
 

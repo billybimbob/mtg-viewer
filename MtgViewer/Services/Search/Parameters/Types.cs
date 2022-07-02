@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -8,58 +9,61 @@ namespace MtgViewer.Services.Search.Parameters;
 
 internal class Types : IMtgParameter
 {
+    private readonly string[] _value;
+
     public Types() : this(Array.Empty<string>())
     { }
 
-    private Types(string[] types)
+    private Types(string[] value)
     {
-        _value = types;
+        _value = value;
     }
 
-    private readonly string[] _value;
     public bool IsEmpty => _value.Length is 0;
 
-    public IMtgParameter Accept(object? value)
+    public IMtgParameter From(object? value)
     {
-        if (value is IEnumerable<string> values)
-        {
-            string[] types = values
-                .Select(Validate)
-                .OfType<string>()
-                .Concat(_value)
-                .ToArray();
+        string[] newValue = Validate(value)
+            .Concat(_value)
+            .ToArray();
 
-            return new Types(types);
-        }
-        else if (Validate(value?.ToString()) is string valid)
+        if (newValue.SequenceEqual(_value))
         {
-            return new Types(
-                valid.Split().Concat(_value).ToArray());
+            return this;
         }
 
-        return this;
+        return new Types(newValue);
     }
 
-    private string? Validate(string? value)
+    private static IEnumerable<string> Validate(object? value)
     {
-        if (string.IsNullOrWhiteSpace(value))
+        return value switch
         {
-            return null;
-        }
+            IEnumerable<string> items => items
+                .SelectMany(Validate),
 
-        return value.Trim();
+            IEnumerable items => items
+                .Cast<object?>()
+                .Select(i => i?.ToString())
+                .SelectMany(Validate),
+
+            _ => Validate(value?.ToString())
+        };
+
+        static IEnumerable<string> Validate(string? value)
+            => value?.Trim().Split() ?? Enumerable.Empty<string>();
     }
 
-    public ICardService Apply(ICardService cards)
+    public ICardService ApplyTo(ICardService cards)
     {
-        if (!_value.Any())
+        if (IsEmpty)
         {
             return cards;
         }
 
-        string types = string.Join(MtgApiQuery.And, _value);
+        string value = string.Join(MtgApiQuery.And, _value);
 
-        return cards.Where(q => q.Type, types);
+        return cards.Where(q => q.Type, value);
     }
 
     public override int GetHashCode()

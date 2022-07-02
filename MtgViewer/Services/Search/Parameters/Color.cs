@@ -8,6 +8,8 @@ namespace MtgViewer.Services.Search.Parameters;
 
 internal record Color : IMtgParameter
 {
+    private readonly Data.Color _value;
+
     public Color() : this(Data.Color.None)
     { }
 
@@ -16,10 +18,9 @@ internal record Color : IMtgParameter
         _value = value;
     }
 
-    private readonly Data.Color _value;
     public bool IsEmpty => _value is Data.Color.None;
 
-    public IMtgParameter Accept(object? value)
+    public IMtgParameter From(object? value)
     {
         if (value is Data.Color newValue and not Data.Color.None)
         {
@@ -29,20 +30,20 @@ internal record Color : IMtgParameter
         return this;
     }
 
-    public ICardService Apply(ICardService cards)
+    public ICardService ApplyTo(ICardService cards)
     {
-        if (_value is Data.Color.None)
+        if (IsEmpty)
         {
             return cards;
         }
 
-        var colorNames = Symbol.Colors
+        var names = Symbol.Colors
             .Where(kv => _value.HasFlag(kv.Key))
             .Select(kv => kv.Value);
 
-        string colors = string.Join(MtgApiQuery.And, colorNames);
+        string value = string.Join(MtgApiQuery.And, names);
 
-        return cards.Where(q => q.ColorIdentity, colors);
+        return cards.Where(q => q.ColorIdentity, value);
     }
 
     public bool Equals(IMtgParameter? other)

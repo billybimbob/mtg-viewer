@@ -25,7 +25,7 @@ public class StatisticsModel : PageModel
 
     public DeckPreview Deck { get; private set; } = default!;
 
-    public Statistics Statistics { get; private set; } = default!;
+    public Statistics Statistics { get; private set; } = Statistics.Empty;
 
     public async Task<IActionResult> OnGetAsync(int id, CancellationToken cancel)
     {
@@ -61,7 +61,7 @@ public class StatisticsModel : PageModel
 
         if (!rarities.Any())
         {
-            return Statistics.CreateEmpty();
+            return Statistics.Empty;
         }
 
         return new Statistics

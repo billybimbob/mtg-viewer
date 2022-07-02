@@ -8,7 +8,7 @@ internal readonly record struct ColorCopies(Color Color, int Copies);
 
 internal static class CardStatistics
 {
-    public static readonly IReadOnlyList<string> Types
+    public static IReadOnlyList<string> Types { get; }
         = new string[]
         {
             "Artifact",

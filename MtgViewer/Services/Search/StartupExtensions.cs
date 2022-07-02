@@ -16,6 +16,7 @@ public static partial class StartupExtensions
 
         return services
             .AddScoped<IMtgQuery, MtgApiQuery>()
+            .AddScoped<IMtgCardSearch, MtgCardSearch>()
             .AddScoped<MtgApiFlipQuery>();
     }
 }

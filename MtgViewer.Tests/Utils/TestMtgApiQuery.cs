@@ -17,8 +17,8 @@ namespace MtgViewer.Tests.Utils;
 
 public class TestMtgApiQuery : IMtgQuery
 {
-    private readonly TestCardService _testCards;
     private readonly IMtgQuery _mtgQuery;
+    private readonly TestCardService _testCards;
     private readonly MtgApiFlipQuery _flipQuery;
 
     private IAsyncEnumerable<ICard>? _flipCards;
@@ -29,9 +29,12 @@ public class TestMtgApiQuery : IMtgQuery
         LoadingProgress loadingProgress,
         ILogger<MtgApiFlipQuery> logger)
     {
+        var flipQuery = new MtgApiFlipQuery(testCards, pageSize, logger);
+        var cardSearch = new MtgCardSearch(testCards, flipQuery, pageSize);
+
+        _mtgQuery = new MtgApiQuery(testCards, cardSearch, flipQuery, loadingProgress);
         _testCards = testCards;
-        _flipQuery = new MtgApiFlipQuery(testCards, pageSize, logger);
-        _mtgQuery = new MtgApiQuery(testCards, _flipQuery, pageSize, loadingProgress);
+        _flipQuery = flipQuery;
     }
 
     public IAsyncEnumerable<ICard> SourceCards => _testCards.Cards;

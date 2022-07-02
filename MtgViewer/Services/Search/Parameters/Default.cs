@@ -11,9 +11,8 @@ namespace MtgViewer.Services.Search.Parameters;
 internal class Default : IMtgParameter
 {
     public Default(Expression<Func<CardQueryParameter, string>> property)
+        : this(property, string.Empty)
     {
-        _property = property;
-        _value = null;
     }
 
     private Default(Expression<Func<CardQueryParameter, string>> property, string value)
@@ -23,11 +22,11 @@ internal class Default : IMtgParameter
     }
 
     private readonly Expression<Func<CardQueryParameter, string>> _property;
-    private readonly string? _value;
+    private readonly string _value;
 
-    public bool IsEmpty => _value is null;
+    public bool IsEmpty => string.IsNullOrWhiteSpace(_value);
 
-    public IMtgParameter Accept(object? value)
+    public IMtgParameter From(object? value)
     {
         if (TryToString(value, out string parameter))
         {
@@ -41,7 +40,7 @@ internal class Default : IMtgParameter
     {
         string? toString = paramValue?.ToString();
 
-        if (toString == null)
+        if (toString is null)
         {
             stringValue = null!;
             return false;
@@ -61,22 +60,22 @@ internal class Default : IMtgParameter
         return true;
     }
 
-    public ICardService Apply(ICardService cards)
+    public ICardService ApplyTo(ICardService cards)
     {
-        if (_value is not null)
+        if (IsEmpty)
         {
-            return cards.Where(_property, _value);
+            return cards;
         }
 
-        return cards;
+        return cards.Where(_property, _value);
     }
 
     public override int GetHashCode()
     {
         var hash = new HashCode();
 
-        hash.Add(_property, ExpressionEqualityComparer.Instance);
         hash.Add(_value);
+        hash.Add(_property, ExpressionEqualityComparer.Instance);
 
         return hash.ToHashCode();
     }

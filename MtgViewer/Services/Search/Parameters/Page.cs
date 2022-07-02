@@ -13,9 +13,9 @@ internal record Page : IMtgParameter
     }
 
     public int Value { get; }
-    public bool IsEmpty => Value is 0;
+    public bool IsEmpty => Value <= 0;
 
-    public IMtgParameter Accept(object? value)
+    public IMtgParameter From(object? value)
     {
         if (value is int newValue and > 0)
         {
@@ -25,15 +25,16 @@ internal record Page : IMtgParameter
         return this;
     }
 
-    public ICardService Apply(ICardService cards)
+    public ICardService ApplyTo(ICardService cards)
     {
-        if (Value > 0)
+        if (IsEmpty)
         {
-            // query starts at index 1 instead of 0
-            return cards.Where(q => q.Page, Value + 1);
+            return cards;
         }
 
-        return cards;
+        // query starts at index 1 instead of 0
+
+        return cards.Where(q => q.Page, Value + 1);
     }
 
     public bool Equals(IMtgParameter? other)

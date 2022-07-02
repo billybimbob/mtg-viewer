@@ -4,6 +4,8 @@ namespace MtgViewer.Services.Search.Parameters;
 
 internal record PageSize : IMtgParameter
 {
+    private readonly int _value;
+
     public PageSize() : this(0)
     { }
 
@@ -12,10 +14,9 @@ internal record PageSize : IMtgParameter
         _value = value;
     }
 
-    private readonly int _value;
     public bool IsEmpty => _value <= 0;
 
-    public IMtgParameter Accept(object? value)
+    public IMtgParameter From(object? value)
     {
         if (value is int newValue and > 0 and <= MtgApiQuery.Limit)
         {
@@ -25,14 +26,14 @@ internal record PageSize : IMtgParameter
         return this;
     }
 
-    public ICardService Apply(ICardService cards)
+    public ICardService ApplyTo(ICardService cards)
     {
-        if (_value > 0)
+        if (IsEmpty)
         {
-            return cards.Where(q => q.PageSize, _value);
+            return cards;
         }
 
-        return cards;
+        return cards.Where(q => q.PageSize, _value);
     }
 
     public bool Equals(IMtgParameter? other)
