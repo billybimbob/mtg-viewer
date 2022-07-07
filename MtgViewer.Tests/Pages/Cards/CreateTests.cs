@@ -3,7 +3,6 @@ using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 
-using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -26,13 +25,15 @@ public sealed class CreateTests : IAsyncLifetime, IDisposable
     private readonly TestMtgApiQuery _mtgQuery;
 
     private readonly TestDataGenerator _testGen;
+    private readonly ActionHandlerFactory _handlerFactory;
     private readonly TestContext _testContext;
 
     public CreateTests(
         IServiceProvider serviceProvider,
         CardDbContext dbContext,
         TestMtgApiQuery testMtgQuery,
-        TestDataGenerator testDataGenerator)
+        TestDataGenerator testDataGenerator,
+        ActionHandlerFactory handlerFactory)
     {
         _services = serviceProvider;
 
@@ -40,11 +41,15 @@ public sealed class CreateTests : IAsyncLifetime, IDisposable
         _mtgQuery = testMtgQuery;
 
         _testGen = testDataGenerator;
+        _handlerFactory = handlerFactory;
+
         _testContext = new TestContext();
     }
 
     public async Task InitializeAsync()
     {
+        _handlerFactory.AddRouteDataContext<Create>();
+
         _testContext.AddFakePersistentComponentState();
         _testContext.AddTestAuthorization();
 
@@ -185,9 +190,9 @@ public sealed class CreateTests : IAsyncLifetime, IDisposable
 
         nameInput.Change(cardName);
 
-        var form = cut.FindComponent<EditForm>();
+        var form = cut.Find("form");
 
-        await cut.InvokeAsync(() => form.Instance.OnValidSubmit.InvokeAsync());
+        await form.SubmitAsync();
 
         Assert.Contains(Uri.EscapeDataString(cardName), nav.Uri);
     }
@@ -204,11 +209,11 @@ public sealed class CreateTests : IAsyncLifetime, IDisposable
 
         ClickColorButtons(cut, color);
 
-        var form = cut.FindComponent<EditForm>();
+        var form = cut.Find("form");
+
+        await form.SubmitAsync();
 
         var invariant = CultureInfo.InvariantCulture;
-
-        await cut.InvokeAsync(() => form.Instance.OnValidSubmit.InvokeAsync());
 
         string colorName = ((int)color).ToString(invariant);
 
@@ -243,11 +248,11 @@ public sealed class CreateTests : IAsyncLifetime, IDisposable
 
         cmcInput.Change(cmc);
 
-        var form = cut.FindComponent<EditForm>();
+        var form = cut.Find("form");
+
+        await form.SubmitAsync();
 
         var invariant = CultureInfo.InvariantCulture;
-
-        await cut.InvokeAsync(() => form.Instance.OnValidSubmit.InvokeAsync());
 
         Assert.Contains(cmc?.ToString(invariant) ?? string.Empty, nav.Uri);
     }
@@ -266,11 +271,11 @@ public sealed class CreateTests : IAsyncLifetime, IDisposable
 
         rarityInput.Change(rarity);
 
-        var form = cut.FindComponent<EditForm>();
+        var form = cut.Find("form");
+
+        await form.SubmitAsync();
 
         var invariant = CultureInfo.InvariantCulture;
-
-        await cut.InvokeAsync(() => form.Instance.OnValidSubmit.InvokeAsync());
 
         string rarityName = ((int?)rarity)?.ToString(invariant) ?? string.Empty;
 

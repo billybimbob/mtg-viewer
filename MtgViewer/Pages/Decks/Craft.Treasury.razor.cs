@@ -62,6 +62,32 @@ public partial class Craft
         }
     }
 
+    internal async Task ChangeColorAsync(Color value)
+    {
+        if (_isBusy)
+        {
+            return;
+        }
+
+        _isBusy = true;
+
+        try
+        {
+            PickedColors = value;
+
+            _origin = null;
+            _direction = SeekDirection.Forward;
+
+            await using var dbContext = await DbFactory.CreateDbContextAsync(_cancel.Token);
+
+            await ApplyFiltersAsync(dbContext);
+        }
+        finally
+        {
+            _isBusy = false;
+        }
+    }
+
     internal async Task SeekPageAsync(SeekRequest<HeldCard> request)
     {
         string? seek = request.Origin?.Card.Id;
@@ -78,32 +104,6 @@ public partial class Craft
         {
             _origin = seek;
             _direction = direction;
-
-            await using var dbContext = await DbFactory.CreateDbContextAsync(_cancel.Token);
-
-            await ApplyFiltersAsync(dbContext);
-        }
-        finally
-        {
-            _isBusy = false;
-        }
-    }
-
-    internal async Task ToggleColorAsync(Color value)
-    {
-        if (_isBusy)
-        {
-            return;
-        }
-
-        _isBusy = true;
-
-        try
-        {
-            PickedColors ^= value;
-
-            _origin = null;
-            _direction = SeekDirection.Forward;
 
             await using var dbContext = await DbFactory.CreateDbContextAsync(_cancel.Token);
 

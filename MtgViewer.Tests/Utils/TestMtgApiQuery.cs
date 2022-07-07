@@ -1,9 +1,9 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Linq.Expressions;
 using System.Threading;
 using System.Threading.Tasks;
+
+using EntityFrameworkCore.Paging;
 
 using Microsoft.Extensions.Logging;
 
@@ -19,7 +19,6 @@ public class TestMtgApiQuery : IMtgQuery
 {
     private readonly IMtgQuery _mtgQuery;
     private readonly TestCardService _testCards;
-    private readonly MtgApiFlipQuery _flipQuery;
 
     private IAsyncEnumerable<ICard>? _flipCards;
 
@@ -27,23 +26,22 @@ public class TestMtgApiQuery : IMtgQuery
         TestCardService testCards,
         PageSize pageSize,
         LoadingProgress loadingProgress,
-        ILogger<MtgApiFlipQuery> logger)
+        ILogger<MtgApiQuery> logger)
     {
-        var flipQuery = new MtgApiFlipQuery(testCards, pageSize, logger);
-        var cardSearch = new MtgCardSearch(testCards, flipQuery, pageSize);
-
-        _mtgQuery = new MtgApiQuery(testCards, cardSearch, flipQuery, loadingProgress);
+        _mtgQuery = new MtgApiQuery(testCards, pageSize, loadingProgress, logger);
         _testCards = testCards;
-        _flipQuery = flipQuery;
     }
 
     public IAsyncEnumerable<ICard> SourceCards => _testCards.Cards;
 
     public IAsyncEnumerable<ICard> FlipCards =>
-        _flipCards ??= SourceCards.Where(c => _flipQuery.HasFlip(c.Name));
+        _flipCards ??= SourceCards.Where(c => _mtgQuery.HasFlip(c.Name));
 
-    public IMtgCardSearch Where(Expression<Func<CardQuery, bool>> predicate)
-        => _mtgQuery.Where(predicate);
+    public bool HasFlip(string cardName)
+        => _mtgQuery.HasFlip(cardName);
+
+    public Task<OffsetList<Card>> SearchAsync(IMtgSearch search, CancellationToken cancel = default)
+        => _mtgQuery.SearchAsync(search, cancel);
 
     public IAsyncEnumerable<Card> CollectionAsync(IEnumerable<string> multiverseIds)
         => _mtgQuery.CollectionAsync(multiverseIds);

@@ -4,6 +4,8 @@ using System.Threading.Tasks;
 using Xunit;
 
 using MtgApiManager.Lib.Model;
+
+using MtgViewer.Services.Search;
 using MtgViewer.Tests.Utils;
 
 namespace MtgViewer.Tests.Services;
@@ -22,9 +24,12 @@ public class MtgQueryTests
     {
         var testCard = await _mtgQuery.SourceCards.FirstAsync();
 
-        var cards = await _mtgQuery
-            .Where(c => c.Name == testCard.Name)
-            .SearchAsync();
+        var search = new CardSearch
+        {
+            Name = testCard.Name
+        };
+
+        var cards = await _mtgQuery.SearchAsync(search);
 
         var cardNames = cards.Select(c => c.Name);
 
@@ -38,11 +43,12 @@ public class MtgQueryTests
     {
         var testCard = await _mtgQuery.SourceCards.FirstAsync();
 
-        string testName = GetName(testCard);
+        var search = new CardSearch
+        {
+            Name = GetName(testCard)
+        };
 
-        var cards = await _mtgQuery
-            .Where(c => c.Name == testName)
-            .SearchAsync();
+        var cards = await _mtgQuery.SearchAsync(search);
 
         var cardNames = cards.Select(c => c.Name);
 
@@ -54,9 +60,12 @@ public class MtgQueryTests
     {
         var splitCard = await _mtgQuery.FlipCards.FirstAsync();
 
-        var cards = await _mtgQuery
-            .Where(c => c.Name == splitCard.Name)
-            .SearchAsync();
+        var search = new CardSearch
+        {
+            Name = splitCard.Name
+        };
+
+        var cards = await _mtgQuery.SearchAsync(search);
 
         var first = cards[0];
 
@@ -102,9 +111,11 @@ public class MtgQueryTests
     {
         const int page = 1;
 
-        var result = await _mtgQuery
-            .Where(x => x.Page == page)
-            .SearchAsync();
+        var result = await _mtgQuery.SearchAsync(
+            new CardSearch
+            {
+                Page = page
+            });
 
         Assert.Equal(page, result.Offset.Current);
     }

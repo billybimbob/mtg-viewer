@@ -117,11 +117,10 @@ public class CardText : ISymbolFinder, ISymbolTranslator
 
     public string ColorString(Color color)
     {
-        var manaSymbols = Enum.GetValues<Color>()
+        return Enum.GetValues<Color>()
             .Where(c => c is not Color.None && color.HasFlag(c))
-            .Select(c => ManaString(new ManaSymbol(default, Symbol.Colors[c])));
-
-        return string.Join(string.Empty, manaSymbols);
+            .Select(c => ManaString(new ManaSymbol(default, Symbol.Colors[c])))
+            .Join();
     }
 
     public string LoyaltyString(LoyaltySymbol symbol)

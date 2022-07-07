@@ -144,7 +144,7 @@ internal class QueryOriginVisitor : ExpressionVisitor
                 return body;
             }
 
-            return node.Update(body, node.Parameters);
+            return node;
         }
 
         protected override Expression VisitBinary(BinaryExpression node)
@@ -168,19 +168,19 @@ internal class QueryOriginVisitor : ExpressionVisitor
 
         protected override Expression VisitMember(MemberExpression node)
         {
-            if (MemberEvaluationVisitor.Instance.Visit(node) is not LambdaExpression eval)
-            {
-                return base.VisitMember(node);
-            }
-
             // keep eye on, could be slower than just pass thru
 
-            if (eval.Compile().DynamicInvoke() is null)
+            if (MemberEvaluationVisitor.Instance.Visit(node) is not Expression<Func<object?>> eval)
+            {
+                return node;
+            }
+
+            if (eval.Compile().Invoke() is null)
             {
                 return Expression.Constant(null, node.Type);
             }
 
-            return base.VisitMember(node);
+            return node;
         }
     }
 
@@ -191,19 +191,31 @@ internal class QueryOriginVisitor : ExpressionVisitor
         [return: NotNullIfNotNull("node")]
         public override Expression? Visit(Expression? node)
         {
-            if (base.Visit(node) is MemberExpression member)
+            return base.Visit(node) switch
             {
-                return Expression.Lambda(member);
-            }
+                MemberExpression m and { Type.IsValueType: true }
+                    => Expression.Lambda<Func<object?>>(
+                        Expression.Convert(m, typeof(object))),
 
-            return node;
+                MemberExpression m
+                    => Expression.Lambda<Func<object?>>(m),
+
+                _ => node
+            };
         }
 
         protected override Expression VisitMember(MemberExpression node)
         {
-            if (node.Expression is ParameterExpression parameter)
+            var source = base.Visit(node.Expression);
+
+            if (source is ParameterExpression)
             {
-                return parameter;
+                return source;
+            }
+
+            if (source?.Type == node.Expression?.Type)
+            {
+                return node.Update(source);
             }
 
             return node;
@@ -315,12 +327,13 @@ internal class QueryOriginVisitor : ExpressionVisitor
                 return node;
             }
 
-            var overlapChain = ExpressionHelpers
+            string overlapChain = ExpressionHelpers
                 .GetLineage(overlap)
                 .Reverse()
-                .Select(m => m.Member.Name);
+                .Select(m => m.Member.Name)
+                .Join('.');
 
-            return Expression.Constant(string.Join('.', overlapChain));
+            return Expression.Constant(overlapChain);
         }
 
         private MemberExpression? GetOriginOverlap(MemberExpression node)

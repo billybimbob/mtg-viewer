@@ -11,18 +11,15 @@ namespace MtgViewer.Services.Infrastructure;
 
 public class ResetHandler
 {
+    private readonly IDbContextFactory<CardDbContext> _dbFactory;
     private readonly LoadingProgress _loadProgress;
 
-    // treat each write function as a unit of work
-    // read functions can use the same db context
-    private readonly IDbContextFactory<CardDbContext> _dbFactory;
-
     public ResetHandler(
-        LoadingProgress loadProgress,
-        IDbContextFactory<CardDbContext> dbFactory)
+        IDbContextFactory<CardDbContext> dbFactory,
+        LoadingProgress loadProgress)
     {
-        _loadProgress = loadProgress;
         _dbFactory = dbFactory;
+        _loadProgress = loadProgress;
     }
 
     public async Task ResetAsync(CancellationToken cancel = default)

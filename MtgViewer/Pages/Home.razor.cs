@@ -211,12 +211,9 @@ public sealed partial class Home : ComponentBase, IDisposable
     }
 
     internal static string CardNames(IEnumerable<RecentChange> changes)
-    {
-        var cardNames = changes
-            .GroupBy(c => c.CardName, (name, _) => name);
-
-        return string.Join(", ", cardNames);
-    }
+        => changes
+            .GroupBy(c => c.CardName, (name, _) => name)
+            .Join(", ");
 
     internal string ElapsedTime(RecentTransaction transaction)
     {

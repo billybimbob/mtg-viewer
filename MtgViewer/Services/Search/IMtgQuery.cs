@@ -1,6 +1,4 @@
-using System;
 using System.Collections.Generic;
-using System.Linq.Expressions;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -12,16 +10,11 @@ namespace MtgViewer.Services.Search;
 
 public interface IMtgQuery
 {
-    IMtgCardSearch Where(Expression<Func<CardQuery, bool>> predicate);
+    bool HasFlip(string cardName);
+
+    Task<OffsetList<Card>> SearchAsync(IMtgSearch search, CancellationToken cancel = default);
 
     IAsyncEnumerable<Card> CollectionAsync(IEnumerable<string> multiverseIds);
 
     Task<Card?> FindAsync(string id, CancellationToken cancel = default);
-}
-
-public interface IMtgCardSearch
-{
-    IMtgCardSearch Where(Expression<Func<CardQuery, bool>> predicate);
-
-    Task<OffsetList<Card>> SearchAsync(CancellationToken cancel = default);
 }

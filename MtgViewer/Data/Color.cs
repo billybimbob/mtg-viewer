@@ -16,6 +16,9 @@ public enum Color
 
 public static class Symbol
 {
+    public const Color Rainbow
+        = Color.Black | Color.Blue | Color.Green | Color.Red | Color.White;
+
     public const string LongDash = "\u2014";
 
     public static IReadOnlyDictionary<Color, string> Colors { get; }

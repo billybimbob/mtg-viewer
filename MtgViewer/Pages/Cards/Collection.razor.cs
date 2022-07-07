@@ -2,9 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
-using EntityFrameworkCore.Paging;
 using System.Threading;
 using System.Threading.Tasks;
+
+using EntityFrameworkCore.Paging;
 
 using Microsoft.AspNetCore.Components;
 using Microsoft.EntityFrameworkCore;
@@ -62,18 +63,14 @@ public sealed partial class Collection : ComponentBase, IDisposable
 
     internal SeekList<CardCopy> Cards { get; private set; } = SeekList.Empty<CardCopy>();
 
-    private static readonly Color ValidColors
-        = Enum.GetValues<Color>()
-            .Aggregate((x, y) => x | y);
-
     private readonly CancellationTokenSource _cancel = new();
     private PersistingComponentStateSubscription _persistSubscription;
 
     private bool _isBusy;
     private bool _isInteractive;
 
-    protected override void OnInitialized() =>
-        _persistSubscription = ApplicationState.RegisterOnPersisting(PersistCardData);
+    protected override void OnInitialized()
+        => _persistSubscription = ApplicationState.RegisterOnPersisting(PersistCardData);
 
     protected override async Task OnParametersSetAsync()
     {
@@ -83,12 +80,13 @@ public sealed partial class Collection : ComponentBase, IDisposable
         {
             Cards = await GetCardDataAsync();
 
-            if (!Cards.Any() && Seek is not null)
+            if (Cards is { Count: 0 } && Seek is not null)
             {
                 Logger.LogWarning("Invalid seek {Seek} was given", Seek);
 
                 Nav.NavigateTo(
-                    Nav.GetUriWithQueryParameter(nameof(Seek), null as string), replace: true);
+                    Nav.GetUriWithQueryParameter(
+                        nameof(Seek), null as string), replace: true);
             }
         }
         catch (OperationCanceledException ex)
@@ -125,8 +123,7 @@ public sealed partial class Collection : ComponentBase, IDisposable
 
     private Task PersistCardData()
     {
-        ApplicationState.PersistAsJson(nameof(Cards), Cards as IReadOnlyList<CardCopy>);
-
+        ApplicationState.PersistAsJson(nameof(Cards), Cards);
         ApplicationState.PersistAsJson(nameof(Seek), SeekDto.From(Cards.Seek));
 
         return Task.CompletedTask;
@@ -174,7 +171,7 @@ public sealed partial class Collection : ComponentBase, IDisposable
         return await OrderCopies(cards, Order)
 
             .SeekBy((SeekDirection)Direction)
-                .After(l => l.Id == Seek)
+                .After(c => c.Id == Seek)
                 .ThenTake(PageSize.Current)
 
             .ToSeekListAsync(_cancel.Token);
@@ -257,15 +254,15 @@ public sealed partial class Collection : ComponentBase, IDisposable
         get => Search;
         set
         {
-            const StringComparison ignoreCase = StringComparison.CurrentCultureIgnoreCase;
-
             if (string.IsNullOrWhiteSpace(value))
             {
                 value = null;
             }
 
+            const StringComparison ignoreCase = StringComparison.CurrentCultureIgnoreCase;
+
             if (_isBusy
-                || value?.Length > TextFilter.Limit
+                || value is { Length: > TextFilter.Limit }
                 || string.Equals(value, Search, ignoreCase))
             {
                 return;
@@ -287,7 +284,7 @@ public sealed partial class Collection : ComponentBase, IDisposable
 
     internal Color PickedColors
     {
-        get => (Color)Colors & ValidColors;
+        get => (Color)Colors & Symbol.Rainbow;
         set
         {
             if (_isBusy)
@@ -296,8 +293,6 @@ public sealed partial class Collection : ComponentBase, IDisposable
             }
 
             _isBusy = true;
-
-            value ^= PickedColors; // use value as a picked colors toggle
 
             var changes = new Dictionary<string, object?>
             {

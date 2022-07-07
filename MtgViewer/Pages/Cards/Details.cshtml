@@ -8,13 +8,13 @@
 
 @inject IAuthorizationService AuthorizationService
 @inject SymbolFormatter MtgSymbols
-@inject MtgApiFlipQuery FlipQuery
+@inject IMtgQuery MtgQuery
 @inject SignInManager<CardUser> SignInManager
 
 @{
     bool hasAlts = Model.Alternatives.Any();
 
-    bool hasFlip = FlipQuery.HasFlip(Model.Card.Name);
+    bool hasFlip = MtgQuery.HasFlip(Model.Card.Name);
 
     bool isSignedIn = SignInManager.IsSignedIn(User);
 

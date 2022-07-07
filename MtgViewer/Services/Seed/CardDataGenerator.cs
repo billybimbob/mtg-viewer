@@ -90,12 +90,13 @@ public class CardDataGenerator
 
     private async Task<IReadOnlyList<Card>> GetCardsAsync(CancellationToken cancel)
     {
-        var cards = await _mtgQuery
-            .Where(c => c.Cmc == 3)
-            .Where(c => c.PageSize == 20)
-            .SearchAsync(cancel);
+        var search = new CardSearch
+        {
+            ManaValue = 3,
+            PageSize = 20
+        };
 
-        return cards;
+        return await _mtgQuery.SearchAsync(search, cancel);
     }
 
     private Bin GetBin() => new()

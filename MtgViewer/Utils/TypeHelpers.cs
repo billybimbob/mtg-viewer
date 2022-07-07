@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Reflection;
@@ -8,15 +7,6 @@ namespace MtgViewer.Utils;
 
 internal static class TypeHelpers
 {
-    public static readonly MethodInfo EnumerableAll
-        = new Func<IEnumerable<object>, Func<object, bool>, bool>(Enumerable.All)
-            .Method
-            .GetGenericMethodDefinition();
-
-    public static readonly MethodInfo StringContains
-        = typeof(string)
-            .GetMethod(nameof(string.Contains), new[] { typeof(string) })!;
-
     private static bool IsEntityType(Type type)
         => type is { IsValueType: false, IsGenericType: false };
 

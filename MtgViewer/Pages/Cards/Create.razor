@@ -12,89 +12,92 @@
         New cards were successfully added.
     </SuccessMessage>
     <ErrorMessage>
-        Ran into issues while try to add the new cards.
+        @if (IsSearchError)
+        {
+            <text>No Matches were found.</text>
+        }
+        else
+        {
+            <text>Ran into issues while try to add the new cards.</text>
+        }
     </ErrorMessage>
 </SavePrompt>
 
 @if (!Matches.Any() && IsFromForm)
 {
     <hr />
-    <EditForm OnValidSubmit="@SubmitSearch" EditContext="@SearchEdit">
-        <DataAnnotationsValidator />
+    <div class="row">
+        <section class="col-md order-md-last">
+            <h5> Parameter Descriptions </h5>
+            <p> Search by different attributes of an MTG card: </p>
 
-        <div class="row">
-            <div class="col-md order-md-last">
-                <ValidationSummary role="alert"/>
-                <section>
-                    <h5> Parameter Descriptions </h5>
-                    <p> Search by different attributes of an MTG card: </p>
+            <dl class="row mb-0">
+                <dt class="col-12 col-lg-2"> @HtmlHelpers.GetDisplay((CardSearch c) => c.Name) </dt>
+                <dd class="col-12 col-lg-10">
+                    <p>
+                        The Name of the Card (in the top left). Split cards are treated
+                        as separate cards, so only side of the card should be specified.
+                    </p>
+                </dd>
 
-                    <dl class="row mb-0">
-                        <dt class="col-12 col-lg-2"> @HtmlHelpers.GetDisplay((CardQuery c) => c.Name) </dt>
-                        <dd class="col-12 col-lg-10">
-                            <p>
-                                The Name of the Card (in the top left). Split cards are treated
-                                as separate cards, so only side of the card should be specified.
-                            </p>
-                        </dd>
+                <dt class="col-12 col-lg-2"> @HtmlHelpers.GetDisplay((CardSearch c) => c.Colors) </dt>
+                <dd class="col-12 col-lg-10">
+                    <p>
+                        The color identity of the card. Color identity is affected by
+                        a card's mana cost, but also mana abilities costs and text
+                        effects. Multiple colors can be specified, where the searched
+                        must have <i>all</i> selected colors.
+                    </p>
+                </dd>
 
-                        <dt class="col-12 col-lg-2"> @HtmlHelpers.GetDisplay((CardQuery c) => c.Colors) </dt>
-                        <dd class="col-12 col-lg-10">
-                            <p>
-                                The color identity of the card. Color identity is affected by
-                                a card's mana cost, but also mana abilities costs and text
-                                effects. Multiple colors can be specified, where the searched
-                                must have <i>all</i> selected colors.
-                            </p>
-                        </dd>
+                <dt class="col-12 col-lg-2"> @HtmlHelpers.GetDisplay((CardSearch c) => c.SetName) </dt>
+                <dd class="col-12 col-lg-10">
+                    <p>
+                        The set at which a specific card print was apart of. The set
+                        can only be specified by the set <i>name</i>, not the set code.
+                    </p>
+                </dd>
 
-                        <dt class="col-12 col-lg-2"> @HtmlHelpers.GetDisplay((CardQuery c) => c.SetName) </dt>
-                        <dd class="col-12 col-lg-10">
-                            <p>
-                                The set at which a specific card print was apart of. The set
-                                can only be specified by the set <i>name</i>, not the set code.
-                            </p>
-                        </dd>
+                <dt class="col-12 col-lg-2"> @HtmlHelpers.GetDisplay((CardSearch c) => c.Types) </dt>
+                <dd class="col-12 col-lg-10">
+                    <p> Type information specified on the middle of the card </p>
+                    <p> Examples: Basic Land, Planeswalker, Creature Enchantment </p>
+                </dd>
 
-                        <dt class="col-12 col-lg-2"> @HtmlHelpers.GetDisplay((CardQuery c) => c.Type) </dt>
-                        <dd class="col-12 col-lg-10">
-                            <p> Type information specified on the middle of the card </p>
-                            <p> Examples: Basic Land, Planeswalker, Creature Enchantment </p>
-                        </dd>
+                <dt class="col-12 col-lg-2"> @HtmlHelpers.GetDisplay((CardSearch c) => c.Text) </dt>
+                <dd class="col-12 col-lg-10">
+                    <p>
+                        The card effect text. The Oracle Text can also be searched by
+                        keywords and phrases.
+                    </p>
+                </dd>
 
-                        <dt class="col-12 col-lg-2"> @HtmlHelpers.GetDisplay((CardQuery c) => c.Text) </dt>
-                        <dd class="col-12 col-lg-10">
-                            <p>
-                                The card effect text. The Oracle Text can also be searched by
-                                keywords and phrases.
-                            </p>
-                        </dd>
+                <dt class="col-12 col-lg-2"> @HtmlHelpers.GetDisplay((CardSearch c) => c.Flavor) </dt>
+                <dd class="col-12 col-lg-10">
+                    <p>
+                        The card flavor text. This is the card text that is in italics, and can differ
+                        across card prints.
+                    </p>
+                </dd>
+            </dl>
+        </section>
 
-                        <dt class="col-12 col-lg-2"> @HtmlHelpers.GetDisplay((CardQuery c) => c.Flavor) </dt>
-                        <dd class="col-12 col-lg-10">
-                            <p>
-                                The card flavor text. This is the card text that is in italics, and can differ
-                                across card prints.
-                            </p>
-                        </dd>
-                    </dl>
-                </section>
-            </div>
+        <hr class="d-md-none col-12"/>
 
-            <hr class="d-md-none col-12"/>
-
-            <div class="col-md col-lg-4">
+        <div class="col-md col-lg-4">
+            <form @onsubmit="SubmitSearch">
                 <p> Enter the card search parameters below </p>
 
                 <div class="form-group">
-                    <InputText @bind-Value="Query.Name"
-                        placeholder="@HtmlHelpers.GetDisplay((CardQuery c) => c.Name)"
+                    <input @bind="Query.Name"
+                        placeholder="@HtmlHelpers.GetDisplay((CardSearch c) => c.Name)"
                         class="form-control" />
                 </div>
 
                 <div class="form-group">
-                    <InputNumber @bind-Value="Query.Cmc" min="0"
-                        placeholder="@HtmlHelpers.GetDisplay((CardQuery c) => c.Cmc)"
+                    <input @bind="Query.ManaValue"
+                        type="number" min="0"
+                        placeholder="@HtmlHelpers.GetDisplay((CardSearch c) => c.ManaValue)"
                         class="form-control" />
                 </div>
 
@@ -104,77 +107,77 @@
                         <button title="Toggle @color"
                             disabled="@IsLoading" type="button"
                             class="btn btn-outline-secondary ms-filter @ActiveColor(color)"
-                            @onclick="() => ToggleColor(color)">
+                            @onclick="() => Query.ToggleColors(color)">
+
                             <i class="ms ms-@symbol.ToLower() ms-cost"></i>
                         </button>
                     }
                 </div>
 
                 <div class="form-group">
-                    <InputText @bind-Value="Query.SetName"
-                        placeholder="@HtmlHelpers.GetDisplay((CardQuery c) => c.SetName)"
+                    <input @bind="Query.SetName"
+                        placeholder="@HtmlHelpers.GetDisplay((CardSearch c) => c.SetName)"
                         class="form-control" />
                 </div>
 
                 <div class="form-group">
-                    <InputSelect @bind-Value="Query.Rarity"
+                    <select @bind="Query.Rarity"
                         title="Choose Rarity" class="form-control">
 
-                        <option value="@(null as Rarity?)"> Choose Rarity </option>
+                        <option value=""> Choose Rarity </option>
 
                         @foreach (var rarity in Enum.GetValues<Rarity>())
                         {
                             <option value="@rarity">@rarity</option>
                         }
-                    </InputSelect>
+                    </select>
                 </div>
 
                 <div class="form-group">
-                    <InputText @bind-Value="Query.Type"
-                        placeholder="@HtmlHelpers.GetDisplay((CardQuery c) => c.Type)"
+                    <input @bind="Query.Types"
+                        placeholder="@HtmlHelpers.GetDisplay((CardSearch c) => c.Types)"
                         class="form-control" />
                 </div>
 
                 <div class="form-group">
-                    <InputText @bind-Value="Query.Power"
-                        placeholder="@HtmlHelpers.GetDisplay((CardQuery c) => c.Power)"
+                    <input @bind="Query.Power"
+                        placeholder="@HtmlHelpers.GetDisplay((CardSearch c) => c.Power)"
                         class="form-control" />
                 </div>
 
                 <div class="form-group">
-                    <InputText @bind-Value="Query.Toughness"
-                        placeholder="@HtmlHelpers.GetDisplay((CardQuery c) => c.Toughness)"
+                    <input @bind="Query.Toughness"
+                        placeholder="@HtmlHelpers.GetDisplay((CardSearch c) => c.Toughness)"
                         class="form-control" />
                 </div>
 
                 <div class="form-group">
-                    <InputText @bind-Value="Query.Loyalty"
-                        placeholder="@HtmlHelpers.GetDisplay((CardQuery c) => c.Loyalty)"
+                    <input @bind="Query.Loyalty"
+                        placeholder="@HtmlHelpers.GetDisplay((CardSearch c) => c.Loyalty)"
                         class="form-control" />
                 </div>
 
                 <div class="form-group">
-                    <InputTextArea @bind-Value="Query.Text"
-                        placeholder="@HtmlHelpers.GetDisplay((CardQuery c) => c.Text)"
+                    <textarea @bind="Query.Text"
+                        placeholder="@HtmlHelpers.GetDisplay((CardSearch c) => c.Text)"
                         class="form-control" />
                 </div>
 
                 <div class="form-group">
-                    <InputTextArea @bind-Value="Query.Flavor"
-                        placeholder="@HtmlHelpers.GetDisplay((CardQuery c) => c.Flavor)"
+                    <textarea @bind="Query.Flavor"
+                        placeholder="@HtmlHelpers.GetDisplay((CardSearch c) => c.Flavor)"
                         class="form-control" />
                 </div>
 
                 <div class="form-group">
-                    <InputText @bind-Value="Query.Artist"
-                        placeholder="@HtmlHelpers.GetDisplay((CardQuery c) => c.Artist)"
+                    <input @bind="Query.Artist"
+                        placeholder="@HtmlHelpers.GetDisplay((CardSearch c) => c.Artist)"
                         class="form-control" />
                 </div>
 
                 <div class="btn-group" role="group">
-
                     <button type="submit" class="btn btn-secondary"
-                        title="Search For Card" disabled="@(IsEmpty || IsLoading)">
+                        title="Search For Card" disabled="@IsLoading">
                         @if (IsLoading)
                         {
                             <text>
@@ -188,26 +191,27 @@
                         }
                     </button>
                 </div>
-            </div>
+
+            </form>
         </div>
-    </EditForm>
+    </div>
 }
 else
 {
     <div class="btn-group pb-2" role="group">
+        <button title="Add Selected Cards"
+            type="button"
+            class="btn btn-secondary"
+            @onclick="AddNewCardsAsync"
+            disabled="@(CannotAdd || IsLoading)">
+            Add Cards/Copies </button>
+
         <button title="Reset Search Arguments"
             type="button"
             @onclick="Reset"
             disabled="@IsLoading"
             class="btn btn-danger">
             Reset </button>
-
-        <button title="Add Selected Cards"
-            type="button"
-            class="btn btn-secondary"
-            @onclick="AddNewCardsAsync"
-            disabled="@(CannotAdd() || IsLoading)">
-            Add Cards/Copies </button>
     </div>
 
     <div class="table-responsive-md">
@@ -284,7 +288,4 @@ else
 
     internal string ActiveColor(Color color) =>
         Query.Colors.HasFlag(color) ? "active" : string.Empty;
-
-    internal bool CannotAdd() =>
-        !Matches.Any() || Matches.All(m => m.Copies == 0);
 }

@@ -78,13 +78,10 @@ internal static class ExpressionHelpers
     }
 
     public static string GetLineageName(MemberExpression member)
-    {
-        var memberNames = GetLineage(member)
+        => GetLineage(member)
             .Reverse()
-            .Select(m => m.Member.Name);
-
-        return string.Join(string.Empty, memberNames);
-    }
+            .Select(m => m.Member.Name)
+            .Join();
 
     public static bool IsDescendant(MemberExpression? node, MemberExpression possibleAncestor)
     {

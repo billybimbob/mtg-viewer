@@ -1,7 +1,8 @@
+using System.Collections.Generic;
 using System.Linq;
+using System.Security.Claims;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Security.Claims;
 
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -32,8 +33,8 @@ public class PlayerManager
         _logger = logger;
     }
 
-    public IQueryable<Player> Players =>
-        _dbContext.Players.AsNoTrackingWithIdentityResolution();
+    public IQueryable<Player> Players
+        => _dbContext.Players.AsNoTrackingWithIdentityResolution();
 
     public async Task<bool> CreateAsync(CardUser user, CancellationToken cancel = default)
     {
@@ -174,17 +175,25 @@ public class PlayerManager
 
     public async Task ResetAsync(CancellationToken cancel = default)
     {
-        var transaction = await _dbContext.Database.BeginTransactionAsync(cancel);
+        // keep eye on, reset changes are not atomic
 
         await _resetHandler.ResetAsync(cancel);
 
-        var resetPlayers = await _dbContext.Players
+        var resetPlayers = _dbContext.Players
             .Where(p => p.ResetRequested)
-            .ToListAsync(cancel);
+            .AsAsyncEnumerable()
+            .WithCancellation(cancel);
 
-        string[] resettingIds = resetPlayers
-            .Select(p => p.Id)
-            .ToArray();
+        var resettingIds = new HashSet<string>();
+
+        await foreach (var player in resetPlayers)
+        {
+            player.ResetRequested = false;
+
+            resettingIds.Add(player.Id);
+        }
+
+        await _dbContext.SaveChangesAsync(cancel);
 
         var cardUsers = await _userManager.Users
             .Where(u => resettingIds.Contains(u.Id))
@@ -195,14 +204,5 @@ public class PlayerManager
             await _userManager.AddClaimAsync(
                 cardUser, new Claim(CardClaims.ChangeTreasury, cardUser.Id));
         }
-
-        foreach (var player in resetPlayers)
-        {
-            player.ResetRequested = false;
-        }
-
-        await _dbContext.SaveChangesAsync(cancel);
-
-        await transaction.CommitAsync(cancel);
     }
 }

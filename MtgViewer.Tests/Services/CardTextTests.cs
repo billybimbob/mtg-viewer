@@ -48,11 +48,11 @@ public class CardTextTests
 
         string[] symbolArray = { "3", "W", "W" };
 
-        var translation = symbolArray.Select(_cardText.ManaString);
+        string translation = symbolArray
+            .Select(_cardText.ManaString)
+            .Join();
 
-        string parsedCost = string.Join(string.Empty, translation);
-
-        Assert.Equal(manaCost, parsedCost);
+        Assert.Equal(manaCost, translation);
     }
 
     [Fact]
@@ -61,11 +61,13 @@ public class CardTextTests
         const string manaCost = "{3}{W}{W}";
 
         var parsedMana = _cardText.FindMana(manaCost).Select(m => m.Value);
-        var translation = parsedMana.Select(_cardText.ManaString);
 
-        string parsedCost = string.Join(string.Empty, translation);
+        string translation = _cardText
+            .FindMana(manaCost)
+            .Select(m => _cardText.ManaString(m.Value))
+            .Join();
 
-        Assert.Equal(manaCost, parsedCost);
+        Assert.Equal(manaCost, translation);
     }
 
     [Theory]
@@ -127,8 +129,9 @@ public class CardTextTests
 
         const string sagas = "I, II —";
 
-        var sagaStrings = symbols.Select(_cardText.SagaString);
-        string parsedSagas = string.Join(string.Empty, sagaStrings);
+        string parsedSagas = symbols
+            .Select(_cardText.SagaString)
+            .Join();
 
         Assert.Equal(sagas, parsedSagas);
     }

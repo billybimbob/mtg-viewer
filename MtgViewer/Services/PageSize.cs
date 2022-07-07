@@ -80,12 +80,11 @@ public sealed class PageSize : IDisposable
 
         // keep eye on, this parse does not handle all possible route templates
 
-        var route = attribute.Template
+        string key = attribute.Template
             .Split('/')
             .Skip(1)
-            .Where(s => !s.StartsWith('{'));
-
-        string key = string.Join(':', route);
+            .Where(s => !s.StartsWith('{'))
+            .Join(':');
 
         if (key == string.Empty)
         {
@@ -105,9 +104,9 @@ public sealed class PageSize : IDisposable
             return null;
         }
 
-        string[] route = actionName.Split('/')[1..];
-
-        string key = string.Join(':', route);
+        string key = actionName
+            .Split('/')[1..]
+            .Join(':');
 
         if (key == string.Empty)
         {

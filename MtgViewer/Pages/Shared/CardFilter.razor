@@ -12,7 +12,7 @@
                 type="button"
                 class="btn btn-outline-secondary ms-filter @ColorActive(color)"
                 disabled="@IsDisabled"
-                @onclick="() => ColorChanged.InvokeAsync(color)">
+                @onclick="() => ToggleColor(color)">
 
                 <i class="ms ms-@symbol.ToLower() ms-cost"></i>
             </button>
@@ -51,5 +51,10 @@
     internal string ColorActive(Color color)
     {
         return Color.HasFlag(color) ? "active" : string.Empty;
+    }
+
+    internal void ToggleColor(Color toggle)
+    {
+        _ = ColorChanged.InvokeAsync(toggle ^ Color);
     }
 }

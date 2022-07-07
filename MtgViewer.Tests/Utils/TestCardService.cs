@@ -72,7 +72,7 @@ public class TestCardService : ICardService
 
         if (name == nameof(CardQueryParameter.Page) && value is int page)
         {
-            _page = page;
+            _page = page - 1;
             return this;
         }
 

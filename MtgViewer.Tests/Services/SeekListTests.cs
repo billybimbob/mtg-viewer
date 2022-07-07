@@ -449,9 +449,9 @@ public class SeekListTests : IAsyncLifetime
             .Include(c => c.From)
             .OrderBy(c => c.Id);
 
-        int? originId = await changes
+        int originId = await changes
             .Skip(pageSize * numPages)
-            .Select(c => c.Id as int?)
+            .Select(c => c.Id)
             .FirstAsync();
 
         var seekList = await changes
