@@ -1,80 +1,33 @@
-# mtg-viewer
+# MTG Viewer
 
 Magic: The Gathering Card Manager and Deck Builder, using [ASP.net](https://dotnet.microsoft.com/apps/aspnet)
 
-## Requirements
+## Features
 
-* [.NET 6.0 SDK](https://dotnet.microsoft.com/download)
-* Entity Framework Core
+MTG Viewer is a collaborative collection manager, that enables users to build and share Magic: The Gathering decks. This application is intended for a small group of friends to organize and theorize deck ideas from their personal MTG collection.
 
-### Instal EF Core
+* Card collection management
+  * Keep track of cards counts
+  * Add, search, and remove individual cards
+  * Track card changes
+  * Overall collection statistics
+  * Import/Backup collection
+* User accounts
+  * Create user-owned decks
+  * Player trading
+  * Suggest cards to other players
+* Deck building
+  * Theorycrafting
+  * Sample mulligans
+  * Track change history
+  * Share deck creations with everyone
 
-```powershell
-dotnet tool install --global dotnet-ef
-```
+## Technologies
 
-## Projects
-
-There are multiple projects in the repository:
-
-* `MTGViewer`: MTG card website and database information
-* `MTGViewer.Tests`: test cases for website components
-
-All the ef core and database commands are in reference to the `MTGViewer` project, which should be specified with the `-p` argument.
-
-## Database
-
-The development database is sqlite, where the database is hosted on the local machine, and is not synchronized with the repo.The database is defined into two separate contexts:
-
-* `CardDbContext`: all card and deck data
-* `UserDbContext`: all user and account data
-
-With all of the ef commands listed below, the context must be specified, using the `-c` argument, and make sure to run all commands below in the project directory.
-
-### Add Database Migrations and Schema
-
- For the `migrations add` commands, the out directory is recommended to be specified, using the `-o` argument. If the out directory is not specified, then the default target will be the `Migrations` folder.
-
-The mains steps are to create the database schema with ef core:
-
-1. Add/create the database migrations
-
-    ```powershell
-    dotnet ef migrations add AddUsers -p MTGViewer -c UserDbContext -o Migrations\Users
-    dotnet ef migrations add AddCards -p MTGViewer -c CardDbContext -o Migrations\Cards
-    ```
-
-2. Apply/update the database migrations to the actual database
-
-    ```powershell
-    dotnet ef database update -p MTGViewer -c UserDbContext
-    dotnet ef database update -p MTGViewer -c CardDbContext
-    ```
-
-### Reset Database
-
-If the schema is modified, the best approach is to just drop all of the previous tables and rebuild the database.
-
-1. Drop the database:
-
-    ```powershell
-    dotnet ef database drop -p MTGViewer -c UserDbContext
-    dotnet ef database drop -p MTGViewer -c CardDbContext
-    ```
-
-2. Delete the  files in the `Migrations` folder
-
-    ```powershell
-    rm -r MTGViewer\Migrations\Users
-    rm -r MTGViewer\Migrations\Cards
-    ```
-
-3. Repeat the migration and update steps [above](#add-database-migrations-and-schema)
-
-## Run the Application
-
-In the project directory:
-
-```powershell
-dotnet watch run -p MTGViewer
-```
+* [Bootstrap](https://getbootstrap.com/)
+* [jQuery](https://api.jquery.com/)
+* [SendGrid](https://sendgrid.com/)
+* [Blazor Server](https://docs.microsoft.com/en-us/aspnet/core/blazor/)
+* [Razor Pages](https://docs.microsoft.com/en-us/aspnet/core/razor-pages/)
+* [Entity Framework Core](https://docs.microsoft.com/en-us/ef/core/)
+* [Postgresql](https://postgresql.org/)
