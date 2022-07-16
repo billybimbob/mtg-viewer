@@ -327,13 +327,9 @@ internal class QueryOriginVisitor : ExpressionVisitor
                 return node;
             }
 
-            string overlapChain = ExpressionHelpers
-                .GetLineage(overlap)
-                .Reverse()
-                .Select(m => m.Member.Name)
-                .Join('.');
+            string name = ExpressionHelpers.GetLineageName(overlap);
 
-            return Expression.Constant(overlapChain);
+            return Expression.Constant(name);
         }
 
         private MemberExpression? GetOriginOverlap(MemberExpression node)

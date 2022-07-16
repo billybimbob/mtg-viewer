@@ -114,12 +114,14 @@ public sealed class MtgApiQuery : IMtgQuery
 
         if (search.Types is not null)
         {
+            char[] separator = { ' ', And };
+
             const StringSplitOptions notWhiteSpace
                 = StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries;
 
             string types = search.Types
                 .Trim()
-                .Split(' ', And, notWhiteSpace)
+                .Split(separator, notWhiteSpace)
                 .Join(And);
 
             cards = cards.Where(c => c.Type, types);
@@ -209,68 +211,37 @@ public sealed class MtgApiQuery : IMtgQuery
 
     #region Translate Results
 
-    private async ValueTask<Card?> TranslateAsync(
-        IOperationResult<ICard> result,
-        CancellationToken cancel)
-    {
-        if (LoggedUnwrap(result) is not ICard iCard)
-        {
-            return null;
-        }
-
-        var flip = await FindFlipAsync(iCard, cancel);
-
-        return Validate(iCard, flip);
-    }
-
     private async ValueTask<IReadOnlyList<Card>> TranslateAsync(
         IOperationResult<List<ICard>> result,
         CancellationToken cancel)
     {
-        var iCards = LoggedUnwrap(result);
-
-        if (iCards is null or { Count: 0 })
+        if (LoggedUnwrap(result) is not IReadOnlyList<ICard> iCards
+            || iCards.Count is 0)
         {
             return Array.Empty<Card>();
         }
 
-        LogMissingMultiverseIds(iCards);
-
-        return await iCards
-            .Where(c => c.MultiverseId is not null)
-            .OrderBy(c => c.MultiverseId)
-
-            .GroupBy(c => (c.Name, c.Set),
-                (_, cards) => new Queue<ICard>(cards))
-
-            .ToAsyncEnumerable()
-            .SelectMany(q => ValidateAsync(q))
-            .ToListAsync(cancel);
-    }
-
-    private T? LoggedUnwrap<T>(IOperationResult<T> result) where T : class
-    {
-        if (!result.IsSuccess)
-        {
-            _logger.LogError("{Error}", result.Exception);
-            return null;
-        }
-
-        return result.Value;
-    }
-
-    private void LogMissingMultiverseIds(IEnumerable<ICard> cards)
-    {
-        var missingMultiverseId = cards
+        var missingMultiverseId = iCards
             .Where(c => c.MultiverseId is null);
 
         foreach (var missing in missingMultiverseId)
         {
             _logger.LogError("{Card} was found, but is missing multiverseId", missing.Name);
         }
+
+        return await iCards
+            .Except(missingMultiverseId)
+            .OrderBy(c => c.MultiverseId)
+
+            .GroupBy(c => (c.Name, c.Set),
+                (_, cards) => new Queue<ICard>(cards))
+
+            .ToAsyncEnumerable()
+            .SelectMany(q => TranslateAsync(q))
+            .ToListAsync(cancel);
     }
 
-    private async IAsyncEnumerable<Card> ValidateAsync(
+    private async IAsyncEnumerable<Card> TranslateAsync(
         Queue<ICard> similarCards,
         [EnumeratorCancellation] CancellationToken cancel = default)
     {
@@ -285,7 +256,32 @@ public sealed class MtgApiQuery : IMtgQuery
         }
     }
 
-    private async Task<Flip?> FindFlipAsync(
+    private async ValueTask<Card?> TranslateAsync(
+        IOperationResult<ICard> result,
+        CancellationToken cancel)
+    {
+        if (LoggedUnwrap(result) is not ICard iCard)
+        {
+            return null;
+        }
+
+        var flip = await FindFlipAsync(iCard, cancel);
+
+        return Validate(iCard, flip);
+    }
+
+    private T? LoggedUnwrap<T>(IOperationResult<T> result) where T : class
+    {
+        if (!result.IsSuccess)
+        {
+            _logger.LogError("{Error}", result.Exception);
+            return null;
+        }
+
+        return result.Value;
+    }
+
+    private async ValueTask<Flip?> FindFlipAsync(
         ICard card,
         Queue<ICard> similarCards,
         CancellationToken cancel)
@@ -311,7 +307,7 @@ public sealed class MtgApiQuery : IMtgQuery
         return Validate(similar);
     }
 
-    private async Task<Flip?> FindFlipAsync(ICard card, CancellationToken cancel)
+    private async ValueTask<Flip?> FindFlipAsync(ICard card, CancellationToken cancel)
     {
         if (!HasFlip(card.Name))
         {

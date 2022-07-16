@@ -233,11 +233,11 @@ internal sealed class SeekProvider : IAsyncQueryProvider
         // potential issue with extra items tracked that are not actually returned
         // keep eye on
 
-        if (lookAhead && seek.Direction is SeekDirection.Forward)
+        if (lookAhead && direction is SeekDirection.Forward)
         {
             items.RemoveAt(items.Count - 1);
         }
-        else if (lookAhead && seek.Direction is SeekDirection.Backwards)
+        else if (lookAhead && direction is SeekDirection.Backwards)
         {
             items.RemoveAt(0);
         }

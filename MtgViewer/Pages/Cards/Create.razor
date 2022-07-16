@@ -35,8 +35,15 @@
                 <dt class="col-12 col-lg-2"> @HtmlHelpers.GetDisplay((CardSearch c) => c.Name) </dt>
                 <dd class="col-12 col-lg-10">
                     <p>
-                        The Name of the Card (in the top left). Split cards are treated
-                        as separate cards, so only side of the card should be specified.
+                        The Name of the card (in the top left). Multiple faced cards can either specify
+                        one specific face, or mutiple faces deliminated by "//".
+                    </p>
+                </dd>
+
+                <dt class="col-12 col-lg-2"> @HtmlHelpers.GetDisplay((CardSearch c) => c.ManaValue) </dt>
+                <dd class="col-12 col-lg-10">
+                    <p>
+                        The total amount of mana specified a card's casting cost (located on the top right).
                     </p>
                 </dd>
 
@@ -45,8 +52,7 @@
                     <p>
                         The color identity of the card. Color identity is affected by
                         a card's mana cost, but also mana abilities costs and text
-                        effects. Multiple colors can be specified, where the searched
-                        must have <i>all</i> selected colors.
+                        effects.
                     </p>
                 </dd>
 
@@ -60,7 +66,7 @@
 
                 <dt class="col-12 col-lg-2"> @HtmlHelpers.GetDisplay((CardSearch c) => c.Types) </dt>
                 <dd class="col-12 col-lg-10">
-                    <p> Type information specified on the middle of the card </p>
+                    <p> Type information specified in the middle of the card </p>
                     <p> Examples: Basic Land, Planeswalker, Creature Enchantment </p>
                 </dd>
 
@@ -198,68 +204,70 @@
 }
 else
 {
-    <div class="btn-group pb-2" role="group">
-        <button title="Add Selected Cards"
-            type="button"
-            class="btn btn-secondary"
-            @onclick="AddNewCardsAsync"
-            disabled="@(CannotAdd || IsLoading)">
-            Add Cards/Copies </button>
+    <form @onsubmit="AddNewCardsAsync">
+        <div class="btn-group pb-2" role="group">
 
-        <button title="Reset Search Arguments"
-            type="button"
-            @onclick="Reset"
-            disabled="@IsLoading"
-            class="btn btn-danger">
-            Reset </button>
-    </div>
+            <button title="Reset Search Arguments"
+                type="button"
+                @onclick="Reset"
+                disabled="@IsLoading"
+                class="btn btn-danger">
+                Reset </button>
 
-    <div class="table-responsive-md">
-        <table class="table">
-            <thead>
-                <tr>
-                    <th scope="col"> @HtmlHelpers.GetDisplay((Card c) => c.Name) </th>
-                    <th scope="col"> @HtmlHelpers.GetDisplay((Card c) => c.ManaCost) </th>
-                    <th scope="col"> @HtmlHelpers.GetDisplay((Card c) => c.SetName) </th>
-                    <th scope="col"> @HtmlHelpers.GetDisplay((Card c) => c.Rarity) </th>
-                    <th scope="col"> Copies </th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var match in Matches)
-                {
-                    var card = match.Card;
+            <button title="Add Selected Cards"
+                type="submit"
+                class="btn btn-secondary"
+                disabled="@IsLoading">
+                Add Cards/Copies </button>
+        </div>
+
+        <div class="table-responsive-md">
+            <table class="table">
+                <thead>
                     <tr>
-                        <td>
-                            <HoverCard Target="card">
-                                @if (match.HasDetails)
-                                {
-                                    <a href="/Cards/Details/@card.Id"> @card.Name </a>
-                                }
-                                else
-                                {
-                                    <span class="btn-link"> @card.Name </span>
-                                }
-                            </HoverCard>
-                        </td>
-                        <td>
-                            <div class="ms-group">
-                                @MtgSymbols.Format(card.ManaCost).ToMarkupString()
-                            </div>
-                        </td>
-                        <td> @card.SetName </td>
-                        <td> @card.Rarity </td>
-                        <td>
-                            <input @bind="match.Copies"
-                                title="@card.Name Copies"
-                                type="number" min="0" max="@match.Limit"
-                                class="form-control amt-input" />
-                        </td>
+                        <th scope="col"> @HtmlHelpers.GetDisplay((Card c) => c.Name) </th>
+                        <th scope="col"> @HtmlHelpers.GetDisplay((Card c) => c.ManaCost) </th>
+                        <th scope="col"> @HtmlHelpers.GetDisplay((Card c) => c.SetName) </th>
+                        <th scope="col"> @HtmlHelpers.GetDisplay((Card c) => c.Rarity) </th>
+                        <th scope="col"> Copies </th>
                     </tr>
-                }
-            </tbody>
-        </table>
-    </div>
+                </thead>
+                <tbody>
+                    @foreach (var match in Matches)
+                    {
+                        var card = match.Card;
+                        <tr>
+                            <td>
+                                <HoverCard Target="card">
+                                    @if (match.HasDetails)
+                                    {
+                                        <a href="/Cards/Details/@card.Id"> @card.Name </a>
+                                    }
+                                    else
+                                    {
+                                        <span class="btn-link"> @card.Name </span>
+                                    }
+                                </HoverCard>
+                            </td>
+                            <td>
+                                <div class="ms-group">
+                                    @MtgSymbols.Format(card.ManaCost).ToMarkupString()
+                                </div>
+                            </td>
+                            <td> @card.SetName </td>
+                            <td> @card.Rarity </td>
+                            <td>
+                                <input @bind="match.Copies"
+                                    title="@card.Name Copies"
+                                    type="number" min="0" max="@match.Limit"
+                                    class="form-control amt-input" />
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </form>
 
     <div class="btn-group pb-3">
         <button title="More Results" type="button"
@@ -283,9 +291,6 @@ else
 
 @code
 {
-    internal static string DisplayName<T>(Expression<Func<Card, T>> property) =>
-        HtmlHelpers.GetDisplay(property);
-
     internal string ActiveColor(Color color) =>
         Query.Colors.HasFlag(color) ? "active" : string.Empty;
 }

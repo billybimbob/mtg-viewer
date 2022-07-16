@@ -105,7 +105,8 @@ public sealed class PageSize : IDisposable
         }
 
         string key = actionName
-            .Split('/')[1..]
+            .Split('/')
+            .Skip(1)
             .Join(':');
 
         if (key == string.Empty)

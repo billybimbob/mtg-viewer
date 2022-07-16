@@ -99,9 +99,6 @@ public sealed partial class Create : ComponentBase, IDisposable
 
     internal bool HasNoNext => Query.Page + 1 >= _totalResults;
 
-    internal bool CannotAdd
-        => _matches is { Count: 0 } || _matches.All(m => m.Copies == 0);
-
     internal CardSearch Query { get; } = new();
 
     internal bool IsFromForm { get; private set; }
@@ -135,6 +132,7 @@ public sealed partial class Create : ComponentBase, IDisposable
             if (ReturnUrl is not null)
             {
                 // ensure no open redirects
+
                 _returnUrl = ReturnUrl.StartsWith(Nav.BaseUri)
                     ? ReturnUrl
                     : $"{Nav.BaseUri}{ReturnUrl.TrimStart('/')}";
@@ -146,7 +144,7 @@ public sealed partial class Create : ComponentBase, IDisposable
                 return;
             }
 
-            await LoadCardMatchesAsync(_cancel.Token);
+            await LoadCardMatchesAsync();
         }
         catch (OperationCanceledException ex)
         {
@@ -185,7 +183,7 @@ public sealed partial class Create : ComponentBase, IDisposable
         _matches.Clear();
 
         Query.Name = Name;
-        Query.ManaValue = Cmc < 0 ? null : Cmc;
+        Query.ManaValue = Cmc;
         Query.Colors = (Color)Colors;
         Query.Rarity = (Rarity?)Rarity;
         Query.SetName = Set;
@@ -197,6 +195,7 @@ public sealed partial class Create : ComponentBase, IDisposable
         Query.Text = Text;
         Query.Flavor = Flavor;
         Query.Page = 0;
+        Query.PageSize = 0;
 
         _totalResults = 0;
     }
@@ -219,16 +218,16 @@ public sealed partial class Create : ComponentBase, IDisposable
         return Task.CompletedTask;
     }
 
-    private async Task LoadCardMatchesAsync(CancellationToken cancel)
+    private async Task LoadCardMatchesAsync()
     {
         const string details = nameof(MatchInput.HasDetails);
 
-        if (_matches.Any()
+        if (_matches.Count > 0
             || !ApplicationState.TryGetData(nameof(_totalResults), out _totalResults)
             || !ApplicationState.TryGetData(nameof(_matches), out IEnumerable<Card>? cards)
             || !ApplicationState.TryGetData(details, out ICollection<string>? inDbCards))
         {
-            await SearchForCardAsync(cancel);
+            await SearchForCardAsync();
             return;
         }
 
@@ -238,28 +237,29 @@ public sealed partial class Create : ComponentBase, IDisposable
         _matches.AddRange(matches);
     }
 
-    private async Task SearchForCardAsync(CancellationToken cancel)
+    private async Task SearchForCardAsync()
     {
-        Query.PageSize = PageSize.Current;
+        if (Query.PageSize == 0)
+        {
+            Query.PageSize = PageSize.Current;
+        }
 
-        var result = await MtgQuery.SearchAsync(Query, cancel);
+        var result = await MtgQuery.SearchAsync(Query, _cancel.Token);
 
         _totalResults = result.Offset.Total;
 
-        await AddNewMatchesAsync(result, cancel);
+        await AddNewMatchesAsync(result);
 
-        if (_matches is { Count: 0 })
+        if (_matches.Count == 0)
         {
             Result = SaveResult.Error;
             IsSearchError = true;
         }
-
-        Query.PageSize = 0;
     }
 
-    private async Task AddNewMatchesAsync(IReadOnlyList<Card> cards, CancellationToken cancel)
+    private async Task AddNewMatchesAsync(IReadOnlyList<Card> cards)
     {
-        if (cards is { Count: 0 })
+        if (cards.Count == 0)
         {
             return;
         }
@@ -268,19 +268,17 @@ public sealed partial class Create : ComponentBase, IDisposable
             .Select(c => c.Id)
             .ToArray();
 
-        await using var dbContext = await DbFactory.CreateDbContextAsync(cancel);
+        await using var dbContext = await DbFactory.CreateDbContextAsync(_cancel.Token);
 
         var existingIds = await dbContext.Cards
             .Where(c => matchIds.Contains(c.Id))
             .OrderBy(c => c.Id)
             .Select(c => c.Id)
             .AsAsyncEnumerable()
-            .ToHashSetAsync(cancel);
-
-        int limit = PageSize.Limit;
+            .ToHashSetAsync(_cancel.Token);
 
         var newMatches = cards
-            .Select(c => new MatchInput(c, existingIds.Contains(c.Id), limit));
+            .Select(c => new MatchInput(c, existingIds.Contains(c.Id), PageSize.Limit));
 
         _matches.AddRange(newMatches);
     }
@@ -298,7 +296,7 @@ public sealed partial class Create : ComponentBase, IDisposable
         {
             Query.Page += 1;
 
-            await SearchForCardAsync(_cancel.Token);
+            await SearchForCardAsync();
         }
         catch (OperationCanceledException ex)
         {
@@ -364,7 +362,7 @@ public sealed partial class Create : ComponentBase, IDisposable
 
     internal async Task AddNewCardsAsync()
     {
-        if (_isBusy)
+        if (_isBusy || _matches.All(m => m.Copies == 0))
         {
             return;
         }
@@ -374,17 +372,17 @@ public sealed partial class Create : ComponentBase, IDisposable
             .Select(m => new CardRequest(m.Card, m.Copies))
             .ToList();
 
-        if (!addedCopies.Any())
+        if (addedCopies.Count == 0)
         {
             return;
         }
 
         _isBusy = true;
 
+        Result = SaveResult.None;
+
         try
         {
-            Result = SaveResult.None;
-
             await using var dbContext = await DbFactory.CreateDbContextAsync(_cancel.Token);
 
             await AddNewCardsAsync(dbContext, addedCopies, PageSize.Limit, _cancel.Token);

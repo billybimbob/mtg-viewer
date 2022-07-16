@@ -234,8 +234,6 @@ public sealed record CardSearch : IMtgSearch
     }
 
     private int _pageSize;
-
-    [Range(0, int.MaxValue)]
     public int PageSize
     {
         get => _pageSize;
