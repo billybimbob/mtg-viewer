@@ -43,11 +43,11 @@ public class DetailsModel : PageModel
         {
             var invariant = CultureInfo.InvariantCulture;
 
-            yield return KeyValuePair.Create(nameof(Create.Name), (string?)Card.Name);
+            yield return KeyValuePair.Create(nameof(Create.Name), Card?.Name);
 
-            yield return KeyValuePair.Create(nameof(Create.Colors), ((int?)Card.Color)?.ToString(invariant));
+            yield return KeyValuePair.Create(nameof(Create.Colors), ((int?)Card?.Color)?.ToString(invariant));
 
-            yield return KeyValuePair.Create(nameof(Create.Cmc), Card.ManaValue?.ToString(invariant));
+            yield return KeyValuePair.Create(nameof(Create.Cmc), Card?.ManaValue?.ToString(invariant));
 
             yield return KeyValuePair.Create(nameof(Create.ReturnUrl), ReturnUrl);
         }
@@ -100,7 +100,7 @@ public class DetailsModel : PageModel
         return Page();
     }
 
-    private Task<Card?> FindCardAsync(string cardId, bool flip, CancellationToken cancel)
+    private async Task<Card?> FindCardAsync(string cardId, bool flip, CancellationToken cancel)
     {
         var cardQuery = _dbContext.Cards
             .Where(c => c.Id == cardId)
@@ -112,7 +112,7 @@ public class DetailsModel : PageModel
             cardQuery = cardQuery
                 .Include(c => c.Flip);
         }
-        return cardQuery
+        return await cardQuery
             .SingleOrDefaultAsync(cancel);
     }
 

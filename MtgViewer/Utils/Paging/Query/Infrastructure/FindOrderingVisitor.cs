@@ -12,6 +12,10 @@ internal class FindOrderingVisitor : ExpressionVisitor
 
     private bool _foundSeek;
 
+    private FindOrderingVisitor()
+    {
+    }
+
     [return: NotNullIfNotNull("node")]
     public override Expression? Visit(Expression? node)
     {
@@ -72,6 +76,10 @@ internal class FindOrderingVisitor : ExpressionVisitor
     private sealed class FindSeekByVisitor : ExpressionVisitor
     {
         public static FindSeekByVisitor Instance { get; } = new();
+
+        private FindSeekByVisitor()
+        {
+        }
 
         protected override Expression VisitMethodCall(MethodCallExpression node)
         {

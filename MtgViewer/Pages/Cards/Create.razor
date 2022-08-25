@@ -95,13 +95,13 @@
                 <p> Enter the card search parameters below </p>
 
                 <div class="form-group">
-                    <input @bind="Query.Name"
+                    <input @bind="Search.Name"
                         placeholder="@HtmlHelpers.GetDisplay((CardSearch c) => c.Name)"
                         class="form-control" />
                 </div>
 
                 <div class="form-group">
-                    <input @bind="Query.ManaValue"
+                    <input @bind="Search.ManaValue"
                         type="number" min="0"
                         placeholder="@HtmlHelpers.GetDisplay((CardSearch c) => c.ManaValue)"
                         class="form-control" />
@@ -113,7 +113,7 @@
                         <button title="Toggle @color"
                             disabled="@IsLoading" type="button"
                             class="btn btn-outline-secondary ms-filter @ActiveColor(color)"
-                            @onclick="() => Query.ToggleColors(color)">
+                            @onclick="() => Search.ToggleColors(color)">
 
                             <i class="ms ms-@symbol.ToLower() ms-cost"></i>
                         </button>
@@ -121,13 +121,13 @@
                 </div>
 
                 <div class="form-group">
-                    <input @bind="Query.SetName"
+                    <input @bind="Search.SetName"
                         placeholder="@HtmlHelpers.GetDisplay((CardSearch c) => c.SetName)"
                         class="form-control" />
                 </div>
 
                 <div class="form-group">
-                    <select @bind="Query.Rarity"
+                    <select @bind="Search.Rarity"
                         title="Choose Rarity" class="form-control">
 
                         <option value=""> Choose Rarity </option>
@@ -140,43 +140,43 @@
                 </div>
 
                 <div class="form-group">
-                    <input @bind="Query.Types"
+                    <input @bind="Search.Types"
                         placeholder="@HtmlHelpers.GetDisplay((CardSearch c) => c.Types)"
                         class="form-control" />
                 </div>
 
                 <div class="form-group">
-                    <input @bind="Query.Power"
+                    <input @bind="Search.Power"
                         placeholder="@HtmlHelpers.GetDisplay((CardSearch c) => c.Power)"
                         class="form-control" />
                 </div>
 
                 <div class="form-group">
-                    <input @bind="Query.Toughness"
+                    <input @bind="Search.Toughness"
                         placeholder="@HtmlHelpers.GetDisplay((CardSearch c) => c.Toughness)"
                         class="form-control" />
                 </div>
 
                 <div class="form-group">
-                    <input @bind="Query.Loyalty"
+                    <input @bind="Search.Loyalty"
                         placeholder="@HtmlHelpers.GetDisplay((CardSearch c) => c.Loyalty)"
                         class="form-control" />
                 </div>
 
                 <div class="form-group">
-                    <textarea @bind="Query.Text"
+                    <textarea @bind="Search.Text"
                         placeholder="@HtmlHelpers.GetDisplay((CardSearch c) => c.Text)"
                         class="form-control" />
                 </div>
 
                 <div class="form-group">
-                    <textarea @bind="Query.Flavor"
+                    <textarea @bind="Search.Flavor"
                         placeholder="@HtmlHelpers.GetDisplay((CardSearch c) => c.Flavor)"
                         class="form-control" />
                 </div>
 
                 <div class="form-group">
-                    <input @bind="Query.Artist"
+                    <input @bind="Search.Artist"
                         placeholder="@HtmlHelpers.GetDisplay((CardSearch c) => c.Artist)"
                         class="form-control" />
                 </div>
@@ -292,5 +292,5 @@ else
 @code
 {
     internal string ActiveColor(Color color) =>
-        Query.Colors.HasFlag(color) ? "active" : string.Empty;
+        Search.Colors.HasFlag(color) ? "active" : string.Empty;
 }

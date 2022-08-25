@@ -6,7 +6,8 @@ using Microsoft.EntityFrameworkCore;
 namespace MtgViewer.Data;
 
 public abstract class Storage : Location
-{ }
+{
+}
 
 [Index(nameof(BinId), nameof(Type), nameof(Id))]
 public class Box : Storage

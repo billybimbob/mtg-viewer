@@ -15,7 +15,7 @@ using MtgViewer.Tests.Utils;
 namespace MtgViewer.Tests.Services;
 
 [TestCaseOrderer("MtgViewer.Tests.Utils." + nameof(PriorityOrderer), "MtgViewer.Tests")]
-public class FileStorageTests : IClassFixture<TempFileName>, IAsyncLifetime
+public class FileStorageTests : IAsyncLifetime
 {
     private readonly CardDbContext _dbContext;
     private readonly CardDataGenerator _cardGen;

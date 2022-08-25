@@ -70,7 +70,7 @@ public class ColorUpdateTests : IAsyncLifetime
 
         await _colorUpdate.BeforeSave(triggerContext.Object, default);
 
-        Assert.Equal(theory.Color, black);
+        Assert.Equal(black, theory.Color);
     }
 
     [Fact]
@@ -112,7 +112,7 @@ public class ColorUpdateTests : IAsyncLifetime
 
         await _colorUpdate.BeforeSave(triggerContext.Object, default);
 
-        Assert.Equal(theory.Color, color);
+        Assert.Equal(color, theory.Color);
     }
 
     [Fact]
@@ -158,7 +158,7 @@ public class ColorUpdateTests : IAsyncLifetime
         await _colorUpdate.BeforeSave(triggerContext.Object, default);
 
         Assert.True(cardAreMissing);
-        Assert.Equal(theory.Color, color);
+        Assert.Equal(color, theory.Color);
     }
 
     [Fact]

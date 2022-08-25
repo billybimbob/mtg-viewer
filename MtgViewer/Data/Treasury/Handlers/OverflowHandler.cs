@@ -30,7 +30,8 @@ internal class ExactOverflow : OverflowHandler
 
     public ExactOverflow(TreasuryContext treasuryContext)
         : base(treasuryContext)
-    { }
+    {
+    }
 
     protected override IEnumerable<Assignment<Hold>> GetAssignments()
     {
@@ -99,7 +100,8 @@ internal class ApproximateOverflow : OverflowHandler
 
     public ApproximateOverflow(TreasuryContext treasuryContext)
         : base(treasuryContext)
-    { }
+    {
+    }
 
     protected override IEnumerable<Assignment<Hold>> GetAssignments()
     {

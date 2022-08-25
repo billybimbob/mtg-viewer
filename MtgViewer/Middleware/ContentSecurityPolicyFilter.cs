@@ -26,5 +26,6 @@ public class ContentSecurityPolicyFilter : IAlwaysRunResultFilter
     }
 
     public void OnResultExecuted(ResultExecutedContext context)
-    { }
+    {
+    }
 }

@@ -32,7 +32,8 @@ internal class ExactAdd : AddHandler
 
     public ExactAdd(TreasuryContext treasuryContext, IEnumerable<CardRequest> requests)
         : base(treasuryContext, requests)
-    { }
+    {
+    }
 
     protected override IEnumerable<Assignment<CardRequest>> GetAssignments()
     {
@@ -83,7 +84,8 @@ internal class ApproximateAdd : AddHandler
 
     public ApproximateAdd(TreasuryContext treasuryContext, IEnumerable<CardRequest> requests)
         : base(treasuryContext, requests)
-    { }
+    {
+    }
 
     protected override IEnumerable<Assignment<CardRequest>> GetAssignments()
     {
@@ -134,7 +136,8 @@ internal class GuessAdd : AddHandler
 
     public GuessAdd(TreasuryContext treasuryContext, IEnumerable<CardRequest> requests)
         : base(treasuryContext, requests)
-    { }
+    {
+    }
 
     protected override IEnumerable<Assignment<CardRequest>> GetAssignments()
     {

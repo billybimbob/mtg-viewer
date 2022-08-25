@@ -1,3 +1,5 @@
+using System.Linq.Expressions;
+
 using Xunit;
 
 using MtgViewer.Services;
@@ -18,9 +20,9 @@ public class ParseTextFilterTests
     {
         const string? nullString = null;
 
-        var filter = _parseFilter.Parse(nullString);
+        var result = _parseFilter.Parse(nullString);
 
-        Assert.Equal(default, filter);
+        Assert.Equal(default, result);
     }
 
     [Fact]
@@ -28,9 +30,9 @@ public class ParseTextFilterTests
     {
         const string empty = "";
 
-        var filter = _parseFilter.Parse(empty);
+        var result = _parseFilter.Parse(empty);
 
-        Assert.Equal(default, filter);
+        Assert.Equal(default, result);
     }
 
     [Fact]
@@ -38,9 +40,61 @@ public class ParseTextFilterTests
     {
         const string whitespace = "     ";
 
-        var filter = _parseFilter.Parse(whitespace);
+        var result = _parseFilter.Parse(whitespace);
 
-        Assert.Equal(default, filter);
+        Assert.Equal(default, result);
+    }
+
+    [Fact]
+    public void Parse_GreaterThanSixMana_ManaFilter()
+    {
+        const string testMana = "> 6";
+
+        var manaFilter = new ManaFilter(ExpressionType.GreaterThan, 6);
+
+        var filter = new TextFilter(null, manaFilter, null, null);
+
+        var result = _parseFilter.Parse($"/c {testMana}");
+
+        Assert.Equal(filter, result);
+    }
+
+    [Fact]
+    public void Parse_EqualTwoMana_ManaFilter()
+    {
+        const string testMana = "= 2";
+
+        var manaFilter = new ManaFilter(ExpressionType.Equal, 2);
+
+        var filter = new TextFilter(null, manaFilter, null, null);
+
+        var result = _parseFilter.Parse($"/c {testMana}");
+
+        Assert.Equal(filter, result);
+    }
+
+    [Fact]
+    public void Parse_LessThanOrEqualThreeMana_ManaFilter()
+    {
+        const string testMana = "<= 3";
+
+        var manaFilter = new ManaFilter(ExpressionType.LessThanOrEqual, 3);
+
+        var filter = new TextFilter(null, manaFilter, null, null);
+
+        var result = _parseFilter.Parse($"/c {testMana}");
+
+        Assert.Equal(filter, result);
+    }
+
+    [Fact]
+    public void Parse_EmptyMana_DefaultFilter()
+    {
+        const string invalidMana = "> invalidValue";
+
+        var result = _parseFilter.Parse($"/c {invalidMana}");
+
+        Assert.Equal(default, result);
     }
 
     [Fact]
@@ -48,11 +102,11 @@ public class ParseTextFilterTests
     {
         const string testName = "test name";
 
-        var filter = _parseFilter.Parse(testName);
+        var filter = new TextFilter(testName, null, null, null);
 
-        var result = new TextFilter(testName, null, null);
+        var result = _parseFilter.Parse(testName);
 
-        Assert.Equal(result, filter);
+        Assert.Equal(filter, result);
     }
 
     [Fact]
@@ -62,7 +116,7 @@ public class ParseTextFilterTests
 
         var filter = _parseFilter.Parse($"/t {testTypes}");
 
-        var result = new TextFilter(null, testTypes, null);
+        var result = new TextFilter(null, null, testTypes, null);
 
         Assert.Equal(result, filter);
     }
@@ -74,7 +128,7 @@ public class ParseTextFilterTests
 
         var filter = _parseFilter.Parse($"/o {testText}");
 
-        var result = new TextFilter(null, null, testText);
+        var result = new TextFilter(null, null, null, testText);
 
         Assert.Equal(result, filter);
     }
@@ -88,7 +142,7 @@ public class ParseTextFilterTests
 
         var filter = _parseFilter.Parse($"{testName} /o {testText} /t {testTypes}");
 
-        var result = new TextFilter(testName, testTypes, testText);
+        var result = new TextFilter(testName, null, testTypes, testText);
 
         Assert.Equal(result, filter);
     }

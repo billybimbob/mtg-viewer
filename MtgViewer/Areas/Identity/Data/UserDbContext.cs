@@ -8,7 +8,8 @@ public class UserDbContext : IdentityDbContext<CardUser>, IDataProtectionKeyCont
 {
     public UserDbContext(DbContextOptions<UserDbContext> options)
         : base(options)
-    { }
+    {
+    }
 
     public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
 }

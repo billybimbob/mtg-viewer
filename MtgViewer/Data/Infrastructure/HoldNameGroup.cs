@@ -29,9 +29,10 @@ public class HoldNameGroup : IEnumerable<Hold>
     }
 
     public HoldNameGroup(params Hold[] holds) : this(holds.AsEnumerable())
-    { }
+    {
+    }
 
-    // guranteed >= 1 Holds in linkedlist
+    // guaranteed >= 1 Holds in linkedlist
     private readonly LinkedList<Hold> _holds;
 
     private Hold First => _holds.First!.Value;

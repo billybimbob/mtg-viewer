@@ -61,7 +61,8 @@ public class RegisterModel : PageModel
     public string? ReturnUrl { get; set; }
 
     public void OnGet()
-    { }
+    {
+    }
 
     public async Task<IActionResult> OnPostAsync(CancellationToken cancel)
     {

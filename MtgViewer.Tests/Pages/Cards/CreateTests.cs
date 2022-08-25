@@ -31,14 +31,14 @@ public sealed class CreateTests : IAsyncLifetime, IDisposable
     public CreateTests(
         IServiceProvider serviceProvider,
         CardDbContext dbContext,
-        TestMtgApiQuery testMtgQuery,
+        TestMtgApiQuery mtgQuery,
         TestDataGenerator testDataGenerator,
         ActionHandlerFactory handlerFactory)
     {
         _services = serviceProvider;
 
         _dbContext = dbContext;
-        _mtgQuery = testMtgQuery;
+        _mtgQuery = mtgQuery;
 
         _testGen = testDataGenerator;
         _handlerFactory = handlerFactory;

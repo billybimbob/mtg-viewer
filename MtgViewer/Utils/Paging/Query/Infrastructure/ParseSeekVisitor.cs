@@ -9,6 +9,10 @@ internal sealed class ParseSeekVisitor : ExpressionVisitor
 {
     public static ParseSeekVisitor Instance { get; } = new();
 
+    private ParseSeekVisitor()
+    {
+    }
+
     protected override Expression VisitMethodCall(MethodCallExpression node)
     {
         if (ExpressionHelpers.IsSeekBy(node)

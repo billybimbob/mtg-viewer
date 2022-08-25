@@ -98,9 +98,14 @@ public class TestCardService : ICardService
             cardValue = string.Join(MtgApiQuery.And, i);
         }
 
-        if (cardValue is not string cardString || value is not string s)
+        if (value is not string s)
         {
             return cardValue == value;
+        }
+
+        if (cardValue?.ToString() is not string cardString)
+        {
+            return false;
         }
 
         const StringComparison ordinal = StringComparison.Ordinal;
@@ -190,6 +195,11 @@ public class TestCardService : ICardService
 
         try
         {
+            if (_isLoaded)
+            {
+                return;
+            }
+
             if (_options.JsonPath is not string path)
             {
                 _isLoaded = true;

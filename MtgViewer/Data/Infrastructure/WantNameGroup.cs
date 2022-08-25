@@ -29,9 +29,10 @@ public class WantNameGroup : IEnumerable<Want>
     }
 
     public WantNameGroup(params Want[] wants) : this(wants.AsEnumerable())
-    { }
+    {
+    }
 
-    // guranteed >= 1 Want in linkedlist
+    // guaranteed >= 1 Want in linkedlist
     private readonly LinkedList<Want> _wants;
 
     private Want First => _wants.First!.Value;

@@ -20,15 +20,6 @@ public class QuantityGroup : IEnumerable<Quantity>
         CheckGroup();
     }
 
-    public QuantityGroup(Hold hold) : this(hold, null, null)
-    { }
-
-    public QuantityGroup(Want want) : this(null, want, null)
-    { }
-
-    public QuantityGroup(Giveback give) : this(null, null, give)
-    { }
-
     public QuantityGroup(Quantity quantity)
     {
         switch (quantity)

@@ -32,7 +32,8 @@ public class ExportModel : PageModel
     public DataScope DataScope { get; set; }
 
     public void OnGet()
-    { }
+    {
+    }
 
     public async Task<IActionResult> OnPostAsync(CancellationToken cancel)
     {

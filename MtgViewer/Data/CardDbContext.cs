@@ -8,7 +8,8 @@ public partial class CardDbContext : DbContext
 {
     public CardDbContext(DbContextOptions<CardDbContext> options)
         : base(options)
-    { }
+    {
+    }
 
     public DbSet<Player> Players => Set<Player>();
 

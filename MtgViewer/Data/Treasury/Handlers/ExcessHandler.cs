@@ -28,7 +28,8 @@ internal class ExactExcess : ExcessHandler
     private ILookup<string, Storage>? _exactMatches;
 
     public ExactExcess(TreasuryContext treasuryContext) : base(treasuryContext)
-    { }
+    {
+    }
 
     protected override IEnumerable<Assignment<Hold>> GetAssignments()
     {
@@ -80,7 +81,8 @@ internal class ApproximateExcess : ExcessHandler
     private BoxSearcher? _boxSearch;
 
     public ApproximateExcess(TreasuryContext treasuryContext) : base(treasuryContext)
-    { }
+    {
+    }
 
     protected override IEnumerable<Assignment<Hold>> GetAssignments()
     {

@@ -127,11 +127,11 @@ public sealed class CollectionTests : IAsyncLifetime, IDisposable
         var cut = _testContext.RenderComponent<Collection>();
         var nav = _testContext.Services.GetRequiredService<FakeNavigationManager>();
 
-        var greenButton = cut.Find(".ms-u");
+        var blueButton = cut.Find(".ms-u");
 
         var invariant = CultureInfo.InvariantCulture;
 
-        greenButton.Click();
+        blueButton.Click();
 
         Assert.Contains(blue.ToString(invariant), nav.Uri);
     }

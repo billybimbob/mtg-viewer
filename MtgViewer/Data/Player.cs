@@ -10,7 +10,8 @@ public class Player
 {
     [JsonConstructor]
     public Player()
-    { }
+    {
+    }
 
     public Player(CardUser user)
     {

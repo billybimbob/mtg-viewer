@@ -13,7 +13,8 @@ public readonly record struct Offset(int Current, int Total)
 
     public Offset(int currentPage, int totalItems, int pageSize)
         : this(currentPage, TotalPages(totalItems, pageSize))
-    { }
+    {
+    }
 
     private static int TotalPages(int totalItems, int pageSize)
     {

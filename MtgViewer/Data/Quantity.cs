@@ -41,7 +41,8 @@ internal enum QuantityType
 }
 
 public class Hold : Quantity
-{ }
+{
+}
 
 public class Want : Quantity
 {

@@ -14,9 +14,9 @@ public class MtgQueryTests
 {
     private readonly TestMtgApiQuery _mtgQuery;
 
-    public MtgQueryTests(TestMtgApiQuery testMtgQuery)
+    public MtgQueryTests(TestMtgApiQuery mtgQuery)
     {
-        _mtgQuery = testMtgQuery;
+        _mtgQuery = mtgQuery;
     }
 
     [Fact]

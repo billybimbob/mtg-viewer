@@ -256,6 +256,12 @@ public partial class Craft : OwningComponentBase
             await using var dbContext = await DbFactory.CreateDbContextAsync(_cancel.Token);
 
             Result = await SaveOrConcurrentRecoverAsync(dbContext);
+
+            if (_deckContext.IsNewDeck)
+            {
+                Nav.NavigateTo(
+                    Nav.GetUriWithQueryParameter(nameof(DeckId), _deckContext.Deck.Id));
+            }
         }
         catch (OperationCanceledException ex)
         {
@@ -296,7 +302,7 @@ public partial class Craft : OwningComponentBase
         }
         catch (DbUpdateConcurrencyException ex)
         {
-            await UpdateDeckFromDbAsync(dbContext, _deckContext, ex, _cancel.Token);
+            await UpdateDeckFromDbAsync(dbContext, ex);
 
             _cards.UnionWith(dbContext.Cards.Local);
 
@@ -351,18 +357,21 @@ public partial class Craft : OwningComponentBase
         }
     }
 
-    private static async Task UpdateDeckFromDbAsync(
+    private async Task UpdateDeckFromDbAsync(
         CardDbContext dbContext,
-        DeckContext deckContext,
-        DbUpdateConcurrencyException ex,
-        CancellationToken cancel)
+        DbUpdateConcurrencyException ex)
     {
-        if (HasNoDeckConflicts(deckContext, ex))
+        if (_deckContext is null)
         {
             return;
         }
 
-        if (cancel.IsCancellationRequested)
+        if (HasNoDeckConflicts(_deckContext, ex))
+        {
+            return;
+        }
+
+        if (_cancel.IsCancellationRequested)
         {
             return;
         }
@@ -381,12 +390,14 @@ public partial class Craft : OwningComponentBase
 
                 .AsSplitQuery()
                 .AsNoTrackingWithIdentityResolution()
-                .SingleOrDefaultAsync(d => d.Id == deckContext.Deck.Id, cancel);
+                .SingleOrDefaultAsync(d => d.Id == _deckContext.Deck.Id, _cancel.Token);
         }
         catch (OperationCanceledException)
-        { }
+        {
+            Logger.LogWarning("Cancelled while fetching updated deck");
+        }
 
-        if (cancel.IsCancellationRequested)
+        if (_cancel.IsCancellationRequested)
         {
             return;
         }
@@ -396,13 +407,13 @@ public partial class Craft : OwningComponentBase
             return;
         }
 
-        MergeDbRemoves(deckContext, dbDeck);
-        MergeDbConflicts(dbContext, deckContext, dbDeck);
-        MergeDbAdditions(dbContext, deckContext, dbDeck);
+        MergeDbRemoves(_deckContext, dbDeck);
+        MergeDbConflicts(dbContext, _deckContext, dbDeck);
+        MergeDbAdditions(dbContext, _deckContext, dbDeck);
 
-        CapGivebacks(deckContext.Groups);
+        CapGivebacks(_deckContext.Groups);
 
-        dbContext.MatchToken(deckContext.Deck, dbDeck);
+        dbContext.MatchToken(_deckContext.Deck, dbDeck);
     }
 
     private static bool HasNoDeckConflicts(

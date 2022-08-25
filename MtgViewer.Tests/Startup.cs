@@ -6,6 +6,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
+using MtgApiManager.Lib.Service;
+
 using MtgViewer.Areas.Identity.Data;
 using MtgViewer.Areas.Identity.Services;
 
@@ -14,6 +16,7 @@ using MtgViewer.Data.Configuration;
 
 using MtgViewer.Services;
 using MtgViewer.Services.Infrastructure;
+using MtgViewer.Services.Search;
 using MtgViewer.Services.Seed;
 using MtgViewer.Services.Symbols;
 
@@ -59,7 +62,7 @@ public class Startup
 
         services
             .AddScoped<InMemoryConnection>()
-            .AddScoped<TempFileName>();
+            .AddSingleton<TempFileName>();
 
         _ = databaseOptions.Provider switch
         {
@@ -96,10 +99,15 @@ public class Startup
             .AddSingleton<ParseTextFilter>();
 
         services
-            .AddMtgQueries()
             .Configure<CardResultOptions>(config.GetSection(nameof(CardResultOptions)))
+
             .AddSingleton<TestCardService>()
-            .AddScoped<TestMtgApiQuery>();
+            .AddSingleton<ICardService, TestCardService>(provider => provider
+                .GetRequiredService<TestCardService>())
+
+            .AddScoped<TestMtgApiQuery>()
+            .AddScoped<IMtgQuery, TestMtgApiQuery>(provider => provider
+                .GetRequiredService<TestMtgApiQuery>());
 
         services
             .AddSingleton<ParseTextFilter>()

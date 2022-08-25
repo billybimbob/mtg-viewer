@@ -7,6 +7,10 @@ public class CardNameComparer : Comparer<Card>
 {
     public static CardNameComparer Instance { get; } = new();
 
+    private CardNameComparer()
+    {
+    }
+
     public override int Compare(Card? x, Card? y)
     {
         const StringComparison currentCompare = StringComparison.CurrentCulture;

@@ -17,7 +17,8 @@ public sealed class DeckDto : ConcurrentDto
 
     [JsonConstructor]
     public DeckDto()
-    { }
+    {
+    }
 
     public DeckDto(CardDbContext dbContext, DeckContext deckContext)
     {

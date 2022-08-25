@@ -9,6 +9,10 @@ internal sealed class LookAheadVisitor : ExpressionVisitor
 {
     public static LookAheadVisitor Instance { get; } = new();
 
+    private LookAheadVisitor()
+    {
+    }
+
     protected override Expression VisitMethodCall(MethodCallExpression node)
     {
         if (ExpressionHelpers.IsThenTake(node)

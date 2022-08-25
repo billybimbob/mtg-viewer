@@ -35,7 +35,8 @@ public class ResendEmailConfirmationModel : PageModel
     }
 
     public void OnGet()
-    { }
+    {
+    }
 
     public async Task<IActionResult> OnPostAsync()
     {

@@ -80,7 +80,7 @@ public sealed partial class Collection : ComponentBase, IDisposable
         {
             Cards = await GetCardDataAsync();
 
-            if (Cards is { Count: 0 } && Seek is not null)
+            if (Cards.Count == 0 && Seek is not null)
             {
                 Logger.LogWarning("Invalid seek {Seek} was given", Seek);
 
@@ -123,7 +123,7 @@ public sealed partial class Collection : ComponentBase, IDisposable
 
     private Task PersistCardData()
     {
-        ApplicationState.PersistAsJson(nameof(Cards), Cards);
+        ApplicationState.PersistAsJson(nameof(Cards), Cards as IReadOnlyList<CardCopy>);
         ApplicationState.PersistAsJson(nameof(Seek), SeekDto.From(Cards.Seek));
 
         return Task.CompletedTask;
@@ -189,6 +189,11 @@ public sealed partial class Collection : ComponentBase, IDisposable
             // keep eye on perf, postgres is slow here
             cards = cards
                 .Where(c => c.Name.ToUpper().Contains(name));
+        }
+
+        if (filter.Mana is ManaFilter mana)
+        {
+            cards = cards.Where(mana.CreateFilter());
         }
 
         if (!string.IsNullOrWhiteSpace(text))

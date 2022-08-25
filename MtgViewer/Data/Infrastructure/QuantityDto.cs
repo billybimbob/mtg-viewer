@@ -12,7 +12,8 @@ public sealed class QuantityDto : ConcurrentDto
 
     [JsonConstructor]
     public QuantityDto()
-    { }
+    {
+    }
 
     public QuantityDto(CardDbContext dbContext, Quantity quantity)
     {

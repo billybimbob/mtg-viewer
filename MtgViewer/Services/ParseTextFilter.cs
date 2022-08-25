@@ -1,11 +1,29 @@
 using System;
+using System.Linq.Expressions;
 using System.Text.RegularExpressions;
 
 using Microsoft.Extensions.Logging;
 
+using MtgViewer.Data;
+
 namespace MtgViewer.Services;
 
-public readonly record struct TextFilter(string? Name, string? Types, string? Text)
+public readonly record struct ManaFilter(ExpressionType Comparison, float Value)
+{
+    public Expression<Func<Card, bool>> CreateFilter()
+    {
+        var cardParameter = Expression.Parameter(typeof(Card), nameof(Card).ToLowerInvariant()[0].ToString());
+
+        var body = Expression.MakeBinary(
+            Comparison,
+            Expression.Property(cardParameter, nameof(Card.ManaValue)),
+            Expression.Constant(Value, typeof(float?)));
+
+        return Expression.Lambda<Func<Card, bool>>(body, cardParameter);
+    }
+}
+
+public readonly record struct TextFilter(string? Name, ManaFilter? Mana, string? Types, string? Text)
 {
     public const int Limit = 40;
 }
@@ -13,10 +31,12 @@ public readonly record struct TextFilter(string? Name, string? Types, string? Te
 public class ParseTextFilter
 {
     public const string SearchName = "/n";
+    public const string SearchMana = "/c";
     public const string SearchType = "/t";
     public const string SearchText = "/o";
 
-    private const string Split = $@"\s*(?<{nameof(Split)}>\/[nto])\s+";
+    private const string Split = $@"\s*(?<{nameof(Split)}>\/[ncto])\s+";
+    private const string ManaSplit = @"(?<Comparison>[\>\<]?=?)\s*(?<Value>\d+)";
 
     private readonly ILogger<ParseTextFilter> _logger;
 
@@ -75,11 +95,37 @@ public class ParseTextFilter
             return filter with { Text = text.ToString() };
         }
 
+        if (capture.SequenceEqual(SearchMana) && filter.Mana is null)
+        {
+            return filter with { Mana = ParseManaFilter(text.ToString()) };
+        }
+
         if (filter.Name is null)
         {
             return filter with { Name = text.ToString() };
         }
 
         return filter;
+    }
+
+    private static ManaFilter? ParseManaFilter(string text)
+    {
+        var match = Regex.Match(text, ManaSplit);
+
+        if (!float.TryParse(match.Groups["Value"].ValueSpan, out float value))
+        {
+            return null;
+        }
+
+        var comparison = match.Groups["Comparison"].Value switch
+        {
+            ">" => ExpressionType.GreaterThan,
+            ">=" => ExpressionType.GreaterThanOrEqual,
+            "<" => ExpressionType.LessThan,
+            "<=" => ExpressionType.LessThanOrEqual,
+            "=" or _ => ExpressionType.Equal
+        };
+
+        return new ManaFilter(comparison, value);
     }
 }

@@ -57,7 +57,8 @@ internal class ExactTake : TakeHandler
     private ILookup<string, Hold>? _exactTake;
 
     public ExactTake(ExchangeContext exchangeContext) : base(exchangeContext)
-    { }
+    {
+    }
 
     protected override IEnumerable<Assignment<Card>> GetAssignments()
     {
@@ -118,7 +119,8 @@ internal class ApproximateTake : TakeHandler
     private ILookup<string, Hold>? _approxLookup;
 
     public ApproximateTake(ExchangeContext exchangeContext) : base(exchangeContext)
-    { }
+    {
+    }
 
     protected override IEnumerable<Assignment<Card>> GetAssignments()
     {

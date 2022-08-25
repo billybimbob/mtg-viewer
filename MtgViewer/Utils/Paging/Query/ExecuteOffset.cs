@@ -102,6 +102,10 @@ internal static class ExecuteOffset<TEntity>
     {
         public static FindOffsetVisitor Instance { get; } = new();
 
+        private FindOffsetVisitor()
+        {
+        }
+
         protected override Expression VisitMethodCall(MethodCallExpression node)
         {
             if (node.Arguments.ElementAtOrDefault(0) is not Expression parent
@@ -138,6 +142,10 @@ internal static class ExecuteOffset<TEntity>
     private sealed class RemoveOffsetVisitor : ExpressionVisitor
     {
         public static RemoveOffsetVisitor Instance { get; } = new();
+
+        private RemoveOffsetVisitor()
+        {
+        }
 
         protected override Expression VisitMethodCall(MethodCallExpression node)
         {

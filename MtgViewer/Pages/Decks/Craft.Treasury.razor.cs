@@ -90,10 +90,10 @@ public partial class Craft
 
     internal async Task SeekPageAsync(SeekRequest<HeldCard> request)
     {
-        string? seek = request.Origin?.Card.Id;
+        string? origin = request.Origin?.Card.Id;
         var direction = request.Direction;
 
-        if (_isBusy || (_origin == seek && _direction == direction))
+        if (_isBusy || (_origin == origin && _direction == direction))
         {
             return;
         }
@@ -102,7 +102,7 @@ public partial class Craft
 
         try
         {
-            _origin = seek;
+            _origin = origin;
             _direction = direction;
 
             await using var dbContext = await DbFactory.CreateDbContextAsync(_cancel.Token);
@@ -142,6 +142,11 @@ public partial class Craft
         {
             cards = cards
                 .Where(c => c.Name.ToUpper().Contains(name));
+        }
+
+        if (textFilter.Mana is ManaFilter mana)
+        {
+            cards = cards.Where(mana.CreateFilter());
         }
 
         if (!string.IsNullOrWhiteSpace(text))

@@ -29,7 +29,8 @@ internal class ExactReturn : ReturnHandler
     private ILookup<string, Storage>? _exactMatch;
 
     public ExactReturn(ExchangeContext exchangeContext) : base(exchangeContext)
-    { }
+    {
+    }
 
     protected override IEnumerable<Assignment<Card>> GetAssignments()
     {
@@ -76,7 +77,8 @@ internal class ApproximateReturn : ReturnHandler
     private ILookup<string, Storage>? _approxMatch;
 
     public ApproximateReturn(ExchangeContext exchangeContext) : base(exchangeContext)
-    { }
+    {
+    }
 
     protected override IEnumerable<Assignment<Card>> GetAssignments()
     {
@@ -127,7 +129,8 @@ internal class GuessReturn : ReturnHandler
     private BoxSearcher? _boxSearch;
 
     public GuessReturn(ExchangeContext exchangeContext) : base(exchangeContext)
-    { }
+    {
+    }
 
     protected override IEnumerable<Assignment<Card>> GetAssignments()
     {

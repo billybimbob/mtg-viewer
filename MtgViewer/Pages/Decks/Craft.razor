@@ -98,7 +98,7 @@ else
     SearchChanged="@SearchAsync"
     Color="@PickedColors"
     ColorChanged="@ChangeColorAsync"
-    IsDisabled="IsLoading || DeckCraft is not DeckCraft.Theorycraft" />
+    IsDisabled="@(IsLoading || DeckCraft is not DeckCraft.Theorycraft)" />
 
 @if (DeckCraft is DeckCraft.Theorycraft)
 {

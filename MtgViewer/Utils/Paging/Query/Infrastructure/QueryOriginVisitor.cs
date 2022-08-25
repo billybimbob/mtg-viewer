@@ -125,6 +125,10 @@ internal class QueryOriginVisitor : ExpressionVisitor
     {
         public static AfterVisitor Instance { get; } = new();
 
+        private AfterVisitor()
+        {
+        }
+
         protected override Expression VisitUnary(UnaryExpression node)
         {
             if (node.NodeType is ExpressionType.Quote)
@@ -187,6 +191,10 @@ internal class QueryOriginVisitor : ExpressionVisitor
     private sealed class MemberEvaluationVisitor : ExpressionVisitor
     {
         public static MemberEvaluationVisitor Instance { get; } = new();
+
+        private MemberEvaluationVisitor()
+        {
+        }
 
         [return: NotNullIfNotNull("node")]
         public override Expression? Visit(Expression? node)

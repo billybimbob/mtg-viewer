@@ -97,9 +97,9 @@ public sealed partial class Create : ComponentBase, IDisposable
 
     internal bool IsLoading => _isBusy || !_isInteractive;
 
-    internal bool HasNoNext => Query.Page + 1 >= _totalResults;
+    internal bool HasNoNext => Search.Page + 1 >= _totalResults;
 
-    internal CardSearch Query { get; } = new();
+    internal CardSearch Search { get; } = new();
 
     internal bool IsFromForm { get; private set; }
 
@@ -127,7 +127,7 @@ public sealed partial class Create : ComponentBase, IDisposable
 
         try
         {
-            UpdateQuery();
+            UpdateSearch();
 
             if (ReturnUrl is not null)
             {
@@ -138,7 +138,7 @@ public sealed partial class Create : ComponentBase, IDisposable
                     : $"{Nav.BaseUri}{ReturnUrl.TrimStart('/')}";
             }
 
-            if (Query.IsEmpty)
+            if (Search.IsEmpty)
             {
                 IsFromForm = true;
                 return;
@@ -178,24 +178,24 @@ public sealed partial class Create : ComponentBase, IDisposable
         _cancel.Dispose();
     }
 
-    private void UpdateQuery()
+    private void UpdateSearch()
     {
         _matches.Clear();
 
-        Query.Name = Name;
-        Query.ManaValue = Cmc;
-        Query.Colors = (Color)Colors;
-        Query.Rarity = (Rarity?)Rarity;
-        Query.SetName = Set;
-        Query.Types = Types;
-        Query.Artist = Artist;
-        Query.Power = Power;
-        Query.Toughness = Toughness;
-        Query.Loyalty = Loyalty;
-        Query.Text = Text;
-        Query.Flavor = Flavor;
-        Query.Page = 0;
-        Query.PageSize = 0;
+        Search.Name = Name;
+        Search.ManaValue = Cmc;
+        Search.Colors = (Color)Colors;
+        Search.Rarity = (Rarity?)Rarity;
+        Search.SetName = Set;
+        Search.Types = Types;
+        Search.Artist = Artist;
+        Search.Power = Power;
+        Search.Toughness = Toughness;
+        Search.Loyalty = Loyalty;
+        Search.Text = Text;
+        Search.Flavor = Flavor;
+        Search.Page = 0;
+        Search.PageSize = 0;
 
         _totalResults = 0;
     }
@@ -239,12 +239,12 @@ public sealed partial class Create : ComponentBase, IDisposable
 
     private async Task SearchForCardAsync()
     {
-        if (Query.PageSize == 0)
+        if (Search.PageSize == 0)
         {
-            Query.PageSize = PageSize.Current;
+            Search.PageSize = PageSize.Current;
         }
 
-        var result = await MtgQuery.SearchAsync(Query, _cancel.Token);
+        var result = await MtgQuery.SearchAsync(Search, _cancel.Token);
 
         _totalResults = result.Offset.Total;
 
@@ -294,7 +294,7 @@ public sealed partial class Create : ComponentBase, IDisposable
 
         try
         {
-            Query.Page += 1;
+            Search.Page += 1;
 
             await SearchForCardAsync();
         }
@@ -310,7 +310,7 @@ public sealed partial class Create : ComponentBase, IDisposable
 
     internal void Reset()
     {
-        if (_isBusy || Query.IsEmpty)
+        if (_isBusy || Search.IsEmpty)
         {
             return;
         }
@@ -324,7 +324,7 @@ public sealed partial class Create : ComponentBase, IDisposable
 
     internal void SubmitSearch()
     {
-        if (_isBusy || Query.IsEmpty)
+        if (_isBusy || Search.IsEmpty)
         {
             return;
         }
@@ -333,7 +333,7 @@ public sealed partial class Create : ComponentBase, IDisposable
 
         Result = SaveResult.None;
 
-        NavigateToSearch(Query);
+        NavigateToSearch(Search);
     }
 
     private void NavigateToSearch(IMtgSearch search)
