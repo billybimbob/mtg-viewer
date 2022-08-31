@@ -98,7 +98,7 @@ else
     SearchChanged="@SearchAsync"
     Color="@PickedColors"
     ColorChanged="@ChangeColorAsync"
-    IsDisabled="@(IsLoading || DeckCraft is not DeckCraft.Theorycraft)" />
+    IsDisabled="@IsLoading" />
 
 @if (DeckCraft is DeckCraft.Theorycraft)
 {
@@ -176,7 +176,7 @@ else
             </div>
 
             <SeekPaging TEntity="@Want"
-                Seek="@DeckWants.Seek" PageSelected="@ChangeWantsAsync" IsDisabled="@IsLoading" />
+                Seek="@DeckWants.Seek" PageSelected="@ChangeQuantitiesAsync" IsDisabled="@IsLoading" />
         </section>
     </div>
 }
@@ -220,7 +220,7 @@ else if (DeckCraft is DeckCraft.Built)
             </div>
 
             <SeekPaging TEntity="@Hold"
-                Seek="@DeckHolds.Seek" PageSelected="@ChangeHoldsAsync" IsDisabled="@IsLoading" />
+                Seek="@DeckHolds.Seek" PageSelected="@ChangeQuantitiesAsync" IsDisabled="@IsLoading" />
         </section>
 
         <section class="col">
@@ -257,7 +257,7 @@ else if (DeckCraft is DeckCraft.Built)
             </div>
 
             <SeekPaging TEntity="@Giveback"
-                Seek="@DeckReturns.Seek" PageSelected="@ChangeReturnsAsync" IsDisabled="@IsLoading" />
+                Seek="@DeckReturns.Seek" PageSelected="@ChangeQuantitiesAsync" IsDisabled="@IsLoading" />
         </section>
     </div>
 }

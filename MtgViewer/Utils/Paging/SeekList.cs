@@ -90,17 +90,17 @@ public class SeekList<T> : IReadOnlyList<T> where T : class
         bool hasOrigin,
         bool lookAhead)
     {
-        var previous = (direction, hasOrigin, lookAhead) switch
+        var previous = (items, direction, hasOrigin, lookAhead) switch
         {
-            (SeekDirection.Forward, true, _) => items[0],
-            (SeekDirection.Backwards, _, true) => items[0],
+            ({ Count: > 0 }, SeekDirection.Forward, true, _) => items[0],
+            ({ Count: > 0 }, SeekDirection.Backwards, _, true) => items[0],
             _ => default
         };
 
-        var next = (direction, hasOrigin, lookAhead) switch
+        var next = (items, direction, hasOrigin, lookAhead) switch
         {
-            (SeekDirection.Forward, _, true) => items[^1],
-            (SeekDirection.Backwards, true, _) => items[^1],
+            ({ Count: > 0 }, SeekDirection.Forward, _, true) => items[^1],
+            ({ Count: > 0 }, SeekDirection.Backwards, true, _) => items[^1],
             _ => default
         };
 

@@ -1,6 +1,5 @@
 using System;
 using System.Linq;
-using System.Threading;
 using System.Threading.Tasks;
 
 using EntityFrameworkCore.Paging;
@@ -14,14 +13,24 @@ namespace MtgViewer.Pages.Decks;
 
 public partial class Craft
 {
-    private string? _origin;
-    private SeekDirection _direction;
+    private string? _search;
+    private TextFilter? _filter;
 
-    internal string? Search { get; private set; }
+    internal SeekList<HeldCard> Treasury { get; private set; } = SeekList.Empty<HeldCard>();
 
     internal Color PickedColors { get; private set; }
 
-    internal SeekList<HeldCard> Treasury { get; private set; } = SeekList.Empty<HeldCard>();
+    internal string? Search
+    {
+        get => _search;
+        private set
+        {
+            _search = value;
+            _filter = null;
+        }
+    }
+
+    internal TextFilter Filter => _filter ??= ParseTextFilter.Parse(Search);
 
     internal async Task SearchAsync(string? value)
     {
@@ -49,12 +58,7 @@ public partial class Craft
         {
             Search = value;
 
-            _origin = null;
-            _direction = SeekDirection.Forward;
-
-            await using var dbContext = await DbFactory.CreateDbContextAsync(_cancel.Token);
-
-            await ApplyFiltersAsync(dbContext);
+            await ApplyFiltersAsync();
         }
         finally
         {
@@ -75,12 +79,7 @@ public partial class Craft
         {
             PickedColors = value;
 
-            _origin = null;
-            _direction = SeekDirection.Forward;
-
-            await using var dbContext = await DbFactory.CreateDbContextAsync(_cancel.Token);
-
-            await ApplyFiltersAsync(dbContext);
+            await ApplyFiltersAsync();
         }
         finally
         {
@@ -90,10 +89,7 @@ public partial class Craft
 
     internal async Task SeekPageAsync(SeekRequest<HeldCard> request)
     {
-        string? origin = request.Origin?.Card.Id;
-        var direction = request.Direction;
-
-        if (_isBusy || (_origin == origin && _direction == direction))
+        if (_isBusy)
         {
             return;
         }
@@ -102,12 +98,15 @@ public partial class Craft
 
         try
         {
-            _origin = origin;
-            _direction = direction;
-
             await using var dbContext = await DbFactory.CreateDbContextAsync(_cancel.Token);
 
-            await ApplyFiltersAsync(dbContext);
+            dbContext.Cards.AttachRange(_cards);
+
+            var (origin, direction) = request;
+
+            Treasury = await FetchTreasuryAsync(dbContext, origin, direction);
+
+            _cards.UnionWith(dbContext.Cards.Local);
         }
         finally
         {
@@ -115,28 +114,39 @@ public partial class Craft
         }
     }
 
-    internal async Task ApplyFiltersAsync(CardDbContext dbContext)
+    private async Task ApplyFiltersAsync()
     {
-        var textFilter = ParseTextFilter.Parse(Search);
+        await using var dbContext = await DbFactory.CreateDbContextAsync(_cancel.Token);
+
+        const SeekDirection forward = SeekDirection.Forward;
 
         dbContext.Cards.AttachRange(_cards);
 
-        Treasury = await FilteredCardsAsync(dbContext, textFilter, _cancel.Token);
+        if (DeckCraft is DeckCraft.Built)
+        {
+            DeckHolds = await FetchQuantitiesAsync(dbContext, null as Hold, forward);
+            DeckReturns = await FetchQuantitiesAsync(dbContext, null as Giveback, forward);
+        }
+        else
+        {
+            DeckWants = await FetchQuantitiesAsync(dbContext, null as Want, forward);
+            Treasury = await FetchTreasuryAsync(dbContext, null, forward);
+        }
 
         _cards.UnionWith(dbContext.Cards.Local);
     }
 
-    private async Task<SeekList<HeldCard>> FilteredCardsAsync(
+    private async Task<SeekList<HeldCard>> FetchTreasuryAsync(
         CardDbContext dbContext,
-        TextFilter textFilter,
-        CancellationToken cancel)
+        HeldCard? origin,
+        SeekDirection direction)
     {
         var cards = dbContext.Cards.AsQueryable();
 
-        string? name = textFilter.Name?.ToUpperInvariant();
-        string? text = textFilter.Text?.ToUpperInvariant();
+        string? name = Filter.Name?.ToUpperInvariant();
+        string? text = Filter.Text?.ToUpperInvariant();
 
-        string[] types = textFilter.Types?.ToUpperInvariant().Split() ?? Array.Empty<string>();
+        string[] types = Filter.Types?.ToUpperInvariant().Split() ?? Array.Empty<string>();
 
         if (!string.IsNullOrWhiteSpace(name))
         {
@@ -144,7 +154,7 @@ public partial class Craft
                 .Where(c => c.Name.ToUpper().Contains(name));
         }
 
-        if (textFilter.Mana is ManaFilter mana)
+        if (Filter.Mana is ManaFilter mana)
         {
             cards = cards.Where(mana.CreateFilter());
         }
@@ -168,13 +178,15 @@ public partial class Craft
                 .Where(c => c.Color.HasFlag(PickedColors));
         }
 
+        string? originId = origin?.Card.Id;
+
         return await cards
             .OrderBy(c => c.Name)
                 .ThenBy(c => c.SetName)
                 .ThenBy(c => c.Id)
 
-            .SeekBy(_direction)
-                .After(c => c.Id == _origin)
+            .SeekBy(direction)
+                .After(c => c.Id == originId)
                 .ThenTake(PageSize.Current)
 
             .Select(card =>
@@ -184,6 +196,6 @@ public partial class Craft
                         .Where(h => h.Location is Box || h.Location is Excess)
                         .Sum(h => h.Copies)))
 
-            .ToSeekListAsync(cancel);
+            .ToSeekListAsync(_cancel.Token);
     }
 }

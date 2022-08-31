@@ -21,6 +21,20 @@ public readonly record struct ManaFilter(ExpressionType Comparison, float Value)
 
         return Expression.Lambda<Func<Card, bool>>(body, cardParameter);
     }
+
+    public Expression<Func<TQuantity, bool>> CreateFilter<TQuantity>() where TQuantity : Quantity
+    {
+        var quantityParameter = Expression.Parameter(typeof(TQuantity), typeof(TQuantity).Name.ToLowerInvariant()[0].ToString());
+
+        var cardProperty = Expression.Property(quantityParameter, nameof(Quantity.Card));
+
+        var body = Expression.MakeBinary(
+            Comparison,
+            Expression.Property(cardProperty, nameof(Card.ManaValue)),
+            Expression.Constant(Value, typeof(float?)));
+
+        return Expression.Lambda<Func<TQuantity, bool>>(body, quantityParameter);
+    }
 }
 
 public readonly record struct TextFilter(string? Name, ManaFilter? Mana, string? Types, string? Text)
@@ -31,11 +45,11 @@ public readonly record struct TextFilter(string? Name, ManaFilter? Mana, string?
 public class ParseTextFilter
 {
     public const string SearchName = "/n";
-    public const string SearchMana = "/c";
+    public const string SearchMana = "/m";
     public const string SearchType = "/t";
     public const string SearchText = "/o";
 
-    private const string Split = $@"\s*(?<{nameof(Split)}>\/[ncto])\s+";
+    private const string Split = $@"\s*(?<{nameof(Split)}>\/[nmto])\s+";
     private const string ManaSplit = @"(?<Comparison>[\>\<]?=?)\s*(?<Value>\d+)";
 
     private readonly ILogger<ParseTextFilter> _logger;

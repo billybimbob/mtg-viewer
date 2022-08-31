@@ -4,6 +4,8 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
+using EntityFrameworkCore.Paging;
+
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
@@ -148,8 +150,12 @@ public partial class Craft : OwningComponentBase
             await FetchDeckOrRedirectAsync(dbContext, userId);
         }
 
-        await InitializeHoldsAsync(dbContext);
-        await InitializeReturnsAsync(dbContext);
+        dbContext.Cards.AttachRange(_cards);
+
+        DeckHolds = await FetchQuantitiesAsync(dbContext, null as Hold, SeekDirection.Forward);
+        DeckReturns = await FetchQuantitiesAsync(dbContext, null as Giveback, SeekDirection.Forward);
+
+        _cards.UnionWith(dbContext.Cards.Local);
     }
 
     private bool TryPersistedLoad(CardDbContext dbContext)
@@ -177,8 +183,8 @@ public partial class Craft : OwningComponentBase
 
         dbContext.Cards.AttachRange(cards);
 
-        InitializeHolds();
-        InitializeReturns();
+        DeckHolds = SeekQuantities(null as Hold, SeekDirection.Forward);
+        DeckReturns = SeekQuantities(null as Giveback, SeekDirection.Forward);
 
         return true;
     }
@@ -213,20 +219,9 @@ public partial class Craft : OwningComponentBase
 
         try
         {
-            await using var dbContext = await DbFactory.CreateDbContextAsync(_cancel.Token);
-
-            if (value is DeckCraft.Built)
-            {
-                await InitializeHoldsAsync(dbContext);
-                await InitializeReturnsAsync(dbContext);
-            }
-            else
-            {
-                await InitializeWantsAsync(dbContext);
-                await ApplyFiltersAsync(dbContext);
-            }
-
             DeckCraft = value;
+
+            await ApplyFiltersAsync();
         }
         catch (OperationCanceledException ex)
         {
@@ -253,9 +248,7 @@ public partial class Craft : OwningComponentBase
 
         try
         {
-            await using var dbContext = await DbFactory.CreateDbContextAsync(_cancel.Token);
-
-            Result = await SaveOrConcurrentRecoverAsync(dbContext);
+            Result = await SaveOrConcurrentRecoverAsync();
 
             if (_deckContext.IsNewDeck)
             {
@@ -281,12 +274,14 @@ public partial class Craft : OwningComponentBase
         }
     }
 
-    private async Task<SaveResult> SaveOrConcurrentRecoverAsync(CardDbContext dbContext)
+    private async Task<SaveResult> SaveOrConcurrentRecoverAsync()
     {
         if (_deckContext is null)
         {
             return SaveResult.Error;
         }
+
+        await using var dbContext = await DbFactory.CreateDbContextAsync(_cancel.Token);
 
         try
         {
