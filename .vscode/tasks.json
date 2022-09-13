@@ -56,7 +56,9 @@
         "publish",
         "${workspaceFolder}/MtgViewer/MtgViewer.csproj",
         "/property:GenerateFullPaths=true",
-        "/consoleloggerparameters:NoSummary"
+        "/consoleloggerparameters:NoSummary",
+        "--output",
+        "publish"
       ],
       "problemMatcher": "$msCompile"
     },
