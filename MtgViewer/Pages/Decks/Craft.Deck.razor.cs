@@ -191,8 +191,6 @@ public partial class Craft
                 default:
                     break;
             }
-
-            _cards.UnionWith(dbContext.Cards.Local);
         }
         catch (OperationCanceledException ex)
         {
@@ -202,6 +200,31 @@ public partial class Craft
         {
             _isBusy = false;
         }
+    }
+
+    private async Task<SeekList<TQuantity>> FetchQuantitiesAsync<TQuantity>(
+        CardDbContext dbContext,
+        TQuantity? origin,
+        SeekDirection direction)
+        where TQuantity : Quantity
+    {
+        await LoadQuantitiesAsync(dbContext, origin, direction);
+
+        switch (origin)
+        {
+            case Want w:
+                _lastWant = new SeekRequest<Want>(w, direction);
+                break;
+
+            case Giveback g:
+                _lastReturn = new SeekRequest<Giveback>(g, direction);
+                break;
+
+            default:
+                break;
+        }
+
+        return SeekQuantities(origin, direction);
     }
 
     private async Task LoadQuantitiesAsync<TQuantity>(
@@ -222,8 +245,10 @@ public partial class Craft
             return;
         }
 
-        dbContext.Decks.Attach(deck); // attach for nav fixup
-        dbContext.Cards.AttachRange(_cards);
+        if (!dbContext.Decks.Local.Contains(deck))
+        {
+            dbContext.Decks.Attach(deck); // attach for nav fixup
+        }
 
         var dbQuantities = DbQuantitiesAsync(dbContext, deck.Id, origin, direction);
 
@@ -407,31 +432,6 @@ public partial class Craft
                 c => c.Id,
                 q => q.CardId,
                 (_, quantity) => quantity);
-    }
-
-    private async Task<SeekList<TQuantity>> FetchQuantitiesAsync<TQuantity>(
-        CardDbContext dbContext,
-        TQuantity? origin,
-        SeekDirection direction)
-        where TQuantity : Quantity
-    {
-        await LoadQuantitiesAsync(dbContext, origin, direction);
-
-        switch (origin)
-        {
-            case Want w:
-                _lastWant = new SeekRequest<Want>(w, direction);
-                break;
-
-            case Giveback g:
-                _lastReturn = new SeekRequest<Giveback>(g, direction);
-                break;
-
-            default:
-                break;
-        }
-
-        return SeekQuantities(origin, direction);
     }
 
     #region Edit Quantities
@@ -799,8 +799,6 @@ public partial class Craft
         {
             await LoadQuantitiesAsync(dbContext, next, SeekDirection.Forward);
         }
-
-        _cards.UnionWith(dbContext.Cards.Local);
     }
 
     #endregion

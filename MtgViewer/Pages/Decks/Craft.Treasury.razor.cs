@@ -105,8 +105,6 @@ public partial class Craft
             var (origin, direction) = request;
 
             Treasury = await FetchTreasuryAsync(dbContext, origin, direction);
-
-            _cards.UnionWith(dbContext.Cards.Local);
         }
         finally
         {
@@ -132,8 +130,6 @@ public partial class Craft
             DeckWants = await FetchQuantitiesAsync(dbContext, null as Want, forward);
             Treasury = await FetchTreasuryAsync(dbContext, null, forward);
         }
-
-        _cards.UnionWith(dbContext.Cards.Local);
     }
 
     private async Task<SeekList<HeldCard>> FetchTreasuryAsync(
@@ -180,7 +176,7 @@ public partial class Craft
 
         string? originId = origin?.Card.Id;
 
-        return await cards
+        var treasury = await cards
             .OrderBy(c => c.Name)
                 .ThenBy(c => c.SetName)
                 .ThenBy(c => c.Id)
@@ -189,13 +185,17 @@ public partial class Craft
                 .After(c => c.Id == originId)
                 .ThenTake(PageSize.Current)
 
-            .Select(card =>
-                new HeldCard(
-                    card,
-                    card.Holds
-                        .Where(h => h.Location is Box || h.Location is Excess)
-                        .Sum(h => h.Copies)))
+            .Select(card => new HeldCard(
+                card,
+                card.Holds
+                    .Where(h => h.Location is Box || h.Location is Excess)
+                    .Sum(h => h.Copies)))
 
             .ToSeekListAsync(_cancel.Token);
+
+        _cards.UnionWith(
+            treasury.Select(h => h.Card));
+
+        return treasury;
     }
 }

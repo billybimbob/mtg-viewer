@@ -150,12 +150,8 @@ public partial class Craft : OwningComponentBase
             await FetchDeckOrRedirectAsync(dbContext, userId);
         }
 
-        dbContext.Cards.AttachRange(_cards);
-
         DeckHolds = await FetchQuantitiesAsync(dbContext, null as Hold, SeekDirection.Forward);
         DeckReturns = await FetchQuantitiesAsync(dbContext, null as Giveback, SeekDirection.Forward);
-
-        _cards.UnionWith(dbContext.Cards.Local);
     }
 
     private bool TryPersistedLoad(CardDbContext dbContext)
@@ -285,9 +281,7 @@ public partial class Craft : OwningComponentBase
 
         try
         {
-            dbContext.Cards.AttachRange(_cards);
-
-            PrepareChanges(dbContext, _deckContext);
+            PrepareChanges(dbContext, _deckContext, _cards);
 
             await dbContext.SaveChangesAsync(_cancel.Token);
 
@@ -299,13 +293,11 @@ public partial class Craft : OwningComponentBase
         {
             await UpdateDeckFromDbAsync(dbContext, ex);
 
-            _cards.UnionWith(dbContext.Cards.Local);
-
             return SaveResult.Error;
         }
     }
 
-    private static void PrepareChanges(CardDbContext dbContext, DeckContext deckContext)
+    private static void PrepareChanges(CardDbContext dbContext, DeckContext deckContext, ICollection<Card> cards)
     {
         var deck = deckContext.Deck;
 
@@ -321,6 +313,8 @@ public partial class Craft : OwningComponentBase
         PrepareQuantity(deckContext, dbContext.Holds);
         PrepareQuantity(deckContext, dbContext.Wants);
         PrepareQuantity(deckContext, dbContext.Givebacks);
+
+        dbContext.Cards.AttachRange(cards);
     }
 
     private static void PrepareQuantity<TQuantity>(
@@ -409,6 +403,8 @@ public partial class Craft : OwningComponentBase
         CapGivebacks(_deckContext.Groups);
 
         dbContext.MatchToken(_deckContext.Deck, dbDeck);
+
+        _cards.UnionWith(dbContext.Cards.Local);
     }
 
     private static bool HasNoDeckConflicts(

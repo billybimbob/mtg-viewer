@@ -54,7 +54,7 @@ public class ParseTextFilterTests
 
         var filter = new TextFilter(null, manaFilter, null, null);
 
-        var result = _parseFilter.Parse($"/c {testMana}");
+        var result = _parseFilter.Parse($"{ParseTextFilter.SearchMana} {testMana}");
 
         Assert.Equal(filter, result);
     }
@@ -68,7 +68,7 @@ public class ParseTextFilterTests
 
         var filter = new TextFilter(null, manaFilter, null, null);
 
-        var result = _parseFilter.Parse($"/c {testMana}");
+        var result = _parseFilter.Parse($"{ParseTextFilter.SearchMana} {testMana}");
 
         Assert.Equal(filter, result);
     }
@@ -82,7 +82,7 @@ public class ParseTextFilterTests
 
         var filter = new TextFilter(null, manaFilter, null, null);
 
-        var result = _parseFilter.Parse($"/c {testMana}");
+        var result = _parseFilter.Parse($"{ParseTextFilter.SearchMana} {testMana}");
 
         Assert.Equal(filter, result);
     }
@@ -92,7 +92,7 @@ public class ParseTextFilterTests
     {
         const string invalidMana = "> invalidValue";
 
-        var result = _parseFilter.Parse($"/c {invalidMana}");
+        var result = _parseFilter.Parse($"{ParseTextFilter.SearchMana} {invalidMana}");
 
         Assert.Equal(default, result);
     }
@@ -114,7 +114,7 @@ public class ParseTextFilterTests
     {
         const string testTypes = "testType1 testType2";
 
-        var filter = _parseFilter.Parse($"/t {testTypes}");
+        var filter = _parseFilter.Parse($"{ParseTextFilter.SearchType} {testTypes}");
 
         var result = new TextFilter(null, null, testTypes, null);
 
@@ -126,7 +126,7 @@ public class ParseTextFilterTests
     {
         const string testText = "test text for filter";
 
-        var filter = _parseFilter.Parse($"/o {testText}");
+        var filter = _parseFilter.Parse($"{ParseTextFilter.SearchText} {testText}");
 
         var result = new TextFilter(null, null, null, testText);
 
@@ -140,7 +140,9 @@ public class ParseTextFilterTests
         const string testText = "test text for filter";
         const string testTypes = "testType1 testType2";
 
-        var filter = _parseFilter.Parse($"{testName} /o {testText} /t {testTypes}");
+        const string input = $"{testName} {ParseTextFilter.SearchText} {testText} {ParseTextFilter.SearchType} {testTypes}";
+
+        var filter = _parseFilter.Parse(input);
 
         var result = new TextFilter(testName, null, testTypes, testText);
 

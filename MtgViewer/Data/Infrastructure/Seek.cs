@@ -7,12 +7,6 @@ public readonly record struct SeekRequest<T>(
     SeekDirection Direction)
     where T : class;
 
-public readonly record struct LoadedSeekList<T>(
-    T? Origin,
-    SeekDirection Direction,
-    SeekList<T>? List)
-    where T : class;
-
 public readonly record struct SeekDto(
     bool HasPrevious,
     bool HasNext,
