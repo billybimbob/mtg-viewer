@@ -6,7 +6,6 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
@@ -108,7 +107,4 @@ app.MapRazorPages();
 app.MapBlazorHub().WithMetadata(new DisableCorsAttribute());
 app.MapFallbackToPage("/_Host");
 
-int? port = config.GetValue("PORT", null as int?);
-string? url = port is null ? null : $"https://*:${port}";
-
-await app.RunAsync(url);
+await app.RunAsync();
