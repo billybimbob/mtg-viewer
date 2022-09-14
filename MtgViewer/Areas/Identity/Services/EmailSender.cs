@@ -9,44 +9,44 @@ using SendGrid.Helpers.Mail;
 
 namespace MtgViewer.Areas.Identity.Services;
 
-public class AuthMessageSenderOptions
+public class SenderOptions
 {
-    public string SendGridKey { get; set; } = string.Empty;
+    public string ApiKey { get; set; } = string.Empty;
 
-    public string SenderEmail { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
 
-    public string? SenderEmailAlt { get; set; }
+    public string? EmailAlt { get; set; }
 
-    public string SenderName { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
 }
 
 public class EmailSender : IEmailSender
 {
-    public EmailSender(IOptions<AuthMessageSenderOptions> optionsAccessor, ILogger<EmailSender> logger)
+    public EmailSender(IOptions<SenderOptions> optionsAccessor, ILogger<EmailSender> logger)
     {
         _options = optionsAccessor.Value;
         _logger = logger;
     }
 
-    private readonly AuthMessageSenderOptions _options;
+    private readonly SenderOptions _options;
     private readonly ILogger<EmailSender> _logger;
 
     public async Task SendEmailAsync(string email, string subject, string htmlMessage)
     {
-        var client = new SendGridClient(_options.SendGridKey);
+        var client = new SendGridClient(_options.ApiKey);
 
         var msg = new SendGridMessage()
         {
-            From = new EmailAddress(_options.SenderEmail, _options.SenderName),
+            From = new EmailAddress(_options.Email, _options.Name),
             Subject = subject,
             PlainTextContent = htmlMessage,
             HtmlContent = htmlMessage
         };
 
         // issue where if the to and From are the same, the email is not sent
-        if (email == _options.SenderEmail && _options.SenderEmailAlt is not null)
+        if (email == _options.Email && _options.EmailAlt is not null)
         {
-            email = _options.SenderEmailAlt;
+            email = _options.EmailAlt;
         }
 
         msg.AddTo(new EmailAddress(email));

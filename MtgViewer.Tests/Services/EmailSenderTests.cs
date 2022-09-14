@@ -13,10 +13,10 @@ namespace MtgViewer.Tests.Services;
 public class EmailSenderTests
 {
     private readonly IEmailSender _emailSender;
-    private readonly AuthMessageSenderOptions _authOptions;
+    private readonly SenderOptions _authOptions;
 
     public EmailSenderTests(
-        IEmailSender emailSender, IOptions<AuthMessageSenderOptions> authOptions)
+        IEmailSender emailSender, IOptions<SenderOptions> authOptions)
     {
         _emailSender = emailSender;
         _authOptions = authOptions.Value;
@@ -28,7 +28,7 @@ public class EmailSenderTests
         const string subject = "Test plaintext email";
         const string message = "Test if this email will send.";
 
-        await _emailSender.SendEmailAsync(_authOptions.SenderEmail, subject, message);
+        await _emailSender.SendEmailAsync(_authOptions.Email, subject, message);
     }
 
     [Fact(Skip = "Calls external api")]
@@ -39,6 +39,6 @@ public class EmailSenderTests
 
         string message = $"Test if this email <a href='{HtmlEncoder.Default.Encode(google)}'>with a link</a> will send";
 
-        await _emailSender.SendEmailAsync(_authOptions.SenderEmail, subject, message);
+        await _emailSender.SendEmailAsync(_authOptions.Email, subject, message);
     }
 }

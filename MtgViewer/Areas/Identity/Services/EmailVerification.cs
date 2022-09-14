@@ -22,14 +22,14 @@ public class EmailVerification
     private readonly LinkGenerator _linkGenerator;
 
     private readonly IEmailSender _emailSender;
-    private readonly AuthMessageSenderOptions _authOptions;
+    private readonly SenderOptions _authOptions;
 
     public EmailVerification(
         UserManager<CardUser> userManager,
         IHttpContextAccessor httpAccessor,
         LinkGenerator linkGenerator,
         IEmailSender emailSender,
-        IOptions<AuthMessageSenderOptions> authOptions)
+        IOptions<SenderOptions> authOptions)
     {
         _userManager = userManager;
         _httpAccessor = httpAccessor;
@@ -69,7 +69,7 @@ public class EmailVerification
         string message = $"New request to create an account for {email}({user.DisplayName}). "
             + $"<a href='{HtmlEncoder.Default.Encode(callbackUrl)}'>Click here</a> to approve the request.";
 
-        await _emailSender.SendEmailAsync(_authOptions.SenderEmail, subject, message);
+        await _emailSender.SendEmailAsync(_authOptions.Email, subject, message);
 
         return true;
     }

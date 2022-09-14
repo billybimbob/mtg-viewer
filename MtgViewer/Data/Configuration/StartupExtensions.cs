@@ -2,7 +2,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 
 using MtgViewer.Data;
-using MtgViewer.Data.Configuration;
 using MtgViewer.Triggers;
 using MtgViewer.Utils;
 
@@ -12,13 +11,25 @@ public static partial class StartupExtensions
 {
     public static IServiceCollection AddCardStorage(this IServiceCollection services, IConfiguration config)
     {
-        var databaseOptions = DatabaseOptions.FromConfiguration(config);
-        string connString = databaseOptions.GetConnectionString(DatabaseContext.Card);
+        string connString = config.GetConnectionString("Cards");
 
-        _ = databaseOptions.Provider switch
+        _ = config.GetConnectionString("Provider") switch
         {
-            DatabaseOptions.SqlServer =>
-                services.AddTriggeredDbContextFactory<CardDbContext>(options => options
+            "Postgresql" => services
+                .AddTriggeredPooledDbContextFactory<CardDbContext>(options => options
+
+                    .UseNpgsql(connString.ToNpgsqlConnectionString())
+                    .UseValidationCheckConstraints()
+                    .UseEnumCheckConstraints()
+
+                    .UseTriggers(triggers => triggers
+                        .AddTrigger<ColorUpdate>()
+                        .AddTrigger<ImmutableCard>()
+                        .AddTrigger<QuantityValidate>()
+                        .AddTrigger<TradeValidate>())),
+
+            "SqlServer" => services
+                .AddTriggeredDbContextFactory<CardDbContext>(options => options
 
                     .UseSqlServer(connString)
                     .UseValidationCheckConstraints()
@@ -30,21 +41,8 @@ public static partial class StartupExtensions
                         .AddTrigger<QuantityValidate>()
                         .AddTrigger<TradeValidate>())),
 
-            DatabaseOptions.Postgresql =>
-                services.AddTriggeredPooledDbContextFactory<CardDbContext>(options => options
-
-                    .UseNpgsql(StringExtensions.ToNpgsqlConnectionString(connString))
-                    .UseValidationCheckConstraints()
-                    .UseEnumCheckConstraints()
-
-                    .UseTriggers(triggers => triggers
-                        .AddTrigger<ColorUpdate>()
-                        .AddTrigger<ImmutableCard>()
-                        .AddTrigger<QuantityValidate>()
-                        .AddTrigger<TradeValidate>())),
-
-            DatabaseOptions.Sqlite or _ =>
-                services.AddTriggeredDbContextFactory<CardDbContext>(options => options
+            "Sqlite" or _ => services
+                .AddTriggeredDbContextFactory<CardDbContext>(options => options
 
                     .UseSqlite(connString)
                     .UseValidationCheckConstraints()
@@ -58,8 +56,9 @@ public static partial class StartupExtensions
                         .AddTrigger<TradeValidate>()))
         };
 
-        return services.AddScoped(provider => provider
-            .GetRequiredService<IDbContextFactory<CardDbContext>>()
-            .CreateDbContext());
+        return services
+            .AddScoped(provider => provider
+                .GetRequiredService<IDbContextFactory<CardDbContext>>()
+                .CreateDbContext());
     }
 }

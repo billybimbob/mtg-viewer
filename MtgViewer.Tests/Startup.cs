@@ -12,7 +12,6 @@ using MtgViewer.Areas.Identity.Data;
 using MtgViewer.Areas.Identity.Services;
 
 using MtgViewer.Data;
-using MtgViewer.Data.Configuration;
 
 using MtgViewer.Services;
 using MtgViewer.Services.Infrastructure;
@@ -40,7 +39,6 @@ public class Startup
     public void ConfigureServices(IServiceCollection services, HostBuilderContext context)
     {
         var config = context.Configuration;
-        var databaseOptions = DatabaseOptions.FromConfiguration(config);
 
         services
             .AddScoped<ActionContextAccessor>()
@@ -64,14 +62,14 @@ public class Startup
             .AddScoped<InMemoryConnection>()
             .AddSingleton<TempFileName>();
 
-        _ = databaseOptions.Provider switch
+        _ = config.GetConnectionString("Provider") switch
         {
-            DatabaseOptions.Sqlite =>
+            "Sqlite" =>
                 services
                     .AddDbContext<UserDbContext>(TestFactory.SqliteInMemory)
                     .AddDbContextFactory<CardDbContext>(TestFactory.SqliteInMemory, ServiceLifetime.Scoped),
 
-            DatabaseOptions.InMemory or _ =>
+            "InMemory" or _ =>
                 services
                     .AddDbContext<UserDbContext>(TestFactory.InMemoryDatabase)
                     .AddDbContextFactory<CardDbContext>(TestFactory.InMemoryDatabase, ServiceLifetime.Scoped),
@@ -127,6 +125,6 @@ public class Startup
 
         services
             .AddTransient<IEmailSender, EmailSender>()
-            .Configure<AuthMessageSenderOptions>(config);
+            .Configure<SenderOptions>(config);
     }
 }
