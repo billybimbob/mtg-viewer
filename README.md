@@ -1,6 +1,6 @@
 # MTG Viewer
 
-Magic: The Gathering Card Manager and Deck Builder, using [ASP.net](https://dotnet.microsoft.com/apps/aspnet)
+Magic: The Gathering Card Manager and Deck Builder, using [ASP.NET](https://dotnet.microsoft.com/apps/aspnet).
 
 ## Features
 
@@ -30,4 +30,4 @@ MTG Viewer is a collaborative collection manager, that enables users to build an
 * [Blazor Server](https://docs.microsoft.com/en-us/aspnet/core/blazor/)
 * [Razor Pages](https://docs.microsoft.com/en-us/aspnet/core/razor-pages/)
 * [Entity Framework Core](https://docs.microsoft.com/en-us/ef/core/)
-* [Postgresql](https://postgresql.org/)
+* [PostgreSQL](https://postgresql.org/)
