@@ -94,8 +94,13 @@ public class ActionHandlerFactory
         model.Url = new UrlHelper(actionContext);
     }
 
-    public async Task AddPageContextAsync(PageModel model, CardUser user)
+    public async Task AddPageContextAsync(PageModel model, CardUser? user)
     {
+        if (user is null)
+        {
+            return;
+        }
+
         var userClaim = await _claimsFactory.CreateAsync(user);
 
         AddPageContext(model, userClaim);

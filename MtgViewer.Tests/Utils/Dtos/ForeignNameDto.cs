@@ -7,11 +7,11 @@ namespace MtgViewer.Tests.Utils.Dtos;
 internal class ForeignNameDto : IForeignName
 {
     [JsonPropertyName("language")]
-    public string Language { get; set; } = string.Empty;
+    public required string Language { get; set; }
 
     [JsonPropertyName("multiverseid")]
-    public int? MultiverseId { get; set; }
+    public required int? MultiverseId { get; set; }
 
     [JsonPropertyName("name")]
-    public string Name { get; set; } = string.Empty;
+    public required string Name { get; set; }
 }

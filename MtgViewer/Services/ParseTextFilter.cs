@@ -42,7 +42,7 @@ public readonly record struct TextFilter(string? Name, ManaFilter? Mana, string?
     public const int Limit = 40;
 }
 
-public class ParseTextFilter
+public partial class ParseTextFilter
 {
     public const string SearchName = "/n";
     public const string SearchMana = "/m";
@@ -50,7 +50,6 @@ public class ParseTextFilter
     public const string SearchText = "/o";
 
     private const string Split = $@"\s*(?<{nameof(Split)}>\/[nmto])\s+";
-    private const string ManaSplit = @"(?<Comparison>[\>\<]?=?)\s*(?<Value>\d+)";
 
     private readonly ILogger<ParseTextFilter> _logger;
 
@@ -66,7 +65,7 @@ public class ParseTextFilter
             return default;
         }
 
-        var match = Regex.Match(search, Split);
+        var match = SplitRegex().Match(search);
         var source = search.AsSpan();
 
         var filter = new TextFilter();
@@ -99,39 +98,51 @@ public class ParseTextFilter
             return filter;
         }
 
-        if (capture.SequenceEqual(SearchType) && filter.Types is null)
+        return capture switch
         {
-            return filter with { Types = text.ToString() };
-        }
+            SearchType when filter.Types is null =>
+                filter with { Types = text.ToString() },
 
-        if (capture.SequenceEqual(SearchText) && filter.Text is null)
-        {
-            return filter with { Text = text.ToString() };
-        }
+            SearchText when filter.Text is null =>
+                filter with { Text = text.ToString() },
 
-        if (capture.SequenceEqual(SearchMana) && filter.Mana is null)
-        {
-            return filter with { Mana = ParseManaFilter(text.ToString()) };
-        }
+            SearchMana when filter.Mana is null =>
+                filter with { Mana = ParseManaFilter(text) },
 
-        if (filter.Name is null)
-        {
-            return filter with { Name = text.ToString() };
-        }
+            _ when filter.Name is null =>
+                filter with { Name = text.ToString() },
 
-        return filter;
+            _ => filter
+        };
     }
 
-    private static ManaFilter? ParseManaFilter(string text)
+    private static ManaFilter? ParseManaFilter(ReadOnlySpan<char> text)
     {
-        var match = Regex.Match(text, ManaSplit);
+        var compareMatch = ComparisonRegex().EnumerateMatches(text);
 
-        if (!float.TryParse(match.Groups["Value"].ValueSpan, out float value))
+        if (!compareMatch.MoveNext())
         {
             return null;
         }
 
-        var comparison = match.Groups["Comparison"].Value switch
+        int compareIndex = compareMatch.Current.Index;
+        int compareLength = compareMatch.Current.Length;
+
+        var valueMatch = ManaValueRegex().EnumerateMatches(text, compareIndex + compareLength);
+
+        if (!valueMatch.MoveNext())
+        {
+            return null;
+        }
+
+        var valueSlice = text.Slice(valueMatch.Current.Index, valueMatch.Current.Length);
+
+        if (!float.TryParse(valueSlice, out float value))
+        {
+            return null;
+        }
+
+        var comparison = text.Slice(compareIndex, compareLength).Trim() switch
         {
             ">" => ExpressionType.GreaterThan,
             ">=" => ExpressionType.GreaterThanOrEqual,
@@ -142,4 +153,14 @@ public class ParseTextFilter
 
         return new ManaFilter(comparison, value);
     }
+
+    [GeneratedRegex(Split)]
+    private static partial Regex SplitRegex();
+
+    [GeneratedRegex(@"[\>\<]?=?\s*")]
+    private static partial Regex ComparisonRegex();
+
+    [GeneratedRegex(@"\d+")]
+    private static partial Regex ManaValueRegex();
+
 }

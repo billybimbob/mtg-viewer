@@ -95,10 +95,8 @@ public static class PagingExtensions
         = typeof(PagingExtensions)
             .GetTypeInfo()
             .GetDeclaredMethods(nameof(After))
-            .Single(mi => mi
-                .GetParameters()
-                .Any(pi => pi.Name == "origin"
-                    && !pi.ParameterType.IsAssignableTo(typeof(Expression))));
+            .Single(mi => mi.GetParameters() is [_, { ParameterType: var type, Name: "origin" }]
+                && !type.IsAssignableTo(typeof(Expression)));
 
     public static ISeekable<TEntity> After<TEntity>(
         this ISeekable<TEntity> source,
@@ -122,10 +120,8 @@ public static class PagingExtensions
         = typeof(PagingExtensions)
             .GetTypeInfo()
             .GetDeclaredMethods(nameof(After))
-            .Single(mi => mi
-                .GetParameters()
-                .Any(pi => pi.Name == "originPredicate"
-                    && pi.ParameterType.IsAssignableTo(typeof(Expression))));
+            .Single(mi => mi.GetParameters() is [_, { ParameterType: var type, Name: "originPredicate" }]
+                && type.IsAssignableTo(typeof(Expression)));
 
     public static ISeekable<TEntity> After<TEntity>(
         this ISeekable<TEntity> source,

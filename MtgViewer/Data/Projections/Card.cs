@@ -4,24 +4,24 @@ public sealed record HeldCard(Card Card, int Copies);
 
 public sealed record CardImage
 {
-    public string Id { get; init; } = string.Empty;
-    public string Name { get; init; } = string.Empty;
-    public string ImageUrl { get; init; } = string.Empty;
+    public required string Id { get; init; }
+    public required string Name { get; init; }
+    public required string ImageUrl { get; init; }
 }
 
 #region Card Previews
 
 public record CardPreview
 {
-    public string Id { get; init; } = string.Empty;
-    public string Name { get; init; } = string.Empty;
+    public required string Id { get; init; }
+    public required string Name { get; init; }
 
-    public string? ManaCost { get; init; }
+    public required string? ManaCost { get; init; }
     public float? ManaValue { get; init; }
 
-    public string SetName { get; init; } = string.Empty;
-    public Rarity Rarity { get; init; }
-    public string ImageUrl { get; init; } = string.Empty;
+    public required string SetName { get; init; }
+    public required Rarity Rarity { get; init; }
+    public required string ImageUrl { get; init; }
 }
 
 public record CardCopy : CardPreview
@@ -41,16 +41,16 @@ public sealed record DeckCopy : CardCopy
 
 public record CardLink
 {
-    public string Id { get; init; } = string.Empty;
-    public string Name { get; init; } = string.Empty;
-    public string SetName { get; init; } = string.Empty;
+    public required string Id { get; init; }
+    public required string Name { get; init; }
+    public required string SetName { get; init; }
     public string? ManaCost { get; init; }
 }
 
 public sealed record DeleteLink : CardLink
 {
-    public bool HasDeckCopies { get; init; }
-    public int StorageCopies { get; init; }
+    public required bool HasDeckCopies { get; init; }
+    public required int StorageCopies { get; init; }
 }
 
 public record LocationLink : CardLink
@@ -68,8 +68,8 @@ public sealed record DeckLink : LocationLink
 
 public sealed record CardId
 {
-    public string Id { get; init; } = string.Empty;
-    public string MultiverseId { get; init; } = string.Empty;
+    public required string Id { get; init; }
+    public required string MultiverseId { get; init; }
 }
 
 internal sealed record MulliganOption

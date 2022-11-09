@@ -108,8 +108,7 @@ internal static class ExecuteOffset<TEntity>
 
         protected override Expression VisitMethodCall(MethodCallExpression node)
         {
-            if (node.Arguments.ElementAtOrDefault(0) is not Expression parent
-                || node is { Method.IsGenericMethod: false })
+            if (node is not { Method.IsGenericMethod: true, Arguments: [Expression parent, ..] })
             {
                 return node;
             }
@@ -117,7 +116,7 @@ internal static class ExecuteOffset<TEntity>
             var method = node.Method.GetGenericMethodDefinition();
 
             if (method == QueryableMethods.Skip
-                && node.Arguments.ElementAtOrDefault(1) is ConstantExpression { Value: int skip })
+                && node.Arguments is [_, ConstantExpression { Value: int skip }])
             {
                 return new OffsetExpression(skip, null);
             }
@@ -125,7 +124,7 @@ internal static class ExecuteOffset<TEntity>
             var visitedParent = Visit(parent);
 
             if (method != QueryableMethods.Take
-                || node.Arguments.ElementAtOrDefault(1) is not ConstantExpression { Value: int size })
+                || node.Arguments is not [_, ConstantExpression { Value: int size }])
             {
                 return visitedParent;
             }
@@ -149,8 +148,7 @@ internal static class ExecuteOffset<TEntity>
 
         protected override Expression VisitMethodCall(MethodCallExpression node)
         {
-            if (node.Arguments.ElementAtOrDefault(0) is not Expression parent
-                || node is { Method.IsGenericMethod: false })
+            if (node is not { Method.IsGenericMethod: true, Arguments: [Expression parent, ..] })
             {
                 return base.VisitMethodCall(node);
             }

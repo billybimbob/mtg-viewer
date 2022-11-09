@@ -1,35 +1,34 @@
 using System.Collections.Generic;
-using System.Linq;
 
 namespace MtgViewer.Data.Projections;
 
 public sealed record RecentChange
 {
-    public bool ToStorage { get; init; }
+    public required bool ToStorage { get; init; }
 
-    public bool FromStorage { get; init; }
+    public required bool FromStorage { get; init; }
 
-    public string CardName { get; init; } = string.Empty;
+    public required string CardName { get; init; }
 }
 
 public sealed record ChangeDetails
 {
-    public int Id { get; init; }
+    public required int Id { get; init; }
 
-    public LocationPreview To { get; init; } = default!;
+    public required LocationPreview To { get; init; }
 
-    public LocationPreview? From { get; init; }
+    public required LocationPreview? From { get; init; }
 
-    public CardPreview Card { get; init; } = default!;
+    public required CardPreview Card { get; init; }
 
-    public int Copies { get; init; }
+    public required int Copies { get; init; }
 }
 
 public sealed class Move
 {
-    public LocationPreview To { get; init; } = default!;
+    public required LocationPreview To { get; init; }
 
-    public LocationPreview? From { get; init; }
+    public required LocationPreview? From { get; init; }
 
-    public IEnumerable<ChangeDetails> Changes { get; init; } = Enumerable.Empty<ChangeDetails>();
+    public required IEnumerable<ChangeDetails> Changes { get; init; }
 }

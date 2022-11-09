@@ -56,7 +56,12 @@ public class DownloadPersonalDataModel : PageModel
             personalData.Add($"{l.LoginProvider} external login provider key", l.ProviderKey);
         }
 
-        personalData.Add($"Authenticator Key", await _userManager.GetAuthenticatorKeyAsync(user));
+        string? authKey = await _userManager.GetAuthenticatorKeyAsync(user);
+
+        if (authKey is not null)
+        {
+            personalData.Add($"Authenticator Key", authKey);
+        }
 
         Response.Headers.Add("Content-Disposition", "attachment; filename=PersonalData.json");
 

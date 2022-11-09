@@ -32,25 +32,25 @@ public partial class Craft : OwningComponentBase
     public int DeckId { get; set; }
 
     [CascadingParameter]
-    protected Task<AuthenticationState> AuthState { get; set; } = default!;
+    public required Task<AuthenticationState> AuthState { get; set; }
 
     [Inject]
-    protected IDbContextFactory<CardDbContext> DbFactory { get; set; } = default!;
+    public required IDbContextFactory<CardDbContext> DbFactory { get; set; }
 
     [Inject]
-    protected PersistentComponentState ApplicationState { get; set; } = default!;
+    public required PersistentComponentState ApplicationState { get; set; }
 
     [Inject]
-    protected ParseTextFilter ParseTextFilter { get; set; } = default!;
+    public required ParseTextFilter ParseTextFilter { get; set; }
 
     [Inject]
-    protected PageSize PageSize { get; set; } = default!;
+    public required PageSize PageSize { get; set; }
 
     [Inject]
-    protected NavigationManager Nav { get; set; } = default!;
+    public required NavigationManager Nav { get; set; }
 
     [Inject]
-    protected ILogger<Craft> Logger { get; set; } = default!;
+    public required ILogger<Craft> Logger { get; set; }
 
     internal bool IsLoading => _isBusy || !_isInteractive;
 

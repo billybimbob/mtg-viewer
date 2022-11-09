@@ -23,7 +23,7 @@ public class EmailModel : PageModel
         _emailVerify = emailVerify;
     }
 
-    public string Email { get; set; } = default!;
+    public string Email { get; set; } = string.Empty;
 
     public bool IsEmailConfirmed { get; set; }
 
@@ -38,12 +38,17 @@ public class EmailModel : PageModel
         [Required]
         [EmailAddress]
         [Display(Name = "New email")]
-        public string NewEmail { get; set; } = default!;
+        public required string NewEmail { get; set; }
     }
 
     private async Task LoadAsync(CardUser user)
     {
-        string email = await _userManager.GetEmailAsync(user);
+        string? email = await _userManager.GetEmailAsync(user);
+
+        if (email is null)
+        {
+            return;
+        }
 
         Email = email;
 

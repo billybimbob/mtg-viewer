@@ -62,7 +62,7 @@ public sealed class DeckContext
 
         bool quantitiesModified = _groups.Values
             .SelectMany(cg => cg)
-            .Any(q => IsModified(q));
+            .Any(IsModified);
 
         if (quantitiesModified)
         {

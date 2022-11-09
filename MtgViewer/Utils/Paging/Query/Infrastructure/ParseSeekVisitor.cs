@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using System.Linq.Expressions;
 
@@ -16,10 +17,9 @@ internal sealed class ParseSeekVisitor : ExpressionVisitor
     protected override Expression VisitMethodCall(MethodCallExpression node)
     {
         if (ExpressionHelpers.IsSeekBy(node)
-            && node.Arguments[1] is ConstantExpression { Value: SeekDirection direction })
+            && node.Arguments is [_, ConstantExpression { Value: SeekDirection direction }]
+            && node.Method.GetGenericArguments() is [Type entityType])
         {
-            var entityType = node.Method.GetGenericArguments()[0];
-
             return new SeekExpression(Expression.Constant(null, entityType), direction, size: null);
         }
 

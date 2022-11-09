@@ -2,26 +2,26 @@ namespace MtgViewer.Data.Projections;
 
 public sealed record TradePreview
 {
-    public int Id { get; init; }
+    public required int Id { get; init; }
 
-    public CardPreview Card { get; init; } = default!;
+    public required CardPreview Card { get; init; }
 
-    public DeckDetails Target { get; init; } = default!;
+    public required DeckDetails Target { get; init; }
 
-    public int Copies { get; init; }
+    public required int Copies { get; init; }
 }
 
 public sealed record TradeDeckPreview
 {
-    public int Id { get; init; }
+    public required int Id { get; init; }
 
-    public string Name { get; init; } = string.Empty;
+    public required string Name { get; init; }
 
-    public Color Color { get; init; }
+    public required Color Color { get; init; }
 
-    public bool SentTrades { get; init; }
+    public required bool SentTrades { get; init; }
 
-    public bool ReceivedTrades { get; init; }
+    public required bool ReceivedTrades { get; init; }
 
-    public bool WantsCards { get; init; }
+    public required bool WantsCards { get; init; }
 }

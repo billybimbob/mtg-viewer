@@ -24,16 +24,16 @@ public sealed partial class Adjust : ComponentBase, IDisposable
     public int BoxId { get; set; }
 
     [Inject]
-    internal IDbContextFactory<CardDbContext> DbFactory { get; set; } = default!;
+    public required IDbContextFactory<CardDbContext> DbFactory { get; set; }
 
     [Inject]
-    internal PersistentComponentState ApplicationState { get; init; } = default!;
+    public required PersistentComponentState ApplicationState { get; init; }
 
     [Inject]
-    internal NavigationManager Nav { get; set; } = default!;
+    public required NavigationManager Nav { get; set; }
 
     [Inject]
-    internal ILogger<Adjust> Logger { get; set; } = default!;
+    public required ILogger<Adjust> Logger { get; set; }
 
     internal bool IsLoading => _isBusy || !_isInteractive;
 
@@ -308,7 +308,7 @@ public sealed partial class Adjust : ComponentBase, IDisposable
         }
         else
         {
-            box = new Box();
+            box = new Box { Name = string.Empty };
             dbContext.Boxes.Add(box);
         }
 

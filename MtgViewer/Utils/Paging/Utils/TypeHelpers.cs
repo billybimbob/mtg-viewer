@@ -10,9 +10,7 @@ internal static class TypeHelpers
             .GetMethod(nameof(string.CompareTo), new[] { typeof(string) })!;
 
     public static bool IsScalarType(Type type)
-        => type.IsEnum
-            || IsValueComparable(type)
-            || type == typeof(string);
+        => type.IsEnum || IsValueComparable(type) || type == typeof(string);
 
     public static bool IsValueComparable(Type type)
         => (type is { IsValueType: true }

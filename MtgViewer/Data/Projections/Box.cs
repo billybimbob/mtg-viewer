@@ -5,17 +5,17 @@ namespace MtgViewer.Data.Projections;
 
 public sealed class BoxPreview
 {
-    public int Id { get; init; }
+    public required int Id { get; init; }
 
-    public string Name { get; init; } = string.Empty;
+    public required string Name { get; init; }
 
-    public BinPreview Bin { get; init; } = default!;
+    public required BinPreview Bin { get; init; }
 
-    public string? Appearance { get; init; }
+    public required string? Appearance { get; init; }
 
-    public int Capacity { get; init; }
+    public required int Capacity { get; init; }
 
-    public int Held { get; init; }
+    public required int Held { get; init; }
 
     public IEnumerable<LocationLink> Cards { get; init; } = Enumerable.Empty<LocationLink>();
 

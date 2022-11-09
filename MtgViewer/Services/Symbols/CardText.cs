@@ -7,7 +7,7 @@ using MtgViewer.Data;
 
 namespace MtgViewer.Services.Symbols;
 
-public class CardText : ISymbolFinder, ISymbolTranslator
+public partial class CardText : ISymbolFinder, ISymbolTranslator
 {
     public const string Minus = "\u2212";
 
@@ -24,8 +24,8 @@ public class CardText : ISymbolFinder, ISymbolTranslator
             return Array.Empty<ManaSymbol>();
         }
 
-        return Regex
-            .Matches(mtgText, Mana)
+        return ManaRegex()
+            .Matches(mtgText)
             .Select(m =>
             {
                 var mana = m.Groups[nameof(Mana)];
@@ -38,6 +38,9 @@ public class CardText : ISymbolFinder, ISymbolTranslator
             .ToList();
     }
 
+    [GeneratedRegex(Mana)]
+    private static partial Regex ManaRegex();
+
     public IReadOnlyList<LoyaltySymbol> FindLoyalties(string? mtgText)
     {
         if (mtgText is null)
@@ -45,8 +48,8 @@ public class CardText : ISymbolFinder, ISymbolTranslator
             return Array.Empty<LoyaltySymbol>();
         }
 
-        return Regex
-            .Matches(mtgText, Loyalty)
+        return LoyaltyRegex()
+            .Matches(mtgText)
             .Select(m =>
             {
                 var direction = m.Groups[Direction];
@@ -66,6 +69,9 @@ public class CardText : ISymbolFinder, ISymbolTranslator
             .ToList();
     }
 
+    [GeneratedRegex(Loyalty)]
+    private static partial Regex LoyaltyRegex();
+
     public IReadOnlyList<SagaSymbol> FindSagas(string? mtgText)
     {
         if (mtgText is null)
@@ -73,8 +79,8 @@ public class CardText : ISymbolFinder, ISymbolTranslator
             return Array.Empty<SagaSymbol>();
         }
 
-        return Regex
-            .Matches(mtgText, Saga)
+        return SagaRegex()
+            .Matches(mtgText)
             .SelectMany(m =>
             {
                 const string separator = ", ";
@@ -136,4 +142,7 @@ public class CardText : ISymbolFinder, ISymbolTranslator
 
         return hasNext ? $"{saga}, " : $"{saga} —";
     }
+
+    [GeneratedRegex(Saga)]
+    private static partial Regex SagaRegex();
 }

@@ -40,7 +40,7 @@ public class DeletePersonalDataModel : PageModel
     {
         [Required]
         [DataType(DataType.Password)]
-        public string Password { get; set; } = default!;
+        public required string Password { get; set; }
     }
 
     public bool RequirePassword { get; set; }

@@ -9,7 +9,7 @@ using Npgsql;
 
 namespace MtgViewer.Utils;
 
-internal static class StringExtensions
+internal static partial class StringExtensions
 {
     public static HtmlString ToHtmlString(this string value) => new(value);
 
@@ -20,16 +20,9 @@ internal static class StringExtensions
 
     public static string ToNpgsqlConnectionString(this string pgUrl)
     {
-        const string pgUrlPattern = @"postgres(?:ql)?:\/\/"
-            + $@"(?<user>[^:]*):"
-            + $@"(?<password>[^@]*)@"
-            + $@"(?<host>[^:]*):"
-            + $@"(?<port>[^/]*)\/"
-            + $@"(?<database>.*)";
-
         ArgumentNullException.ThrowIfNull(pgUrl);
 
-        var urlValues = Regex.Match(pgUrl, pgUrlPattern).Groups;
+        var urlValues = PostgresUrl().Match(pgUrl).Groups;
 
         var invariant = CultureInfo.InvariantCulture;
 
@@ -45,4 +38,14 @@ internal static class StringExtensions
 
         return conn.ConnectionString;
     }
+
+    private const string pgUrlPattern = @"postgres(?:ql)?:\/\/"
+        + $@"(?<user>[^:]*):"
+        + $@"(?<password>[^@]*)@"
+        + $@"(?<host>[^:]*):"
+        + $@"(?<port>[^/]*)\/"
+        + $@"(?<database>.*)";
+
+    [GeneratedRegex(pgUrlPattern)]
+    private static partial Regex PostgresUrl();
 }

@@ -49,14 +49,13 @@ internal static class ExpressionHelpers
             call.Method,
             PagingExtensions.ThenTakeMethod);
 
+    public static bool IsToSeekList(Expression expression)
+        => expression is MethodCallExpression call && IsToSeekList(call);
+
     public static bool IsToSeekList(MethodCallExpression call)
         => DoesMethodEqual(
             call.Method,
             PagingExtensions.ToSeekListMethodInfo);
-
-    public static bool IsToSeekList(Expression expression)
-        => expression is MethodCallExpression call
-            && IsToSeekList(call);
 
     private static bool DoesMethodEqual(MethodInfo method, params MethodInfo[] options)
     {

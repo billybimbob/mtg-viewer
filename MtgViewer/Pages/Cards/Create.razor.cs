@@ -76,22 +76,22 @@ public sealed partial class Create : ComponentBase, IDisposable
     public string? ReturnUrl { get; set; }
 
     [Inject]
-    internal IDbContextFactory<CardDbContext> DbFactory { get; set; } = default!;
+    public required IDbContextFactory<CardDbContext> DbFactory { get; set; }
 
     [Inject]
-    internal IMtgQuery MtgQuery { get; set; } = default!;
+    public required IMtgQuery MtgQuery { get; set; }
 
     [Inject]
-    internal NavigationManager Nav { get; set; } = default!;
+    public required NavigationManager Nav { get; set; }
 
     [Inject]
-    internal PersistentComponentState ApplicationState { get; set; } = default!;
+    public required PersistentComponentState ApplicationState { get; set; }
 
     [Inject]
-    internal PageSize PageSize { get; set; } = default!;
+    public required PageSize PageSize { get; set; }
 
     [Inject]
-    internal ILogger<Create> Logger { get; set; } = default!;
+    public required ILogger<Create> Logger { get; set; }
 
     internal IReadOnlyList<MatchInput> Matches => _matches;
 

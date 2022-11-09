@@ -14,13 +14,13 @@ public sealed class Statistics
             ManaValues = new Dictionary<int, int>()
         };
 
-    public IReadOnlyDictionary<Rarity, int> Rarities { get; init; } = default!;
+    public required IReadOnlyDictionary<Rarity, int> Rarities { get; init; }
 
-    public IReadOnlyDictionary<Color, int> Colors { get; init; } = default!;
+    public required IReadOnlyDictionary<Color, int> Colors { get; init; }
 
-    public IReadOnlyDictionary<string, int> Types { get; init; } = default!;
+    public required IReadOnlyDictionary<string, int> Types { get; init; }
 
-    public IReadOnlyDictionary<int, int> ManaValues { get; init; } = default!;
+    public required IReadOnlyDictionary<int, int> ManaValues { get; init; }
 
     public int Copies => Rarities.Values.Sum();
 

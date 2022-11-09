@@ -109,7 +109,7 @@ public class ResetModel : PageModel
 
         var user = await _userManager.GetUserAsync(User);
 
-        if (player.Id != user.Id)
+        if (player.Id != user?.Id)
         {
             throw new InvalidOperationException(
                 "Player id did not match the currently signed in user");
@@ -142,7 +142,7 @@ public class ResetModel : PageModel
 
         var user = await _userManager.GetUserAsync(User);
 
-        if (player.Id != user.Id)
+        if (player.Id != user?.Id)
         {
             throw new InvalidOperationException(
                 "Player id did not match the currently signed in user");

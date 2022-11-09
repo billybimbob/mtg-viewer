@@ -1,5 +1,4 @@
 using System.Diagnostics.CodeAnalysis;
-using System.Linq;
 using System.Linq.Expressions;
 
 using EntityFrameworkCore.Paging.Utils;
@@ -16,7 +15,7 @@ internal class FindOrderingVisitor : ExpressionVisitor
     {
     }
 
-    [return: NotNullIfNotNull("node")]
+    [return: NotNullIfNotNull(nameof(node))]
     public override Expression? Visit(Expression? node)
     {
         _foundSeek = SeekByNotCalled(node);
@@ -45,7 +44,7 @@ internal class FindOrderingVisitor : ExpressionVisitor
             _foundSeek = true;
         }
 
-        if (node.Arguments.ElementAtOrDefault(0) is Expression parent)
+        if (node.Arguments is [Expression parent, ..])
         {
             return base.Visit(parent);
         }
@@ -55,9 +54,9 @@ internal class FindOrderingVisitor : ExpressionVisitor
 
     protected override Expression VisitLambda<TFunc>(Expression<TFunc> node)
     {
-        if (node.Parameters.Count == 1)
+        if (node.Parameters is [Expression p])
         {
-            return node.Parameters[0];
+            return p;
         }
 
         return node;
@@ -88,7 +87,7 @@ internal class FindOrderingVisitor : ExpressionVisitor
                 return node;
             }
 
-            if (node.Arguments.ElementAtOrDefault(0) is not Expression parent)
+            if (node.Arguments is not [Expression parent, ..])
             {
                 return node;
             }

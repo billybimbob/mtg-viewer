@@ -17,7 +17,7 @@ public abstract class Location : Concurrent
     internal LocationType Type { get; private set; }
 
     [StringLength(20, MinimumLength = 1)]
-    public string Name { get; set; } = default!;
+    public required string Name { get; set; }
 
     public List<Hold> Holds { get; init; } = new();
 }

@@ -10,7 +10,7 @@ public class FoundRouteData : ComponentBase
     public RouteData? RouteData { get; set; }
 
     [Inject]
-    internal RouteDataAccessor RouteDataAccessor { get; set; } = default!;
+    public required RouteDataAccessor RouteDataAccessor { get; set; }
 
     protected override void OnParametersSet()
         => RouteDataAccessor.RouteData = RouteData;

@@ -6,6 +6,8 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using Microsoft.AspNetCore.Components.Forms;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 
 using Bunit;
 using Moq;
@@ -145,10 +147,11 @@ public sealed class ImportTests : IAsyncLifetime, IDisposable
     {
         var cut = _testContext.RenderComponent<Import>();
         var fileInput = cut.FindComponent<InputFile>();
+        var dbContext = _services.GetRequiredService<CardDbContext>();
 
         var validData = new CardData
         {
-            Cards = new[] { new Card() }
+            Cards = new[] { await dbContext.Cards.FirstAsync() }
         };
 
         var file = GetFileInput(validData);

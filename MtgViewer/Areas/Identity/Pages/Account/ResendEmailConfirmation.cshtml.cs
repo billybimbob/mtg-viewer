@@ -25,13 +25,13 @@ public class ResendEmailConfirmationModel : PageModel
     }
 
     [BindProperty]
-    public InputModel Input { get; set; } = default!;
+    public InputModel? Input { get; set; }
 
     public class InputModel
     {
         [Required]
         [EmailAddress]
-        public string Email { get; set; } = default!;
+        public required string Email { get; set; }
     }
 
     public void OnGet()
@@ -40,7 +40,7 @@ public class ResendEmailConfirmationModel : PageModel
 
     public async Task<IActionResult> OnPostAsync()
     {
-        if (!ModelState.IsValid)
+        if (!ModelState.IsValid || Input is null)
         {
             return Page();
         }

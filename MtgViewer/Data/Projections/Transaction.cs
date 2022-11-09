@@ -6,35 +6,35 @@ namespace MtgViewer.Data.Projections;
 
 public sealed class RecentTransaction
 {
-    public DateTime AppliedAt { get; init; }
+    public required DateTime AppliedAt { get; init; }
 
-    public IEnumerable<RecentChange> Changes { get; init; } = Enumerable.Empty<RecentChange>();
+    public required IEnumerable<RecentChange> Changes { get; init; }
 
-    public int Copies { get; init; }
+    public required int Copies { get; init; }
 }
 
 public sealed class TransactionPreview
 {
-    public int Id { get; init; }
+    public required int Id { get; init; }
 
-    public DateTime AppliedAt { get; init; }
+    public required DateTime AppliedAt { get; init; }
 
-    public int Copies { get; init; }
+    public required int Copies { get; init; }
 
-    public IEnumerable<LocationLink> Cards { get; init; } = Enumerable.Empty<LocationLink>();
+    public required IEnumerable<LocationLink> Cards { get; init; }
 
     public bool HasMore => Copies > Cards.Sum(l => l.Held);
 }
 
 public sealed record TransactionDetails
 {
-    public int Id { get; init; }
+    public required int Id { get; init; }
 
-    public DateTime AppliedAt { get; init; }
+    public required DateTime AppliedAt { get; init; }
 
-    public int Copies { get; init; }
+    public required int Copies { get; init; }
 
-    public bool CanDelete { get; init; }
+    public required bool CanDelete { get; init; }
 
     public bool IsEmpty => Copies == 0;
 }

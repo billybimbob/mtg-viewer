@@ -2,14 +2,14 @@ namespace MtgViewer.Data.Projections;
 
 public record LocationPreview
 {
-    public int Id { get; init; }
+    public required int Id { get; init; }
 
-    public string Name { get; init; } = string.Empty;
+    public required string Name { get; init; }
 
     internal LocationType Type { get; init; }
 }
 
 public sealed record LocationCopy : LocationPreview
 {
-    public int Copies { get; init; }
+    public required int Copies { get; init; }
 }

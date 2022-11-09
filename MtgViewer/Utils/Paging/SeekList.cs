@@ -55,8 +55,8 @@ public class SeekList<T> : IReadOnlyList<T> where T : class
         bool hasNext,
         bool isMissing)
     {
-        var previous = hasPrevious ? items[0] : default;
-        var next = hasNext ? items[^1] : default;
+        var previous = hasPrevious && items is [T f, ..] ? f : default;
+        var next = hasNext && items is [.., T l] ? l : default;
 
         return CreateSeek(previous, next, isMissing);
     }
@@ -92,8 +92,8 @@ public class SeekList<T> : IReadOnlyList<T> where T : class
     {
         var previous = (items, direction, hasOrigin, lookAhead) switch
         {
-            ({ Count: > 0 }, SeekDirection.Forward, true, _) => items[0],
-            ({ Count: > 0 }, SeekDirection.Backwards, _, true) => items[0],
+            ([T i, ..], SeekDirection.Forward, true, _) => i,
+            ([.., T i], SeekDirection.Backwards, _, true) => i,
             _ => default
         };
 

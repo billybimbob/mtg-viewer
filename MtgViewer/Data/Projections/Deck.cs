@@ -1,6 +1,4 @@
-using System;
 using System.Collections.Generic;
-using System.Linq;
 
 namespace MtgViewer.Data.Projections;
 
@@ -13,9 +11,9 @@ public enum BuildState
 
 public sealed record DeckPreview
 {
-    public int Id { get; init; }
-    public string Name { get; init; } = string.Empty;
-    public Color Color { get; init; }
+    public required int Id { get; init; }
+    public required string Name { get; init; }
+    public required Color Color { get; init; }
 
     public int HeldCopies { get; init; }
     public int WantCopies { get; init; }
@@ -33,23 +31,23 @@ public sealed record DeckPreview
 
 public sealed record DeckDetails : TheorycraftDetails
 {
-    public PlayerPreview Owner { get; init; } = default!;
+    public required PlayerPreview Owner { get; init; }
     public int ReturnCopies { get; init; }
     public bool HasTrades { get; init; }
 }
 
 public sealed class ExchangePreview
 {
-    public int Id { get; init; }
-    public string Name { get; init; } = string.Empty;
-    public bool HasWants { get; init; }
-    public IEnumerable<CardCopy> Givebacks { get; init; } = Enumerable.Empty<CardCopy>();
+    public required int Id { get; init; }
+    public required string Name { get; init; }
+    public required bool HasWants { get; init; }
+    public required IEnumerable<CardCopy> Givebacks { get; init; }
 }
 
 public sealed record DeckCounts
 {
     public int Id { get; init; }
-    public string OwnerId { get; init; } = string.Empty;
+    public required string OwnerId { get; init; }
 
     public int HeldCopies { get; init; }
     public int WantCopies { get; set; }
@@ -64,7 +62,7 @@ public sealed record DeckCounts
 
 public sealed class MulliganTarget
 {
-    public string Name { get; init; } = string.Empty;
+    public required string Name { get; init; }
 
-    public IReadOnlyList<DeckCopy> Cards { get; init; } = Array.Empty<DeckCopy>();
+    public required IReadOnlyList<DeckCopy> Cards { get; init; }
 }

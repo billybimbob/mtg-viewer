@@ -1,8 +1,12 @@
-
+﻿
 <div class="form-row align-items-center mb-3">
     <div class="col-12 col-md-4">
-        <input class="form-control" placeholder="Card Name"
-            disabled="@IsDisabled" @bind="BoundSearch" />
+        <input
+            class="form-control"
+            placeholder="Card Name"
+            disabled="@IsDisabled"
+            @bind:get="Search"
+            @bind:set="SearchChanged"/>
     </div>
 
     <div class="col-auto btn-group pt-2 pt-md-0" role="group" aria-label="Color Buttons">
@@ -12,7 +16,7 @@
                 type="button"
                 class="btn btn-outline-secondary ms-filter @ColorActive(color)"
                 disabled="@IsDisabled"
-                @onclick="() => ToggleColor(color)">
+                @onclick="() => ToggleColorAsync(color)">
 
                 <i class="ms ms-@symbol.ToLower() ms-cost"></i>
             </button>
@@ -42,19 +46,13 @@
     [Parameter]
     public RenderFragment? ChildContent { get; set; }
 
-    internal string? BoundSearch
-    {
-        get => Search;
-        set => _ = SearchChanged.InvokeAsync(value);
-    }
-
     internal string ColorActive(Color color)
     {
         return Color.HasFlag(color) ? "active" : string.Empty;
     }
 
-    internal void ToggleColor(Color toggle)
+    internal async Task ToggleColorAsync(Color toggle)
     {
-        _ = ColorChanged.InvokeAsync(toggle ^ Color);
+        await ColorChanged.InvokeAsync(toggle ^ Color);
     }
 }

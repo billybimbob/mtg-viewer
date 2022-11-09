@@ -47,7 +47,7 @@ public class EmailVerification
         }
 
         string? userId = await _userManager.GetUserIdAsync(user);
-        string email = await _userManager.GetEmailAsync(user);
+        string? email = await _userManager.GetEmailAsync(user);
 
         string token = await _userManager.GenerateUserTokenAsync(user, TokenOptions.DefaultProvider, Approval);
         string code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
@@ -59,7 +59,7 @@ public class EmailVerification
             values: new { area = "Identity", userId, code },
             scheme: "https");
 
-        if (callbackUrl is null)
+        if (email is null || callbackUrl is null)
         {
             return false;
         }
@@ -83,7 +83,7 @@ public class EmailVerification
             return false;
         }
 
-        string email = await _userManager.GetEmailAsync(user);
+        string? email = await _userManager.GetEmailAsync(user);
 
         if (newEmail == email)
         {
@@ -127,7 +127,7 @@ public class EmailVerification
         }
 
         string? userId = await _userManager.GetUserIdAsync(user);
-        string email = await _userManager.GetEmailAsync(user);
+        string? email = await _userManager.GetEmailAsync(user);
 
         string token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
         string code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
@@ -139,7 +139,7 @@ public class EmailVerification
             values: new { area = "Identity", userId, code },
             scheme: "https");
 
-        if (callbackUrl is null)
+        if (email is null || callbackUrl is null)
         {
             return false;
         }
@@ -162,7 +162,7 @@ public class EmailVerification
             return false;
         }
 
-        string email = await _userManager.GetEmailAsync(user);
+        string? email = await _userManager.GetEmailAsync(user);
 
         // For more information on how to enable account confirmation and password reset please
         // visit https://go.microsoft.com/fwlink/?LinkID=532713
@@ -176,7 +176,7 @@ public class EmailVerification
             values: new { area = "Identity", code },
             scheme: "https");
 
-        if (callbackUrl is null)
+        if (email is null || callbackUrl is null)
         {
             return false;
         }

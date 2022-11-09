@@ -2,9 +2,9 @@ namespace MtgViewer.Data.Projections;
 
 public sealed record PlayerPreview
 {
-    public string Id { get; init; } = string.Empty;
+    public required string Id { get; init; }
 
-    public string Name { get; init; } = string.Empty;
+    public required string Name { get; init; }
 
     public int TotalDecks { get; init; }
 }

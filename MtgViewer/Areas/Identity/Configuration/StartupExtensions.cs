@@ -1,3 +1,5 @@
+using System;
+
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.EntityFrameworkCore;
@@ -13,7 +15,9 @@ public static partial class StartupExtensions
 {
     public static IServiceCollection AddCardUsers(this IServiceCollection services, IConfiguration config)
     {
-        string connString = config.GetConnectionString("Users") ?? config.GetConnectionString("Cards");
+        string? connString = config.GetConnectionString("Users") ?? config.GetConnectionString("Cards");
+
+        ArgumentNullException.ThrowIfNull(connString);
 
         services.AddDbContext<UserDbContext>(options =>
         {

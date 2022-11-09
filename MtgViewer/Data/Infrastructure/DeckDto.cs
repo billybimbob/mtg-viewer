@@ -39,7 +39,7 @@ public sealed class DeckDto : ConcurrentDto
 
     internal DeckContext ToDeckContext(CardDbContext dbContext)
     {
-        var deck = new Deck();
+        var deck = new Deck { Name = string.Empty };
 
         dbContext.Entry(deck).CurrentValues.SetValues(this);
 

@@ -39,14 +39,14 @@ public class LoginModel : PageModel
     {
         [Required]
         [EmailAddress]
-        public string Email { get; set; } = default!;
+        public required string Email { get; set; }
 
         [Required]
         [DataType(DataType.Password)]
-        public string Password { get; set; } = default!;
+        public required string Password { get; set; }
 
         [Display(Name = "Remember me?")]
-        public bool RememberMe { get; set; }
+        public required bool RememberMe { get; set; }
     }
 
     public async Task OnGetAsync(string? returnUrl = null)

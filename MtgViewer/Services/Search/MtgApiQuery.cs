@@ -81,17 +81,11 @@ public sealed class MtgApiQuery : IMtgQuery
 
     private ICardService ApplySearch(IMtgSearch search)
     {
-        var cards = _cardService;
+        var cards = _cardService
+            .Where(c => c.Contains, RequiredAttributes);
 
         cards = WhereNotEmpty(cards, c => c.Name, search.Name);
         cards = WhereNotEmpty(cards, c => c.SetName, search.SetName);
-
-        if (search.ManaValue is int manaValue)
-        {
-            var invariant = CultureInfo.InvariantCulture;
-
-            cards = cards.Where(c => c.Cmc, manaValue.ToString(invariant));
-        }
 
         if (search.Colors is not Color.None)
         {
@@ -103,42 +97,33 @@ public sealed class MtgApiQuery : IMtgQuery
             cards = cards.Where(c => c.ColorIdentity, colors);
         }
 
+        var invariant = CultureInfo.InvariantCulture;
+
+        const StringSplitOptions notWhiteSpace
+            = StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries;
+
+        string? types = search.Types
+            ?.Trim()
+            .Split(new char[] { ' ', And }, notWhiteSpace)
+            .Join(And);
+
+        cards = WhereNotEmpty(cards, c => c.Cmc, search.ManaValue?.ToString(invariant));
+        cards = WhereNotEmpty(cards, c => c.Rarity, search.Rarity?.ToString());
+        cards = WhereNotEmpty(cards, c => c.Type, types);
+
         cards = WhereNotEmpty(cards, c => c.Power, search.Power);
         cards = WhereNotEmpty(cards, c => c.Toughness, search.Toughness);
         cards = WhereNotEmpty(cards, c => c.Loyalty, search.Loyalty);
-
-        if (search.Rarity is Rarity rarity)
-        {
-            cards = cards.Where(c => c.Rarity, rarity.ToString());
-        }
-
-        if (search.Types is not null)
-        {
-            char[] separator = { ' ', And };
-
-            const StringSplitOptions notWhiteSpace
-                = StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries;
-
-            string types = search.Types
-                .Trim()
-                .Split(separator, notWhiteSpace)
-                .Join(And);
-
-            cards = cards.Where(c => c.Type, types);
-        }
 
         cards = WhereNotEmpty(cards, c => c.Artist, search.Artist);
         cards = WhereNotEmpty(cards, c => c.Text, search.Text);
         cards = WhereNotEmpty(cards, c => c.Flavor, search.Flavor);
 
-        int pageSize = search.PageSize is > 0 and <= MaxSize
-            ? search.PageSize
-            : _pageSize;
+        bool isValidSize = search.PageSize is > 0 and <= MaxSize;
 
         return cards
-            .Where(c => c.Page, search.Page + 1)
-            .Where(c => c.PageSize, pageSize)
-            .Where(c => c.Contains, RequiredAttributes);
+            .Where(c => c.PageSize, isValidSize ? search.PageSize : _pageSize)
+            .Where(c => c.Page, search.Page + 1);
     }
 
     private static ICardService WhereNotEmpty(

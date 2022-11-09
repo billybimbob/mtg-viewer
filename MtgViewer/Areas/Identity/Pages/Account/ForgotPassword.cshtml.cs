@@ -28,7 +28,7 @@ public class ForgotPasswordModel : PageModel
     {
         [Required]
         [EmailAddress]
-        public string Email { get; set; } = default!;
+        public required string Email { get; set; }
     }
 
     public async Task<IActionResult> OnPostAsync()

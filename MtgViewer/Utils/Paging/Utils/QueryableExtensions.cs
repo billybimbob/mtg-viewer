@@ -207,9 +207,8 @@ internal static class QueryableExtensions
         = typeof(EntityFrameworkQueryableExtensions)
             .GetTypeInfo()
             .GetDeclaredMethods(nameof(EntityFrameworkQueryableExtensions.Include))
-            .Single(mi => mi
-                .GetParameters()
-                .Any(pi => pi.Name == "navigationPropertyPath" && pi.ParameterType == typeof(string)));
+            .Single(mi => mi.GetParameters() is [_, { ParameterType: var type, Name: "navigationPropertyPath" }]
+                && type == typeof(string));
 
     public static IQueryable Include(this IQueryable source, string navigationPropertyPath)
     {

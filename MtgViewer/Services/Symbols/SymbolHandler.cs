@@ -24,11 +24,11 @@ public interface ISymbolTranslator
 
 public abstract record TextSymbol(Range Position);
 
-public record ManaSymbol(Range Postion, string Value)
-   : TextSymbol(Postion);
+public record ManaSymbol(Range Position, string Value)
+   : TextSymbol(Position);
 
-public record LoyaltySymbol(Range Postion, string? Direction, string Value)
-    : TextSymbol(Postion);
+public record LoyaltySymbol(Range Position, string? Direction, string Value)
+    : TextSymbol(Position);
 
 public record SagaSymbol(Range Position, string Value, bool HasNext)
     : TextSymbol(Position);

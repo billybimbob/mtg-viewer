@@ -35,27 +35,27 @@ public class RegisterModel : PageModel
         [Required]
         [MaxLength(256)]
         [Display(Name = "Full Name")]
-        public string Name { get; set; } = default!;
+        public required string Name { get; set; }
 
         [Required]
         [EmailAddress]
         [Display(Name = "Email")]
-        public string Email { get; set; } = default!;
+        public required string Email { get; set; }
 
         [Required]
         [StringLength(100, ErrorMessage = "The {0} must be at least {2} and at max {1} characters long.", MinimumLength = 6)]
         [DataType(DataType.Password)]
         [Display(Name = "Password")]
-        public string Password { get; set; } = default!;
+        public required string Password { get; set; }
 
         [DataType(DataType.Password)]
         [Display(Name = "Confirm password")]
         [Compare("Password", ErrorMessage = "The password and confirmation password do not match.")]
-        public string ConfirmPassword { get; set; } = default!;
+        public required string ConfirmPassword { get; set; }
     }
 
     [BindProperty]
-    public InputModel Input { get; set; } = default!;
+    public InputModel? Input { get; set; }
 
     [BindProperty(SupportsGet = true)]
     public string? ReturnUrl { get; set; }
@@ -66,9 +66,7 @@ public class RegisterModel : PageModel
 
     public async Task<IActionResult> OnPostAsync(CancellationToken cancel)
     {
-        ReturnUrl ??= Url.Content("~/");
-
-        if (!ModelState.IsValid)
+        if (!ModelState.IsValid || Input is null)
         {
             // If we got this far, something failed, redisplay form
             return Page();
@@ -98,6 +96,8 @@ public class RegisterModel : PageModel
             ModelState.AddModelError(string.Empty, "Issue creating user account");
             return Page();
         }
+
+        ReturnUrl ??= Url.Content("~/");
 
         _logger.LogInformation("User created a new account with password.");
 

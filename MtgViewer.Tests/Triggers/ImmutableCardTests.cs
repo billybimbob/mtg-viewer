@@ -36,9 +36,7 @@ public class ImmutableCardTests : IAsyncLifetime
     [Fact]
     public async Task BeforeSave_AddCard_Returns()
     {
-        const string cardId = "this is a card id";
-
-        var card = new Card { Id = cardId };
+        var card = await _dbContext.Cards.FirstAsync();
 
         _dbContext.Cards.Add(card);
 

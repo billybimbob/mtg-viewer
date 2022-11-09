@@ -4,13 +4,13 @@ namespace MtgViewer.Data.Projections;
 
 public sealed record SuggestionPreview
 {
-    public int Id { get; init; }
+    public required int Id { get; init; }
 
-    public DateTime SentAt { get; init; }
+    public required DateTime SentAt { get; init; }
 
-    public CardLink Card { get; init; } = default!;
+    public required CardLink Card { get; init; }
 
-    public string? ToName { get; init; }
+    public required string? ToName { get; init; }
 
-    public string? Comment { get; init; }
+    public required string? Comment { get; init; }
 }

@@ -50,7 +50,8 @@ public class StatisticsModel : PageModel
             .Select(d => new DeckPreview
             {
                 Id = d.Id,
-                Name = d.Name
+                Name = d.Name,
+                Color = d.Color
             })
             .SingleOrDefaultAsync(cancel);
     }

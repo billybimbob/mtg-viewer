@@ -110,7 +110,7 @@ public sealed class AdjustTests : IAsyncLifetime, IDisposable
 
         var form = cut.FindComponent<EditForm>();
 
-        await cut.InvokeAsync(() => form.Instance.OnValidSubmit.InvokeAsync());
+        await cut.InvokeAsync(form.Instance.OnValidSubmit.InvokeAsync);
 
         int afterBoxes = await _dbContext.Boxes.CountAsync();
 
@@ -133,7 +133,7 @@ public sealed class AdjustTests : IAsyncLifetime, IDisposable
 
         var form = cut.FindComponent<EditForm>();
 
-        await cut.InvokeAsync(() => form.Instance.OnValidSubmit.InvokeAsync());
+        await cut.InvokeAsync(form.Instance.OnValidSubmit.InvokeAsync);
 
         int updatedCapacity = await _dbContext.Boxes
             .Where(b => b.Id == box.Id)
@@ -157,7 +157,7 @@ public sealed class AdjustTests : IAsyncLifetime, IDisposable
 
         var form = cut.FindComponent<EditForm>();
 
-        await cut.InvokeAsync(() => form.Instance.OnValidSubmit.InvokeAsync());
+        await cut.InvokeAsync(form.Instance.OnValidSubmit.InvokeAsync);
 
         string? updatedName = await _dbContext.Boxes
             .Where(b => b.Id == box.Id)
@@ -181,7 +181,7 @@ public sealed class AdjustTests : IAsyncLifetime, IDisposable
 
         var form = cut.FindComponent<EditForm>();
 
-        await cut.InvokeAsync(() => form.Instance.OnValidSubmit.InvokeAsync());
+        await cut.InvokeAsync(form.Instance.OnValidSubmit.InvokeAsync);
 
         string? updatedName = await _dbContext.Boxes
             .Where(b => b.Id == box.Id)

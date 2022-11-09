@@ -7,8 +7,8 @@ namespace MtgViewer.Tests.Utils.Dtos;
 internal class RulingDto : IRuling
 {
     [JsonPropertyName("date")]
-    public string Date { get; set; } = string.Empty;
+    public required string Date { get; set; }
 
     [JsonPropertyName("text")]
-    public string Text { get; set; } = string.Empty;
+    public required string Text { get; set; }
 }

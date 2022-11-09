@@ -15,48 +15,48 @@ namespace MtgViewer.Data;
 [Index(nameof(Name), nameof(Id))]
 public class Card
 {
-    public string Id { get; init; } = default!;
+    public required string Id { get; init; }
 
     [Display(Name = "Multiverse Id")]
-    public string MultiverseId { get; init; } = default!;
+    public required string MultiverseId { get; init; }
 
-    public string Name { get; init; } = default!;
+    public required string Name { get; init; }
 
-    public string Layout { get; init; } = default!;
+    public required string Layout { get; init; }
 
     [Display(Name = "Mana Cost")]
-    public string? ManaCost { get; init; } = default!;
+    public required string? ManaCost { get; init; }
 
     [Display(Name = "Mana Value")]
     [Range(0f, 1_000_000f)]
-    public float? ManaValue { get; init; }
+    public required float? ManaValue { get; init; }
 
-    public Color Color { get; init; }
+    public required Color Color { get; init; }
 
-    public string Type { get; init; } = default!;
+    public required string Type { get; init; }
 
     [Display(Name = "Set Name")]
-    public string SetName { get; init; } = default!;
+    public required string SetName { get; init; }
 
-    public Rarity Rarity { get; init; }
+    public required Rarity Rarity { get; init; }
 
-    public Flip? Flip { get; init; }
+    public required Flip? Flip { get; init; }
 
-    public string? Text { get; init; }
+    public required string? Text { get; init; }
 
-    public string? Flavor { get; init; }
+    public required string? Flavor { get; init; }
 
-    public string? Power { get; init; }
+    public required string? Power { get; init; }
 
-    public string? Toughness { get; init; }
+    public required string? Toughness { get; init; }
 
-    public string? Loyalty { get; init; }
+    public required string? Loyalty { get; init; }
 
     [Display(Name = "Image")]
     [Url]
-    public string ImageUrl { get; init; } = default!;
+    public required string ImageUrl { get; init; }
 
-    public string Artist { get; init; } = default!;
+    public required string Artist { get; init; }
 
     [JsonIgnore]
     public List<Hold> Holds { get; } = new();
@@ -85,30 +85,30 @@ public enum Rarity
 public class Flip
 {
     [Display(Name = "Multiverse Id")]
-    public string MultiverseId { get; init; } = default!;
+    public required string MultiverseId { get; init; }
 
     [Display(Name = "Mana Cost")]
-    public string? ManaCost { get; init; } = default!;
+    public required string? ManaCost { get; init; }
 
     [Display(Name = "Mana Value")]
     [Range(0f, 1_000_000f)]
-    public float? ManaValue { get; init; }
+    public required float? ManaValue { get; init; }
 
-    public string Type { get; init; } = default!;
+    public required string Type { get; init; }
 
-    public string? Text { get; init; }
+    public required string? Text { get; init; }
 
-    public string? Flavor { get; init; }
+    public required string? Flavor { get; init; }
 
-    public string? Power { get; init; }
+    public required string? Power { get; init; }
 
-    public string? Toughness { get; init; }
+    public required string? Toughness { get; init; }
 
-    public string? Loyalty { get; init; }
+    public required string? Loyalty { get; init; }
 
     [Display(Name = "Image")]
     [Url]
-    public string ImageUrl { get; init; } = default!;
+    public required string ImageUrl { get; init; }
 
-    public string Artist { get; init; } = default!;
+    public required string Artist { get; init; }
 }

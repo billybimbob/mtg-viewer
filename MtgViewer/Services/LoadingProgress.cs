@@ -10,10 +10,7 @@ public readonly struct Percent
 
     public Percent(int value)
     {
-        int floor = Math.Max(0, value);
-        int ceil = Math.Min(floor, 100);
-
-        _value = ceil;
+        _value = Math.Min(Math.Max(0, value), 100);
     }
 
     public static implicit operator int(Percent percent)

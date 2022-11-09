@@ -18,16 +18,16 @@ namespace MtgViewer.Pages;
 public sealed partial class Home : ComponentBase, IDisposable
 {
     [Inject]
-    internal IDbContextFactory<CardDbContext> DbFactory { get; set; } = default!;
+    public required IDbContextFactory<CardDbContext> DbFactory { get; set; }
 
     [Inject]
-    internal PersistentComponentState ApplicationState { get; set; } = default!;
+    public required PersistentComponentState ApplicationState { get; set; }
 
     [Inject]
-    internal PageSize PageSize { get; set; } = default!;
+    public required PageSize PageSize { get; set; }
 
     [Inject]
-    internal ILogger<Home> Logger { get; set; } = default!;
+    public required ILogger<Home> Logger { get; set; }
 
     #region View Properties
 

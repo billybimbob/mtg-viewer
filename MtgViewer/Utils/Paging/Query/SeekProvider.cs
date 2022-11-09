@@ -28,6 +28,22 @@ internal sealed class SeekProvider : IAsyncQueryProvider
         _originQuery = new QueryOriginVisitor(source);
     }
 
+    #region MethodInfos
+
+    private static readonly MethodInfo ExecuteAsyncEnumerableMethod
+        = GetPrivateMethod(nameof(ExecuteAsyncEnumerable), typeof(Expression), typeof(CancellationToken));
+
+    private static readonly MethodInfo ExecuteTaskAsyncMethod
+        = GetPrivateMethod(nameof(ExecuteTaskAsync), typeof(Expression), typeof(CancellationToken));
+
+    private static readonly MethodInfo ExecuteSeekListAsyncMethod
+        = GetPrivateMethod(nameof(ExecuteSeekListAsync), typeof(Expression), typeof(CancellationToken));
+
+    private static readonly MethodInfo ExecuteSeekListMethod
+        = GetPrivateMethod(nameof(ExecuteSeekList), typeof(Expression));
+
+    #endregion
+
     #region Create Query
 
     IQueryable IQueryProvider.CreateQuery(Expression expression)
@@ -47,57 +63,55 @@ internal sealed class SeekProvider : IAsyncQueryProvider
     {
         object? origin = ExecuteOrigin(expression);
 
-        var changedOrigin = ChangeOrigin(expression, origin);
+        var changedOrigin = ChangeOriginVisitor.Visit(expression, origin);
 
         return _source.Execute(_seekTranslator.Visit(changedOrigin));
     }
 
     TResult IQueryProvider.Execute<TResult>(Expression expression)
     {
-        if (ExpressionHelpers.IsToSeekList(expression))
+        if (ExpressionHelpers.IsToSeekList(expression)
+            && typeof(TResult) is { GenericTypeArguments: [Type seek] })
         {
             return Invoke<TResult>(
-                ExecuteSeekListMethod
-                    .MakeGenericMethod(typeof(TResult).GenericTypeArguments[0]),
+                ExecuteSeekListMethod.MakeGenericMethod(seek),
                 expression);
         }
 
         object? origin = ExecuteOrigin(expression);
 
-        var changedOrigin = ChangeOrigin(expression, origin);
+        var changedOrigin = ChangeOriginVisitor.Visit(expression, origin);
 
         return _source.Execute<TResult>(_seekTranslator.Visit(changedOrigin));
     }
 
     TResult IAsyncQueryProvider.ExecuteAsync<TResult>(Expression expression, CancellationToken cancellationToken)
     {
-        if (ExpressionHelpers.IsToSeekList(expression))
+        if (ExpressionHelpers.IsToSeekList(expression)
+            && typeof(TResult) is { GenericTypeArguments: [{ GenericTypeArguments: [Type seek] }] })
         {
             return Invoke<TResult>(
-                ExecuteSeekListAsyncMethod
-                    .MakeGenericMethod(typeof(TResult)
-                        .GenericTypeArguments[0]
-                        .GenericTypeArguments[0]),
+                ExecuteSeekListAsyncMethod.MakeGenericMethod(seek),
                 expression,
                 cancellationToken);
         }
 
         if (typeof(TResult).IsGenericType
-            && typeof(TResult).GetGenericTypeDefinition() == typeof(IAsyncEnumerable<>))
+            && typeof(TResult).GetGenericTypeDefinition() == typeof(IAsyncEnumerable<>)
+            && typeof(TResult) is { GenericTypeArguments: [Type item] })
         {
             return Invoke<TResult>(
-                ExecuteAsyncEnumerableMethod
-                    .MakeGenericMethod(typeof(TResult).GenericTypeArguments[0]),
+                ExecuteAsyncEnumerableMethod.MakeGenericMethod(item),
                 expression,
                 cancellationToken);
         }
 
         if (typeof(TResult).IsGenericType
-            && typeof(TResult).GetGenericTypeDefinition() == typeof(Task<>))
+            && typeof(TResult).GetGenericTypeDefinition() == typeof(Task<>)
+            && typeof(TResult) is { GenericTypeArguments: [Type result] })
         {
             return Invoke<TResult>(
-                ExecuteTaskAsyncMethod
-                    .MakeGenericMethod(typeof(TResult).GenericTypeArguments[0]),
+                ExecuteTaskAsyncMethod.MakeGenericMethod(result),
                 expression,
                 cancellationToken);
         }
@@ -107,34 +121,13 @@ internal sealed class SeekProvider : IAsyncQueryProvider
 
     #endregion
 
-    private TResult Invoke<TResult>(MethodInfo method, params object[] parameters)
-        => (TResult)method.Invoke(this, parameters)!;
-
-    private static MethodInfo GetPrivateMethod(string name, params Type[] parameterTypes)
-    {
-        const BindingFlags privateInstance = BindingFlags.NonPublic | BindingFlags.Instance;
-
-        return typeof(SeekProvider)
-            .GetMethod(name, privateInstance, parameterTypes)!;
-    }
-
-    private static Expression ChangeOrigin(Expression expression, object? origin)
-    {
-        var changeOrigin = new ChangeOriginVisitor(origin);
-
-        return changeOrigin.Visit(expression);
-    }
-
-    private static readonly MethodInfo ExecuteAsyncEnumerableMethod
-        = GetPrivateMethod(nameof(ExecuteAsyncEnumerable), typeof(Expression), typeof(CancellationToken));
-
     private async IAsyncEnumerable<T> ExecuteAsyncEnumerable<T>(
         Expression expression, [EnumeratorCancellation] CancellationToken cancel)
     {
         object? origin = await ExecuteOriginAsync(expression, cancel)
             .ConfigureAwait(false);
 
-        var changedOrigin = ChangeOrigin(expression, origin);
+        var changedOrigin = ChangeOriginVisitor.Visit(expression, origin);
 
         var query = _source
             .CreateQuery<T>(_seekTranslator.Visit(changedOrigin))
@@ -148,15 +141,12 @@ internal sealed class SeekProvider : IAsyncQueryProvider
         }
     }
 
-    private static readonly MethodInfo ExecuteTaskAsyncMethod
-        = GetPrivateMethod(nameof(ExecuteTaskAsync), typeof(Expression), typeof(CancellationToken));
-
     private async Task<T> ExecuteTaskAsync<T>(Expression expression, CancellationToken cancel)
     {
         object? origin = await ExecuteOriginAsync(expression, cancel)
             .ConfigureAwait(false);
 
-        var changedOrigin = ChangeOrigin(expression, origin);
+        var changedOrigin = ChangeOriginVisitor.Visit(expression, origin);
 
         return await _source
             .ExecuteAsync<Task<T>>(_seekTranslator.Visit(changedOrigin), cancel)
@@ -165,15 +155,14 @@ internal sealed class SeekProvider : IAsyncQueryProvider
 
     #region Fetch Seek List
 
-    private static readonly MethodInfo ExecuteSeekListMethod
-        = GetPrivateMethod(nameof(ExecuteSeekList), typeof(Expression));
-
     private SeekList<TEntity> ExecuteSeekList<TEntity>(Expression expression)
         where TEntity : class
     {
         object? origin = ExecuteOrigin(expression);
 
-        var changedSeekList = ChangeToSeekList(expression, origin);
+        var changedOrigin = ChangeOriginVisitor.Visit(expression, origin);
+
+        var changedSeekList = LookAheadVisitor.Instance.Visit(changedOrigin);
 
         var items = _source
             .CreateQuery<TEntity>(_seekTranslator.Visit(changedSeekList))
@@ -184,16 +173,15 @@ internal sealed class SeekProvider : IAsyncQueryProvider
         return CreateSeekList(items, seek);
     }
 
-    private static readonly MethodInfo ExecuteSeekListAsyncMethod
-        = GetPrivateMethod(nameof(ExecuteSeekListAsync), typeof(Expression), typeof(CancellationToken));
-
     private async Task<SeekList<TEntity>> ExecuteSeekListAsync<TEntity>(Expression expression, CancellationToken cancel)
         where TEntity : class
     {
         object? origin = await ExecuteOriginAsync(expression, cancel)
             .ConfigureAwait(false);
 
-        var changedSeekList = ChangeToSeekList(expression, origin);
+        var changedOrigin = ChangeOriginVisitor.Visit(expression, origin);
+
+        var changedSeekList = LookAheadVisitor.Instance.Visit(changedOrigin);
 
         var items = await _source
             .CreateQuery<TEntity>(_seekTranslator.Visit(changedSeekList))
@@ -203,13 +191,6 @@ internal sealed class SeekProvider : IAsyncQueryProvider
         var seek = ParseSeekVisitor.Instance.Visit(changedSeekList) as SeekExpression;
 
         return CreateSeekList(items, seek);
-    }
-
-    private static Expression ChangeToSeekList(Expression expression, object? origin)
-    {
-        var changedOrigin = ChangeOrigin(expression, origin);
-
-        return LookAheadVisitor.Instance.Visit(changedOrigin);
     }
 
     private static SeekList<TEntity> CreateSeekList<TEntity>(List<TEntity> items, SeekExpression? seek)
@@ -251,34 +232,25 @@ internal sealed class SeekProvider : IAsyncQueryProvider
 
     private object? ExecuteOrigin(Expression source)
     {
-        var originExpression = ChangeToOrigin(source);
+        if (FindOrderingVisitor.Instance.Visit(source) is not ParameterExpression)
+        {
+            throw new InvalidOperationException(
+                "No valid Ordering could be found, be sure to not call \"OrderBy\" after \"SeekBy\"");
+        }
 
-        if (originExpression is ConstantExpression { Value: var origin })
+        var expression = _originQuery.Visit(source);
+
+        if (expression is ConstantExpression { Value: var origin })
         {
             return origin;
         }
 
         return _source
-            .CreateQuery(originExpression)
+            .CreateQuery(expression)
             .FirstOrDefault();
     }
 
     private async Task<object?> ExecuteOriginAsync(Expression source, CancellationToken cancel)
-    {
-        var originExpression = ChangeToOrigin(source);
-
-        if (originExpression is ConstantExpression { Value: var origin })
-        {
-            return origin;
-        }
-
-        return await _source
-            .CreateQuery(originExpression)
-            .FirstOrDefaultAsync(cancel)
-            .ConfigureAwait(false);
-    }
-
-    private Expression ChangeToOrigin(Expression source)
     {
         if (FindOrderingVisitor.Instance.Visit(source) is not ParameterExpression)
         {
@@ -286,8 +258,29 @@ internal sealed class SeekProvider : IAsyncQueryProvider
                 "No valid Ordering could be found, be sure to not call \"OrderBy\" after \"SeekBy\"");
         }
 
-        return _originQuery.Visit(source);
+        var expression = _originQuery.Visit(source);
+
+        if (expression is ConstantExpression { Value: var origin })
+        {
+            return origin;
+        }
+
+        return await _source
+            .CreateQuery(expression)
+            .FirstOrDefaultAsync(cancel)
+            .ConfigureAwait(false);
     }
 
     #endregion
+
+    private TResult Invoke<TResult>(MethodInfo method, params object[] parameters)
+        => (TResult)method.Invoke(this, parameters)!;
+
+    private static MethodInfo GetPrivateMethod(string name, params Type[] parameterTypes)
+    {
+        const BindingFlags privateInstance = BindingFlags.NonPublic | BindingFlags.Instance;
+
+        return typeof(SeekProvider)
+            .GetMethod(name, privateInstance, parameterTypes)!;
+    }
 }

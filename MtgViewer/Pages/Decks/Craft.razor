@@ -1,4 +1,4 @@
-@page "/Decks/Craft/{DeckId:int?}"
+﻿@page "/Decks/Craft/{DeckId:int?}"
 
 @using MtgViewer.Data.Infrastructure
 @using MtgViewer.Data.Projections
@@ -60,10 +60,13 @@ else
     }
     else
     {
-        <button title="To Exchange Page" type="button"
+        <button
+            title="To Exchange Page"
+            type="button"
             class="btn btn-secondary"
-            disabled="true">
-            Exchange </button>
+            disabled="@true">
+            Exchange
+        </button>
     }
 </div>
 
@@ -94,10 +97,10 @@ else
 </div>
 
 <CardFilter
-    Search="@Search"
-    SearchChanged="@SearchAsync"
-    Color="@PickedColors"
-    ColorChanged="@ChangeColorAsync"
+    @bind-Search:get="Search"
+    @bind-Search:set="SearchAsync"
+    @bind:Color:get="PickedColors"
+    @bind:Color:set="ChangeColorAsync"
     IsDisabled="@IsLoading" />
 
 @if (DeckCraft is DeckCraft.Theorycraft)
@@ -139,7 +142,7 @@ else
                 }
             </div>
 
-            <SeekPaging TEntity="@HeldCard" Seek="@Treasury.Seek" PageSelected="@SeekPageAsync" IsDisabled="@IsLoading" />
+            <SeekPaging Seek="@Treasury.Seek" PageSelected="@SeekPageAsync" IsDisabled="@IsLoading" />
         </section>
 
         <section class="col">
@@ -175,8 +178,7 @@ else
                 </div>
             </div>
 
-            <SeekPaging TEntity="@Want"
-                Seek="@DeckWants.Seek" PageSelected="@ChangeQuantitiesAsync" IsDisabled="@IsLoading" />
+            <SeekPaging Seek="@DeckWants.Seek" PageSelected="@ChangeQuantitiesAsync" IsDisabled="@IsLoading" />
         </section>
     </div>
 }
@@ -219,8 +221,7 @@ else if (DeckCraft is DeckCraft.Built)
                 </div>
             </div>
 
-            <SeekPaging TEntity="@Hold"
-                Seek="@DeckHolds.Seek" PageSelected="@ChangeQuantitiesAsync" IsDisabled="@IsLoading" />
+            <SeekPaging Seek="@DeckHolds.Seek" PageSelected="@ChangeQuantitiesAsync" IsDisabled="@IsLoading" />
         </section>
 
         <section class="col">
@@ -256,8 +257,7 @@ else if (DeckCraft is DeckCraft.Built)
                 </div>
             </div>
 
-            <SeekPaging TEntity="@Giveback"
-                Seek="@DeckReturns.Seek" PageSelected="@ChangeQuantitiesAsync" IsDisabled="@IsLoading" />
+            <SeekPaging Seek="@DeckReturns.Seek" PageSelected="@ChangeQuantitiesAsync" IsDisabled="@IsLoading" />
         </section>
     </div>
 }

@@ -22,25 +22,25 @@ internal class QueryOriginVisitor : ExpressionVisitor
 
     protected override Expression VisitMethodCall(MethodCallExpression node)
     {
-        if (ExpressionHelpers.IsSeekBy(node))
-        {
-            return node.Arguments[0];
-        }
-
-        if (Visit(node.Arguments.ElementAtOrDefault(0)) is not Expression parent)
+        if (node.Arguments is not [Expression source, ..])
         {
             return node;
         }
 
-        if (!ExpressionHelpers.IsAfter(node))
+        if (ExpressionHelpers.IsSeekBy(node))
         {
-            return parent;
+            return source;
         }
 
-        return AfterVisitor.Instance.Visit(node.Arguments[1]) switch
+        if (!ExpressionHelpers.IsAfter(node) || node.Arguments is not [_, Expression after])
+        {
+            return Visit(source);
+        }
+
+        return AfterVisitor.Instance.Visit(after) switch
         {
             ConstantExpression origin => origin,
-            LambdaExpression predicate => BuildOriginQuery(parent, predicate).Expression,
+            LambdaExpression predicate => BuildOriginQuery(Visit(source), predicate).Expression,
             _ => node
         };
     }
@@ -79,7 +79,7 @@ internal class QueryOriginVisitor : ExpressionVisitor
 
         protected override Expression VisitMethodCall(MethodCallExpression node)
         {
-            if (node.Arguments.ElementAtOrDefault(0) is not Expression parent)
+            if (node.Arguments is not [Expression parent, ..])
             {
                 return node;
             }
@@ -196,7 +196,7 @@ internal class QueryOriginVisitor : ExpressionVisitor
         {
         }
 
-        [return: NotNullIfNotNull("node")]
+        [return: NotNullIfNotNull(nameof(node))]
         public override Expression? Visit(Expression? node)
         {
             return base.Visit(node) switch
@@ -253,7 +253,7 @@ internal class QueryOriginVisitor : ExpressionVisitor
             _includes = new HashSet<string>();
         }
 
-        [return: NotNullIfNotNull("node")]
+        [return: NotNullIfNotNull(nameof(node))]
         public new Expression? Visit(Expression? node)
         {
             _includes.Clear();
@@ -263,7 +263,7 @@ internal class QueryOriginVisitor : ExpressionVisitor
 
         protected override Expression VisitExtension(Expression node)
         {
-            if (node is QueryRootExpression root)
+            if (node is EntityQueryRootExpression root)
             {
                 _findInclude = new FindIncludeVisitor(root.EntityType);
             }
@@ -298,8 +298,7 @@ internal class QueryOriginVisitor : ExpressionVisitor
         {
             if (ExpressionHelpers.IsOrderedMethod(node)
                 && node.Method.GetGenericArguments().FirstOrDefault() == _entity.ClrType
-                && node.Arguments.Count == 2
-                && node.Arguments[1] is Expression ordering)
+                && node.Arguments is [_, Expression ordering])
             {
                 return Visit(ordering);
             }
@@ -319,8 +318,7 @@ internal class QueryOriginVisitor : ExpressionVisitor
 
         protected override Expression VisitLambda<TFunc>(Expression<TFunc> node)
         {
-            if (node.Parameters.Count == 1
-                && node.Parameters[0].Type == _entity.ClrType)
+            if (node.Parameters is [ParameterExpression p] && p.Type == _entity.ClrType)
             {
                 return Visit(node.Body);
             }

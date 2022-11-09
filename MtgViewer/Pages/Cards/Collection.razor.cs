@@ -42,22 +42,22 @@ public sealed partial class Collection : ComponentBase, IDisposable
     public int Direction { get; set; }
 
     [Inject]
-    internal IDbContextFactory<CardDbContext> DbFactory { get; set; } = default!;
+    public required IDbContextFactory<CardDbContext> DbFactory { get; set; }
 
     [Inject]
-    internal PageSize PageSize { get; set; } = default!;
+    public required PageSize PageSize { get; set; }
 
     [Inject]
-    internal ParseTextFilter ParseTextFilter { get; set; } = default!;
+    public required ParseTextFilter ParseTextFilter { get; set; }
 
     [Inject]
-    internal NavigationManager Nav { get; set; } = default!;
+    public required NavigationManager Nav { get; set; }
 
     [Inject]
-    internal PersistentComponentState ApplicationState { get; set; } = default!;
+    public required PersistentComponentState ApplicationState { get; set; }
 
     [Inject]
-    internal ILogger<Collection> Logger { get; set; } = default!;
+    public required ILogger<Collection> Logger { get; set; }
 
     internal bool IsLoading => _isBusy || !_isInteractive;
 

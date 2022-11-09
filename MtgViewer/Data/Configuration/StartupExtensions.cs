@@ -1,3 +1,5 @@
+using System;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 
@@ -11,7 +13,9 @@ public static partial class StartupExtensions
 {
     public static IServiceCollection AddCardStorage(this IServiceCollection services, IConfiguration config)
     {
-        string connString = config.GetConnectionString("Cards");
+        string? connString = config.GetConnectionString("Cards");
+
+        ArgumentNullException.ThrowIfNull(connString);
 
         _ = config.GetConnectionString("Provider") switch
         {

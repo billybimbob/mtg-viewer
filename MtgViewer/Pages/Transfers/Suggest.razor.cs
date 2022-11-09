@@ -27,29 +27,29 @@ namespace MtgViewer.Pages.Transfers;
 public partial class Suggest : OwningComponentBase
 {
     [Parameter]
-    public string CardId { get; set; } = default!;
+    public required string CardId { get; set; }
 
     [Parameter]
     [SupplyParameterFromQuery]
     public string? ReceiverId { get; set; }
 
     [CascadingParameter]
-    protected Task<AuthenticationState> AuthState { get; set; } = default!;
+    public required Task<AuthenticationState> AuthState { get; set; }
 
     [Inject]
-    protected IDbContextFactory<CardDbContext> DbFactory { get; set; } = default!;
+    public required IDbContextFactory<CardDbContext> DbFactory { get; set; }
 
     [Inject]
-    protected NavigationManager Nav { get; set; } = default!;
+    public required NavigationManager Nav { get; set; }
 
     [Inject]
-    protected PageSize PageSize { get; set; } = default!;
+    public required PageSize PageSize { get; set; }
 
     [Inject]
-    protected PersistentComponentState ApplicationState { get; set; } = default!;
+    public required PersistentComponentState ApplicationState { get; set; }
 
     [Inject]
-    protected ILogger<Suggest> Logger { get; set; } = default!;
+    public required ILogger<Suggest> Logger { get; set; }
 
     internal SaveResult Result { get; set; }
 

@@ -6,9 +6,9 @@ namespace MtgViewer.Data.Projections;
 
 public sealed class BinPreview
 {
-    public int Id { get; init; }
+    public required int Id { get; init; }
 
-    public string Name { get; init; } = string.Empty;
+    public required string Name { get; init; }
 
     public IEnumerable<BoxPreview> Boxes { get; init; } = Enumerable.Empty<BoxPreview>();
 

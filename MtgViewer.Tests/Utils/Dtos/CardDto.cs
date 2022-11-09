@@ -10,124 +10,124 @@ namespace MtgViewer.Tests.Utils.Dtos;
 internal class CardDto
 {
     [JsonPropertyName("artist")]
-    public string Artist { get; set; } = string.Empty;
+    public required string Artist { get; set; }
 
     [JsonPropertyName("border")]
-    public string Border { get; set; } = string.Empty;
+    public required string Border { get; set; }
 
     [JsonPropertyName("cmc")]
-    public float? Cmc { get; set; }
+    public required float? Cmc { get; set; }
 
     [JsonPropertyName("colorIdentity")]
-    public string[] ColorIdentity { get; set; } = Array.Empty<string>();
+    public required string[] ColorIdentity { get; set; }
 
     [JsonPropertyName("colors")]
-    public string[] Colors { get; set; } = Array.Empty<string>();
+    public required string[] Colors { get; set; }
 
     [JsonPropertyName("flavor")]
-    public string? Flavor { get; set; }
+    public required string? Flavor { get; set; }
 
     [JsonPropertyName("foreignNames")]
-    public ForeignNameDto[] ForeignNames { get; set; } = Array.Empty<ForeignNameDto>();
+    public required ForeignNameDto[] ForeignNames { get; set; }
 
     [JsonPropertyName("hand")]
-    public string? Hand { get; set; }
+    public required string? Hand { get; set; }
 
     [JsonPropertyName("id")]
-    public string Id { get; set; } = string.Empty;
+    public required string Id { get; set; }
 
     [JsonPropertyName("imageUrl")]
-    public string? ImageUrl { get; set; }
+    public required string? ImageUrl { get; set; }
 
     [JsonPropertyName("layout")]
-    public string Layout { get; set; } = string.Empty;
+    public required string Layout { get; set; }
 
     [JsonPropertyName("legalities")]
-    public LegalityDto[] Legalities { get; set; } = Array.Empty<LegalityDto>();
+    public required LegalityDto[] Legalities { get; set; }
 
     [JsonPropertyName("life")]
-    public string? Life { get; set; }
+    public required string? Life { get; set; }
 
     [JsonPropertyName("loyalty")]
-    public string? Loyalty { get; set; }
+    public required string? Loyalty { get; set; }
 
     [JsonPropertyName("manaCost")]
-    public string? ManaCost { get; set; }
+    public required string? ManaCost { get; set; }
 
     [JsonPropertyName("multiverseid")]
-    public string? MultiverseId { get; set; }
+    public required string? MultiverseId { get; set; }
 
     [JsonPropertyName("name")]
-    public string Name { get; set; } = string.Empty;
+    public required string Name { get; set; }
 
     [JsonPropertyName("names")]
-    public string[] Names { get; set; } = Array.Empty<string>();
+    public required string[] Names { get; set; }
 
     [JsonPropertyName("number")]
-    public string? Number { get; set; }
+    public required string? Number { get; set; }
 
     [JsonPropertyName("originalText")]
-    public string? OriginalText { get; set; }
+    public required string? OriginalText { get; set; }
 
     [JsonPropertyName("originalType")]
-    public string? OriginalType { get; set; }
+    public required string? OriginalType { get; set; }
 
     [JsonPropertyName("power")]
-    public string? Power { get; set; }
+    public required string? Power { get; set; }
 
     [JsonPropertyName("printings")]
-    public string[] Printings { get; set; } = Array.Empty<string>();
+    public required string[] Printings { get; set; }
 
     [JsonPropertyName("rarity")]
-    public string? Rarity { get; set; }
+    public required string? Rarity { get; set; }
 
     [JsonPropertyName("releaseDate")]
-    public string? ReleaseDate { get; set; }
+    public required string? ReleaseDate { get; set; }
 
     [JsonPropertyName("reserved")]
-    public bool? Reserved { get; set; }
+    public required bool? Reserved { get; set; }
 
     [JsonPropertyName("rulings")]
-    public RulingDto[] Rulings { get; set; } = Array.Empty<RulingDto>();
+    public required RulingDto[] Rulings { get; set; }
 
     [JsonPropertyName("set")]
-    public string Set { get; set; } = string.Empty;
+    public required string Set { get; set; }
 
     [JsonPropertyName("setName")]
-    public string SetName { get; set; } = string.Empty;
+    public required string SetName { get; set; }
 
     [JsonPropertyName("source")]
-    public string? Source { get; set; }
+    public required string? Source { get; set; }
 
     [JsonPropertyName("starter")]
-    public bool? Starter { get; set; }
+    public required bool? Starter { get; set; }
 
     [JsonPropertyName("subtypes")]
-    public string[] SubTypes { get; set; } = Array.Empty<string>();
+    public required string[] SubTypes { get; set; }
 
     [JsonPropertyName("supertypes")]
-    public string[] SuperTypes { get; set; } = Array.Empty<string>();
+    public required string[] SuperTypes { get; set; }
 
     [JsonPropertyName("text")]
-    public string? Text { get; set; }
+    public required string? Text { get; set; }
 
     [JsonPropertyName("timeshifted")]
-    public bool? Timeshifted { get; set; }
+    public required bool? Timeshifted { get; set; }
 
     [JsonPropertyName("toughness")]
-    public string? Toughness { get; set; }
+    public required string? Toughness { get; set; }
 
     [JsonPropertyName("type")]
-    public string Type { get; set; } = string.Empty;
+    public required string Type { get; set; }
 
     [JsonPropertyName("types")]
-    public string[] Types { get; set; } = Array.Empty<string>();
+    public required string[] Types { get; set; }
 
     [JsonPropertyName("variations")]
-    public string[] Variations { get; set; } = Array.Empty<string>();
+    public required string[] Variations { get; set; }
 
     [JsonPropertyName("watermark")]
-    public string? Watermark { get; set; }
+    public required string? Watermark { get; set; }
 }
 
 internal class ApiCard : ICard
@@ -188,87 +188,87 @@ internal class ApiCard : ICard
         Watermark = card.Watermark;
     }
 
-    public string Artist { get; set; } = string.Empty;
+    public required string Artist { get; set; }
 
-    public string Border { get; set; } = string.Empty;
+    public required string Border { get; set; }
 
-    public float? Cmc { get; set; }
+    public required float? Cmc { get; set; }
 
-    public string[] ColorIdentity { get; set; } = Array.Empty<string>();
+    public required string[] ColorIdentity { get; set; }
 
-    public string[] Colors { get; set; } = Array.Empty<string>();
+    public required string[] Colors { get; set; }
 
-    public string? Flavor { get; set; }
+    public required string? Flavor { get; set; }
 
-    public List<IForeignName>? ForeignNames { get; set; }
+    public required List<IForeignName>? ForeignNames { get; set; }
 
-    public string? Hand { get; set; }
+    public required string? Hand { get; set; }
 
-    public string Id { get; set; } = string.Empty;
+    public required string Id { get; set; }
 
-    public Uri? ImageUrl { get; set; }
+    public required Uri? ImageUrl { get; set; }
 
     public bool IsMultiColor => ColorIdentity.Length > 1;
 
     public bool IsColorless => ColorIdentity.Length == 0;
 
-    public string Layout { get; set; } = string.Empty;
+    public required string Layout { get; set; }
 
-    public List<ILegality>? Legalities { get; set; }
+    public required List<ILegality>? Legalities { get; set; }
 
-    public string? Life { get; set; }
+    public required string? Life { get; set; }
 
-    public string? Loyalty { get; set; }
+    public required string? Loyalty { get; set; }
 
-    public string? ManaCost { get; set; }
+    public required string? ManaCost { get; set; }
 
-    public string? MultiverseId { get; set; }
+    public required string? MultiverseId { get; set; }
 
-    public string Name { get; set; } = string.Empty;
+    public required string Name { get; set; }
 
-    public string[] Names { get; set; } = Array.Empty<string>();
+    public required string[] Names { get; set; }
 
-    public string? Number { get; set; }
+    public required string? Number { get; set; }
 
-    public string? OriginalText { get; set; }
+    public required string? OriginalText { get; set; }
 
-    public string? OriginalType { get; set; }
+    public required string? OriginalType { get; set; }
 
-    public string? Power { get; set; }
+    public required string? Power { get; set; }
 
-    public string[] Printings { get; set; } = Array.Empty<string>();
+    public required string[] Printings { get; set; }
 
-    public string? Rarity { get; set; }
+    public required string? Rarity { get; set; }
 
-    public string? ReleaseDate { get; set; }
+    public required string? ReleaseDate { get; set; }
 
-    public bool? Reserved { get; set; }
+    public required bool? Reserved { get; set; }
 
-    public List<IRuling>? Rulings { get; set; }
+    public required List<IRuling>? Rulings { get; set; }
 
-    public string Set { get; set; } = string.Empty;
+    public required string Set { get; set; }
 
-    public string SetName { get; set; } = string.Empty;
+    public required string SetName { get; set; }
 
-    public string? Source { get; set; }
+    public required string? Source { get; set; }
 
-    public bool? Starter { get; set; }
+    public required bool? Starter { get; set; }
 
-    public string[] SubTypes { get; set; } = Array.Empty<string>();
+    public required string[] SubTypes { get; set; }
 
-    public string[] SuperTypes { get; set; } = Array.Empty<string>();
+    public required string[] SuperTypes { get; set; }
 
-    public string? Text { get; set; }
+    public required string? Text { get; set; }
 
-    public bool? Timeshifted { get; set; }
+    public required bool? Timeshifted { get; set; }
 
-    public string? Toughness { get; set; }
+    public required string? Toughness { get; set; }
 
-    public string Type { get; set; } = string.Empty;
+    public required string Type { get; set; }
 
-    public string[] Types { get; set; } = Array.Empty<string>();
+    public required string[] Types { get; set; }
 
-    public string[] Variations { get; set; } = Array.Empty<string>();
+    public required string[] Variations { get; set; }
 
-    public string? Watermark { get; set; }
+    public required string? Watermark { get; set; }
 }

@@ -3,6 +3,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Linq.Expressions;
 
+using EntityFrameworkCore.Paging.Query.Infrastructure.Filter;
 using EntityFrameworkCore.Paging.Utils;
 
 namespace EntityFrameworkCore.Paging.Query.Infrastructure;
@@ -20,7 +21,7 @@ internal sealed class TranslateSeekVisitor : ExpressionVisitor
         _provider = provider;
     }
 
-    [return: NotNullIfNotNull("node")]
+    [return: NotNullIfNotNull(nameof(node))]
     public override Expression? Visit(Expression? node)
     {
         _direction = null;
@@ -32,33 +33,38 @@ internal sealed class TranslateSeekVisitor : ExpressionVisitor
 
     protected override Expression VisitMethodCall(MethodCallExpression node)
     {
+        if (node.Arguments is not [Expression parent, ..])
+        {
+            return base.VisitMethodCall(node);
+        }
+
         if (ExpressionHelpers.IsSeekBy(node)
-            && node.Arguments[1] is ConstantExpression { Value: SeekDirection direction })
+            && node.Arguments is [_, ConstantExpression { Value: SeekDirection direction }])
         {
             _direction = direction;
 
-            return ExpandToQuery(node.Arguments[0]).Expression;
+            return ExpandToQuery(parent).Expression;
         }
 
         if (ExpressionHelpers.IsAfter(node)
-            && node.Arguments[1] is ConstantExpression origin)
+            && node.Arguments is [_, ConstantExpression origin])
         {
             _origin = origin;
 
-            return base.Visit(node.Arguments[0]);
+            return base.Visit(parent);
         }
 
         if (ExpressionHelpers.IsThenTake(node)
-            && node.Arguments[1] is ConstantExpression { Value: int count })
+            && node.Arguments is [_, ConstantExpression { Value: int count }])
         {
             _size = count;
 
-            return base.Visit(node.Arguments[0]);
+            return base.Visit(parent);
         }
 
         if (ExpressionHelpers.IsToSeekList(node))
         {
-            return base.Visit(node.Arguments[0]);
+            return base.Visit(parent);
         }
 
         return base.VisitMethodCall(node);

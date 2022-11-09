@@ -7,8 +7,8 @@ namespace MtgViewer.Tests.Utils.Dtos;
 internal class LegalityDto : ILegality
 {
     [JsonPropertyName("format")]
-    public string Format { get; set; } = string.Empty;
+    public required string Format { get; set; }
 
     [JsonPropertyName("legality")]
-    public string LegalityName { get; set; } = string.Empty;
+    public required string LegalityName { get; set; }
 }

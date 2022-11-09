@@ -56,7 +56,11 @@ public class ColorUpdateTests : IAsyncLifetime
     {
         const Color black = Color.Black;
 
-        var theory = new Deck { Color = black };
+        var theory = new Deck
+        {
+            Name = string.Empty,
+            Color = black
+        };
 
         var triggerContext = new Mock<ITriggerContext<Theorycraft>>();
 
@@ -85,6 +89,7 @@ public class ColorUpdateTests : IAsyncLifetime
 
         var theory = new Deck
         {
+            Name = string.Empty,
             Color = Color.None,
 
             Holds = cards
@@ -127,6 +132,7 @@ public class ColorUpdateTests : IAsyncLifetime
 
         var theory = new Deck
         {
+            Name = string.Empty,
             Color = Color.None,
 
             Holds = cards
