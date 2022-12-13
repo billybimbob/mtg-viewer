@@ -34,13 +34,13 @@ internal sealed class ParseSeekVisitor : ExpressionVisitor
         }
 
         if (ExpressionHelpers.IsAfter(node)
-            && node.Arguments[1] is ConstantExpression origin)
+            && node.Arguments is [_, ConstantExpression origin])
         {
             return seek.Update(origin, seek.Direction, seek.Size);
         }
 
         if (ExpressionHelpers.IsThenTake(node)
-            && node.Arguments[1] is ConstantExpression { Value: int count })
+            && node.Arguments is [_, ConstantExpression { Value: int count }])
         {
             return seek.Update(seek.Origin, seek.Direction, count);
         }

@@ -92,15 +92,17 @@ internal class QueryOriginVisitor : ExpressionVisitor
             var method = node.Method.GetGenericMethodDefinition();
 
             if (method == QueryableMethods.Select
+                && node.Arguments is [_, var select]
                 && node.Method.GetGenericArguments()[1] == _resultType)
             {
-                return Visit(node.Arguments[1]);
+                return Visit(select);
             }
 
             if (method == QueryableMethods.SelectManyWithoutCollectionSelector
+                && node.Arguments is [_, var selectMany]
                 && node.Method.GetGenericArguments()[1] == _resultType)
             {
-                return Visit(node.Arguments[1]);
+                return Visit(selectMany);
             }
 
             // TODO: account for SelectWithCollectionSelector

@@ -39,10 +39,9 @@ internal sealed class SeekFilter
         ArgumentNullException.ThrowIfNull(query);
         ArgumentNullException.ThrowIfNull(origin);
 
-        _parameter = Expression
-            .Parameter(
-                origin.Type,
-                origin.Type.Name[0].ToString().ToLowerInvariant());
+        _parameter = Expression.Parameter(
+            origin.Type,
+            origin.Type.Name[0].ToString().ToLowerInvariant());
 
         _origin = origin;
         _direction = direction;

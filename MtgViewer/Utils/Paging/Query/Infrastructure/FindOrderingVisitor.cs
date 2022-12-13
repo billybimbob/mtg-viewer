@@ -31,12 +31,14 @@ internal class FindOrderingVisitor : ExpressionVisitor
     {
         if (ExpressionHelpers.IsOrderedMethod(node))
         {
-            if (!_foundSeek)
+            if (_foundSeek && node.Arguments is [_, var ordering])
+            {
+                return base.Visit(ordering);
+            }
+            else
             {
                 return node;
             }
-
-            return base.Visit(node.Arguments[1]);
         }
 
         if (ExpressionHelpers.IsSeekBy(node))

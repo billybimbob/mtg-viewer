@@ -15,9 +15,9 @@ internal sealed class OrderPropertyVisitor : ExpressionVisitor
 
     protected override Expression VisitMethodCall(MethodCallExpression node)
     {
-        if (ExpressionHelpers.IsOrderedMethod(node) && node.Arguments.Count == 2)
+        if (ExpressionHelpers.IsOrderedMethod(node) && node.Arguments is [_, var ordering])
         {
-            return Visit(node.Arguments[1]);
+            return Visit(ordering);
         }
 
         return node;

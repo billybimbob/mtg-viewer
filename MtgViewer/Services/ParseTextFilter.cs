@@ -12,7 +12,9 @@ public readonly record struct ManaFilter(ExpressionType Comparison, float Value)
 {
     public Expression<Func<Card, bool>> CreateFilter()
     {
-        var cardParameter = Expression.Parameter(typeof(Card), nameof(Card).ToLowerInvariant()[0].ToString());
+        var cardParameter = Expression.Parameter(
+            typeof(Card),
+            nameof(Card).ToLowerInvariant()[0].ToString());
 
         var body = Expression.MakeBinary(
             Comparison,
@@ -24,7 +26,9 @@ public readonly record struct ManaFilter(ExpressionType Comparison, float Value)
 
     public Expression<Func<TQuantity, bool>> CreateFilter<TQuantity>() where TQuantity : Quantity
     {
-        var quantityParameter = Expression.Parameter(typeof(TQuantity), typeof(TQuantity).Name.ToLowerInvariant()[0].ToString());
+        var quantityParameter = Expression.Parameter(
+            typeof(TQuantity),
+            typeof(TQuantity).Name.ToLowerInvariant()[0].ToString());
 
         var cardProperty = Expression.Property(quantityParameter, nameof(Quantity.Card));
 
