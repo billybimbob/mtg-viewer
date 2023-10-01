@@ -1,5 +1,4 @@
 using System;
-using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Linq.Expressions;
 
@@ -10,24 +9,18 @@ namespace EntityFrameworkCore.Paging.Query.Infrastructure;
 internal sealed class TranslateSeekVisitor : ExpressionVisitor
 {
     private readonly IQueryProvider _provider;
+    private readonly ConstantExpression? _origin;
+    private readonly int? _size;
 
-    private SeekDirection? _direction;
-    private ConstantExpression? _origin;
-    private int? _size;
-
-    public TranslateSeekVisitor(IQueryProvider provider)
+    public TranslateSeekVisitor(IQueryProvider provider) : this(provider, null, null)
     {
-        _provider = provider;
     }
 
-    [return: NotNullIfNotNull("node")]
-    public override Expression? Visit(Expression? node)
+    private TranslateSeekVisitor(IQueryProvider provider, ConstantExpression? origin, int? size)
     {
-        _direction = null;
-        _origin = null;
-        _size = null;
-
-        return base.Visit(node);
+        _provider = provider;
+        _origin = origin;
+        _size = size;
     }
 
     protected override Expression VisitMethodCall(MethodCallExpression node)
@@ -35,42 +28,40 @@ internal sealed class TranslateSeekVisitor : ExpressionVisitor
         if (ExpressionHelpers.IsSeekBy(node)
             && node.Arguments[1] is ConstantExpression { Value: SeekDirection direction })
         {
-            _direction = direction;
-
-            return ExpandToQuery(node.Arguments[0]).Expression;
+            return ExpandToQuery(node.Arguments[0], direction).Expression;
         }
 
         if (ExpressionHelpers.IsAfter(node)
             && node.Arguments[1] is ConstantExpression origin)
         {
-            _origin = origin;
+            var visitorWithOrigin = new TranslateSeekVisitor(_provider, origin, _size);
 
-            return base.Visit(node.Arguments[0]);
+            return visitorWithOrigin.Visit(node.Arguments[0]);
         }
 
         if (ExpressionHelpers.IsThenTake(node)
             && node.Arguments[1] is ConstantExpression { Value: int count })
         {
-            _size = count;
+            var visitorWithCount = new TranslateSeekVisitor(_provider, _origin, count);
 
-            return base.Visit(node.Arguments[0]);
+            return visitorWithCount.Visit(node.Arguments[0]);
         }
 
         if (ExpressionHelpers.IsToSeekList(node))
         {
-            return base.Visit(node.Arguments[0]);
+            return Visit(node.Arguments[0]);
         }
 
         return base.VisitMethodCall(node);
     }
 
-    private IQueryable ExpandToQuery(Expression source)
+    private IQueryable ExpandToQuery(Expression source, SeekDirection direction)
     {
-        var filter = SeekFilter.Build(source, _origin, _direction);
+        var filter = SeekFilter.Build(source, _origin, direction);
 
         var query = _provider.CreateQuery(source);
 
-        return (_direction, filter, _size) switch
+        return (direction, filter, _size) switch
         {
             (SeekDirection.Forward, not null, int size) => query
                 .Where(filter)
