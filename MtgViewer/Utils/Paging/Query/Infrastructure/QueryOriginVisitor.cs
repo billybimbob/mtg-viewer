@@ -8,16 +8,19 @@ using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Query;
 
 using EntityFrameworkCore.Paging.Utils;
+using System.Reflection;
 
 namespace EntityFrameworkCore.Paging.Query.Infrastructure;
 
 internal class QueryOriginVisitor : ExpressionVisitor
 {
     private readonly IQueryProvider _provider;
+    private readonly AfterVisitor _afterParser;
 
     public QueryOriginVisitor(IQueryProvider provider)
     {
         _provider = provider;
+        _afterParser = new AfterVisitor();
     }
 
     protected override Expression VisitMethodCall(MethodCallExpression node)
@@ -37,7 +40,7 @@ internal class QueryOriginVisitor : ExpressionVisitor
             return parent;
         }
 
-        return AfterVisitor.Instance.Visit(node.Arguments[1]) switch
+        return _afterParser.Visit(node.Arguments[1]) switch
         {
             ConstantExpression origin => origin,
             LambdaExpression predicate => BuildOriginQuery(parent, predicate).Expression,
@@ -123,12 +126,6 @@ internal class QueryOriginVisitor : ExpressionVisitor
 
     private sealed class AfterVisitor : ExpressionVisitor
     {
-        public static AfterVisitor Instance { get; } = new();
-
-        private AfterVisitor()
-        {
-        }
-
         protected override Expression VisitUnary(UnaryExpression node)
         {
             if (node.NodeType is ExpressionType.Quote)
@@ -153,16 +150,20 @@ internal class QueryOriginVisitor : ExpressionVisitor
 
         protected override Expression VisitBinary(BinaryExpression node)
         {
-            var left = Visit(node.Left);
+            if (node.NodeType is not ExpressionType.Equal)
+            {
+                return node;
+            }
 
-            if (ExpressionHelpers.IsNull(left))
+            var left = Visit(node.Left);
+            var right = Visit(node.Right);
+
+            if (ExpressionHelpers.IsNull(left) && right is ParameterExpression)
             {
                 return left;
             }
 
-            var right = Visit(node.Right);
-
-            if (ExpressionHelpers.IsNull(right))
+            if (left is ParameterExpression && ExpressionHelpers.IsNull(right))
             {
                 return right;
             }
@@ -172,61 +173,26 @@ internal class QueryOriginVisitor : ExpressionVisitor
 
         protected override Expression VisitMember(MemberExpression node)
         {
-            // keep eye on, could be slower than just pass thru
-
-            if (MemberEvaluationVisitor.Instance.Visit(node) is not Expression<Func<object?>> eval)
-            {
-                return node;
-            }
-
-            if (eval.Compile().Invoke() is null)
-            {
-                return Expression.Constant(null, node.Type);
-            }
-
-            return node;
-        }
-    }
-
-    private sealed class MemberEvaluationVisitor : ExpressionVisitor
-    {
-        public static MemberEvaluationVisitor Instance { get; } = new();
-
-        private MemberEvaluationVisitor()
-        {
-        }
-
-        [return: NotNullIfNotNull("node")]
-        public override Expression? Visit(Expression? node)
-        {
-            return base.Visit(node) switch
-            {
-                MemberExpression m and { Type.IsValueType: true }
-                    => Expression.Lambda<Func<object?>>(
-                        Expression.Convert(m, typeof(object))),
-
-                MemberExpression m
-                    => Expression.Lambda<Func<object?>>(m),
-
-                _ => node
-            };
-        }
-
-        protected override Expression VisitMember(MemberExpression node)
-        {
-            var source = base.Visit(node.Expression);
+            var source = Visit(node.Expression);
 
             if (source is ParameterExpression)
             {
                 return source;
             }
 
-            if (source?.Type == node.Expression?.Type)
+            if (source is not ConstantExpression constantSource)
             {
-                return node.Update(source);
+                return node;
             }
 
-            return node;
+            if (node.Member is not PropertyInfo prop)
+            {
+                return node;
+            }
+
+            object? evaluatedMember = prop.GetValue(constantSource.Value);
+
+            return Expression.Constant(evaluatedMember);
         }
     }
 

@@ -6,8 +6,10 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Query;
+
 using EntityFrameworkCore.Paging.Query.Infrastructure;
 using EntityFrameworkCore.Paging.Utils;
 
@@ -18,12 +20,16 @@ internal sealed class SeekProvider : IAsyncQueryProvider
     private readonly IAsyncQueryProvider _source;
     private readonly TranslateSeekVisitor _seekTranslator;
     private readonly QueryOriginVisitor _originQuery;
+    private readonly ParseSeekVisitor _seekParser;
+    private readonly LookAheadVisitor _lookAhead;
 
     public SeekProvider(IAsyncQueryProvider source)
     {
         _source = source;
         _seekTranslator = new TranslateSeekVisitor(source);
         _originQuery = new QueryOriginVisitor(source);
+        _seekParser = new ParseSeekVisitor();
+        _lookAhead = new LookAheadVisitor();
     }
 
     #region Create Query
@@ -105,16 +111,16 @@ internal sealed class SeekProvider : IAsyncQueryProvider
 
     #endregion
 
-    private async IAsyncEnumerable<T> ExecuteAsyncEnumerable<T>(
+    private async IAsyncEnumerable<TEntity> ExecuteAsyncEnumerable<TEntity>(
         Expression expression, [EnumeratorCancellation] CancellationToken cancel)
     {
-        object? origin = await ExecuteOriginAsync(expression, cancel)
+        var origin = await ExecuteOriginAsync<TEntity>(expression, cancel)
             .ConfigureAwait(false);
 
         var changedOrigin = ChangeOrigin(expression, origin);
 
         var query = _source
-            .CreateQuery<T>(_seekTranslator.Visit(changedOrigin))
+            .CreateQuery<TEntity>(_seekTranslator.Visit(changedOrigin))
             .AsAsyncEnumerable()
             .WithCancellation(cancel)
             .ConfigureAwait(false);
@@ -142,7 +148,7 @@ internal sealed class SeekProvider : IAsyncQueryProvider
     private SeekList<TEntity> ExecuteSeekList<TEntity>(Expression expression)
         where TEntity : class
     {
-        object? origin = ExecuteOrigin(expression);
+        object? origin = ExecuteOrigin<TEntity>(expression);
 
         var changedSeekList = ChangeToSeekList(expression, origin);
 
@@ -150,7 +156,7 @@ internal sealed class SeekProvider : IAsyncQueryProvider
             .CreateQuery<TEntity>(_seekTranslator.Visit(changedSeekList))
             .ToList();
 
-        var seek = ParseSeekVisitor.Instance.Visit(changedSeekList) as SeekExpression;
+        var seek = _seekParser.Visit(changedSeekList) as SeekExpression;
 
         return CreateSeekList(items, seek);
     }
@@ -158,7 +164,7 @@ internal sealed class SeekProvider : IAsyncQueryProvider
     private async Task<SeekList<TEntity>> ExecuteSeekListAsync<TEntity>(Expression expression, CancellationToken cancel)
         where TEntity : class
     {
-        object? origin = await ExecuteOriginAsync(expression, cancel)
+        var origin = await ExecuteOriginAsync<TEntity>(expression, cancel)
             .ConfigureAwait(false);
 
         var changedSeekList = ChangeToSeekList(expression, origin);
@@ -168,16 +174,16 @@ internal sealed class SeekProvider : IAsyncQueryProvider
             .ToListAsync(cancel)
             .ConfigureAwait(false);
 
-        var seek = ParseSeekVisitor.Instance.Visit(changedSeekList) as SeekExpression;
+        var seek = _seekParser.Visit(changedSeekList) as SeekExpression;
 
         return CreateSeekList(items, seek);
     }
 
-    private static Expression ChangeToSeekList(Expression expression, object? origin)
+    private Expression ChangeToSeekList(Expression expression, object? origin)
     {
         var changedOrigin = ChangeOrigin(expression, origin);
 
-        return LookAheadVisitor.Instance.Visit(changedOrigin);
+        return _lookAhead.Visit(changedOrigin);
     }
 
     private static SeekList<TEntity> CreateSeekList<TEntity>(List<TEntity> items, SeekExpression? seek)
@@ -219,7 +225,7 @@ internal sealed class SeekProvider : IAsyncQueryProvider
 
     private object? ExecuteOrigin(Expression source)
     {
-        var originExpression = ChangeToOrigin(source);
+        var originExpression = _originQuery.Visit(source);
 
         if (originExpression is ConstantExpression { Value: var origin })
         {
@@ -231,9 +237,28 @@ internal sealed class SeekProvider : IAsyncQueryProvider
             .FirstOrDefault();
     }
 
+    private T? ExecuteOrigin<T>(Expression source)
+    {
+        var originExpression = _originQuery.Visit(source);
+
+        if (originExpression is ConstantExpression { Value: T origin })
+        {
+            return origin;
+        }
+
+        if (originExpression is ConstantExpression { Value: null })
+        {
+            return default;
+        }
+
+        return _source
+            .CreateQuery<T>(originExpression)
+            .FirstOrDefault();
+    }
+
     private async Task<object?> ExecuteOriginAsync(Expression source, CancellationToken cancel)
     {
-        var originExpression = ChangeToOrigin(source);
+        var originExpression = _originQuery.Visit(source);
 
         if (originExpression is ConstantExpression { Value: var origin })
         {
@@ -246,15 +271,24 @@ internal sealed class SeekProvider : IAsyncQueryProvider
             .ConfigureAwait(false);
     }
 
-    private Expression ChangeToOrigin(Expression source)
+    private async Task<T?> ExecuteOriginAsync<T>(Expression source, CancellationToken cancel)
     {
-        if (FindOrderingVisitor.Instance.Visit(source) is not ParameterExpression)
+        var originExpression = _originQuery.Visit(source);
+
+        if (originExpression is ConstantExpression { Value: T origin })
         {
-            throw new InvalidOperationException(
-                "No valid Ordering could be found, be sure to not call \"OrderBy\" after \"SeekBy\"");
+            return origin;
         }
 
-        return _originQuery.Visit(source);
+        if (originExpression is ConstantExpression { Value: null })
+        {
+            return default;
+        }
+
+        return await _source
+            .CreateQuery<T>(originExpression)
+            .FirstOrDefaultAsync(cancel)
+            .ConfigureAwait(false);
     }
 
     #endregion

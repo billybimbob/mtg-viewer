@@ -7,9 +7,7 @@ namespace EntityFrameworkCore.Paging.Query.Infrastructure;
 
 internal sealed class LookAheadVisitor : ExpressionVisitor
 {
-    public static LookAheadVisitor Instance { get; } = new();
-
-    private LookAheadVisitor()
+    public LookAheadVisitor()
     {
     }
 

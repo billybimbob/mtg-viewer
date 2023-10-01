@@ -7,9 +7,7 @@ namespace EntityFrameworkCore.Paging.Query.Infrastructure;
 
 internal sealed class ParseSeekVisitor : ExpressionVisitor
 {
-    public static ParseSeekVisitor Instance { get; } = new();
-
-    private ParseSeekVisitor()
+    public ParseSeekVisitor()
     {
     }
 
