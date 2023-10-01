@@ -79,10 +79,10 @@
     [Parameter]
     public bool IsDisabled { get; set; }
 
-    internal bool HasOptions => Seek.Previous is not null || Seek.Next is not null || Seek.IsMissing;
+    internal bool HasOptions => Seek.Previous is not null || Seek.Next is not null || Seek.IsPartial;
 
-    internal bool HasFirst => Seek.Previous is not null || Seek.IsMissing;
-    internal bool HasLast => Seek.Next is not null || Seek.IsMissing;
+    internal bool HasFirst => Seek.Previous is not null || Seek.IsPartial;
+    internal bool HasLast => Seek.Next is not null || Seek.IsPartial;
 
     internal bool HasPrevious => Seek.Previous is not null;
     internal bool HasNext => Seek.Next is not null;
@@ -101,7 +101,7 @@
         try
         {
             await PageSelected.InvokeAsync(
-                new SeekRequest<TEntity>(default, SeekDirection.Forward));
+            new SeekRequest<TEntity>(default, SeekDirection.Forward));
         }
         finally
         {
@@ -121,7 +121,7 @@
         try
         {
             await PageSelected.InvokeAsync(
-                new SeekRequest<TEntity>(previous, SeekDirection.Backwards));
+            new SeekRequest<TEntity>(previous, SeekDirection.Backwards));
         }
         finally
         {
@@ -141,7 +141,7 @@
         try
         {
             await PageSelected.InvokeAsync(
-                new SeekRequest<TEntity>(next, SeekDirection.Forward));
+            new SeekRequest<TEntity>(next, SeekDirection.Forward));
         }
         finally
         {
@@ -161,7 +161,7 @@
         try
         {
             await PageSelected.InvokeAsync(
-                new SeekRequest<TEntity>(default, SeekDirection.Backwards));
+            new SeekRequest<TEntity>(default, SeekDirection.Backwards));
         }
         finally
         {

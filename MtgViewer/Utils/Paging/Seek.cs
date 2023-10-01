@@ -6,34 +6,18 @@ public readonly record struct Seek
 {
     public object? Previous { get; }
     public object? Next { get; }
-    public bool IsMissing { get; }
+    public bool IsPartial { get; }
 
-    public Seek(object origin, SeekDirection direction, bool isMissing)
+    public Seek(object? previous, object? next, bool isPartial = false)
     {
-        ArgumentNullException.ThrowIfNull(origin);
-
-        if (direction is SeekDirection.Forward)
+        if ((previous, next, isPartial) is (not null, not null, true))
         {
-            Previous = origin;
-            Next = null;
+            throw new ArgumentException("Seek cannot be partial if both previous and next are defined", nameof(isPartial));
         }
-        else
-        {
-            Previous = null;
-            Next = origin;
-        }
-
-        IsMissing = isMissing;
-    }
-
-    public Seek(object previous, object next)
-    {
-        ArgumentNullException.ThrowIfNull(previous);
-        ArgumentNullException.ThrowIfNull(next);
 
         Previous = previous;
         Next = next;
-        IsMissing = false;
+        IsPartial = isPartial;
     }
 }
 
@@ -41,44 +25,22 @@ public readonly record struct Seek<T> where T : class
 {
     public T? Previous { get; }
     public T? Next { get; }
-    public bool IsMissing { get; }
+    public bool IsPartial { get; }
 
-    public Seek(T origin, SeekDirection direction, bool isMissing)
+    public Seek(T? previous, T? next, bool isPartial = false)
     {
-        ArgumentNullException.ThrowIfNull(origin);
-
-        if (direction is SeekDirection.Forward)
+        if ((previous, next, isPartial) is (not null, not null, true))
         {
-            Previous = origin;
-            Next = null;
+            throw new ArgumentException("Seek cannot be partial if both previous and next are defined", nameof(isPartial));
         }
-        else
-        {
-            Previous = null;
-            Next = origin;
-        }
-
-        IsMissing = isMissing;
-    }
-
-    public Seek(T previous, T next)
-    {
-        ArgumentNullException.ThrowIfNull(previous);
-        ArgumentNullException.ThrowIfNull(next);
 
         Previous = previous;
         Next = next;
-        IsMissing = false;
+        IsPartial = isPartial;
     }
 
     public static explicit operator Seek(Seek<T> seek)
     {
-        return (seek.Previous, seek.Next, seek.IsMissing) switch
-        {
-            (T p, T n, _) => new Seek(p, n),
-            (T p, _, bool m) => new Seek(p, SeekDirection.Forward, m),
-            (_, T n, bool m) => new Seek(n, SeekDirection.Backwards, m),
-            _ => new Seek()
-        };
+        return new Seek(seek.Previous, seek.Next, seek.IsPartial);
     }
 }

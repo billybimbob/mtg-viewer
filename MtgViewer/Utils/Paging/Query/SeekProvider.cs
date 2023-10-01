@@ -195,7 +195,7 @@ internal sealed class SeekProvider : IAsyncQueryProvider
                 items,
                 hasPrevious: false,
                 hasNext: false,
-                isMissing: false);
+                isPartial: false);
         }
 
         var direction = seek.Direction;

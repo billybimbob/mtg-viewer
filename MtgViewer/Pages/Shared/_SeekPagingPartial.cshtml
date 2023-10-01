@@ -7,9 +7,7 @@
             @if (HasFirst)
             {
                 <li class="page-item">
-                    <a title="First Page" class="page-link"
-                        asp-route-seek="@null"
-                        asp-route-direction="@SeekDirection.Forward">
+                    <a title="First Page" class="page-link" asp-route-seek="@null" asp-route-direction="@SeekDirection.Forward">
                         First </a>
                 </li>
             }
@@ -23,8 +21,7 @@
             @if (HasPrevious)
             {
                 <li class="page-item">
-                    <a title="Previous Page" class="page-link"
-                        asp-route-seek="@PreviousKey"
+                    <a title="Previous Page" class="page-link" asp-route-seek="@PreviousKey"
                         asp-route-direction="@SeekDirection.Backwards">
                         Previous </a>
                 </li>
@@ -39,8 +36,7 @@
             @if (HasNext)
             {
                 <li class="page-item ">
-                    <a title="Next Page" class="page-link"
-                        asp-route-seek="@NextKey"
+                    <a title="Next Page" class="page-link" asp-route-seek="@NextKey"
                         asp-route-direction="@SeekDirection.Forward">
                         Next </a>
                 </li>
@@ -55,8 +51,7 @@
             @if (HasLast)
             {
                 <li class="page-item">
-                    <a title="Last Page" class="page-link"
-                        asp-route-seek="@null"
+                    <a title="Last Page" class="page-link" asp-route-seek="@null"
                         asp-route-direction="@SeekDirection.Backwards">
                         Last </a>
                 </li>
@@ -73,10 +68,10 @@
 
 @functions
 {
-    public bool HasOptions => Model.Previous is not null || Model.Next is not null || Model.IsMissing;
+    public bool HasOptions => Model.Previous is not null || Model.Next is not null || Model.IsPartial;
 
-    public bool HasFirst => Model.Previous is not null || Model.IsMissing;
-    public bool HasLast => Model.Next is not null || Model.IsMissing;
+    public bool HasFirst => Model.Previous is not null || Model.IsPartial;
+    public bool HasLast => Model.Next is not null || Model.IsPartial;
 
     public bool HasPrevious => Model.Previous is not null;
     public bool HasNext => Model.Next is not null;

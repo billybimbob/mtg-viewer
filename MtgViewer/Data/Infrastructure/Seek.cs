@@ -10,13 +10,13 @@ public readonly record struct SeekRequest<T>(
 public readonly record struct SeekDto(
     bool HasPrevious,
     bool HasNext,
-    bool IsMissing)
+    bool IsPartial)
 {
     public static SeekDto From<T>(Seek<T> seek) where T : class
     {
         return new SeekDto(
             seek.Previous is not null,
             seek.Next is not null,
-            seek.IsMissing);
+            seek.IsPartial);
     }
 }
