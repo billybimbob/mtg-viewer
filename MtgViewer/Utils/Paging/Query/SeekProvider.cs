@@ -114,7 +114,7 @@ internal sealed class SeekProvider : IAsyncQueryProvider
     private async IAsyncEnumerable<TEntity> ExecuteAsyncEnumerable<TEntity>(
         Expression expression, [EnumeratorCancellation] CancellationToken cancel)
     {
-        var origin = await ExecuteOriginAsync<TEntity>(expression, cancel)
+        object? origin = await ExecuteOriginAsync(expression, cancel)
             .ConfigureAwait(false);
 
         var changedOrigin = ChangeOrigin(expression, origin);
@@ -148,7 +148,7 @@ internal sealed class SeekProvider : IAsyncQueryProvider
     private SeekList<TEntity> ExecuteSeekList<TEntity>(Expression expression)
         where TEntity : class
     {
-        object? origin = ExecuteOrigin<TEntity>(expression);
+        object? origin = ExecuteOrigin(expression);
 
         var changedSeekList = ChangeToSeekList(expression, origin);
 
@@ -164,7 +164,7 @@ internal sealed class SeekProvider : IAsyncQueryProvider
     private async Task<SeekList<TEntity>> ExecuteSeekListAsync<TEntity>(Expression expression, CancellationToken cancel)
         where TEntity : class
     {
-        var origin = await ExecuteOriginAsync<TEntity>(expression, cancel)
+        object? origin = await ExecuteOriginAsync(expression, cancel)
             .ConfigureAwait(false);
 
         var changedSeekList = ChangeToSeekList(expression, origin);
@@ -237,25 +237,6 @@ internal sealed class SeekProvider : IAsyncQueryProvider
             .FirstOrDefault();
     }
 
-    private T? ExecuteOrigin<T>(Expression source)
-    {
-        var originExpression = _originQuery.Visit(source);
-
-        if (originExpression is ConstantExpression { Value: T origin })
-        {
-            return origin;
-        }
-
-        if (originExpression is ConstantExpression { Value: null })
-        {
-            return default;
-        }
-
-        return _source
-            .CreateQuery<T>(originExpression)
-            .FirstOrDefault();
-    }
-
     private async Task<object?> ExecuteOriginAsync(Expression source, CancellationToken cancel)
     {
         var originExpression = _originQuery.Visit(source);
@@ -267,26 +248,6 @@ internal sealed class SeekProvider : IAsyncQueryProvider
 
         return await _source
             .CreateQuery(originExpression)
-            .FirstOrDefaultAsync(cancel)
-            .ConfigureAwait(false);
-    }
-
-    private async Task<T?> ExecuteOriginAsync<T>(Expression source, CancellationToken cancel)
-    {
-        var originExpression = _originQuery.Visit(source);
-
-        if (originExpression is ConstantExpression { Value: T origin })
-        {
-            return origin;
-        }
-
-        if (originExpression is ConstantExpression { Value: null })
-        {
-            return default;
-        }
-
-        return await _source
-            .CreateQuery<T>(originExpression)
             .FirstOrDefaultAsync(cancel)
             .ConfigureAwait(false);
     }
