@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Query;
 
-namespace EntityFrameworkCore.Paging.Utils;
+namespace EntityFrameworkCore.Paging.Query.Infrastructure;
 
 internal static class QueryableExtensions
 {

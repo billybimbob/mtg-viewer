@@ -1,11 +1,9 @@
 using System.Linq;
 using System.Linq.Expressions;
 
-using EntityFrameworkCore.Paging.Utils;
-
 namespace EntityFrameworkCore.Paging.Query.Infrastructure;
 
-public sealed class FindSeekTakeVisitor : ExpressionVisitor
+internal sealed class FindSeekTakeVisitor : ExpressionVisitor
 {
     protected override Expression VisitMethodCall(MethodCallExpression node)
     {

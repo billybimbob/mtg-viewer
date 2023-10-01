@@ -1,6 +1,6 @@
 namespace EntityFrameworkCore.Paging.Query.Infrastructure.Filtering;
 
-public enum NullOrder
+internal enum NullOrder
 {
     None,
     Before,

@@ -1,10 +1,8 @@
 using System.Linq.Expressions;
 
-using EntityFrameworkCore.Paging.Utils;
-
 namespace EntityFrameworkCore.Paging.Query.Infrastructure.Filtering;
 
-public sealed class OrderPropertyVisitor : ExpressionVisitor
+internal sealed class OrderPropertyVisitor : ExpressionVisitor
 {
     private readonly ParameterExpression _parameter;
 

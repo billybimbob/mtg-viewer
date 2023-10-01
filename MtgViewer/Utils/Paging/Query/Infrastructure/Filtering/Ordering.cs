@@ -1,6 +1,6 @@
 namespace EntityFrameworkCore.Paging.Query.Infrastructure.Filtering;
 
-public enum Ordering
+internal enum Ordering
 {
     Ascending,
     Descending,

@@ -4,11 +4,9 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 
-using EntityFrameworkCore.Paging.Query;
-
 using Microsoft.EntityFrameworkCore.Query;
 
-namespace EntityFrameworkCore.Paging.Utils;
+namespace EntityFrameworkCore.Paging.Query.Infrastructure;
 
 internal static class ExpressionHelpers
 {

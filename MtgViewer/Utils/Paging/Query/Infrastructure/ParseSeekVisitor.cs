@@ -1,8 +1,6 @@
 using System.Linq;
 using System.Linq.Expressions;
 
-using EntityFrameworkCore.Paging.Utils;
-
 namespace EntityFrameworkCore.Paging.Query.Infrastructure;
 
 internal sealed class ParseSeekVisitor : ExpressionVisitor

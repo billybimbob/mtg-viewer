@@ -6,9 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using Microsoft.EntityFrameworkCore.Query;
-
 using EntityFrameworkCore.Paging.Query;
-using EntityFrameworkCore.Paging.Utils;
 
 namespace EntityFrameworkCore.Paging;
 

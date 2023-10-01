@@ -1,7 +1,5 @@
 using System.Linq.Expressions;
 
-using EntityFrameworkCore.Paging.Utils;
-
 namespace EntityFrameworkCore.Paging.Query.Infrastructure;
 
 internal sealed class ChangeOriginVisitor : ExpressionVisitor
