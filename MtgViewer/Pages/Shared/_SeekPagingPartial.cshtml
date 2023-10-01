@@ -68,7 +68,7 @@
 
 @functions
 {
-    public bool HasOptions => Model.Previous is not null || Model.Next is not null || Model.IsPartial;
+    public bool HasOptions => Model.Previous is not null || Model.Next is not null;
 
     public bool HasFirst => Model.Previous is not null || Model.IsPartial;
     public bool HasLast => Model.Next is not null || Model.IsPartial;

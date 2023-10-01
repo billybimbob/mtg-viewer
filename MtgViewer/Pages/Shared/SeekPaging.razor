@@ -79,7 +79,7 @@
     [Parameter]
     public bool IsDisabled { get; set; }
 
-    internal bool HasOptions => Seek.Previous is not null || Seek.Next is not null || Seek.IsPartial;
+    internal bool HasOptions => Seek.Previous is not null || Seek.Next is not null;
 
     internal bool HasFirst => Seek.Previous is not null || Seek.IsPartial;
     internal bool HasLast => Seek.Next is not null || Seek.IsPartial;

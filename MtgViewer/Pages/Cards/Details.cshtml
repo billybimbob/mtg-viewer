@@ -19,15 +19,17 @@
     bool isSignedIn = SignInManager.IsSignedIn(User);
 
     bool canChangeTreasury = (await AuthorizationService
-        .AuthorizeAsync(User, CardPolicies.ChangeTreasury)).Succeeded;
+    .AuthorizeAsync(User, CardPolicies.ChangeTreasury)).Succeeded;
 }
 
 <div class="row no-gutters pb-2 align-items-center">
     <h1 class="h1 m-0 col-lg-auto col-12 pr-4"> @Model.Card.Name </h1>
 
-    @{ var manaCost = Model.Card.Flip is not null
+    @{
+        var manaCost = Model.Card.Flip is not null
         ? Model.Card.Flip.ManaCost
-        : Model.Card.ManaCost; }
+        : Model.Card.ManaCost;
+    }
 
     @if (manaCost is not null)
     {
@@ -44,15 +46,15 @@
         {
             <div class="btn-group" role="group">
 
-                <button id="alt-btn" type="button" class="btn btn-secondary dropdown-toggle"
-                    data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" >
+                <button id="alt-btn" type="button" class="btn btn-secondary dropdown-toggle" data-toggle="dropdown"
+                    aria-haspopup="true" aria-expanded="false">
                     Alternate Versions
                 </button>
 
                 <div class="dropdown-menu" aria-labelledby="alt-btn">
                     @foreach (var card in Model.Alternatives)
                     {
-                        <a class="dropdown-item" asp-route-id="@card.Id" >
+                        <a class="dropdown-item" asp-route-id="@card.Id">
                             @card.Name (@card.SetName) </a>
                     }
                 </div>
@@ -63,23 +65,19 @@
         {
             bool flip = Model.Card.Flip is null;
 
-            <a title="Flip @Model.Card.Name" class="btn btn-secondary"
-                role="button" asp-route-flip="@flip">
+            <a title="Flip @Model.Card.Name" class="btn btn-secondary" role="button" asp-route-flip="@flip">
                 Flip </a>
         }
 
         @if (isSignedIn && canChangeTreasury)
         {
-            <a href="/Transfers/Suggest/@Model.Card.Id"
-                title="Sugest @Model.Card.Name" class="btn btn-secondary" role="button">
+            <a href="/Transfers/Suggest/@Model.Card.Id" title="Sugest @Model.Card.Name" class="btn btn-secondary" role="button">
                 Suggest </a>
 
-            <a href="@Model.GetCreateCardUri()"
-                title="Add Copies of @Model.Card.Name" class="btn btn-secondary" role="button">
+            <a href="@Model.GetCreateCardUri()" title="Add Copies of @Model.Card.Name" class="btn btn-secondary" role="button">
                 Add </a>
 
-            <a asp-page="Delete"
-                asp-route-id="@Model.Card.Id" asp-route-returnurl="@Model.ReturnUrl"
+            <a asp-page="Delete" asp-route-id="@Model.Card.Id" asp-route-returnurl="@Model.ReturnUrl"
                 title="Remove Copies of @Model.Card.Name" class="btn btn-danger" role="button">
                 Remove </a>
         }
@@ -100,11 +98,13 @@
 <hr />
 <div class="row">
     <div class="col pb-4 d-flex justify-content-center align-items-center">
-        @{ var imageUrl = Model.Card.Flip is not null
-            ? Model.Card.Flip.ImageUrl
-            : Model.Card.ImageUrl; }
+        @{
+            var imageUrl = Model.Card.Flip is not null
+        ? Model.Card.Flip.ImageUrl
+        : Model.Card.ImageUrl;
+        }
 
-        <img class="card-img" alt="@Model.Card.Name" src="@imageUrl.WithHttps()"/>
+        <img class="card-img" alt="@Model.Card.Name" src="@imageUrl.WithHttps()" />
     </div>
 
     <div class="col-lg-9 col-12">
@@ -213,7 +213,9 @@
                 </dd>
             }
 
-            @{ var text = Model.Card.Flip is not null ? Model.Card.Flip.Text : Model.Card.Text; }
+            @{
+                var text = Model.Card.Flip is not null ? Model.Card.Flip.Text : Model.Card.Text;
+            }
 
             <dt class="col-md-2 col-5">
                 @Html.DisplayNameFor(m => m.Card.Text)
@@ -230,7 +232,9 @@
                 </dd>
             }
 
-            @{ var flavor = Model.Card.Flip is not null ? Model.Card.Flip.Flavor : Model.Card.Flavor; }
+            @{
+                var flavor = Model.Card.Flip is not null ? Model.Card.Flip.Flavor : Model.Card.Flavor;
+            }
 
             <dt class="col-md-2 col-5">
                 @Html.DisplayNameFor(m => m.Card.Flavor)
@@ -255,7 +259,7 @@
     <h4 class="col-12 mb-3"> Location of Copies </h4>
     <div class="col-lg-10 col">
         <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 row-cols-xl-4 m-0 ">
-            @foreach(var location in Model.Locations)
+            @foreach (var location in Model.Locations)
             {
                 @switch (location.Type)
                 {
@@ -281,7 +285,8 @@
                         break;
 
                     case LocationType.Box:
-                        <a asp-page="/Treasury/Details" asp-route-id="@location.Id" asp-route-jump="@Model.Card.Id" class="loc-item">
+                        <a asp-page="/Treasury/Details" asp-route-id="@location.Id" asp-route-jump="@Model.Card.Id"
+                            class="loc-item">
                             @location.Name
                             <span class="ml-1 badge badge-secondary badge-pill"> @location.Copies </span>
                         </a>
@@ -297,5 +302,6 @@
             }
         </div>
     </div>
-    <partial name="_SeekPagingPartial" model="(Seek)Model.Locations.Seek"/>
 </section>
+
+<partial name="_SeekPagingPartial" model="(Seek)Model.Locations.Seek" />
