@@ -6,9 +6,11 @@ namespace EntityFrameworkCore.Paging;
 
 public class SeekList<T> : IReadOnlyList<T> where T : class
 {
+    internal static SeekList<T> Empty { get; } = new();
+
     private readonly IReadOnlyList<T> _items;
 
-    internal SeekList()
+    public SeekList()
     {
         _items = Array.Empty<T>();
         Seek = new Seek<T>();
@@ -111,5 +113,5 @@ public class SeekList<T> : IReadOnlyList<T> where T : class
 public static class SeekList
 {
     public static SeekList<T> Empty<T>() where T : class
-        => Utils.EmptySeekList<T>.Value;
+        => SeekList<T>.Empty;
 }
