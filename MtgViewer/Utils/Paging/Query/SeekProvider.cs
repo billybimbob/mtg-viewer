@@ -6,10 +6,8 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
-
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Query;
-
 using EntityFrameworkCore.Paging.Query.Infrastructure;
 using EntityFrameworkCore.Paging.Utils;
 
@@ -107,27 +105,6 @@ internal sealed class SeekProvider : IAsyncQueryProvider
 
     #endregion
 
-    private TResult Invoke<TResult>(MethodInfo method, params object[] parameters)
-        => (TResult)method.Invoke(this, parameters)!;
-
-    private static MethodInfo GetPrivateMethod(string name, params Type[] parameterTypes)
-    {
-        const BindingFlags privateInstance = BindingFlags.NonPublic | BindingFlags.Instance;
-
-        return typeof(SeekProvider)
-            .GetMethod(name, privateInstance, parameterTypes)!;
-    }
-
-    private static Expression ChangeOrigin(Expression expression, object? origin)
-    {
-        var changeOrigin = new ChangeOriginVisitor(origin);
-
-        return changeOrigin.Visit(expression);
-    }
-
-    private static readonly MethodInfo ExecuteAsyncEnumerableMethod
-        = GetPrivateMethod(nameof(ExecuteAsyncEnumerable), typeof(Expression), typeof(CancellationToken));
-
     private async IAsyncEnumerable<T> ExecuteAsyncEnumerable<T>(
         Expression expression, [EnumeratorCancellation] CancellationToken cancel)
     {
@@ -148,9 +125,6 @@ internal sealed class SeekProvider : IAsyncQueryProvider
         }
     }
 
-    private static readonly MethodInfo ExecuteTaskAsyncMethod
-        = GetPrivateMethod(nameof(ExecuteTaskAsync), typeof(Expression), typeof(CancellationToken));
-
     private async Task<T> ExecuteTaskAsync<T>(Expression expression, CancellationToken cancel)
     {
         object? origin = await ExecuteOriginAsync(expression, cancel)
@@ -164,9 +138,6 @@ internal sealed class SeekProvider : IAsyncQueryProvider
     }
 
     #region Fetch Seek List
-
-    private static readonly MethodInfo ExecuteSeekListMethod
-        = GetPrivateMethod(nameof(ExecuteSeekList), typeof(Expression));
 
     private SeekList<TEntity> ExecuteSeekList<TEntity>(Expression expression)
         where TEntity : class
@@ -183,9 +154,6 @@ internal sealed class SeekProvider : IAsyncQueryProvider
 
         return CreateSeekList(items, seek);
     }
-
-    private static readonly MethodInfo ExecuteSeekListAsyncMethod
-        = GetPrivateMethod(nameof(ExecuteSeekListAsync), typeof(Expression), typeof(CancellationToken));
 
     private async Task<SeekList<TEntity>> ExecuteSeekListAsync<TEntity>(Expression expression, CancellationToken cancel)
         where TEntity : class
@@ -287,6 +255,37 @@ internal sealed class SeekProvider : IAsyncQueryProvider
         }
 
         return _originQuery.Visit(source);
+    }
+
+    #endregion
+
+    private TResult Invoke<TResult>(MethodInfo method, params object[] parameters)
+        => (TResult)method.Invoke(this, parameters)!;
+
+    private static Expression ChangeOrigin(Expression expression, object? origin)
+    {
+        var changeOrigin = new ChangeOriginVisitor(origin);
+        return changeOrigin.Visit(expression);
+    }
+
+    #region Method Infos
+
+    private static readonly MethodInfo ExecuteAsyncEnumerableMethod
+        = GetPrivateMethod(nameof(ExecuteAsyncEnumerable), typeof(Expression), typeof(CancellationToken));
+
+    private static readonly MethodInfo ExecuteTaskAsyncMethod
+        = GetPrivateMethod(nameof(ExecuteTaskAsync), typeof(Expression), typeof(CancellationToken));
+
+    private static readonly MethodInfo ExecuteSeekListMethod
+        = GetPrivateMethod(nameof(ExecuteSeekList), typeof(Expression));
+
+    private static readonly MethodInfo ExecuteSeekListAsyncMethod
+        = GetPrivateMethod(nameof(ExecuteSeekListAsync), typeof(Expression), typeof(CancellationToken));
+
+    private static MethodInfo GetPrivateMethod(string name, params Type[] parameterTypes)
+    {
+        const BindingFlags privateInstance = BindingFlags.NonPublic | BindingFlags.Instance;
+        return typeof(SeekProvider).GetMethod(name, privateInstance, parameterTypes)!;
     }
 
     #endregion
