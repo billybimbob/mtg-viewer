@@ -35,10 +35,23 @@ internal static class ExpressionHelpers
             QueryableMethods.OrderByDescending,
             QueryableMethods.ThenByDescending);
 
-    public static bool IsSeekBy(MethodCallExpression call)
+    public static bool IsTake(MethodCallExpression call)
         => DoesMethodEqual(
             call.Method,
-            PagingMethods.SeekBy);
+            QueryableMethods.Take);
+
+    public static bool IsSeekQuery(MethodCallExpression call)
+        => DoesMethodEqual(
+            call.Method,
+            PagingMethods.SeekBy,
+            PagingMethods.AfterReference,
+            PagingMethods.AfterPredicate);
+
+    public static bool IsSeekQuery(Expression expression)
+        => expression is MethodCallExpression call && IsSeekQuery(call);
+
+    public static bool IsSeekBy(MethodCallExpression call)
+        => DoesMethodEqual(call.Method, PagingMethods.SeekBy);
 
     public static bool IsAfter(MethodCallExpression call)
         => DoesMethodEqual(
@@ -46,19 +59,13 @@ internal static class ExpressionHelpers
             PagingMethods.AfterReference,
             PagingMethods.AfterPredicate);
 
-    public static bool IsThenTake(MethodCallExpression call)
-         => DoesMethodEqual(
-            call.Method,
-            PagingMethods.ThenTake);
-
     public static bool IsToSeekList(MethodCallExpression call)
         => DoesMethodEqual(
             call.Method,
             PagingMethods.ToSeekList);
 
     public static bool IsToSeekList(Expression expression)
-        => expression is MethodCallExpression call
-            && IsToSeekList(call);
+        => expression is MethodCallExpression call && IsToSeekList(call);
 
     private static bool DoesMethodEqual(MethodInfo method, params MethodInfo[] options)
     {
