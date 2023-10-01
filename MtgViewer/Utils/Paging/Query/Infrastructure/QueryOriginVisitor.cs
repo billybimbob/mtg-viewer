@@ -1,14 +1,12 @@
 using System;
-using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Linq.Expressions;
 
-using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Query;
 
 using EntityFrameworkCore.Paging.Utils;
 using System.Reflection;
+using System.Collections.Generic;
 
 namespace EntityFrameworkCore.Paging.Query.Infrastructure;
 
@@ -16,11 +14,13 @@ internal class QueryOriginVisitor : ExpressionVisitor
 {
     private readonly IQueryProvider _provider;
     private readonly AfterVisitor _afterParser;
+    private readonly OriginIncludesVisitor _originIncludes;
 
     public QueryOriginVisitor(IQueryProvider provider)
     {
         _provider = provider;
         _afterParser = new AfterVisitor();
+        _originIncludes = new OriginIncludesVisitor();
     }
 
     protected override Expression VisitMethodCall(MethodCallExpression node)
@@ -61,9 +61,7 @@ internal class QueryOriginVisitor : ExpressionVisitor
             return query;
         }
 
-        var includes = OriginIncludeVisitor.Scan(query.Expression);
-
-        foreach (string include in includes)
+        foreach (string include in ScanIncludes(query.Expression))
         {
             query = query.Include(include);
         }
@@ -71,55 +69,14 @@ internal class QueryOriginVisitor : ExpressionVisitor
         return query.AsNoTracking();
     }
 
-    private sealed class FindSelectVisitor : ExpressionVisitor
+    private IEnumerable<string> ScanIncludes(Expression expression)
     {
-        private readonly Type _resultType;
-
-        public FindSelectVisitor(Type resultType)
+        if (_originIncludes.Visit(expression) is not ConstantExpression { Value: IEnumerable<string> includes })
         {
-            _resultType = resultType;
+            includes = Array.Empty<string>();
         }
 
-        protected override Expression VisitMethodCall(MethodCallExpression node)
-        {
-            if (node.Arguments.ElementAtOrDefault(0) is not Expression parent)
-            {
-                return node;
-            }
-
-            if (node.Method.IsGenericMethod is false)
-            {
-                return Visit(parent);
-            }
-
-            var method = node.Method.GetGenericMethodDefinition();
-
-            if (method == QueryableMethods.Select
-                && node.Method.GetGenericArguments()[1] == _resultType)
-            {
-                return Visit(node.Arguments[1]);
-            }
-
-            if (method == QueryableMethods.SelectManyWithoutCollectionSelector
-                && node.Method.GetGenericArguments()[1] == _resultType)
-            {
-                return Visit(node.Arguments[1]);
-            }
-
-            // TODO: account for SelectWithCollectionSelector
-
-            return Visit(parent);
-        }
-
-        protected override Expression VisitUnary(UnaryExpression node)
-        {
-            if (node.NodeType is ExpressionType.Quote)
-            {
-                return node.Operand;
-            }
-
-            return node;
-        }
+        return includes;
     }
 
     #region After Translation
@@ -198,149 +155,54 @@ internal class QueryOriginVisitor : ExpressionVisitor
 
     #endregion
 
-    #region Find Include Properties
-
-    private sealed class OriginIncludeVisitor : ExpressionVisitor
+    private sealed class FindSelectVisitor : ExpressionVisitor
     {
-        public static IReadOnlyCollection<string> Scan(Expression node)
+        private readonly Type _resultType;
+
+        public FindSelectVisitor(Type resultType)
         {
-            var findIncludes = new OriginIncludeVisitor();
-
-            _ = findIncludes.Visit(node);
-
-            return findIncludes._includes;
-        }
-
-        private readonly HashSet<string> _includes;
-        private FindIncludeVisitor? _findInclude;
-
-        private OriginIncludeVisitor()
-        {
-            _includes = new HashSet<string>();
-        }
-
-        [return: NotNullIfNotNull("node")]
-        public new Expression? Visit(Expression? node)
-        {
-            _includes.Clear();
-
-            return base.Visit(node);
-        }
-
-        protected override Expression VisitExtension(Expression node)
-        {
-            if (node is QueryRootExpression root)
-            {
-                _findInclude = new FindIncludeVisitor(root.EntityType);
-            }
-
-            return base.VisitExtension(node);
+            _resultType = resultType;
         }
 
         protected override Expression VisitMethodCall(MethodCallExpression node)
         {
-            if (_findInclude?.Visit(node) is ConstantExpression { Value: string includeChain })
+            if (node.Arguments.ElementAtOrDefault(0) is not Expression parent)
             {
-                const StringComparison ordinal = StringComparison.Ordinal;
-
-                _includes.RemoveWhere(s => includeChain.StartsWith(s, ordinal));
-                _includes.Add(includeChain);
+                return node;
             }
 
-            return base.VisitMethodCall(node);
-        }
-    }
-
-    private sealed class FindIncludeVisitor : ExpressionVisitor
-    {
-        private readonly IReadOnlyEntityType _entity;
-
-        public FindIncludeVisitor(IReadOnlyEntityType entity)
-        {
-            _entity = entity;
-        }
-
-        protected override Expression VisitMethodCall(MethodCallExpression node)
-        {
-            if (ExpressionHelpers.IsOrderedMethod(node)
-                && node.Method.GetGenericArguments().FirstOrDefault() == _entity.ClrType
-                && node.Arguments.Count == 2
-                && node.Arguments[1] is Expression ordering)
+            if (node.Method.IsGenericMethod is false)
             {
-                return Visit(ordering);
+                return Visit(parent);
             }
 
-            return node;
+            var method = node.Method.GetGenericMethodDefinition();
+
+            if (method == QueryableMethods.Select
+                && node.Method.GetGenericArguments()[1] == _resultType)
+            {
+                return Visit(node.Arguments[1]);
+            }
+
+            if (method == QueryableMethods.SelectManyWithoutCollectionSelector
+                && node.Method.GetGenericArguments()[1] == _resultType)
+            {
+                return Visit(node.Arguments[1]);
+            }
+
+            // TODO: account for SelectWithCollectionSelector
+
+            return Visit(parent);
         }
 
         protected override Expression VisitUnary(UnaryExpression node)
         {
             if (node.NodeType is ExpressionType.Quote)
             {
-                return Visit(node.Operand);
+                return node.Operand;
             }
 
             return node;
-        }
-
-        protected override Expression VisitLambda<TFunc>(Expression<TFunc> node)
-        {
-            if (node.Parameters.Count == 1
-                && node.Parameters[0].Type == _entity.ClrType)
-            {
-                return Visit(node.Body);
-            }
-
-            return node;
-        }
-
-        protected override Expression VisitMember(MemberExpression node)
-        {
-            if (GetOriginOverlap(node) is not MemberExpression overlap)
-            {
-                return node;
-            }
-
-            string name = ExpressionHelpers.GetLineageName(overlap);
-
-            return Expression.Constant(name);
-        }
-
-        private MemberExpression? GetOriginOverlap(MemberExpression node)
-        {
-            using var e = ExpressionHelpers
-                .GetLineage(node)
-                .Reverse()
-                .GetEnumerator();
-
-            if (!e.MoveNext())
-            {
-                return null;
-            }
-
-            var longestChain = e.Current;
-            var nav = _entity.FindNavigation(longestChain.Member);
-
-            if (nav is null or { IsCollection: true })
-            {
-                return null;
-            }
-
-            while (e.MoveNext())
-            {
-                nav = nav.TargetEntityType.FindNavigation(e.Current.Member);
-
-                if (nav is null or { IsCollection: true })
-                {
-                    break;
-                }
-
-                longestChain = e.Current;
-            }
-
-            return longestChain;
         }
     }
-
-    #endregion
 }
