@@ -4,6 +4,8 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 
+using EntityFrameworkCore.Paging.Query;
+
 using Microsoft.EntityFrameworkCore.Query;
 
 namespace EntityFrameworkCore.Paging.Utils;
@@ -36,23 +38,23 @@ internal static class ExpressionHelpers
     public static bool IsSeekBy(MethodCallExpression call)
         => DoesMethodEqual(
             call.Method,
-            PagingExtensions.SeekByMethod);
+            PagingMethods.SeekBy);
 
     public static bool IsAfter(MethodCallExpression call)
         => DoesMethodEqual(
             call.Method,
-            PagingExtensions.AfterReference,
-            PagingExtensions.AfterPredicate);
+            PagingMethods.AfterReference,
+            PagingMethods.AfterPredicate);
 
     public static bool IsThenTake(MethodCallExpression call)
          => DoesMethodEqual(
             call.Method,
-            PagingExtensions.ThenTakeMethod);
+            PagingMethods.ThenTake);
 
     public static bool IsToSeekList(MethodCallExpression call)
         => DoesMethodEqual(
             call.Method,
-            PagingExtensions.ToSeekListMethodInfo);
+            PagingMethods.ToSeekList);
 
     public static bool IsToSeekList(Expression expression)
         => expression is MethodCallExpression call

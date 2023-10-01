@@ -49,12 +49,8 @@ internal static class SeekQuery
             throw new ArgumentException("Expression must be a query", nameof(expression));
         }
 
-        var elementType = expression.Type.GenericTypeArguments.ElementAtOrDefault(0);
-
-        if (elementType is null)
-        {
-            throw new ArgumentException("Expression must be strongly typed", nameof(expression));
-        }
+        var elementType = expression.Type.GenericTypeArguments.ElementAtOrDefault(0)
+            ?? throw new ArgumentException("Expression must be strongly typed", nameof(expression));
 
         var seekQueryType = typeof(SeekQuery<>).MakeGenericType(elementType);
 
