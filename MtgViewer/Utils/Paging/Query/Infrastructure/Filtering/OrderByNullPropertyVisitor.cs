@@ -1,31 +1,22 @@
+
 using System.Linq.Expressions;
 
 namespace EntityFrameworkCore.Paging.Query.Infrastructure.Filtering;
 
-internal sealed class OrderPropertyVisitor : ExpressionVisitor
+internal sealed class OrderByNullPropertyVisitor : ExpressionVisitor
 {
     private readonly ParameterExpression _parameter;
 
-    public OrderPropertyVisitor(ParameterExpression parameter)
+    public OrderByNullPropertyVisitor(ParameterExpression parameter)
     {
         _parameter = parameter;
     }
 
     protected override Expression VisitMethodCall(MethodCallExpression node)
     {
-        if (ExpressionHelpers.IsOrderedMethod(node) && node.Arguments.Count == 2)
+        if (ExpressionHelpers.IsOrderedMethod(node))
         {
             return Visit(node.Arguments[1]);
-        }
-
-        return node;
-    }
-
-    protected override Expression VisitLambda<TFunc>(Expression<TFunc> node)
-    {
-        if (node.Parameters.Count == 1 && node.Parameters[0].Type == _parameter.Type)
-        {
-            return Visit(node.Body);
         }
 
         return node;
@@ -41,11 +32,11 @@ internal sealed class OrderPropertyVisitor : ExpressionVisitor
         return Visit(node.Operand);
     }
 
-    protected override Expression VisitParameter(ParameterExpression node)
+    protected override Expression VisitLambda<TFunc>(Expression<TFunc> node)
     {
-        if (node.Type == _parameter.Type)
+        if (node.Parameters.Count == 1 && node.Parameters[0].Type == _parameter.Type && node.Body is BinaryExpression)
         {
-            return _parameter;
+            return Visit(node.Body);
         }
 
         return node;
@@ -66,6 +57,16 @@ internal sealed class OrderPropertyVisitor : ExpressionVisitor
         if (ExpressionHelpers.IsNull(node.Left) && Visit(node.Right) is MemberExpression right)
         {
             return right;
+        }
+
+        return node;
+    }
+
+    protected override Expression VisitParameter(ParameterExpression node)
+    {
+        if (node.Type == _parameter.Type)
+        {
+            return _parameter;
         }
 
         return node;

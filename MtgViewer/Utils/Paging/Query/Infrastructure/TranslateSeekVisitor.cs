@@ -61,7 +61,9 @@ internal sealed class TranslateSeekVisitor : ExpressionVisitor
 
     private IQueryable ExpandToQuery(Expression source, SeekDirection direction)
     {
-        var filter = SeekFilter.Build(source, _origin, direction);
+        var seekFilter = new SeekFilter(source, _origin, direction);
+
+        var filter = seekFilter.CreateFilter();
 
         var query = _provider.CreateQuery(source);
 

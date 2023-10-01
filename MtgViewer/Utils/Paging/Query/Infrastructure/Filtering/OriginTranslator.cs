@@ -11,27 +11,37 @@ namespace EntityFrameworkCore.Paging.Query.Infrastructure.Filtering;
 internal sealed class OriginTranslator
 {
     private readonly ConstantExpression _origin;
-    private readonly Dictionary<MemberExpression, MemberExpression> _translations;
-    private readonly Dictionary<MemberExpression, bool> _nulls;
+    private readonly IReadOnlyDictionary<MemberExpression, MemberExpression> _translations;
+    private readonly IReadOnlyDictionary<MemberExpression, bool> _nulls;
 
     public Type Type => _origin.Type;
 
-    public OriginTranslator(ConstantExpression origin)
+    private OriginTranslator(
+        ConstantExpression origin,
+        IReadOnlyDictionary<MemberExpression, MemberExpression> translations,
+        IReadOnlyDictionary<MemberExpression, bool> computedNulls)
+    {
+        _origin = origin;
+        _translations = translations;
+        _nulls = computedNulls;
+    }
+
+    public static OriginTranslator Build(ConstantExpression origin, IEnumerable<MemberExpression> targetTranslations, IEnumerable<MemberExpression> targetNulls)
     {
         ArgumentNullException.ThrowIfNull(origin);
 
-        var expressionEquality = ExpressionEqualityComparer.Instance;
+        var translationBuilder = new OriginTranslationBuilder(origin, targetTranslations);
+        var translations = translationBuilder.Build();
 
-        _origin = origin;
+        var nullBuilder = new OriginNullBuilder(origin, translations, targetNulls);
+        var computedNulls = nullBuilder.Build();
 
-        _translations = new Dictionary<MemberExpression, MemberExpression>(expressionEquality);
-
-        _nulls = new Dictionary<MemberExpression, bool>(expressionEquality);
+        return new OriginTranslator(origin, translations, computedNulls);
     }
 
     public MemberExpression? Translate(MemberExpression member)
     {
-        if (IsNull(member))
+        if (_nulls.GetValueOrDefault(member, true))
         {
             return null;
         }
@@ -44,36 +54,7 @@ internal sealed class OriginTranslator
         return translation;
     }
 
-    private bool IsNull(MemberExpression member)
-    {
-        if (_nulls.TryGetValue(member, out bool isNull))
-        {
-            return isNull;
-        }
-
-        if (!_translations.TryGetValue(member, out var translation))
-        {
-            return true;
-        }
-
-        using var e = ExpressionHelpers
-            .GetLineage(translation)
-            .Reverse()
-            .GetEnumerator();
-
-        object? reference = _origin.Value;
-
-        while (reference is not null
-            && e.MoveNext()
-            && e.Current.Member is PropertyInfo originProperty)
-        {
-            reference = originProperty.GetValue(reference);
-        }
-
-        return _nulls[member] = reference is null;
-    }
-
-    public bool IsParentNull(MemberExpression member)
+    public bool IsCallerNull(MemberExpression member)
     {
         if (member.Expression is not MemberExpression chain)
         {
@@ -85,75 +66,140 @@ internal sealed class OriginTranslator
             return isNull;
         }
 
-        if (!_translations.TryGetValue(member, out var translation))
+        if (!_translations.ContainsKey(member))
         {
             return true;
         }
 
-        using var e = ExpressionHelpers
-            .GetLineage(translation)
-            .Skip(1)
-            .Reverse()
-            .GetEnumerator();
-
-        object? reference = _origin.Value;
-
-        while (reference is not null
-            && e.MoveNext()
-            && e.Current.Member is PropertyInfo originProperty)
-        {
-            reference = originProperty.GetValue(reference);
-        }
-
-        return _nulls[chain] = reference is null;
+        return false;
     }
 
-    public bool TryRegister(MemberExpression member)
+    private sealed class OriginTranslationBuilder
     {
-        if (_translations.ContainsKey(member))
+        private readonly ConstantExpression _origin;
+        private readonly IEnumerable<MemberExpression> _targets;
+
+        public OriginTranslationBuilder(ConstantExpression origin, IEnumerable<MemberExpression> targets)
         {
-            return true;
+            _origin = origin;
+            _targets = targets;
         }
 
-        return TryAddOriginProperty(member);
-    }
-
-    private bool TryAddOriginProperty(MemberExpression member)
-    {
-        using var e = ExpressionHelpers.GetLineage(member)
-            .Reverse()
-            .GetEnumerator();
-
-        if (!e.MoveNext())
+        public IReadOnlyDictionary<MemberExpression, MemberExpression> Build()
         {
-            return false;
-        }
+            var translations = new Dictionary<MemberExpression, MemberExpression>(ExpressionEqualityComparer.Instance);
 
-        if (_origin.Type != e.Current.Expression?.Type)
-        {
-            return false;
-        }
-
-        var translation = Expression
-            .MakeMemberAccess(_origin, e.Current.Member);
-
-        while (e.MoveNext())
-        {
-            var property = translation.Type
-                .GetTypeInfo()
-                .GetProperty(e.Current.Member.Name);
-
-            if (property is null)
+            foreach (var target in _targets)
             {
-                return false;
+                if (translations.ContainsKey(target))
+                {
+                    continue;
+                }
+
+                var translation = FindOriginProperty(target);
+
+                if (translation is not null)
+                {
+                    translations.Add(target, translation);
+                }
             }
 
-            translation = Expression
-                .MakeMemberAccess(translation, property);
+            return translations;
         }
 
-        _translations.Add(member, translation);
+        private MemberExpression? FindOriginProperty(MemberExpression member)
+        {
+            using var e = ExpressionHelpers.GetLineage(member)
+                .Reverse()
+                .GetEnumerator();
 
-        return true;
+            if (!e.MoveNext())
+            {
+                return null;
+            }
+
+            if (_origin.Type != e.Current.Expression?.Type)
+            {
+                return null;
+            }
+
+            var translation = Expression
+                .MakeMemberAccess(_origin, e.Current.Member);
+
+            while (e.MoveNext())
+            {
+                var property = translation.Type
+                    .GetTypeInfo()
+                    .GetProperty(e.Current.Member.Name);
+
+                if (property is null)
+                {
+                    return null;
+                }
+
+                translation = Expression
+                    .MakeMemberAccess(translation, property);
+            }
+
+            return translation;
+        }
+    }
+
+    private sealed class OriginNullBuilder
+    {
+        private readonly ConstantExpression _origin;
+        private readonly IReadOnlyDictionary<MemberExpression, MemberExpression> _translations;
+        private readonly IEnumerable<MemberExpression> _targets;
+
+        public OriginNullBuilder(
+            ConstantExpression origin,
+            IReadOnlyDictionary<MemberExpression, MemberExpression> translations,
+            IEnumerable<MemberExpression> targets)
+        {
+            _origin = origin;
+            _translations = translations;
+            _targets = targets;
+        }
+
+        public IReadOnlyDictionary<MemberExpression, bool> Build()
+        {
+            var computedNulls = new Dictionary<MemberExpression, bool>(ExpressionEqualityComparer.Instance);
+
+            foreach (var target in _targets)
+            {
+                if (computedNulls.ContainsKey(target))
+                {
+                    continue;
+                }
+
+                if (!_translations.TryGetValue(target, out var translation))
+                {
+                    continue;
+                }
+
+                computedNulls.Add(target, ComputeNullValue(translation));
+            }
+
+            return computedNulls;
+        }
+
+        private bool ComputeNullValue(MemberExpression member)
+        {
+            using var e = ExpressionHelpers
+                .GetLineage(member)
+                .Reverse()
+                .GetEnumerator();
+
+            object? reference = _origin.Value;
+
+            while (reference is not null
+                && e.MoveNext()
+                && e.Current.Member is PropertyInfo originProperty)
+            {
+                reference = originProperty.GetValue(reference);
+            }
+
+            return reference is null;
+        }
     }
 }
