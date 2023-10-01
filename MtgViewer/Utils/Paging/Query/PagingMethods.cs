@@ -12,8 +12,6 @@ public static class PagingMethods
 
     public static MethodInfo AfterPredicate { get; }
 
-    public static MethodInfo ThenTake { get; }
-
     public static MethodInfo ToSeekList { get; }
 
     static PagingMethods()
@@ -35,8 +33,6 @@ public static class PagingMethods
                 .GetParameters()
                 .Any(pi => pi.Name == "originPredicate"
                     && pi.ParameterType.IsAssignableTo(typeof(Expression))));
-
-        ThenTake = pagingTypeInfo.GetDeclaredMethod(nameof(PagingExtensions.ThenTake))!;
 
         ToSeekList = pagingTypeInfo.GetDeclaredMethod(nameof(PagingExtensions.ToSeekList))!;
     }

@@ -143,7 +143,7 @@ public class DetailsModel : PageModel
 
             .SeekBy(direction)
                 .After(h => h.Id == origin)
-                .ThenTake(_pageSize.Current)
+                .Take(_pageSize.Current)
 
             .Select(h => new LocationCopy
             {

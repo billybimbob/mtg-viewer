@@ -321,7 +321,7 @@ public partial class Craft
 
             .SeekBy(direction)
                 .After(origin)
-                .ThenTake(PageSize.Current)
+                .Take(PageSize.Current)
 
             .AsAsyncEnumerable();
     }

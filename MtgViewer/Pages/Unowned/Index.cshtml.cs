@@ -51,7 +51,7 @@ public class IndexModel : PageModel
 
             .SeekBy(direction)
                 .After(u => u.Id == origin)
-                .ThenTake(_pageSize.Current)
+                .Take(_pageSize.Current)
 
             .Select(u => new TheorycraftDetails
             {

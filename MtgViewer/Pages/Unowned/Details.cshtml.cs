@@ -98,7 +98,7 @@ public class DetailsModel : PageModel
 
             .SeekBy(direction)
                 .After(c => c.Id == origin)
-                .ThenTake(_pageSize.Current)
+                .Take(_pageSize.Current)
 
             .Select(c => new DeckCopy
             {

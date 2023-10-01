@@ -4,7 +4,9 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Threading;
 using System.Threading.Tasks;
+
 using Microsoft.EntityFrameworkCore.Query;
+
 using EntityFrameworkCore.Paging.Query;
 using EntityFrameworkCore.Paging.Utils;
 
@@ -119,24 +121,6 @@ public static class PagingExtensions
                         .MakeGenericMethod(typeof(TEntity)),
                     arg0: seekable.Expression,
                     arg1: Expression.Quote(originPredicate)))
-            .AsSeekable();
-    }
-
-    public static ISeekable<TEntity> ThenTake<TEntity>(
-        this ISeekable<TEntity> source,
-        int count)
-        where TEntity : class
-    {
-        ArgumentNullException.ThrowIfNull(source);
-
-        return source.Provider
-            .CreateQuery<TEntity>(
-                Expression.Call(
-                    instance: null,
-                    method: PagingMethods.ThenTake
-                        .MakeGenericMethod(typeof(TEntity)),
-                    arg0: source.Expression,
-                    arg1: Expression.Constant(count)))
             .AsSeekable();
     }
 

@@ -124,7 +124,7 @@ public class DetailsModel : PageModel
         return await BoxHolds(box)
             .SeekBy(direction)
                 .After(h => h.CardId == origin)
-                .ThenTake(_pageSize.Current)
+                .Take(_pageSize.Current)
 
             .Select(h => new CardCopy
             {

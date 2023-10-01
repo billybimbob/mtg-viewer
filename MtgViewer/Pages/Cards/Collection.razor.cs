@@ -172,7 +172,7 @@ public sealed partial class Collection : ComponentBase, IDisposable
 
             .SeekBy((SeekDirection)Direction)
                 .After(c => c.Id == Seek)
-                .ThenTake(PageSize.Current)
+                .Take(PageSize.Current)
 
             .ToSeekListAsync(_cancel.Token);
     }

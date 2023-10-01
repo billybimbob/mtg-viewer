@@ -75,7 +75,7 @@ public class IndexModel : PageModel
 
             .SeekBy(direction)
                 .After(p => p.Id == origin)
-                .ThenTake(_pageSize.Current)
+                .Take(_pageSize.Current)
 
             .Select(p => new PlayerPreview
             {
