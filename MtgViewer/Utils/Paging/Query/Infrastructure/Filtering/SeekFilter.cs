@@ -3,12 +3,10 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Linq.Expressions;
-
 using Microsoft.EntityFrameworkCore.Query;
-
 using EntityFrameworkCore.Paging.Utils;
 
-namespace EntityFrameworkCore.Paging.Query.Infrastructure;
+namespace EntityFrameworkCore.Paging.Query.Infrastructure.Filtering;
 
 internal sealed class SeekFilter
 {
@@ -226,21 +224,6 @@ internal sealed class SeekFilter
 
     #region Origin Builder types
 
-    private readonly record struct KeyOrder(MemberExpression? Key, Ordering Ordering);
-
-    private enum Ordering
-    {
-        Ascending,
-        Descending,
-    }
-
-    private enum NullOrder
-    {
-        None,
-        Before,
-        After
-    }
-
     private sealed class FindOrderPropertiesVisitor : ExpressionVisitor
     {
         public static IReadOnlyList<KeyOrder> Scan(
@@ -367,76 +350,6 @@ internal sealed class SeekFilter
                 : NullOrder.After;
 
             _properties.Add(nullOrder, ordering);
-
-            return node;
-        }
-    }
-
-    private sealed class OrderPropertyVisitor : ExpressionVisitor
-    {
-        private readonly ParameterExpression _parameter;
-
-        public OrderPropertyVisitor(ParameterExpression parameter)
-        {
-            _parameter = parameter;
-        }
-
-        protected override Expression VisitMethodCall(MethodCallExpression node)
-        {
-            if (ExpressionHelpers.IsOrderedMethod(node) && node.Arguments.Count == 2)
-            {
-                return Visit(node.Arguments[1]);
-            }
-
-            return node;
-        }
-
-        protected override Expression VisitLambda<TFunc>(Expression<TFunc> node)
-        {
-            if (node.Parameters.Count == 1 && node.Parameters[0].Type == _parameter.Type)
-            {
-                return Visit(node.Body);
-            }
-
-            return node;
-        }
-
-        protected override Expression VisitUnary(UnaryExpression node)
-        {
-            if (node.NodeType is not ExpressionType.Quote)
-            {
-                return node;
-            }
-
-            return Visit(node.Operand);
-        }
-
-        protected override Expression VisitParameter(ParameterExpression node)
-        {
-            if (node.Type == _parameter.Type)
-            {
-                return _parameter;
-            }
-
-            return node;
-        }
-
-        protected override Expression VisitBinary(BinaryExpression node)
-        {
-            if (node.NodeType is not ExpressionType.Equal)
-            {
-                return node;
-            }
-
-            if (ExpressionHelpers.IsNull(node.Right) && Visit(node.Left) is MemberExpression left)
-            {
-                return left;
-            }
-
-            if (ExpressionHelpers.IsNull(node.Left) && Visit(node.Right) is MemberExpression right)
-            {
-                return right;
-            }
 
             return node;
         }

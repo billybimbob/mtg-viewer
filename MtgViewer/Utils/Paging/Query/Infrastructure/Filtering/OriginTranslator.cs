@@ -3,12 +3,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
-
 using Microsoft.EntityFrameworkCore.Query;
-
 using EntityFrameworkCore.Paging.Utils;
 
-namespace EntityFrameworkCore.Paging.Query.Infrastructure;
+namespace EntityFrameworkCore.Paging.Query.Infrastructure.Filtering;
 
 internal sealed class OriginTranslator
 {
