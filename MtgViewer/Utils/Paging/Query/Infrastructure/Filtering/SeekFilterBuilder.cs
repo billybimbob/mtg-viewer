@@ -57,8 +57,8 @@ internal sealed class SeekFilterBuilder
         }
 
         var previousParameters = filterProperty
-            .Select(k => k.Parameter)
             .Skip(1)
+            .Select(k => k.Parameter)
             .OfType<MemberExpression>()
             .Reverse();
 
@@ -134,7 +134,7 @@ internal sealed class SeekFilterBuilder
             .OfType<BinaryExpression>()
             .ToList();
 
-        if (!equals.Any())
+        if (equals.Count is 0)
         {
             return null;
         }
