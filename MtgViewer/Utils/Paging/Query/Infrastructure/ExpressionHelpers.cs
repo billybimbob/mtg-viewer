@@ -51,6 +51,9 @@ internal static class ExpressionHelpers
     public static bool IsSeekBy(MethodCallExpression call)
         => DoesMethodEqual(call.Method, PagingMethods.SeekBy);
 
+    public static bool IsSeekBy(Expression expression)
+        => expression is MethodCallExpression call && IsSeekBy(call);
+
     public static bool IsAfter(MethodCallExpression call)
         => DoesMethodEqual(
             call.Method,
