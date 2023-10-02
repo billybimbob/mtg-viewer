@@ -108,12 +108,8 @@ public class SeedHandler
             ReferenceHandler = ReferenceHandler.Preserve,
         };
 
-        var data = await JsonSerializer.DeserializeAsync<CardData>(reader, deserializeOptions, cancel);
-
-        if (data is null)
-        {
-            throw new ArgumentException("Json file format is not valid", nameof(path));
-        }
+        var data = await JsonSerializer.DeserializeAsync<CardData>(reader, deserializeOptions, cancel)
+            ?? throw new ArgumentException("Json file format is not valid", nameof(path));
 
         _loadProgress.AddProgress(10); // percent is a guess, TODO: more informed value
 
@@ -127,7 +123,6 @@ public class SeedHandler
         path ??= Path.Combine(Directory.GetCurrentDirectory(), defaultFilename);
 
         await using var dbContext = await _dbFactory.CreateDbContextAsync(cancel);
-
         await using var writer = File.Create(path);
 
         var stream = CardStream.All(dbContext, _userManager);
