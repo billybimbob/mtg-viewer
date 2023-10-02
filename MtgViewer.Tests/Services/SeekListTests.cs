@@ -153,6 +153,30 @@ public class SeekListTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task ToSeekList_OrderByThenByAfterSeek_Throws()
+    {
+        const int pageSize = 4;
+
+        var cards = _dbContext.Cards
+            .OrderBy(c => c.Id);
+
+        var origin = await cards
+            .Skip(pageSize)
+            .FirstAsync();
+
+        Task FetchSeekListAsync()
+            => cards
+                .SeekBy(SeekDirection.Forward)
+                    .After(origin)
+                    .Take(pageSize)
+                .OrderBy(c => c.Name)
+                    .ThenBy(c => c.Id)
+                .ToSeekListAsync();
+
+        await Assert.ThrowsAsync<InvalidOperationException>(FetchSeekListAsync);
+    }
+
+    [Fact]
     public async Task ToSeekList_OrderBySeek_Returns()
     {
         const int pageSize = 4;

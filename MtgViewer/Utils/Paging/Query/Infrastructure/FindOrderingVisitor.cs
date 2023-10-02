@@ -19,6 +19,14 @@ internal class FindOrderingVisitor : ExpressionVisitor
             return KeepSeekingOrderBy(node);
         }
 
+        if (ExpressionHelpers.IsThenBy(node)
+            && node.Arguments[0] is var parent
+            && Visit(parent) is var visitedParent
+            && parent != visitedParent)
+        {
+            return visitedParent;
+        }
+
         return base.VisitMethodCall(node);
     }
 
