@@ -40,25 +40,27 @@ internal sealed class SeekFilterBuilder
         return Expression.Lambda(filter, _orderCollection.Parameter);
     }
 
-    private BinaryExpression? CompareTo(FilterProperty filterProperty)
+    private BinaryExpression? CompareTo(LinkedOrderProperty orderProperty)
     {
-        if (filterProperty.Parameter is null)
+        var (member, ordering, nullOrder) = orderProperty;
+
+        if (member is null)
         {
             return null;
         }
 
-        var comparison = IsGreaterThan(filterProperty.Ordering)
-            ? GreaterThan(filterProperty.Parameter)
-            : LessThan(filterProperty.Parameter);
+        var comparison = IsGreaterThan(ordering)
+            ? GreaterThan(member, nullOrder)
+            : LessThan(member, nullOrder);
 
         if (comparison is null)
         {
             return null;
         }
 
-        var previousParameters = filterProperty
+        var previousParameters = orderProperty
             .Skip(1)
-            .Select(k => k.Parameter)
+            .Select(k => k.Member)
             .OfType<MemberExpression>()
             .Reverse();
 
@@ -75,9 +77,10 @@ internal sealed class SeekFilterBuilder
             is (SeekDirection.Forward, Ordering.Ascending)
             or (SeekDirection.Backwards, Ordering.Descending);
 
-    private BinaryExpression? GreaterThan(MemberExpression parameter)
+    private BinaryExpression? GreaterThan(MemberExpression parameter, NullOrder nullOrder)
     {
-        return _orderCollection.Translate(parameter) switch
+        var origin = _orderCollection.Translate(parameter);
+        return (origin, nullOrder) switch
         {
             (MemberExpression o and { Type.IsEnum: true }, _) =>
                 Expression.GreaterThan(
@@ -101,9 +104,10 @@ internal sealed class SeekFilterBuilder
         };
     }
 
-    private BinaryExpression? LessThan(MemberExpression parameter)
+    private BinaryExpression? LessThan(MemberExpression parameter, NullOrder nullOrder)
     {
-        return _orderCollection.Translate(parameter) switch
+        var origin = _orderCollection.Translate(parameter);
+        return (origin, nullOrder) switch
         {
             (MemberExpression o and { Type.IsEnum: true }, _) =>
                 Expression.LessThan(
@@ -144,9 +148,8 @@ internal sealed class SeekFilterBuilder
 
     private BinaryExpression? EqualTo(MemberExpression parameter)
     {
-        var (originTranslation, _) = _orderCollection.Translate(parameter);
-
-        return originTranslation switch
+        var origin = _orderCollection.Translate(parameter);
+        return origin switch
         {
             MemberExpression o when TypeHelpers.IsScalarType(o.Type) =>
                 Expression.Equal(parameter, o),
@@ -154,7 +157,7 @@ internal sealed class SeekFilterBuilder
             MemberExpression o when o.Type != parameter.Type =>
                 Expression.NotEqual(parameter, Expression.Constant(null)),
 
-            null when !_orderCollection.IsCallerNull(parameter) =>
+            null when _orderCollection.IsMemberNull(parameter) =>
                 Expression.Equal(parameter, Expression.Constant(null)),
 
             _ => null

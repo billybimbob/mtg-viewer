@@ -7,18 +7,18 @@ namespace EntityFrameworkCore.Paging.Query.Infrastructure.Filtering;
 
 internal sealed class FindOrderPropertiesVisitor : ExpressionVisitor
 {
-    private readonly OrderByPropertyVisitor _orderProperty;
+    private readonly OrderByPropertyVisitor _orderByProperty;
 
-    public FindOrderPropertiesVisitor(OrderByPropertyVisitor orderProperty)
+    public FindOrderPropertiesVisitor(OrderByPropertyVisitor orderByProperty)
     {
-        _orderProperty = orderProperty;
+        _orderByProperty = orderByProperty;
     }
 
-    public IReadOnlyList<KeyOrder> ScanProperties(Expression node)
+    public IReadOnlyList<OrderProperty> ScanProperties(Expression node)
     {
-        if (Visit(node) is not ConstantExpression { Value: IReadOnlyList<KeyOrder> properties })
+        if (Visit(node) is not ConstantExpression { Value: IReadOnlyList<OrderProperty> properties })
         {
-            properties = Array.Empty<KeyOrder>();
+            properties = Array.Empty<OrderProperty>();
         }
 
         return properties;
@@ -36,21 +36,25 @@ internal sealed class FindOrderPropertiesVisitor : ExpressionVisitor
             return Visit(parent);
         }
 
-        var properties = new List<KeyOrder>();
+        var properties = new List<OrderProperty>();
 
         if (!ExpressionHelpers.IsOrderBy(node)
-            && Visit(parent) is ConstantExpression { Value: IEnumerable<KeyOrder> parentKeys })
+            && Visit(parent) is ConstantExpression { Value: IEnumerable<OrderProperty> parentProperties })
         {
-            properties.AddRange(parentKeys);
+            properties.AddRange(parentProperties);
         }
 
-        if (_orderProperty.Visit(node) is MemberExpression propertyOrder)
+        if (_orderByProperty.Visit(node) is MemberExpression orderMember)
         {
             var ordering = ExpressionHelpers.IsDescending(node)
                 ? Ordering.Descending
                 : Ordering.Ascending;
 
-            properties.Add(new KeyOrder(propertyOrder, ordering));
+            var nullOrder = ExpressionHelpers.IsDescending(node)
+                ? NullOrder.Before
+                : NullOrder.After;
+
+            properties.Add(new OrderProperty(orderMember, ordering, nullOrder));
         }
 
         return Expression.Constant(properties);

@@ -8,21 +8,17 @@ namespace EntityFrameworkCore.Paging.Query.Infrastructure.Filtering;
 internal sealed class SeekOrderCollection
 {
     private readonly OriginTranslator _origin;
-    private readonly IReadOnlyList<KeyOrder> _orderKeys;
-    private readonly IReadOnlyDictionary<MemberExpression, NullOrder> _nullOrders;
+    private readonly IReadOnlyList<OrderProperty> _orderProperties;
 
     public ParameterExpression Parameter { get; }
 
     private SeekOrderCollection(
         OriginTranslator origin,
-        IReadOnlyList<KeyOrder> orderKeys,
-        IReadOnlyDictionary<MemberExpression, NullOrder> nullOrders,
+        IReadOnlyList<OrderProperty> orderKeys,
         ParameterExpression parameter)
     {
         _origin = origin;
-        _orderKeys = orderKeys;
-        _nullOrders = nullOrders;
-
+        _orderProperties = orderKeys;
         Parameter = parameter;
     }
 
@@ -35,45 +31,43 @@ internal sealed class SeekOrderCollection
 
         var orderProperty = new OrderByPropertyVisitor(parameter);
         var findOrderProperties = new FindOrderPropertiesVisitor(orderProperty);
-        var findNullProperties = new FindNullPropertiesVisitor(orderProperty);
+        var orderProperties = findOrderProperties.ScanProperties(query);
 
-        var orderKeys = findOrderProperties.ScanProperties(query);
-        var nullOrders = findNullProperties.ScanProperties(query);
+        var translations = orderProperties
+            .Select(o => o.Member)
+            .OfType<MemberExpression>()
+            .ToList();
 
-        var targetTranslations = orderKeys
-            .Select(k => k.Key)
-            .OfType<MemberExpression>();
+        var originTranslator = OriginTranslator.Build(origin, translations);
 
-        var originTranslator = OriginTranslator.Build(origin, targetTranslations, nullOrders.Keys);
-
-        return new SeekOrderCollection(originTranslator, orderKeys, nullOrders, parameter);
+        return new SeekOrderCollection(originTranslator, orderProperties, parameter);
     }
 
-    public IReadOnlyList<FilterProperty> BuildFilterProperties()
+    public IReadOnlyList<LinkedOrderProperty> BuildFilterProperties()
     {
-        if (_orderKeys.Count is 0)
+        if (_orderProperties.Count is 0)
         {
-            return Array.Empty<FilterProperty>();
+            return Array.Empty<LinkedOrderProperty>();
         }
 
-        FilterProperty? previousProperty = null;
+        LinkedOrderProperty? previousLink = null;
 
-        var filterProperties = new List<FilterProperty>(_orderKeys.Count);
+        var filterProperties = new List<LinkedOrderProperty>(_orderProperties.Count);
 
-        foreach (var key in _orderKeys)
+        foreach (var property in _orderProperties)
         {
-            var currentProperty = new FilterProperty(key, previousProperty);
+            var currentLink = new LinkedOrderProperty(property, previousLink);
 
-            filterProperties.Add(currentProperty);
-            previousProperty = currentProperty;
+            filterProperties.Add(currentLink);
+            previousLink = currentLink;
         }
 
         return filterProperties;
     }
 
-    public (MemberExpression?, NullOrder) Translate(MemberExpression node)
-        => (_origin.Translate(node), _nullOrders.GetValueOrDefault(node));
+    public MemberExpression? Translate(MemberExpression node)
+        => _origin.Translate(node);
 
-    public bool IsCallerNull(MemberExpression node)
-        => _origin.IsCallerNull(node);
+    public bool IsMemberNull(MemberExpression node)
+        => _origin.IsMemberNull(node);
 }

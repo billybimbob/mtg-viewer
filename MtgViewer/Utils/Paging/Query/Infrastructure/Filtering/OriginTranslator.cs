@@ -26,14 +26,14 @@ internal sealed class OriginTranslator
         _nulls = computedNulls;
     }
 
-    public static OriginTranslator Build(ConstantExpression origin, IEnumerable<MemberExpression> targetTranslations, IEnumerable<MemberExpression> targetNulls)
+    public static OriginTranslator Build(ConstantExpression origin, IReadOnlyList<MemberExpression> orderings)
     {
         ArgumentNullException.ThrowIfNull(origin);
 
-        var translationBuilder = new OriginTranslationBuilder(origin, targetTranslations);
+        var translationBuilder = new OriginTranslationBuilder(origin, orderings);
         var translations = translationBuilder.Build();
 
-        var nullBuilder = new OriginNullBuilder(origin, translations, targetNulls);
+        var nullBuilder = new OriginNullBuilder(origin, translations, orderings);
         var computedNulls = nullBuilder.Build();
 
         return new OriginTranslator(origin, translations, computedNulls);
@@ -54,24 +54,21 @@ internal sealed class OriginTranslator
         return translation;
     }
 
-    public bool IsCallerNull(MemberExpression member)
+    public bool IsMemberNull(MemberExpression member)
     {
-        if (member.Expression is not MemberExpression chain)
+        if (_nulls.TryGetValue(member, out bool isNull) && !isNull)
         {
             return false;
         }
 
-        if (_nulls.TryGetValue(chain, out bool isNull))
+        if (member.Expression is MemberExpression chain
+            && _nulls.TryGetValue(chain, out bool isChainNull)
+            && isChainNull)
         {
-            return isNull;
+            return false;
         }
 
-        if (!_translations.ContainsKey(member))
-        {
-            return true;
-        }
-
-        return false;
+        return true;
     }
 
     private sealed class OriginTranslationBuilder
