@@ -58,7 +58,9 @@ internal sealed class SeekFilterBuilder
 
         var equalKeys = filterProperty
             .Select(k => k.Parameter)
-            .OfType<MemberExpression>();
+            .Skip(1)
+            .OfType<MemberExpression>()
+            .Reverse();
 
         if (EqualTo(equalKeys) is Expression equalTo)
         {

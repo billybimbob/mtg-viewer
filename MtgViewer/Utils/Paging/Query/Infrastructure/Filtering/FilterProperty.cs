@@ -25,6 +25,8 @@ internal sealed class FilterProperty : IEnumerable<FilterProperty>
 
     public IEnumerator<FilterProperty> GetEnumerator()
     {
+        yield return this;
+
         var current = _previous;
 
         while (current != null)
