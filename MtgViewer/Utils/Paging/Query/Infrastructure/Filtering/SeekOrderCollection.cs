@@ -43,7 +43,7 @@ internal sealed class SeekOrderCollection
         return new SeekOrderCollection(originTranslator, orderProperties, parameter);
     }
 
-    public IReadOnlyList<LinkedOrderProperty> BuildFilterProperties()
+    public IReadOnlyList<LinkedOrderProperty> BuildOrderProperties()
     {
         if (_orderProperties.Count is 0)
         {

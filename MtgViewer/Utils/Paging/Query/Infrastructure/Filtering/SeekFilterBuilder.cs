@@ -17,14 +17,14 @@ internal sealed class SeekFilterBuilder
 
     public LambdaExpression? Build()
     {
-        var filterProperties = _orderCollection.BuildFilterProperties();
+        var orderProperties = _orderCollection.BuildOrderProperties();
 
-        if (filterProperties.Count is 0)
+        if (orderProperties.Count is 0)
         {
             return null;
         }
 
-        var comparisons = filterProperties
+        var comparisons = orderProperties
             .Select(CompareTo)
             .OfType<BinaryExpression>()
             .ToList();
@@ -58,13 +58,13 @@ internal sealed class SeekFilterBuilder
             return null;
         }
 
-        var previousParameters = orderProperty
+        var previousProperties = orderProperty
             .Skip(1)
             .Select(k => k.Member)
             .OfType<MemberExpression>()
             .Reverse();
 
-        if (EqualTo(previousParameters) is Expression equalTo)
+        if (EqualTo(previousProperties) is Expression equalTo)
         {
             return Expression.AndAlso(equalTo, comparison);
         }
