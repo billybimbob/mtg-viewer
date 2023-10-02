@@ -56,13 +56,13 @@ internal sealed class SeekFilterBuilder
             return null;
         }
 
-        var equalKeys = filterProperty
+        var previousParameters = filterProperty
             .Select(k => k.Parameter)
             .Skip(1)
             .OfType<MemberExpression>()
             .Reverse();
 
-        if (EqualTo(equalKeys) is Expression equalTo)
+        if (EqualTo(previousParameters) is Expression equalTo)
         {
             return Expression.AndAlso(equalTo, comparison);
         }
@@ -77,7 +77,7 @@ internal sealed class SeekFilterBuilder
 
     private BinaryExpression? GreaterThan(MemberExpression parameter)
     {
-        return (_orderCollection.Translate(parameter), _orderCollection.GetNullOrder(parameter)) switch
+        return _orderCollection.Translate(parameter) switch
         {
             (MemberExpression o and { Type.IsEnum: true }, _) =>
                 Expression.GreaterThan(
@@ -103,7 +103,7 @@ internal sealed class SeekFilterBuilder
 
     private BinaryExpression? LessThan(MemberExpression parameter)
     {
-        return (_orderCollection.Translate(parameter), _orderCollection.GetNullOrder(parameter)) switch
+        return _orderCollection.Translate(parameter) switch
         {
             (MemberExpression o and { Type.IsEnum: true }, _) =>
                 Expression.LessThan(
@@ -144,7 +144,9 @@ internal sealed class SeekFilterBuilder
 
     private BinaryExpression? EqualTo(MemberExpression parameter)
     {
-        return _orderCollection.Translate(parameter) switch
+        var (originTranslation, _) = _orderCollection.Translate(parameter);
+
+        return originTranslation switch
         {
             MemberExpression o when TypeHelpers.IsScalarType(o.Type) =>
                 Expression.Equal(parameter, o),

@@ -70,12 +70,9 @@ internal sealed class SeekOrderCollection
         return filterProperties;
     }
 
-    public MemberExpression? Translate(MemberExpression node)
-        => _origin.Translate(node);
+    public (MemberExpression?, NullOrder) Translate(MemberExpression node)
+        => (_origin.Translate(node), _nullOrders.GetValueOrDefault(node));
 
     public bool IsCallerNull(MemberExpression node)
         => _origin.IsCallerNull(node);
-
-    public NullOrder GetNullOrder(MemberExpression node)
-        => _nullOrders.GetValueOrDefault(node);
 }
