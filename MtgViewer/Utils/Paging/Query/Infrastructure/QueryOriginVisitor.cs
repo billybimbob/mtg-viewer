@@ -23,6 +23,11 @@ internal class QueryOriginVisitor : ExpressionVisitor
 
     protected override Expression VisitMethodCall(MethodCallExpression node)
     {
+        if (ExpressionHelpers.IsAfter(node))
+        {
+            return BuildAfterExpression(node);
+        }
+
         if (ExpressionHelpers.IsSeekBy(node))
         {
             return node.Arguments[0];
@@ -33,17 +38,25 @@ internal class QueryOriginVisitor : ExpressionVisitor
             return node;
         }
 
-        if (!ExpressionHelpers.IsAfter(node))
+        return parent;
+    }
+
+    private Expression BuildAfterExpression(MethodCallExpression node)
+    {
+        var parsedAfter = _afterParser.Visit(node.Arguments[1]);
+
+        if (parsedAfter is ConstantExpression origin)
         {
-            return parent;
+            return origin;
         }
 
-        return _afterParser.Visit(node.Arguments[1]) switch
+        if (parsedAfter is LambdaExpression predicate
+            && Visit(node.Arguments[0]) is Expression parent)
         {
-            ConstantExpression origin => origin,
-            LambdaExpression predicate => BuildOriginQuery(parent, predicate).Expression,
-            _ => node
-        };
+            return BuildOriginQuery(parent, predicate).Expression;
+        }
+
+        return node;
     }
 
     private IQueryable BuildOriginQuery(Expression parent, LambdaExpression predicate)

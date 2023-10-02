@@ -259,6 +259,7 @@ internal sealed class SeekProvider : IAsyncQueryProvider
     private static Expression ChangeOrigin(Expression expression, object? origin)
     {
         var changeOrigin = new ChangeOriginVisitor(origin);
+
         return changeOrigin.Visit(expression);
     }
 
