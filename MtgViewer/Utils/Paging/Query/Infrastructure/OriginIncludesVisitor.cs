@@ -44,15 +44,19 @@ internal sealed class OriginIncludesVisitor : ExpressionVisitor
 
         protected override Expression VisitMethodCall(MethodCallExpression node)
         {
-            if (_findInclude.Visit(node) is not ConstantExpression { Value: string includeChain })
+            if (node.Arguments.ElementAtOrDefault(0) is not Expression parent)
             {
                 return node;
             }
 
-            var includes = new HashSet<string>();
-            var parent = Visit(node.Arguments.ElementAtOrDefault(0));
+            if (_findInclude.Visit(node) is not ConstantExpression { Value: string includeChain })
+            {
+                return Visit(parent);
+            }
 
-            if (parent is ConstantExpression { Value: IEnumerable<string> parentIncludes })
+            var includes = new HashSet<string>();
+
+            if (Visit(parent) is ConstantExpression { Value: IEnumerable<string> parentIncludes })
             {
                 includes.UnionWith(parentIncludes);
             }
