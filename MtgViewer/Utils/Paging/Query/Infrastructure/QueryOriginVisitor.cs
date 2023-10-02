@@ -88,6 +88,11 @@ internal class QueryOriginVisitor : ExpressionVisitor
                 return Visit(node.Operand);
             }
 
+            if (node.NodeType is ExpressionType.Convert)
+            {
+                return Visit(node.Operand);
+            }
+
             return node;
         }
 
@@ -140,14 +145,19 @@ internal class QueryOriginVisitor : ExpressionVisitor
                 return node;
             }
 
-            if (node.Member is not PropertyInfo prop)
+            if (node.Member is PropertyInfo prop)
             {
-                return node;
+                object? evaluatedMember = prop.GetValue(constantSource.Value);
+                return Expression.Constant(evaluatedMember);
             }
 
-            object? evaluatedMember = prop.GetValue(constantSource.Value);
+            if (node.Member is FieldInfo field)
+            {
+                object? evaluatedMember = field.GetValue(constantSource.Value);
+                return Expression.Constant(evaluatedMember);
+            }
 
-            return Expression.Constant(evaluatedMember);
+            return node;
         }
     }
 
