@@ -14,32 +14,34 @@ internal sealed class OriginIncludesVisitor : ExpressionVisitor
     [return: NotNullIfNotNull("node")]
     public new Expression? Visit(Expression? node)
     {
-        if (base.Visit(node) is QueryRootExpression queryRoot)
+        var possibleRoot = base.Visit(node);
+
+        if (possibleRoot is QueryRootExpression queryRoot)
         {
-            var scanner = new ScanIncludesVisitor(queryRoot);
+            var scanner = new FindIncludesVisitor(queryRoot.EntityType);
             return scanner.Visit(node);
         }
 
-        return base.Visit(node);
+        return possibleRoot;
     }
 
     protected override Expression VisitMethodCall(MethodCallExpression node)
     {
-        if (base.Visit(node.Arguments.ElementAtOrDefault(0)) is not Expression parent)
+        if (base.Visit(node.Arguments.ElementAtOrDefault(0)) is Expression parent)
         {
-            return node;
+            return parent;
         }
 
-        return parent;
+        return node;
     }
 
-    private sealed class ScanIncludesVisitor : ExpressionVisitor
+    private sealed class FindIncludesVisitor : ExpressionVisitor
     {
-        private readonly FindIncludeVisitor _findInclude;
+        private readonly OrderByIncludeVisitor _orderIncludes;
 
-        public ScanIncludesVisitor(QueryRootExpression queryRoot)
+        public FindIncludesVisitor(IReadOnlyEntityType entityType)
         {
-            _findInclude = new FindIncludeVisitor(queryRoot.EntityType);
+            _orderIncludes = new OrderByIncludeVisitor(entityType);
         }
 
         protected override Expression VisitMethodCall(MethodCallExpression node)
@@ -49,7 +51,7 @@ internal sealed class OriginIncludesVisitor : ExpressionVisitor
                 return node;
             }
 
-            if (_findInclude.Visit(node) is not ConstantExpression { Value: string includeChain })
+            if (_orderIncludes.Visit(node) is not ConstantExpression { Value: string includeChain })
             {
                 return Visit(parent);
             }
@@ -70,11 +72,11 @@ internal sealed class OriginIncludesVisitor : ExpressionVisitor
         }
     }
 
-    private sealed class FindIncludeVisitor : ExpressionVisitor
+    private sealed class OrderByIncludeVisitor : ExpressionVisitor
     {
         private readonly IReadOnlyEntityType _entity;
 
-        public FindIncludeVisitor(IReadOnlyEntityType entity)
+        public OrderByIncludeVisitor(IReadOnlyEntityType entity)
         {
             _entity = entity;
         }

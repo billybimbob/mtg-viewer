@@ -41,7 +41,7 @@ internal sealed class OriginTranslator
 
     public MemberExpression? Translate(MemberExpression member)
     {
-        if (_nulls.GetValueOrDefault(member, true))
+        if (_nulls.GetValueOrDefault(member))
         {
             return null;
         }

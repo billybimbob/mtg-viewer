@@ -10,9 +10,9 @@ internal sealed class FindNullPropertiesVisitor : ExpressionVisitor
 {
     private readonly OrderByPropertyVisitor _orderProperty;
 
-    public FindNullPropertiesVisitor(ParameterExpression parameter)
+    public FindNullPropertiesVisitor(OrderByPropertyVisitor orderProperty)
     {
-        _orderProperty = new OrderByPropertyVisitor(parameter);
+        _orderProperty = orderProperty;
     }
 
     public IReadOnlyDictionary<MemberExpression, NullOrder> ScanProperties(Expression node)

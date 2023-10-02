@@ -41,6 +41,26 @@ internal sealed class OrderByPropertyVisitor : ExpressionVisitor
         return node;
     }
 
+    protected override Expression VisitBinary(BinaryExpression node)
+    {
+        if (node.NodeType is not ExpressionType.Equal)
+        {
+            return node;
+        }
+
+        if (ExpressionHelpers.IsNull(node.Right) && Visit(node.Left) is MemberExpression left)
+        {
+            return left;
+        }
+
+        if (ExpressionHelpers.IsNull(node.Left) && Visit(node.Right) is MemberExpression right)
+        {
+            return right;
+        }
+
+        return node;
+    }
+
     protected override Expression VisitParameter(ParameterExpression node)
     {
         if (node.Type == _parameter.Type)

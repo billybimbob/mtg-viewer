@@ -33,8 +33,9 @@ internal sealed class SeekOrderCollection
                 origin.Type,
                 origin.Type.Name[0].ToString().ToLowerInvariant());
 
-        var findOrderProperties = new FindOrderPropertiesVisitor(parameter);
-        var findNullProperties = new FindNullPropertiesVisitor(parameter);
+        var orderProperty = new OrderByPropertyVisitor(parameter);
+        var findOrderProperties = new FindOrderPropertiesVisitor(orderProperty);
+        var findNullProperties = new FindNullPropertiesVisitor(orderProperty);
 
         var orderKeys = findOrderProperties.ScanProperties(query);
         var nullOrders = findNullProperties.ScanProperties(query);
