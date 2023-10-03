@@ -9,8 +9,7 @@ internal sealed class SeekOrderCollection
 {
     private readonly OriginTranslator _origin;
     private readonly IReadOnlyList<OrderProperty> _orderProperties;
-
-    public ParameterExpression Parameter { get; }
+    private readonly ParameterExpression _parameter;
 
     private SeekOrderCollection(
         OriginTranslator origin,
@@ -19,7 +18,7 @@ internal sealed class SeekOrderCollection
     {
         _origin = origin;
         _orderProperties = orderKeys;
-        Parameter = parameter;
+        _parameter = parameter;
     }
 
     public static SeekOrderCollection Build(ConstantExpression origin, Expression query)
@@ -31,8 +30,8 @@ internal sealed class SeekOrderCollection
 
         var orderProperty = new OrderByPropertyVisitor(parameter);
         var findOrderProperties = new FindOrderPropertiesVisitor(orderProperty);
-        var orderProperties = findOrderProperties.ScanProperties(query);
 
+        var orderProperties = findOrderProperties.ScanProperties(query);
         var translations = orderProperties
             .Select(o => o.Member)
             .OfType<MemberExpression>()
@@ -64,6 +63,9 @@ internal sealed class SeekOrderCollection
 
         return filterProperties;
     }
+
+    public LambdaExpression BuildLambdaFilter(BinaryExpression filterBody)
+        => Expression.Lambda(filterBody, _parameter);
 
     public MemberExpression? Translate(MemberExpression node)
         => _origin.Translate(node);

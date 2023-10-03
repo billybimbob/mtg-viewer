@@ -37,7 +37,7 @@ internal sealed class SeekFilterBuilder
         var filter = comparisons
             .Aggregate(Expression.OrElse);
 
-        return Expression.Lambda(filter, _orderCollection.Parameter);
+        return _orderCollection.BuildLambdaFilter(filter);
     }
 
     private BinaryExpression? CompareTo(LinkedOrderProperty orderProperty)
