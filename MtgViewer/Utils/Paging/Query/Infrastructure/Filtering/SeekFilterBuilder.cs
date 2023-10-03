@@ -11,10 +11,7 @@ internal sealed class SeekFilterBuilder
     private readonly OriginTranslator _originTranslator;
     private readonly SeekDirection _direction;
 
-    public SeekFilterBuilder(
-        SeekOrderCollection orderCollection,
-        OriginTranslator originTranslator,
-        SeekDirection direction)
+    public SeekFilterBuilder(SeekOrderCollection orderCollection, OriginTranslator originTranslator, SeekDirection direction)
     {
         _orderCollection = orderCollection;
         _originTranslator = originTranslator;
@@ -151,10 +148,10 @@ internal sealed class SeekFilterBuilder
     {
         return _originTranslator.Translate(parameter) switch
         {
-            MemberExpression o when TypeHelpers.IsScalarType(o.Type) =>
-                Expression.Equal(parameter, o),
+            MemberExpression { Type: var t } origin when TypeHelpers.IsScalarType(t) =>
+                Expression.Equal(parameter, origin),
 
-            MemberExpression o when o.Type != parameter.Type =>
+            MemberExpression { Type: var t } when t != parameter.Type =>
                 Expression.NotEqual(parameter, Expression.Constant(null)),
 
             null when _originTranslator.IsMemberNull(parameter) =>
