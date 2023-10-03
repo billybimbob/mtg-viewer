@@ -79,55 +79,52 @@ internal sealed class SeekFilterBuilder
 
     private BinaryExpression? GreaterThan(MemberExpression parameter, NullOrder nullOrder)
     {
-        var origin = _orderCollection.Translate(parameter);
-        return (origin, nullOrder) switch
+        return _orderCollection.Translate(parameter) switch
         {
-            (MemberExpression o and { Type.IsEnum: true }, _) =>
-                Expression.GreaterThan(
-                    parameter, o, false, TypeHelpers.EnumGreaterThan(o.Type)),
+            MemberExpression o and { Type.IsEnum: true } =>
+                Expression.GreaterThan(parameter, o, false, TypeHelpers.EnumGreaterThan(o.Type)),
 
-            (MemberExpression o, _) when TypeHelpers.IsValueComparable(o.Type) =>
+            MemberExpression o when TypeHelpers.IsValueComparable(o.Type) =>
                 Expression.GreaterThan(parameter, o),
 
-            (MemberExpression o, _) when o.Type == typeof(string) =>
+            MemberExpression o when o.Type == typeof(string) =>
                 Expression.GreaterThan(
                     Expression.Call(parameter, TypeHelpers.StringCompareTo, o),
                     Expression.Constant(0)),
 
-            (null, NullOrder.Before) =>
+            null when nullOrder is NullOrder.Before =>
                 Expression.NotEqual(parameter, Expression.Constant(null)),
 
-            (not null, NullOrder.After) =>
+            not null when nullOrder is NullOrder.Before =>
                 Expression.Equal(parameter, Expression.Constant(null)),
 
-            (null, NullOrder.None) or _ => null
+            _ => null
         };
     }
 
     private BinaryExpression? LessThan(MemberExpression parameter, NullOrder nullOrder)
     {
-        var origin = _orderCollection.Translate(parameter);
-        return (origin, nullOrder) switch
+        return _orderCollection.Translate(parameter) switch
         {
-            (MemberExpression o and { Type.IsEnum: true }, _) =>
+            MemberExpression o and { Type.IsEnum: true } =>
                 Expression.LessThan(
                     parameter, o, false, TypeHelpers.EnumLessThan(o.Type)),
 
-            (MemberExpression o, _) when TypeHelpers.IsValueComparable(o.Type) =>
+            MemberExpression o when TypeHelpers.IsValueComparable(o.Type) =>
                 Expression.LessThan(parameter, o),
 
-            (MemberExpression o, _) when o.Type == typeof(string) =>
+            MemberExpression o when o.Type == typeof(string) =>
                 Expression.LessThan(
                     Expression.Call(parameter, TypeHelpers.StringCompareTo, o),
                     Expression.Constant(0)),
 
-            (null, NullOrder.After) =>
+            null when nullOrder is NullOrder.After =>
                 Expression.NotEqual(parameter, Expression.Constant(null)),
 
-            (not null, NullOrder.Before) =>
+            not null when nullOrder is NullOrder.Before =>
                 Expression.Equal(parameter, Expression.Constant(null)),
 
-            (null, NullOrder.None) or _ => null
+            _ => null
         };
     }
 
@@ -148,8 +145,7 @@ internal sealed class SeekFilterBuilder
 
     private BinaryExpression? EqualTo(MemberExpression parameter)
     {
-        var origin = _orderCollection.Translate(parameter);
-        return origin switch
+        return _orderCollection.Translate(parameter) switch
         {
             MemberExpression o when TypeHelpers.IsScalarType(o.Type) =>
                 Expression.Equal(parameter, o),
