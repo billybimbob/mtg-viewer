@@ -62,8 +62,7 @@ internal sealed class OriginTranslator
         }
 
         if (member.Expression is MemberExpression chain
-            && _nulls.TryGetValue(chain, out bool isChainNull)
-            && isChainNull)
+            && _nulls.GetValueOrDefault(chain))
         {
             return false;
         }
