@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
@@ -81,11 +82,11 @@ internal sealed class SeekFilterBuilder
     {
         return _orderCollection.Translate(parameter) switch
         {
-            MemberExpression o and { Type.IsEnum: true } =>
-                Expression.GreaterThan(parameter, o, false, TypeHelpers.EnumGreaterThan(o.Type)),
-
             MemberExpression o when TypeHelpers.IsValueComparable(o.Type) =>
                 Expression.GreaterThan(parameter, o),
+
+            MemberExpression o and { Type.IsEnum: true } =>
+                Expression.GreaterThan(parameter, o, false, TypeHelpers.EnumGreaterThan.MakeGenericMethod(o.Type)),
 
             MemberExpression o when o.Type == typeof(string) =>
                 Expression.GreaterThan(
@@ -106,11 +107,11 @@ internal sealed class SeekFilterBuilder
     {
         return _orderCollection.Translate(parameter) switch
         {
-            MemberExpression o and { Type.IsEnum: true } =>
-                Expression.LessThan(parameter, o, false, TypeHelpers.EnumLessThan(o.Type)),
-
             MemberExpression o when TypeHelpers.IsValueComparable(o.Type) =>
                 Expression.LessThan(parameter, o),
+
+            MemberExpression o and { Type.IsEnum: true } =>
+                Expression.LessThan(parameter, o, false, TypeHelpers.EnumLessThan.MakeGenericMethod(o.Type)),
 
             MemberExpression o when o.Type == typeof(string) =>
                 Expression.LessThan(

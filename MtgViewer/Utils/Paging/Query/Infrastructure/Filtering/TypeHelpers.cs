@@ -6,8 +6,19 @@ namespace EntityFrameworkCore.Paging.Query.Infrastructure.Filtering;
 internal static class TypeHelpers
 {
     public static readonly MethodInfo StringCompareTo
-        = typeof(string)
-            .GetMethod(nameof(string.CompareTo), new[] { typeof(string) })!;
+        = typeof(string).GetMethod(nameof(string.CompareTo), new[] { typeof(string) })!;
+
+    public static readonly MethodInfo EnumLessThan
+        = typeof(TypeHelpers).GetMethod(nameof(LessThan))!;
+
+    public static readonly MethodInfo EnumGreaterThan
+        = typeof(TypeHelpers).GetMethod(nameof(GreaterThan))!;
+
+    public static bool LessThan<TEnum>(TEnum left, TEnum right) where TEnum : struct, Enum
+        => left.CompareTo(right) < 0;
+
+    public static bool GreaterThan<TEnum>(TEnum left, TEnum right) where TEnum : struct, Enum
+        => left.CompareTo(right) > 0;
 
     public static bool IsScalarType(Type type)
         => type.IsEnum
@@ -15,33 +26,19 @@ internal static class TypeHelpers
             || type == typeof(string);
 
     public static bool IsValueComparable(Type type)
-        => (type is { IsValueType: true }
+    {
+        if (type is { IsValueType: true }
             && type.IsAssignableTo(typeof(IComparable<>).MakeGenericType(type)))
+        {
+            return true;
+        }
 
-            || (Nullable.GetUnderlyingType(type) is Type inner
-                && IsValueComparable(inner));
+        if (Nullable.GetUnderlyingType(type) is Type inner
+            && IsValueComparable(inner))
+        {
+            return true;
+        }
 
-    #region Enum Comparison
-
-    private const BindingFlags PrivateStatic = BindingFlags.NonPublic | BindingFlags.Static;
-
-    private static readonly MethodInfo _enumLessThan
-        = typeof(TypeHelpers).GetMethod(nameof(EnumLessThan), PrivateStatic)!;
-
-    private static readonly MethodInfo _enumGreaterThan
-        = typeof(TypeHelpers).GetMethod(nameof(EnumGreaterThan), PrivateStatic)!;
-
-    private static bool EnumLessThan<TEnum>(TEnum left, TEnum right) where TEnum : Enum
-        => left.CompareTo(right) < 0;
-
-    private static bool EnumGreaterThan<TEnum>(TEnum left, TEnum right) where TEnum : Enum
-        => left.CompareTo(right) > 0;
-
-    public static MethodInfo EnumLessThan(Type enumType)
-        => _enumLessThan.MakeGenericMethod(enumType);
-
-    public static MethodInfo EnumGreaterThan(Type enumType)
-        => _enumGreaterThan.MakeGenericMethod(enumType);
-
-    #endregion
+        return false;
+    }
 }
