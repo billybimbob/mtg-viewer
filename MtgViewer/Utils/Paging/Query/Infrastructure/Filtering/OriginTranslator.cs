@@ -28,18 +28,18 @@ internal sealed class OriginTranslator
     {
         ArgumentNullException.ThrowIfNull(origin);
 
-        var targetTranslations = orderProperties
+        var targets = orderProperties
             .Select(o => o.Member)
             .OfType<MemberExpression>()
             .ToList();
 
-        var translationBuilder = new OriginTranslationBuilder(origin, targetTranslations);
-        var originTranslations = translationBuilder.Build();
+        var translationBuilder = new OriginTranslationBuilder(origin, targets);
+        var translations = translationBuilder.Build();
 
-        var nullBuilder = new OriginNullBuilder(origin, originTranslations, targetTranslations);
+        var nullBuilder = new OriginNullBuilder(origin, translations, targets);
         var computedNulls = nullBuilder.Build();
 
-        return new OriginTranslator(origin, originTranslations, computedNulls);
+        return new OriginTranslator(origin, translations, computedNulls);
     }
 
     public MemberExpression? Translate(MemberExpression member)
