@@ -6,21 +6,18 @@ namespace EntityFrameworkCore.Paging.Query.Infrastructure.Filtering;
 
 internal sealed class LinkedOrderProperty : IEnumerable<LinkedOrderProperty>
 {
+    private readonly OrderProperty _property;
     private readonly LinkedOrderProperty? _previous;
 
-    public LinkedOrderProperty(OrderProperty current, LinkedOrderProperty? previous)
+    public LinkedOrderProperty(OrderProperty property, LinkedOrderProperty? previous)
     {
+        _property = property;
         _previous = previous;
-        Member = current.Member;
-        Ordering = current.Ordering;
-        NullOrder = current.NullOrder;
     }
 
-    public MemberExpression? Member { get; }
-
-    public Ordering Ordering { get; }
-
-    public NullOrder NullOrder { get; }
+    public MemberExpression? Member => _property.Member;
+    public Ordering Ordering => _property.Ordering;
+    public NullOrder NullOrder => _property.NullOrder;
 
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
@@ -38,9 +35,5 @@ internal sealed class LinkedOrderProperty : IEnumerable<LinkedOrderProperty>
     }
 
     public void Deconstruct(out MemberExpression? member, out Ordering ordering, out NullOrder nullOrder)
-    {
-        member = Member;
-        ordering = Ordering;
-        nullOrder = NullOrder;
-    }
+        => _property.Deconstruct(out member, out ordering, out nullOrder);
 }
