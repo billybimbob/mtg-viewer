@@ -1,24 +1,18 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Linq.Expressions;
 
 namespace EntityFrameworkCore.Paging.Query.Infrastructure.Filtering;
 
 internal sealed class SeekOrderCollection
 {
-    private readonly OriginTranslator _origin;
-    private readonly IReadOnlyList<OrderProperty> _orderProperties;
-    private readonly ParameterExpression _parameter;
+    public ParameterExpression Parameter { get; }
+    public IReadOnlyList<LinkedOrderProperty> OrderProperties { get; }
 
-    private SeekOrderCollection(
-        OriginTranslator origin,
-        IReadOnlyList<OrderProperty> orderKeys,
-        ParameterExpression parameter)
+    private SeekOrderCollection(ParameterExpression parameter, IReadOnlyList<LinkedOrderProperty> orderProperties)
     {
-        _origin = origin;
-        _orderProperties = orderKeys;
-        _parameter = parameter;
+        Parameter = parameter;
+        OrderProperties = orderProperties;
     }
 
     public static SeekOrderCollection Build(ConstantExpression origin, Expression query)
@@ -28,48 +22,33 @@ internal sealed class SeekOrderCollection
                 origin.Type,
                 origin.Type.Name[0].ToString().ToLowerInvariant());
 
-        var orderProperty = new OrderByPropertyVisitor(parameter);
-        var findOrderProperties = new FindOrderPropertiesVisitor(orderProperty);
-
+        var findOrderProperties = new FindOrderPropertiesVisitor(parameter);
         var orderProperties = findOrderProperties.ScanProperties(query);
-        var translations = orderProperties
-            .Select(o => o.Member)
-            .OfType<MemberExpression>()
-            .ToList();
 
-        var originTranslator = OriginTranslator.Build(origin, translations);
+        var linkedProperties = CreateLinkedProperties(orderProperties);
 
-        return new SeekOrderCollection(originTranslator, orderProperties, parameter);
+        return new SeekOrderCollection(parameter, linkedProperties);
     }
 
-    public IReadOnlyList<LinkedOrderProperty> BuildOrderProperties()
+    private static IReadOnlyList<LinkedOrderProperty> CreateLinkedProperties(IReadOnlyList<OrderProperty> sourceProperties)
     {
-        if (_orderProperties.Count is 0)
+        if (sourceProperties.Count is 0)
         {
             return Array.Empty<LinkedOrderProperty>();
         }
 
+        var linkProperties = new List<LinkedOrderProperty>(sourceProperties.Count);
+
         LinkedOrderProperty? previousLink = null;
 
-        var filterProperties = new List<LinkedOrderProperty>(_orderProperties.Count);
-
-        foreach (var property in _orderProperties)
+        foreach (var property in sourceProperties)
         {
             var currentLink = new LinkedOrderProperty(property, previousLink);
 
-            filterProperties.Add(currentLink);
+            linkProperties.Add(currentLink);
             previousLink = currentLink;
         }
 
-        return filterProperties;
+        return linkProperties;
     }
-
-    public LambdaExpression BuildLambdaFilter(BinaryExpression filterBody)
-        => Expression.Lambda(filterBody, _parameter);
-
-    public MemberExpression? Translate(MemberExpression node)
-        => _origin.Translate(node);
-
-    public bool IsMemberNull(MemberExpression node)
-        => _origin.IsMemberNull(node);
 }

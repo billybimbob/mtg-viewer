@@ -14,8 +14,6 @@ internal sealed class OriginTranslator
     private readonly IReadOnlyDictionary<MemberExpression, MemberExpression> _translations;
     private readonly IReadOnlyDictionary<MemberExpression, bool> _nulls;
 
-    public Type Type => _origin.Type;
-
     private OriginTranslator(
         ConstantExpression origin,
         IReadOnlyDictionary<MemberExpression, MemberExpression> translations,
@@ -26,17 +24,22 @@ internal sealed class OriginTranslator
         _nulls = computedNulls;
     }
 
-    public static OriginTranslator Build(ConstantExpression origin, IReadOnlyList<MemberExpression> orderings)
+    public static OriginTranslator Build(ConstantExpression origin, IReadOnlyList<LinkedOrderProperty> orderProperties)
     {
         ArgumentNullException.ThrowIfNull(origin);
 
-        var translationBuilder = new OriginTranslationBuilder(origin, orderings);
-        var translations = translationBuilder.Build();
+        var targetTranslations = orderProperties
+            .Select(o => o.Member)
+            .OfType<MemberExpression>()
+            .ToList();
 
-        var nullBuilder = new OriginNullBuilder(origin, translations, orderings);
+        var translationBuilder = new OriginTranslationBuilder(origin, targetTranslations);
+        var originTranslations = translationBuilder.Build();
+
+        var nullBuilder = new OriginNullBuilder(origin, originTranslations, targetTranslations);
         var computedNulls = nullBuilder.Build();
 
-        return new OriginTranslator(origin, translations, computedNulls);
+        return new OriginTranslator(origin, originTranslations, computedNulls);
     }
 
     public MemberExpression? Translate(MemberExpression member)

@@ -8,24 +8,27 @@ namespace EntityFrameworkCore.Paging.Query.Infrastructure.Filtering;
 internal sealed class SeekFilterBuilder
 {
     private readonly SeekOrderCollection _orderCollection;
+    private readonly OriginTranslator _originTranslator;
     private readonly SeekDirection _direction;
 
-    public SeekFilterBuilder(SeekOrderCollection orderCollection, SeekDirection direction)
+    public SeekFilterBuilder(
+        SeekOrderCollection orderCollection,
+        OriginTranslator originTranslator,
+        SeekDirection direction)
     {
         _orderCollection = orderCollection;
+        _originTranslator = originTranslator;
         _direction = direction;
     }
 
     public LambdaExpression? Build()
     {
-        var orderProperties = _orderCollection.BuildOrderProperties();
-
-        if (orderProperties.Count is 0)
+        if (_orderCollection.OrderProperties.Count is 0)
         {
             return null;
         }
 
-        var comparisons = orderProperties
+        var comparisons = _orderCollection.OrderProperties
             .Select(CompareTo)
             .OfType<BinaryExpression>()
             .ToList();
@@ -38,7 +41,8 @@ internal sealed class SeekFilterBuilder
         var filter = comparisons
             .Aggregate(Expression.OrElse);
 
-        return _orderCollection.BuildLambdaFilter(filter);
+        return Expression
+            .Lambda(filter, _orderCollection.Parameter);
     }
 
     private BinaryExpression? CompareTo(LinkedOrderProperty orderProperty)
@@ -80,7 +84,7 @@ internal sealed class SeekFilterBuilder
 
     private BinaryExpression? GreaterThan(MemberExpression parameter, NullOrder nullOrder)
     {
-        return _orderCollection.Translate(parameter) switch
+        return _originTranslator.Translate(parameter) switch
         {
             MemberExpression { Type: var t } origin when TypeHelpers.IsValueComparable(t) =>
                 Expression.GreaterThan(parameter, origin),
@@ -105,7 +109,7 @@ internal sealed class SeekFilterBuilder
 
     private BinaryExpression? LessThan(MemberExpression parameter, NullOrder nullOrder)
     {
-        return _orderCollection.Translate(parameter) switch
+        return _originTranslator.Translate(parameter) switch
         {
             MemberExpression { Type: var t } origin when TypeHelpers.IsValueComparable(t) =>
                 Expression.LessThan(parameter, origin),
@@ -145,7 +149,7 @@ internal sealed class SeekFilterBuilder
 
     private BinaryExpression? EqualTo(MemberExpression parameter)
     {
-        return _orderCollection.Translate(parameter) switch
+        return _originTranslator.Translate(parameter) switch
         {
             MemberExpression o when TypeHelpers.IsScalarType(o.Type) =>
                 Expression.Equal(parameter, o),
@@ -153,7 +157,7 @@ internal sealed class SeekFilterBuilder
             MemberExpression o when o.Type != parameter.Type =>
                 Expression.NotEqual(parameter, Expression.Constant(null)),
 
-            null when _orderCollection.IsMemberNull(parameter) =>
+            null when _originTranslator.IsMemberNull(parameter) =>
                 Expression.Equal(parameter, Expression.Constant(null)),
 
             _ => null

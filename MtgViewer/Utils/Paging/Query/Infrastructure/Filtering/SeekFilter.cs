@@ -28,8 +28,9 @@ internal sealed class SeekFilter
         }
 
         var orderCollection = SeekOrderCollection.Build(_origin, _query);
-        var builder = new SeekFilterBuilder(orderCollection, dir);
+        var originTranslator = OriginTranslator.Build(_origin, orderCollection.OrderProperties);
 
+        var builder = new SeekFilterBuilder(orderCollection, originTranslator, dir);
         return builder.Build();
     }
 

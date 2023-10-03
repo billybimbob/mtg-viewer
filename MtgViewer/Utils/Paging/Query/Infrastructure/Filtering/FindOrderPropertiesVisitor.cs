@@ -9,9 +9,9 @@ internal sealed class FindOrderPropertiesVisitor : ExpressionVisitor
 {
     private readonly OrderByPropertyVisitor _orderByProperty;
 
-    public FindOrderPropertiesVisitor(OrderByPropertyVisitor orderByProperty)
+    public FindOrderPropertiesVisitor(ParameterExpression parameter)
     {
-        _orderByProperty = orderByProperty;
+        _orderByProperty = new OrderByPropertyVisitor(parameter);
     }
 
     public IReadOnlyList<OrderProperty> ScanProperties(Expression node)
