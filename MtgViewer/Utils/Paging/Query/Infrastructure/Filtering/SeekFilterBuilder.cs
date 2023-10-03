@@ -82,15 +82,15 @@ internal sealed class SeekFilterBuilder
     {
         return _orderCollection.Translate(parameter) switch
         {
-            MemberExpression o when TypeHelpers.IsValueComparable(o.Type) =>
-                Expression.GreaterThan(parameter, o),
+            MemberExpression { Type: var t } origin when TypeHelpers.IsValueComparable(t) =>
+                Expression.GreaterThan(parameter, origin),
 
-            MemberExpression o and { Type.IsEnum: true } =>
-                Expression.GreaterThan(parameter, o, false, TypeHelpers.EnumGreaterThan.MakeGenericMethod(o.Type)),
+            MemberExpression { Type: var t } origin when t.IsEnum =>
+                Expression.GreaterThan(parameter, origin, false, TypeHelpers.EnumGreaterThan.MakeGenericMethod(t)),
 
-            MemberExpression o when o.Type == typeof(string) =>
+            MemberExpression { Type: var t } origin when t == typeof(string) =>
                 Expression.GreaterThan(
-                    Expression.Call(parameter, TypeHelpers.StringCompareTo, o),
+                    Expression.Call(parameter, TypeHelpers.StringCompareTo, origin),
                     Expression.Constant(0)),
 
             null when nullOrder is NullOrder.Before =>
@@ -107,15 +107,15 @@ internal sealed class SeekFilterBuilder
     {
         return _orderCollection.Translate(parameter) switch
         {
-            MemberExpression o when TypeHelpers.IsValueComparable(o.Type) =>
-                Expression.LessThan(parameter, o),
+            MemberExpression { Type: var t } origin when TypeHelpers.IsValueComparable(t) =>
+                Expression.LessThan(parameter, origin),
 
-            MemberExpression o and { Type.IsEnum: true } =>
-                Expression.LessThan(parameter, o, false, TypeHelpers.EnumLessThan.MakeGenericMethod(o.Type)),
+            MemberExpression { Type: var t } origin when t.IsEnum =>
+                Expression.LessThan(parameter, origin, false, TypeHelpers.EnumLessThan.MakeGenericMethod(t)),
 
-            MemberExpression o when o.Type == typeof(string) =>
+            MemberExpression { Type: var t } origin when t == typeof(string) =>
                 Expression.LessThan(
-                    Expression.Call(parameter, TypeHelpers.StringCompareTo, o),
+                    Expression.Call(parameter, TypeHelpers.StringCompareTo, origin),
                     Expression.Constant(0)),
 
             null when nullOrder is NullOrder.After =>
