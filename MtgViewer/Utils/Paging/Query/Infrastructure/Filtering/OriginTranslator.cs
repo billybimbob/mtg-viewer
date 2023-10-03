@@ -56,7 +56,12 @@ internal sealed class OriginTranslator
 
     public bool IsMemberNull(MemberExpression member)
     {
-        if (_nulls.TryGetValue(member, out bool isNull) && !isNull)
+        if (_nulls.TryGetValue(member, out bool isNull) && isNull is false)
+        {
+            return false;
+        }
+
+        if (_origin.Value is null)
         {
             return false;
         }
