@@ -95,7 +95,7 @@ internal sealed class SeekFilterBuilder
             null when nullOrder is NullOrder.Before =>
                 Expression.NotEqual(parameter, Expression.Constant(null)),
 
-            not null when nullOrder is NullOrder.Before =>
+            not null when nullOrder is NullOrder.After =>
                 Expression.Equal(parameter, Expression.Constant(null)),
 
             _ => null
@@ -107,8 +107,7 @@ internal sealed class SeekFilterBuilder
         return _orderCollection.Translate(parameter) switch
         {
             MemberExpression o and { Type.IsEnum: true } =>
-                Expression.LessThan(
-                    parameter, o, false, TypeHelpers.EnumLessThan(o.Type)),
+                Expression.LessThan(parameter, o, false, TypeHelpers.EnumLessThan(o.Type)),
 
             MemberExpression o when TypeHelpers.IsValueComparable(o.Type) =>
                 Expression.LessThan(parameter, o),

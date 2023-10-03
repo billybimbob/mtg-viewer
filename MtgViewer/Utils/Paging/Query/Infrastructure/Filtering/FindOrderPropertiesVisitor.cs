@@ -50,13 +50,23 @@ internal sealed class FindOrderPropertiesVisitor : ExpressionVisitor
                 ? Ordering.Descending
                 : Ordering.Ascending;
 
-            var nullOrder = ExpressionHelpers.IsDescending(node)
-                ? NullOrder.Before
-                : NullOrder.After;
+            var nullOrder = GetNullOrder(orderMember, node);
 
             properties.Add(new OrderProperty(orderMember, ordering, nullOrder));
         }
 
         return Expression.Constant(properties);
+    }
+
+    private static NullOrder GetNullOrder(MemberExpression orderMember, MethodCallExpression node)
+    {
+        if (orderMember.Type.IsValueType && Nullable.GetUnderlyingType(orderMember.Type) == null)
+        {
+            return NullOrder.None;
+        }
+
+        return ExpressionHelpers.IsDescending(node)
+            ? NullOrder.Before
+            : NullOrder.After;
     }
 }
