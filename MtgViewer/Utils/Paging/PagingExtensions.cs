@@ -83,7 +83,7 @@ public static class PagingExtensions
             .AsSeekable();
     }
 
-    public static ISeekable<TEntity> After<TEntity>(
+    public static IQueryable<TEntity> After<TEntity>(
         this ISeekable<TEntity> source,
         TEntity? origin)
         where TEntity : class
@@ -97,11 +97,10 @@ public static class PagingExtensions
                     method: PagingMethods.AfterReference
                         .MakeGenericMethod(typeof(TEntity)),
                     arg0: source.Expression,
-                    arg1: Expression.Constant(origin, typeof(TEntity))))
-            .AsSeekable();
+                    arg1: Expression.Constant(origin, typeof(TEntity))));
     }
 
-    public static ISeekable<TEntity> After<TEntity>(
+    public static IQueryable<TEntity> After<TEntity>(
         this ISeekable<TEntity> source,
         Expression<Func<TEntity, bool>> originPredicate)
         where TEntity : class
@@ -109,17 +108,14 @@ public static class PagingExtensions
         ArgumentNullException.ThrowIfNull(source);
         ArgumentNullException.ThrowIfNull(originPredicate);
 
-        var seekable = source.AsSeekable();
-
-        return seekable.Provider
+        return source.Provider
             .CreateQuery<TEntity>(
                 Expression.Call(
                     instance: null,
                     method: PagingMethods.AfterPredicate
                         .MakeGenericMethod(typeof(TEntity)),
-                    arg0: seekable.Expression,
-                    arg1: Expression.Quote(originPredicate)))
-            .AsSeekable();
+                    arg0: source.Expression,
+                    arg1: Expression.Quote(originPredicate)));
     }
 
     public static SeekList<TEntity> ToSeekList<TEntity>(this IQueryable<TEntity> source)
