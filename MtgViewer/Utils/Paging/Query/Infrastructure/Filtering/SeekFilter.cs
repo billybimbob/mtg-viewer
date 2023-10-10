@@ -5,32 +5,26 @@ namespace EntityFrameworkCore.Paging.Query.Infrastructure.Filtering;
 internal sealed class SeekFilter
 {
     private readonly EvaluateMemberVisitor _evaluateMember;
-    private readonly Expression _query;
-    private readonly ConstantExpression? _origin;
-    private readonly SeekDirection? _direction;
 
-    public SeekFilter(EvaluateMemberVisitor evaluateMember, Expression query, ConstantExpression? origin, SeekDirection? direction)
+    public SeekFilter(EvaluateMemberVisitor evaluateMember)
     {
         _evaluateMember = evaluateMember;
-        _query = query;
-        _origin = origin;
-        _direction = direction;
     }
 
-    public LambdaExpression? CreateFilter()
+    public LambdaExpression? CreateFilter(Expression query, SeekDirection? direction, ConstantExpression? origin)
     {
-        if (_origin is null)
+        if (direction is not SeekDirection dir)
         {
             return null;
         }
 
-        if (_direction is not SeekDirection dir)
+        if (origin is null)
         {
             return null;
         }
 
-        var orderCollection = SeekOrderCollection.Build(_evaluateMember, _origin, _query);
-        var originTranslator = OriginTranslator.Build(_origin, orderCollection.OrderProperties);
+        var orderCollection = SeekOrderCollection.Build(_evaluateMember, origin, query);
+        var originTranslator = OriginTranslator.Build(origin, orderCollection.OrderProperties);
 
         var builder = new SeekFilterBuilder(orderCollection, originTranslator, dir);
 
