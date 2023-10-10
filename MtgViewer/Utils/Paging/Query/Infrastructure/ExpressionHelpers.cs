@@ -19,11 +19,14 @@ internal static class ExpressionHelpers
             QueryableMethods.OrderBy,
             QueryableMethods.OrderByDescending);
 
-    public static bool IsThenBy(MethodCallExpression call)
+    public static bool IsThenBy(MethodInfo methodInfo)
         => DoesMethodEqual(
-            call.Method,
+            methodInfo,
             QueryableMethods.ThenBy,
             QueryableMethods.ThenByDescending);
+
+    public static bool IsThenBy(MethodCallExpression call)
+        => IsThenBy(call.Method);
 
     public static bool IsOrderedMethod(MethodCallExpression call)
         => DoesMethodEqual(
@@ -34,8 +37,11 @@ internal static class ExpressionHelpers
             QueryableMethods.ThenByDescending);
 
     public static bool IsDescending(MethodCallExpression call)
+        => IsDescending(call.Method);
+
+    public static bool IsDescending(MethodInfo methodInfo)
         => DoesMethodEqual(
-            call.Method,
+            methodInfo,
             QueryableMethods.OrderByDescending,
             QueryableMethods.ThenByDescending);
 

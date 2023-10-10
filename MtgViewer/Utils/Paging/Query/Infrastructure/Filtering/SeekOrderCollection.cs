@@ -15,16 +15,17 @@ internal sealed class SeekOrderCollection
         OrderProperties = orderProperties;
     }
 
-    public static SeekOrderCollection Build(ConstantExpression origin, Expression query)
+    public static SeekOrderCollection Build(EvaluateMemberVisitor evaluateMember, ConstantExpression origin, Expression query)
     {
         var parameter = Expression
             .Parameter(
                 origin.Type,
                 origin.Type.Name[0].ToString().ToLowerInvariant());
 
-        var findOrderProperties = new FindOrderPropertiesVisitor(parameter);
-        var orderProperties = findOrderProperties.ScanProperties(query);
+        var replaceParameter = new ReplaceParameterVisitor(parameter);
+        var findOrderProperties = new FindOrderPropertiesVisitor(replaceParameter, evaluateMember);
 
+        var orderProperties = findOrderProperties.ScanProperties(query);
         var linkedProperties = CreateLinkedProperties(orderProperties);
 
         return new SeekOrderCollection(parameter, linkedProperties);

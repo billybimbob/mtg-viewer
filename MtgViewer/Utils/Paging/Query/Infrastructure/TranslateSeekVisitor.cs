@@ -7,23 +7,32 @@ namespace EntityFrameworkCore.Paging.Query.Infrastructure;
 
 internal sealed class TranslateSeekVisitor : ExpressionVisitor
 {
-    private readonly FindSeekTakeVisitor _findSeekTake;
     private readonly IQueryProvider _provider;
+    private readonly EvaluateMemberVisitor _evaluateMember;
+    private readonly FindSeekTakeVisitor _findSeekTake;
+
     private readonly ConstantExpression? _origin;
     private readonly int? _size;
 
-    public TranslateSeekVisitor(IQueryProvider provider)
+    public TranslateSeekVisitor(IQueryProvider provider, EvaluateMemberVisitor evaluateMember)
     {
-        _findSeekTake = new FindSeekTakeVisitor();
         _provider = provider;
+        _evaluateMember = evaluateMember;
+        _findSeekTake = new FindSeekTakeVisitor();
         _origin = null;
         _size = null;
     }
 
-    private TranslateSeekVisitor(FindSeekTakeVisitor findSeekTake, IQueryProvider provider, ConstantExpression? origin, int? size)
+    private TranslateSeekVisitor(
+        IQueryProvider provider,
+        EvaluateMemberVisitor evaluateMember,
+        FindSeekTakeVisitor findSeekTake,
+        ConstantExpression? origin,
+        int? size)
     {
-        _findSeekTake = findSeekTake;
         _provider = provider;
+        _evaluateMember = evaluateMember;
+        _findSeekTake = findSeekTake;
         _origin = origin;
         _size = size;
     }
@@ -39,14 +48,14 @@ internal sealed class TranslateSeekVisitor : ExpressionVisitor
         if (ExpressionHelpers.IsAfter(node)
             && node.Arguments[1] is ConstantExpression origin)
         {
-            var visitorWithOrigin = new TranslateSeekVisitor(_findSeekTake, _provider, origin, _size);
+            var visitorWithOrigin = new TranslateSeekVisitor(_provider, _evaluateMember, _findSeekTake, origin, _size);
 
             return visitorWithOrigin.Visit(node.Arguments[0]);
         }
 
         if (_findSeekTake.TryGetSeekTake(node, out int size))
         {
-            var visitorWithCount = new TranslateSeekVisitor(_findSeekTake, _provider, _origin, size);
+            var visitorWithCount = new TranslateSeekVisitor(_provider, _evaluateMember, _findSeekTake, _origin, size);
 
             return visitorWithCount.Visit(node.Arguments[0]);
         }
@@ -61,7 +70,7 @@ internal sealed class TranslateSeekVisitor : ExpressionVisitor
 
     private IQueryable ExpandToQuery(Expression source, SeekDirection direction)
     {
-        var seekFilter = new SeekFilter(source, _origin, direction);
+        var seekFilter = new SeekFilter(_evaluateMember, source, _origin, direction);
 
         var filter = seekFilter.CreateFilter();
 

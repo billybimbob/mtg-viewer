@@ -27,13 +27,15 @@ internal sealed class SeekProvider : IAsyncQueryProvider
 
     public SeekProvider(IAsyncQueryProvider source)
     {
+        var evaluateMember = new EvaluateMemberVisitor();
+
         _source = source;
-        _seekTranslator = new TranslateSeekVisitor(source);
+        _seekTranslator = new TranslateSeekVisitor(source, evaluateMember);
 
         _seekParser = new ParseSeekVisitor();
         _lookAhead = new LookAheadVisitor();
 
-        _originQuery = new QueryOriginVisitor(source);
+        _originQuery = new QueryOriginVisitor(source, evaluateMember);
         _findOrdering = new FindOrderingVisitor();
     }
 

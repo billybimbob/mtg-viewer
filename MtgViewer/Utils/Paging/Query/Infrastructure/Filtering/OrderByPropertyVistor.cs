@@ -4,70 +4,59 @@ namespace EntityFrameworkCore.Paging.Query.Infrastructure.Filtering;
 
 internal sealed class OrderByPropertyVisitor : ExpressionVisitor
 {
-    private readonly ParameterExpression _parameter;
+    private readonly FindOrderMemberVisitor _findOrderMember;
 
-    public OrderByPropertyVisitor(ParameterExpression parameter)
+    public OrderByPropertyVisitor(ReplaceParameterVisitor replaceParameter)
     {
-        _parameter = parameter;
+        _findOrderMember = new FindOrderMemberVisitor(replaceParameter);
     }
 
     protected override Expression VisitMethodCall(MethodCallExpression node)
     {
-        if (ExpressionHelpers.IsOrderedMethod(node))
-        {
-            return Visit(node.Arguments[1]);
-        }
-
-        return node;
-    }
-
-    protected override Expression VisitUnary(UnaryExpression node)
-    {
-        if (node.NodeType is not ExpressionType.Quote)
+        if (!ExpressionHelpers.IsOrderedMethod(node))
         {
             return node;
         }
 
-        return Visit(node.Operand);
-    }
-
-    protected override Expression VisitLambda<TFunc>(Expression<TFunc> node)
-    {
-        if (node.Parameters.Count == 1 && node.Parameters[0].Type == _parameter.Type)
-        {
-            return Visit(node.Body);
-        }
-
-        return node;
-    }
-
-    protected override Expression VisitBinary(BinaryExpression node)
-    {
-        if (node.NodeType is not ExpressionType.Equal)
+        if (_findOrderMember.Visit(node.Arguments[1]) is not MemberExpression member)
         {
             return node;
         }
 
-        if (ExpressionHelpers.IsNull(node.Right) && Visit(node.Left) is MemberExpression left)
-        {
-            return left;
-        }
+        var ordering = ExpressionHelpers.IsDescending(node)
+            ? Ordering.Descending
+            : Ordering.Ascending;
 
-        if (ExpressionHelpers.IsNull(node.Left) && Visit(node.Right) is MemberExpression right)
-        {
-            return right;
-        }
-
-        return node;
+        return Expression.Constant(new OrderProperty(member, ordering, NullOrder.None));
     }
 
-    protected override Expression VisitParameter(ParameterExpression node)
+    private sealed class FindOrderMemberVisitor : ExpressionVisitor
     {
-        if (node.Type == _parameter.Type)
+        private readonly ReplaceParameterVisitor _replaceParameter;
+
+        public FindOrderMemberVisitor(ReplaceParameterVisitor replaceParameter)
         {
-            return _parameter;
+            _replaceParameter = replaceParameter;
         }
 
-        return node;
+        protected override Expression VisitUnary(UnaryExpression node)
+        {
+            if (node.NodeType is not ExpressionType.Quote)
+            {
+                return node;
+            }
+
+            return Visit(node.Operand);
+        }
+
+        protected override Expression VisitLambda<TFunc>(Expression<TFunc> node)
+        {
+            if (node.Parameters.Count == 1)
+            {
+                return _replaceParameter.Visit(node.Body);
+            }
+
+            return node;
+        }
     }
 }

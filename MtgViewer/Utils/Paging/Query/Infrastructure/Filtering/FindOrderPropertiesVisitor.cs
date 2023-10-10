@@ -2,16 +2,19 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Reflection;
 
 namespace EntityFrameworkCore.Paging.Query.Infrastructure.Filtering;
 
 internal sealed class FindOrderPropertiesVisitor : ExpressionVisitor
 {
     private readonly OrderByPropertyVisitor _orderByProperty;
+    private readonly NullOrderByPropertyVisitor _nullOrderByProperty;
 
-    public FindOrderPropertiesVisitor(ParameterExpression parameter)
+    public FindOrderPropertiesVisitor(ReplaceParameterVisitor replaceParameter, EvaluateMemberVisitor evaluateMember)
     {
-        _orderByProperty = new OrderByPropertyVisitor(parameter);
+        _orderByProperty = new OrderByPropertyVisitor(replaceParameter);
+        _nullOrderByProperty = new NullOrderByPropertyVisitor(replaceParameter, evaluateMember);
     }
 
     public IReadOnlyList<OrderProperty> ScanProperties(Expression node)
@@ -38,35 +41,42 @@ internal sealed class FindOrderPropertiesVisitor : ExpressionVisitor
 
         var properties = new List<OrderProperty>();
 
-        if (!ExpressionHelpers.IsOrderBy(node)
-            && Visit(parent) is ConstantExpression { Value: IEnumerable<OrderProperty> parentProperties })
+        if (GetOrderProperties(parent, node.Method) is { Count: > 0 } parentProperties)
         {
             properties.AddRange(parentProperties);
         }
 
-        if (_orderByProperty.Visit(node) is MemberExpression orderMember)
+        if (GetOrderProperty(node) is OrderProperty property)
         {
-            var ordering = ExpressionHelpers.IsDescending(node)
-                ? Ordering.Descending
-                : Ordering.Ascending;
-
-            var nullOrder = GetNullOrder(orderMember, node);
-
-            properties.Add(new OrderProperty(orderMember, ordering, nullOrder));
+            properties.Add(property);
         }
 
         return Expression.Constant(properties);
     }
 
-    private static NullOrder GetNullOrder(MemberExpression orderMember, MethodCallExpression node)
+    private IReadOnlyList<OrderProperty> GetOrderProperties(Expression caller, MethodInfo method)
     {
-        if (orderMember.Type.IsValueType && Nullable.GetUnderlyingType(orderMember.Type) == null)
+        if (ExpressionHelpers.IsThenBy(method)
+            && Visit(caller) is ConstantExpression { Value: IReadOnlyList<OrderProperty> properties })
         {
-            return NullOrder.None;
+            return properties;
         }
 
-        return ExpressionHelpers.IsDescending(node)
-            ? NullOrder.Before
-            : NullOrder.After;
+        return Array.Empty<OrderProperty>();
+    }
+
+    private OrderProperty? GetOrderProperty(MethodCallExpression node)
+    {
+        if (_orderByProperty.Visit(node) is ConstantExpression { Value: OrderProperty orderProperty })
+        {
+            return orderProperty;
+        }
+
+        if (_nullOrderByProperty.Visit(node) is ConstantExpression { Value: OrderProperty nullProperty })
+        {
+            return nullProperty;
+        }
+
+        return null;
     }
 }

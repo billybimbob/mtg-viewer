@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
-using System.Reflection;
 
 using Microsoft.EntityFrameworkCore.Query;
 
@@ -14,10 +13,10 @@ internal class QueryOriginVisitor : ExpressionVisitor
     private readonly AfterVisitor _afterParser;
     private readonly OriginIncludesVisitor _originIncludes;
 
-    public QueryOriginVisitor(IQueryProvider provider)
+    public QueryOriginVisitor(IQueryProvider provider, EvaluateMemberVisitor evaluateMember)
     {
         _provider = provider;
-        _afterParser = new AfterVisitor();
+        _afterParser = new AfterVisitor(evaluateMember);
         _originIncludes = new OriginIncludesVisitor();
     }
 
@@ -94,6 +93,13 @@ internal class QueryOriginVisitor : ExpressionVisitor
 
     private sealed class AfterVisitor : ExpressionVisitor
     {
+        private readonly EvaluateMemberVisitor _evaluateMember;
+
+        public AfterVisitor(EvaluateMemberVisitor evaluateMember)
+        {
+            _evaluateMember = evaluateMember;
+        }
+
         protected override Expression VisitUnary(UnaryExpression node)
         {
             if (node.NodeType is ExpressionType.Quote)
@@ -131,12 +137,12 @@ internal class QueryOriginVisitor : ExpressionVisitor
             var left = Visit(node.Left);
             var right = Visit(node.Right);
 
-            if (ExpressionHelpers.IsNull(left) && right is ParameterExpression)
+            if (ExpressionHelpers.IsNull(left) && right is MemberExpression)
             {
                 return left;
             }
 
-            if (left is ParameterExpression && ExpressionHelpers.IsNull(right))
+            if (left is MemberExpression && ExpressionHelpers.IsNull(right))
             {
                 return right;
             }
@@ -145,33 +151,7 @@ internal class QueryOriginVisitor : ExpressionVisitor
         }
 
         protected override Expression VisitMember(MemberExpression node)
-        {
-            var source = Visit(node.Expression);
-
-            if (source is ParameterExpression)
-            {
-                return source;
-            }
-
-            if (source is not ConstantExpression constantSource)
-            {
-                return node;
-            }
-
-            if (node.Member is PropertyInfo prop)
-            {
-                object? evaluatedMember = prop.GetValue(constantSource.Value);
-                return Expression.Constant(evaluatedMember);
-            }
-
-            if (node.Member is FieldInfo field)
-            {
-                object? evaluatedMember = field.GetValue(constantSource.Value);
-                return Expression.Constant(evaluatedMember);
-            }
-
-            return node;
-        }
+            => _evaluateMember.Visit(node);
     }
 
     #endregion
