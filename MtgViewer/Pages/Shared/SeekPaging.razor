@@ -100,8 +100,7 @@
 
         try
         {
-            await PageSelected.InvokeAsync(
-            new SeekRequest<TEntity>(default, SeekDirection.Forward));
+            await PageSelected.InvokeAsync(new SeekRequest<TEntity>(default, SeekDirection.Forward));
         }
         finally
         {
@@ -120,8 +119,7 @@
 
         try
         {
-            await PageSelected.InvokeAsync(
-            new SeekRequest<TEntity>(previous, SeekDirection.Backwards));
+            await PageSelected.InvokeAsync(new SeekRequest<TEntity>(previous, SeekDirection.Backwards));
         }
         finally
         {
@@ -140,8 +138,7 @@
 
         try
         {
-            await PageSelected.InvokeAsync(
-            new SeekRequest<TEntity>(next, SeekDirection.Forward));
+            await PageSelected.InvokeAsync(new SeekRequest<TEntity>(next, SeekDirection.Forward));
         }
         finally
         {
@@ -160,8 +157,7 @@
 
         try
         {
-            await PageSelected.InvokeAsync(
-            new SeekRequest<TEntity>(default, SeekDirection.Backwards));
+            await PageSelected.InvokeAsync(new SeekRequest<TEntity>(default, SeekDirection.Backwards));
         }
         finally
         {
