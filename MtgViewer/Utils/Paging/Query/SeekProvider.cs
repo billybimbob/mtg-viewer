@@ -18,12 +18,9 @@ internal sealed class SeekProvider : IAsyncQueryProvider
 {
     private readonly IAsyncQueryProvider _source;
     private readonly TranslateSeekVisitor _seekTranslator;
-
     private readonly ParseSeekVisitor _seekParser;
     private readonly LookAheadVisitor _lookAhead;
-
     private readonly QueryOriginVisitor _originQuery;
-    private readonly FindOrderingVisitor _findOrdering;
 
     public SeekProvider(IAsyncQueryProvider source)
     {
@@ -31,12 +28,9 @@ internal sealed class SeekProvider : IAsyncQueryProvider
 
         _source = source;
         _seekTranslator = new TranslateSeekVisitor(source, evaluateMember);
-
         _seekParser = new ParseSeekVisitor();
         _lookAhead = new LookAheadVisitor();
-
         _originQuery = new QueryOriginVisitor(source, evaluateMember);
-        _findOrdering = new FindOrderingVisitor();
     }
 
     #region Create Query
@@ -232,7 +226,7 @@ internal sealed class SeekProvider : IAsyncQueryProvider
 
     private object? ExecuteOrigin(Expression source)
     {
-        var originExpression = CreateOriginQuery(source);
+        var originExpression = _originQuery.Visit(source);
 
         if (originExpression is ConstantExpression { Value: var origin })
         {
@@ -246,7 +240,7 @@ internal sealed class SeekProvider : IAsyncQueryProvider
 
     private async Task<object?> ExecuteOriginAsync(Expression source, CancellationToken cancel)
     {
-        var originExpression = CreateOriginQuery(source);
+        var originExpression = _originQuery.Visit(source);
 
         if (originExpression is ConstantExpression { Value: var origin })
         {
@@ -257,17 +251,6 @@ internal sealed class SeekProvider : IAsyncQueryProvider
             .CreateQuery(originExpression)
             .FirstOrDefaultAsync(cancel)
             .ConfigureAwait(false);
-    }
-
-    private Expression CreateOriginQuery(Expression source)
-    {
-        if (_findOrdering.Visit(source) != source)
-        {
-            throw new InvalidOperationException(
-                "No valid Ordering could be found, be sure to not call \"OrderBy\" after \"SeekBy\"");
-        }
-
-        return _originQuery.Visit(source);
     }
 
     #endregion

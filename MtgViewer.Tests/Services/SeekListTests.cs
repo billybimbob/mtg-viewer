@@ -141,19 +141,16 @@ public class SeekListTests : IAsyncLifetime
             .Skip(pageSize)
             .FirstAsync();
 
-        Task FetchSeekListAsync()
-            => cards
-                .SeekBy(SeekDirection.Forward)
-                    .After(origin)
-                    .Take(pageSize)
-                .OrderBy(c => c.Id)
-                .ToSeekListAsync();
-
-        await Assert.ThrowsAsync<InvalidOperationException>(FetchSeekListAsync);
+        var _ = cards
+            .SeekBy(SeekDirection.Forward)
+                .After(origin)
+                .Take(pageSize)
+            .OrderBy(c => c.Id)
+            .ToSeekListAsync();
     }
 
     [Fact]
-    public async Task ToSeekList_OrderByThenByAfterSeek_Throws()
+    public async Task ToSeekList_OrderByThenByAfterSeek_DoesNotThrow()
     {
         const int pageSize = 4;
 
@@ -164,16 +161,13 @@ public class SeekListTests : IAsyncLifetime
             .Skip(pageSize)
             .FirstAsync();
 
-        Task FetchSeekListAsync()
-            => cards
-                .SeekBy(SeekDirection.Forward)
-                    .After(origin)
-                    .Take(pageSize)
-                .OrderBy(c => c.Name)
-                    .ThenBy(c => c.Id)
-                .ToSeekListAsync();
-
-        await Assert.ThrowsAsync<InvalidOperationException>(FetchSeekListAsync);
+        var _ = await cards
+            .SeekBy(SeekDirection.Forward)
+                .After(origin)
+                .Take(pageSize)
+            .OrderBy(c => c.Name)
+                .ThenBy(c => c.Id)
+            .ToSeekListAsync();
     }
 
     [Fact]
