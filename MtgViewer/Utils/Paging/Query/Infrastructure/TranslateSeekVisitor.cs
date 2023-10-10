@@ -65,7 +65,7 @@ internal sealed class TranslateSeekVisitor : ExpressionVisitor
     {
         var direction = _seekParameters.Direction;
         var origin = _seekParameters.Origin;
-        int? size = _seekParameters?.Size;
+        int? size = _seekParameters.Size;
 
         var filter = _seekFilter.CreateFilter(source, direction, origin);
         var query = _provider.CreateQuery(source);
