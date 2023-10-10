@@ -61,8 +61,8 @@ internal class FindOrderingVisitor : ExpressionVisitor
 
         public bool CallsSeekBy(Expression node)
         {
-            var visited = Visit(node);
-            return ExpressionHelpers.IsSeekBy(visited);
+            return Visit(node) is MethodCallExpression call
+                && ExpressionHelpers.IsSeekBy(call);
         }
     }
 }

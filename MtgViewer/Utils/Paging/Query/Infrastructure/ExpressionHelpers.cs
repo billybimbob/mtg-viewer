@@ -36,14 +36,14 @@ internal static class ExpressionHelpers
             QueryableMethods.ThenBy,
             QueryableMethods.ThenByDescending);
 
-    public static bool IsDescending(MethodCallExpression call)
-        => IsDescending(call.Method);
-
     public static bool IsDescending(MethodInfo methodInfo)
         => DoesMethodEqual(
             methodInfo,
             QueryableMethods.OrderByDescending,
             QueryableMethods.ThenByDescending);
+
+    public static bool IsDescending(MethodCallExpression call)
+        => IsDescending(call.Method);
 
     public static bool IsTake(MethodCallExpression call)
         => DoesMethodEqual(
@@ -57,14 +57,8 @@ internal static class ExpressionHelpers
             PagingMethods.AfterReference,
             PagingMethods.AfterPredicate);
 
-    public static bool IsSeekQuery(Expression expression)
-        => expression is MethodCallExpression call && IsSeekQuery(call);
-
     public static bool IsSeekBy(MethodCallExpression call)
         => DoesMethodEqual(call.Method, PagingMethods.SeekBy);
-
-    public static bool IsSeekBy(Expression expression)
-        => expression is MethodCallExpression call && IsSeekBy(call);
 
     public static bool IsAfter(MethodCallExpression call)
         => DoesMethodEqual(

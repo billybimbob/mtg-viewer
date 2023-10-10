@@ -12,7 +12,7 @@ internal sealed class FindSeekTakeVisitor : ExpressionVisitor
             return node;
         }
 
-        if (Visit(node.Arguments.ElementAtOrDefault(0)) is not Expression parent)
+        if (Visit(node.Arguments.ElementAtOrDefault(0)) is not MethodCallExpression parent)
         {
             return node;
         }
@@ -27,8 +27,6 @@ internal sealed class FindSeekTakeVisitor : ExpressionVisitor
 
     public bool TryGetSeekTake(Expression node, out int size)
     {
-        size = 0;
-
         if (Visit(node) is MethodCallExpression call
             && call == node
             && call.Arguments[1] is ConstantExpression { Value: int count })
@@ -36,7 +34,11 @@ internal sealed class FindSeekTakeVisitor : ExpressionVisitor
             size = count;
             return true;
         }
+        else
+        {
+            size = 0;
+            return false;
+        }
 
-        return false;
     }
 }
