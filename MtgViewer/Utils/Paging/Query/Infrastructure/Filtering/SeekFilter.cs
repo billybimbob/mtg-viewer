@@ -4,11 +4,11 @@ namespace EntityFrameworkCore.Paging.Query.Infrastructure.Filtering;
 
 internal sealed class SeekFilter
 {
-    private readonly EvaluateMemberVisitor _evaluateMember;
+    private readonly SeekOrderCollectionBuilder _seekCollectionBuilder;
 
     public SeekFilter(EvaluateMemberVisitor evaluateMember)
     {
-        _evaluateMember = evaluateMember;
+        _seekCollectionBuilder = new SeekOrderCollectionBuilder(evaluateMember);
     }
 
     public LambdaExpression? CreateFilter(Expression query, SeekDirection direction, ConstantExpression origin)
@@ -18,10 +18,12 @@ internal sealed class SeekFilter
             return null;
         }
 
-        var orderCollection = SeekOrderCollection.Build(_evaluateMember, origin, query);
-        var originTranslator = OriginTranslator.Build(origin, orderCollection.OrderProperties);
+        var originTranslatorBuilder = new OriginTranslatorBuilder(origin);
 
-        var builder = new SeekFilterBuilder(orderCollection, originTranslator, direction);
+        var orderCollection = _seekCollectionBuilder.Build(origin, query);
+        var originTranslator = originTranslatorBuilder.Build(orderCollection);
+
+        var builder = new SeekFilterExpressionBuilder(orderCollection, originTranslator, direction);
 
         return builder.Build();
     }

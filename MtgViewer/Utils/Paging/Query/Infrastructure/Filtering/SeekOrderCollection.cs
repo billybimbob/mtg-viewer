@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Linq.Expressions;
 
@@ -9,47 +8,9 @@ internal sealed class SeekOrderCollection
     public ParameterExpression Parameter { get; }
     public IReadOnlyList<LinkedOrderProperty> OrderProperties { get; }
 
-    private SeekOrderCollection(ParameterExpression parameter, IReadOnlyList<LinkedOrderProperty> orderProperties)
+    public SeekOrderCollection(ParameterExpression parameter, IReadOnlyList<LinkedOrderProperty> orderProperties)
     {
         Parameter = parameter;
         OrderProperties = orderProperties;
-    }
-
-    public static SeekOrderCollection Build(EvaluateMemberVisitor evaluateMember, ConstantExpression origin, Expression query)
-    {
-        var parameter = Expression
-            .Parameter(
-                origin.Type,
-                origin.Type.Name[0].ToString().ToLowerInvariant());
-
-        var replaceParameter = new ReplaceParameterVisitor(parameter);
-        var findOrderProperties = new FindOrderPropertiesVisitor(replaceParameter, evaluateMember);
-
-        var orderProperties = findOrderProperties.ScanProperties(query);
-        var linkedProperties = CreateLinkedProperties(orderProperties);
-
-        return new SeekOrderCollection(parameter, linkedProperties);
-    }
-
-    private static IReadOnlyList<LinkedOrderProperty> CreateLinkedProperties(IReadOnlyList<OrderProperty> sourceProperties)
-    {
-        if (sourceProperties.Count is 0)
-        {
-            return Array.Empty<LinkedOrderProperty>();
-        }
-
-        var linkProperties = new List<LinkedOrderProperty>(sourceProperties.Count);
-
-        LinkedOrderProperty? previousLink = null;
-
-        foreach (var property in sourceProperties)
-        {
-            var currentLink = new LinkedOrderProperty(property, previousLink);
-
-            linkProperties.Add(currentLink);
-            previousLink = currentLink;
-        }
-
-        return linkProperties;
     }
 }

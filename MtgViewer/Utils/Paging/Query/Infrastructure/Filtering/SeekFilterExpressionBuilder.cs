@@ -5,13 +5,13 @@ using System.Linq.Expressions;
 
 namespace EntityFrameworkCore.Paging.Query.Infrastructure.Filtering;
 
-internal sealed class SeekFilterBuilder
+internal sealed class SeekFilterExpressionBuilder
 {
     private readonly SeekOrderCollection _orderCollection;
     private readonly OriginTranslator _originTranslator;
     private readonly SeekDirection _direction;
 
-    public SeekFilterBuilder(SeekOrderCollection orderCollection, OriginTranslator originTranslator, SeekDirection direction)
+    public SeekFilterExpressionBuilder(SeekOrderCollection orderCollection, OriginTranslator originTranslator, SeekDirection direction)
     {
         _orderCollection = orderCollection;
         _originTranslator = originTranslator;
