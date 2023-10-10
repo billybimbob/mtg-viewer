@@ -7,11 +7,16 @@ namespace EntityFrameworkCore.Paging.Query;
 
 internal sealed class SeekExpression : Expression
 {
-    internal SeekExpression(ConstantExpression origin, SeekDirection direction, int? size)
+    public SeekExpression(ConstantExpression origin, SeekDirection direction, int? size)
     {
         Origin = origin;
         Direction = direction;
         Size = size;
+    }
+
+    public SeekExpression()
+        : this(Constant(null), SeekDirection.Forward, null)
+    {
     }
 
     public ConstantExpression Origin { get; }
@@ -47,4 +52,13 @@ internal sealed class SeekExpression : Expression
 
         return new SeekExpression(origin, direction, size);
     }
+
+    public SeekExpression Update(ConstantExpression origin)
+        => Update(origin, Direction, Size);
+
+    public SeekExpression Update(SeekDirection direction)
+        => Update(Origin, direction, Size);
+
+    public SeekExpression Update(int? size)
+        => Update(Origin, Direction, size);
 }

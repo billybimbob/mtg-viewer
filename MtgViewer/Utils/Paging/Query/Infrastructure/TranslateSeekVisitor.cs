@@ -10,21 +10,22 @@ internal sealed class TranslateSeekVisitor : ExpressionVisitor
     private readonly IQueryProvider _provider;
     private readonly SeekFilter _seekFilter;
     private readonly FindSeekTakeVisitor _findSeekTake;
-    private readonly ConstantExpression? _origin;
-    private readonly int? _size;
+    private readonly SeekExpression _seekParameters;
 
     public TranslateSeekVisitor(IQueryProvider provider, EvaluateMemberVisitor evaluateMember)
-        : this(provider, new SeekFilter(evaluateMember), new FindSeekTakeVisitor(), null, null)
-    {
-    }
-
-    private TranslateSeekVisitor(IQueryProvider provider, SeekFilter seekFilter, FindSeekTakeVisitor findSeekTake, ConstantExpression? origin, int? size)
     {
         _provider = provider;
-        _seekFilter = seekFilter;
-        _findSeekTake = findSeekTake;
-        _origin = origin;
-        _size = size;
+        _seekFilter = new SeekFilter(evaluateMember);
+        _findSeekTake = new FindSeekTakeVisitor();
+        _seekParameters = new SeekExpression();
+    }
+
+    private TranslateSeekVisitor(TranslateSeekVisitor copy, SeekExpression seekParameters)
+    {
+        _provider = copy._provider;
+        _seekFilter = copy._seekFilter;
+        _findSeekTake = copy._findSeekTake;
+        _seekParameters = seekParameters;
     }
 
     protected override Expression VisitMethodCall(MethodCallExpression node)
@@ -32,22 +33,24 @@ internal sealed class TranslateSeekVisitor : ExpressionVisitor
         if (ExpressionHelpers.IsSeekBy(node)
             && node.Arguments[1] is ConstantExpression { Value: SeekDirection direction })
         {
-            return ExpandToQuery(node.Arguments[0], direction).Expression;
+            var visitorWithDirection = new TranslateSeekVisitor(this, _seekParameters.Update(direction));
+
+            return visitorWithDirection.ExpandToQuery(node.Arguments[0]).Expression;
         }
 
         if (ExpressionHelpers.IsAfter(node)
             && node.Arguments[1] is ConstantExpression origin)
         {
-            var visitorWithOrigin = new TranslateSeekVisitor(_provider, _seekFilter, _findSeekTake, origin, _size);
+            var visitorWithOrigin = new TranslateSeekVisitor(this, _seekParameters.Update(origin));
 
             return visitorWithOrigin.Visit(node.Arguments[0]);
         }
 
         if (_findSeekTake.TryGetSeekTake(node, out int size))
         {
-            var visitorWithCount = new TranslateSeekVisitor(_provider, _seekFilter, _findSeekTake, _origin, size);
+            var visitorWithSize = new TranslateSeekVisitor(this, _seekParameters.Update(size));
 
-            return visitorWithCount.Visit(node.Arguments[0]);
+            return visitorWithSize.Visit(node.Arguments[0]);
         }
 
         if (ExpressionHelpers.IsToSeekList(node))
@@ -58,21 +61,25 @@ internal sealed class TranslateSeekVisitor : ExpressionVisitor
         return base.VisitMethodCall(node);
     }
 
-    private IQueryable ExpandToQuery(Expression source, SeekDirection direction)
+    private IQueryable ExpandToQuery(Expression source)
     {
-        var filter = _seekFilter.CreateFilter(source, direction, _origin);
+        var direction = _seekParameters.Direction;
+        var origin = _seekParameters.Origin;
+        int? size = _seekParameters?.Size;
+
+        var filter = _seekFilter.CreateFilter(source, direction, origin);
         var query = _provider.CreateQuery(source);
 
-        return (direction, filter, _size) switch
+        return (direction, filter, size) switch
         {
-            (SeekDirection.Forward, not null, int size) => query
+            (SeekDirection.Forward, not null, int count) => query
                 .Where(filter)
-                .Take(size),
+                .Take(count),
 
-            (SeekDirection.Backwards, not null, int size) => query
+            (SeekDirection.Backwards, not null, int count) => query
                 .Reverse()
                 .Where(filter)
-                .Take(size)
+                .Take(count)
                 .Reverse(),
 
             (SeekDirection.Forward, not null, null) => query
@@ -83,12 +90,12 @@ internal sealed class TranslateSeekVisitor : ExpressionVisitor
                 .Where(filter)
                 .Reverse(),
 
-            (SeekDirection.Forward, null, int size) => query
-                .Take(size),
+            (SeekDirection.Forward, null, int count) => query
+                .Take(count),
 
-            (SeekDirection.Backwards, null, int size) => query
+            (SeekDirection.Backwards, null, int count) => query
                 .Reverse()
-                .Take(size)
+                .Take(count)
                 .Reverse(),
 
             _ => query
