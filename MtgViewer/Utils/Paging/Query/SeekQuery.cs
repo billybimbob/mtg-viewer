@@ -9,10 +9,18 @@ using Microsoft.EntityFrameworkCore.Query;
 
 namespace EntityFrameworkCore.Paging.Query;
 
-internal class SeekQuery<TSource> : ISeekable<TSource>, IOrderedQueryable<TSource>, IAsyncEnumerable<TSource>
+internal class SeekQuery<T> : ISeekable<T>, IOrderedQueryable<T>, IAsyncEnumerable<T>
 {
     public SeekQuery(SeekProvider provider, Expression expression)
     {
+        ArgumentNullException.ThrowIfNull(provider);
+        ArgumentNullException.ThrowIfNull(expression);
+
+        if (!expression.Type.IsAssignableTo(typeof(IQueryable<T>)))
+        {
+            throw new ArgumentException("Expression must be a query", nameof(expression));
+        }
+
         AsyncProvider = provider;
         Expression = expression;
     }
@@ -23,20 +31,20 @@ internal class SeekQuery<TSource> : ISeekable<TSource>, IOrderedQueryable<TSourc
 
     public IQueryProvider Provider => AsyncProvider;
 
-    public Type ElementType => typeof(TSource);
+    public Type ElementType => typeof(T);
 
     IEnumerator IEnumerable.GetEnumerator()
         => ((IEnumerable)Provider.Execute(Expression)!)
             .GetEnumerator();
 
-    public IEnumerator<TSource> GetEnumerator()
+    public IEnumerator<T> GetEnumerator()
         => Provider
-            .Execute<IEnumerable<TSource>>(Expression)
+            .Execute<IEnumerable<T>>(Expression)
             .GetEnumerator();
 
-    public IAsyncEnumerator<TSource> GetAsyncEnumerator(CancellationToken cancellationToken)
+    public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken)
         => AsyncProvider
-            .ExecuteAsync<IAsyncEnumerable<TSource>>(Expression, cancellationToken)
+            .ExecuteAsync<IAsyncEnumerable<T>>(Expression, cancellationToken)
             .GetAsyncEnumerator(cancellationToken);
 }
 
@@ -44,17 +52,35 @@ internal static class SeekQuery
 {
     public static IQueryable Create(SeekProvider provider, Expression expression)
     {
-        if (!expression.Type.IsAssignableTo(typeof(IQueryable)))
-        {
-            throw new ArgumentException("Expression must be a query", nameof(expression));
-        }
-
-        var elementType = expression.Type.GenericTypeArguments.ElementAtOrDefault(0)
-            ?? throw new ArgumentException("Expression must be strongly typed", nameof(expression));
+        var elementType = FindElementType(expression.Type)
+            ?? throw new ArgumentException("Expression must be a query", nameof(expression));
 
         var seekQueryType = typeof(SeekQuery<>).MakeGenericType(elementType);
 
         return (IQueryable)Activator
             .CreateInstance(seekQueryType, provider, expression)!;
+    }
+
+    private static Type? FindElementType(Type queryType)
+    {
+        if (!queryType.IsAssignableTo(typeof(IQueryable)))
+        {
+            return null;
+        }
+
+        if (queryType.IsGenericTypeDefinition)
+        {
+            return null;
+        }
+
+        foreach (var typeArg in queryType.GenericTypeArguments)
+        {
+            if (queryType.IsAssignableTo(typeof(IQueryable<>).MakeGenericType(typeArg)))
+            {
+                return typeArg;
+            }
+        }
+
+        return null;
     }
 }
