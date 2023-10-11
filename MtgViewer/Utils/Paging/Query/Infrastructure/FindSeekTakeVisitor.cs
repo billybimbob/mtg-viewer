@@ -39,6 +39,5 @@ internal sealed class FindSeekTakeVisitor : ExpressionVisitor
             size = 0;
             return false;
         }
-
     }
 }
