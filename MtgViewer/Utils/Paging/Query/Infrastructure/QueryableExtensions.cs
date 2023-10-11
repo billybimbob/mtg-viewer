@@ -90,18 +90,18 @@ internal static class QueryableExtensions
                 .MakeGenericMethod(source.ElementType),
             arguments: source.Expression);
 
-        var execute = (Task?)typeof(IAsyncQueryProvider)
+        var execute = typeof(IAsyncQueryProvider)
             .GetTypeInfo()
             .GetMethod(nameof(IAsyncQueryProvider.ExecuteAsync))?
             .MakeGenericMethod(resultTask)
-            .Invoke(asyncProvider, new object[] { call, cancellationToken });
+            .Invoke(asyncProvider, new object[] { call, cancellationToken }) as Task;
 
         if (execute is null)
         {
             return null;
         }
 
-        await execute;
+        await execute.ConfigureAwait(false);
 
         return resultTask
             .GetTypeInfo()
