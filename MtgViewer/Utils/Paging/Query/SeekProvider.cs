@@ -17,20 +17,20 @@ namespace EntityFrameworkCore.Paging.Query;
 internal sealed class SeekProvider : IAsyncQueryProvider
 {
     private readonly IAsyncQueryProvider _source;
-    private readonly TranslateSeekVisitor _seekTranslator;
-    private readonly ParseSeekVisitor _seekParser;
     private readonly LookAheadVisitor _lookAhead;
+    private readonly ParseSeekVisitor _seekParser;
     private readonly QueryOriginVisitor _originQuery;
+    private readonly TranslateSeekVisitor _seekTranslator;
 
     public SeekProvider(IAsyncQueryProvider source)
     {
         var evaluateMember = new EvaluateMemberVisitor();
 
         _source = source;
-        _seekTranslator = new TranslateSeekVisitor(source, evaluateMember);
-        _seekParser = new ParseSeekVisitor();
         _lookAhead = new LookAheadVisitor();
+        _seekParser = new ParseSeekVisitor();
         _originQuery = new QueryOriginVisitor(source, evaluateMember);
+        _seekTranslator = new TranslateSeekVisitor(source, evaluateMember);
     }
 
     #region Create Query
