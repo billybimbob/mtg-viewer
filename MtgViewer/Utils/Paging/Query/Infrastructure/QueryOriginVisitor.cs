@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 
@@ -10,14 +9,14 @@ namespace EntityFrameworkCore.Paging.Query.Infrastructure;
 internal class QueryOriginVisitor : ExpressionVisitor
 {
     private readonly IQueryProvider _provider;
-    private readonly AfterVisitor _afterParser;
-    private readonly OriginIncludesVisitor _originIncludes;
+    private readonly ParseAfterVisitor _afterParser;
+    private readonly FindIncludesVisitor _includesFinder;
 
     public QueryOriginVisitor(IQueryProvider provider, EvaluateMemberVisitor evaluateMember)
     {
         _provider = provider;
-        _afterParser = new AfterVisitor(evaluateMember);
-        _originIncludes = new OriginIncludesVisitor();
+        _afterParser = new ParseAfterVisitor(evaluateMember);
+        _includesFinder = new FindIncludesVisitor();
     }
 
     protected override Expression VisitMethodCall(MethodCallExpression node)
@@ -71,7 +70,7 @@ internal class QueryOriginVisitor : ExpressionVisitor
             return query;
         }
 
-        foreach (string include in ScanIncludes(query.Expression))
+        foreach (string include in _includesFinder.Scan(query.Expression))
         {
             query = query.Include(include);
         }
@@ -79,23 +78,13 @@ internal class QueryOriginVisitor : ExpressionVisitor
         return query.AsNoTracking();
     }
 
-    private IEnumerable<string> ScanIncludes(Expression expression)
-    {
-        if (_originIncludes.Visit(expression) is not ConstantExpression { Value: IEnumerable<string> includes })
-        {
-            includes = Array.Empty<string>();
-        }
-
-        return includes;
-    }
-
     #region After Translation
 
-    private sealed class AfterVisitor : ExpressionVisitor
+    private sealed class ParseAfterVisitor : ExpressionVisitor
     {
         private readonly EvaluateMemberVisitor _evaluateMember;
 
-        public AfterVisitor(EvaluateMemberVisitor evaluateMember)
+        public ParseAfterVisitor(EvaluateMemberVisitor evaluateMember)
         {
             _evaluateMember = evaluateMember;
         }

@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Linq.Expressions;
 
@@ -9,37 +8,54 @@ using Microsoft.EntityFrameworkCore.Query;
 
 namespace EntityFrameworkCore.Paging.Query.Infrastructure;
 
-internal sealed class OriginIncludesVisitor : ExpressionVisitor
+internal sealed class FindIncludesVisitor : ExpressionVisitor
 {
-    [return: NotNullIfNotNull("node")]
-    public new Expression? Visit(Expression? node)
-    {
-        var possibleRoot = base.Visit(node);
+    private readonly FindQueryRootVisitor _findQueryRoot;
 
-        if (possibleRoot is QueryRootExpression queryRoot)
+    public FindIncludesVisitor()
+    {
+        _findQueryRoot = new FindQueryRootVisitor();
+    }
+
+    public IReadOnlyCollection<string> Scan(Expression expression)
+    {
+        if (Visit(expression) is not ConstantExpression { Value: IReadOnlyCollection<string> includes })
         {
-            var scanner = new FindIncludesVisitor(queryRoot.EntityType);
-            return scanner.Visit(node);
+            includes = Array.Empty<string>();
         }
 
-        return possibleRoot;
+        return includes;
     }
 
     protected override Expression VisitMethodCall(MethodCallExpression node)
     {
-        if (base.Visit(node.Arguments.ElementAtOrDefault(0)) is Expression parent)
+        if (_findQueryRoot.Visit(node) is QueryRootExpression queryRoot)
         {
-            return parent;
+            var scanner = new FindEntityIncludesVisitor(queryRoot.EntityType);
+            return scanner.Visit(node);
         }
 
         return node;
     }
 
-    private sealed class FindIncludesVisitor : ExpressionVisitor
+    private sealed class FindQueryRootVisitor : ExpressionVisitor
+    {
+        protected override Expression VisitMethodCall(MethodCallExpression node)
+        {
+            if (Visit(node.Arguments.ElementAtOrDefault(0)) is Expression parent)
+            {
+                return parent;
+            }
+
+            return node;
+        }
+    }
+
+    private sealed class FindEntityIncludesVisitor : ExpressionVisitor
     {
         private readonly OrderByIncludeVisitor _orderIncludes;
 
-        public FindIncludesVisitor(IReadOnlyEntityType entityType)
+        public FindEntityIncludesVisitor(IReadOnlyEntityType entityType)
         {
             _orderIncludes = new OrderByIncludeVisitor(entityType);
         }
@@ -58,14 +74,15 @@ internal sealed class OriginIncludesVisitor : ExpressionVisitor
 
             var includes = new HashSet<string>();
 
-            if (Visit(parent) is ConstantExpression { Value: IEnumerable<string> parentIncludes })
+            if (!ExpressionHelpers.IsOrderBy(node)
+                && Visit(parent) is ConstantExpression { Value: IReadOnlyCollection<string> parentIncludes })
             {
+                const StringComparison ordinal = StringComparison.Ordinal;
+
                 includes.UnionWith(parentIncludes);
+                includes.RemoveWhere(s => includeChain.StartsWith(s, ordinal));
             }
 
-            const StringComparison ordinal = StringComparison.Ordinal;
-
-            includes.RemoveWhere(s => includeChain.StartsWith(s, ordinal));
             includes.Add(includeChain);
 
             return Expression.Constant(includes);

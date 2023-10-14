@@ -53,7 +53,8 @@ internal sealed class SeekProvider : IAsyncQueryProvider
         if (ExpressionHelpers.FindSeekListEntity(expression) is Type seekListEntity)
         {
             return Invoke(
-                ExecuteSeekListMethod.MakeGenericMethod(seekListEntity),
+                ExecuteSeekListMethod
+                    .MakeGenericMethod(seekListEntity),
                 expression);
         }
 
@@ -238,7 +239,6 @@ internal sealed class SeekProvider : IAsyncQueryProvider
     private static Expression ChangeOrigin(Expression expression, object? origin)
     {
         var changeOrigin = new ChangeOriginVisitor(origin);
-
         return changeOrigin.Visit(expression);
     }
 
