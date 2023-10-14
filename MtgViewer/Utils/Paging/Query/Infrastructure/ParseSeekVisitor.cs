@@ -5,11 +5,11 @@ namespace EntityFrameworkCore.Paging.Query.Infrastructure;
 
 internal sealed class ParseSeekVisitor : ExpressionVisitor
 {
-    private readonly FindSeekTakeVisitor _findSeekTake;
+    private readonly ParseSeekTakeVisitor _seekTakeParser;
 
     public ParseSeekVisitor()
     {
-        _findSeekTake = new FindSeekTakeVisitor();
+        _seekTakeParser = new ParseSeekTakeVisitor();
     }
 
     protected override Expression VisitMethodCall(MethodCallExpression node)
@@ -33,7 +33,7 @@ internal sealed class ParseSeekVisitor : ExpressionVisitor
             return seek.Update(origin);
         }
 
-        if (_findSeekTake.TryGetSeekTake(node, out int size))
+        if (_seekTakeParser.TryParse(node, out int size))
         {
             return seek.Update(size);
         }

@@ -42,9 +42,9 @@ internal sealed class FindIncludesVisitor : ExpressionVisitor
     {
         protected override Expression VisitMethodCall(MethodCallExpression node)
         {
-            if (Visit(node.Arguments.ElementAtOrDefault(0)) is Expression parent)
+            if (node.Arguments.ElementAtOrDefault(0) is Expression parent)
             {
-                return parent;
+                return Visit(parent);
             }
 
             return node;

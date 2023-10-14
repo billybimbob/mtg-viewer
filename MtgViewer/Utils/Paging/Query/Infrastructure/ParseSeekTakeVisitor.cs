@@ -3,7 +3,7 @@ using System.Linq.Expressions;
 
 namespace EntityFrameworkCore.Paging.Query.Infrastructure;
 
-internal sealed class FindSeekTakeVisitor : ExpressionVisitor
+internal sealed class ParseSeekTakeVisitor : ExpressionVisitor
 {
     protected override Expression VisitMethodCall(MethodCallExpression node)
     {
@@ -17,7 +17,7 @@ internal sealed class FindSeekTakeVisitor : ExpressionVisitor
         return node;
     }
 
-    public bool TryGetSeekTake(Expression node, out int size)
+    public bool TryParse(Expression node, out int size)
     {
         if (Visit(node) is ConstantExpression { Value: int count })
         {

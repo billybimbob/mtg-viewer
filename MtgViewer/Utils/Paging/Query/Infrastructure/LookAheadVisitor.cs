@@ -5,16 +5,16 @@ namespace EntityFrameworkCore.Paging.Query.Infrastructure;
 
 internal sealed class LookAheadVisitor : ExpressionVisitor
 {
-    private readonly FindSeekTakeVisitor _findSeekTake;
+    private readonly ParseSeekTakeVisitor _seekTakeParser;
 
     public LookAheadVisitor()
     {
-        _findSeekTake = new FindSeekTakeVisitor();
+        _seekTakeParser = new ParseSeekTakeVisitor();
     }
 
     protected override Expression VisitMethodCall(MethodCallExpression node)
     {
-        if (_findSeekTake.TryGetSeekTake(node, out int size))
+        if (_seekTakeParser.TryParse(node, out int size))
         {
             return node.Update(
                 node.Object,

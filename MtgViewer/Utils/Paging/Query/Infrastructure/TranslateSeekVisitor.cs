@@ -9,14 +9,14 @@ internal sealed class TranslateSeekVisitor : ExpressionVisitor
 {
     private readonly IQueryProvider _provider;
     private readonly SeekFilter _seekFilter;
-    private readonly FindSeekTakeVisitor _findSeekTake;
+    private readonly ParseSeekTakeVisitor _seekTakeParser;
     private readonly SeekQueryExpression _seekParameters;
 
     public TranslateSeekVisitor(IQueryProvider provider, EvaluateMemberVisitor evaluateMember)
     {
         _provider = provider;
         _seekFilter = new SeekFilter(evaluateMember);
-        _findSeekTake = new FindSeekTakeVisitor();
+        _seekTakeParser = new ParseSeekTakeVisitor();
         _seekParameters = new SeekQueryExpression();
     }
 
@@ -24,7 +24,7 @@ internal sealed class TranslateSeekVisitor : ExpressionVisitor
     {
         _provider = copy._provider;
         _seekFilter = copy._seekFilter;
-        _findSeekTake = copy._findSeekTake;
+        _seekTakeParser = copy._seekTakeParser;
         _seekParameters = seekParameters;
     }
 
@@ -46,7 +46,7 @@ internal sealed class TranslateSeekVisitor : ExpressionVisitor
             return visitorWithOrigin.Visit(node.Arguments[0]);
         }
 
-        if (_findSeekTake.TryGetSeekTake(node, out int size))
+        if (_seekTakeParser.TryParse(node, out int size))
         {
             var visitorWithSize = new TranslateSeekVisitor(this, _seekParameters.Update(size));
 

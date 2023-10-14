@@ -31,12 +31,12 @@ internal class QueryOriginVisitor : ExpressionVisitor
             return node.Arguments[0];
         }
 
-        if (Visit(node.Arguments.ElementAtOrDefault(0)) is not Expression parent)
+        if (node.Arguments.ElementAtOrDefault(0) is Expression parent)
         {
-            return node;
+            return Visit(parent);
         }
 
-        return parent;
+        return node;
     }
 
     private Expression BuildAfterExpression(MethodCallExpression node)
