@@ -10,17 +10,17 @@ internal sealed class TranslateSeekVisitor : ExpressionVisitor
     private readonly IQueryProvider _provider;
     private readonly SeekFilter _seekFilter;
     private readonly FindSeekTakeVisitor _findSeekTake;
-    private readonly SeekExpression _seekParameters;
+    private readonly SeekQueryExpression _seekParameters;
 
     public TranslateSeekVisitor(IQueryProvider provider, EvaluateMemberVisitor evaluateMember)
     {
         _provider = provider;
         _seekFilter = new SeekFilter(evaluateMember);
         _findSeekTake = new FindSeekTakeVisitor();
-        _seekParameters = new SeekExpression();
+        _seekParameters = new SeekQueryExpression();
     }
 
-    private TranslateSeekVisitor(TranslateSeekVisitor copy, SeekExpression seekParameters)
+    private TranslateSeekVisitor(TranslateSeekVisitor copy, SeekQueryExpression seekParameters)
     {
         _provider = copy._provider;
         _seekFilter = copy._seekFilter;

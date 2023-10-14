@@ -158,7 +158,7 @@ internal sealed class SeekProvider : IAsyncQueryProvider
             .CreateQuery<TEntity>(_seekTranslator.Visit(changedSeekList))
             .ToList();
 
-        var seek = _seekParser.Visit(changedSeekList) as SeekExpression;
+        var seek = _seekParser.Visit(changedSeekList) as SeekQueryExpression;
 
         return CreateSeekList(items, seek);
     }
@@ -177,12 +177,12 @@ internal sealed class SeekProvider : IAsyncQueryProvider
             .ToListAsync(cancel)
             .ConfigureAwait(false);
 
-        var seek = _seekParser.Visit(changedSeekList) as SeekExpression;
+        var seek = _seekParser.Visit(changedSeekList) as SeekQueryExpression;
 
         return CreateSeekList(items, seek);
     }
 
-    private static SeekList<TEntity> CreateSeekList<TEntity>(List<TEntity> items, SeekExpression? seek)
+    private static SeekList<TEntity> CreateSeekList<TEntity>(List<TEntity> items, SeekQueryExpression? seek)
         where TEntity : class
     {
         if (seek is null)

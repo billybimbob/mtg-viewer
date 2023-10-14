@@ -19,10 +19,10 @@ internal sealed class ParseSeekVisitor : ExpressionVisitor
         {
             var entityType = node.Method.GetGenericArguments()[0];
 
-            return new SeekExpression(direction, Expression.Constant(null, entityType));
+            return new SeekQueryExpression(direction, Expression.Constant(null, entityType));
         }
 
-        if (Visit(node.Arguments.ElementAtOrDefault(0)) is not SeekExpression seek)
+        if (Visit(node.Arguments.ElementAtOrDefault(0)) is not SeekQueryExpression seek)
         {
             return node;
         }
