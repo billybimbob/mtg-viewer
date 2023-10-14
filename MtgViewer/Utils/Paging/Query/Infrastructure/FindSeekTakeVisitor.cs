@@ -7,29 +7,19 @@ internal sealed class FindSeekTakeVisitor : ExpressionVisitor
 {
     protected override Expression VisitMethodCall(MethodCallExpression node)
     {
-        if (ExpressionHelpers.IsSeekQuery(node))
+        if (ExpressionHelpers.IsTake(node)
+            && node.Arguments.ElementAtOrDefault(0) is MethodCallExpression parent
+            && ExpressionHelpers.IsSeekQuery(parent))
         {
-            return node;
+            return node.Arguments[1];
         }
 
-        if (Visit(node.Arguments.ElementAtOrDefault(0)) is not MethodCallExpression parent)
-        {
-            return node;
-        }
-
-        if (ExpressionHelpers.IsTake(node) && ExpressionHelpers.IsSeekQuery(parent))
-        {
-            return node;
-        }
-
-        return parent;
+        return node;
     }
 
     public bool TryGetSeekTake(Expression node, out int size)
     {
-        if (Visit(node) is MethodCallExpression call
-            && call == node
-            && call.Arguments[1] is ConstantExpression { Value: int count })
+        if (Visit(node) is ConstantExpression { Value: int count })
         {
             size = count;
             return true;
