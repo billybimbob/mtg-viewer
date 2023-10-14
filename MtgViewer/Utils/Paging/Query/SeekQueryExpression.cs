@@ -5,10 +5,12 @@ using Microsoft.EntityFrameworkCore.Query;
 
 namespace EntityFrameworkCore.Paging.Query;
 
-internal sealed class SeekQueryExpression : Expression
+internal sealed class SeekQueryExpression : Expression, IEquatable<Expression>
 {
     public SeekQueryExpression(SeekDirection direction, ConstantExpression origin, int? size = null)
     {
+        ArgumentNullException.ThrowIfNull(origin);
+
         Type = typeof(ISeekable<>).MakeGenericType(origin.Type);
         Origin = origin;
         Direction = direction;
@@ -62,4 +64,10 @@ internal sealed class SeekQueryExpression : Expression
 
     public SeekQueryExpression Update(int? size)
         => Update(Direction, Origin, size);
+
+    public bool Equals(Expression? other)
+        => other is SeekQueryExpression otherSeek
+            && ExpressionEqualityComparer.Instance.Equals(otherSeek.Origin, Origin)
+            && otherSeek.Direction == Direction
+            && otherSeek.Size == Size;
 }

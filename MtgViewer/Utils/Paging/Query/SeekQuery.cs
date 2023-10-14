@@ -5,6 +5,8 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Threading;
 
+using EntityFrameworkCore.Paging.Query.Infrastructure;
+
 using Microsoft.EntityFrameworkCore.Query;
 
 namespace EntityFrameworkCore.Paging.Query;
@@ -54,35 +56,12 @@ internal static class SeekQuery
 {
     public static IQueryable Create(SeekProvider provider, Expression expression)
     {
-        var elementType = FindElementType(expression.Type)
+        var elementType = QueryTypeHelpers.FindElementType(expression)
             ?? throw new ArgumentException("Expression must be a query", nameof(expression));
 
         var seekQueryType = typeof(SeekQuery<>).MakeGenericType(elementType);
 
         return (IQueryable)Activator
             .CreateInstance(seekQueryType, provider, expression)!;
-    }
-
-    private static Type? FindElementType(Type queryType)
-    {
-        if (!queryType.IsAssignableTo(typeof(IQueryable)))
-        {
-            return null;
-        }
-
-        if (queryType.IsGenericTypeDefinition)
-        {
-            return null;
-        }
-
-        foreach (var typeArg in queryType.GenericTypeArguments)
-        {
-            if (queryType.IsAssignableTo(typeof(IQueryable<>).MakeGenericType(typeArg)))
-            {
-                return typeArg;
-            }
-        }
-
-        return null;
     }
 }
