@@ -14,7 +14,7 @@ internal sealed class SeekListExpression : Expression
         ArgumentNullException.ThrowIfNull(source);
         ArgumentNullException.ThrowIfNull(parameters);
 
-        var elementType = QueryTypeHelpers.FindElementType(source)
+        var elementType = ExpressionHelpers.FindElementType(source)
             ?? throw new ArgumentException("Source expression must be a query", nameof(source));
 
         Type = typeof(SeekList<>).MakeGenericType(elementType);

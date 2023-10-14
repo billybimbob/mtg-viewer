@@ -40,4 +40,7 @@ internal sealed class ParseSeekVisitor : ExpressionVisitor
 
         return seek;
     }
+
+    public SeekQueryExpression Parse(Expression node)
+        => Visit(node) as SeekQueryExpression ?? new SeekQueryExpression();
 }

@@ -74,6 +74,17 @@ internal static class ExpressionHelpers
     public static bool IsToSeekList(Expression expression)
         => expression is MethodCallExpression call && IsToSeekList(call);
 
+    public static Type? FindSeekListEntity(Expression expression)
+    {
+        if (expression is MethodCallExpression call
+            && IsToSeekList(call))
+        {
+            return call.Type.GenericTypeArguments[0];
+        }
+
+        return null;
+    }
+
     private static bool DoesMethodEqual(MethodInfo method, params MethodInfo[] options)
     {
         if (method is { IsGenericMethod: true, IsGenericMethodDefinition: false })
@@ -102,18 +113,30 @@ internal static class ExpressionHelpers
         return string.Join('.', overlapChain);
     }
 
-    public static bool IsDescendant(MemberExpression? node, MemberExpression possibleAncestor)
+    public static Type? FindElementType(Expression expression)
     {
-        if (node is null)
+        ArgumentNullException.ThrowIfNull(expression);
+
+        var queryType = expression.Type;
+
+        if (!queryType.IsAssignableTo(typeof(IQueryable)))
         {
-            return false;
+            return null;
         }
 
-        string nodeName = GetLineageName(node);
-        string ancestor = GetLineageName(possibleAncestor);
+        if (queryType.IsGenericTypeDefinition)
+        {
+            return null;
+        }
 
-        const StringComparison ordinal = StringComparison.Ordinal;
+        foreach (var typeArg in queryType.GenericTypeArguments)
+        {
+            if (queryType.IsAssignableTo(typeof(IQueryable<>).MakeGenericType(typeArg)))
+            {
+                return typeArg;
+            }
+        }
 
-        return nodeName.StartsWith(ancestor, ordinal);
+        return null;
     }
 }

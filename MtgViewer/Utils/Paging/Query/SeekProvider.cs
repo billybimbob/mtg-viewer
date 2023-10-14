@@ -50,11 +50,14 @@ internal sealed class SeekProvider : IAsyncQueryProvider
 
     public object? Execute(Expression expression)
     {
-        object? origin = ExecuteOrigin(expression);
+        if (ExpressionHelpers.FindSeekListEntity(expression) is Type seekListEntity)
+        {
+            return Invoke(
+                ExecuteSeekListMethod.MakeGenericMethod(seekListEntity),
+                expression);
+        }
 
-        var changedOrigin = ChangeOrigin(expression, origin);
-
-        return _source.Execute(_seekTranslator.Visit(changedOrigin));
+        return _source.Execute(TranslateSeekBy(expression));
     }
 
     public TResult Execute<TResult>(Expression expression)
@@ -67,11 +70,7 @@ internal sealed class SeekProvider : IAsyncQueryProvider
                 expression);
         }
 
-        object? origin = ExecuteOrigin(expression);
-
-        var changedOrigin = ChangeOrigin(expression, origin);
-
-        return _source.Execute<TResult>(_seekTranslator.Visit(changedOrigin));
+        return _source.Execute<TResult>(TranslateSeekBy(expression));
     }
 
     public TResult ExecuteAsync<TResult>(Expression expression, CancellationToken cancellationToken)
@@ -112,16 +111,12 @@ internal sealed class SeekProvider : IAsyncQueryProvider
 
     #endregion
 
-    private async IAsyncEnumerable<TEntity> ExecuteAsyncEnumerable<TEntity>(
-        Expression expression, [EnumeratorCancellation] CancellationToken cancel)
+    private async IAsyncEnumerable<TEntity> ExecuteAsyncEnumerable<TEntity>(Expression expression, [EnumeratorCancellation] CancellationToken cancel)
     {
-        object? origin = await ExecuteOriginAsync(expression, cancel)
-            .ConfigureAwait(false);
-
-        var changedOrigin = ChangeOrigin(expression, origin);
+        var seekByExpression = await TranslateSeekByAsync(expression, cancel).ConfigureAwait(false);
 
         var query = _source
-            .CreateQuery<TEntity>(_seekTranslator.Visit(changedOrigin))
+            .CreateQuery<TEntity>(seekByExpression)
             .AsAsyncEnumerable()
             .WithCancellation(cancel)
             .ConfigureAwait(false);
@@ -134,13 +129,10 @@ internal sealed class SeekProvider : IAsyncQueryProvider
 
     private async Task<T> ExecuteTaskAsync<T>(Expression expression, CancellationToken cancel)
     {
-        object? origin = await ExecuteOriginAsync(expression, cancel)
-            .ConfigureAwait(false);
-
-        var changedOrigin = ChangeOrigin(expression, origin);
+        var seekByExpression = await TranslateSeekByAsync(expression, cancel).ConfigureAwait(false);
 
         return await _source
-            .ExecuteAsync<Task<T>>(_seekTranslator.Visit(changedOrigin), cancel)
+            .ExecuteAsync<Task<T>>(seekByExpression, cancel)
             .ConfigureAwait(false);
     }
 
@@ -149,56 +141,36 @@ internal sealed class SeekProvider : IAsyncQueryProvider
     private SeekList<TEntity> ExecuteSeekList<TEntity>(Expression expression)
         where TEntity : class
     {
-        object? origin = ExecuteOrigin(expression);
-
-        var changedOrigin = ChangeOrigin(expression, origin);
-        var changedSeekList = _lookAhead.Visit(changedOrigin);
+        var seekListExpression = TranslateSeekList(expression);
 
         var items = _source
-            .CreateQuery<TEntity>(_seekTranslator.Visit(changedSeekList))
+            .CreateQuery<TEntity>(seekListExpression.Source)
             .ToList();
 
-        var seek = _seekParser.Visit(changedSeekList) as SeekQueryExpression;
-
-        return CreateSeekList(items, seek);
+        return CreateSeekList(items, seekListExpression.Parameters);
     }
 
     private async Task<SeekList<TEntity>> ExecuteSeekListAsync<TEntity>(Expression expression, CancellationToken cancel)
         where TEntity : class
     {
-        object? origin = await ExecuteOriginAsync(expression, cancel)
-            .ConfigureAwait(false);
-
-        var changedOrigin = ChangeOrigin(expression, origin);
-        var changedSeekList = _lookAhead.Visit(changedOrigin);
+        var seekListExpression = await TranslateSeekListAsync(expression, cancel).ConfigureAwait(false);
 
         var items = await _source
-            .CreateQuery<TEntity>(_seekTranslator.Visit(changedSeekList))
+            .CreateQuery<TEntity>(seekListExpression.Source)
             .ToListAsync(cancel)
             .ConfigureAwait(false);
 
-        var seek = _seekParser.Visit(changedSeekList) as SeekQueryExpression;
-
-        return CreateSeekList(items, seek);
+        return CreateSeekList(items, seekListExpression.Parameters);
     }
 
-    private static SeekList<TEntity> CreateSeekList<TEntity>(List<TEntity> items, SeekQueryExpression? seek)
+    private static SeekList<TEntity> CreateSeekList<TEntity>(List<TEntity> items, SeekQueryExpression parameters)
         where TEntity : class
     {
-        if (seek is null)
-        {
-            return new SeekList<TEntity>(
-                items,
-                hasPrevious: false,
-                hasNext: false,
-                isPartial: false);
-        }
+        var direction = parameters.Direction;
+        bool hasOrigin = parameters.Origin.Value is not null;
 
-        var direction = seek.Direction;
-        bool hasOrigin = seek.Origin.Value is not null;
-
-        bool lookAhead = items.Count == seek.Size;
-        int? targetSize = seek.Size - 1;
+        bool lookAhead = items.Count == parameters.Size;
+        int? targetSize = parameters.Size - 1;
 
         // potential issue with extra items tracked that are not actually returned
         // keep eye on
@@ -213,6 +185,61 @@ internal sealed class SeekProvider : IAsyncQueryProvider
         }
 
         return new SeekList<TEntity>(items, direction, hasOrigin, lookAhead, targetSize);
+    }
+
+    #endregion
+
+    #region Translate Seek Expressions
+
+    private Expression TranslateSeekBy(Expression expression)
+    {
+        object? origin = ExecuteOrigin(expression);
+
+        var changedOrigin = ChangeOrigin(expression, origin);
+
+        return _seekTranslator.Visit(changedOrigin);
+    }
+
+    private async Task<Expression> TranslateSeekByAsync(Expression expression, CancellationToken cancel)
+    {
+        object? origin = await ExecuteOriginAsync(expression, cancel).ConfigureAwait(false);
+
+        var changedOrigin = ChangeOrigin(expression, origin);
+
+        return _seekTranslator.Visit(changedOrigin);
+    }
+
+    private SeekListExpression TranslateSeekList(Expression expression)
+    {
+        object? origin = ExecuteOrigin(expression);
+
+        var changedOrigin = ChangeOrigin(expression, origin);
+        var changedSeekList = _lookAhead.Visit(changedOrigin);
+
+        var source = _seekTranslator.Visit(changedSeekList);
+        var parameters = _seekParser.Parse(changedSeekList);
+
+        return new SeekListExpression(source, parameters);
+    }
+
+    private async Task<SeekListExpression> TranslateSeekListAsync(Expression expression, CancellationToken cancel)
+    {
+        object? origin = await ExecuteOriginAsync(expression, cancel).ConfigureAwait(false);
+
+        var changedOrigin = ChangeOrigin(expression, origin);
+        var changedSeekList = _lookAhead.Visit(changedOrigin);
+
+        var source = _seekTranslator.Visit(changedSeekList);
+        var parameters = _seekParser.Parse(changedSeekList);
+
+        return new SeekListExpression(source, parameters);
+    }
+
+    private static Expression ChangeOrigin(Expression expression, object? origin)
+    {
+        var changeOrigin = new ChangeOriginVisitor(origin);
+
+        return changeOrigin.Visit(expression);
     }
 
     #endregion
@@ -250,15 +277,11 @@ internal sealed class SeekProvider : IAsyncQueryProvider
 
     #endregion
 
+    private object? Invoke(MethodInfo method, params object[] parameters)
+        => method.Invoke(this, parameters);
+
     private TResult Invoke<TResult>(MethodInfo method, params object[] parameters)
         => (TResult)method.Invoke(this, parameters)!;
-
-    private static Expression ChangeOrigin(Expression expression, object? origin)
-    {
-        var changeOrigin = new ChangeOriginVisitor(origin);
-
-        return changeOrigin.Visit(expression);
-    }
 
     #region Method Infos
 

@@ -56,7 +56,7 @@ internal static class SeekQuery
 {
     public static IQueryable Create(SeekProvider provider, Expression expression)
     {
-        var elementType = QueryTypeHelpers.FindElementType(expression)
+        var elementType = ExpressionHelpers.FindElementType(expression)
             ?? throw new ArgumentException("Expression must be a query", nameof(expression));
 
         var seekQueryType = typeof(SeekQuery<>).MakeGenericType(elementType);
