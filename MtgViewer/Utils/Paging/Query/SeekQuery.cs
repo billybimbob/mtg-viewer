@@ -11,6 +11,8 @@ namespace EntityFrameworkCore.Paging.Query;
 
 internal class SeekQuery<T> : ISeekable<T>, IOrderedQueryable<T>, IAsyncEnumerable<T>
 {
+    private readonly SeekProvider _seekProvider;
+
     public SeekQuery(SeekProvider provider, Expression expression)
     {
         ArgumentNullException.ThrowIfNull(provider);
@@ -21,29 +23,29 @@ internal class SeekQuery<T> : ISeekable<T>, IOrderedQueryable<T>, IAsyncEnumerab
             throw new ArgumentException("Expression must be a query", nameof(expression));
         }
 
-        AsyncProvider = provider;
+        _seekProvider = provider;
         Expression = expression;
     }
 
     public Expression Expression { get; }
 
-    public IAsyncQueryProvider AsyncProvider { get; }
-
-    public IQueryProvider Provider => AsyncProvider;
-
     public Type ElementType => typeof(T);
 
+    public IQueryProvider Provider => _seekProvider;
+
+    public IAsyncQueryProvider AsyncProvider => _seekProvider;
+
     IEnumerator IEnumerable.GetEnumerator()
-        => ((IEnumerable)Provider.Execute(Expression)!)
+        => ((IEnumerable)_seekProvider.Execute(Expression)!)
             .GetEnumerator();
 
     public IEnumerator<T> GetEnumerator()
-        => Provider
+        => _seekProvider
             .Execute<IEnumerable<T>>(Expression)
             .GetEnumerator();
 
     public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken)
-        => AsyncProvider
+        => _seekProvider
             .ExecuteAsync<IAsyncEnumerable<T>>(Expression, cancellationToken)
             .GetAsyncEnumerator(cancellationToken);
 }

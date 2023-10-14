@@ -35,10 +35,10 @@ internal sealed class SeekProvider : IAsyncQueryProvider
 
     #region Create Query
 
-    IQueryable IQueryProvider.CreateQuery(Expression expression)
+    public IQueryable CreateQuery(Expression expression)
         => SeekQuery.Create(this, expression);
 
-    IQueryable<TElement> IQueryProvider.CreateQuery<TElement>(Expression expression)
+    public IQueryable<TElement> CreateQuery<TElement>(Expression expression)
         => new SeekQuery<TElement>(this, expression);
 
     #endregion
@@ -48,7 +48,7 @@ internal sealed class SeekProvider : IAsyncQueryProvider
 
     #region Execute
 
-    object? IQueryProvider.Execute(Expression expression)
+    public object? Execute(Expression expression)
     {
         object? origin = ExecuteOrigin(expression);
 
@@ -57,7 +57,7 @@ internal sealed class SeekProvider : IAsyncQueryProvider
         return _source.Execute(_seekTranslator.Visit(changedOrigin));
     }
 
-    TResult IQueryProvider.Execute<TResult>(Expression expression)
+    public TResult Execute<TResult>(Expression expression)
     {
         if (ExpressionHelpers.IsToSeekList(expression))
         {
@@ -74,7 +74,7 @@ internal sealed class SeekProvider : IAsyncQueryProvider
         return _source.Execute<TResult>(_seekTranslator.Visit(changedOrigin));
     }
 
-    TResult IAsyncQueryProvider.ExecuteAsync<TResult>(Expression expression, CancellationToken cancellationToken)
+    public TResult ExecuteAsync<TResult>(Expression expression, CancellationToken cancellationToken)
     {
         if (ExpressionHelpers.IsToSeekList(expression))
         {
@@ -144,14 +144,15 @@ internal sealed class SeekProvider : IAsyncQueryProvider
             .ConfigureAwait(false);
     }
 
-    #region Fetch Seek List
+    #region Execute Seek List
 
     private SeekList<TEntity> ExecuteSeekList<TEntity>(Expression expression)
         where TEntity : class
     {
         object? origin = ExecuteOrigin(expression);
 
-        var changedSeekList = ChangeToSeekList(expression, origin);
+        var changedOrigin = ChangeOrigin(expression, origin);
+        var changedSeekList = _lookAhead.Visit(changedOrigin);
 
         var items = _source
             .CreateQuery<TEntity>(_seekTranslator.Visit(changedSeekList))
@@ -168,7 +169,8 @@ internal sealed class SeekProvider : IAsyncQueryProvider
         object? origin = await ExecuteOriginAsync(expression, cancel)
             .ConfigureAwait(false);
 
-        var changedSeekList = ChangeToSeekList(expression, origin);
+        var changedOrigin = ChangeOrigin(expression, origin);
+        var changedSeekList = _lookAhead.Visit(changedOrigin);
 
         var items = await _source
             .CreateQuery<TEntity>(_seekTranslator.Visit(changedSeekList))
@@ -178,13 +180,6 @@ internal sealed class SeekProvider : IAsyncQueryProvider
         var seek = _seekParser.Visit(changedSeekList) as SeekExpression;
 
         return CreateSeekList(items, seek);
-    }
-
-    private Expression ChangeToSeekList(Expression expression, object? origin)
-    {
-        var changedOrigin = ChangeOrigin(expression, origin);
-
-        return _lookAhead.Visit(changedOrigin);
     }
 
     private static SeekList<TEntity> CreateSeekList<TEntity>(List<TEntity> items, SeekExpression? seek)
@@ -222,7 +217,7 @@ internal sealed class SeekProvider : IAsyncQueryProvider
 
     #endregion
 
-    #region Fetch Origin
+    #region Execute Origin
 
     private object? ExecuteOrigin(Expression source)
     {
