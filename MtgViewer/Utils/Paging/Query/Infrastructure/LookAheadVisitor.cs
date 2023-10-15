@@ -7,9 +7,9 @@ internal sealed class LookAheadVisitor : ExpressionVisitor
 {
     private readonly ParseSeekTakeVisitor _seekTakeParser;
 
-    public LookAheadVisitor()
+    public LookAheadVisitor(ParseSeekTakeVisitor seekTakeParser)
     {
-        _seekTakeParser = new ParseSeekTakeVisitor();
+        _seekTakeParser = seekTakeParser;
     }
 
     protected override Expression VisitMethodCall(MethodCallExpression node)

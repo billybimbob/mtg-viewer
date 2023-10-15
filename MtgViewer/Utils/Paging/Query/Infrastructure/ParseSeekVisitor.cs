@@ -7,9 +7,9 @@ internal sealed class ParseSeekVisitor : ExpressionVisitor
 {
     private readonly ParseSeekTakeVisitor _seekTakeParser;
 
-    public ParseSeekVisitor()
+    public ParseSeekVisitor(ParseSeekTakeVisitor seekTakeParser)
     {
-        _seekTakeParser = new ParseSeekTakeVisitor();
+        _seekTakeParser = seekTakeParser;
     }
 
     protected override Expression VisitMethodCall(MethodCallExpression node)

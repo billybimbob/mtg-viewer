@@ -8,23 +8,23 @@ namespace EntityFrameworkCore.Paging.Query.Infrastructure;
 internal sealed class TranslateSeekVisitor : ExpressionVisitor
 {
     private readonly IQueryProvider _provider;
-    private readonly SeekFilter _seekFilter;
     private readonly ParseSeekTakeVisitor _seekTakeParser;
+    private readonly SeekFilter _seekFilter;
     private readonly SeekQueryExpression _seekParameters;
 
-    public TranslateSeekVisitor(IQueryProvider provider, EvaluateMemberVisitor evaluateMember)
+    public TranslateSeekVisitor(IQueryProvider provider, ParseSeekTakeVisitor seekTakeParser, EvaluateMemberVisitor evaluateMember)
     {
         _provider = provider;
+        _seekTakeParser = seekTakeParser;
         _seekFilter = new SeekFilter(evaluateMember);
-        _seekTakeParser = new ParseSeekTakeVisitor();
         _seekParameters = new SeekQueryExpression();
     }
 
     private TranslateSeekVisitor(TranslateSeekVisitor copy, SeekQueryExpression seekParameters)
     {
         _provider = copy._provider;
-        _seekFilter = copy._seekFilter;
         _seekTakeParser = copy._seekTakeParser;
+        _seekFilter = copy._seekFilter;
         _seekParameters = seekParameters;
     }
 
