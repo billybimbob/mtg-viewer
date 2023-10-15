@@ -487,6 +487,7 @@ public class SeekListTests : IAsyncLifetime
     public async Task ToSeekList_MultipleSeekBy_DoesNotThrow()
     {
         const int pageSize = 4;
+        const int secondPageSize = 2;
 
         var cards = _dbContext.Cards
             .OrderBy(c => c.Id);
@@ -509,8 +510,40 @@ public class SeekListTests : IAsyncLifetime
 
             .SeekBy(SeekDirection.Forward)
                 .After(c => c.Id == origin2.Id)
-                .Take(pageSize - 2)
+                .Take(secondPageSize)
 
-            .ToSeekListAsync();
+            .ToListAsync();
+    }
+
+    [Fact]
+    public async Task ToSeekList_MultipleSeekByBackwards_DoesNotThrow()
+    {
+        const int pageSize = 4;
+        const int secondPageSize = 2;
+
+        var cards = _dbContext.Cards
+            .OrderBy(c => c.Id);
+
+        var origin = await cards
+            .Skip(pageSize)
+            .FirstAsync();
+
+        var innerSeekBy = cards
+            .SeekBy(SeekDirection.Forward)
+                .After(c => c.Id == origin.Id)
+                .Take(pageSize);
+
+        var innerCards = await innerSeekBy.ToListAsync();
+        var origin2 = innerCards[^2];
+
+        var _ = await innerSeekBy
+            .OrderBy(c => c.Name)
+                .ThenBy(c => c.Id)
+
+            .SeekBy(SeekDirection.Backwards)
+                .After(c => c.Id == origin2.Id)
+                .Take(secondPageSize)
+
+            .ToListAsync();
     }
 }
