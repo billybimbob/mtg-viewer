@@ -30,4 +30,7 @@ internal sealed class ParseSeekTakeVisitor : ExpressionVisitor
             return false;
         }
     }
+
+    public bool IsTake(Expression node)
+        => Visit(node) is ConstantExpression { Value: int };
 }

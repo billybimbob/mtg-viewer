@@ -68,7 +68,7 @@ internal sealed class FindNestedSeekVisitor : ExpressionVisitor
                 return parent;
             }
 
-            if (_seekTakeParser.TryParse(parent, out _))
+            if (_seekTakeParser.IsTake(parent))
             {
                 return parent;
             }
