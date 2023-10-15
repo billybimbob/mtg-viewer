@@ -5,7 +5,6 @@ using System.Linq.Expressions;
 using System.Threading;
 using System.Threading.Tasks;
 
-using Microsoft.EntityFrameworkCore.Query;
 using EntityFrameworkCore.Paging.Query;
 
 namespace EntityFrameworkCore.Paging;
@@ -160,12 +159,7 @@ public static class PagingExtensions
             return seekable;
         }
 
-        if (source.Provider is not IAsyncQueryProvider asyncProvider)
-        {
-            throw new InvalidOperationException("Query does not support async operations");
-        }
-
-        var provider = new SeekProvider(asyncProvider);
+        var provider = new SeekProvider(source.Provider);
 
         return new SeekQuery<TEntity>(provider, source.Expression);
     }

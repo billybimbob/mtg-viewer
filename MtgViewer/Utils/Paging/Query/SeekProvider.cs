@@ -16,7 +16,7 @@ namespace EntityFrameworkCore.Paging.Query;
 
 internal sealed class SeekProvider : IAsyncQueryProvider
 {
-    private readonly IAsyncQueryProvider _source;
+    private readonly IQueryProvider _source;
     private readonly TranslateSeekVisitor _seekTranslator;
 
     private readonly FindNestedSeekVisitor _nestedSeekFinder;
@@ -25,7 +25,7 @@ internal sealed class SeekProvider : IAsyncQueryProvider
     private readonly LookAheadVisitor _lookAhead;
     private readonly ParseSeekVisitor _seekParser;
 
-    public SeekProvider(IAsyncQueryProvider source)
+    public SeekProvider(IQueryProvider source)
     {
         var seekTakeParser = new ParseSeekTakeVisitor();
         var evaluateMember = new EvaluateMemberVisitor();
@@ -137,9 +137,14 @@ internal sealed class SeekProvider : IAsyncQueryProvider
 
     private async Task<T> ExecuteTaskAsync<T>(Expression expression, CancellationToken cancel)
     {
+        if (_source is not IAsyncQueryProvider asyncSource)
+        {
+            throw new InvalidOperationException("Query does not support async operations");
+        }
+
         var seekByExpression = await TranslateSeekByAsync(expression, cancel).ConfigureAwait(false);
 
-        return await _source
+        return await asyncSource
             .ExecuteAsync<Task<T>>(seekByExpression, cancel)
             .ConfigureAwait(false);
     }

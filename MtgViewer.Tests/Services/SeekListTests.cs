@@ -81,6 +81,35 @@ public class SeekListTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task ToSeekList_OrderByFirstIdEnumerableSource_ReturnsFirst()
+    {
+        var cardSource = await _dbContext.Cards.ToListAsync();
+
+        var cards = cardSource
+            .AsQueryable()
+            .OrderBy(c => c.Id);
+
+        int pageSize = Math.Min(10, cards.Count() / 2);
+
+        var seekList = cards
+            .SeekBy(SeekDirection.Forward)
+                .After(c => c.Id == null)
+                .Take(pageSize)
+            .ToSeekList();
+
+        var firstCards = cards
+            .Select(c => c.Id)
+            .Take(pageSize)
+            .ToList();
+
+        Assert.Null(seekList.Seek.Previous);
+        Assert.NotNull(seekList.Seek.Next);
+
+        Assert.Equal(pageSize, seekList.Count);
+        Assert.Equal(firstCards, seekList.Select(c => c.Id));
+    }
+
+    [Fact]
     public async Task ToSeekList_OrderByLastId_ReturnsLast()
     {
         var cards = _dbContext.Cards
