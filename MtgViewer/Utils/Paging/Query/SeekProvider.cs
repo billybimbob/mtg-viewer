@@ -235,8 +235,7 @@ internal sealed class SeekProvider : IAsyncQueryProvider
     {
         if (_nestedSeekFinder.TryFind(expression, out var nestedSeekQuery))
         {
-            var nestedSeekList = TranslateSeekList(nestedSeekQuery);
-            var nestedSeekBy = nestedSeekList.Source;
+            var nestedSeekBy = TranslateSeekList(nestedSeekQuery);
 
             expression = RewriteNestedSeek(expression, nestedSeekBy);
         }
@@ -256,8 +255,7 @@ internal sealed class SeekProvider : IAsyncQueryProvider
     {
         if (_nestedSeekFinder.TryFind(expression, out var nestedSeekQuery))
         {
-            var nestedSeekList = await TranslateSeekListAsync(nestedSeekQuery, cancel).ConfigureAwait(false);
-            var nestedSeekBy = nestedSeekList.Source;
+            var nestedSeekBy = await TranslateSeekByAsync(nestedSeekQuery, cancel).ConfigureAwait(false);
 
             expression = RewriteNestedSeek(expression, nestedSeekBy);
         }
