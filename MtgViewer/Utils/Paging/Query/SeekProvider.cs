@@ -17,10 +17,13 @@ namespace EntityFrameworkCore.Paging.Query;
 internal sealed class SeekProvider : IAsyncQueryProvider
 {
     private readonly IAsyncQueryProvider _source;
+    private readonly TranslateSeekVisitor _seekTranslator;
+
+    private readonly FindNestedSeekVisitor _nestedSeekFinder;
+    private readonly QueryOriginVisitor _originQuery;
+
     private readonly LookAheadVisitor _lookAhead;
     private readonly ParseSeekVisitor _seekParser;
-    private readonly QueryOriginVisitor _originQuery;
-    private readonly TranslateSeekVisitor _seekTranslator;
 
     public SeekProvider(IAsyncQueryProvider source)
     {
@@ -28,10 +31,13 @@ internal sealed class SeekProvider : IAsyncQueryProvider
         var evaluateMember = new EvaluateMemberVisitor();
 
         _source = source;
+        _seekTranslator = new TranslateSeekVisitor(source, seekTakeParser, evaluateMember);
+
+        _nestedSeekFinder = new FindNestedSeekVisitor(seekTakeParser);
+        _originQuery = new QueryOriginVisitor(source, evaluateMember);
+
         _lookAhead = new LookAheadVisitor(seekTakeParser);
         _seekParser = new ParseSeekVisitor(seekTakeParser);
-        _originQuery = new QueryOriginVisitor(source, evaluateMember);
-        _seekTranslator = new TranslateSeekVisitor(source, seekTakeParser, evaluateMember);
     }
 
     #region Create Query
@@ -195,27 +201,49 @@ internal sealed class SeekProvider : IAsyncQueryProvider
 
     private Expression TranslateSeekBy(Expression expression)
     {
+        if (_nestedSeekFinder.TryFind(expression, out var nestedSeekQuery))
+        {
+            var nestedSeekBy = TranslateSeekBy(nestedSeekQuery);
+
+            expression = RewriteNestedSeek(expression, nestedSeekBy);
+        }
+
         object? origin = ExecuteOrigin(expression);
 
-        var changedOrigin = ChangeOrigin(expression, origin);
+        var changedOrigin = RewriteOrigin(expression, origin);
 
         return _seekTranslator.Visit(changedOrigin);
     }
 
     private async Task<Expression> TranslateSeekByAsync(Expression expression, CancellationToken cancel)
     {
+        if (_nestedSeekFinder.TryFind(expression, out var nestedSeekQuery))
+        {
+            var nestedSeekBy = await TranslateSeekByAsync(nestedSeekQuery, cancel).ConfigureAwait(false);
+
+            expression = RewriteNestedSeek(expression, nestedSeekBy);
+        }
+
         object? origin = await ExecuteOriginAsync(expression, cancel).ConfigureAwait(false);
 
-        var changedOrigin = ChangeOrigin(expression, origin);
+        var changedOrigin = RewriteOrigin(expression, origin);
 
         return _seekTranslator.Visit(changedOrigin);
     }
 
     private SeekListExpression TranslateSeekList(Expression expression)
     {
+        if (_nestedSeekFinder.TryFind(expression, out var nestedSeekQuery))
+        {
+            var nestedSeekList = TranslateSeekList(nestedSeekQuery);
+            var nestedSeekBy = nestedSeekList.Source;
+
+            expression = RewriteNestedSeek(expression, nestedSeekBy);
+        }
+
         object? origin = ExecuteOrigin(expression);
 
-        var changedOrigin = ChangeOrigin(expression, origin);
+        var changedOrigin = RewriteOrigin(expression, origin);
         var changedSeekList = _lookAhead.Visit(changedOrigin);
 
         var source = _seekTranslator.Visit(changedSeekList);
@@ -226,9 +254,17 @@ internal sealed class SeekProvider : IAsyncQueryProvider
 
     private async Task<SeekListExpression> TranslateSeekListAsync(Expression expression, CancellationToken cancel)
     {
+        if (_nestedSeekFinder.TryFind(expression, out var nestedSeekQuery))
+        {
+            var nestedSeekList = await TranslateSeekListAsync(nestedSeekQuery, cancel).ConfigureAwait(false);
+            var nestedSeekBy = nestedSeekList.Source;
+
+            expression = RewriteNestedSeek(expression, nestedSeekBy);
+        }
+
         object? origin = await ExecuteOriginAsync(expression, cancel).ConfigureAwait(false);
 
-        var changedOrigin = ChangeOrigin(expression, origin);
+        var changedOrigin = RewriteOrigin(expression, origin);
         var changedSeekList = _lookAhead.Visit(changedOrigin);
 
         var source = _seekTranslator.Visit(changedSeekList);
@@ -237,10 +273,16 @@ internal sealed class SeekProvider : IAsyncQueryProvider
         return new SeekListExpression(source, parameters);
     }
 
-    private static Expression ChangeOrigin(Expression expression, object? origin)
+    private static Expression RewriteOrigin(Expression expression, object? origin)
     {
-        var changeOrigin = new ChangeOriginVisitor(origin);
-        return changeOrigin.Visit(expression);
+        var rewriteOrigin = new RewriteOriginVisitor(origin);
+        return rewriteOrigin.Visit(expression);
+    }
+
+    private static Expression RewriteNestedSeek(Expression expression, Expression nestedSeekQuery)
+    {
+        var rewriteNestedSeek = new RewriteNestedSeekVisitor(nestedSeekQuery);
+        return rewriteNestedSeek.Visit(expression);
     }
 
     #endregion

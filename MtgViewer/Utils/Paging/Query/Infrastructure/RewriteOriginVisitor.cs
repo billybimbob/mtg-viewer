@@ -2,11 +2,11 @@ using System.Linq.Expressions;
 
 namespace EntityFrameworkCore.Paging.Query.Infrastructure;
 
-internal sealed class ChangeOriginVisitor : ExpressionVisitor
+internal sealed class RewriteOriginVisitor : ExpressionVisitor
 {
     private readonly object? _origin;
 
-    public ChangeOriginVisitor(object? newOrigin)
+    public RewriteOriginVisitor(object? newOrigin)
     {
         _origin = newOrigin;
     }
