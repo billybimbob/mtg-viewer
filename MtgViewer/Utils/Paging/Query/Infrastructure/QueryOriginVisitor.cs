@@ -65,7 +65,7 @@ internal class QueryOriginVisitor : ExpressionVisitor
 
         var findSelector = new FindSelectVisitor(query.ElementType);
 
-        if (findSelector.Visit(query.Expression) is LambdaExpression)
+        if (findSelector.HasSelect(query.Expression))
         {
             return query;
         }
@@ -153,6 +153,9 @@ internal class QueryOriginVisitor : ExpressionVisitor
         {
             _resultType = resultType;
         }
+
+        public bool HasSelect(Expression node)
+            => Visit(node) is LambdaExpression;
 
         protected override Expression VisitMethodCall(MethodCallExpression node)
         {
