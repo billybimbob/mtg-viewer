@@ -49,9 +49,6 @@ internal sealed class SeekProvider : IAsyncQueryProvider
 
     #endregion
 
-    // keep eye on, weakly typed methods have not been tested
-    // maybe just throw InvalidOperation instead
-
     #region Execute
 
     public object? Execute(Expression expression)
