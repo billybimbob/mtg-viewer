@@ -541,7 +541,7 @@ public class SeekListTests : IAsyncLifetime
                 .After(c => c.Id == origin2.Id)
                 .Take(secondPageSize)
 
-            .ToListAsync();
+            .ToSeekListAsync();
     }
 
     [Fact]
@@ -573,6 +573,6 @@ public class SeekListTests : IAsyncLifetime
                 .After(c => c.Id == origin2.Id)
                 .Take(secondPageSize)
 
-            .ToListAsync();
+            .ToSeekListAsync();
     }
 }
