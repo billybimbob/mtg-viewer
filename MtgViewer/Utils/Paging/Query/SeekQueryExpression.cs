@@ -34,14 +34,12 @@ internal sealed class SeekQueryExpression : Expression, IEquatable<Expression>
 
     protected override Expression VisitChildren(ExpressionVisitor visitor)
     {
-        var visitedOrigin = visitor.Visit(Origin);
-
-        if (visitedOrigin is not ConstantExpression newOrigin)
+        if (visitor.Visit(Origin) is not ConstantExpression visitedOrigin)
         {
-            throw new InvalidOperationException($"{nameof(Origin)} is invalid type: {visitedOrigin.Type.Name}");
+            throw new InvalidOperationException($"{nameof(Origin)} is invalid type");
         }
 
-        return Update(newOrigin, Direction, Size);
+        return Update(visitedOrigin, Direction, Size);
     }
 
     public SeekQueryExpression Update(ConstantExpression origin, SeekDirection direction, int? size)

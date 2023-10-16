@@ -31,21 +31,22 @@ internal sealed class SeekListExpression : Expression
 
     protected override Expression VisitChildren(ExpressionVisitor visitor)
     {
-        var visitedSource = visitor.Visit(Translation);
-        var visitedParameters = visitor.Visit(Seek);
+        var visitedTranslation = visitor.Visit(Translation);
+        var visitedSeek = visitor.Visit(Seek);
 
-        if (visitedParameters is not null and not SeekQueryExpression)
+        if (visitedSeek is not null and not SeekQueryExpression)
         {
-            throw new InvalidOperationException($"{nameof(Seek)} is invalid type: {visitedParameters.Type.Name}");
+            throw new InvalidOperationException($"{nameof(Seek)} is invalid type: {visitedSeek.Type.Name}");
         }
 
-        return Update(visitedSource, visitedParameters as SeekQueryExpression);
+        return Update(visitedTranslation, visitedSeek as SeekQueryExpression);
     }
 
     public SeekListExpression Update(Expression translation, SeekQueryExpression? seek)
     {
-        if (ExpressionEqualityComparer.Instance.Equals(Translation, translation)
-            && Seek.Equals(seek))
+        if (ExpressionEqualityComparer.Instance.Equals(translation, Translation)
+            && seek is not null
+            && seek.Equals(Seek))
         {
             return this;
         }
