@@ -50,6 +50,16 @@ internal static class ExpressionHelpers
             call.Method,
             QueryableMethods.Take);
 
+    public static bool IsSeekTake(MethodCallExpression call)
+    {
+        if (call.Arguments.ElementAtOrDefault(0) is not MethodCallExpression parent)
+        {
+            return false;
+        }
+
+        return IsTake(call) && IsSeekQuery(parent);
+    }
+
     public static bool IsSeekQuery(MethodCallExpression call)
         => DoesMethodEqual(
             call.Method,

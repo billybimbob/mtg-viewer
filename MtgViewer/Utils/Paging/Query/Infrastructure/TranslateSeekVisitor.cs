@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using System.Linq.Expressions;
 
@@ -8,22 +9,19 @@ namespace EntityFrameworkCore.Paging.Query.Infrastructure;
 internal sealed class TranslateSeekVisitor : ExpressionVisitor
 {
     private readonly IQueryProvider _provider;
-    private readonly ParseSeekTakeVisitor _seekTakeParser;
     private readonly SeekFilter _seekFilter;
-    private readonly SeekQueryExpression _seekParameters;
+    private readonly SeekQueryExpression? _seekParameters;
 
-    public TranslateSeekVisitor(IQueryProvider provider, ParseSeekTakeVisitor seekTakeParser, EvaluateMemberVisitor evaluateMember)
+    public TranslateSeekVisitor(IQueryProvider provider, EvaluateMemberVisitor evaluateMember)
     {
         _provider = provider;
-        _seekTakeParser = seekTakeParser;
         _seekFilter = new SeekFilter(evaluateMember);
-        _seekParameters = new SeekQueryExpression();
+        _seekParameters = null;
     }
 
-    private TranslateSeekVisitor(TranslateSeekVisitor copy, SeekQueryExpression seekParameters)
+    private TranslateSeekVisitor(TranslateSeekVisitor copy, SeekQueryExpression? seekParameters)
     {
         _provider = copy._provider;
-        _seekTakeParser = copy._seekTakeParser;
         _seekFilter = copy._seekFilter;
         _seekParameters = seekParameters;
     }
@@ -33,24 +31,28 @@ internal sealed class TranslateSeekVisitor : ExpressionVisitor
         if (ExpressionHelpers.IsSeekBy(node)
             && node.Arguments[1] is ConstantExpression { Value: SeekDirection direction })
         {
-            var visitorWithDirection = new TranslateSeekVisitor(this, _seekParameters.Update(direction));
+            var updatedSeek = UpdateSeek(direction, node.Type);
+            var updatedTranslator = new TranslateSeekVisitor(this, updatedSeek);
 
-            return visitorWithDirection.ExpandToQuery(node.Arguments[0]).Expression;
+            return updatedTranslator.ExpandSeek(node.Arguments[0]);
         }
 
         if (ExpressionHelpers.IsAfter(node)
             && node.Arguments[1] is ConstantExpression origin)
         {
-            var visitorWithOrigin = new TranslateSeekVisitor(this, _seekParameters.Update(origin));
+            var updatedSeek = UpdateSeek(origin);
+            var updatedTranslator = new TranslateSeekVisitor(this, updatedSeek);
 
-            return visitorWithOrigin.Visit(node.Arguments[0]);
+            return updatedTranslator.Visit(node.Arguments[0]);
         }
 
-        if (_seekTakeParser.TryParse(node, out int size))
+        if (ExpressionHelpers.IsSeekTake(node)
+            && node.Arguments[1] is ConstantExpression { Value: int size })
         {
-            var visitorWithSize = new TranslateSeekVisitor(this, _seekParameters.Update(size));
+            var updatedSeek = UpdateSeek(size, node.Type);
+            var updatedTranslator = new TranslateSeekVisitor(this, updatedSeek);
 
-            return visitorWithSize.Visit(node.Arguments[0]);
+            return updatedTranslator.Visit(node.Arguments[0]);
         }
 
         if (ExpressionHelpers.IsToSeekList(node))
@@ -61,16 +63,16 @@ internal sealed class TranslateSeekVisitor : ExpressionVisitor
         return base.VisitMethodCall(node);
     }
 
-    private IQueryable ExpandToQuery(Expression source)
+    private Expression ExpandSeek(Expression source)
     {
-        var direction = _seekParameters.Direction;
-        var origin = _seekParameters.Origin;
-        int? size = _seekParameters.Size;
+        var direction = _seekParameters?.Direction;
+        var origin = _seekParameters?.Origin;
+        int? size = _seekParameters?.Size;
 
         var filter = _seekFilter.CreateFilter(source, direction, origin);
         var query = _provider.CreateQuery(source);
 
-        return (direction, filter, size) switch
+        var expandedQuery = (direction, filter, size) switch
         {
             (SeekDirection.Forward, not null, int count) => query
                 .Where(filter)
@@ -100,5 +102,40 @@ internal sealed class TranslateSeekVisitor : ExpressionVisitor
 
             _ => query
         };
+
+        return expandedQuery.Expression;
+    }
+
+    private SeekQueryExpression UpdateSeek(SeekDirection direction, Type seekType)
+    {
+        var seekWithDirection = _seekParameters?.Update(direction);
+
+        if (seekWithDirection is null)
+        {
+            var entityType = seekType.GenericTypeArguments[0];
+            var origin = Expression.Constant(null, entityType);
+
+            seekWithDirection = new SeekQueryExpression(origin, direction);
+        }
+
+        return seekWithDirection;
+    }
+
+    private SeekQueryExpression UpdateSeek(ConstantExpression origin)
+        => _seekParameters?.Update(origin) ?? new SeekQueryExpression(origin);
+
+    private SeekQueryExpression UpdateSeek(int size, Type seekType)
+    {
+        var seekWithSize = _seekParameters?.Update(size);
+
+        if (seekWithSize is null)
+        {
+            var entityType = seekType.GenericTypeArguments[0];
+            var origin = Expression.Constant(null, entityType);
+
+            seekWithSize = new SeekQueryExpression(origin, size);
+        }
+
+        return seekWithSize;
     }
 }

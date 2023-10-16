@@ -9,48 +9,54 @@ namespace EntityFrameworkCore.Paging.Query;
 
 internal sealed class SeekListExpression : Expression
 {
-    public SeekListExpression(Expression source, SeekQueryExpression parameters)
+    public SeekListExpression(Expression translation, SeekQueryExpression? seek = null)
     {
-        ArgumentNullException.ThrowIfNull(source);
-        ArgumentNullException.ThrowIfNull(parameters);
+        ArgumentNullException.ThrowIfNull(translation);
 
-        var elementType = ExpressionHelpers.FindElementType(source)
-            ?? throw new ArgumentException("Source expression must be a query", nameof(source));
+        var elementType = ExpressionHelpers.FindElementType(translation)
+            ?? throw new ArgumentException("Source expression must be a query", nameof(translation));
+
+        seek ??= new SeekQueryExpression(Constant(null, elementType));
+
+        if (elementType != seek.Origin.Type)
+        {
+            throw new ArgumentException("Seek does not match translation", nameof(seek));
+        }
 
         Type = typeof(SeekList<>).MakeGenericType(elementType);
-        Source = source;
-        Parameters = parameters;
+        Translation = translation;
+        Seek = seek;
     }
 
     public override ExpressionType NodeType => ExpressionType.Extension;
 
     public override Type Type { get; }
 
-    public Expression Source { get; }
+    public Expression Translation { get; }
 
-    public SeekQueryExpression Parameters { get; }
+    public SeekQueryExpression Seek { get; }
 
     protected override Expression VisitChildren(ExpressionVisitor visitor)
     {
-        var visitedSource = visitor.Visit(Source);
-        var visitedParameters = visitor.Visit(Parameters);
+        var visitedSource = visitor.Visit(Translation);
+        var visitedParameters = visitor.Visit(Seek);
 
-        if (visitedParameters is not SeekQueryExpression newParameters)
+        if (visitedParameters is not null and not SeekQueryExpression)
         {
-            throw new InvalidOperationException($"{nameof(Parameters)} is invalid type: {visitedParameters.Type.Name}");
+            throw new InvalidOperationException($"{nameof(Seek)} is invalid type: {visitedParameters.Type.Name}");
         }
 
-        return Update(visitedSource, newParameters);
+        return Update(visitedSource, visitedParameters as SeekQueryExpression);
     }
 
-    public SeekListExpression Update(Expression source, SeekQueryExpression parameters)
+    public SeekListExpression Update(Expression translation, SeekQueryExpression? seek)
     {
-        if (ExpressionEqualityComparer.Instance.Equals(source, Source)
-            && parameters.Equals(Parameters))
+        if (ExpressionEqualityComparer.Instance.Equals(Translation, translation)
+            && Seek.Equals(seek))
         {
             return this;
         }
 
-        return new SeekListExpression(source, parameters);
+        return new SeekListExpression(translation, seek);
     }
 }

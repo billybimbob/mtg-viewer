@@ -8,9 +8,9 @@ internal sealed class FindNestedSeekVisitor : ExpressionVisitor
 {
     private readonly FindSeekMethodVisitor _findSeekMethod;
 
-    public FindNestedSeekVisitor(ParseSeekTakeVisitor seekTakeParser)
+    public FindNestedSeekVisitor()
     {
-        _findSeekMethod = new FindSeekMethodVisitor(seekTakeParser);
+        _findSeekMethod = new FindSeekMethodVisitor();
     }
 
     public bool TryFind(Expression node, [NotNullWhen(true)] out Expression? nestedSeekQuery)
@@ -49,13 +49,6 @@ internal sealed class FindNestedSeekVisitor : ExpressionVisitor
 
     private sealed class FindSeekMethodVisitor : ExpressionVisitor
     {
-        private readonly ParseSeekTakeVisitor _seekTakeParser;
-
-        public FindSeekMethodVisitor(ParseSeekTakeVisitor seekTakeParser)
-        {
-            _seekTakeParser = seekTakeParser;
-        }
-
         protected override Expression VisitMethodCall(MethodCallExpression node)
         {
             if (node.Arguments.ElementAtOrDefault(0) is not MethodCallExpression parent)
@@ -68,7 +61,7 @@ internal sealed class FindNestedSeekVisitor : ExpressionVisitor
                 return parent;
             }
 
-            if (_seekTakeParser.IsTake(parent))
+            if (ExpressionHelpers.IsSeekTake(parent))
             {
                 return parent;
             }

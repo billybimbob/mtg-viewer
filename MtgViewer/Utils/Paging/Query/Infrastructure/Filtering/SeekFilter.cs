@@ -11,9 +11,14 @@ internal sealed class SeekFilter
         _seekCollectionBuilder = new SeekOrderCollectionBuilder(evaluateMember);
     }
 
-    public LambdaExpression? CreateFilter(Expression query, SeekDirection direction, ConstantExpression origin)
+    public LambdaExpression? CreateFilter(Expression query, SeekDirection? direction, ConstantExpression? origin)
     {
-        if (origin.Value is null)
+        if (origin?.Value is null)
+        {
+            return null;
+        }
+
+        if (direction is not SeekDirection dir)
         {
             return null;
         }
@@ -23,7 +28,7 @@ internal sealed class SeekFilter
         var orderCollection = _seekCollectionBuilder.Build(origin, query);
         var originTranslator = originTranslatorBuilder.Build(orderCollection);
 
-        var builder = new SeekFilterExpressionBuilder(orderCollection, originTranslator, direction);
+        var builder = new SeekFilterExpressionBuilder(orderCollection, originTranslator, dir);
 
         return builder.Build();
     }

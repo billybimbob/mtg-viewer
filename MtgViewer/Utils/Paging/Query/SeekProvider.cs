@@ -17,27 +17,26 @@ namespace EntityFrameworkCore.Paging.Query;
 internal sealed class SeekProvider : IAsyncQueryProvider
 {
     private readonly IQueryProvider _source;
-    private readonly TranslateSeekVisitor _seekTranslator;
-
     private readonly FindNestedSeekVisitor _nestedSeekFinder;
-    private readonly QueryOriginVisitor _originQuery;
 
-    private readonly LookAheadVisitor _lookAhead;
     private readonly ParseSeekVisitor _seekParser;
+    private readonly LookAheadVisitor _lookAhead;
+
+    private readonly QueryOriginVisitor _originQuery;
+    private readonly TranslateSeekVisitor _seekTranslator;
 
     public SeekProvider(IQueryProvider source)
     {
-        var seekTakeParser = new ParseSeekTakeVisitor();
         var evaluateMember = new EvaluateMemberVisitor();
 
         _source = source;
-        _seekTranslator = new TranslateSeekVisitor(source, seekTakeParser, evaluateMember);
+        _nestedSeekFinder = new FindNestedSeekVisitor();
 
-        _nestedSeekFinder = new FindNestedSeekVisitor(seekTakeParser);
+        _seekParser = new ParseSeekVisitor();
+        _lookAhead = new LookAheadVisitor();
+
         _originQuery = new QueryOriginVisitor(source, evaluateMember);
-
-        _lookAhead = new LookAheadVisitor(seekTakeParser);
-        _seekParser = new ParseSeekVisitor(seekTakeParser);
+        _seekTranslator = new TranslateSeekVisitor(source, evaluateMember);
     }
 
     #region Create Query
@@ -157,10 +156,10 @@ internal sealed class SeekProvider : IAsyncQueryProvider
         var seekListExpression = TranslateSeekList(expression);
 
         var items = _source
-            .CreateQuery<TEntity>(seekListExpression.Source)
+            .CreateQuery<TEntity>(seekListExpression.Translation)
             .ToList();
 
-        return CreateSeekList(items, seekListExpression.Parameters);
+        return CreateSeekList(items, seekListExpression.Seek);
     }
 
     private async Task<SeekList<TEntity>> ExecuteSeekListAsync<TEntity>(Expression expression, CancellationToken cancel)
@@ -169,21 +168,21 @@ internal sealed class SeekProvider : IAsyncQueryProvider
         var seekListExpression = await TranslateSeekListAsync(expression, cancel).ConfigureAwait(false);
 
         var items = await _source
-            .CreateQuery<TEntity>(seekListExpression.Source)
+            .CreateQuery<TEntity>(seekListExpression.Translation)
             .ToListAsync(cancel)
             .ConfigureAwait(false);
 
-        return CreateSeekList(items, seekListExpression.Parameters);
+        return CreateSeekList(items, seekListExpression.Seek);
     }
 
-    private static SeekList<TEntity> CreateSeekList<TEntity>(List<TEntity> items, SeekQueryExpression parameters)
+    private static SeekList<TEntity> CreateSeekList<TEntity>(List<TEntity> items, SeekQueryExpression seek)
         where TEntity : class
     {
-        var direction = parameters.Direction;
-        bool hasOrigin = parameters.Origin.Value is not null;
+        var direction = seek.Direction;
+        bool hasOrigin = seek.Origin.Value is not null;
 
-        bool lookAhead = items.Count == parameters.Size;
-        int? targetSize = parameters.Size - 1;
+        bool lookAhead = items.Count == seek.Size;
+        int? targetSize = seek.Size - 1;
 
         // potential issue with extra items tracked that are not actually returned
         // keep eye on
@@ -250,10 +249,10 @@ internal sealed class SeekProvider : IAsyncQueryProvider
         var changedOrigin = RewriteOrigin(expression, origin);
         var changedSeekList = _lookAhead.Visit(changedOrigin);
 
-        var source = _seekTranslator.Visit(changedSeekList);
-        var parameters = _seekParser.Parse(changedSeekList);
+        var translation = _seekTranslator.Visit(changedSeekList);
+        var seek = _seekParser.Parse(changedSeekList);
 
-        return new SeekListExpression(source, parameters);
+        return new SeekListExpression(translation, seek);
     }
 
     private async Task<SeekListExpression> TranslateSeekListAsync(Expression expression, CancellationToken cancel)
@@ -270,10 +269,10 @@ internal sealed class SeekProvider : IAsyncQueryProvider
         var changedOrigin = RewriteOrigin(expression, origin);
         var changedSeekList = _lookAhead.Visit(changedOrigin);
 
-        var source = _seekTranslator.Visit(changedSeekList);
-        var parameters = _seekParser.Parse(changedSeekList);
+        var translation = _seekTranslator.Visit(changedSeekList);
+        var seek = _seekParser.Parse(changedSeekList);
 
-        return new SeekListExpression(source, parameters);
+        return new SeekListExpression(translation, seek);
     }
 
     private static Expression RewriteOrigin(Expression expression, object? origin)

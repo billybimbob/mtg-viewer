@@ -7,7 +7,7 @@ namespace EntityFrameworkCore.Paging.Query;
 
 internal sealed class SeekQueryExpression : Expression, IEquatable<Expression>
 {
-    public SeekQueryExpression(SeekDirection direction, ConstantExpression origin, int? size = null)
+    public SeekQueryExpression(ConstantExpression origin, SeekDirection direction = SeekDirection.Forward, int? size = null)
     {
         ArgumentNullException.ThrowIfNull(origin);
 
@@ -17,8 +17,8 @@ internal sealed class SeekQueryExpression : Expression, IEquatable<Expression>
         Size = size;
     }
 
-    public SeekQueryExpression()
-        : this(SeekDirection.Forward, Constant(null), null)
+    public SeekQueryExpression(ConstantExpression origin, int size)
+        : this(origin, SeekDirection.Forward, size)
     {
     }
 
@@ -26,9 +26,9 @@ internal sealed class SeekQueryExpression : Expression, IEquatable<Expression>
 
     public override Type Type { get; }
 
-    public SeekDirection Direction { get; }
-
     public ConstantExpression Origin { get; }
+
+    public SeekDirection Direction { get; }
 
     public int? Size { get; }
 
@@ -41,33 +41,33 @@ internal sealed class SeekQueryExpression : Expression, IEquatable<Expression>
             throw new InvalidOperationException($"{nameof(Origin)} is invalid type: {visitedOrigin.Type.Name}");
         }
 
-        return Update(Direction, newOrigin, Size);
+        return Update(newOrigin, Direction, Size);
     }
 
-    public SeekQueryExpression Update(SeekDirection direction, ConstantExpression origin, int? size)
+    public SeekQueryExpression Update(ConstantExpression origin, SeekDirection direction, int? size)
     {
-        if (ExpressionEqualityComparer.Instance.Equals(origin, Origin)
-            && direction == Direction
-            && size == Size)
+        if (direction == Direction
+            && size == Size
+            && ExpressionEqualityComparer.Instance.Equals(origin, Origin))
         {
             return this;
         }
 
-        return new SeekQueryExpression(direction, origin, size);
+        return new SeekQueryExpression(origin, direction, size);
     }
 
     public SeekQueryExpression Update(SeekDirection direction)
-        => Update(direction, Origin, Size);
+        => Update(Origin, direction, Size);
 
     public SeekQueryExpression Update(ConstantExpression origin)
-        => Update(Direction, origin, Size);
+        => Update(origin, Direction, Size);
 
     public SeekQueryExpression Update(int? size)
-        => Update(Direction, Origin, size);
+        => Update(Origin, Direction, size);
 
     public bool Equals(Expression? other)
         => other is SeekQueryExpression otherSeek
-            && ExpressionEqualityComparer.Instance.Equals(otherSeek.Origin, Origin)
             && otherSeek.Direction == Direction
-            && otherSeek.Size == Size;
+            && otherSeek.Size == Size
+            && ExpressionEqualityComparer.Instance.Equals(otherSeek.Origin, Origin);
 }

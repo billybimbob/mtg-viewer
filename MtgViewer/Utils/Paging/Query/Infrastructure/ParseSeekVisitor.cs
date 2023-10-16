@@ -5,21 +5,15 @@ namespace EntityFrameworkCore.Paging.Query.Infrastructure;
 
 internal sealed class ParseSeekVisitor : ExpressionVisitor
 {
-    private readonly ParseSeekTakeVisitor _seekTakeParser;
-
-    public ParseSeekVisitor(ParseSeekTakeVisitor seekTakeParser)
-    {
-        _seekTakeParser = seekTakeParser;
-    }
-
     protected override Expression VisitMethodCall(MethodCallExpression node)
     {
         if (ExpressionHelpers.IsSeekBy(node)
             && node.Arguments[1] is ConstantExpression { Value: SeekDirection direction })
         {
-            var entityType = node.Method.GetGenericArguments()[0];
+            var entityType = node.Type.GenericTypeArguments[0];
+            var nullOrigin = Expression.Constant(null, entityType);
 
-            return new SeekQueryExpression(direction, Expression.Constant(null, entityType));
+            return new SeekQueryExpression(nullOrigin, direction);
         }
 
         if (Visit(node.Arguments.ElementAtOrDefault(0)) is not SeekQueryExpression seek)
@@ -33,7 +27,8 @@ internal sealed class ParseSeekVisitor : ExpressionVisitor
             return seek.Update(origin);
         }
 
-        if (_seekTakeParser.TryParse(node, out int size))
+        if (ExpressionHelpers.IsSeekTake(node)
+            && node.Arguments[1] is ConstantExpression { Value: int size })
         {
             return seek.Update(size);
         }
@@ -41,6 +36,6 @@ internal sealed class ParseSeekVisitor : ExpressionVisitor
         return seek;
     }
 
-    public SeekQueryExpression Parse(Expression node)
-        => Visit(node) as SeekQueryExpression ?? new SeekQueryExpression();
+    public SeekQueryExpression? Parse(Expression node)
+        => Visit(node) as SeekQueryExpression;
 }
