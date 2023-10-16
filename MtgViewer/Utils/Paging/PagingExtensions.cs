@@ -46,7 +46,8 @@ public static class PagingExtensions
             .AsQueryable()
             .PageBy(index, pageSize);
 
-        return ExecuteOffset<TEntity>.ToOffsetList(query);
+        var executor = new OffsetExecutor<TEntity>();
+        return executor.Execute(query);
     }
 
     public static Task<OffsetList<TEntity>> ToOffsetListAsync<TEntity>(
@@ -55,7 +56,8 @@ public static class PagingExtensions
     {
         ArgumentNullException.ThrowIfNull(source);
 
-        return ExecuteOffset<TEntity>.ToOffsetListAsync(source, cancellationToken);
+        var executor = new OffsetExecutor<TEntity>();
+        return executor.ExecuteAsync(source, cancellationToken);
     }
 
     #endregion

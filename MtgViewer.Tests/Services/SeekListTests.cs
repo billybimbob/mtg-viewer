@@ -55,6 +55,32 @@ public class SeekListTests : IAsyncLifetime
     }
 
     [Fact]
+    public void ToSeekListSync_OrderByFirst_ReturnsFirst()
+    {
+        var cards = _dbContext.Cards
+            .OrderBy(c => c.Id);
+
+        int pageSize = Math.Min(10, cards.Count() / 2);
+
+        var seekList = cards
+            .SeekBy(SeekDirection.Forward)
+                .After(null as Card)
+                .Take(pageSize)
+            .ToSeekList();
+
+        var firstCards = cards
+            .Select(c => c.Id)
+            .Take(pageSize)
+            .ToList();
+
+        Assert.Null(seekList.Seek.Previous);
+        Assert.NotNull(seekList.Seek.Next);
+
+        Assert.Equal(pageSize, seekList.Count);
+        Assert.Equal(firstCards, seekList.Select(c => c.Id));
+    }
+
+    [Fact]
     public async Task ToSeekList_OrderByFirstId_ReturnsFirst()
     {
         var cards = _dbContext.Cards

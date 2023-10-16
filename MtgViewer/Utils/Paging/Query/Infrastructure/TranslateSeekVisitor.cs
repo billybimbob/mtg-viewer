@@ -19,7 +19,7 @@ internal sealed class TranslateSeekVisitor : ExpressionVisitor
         _seekParameters = null;
     }
 
-    private TranslateSeekVisitor(TranslateSeekVisitor copy, SeekQueryExpression? seekParameters)
+    private TranslateSeekVisitor(TranslateSeekVisitor copy, SeekQueryExpression seekParameters)
     {
         _provider = copy._provider;
         _seekFilter = copy._seekFilter;
