@@ -50,6 +50,15 @@ public static class PagingExtensions
         return executor.Execute(query);
     }
 
+    public static OffsetList<TEntity> ToOffsetList<TEntity>(
+        this IQueryable<TEntity> source)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+
+        var executor = new OffsetExecutor<TEntity>();
+        return executor.Execute(source);
+    }
+
     public static Task<OffsetList<TEntity>> ToOffsetListAsync<TEntity>(
         this IQueryable<TEntity> source,
         CancellationToken cancellationToken = default)
