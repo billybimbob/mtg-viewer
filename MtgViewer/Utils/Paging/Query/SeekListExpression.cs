@@ -16,16 +16,9 @@ internal sealed class SeekListExpression : Expression
         var elementType = ExpressionHelpers.FindElementType(translation)
             ?? throw new ArgumentException("Source expression must be a query", nameof(translation));
 
-        seek ??= new SeekQueryExpression(Constant(null, elementType));
-
-        if (elementType != seek.Origin.Type)
-        {
-            throw new ArgumentException("Seek does not match translation", nameof(seek));
-        }
-
         Type = typeof(SeekList<>).MakeGenericType(elementType);
         Translation = translation;
-        Seek = seek;
+        Seek = seek ?? new SeekQueryExpression(Constant(null, elementType));
     }
 
     public override ExpressionType NodeType => ExpressionType.Extension;
