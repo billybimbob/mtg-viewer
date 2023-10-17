@@ -48,5 +48,8 @@ internal sealed class RewriteNestedSeekVisitor : ExpressionVisitor
 
             return node;
         }
+
+        protected override Expression VisitUnary(UnaryExpression node)
+            => node;
     }
 }
