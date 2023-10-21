@@ -509,7 +509,7 @@ public class SeekListTests : IAsyncLifetime
             .Skip(pageSize)
             .FirstAsync();
 
-        var _ = cards
+        await cards
             .SeekBy(SeekDirection.Forward)
                 .After(origin)
                 .Take(pageSize)
@@ -529,7 +529,7 @@ public class SeekListTests : IAsyncLifetime
             .Skip(pageSize)
             .FirstAsync();
 
-        var _ = await cards
+        await cards
             .SeekBy(SeekDirection.Forward)
                 .After(origin)
                 .Take(pageSize)
@@ -555,7 +555,7 @@ public class SeekListTests : IAsyncLifetime
             .Skip(pageSize + 1)
             .FirstAsync();
 
-        var _ = await cards
+        await cards
             .SeekBy(SeekDirection.Forward)
                 .After(c => c.Id == origin.Id)
                 .Take(pageSize)
@@ -591,7 +591,7 @@ public class SeekListTests : IAsyncLifetime
         var innerCards = await innerSeekBy.ToListAsync();
         var origin2 = innerCards[^2];
 
-        var _ = await innerSeekBy
+        await innerSeekBy
             .OrderBy(c => c.Name)
                 .ThenBy(c => c.Id)
 

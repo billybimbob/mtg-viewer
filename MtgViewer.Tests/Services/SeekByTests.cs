@@ -80,6 +80,17 @@ public sealed class SeekByTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task ToList_OrderByAfterSeekBy_DoesNotThrow()
+    {
+        await _dbContext.Cards
+            .OrderBy(c => c.Name)
+                .ThenBy(c => c.Id)
+            .SeekBy(SeekDirection.Forward)
+            .OrderBy(c => c.Id)
+            .ToListAsync();
+    }
+
+    [Fact]
     public async Task Any_OrderBySeekMultipleId_ReturnsTrue()
     {
         const int pageSize = 4;
