@@ -51,7 +51,7 @@ public sealed class SeekByTests : IAsyncLifetime
 
         Assert.All(result, c =>
             Assert.True(
-                (c.Name, c.Id).CompareTo((origin.Name, c.Id)) > 0));
+                (c.Name, c.Id).CompareTo((origin.Name, origin.Id)) > 0));
     }
 
     [Fact]
@@ -76,7 +76,32 @@ public sealed class SeekByTests : IAsyncLifetime
 
         Assert.All(result, c =>
             Assert.True(
-                (c.Name, c.Id).CompareTo((origin.Name, c.Id)) > 0));
+                (c.Name, c.Id).CompareTo((origin.Name, origin.Id)) > 0));
+    }
+
+    [Fact]
+    public async Task ToList_TakeAfterSelect_Returns()
+    {
+        const int pageSize = 4;
+        const int numPages = 2;
+
+        var cards = _dbContext.Cards
+            .OrderBy(c => c.Name)
+                .ThenBy(c => c.Id);
+
+        var origin = await cards
+            .Skip(pageSize * numPages)
+            .FirstAsync();
+
+        var result = await cards
+            .SeekBy(SeekDirection.Forward)
+                .After(c => c.Id == origin.Id)
+                .Select(c => c.Name)
+                .Take(pageSize)
+            .ToListAsync();
+
+        Assert.All(result, n =>
+            Assert.True(n.CompareTo(origin.Name) > 0));
     }
 
     [Fact]
@@ -291,7 +316,7 @@ public sealed class SeekByTests : IAsyncLifetime
             .FirstOrDefaultAsync();
 
         Assert.NotNull(result);
-        Assert.True((result.Name, result.Id).CompareTo((origin.Name, result.Id)) > 0);
+        Assert.True((result.Name, result.Id).CompareTo((origin.Name, origin.Id)) > 0);
     }
 
     [Fact]
@@ -315,6 +340,6 @@ public sealed class SeekByTests : IAsyncLifetime
             .FirstOrDefault();
 
         Assert.NotNull(result);
-        Assert.True((result.Name, result.Id).CompareTo((origin.Name, result.Id)) > 0);
+        Assert.True((result.Name, result.Id).CompareTo((origin.Name, origin.Id)) > 0);
     }
 }

@@ -329,7 +329,7 @@ public class SeekListTests : IAsyncLifetime
 
         Assert.All(seekList, c =>
             Assert.True(
-                (c.Name, c.Id).CompareTo((origin.Name, c.Id)) > 0));
+                (c.Name, c.Id).CompareTo((origin.Name, origin.Id)) > 0));
     }
 
     [Fact]
@@ -356,7 +356,7 @@ public class SeekListTests : IAsyncLifetime
 
         Assert.All(seekList, c =>
             Assert.True(
-                (c.Name, c.Id).CompareTo((origin.Name, c.Id)) > 0));
+                (c.Name, c.Id).CompareTo((origin.Name, origin.Id)) > 0));
     }
 
     [Fact]
@@ -383,7 +383,7 @@ public class SeekListTests : IAsyncLifetime
 
         Assert.All(seekList, c =>
             Assert.True(
-                (c.Name, c.Id).CompareTo((origin.Name, c.Id)) < 0));
+                (c.Name, c.Id).CompareTo((origin.Name, origin.Id)) < 0));
     }
 
     [Fact]
