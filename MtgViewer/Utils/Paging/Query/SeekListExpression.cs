@@ -18,7 +18,7 @@ internal sealed class SeekListExpression : Expression
 
         Type = typeof(SeekList<>).MakeGenericType(elementType);
         Translation = translation;
-        Seek = seek ?? new SeekQueryExpression(Constant(null, elementType));
+        Seek = seek ?? new SeekQueryExpression(elementType);
     }
 
     public override ExpressionType NodeType => ExpressionType.Extension;

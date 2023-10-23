@@ -17,9 +17,19 @@ internal sealed class SeekQueryExpression : Expression, IEquatable<Expression>
         Size = size;
     }
 
-    public SeekQueryExpression(ConstantExpression origin, int size)
-        : this(origin, SeekDirection.Forward, size)
+    public SeekQueryExpression(Type originType, SeekDirection direction = SeekDirection.Forward, int? size = null)
     {
+        ArgumentNullException.ThrowIfNull(originType);
+
+        if (!originType.IsClass)
+        {
+            throw new ArgumentException("Origin type must be a class type", nameof(originType));
+        }
+
+        Type = typeof(ISeekable<>).MakeGenericType(originType);
+        Origin = Constant(null, originType);
+        Direction = direction;
+        Size = size;
     }
 
     public override ExpressionType NodeType => ExpressionType.Extension;
