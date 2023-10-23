@@ -13,7 +13,7 @@ internal sealed class LookAheadVisitor : ExpressionVisitor
 
     protected override Expression VisitMethodCall(MethodCallExpression node)
     {
-        if (ExpressionHelpers.IsSeekTake(node))
+        if (ExpressionHelpers.IsTake(node))
         {
             var newArgs = _countIncrementor.Visit(node.Arguments);
 
