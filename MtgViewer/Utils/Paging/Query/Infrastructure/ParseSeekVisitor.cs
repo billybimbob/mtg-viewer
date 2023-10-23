@@ -28,7 +28,8 @@ internal sealed class ParseSeekVisitor : ExpressionVisitor
         }
 
         if (ExpressionHelpers.IsSeekTake(node)
-            && node.Arguments[1] is ConstantExpression { Value: int size })
+            && node.Arguments[1] is ConstantExpression { Value: int size }
+            && (seek.Size is null || seek.Size > size))
         {
             return seek.Update(size);
         }

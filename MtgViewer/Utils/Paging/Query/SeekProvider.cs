@@ -11,6 +11,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Query;
 
 using EntityFrameworkCore.Paging.Query.Infrastructure;
+using EntityFrameworkCore.Paging.Query.Infrastructure.Filtering;
 
 namespace EntityFrameworkCore.Paging.Query;
 
@@ -23,7 +24,7 @@ internal sealed class SeekProvider : IAsyncQueryProvider
     private readonly LookAheadVisitor _lookAhead;
 
     private readonly QueryOriginVisitor _originQuery;
-    private readonly TranslateSeekVisitor _seekTranslator;
+    private readonly SeekFilter _seekFilter;
 
     public SeekProvider(IQueryProvider source)
     {
@@ -36,7 +37,7 @@ internal sealed class SeekProvider : IAsyncQueryProvider
         _lookAhead = new LookAheadVisitor();
 
         _originQuery = new QueryOriginVisitor(source, evaluateMember);
-        _seekTranslator = new TranslateSeekVisitor(source, evaluateMember);
+        _seekFilter = new SeekFilter(evaluateMember);
     }
 
     #region Create Query
@@ -212,8 +213,9 @@ internal sealed class SeekProvider : IAsyncQueryProvider
         object? origin = ExecuteOrigin(expression);
 
         var changedOrigin = RewriteOrigin(expression, origin);
+        var seek = _seekParser.Parse(changedOrigin);
 
-        return _seekTranslator.Visit(changedOrigin);
+        return RewriteSeek(changedOrigin, seek);
     }
 
     private async Task<Expression> TranslateSeekByAsync(Expression expression, CancellationToken cancel)
@@ -228,8 +230,9 @@ internal sealed class SeekProvider : IAsyncQueryProvider
         object? origin = await ExecuteOriginAsync(expression, cancel).ConfigureAwait(false);
 
         var changedOrigin = RewriteOrigin(expression, origin);
+        var seek = _seekParser.Parse(changedOrigin);
 
-        return _seekTranslator.Visit(changedOrigin);
+        return RewriteSeek(changedOrigin, seek);
     }
 
     private SeekListExpression TranslateSeekList(Expression expression)
@@ -246,8 +249,8 @@ internal sealed class SeekProvider : IAsyncQueryProvider
         var changedOrigin = RewriteOrigin(expression, origin);
         var changedSeekList = _lookAhead.Visit(changedOrigin);
 
-        var translation = _seekTranslator.Visit(changedSeekList);
         var seek = _seekParser.Parse(changedSeekList);
+        var translation = RewriteSeek(changedSeekList, seek);
 
         return new SeekListExpression(translation, seek);
     }
@@ -266,8 +269,8 @@ internal sealed class SeekProvider : IAsyncQueryProvider
         var changedOrigin = RewriteOrigin(expression, origin);
         var changedSeekList = _lookAhead.Visit(changedOrigin);
 
-        var translation = _seekTranslator.Visit(changedSeekList);
         var seek = _seekParser.Parse(changedSeekList);
+        var translation = RewriteSeek(changedSeekList, seek);
 
         return new SeekListExpression(translation, seek);
     }
@@ -282,6 +285,12 @@ internal sealed class SeekProvider : IAsyncQueryProvider
     {
         var rewriteNestedSeek = new RewriteNestedSeekVisitor(nestedSeekQuery);
         return rewriteNestedSeek.Visit(expression);
+    }
+
+    private Expression RewriteSeek(Expression expression, SeekQueryExpression? seek)
+    {
+        var seekTranslator = new TranslateSeekVisitor(_source, _seekFilter, seek);
+        return seekTranslator.Visit(expression);
     }
 
     #endregion

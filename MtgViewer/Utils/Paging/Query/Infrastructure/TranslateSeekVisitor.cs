@@ -1,4 +1,3 @@
-using System;
 using System.Linq;
 using System.Linq.Expressions;
 
@@ -9,133 +8,97 @@ namespace EntityFrameworkCore.Paging.Query.Infrastructure;
 internal sealed class TranslateSeekVisitor : ExpressionVisitor
 {
     private readonly IQueryProvider _provider;
-    private readonly SeekFilter _seekFilter;
-    private readonly SeekQueryExpression? _seekParameters;
+    private readonly RewriteSeekQueryVisitor _seekQueryRewriter;
+    private readonly SeekQueryExpression? _seek;
 
-    public TranslateSeekVisitor(IQueryProvider provider, EvaluateMemberVisitor evaluateMember)
+    public TranslateSeekVisitor(IQueryProvider provider, SeekFilter seekFilter, SeekQueryExpression? seek = null)
     {
         _provider = provider;
-        _seekFilter = new SeekFilter(evaluateMember);
-        _seekParameters = null;
-    }
-
-    private TranslateSeekVisitor(TranslateSeekVisitor copy, SeekQueryExpression seekParameters)
-    {
-        _provider = copy._provider;
-        _seekFilter = copy._seekFilter;
-        _seekParameters = seekParameters;
+        _seekQueryRewriter = new RewriteSeekQueryVisitor(provider, seekFilter, seek);
+        _seek = seek;
     }
 
     protected override Expression VisitMethodCall(MethodCallExpression node)
     {
-        if (ExpressionHelpers.IsSeekBy(node)
-            && node.Arguments[1] is ConstantExpression { Value: SeekDirection direction })
-        {
-            var updatedSeek = UpdateSeek(direction, node.Type);
-            var updatedTranslator = new TranslateSeekVisitor(this, updatedSeek);
-
-            return updatedTranslator.ExpandSeek(node.Arguments[0]);
-        }
-
-        if (ExpressionHelpers.IsAfter(node)
-            && node.Arguments[1] is ConstantExpression origin)
-        {
-            var updatedSeek = UpdateSeek(origin);
-            var updatedTranslator = new TranslateSeekVisitor(this, updatedSeek);
-
-            return updatedTranslator.Visit(node.Arguments[0]);
-        }
-
-        if (ExpressionHelpers.IsSeekTake(node)
-            && node.Arguments[1] is ConstantExpression { Value: int size })
-        {
-            var updatedSeek = UpdateSeek(size, node.Type);
-            var updatedTranslator = new TranslateSeekVisitor(this, updatedSeek);
-
-            return updatedTranslator.Visit(node.Arguments[0]);
-        }
-
         if (ExpressionHelpers.IsToSeekList(node))
         {
             return Visit(node.Arguments[0]);
         }
 
+        if (node.Type.IsAssignableTo(typeof(IQueryable)))
+        {
+            return VisitQueryMethodCall(node);
+        }
+
         return base.VisitMethodCall(node);
     }
 
-    private Expression ExpandSeek(Expression source)
+    private Expression VisitQueryMethodCall(MethodCallExpression node)
     {
-        var direction = _seekParameters?.Direction;
-        var origin = _seekParameters?.Origin;
-        int? size = _seekParameters?.Size;
+        var rewrittenNode = _seekQueryRewriter.Visit(node);
 
-        var filter = _seekFilter.CreateFilter(source, direction, origin);
-        var query = _provider.CreateQuery(source);
-
-        var expandedQuery = (direction, filter, size) switch
+        if (_seek?.Direction is SeekDirection.Backwards)
         {
-            (SeekDirection.Forward, not null, int count) => query
-                .Where(filter)
-                .Take(count),
+            var reversedQuery = _provider
+                .CreateQuery(rewrittenNode)
+                .Reverse();
 
-            (SeekDirection.Backwards, not null, int count) => query
-                .Reverse()
-                .Where(filter)
-                .Take(count)
-                .Reverse(),
-
-            (SeekDirection.Forward, not null, null) => query
-                .Where(filter),
-
-            (SeekDirection.Backwards, not null, null) => query
-                .Reverse()
-                .Where(filter)
-                .Reverse(),
-
-            (SeekDirection.Forward, null, int count) => query
-                .Take(count),
-
-            (SeekDirection.Backwards, null, int count) => query
-                .Reverse()
-                .Take(count)
-                .Reverse(),
-
-            _ => query
-        };
-
-        return expandedQuery.Expression;
-    }
-
-    private SeekQueryExpression UpdateSeek(SeekDirection direction, Type seekType)
-    {
-        var seekWithDirection = _seekParameters?.Update(direction);
-
-        if (seekWithDirection is null)
-        {
-            var entityType = seekType.GenericTypeArguments[0];
-            var origin = Expression.Constant(null, entityType);
-
-            seekWithDirection = new SeekQueryExpression(origin, direction);
+            rewrittenNode = reversedQuery.Expression;
         }
 
-        return seekWithDirection;
+        return rewrittenNode;
     }
 
-    private SeekQueryExpression UpdateSeek(ConstantExpression origin)
-        => _seekParameters?.Update(origin) ?? new SeekQueryExpression(origin);
-
-    private SeekQueryExpression UpdateSeek(int size, Type seekType)
+    private sealed class RewriteSeekQueryVisitor : ExpressionVisitor
     {
-        var seekWithSize = _seekParameters?.Update(size);
+        private readonly IQueryProvider _provider;
+        private readonly SeekFilter _seekFilter;
+        private readonly SeekQueryExpression? _seek;
 
-        if (seekWithSize is null)
+        public RewriteSeekQueryVisitor(IQueryProvider provider, SeekFilter seekFilter, SeekQueryExpression? seek)
         {
-            var entityType = seekType.GenericTypeArguments[0];
-            var origin = Expression.Constant(null, entityType);
-
-            seekWithSize = new SeekQueryExpression(origin, size);
+            _provider = provider;
+            _seekFilter = seekFilter;
+            _seek = seek;
         }
 
-        return seekWithSize;
+        protected override Expression VisitMethodCall(MethodCallExpression node)
+        {
+            if (ExpressionHelpers.IsSeekBy(node))
+            {
+                return VisitSeekBy(node);
+            }
+
+            if (ExpressionHelpers.IsAfter(node))
+            {
+                return Visit(node.Arguments[0]);
+            }
+
+            return base.VisitMethodCall(node);
+        }
+
+        private Expression VisitSeekBy(MethodCallExpression node)
+        {
+            var direction = _seek?.Direction;
+            var origin = _seek?.Origin;
+
+            var source = node.Arguments[0];
+
+            var query = _provider.CreateQuery(source);
+            var filter = _seekFilter.CreateFilter(source, direction, origin);
+
+            if (direction is SeekDirection.Backwards)
+            {
+                query = query.Reverse();
+            }
+
+            if (filter is not null)
+            {
+                query = query.Where(filter);
+            }
+
+            return query.Expression;
+        }
     }
+
 }
