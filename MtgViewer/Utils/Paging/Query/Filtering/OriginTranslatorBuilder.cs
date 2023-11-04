@@ -32,7 +32,7 @@ internal sealed class OriginTranslatorBuilder
         return new OriginTranslator(_origin, translations, computedNulls);
     }
 
-    public IReadOnlyDictionary<MemberExpression, MemberExpression> BuildTranslations(IReadOnlyList<MemberExpression> targets)
+    private IReadOnlyDictionary<MemberExpression, MemberExpression> BuildTranslations(IReadOnlyList<MemberExpression> targets)
     {
         var translations = new Dictionary<MemberExpression, MemberExpression>(ExpressionEqualityComparer.Instance);
 
@@ -91,7 +91,7 @@ internal sealed class OriginTranslatorBuilder
         return translation;
     }
 
-    public IReadOnlyDictionary<MemberExpression, bool> BuildComputedNulls(
+    private IReadOnlyDictionary<MemberExpression, bool> BuildComputedNulls(
         IReadOnlyList<MemberExpression> targets,
         IReadOnlyDictionary<MemberExpression, MemberExpression> translations)
     {
