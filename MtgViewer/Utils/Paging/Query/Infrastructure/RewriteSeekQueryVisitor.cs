@@ -1,20 +1,20 @@
 using System.Linq;
 using System.Linq.Expressions;
 
-using EntityFrameworkCore.Paging.Query.Infrastructure.Filtering;
+using EntityFrameworkCore.Paging.Query.Filtering;
 
 namespace EntityFrameworkCore.Paging.Query.Infrastructure;
 
-internal sealed class TranslateSeekVisitor : ExpressionVisitor
+internal sealed class RewriteSeekQueryVisitor : ExpressionVisitor
 {
     private readonly IQueryProvider _provider;
-    private readonly RewriteSeekQueryVisitor _seekQueryRewriter;
+    private readonly TranslateSeekVisitor _seekTranslator;
     private readonly SeekQueryExpression? _seek;
 
-    public TranslateSeekVisitor(IQueryProvider provider, SeekFilter seekFilter, SeekQueryExpression? seek = null)
+    public RewriteSeekQueryVisitor(IQueryProvider provider, SeekFilter seekFilter, SeekQueryExpression? seek = null)
     {
         _provider = provider;
-        _seekQueryRewriter = new RewriteSeekQueryVisitor(provider, seekFilter, seek);
+        _seekTranslator = new TranslateSeekVisitor(provider, seekFilter, seek);
         _seek = seek;
     }
 
@@ -35,14 +35,14 @@ internal sealed class TranslateSeekVisitor : ExpressionVisitor
 
     private Expression VisitQueryMethodCall(MethodCallExpression node)
     {
-        var rewrittenNode = _seekQueryRewriter.Visit(node);
+        var translatedNode = _seekTranslator.Visit(node);
 
         if (_seek?.Direction is SeekDirection.Backwards)
         {
-            rewrittenNode = VisitBackwardsSeek(rewrittenNode);
+            translatedNode = VisitBackwardsSeek(translatedNode);
         }
 
-        return rewrittenNode;
+        return translatedNode;
     }
 
     private Expression VisitBackwardsSeek(Expression node)
@@ -59,13 +59,13 @@ internal sealed class TranslateSeekVisitor : ExpressionVisitor
         return reversedQuery.Expression;
     }
 
-    private sealed class RewriteSeekQueryVisitor : ExpressionVisitor
+    private sealed class TranslateSeekVisitor : ExpressionVisitor
     {
         private readonly IQueryProvider _provider;
         private readonly SeekFilter _seekFilter;
         private readonly SeekQueryExpression? _seek;
 
-        public RewriteSeekQueryVisitor(IQueryProvider provider, SeekFilter seekFilter, SeekQueryExpression? seek)
+        public TranslateSeekVisitor(IQueryProvider provider, SeekFilter seekFilter, SeekQueryExpression? seek)
         {
             _provider = provider;
             _seekFilter = seekFilter;

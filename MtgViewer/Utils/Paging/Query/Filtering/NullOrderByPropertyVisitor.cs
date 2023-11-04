@@ -2,7 +2,9 @@ using System;
 using System.Linq.Expressions;
 using System.Reflection;
 
-namespace EntityFrameworkCore.Paging.Query.Infrastructure.Filtering;
+using EntityFrameworkCore.Paging.Query.Infrastructure;
+
+namespace EntityFrameworkCore.Paging.Query.Filtering;
 
 internal sealed class NullOrderByPropertyVisitor : ExpressionVisitor
 {

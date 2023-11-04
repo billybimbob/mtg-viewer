@@ -4,7 +4,9 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 
-namespace EntityFrameworkCore.Paging.Query.Infrastructure.Filtering;
+using EntityFrameworkCore.Paging.Query.Infrastructure;
+
+namespace EntityFrameworkCore.Paging.Query.Filtering;
 
 internal sealed class FindOrderPropertiesVisitor : ExpressionVisitor
 {
