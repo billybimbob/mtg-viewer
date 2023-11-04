@@ -39,14 +39,24 @@ internal sealed class TranslateSeekVisitor : ExpressionVisitor
 
         if (_seek?.Direction is SeekDirection.Backwards)
         {
-            var reversedQuery = _provider
-                .CreateQuery(rewrittenNode)
-                .Reverse();
-
-            rewrittenNode = reversedQuery.Expression;
+            rewrittenNode = VisitBackwardsSeek(rewrittenNode);
         }
 
         return rewrittenNode;
+    }
+
+    private Expression VisitBackwardsSeek(Expression node)
+    {
+        if (node is MethodCallExpression call
+            && ExpressionHelpers.IsReverse(call))
+        {
+            return node;
+        }
+        var reversedQuery = _provider
+            .CreateQuery(node)
+            .Reverse();
+
+        return reversedQuery.Expression;
     }
 
     private sealed class RewriteSeekQueryVisitor : ExpressionVisitor
@@ -79,13 +89,13 @@ internal sealed class TranslateSeekVisitor : ExpressionVisitor
 
         private Expression VisitSeekBy(MethodCallExpression node)
         {
+            var source = node.Arguments[0];
+
             var direction = _seek?.Direction;
             var origin = _seek?.Origin;
 
-            var source = node.Arguments[0];
-
-            var query = _provider.CreateQuery(source);
             var filter = _seekFilter.CreateFilter(source, direction, origin);
+            var query = _provider.CreateQuery(source);
 
             if (direction is SeekDirection.Backwards)
             {

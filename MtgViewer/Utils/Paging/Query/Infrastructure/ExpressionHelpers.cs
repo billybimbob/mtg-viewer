@@ -50,6 +50,9 @@ internal static class ExpressionHelpers
             call.Method,
             QueryableMethods.Take);
 
+    public static bool IsReverse(MethodCallExpression call)
+        => DoesMethodEqual(call.Method, QueryableMethods.Reverse);
+
     public static bool IsSeekQuery(MethodCallExpression call)
         => DoesMethodEqual(
             call.Method,
