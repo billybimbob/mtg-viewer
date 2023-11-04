@@ -289,8 +289,8 @@ internal sealed class SeekProvider : IAsyncQueryProvider
 
     private Expression RewriteSeek(Expression expression, SeekQueryExpression? seek)
     {
-        var seekTranslator = new TranslateSeekVisitor(_source, _seekFilter, seek);
-        return seekTranslator.Visit(expression);
+        var rewriteSeek = new RewriteSeekQueryVisitor(_source, _seekFilter, seek);
+        return rewriteSeek.Visit(expression);
     }
 
     #endregion
