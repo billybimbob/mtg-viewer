@@ -6,6 +6,8 @@ namespace EntityFrameworkCore.Paging;
 
 public class OffsetList<T> : IReadOnlyList<T>
 {
+    internal static OffsetList<T> Empty { get; } = new();
+
     private readonly IReadOnlyList<T> _items;
 
     public OffsetList(Offset offset, IReadOnlyList<T> items)
@@ -16,7 +18,7 @@ public class OffsetList<T> : IReadOnlyList<T>
         Offset = offset;
     }
 
-    internal OffsetList() : this(new Offset(), Array.Empty<T>())
+    public OffsetList() : this(new Offset(), Array.Empty<T>())
     {
     }
 
@@ -33,5 +35,5 @@ public class OffsetList<T> : IReadOnlyList<T>
 
 public static class OffsetList
 {
-    public static OffsetList<T> Empty<T>() => Utils.EmptyOffsetList<T>.Value;
+    public static OffsetList<T> Empty<T>() => OffsetList<T>.Empty;
 }

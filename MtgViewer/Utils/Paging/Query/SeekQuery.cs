@@ -5,38 +5,50 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Threading;
 
+using EntityFrameworkCore.Paging.Query.Infrastructure;
+
 using Microsoft.EntityFrameworkCore.Query;
 
 namespace EntityFrameworkCore.Paging.Query;
 
-internal class SeekQuery<TSource> : ISeekable<TSource>, IOrderedQueryable<TSource>, IAsyncEnumerable<TSource>
+internal class SeekQuery<T> : ISeekable<T>, IOrderedQueryable<T>, IAsyncEnumerable<T>
 {
+    private readonly SeekProvider _seekProvider;
+
     public SeekQuery(SeekProvider provider, Expression expression)
     {
-        AsyncProvider = provider;
+        ArgumentNullException.ThrowIfNull(provider);
+        ArgumentNullException.ThrowIfNull(expression);
+
+        if (!expression.Type.IsAssignableTo(typeof(IQueryable<T>)))
+        {
+            throw new ArgumentException("Expression must be a query", nameof(expression));
+        }
+
+        _seekProvider = provider;
         Expression = expression;
     }
 
     public Expression Expression { get; }
 
-    public IAsyncQueryProvider AsyncProvider { get; }
+    public Type ElementType => typeof(T);
 
-    public IQueryProvider Provider => AsyncProvider;
+    public IQueryProvider Provider => _seekProvider;
 
-    public Type ElementType => typeof(TSource);
+    public IAsyncQueryProvider AsyncProvider => _seekProvider;
 
     IEnumerator IEnumerable.GetEnumerator()
-        => ((IEnumerable)Provider.Execute(Expression)!)
+        => ((IEnumerable)_seekProvider.Execute(Expression)!)
             .GetEnumerator();
 
-    public IEnumerator<TSource> GetEnumerator()
-        => Provider
-            .Execute<IEnumerable<TSource>>(Expression)
+    public IEnumerator<T> GetEnumerator()
+        => _seekProvider
+            .Execute<IEnumerable<T>>(Expression)
             .GetEnumerator();
 
-    public IAsyncEnumerator<TSource> GetAsyncEnumerator(CancellationToken cancellationToken)
-        => AsyncProvider
-            .ExecuteAsync<IAsyncEnumerable<TSource>>(Expression, cancellationToken)
+    public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken)
+        => _seekProvider
+            .ExecuteAsync<IAsyncEnumerable<T>>(Expression, cancellationToken)
             .GetAsyncEnumerator(cancellationToken);
 }
 
@@ -44,17 +56,8 @@ internal static class SeekQuery
 {
     public static IQueryable Create(SeekProvider provider, Expression expression)
     {
-        if (!expression.Type.IsAssignableTo(typeof(IQueryable)))
-        {
-            throw new ArgumentException("Expression must be a query", nameof(expression));
-        }
-
-        var elementType = expression.Type.GenericTypeArguments.ElementAtOrDefault(0);
-
-        if (elementType is null)
-        {
-            throw new ArgumentException("Expression must be strongly typed", nameof(expression));
-        }
+        var elementType = ExpressionHelpers.FindElementType(expression)
+            ?? throw new ArgumentException("Expression must be a query", nameof(expression));
 
         var seekQueryType = typeof(SeekQuery<>).MakeGenericType(elementType);
 

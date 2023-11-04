@@ -66,7 +66,7 @@ public class ExcessModel : PageModel
 
             .SeekBy(direction)
                 .After(c => c.Id == origin)
-                .ThenTake(_pageSize.Current)
+                .Take(_pageSize.Current)
 
             .Select(c => new CardCopy
             {

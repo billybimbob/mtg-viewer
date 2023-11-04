@@ -90,7 +90,7 @@ public class IndexModel : PageModel
 
             .SeekBy(direction)
                 .After(d => d.Id == origin)
-                .ThenTake(_pageSize.Current)
+                .Take(_pageSize.Current)
 
             .Select(d => new TradeDeckPreview
             {

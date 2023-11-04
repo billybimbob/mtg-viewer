@@ -92,7 +92,6 @@ public class CardDataGenerator
     {
         var search = new CardSearch
         {
-            ManaValue = 3,
             PageSize = 20
         };
 

@@ -138,7 +138,7 @@ public sealed partial class Collection : ComponentBase, IDisposable
             // TODO: find way to check filters are consistent
 
             return new SeekList<CardCopy>(
-                cards, seek.HasPrevious, seek.HasNext, seek.IsMissing);
+                cards, seek.HasPrevious, seek.HasNext, seek.IsPartial);
         }
         else
         {
@@ -172,7 +172,7 @@ public sealed partial class Collection : ComponentBase, IDisposable
 
             .SeekBy((SeekDirection)Direction)
                 .After(c => c.Id == Seek)
-                .ThenTake(PageSize.Current)
+                .Take(PageSize.Current)
 
             .ToSeekListAsync(_cancel.Token);
     }

@@ -6,37 +6,59 @@ namespace EntityFrameworkCore.Paging;
 
 public class SeekList<T> : IReadOnlyList<T> where T : class
 {
+    internal static SeekList<T> Empty { get; } = new();
+
     private readonly IReadOnlyList<T> _items;
 
-    internal SeekList()
+    public SeekList()
     {
         _items = Array.Empty<T>();
         Seek = new Seek<T>();
     }
 
-    public SeekList(
-        IReadOnlyList<T> items,
-        bool hasPrevious,
-        bool hasNext,
-        bool isMissing)
+    public SeekList(IReadOnlyList<T> items, bool hasPrevious, bool hasNext, bool isPartial)
     {
         ArgumentNullException.ThrowIfNull(items);
 
+        if (items.Count is 0 && (hasPrevious || hasNext))
+        {
+            throw new ArgumentException("Items is expected to not be empty", nameof(items));
+        }
+
         _items = items;
-        Seek = CreateSeek(items, hasPrevious, hasNext, isMissing);
+
+        var previous = hasPrevious ? items[0] : default;
+        var next = hasNext ? items[^1] : default;
+
+        Seek = new Seek<T>(previous, next, isPartial);
     }
 
-    public SeekList(
-        IReadOnlyList<T> items,
-        SeekDirection direction,
-        bool hasOrigin,
-        bool lookAhead,
-        int? targetSize)
+    public SeekList(IReadOnlyList<T> items, SeekDirection direction, bool hasOrigin, bool lookAhead, int? targetSize)
     {
         ArgumentNullException.ThrowIfNull(items);
 
+        if (items.Count is 0 && (hasOrigin || lookAhead))
+        {
+            throw new ArgumentException("Items is expected to not be empty", nameof(items));
+        }
+
         _items = items;
-        Seek = CreateSeek(items, direction, hasOrigin, lookAhead, targetSize);
+
+        var previous = (direction, hasOrigin, lookAhead) switch
+        {
+            (SeekDirection.Forward, true, _) => items[0],
+            (SeekDirection.Backwards, _, true) => items[0],
+            _ => default
+        };
+
+        var next = (direction, hasOrigin, lookAhead) switch
+        {
+            (SeekDirection.Forward, _, true) => items[^1],
+            (SeekDirection.Backwards, true, _) => items[^1],
+            _ => default
+        };
+
+        Seek = new Seek<T>(previous, next, items.Count < targetSize);
     }
 
     public Seek<T> Seek { get; }
@@ -48,68 +70,10 @@ public class SeekList<T> : IReadOnlyList<T> where T : class
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
     public IEnumerator<T> GetEnumerator() => _items.GetEnumerator();
-
-    private static Seek<T> CreateSeek(
-        IReadOnlyList<T> items,
-        bool hasPrevious,
-        bool hasNext,
-        bool isMissing)
-    {
-        var previous = hasPrevious ? items[0] : default;
-        var next = hasNext ? items[^1] : default;
-
-        return CreateSeek(previous, next, isMissing);
-    }
-
-    private static Seek<T> CreateSeek(
-        IReadOnlyList<T> items,
-        SeekDirection direction,
-        bool hasOrigin,
-        bool lookAhead,
-        int? targetSize)
-    {
-        var (previous, next) = GetSeekReferences(items, direction, hasOrigin, lookAhead);
-
-        return CreateSeek(previous, next, items.Count < targetSize);
-    }
-
-    private static Seek<T> CreateSeek(T? previous, T? next, bool isMissing)
-    {
-        return (previous, next, isMissing) switch
-        {
-            (T p, T n, _) => new Seek<T>(p, n),
-            (T p, _, bool m) => new Seek<T>(p, SeekDirection.Forward, m),
-            (_, T n, bool m) => new Seek<T>(n, SeekDirection.Backwards, m),
-            _ => new Seek<T>()
-        };
-    }
-
-    private static (T?, T?) GetSeekReferences(
-        IReadOnlyList<T> items,
-        SeekDirection direction,
-        bool hasOrigin,
-        bool lookAhead)
-    {
-        var previous = (items, direction, hasOrigin, lookAhead) switch
-        {
-            ({ Count: > 0 }, SeekDirection.Forward, true, _) => items[0],
-            ({ Count: > 0 }, SeekDirection.Backwards, _, true) => items[0],
-            _ => default
-        };
-
-        var next = (items, direction, hasOrigin, lookAhead) switch
-        {
-            ({ Count: > 0 }, SeekDirection.Forward, _, true) => items[^1],
-            ({ Count: > 0 }, SeekDirection.Backwards, true, _) => items[^1],
-            _ => default
-        };
-
-        return (previous, next);
-    }
 }
 
 public static class SeekList
 {
     public static SeekList<T> Empty<T>() where T : class
-        => Utils.EmptySeekList<T>.Value;
+        => SeekList<T>.Empty;
 }

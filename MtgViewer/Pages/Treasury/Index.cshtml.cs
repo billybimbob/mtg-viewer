@@ -65,7 +65,7 @@ public class IndexModel : PageModel
 
             .SeekBy(direction)
                 .After(b => b.Id == origin)
-                .ThenTake(_pageSize.Current)
+                .Take(_pageSize.Current)
 
             .Select(b => new BoxPreview
             {

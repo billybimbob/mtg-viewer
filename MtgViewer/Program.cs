@@ -55,7 +55,13 @@ services
 
 services
     .AddCardUsers(config)
-    .AddCardStorage(config);
+    .AddCardStorage(config, options =>
+    {
+        if (env.IsDevelopment())
+        {
+            options.EnableSensitiveDataLogging();
+        }
+    });
 
 services
     .AddSymbols(options => options

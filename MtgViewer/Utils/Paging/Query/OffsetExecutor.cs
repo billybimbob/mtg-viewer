@@ -9,60 +9,57 @@ using Microsoft.EntityFrameworkCore.Query;
 
 namespace EntityFrameworkCore.Paging.Query;
 
-internal static class ExecuteOffset<TEntity>
+internal class OffsetExecutor<TEntity>
 {
-    public static OffsetList<TEntity> ToOffsetList(IQueryable<TEntity> query)
-    {
-        if (FindOffsetVisitor.Instance.Visit(query.Expression) is not OffsetExpression offsetExpression)
-        {
-            offsetExpression = new OffsetExpression(0, null);
-        }
+    private readonly FindOffsetVisitor _offsetFinder;
+    private readonly RemoveOffsetVisitor _offsetRemover;
 
+    public OffsetExecutor()
+    {
+        _offsetFinder = new FindOffsetVisitor();
+        _offsetRemover = new RemoveOffsetVisitor();
+    }
+
+    public OffsetList<TEntity> Execute(IQueryable<TEntity> query)
+    {
+        var offsetExpression = _offsetFinder.Find(query.Expression);
         int totalItems = GetTotalItems(query);
 
         int pageSize = offsetExpression.Size ?? totalItems - offsetExpression.Skip;
-
         int currentPage = offsetExpression.Skip / pageSize;
 
         var offset = new Offset(currentPage, totalItems, pageSize);
-
         var items = query.ToList();
 
         return new OffsetList<TEntity>(offset, items);
     }
 
-    private static int GetTotalItems(IQueryable<TEntity> query)
+    private int GetTotalItems(IQueryable<TEntity> query)
     {
-        var withoutOffset = RemoveOffsetVisitor.Instance.Visit(query.Expression);
+        var withoutOffset = _offsetRemover.Visit(query.Expression);
 
         return query.Provider
             .CreateQuery<TEntity>(withoutOffset)
             .Count();
     }
 
-    public static async Task<OffsetList<TEntity>> ToOffsetListAsync(IQueryable<TEntity> query, CancellationToken cancel)
+    public async Task<OffsetList<TEntity>> ExecuteAsync(IQueryable<TEntity> query, CancellationToken cancel)
     {
-        if (FindOffsetVisitor.Instance.Visit(query.Expression) is not OffsetExpression offsetExpression)
-        {
-            offsetExpression = new OffsetExpression(0, null);
-        }
-
+        var offsetExpression = _offsetFinder.Find(query.Expression);
         int totalItems = await GetTotalItemsAsync(query, cancel).ConfigureAwait(false);
 
         int pageSize = offsetExpression.Size ?? totalItems - offsetExpression.Skip;
-
         int currentPage = offsetExpression.Skip / pageSize;
 
         var offset = new Offset(currentPage, totalItems, pageSize);
-
         var items = await query.ToListAsync(cancel).ConfigureAwait(false);
 
         return new OffsetList<TEntity>(offset, items);
     }
 
-    private static async Task<int> GetTotalItemsAsync(IQueryable<TEntity> query, CancellationToken cancel)
+    private async Task<int> GetTotalItemsAsync(IQueryable<TEntity> query, CancellationToken cancel)
     {
-        var withoutOffset = RemoveOffsetVisitor.Instance.Visit(query.Expression);
+        var withoutOffset = _offsetRemover.Visit(query.Expression);
 
         return await query.Provider
             .CreateQuery<TEntity>(withoutOffset)
@@ -100,11 +97,8 @@ internal static class ExecuteOffset<TEntity>
 
     private sealed class FindOffsetVisitor : ExpressionVisitor
     {
-        public static FindOffsetVisitor Instance { get; } = new();
-
-        private FindOffsetVisitor()
-        {
-        }
+        public OffsetExpression Find(Expression node)
+            => Visit(node) as OffsetExpression ?? new OffsetExpression(0, null);
 
         protected override Expression VisitMethodCall(MethodCallExpression node)
         {
@@ -141,12 +135,6 @@ internal static class ExecuteOffset<TEntity>
 
     private sealed class RemoveOffsetVisitor : ExpressionVisitor
     {
-        public static RemoveOffsetVisitor Instance { get; } = new();
-
-        private RemoveOffsetVisitor()
-        {
-        }
-
         protected override Expression VisitMethodCall(MethodCallExpression node)
         {
             if (node.Arguments.ElementAtOrDefault(0) is not Expression parent

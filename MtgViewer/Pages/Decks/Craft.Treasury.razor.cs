@@ -183,7 +183,7 @@ public partial class Craft
 
             .SeekBy(direction)
                 .After(c => c.Id == originId)
-                .ThenTake(PageSize.Current)
+                .Take(PageSize.Current)
 
             .Select(card => new HeldCard(
                 card,

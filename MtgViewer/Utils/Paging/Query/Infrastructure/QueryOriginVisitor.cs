@@ -1,48 +1,60 @@
 using System;
-using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Linq.Expressions;
 
-using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Query;
-
-using EntityFrameworkCore.Paging.Utils;
 
 namespace EntityFrameworkCore.Paging.Query.Infrastructure;
 
 internal class QueryOriginVisitor : ExpressionVisitor
 {
     private readonly IQueryProvider _provider;
+    private readonly ParseAfterVisitor _afterParser;
+    private readonly FindIncludesVisitor _includesFinder;
 
-    public QueryOriginVisitor(IQueryProvider provider)
+    public QueryOriginVisitor(IQueryProvider provider, EvaluateMemberVisitor evaluateMember)
     {
         _provider = provider;
+        _afterParser = new ParseAfterVisitor(evaluateMember);
+        _includesFinder = new FindIncludesVisitor();
     }
 
     protected override Expression VisitMethodCall(MethodCallExpression node)
     {
+        if (ExpressionHelpers.IsAfter(node))
+        {
+            return BuildAfterExpression(node);
+        }
+
         if (ExpressionHelpers.IsSeekBy(node))
         {
             return node.Arguments[0];
         }
 
-        if (Visit(node.Arguments.ElementAtOrDefault(0)) is not Expression parent)
+        if (node.Arguments.ElementAtOrDefault(0) is Expression parent)
         {
-            return node;
+            return Visit(parent);
         }
 
-        if (!ExpressionHelpers.IsAfter(node))
+        return node;
+    }
+
+    private Expression BuildAfterExpression(MethodCallExpression node)
+    {
+        var parsedAfter = _afterParser.Visit(node.Arguments[1]);
+
+        if (parsedAfter is ConstantExpression origin)
         {
-            return parent;
+            return origin;
         }
 
-        return AfterVisitor.Instance.Visit(node.Arguments[1]) switch
+        if (parsedAfter is LambdaExpression predicate
+            && Visit(node.Arguments[0]) is Expression parent)
         {
-            ConstantExpression origin => origin,
-            LambdaExpression predicate => BuildOriginQuery(parent, predicate).Expression,
-            _ => node
-        };
+            return BuildOriginQuery(parent, predicate).Expression;
+        }
+
+        return node;
     }
 
     private IQueryable BuildOriginQuery(Expression parent, LambdaExpression predicate)
@@ -53,20 +65,85 @@ internal class QueryOriginVisitor : ExpressionVisitor
 
         var findSelector = new FindSelectVisitor(query.ElementType);
 
-        if (findSelector.Visit(query.Expression) is LambdaExpression)
+        if (findSelector.HasSelect(query.Expression))
         {
             return query;
         }
 
-        var includes = OriginIncludeVisitor.Scan(query.Expression);
-
-        foreach (string include in includes)
+        foreach (string include in _includesFinder.Scan(query.Expression))
         {
             query = query.Include(include);
         }
 
         return query.AsNoTracking();
     }
+
+    #region After Translation
+
+    private sealed class ParseAfterVisitor : ExpressionVisitor
+    {
+        private readonly EvaluateMemberVisitor _evaluateMember;
+
+        public ParseAfterVisitor(EvaluateMemberVisitor evaluateMember)
+        {
+            _evaluateMember = evaluateMember;
+        }
+
+        protected override Expression VisitUnary(UnaryExpression node)
+        {
+            if (node.NodeType is ExpressionType.Quote)
+            {
+                return Visit(node.Operand);
+            }
+
+            if (node.NodeType is ExpressionType.Convert)
+            {
+                return Visit(node.Operand);
+            }
+
+            return node;
+        }
+
+        protected override Expression VisitLambda<TFunc>(Expression<TFunc> node)
+        {
+            var body = Visit(node.Body);
+
+            if (ExpressionHelpers.IsNull(body))
+            {
+                return body;
+            }
+
+            return node;
+        }
+
+        protected override Expression VisitBinary(BinaryExpression node)
+        {
+            if (node.NodeType is not ExpressionType.Equal)
+            {
+                return node;
+            }
+
+            var left = Visit(node.Left);
+            var right = Visit(node.Right);
+
+            if (ExpressionHelpers.IsNull(left) && right is MemberExpression)
+            {
+                return left;
+            }
+
+            if (left is MemberExpression && ExpressionHelpers.IsNull(right))
+            {
+                return right;
+            }
+
+            return node;
+        }
+
+        protected override Expression VisitMember(MemberExpression node)
+            => _evaluateMember.Visit(node);
+    }
+
+    #endregion
 
     private sealed class FindSelectVisitor : ExpressionVisitor
     {
@@ -76,6 +153,9 @@ internal class QueryOriginVisitor : ExpressionVisitor
         {
             _resultType = resultType;
         }
+
+        public bool HasSelect(Expression node)
+            => Visit(node) is LambdaExpression;
 
         protected override Expression VisitMethodCall(MethodCallExpression node)
         {
@@ -118,263 +198,4 @@ internal class QueryOriginVisitor : ExpressionVisitor
             return node;
         }
     }
-
-    #region After Translation
-
-    private sealed class AfterVisitor : ExpressionVisitor
-    {
-        public static AfterVisitor Instance { get; } = new();
-
-        private AfterVisitor()
-        {
-        }
-
-        protected override Expression VisitUnary(UnaryExpression node)
-        {
-            if (node.NodeType is ExpressionType.Quote)
-            {
-                return Visit(node.Operand);
-            }
-
-            return node;
-        }
-
-        protected override Expression VisitLambda<TFunc>(Expression<TFunc> node)
-        {
-            var body = Visit(node.Body);
-
-            if (ExpressionHelpers.IsNull(body))
-            {
-                return body;
-            }
-
-            return node;
-        }
-
-        protected override Expression VisitBinary(BinaryExpression node)
-        {
-            var left = Visit(node.Left);
-
-            if (ExpressionHelpers.IsNull(left))
-            {
-                return left;
-            }
-
-            var right = Visit(node.Right);
-
-            if (ExpressionHelpers.IsNull(right))
-            {
-                return right;
-            }
-
-            return node;
-        }
-
-        protected override Expression VisitMember(MemberExpression node)
-        {
-            // keep eye on, could be slower than just pass thru
-
-            if (MemberEvaluationVisitor.Instance.Visit(node) is not Expression<Func<object?>> eval)
-            {
-                return node;
-            }
-
-            if (eval.Compile().Invoke() is null)
-            {
-                return Expression.Constant(null, node.Type);
-            }
-
-            return node;
-        }
-    }
-
-    private sealed class MemberEvaluationVisitor : ExpressionVisitor
-    {
-        public static MemberEvaluationVisitor Instance { get; } = new();
-
-        private MemberEvaluationVisitor()
-        {
-        }
-
-        [return: NotNullIfNotNull("node")]
-        public override Expression? Visit(Expression? node)
-        {
-            return base.Visit(node) switch
-            {
-                MemberExpression m and { Type.IsValueType: true }
-                    => Expression.Lambda<Func<object?>>(
-                        Expression.Convert(m, typeof(object))),
-
-                MemberExpression m
-                    => Expression.Lambda<Func<object?>>(m),
-
-                _ => node
-            };
-        }
-
-        protected override Expression VisitMember(MemberExpression node)
-        {
-            var source = base.Visit(node.Expression);
-
-            if (source is ParameterExpression)
-            {
-                return source;
-            }
-
-            if (source?.Type == node.Expression?.Type)
-            {
-                return node.Update(source);
-            }
-
-            return node;
-        }
-    }
-
-    #endregion
-
-    #region Find Include Properties
-
-    private sealed class OriginIncludeVisitor : ExpressionVisitor
-    {
-        public static IReadOnlyCollection<string> Scan(Expression node)
-        {
-            var findIncludes = new OriginIncludeVisitor();
-
-            _ = findIncludes.Visit(node);
-
-            return findIncludes._includes;
-        }
-
-        private readonly HashSet<string> _includes;
-        private FindIncludeVisitor? _findInclude;
-
-        private OriginIncludeVisitor()
-        {
-            _includes = new HashSet<string>();
-        }
-
-        [return: NotNullIfNotNull("node")]
-        public new Expression? Visit(Expression? node)
-        {
-            _includes.Clear();
-
-            return base.Visit(node);
-        }
-
-        protected override Expression VisitExtension(Expression node)
-        {
-            if (node is QueryRootExpression root)
-            {
-                _findInclude = new FindIncludeVisitor(root.EntityType);
-            }
-
-            return base.VisitExtension(node);
-        }
-
-        protected override Expression VisitMethodCall(MethodCallExpression node)
-        {
-            if (_findInclude?.Visit(node) is ConstantExpression { Value: string includeChain })
-            {
-                const StringComparison ordinal = StringComparison.Ordinal;
-
-                _includes.RemoveWhere(s => includeChain.StartsWith(s, ordinal));
-                _includes.Add(includeChain);
-            }
-
-            return base.VisitMethodCall(node);
-        }
-    }
-
-    private sealed class FindIncludeVisitor : ExpressionVisitor
-    {
-        private readonly IReadOnlyEntityType _entity;
-
-        public FindIncludeVisitor(IReadOnlyEntityType entity)
-        {
-            _entity = entity;
-        }
-
-        protected override Expression VisitMethodCall(MethodCallExpression node)
-        {
-            if (ExpressionHelpers.IsOrderedMethod(node)
-                && node.Method.GetGenericArguments().FirstOrDefault() == _entity.ClrType
-                && node.Arguments.Count == 2
-                && node.Arguments[1] is Expression ordering)
-            {
-                return Visit(ordering);
-            }
-
-            return node;
-        }
-
-        protected override Expression VisitUnary(UnaryExpression node)
-        {
-            if (node.NodeType is ExpressionType.Quote)
-            {
-                return Visit(node.Operand);
-            }
-
-            return node;
-        }
-
-        protected override Expression VisitLambda<TFunc>(Expression<TFunc> node)
-        {
-            if (node.Parameters.Count == 1
-                && node.Parameters[0].Type == _entity.ClrType)
-            {
-                return Visit(node.Body);
-            }
-
-            return node;
-        }
-
-        protected override Expression VisitMember(MemberExpression node)
-        {
-            if (GetOriginOverlap(node) is not MemberExpression overlap)
-            {
-                return node;
-            }
-
-            string name = ExpressionHelpers.GetLineageName(overlap);
-
-            return Expression.Constant(name);
-        }
-
-        private MemberExpression? GetOriginOverlap(MemberExpression node)
-        {
-            using var e = ExpressionHelpers
-                .GetLineage(node)
-                .Reverse()
-                .GetEnumerator();
-
-            if (!e.MoveNext())
-            {
-                return null;
-            }
-
-            var longestChain = e.Current;
-            var nav = _entity.FindNavigation(longestChain.Member);
-
-            if (nav is null or { IsCollection: true })
-            {
-                return null;
-            }
-
-            while (e.MoveNext())
-            {
-                nav = nav.TargetEntityType.FindNavigation(e.Current.Member);
-
-                if (nav is null or { IsCollection: true })
-                {
-                    break;
-                }
-
-                longestChain = e.Current;
-            }
-
-            return longestChain;
-        }
-    }
-
-    #endregion
 }

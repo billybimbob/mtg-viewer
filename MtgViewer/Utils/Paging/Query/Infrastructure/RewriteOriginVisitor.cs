@@ -1,14 +1,12 @@
 using System.Linq.Expressions;
 
-using EntityFrameworkCore.Paging.Utils;
-
 namespace EntityFrameworkCore.Paging.Query.Infrastructure;
 
-internal sealed class ChangeOriginVisitor : ExpressionVisitor
+internal sealed class RewriteOriginVisitor : ExpressionVisitor
 {
     private readonly object? _origin;
 
-    public ChangeOriginVisitor(object? newOrigin)
+    public RewriteOriginVisitor(object? newOrigin)
     {
         _origin = newOrigin;
     }
@@ -21,7 +19,7 @@ internal sealed class ChangeOriginVisitor : ExpressionVisitor
 
             return Expression.Call(
                 instance: null,
-                method: PagingExtensions.AfterReference
+                method: PagingMethods.AfterReference
                     .MakeGenericMethod(entityType),
                 arg0: node.Arguments[0],
                 arg1: Expression.Constant(_origin, entityType));
