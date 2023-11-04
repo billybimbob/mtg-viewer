@@ -2,7 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq.Expressions;
 
-namespace EntityFrameworkCore.Paging.Query.Infrastructure.Filtering;
+using EntityFrameworkCore.Paging.Query.Infrastructure;
+
+namespace EntityFrameworkCore.Paging.Query.Filtering;
 
 internal sealed class SeekOrderCollectionBuilder
 {

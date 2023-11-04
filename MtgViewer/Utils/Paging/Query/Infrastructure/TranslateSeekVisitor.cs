@@ -1,7 +1,7 @@
 using System.Linq;
 using System.Linq.Expressions;
 
-using EntityFrameworkCore.Paging.Query.Infrastructure.Filtering;
+using EntityFrameworkCore.Paging.Query.Filtering;
 
 namespace EntityFrameworkCore.Paging.Query.Infrastructure;
 

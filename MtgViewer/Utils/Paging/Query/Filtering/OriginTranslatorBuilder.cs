@@ -4,9 +4,11 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 
+using EntityFrameworkCore.Paging.Query.Infrastructure;
+
 using Microsoft.EntityFrameworkCore.Query;
 
-namespace EntityFrameworkCore.Paging.Query.Infrastructure.Filtering;
+namespace EntityFrameworkCore.Paging.Query.Filtering;
 
 internal sealed class OriginTranslatorBuilder
 {

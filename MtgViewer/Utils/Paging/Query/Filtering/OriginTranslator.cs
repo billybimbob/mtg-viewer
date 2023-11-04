@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.Linq.Expressions;
 
-namespace EntityFrameworkCore.Paging.Query.Infrastructure.Filtering;
+namespace EntityFrameworkCore.Paging.Query.Filtering;
 
 internal sealed class OriginTranslator
 {

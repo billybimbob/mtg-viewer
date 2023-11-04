@@ -10,8 +10,8 @@ using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Query;
 
+using EntityFrameworkCore.Paging.Query.Filtering;
 using EntityFrameworkCore.Paging.Query.Infrastructure;
-using EntityFrameworkCore.Paging.Query.Infrastructure.Filtering;
 
 namespace EntityFrameworkCore.Paging.Query;
 

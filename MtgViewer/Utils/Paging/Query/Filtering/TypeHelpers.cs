@@ -1,7 +1,7 @@
 using System;
 using System.Reflection;
 
-namespace EntityFrameworkCore.Paging.Query.Infrastructure.Filtering;
+namespace EntityFrameworkCore.Paging.Query.Filtering;
 
 internal static class TypeHelpers
 {
