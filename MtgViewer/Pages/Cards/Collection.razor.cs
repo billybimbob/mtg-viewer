@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Linq.Expressions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -8,10 +7,10 @@ using System.Threading.Tasks;
 using EntityFrameworkCore.Paging;
 
 using Microsoft.AspNetCore.Components;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 using MtgViewer.Data;
+using MtgViewer.Data.Access;
 using MtgViewer.Data.Infrastructure;
 using MtgViewer.Data.Projections;
 using MtgViewer.Services;
@@ -42,13 +41,7 @@ public sealed partial class Collection : ComponentBase, IDisposable
     public int Direction { get; set; }
 
     [Inject]
-    internal IDbContextFactory<CardDbContext> DbFactory { get; set; } = default!;
-
-    [Inject]
-    internal PageSize PageSize { get; set; } = default!;
-
-    [Inject]
-    internal ParseTextFilter ParseTextFilter { get; set; } = default!;
+    internal ICardRepository CardRepository { get; set; } = default!;
 
     [Inject]
     internal NavigationManager Nav { get; set; } = default!;
@@ -130,123 +123,26 @@ public sealed partial class Collection : ComponentBase, IDisposable
 
     private async Task<SeekList<CardCopy>> GetCardDataAsync()
     {
-        if (ApplicationState.TryGetData(nameof(Cards), out SeekResponse<CardCopy>? cardsResponse))
+        if (ApplicationState.TryGetData(nameof(Cards), out SeekResponse<CardCopy>? persistedCards))
         {
             // persisted state should match set filters
             // TODO: find way to check filters are consistent
 
-            return cardsResponse.ToSeekList();
-        }
-        else
-        {
-            return await FetchDbCopiesAsync();
-        }
-    }
-
-    private async Task<SeekList<CardCopy>> FetchDbCopiesAsync()
-    {
-        await using var dbContext = await DbFactory.CreateDbContextAsync(_cancel.Token);
-
-        var filter = ParseTextFilter.Parse(Search);
-
-        var cards = FilterCards(dbContext.Cards, filter, PickedColors)
-            .Select(c => new CardCopy
-            {
-                Id = c.Id,
-                Name = c.Name,
-
-                ManaCost = c.ManaCost,
-                ManaValue = c.ManaValue,
-
-                SetName = c.SetName,
-                Rarity = c.Rarity,
-                ImageUrl = c.ImageUrl,
-
-                Held = c.Holds.Sum(c => c.Copies)
-            });
-
-        return await OrderCopies(cards, Order)
-
-            .SeekBy((SeekDirection)Direction)
-                .After(c => c.Id == Seek)
-                .Take(PageSize.Current)
-
-            .ToSeekListAsync(_cancel.Token);
-    }
-
-    private static IQueryable<Card> FilterCards(IQueryable<Card> cards, TextFilter filter, Color color)
-    {
-        string? name = filter.Name?.ToUpperInvariant();
-        string? text = filter.Text?.ToUpperInvariant();
-
-        string[] types = filter.Types?.ToUpperInvariant().Split() ?? Array.Empty<string>();
-
-        if (!string.IsNullOrWhiteSpace(name))
-        {
-            // keep eye on perf, postgres is slow here
-            cards = cards
-                .Where(c => c.Name.ToUpper().Contains(name));
+            return persistedCards.ToSeekList();
         }
 
-        if (filter.Mana is ManaFilter mana)
+        var collectionFilter = new CollectionFilter
         {
-            cards = cards.Where(mana.CreateFilter());
-        }
-
-        if (!string.IsNullOrWhiteSpace(text))
-        {
-            cards = cards
-                .Where(c => c.Text != null
-                    && c.Text.ToUpper().Contains(text));
-        }
-
-        foreach (string type in types)
-        {
-            cards = cards
-                .Where(c => c.Type.ToUpper().Contains(type));
-        }
-
-        if (color is not Color.None)
-        {
-            cards = cards
-                .Where(c => c.Color.HasFlag(color));
-        }
-
-        return cards;
-    }
-
-    private static IOrderedQueryable<CardCopy> OrderCopies(IQueryable<CardCopy> copies, string? orderBy)
-    {
-        return orderBy switch
-        {
-            nameof(Card.ManaCost) => copies
-                .OrderByDescending(c => c.ManaValue)
-                    .ThenBy(c => c.Name)
-                    .ThenBy(c => c.SetName)
-                    .ThenBy(c => c.Id),
-
-            nameof(Card.SetName) => copies
-                .OrderBy(c => c.SetName)
-                    .ThenBy(c => c.Name)
-                    .ThenBy(c => c.Id),
-
-            nameof(Card.Rarity) => copies
-                .OrderByDescending(c => c.Rarity)
-                    .ThenBy(c => c.Name)
-                    .ThenBy(c => c.SetName)
-                    .ThenBy(c => c.Id),
-
-            nameof(Card.Holds) => copies
-                .OrderByDescending(c => c.Held) // keep eye on, query is a bit expensive
-                    .ThenBy(c => c.Name)
-                    .ThenBy(c => c.SetName)
-                    .ThenBy(c => c.Id),
-
-            nameof(Card.Name) or _ => copies
-                .OrderBy(c => c.Name)
-                    .ThenBy(c => c.SetName)
-                    .ThenBy(c => c.Id)
+            Search = Search,
+            Colors = PickedColors,
+            Order = Order,
+            Seek = Seek,
+            Direction = (SeekDirection)Direction
         };
+
+        var fetchedCards = await CardRepository.GetCardsAsync(collectionFilter, _cancel.Token);
+
+        return fetchedCards.ToSeekList();
     }
 
     #region Change Filter Handlers

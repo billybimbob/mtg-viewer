@@ -73,7 +73,7 @@ public static partial class StartupExtensions
                 .GetRequiredService<IDbContextFactory<CardDbContext>>()
                 .CreateDbContext());
 
-        services.AddSingleton<ICardRepository, CardRepository>();
+        services.AddScoped<ICardRepository, CardRepository>();
 
         return services;
     }

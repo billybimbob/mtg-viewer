@@ -12,7 +12,7 @@ using MtgViewer.Areas.Identity.Data;
 using MtgViewer.Areas.Identity.Services;
 
 using MtgViewer.Data;
-
+using MtgViewer.Data.Access;
 using MtgViewer.Services;
 using MtgViewer.Services.Infrastructure;
 using MtgViewer.Services.Search;
@@ -106,6 +106,9 @@ public class Startup
             .AddScoped<TestMtgApiQuery>()
             .AddScoped<IMtgQuery, TestMtgApiQuery>(provider => provider
                 .GetRequiredService<TestMtgApiQuery>());
+
+        services
+            .AddScoped<ICardRepository, CardRepository>();
 
         services
             .AddSingleton<ParseTextFilter>()
