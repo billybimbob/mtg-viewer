@@ -27,7 +27,7 @@ public sealed class CardRepository : ICardRepository
         _pageSize = pageSize;
     }
 
-    public async Task<SeekResponse<CardCopy>> GetCardsAsync(CollectionFilter collectionFilter, CancellationToken cancellation)
+    public async Task<SeekResponse<CardCopy>> GetCardCopiesAsync(CollectionFilter collectionFilter, CancellationToken cancellation)
     {
         await using var dbContext = await _dbFactory.CreateDbContextAsync(cancellation);
 

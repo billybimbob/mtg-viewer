@@ -9,7 +9,7 @@ namespace MtgViewer.Data.Access;
 
 public interface ICardRepository
 {
-    Task<SeekResponse<CardCopy>> GetCardsAsync(CollectionFilter collectionFilter, CancellationToken cancellation);
+    Task<SeekResponse<CardCopy>> GetCardCopiesAsync(CollectionFilter collectionFilter, CancellationToken cancellation);
 
     Task<IReadOnlyCollection<string>> GetExistingCardIdsAsync(IReadOnlyCollection<Card> cards, CancellationToken cancellation);
 

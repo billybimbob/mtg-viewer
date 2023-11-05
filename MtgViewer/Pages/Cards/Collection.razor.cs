@@ -140,7 +140,7 @@ public sealed partial class Collection : ComponentBase, IDisposable
             Direction = (SeekDirection)Direction
         };
 
-        var fetchedCards = await CardRepository.GetCardsAsync(collectionFilter, _cancel.Token);
+        var fetchedCards = await CardRepository.GetCardCopiesAsync(collectionFilter, _cancel.Token);
 
         return fetchedCards.ToSeekList();
     }
