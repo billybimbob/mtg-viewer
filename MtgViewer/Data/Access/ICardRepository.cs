@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -9,4 +10,8 @@ namespace MtgViewer.Data.Access;
 public interface ICardRepository
 {
     Task<SeekResponse<CardCopy>> GetCardsAsync(CollectionFilter collectionFilter, CancellationToken cancellation);
+
+    Task<IReadOnlyCollection<string>> GetExistingCardIdsAsync(IReadOnlyCollection<Card> cards, CancellationToken cancellation);
+
+    Task AddCardsAsync(IReadOnlyCollection<CardRequest> cardRequests, CancellationToken cancellation);
 }

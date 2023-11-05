@@ -12,6 +12,7 @@ using Microsoft.Extensions.Logging;
 
 using MtgViewer.Areas.Identity.Data;
 using MtgViewer.Data;
+using MtgViewer.Data.Access;
 using MtgViewer.Data.Infrastructure;
 using MtgViewer.Services;
 using MtgViewer.Services.Search;
@@ -76,7 +77,7 @@ public sealed partial class Create : ComponentBase, IDisposable
     public string? ReturnUrl { get; set; }
 
     [Inject]
-    internal IDbContextFactory<CardDbContext> DbFactory { get; set; } = default!;
+    internal ICardRepository CardRepository { get; set; } = default!;
 
     [Inject]
     internal IMtgQuery MtgQuery { get; set; } = default!;
@@ -264,18 +265,7 @@ public sealed partial class Create : ComponentBase, IDisposable
             return;
         }
 
-        string[] matchIds = cards
-            .Select(c => c.Id)
-            .ToArray();
-
-        await using var dbContext = await DbFactory.CreateDbContextAsync(_cancel.Token);
-
-        var existingIds = await dbContext.Cards
-            .Where(c => matchIds.Contains(c.Id))
-            .OrderBy(c => c.Id)
-            .Select(c => c.Id)
-            .AsAsyncEnumerable()
-            .ToHashSetAsync(_cancel.Token);
+        var existingIds = await CardRepository.GetExistingCardIdsAsync(cards, _cancel.Token);
 
         var newMatches = cards
             .Select(c => new MatchInput(c, existingIds.Contains(c.Id), PageSize.Limit));
@@ -383,13 +373,7 @@ public sealed partial class Create : ComponentBase, IDisposable
 
         try
         {
-            await using var dbContext = await DbFactory.CreateDbContextAsync(_cancel.Token);
-
-            await AddNewCardsAsync(dbContext, addedCopies, PageSize.Limit, _cancel.Token);
-
-            await dbContext.AddCardsAsync(addedCopies, _cancel.Token);
-
-            await dbContext.SaveChangesAsync(_cancel.Token);
+            await CardRepository.AddCardsAsync(addedCopies, _cancel.Token);
 
             Result = SaveResult.Success;
 
@@ -417,59 +401,6 @@ public sealed partial class Create : ComponentBase, IDisposable
             Result = SaveResult.Error;
 
             _isBusy = false;
-        }
-    }
-
-    private static async Task AddNewCardsAsync(
-        CardDbContext dbContext,
-        IReadOnlyList<CardRequest> requests,
-        int limit,
-        CancellationToken cancel)
-    {
-        var requestCards = requests
-            .Select(cr => cr.Card)
-            .ToList();
-
-        var existingIds = await ExistingCardIdsAsync(dbContext, requestCards, limit, cancel);
-
-        var existingCards = requestCards
-            .IntersectBy(existingIds, c => c.Id);
-
-        var newCards = requestCards
-            .ExceptBy(existingIds, c => c.Id);
-
-        dbContext.Cards.AttachRange(existingCards);
-        dbContext.Cards.AddRange(newCards);
-    }
-
-    private static async Task<IReadOnlyList<string>> ExistingCardIdsAsync(
-        CardDbContext dbContext,
-        IReadOnlyList<Card> cards,
-        int limit,
-        CancellationToken cancel)
-    {
-        if (cards.Count > limit)
-        {
-            var cardIds = cards
-                .Select(c => c.Id)
-                .ToAsyncEnumerable();
-
-            return await dbContext.Cards
-                .Select(c => c.Id)
-                .AsAsyncEnumerable()
-                .Intersect(cardIds)
-                .ToListAsync(cancel);
-        }
-        else
-        {
-            string[] cardIds = cards
-                .Select(c => c.Id)
-                .ToArray();
-
-            return await dbContext.Cards
-                .Select(c => c.Id)
-                .Where(cid => cardIds.Contains(cid))
-                .ToListAsync(cancel);
         }
     }
 }

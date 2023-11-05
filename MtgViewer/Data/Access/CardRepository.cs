@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -130,5 +131,63 @@ public sealed class CardRepository : ICardRepository
                     .ThenBy(c => c.SetName)
                     .ThenBy(c => c.Id)
         };
+    }
+
+    public async Task<IReadOnlyCollection<string>> GetExistingCardIdsAsync(IReadOnlyCollection<Card> cards, CancellationToken cancellation)
+    {
+        await using var dbContext = await _dbFactory.CreateDbContextAsync(cancellation);
+
+        return await GetExistingCardIdsAsync(dbContext, cards, cancellation);
+    }
+
+    public async Task<IReadOnlyCollection<string>> GetExistingCardIdsAsync(CardDbContext dbContext, IReadOnlyCollection<Card> cards, CancellationToken cancellation)
+    {
+        if (cards.Count > _pageSize.Limit)
+        {
+            var cardIds = cards
+                .Select(c => c.Id)
+                .ToAsyncEnumerable();
+
+            return await dbContext.Cards
+                .Select(c => c.Id)
+                .AsAsyncEnumerable()
+                .Intersect(cardIds)
+                .ToListAsync(cancellation);
+        }
+        else
+        {
+            string[] cardIds = cards
+                .Select(c => c.Id)
+                .ToArray();
+
+            return await dbContext.Cards
+                .Select(c => c.Id)
+                .Where(cid => cardIds.Contains(cid))
+                .ToListAsync(cancellation);
+        }
+    }
+
+    public async Task AddCardsAsync(IReadOnlyCollection<CardRequest> cardRequests, CancellationToken cancellation)
+    {
+        await using var dbContext = await _dbFactory.CreateDbContextAsync(cancellation);
+
+        var requestCards = cardRequests
+            .Select(cr => cr.Card)
+            .ToList();
+
+        var existingIds = await GetExistingCardIdsAsync(dbContext, requestCards, cancellation);
+
+        var existingCards = requestCards
+            .IntersectBy(existingIds, c => c.Id);
+
+        var newCards = requestCards
+            .ExceptBy(existingIds, c => c.Id);
+
+        dbContext.Cards.AttachRange(existingCards);
+        dbContext.Cards.AddRange(newCards);
+
+        await dbContext.AddCardsAsync(cardRequests, cancellation);
+
+        await dbContext.SaveChangesAsync(cancellation);
     }
 }
