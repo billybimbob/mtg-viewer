@@ -123,22 +123,19 @@ public sealed partial class Collection : ComponentBase, IDisposable
 
     private Task PersistCardData()
     {
-        ApplicationState.PersistAsJson(nameof(Cards), Cards as IReadOnlyList<CardCopy>);
-        ApplicationState.PersistAsJson(nameof(Seek), SeekDto.From(Cards.Seek));
+        ApplicationState.PersistAsJson(nameof(Cards), Cards.ToSeekResponse());
 
         return Task.CompletedTask;
     }
 
     private async Task<SeekList<CardCopy>> GetCardDataAsync()
     {
-        if (ApplicationState.TryGetData(nameof(Cards), out IReadOnlyList<CardCopy>? cards)
-            && ApplicationState.TryGetData(nameof(Seek), out SeekDto seek))
+        if (ApplicationState.TryGetData(nameof(Cards), out SeekResponse<CardCopy>? cardsResponse))
         {
             // persisted state should match set filters
             // TODO: find way to check filters are consistent
 
-            return new SeekList<CardCopy>(
-                cards, seek.HasPrevious, seek.HasNext, seek.IsPartial);
+            return cardsResponse.ToSeekList();
         }
         else
         {
