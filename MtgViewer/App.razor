@@ -5,8 +5,9 @@
 <CascadingAuthenticationState>
     <Router AppAssembly="@typeof(Program).Assembly">
         <Found Context="routeData">
+            <FocusOnNavigate RouteData="@routeData" Selector="h1" />
             <FoundRouteData RouteData="@routeData" />
-            <AuthorizeRouteView Resource="@routeData" RouteData="@routeData">
+            <AuthorizeRouteView RouteData="@routeData">
                 <NotAuthorized>
                     <NotAuthorizedOptions />
                 </NotAuthorized>
@@ -33,5 +34,7 @@
     }
 
     private void OnLocationChange(object? sender, LocationChangedEventArgs args)
-        => RouteDataAccessor.RouteData = null;
+    {
+        RouteDataAccessor.RouteData = null;
+    }
 }

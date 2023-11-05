@@ -1,10 +1,9 @@
-
 <PageTitle> Not Authorized </PageTitle>
 
 <AuthorizeView>
     <Authorized>
-        <AuthorizeView Policy="@CardPolicies.ChangeTreasury">
-            <NotAuthorized Context="treasuryPolicy">
+        <AuthorizeView Context="treasuryPolicy" Policy="@CardPolicies.ChangeTreasury">
+            <NotAuthorized>
                 <h1> Read-only Treasury </h1>
                 <p>
                     You are currently requesting a card data reset, and therefore cannot
