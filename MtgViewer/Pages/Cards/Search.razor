@@ -1,0 +1,165 @@
+@page "/Cards/Search"
+@using MtgViewer.Services.Search
+@inject SymbolFormatter MtgSymbols
+
+<PageTitle> Search Cards </PageTitle>
+
+<h1>Search Card(s)</h1>
+
+<hr />
+<div class="row">
+    <section class="col-md order-md-last">
+        <h5> Parameter Descriptions </h5>
+        <p> Search by different attributes of an MTG card: </p>
+
+        <dl class="row mb-0">
+            <dt class="col-12 col-lg-2"> @HtmlHelpers.GetDisplay((CardSearch c) => c.Name) </dt>
+            <dd class="col-12 col-lg-10">
+                <p>
+                    The Name of the card (in the top left). Multiple faced cards can either specify
+                    one specific face, or mutiple faces deliminated by "//".
+                </p>
+            </dd>
+
+            <dt class="col-12 col-lg-2"> @HtmlHelpers.GetDisplay((CardSearch c) => c.ManaValue) </dt>
+            <dd class="col-12 col-lg-10">
+                <p>
+                    The total amount of mana specified a card's casting cost (located on the top right).
+                </p>
+            </dd>
+
+            <dt class="col-12 col-lg-2"> @HtmlHelpers.GetDisplay((CardSearch c) => c.Colors) </dt>
+            <dd class="col-12 col-lg-10">
+                <p>
+                    The color identity of the card. Color identity is affected by
+                    a card's mana cost, but also mana abilities costs and text
+                    effects.
+                </p>
+            </dd>
+
+            <dt class="col-12 col-lg-2"> @HtmlHelpers.GetDisplay((CardSearch c) => c.SetName) </dt>
+            <dd class="col-12 col-lg-10">
+                <p>
+                    The set at which a specific card print was apart of. The set
+                    can only be specified by the set <i>name</i>, not the set code.
+                </p>
+            </dd>
+
+            <dt class="col-12 col-lg-2"> @HtmlHelpers.GetDisplay((CardSearch c) => c.Types) </dt>
+            <dd class="col-12 col-lg-10">
+                <p> Type information specified in the middle of the card </p>
+                <p> Examples: Basic Land, Planeswalker, Creature Enchantment </p>
+            </dd>
+
+            <dt class="col-12 col-lg-2"> @HtmlHelpers.GetDisplay((CardSearch c) => c.Text) </dt>
+            <dd class="col-12 col-lg-10">
+                <p>
+                    The card effect text. The Oracle Text can also be searched by
+                    keywords and phrases.
+                </p>
+            </dd>
+
+            <dt class="col-12 col-lg-2"> @HtmlHelpers.GetDisplay((CardSearch c) => c.Flavor) </dt>
+            <dd class="col-12 col-lg-10">
+                <p>
+                    The card flavor text. This is the card text that is in italics, and can differ
+                    across card prints.
+                </p>
+            </dd>
+        </dl>
+    </section>
+
+    <hr class="d-md-none col-12" />
+
+    <div class="col-md col-lg-4">
+        <form @onsubmit="SubmitSearch">
+            <p> Enter the card search parameters below </p>
+
+            <div class="form-group">
+                <input @bind="CardSearch.Name" placeholder="@HtmlHelpers.GetDisplay((CardSearch c) => c.Name)"
+                    class="form-control" />
+            </div>
+
+            <div class="form-group">
+                <input @bind="CardSearch.ManaValue" type="number" min="0"
+                    placeholder="@HtmlHelpers.GetDisplay((CardSearch c) => c.ManaValue)" class="form-control" />
+            </div>
+
+            <div class="form-group btn-group">
+                @foreach (var (color, symbol) in Symbol.Colors)
+                {
+                    <button title="Toggle @color" type="button"
+                        class="btn btn-outline-secondary ms-filter @ActiveColor(color)"
+                        @onclick="() => CardSearch.ToggleColors(color)">
+
+                        <i class="ms ms-@symbol.ToLower() ms-cost"></i>
+                    </button>
+                }
+            </div>
+
+            <div class="form-group">
+                <input @bind="CardSearch.SetName" placeholder="@HtmlHelpers.GetDisplay((CardSearch c) => c.SetName)"
+                    class="form-control" />
+            </div>
+
+            <div class="form-group">
+                <select @bind="CardSearch.Rarity" title="Choose Rarity" class="form-control">
+
+                    <option value=""> Choose Rarity </option>
+
+                    @foreach (var rarity in Enum.GetValues<Rarity>())
+                    {
+                        <option value="@rarity">@rarity</option>
+                    }
+                </select>
+            </div>
+
+            <div class="form-group">
+                <input @bind="CardSearch.Types" placeholder="@HtmlHelpers.GetDisplay((CardSearch c) => c.Types)"
+                    class="form-control" />
+            </div>
+
+            <div class="form-group">
+                <input @bind="CardSearch.Power" placeholder="@HtmlHelpers.GetDisplay((CardSearch c) => c.Power)"
+                    class="form-control" />
+            </div>
+
+            <div class="form-group">
+                <input @bind="CardSearch.Toughness" placeholder="@HtmlHelpers.GetDisplay((CardSearch c) => c.Toughness)"
+                    class="form-control" />
+            </div>
+
+            <div class="form-group">
+                <input @bind="CardSearch.Loyalty" placeholder="@HtmlHelpers.GetDisplay((CardSearch c) => c.Loyalty)"
+                    class="form-control" />
+            </div>
+
+            <div class="form-group">
+                <textarea @bind="CardSearch.Text" placeholder="@HtmlHelpers.GetDisplay((CardSearch c) => c.Text)"
+                    class="form-control" />
+            </div>
+
+            <div class="form-group">
+                <textarea @bind="CardSearch.Flavor" placeholder="@HtmlHelpers.GetDisplay((CardSearch c) => c.Flavor)"
+                    class="form-control" />
+            </div>
+
+            <div class="form-group">
+                <input @bind="CardSearch.Artist" placeholder="@HtmlHelpers.GetDisplay((CardSearch c) => c.Artist)"
+                    class="form-control" />
+            </div>
+
+            <div class="btn-group" role="group">
+                <button type="submit" class="btn btn-secondary" title="Search For Card" disabled="@(!CanSearch)">
+                    Search
+                </button>
+            </div>
+
+        </form>
+    </div>
+</div>
+
+@code
+{
+    internal string ActiveColor(Color color) => CardSearch.Colors.HasFlag(color) ? "active" : string.Empty;
+}

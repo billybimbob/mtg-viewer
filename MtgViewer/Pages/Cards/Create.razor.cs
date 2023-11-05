@@ -97,15 +97,10 @@ public sealed partial class Create : ComponentBase, IDisposable
     internal IReadOnlyList<MatchInput> Matches => _matches;
 
     internal bool IsLoading => _isBusy || !_isInteractive;
-
-    internal bool HasNoNext => Search.Page + 1 >= _totalResults;
-
-    internal CardSearch Search { get; } = new();
-
-    internal bool IsFromForm { get; private set; }
+    internal bool HasNext => _currentPage < _totalResults;
+    internal bool CanAddCards => _matches.Any(m => m.Copies > 0);
 
     internal bool IsSearchError { get; private set; }
-
     internal SaveResult Result { get; set; }
 
     private readonly CancellationTokenSource _cancel = new();
@@ -116,6 +111,7 @@ public sealed partial class Create : ComponentBase, IDisposable
 
     private PersistingComponentStateSubscription _persistSubscription;
 
+    private int _currentPage;
     private int _totalResults;
     private string? _returnUrl;
 
@@ -128,24 +124,18 @@ public sealed partial class Create : ComponentBase, IDisposable
 
         try
         {
-            UpdateSearch();
-
             if (ReturnUrl is not null)
             {
                 // ensure no open redirects
-
                 _returnUrl = ReturnUrl.StartsWith(Nav.BaseUri)
                     ? ReturnUrl
                     : $"{Nav.BaseUri}{ReturnUrl.TrimStart('/')}";
             }
 
-            if (Search.IsEmpty)
+            if (!TryLoadState())
             {
-                IsFromForm = true;
-                return;
+                await SearchForCardAsync(0);
             }
-
-            await LoadCardMatchesAsync();
         }
         catch (OperationCanceledException ex)
         {
@@ -179,32 +169,8 @@ public sealed partial class Create : ComponentBase, IDisposable
         _cancel.Dispose();
     }
 
-    private void UpdateSearch()
-    {
-        _matches.Clear();
-
-        Search.Name = Name;
-        Search.ManaValue = Cmc;
-        Search.Colors = (Color)Colors;
-        Search.Rarity = (Rarity?)Rarity;
-        Search.SetName = Set;
-        Search.Types = Types;
-        Search.Artist = Artist;
-        Search.Power = Power;
-        Search.Toughness = Toughness;
-        Search.Loyalty = Loyalty;
-        Search.Text = Text;
-        Search.Flavor = Flavor;
-        Search.Page = 0;
-        Search.PageSize = 0;
-
-        _totalResults = 0;
-    }
-
     private Task PersistMatches()
     {
-        const string details = nameof(MatchInput.HasDetails);
-
         var cards = _matches.Select(m => m.Card);
 
         var inDbCards = _matches
@@ -212,44 +178,79 @@ public sealed partial class Create : ComponentBase, IDisposable
             .Select(m => m.Card.Id)
             .ToHashSet();
 
-        ApplicationState.PersistAsJson(nameof(_totalResults), _totalResults);
         ApplicationState.PersistAsJson(nameof(_matches), cards);
-        ApplicationState.PersistAsJson(details, inDbCards);
+        ApplicationState.PersistAsJson(nameof(MatchInput.HasDetails), inDbCards);
+        ApplicationState.PersistAsJson(nameof(_totalResults), _totalResults);
 
         return Task.CompletedTask;
     }
 
-    private async Task LoadCardMatchesAsync()
+    private bool TryLoadState()
     {
-        const string details = nameof(MatchInput.HasDetails);
-
-        if (_matches.Count > 0
-            || !ApplicationState.TryGetData(nameof(_totalResults), out _totalResults)
-            || !ApplicationState.TryGetData(nameof(_matches), out IEnumerable<Card>? cards)
-            || !ApplicationState.TryGetData(details, out ICollection<string>? inDbCards))
+        if (ApplicationState.TryGetData(nameof(_matches), out IEnumerable<Card>? cards)
+            && ApplicationState.TryGetData(nameof(MatchInput.HasDetails), out ICollection<string>? inDbCards)
+            && ApplicationState.TryGetData(nameof(_totalResults), out int totalResults))
         {
-            await SearchForCardAsync();
+            var matches = cards
+                .Select(c => new MatchInput(c, inDbCards.Contains(c.Id), PageSize.Limit));
+
+            _matches.Clear();
+            _matches.AddRange(matches);
+            _totalResults = totalResults;
+
+            if (_matches.Count == 0)
+            {
+                Result = SaveResult.Error;
+                IsSearchError = true;
+            }
+
+            return true;
+        }
+
+        return false;
+    }
+
+    private async Task SearchForCardAsync(int page)
+    {
+        var search = new CardSearch
+        {
+            Name = Name,
+            ManaValue = Cmc,
+            Colors = (Color)Colors,
+            Rarity = (Rarity?)Rarity,
+            SetName = Set,
+            Types = Types,
+            Artist = Artist,
+            Power = Power,
+            Toughness = Toughness,
+            Loyalty = Loyalty,
+            Text = Text,
+            Flavor = Flavor,
+        };
+
+        if (search.IsEmpty)
+        {
+            Result = SaveResult.Error;
+            IsSearchError = true;
             return;
         }
 
-        var matches = cards
-            .Select(c => new MatchInput(c, inDbCards.Contains(c.Id), PageSize.Limit));
+        search.Page = _currentPage = page;
+        search.PageSize = PageSize.Current;
 
-        _matches.AddRange(matches);
-    }
-
-    private async Task SearchForCardAsync()
-    {
-        if (Search.PageSize == 0)
-        {
-            Search.PageSize = PageSize.Current;
-        }
-
-        var result = await MtgQuery.SearchAsync(Search, _cancel.Token);
+        var result = await MtgQuery.SearchAsync(search, _cancel.Token);
 
         _totalResults = result.Offset.Total;
 
-        await AddNewMatchesAsync(result);
+        if (result.Count > 0)
+        {
+            var existingIds = await CardRepository.GetExistingCardIdsAsync(result, _cancel.Token);
+
+            var newMatches = result
+                .Select(c => new MatchInput(c, existingIds.Contains(c.Id), PageSize.Limit));
+
+            _matches.AddRange(newMatches);
+        }
 
         if (_matches.Count == 0)
         {
@@ -258,24 +259,9 @@ public sealed partial class Create : ComponentBase, IDisposable
         }
     }
 
-    private async Task AddNewMatchesAsync(IReadOnlyList<Card> cards)
-    {
-        if (cards.Count == 0)
-        {
-            return;
-        }
-
-        var existingIds = await CardRepository.GetExistingCardIdsAsync(cards, _cancel.Token);
-
-        var newMatches = cards
-            .Select(c => new MatchInput(c, existingIds.Contains(c.Id), PageSize.Limit));
-
-        _matches.AddRange(newMatches);
-    }
-
     internal async Task LoadMoreCardsAsync()
     {
-        if (_isBusy || HasNoNext)
+        if (_isBusy || !HasNext)
         {
             return;
         }
@@ -284,9 +270,7 @@ public sealed partial class Create : ComponentBase, IDisposable
 
         try
         {
-            Search.Page += 1;
-
-            await SearchForCardAsync();
+            await SearchForCardAsync(_currentPage + 1);
         }
         catch (OperationCanceledException ex)
         {
@@ -300,59 +284,15 @@ public sealed partial class Create : ComponentBase, IDisposable
 
     internal void Reset()
     {
-        if (_isBusy || Search.IsEmpty)
+        if (!_isBusy)
         {
-            return;
+            Nav.NavigateTo("/Cards/Search");
         }
-
-        _isBusy = true;
-
-        Result = SaveResult.None;
-
-        NavigateToSearch(CardSearch.Empty);
-    }
-
-    internal void SubmitSearch()
-    {
-        if (_isBusy || Search.IsEmpty)
-        {
-            return;
-        }
-
-        _isBusy = true;
-
-        Result = SaveResult.None;
-
-        NavigateToSearch(Search);
-    }
-
-    private void NavigateToSearch(IMtgSearch search)
-    {
-        var parameters = new Dictionary<string, object?>
-        {
-            [nameof(Name)] = search.Name,
-            [nameof(Cmc)] = search.ManaValue,
-            [nameof(Colors)] = search.Colors is Color.None ? null : (int)search.Colors,
-
-            [nameof(Rarity)] = (int?)search.Rarity,
-            [nameof(Set)] = search.SetName,
-            [nameof(Types)] = search.Types,
-
-            [nameof(Power)] = search.Power,
-            [nameof(Loyalty)] = search.Loyalty,
-
-            [nameof(Artist)] = search.Artist,
-            [nameof(Text)] = search.Text,
-            [nameof(Flavor)] = search.Flavor
-        };
-
-        Nav.NavigateTo(
-            Nav.GetUriWithQueryParameters(parameters), replace: true);
     }
 
     internal async Task AddNewCardsAsync()
     {
-        if (_isBusy || _matches.All(m => m.Copies == 0))
+        if (_isBusy || !CanAddCards)
         {
             return;
         }
@@ -383,7 +323,7 @@ public sealed partial class Create : ComponentBase, IDisposable
             }
             else
             {
-                NavigateToSearch(CardSearch.Empty);
+                Nav.NavigateTo("/Cards/Search");
             }
         }
         catch (DbUpdateException e)
@@ -391,6 +331,7 @@ public sealed partial class Create : ComponentBase, IDisposable
             Logger.LogError("Failed to add new cards {Error}", e);
 
             Result = SaveResult.Error;
+            IsSearchError = false;
 
             _isBusy = false;
         }
@@ -399,6 +340,7 @@ public sealed partial class Create : ComponentBase, IDisposable
             Logger.LogWarning("{Error}", e);
 
             Result = SaveResult.Error;
+            IsSearchError = false;
 
             _isBusy = false;
         }
