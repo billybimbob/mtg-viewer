@@ -135,6 +135,11 @@ public sealed class CardRepository : ICardRepository
 
     public async Task<IReadOnlyCollection<string>> GetExistingCardIdsAsync(IReadOnlyCollection<Card> cards, CancellationToken cancellation)
     {
+        if (cards.Count is 0)
+        {
+            return Array.Empty<string>();
+        }
+
         await using var dbContext = await _dbFactory.CreateDbContextAsync(cancellation);
 
         return await GetExistingCardIdsAsync(dbContext, cards, cancellation);
@@ -169,6 +174,11 @@ public sealed class CardRepository : ICardRepository
 
     public async Task AddCardsAsync(IReadOnlyCollection<CardRequest> cardRequests, CancellationToken cancellation)
     {
+        if (cardRequests.Count is 0)
+        {
+            return;
+        }
+
         await using var dbContext = await _dbFactory.CreateDbContextAsync(cancellation);
 
         var requestCards = cardRequests
