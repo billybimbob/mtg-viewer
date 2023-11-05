@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 
 using MtgViewer.Data;
+using MtgViewer.Data.Access;
 using MtgViewer.Triggers;
 using MtgViewer.Utils;
 
@@ -67,9 +68,13 @@ public static partial class StartupExtensions
                 })
         };
 
-        return services
+        _ = services
             .AddScoped(provider => provider
                 .GetRequiredService<IDbContextFactory<CardDbContext>>()
                 .CreateDbContext());
+
+        services.AddSingleton<ICardRepository, CardRepository>();
+
+        return services;
     }
 }
