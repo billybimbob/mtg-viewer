@@ -5,7 +5,6 @@
 <CascadingAuthenticationState>
     <Router AppAssembly="@typeof(Program).Assembly">
         <Found Context="routeData">
-            <FocusOnNavigate RouteData="@routeData" Selector="h1" />
             <FoundRouteData RouteData="@routeData" />
             <AuthorizeRouteView RouteData="@routeData">
                 <NotAuthorized>
