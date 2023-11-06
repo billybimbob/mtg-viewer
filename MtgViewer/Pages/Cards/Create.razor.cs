@@ -141,10 +141,6 @@ public sealed partial class Create : ComponentBase, IDisposable
         {
             Logger.LogWarning("{Warning}", ex);
         }
-        catch (NavigationException ex)
-        {
-            Logger.LogWarning("Navigation {Warning}", ex);
-        }
         finally
         {
             _isBusy = false;
