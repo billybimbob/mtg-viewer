@@ -132,7 +132,7 @@ public sealed partial class Create : ComponentBase, IDisposable
                     : $"{Nav.BaseUri}{ReturnUrl.TrimStart('/')}";
             }
 
-            if (!TryLoadState())
+            if (!TryLoadStateData())
             {
                 await SearchForCardAsync(0);
             }
@@ -185,7 +185,7 @@ public sealed partial class Create : ComponentBase, IDisposable
         return Task.CompletedTask;
     }
 
-    private bool TryLoadState()
+    private bool TryLoadStateData()
     {
         if (ApplicationState.TryGetData(nameof(_matches), out IEnumerable<Card>? cards)
             && ApplicationState.TryGetData(nameof(MatchInput.HasDetails), out ICollection<string>? inDbCards)

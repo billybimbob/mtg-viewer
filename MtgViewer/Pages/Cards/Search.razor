@@ -1,6 +1,11 @@
 @page "/Cards/Search"
 @using MtgViewer.Services.Search
+
+@attribute [Authorize]
+@attribute [Authorize(CardPolicies.ChangeTreasury)]
+
 @inject SymbolFormatter MtgSymbols
+@inject NavigationManager Nav
 
 <PageTitle> Search Cards </PageTitle>
 
@@ -161,5 +166,42 @@
 
 @code
 {
+    [Parameter]
+    [SupplyParameterFromQuery]
+    public string? ReturnUrl { get; set; }
+
+    internal bool CanSearch => !CardSearch.IsEmpty;
+
+    internal CardSearch CardSearch { get; } = new();
+
     internal string ActiveColor(Color color) => CardSearch.Colors.HasFlag(color) ? "active" : string.Empty;
+
+    internal void SubmitSearch()
+    {
+        var search = CardSearch;
+
+        var parameters = new Dictionary<string, object?>
+            {
+                [nameof(Create.Name)] = search.Name,
+                [nameof(Create.Cmc)] = search.ManaValue,
+                [nameof(Create.Colors)] = search.Colors is Color.None ? null : (int)search.Colors,
+
+                [nameof(Create.Rarity)] = (int?)search.Rarity,
+                [nameof(Create.Set)] = search.SetName,
+                [nameof(Create.Types)] = search.Types,
+
+                [nameof(Create.Power)] = search.Power,
+                [nameof(Create.Loyalty)] = search.Loyalty,
+
+                [nameof(Create.Artist)] = search.Artist,
+                [nameof(Create.Text)] = search.Text,
+                [nameof(Create.Flavor)] = search.Flavor,
+
+                [nameof(Create.ReturnUrl)] = ReturnUrl
+            };
+
+        var createUrl = Nav.GetUriWithQueryParameters("Cards/Create", parameters);
+
+        Nav.NavigateTo(createUrl);
+    }
 }
