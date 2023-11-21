@@ -73,7 +73,9 @@ public static partial class StartupExtensions
                 .GetRequiredService<IDbContextFactory<CardDbContext>>()
                 .CreateDbContext());
 
-        services.AddScoped<ICardRepository, CardRepository>();
+        services
+            .AddScoped<ICardRepository, CardRepository>()
+            .AddScoped<ILedger, Ledger>();
 
         return services;
     }

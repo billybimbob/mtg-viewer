@@ -27,6 +27,59 @@ public sealed class CardRepository : ICardRepository
         _pageSize = pageSize;
     }
 
+    public async Task<IReadOnlyCollection<string>> GetExistingCardIdsAsync(IReadOnlyCollection<Card> cards, CancellationToken cancellation)
+    {
+        if (cards.Count is 0)
+        {
+            return Array.Empty<string>();
+        }
+
+        await using var dbContext = await _dbFactory.CreateDbContextAsync(cancellation);
+
+        return await GetExistingCardIdsAsync(dbContext, cards, cancellation);
+    }
+
+    public async Task<IReadOnlyList<string>> GetShuffleOrderAsync(CancellationToken cancellation)
+    {
+        await using var dbContext = await _dbFactory.CreateDbContextAsync(cancellation);
+
+        return await dbContext.Cards
+            .Select(c => c.Id)
+            .OrderBy(_ => EF.Functions.Random())
+            .Take(_pageSize.Current)
+            .ToListAsync(cancellation);
+    }
+
+    public async Task<IReadOnlyList<CardImage>> GetCardImagesAsync(IReadOnlyList<string> cardIds, CancellationToken cancellation)
+    {
+        if (!cardIds.Any())
+        {
+            return Array.Empty<CardImage>();
+        }
+
+        await using var dbContext = await _dbFactory.CreateDbContextAsync(cancellation);
+
+        var dbChunk = dbContext.Cards
+            .Where(c => cardIds.Contains(c.Id))
+            .Select(c => new CardImage
+            {
+                Id = c.Id,
+                Name = c.Name,
+                ImageUrl = c.ImageUrl
+            })
+            .AsAsyncEnumerable();
+
+        // preserve order of chunk
+
+        return await cardIds
+            .ToAsyncEnumerable()
+            .Join(dbChunk,
+                cid => cid, c => c.Id,
+                (_, preview) => preview)
+
+            .ToListAsync(cancellation);
+    }
+
     public async Task<SeekResponse<CardCopy>> GetCardCopiesAsync(CollectionFilter collectionFilter, CancellationToken cancellation)
     {
         await using var dbContext = await _dbFactory.CreateDbContextAsync(cancellation);
@@ -133,45 +186,6 @@ public sealed class CardRepository : ICardRepository
         };
     }
 
-    public async Task<IReadOnlyCollection<string>> GetExistingCardIdsAsync(IReadOnlyCollection<Card> cards, CancellationToken cancellation)
-    {
-        if (cards.Count is 0)
-        {
-            return Array.Empty<string>();
-        }
-
-        await using var dbContext = await _dbFactory.CreateDbContextAsync(cancellation);
-
-        return await GetExistingCardIdsAsync(dbContext, cards, cancellation);
-    }
-
-    public async Task<IReadOnlyCollection<string>> GetExistingCardIdsAsync(CardDbContext dbContext, IReadOnlyCollection<Card> cards, CancellationToken cancellation)
-    {
-        if (cards.Count > _pageSize.Limit)
-        {
-            var cardIds = cards
-                .Select(c => c.Id)
-                .ToAsyncEnumerable();
-
-            return await dbContext.Cards
-                .Select(c => c.Id)
-                .AsAsyncEnumerable()
-                .Intersect(cardIds)
-                .ToListAsync(cancellation);
-        }
-        else
-        {
-            string[] cardIds = cards
-                .Select(c => c.Id)
-                .ToArray();
-
-            return await dbContext.Cards
-                .Select(c => c.Id)
-                .Where(cid => cardIds.Contains(cid))
-                .ToListAsync(cancellation);
-        }
-    }
-
     public async Task AddCardsAsync(IReadOnlyCollection<CardRequest> cardRequests, CancellationToken cancellation)
     {
         if (cardRequests.Count is 0)
@@ -199,5 +213,32 @@ public sealed class CardRepository : ICardRepository
         await dbContext.AddCardsAsync(cardRequests, cancellation);
 
         await dbContext.SaveChangesAsync(cancellation);
+    }
+
+    private async Task<IReadOnlyCollection<string>> GetExistingCardIdsAsync(CardDbContext dbContext, IReadOnlyCollection<Card> cards, CancellationToken cancellation)
+    {
+        if (cards.Count > _pageSize.Limit)
+        {
+            var cardIds = cards
+                .Select(c => c.Id)
+                .ToAsyncEnumerable();
+
+            return await dbContext.Cards
+                .Select(c => c.Id)
+                .AsAsyncEnumerable()
+                .Intersect(cardIds)
+                .ToListAsync(cancellation);
+        }
+        else
+        {
+            string[] cardIds = cards
+                .Select(c => c.Id)
+                .ToArray();
+
+            return await dbContext.Cards
+                .Select(c => c.Id)
+                .Where(cid => cardIds.Contains(cid))
+                .ToListAsync(cancellation);
+        }
     }
 }

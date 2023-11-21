@@ -9,9 +9,13 @@ namespace MtgViewer.Data.Access;
 
 public interface ICardRepository
 {
-    Task<SeekResponse<CardCopy>> GetCardCopiesAsync(CollectionFilter collectionFilter, CancellationToken cancellation);
+    Task<IReadOnlyList<string>> GetShuffleOrderAsync(CancellationToken cancellation);
 
     Task<IReadOnlyCollection<string>> GetExistingCardIdsAsync(IReadOnlyCollection<Card> cards, CancellationToken cancellation);
+
+    Task<IReadOnlyList<CardImage>> GetCardImagesAsync(IReadOnlyList<string> cardIds, CancellationToken cancellation);
+
+    Task<SeekResponse<CardCopy>> GetCardCopiesAsync(CollectionFilter collectionFilter, CancellationToken cancellation);
 
     Task AddCardsAsync(IReadOnlyCollection<CardRequest> cardRequests, CancellationToken cancellation);
 }
