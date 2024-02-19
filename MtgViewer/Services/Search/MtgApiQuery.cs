@@ -246,19 +246,25 @@ public sealed class MtgApiQuery : IMtgQuery
 
         while (similarCardsQueue.TryDequeue(out var iCard))
         {
-            if (!HasFlip(iCard.Name))
+            bool hasFlipCard = HasFlip(iCard.Name);
+
+            if (!hasFlipCard && Validate(iCard, null) is Card card)
+            {
+                yield return card;
+            }
+            else if (!hasFlipCard)
             {
                 continue;
             }
 
             if (similarCardsQueue.TryDequeue(out var similarICard)
-                && Validate(similarICard) is Flip localFlip
-                && Validate(iCard, localFlip) is Card localCard)
+                && Validate(similarICard) is Flip similarFlip
+                && Validate(iCard, similarFlip) is Card similarFlipCard)
             {
                 // assume closest multiverseId card is the flip
                 // keep eye on
 
-                yield return localCard;
+                yield return similarFlipCard;
             }
 
             // has to search for an individual card, which is very inefficient
@@ -266,9 +272,9 @@ public sealed class MtgApiQuery : IMtgQuery
             var searchedICard = await SearchSimilarAsync(iCard, cancel);
 
             if (Validate(searchedICard) is Flip searchedFlip
-                && Validate(iCard, searchedFlip) is Card searchedCard)
+                && Validate(iCard, searchedFlip) is Card searchedFlipCard)
             {
-                yield return searchedCard;
+                yield return searchedFlipCard;
             }
         }
     }
@@ -284,7 +290,7 @@ public sealed class MtgApiQuery : IMtgQuery
 
         if (!HasFlip(iCard.Name))
         {
-            return null;
+            return Validate(iCard, null);
         }
 
         var similar = await SearchSimilarAsync(iCard, cancel);
