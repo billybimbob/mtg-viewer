@@ -239,14 +239,13 @@ public sealed class MtgApiQuery : IMtgQuery
 
         while (similarCardsQueue.TryDequeue(out var iCard))
         {
-            bool hasFlipCard = HasFlip(iCard.Name);
+            if (!HasFlip(iCard.Name))
+            {
+                if (Validate(iCard, null) is Card card)
+                {
+                    yield return card;
+                }
 
-            if (!hasFlipCard && Validate(iCard, null) is Card card)
-            {
-                yield return card;
-            }
-            else if (!hasFlipCard)
-            {
                 continue;
             }
 
