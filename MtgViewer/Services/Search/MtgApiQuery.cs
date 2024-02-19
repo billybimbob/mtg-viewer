@@ -66,11 +66,7 @@ public sealed class MtgApiQuery : IMtgQuery
             return OffsetList.Empty<Card>();
         }
 
-        cancel.ThrowIfCancellationRequested();
-
-        var response = await ApplySearch(search).AllAsync();
-
-        cancel.ThrowIfCancellationRequested();
+        var response = await ApplySearch(search).AllAsync().WaitAsync(cancel);
 
         var items = await TranslateAsync(response, cancel);
 
@@ -178,9 +174,8 @@ public sealed class MtgApiQuery : IMtgQuery
 
             var response = await _cardService
                 .Where(c => c.MultiverseId, multiverseChunk.Join(Or))
-                .AllAsync();
-
-            cancel.ThrowIfCancellationRequested();
+                .AllAsync()
+                .WaitAsync(cancel);
 
             var validated = await TranslateAsync(response, cancel);
 
@@ -200,11 +195,7 @@ public sealed class MtgApiQuery : IMtgQuery
             return null;
         }
 
-        cancel.ThrowIfCancellationRequested();
-
-        var result = await _cardService.FindAsync(id);
-
-        cancel.ThrowIfCancellationRequested();
+        var result = await _cardService.FindAsync(id).WaitAsync(cancel);
 
         return await TranslateAsync(result, cancel);
     }
@@ -242,6 +233,8 @@ public sealed class MtgApiQuery : IMtgQuery
         IEnumerable<ICard> similarCards,
         [EnumeratorCancellation] CancellationToken cancel = default)
     {
+        cancel.ThrowIfCancellationRequested();
+
         var similarCardsQueue = new Queue<ICard>(similarCards);
 
         while (similarCardsQueue.TryDequeue(out var iCard))
@@ -323,9 +316,8 @@ public sealed class MtgApiQuery : IMtgQuery
 
             .Where(c => c.PageSize, _pageSize)
             .Where(c => c.Contains, RequiredAttributes)
-            .AllAsync();
-
-        cancel.ThrowIfCancellationRequested();
+            .AllAsync()
+            .WaitAsync(cancel);
 
         return LoggedUnwrap(result)
             ?.FirstOrDefault(c => c.Id != card.Id && c.MultiverseId is not null);
