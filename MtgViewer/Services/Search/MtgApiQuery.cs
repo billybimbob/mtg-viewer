@@ -48,6 +48,11 @@ public sealed class MtgApiQuery : IMtgQuery
 
     public bool HasFlip(string cardName)
     {
+        if (string.IsNullOrWhiteSpace(cardName))
+        {
+            return false;
+        }
+
         const string faceSplit = "//";
 
         const StringComparison ordinal = StringComparison.Ordinal;
@@ -55,9 +60,7 @@ public sealed class MtgApiQuery : IMtgQuery
         return cardName.Contains(faceSplit, ordinal);
     }
 
-    public async Task<OffsetList<Card>> SearchAsync(
-        IMtgSearch search,
-        CancellationToken cancel = default)
+    public async Task<OffsetList<Card>> SearchAsync(IMtgSearch search, CancellationToken cancel = default)
     {
         ArgumentNullException.ThrowIfNull(search);
 
@@ -148,7 +151,11 @@ public sealed class MtgApiQuery : IMtgQuery
     }
 
     public IAsyncEnumerable<Card> CollectionAsync(IEnumerable<string> multiverseIds, CancellationToken cancel = default)
-        => BulkSearchAsync(multiverseIds, cancel);
+    {
+        multiverseIds ??= Enumerable.Empty<string>();
+
+        return BulkSearchAsync(multiverseIds, cancel);
+    }
 
     private async IAsyncEnumerable<Card> BulkSearchAsync(
         IEnumerable<string> multiverseIds,

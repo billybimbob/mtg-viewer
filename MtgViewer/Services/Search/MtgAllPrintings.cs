@@ -29,6 +29,11 @@ public sealed class MtgAllPrintings : IMtgQuery
 
     public bool HasFlip(string cardName)
     {
+        if (string.IsNullOrWhiteSpace(cardName))
+        {
+            return false;
+        }
+
         const string faceSplit = "//";
 
         const StringComparison ordinal = StringComparison.Ordinal;
@@ -38,10 +43,17 @@ public sealed class MtgAllPrintings : IMtgQuery
 
     public async IAsyncEnumerable<Data.Card> CollectionAsync(IEnumerable<string> multiverseIds, [EnumeratorCancellation] CancellationToken cancel)
     {
+        string[]? targetMultiverseIds = multiverseIds?.ToArray();
+
+        if (targetMultiverseIds is not { Length: > 0 })
+        {
+            yield break;
+        }
+
         await using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancel);
 
         var cards = dbContext.Cards
-            .Where(c => c.CardIdentifier.MultiverseId != null && multiverseIds.Contains(c.CardIdentifier.MultiverseId))
+            .Where(c => c.CardIdentifier.MultiverseId != null && targetMultiverseIds.Contains(c.CardIdentifier.MultiverseId))
             .Include(c => c.CardIdentifier)
             .Include(c => c.Set)
             .AsNoTracking()
@@ -62,6 +74,11 @@ public sealed class MtgAllPrintings : IMtgQuery
     public async Task<OffsetList<Data.Card>> SearchAsync(IMtgSearch search, CancellationToken cancel)
     {
         ArgumentNullException.ThrowIfNull(search);
+
+        if (search.IsEmpty)
+        {
+            return OffsetList.Empty<Data.Card>();
+        }
 
         await using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancel);
 
@@ -88,6 +105,11 @@ public sealed class MtgAllPrintings : IMtgQuery
 
     public async Task<Data.Card?> FindAsync(string id, CancellationToken cancel)
     {
+        if (string.IsNullOrWhiteSpace(id))
+        {
+            return null;
+        }
+
         await using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancel);
 
         var card = await dbContext.Cards
