@@ -110,6 +110,7 @@ public sealed class MtgAllPrintings : IMtgQuery
             .Include(c => c.CardIdentifier)
             .Include(c => c.Set)
             .Where(c => c.CardIdentifier.MultiverseId != null)
+            .AsNoTracking()
             .AsQueryable();
 
         if (!string.IsNullOrEmpty(search.Name))
@@ -240,6 +241,10 @@ public sealed class MtgAllPrintings : IMtgQuery
             .Where(c => c.Layout == card.Layout)
             .Where(c => c.Uuid != card.Uuid)
 
+            .Include(c => c.CardIdentifier)
+            .Include(c => c.Set)
+
+            .AsNoTracking()
             .FirstOrDefaultAsync(cancel);
     }
 
