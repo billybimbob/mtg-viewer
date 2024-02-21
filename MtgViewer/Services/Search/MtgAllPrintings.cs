@@ -1,6 +1,6 @@
-
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -43,7 +43,8 @@ public sealed class MtgAllPrintings : IMtgQuery
             .Include(c => c.Set)
             .AsNoTracking()
             .AsAsyncEnumerable()
-            .SelectAwait(c => GetDataCardAsync(c, cancel));
+            .SelectAwait(c => GetDataCardAsync(c, cancel))
+            .OfType<Data.Card>();
     }
 
     public async Task<OffsetList<Data.Card>> SearchAsync(IMtgSearch search, CancellationToken cancel)
@@ -61,6 +62,7 @@ public sealed class MtgAllPrintings : IMtgQuery
             .Take(pageSize)
             .AsAsyncEnumerable()
             .SelectAwait(c => GetDataCardAsync(c, cancel))
+            .OfType<Data.Card>()
             .ToListAsync(cancel);
 
         int totalCount = await cardQuery.CountAsync(cancel);
@@ -84,10 +86,6 @@ public sealed class MtgAllPrintings : IMtgQuery
         }
 
         return await GetDataCardAsync(card, cancel);
-    }
-
-    private async ValueTask<Data.Card> GetDataCardAsync(Card card, CancellationToken cancel)
-    {
     }
 
     private IQueryable<Card> ApplyFilters(IMtgSearch search)
@@ -195,4 +193,150 @@ public sealed class MtgAllPrintings : IMtgQuery
 
         return cards;
     }
+
+    private async ValueTask<Data.Card?> GetDataCardAsync(Card card, CancellationToken cancel)
+    {
+        if (card.Name is null)
+        {
+            return null;
+        }
+
+        if (!HasFlip(card.Name))
+        {
+            return Validate(card, null);
+        }
+
+        var similar = await SearchSimilarAsync(card, cancel);
+        var flip = Validate(similar);
+
+        return Validate(card, flip);
+    }
+
+    private Task<Card?> SearchSimilarAsync(Card card, CancellationToken cancel)
+    {
+        return _dbContext.Cards
+            .Where(c => c.CardIdentifier.MultiverseId != null)
+
+            .Where(c => c.ColorIdentity == card.ColorIdentity)
+            .Where(c => c.Name == card.Name)
+            .Where(c => c.SetCode == card.SetCode)
+
+            .Where(c => c.Layout == card.Layout)
+            .Where(c => c.Uuid != card.Uuid)
+
+            .FirstOrDefaultAsync(cancel);
+    }
+
+    private static Data.Flip? Validate(Card? flip)
+    {
+        if (flip is null)
+        {
+            return null;
+        }
+
+        string? multiverseId = flip.CardIdentifier.MultiverseId;
+
+        if (multiverseId is null)
+        {
+            return null;
+        }
+
+        var dataFlip = new Data.Flip
+        {
+            MultiverseId = multiverseId,
+            ManaCost = flip.ManaCost,
+            ManaValue = flip.ManaValue,
+
+            Type = flip.Types!,
+            Text = flip.Text,
+            Flavor = flip.FlavorText,
+
+            Power = flip.Power,
+            Toughness = flip.Toughness,
+            Loyalty = flip.Loyalty,
+
+            ImageUrl = GetImageUrl(multiverseId),
+            Artist = flip.Artist!
+        };
+
+        var nullCheck = new NullValidation<Data.Flip>(dataFlip);
+        var validationContext = new ValidationContext(nullCheck);
+
+        if (!Validator.TryValidateObject(nullCheck, validationContext, null))
+        {
+            return null;
+        }
+
+        return dataFlip;
+    }
+
+    private Data.Card? Validate(Card card, Data.Flip? flip)
+    {
+        if (!Enum.TryParse(card.Rarity, true, out Data.Rarity rarity))
+        {
+            return null;
+        }
+
+        if (card.Name is null)
+        {
+            return null;
+        }
+
+        if (HasFlip(card.Name) && flip is null)
+        {
+            return null;
+        }
+
+        string? multiverseId = card.CardIdentifier.MultiverseId;
+
+        if (multiverseId is null)
+        {
+            return null;
+        }
+
+        var dataCard = new Data.Card
+        {
+            Id = card.Uuid,
+            MultiverseId = multiverseId,
+            Name = card.Name,
+
+            Color = (card.ColorIdentity?.Split(", ") ?? Enumerable.Empty<string>())
+                .Join(Data.Symbol.Colors,
+                    id => id, kv => kv.Value,
+                    (_, kv) => kv.Key)
+                .Aggregate(Data.Color.None,
+                    (color, iColor) => color | iColor),
+
+            Layout = card.Layout!,
+            ManaCost = card.ManaCost,
+            ManaValue = card.ManaValue,
+
+            Type = card.Types!,
+            Rarity = rarity,
+            SetName = card.Set.Name!,
+            Flip = flip,
+
+            Text = card.Text,
+            Flavor = card.FlavorText,
+
+            Power = card.Power,
+            Toughness = card.Toughness,
+            Loyalty = card.Loyalty,
+
+            Artist = card.Artist!,
+            ImageUrl = GetImageUrl(multiverseId)
+        };
+
+        var nullCheck = new NullValidation<Data.Card>(dataCard);
+        var validationContext = new ValidationContext(nullCheck);
+
+        if (!Validator.TryValidateObject(nullCheck, validationContext, validationResults: null))
+        {
+            return null;
+        }
+
+        return dataCard;
+    }
+
+    private static string GetImageUrl(string multiverseId) => $"https://gatherer.wizards.com/Pages/Card/Details.aspx?multiverseid={multiverseId}";
 }
