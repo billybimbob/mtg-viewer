@@ -24,21 +24,21 @@ public static class TestFactory
 {
     public static void InMemoryDatabase(IServiceProvider provider, DbContextOptionsBuilder options)
     {
-        var inMemory = provider.GetRequiredService<InMemoryConnection>();
+        var connectionStrings = provider.GetRequiredService<InMemoryConnectionStrings>();
 
         options
             .EnableSensitiveDataLogging()
-            .UseInMemoryDatabase(inMemory.Database)
+            .UseInMemoryDatabase(connectionStrings.InMemory)
             .ConfigureWarnings(b => b.Ignore(InMemoryEventId.TransactionIgnoredWarning));
     }
 
     public static void SqliteInMemory(IServiceProvider provider, DbContextOptionsBuilder options)
     {
-        var inMemory = provider.GetRequiredService<InMemoryConnection>();
+        var inMemory = provider.GetRequiredService<InMemoryConnectionStrings>();
 
         options
             .EnableSensitiveDataLogging()
-            .UseSqlite(inMemory.Connection);
+            .UseSqlite(inMemory.Sqlite);
     }
 
     public static UserStore<CardUser> CardUserStore(IServiceProvider provider)

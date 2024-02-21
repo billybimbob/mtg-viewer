@@ -59,7 +59,7 @@ public class Startup
             .AddTransient<TradeValidate>();
 
         services
-            .AddScoped<InMemoryConnection>()
+            .AddScoped<InMemoryConnectionStrings>()
             .AddSingleton<TempFileName>();
 
         _ = config.GetConnectionString("Provider") switch
