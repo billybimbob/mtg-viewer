@@ -147,8 +147,8 @@ public sealed class MtgApiQuery : IMtgQuery
             : cards.Where(property, value);
     }
 
-    public IAsyncEnumerable<Card> CollectionAsync(IEnumerable<string> multiverseIds)
-        => BulkSearchAsync(multiverseIds);
+    public IAsyncEnumerable<Card> CollectionAsync(IEnumerable<string> multiverseIds, CancellationToken cancel = default)
+        => BulkSearchAsync(multiverseIds, cancel);
 
     private async IAsyncEnumerable<Card> BulkSearchAsync(
         IEnumerable<string> multiverseIds,

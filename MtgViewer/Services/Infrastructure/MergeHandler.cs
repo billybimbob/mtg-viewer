@@ -91,9 +91,7 @@ public class MergeHandler
             .Except(dbCards
                 .Select(c => c.MultiverseId));
 
-        var validCards = _mtgQuery
-            .CollectionAsync(newMultiverseIds)
-            .WithCancellation(cancel);
+        var validCards = _mtgQuery.CollectionAsync(newMultiverseIds, cancel);
 
         // existing cards will be left unmodified, so they don't
         // need to be validated
@@ -226,9 +224,7 @@ public class MergeHandler
 
         if (newMultiverse.Any())
         {
-            var newCards = _mtgQuery
-                .CollectionAsync(newMultiverse)
-                .WithCancellation(cancel);
+            var newCards = _mtgQuery.CollectionAsync(newMultiverse, cancel);
 
             await foreach (var card in newCards)
             {
