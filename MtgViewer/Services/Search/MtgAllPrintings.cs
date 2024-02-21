@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -17,12 +18,12 @@ public sealed class MtgAllPrintings : IMtgQuery
 {
     private const int MaxSize = 100;
 
-    private readonly AllPrintingsDbContext _dbContext;
+    private readonly IDbContextFactory<AllPrintingsDbContext> _dbContextFactory;
     private readonly int _pageSize;
 
-    public MtgAllPrintings(AllPrintingsDbContext dbContext, PageSize pageSize)
+    public MtgAllPrintings(IDbContextFactory<AllPrintingsDbContext> dbContextFactory, PageSize pageSize)
     {
-        _dbContext = dbContext;
+        _dbContextFactory = dbContextFactory;
         _pageSize = pageSize.Default;
     }
 
@@ -35,23 +36,36 @@ public sealed class MtgAllPrintings : IMtgQuery
         return cardName.Contains(faceSplit, ordinal);
     }
 
-    public IAsyncEnumerable<Data.Card> CollectionAsync(IEnumerable<string> multiverseIds, CancellationToken cancel)
+    public async IAsyncEnumerable<Data.Card> CollectionAsync(IEnumerable<string> multiverseIds, [EnumeratorCancellation] CancellationToken cancel)
     {
-        return _dbContext.Cards
+        await using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancel);
+
+        var cards = dbContext.Cards
             .Where(c => c.CardIdentifier.MultiverseId != null && multiverseIds.Contains(c.CardIdentifier.MultiverseId))
             .Include(c => c.CardIdentifier)
             .Include(c => c.Set)
             .AsNoTracking()
             .AsAsyncEnumerable()
-            .SelectAwait(c => GetDataCardAsync(c, cancel))
-            .OfType<Data.Card>();
+            .WithCancellation(cancel);
+
+        await foreach (var card in cards)
+        {
+            var dataCard = await GetDataCardAsync(dbContext, card, cancel);
+
+            if (dataCard is not null)
+            {
+                yield return dataCard;
+            }
+        }
     }
 
     public async Task<OffsetList<Data.Card>> SearchAsync(IMtgSearch search, CancellationToken cancel)
     {
         ArgumentNullException.ThrowIfNull(search);
 
-        var cardQuery = ApplyFilters(search);
+        await using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancel);
+
+        var cardQuery = ApplyFilters(dbContext, search);
 
         int pageSize = search.PageSize is > 0 and <= MaxSize
             ? search.PageSize
@@ -61,7 +75,7 @@ public sealed class MtgAllPrintings : IMtgQuery
             .Skip(search.Page * pageSize)
             .Take(pageSize)
             .AsAsyncEnumerable()
-            .SelectAwait(c => GetDataCardAsync(c, cancel))
+            .SelectAwait(c => GetDataCardAsync(dbContext, c, cancel))
             .OfType<Data.Card>()
             .ToListAsync(cancel);
 
@@ -74,7 +88,9 @@ public sealed class MtgAllPrintings : IMtgQuery
 
     public async Task<Data.Card?> FindAsync(string id, CancellationToken cancel)
     {
-        var card = await _dbContext.Cards
+        await using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancel);
+
+        var card = await dbContext.Cards
             .Include(c => c.CardIdentifier)
             .Include(c => c.Set)
             .AsNoTracking()
@@ -85,12 +101,12 @@ public sealed class MtgAllPrintings : IMtgQuery
             return null;
         }
 
-        return await GetDataCardAsync(card, cancel);
+        return await GetDataCardAsync(dbContext, card, cancel);
     }
 
-    private IQueryable<Card> ApplyFilters(IMtgSearch search)
+    private static IQueryable<Card> ApplyFilters(AllPrintingsDbContext dbContext, IMtgSearch search)
     {
-        var cards = _dbContext.Cards
+        var cards = dbContext.Cards
             .Include(c => c.CardIdentifier)
             .Include(c => c.Set)
             .Where(c => c.CardIdentifier.MultiverseId != null)
@@ -194,7 +210,7 @@ public sealed class MtgAllPrintings : IMtgQuery
         return cards;
     }
 
-    private async ValueTask<Data.Card?> GetDataCardAsync(Card card, CancellationToken cancel)
+    private async ValueTask<Data.Card?> GetDataCardAsync(AllPrintingsDbContext dbContext, Card card, CancellationToken cancel)
     {
         if (card.Name is null)
         {
@@ -206,15 +222,15 @@ public sealed class MtgAllPrintings : IMtgQuery
             return Validate(card, null);
         }
 
-        var similar = await SearchSimilarAsync(card, cancel);
+        var similar = await SearchSimilarAsync(dbContext, card, cancel);
         var flip = Validate(similar);
 
         return Validate(card, flip);
     }
 
-    private Task<Card?> SearchSimilarAsync(Card card, CancellationToken cancel)
+    private static Task<Card?> SearchSimilarAsync(AllPrintingsDbContext dbContext, Card card, CancellationToken cancel)
     {
-        return _dbContext.Cards
+        return dbContext.Cards
             .Where(c => c.CardIdentifier.MultiverseId != null)
 
             .Where(c => c.ColorIdentity == card.ColorIdentity)

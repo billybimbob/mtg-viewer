@@ -18,7 +18,7 @@ public static partial class StartupExtensions
 
         if (options.UseLocal && options.FilePath is not null)
         {
-            services.AddDbContext<AllPrintingsDbContext>(optionsBuilder =>
+            services.AddDbContextFactory<AllPrintingsDbContext>(optionsBuilder =>
             {
                 optionsBuilder.UseSqlite(options.FilePath);
             });
