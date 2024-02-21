@@ -116,14 +116,14 @@ public sealed class MtgAllPrintings : IMtgQuery
         {
             string name = search.Name.ToUpperInvariant();
 
-            cards = cards.Where(c => c.Name != null && c.Name.ToUpperInvariant().Contains(name));
+            cards = cards.Where(c => c.Name != null && c.Name.ToUpper().Contains(name));
         }
 
         if (!string.IsNullOrEmpty(search.SetName))
         {
             string setName = search.SetName.ToUpperInvariant();
 
-            cards = cards.Where(c => c.Set.Name != null && c.Set.Name.ToUpperInvariant().Contains(setName));
+            cards = cards.Where(c => c.Set.Name != null && c.Set.Name.ToUpper().Contains(setName));
         }
 
         if (search.ManaValue is int manaValue)
@@ -147,21 +147,21 @@ public sealed class MtgAllPrintings : IMtgQuery
         {
             string power = search.Power.ToUpperInvariant();
 
-            cards = cards.Where(c => c.Power != null && c.Power.ToUpperInvariant().Contains(power));
+            cards = cards.Where(c => c.Power != null && c.Power.ToUpper().Contains(power));
         }
 
         if (!string.IsNullOrEmpty(search.Toughness))
         {
             string toughness = search.Toughness.ToUpperInvariant();
 
-            cards = cards.Where(c => c.Toughness != null && c.Toughness.ToUpperInvariant().Contains(toughness));
+            cards = cards.Where(c => c.Toughness != null && c.Toughness.ToUpper().Contains(toughness));
         }
 
         if (!string.IsNullOrEmpty(search.Loyalty))
         {
             string loyalty = search.Loyalty.ToUpperInvariant();
 
-            cards = cards.Where(c => c.Loyalty != null && c.Loyalty.ToUpperInvariant().Contains(loyalty));
+            cards = cards.Where(c => c.Loyalty != null && c.Loyalty.ToUpper().Contains(loyalty));
         }
 
         if (search.Rarity is Data.Rarity rarity)
@@ -182,7 +182,7 @@ public sealed class MtgAllPrintings : IMtgQuery
 
             foreach (string type in types)
             {
-                cards = cards.Where(c => c.Types != null && c.Types.ToUpperInvariant().Contains(type));
+                cards = cards.Where(c => c.Types != null && c.Types.ToUpper().Contains(type));
             }
         }
 
@@ -190,21 +190,21 @@ public sealed class MtgAllPrintings : IMtgQuery
         {
             string artist = search.Artist.ToUpperInvariant();
 
-            cards = cards.Where(c => c.Artist != null && c.Artist.ToUpperInvariant().Contains(artist));
+            cards = cards.Where(c => c.Artist != null && c.Artist.ToUpper().Contains(artist));
         }
 
         if (!string.IsNullOrEmpty(search.Text))
         {
             string text = search.Text.ToUpperInvariant();
 
-            cards = cards.Where(c => c.Text != null && c.Text.ToUpperInvariant().Contains(text));
+            cards = cards.Where(c => c.Text != null && c.Text.ToUpper().Contains(text));
         }
 
         if (!string.IsNullOrEmpty(search.Flavor))
         {
             string flavor = search.Flavor.ToUpperInvariant();
 
-            cards = cards.Where(c => c.FlavorText != null && c.FlavorText.ToUpperInvariant().Contains(flavor));
+            cards = cards.Where(c => c.FlavorText != null && c.FlavorText.ToUpper().Contains(flavor));
         }
 
         return cards;
