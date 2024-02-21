@@ -354,5 +354,5 @@ public sealed class MtgAllPrintings : IMtgQuery
         return dataCard;
     }
 
-    private static string GetImageUrl(string multiverseId) => $"https://gatherer.wizards.com/Pages/Card/Details.aspx?multiverseid={multiverseId}";
+    private static string GetImageUrl(string multiverseId) => $"https://gatherer.wizards.com/Handlers/Image.ashx?multiverseid={multiverseId}&type=card";
 }
