@@ -22,6 +22,8 @@ public static partial class StartupExtensions
             {
                 optionsBuilder.UseSqlite(options.FilePath);
             });
+
+            services.AddScoped<IMtgQuery, MtgAllPrintings>();
         }
         else
         {
