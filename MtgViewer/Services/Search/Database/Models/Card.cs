@@ -14,6 +14,9 @@ public partial class Card
     [Column("uuid", TypeName = "VARCHAR(36)")]
     public string Uuid { get; set; } = null!;
 
+    [ForeignKey(nameof(Uuid))]
+    public CardIdentifier CardIdentifier { get; set; } = null!;
+
     [Column("artist")]
     public string? Artist { get; set; }
 
@@ -90,10 +93,8 @@ public partial class Card
     public string? Types { get; set; }
 
     [Column("setCode")]
-    [ForeignKey(nameof(Set))]
     public string SetCode { get; set; } = string.Empty;
 
+    [ForeignKey(nameof(SetCode))]
     public Set Set { get; set; } = null!;
-
-    public CardIdentifier CardIdentifier { get; set; } = null!;
 }

@@ -1,15 +1,19 @@
 ﻿using System;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 using Microsoft.EntityFrameworkCore;
 
 namespace MtgViewer.Services.Search.Database;
 
-[Keyless]
 [Table("cardIdentifiers")]
 [Index("Uuid", Name = "cardIdentifiers_uuid")]
 public partial class CardIdentifier
 {
+    [Key]
+    [Column("uuid")]
+    public string Uuid { get; set; } = string.Empty;
+
     [Column("cardKingdomId")]
     public string? CardKingdomId { get; set; }
 
@@ -39,8 +43,4 @@ public partial class CardIdentifier
 
     [Column("tcgplayerProductId")]
     public string? TcgplayerProductId { get; set; }
-
-    [Column("uuid")]
-    [ForeignKey(nameof(Card.Uuid))]
-    public string Uuid { get; set; } = string.Empty;
 }
