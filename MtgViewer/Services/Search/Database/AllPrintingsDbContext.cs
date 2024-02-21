@@ -9,8 +9,10 @@ public class AllPrintingsDbContext : DbContext
     {
     }
 
-    public virtual DbSet<Card> Cards => Set<Card>();
-    public virtual DbSet<CardIdentifier> CardIdentifiers => Set<CardIdentifier>();
+    public DbSet<CardIdentifier> CardIdentifiers => Set<CardIdentifier>();
+
+    public DbSet<Card> Cards => Set<Card>();
+
     public DbSet<Set> Sets => Set<Set>();
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)

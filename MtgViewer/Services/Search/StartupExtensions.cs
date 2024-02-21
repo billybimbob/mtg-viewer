@@ -14,27 +14,25 @@ public static partial class StartupExtensions
     {
         var options = new PrintingOptions();
 
-        config.GetSection(nameof(PrintingOptions)).Bind(options);
+        config.Bind(nameof(PrintingOptions), options);
 
         if (options.UseLocal && options.FilePath is not null)
         {
-            services.AddDbContextFactory<AllPrintingsDbContext>(optionsBuilder =>
-            {
-                optionsBuilder.UseSqlite(options.FilePath);
-            });
-
-            services.AddScoped<IMtgQuery, MtgAllPrintings>();
+            services
+                .AddScoped<IMtgQuery, MtgAllPrintings>()
+                .AddDbContextFactory<AllPrintingsDbContext>(optionsBuilder =>
+                {
+                    optionsBuilder.UseSqlite(options.FilePath);
+                });
         }
         else
         {
             services
+                .AddScoped<IMtgQuery, MtgApiQuery>()
                 .AddSingleton<IMtgServiceProvider, MtgServiceProvider>()
                 .AddScoped(provider => provider
                     .GetRequiredService<IMtgServiceProvider>()
                     .GetCardService());
-
-            services
-                .AddScoped<IMtgQuery, MtgApiQuery>();
         }
 
         return services;
