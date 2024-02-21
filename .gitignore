@@ -7,6 +7,8 @@
 *.db
 *.db-shm
 *.db-wal
+*.sqlite
+*.sqlite-*
 *.csv
 *Migrations
 cards.json

@@ -43,8 +43,8 @@ public class TestMtgApiQuery : IMtgQuery
     public Task<OffsetList<Card>> SearchAsync(IMtgSearch search, CancellationToken cancel = default)
         => _mtgQuery.SearchAsync(search, cancel);
 
-    public IAsyncEnumerable<Card> CollectionAsync(IEnumerable<string> multiverseIds)
-        => _mtgQuery.CollectionAsync(multiverseIds);
+    public IAsyncEnumerable<Card> CollectionAsync(IEnumerable<string> multiverseIds, CancellationToken cancel = default)
+        => _mtgQuery.CollectionAsync(multiverseIds, cancel);
 
     public Task<Card?> FindAsync(string id, CancellationToken cancel = default)
         => _mtgQuery.FindAsync(id, cancel);

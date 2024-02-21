@@ -1,30 +1,10 @@
 using System;
-using System.Data.Common;
-using System.Threading.Tasks;
-
-using Microsoft.Data.Sqlite;
 
 namespace MtgViewer.Tests.Utils;
 
-public sealed class InMemoryConnection : IAsyncDisposable
+public sealed class InMemoryConnectionStrings
 {
-    private readonly Lazy<SqliteConnection> _connection = new(() =>
-    {
-        var conn = new SqliteConnection("Filename=:memory:");
-        conn.Open();
+    public string Sqlite { get; } = "Filename=:memory:";
 
-        return conn;
-    });
-
-    public DbConnection Connection => _connection.Value;
-
-    public string Database { get; } = "Test-Database-" + Guid.NewGuid();
-
-    public async ValueTask DisposeAsync()
-    {
-        if (_connection.IsValueCreated)
-        {
-            await _connection.Value.DisposeAsync();
-        }
-    }
+    public string InMemory { get; } = "Test-Database-" + Guid.NewGuid();
 }

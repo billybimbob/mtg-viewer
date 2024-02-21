@@ -77,7 +77,7 @@ services
 services
     .AddSingleton<ParseTextFilter>()
     .AddScoped<FileCardStorage>()
-    .AddMtgQueries();
+    .AddMtgQueries(config);
 
 if (env.IsDevelopment())
 {

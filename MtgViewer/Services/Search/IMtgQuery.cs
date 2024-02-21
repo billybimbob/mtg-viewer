@@ -14,7 +14,7 @@ public interface IMtgQuery
 
     Task<OffsetList<Card>> SearchAsync(IMtgSearch search, CancellationToken cancel = default);
 
-    IAsyncEnumerable<Card> CollectionAsync(IEnumerable<string> multiverseIds);
+    IAsyncEnumerable<Card> CollectionAsync(IEnumerable<string> multiverseIds, CancellationToken cancel = default);
 
     Task<Card?> FindAsync(string id, CancellationToken cancel = default);
 }

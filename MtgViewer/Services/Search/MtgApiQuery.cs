@@ -48,6 +48,11 @@ public sealed class MtgApiQuery : IMtgQuery
 
     public bool HasFlip(string cardName)
     {
+        if (string.IsNullOrWhiteSpace(cardName))
+        {
+            return false;
+        }
+
         const string faceSplit = "//";
 
         const StringComparison ordinal = StringComparison.Ordinal;
@@ -55,9 +60,7 @@ public sealed class MtgApiQuery : IMtgQuery
         return cardName.Contains(faceSplit, ordinal);
     }
 
-    public async Task<OffsetList<Card>> SearchAsync(
-        IMtgSearch search,
-        CancellationToken cancel = default)
+    public async Task<OffsetList<Card>> SearchAsync(IMtgSearch search, CancellationToken cancel = default)
     {
         ArgumentNullException.ThrowIfNull(search);
 
@@ -66,11 +69,7 @@ public sealed class MtgApiQuery : IMtgQuery
             return OffsetList.Empty<Card>();
         }
 
-        cancel.ThrowIfCancellationRequested();
-
-        var response = await ApplySearch(search).AllAsync();
-
-        cancel.ThrowIfCancellationRequested();
+        var response = await ApplySearch(search).AllAsync().WaitAsync(cancel);
 
         var items = await TranslateAsync(response, cancel);
 
@@ -151,8 +150,12 @@ public sealed class MtgApiQuery : IMtgQuery
             : cards.Where(property, value);
     }
 
-    public IAsyncEnumerable<Card> CollectionAsync(IEnumerable<string> multiverseIds)
-        => BulkSearchAsync(multiverseIds);
+    public IAsyncEnumerable<Card> CollectionAsync(IEnumerable<string> multiverseIds, CancellationToken cancel = default)
+    {
+        multiverseIds ??= Enumerable.Empty<string>();
+
+        return BulkSearchAsync(multiverseIds, cancel);
+    }
 
     private async IAsyncEnumerable<Card> BulkSearchAsync(
         IEnumerable<string> multiverseIds,
@@ -178,9 +181,8 @@ public sealed class MtgApiQuery : IMtgQuery
 
             var response = await _cardService
                 .Where(c => c.MultiverseId, multiverseChunk.Join(Or))
-                .AllAsync();
-
-            cancel.ThrowIfCancellationRequested();
+                .AllAsync()
+                .WaitAsync(cancel);
 
             var validated = await TranslateAsync(response, cancel);
 
@@ -200,11 +202,7 @@ public sealed class MtgApiQuery : IMtgQuery
             return null;
         }
 
-        cancel.ThrowIfCancellationRequested();
-
-        var result = await _cardService.FindAsync(id);
-
-        cancel.ThrowIfCancellationRequested();
+        var result = await _cardService.FindAsync(id).WaitAsync(cancel);
 
         return await TranslateAsync(result, cancel);
     }
@@ -232,26 +230,50 @@ public sealed class MtgApiQuery : IMtgQuery
         return await iCards
             .Except(missingMultiverseId)
             .OrderBy(c => c.MultiverseId)
-
-            .GroupBy(c => (c.Name, c.Set),
-                (_, cards) => new Queue<ICard>(cards))
-
+            .GroupBy(c => (c.Name, c.Set))
             .ToAsyncEnumerable()
             .SelectMany(q => TranslateAsync(q))
             .ToListAsync(cancel);
     }
 
     private async IAsyncEnumerable<Card> TranslateAsync(
-        Queue<ICard> similarCards,
+        IEnumerable<ICard> similarCards,
         [EnumeratorCancellation] CancellationToken cancel = default)
     {
-        while (similarCards.TryDequeue(out var iCard))
-        {
-            var flip = await FindFlipAsync(iCard, similarCards, cancel);
+        cancel.ThrowIfCancellationRequested();
 
-            if (Validate(iCard, flip) is Card card)
+        var similarCardsQueue = new Queue<ICard>(similarCards);
+
+        while (similarCardsQueue.TryDequeue(out var iCard))
+        {
+            if (!HasFlip(iCard.Name))
             {
-                yield return card;
+                if (Validate(iCard, null) is Card card)
+                {
+                    yield return card;
+                }
+
+                continue;
+            }
+
+            if (similarCardsQueue.TryDequeue(out var similarICard)
+                && Validate(similarICard) is Flip similarFlip
+                && Validate(iCard, similarFlip) is Card similarFlipCard)
+            {
+                // assume closest multiverseId card is the flip
+                // keep eye on
+
+                yield return similarFlipCard;
+            }
+
+            // has to search for an individual card, which is very inefficient
+
+            var searchedICard = await SearchSimilarAsync(iCard, cancel);
+
+            if (Validate(searchedICard) is Flip searchedFlip
+                && Validate(iCard, searchedFlip) is Card searchedFlipCard)
+            {
+                yield return searchedFlipCard;
             }
         }
     }
@@ -265,7 +287,13 @@ public sealed class MtgApiQuery : IMtgQuery
             return null;
         }
 
-        var flip = await FindFlipAsync(iCard, cancel);
+        if (!HasFlip(iCard.Name))
+        {
+            return Validate(iCard, null);
+        }
+
+        var similar = await SearchSimilarAsync(iCard, cancel);
+        var flip = Validate(similar);
 
         return Validate(iCard, flip);
     }
@@ -281,44 +309,6 @@ public sealed class MtgApiQuery : IMtgQuery
         return result.Value;
     }
 
-    private async ValueTask<Flip?> FindFlipAsync(
-        ICard card,
-        Queue<ICard> similarCards,
-        CancellationToken cancel)
-    {
-        if (!HasFlip(card.Name))
-        {
-            return null;
-        }
-
-        if (similarCards.TryDequeue(out var iFlip)
-            && Validate(iFlip) is Flip local)
-        {
-            // assume closest multiverseId card is the flip
-            // keep eye on
-
-            return local;
-        }
-
-        // has to search for an individual card, which is very inefficient
-
-        var similar = await SearchSimilarAsync(card, cancel);
-
-        return Validate(similar);
-    }
-
-    private async ValueTask<Flip?> FindFlipAsync(ICard card, CancellationToken cancel)
-    {
-        if (!HasFlip(card.Name))
-        {
-            return null;
-        }
-
-        var similar = await SearchSimilarAsync(card, cancel);
-
-        return Validate(similar);
-    }
-
     private async Task<ICard?> SearchSimilarAsync(ICard card, CancellationToken cancel)
     {
         string[] colors = card.ColorIdentity ?? Array.Empty<string>();
@@ -332,9 +322,8 @@ public sealed class MtgApiQuery : IMtgQuery
 
             .Where(c => c.PageSize, _pageSize)
             .Where(c => c.Contains, RequiredAttributes)
-            .AllAsync();
-
-        cancel.ThrowIfCancellationRequested();
+            .AllAsync()
+            .WaitAsync(cancel);
 
         return LoggedUnwrap(result)
             ?.FirstOrDefault(c => c.Id != card.Id && c.MultiverseId is not null);
