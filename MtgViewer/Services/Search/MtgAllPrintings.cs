@@ -38,7 +38,7 @@ public sealed class MtgAllPrintings : IMtgQuery
     public IAsyncEnumerable<Data.Card> CollectionAsync(IEnumerable<string> multiverseIds, CancellationToken cancel)
     {
         return _dbContext.Cards
-            .Where(c => multiverseIds.Contains(c.CardIdentifier.MultiverseId))
+            .Where(c => c.CardIdentifier.MultiverseId != null && multiverseIds.Contains(c.CardIdentifier.MultiverseId))
             .Include(c => c.CardIdentifier)
             .Include(c => c.Set)
             .AsNoTracking()
@@ -95,6 +95,7 @@ public sealed class MtgAllPrintings : IMtgQuery
         var cards = _dbContext.Cards
             .Include(c => c.CardIdentifier)
             .Include(c => c.Set)
+            .Where(c => c.CardIdentifier.MultiverseId != null)
             .AsQueryable();
 
         if (!string.IsNullOrEmpty(search.Name))
