@@ -354,7 +354,7 @@ public sealed class MtgAllPrintings : IMtgQuery
             ManaCost = card.ManaCost,
             ManaValue = card.ManaValue,
 
-            Type = card.Types!,
+            Type = card.Type!,
             Rarity = rarity,
             SetName = card.Set.Name!,
             Flip = flip,
