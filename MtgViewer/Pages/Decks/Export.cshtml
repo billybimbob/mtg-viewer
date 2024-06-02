@@ -6,6 +6,11 @@
 @using MtgViewer.Data.Infrastructure
 
 <h1>Export @Model.Deck.Name</h1>
+
+<div class="btn-group" role="group">
+    <a asp-page="Details" asp-route-id="@Model.Deck.Id" class="btn btn-secondary" role="button">
+        Details </a>
+</div>
 <hr />
 
 <div class="row">
