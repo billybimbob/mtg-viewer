@@ -130,6 +130,7 @@ public class BackupFactory
                     - c.Givebacks.Where(g => g.LocationId == deckId).Sum(g => g.Copies),
             })
 
+            .Where(c => c.Quantity > 0)
             .AsAsyncEnumerable();
     }
 }
