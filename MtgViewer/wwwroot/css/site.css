@@ -18,7 +18,8 @@ a {
   border-color: #1861ac;
 }
 
-.nav-pills .nav-link.active, .nav-pills .show > .nav-link {
+.nav-pills .nav-link.active,
+.nav-pills .show>.nav-link {
   color: #fff;
   background-color: #1b6ec2;
   border-color: #1861ac;
@@ -29,6 +30,7 @@ a {
 html {
   font-size: 14px;
 }
+
 @media (min-width: 768px) {
   html {
     font-size: 16px;
@@ -38,6 +40,7 @@ html {
 .border-top {
   border-top: 1px solid #e5e5e5;
 }
+
 .border-bottom {
   border-bottom: 1px solid #e5e5e5;
 }
@@ -62,19 +65,22 @@ body {
   /* Margin bottom by footer height */
   margin-bottom: 60px;
 }
+
 .footer {
   position: absolute;
   bottom: 0;
   width: 100%;
   white-space: nowrap;
-  line-height: 60px; /* Vertically center the text there */
+  line-height: 60px;
+  /* Vertically center the text there */
 }
 
 .multiline {
-   white-space: pre-line;
+  white-space: pre-line;
 }
 
-.table tbody th, .table td {
+.table tbody th,
+.table td {
   vertical-align: middle;
 }
 
@@ -139,8 +145,8 @@ body {
   max-width: 220px;
 }
 
-@media (min-width: 768px) {
-  .preview-watch:hover ~ .preview-item {
+@media (min-width: 576px) {
+  .preview-watch:hover~.preview-item {
     display: inherit;
   }
 }
@@ -165,7 +171,7 @@ body {
 .loc-item {
   position: relative;
   padding: .75rem 1.25rem;
-  border: 1px solid rgba(0,0,0,.125);
+  border: 1px solid rgba(0, 0, 0, .125);
 
   display: flex;
   justify-content: space-between;
@@ -180,12 +186,14 @@ body {
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }
 }
 
 @media (min-width: 768px) {
+
   .scale.img-fade,
   .scale.card-img {
     transition: transform 200ms ease-in;
@@ -227,10 +235,11 @@ body {
 
 @keyframes load {
   from {
-      left: -150px;
+    left: -150px;
   }
+
   to {
-      left: 100%;
+    left: 100%;
   }
 }
 
