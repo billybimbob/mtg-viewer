@@ -1,0 +1,56 @@
+@page
+@model Treasury.PurgeModel
+@{
+    ViewData["Title"] = "Purge Cards";
+}
+
+<div class="row">
+    <h1 class="h1 col-auto"> Purge Cards </h1>
+</div>
+
+<hr />
+
+<section class="row">
+    <div class="col col-sm-10 col-md-8">
+        <p>
+            Specify the number of card copies to keep in the Treasury. Deleting
+            copies removes them from the system entirely.
+        </p>
+        <p>
+            Only card copies currenly held in the Treasury can be deleted, while copies
+            held in Decks are left unaffected.
+        </p>
+    </div>
+</section>
+
+<section class="row">
+    <div class="col col-md-8 col-lg-6">
+        <form method="POST">
+            <div class="form-group">
+                <label asp-for="Input!.MultiverseIds" class="control-label"></label>
+                <textarea asp-for="Input!.MultiverseIds"
+                    placeholder="Expected format is a list of multiverse ids, separated by newlines.&#10;Example below:&#10;651946&#10;530508&#10;271150"
+                    class="form-control" rows="10"></textarea>
+                <span asp-validation-for="Input!.MultiverseIds" class="text-danger"></span>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="Input!.MinCopies" class="control-label"></label>
+                <input asp-for="Input!.MinCopies" class="form-control" type="number" min="1" max="100" />
+                <span asp-validation-for="Input!.MinCopies" class="text-danger"></span>
+            </div>
+
+            <div class="btn-group" role="group">
+                <a asp-page="Index" class="btn btn-secondary" role="button">
+                    Cancel </a>
+
+                <input type="submit" value="Remove" class="btn btn-danger" />
+            </div>
+        </form>
+    </div>
+</section>
+
+@section Scripts
+{
+    <partial name="_ValidationScriptsPartial" />
+}
