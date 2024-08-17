@@ -72,6 +72,18 @@ public partial class Craft
         return null;
     }
 
+    internal Deck? GetStatisticsDeck()
+    {
+        if (_deckContext?.Deck is Deck deck)
+        {
+            return deck;
+        }
+        else
+        {
+            return null;
+        }
+    }
+
     private async Task CreateDeckOrRedirectAsync(CardDbContext dbContext, string? userId)
     {
         if (userId is null)

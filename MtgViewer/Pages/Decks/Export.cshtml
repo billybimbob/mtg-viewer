@@ -1,0 +1,44 @@
+@page "{id:int}"
+@model Decks.ExportModel
+@{
+    ViewData["Title"] = $"{Model.Deck.Name} - Download";
+}
+@using MtgViewer.Data.Infrastructure
+
+<h1>Export @Model.Deck.Name</h1>
+
+<div class="btn-group" role="group">
+    <a asp-page="Details" asp-route-id="@Model.Deck.Id" class="btn btn-secondary" role="button">
+        Details </a>
+</div>
+<hr />
+
+<div class="row">
+    <div class="col col-md-8">
+        <p>
+            Download the deck data for @Model.Deck.Name. This data can be used to import
+            the deck into other Magic the Gathering services.
+        </p>
+    </div>
+</div>
+
+<section class="row">
+    <div class="col-10 col-sm-6 col-lg-4">
+        <form method="POST">
+            <div class="form-group">
+                <select asp-for="ExportType" title="Pick Export Type" class="form-control">
+                    <option value="@DeckMulligan.Built"> Built </option>
+                    <option value="@DeckMulligan.Theorycraft"> Theorycraft </option>
+                </select>
+
+                <span asp-validation-for="ExportType" class="text-danger"></span>
+            </div>
+
+            <input type="submit" class="btn btn-secondary" title="Download @Model.Deck.Name Data" value="Download" />
+        </form>
+    </div>
+</section>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

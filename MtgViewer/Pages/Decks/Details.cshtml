@@ -41,6 +41,10 @@
         class="btn btn-secondary" role="button">
         History </a>
 
+    <a asp-page="Export" asp-route-id="@Model.Deck.Id"
+        class="btn btn-secondary" role="button">
+        Export </a>
+
     @if (Model.IsOwner && canChangeTreasury)
     {
         <a asp-page="Delete" asp-route-id="@Model.Deck.Id"

@@ -13,10 +13,8 @@
     <EditForm EditContext="@DeckEdit">
         <div class="row">
             <div class="col col-md-6">
-                <InputText title="Edit Deck Name"
-                    class="form-control form-control-lg mb-3"
-                    @bind-Value="deck.Name"
-                    DisplayName="Deck Name"/>
+                <InputText title="Edit Deck Name" class="form-control form-control-lg mb-3" @bind-Value="deck.Name"
+                    DisplayName="Deck Name" />
 
                 <DataAnnotationsValidator />
                 <ValidationSummary />
@@ -28,16 +26,13 @@ else
 {
     <div class="row">
         <div class="col col-md-6">
-            <input type="text" class="form-control form-control-lg mb-3"
-                placeholder="Deck Builder" readonly />
+            <input type="text" class="form-control form-control-lg mb-3" placeholder="Deck Builder" readonly />
         </div>
     </div>
 }
 
 <div class="btn-group mb-3" role="group">
-    <button title="Save Deck" type="button"
-        class="btn btn-secondary"
-        disabled="@(IsLoading || CannotSave())"
+    <button title="Save Deck" type="button" class="btn btn-secondary" disabled="@(IsLoading || CannotSave())"
         @onclick="CommitChangesAsync">
         @if (IsLoading)
         {
@@ -54,23 +49,38 @@ else
 
     @if (GetExchangeDeck() is Deck exchangeDeck)
     {
-        <a href="/Decks/Exchange/@exchangeDeck.Id"
-            class="btn btn-secondary" role="button">
+        <a href="/Decks/Exchange/@exchangeDeck.Id" class="btn btn-secondary" role="button">
             Exchange </a>
     }
     else
     {
-        <button title="To Exchange Page" type="button"
-            class="btn btn-secondary"
-            disabled="true">
+        <button title="To Exchange Page" type="button" class="btn btn-secondary" disabled="true">
             Exchange </button>
+    }
+
+    @if (GetStatisticsDeck() is Deck statsDeck)
+    {
+        <a href="/Decks/Statistics/@statsDeck.Id" class="btn btn-secondary" role="button">
+            Statistics </a>
+
+        <a href="/Decks/Export/@statsDeck.Id" class="btn btn-secondary" role="button">
+            Export </a>
+    }
+    else
+    {
+        <button type="button" class="btn btn-secondary" disabled="true">
+            Statistics </button>
+
+        <button type="button" class="btn btn-secondary" disabled="true">
+            Export </button>
     }
 </div>
 
 <SavePrompt @bind-Result="Result">
     <SuccessMessage>
         <p>Save was succesful, and values have been updated.</p>
-        <p class="mb-1">The wanted cards are not actually removed from the Treasury. Proceed to the Exchange page to take from the Treasury.</p>
+        <p class="mb-1">The wanted cards are not actually removed from the Treasury. Proceed to the Exchange page to
+            take from the Treasury.</p>
     </SuccessMessage>
     <ErrorMessage>
         <p>There are conflicts while trying to save, and values have been updated. </p>
@@ -81,8 +91,7 @@ else
 
 <div class="row form-group">
     <div class="col-5 col-sm-4 col-md-3 col-lg-2 ">
-        <select title="Deck Build Type" class="form-control"
-            disabled="@IsLoading" @onchange="UpdateDeckCraftAsync">
+        <select title="Deck Build Type" class="form-control" disabled="@IsLoading" @onchange="UpdateDeckCraftAsync">
 
             <option value="@DeckCraft.Built" selected="@(DeckCraft is DeckCraft.Built)">
                 Held Cards </option>
@@ -93,11 +102,7 @@ else
     </div>
 </div>
 
-<CardFilter
-    Search="@Search"
-    SearchChanged="@SearchAsync"
-    Color="@PickedColors"
-    ColorChanged="@ChangeColorAsync"
+<CardFilter Search="@Search" SearchChanged="@SearchAsync" Color="@PickedColors" ColorChanged="@ChangeColorAsync"
     IsDisabled="@IsLoading" />
 
 @if (DeckCraft is DeckCraft.Theorycraft)
@@ -121,10 +126,8 @@ else
                 {
                     int wantCopies = card.Wants.Sum(w => w.Copies);
 
-                    <button @key="card.Id"
-                        type="button" title="Add @card.Name"
-                        class="list-group-item list-group-item-action px-2"
-                        @onclick="() => AddWantAsync(card)">
+                    <button @key="card.Id" type="button" title="Add @card.Name"
+                        class="list-group-item list-group-item-action px-2" @onclick="() => AddWantAsync(card)">
 
                         <div class="row">
                             <div class="col-6">
@@ -150,8 +153,7 @@ else
                 {
                     var card = want.Card;
 
-                    <button type="button" title="Remove @card.Name"
-                        class="list-group-item list-group-item-action px-2"
+                    <button type="button" title="Remove @card.Name" class="list-group-item list-group-item-action px-2"
                         @onclick="() => RemoveWantAsync(want.Card)">
 
                         <div class="row">
@@ -175,8 +177,8 @@ else
                 </div>
             </div>
 
-            <SeekPaging TEntity="@Want"
-                Seek="@DeckWants.Seek" PageSelected="@ChangeQuantitiesAsync" IsDisabled="@IsLoading" />
+            <SeekPaging TEntity="@Want" Seek="@DeckWants.Seek" PageSelected="@ChangeQuantitiesAsync"
+                IsDisabled="@IsLoading" />
         </section>
     </div>
 }
@@ -193,10 +195,8 @@ else if (DeckCraft is DeckCraft.Built)
                     int returnCopies = card.Givebacks.Sum(g => g.Copies);
                     int copies = hold.Copies - Math.Min(returnCopies, hold.Copies);
 
-                    <button type="button" title="Remove @card.Name"
-                        class="list-group-item list-group-item-action px-2"
-                        disabled="@(copies == 0)"
-                        @onclick="() => AddReturnAsync(card)">
+                    <button type="button" title="Remove @card.Name" class="list-group-item list-group-item-action px-2"
+                        disabled="@(copies == 0)" @onclick="() => AddReturnAsync(card)">
 
                         <div class="row">
                             <div class="col-6">
@@ -219,8 +219,8 @@ else if (DeckCraft is DeckCraft.Built)
                 </div>
             </div>
 
-            <SeekPaging TEntity="@Hold"
-                Seek="@DeckHolds.Seek" PageSelected="@ChangeQuantitiesAsync" IsDisabled="@IsLoading" />
+            <SeekPaging TEntity="@Hold" Seek="@DeckHolds.Seek" PageSelected="@ChangeQuantitiesAsync"
+                IsDisabled="@IsLoading" />
         </section>
 
         <section class="col">
@@ -231,8 +231,7 @@ else if (DeckCraft is DeckCraft.Built)
                 {
                     var card = giveback.Card;
 
-                    <button type="button" title="Add Back @card.Name"
-                        class="list-group-item list-group-item-action px-2"
+                    <button type="button" title="Add Back @card.Name" class="list-group-item list-group-item-action px-2"
                         @onclick="() => RemoveReturnAsync(card)">
 
                         <div class="row">
@@ -256,8 +255,8 @@ else if (DeckCraft is DeckCraft.Built)
                 </div>
             </div>
 
-            <SeekPaging TEntity="@Giveback"
-                Seek="@DeckReturns.Seek" PageSelected="@ChangeQuantitiesAsync" IsDisabled="@IsLoading" />
+            <SeekPaging TEntity="@Giveback" Seek="@DeckReturns.Seek" PageSelected="@ChangeQuantitiesAsync"
+                IsDisabled="@IsLoading" />
         </section>
     </div>
 }
