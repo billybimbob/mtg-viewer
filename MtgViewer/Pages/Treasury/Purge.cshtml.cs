@@ -62,6 +62,11 @@ public class PurgeModel : PageModel
         string[] multiverseIds = Input.MultiverseIds
             .Split(Environment.NewLine, StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
 
+        if (!multiverseIds.Any())
+        {
+            return Page();
+        }
+
         var cards = await _dbContext.Cards
             .Where(c => multiverseIds.Contains(c.MultiverseId))
             .Include(c => c.Holds
@@ -123,27 +128,18 @@ public class PurgeModel : PageModel
             }
             else
             {
-                // just delete hold
-                var change = new Change
+                // just delete amount over target
+                _dbContext.Changes.Add(new Change
                 {
                     To = blindEternity,
                     From = hold.Location,
                     Card = hold.Card,
-                    Copies = hold.Copies,
+                    Copies = hold.Copies - targetCopies,
                     Transaction = transaction
-                };
+                });
 
-                if (targetCopies > 0)
-                {
-                    hold.Copies = targetCopies;
-                    targetCopies = 0;
-                }
-                else
-                {
-                    hold.Copies = 0;
-                }
-
-                _dbContext.Changes.Add(change);
+                hold.Copies = targetCopies;
+                targetCopies = 0;
             }
         }
     }
