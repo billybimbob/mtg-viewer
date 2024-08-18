@@ -128,10 +128,10 @@ public class PurgeModel : PageModel
                     Transaction = transaction
                 };
 
-                _dbContext.Changes.Add(change);
-
                 hold.Copies = targetCopies;
                 targetCopies = 0;
+
+                _dbContext.Changes.Add(change);
             }
             else
             {
@@ -145,8 +145,9 @@ public class PurgeModel : PageModel
                     Transaction = transaction
                 };
 
-                _dbContext.Changes.Add(change);
                 hold.Copies = 0;
+
+                _dbContext.Changes.Add(change);
             }
         }
     }
