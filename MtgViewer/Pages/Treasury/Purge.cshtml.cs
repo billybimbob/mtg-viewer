@@ -138,7 +138,7 @@ public class PurgeModel : PageModel
                     Transaction = transaction
                 });
 
-                hold.Copies = 0;
+                hold.Copies = targetCopies;
                 targetCopies = 0;
             }
         }
