@@ -28,5 +28,6 @@ internal enum LocationType
     Deck,
     Unclaimed,
     Box,
-    Excess
+    Excess,
+    Deleted
 }

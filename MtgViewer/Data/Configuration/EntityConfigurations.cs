@@ -28,7 +28,8 @@ internal class LocationConfiguration : IEntityTypeConfiguration<Location>
 
             .HasValue<Storage>(LocationType.Invalid)
             .HasValue<Box>(LocationType.Box)
-            .HasValue<Excess>(LocationType.Excess);
+            .HasValue<Excess>(LocationType.Excess)
+            .HasValue<BlindEternity>(LocationType.Deleted);
 
         _ = builder
             .HasMany(l => l.Holds)
