@@ -54,6 +54,11 @@ public class PurgeModel : PageModel
             return NotFound();
         }
 
+        if (!ModelState.IsValid)
+        {
+            return Page();
+        }
+
         string[] multiverseIds = Input.MultiverseIds
             .Split(Environment.NewLine, StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
 
