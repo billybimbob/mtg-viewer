@@ -106,13 +106,23 @@ public class PurgeModel : PageModel
             else if (hold.Copies >= targetCopies)
             {
                 // too many keeps
+                var change = new Change
+                {
+                    To = blindEternity,
+                    From = hold.Location,
+                    Card = hold.Card,
+                    Copies = hold.Copies - targetCopies,
+                    Transaction = transaction
+                };
+
+                _dbContext.Changes.Add(change);
+
                 hold.Copies = targetCopies;
                 targetCopies = 0;
             }
             else
             {
                 // just delete hold
-
                 var change = new Change
                 {
                     To = blindEternity,
