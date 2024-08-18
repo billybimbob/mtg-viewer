@@ -52,7 +52,8 @@ public class PurgeModel : PageModel
             return NotFound();
         }
 
-        string[] multiverseIds = Input.MultiverseIds.Split(Environment.NewLine, StringSplitOptions.None);
+        string[] multiverseIds = Input.MultiverseIds
+            .Split(Environment.NewLine, StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
 
         var cards = await _dbContext.Cards
             .Where(c => multiverseIds.Contains(c.MultiverseId))
