@@ -12,10 +12,12 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 using MtgViewer.Data;
+using MtgViewer.Areas.Identity.Data;
 
 namespace MtgViewer.Pages.Treasury;
 
 [Authorize]
+[Authorize(CardPolicies.ChangeTreasury)]
 public class PurgeModel : PageModel
 {
     private readonly CardDbContext _dbContext;
