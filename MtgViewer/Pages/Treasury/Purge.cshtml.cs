@@ -81,6 +81,11 @@ public class PurgeModel : PageModel
         _dbContext.Holds.RemoveRange(
             cards.SelectMany(c => c.Holds.Where(h => h.Copies == 0)));
 
+        if (!transaction.Changes.Any())
+        {
+            _dbContext.Transactions.Remove(transaction);
+        }
+
         try
         {
             await _dbContext.SaveChangesAsync(cancel);
