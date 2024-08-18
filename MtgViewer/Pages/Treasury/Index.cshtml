@@ -20,7 +20,7 @@
 <div class="row mb-3">
     @if (isSignedIn)
     {
-        <div class="col-auto btn-group pr-2" role="group" aria-label="Treasury Backup">
+        <div class="col-auto btn-group pr-2" role="group" aria-label="Treasury Updates">
             @if (canChangeTreasury)
             {
                 <a href="/Treasury/Adjust" class="btn btn-secondary" role="button"> Add Box </a>
@@ -33,7 +33,8 @@
                 <button class="btn btn-secondary" type="button" disabled> Import </button>
                 <button class="btn btn-secondary" type="button" disabled> Purge </button>
             }
-
+        </div>
+        <div class="col-auto btn-group pr-2" role="group" aria-label="Treasury Backup">
             <a asp-page="Export" class="btn btn-secondary" role="button"> Export </a>
             <a asp-page="Reset" class="btn btn-danger" role="button"> Reset </a>
         </div>
