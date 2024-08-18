@@ -33,10 +33,10 @@ public class PurgeModel : PageModel
         [Required(ErrorMessage = "No Cards Specified")]
         public string MultiverseIds { get; set; } = string.Empty;
 
-        [Display(Name = "Minimum Copies")]
+        [Display(Name = "Maximum Copies")]
         [Required(ErrorMessage = "No Copies Specified")]
         [Range(4, 100)]
-        public int MinCopies { get; set; }
+        public int MaxCopies { get; set; }
     }
 
     [TempData]
@@ -71,7 +71,7 @@ public class PurgeModel : PageModel
                 .Where(h => h.Location is Box or Excess)
                 .ToList();
 
-            RetainCopies(blindEternity, transaction, storageHolds, Input.MinCopies);
+            RetainCopies(blindEternity, transaction, storageHolds, Input.MaxCopies);
         }
 
         await _dbContext.UpdateBoxesAsync(cancel);
