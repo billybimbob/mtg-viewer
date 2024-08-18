@@ -10,7 +10,7 @@
 
 @{
     bool canChangeTreasury = (await AuthorizationService
-        .AuthorizeAsync(User, CardPolicies.ChangeTreasury)).Succeeded;
+    .AuthorizeAsync(User, CardPolicies.ChangeTreasury)).Succeeded;
 
     bool isSignedIn = SignInManager.IsSignedIn(User);
 }
@@ -25,11 +25,13 @@
             {
                 <a href="/Treasury/Adjust" class="btn btn-secondary" role="button"> Add Box </a>
                 <a href="/Treasury/Import" class="btn btn-secondary" role="button"> Import </a>
+                <a href="/Treasury/Purge" class="btn btn-secondary" role="button"> Purge </a>
             }
             else
             {
                 <button class="btn btn-secondary" type="button" disabled> Add Box </button>
                 <button class="btn btn-secondary" type="button" disabled> Import </button>
+                <button class="btn btn-secondary" type="button" disabled> Purge </button>
             }
 
             <a asp-page="Export" class="btn btn-secondary" role="button"> Export </a>
@@ -52,7 +54,9 @@
     <h3> There are no Boxes in the Collection </h3>
 }
 
-@{ string returnUrl = $"{Request.Path}{Request.QueryString}"; }
+@{
+    string returnUrl = $"{Request.Path}{Request.QueryString}";
+}
 
 @foreach (var bin in Model.Bins)
 {
@@ -90,8 +94,7 @@
                         @if (firstCard != default)
                         {
                             <td>
-                                <a asp-page="/Cards/Details"
-                                    asp-route-id="@firstCard.Id" asp-route-returnurl="@returnUrl">
+                                <a asp-page="/Cards/Details" asp-route-id="@firstCard.Id" asp-route-returnurl="@returnUrl">
                                     @firstCard.Name </a>
                             </td>
 
@@ -118,8 +121,7 @@
                     {
                         <tr>
                             <td>
-                                <a asp-page="/Cards/Details"
-                                    asp-route-id="@card.Id" asp-route-returnurl="@returnUrl">
+                                <a asp-page="/Cards/Details" asp-route-id="@card.Id" asp-route-returnurl="@returnUrl">
                                     @card.Name </a>
                             </td>
                             <td>
@@ -147,4 +149,4 @@
     </div>
 }
 
-<partial name="_SeekPagingPartial" for="Seek"/>
+<partial name="_SeekPagingPartial" for="Seek" />
