@@ -18,6 +18,7 @@ public partial class CardDbContext : DbContext
 
     public DbSet<Deck> Decks => Set<Deck>();
     public DbSet<Unclaimed> Unclaimed => Set<Unclaimed>();
+    public DbSet<BlindEternity> BlindEternities => Set<BlindEternity>();
 
     public DbSet<Excess> Excess => Set<Excess>();
     public DbSet<Box> Boxes => Set<Box>();
