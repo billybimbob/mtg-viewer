@@ -146,7 +146,6 @@ public partial class CardDbContext
         var storageSpaces = await MergedStorageSpacesAsync(cancel);
 
         int[] modified = Boxes.Local
-            .Where(b => Entry(b).State is EntityState.Modified)
             .Select(b => b.Id)
             .ToArray();
 
