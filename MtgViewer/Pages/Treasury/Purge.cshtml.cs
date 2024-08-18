@@ -111,27 +111,15 @@ public class PurgeModel : PageModel
     {
         foreach (var hold in holds)
         {
-            if (hold.Copies < targetCopies)
+            if (hold.Copies == targetCopies)
+            {
+                // we found all of the copies we want to keep
+                targetCopies = 0;
+            }
+            else if (hold.Copies < targetCopies)
             {
                 // not enough keeps
                 targetCopies -= hold.Copies;
-            }
-            else if (hold.Copies >= targetCopies)
-            {
-                // too many keeps
-                var change = new Change
-                {
-                    To = blindEternity,
-                    From = hold.Location,
-                    Card = hold.Card,
-                    Copies = hold.Copies - targetCopies,
-                    Transaction = transaction
-                };
-
-                hold.Copies = targetCopies;
-                targetCopies = 0;
-
-                _dbContext.Changes.Add(change);
             }
             else
             {
@@ -145,7 +133,15 @@ public class PurgeModel : PageModel
                     Transaction = transaction
                 };
 
-                hold.Copies = 0;
+                if (targetCopies > 0)
+                {
+                    hold.Copies = targetCopies;
+                    targetCopies = 0;
+                }
+                else
+                {
+                    hold.Copies = 0;
+                }
 
                 _dbContext.Changes.Add(change);
             }
