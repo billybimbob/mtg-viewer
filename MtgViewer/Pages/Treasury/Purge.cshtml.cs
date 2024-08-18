@@ -15,7 +15,7 @@ using MtgViewer.Data;
 
 namespace MtgViewer.Pages.Treasury;
 
-// [Authorize]
+[Authorize]
 public class PurgeModel : PageModel
 {
     private readonly CardDbContext _dbContext;
@@ -61,13 +61,16 @@ public class PurgeModel : PageModel
                 .ThenInclude(h => h.Location)
             .ToListAsync(cancel);
 
+        var blindEternity = await GetBlindEternitiesAsync(cancel);
+        var transaction = GetTransaction();
+
         foreach (var card in cards)
         {
             var storageHolds = card.Holds
                 .Where(h => h.Location is Box or Excess)
                 .ToList();
 
-            RetainCopies(storageHolds, Input.MinCopies);
+            RetainCopies(blindEternity, transaction, storageHolds, Input.MinCopies);
         }
 
         await _dbContext.UpdateBoxesAsync(cancel);
@@ -91,7 +94,7 @@ public class PurgeModel : PageModel
         return RedirectToPage("Index");
     }
 
-    private static void RetainCopies(IReadOnlyList<Hold> holds, int targetCopies)
+    private void RetainCopies(BlindEternity blindEternity, Transaction transaction, IReadOnlyList<Hold> holds, int targetCopies)
     {
         foreach (var hold in holds)
         {
@@ -108,9 +111,40 @@ public class PurgeModel : PageModel
             }
             else
             {
-                // just delete
+                // just delete hold
+
+                var change = new Change
+                {
+                    To = blindEternity,
+                    From = hold.Location,
+                    Card = hold.Card,
+                    Copies = hold.Copies,
+                    Transaction = transaction
+                };
+
+                _dbContext.Changes.Add(change);
                 hold.Copies = 0;
             }
         }
+    }
+
+    private async Task<BlindEternity> GetBlindEternitiesAsync(CancellationToken cancel)
+    {
+        var blindEternity = await _dbContext.BlindEternities.FirstOrDefaultAsync(cancel);
+
+        if (blindEternity is null)
+        {
+            blindEternity = BlindEternity.Create();
+            _dbContext.BlindEternities.Add(blindEternity);
+        }
+
+        return blindEternity;
+    }
+
+    private Transaction GetTransaction()
+    {
+        var transaction = new Transaction();
+        _dbContext.Transactions.Add(transaction);
+        return transaction;
     }
 }
