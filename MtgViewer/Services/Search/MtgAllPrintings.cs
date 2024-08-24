@@ -56,13 +56,17 @@ public sealed class MtgAllPrintings : IMtgQuery
             .Where(c => c.CardIdentifier.MultiverseId != null && targetMultiverseIds.Contains(c.CardIdentifier.MultiverseId))
             .Include(c => c.CardIdentifier)
             .Include(c => c.Set)
+
+            .OrderBy(c => c.CardIdentifier.MultiverseId)
             .AsNoTracking()
             .AsAsyncEnumerable()
+
+            .GroupBy(c => (c.Name, c.SetCode))
             .WithCancellation(cancel);
 
-        await foreach (var card in cards)
+        await foreach (var similarCards in cards)
         {
-            var dataCard = await GetDataCardAsync(dbContext, card, cancel);
+            var dataCard = await GetDataCardAsync(dbContext, similarCards, cancel);
 
             if (dataCard is not null)
             {
@@ -91,8 +95,12 @@ public sealed class MtgAllPrintings : IMtgQuery
         var cards = await cardQuery
             .Skip(search.Page * pageSize)
             .Take(pageSize)
+            .OrderBy(c => c.CardIdentifier.MultiverseId)
             .AsAsyncEnumerable()
-            .SelectAwait(c => GetDataCardAsync(dbContext, c, cancel))
+
+            .GroupBy(c => (c.Name, c.SetCode))
+            .SelectAwait(cs => GetDataCardAsync(dbContext, cs, cancel))
+
             .OfType<Data.Card>()
             .ToListAsync(cancel);
 
@@ -123,7 +131,8 @@ public sealed class MtgAllPrintings : IMtgQuery
             return null;
         }
 
-        return await GetDataCardAsync(dbContext, card, cancel);
+        var cardResults = new List<Card> { card };
+        return await GetDataCardAsync(dbContext, cardResults.ToAsyncEnumerable(), cancel);
     }
 
     private static IQueryable<Card> ApplyFilters(AllPrintingsDbContext dbContext, IMtgSearch search)
@@ -233,9 +242,17 @@ public sealed class MtgAllPrintings : IMtgQuery
         return cards;
     }
 
-    private async ValueTask<Data.Card?> GetDataCardAsync(AllPrintingsDbContext dbContext, Card card, CancellationToken cancel)
+    private async ValueTask<Data.Card?> GetDataCardAsync(AllPrintingsDbContext dbContext, IAsyncEnumerable<Card> cards, CancellationToken cancel)
     {
-        if (card.Name is null)
+        var similarCards = await cards.ToListAsync(cancel);
+
+        if (similarCards.Count == 0)
+        {
+            return null;
+        }
+
+        var card = similarCards[0];
+        if (card.Name == null)
         {
             return null;
         }
@@ -245,7 +262,9 @@ public sealed class MtgAllPrintings : IMtgQuery
             return Validate(card, null);
         }
 
-        var similar = await SearchSimilarAsync(dbContext, card, cancel);
+        var similar = similarCards.Skip(1).FirstOrDefault()
+            ?? await SearchSimilarAsync(dbContext, card, cancel);
+
         var flip = Validate(similar);
 
         return Validate(card, flip);
