@@ -70,7 +70,7 @@ public class PurgeModel : PageModel
         var cards = await _dbContext.Cards
             .Where(c => multiverseIds.Contains(c.MultiverseId))
             .Include(c => c.Holds
-                .OrderBy(h => h.Copies))
+                .OrderByDescending(h => h.Copies))
                 .ThenInclude(h => h.Location)
             .ToListAsync(cancel);
 
