@@ -16,13 +16,13 @@ using MtgViewer.Services;
 
 namespace MtgViewer.Pages.Transactions;
 
-public class LocationModel : PageModel
+public class CardModel : PageModel
 {
     private readonly CardDbContext _dbContext;
     private readonly PageSize _pageSize;
     private readonly ILogger<IndexModel> _logger;
 
-    public LocationModel(CardDbContext dbContext, PageSize pageSize, ILogger<IndexModel> logger)
+    public CardModel(CardDbContext dbContext, PageSize pageSize, ILogger<IndexModel> logger)
     {
         _dbContext = dbContext;
         _pageSize = pageSize;
@@ -34,20 +34,20 @@ public class LocationModel : PageModel
 
     public TimeZoneInfo TimeZone { get; private set; } = TimeZoneInfo.Utc;
 
-    public string LocationName { get; set; } = string.Empty;
+    public string CardName { get; set; } = string.Empty;
 
     public SeekList<TransactionPreview> Transactions { get; private set; } = SeekList.Empty<TransactionPreview>();
 
     public async Task<IActionResult> OnGetAsync(
-        int id,
+        string id,
         int? seek,
         SeekDirection direction,
         string? tz,
         CancellationToken cancel)
     {
-        string? locationName = await FindLocationNameAsync(id, cancel);
+        string? cardName = await FindCardNameAsync(id, cancel);
 
-        if (locationName is null)
+        if (cardName is null)
         {
             return RedirectToPage("Index");
         }
@@ -65,29 +65,29 @@ public class LocationModel : PageModel
         }
 
         UpdateTimeZone(tz);
-        LocationName = locationName;
+        CardName = cardName;
         Transactions = transactions;
 
         return Page();
     }
 
-    private async Task<string?> FindLocationNameAsync(int id, CancellationToken cancel)
+    private async Task<string?> FindCardNameAsync(string id, CancellationToken cancel)
     {
-        return await _dbContext.Locations
-            .Where(l => l.Id == id && (l is Box || l is Deck))
-            .Select(l => l.Name)
+        return await _dbContext.Cards
+            .Where(c => c.Id == id)
+            .Select(c => c.Name)
             .SingleOrDefaultAsync(cancel);
     }
 
     private async Task<SeekList<TransactionPreview>> SeekTransactionsAsync(
-        int id,
+        string id,
         SeekDirection direction,
         int? origin,
         CancellationToken cancel)
     {
         return await _dbContext.Transactions
             .Where(t => t.Changes
-                .Any(c => c.FromId == id || c.ToId == id))
+                .Any(c => c.CardId == id))
 
             .OrderByDescending(t => t.AppliedAt)
                 .ThenBy(t => t.Id)
