@@ -18,98 +18,51 @@
         <thead>
             <tr>
                 <th scope="col"> @Html.DisplayNameForInnerType((Transaction t) => t.AppliedAt) </th>
-                <th scope="col"> @Html.DisplayNameForInnerType((Change c) => c.Card) </th>
-                <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.ManaCost) </th>
-                <th scope="col"> @Html.DisplayNameForInnerType((Card c) => c.SetName) </th>
-                <th scope="col"> Cards Moved </th>
+                <th scope="col"> @Html.DisplayNameForInnerType((Change c) => c.From) </th>
+                <th scope="col"> @Html.DisplayNameForInnerType((Change c) => c.To) </th>
+                <th scope="col"> @Html.DisplayNameForInnerType((Change c) => c.Copies) </th>
             </tr>
         </thead>
         <tbody>
-            @if (!Model.Transactions.Any())
+            @if (!Model.Changes.Any())
             {
                 <tr>
-                    <td> -- </td>
                     <td> -- </td>
                     <td> -- </td>
                     <td> -- </td>
                     <td> -- </td>
                 </tr>
             }
-            @foreach (var transaction in Model.Transactions)
+            @foreach (var change in Model.Changes)
             {
-                int span = Math.Max(1, transaction.Cards.Count()) + 1;
-
-                if (transaction.HasMore)
-                {
-                    span += 1;
-                }
-
                 <tr>
-                    <th scope="rowgroup" rowspan="@span">
-                        <a asp-page="Details" asp-route-id="@transaction.Id">
-                            @TimeZoneInfo.ConvertTimeFromUtc(transaction.AppliedAt, Model.TimeZone)
+                    <th scope="rowgroup" rowspan="2">
+                        <a asp-page="Details" asp-route-id="@change.Transaction.Id">
+                            @TimeZoneInfo.ConvertTimeFromUtc(change.Transaction.AppliedAt, Model.TimeZone)
                         </a>
                     </th>
-
-                    @if (transaction.Cards.FirstOrDefault() is LocationLink firstCard)
+                    @if (change.From is null)
                     {
                         <td>
-                            <a asp-page="/Cards/Details" asp-route-id="@firstCard.Id">
-                                @firstCard.Name
-                            </a>
+                            <i> Added </i>
                         </td>
-                        <td>
-                            <div class="ms-group">
-                                @MtgSymbols.Format(firstCard.ManaCost).ToHtmlString()
-                            </div>
-                        </td>
-                        <td> @firstCard.SetName </td>
-                        <td> @firstCard.Held </td>
                     }
                     else
                     {
-                        <td> -- </td>
-                        <td> -- </td>
-                        <td> -- </td>
-                        <td> -- </td>
+                        <td> @change.From </td>
                     }
+                    <td> @change.To </td>
+                    <td> @change.Copies </td>
                 </tr>
 
-                @foreach (var card in transaction.Cards.Skip(1))
-                {
-                    <tr>
-                        <td>
-                            <a asp-page="/Cards/Details" asp-route-id="@card.Id">
-                                @card.Name
-                            </a>
-                        </td>
-                        <td>
-                            <div class="ms-group">
-                                @MtgSymbols.Format(card.ManaCost).ToHtmlString()
-                            </div>
-                        </td>
-                        <td> @card.SetName </td>
-                        <td> @card.Held </td>
-                    </tr>
-                }
-                @if (transaction.HasMore)
-                {
-                    <tr>
-                        <td> ... </td>
-                        <td> ... </td>
-                        <td> ... </td>
-                        <td> ... </td>
-                    </tr>
-                }
                 <tr>
-                    <td> <strong>Total</strong> </td>
+                    <td> <strong>Total Changes</strong> </td>
                     <td> -- </td>
-                    <td> -- </td>
-                    <td> <strong>@transaction.Copies</strong> </td>
+                    <td> <strong>@change.Transaction.Copies</strong> </td>
                 </tr>
             }
         </tbody>
     </table>
 </div>
 
-<partial name="_SeekPagingPartial" model="(Seek)Model.Transactions.Seek" />
+<partial name="_SeekPagingPartial" model="(Seek)Model.Changes.Seek" />

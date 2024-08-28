@@ -36,7 +36,7 @@ public class CardModel : PageModel
 
     public string CardName { get; set; } = string.Empty;
 
-    public SeekList<TransactionPreview> Transactions { get; private set; } = SeekList.Empty<TransactionPreview>();
+    public SeekList<ChangePreview> Changes { get; private set; } = SeekList.Empty<ChangePreview>();
 
     public async Task<IActionResult> OnGetAsync(
         string id,
@@ -52,9 +52,9 @@ public class CardModel : PageModel
             return RedirectToPage("Index");
         }
 
-        var transactions = await SeekTransactionsAsync(id, direction, seek, cancel);
+        var changes = await SeekChangesAsync(id, direction, seek, cancel);
 
-        if (!transactions.Any() && seek is not null)
+        if (!changes.Any() && seek is not null)
         {
             return RedirectToPage(new
             {
@@ -66,7 +66,7 @@ public class CardModel : PageModel
 
         UpdateTimeZone(tz);
         CardName = cardName;
-        Transactions = transactions;
+        Changes = changes;
 
         return Page();
     }
@@ -79,53 +79,35 @@ public class CardModel : PageModel
             .SingleOrDefaultAsync(cancel);
     }
 
-    private async Task<SeekList<TransactionPreview>> SeekTransactionsAsync(
+    private async Task<SeekList<ChangePreview>> SeekChangesAsync(
         string id,
         SeekDirection direction,
         int? origin,
         CancellationToken cancel)
     {
-        return await _dbContext.Transactions
-            .Where(t => t.Changes
-                .Any(c => c.CardId == id))
+        return await _dbContext.Changes
+            .Where(c => c.CardId == id)
 
-            .OrderByDescending(t => t.AppliedAt)
-                .ThenBy(t => t.Id)
+            .OrderByDescending(c => c.Transaction.AppliedAt)
+                .ThenBy(c => c.Id)
 
             .SeekBy(direction)
-                .After(t => t.Id == origin)
+                .After(c => c.Id == origin)
                 .Take(_pageSize.Current)
 
-            .Select(t => new TransactionPreview
+            .Select(c => new ChangePreview
             {
-                Id = t.Id,
-                AppliedAt = t.AppliedAt,
-
-                Copies = t.Changes
-                    .Sum(c => c.Copies),
-
-                Cards = t.Changes
-                    .GroupBy(
-                        c => new
-                        {
-                            c.Card.Id,
-                            c.Card.Name,
-                            c.Card.SetName,
-                            c.Card.ManaCost
-                        },
-                        (c, cs) => new LocationLink
-                        {
-                            Id = c.Id,
-                            Name = c.Name,
-                            SetName = c.SetName,
-                            ManaCost = c.ManaCost,
-                            Held = cs.Sum(ch => ch.Copies)
-                        })
-
-                    .OrderBy(l => l.Name)
-                        .ThenBy(l => l.SetName)
-
-                    .Take(_pageSize.Current)
+                Copies = c.Copies,
+                CardName = c.Card.Name,
+                To = c.To.Name,
+                From = c.From == null ? null : c.From.Name,
+                Transaction = new TransactionDetails
+                {
+                    Id = c.Transaction.Id,
+                    AppliedAt = c.Transaction.AppliedAt,
+                    Copies = c.Transaction.Changes.Sum(c => c.Copies),
+                    CanDelete = false
+                },
             })
 
             .ToSeekListAsync(cancel);
