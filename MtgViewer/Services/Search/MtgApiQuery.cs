@@ -229,8 +229,7 @@ public sealed class MtgApiQuery : IMtgQuery
 
         return await iCards
             .Except(missingMultiverseId)
-            .OrderBy(c => c.MultiverseId)
-            .GroupBy(c => (c.Name, c.Set))
+            .GroupBy(c => c.MultiverseId)
             .ToAsyncEnumerable()
             .SelectMany(q => TranslateAsync(q))
             .ToListAsync(cancel);
