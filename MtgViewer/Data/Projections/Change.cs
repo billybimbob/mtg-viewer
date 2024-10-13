@@ -25,6 +25,19 @@ public sealed record ChangeDetails
     public int Copies { get; init; }
 }
 
+public sealed record ChangePreview
+{
+    public TransactionDetails Transaction { get; init; } = default!;
+
+    public string To { get; init; } = string.Empty;
+
+    public string? From { get; init; }
+
+    public string CardName { get; init; } = string.Empty;
+
+    public int Copies { get; init; }
+}
+
 public sealed class Move
 {
     public LocationPreview To { get; init; } = default!;

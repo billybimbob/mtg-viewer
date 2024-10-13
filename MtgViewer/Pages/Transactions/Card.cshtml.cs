@@ -7,6 +7,7 @@ using EntityFrameworkCore.Paging;
 
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 using MtgViewer.Data;
@@ -15,13 +16,13 @@ using MtgViewer.Services;
 
 namespace MtgViewer.Pages.Transactions;
 
-public class IndexModel : PageModel
+public class CardModel : PageModel
 {
     private readonly CardDbContext _dbContext;
     private readonly PageSize _pageSize;
     private readonly ILogger<IndexModel> _logger;
 
-    public IndexModel(CardDbContext dbContext, PageSize pageSize, ILogger<IndexModel> logger)
+    public CardModel(CardDbContext dbContext, PageSize pageSize, ILogger<IndexModel> logger)
     {
         _dbContext = dbContext;
         _pageSize = pageSize;
@@ -29,24 +30,31 @@ public class IndexModel : PageModel
     }
 
     [TempData]
-    public string? PostMessage { get; set; }
-
-    [TempData]
     public string? TimeZoneId { get; set; }
 
     public TimeZoneInfo TimeZone { get; private set; } = TimeZoneInfo.Utc;
 
-    public SeekList<TransactionPreview> Transactions { get; private set; } = SeekList.Empty<TransactionPreview>();
+    public string CardName { get; set; } = string.Empty;
+
+    public SeekList<ChangePreview> Changes { get; private set; } = SeekList.Empty<ChangePreview>();
 
     public async Task<IActionResult> OnGetAsync(
+        string id,
         int? seek,
         SeekDirection direction,
         string? tz,
         CancellationToken cancel)
     {
-        var transactions = await SeekTransactionsAsync(direction, seek, cancel);
+        string? cardName = await FindCardNameAsync(id, cancel);
 
-        if (!transactions.Any() && seek is not null)
+        if (cardName is null)
+        {
+            return RedirectToPage("Index");
+        }
+
+        var changes = await SeekChangesAsync(id, direction, seek, cancel);
+
+        if (!changes.Any() && seek is not null)
         {
             return RedirectToPage(new
             {
@@ -57,54 +65,49 @@ public class IndexModel : PageModel
         }
 
         UpdateTimeZone(tz);
-        Transactions = transactions;
+        CardName = cardName;
+        Changes = changes;
 
         return Page();
     }
 
-    private async Task<SeekList<TransactionPreview>> SeekTransactionsAsync(
+    private async Task<string?> FindCardNameAsync(string id, CancellationToken cancel)
+    {
+        return await _dbContext.Cards
+            .Where(c => c.Id == id)
+            .Select(c => c.Name)
+            .SingleOrDefaultAsync(cancel);
+    }
+
+    private async Task<SeekList<ChangePreview>> SeekChangesAsync(
+        string id,
         SeekDirection direction,
         int? origin,
         CancellationToken cancel)
     {
-        return await _dbContext.Transactions
-            .OrderByDescending(t => t.AppliedAt)
-                .ThenBy(t => t.Id)
+        return await _dbContext.Changes
+            .Where(c => c.CardId == id)
+
+            .OrderByDescending(c => c.Transaction.AppliedAt)
+                .ThenBy(c => c.Id)
 
             .SeekBy(direction)
-                .After(t => t.Id == origin)
+                .After(c => c.Id == origin)
                 .Take(_pageSize.Current)
 
-            .Select(t => new TransactionPreview
+            .Select(c => new ChangePreview
             {
-                Id = t.Id,
-                AppliedAt = t.AppliedAt,
-
-                Copies = t.Changes
-                    .Sum(c => c.Copies),
-
-                Cards = t.Changes
-                    .GroupBy(
-                        c => new
-                        {
-                            c.Card.Id,
-                            c.Card.Name,
-                            c.Card.SetName,
-                            c.Card.ManaCost
-                        },
-                        (c, cs) => new LocationLink
-                        {
-                            Id = c.Id,
-                            Name = c.Name,
-                            SetName = c.SetName,
-                            ManaCost = c.ManaCost,
-                            Held = cs.Sum(ch => ch.Copies)
-                        })
-
-                    .OrderBy(l => l.Name)
-                        .ThenBy(l => l.SetName)
-
-                    .Take(_pageSize.Current)
+                Copies = c.Copies,
+                CardName = c.Card.Name,
+                To = c.To.Name,
+                From = c.From == null ? null : c.From.Name,
+                Transaction = new TransactionDetails
+                {
+                    Id = c.Transaction.Id,
+                    AppliedAt = c.Transaction.AppliedAt,
+                    Copies = c.Transaction.Changes.Sum(c => c.Copies),
+                    CanDelete = false
+                },
             })
 
             .ToSeekListAsync(cancel);

@@ -61,7 +61,7 @@ public sealed class MtgAllPrintings : IMtgQuery
             .AsNoTracking()
             .AsAsyncEnumerable()
 
-            .GroupBy(c => (c.Name, c.SetCode))
+            .GroupBy(c => c.CardIdentifier.MultiverseId)
             .WithCancellation(cancel);
 
         await foreach (var similarCards in cards)
@@ -98,7 +98,7 @@ public sealed class MtgAllPrintings : IMtgQuery
             .OrderBy(c => c.CardIdentifier.MultiverseId)
             .AsAsyncEnumerable()
 
-            .GroupBy(c => (c.Name, c.SetCode))
+            .GroupBy(c => c.CardIdentifier.MultiverseId)
             .SelectAwait(cs => GetDataCardAsync(dbContext, cs, cancel))
 
             .OfType<Data.Card>()

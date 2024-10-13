@@ -1,15 +1,16 @@
-@page "{id:int?}"
-@model Transactions.IndexModel
+@page "{id:int}"
+@model Transactions.LocationModel
 @{
-    ViewData["Title"] = "Collection Transactions";
+    ViewData["Title"] = $"{Model.LocationName} Transactions";
 }
 @using MtgViewer.Data.Projections
 @inject SymbolFormatter MtgSymbols
 
-<h1> Collection Changes </h1>
+<h1> @Model.LocationName Changes </h1>
 
 <div class="btn-group pb-3">
     <partial name="_TimeZonePartial" for="TimeZone" />
+    <a asp-page="Index" class="btn btn-secondary" role="button"> All Changes </a>
 </div>
 
 <div class="table-responsive-md">

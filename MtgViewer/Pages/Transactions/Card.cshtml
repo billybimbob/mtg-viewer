@@ -1,0 +1,68 @@
+@page "{id}"
+@model Transactions.CardModel
+@{
+    ViewData["Title"] = $"{Model.CardName} Transactions";
+}
+@using MtgViewer.Data.Projections
+@inject SymbolFormatter MtgSymbols
+
+<h1> @Model.CardName Changes </h1>
+
+<div class="btn-group pb-3">
+    <partial name="_TimeZonePartial" for="TimeZone" />
+    <a asp-page="Index" class="btn btn-secondary" role="button"> All Changes </a>
+</div>
+
+<div class="table-responsive-md">
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th scope="col"> @Html.DisplayNameForInnerType((Transaction t) => t.AppliedAt) </th>
+                <th scope="col"> @Html.DisplayNameForInnerType((Change c) => c.From) </th>
+                <th scope="col"> @Html.DisplayNameForInnerType((Change c) => c.To) </th>
+                <th scope="col"> @Html.DisplayNameForInnerType((Change c) => c.Copies) </th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (!Model.Changes.Any())
+            {
+                <tr>
+                    <td> -- </td>
+                    <td> -- </td>
+                    <td> -- </td>
+                    <td> -- </td>
+                </tr>
+            }
+            @foreach (var change in Model.Changes)
+            {
+                <tr>
+                    <th scope="rowgroup" rowspan="2">
+                        <a asp-page="Details" asp-route-id="@change.Transaction.Id">
+                            @TimeZoneInfo.ConvertTimeFromUtc(change.Transaction.AppliedAt, Model.TimeZone)
+                        </a>
+                    </th>
+                    @if (change.From is null)
+                    {
+                        <td>
+                            <i> Added </i>
+                        </td>
+                    }
+                    else
+                    {
+                        <td> @change.From </td>
+                    }
+                    <td> @change.To </td>
+                    <td> @change.Copies </td>
+                </tr>
+
+                <tr>
+                    <td> <strong>Total Changes</strong> </td>
+                    <td> -- </td>
+                    <td> <strong>@change.Transaction.Copies</strong> </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+<partial name="_SeekPagingPartial" model="(Seek)Model.Changes.Seek" />

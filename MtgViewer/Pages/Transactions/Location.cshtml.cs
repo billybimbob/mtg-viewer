@@ -7,6 +7,7 @@ using EntityFrameworkCore.Paging;
 
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 using MtgViewer.Data;
@@ -15,13 +16,13 @@ using MtgViewer.Services;
 
 namespace MtgViewer.Pages.Transactions;
 
-public class IndexModel : PageModel
+public class LocationModel : PageModel
 {
     private readonly CardDbContext _dbContext;
     private readonly PageSize _pageSize;
     private readonly ILogger<IndexModel> _logger;
 
-    public IndexModel(CardDbContext dbContext, PageSize pageSize, ILogger<IndexModel> logger)
+    public LocationModel(CardDbContext dbContext, PageSize pageSize, ILogger<IndexModel> logger)
     {
         _dbContext = dbContext;
         _pageSize = pageSize;
@@ -29,22 +30,29 @@ public class IndexModel : PageModel
     }
 
     [TempData]
-    public string? PostMessage { get; set; }
-
-    [TempData]
     public string? TimeZoneId { get; set; }
 
     public TimeZoneInfo TimeZone { get; private set; } = TimeZoneInfo.Utc;
 
+    public string LocationName { get; set; } = string.Empty;
+
     public SeekList<TransactionPreview> Transactions { get; private set; } = SeekList.Empty<TransactionPreview>();
 
     public async Task<IActionResult> OnGetAsync(
+        int id,
         int? seek,
         SeekDirection direction,
         string? tz,
         CancellationToken cancel)
     {
-        var transactions = await SeekTransactionsAsync(direction, seek, cancel);
+        string? locationName = await FindLocationNameAsync(id, cancel);
+
+        if (locationName is null)
+        {
+            return RedirectToPage("Index");
+        }
+
+        var transactions = await SeekTransactionsAsync(id, direction, seek, cancel);
 
         if (!transactions.Any() && seek is not null)
         {
@@ -57,17 +65,30 @@ public class IndexModel : PageModel
         }
 
         UpdateTimeZone(tz);
+        LocationName = locationName;
         Transactions = transactions;
 
         return Page();
     }
 
+    private async Task<string?> FindLocationNameAsync(int id, CancellationToken cancel)
+    {
+        return await _dbContext.Locations
+            .Where(l => l.Id == id && (l is Box || l is Deck))
+            .Select(l => l.Name)
+            .SingleOrDefaultAsync(cancel);
+    }
+
     private async Task<SeekList<TransactionPreview>> SeekTransactionsAsync(
+        int id,
         SeekDirection direction,
         int? origin,
         CancellationToken cancel)
     {
         return await _dbContext.Transactions
+            .Where(t => t.Changes
+                .Any(c => c.FromId == id || c.ToId == id))
+
             .OrderByDescending(t => t.AppliedAt)
                 .ThenBy(t => t.Id)
 

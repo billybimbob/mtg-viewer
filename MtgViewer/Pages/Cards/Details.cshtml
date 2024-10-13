@@ -26,9 +26,7 @@
     <h1 class="h1 m-0 col-lg-auto col-12 pr-4"> @Model.Card.Name </h1>
 
     @{
-        var manaCost = Model.Card.Flip is not null
-        ? Model.Card.Flip.ManaCost
-        : Model.Card.ManaCost;
+        var manaCost = Model.Card.Flip is not null ? Model.Card.Flip.ManaCost : Model.Card.ManaCost;
     }
 
     @if (manaCost is not null)
@@ -69,6 +67,9 @@
                 Flip </a>
         }
 
+        <a asp-page="/Transactions/Card" asp-route-id="@Model.Card.Id" class="btn btn-secondary" role="button">
+            History </a>
+
         @if (isSignedIn && canChangeTreasury)
         {
             <a href="/Transfers/Suggest/@Model.Card.Id" title="Sugest @Model.Card.Name" class="btn btn-secondary" role="button">
@@ -100,8 +101,8 @@
     <div class="col pb-4 d-flex justify-content-center align-items-center">
         @{
             var imageUrl = Model.Card.Flip is not null
-        ? Model.Card.Flip.ImageUrl
-        : Model.Card.ImageUrl;
+            ? Model.Card.Flip.ImageUrl
+            : Model.Card.ImageUrl;
         }
 
         <img class="card-img" alt="@Model.Card.Name" src="@imageUrl.WithHttps()" />
